@@ -17,11 +17,14 @@
     feet_decimal: 'feet_decimal',
     feet_inch_frac: 'feet_inch_frac'
   };
-  var MIN_CANVAS_W = 400;
+  var MIN_CANVAS_W = 260;
   var MIN_CANVAS_H = 520;
+  var MIN_CANVAS_H_NARROW = 360;
+  var NARROW_CANVAS_MAX = 700;
   var MAX_CANVAS_H = 1100;
   var CANVAS_HEIGHT_RATIO = 0.75;
   var CANVAS_MAX_VH = 0.72;
+  var FIT_LABEL_PAD = 30;
   var DRAW_AREA_FACTOR = 6;
   var GRID_PX = 20;
   var VERTEX_HIT = 14;
@@ -31,7 +34,7 @@
   var MIN_ZOOM_PERCENT = 8;
   var MAX_ZOOM_PERCENT = 500;
   var ZOOM_STEP = 1.12;
-  var ZOOM_FIT_PAD = 32;
+  var ZOOM_FIT_PAD = 48;
   var SHIFT_SNAP_THRESHOLD_DEG = 10;
   var SHIFT_SNAP_STEP = Math.PI / 4;
   var UNDO_MAX = 50;
@@ -84,6 +87,38 @@
   function canvasBrandText(selected) {
     if (selected) return '#5d4037';
     return isAdminDark() ? '#7dd3fc' : '#024768';
+  }
+
+  function canvasAreaLabelText() {
+    return isAdminDark() ? '#f8fafc' : '#024768';
+  }
+
+  function canvasPolygonFill(hex, opacity) {
+    var a = opacity == null ? 1 : opacity;
+    if (!isAdminDark()) return hexToRgba(hex, 0.12 * a);
+    var mixed = mixHex(hex || DEFAULT_GROUP_COLOR, '#7dd3fc', 0.62);
+    return hexToRgba(mixed, 0.26 * a);
+  }
+
+  function mixHex(aHex, bHex, t) {
+    function parts(hex) {
+      var h = String(hex || '').replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      return [
+        parseInt(h.substring(0, 2), 16) || 0,
+        parseInt(h.substring(2, 4), 16) || 0,
+        parseInt(h.substring(4, 6), 16) || 0
+      ];
+    }
+    var a = parts(aHex);
+    var b = parts(bHex);
+    var r = Math.round(a[0] + (b[0] - a[0]) * t);
+    var g = Math.round(a[1] + (b[1] - a[1]) * t);
+    var bl = Math.round(a[2] + (b[2] - a[2]) * t);
+    return '#' + [r, g, bl].map(function (n) {
+      var s = n.toString(16);
+      return s.length === 1 ? '0' + s : s;
+    }).join('');
   }
 
   function canvasRulerText(selected) {
@@ -1075,9 +1110,12 @@
     if (!wrap || wrap.clientWidth < 1) {
       return { w: state.viewportW || 900, h: state.viewportH || 640 };
     }
-    var w = Math.max(MIN_CANVAS_W, Math.floor(wrap.clientWidth));
+    var wrapW = Math.floor(wrap.clientWidth);
+    var w = Math.max(MIN_CANVAS_W, wrapW);
+    if (wrapW > 0 && wrapW < MIN_CANVAS_W) w = wrapW;
     var maxH = Math.min(Math.floor(window.innerHeight * CANVAS_MAX_VH), MAX_CANVAS_H);
-    var h = Math.max(MIN_CANVAS_H, Math.min(maxH, Math.round(w * CANVAS_HEIGHT_RATIO)));
+    var minH = w < NARROW_CANVAS_MAX ? MIN_CANVAS_H_NARROW : MIN_CANVAS_H;
+    var h = Math.max(minH, Math.min(maxH, Math.round(w * CANVAS_HEIGHT_RATIO)));
     return { w: w, h: h };
   }
 
@@ -3155,7 +3193,13 @@
       return { minX: 0, minY: 0, maxX: contentW(), maxY: contentH(), hasContent: false };
     }
 
-    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY, hasContent: true };
+    return {
+      minX: minX - FIT_LABEL_PAD,
+      minY: minY - FIT_LABEL_PAD,
+      maxX: maxX + FIT_LABEL_PAD,
+      maxY: maxY + FIT_LABEL_PAD,
+      hasContent: true
+    };
   }
 
   function clampViewportPan() {
@@ -3385,8 +3429,9 @@
     }
     drawGrid();
     redrawAll();
-    // Keep pan within the new world bounds after a resize.
-    if (oldWorldW !== state.canvasW || oldWorldH !== state.canvasH) {
+    if (viewportContentBounds().hasContent) {
+      fitViewport();
+    } else if (oldWorldW !== state.canvasW || oldWorldH !== state.canvasH) {
       applyViewport();
     }
   }
@@ -4035,7 +4080,7 @@
         var fill = new Konva.Line({
           points: linePoints,
           closed: true,
-          fill: hexToRgba(group.color, 0.12 * opacity),
+          fill: canvasPolygonFill(group.color, opacity),
           opacity: opacity,
           listening: !state.draggingShape && !isDrawingOpenShape() && !state.rulerMode && !state.bgMoveMode
         });
@@ -4485,13 +4530,23 @@
       var b = verts[wallEndIndex(i)];
       var midX = (a.x + b.x) / 2;
       var midY = (a.y + b.y) / 2;
+      var dx = b.x - a.x;
+      var dy = b.y - a.y;
+      var wallLen = Math.hypot(dx, dy) || 1;
+      var nx = -dy / wallLen;
+      var ny = dx / wallLen;
+      if (!pointInPolygon({ x: midX + nx, y: midY + ny }, verts)) {
+        nx = -nx;
+        ny = -ny;
+      }
+      var inset = uiSize(14);
       var lenFt = dist(a, b) / ppf;
       var lenLabel = fmtLengthFromFeet(lenFt);
       var isSelected = state.selectedWallIndex === i;
       (function (wallIndex) {
         var kLabel = new Konva.Label({
-          x: midX,
-          y: midY,
+          x: midX + nx * inset,
+          y: midY + ny * inset,
           listening: !state.rulerMode && !state.spaceHeld
         });
         bindWallDrag(kLabel, wallIndex);
@@ -4510,6 +4565,8 @@
           fill: canvasBrandText(isSelected),
           padding: uiSize(4)
         }));
+        kLabel.offsetX(kLabel.width() / 2);
+        kLabel.offsetY(kLabel.height() / 2);
         labelLayer.add(kLabel);
       })(i);
     }
@@ -4521,12 +4578,11 @@
     state.objects.forEach(function (obj) {
       var place = objectPlacement(obj);
       if (!place) return;
-      var outward = place.inward * -1;
-      var nx = Math.cos(place.angle + Math.PI / 2) * outward;
-      var ny = Math.sin(place.angle + Math.PI / 2) * outward;
+      var nx = Math.cos(place.angle + Math.PI / 2) * place.inward;
+      var ny = Math.sin(place.angle + Math.PI / 2) * place.inward;
       var kLabel = new Konva.Label({
-        x: place.mid.x + nx * uiSize(16),
-        y: place.mid.y + ny * uiSize(16),
+        x: place.mid.x + nx * uiSize(14),
+        y: place.mid.y + ny * uiSize(14),
         listening: false
       });
       kLabel.add(new Konva.Tag({
@@ -4661,7 +4717,7 @@
         fontSize: uiSize(13),
         fontFamily: 'Open Sans, sans-serif',
         fontStyle: 'bold',
-        fill: entry.group.color || DEFAULT_GROUP_COLOR,
+        fill: isAdminDark() ? canvasAreaLabelText() : (entry.group.color || DEFAULT_GROUP_COLOR),
         padding: uiSize(6),
         align: 'center'
       });
@@ -5084,12 +5140,23 @@
       return;
     }
 
+    var clickedObject = findObjectAtPoint(pos);
+    if (clickedObject && !state.placingCatalog) {
+      if (state.armedCatalogKey) {
+        state.armedCatalogKey = null;
+        syncArmedPaletteUi();
+        hideObjectGhost();
+        if (els.canvasWrap) els.canvasWrap.classList.remove('is-placing-object');
+      }
+      selectObject(clickedObject.id);
+      return;
+    }
+
     if (state.armedCatalogKey || state.placingCatalog) {
       var placed = tryPlaceCatalogItem(state.placingCatalog || catalogItemByKey(state.armedCatalogKey), pos);
       if (placed) return;
     }
 
-    var clickedObject = findObjectAtPoint(pos);
     if (clickedObject) {
       selectObject(clickedObject.id);
       return;
@@ -6350,6 +6417,7 @@
     show(els.objectEdit, true);
     if (els.canvasWrap) els.canvasWrap.classList.add('is-object-edit');
     syncObjectPropertiesPanel();
+    setFeedback('', false);
     redrawAll();
     updateToolbar();
   }

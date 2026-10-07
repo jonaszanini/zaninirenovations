@@ -357,16 +357,16 @@
 
             <div class="util-ra-wall-edit util-ra-object-edit" data-ra-object-edit hidden>
               <div class="util-ra-wall-edit__inner util-ra-object-edit__inner">
-                <span class="util-ra-wall-edit__label" data-ra-object-title>Object</span>
-                <div class="admin-form-group util-ra-object-edit__field">
+                <span class="util-ra-wall-edit__label util-ra-object-edit__title" data-ra-object-title>Object</span>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num">
                   <label for="ra-object-width">Width (in)</label>
                   <input class="admin-input" type="text" id="ra-object-width" inputmode="decimal" data-ra-object-width>
                 </div>
-                <div class="admin-form-group util-ra-object-edit__field">
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num">
                   <label for="ra-object-offset">Offset (in)</label>
                   <input class="admin-input" type="text" id="ra-object-offset" inputmode="decimal" data-ra-object-offset>
                 </div>
-                <div class="admin-form-group util-ra-object-edit__field" data-ra-object-swing-wrap>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--swing" data-ra-object-swing-wrap>
                   <label for="ra-object-swing">Swing</label>
                   <select class="admin-input" id="ra-object-swing" data-ra-object-swing>
                     <option value="left_in">Left / in</option>
@@ -375,25 +375,27 @@
                     <option value="right_out">Right / out</option>
                   </select>
                 </div>
-                <div class="admin-form-group util-ra-object-edit__field" data-ra-object-hinge-wrap>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--hinge" data-ra-object-hinge-wrap>
                   <label for="ra-object-hinge">Hinge</label>
                   <select class="admin-input" id="ra-object-hinge" data-ra-object-hinge>
                     <option value="left">Left</option>
                     <option value="right">Right</option>
                   </select>
                 </div>
-                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-flip>
-                  <i class="fa fa-exchange"></i> Flip
-                </button>
-                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-rotate>
-                  <i class="fa fa-refresh"></i> Rotate
-                </button>
-                <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-object>
-                  <i class="fa fa-trash"></i> Delete
-                </button>
-                <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-cancel aria-label="Deselect object">
-                  <i class="fa fa-times"></i>
-                </button>
+                <div class="util-ra-object-edit__actions">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-flip aria-label="Flip">
+                    <i class="fa fa-exchange"></i> <span class="util-ra-object-edit__btn-text">Flip</span>
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-rotate aria-label="Rotate">
+                    <i class="fa fa-refresh"></i> <span class="util-ra-object-edit__btn-text">Rotate</span>
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--danger util-ra-action-btn" data-ra-delete-object aria-label="Delete object">
+                    <i class="fa fa-trash"></i> <span class="util-ra-object-edit__btn-text">Delete</span>
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-cancel aria-label="Deselect object">
+                    <i class="fa fa-times"></i>
+                  </button>
+                </div>
               </div>
             </div>
 
