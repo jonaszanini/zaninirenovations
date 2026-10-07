@@ -158,4 +158,25 @@ class CutOptimizerEngineTest extends TestCase
         $this->assertStringContainsString('48"', $svg);
         $this->assertStringContainsString('24"', $svg);
     }
+
+    public function test_optimize_with_offcuts_uses_inventory_before_full_sheet(): void
+    {
+        $engine = new CutOptimizerEngine();
+        $offcut = new StockOption('oc', 'Leftover 24×48', 24, 48, 0, null, 99, 1);
+        $result = $engine->optimizeWithOffcuts(
+            [new Part('a', 'Small', 10, 12, 1, GrainDirection::ANY)],
+            [new StockOption('full', '4×8', 48, 96, 72)],
+            [$offcut],
+            0.125,
+            0,
+            2
+        );
+
+        $this->assertSame([99], $result['used_offcut_ids']);
+        $this->assertCount(1, $result['sheets']);
+        $this->assertSame(99, $result['sheets'][0]->offcutId);
+        $this->assertEqualsWithDelta(24.0, $result['sheets'][0]->width, 0.01);
+        $this->assertEqualsWithDelta(48.0, $result['sheets'][0]->length, 0.01);
+        $this->assertNotEmpty($result['sheets'][0]->leftoverRectangles(2));
+    }
 }

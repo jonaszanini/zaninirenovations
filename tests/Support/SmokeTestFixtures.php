@@ -13,6 +13,7 @@ use App\Models\ClientProjectQuotation;
 use App\Models\FenceQuotation;
 use App\Models\Helper;
 use App\Models\Material;
+use App\Models\Offcut;
 use App\Models\PavingQuotation;
 use App\Models\Project;
 use App\Models\ProjectCategory;
@@ -53,6 +54,7 @@ final class SmokeTestFixtures
             'ai_instruction' => $this->aiInstructionKey(),
             'ai_generated_image' => $this->aiGeneratedImage()->id,
             'stairs_material_type' => $this->stairsMaterialType()->id,
+            'offcut' => $this->offcut()->id,
             'format' => 'webp',
             'key' => 'luxury_vinyl_flush',
             'sessionId' => 'smoke-test-session',
@@ -275,6 +277,19 @@ final class SmokeTestFixtures
         return $image ??= AiGeneratedImage::query()->create([
             'mode' => AiGeneratedImage::MODE_CREATE,
             'prompt' => 'Smoke test image',
+        ]);
+    }
+
+    public function offcut(): Offcut
+    {
+        static $offcut;
+
+        return $offcut ??= Offcut::query()->create([
+            'material_key' => '2x4',
+            'thickness_in' => 1.5,
+            'length_in' => 36,
+            'qty' => 1,
+            'notes' => 'Smoke leftover',
         ]);
     }
 

@@ -45,6 +45,9 @@ jobs:
       - name: Blade syntax smoke (no database)
         run: php artisan test tests/Unit/Views/BladeSyntaxTest.php
 
+      - name: Cut optimizer unit tests (no database)
+        run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
+
       - name: Admin dark-theme CSS coverage (no database)
         run: php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
 
@@ -93,4 +96,4 @@ jobs:
           DB_DATABASE: zanini_renovations_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: php artisan test --filter="GlobalFinancialsTest|GlobalSearchApiTest|QuickStatusChangeTest|DuplicateQuotationTest|ExpenseAmountParsingTest|HourlyInvoiceUpdateTest|DashboardActionFirstLayoutTest|ClientIndexAddressSearchTest|RoomAreaCanvasDataTest|RoomAreaCanvasObjectsTest|RoomAreaPdfExportTest|BasementRoomAreaImportTest|RoomAreaQuoteQuantitiesTest|RoomAreaQuoteLinesTest|RoomAreaQuotePrefillTest|RoomAreaMeasurementParserTest|RoomAreaClosingErrorTest|RoomAreaPhotosTest|HtmlContentSanitizerTest|PlainTextLimiterTest|BlogPhase1FixesTest|BlogPhase2AdminTest|BlogPostQualityTest|BlogPhase3PublicTest|SecurityHardeningTest|OnPageSeoBatch2Test|SeoGeoTest|OnPageSeoBatch4Test"
+        run: php artisan test --filter="GlobalFinancialsTest|GlobalSearchApiTest|QuickStatusChangeTest|DuplicateQuotationTest|ExpenseAmountParsingTest|HourlyInvoiceUpdateTest|DashboardActionFirstLayoutTest|ClientIndexAddressSearchTest|RoomAreaCanvasDataTest|RoomAreaCanvasObjectsTest|RoomAreaPdfExportTest|BasementRoomAreaImportTest|RoomAreaQuoteQuantitiesTest|RoomAreaQuoteLinesTest|RoomAreaQuotePrefillTest|RoomAreaMeasurementParserTest|RoomAreaClosingErrorTest|RoomAreaPhotosTest|HtmlContentSanitizerTest|PlainTextLimiterTest|BlogPhase1FixesTest|BlogPhase2AdminTest|BlogPostQualityTest|BlogPhase3PublicTest|SecurityHardeningTest|OnPageSeoBatch2Test|SeoGeoTest|OnPageSeoBatch4Test|OffcutInventoryTest|QuotationCutListImportTest"

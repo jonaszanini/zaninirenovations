@@ -905,6 +905,32 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.lumber-board');
     Route::post('utilities/lumber-board/pdf', [\App\Http\Controllers\Admin\UtilitiesController::class, 'lumberBoardPdf'])
         ->name('utilities.lumber-board.pdf');
+    Route::post('utilities/lumber-board/optimize-sheets', [\App\Http\Controllers\Admin\UtilitiesController::class, 'optimizeSheets'])
+        ->name('utilities.lumber-board.optimize-sheets');
+    Route::get('utilities/cut-list/quotations', [\App\Http\Controllers\Admin\UtilitiesController::class, 'searchCutListQuotations'])
+        ->name('utilities.cut-list.quotations.search');
+    Route::get('utilities/cut-list/import', [\App\Http\Controllers\Admin\UtilitiesController::class, 'importCutListQuotation'])
+        ->name('utilities.cut-list.import');
+    Route::get('utilities/offcuts', [\App\Http\Controllers\Admin\OffcutController::class, 'index'])
+        ->name('utilities.offcuts.index');
+    Route::get('utilities/offcuts/available', [\App\Http\Controllers\Admin\OffcutController::class, 'availableJson'])
+        ->name('utilities.offcuts.available');
+    Route::post('utilities/offcuts', [\App\Http\Controllers\Admin\OffcutController::class, 'store'])
+        ->name('utilities.offcuts.store');
+    Route::post('utilities/offcuts/save-leftovers', [\App\Http\Controllers\Admin\OffcutController::class, 'saveLeftovers'])
+        ->name('utilities.offcuts.save-leftovers');
+    Route::post('utilities/offcuts/consume', [\App\Http\Controllers\Admin\OffcutController::class, 'consume'])
+        ->name('utilities.offcuts.consume');
+    Route::get('utilities/offcuts/create', [\App\Http\Controllers\Admin\OffcutController::class, 'create'])
+        ->name('utilities.offcuts.create');
+    Route::get('utilities/offcuts/{offcut}/edit', [\App\Http\Controllers\Admin\OffcutController::class, 'edit'])
+        ->name('utilities.offcuts.edit');
+    Route::put('utilities/offcuts/{offcut}', [\App\Http\Controllers\Admin\OffcutController::class, 'update'])
+        ->name('utilities.offcuts.update');
+    Route::post('utilities/offcuts/{offcut}/mark-used', [\App\Http\Controllers\Admin\OffcutController::class, 'markUsed'])
+        ->name('utilities.offcuts.mark-used');
+    Route::delete('utilities/offcuts/{offcut}', [\App\Http\Controllers\Admin\OffcutController::class, 'destroy'])
+        ->name('utilities.offcuts.destroy');
     Route::post('utilities/calculations', [\App\Http\Controllers\Admin\UtilitiesController::class, 'storeCalculation'])
         ->name('utilities.calculations.store');
     Route::put('utilities/calculations/{utility_calculation}', [\App\Http\Controllers\Admin\UtilitiesController::class, 'updateCalculation'])
