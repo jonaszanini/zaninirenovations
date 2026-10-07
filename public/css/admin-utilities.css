@@ -3579,8 +3579,7 @@
 .util-ra-type-walls__dirs {
   display: flex;
   gap: 0.25rem;
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
 }
 
 .util-ra-type-walls__dir {
@@ -3618,6 +3617,7 @@
   margin-bottom: 0.35rem;
   padding-top: 0.35rem;
   border-top: 1px solid var(--admin-border);
+  flex-wrap: nowrap;
 }
 
 .util-ra-type-walls__rect-label {

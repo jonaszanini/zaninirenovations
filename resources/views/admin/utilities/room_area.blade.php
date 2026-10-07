@@ -449,7 +449,7 @@
                 L90
               </button>
               <button type="button" class="admin-btn admin-btn--ghost util-ra-type-walls__dir" data-ra-type-dir="custom" aria-pressed="false" title="Custom angle" aria-label="Custom angle">
-                ∠°
+                Ang
               </button>
             </div>
             <div class="admin-form-group util-ra-type-walls__angle" data-ra-type-angle-wrap hidden>
