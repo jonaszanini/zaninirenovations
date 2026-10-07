@@ -184,8 +184,86 @@ class RoomAreaCanvasObjectsTest extends IntegrationTestCase
             ->assertSee('fa-paint-brush', false)
             ->assertSee('Start a new color group')
             ->assertSee('data-ra-palette-toggle', false)
-            ->assertSee('Doors &amp; windows', false)
+            ->assertSee('data-ra-walls-toggle', false)
+            ->assertSee('data-ra-palette-stairs', false)
+            ->assertSee('data-ra-thickness', false)
+            ->assertSee('Objects')
+            ->assertSee('Wall thickness')
             ->assertDontSee('fa-palette')
             ->assertDontSee('On a phone, type wall lengths below instead of dragging corners.');
+    }
+
+    public function test_room_area_assets_counter_scale_labels_and_compact_panels(): void
+    {
+        $js = file_get_contents(public_path('js/admin-utilities-room-area.js'));
+        $this->assertNotFalse($js);
+        $this->assertStringContainsString('return base / uiScale();', $js);
+        $this->assertStringNotContainsString('Math.min(uiScale(), 1)', $js);
+        $this->assertStringContainsString('buildAreaNameLabels', $js);
+        $this->assertStringContainsString('caption.rotation(-place.angle * 180 / Math.PI)', $js);
+
+        $css = file_get_contents(public_path('css/admin-utilities.css'));
+        $this->assertNotFalse($css);
+        $this->assertStringContainsString('.util-ra-palette:not(.is-open) .util-ra-palette__body', $css);
+        $this->assertStringContainsString('.util-ra-palette.is-open .util-ra-palette__group::after', $css);
+        $this->assertStringContainsString('max-width: 110px', $css);
+        $this->assertStringContainsString('grid-template-columns: repeat(3, minmax(0, 1fr))', $css);
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.util-ra-palette__toggle\s*\{\s*display:\s*none/i',
+            $css
+        );
+    }
+
+    public function test_store_room_persists_v4_thickness_and_free_objects(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = RoomAreaProject::create([
+            'name' => 'Phase 5 save project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+
+        $canvas = $this->rectangleCanvas(false);
+        $canvas['v'] = 4;
+        $canvas['wall_thickness_in'] = 3.5;
+        $canvas['objects'] = [
+            [
+                'id' => 'cab_1',
+                'type' => 'cabinet',
+                'subtype' => 'base',
+                'x' => 40,
+                'y' => 30,
+                'width' => 36,
+                'depth' => 24,
+                'rotation' => 0,
+            ],
+            [
+                'id' => 'st_1',
+                'type' => 'stairs',
+                'subtype' => 'straight',
+                'x' => 70,
+                'y' => 50,
+                'width' => 36,
+                'depth' => 120,
+                'rotation' => 90,
+            ],
+        ];
+
+        $this->postJson(route('admin.utilities.room-area.rooms.store', $project), [
+            'name' => 'Kitchen',
+            'canvas' => $canvas,
+            'canvas_width' => 900,
+            'canvas_height' => 640,
+            'scale_pixels_per_foot' => 12,
+        ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('room.canvas.v', 4)
+            ->assertJsonPath('room.canvas.wall_thickness_in', 3.5)
+            ->assertJsonPath('room.canvas.objects.0.type', 'cabinet')
+            ->assertJsonPath('room.canvas.objects.1.type', 'stairs');
+
+        $project->refresh();
+        $this->assertEqualsWithDelta(3.5, (float) $project->wall_thickness_in, 0.01);
     }
 }

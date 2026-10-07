@@ -344,15 +344,15 @@
         </div>
 
         <div class="util-ra-object-dock">
-          <section class="util-ra-palette" data-ra-palette aria-label="Door and window library">
+          <section class="util-ra-palette" data-ra-palette aria-label="Object library">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-palette__toggle" data-ra-palette-toggle aria-expanded="false" aria-controls="ra-palette-body">
-              <span>Doors &amp; windows</span>
+              <span>Objects</span>
               <i class="fa fa-chevron-down" aria-hidden="true"></i>
             </button>
             <div class="util-ra-palette__body" id="ra-palette-body" data-ra-palette-body>
               <div class="util-ra-palette__head">
                 <h3 class="util-ra-palette__title">Objects</h3>
-                <p class="util-ra-palette__hint">Drag onto a wall, or tap an item then tap a wall.</p>
+                <p class="util-ra-palette__hint">Doors and windows snap to walls. Stairs, cabinets, and fixtures drop on the floor.</p>
               </div>
               <div class="util-ra-palette__groups">
                 <div class="util-ra-palette__group">
@@ -362,6 +362,46 @@
                 <div class="util-ra-palette__group">
                   <span class="util-ra-palette__group-label">Windows</span>
                   <div class="util-ra-palette__items" data-ra-palette-windows></div>
+                </div>
+                <div class="util-ra-palette__group">
+                  <span class="util-ra-palette__group-label">Stairs</span>
+                  <div class="util-ra-palette__items" data-ra-palette-stairs></div>
+                </div>
+                <div class="util-ra-palette__group">
+                  <span class="util-ra-palette__group-label">Cabinets</span>
+                  <div class="util-ra-palette__items" data-ra-palette-cabinets></div>
+                </div>
+                <div class="util-ra-palette__group">
+                  <span class="util-ra-palette__group-label">Bath</span>
+                  <div class="util-ra-palette__items" data-ra-palette-fixtures></div>
+                </div>
+                <div class="util-ra-palette__group">
+                  <span class="util-ra-palette__group-label">Furniture</span>
+                  <div class="util-ra-palette__items" data-ra-palette-furniture></div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="util-ra-palette util-ra-walls-panel" data-ra-walls-panel aria-label="Wall thickness">
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-palette__toggle" data-ra-walls-toggle aria-expanded="false" aria-controls="ra-walls-body">
+              <span>Walls</span>
+              <i class="fa fa-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="util-ra-palette__body" id="ra-walls-body" data-ra-walls-body>
+              <div class="util-ra-palette__head">
+                <h3 class="util-ra-palette__title">Wall thickness</h3>
+                <p class="util-ra-palette__hint">Off keeps drawings as-is. On draws thick walls and shows inside vs footprint. Quotes use inside.</p>
+              </div>
+              <div class="util-ra-thickness-chips" role="group" aria-label="Wall thickness">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-thickness-chip is-active" data-ra-thickness="0">Off</button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-thickness-chip" data-ra-thickness="3.5">3.5″</button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-thickness-chip" data-ra-thickness="4.5">4.5″</button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-thickness-chip" data-ra-thickness="5.5">5.5″</button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-thickness-chip" data-ra-thickness="6">6″</button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-thickness-chip" data-ra-thickness="custom">Custom</button>
+                <div class="admin-form-group util-ra-thickness-custom" data-ra-thickness-custom hidden>
+                  <label for="ra-thickness-custom">In</label>
+                  <input class="admin-input" type="text" id="ra-thickness-custom" inputmode="decimal" maxlength="5" data-ra-thickness-custom-input placeholder="3.5">
                 </div>
               </div>
             </div>
@@ -405,9 +445,17 @@
                   <label for="ra-object-width">Width (in)</label>
                   <input class="admin-input" type="text" id="ra-object-width" inputmode="decimal" data-ra-object-width>
                 </div>
-                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num">
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num" data-ra-object-offset-wrap>
                   <label for="ra-object-offset">Offset (in)</label>
                   <input class="admin-input" type="text" id="ra-object-offset" inputmode="decimal" data-ra-object-offset>
+                </div>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num" data-ra-object-depth-wrap hidden>
+                  <label for="ra-object-depth">Depth (in)</label>
+                  <input class="admin-input" type="text" id="ra-object-depth" inputmode="decimal" data-ra-object-depth>
+                </div>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num" data-ra-object-rotation-wrap hidden>
+                  <label for="ra-object-rotation">Rot °</label>
+                  <input class="admin-input" type="text" id="ra-object-rotation" inputmode="decimal" data-ra-object-rotation>
                 </div>
                 <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--swing" data-ra-object-swing-wrap>
                   <label for="ra-object-swing">Swing</label>
@@ -533,7 +581,7 @@
         </section>
 
         <div class="util-ra-canvas-footer">
-          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Drag a door or window from the palette onto a wall. Pinch or <strong>+/−</strong> to zoom; two fingers or empty-canvas drag to pan. Press <strong>?</strong> for shortcuts. Calibrate scale before saving.</p>
+          <p class="util-ra-hint util-ra-hint--inline">Click corners to draw. Drag doors onto walls; drop stairs, cabinets, and fixtures on the floor. Pinch or <strong>+/−</strong> to zoom; two fingers or empty-canvas drag to pan. Press <strong>?</strong> for shortcuts. Calibrate scale before saving.</p>
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <div class="util-ra-live-area__row util-ra-live-area__row--active">
               <span class="util-ra-live-area__label">Active shape:</span>
@@ -556,6 +604,18 @@
               <div class="util-ra-live-metrics__item">
                 <span class="util-ra-live-area__label">Wall SF</span>
                 <strong><span data-ra-live-wall-area>—</span> sq ft</strong>
+              </div>
+              <div class="util-ra-live-metrics__item" data-ra-live-footprint-wrap hidden>
+                <span class="util-ra-live-area__label">Footprint</span>
+                <strong><span data-ra-live-footprint>—</span> sq ft</strong>
+              </div>
+              <div class="util-ra-live-metrics__item" data-ra-live-framing-wrap hidden>
+                <span class="util-ra-live-area__label">Framing</span>
+                <strong><span data-ra-live-framing>—</span> lf</strong>
+              </div>
+              <div class="util-ra-live-metrics__item" data-ra-live-cabinets-wrap hidden>
+                <span class="util-ra-live-area__label">Cabinets</span>
+                <strong><span data-ra-live-cabinets>—</span> lf</strong>
               </div>
             </div>
             <div class="util-ra-live-area__row util-ra-live-area__row--counts">

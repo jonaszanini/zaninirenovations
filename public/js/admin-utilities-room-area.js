@@ -61,19 +61,38 @@
   var DEFAULT_TYPED_PPF = 12;
   var CLOSE_GAP_THRESHOLD_IN = 6;
   var SQUARE_SNAP_DEG = 8;
+  var WALL_OBJECT_TYPES = { door: true, window: true, opening: true };
+  var FREE_OBJECT_TYPES = { stairs: true, cabinet: true, fixture: true, furniture: true };
+  var WALL_THICKNESS_PRESETS = [0, 3.5, 4.5, 5.5, 6];
+  var SHARED_WALL_ANGLE_DEG = 8;
+  var SHARED_MIN_OVERLAP_IN = 6;
   var OBJECT_CATALOG = [
-    { key: 'door-30', type: 'door', subtype: 'single', width: 30, label: '30″ door', kind: 'door' },
-    { key: 'door-32', type: 'door', subtype: 'single', width: 32, label: '32″ door', kind: 'door' },
-    { key: 'door-36', type: 'door', subtype: 'single', width: 36, label: '36″ door', kind: 'door' },
-    { key: 'door-60', type: 'door', subtype: 'double', width: 60, label: '60″ double', kind: 'door' },
-    { key: 'door-72', type: 'door', subtype: 'double', width: 72, label: '72″ double', kind: 'door' },
-    { key: 'door-slide', type: 'door', subtype: 'sliding', width: 60, label: 'Sliding', kind: 'door' },
-    { key: 'door-bifold', type: 'door', subtype: 'bifold', width: 60, label: 'Bifold', kind: 'door' },
-    { key: 'opening', type: 'opening', subtype: 'archway', width: 36, label: 'Opening', kind: 'door' },
-    { key: 'win-24', type: 'window', subtype: 'fixed', width: 24, label: '24″ window', kind: 'window' },
-    { key: 'win-36', type: 'window', subtype: 'fixed', width: 36, label: '36″ window', kind: 'window' },
-    { key: 'win-48', type: 'window', subtype: 'fixed', width: 48, label: '48″ window', kind: 'window' },
-    { key: 'win-60', type: 'window', subtype: 'fixed', width: 60, label: '60″ window', kind: 'window' }
+    { key: 'door-30', type: 'door', subtype: 'single', width: 30, label: '30″ door', kind: 'door', place: 'wall' },
+    { key: 'door-32', type: 'door', subtype: 'single', width: 32, label: '32″ door', kind: 'door', place: 'wall' },
+    { key: 'door-36', type: 'door', subtype: 'single', width: 36, label: '36″ door', kind: 'door', place: 'wall' },
+    { key: 'door-60', type: 'door', subtype: 'double', width: 60, label: '60″ double', kind: 'door', place: 'wall' },
+    { key: 'door-72', type: 'door', subtype: 'double', width: 72, label: '72″ double', kind: 'door', place: 'wall' },
+    { key: 'door-slide', type: 'door', subtype: 'sliding', width: 60, label: 'Sliding', kind: 'door', place: 'wall' },
+    { key: 'door-bifold', type: 'door', subtype: 'bifold', width: 60, label: 'Bifold', kind: 'door', place: 'wall' },
+    { key: 'opening', type: 'opening', subtype: 'archway', width: 36, label: 'Opening', kind: 'door', place: 'wall' },
+    { key: 'win-24', type: 'window', subtype: 'fixed', width: 24, label: '24″ window', kind: 'window', place: 'wall' },
+    { key: 'win-36', type: 'window', subtype: 'fixed', width: 36, label: '36″ window', kind: 'window', place: 'wall' },
+    { key: 'win-48', type: 'window', subtype: 'fixed', width: 48, label: '48″ window', kind: 'window', place: 'wall' },
+    { key: 'win-60', type: 'window', subtype: 'fixed', width: 60, label: '60″ window', kind: 'window', place: 'wall' },
+    { key: 'stair-str', type: 'stairs', subtype: 'straight', width: 36, depth: 120, label: 'Straight stairs', kind: 'stairs', place: 'floor' },
+    { key: 'stair-l', type: 'stairs', subtype: 'l', width: 72, depth: 72, label: 'L stairs', kind: 'stairs', place: 'floor' },
+    { key: 'stair-u', type: 'stairs', subtype: 'u', width: 72, depth: 96, label: 'U stairs', kind: 'stairs', place: 'floor' },
+    { key: 'cab-base', type: 'cabinet', subtype: 'base', width: 36, depth: 24, label: 'Base cab', kind: 'cabinet', place: 'floor' },
+    { key: 'cab-upper', type: 'cabinet', subtype: 'upper', width: 36, depth: 12, label: 'Upper cab', kind: 'cabinet', place: 'floor' },
+    { key: 'cab-corner', type: 'cabinet', subtype: 'corner', width: 24, depth: 24, label: 'Corner cab', kind: 'cabinet', place: 'floor' },
+    { key: 'cab-island', type: 'cabinet', subtype: 'island', width: 48, depth: 36, label: 'Island', kind: 'cabinet', place: 'floor' },
+    { key: 'fix-toilet', type: 'fixture', subtype: 'toilet', width: 20, depth: 30, label: 'Toilet', kind: 'fixture', place: 'floor' },
+    { key: 'fix-tub', type: 'fixture', subtype: 'tub', width: 60, depth: 32, label: 'Tub', kind: 'fixture', place: 'floor' },
+    { key: 'fix-shower', type: 'fixture', subtype: 'shower', width: 36, depth: 36, label: 'Shower', kind: 'fixture', place: 'floor' },
+    { key: 'fix-vanity', type: 'fixture', subtype: 'vanity', width: 36, depth: 21, label: 'Vanity', kind: 'fixture', place: 'floor' },
+    { key: 'furn-sofa', type: 'furniture', subtype: 'sofa', width: 84, depth: 36, label: 'Sofa', kind: 'furniture', place: 'floor' },
+    { key: 'furn-bed', type: 'furniture', subtype: 'bed', width: 60, depth: 80, label: 'Bed', kind: 'furniture', place: 'floor' },
+    { key: 'furn-table', type: 'furniture', subtype: 'dining_table', width: 72, depth: 36, label: 'Dining', kind: 'furniture', place: 'floor' }
   ];
 
   function isAdminDark() {
@@ -234,6 +253,26 @@
     paletteBody: root.querySelector('[data-ra-palette-body]'),
     paletteDoors: root.querySelector('[data-ra-palette-doors]'),
     paletteWindows: root.querySelector('[data-ra-palette-windows]'),
+    paletteStairs: root.querySelector('[data-ra-palette-stairs]'),
+    paletteCabinets: root.querySelector('[data-ra-palette-cabinets]'),
+    paletteFixtures: root.querySelector('[data-ra-palette-fixtures]'),
+    paletteFurniture: root.querySelector('[data-ra-palette-furniture]'),
+    wallsPanel: root.querySelector('[data-ra-walls-panel]'),
+    wallsToggle: root.querySelector('[data-ra-walls-toggle]'),
+    wallsBody: root.querySelector('[data-ra-walls-body]'),
+    thicknessCustom: root.querySelector('[data-ra-thickness-custom]'),
+    thicknessCustomInput: root.querySelector('[data-ra-thickness-custom-input]'),
+    liveFootprint: root.querySelector('[data-ra-live-footprint]'),
+    liveFootprintWrap: root.querySelector('[data-ra-live-footprint-wrap]'),
+    liveFraming: root.querySelector('[data-ra-live-framing]'),
+    liveFramingWrap: root.querySelector('[data-ra-live-framing-wrap]'),
+    liveCabinets: root.querySelector('[data-ra-live-cabinets]'),
+    liveCabinetsWrap: root.querySelector('[data-ra-live-cabinets-wrap]'),
+    objectOffsetWrap: root.querySelector('[data-ra-object-offset-wrap]'),
+    objectDepth: root.querySelector('[data-ra-object-depth]'),
+    objectDepthWrap: root.querySelector('[data-ra-object-depth-wrap]'),
+    objectRotation: root.querySelector('[data-ra-object-rotation]'),
+    objectRotationWrap: root.querySelector('[data-ra-object-rotation-wrap]'),
     dimensionsToggle: root.querySelector('[data-ra-dimensions-toggle]'),
     objectEdit: root.querySelector('[data-ra-object-edit]'),
     objectTitle: root.querySelector('[data-ra-object-title]'),
@@ -353,6 +392,9 @@
     canvasW: 5400,
     canvasH: 3840,
     wallHeightFt: DEFAULT_WALL_HEIGHT_FT,
+    wallThicknessIn: 0,
+    transformer: null,
+    sharedPairs: [],
     exporting: false,
     typedTurn: 'right',
     typedHeading: 0,
@@ -394,9 +436,21 @@
         swing: obj.swing || 'left_in',
         hinge: obj.hinge || 'left',
         height: obj.height,
-        sill_height: obj.sill_height
+        sill_height: obj.sill_height,
+        x: obj.x,
+        y: obj.y,
+        depth: obj.depth,
+        rotation: obj.rotation || 0
       };
     });
+  }
+
+  function isWallObject(obj) {
+    return !!(obj && WALL_OBJECT_TYPES[obj.type]);
+  }
+
+  function isFreeObject(obj) {
+    return !!(obj && FREE_OBJECT_TYPES[obj.type]);
   }
 
   function objectTitle(obj) {
@@ -406,6 +460,28 @@
     if (obj.subtype === 'double') return Math.round(obj.width) + '″ double door';
     if (obj.subtype === 'sliding' || obj.subtype === 'pocket') return Math.round(obj.width) + '″ sliding door';
     if (obj.subtype === 'bifold') return Math.round(obj.width) + '″ bifold';
+    if (obj.type === 'stairs') {
+      if (obj.subtype === 'l') return 'L stairs';
+      if (obj.subtype === 'u') return 'U stairs';
+      return 'Straight stairs';
+    }
+    if (obj.type === 'cabinet') {
+      if (obj.subtype === 'upper') return 'Upper cabinet';
+      if (obj.subtype === 'corner') return 'Corner cabinet';
+      if (obj.subtype === 'island') return 'Island';
+      return 'Base cabinet';
+    }
+    if (obj.type === 'fixture') {
+      if (obj.subtype === 'tub') return 'Tub';
+      if (obj.subtype === 'shower') return 'Shower';
+      if (obj.subtype === 'vanity') return 'Vanity';
+      return 'Toilet';
+    }
+    if (obj.type === 'furniture') {
+      if (obj.subtype === 'bed') return 'Bed';
+      if (obj.subtype === 'dining_table') return 'Dining table';
+      return 'Sofa';
+    }
     return Math.round(obj.width) + '″ door';
   }
 
@@ -442,6 +518,14 @@
 
   function inchesToPixels(inches) {
     return (inches / INCHES_PER_FOOT) * (pixelsPerFoot() || 12);
+  }
+
+  function pixelsToInches(px) {
+    return (px / (pixelsPerFoot() || 12)) * INCHES_PER_FOOT;
+  }
+
+  function catalogPlacesOnFloor(item) {
+    return !!(item && (item.place === 'floor' || FREE_OBJECT_TYPES[item.type]));
   }
 
   function listClosedWalls() {
@@ -520,6 +604,26 @@
   }
 
   function objectPlacement(obj) {
+    if (isFreeObject(obj) && obj.x != null && obj.y != null) {
+      var width = Math.max(OBJECT_MIN_WIDTH_IN, Math.min(OBJECT_MAX_WIDTH_IN, obj.width || 36));
+      var depth = Math.max(OBJECT_MIN_WIDTH_IN, Math.min(OBJECT_MAX_WIDTH_IN, obj.depth || 24));
+      var rot = obj.rotation || 0;
+      return {
+        wall: null,
+        a: { x: obj.x, y: obj.y },
+        b: { x: obj.x, y: obj.y },
+        mid: { x: obj.x, y: obj.y },
+        angle: rot * Math.PI / 180,
+        width: width,
+        depth: depth,
+        offset: 0,
+        lengthIn: 0,
+        widthPx: inchesToPixels(width),
+        depthPx: inchesToPixels(depth),
+        inward: 1,
+        free: true
+      };
+    }
     var wall = resolveWall(obj.wall_id);
     if (!wall) return null;
     var lengthIn = wallLengthInches(wall.a, wall.b);
@@ -583,24 +687,50 @@
     clampObjectToWall(obj, snap.wall);
   }
 
-  function createObjectFromCatalog(item, snap) {
+  function createObjectFromCatalog(item, snap, pos) {
     var obj = {
       id: 'obj_' + state.nextObjectId,
       type: item.type,
       subtype: item.subtype,
-      wall_id: snap.wall.wallId,
       width: item.width,
       offset: 0,
       swing: 'left_in',
       hinge: 'left'
     };
+    state.nextObjectId += 1;
+    if (item.place === 'floor' || FREE_OBJECT_TYPES[item.type]) {
+      var size = item.depth != null ? { width: item.width, depth: item.depth } : defaultFreeSize(item.type, item.subtype);
+      obj.width = size.width;
+      obj.depth = size.depth;
+      obj.rotation = 0;
+      obj.x = pos ? pos.x : (snap && snap.point ? snap.point.x : 80);
+      obj.y = pos ? pos.y : (snap && snap.point ? snap.point.y : 80);
+      return obj;
+    }
+    obj.wall_id = snap.wall.wallId;
     if (item.type === 'window' || item.type === 'opening') {
       obj.height = item.type === 'window' ? 48 : 84;
       obj.sill_height = item.type === 'window' ? 36 : 0;
     }
-    state.nextObjectId += 1;
     applySnapToObject(obj, snap);
     return obj;
+  }
+
+  function defaultFreeSize(type, subtype) {
+    if (type === 'stairs' && subtype === 'l') return { width: 72, depth: 72 };
+    if (type === 'stairs' && subtype === 'u') return { width: 72, depth: 96 };
+    if (type === 'stairs') return { width: 36, depth: 120 };
+    if (type === 'cabinet' && subtype === 'upper') return { width: 36, depth: 12 };
+    if (type === 'cabinet' && subtype === 'corner') return { width: 24, depth: 24 };
+    if (type === 'cabinet' && subtype === 'island') return { width: 48, depth: 36 };
+    if (type === 'cabinet') return { width: 36, depth: 24 };
+    if (type === 'fixture' && subtype === 'tub') return { width: 60, depth: 32 };
+    if (type === 'fixture' && subtype === 'shower') return { width: 36, depth: 36 };
+    if (type === 'fixture' && subtype === 'vanity') return { width: 36, depth: 21 };
+    if (type === 'fixture') return { width: 20, depth: 30 };
+    if (type === 'furniture' && subtype === 'bed') return { width: 60, depth: 80 };
+    if (type === 'furniture' && subtype === 'dining_table') return { width: 72, depth: 36 };
+    return { width: 84, depth: 36 };
   }
 
   function selectedObject() {
@@ -613,15 +743,49 @@
     var hit = null;
     var best = Infinity;
     state.objects.forEach(function (obj) {
+      if (isFreeObject(obj)) {
+        var box = freeObjectBox(obj);
+        if (!box) return;
+        if (pos.x >= box.x0 && pos.x <= box.x1 && pos.y >= box.y0 && pos.y <= box.y1) {
+          var d = dist(pos, { x: obj.x, y: obj.y });
+          if (d < best) {
+            best = d;
+            hit = obj;
+          }
+        }
+        return;
+      }
       var place = objectPlacement(obj);
       if (!place) return;
-      var d = distanceToSegment(pos, place.a, place.b);
-      if (d <= hitTolerance(objectHitRadius()) && d < best) {
-        best = d;
+      var dWall = distanceToSegment(pos, place.a, place.b);
+      if (dWall <= hitTolerance(objectHitRadius()) && dWall < best) {
+        best = dWall;
         hit = obj;
       }
     });
     return hit;
+  }
+
+  function freeObjectBox(obj) {
+    var w = inchesToPixels(obj.width || 36);
+    var d = inchesToPixels(obj.depth || 24);
+    var rad = (obj.rotation || 0) * Math.PI / 180;
+    var hw = w / 2;
+    var hd = d / 2;
+    var cos = Math.cos(rad);
+    var sin = Math.sin(rad);
+    var corners = [
+      { x: obj.x + (-hw) * cos - (-hd) * sin, y: obj.y + (-hw) * sin + (-hd) * cos },
+      { x: obj.x + (hw) * cos - (-hd) * sin, y: obj.y + (hw) * sin + (-hd) * cos },
+      { x: obj.x + (hw) * cos - (hd) * sin, y: obj.y + (hw) * sin + (hd) * cos },
+      { x: obj.x + (-hw) * cos - (hd) * sin, y: obj.y + (-hw) * sin + (hd) * cos }
+    ];
+    var x0 = Math.min(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
+    var y0 = Math.min(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
+    var x1 = Math.max(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
+    var y1 = Math.max(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
+    var pad = hitTolerance(8);
+    return { x0: x0 - pad, y0: y0 - pad, x1: x1 + pad, y1: y1 + pad, w: w, d: d };
   }
 
   function objectsOnWall(wallId) {
@@ -629,6 +793,7 @@
   }
 
   function rematchObjectToNearestWall(obj) {
+    if (isFreeObject(obj)) return true;
     var place = objectPlacement(obj);
     var pos = place ? place.mid : null;
     if (!pos) {
@@ -884,8 +1049,62 @@
 
   function metricObjects() {
     return (state.objects || []).filter(function (obj) {
-      return obj && resolveWall(obj.wall_id);
+      return obj && isWallObject(obj) && resolveWall(obj.wall_id);
     });
+  }
+
+  function wallThicknessIn() {
+    var n = parseFloat(state.wallThicknessIn);
+    if (!isFinite(n) || n < 0) return 0;
+    if (n > 12) return 12;
+    return Math.round(n * 100) / 100;
+  }
+
+  function setWallThickness(value, skipFeedback) {
+    var n = parseFloat(value);
+    if (!isFinite(n) || n < 0) n = 0;
+    if (n > 12) n = 12;
+    state.wallThicknessIn = Math.round(n * 100) / 100;
+    syncThicknessUi();
+    if (!skipFeedback) {
+      redrawAll();
+    }
+  }
+
+  function thicknessIsPreset(n) {
+    return WALL_THICKNESS_PRESETS.some(function (p) {
+      return Math.abs(p - n) < 0.001;
+    });
+  }
+
+  function syncThicknessUi() {
+    var n = wallThicknessIn();
+    var preset = thicknessIsPreset(n);
+    root.querySelectorAll('[data-ra-thickness]').forEach(function (btn) {
+      var val = btn.getAttribute('data-ra-thickness');
+      var on = false;
+      if (val === 'custom') on = n > 0 && !preset;
+      else on = Math.abs(parseFloat(val) - n) < 0.001;
+      btn.classList.toggle('is-active', on);
+    });
+    if (els.thicknessCustom) show(els.thicknessCustom, n > 0 && !preset);
+    if (els.thicknessCustomInput && document.activeElement !== els.thicknessCustomInput) {
+      els.thicknessCustomInput.value = n > 0 && !preset ? String(n) : '';
+    }
+  }
+
+  function setWallsOpen(open) {
+    if (!els.wallsPanel) return;
+    els.wallsPanel.classList.toggle('is-open', !!open);
+    if (els.wallsToggle) {
+      els.wallsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+  }
+
+  function toggleWallsOpen() {
+    var open = els.wallsPanel && els.wallsPanel.classList.contains('is-open');
+    setWallsOpen(!open);
+    if (!open && isNarrowPalette()) setPaletteOpen(false);
   }
 
   function computeWallMetrics() {
@@ -914,10 +1133,24 @@
         baseboardIn += width;
       }
     });
+    var shared = detectSharedWalls();
+    state.sharedPairs = shared;
+    var sharedLf = 0;
+    shared.forEach(function (pair) { sharedLf += pair.overlapLf; });
+    sharedLf = Math.round(sharedLf * 100) / 100;
+    var framing = Math.max(0, Math.round((perimeter - sharedLf) * 100) / 100);
+    var thickness = wallThicknessIn();
+    var exterior = Math.max(0, perimeter - sharedLf * 2);
+    var outside = thickness > 0
+      ? Math.round((floor + exterior * (thickness / INCHES_PER_FOOT)) * 100) / 100
+      : floor;
+    var library = libraryMetrics();
     var baseboard = Math.max(0, Math.round((perimeter - baseboardIn / INCHES_PER_FOOT) * 100) / 100);
     var wallArea = Math.max(0, Math.round((perimeter * height - wallDeduction) * 100) / 100);
     return {
       area_sqft: floor,
+      inside_area_sqft: floor,
+      outside_area_sqft: outside,
       perimeter_lf: perimeter,
       baseboard_lf: baseboard,
       wall_height_ft: height,
@@ -925,8 +1158,141 @@
       door_count: doorCount,
       window_count: windowCount,
       opening_count: openingCount,
-      drywall_openings: doorCount + windowCount + openingCount
+      drywall_openings: doorCount + windowCount + openingCount,
+      wall_thickness_in: thickness,
+      shared_wall_lf: sharedLf,
+      framing_lf: framing,
+      cabinet_base_lf: library.cabinet_base_lf,
+      cabinet_upper_lf: library.cabinet_upper_lf,
+      stairs_count: library.stairs_count,
+      stairs_treads: library.stairs_treads
     };
+  }
+
+  function libraryMetrics() {
+    var baseIn = 0;
+    var upperIn = 0;
+    var stairsCount = 0;
+    var treads = 0;
+    (state.objects || []).forEach(function (obj) {
+      if (!obj) return;
+      if (obj.type === 'cabinet') {
+        var w = parseFloat(obj.width) || 0;
+        var d = parseFloat(obj.depth) || 0;
+        if (obj.subtype === 'upper') upperIn += w;
+        else if (obj.subtype === 'corner') baseIn += w + d;
+        else baseIn += w;
+      } else if (obj.type === 'stairs') {
+        stairsCount += 1;
+        var depth = parseFloat(obj.depth) || 120;
+        var base = Math.max(1, Math.round(depth / 10));
+        if (obj.subtype === 'l') treads += base + 3;
+        else if (obj.subtype === 'u') treads += base + 6;
+        else treads += base;
+      }
+    });
+    return {
+      cabinet_base_lf: Math.round(baseIn / INCHES_PER_FOOT * 100) / 100,
+      cabinet_upper_lf: Math.round(upperIn / INCHES_PER_FOOT * 100) / 100,
+      stairs_count: stairsCount,
+      stairs_treads: treads
+    };
+  }
+
+  function detectSharedWalls() {
+    var walls = listClosedWalls();
+    var pairs = [];
+    var seen = {};
+    var ppf = pixelsPerFoot() || 12;
+    var gap = Math.max(6, (ppf / 12) * 2);
+    var minOverlap = Math.max(gap, (ppf / 12) * SHARED_MIN_OVERLAP_IN);
+    var angTol = SHARED_WALL_ANGLE_DEG * Math.PI / 180;
+    for (var i = 0; i < walls.length; i++) {
+      for (var j = i + 1; j < walls.length; j++) {
+        var wa = walls[i];
+        var wb = walls[j];
+        if (wa.polygonId === wb.polygonId) continue;
+        var hit = sharedWallOverlap(wa, wb, gap, minOverlap, ppf, angTol);
+        if (!hit) continue;
+        var key = wa.wallId < wb.wallId ? wa.wallId + '|' + wb.wallId : wb.wallId + '|' + wa.wallId;
+        if (seen[key]) continue;
+        seen[key] = true;
+        pairs.push(hit);
+      }
+    }
+    return pairs;
+  }
+
+  function sharedWallOverlap(wa, wb, gap, minOverlap, ppf, angTol) {
+    var dxa = wa.b.x - wa.a.x;
+    var dya = wa.b.y - wa.a.y;
+    var lenA = Math.hypot(dxa, dya);
+    if (lenA < minOverlap) return null;
+    var dxb = wb.b.x - wb.a.x;
+    var dyb = wb.b.y - wb.a.y;
+    var lenB = Math.hypot(dxb, dyb);
+    if (lenB < minOverlap) return null;
+    var angA = Math.atan2(dya, dxa);
+    var angB = Math.atan2(dyb, dxb);
+    var delta = Math.abs(Math.atan2(Math.sin(angA - angB), Math.cos(angA - angB)));
+    if (delta > angTol && Math.abs(delta - Math.PI) > angTol) return null;
+    function lineDist(p, a, b) {
+      var dx = b.x - a.x;
+      var dy = b.y - a.y;
+      var ls = dx * dx + dy * dy;
+      if (ls < 1e-12) return dist(p, a);
+      var t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / ls;
+      return dist(p, { x: a.x + t * dx, y: a.y + t * dy });
+    }
+    if (Math.max(lineDist(wb.a, wa.a, wa.b), lineDist(wb.b, wa.a, wa.b)) > gap) return null;
+    var ux = dxa / lenA;
+    var uy = dya / lenA;
+    var tb0 = (wb.a.x - wa.a.x) * ux + (wb.a.y - wa.a.y) * uy;
+    var tb1 = (wb.b.x - wa.a.x) * ux + (wb.b.y - wa.a.y) * uy;
+    var overlapStart = Math.max(0, Math.min(tb0, tb1));
+    var overlapEnd = Math.min(lenA, Math.max(tb0, tb1));
+    var overlapPx = overlapEnd - overlapStart;
+    if (overlapPx < minOverlap) return null;
+    return {
+      a: wa,
+      b: wb,
+      overlapPx: overlapPx,
+      overlapLf: Math.round((overlapPx / ppf) * 100) / 100
+    };
+  }
+
+  function linkedVerticesFor(polygonId, vertexIndex) {
+    var links = [];
+    var gap = Math.max(6, ((pixelsPerFoot() || 12) / 12) * 2);
+    var entry = findPolygonEntryById(polygonId);
+    if (!entry) return links;
+    var v = entry.polygon.vertices[vertexIndex];
+    if (!v) return links;
+    detectSharedWalls().forEach(function (pair) {
+      var other = null;
+      var mine = null;
+      if (pair.a.polygonId === polygonId) { mine = pair.a; other = pair.b; }
+      else if (pair.b.polygonId === polygonId) { mine = pair.b; other = pair.a; }
+      if (!mine || !other) return;
+      if (vertexIndex !== mine.start && vertexIndex !== mine.end) return;
+      var otherEntry = findPolygonEntryById(other.polygonId);
+      if (!otherEntry) return;
+      [other.start, other.end].forEach(function (idx) {
+        var ov = otherEntry.polygon.vertices[idx];
+        if (ov && dist(v, ov) <= gap) {
+          links.push({ polygonId: other.polygonId, index: idx });
+        }
+      });
+    });
+    return links;
+  }
+
+  function applyLinkedVertexMove(polygonId, vertexIndex, newPos) {
+    linkedVerticesFor(polygonId, vertexIndex).forEach(function (link) {
+      var other = findPolygonEntryById(link.polygonId);
+      if (!other || !other.polygon.vertices[link.index]) return;
+      other.polygon.vertices[link.index] = { x: newPos.x, y: newPos.y };
+    });
   }
 
   function formatMetricQty(value) {
@@ -1050,11 +1416,14 @@
       }
     });
     var objects = serializeObjects();
+    var thickness = wallThicknessIn();
+    var hasFree = objects.some(function (obj) { return isFreeObject(obj); });
     var payload = {
-      v: objects.length ? 3 : 2,
+      v: (thickness > 0 || hasFree) ? 4 : (objects.length ? 3 : 2),
       groups: groups
     };
     if (objects.length) payload.objects = objects;
+    if (thickness > 0) payload.wall_thickness_in = thickness;
     var bg = captureBackgroundLayoutForSave();
     if (bg) payload.background = bg;
     return payload;
@@ -1062,12 +1431,32 @@
 
   function serializeObjects() {
     return cloneObjects(state.objects).filter(function (obj) {
+      if (isFreeObject(obj)) {
+        return obj.x != null && obj.y != null;
+      }
       return !!resolveWall(obj.wall_id);
     }).map(function (obj) {
-      obj.width = Math.round(obj.width * 1000) / 1000;
-      obj.offset = Math.round(obj.offset * 1000) / 1000;
-      if (obj.height != null) obj.height = Math.round(obj.height * 1000) / 1000;
-      if (obj.sill_height != null) obj.sill_height = Math.round(obj.sill_height * 1000) / 1000;
+      obj.width = Math.round((obj.width || 0) * 1000) / 1000;
+      if (isFreeObject(obj)) {
+        delete obj.wall_id;
+        delete obj.offset;
+        delete obj.swing;
+        delete obj.hinge;
+        delete obj.height;
+        delete obj.sill_height;
+      } else {
+        if (obj.offset != null) obj.offset = Math.round(obj.offset * 1000) / 1000;
+        if (obj.height != null) obj.height = Math.round(obj.height * 1000) / 1000;
+        if (obj.sill_height != null) obj.sill_height = Math.round(obj.sill_height * 1000) / 1000;
+        delete obj.x;
+        delete obj.y;
+        delete obj.depth;
+        delete obj.rotation;
+      }
+      if (obj.x != null) obj.x = Math.round(obj.x * 1000) / 1000;
+      if (obj.y != null) obj.y = Math.round(obj.y * 1000) / 1000;
+      if (obj.depth != null) obj.depth = Math.round(obj.depth * 1000) / 1000;
+      if (obj.rotation != null) obj.rotation = Math.round(obj.rotation * 1000) / 1000;
       return obj;
     });
   }
@@ -1148,10 +1537,11 @@
         }]
       };
     }
-    if ((raw.v === 2 || raw.v === 3) && Array.isArray(raw.groups)) {
-      var out = { v: raw.v === 3 ? 3 : 2, groups: raw.groups };
+    if ((raw.v === 2 || raw.v === 3 || raw.v === 4) && Array.isArray(raw.groups)) {
+      var out = { v: raw.v >= 4 ? 4 : (raw.v === 3 ? 3 : 2), groups: raw.groups };
       if (raw.background) out.background = raw.background;
       if (Array.isArray(raw.objects)) out.objects = raw.objects;
+      if (raw.wall_thickness_in != null) out.wall_thickness_in = raw.wall_thickness_in;
       return out;
     }
     return { v: 2, groups: [] };
@@ -1206,6 +1596,7 @@
       state.bgLayout = null;
     }
     hydrateObjects(data.objects || []);
+    setWallThickness(data.wall_thickness_in != null ? data.wall_thickness_in : (activeProject() && activeProject().wall_thickness_in) || 0, true);
   }
 
   function hydrateObjects(rawObjects) {
@@ -1213,11 +1604,28 @@
     state.selectedObjectId = null;
     state.nextObjectId = 1;
     (rawObjects || []).forEach(function (item, idx) {
-      if (!item || !item.wall_id) return;
+      if (!item) return;
+      var type = item.type || 'door';
+      if (FREE_OBJECT_TYPES[type]) {
+        if (item.x == null || item.y == null) return;
+        var size = defaultFreeSize(type, item.subtype || '');
+        state.objects.push({
+          id: item.id || ('obj_' + (idx + 1)),
+          type: type,
+          subtype: item.subtype || '',
+          x: parseFloat(item.x),
+          y: parseFloat(item.y),
+          width: parseFloat(item.width) || size.width,
+          depth: parseFloat(item.depth) || size.depth,
+          rotation: parseFloat(item.rotation) || 0
+        });
+        return;
+      }
+      if (!item.wall_id) return;
       var obj = {
         id: item.id || ('obj_' + (idx + 1)),
-        type: item.type || 'door',
-        subtype: item.subtype || (item.type === 'window' ? 'fixed' : 'single'),
+        type: type,
+        subtype: item.subtype || (type === 'window' ? 'fixed' : 'single'),
         wall_id: item.wall_id,
         width: parseFloat(item.width) || 36,
         offset: parseFloat(item.offset) || 0,
@@ -1990,7 +2398,8 @@
       selectedObjectId: state.selectedObjectId,
       activeGroupId: state.activeGroupId,
       activePolygonId: state.activePolygonId,
-      scalePixelsPerFoot: captureScaleSnapshot()
+      scalePixelsPerFoot: captureScaleSnapshot(),
+      wallThicknessIn: wallThicknessIn()
     };
   }
 
@@ -2064,6 +2473,9 @@
     }
     state.selectedObjectId = snap.selectedObjectId || null;
     if (state.selectedObjectId && !selectedObject()) state.selectedObjectId = null;
+    if (snap.wallThicknessIn != null) {
+      setWallThickness(snap.wallThicknessIn, true);
+    }
     state.selectedVertexIndices = [];
     clearWallSelection();
     clearVertexSelection();
@@ -2267,6 +2679,8 @@
     if (!origins || state.selectedVertexIndices.length <= 1) {
       var single = snapVertexPosition(anchorIndex, rawPos);
       activeVertices()[anchorIndex] = { x: single.x, y: single.y };
+      var poly = activePolygon();
+      if (poly) applyLinkedVertexMove(poly.id, anchorIndex, single);
       return single;
     }
 
@@ -2285,9 +2699,12 @@
       dy = Math.round(dy / snapStep) * snapStep;
     }
 
+    var poly = activePolygon();
     state.selectedVertexIndices.forEach(function (i) {
       var o = origins[i];
-      activeVertices()[i] = clampToCanvas({ x: o.x + dx, y: o.y + dy });
+      var next = clampToCanvas({ x: o.x + dx, y: o.y + dy });
+      activeVertices()[i] = next;
+      if (poly) applyLinkedVertexMove(poly.id, i, next);
     });
     return activeVertices()[anchorIndex];
   }
@@ -2718,14 +3135,21 @@
     }
     var wallIndex = state.wallDragIndex;
     var endIdx = wallEndIndex(wallIndex);
-    activeVertices()[wallIndex] = clampToCanvas({
+    var nextA = clampToCanvas({
       x: state.wallDragOrigA.x + ox,
       y: state.wallDragOrigA.y + oy
     });
-    activeVertices()[endIdx] = clampToCanvas({
+    var nextB = clampToCanvas({
       x: state.wallDragOrigB.x + ox,
       y: state.wallDragOrigB.y + oy
     });
+    activeVertices()[wallIndex] = nextA;
+    activeVertices()[endIdx] = nextB;
+    var dragPoly = activePolygon();
+    if (dragPoly) {
+      applyLinkedVertexMove(dragPoly.id, wallIndex, nextA);
+      applyLinkedVertexMove(dragPoly.id, endIdx, nextB);
+    }
     redrawPolygonLine();
     redrawLabels();
     redrawWalls();
@@ -3333,12 +3757,11 @@
 
   /**
    * Size in world units for a control that should read as `base` CSS pixels at
-   * 100% zoom. Zooming in keeps that world size so labels/handles grow with the
-   * drawing; zooming out enlarges the world size so they stay at least `base`
-   * pixels on screen.
+   * every zoom. Counter-scale against the stage so badges, labels, and handles
+   * stay constant in screen pixels.
    */
   function uiSize(base) {
-    return base / Math.min(uiScale(), 1);
+    return base / uiScale();
   }
 
   function hitTolerance(base) {
@@ -4689,48 +5112,138 @@
     };
   }
 
+  function sharedWallIdSet() {
+    var skip = {};
+    (state.sharedPairs || []).forEach(function (pair) {
+      if (!pair || !pair.a || !pair.b) return;
+      var keep = pair.a.wallId < pair.b.wallId ? pair.a.wallId : pair.b.wallId;
+      var drop = keep === pair.a.wallId ? pair.b.wallId : pair.a.wallId;
+      skip[drop] = true;
+      skip[keep + ':shared'] = true;
+    });
+    return skip;
+  }
+
+  function isSharedWallId(wallId) {
+    var skip = sharedWallIdSet();
+    return !!(skip[wallId + ':shared'] || skip[wallId]);
+  }
+
   function drawCutWallStrokes(layer, entry, color, opacity, isActive) {
     var verts = entry.polygon.vertices;
     var n = verts.length;
+    var thicknessPx = inchesToPixels(wallThicknessIn());
+    var skip = sharedWallIdSet();
     for (var i = 0; i < n; i++) {
       var wall = {
         wallId: makeWallId(entry.polygon.id, i, (i + 1) % n),
+        polygonId: entry.polygon.id,
         a: verts[i],
-        b: verts[(i + 1) % n]
+        b: verts[(i + 1) % n],
+        verts: verts
       };
+      if (skip[wall.wallId]) continue;
+      var shared = !!skip[wall.wallId + ':shared'];
       remainingWallSegments(wall).forEach(function (seg) {
         var p0 = pointAlongWall(wall, seg.t0);
         var p1 = pointAlongWall(wall, seg.t1);
-        layer.add(new Konva.Line({
-          points: [p0.x, p0.y, p1.x, p1.y],
-          stroke: color,
-          strokeWidth: uiSize(isActive ? 2.5 : 2),
-          opacity: opacity,
-          lineCap: 'butt',
-          listening: false
-        }));
+        if (thicknessPx > 1.5) {
+          drawThickWallSeg(layer, { a: p0, b: p1, verts: verts }, color, opacity, isActive, shared, thicknessPx);
+        } else {
+          layer.add(new Konva.Line({
+            points: [p0.x, p0.y, p1.x, p1.y],
+            stroke: shared ? (isAdminDark() ? '#94a3b8' : '#64748b') : color,
+            strokeWidth: uiSize(isActive ? 2.5 : 2),
+            opacity: opacity,
+            lineCap: 'butt',
+            listening: false
+          }));
+        }
       });
+    }
+  }
+
+  function drawThickWallSeg(layer, wall, color, opacity, isActive, shared, thicknessPx) {
+    var dx = wall.b.x - wall.a.x;
+    var dy = wall.b.y - wall.a.y;
+    var len = Math.hypot(dx, dy) || 1;
+    var nx = -dy / len;
+    var ny = dx / len;
+    var hx;
+    var hy;
+    if (shared) {
+      hx = nx * (thicknessPx / 2);
+      hy = ny * (thicknessPx / 2);
+    } else {
+      var inward = wallInwardSign(wall);
+      hx = (-nx * inward) * thicknessPx;
+      hy = (-ny * inward) * thicknessPx;
+      layer.add(new Konva.Line({
+        points: [
+          wall.a.x, wall.a.y,
+          wall.b.x, wall.b.y,
+          wall.b.x + hx, wall.b.y + hy,
+          wall.a.x + hx, wall.a.y + hy
+        ],
+        closed: true,
+        fill: hexToRgba(color, (isActive ? 0.42 : 0.28) * opacity),
+        stroke: color,
+        strokeWidth: uiSize(1),
+        opacity: opacity,
+        listening: false
+      }));
+      return;
+    }
+    layer.add(new Konva.Line({
+      points: [
+        wall.a.x - hx, wall.a.y - hy,
+        wall.b.x - hx, wall.b.y - hy,
+        wall.b.x + hx, wall.b.y + hy,
+        wall.a.x + hx, wall.a.y + hy
+      ],
+      closed: true,
+      fill: isAdminDark() ? 'rgba(148,163,184,0.45)' : 'rgba(100,116,139,0.35)',
+      stroke: isAdminDark() ? '#94a3b8' : '#64748b',
+      strokeWidth: uiSize(1.2),
+      listening: false
+    }));
+  }
+
+  function destroyFreeTransformer() {
+    if (state.transformer) {
+      state.transformer.destroy();
+      state.transformer = null;
     }
   }
 
   function redrawObjects() {
     var layer = state.layers.objects;
     if (!layer) return;
+    destroyFreeTransformer();
     layer.destroyChildren();
+    var selectedFreeNode = null;
     state.objects.forEach(function (obj) {
       var place = objectPlacement(obj);
       if (!place) return;
+      var listening = !isPanOrPinchActive() && !state.rulerMode && !state.calibrating && !state.bgMoveMode;
       var group = new Konva.Group({
         id: 'ra-obj-' + obj.id,
         name: 'ra-object',
         x: place.mid.x,
         y: place.mid.y,
         rotation: place.angle * 180 / Math.PI,
-        listening: !isPanOrPinchActive() && !state.rulerMode && !state.calibrating && !state.bgMoveMode
+        listening: listening,
+        draggable: listening && isFreeObject(obj) && !state.pinching
       });
       group.setAttr('objectId', obj.id);
       group.setAttr('objectType', obj.type);
-      drawObjectSymbol(group, obj, place);
+      group.setAttr('baseW', place.widthPx);
+      group.setAttr('baseD', place.depthPx || place.widthPx);
+      if (isFreeObject(obj)) {
+        drawFreeObjectSymbol(group, obj, place);
+      } else {
+        drawObjectSymbol(group, obj, place);
+      }
       group.on('click tap', function (e) {
         e.cancelBubble = true;
         if (state.rulerMode || state.calibrating) return;
@@ -4740,20 +5253,302 @@
         if (e.evt && e.evt.button !== undefined && e.evt.button !== 0) return;
         e.cancelBubble = true;
         if (isPanOrPinchActive() || state.rulerMode || state.calibrating) return;
+        if (isFreeObject(obj)) return;
         state.objectPointerDown = {
           id: obj.id,
           start: getPointerPos()
         };
       });
+      if (isFreeObject(obj)) {
+        group.on('dragstart', function (e) {
+          e.cancelBubble = true;
+          if (!state.draggingObject) pushUndoSnapshot();
+          state.draggingObject = true;
+          if (state.selectedObjectId !== obj.id) {
+            selectObject(obj.id, true);
+          }
+        });
+        group.on('dragmove', function (e) {
+          e.cancelBubble = true;
+          obj.x = group.x();
+          obj.y = group.y();
+        });
+        group.on('dragend', function (e) {
+          e.cancelBubble = true;
+          state.draggingObject = false;
+          obj.x = group.x();
+          obj.y = group.y();
+          syncObjectPropertiesPanel();
+          redrawAll();
+        });
+      }
       group.on('mouseenter', function () {
-        if (state.stage && !state.draggingObject) state.stage.container().style.cursor = 'pointer';
+        if (state.stage && !state.draggingObject) state.stage.container().style.cursor = isFreeObject(obj) ? 'move' : 'pointer';
       });
       group.on('mouseleave', function () {
         if (state.stage && !state.draggingObject) updateCanvasCursor();
       });
       layer.add(group);
+      if (state.selectedObjectId === obj.id && isFreeObject(obj)) {
+        selectedFreeNode = group;
+      }
     });
+    if (selectedFreeNode) attachFreeTransformer(selectedFreeNode);
     flushKonva();
+  }
+
+  function attachFreeTransformer(node) {
+    destroyFreeTransformer();
+    if (typeof Konva.Transformer !== 'function') return;
+    var coarse = isCoarsePointer();
+    var tr = new Konva.Transformer({
+      nodes: [node],
+      rotateEnabled: true,
+      enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+      boundBoxFunc: function (oldBox, newBox) {
+        if (Math.abs(newBox.width) < uiSize(16) || Math.abs(newBox.height) < uiSize(16)) return oldBox;
+        return newBox;
+      },
+      anchorSize: uiSize(coarse ? 18 : 12),
+      rotateAnchorOffset: uiSize(coarse ? 28 : 20),
+      borderStroke: '#f57f17',
+      borderStrokeWidth: uiSize(1),
+      anchorStroke: '#f57f17',
+      anchorStrokeWidth: uiSize(1),
+      anchorFill: '#f9a825',
+      rotateAnchorStroke: '#f57f17',
+      rotateAnchorFill: '#f9a825'
+    });
+    tr.on('transformstart', function () {
+      if (!state.draggingObject) pushUndoSnapshot();
+    });
+    tr.on('transformend', function () {
+      var obj = selectedObject();
+      if (!obj || !isFreeObject(obj)) return;
+      var sx = Math.abs(node.scaleX()) || 1;
+      var sy = Math.abs(node.scaleY()) || 1;
+      var baseW = node.getAttr('baseW') || inchesToPixels(obj.width || 36);
+      var baseD = node.getAttr('baseD') || inchesToPixels(obj.depth || 24);
+      obj.width = Math.max(OBJECT_MIN_WIDTH_IN, Math.min(OBJECT_MAX_WIDTH_IN, Math.round(pixelsToInches(baseW * sx) * 10) / 10));
+      obj.depth = Math.max(OBJECT_MIN_WIDTH_IN, Math.min(OBJECT_MAX_WIDTH_IN, Math.round(pixelsToInches(baseD * sy) * 10) / 10));
+      obj.rotation = Math.round(node.rotation() * 10) / 10;
+      obj.x = node.x();
+      obj.y = node.y();
+      node.scaleX(1);
+      node.scaleY(1);
+      syncObjectPropertiesPanel();
+      redrawAll();
+    });
+    state.layers.objects.add(tr);
+    state.transformer = tr;
+  }
+
+  function freeObjectFill(obj, selected) {
+    if (selected) return 'rgba(249,168,37,0.18)';
+    if (obj.type === 'stairs') return isAdminDark() ? 'rgba(56,189,248,0.14)' : 'rgba(2,71,104,0.10)';
+    if (obj.type === 'cabinet') return isAdminDark() ? 'rgba(251,191,36,0.14)' : 'rgba(146,64,14,0.10)';
+    if (obj.type === 'fixture') return isAdminDark() ? 'rgba(45,212,191,0.14)' : 'rgba(13,148,136,0.10)';
+    return isAdminDark() ? 'rgba(196,181,253,0.14)' : 'rgba(91,33,182,0.08)';
+  }
+
+  function freeObjectStroke(obj, selected) {
+    if (selected) return '#f57f17';
+    if (obj.type === 'stairs') return canvasBrandStroke();
+    if (obj.type === 'cabinet') return isAdminDark() ? '#fbbf24' : '#92400e';
+    if (obj.type === 'fixture') return isAdminDark() ? '#5eead4' : '#0f766e';
+    return isAdminDark() ? '#c4b5fd' : '#5b21b6';
+  }
+
+  function drawFreeObjectSymbol(group, obj, place) {
+    var w = place.widthPx;
+    var d = place.depthPx || w;
+    var selected = state.selectedObjectId === obj.id;
+    var stroke = freeObjectStroke(obj, selected);
+    var fill = freeObjectFill(obj, selected);
+    var sw = uiSize(1.6);
+    group.add(new Konva.Rect({
+      x: -w / 2,
+      y: -d / 2,
+      width: w,
+      height: d,
+      fill: fill,
+      stroke: stroke,
+      strokeWidth: sw,
+      cornerRadius: uiSize(obj.type === 'furniture' ? 6 : 2),
+      listening: true
+    }));
+    if (obj.type === 'stairs') {
+      drawStairsGlyph(group, obj, w, d, stroke, sw);
+    } else if (obj.type === 'cabinet' && obj.subtype === 'corner') {
+      group.add(new Konva.Line({
+        points: [-w / 2, 0, 0, 0, 0, d / 2],
+        stroke: stroke,
+        strokeWidth: sw,
+        listening: false
+      }));
+    } else if (obj.type === 'cabinet' && obj.subtype === 'island') {
+      group.add(new Konva.Rect({
+        x: -w / 2 + uiSize(4),
+        y: -d / 2 + uiSize(4),
+        width: Math.max(4, w - uiSize(8)),
+        height: Math.max(4, d - uiSize(8)),
+        stroke: stroke,
+        strokeWidth: uiSize(1),
+        listening: false
+      }));
+    } else if (obj.type === 'fixture' && obj.subtype === 'toilet') {
+      group.add(new Konva.Ellipse({
+        x: 0,
+        y: d * 0.12,
+        radiusX: w * 0.32,
+        radiusY: d * 0.28,
+        stroke: stroke,
+        strokeWidth: uiSize(1.2),
+        listening: false
+      }));
+    } else if (obj.type === 'fixture' && obj.subtype === 'shower') {
+      group.add(new Konva.Line({
+        points: [-w / 2, -d / 2, w / 2, d / 2, w / 2, -d / 2, -w / 2, d / 2],
+        stroke: stroke,
+        strokeWidth: uiSize(1),
+        listening: false
+      }));
+    } else if (obj.type === 'fixture' && (obj.subtype === 'tub' || obj.subtype === 'vanity')) {
+      group.add(new Konva.Ellipse({
+        x: 0,
+        y: 0,
+        radiusX: w * 0.28,
+        radiusY: d * 0.22,
+        stroke: stroke,
+        strokeWidth: uiSize(1.2),
+        listening: false
+      }));
+    } else if (obj.type === 'furniture' && obj.subtype === 'sofa') {
+      group.add(new Konva.Rect({
+        x: -w / 2,
+        y: -d / 2,
+        width: w,
+        height: Math.max(uiSize(6), d * 0.28),
+        fill: selected ? 'rgba(249,168,37,0.22)' : (isAdminDark() ? 'rgba(196,181,253,0.2)' : 'rgba(91,33,182,0.12)'),
+        listening: false
+      }));
+    } else if (obj.type === 'furniture' && obj.subtype === 'bed') {
+      group.add(new Konva.Rect({
+        x: -w / 2 + uiSize(3),
+        y: -d / 2 + uiSize(3),
+        width: w - uiSize(6),
+        height: Math.max(uiSize(8), d * 0.22),
+        stroke: stroke,
+        strokeWidth: uiSize(1),
+        listening: false
+      }));
+    }
+    var label = freeObjectShortLabel(obj);
+    if (label) {
+      var caption = new Konva.Text({
+        x: 0,
+        y: 0,
+        text: label,
+        fontSize: uiSize(10),
+        fontFamily: 'system-ui, sans-serif',
+        fill: isAdminDark() ? '#f8fafc' : '#1e293b',
+        align: 'center',
+        listening: false
+      });
+      var tw = caption.width();
+      var th = caption.height();
+      var pad = uiSize(6);
+      var cosA = Math.cos(place.angle);
+      var sinA = Math.sin(place.angle);
+      var screenW = Math.abs(w * cosA) + Math.abs(d * sinA);
+      var screenH = Math.abs(w * sinA) + Math.abs(d * cosA);
+      if (tw + pad <= screenW && th + pad <= screenH) {
+        caption.offsetX(tw / 2);
+        caption.offsetY(th / 2);
+        caption.rotation(-place.angle * 180 / Math.PI);
+        group.add(caption);
+      }
+    }
+    if (selected && isCoarsePointer()) {
+      var handleR = uiSize(10);
+      [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].forEach(function (pt) {
+        group.add(new Konva.Circle({
+          x: pt[0],
+          y: pt[1],
+          radius: handleR,
+          fill: '#f9a825',
+          stroke: '#f57f17',
+          strokeWidth: uiSize(2),
+          listening: false
+        }));
+      });
+    }
+  }
+
+  function drawStairsGlyph(group, obj, w, d, stroke, sw) {
+    var subtype = obj.subtype || 'straight';
+    if (subtype === 'l') {
+      group.add(new Konva.Line({
+        points: [-w / 2, d / 2, -w / 2, -d / 6, w / 2, -d / 6],
+        stroke: stroke,
+        strokeWidth: sw,
+        listening: false
+      }));
+      var i;
+      for (i = 1; i <= 4; i++) {
+        var ty = d / 2 - (d * 0.66) * (i / 5);
+        group.add(new Konva.Line({
+          points: [-w / 2, ty, -w / 6, ty],
+          stroke: stroke,
+          strokeWidth: uiSize(1),
+          listening: false
+        }));
+      }
+      return;
+    }
+    if (subtype === 'u') {
+      group.add(new Konva.Line({
+        points: [-w / 2, d / 2, -w / 2, -d / 2, w / 2, -d / 2, w / 2, d / 2],
+        stroke: stroke,
+        strokeWidth: sw,
+        listening: false
+      }));
+      return;
+    }
+    var steps = Math.max(3, Math.min(10, Math.round(d / Math.max(inchesToPixels(10), 8))));
+    var s;
+    for (s = 1; s < steps; s++) {
+      var y = -d / 2 + (d * s) / steps;
+      group.add(new Konva.Line({
+        points: [-w / 2, y, w / 2, y],
+        stroke: stroke,
+        strokeWidth: uiSize(1),
+        listening: false
+      }));
+    }
+  }
+
+  function freeObjectShortLabel(obj) {
+    if (obj.type === 'stairs') {
+      if (obj.subtype === 'l') return 'L stair';
+      if (obj.subtype === 'u') return 'U stair';
+      return 'Stairs';
+    }
+    if (obj.type === 'cabinet') {
+      if (obj.subtype === 'upper') return 'Upper';
+      if (obj.subtype === 'corner') return 'Corner';
+      if (obj.subtype === 'island') return 'Island';
+      return 'Base';
+    }
+    if (obj.type === 'fixture') {
+      if (obj.subtype === 'tub') return 'Tub';
+      if (obj.subtype === 'shower') return 'Shower';
+      if (obj.subtype === 'vanity') return 'Vanity';
+      return 'Toilet';
+    }
+    if (obj.subtype === 'bed') return 'Bed';
+    if (obj.subtype === 'dining_table') return 'Table';
+    return 'Sofa';
   }
 
   function drawObjectSymbol(group, obj, place) {
@@ -5064,14 +5859,31 @@
     if (!labelLayer) return;
     labelLayer.destroyChildren();
 
-    var nameBoxes = drawAreaNameLabels(labelLayer);
+    var nameItems = buildAreaNameLabels();
+    var occupied = nameItems.map(function (item) { return item.box; });
 
     if (state.showDimensions) {
-      drawWallDimensionLabels(labelLayer, nameBoxes);
-      drawObjectDimensionLabels(labelLayer, nameBoxes);
+      drawWallDimensionLabels(labelLayer, occupied);
+      drawObjectDimensionLabels(labelLayer, occupied);
     }
 
+    nameItems.forEach(function (item) {
+      labelLayer.add(item.node);
+    });
+
     flushKonva();
+  }
+
+  function konvaLabelBox(kLabel) {
+    var w = kLabel.width();
+    var h = kLabel.height();
+    var rot = ((kLabel.rotation() % 360) + 360) % 360;
+    var cx = kLabel.x();
+    var cy = kLabel.y();
+    if (Math.abs(rot - 90) < 1 || Math.abs(rot - 270) < 1) {
+      return { x: cx - h / 2, y: cy - w / 2, w: h, h: w };
+    }
+    return { x: cx - w / 2, y: cy - h / 2, w: w, h: h };
   }
 
   function visibleWorldRect() {
@@ -5206,7 +6018,12 @@
         kLabel.position(pos);
         kLabel.offsetX(kLabel.width() / 2);
         kLabel.offsetY(kLabel.height() / 2);
+        var box = konvaLabelBox(kLabel);
+        if (overlapsAnyBox(box, nameBoxes, uiSize(2))) {
+          return;
+        }
         labelLayer.add(kLabel);
+        nameBoxes.push(box);
       })(i, a, b, nrm.midX, nrm.midY, nrm.nx, nrm.ny);
     }
   }
@@ -5216,7 +6033,7 @@
     if (!ppf) return;
     state.objects.forEach(function (obj) {
       var place = objectPlacement(obj);
-      if (!place) return;
+      if (!place || isFreeObject(obj)) return;
       var nx = Math.cos(place.angle + Math.PI / 2) * place.inward;
       var ny = Math.sin(place.angle + Math.PI / 2) * place.inward;
       var kLabel = new Konva.Label({
@@ -5252,7 +6069,12 @@
       kLabel.position(pos);
       kLabel.offsetX(kLabel.width() / 2);
       kLabel.offsetY(kLabel.height() / 2);
+      var box = konvaLabelBox(kLabel);
+      if (overlapsAnyBox(box, nameBoxes, uiSize(2))) {
+        return;
+      }
       labelLayer.add(kLabel);
+      nameBoxes.push(box);
     });
   }
 
@@ -5335,8 +6157,8 @@
     return Math.max(0, labelW - boxW) + Math.max(0, labelH - boxH);
   }
 
-  function drawAreaNameLabels(labelLayer) {
-    var boxes = [];
+  function buildAreaNameLabels() {
+    var items = [];
     allPolygons().forEach(function (entry) {
       var poly = entry.polygon;
       if (!poly.closed || poly.vertices.length < 3) return;
@@ -5401,15 +6223,12 @@
       if (labelOverflow(lh, lw, hSpan, vSpan) + 1 < labelOverflow(lw, lh, hSpan, vSpan)) {
         kLabel.rotation(-90);
       }
-      labelLayer.add(kLabel);
-      boxes.push({
-        x: kLabel.x() - kLabel.offsetX(),
-        y: kLabel.y() - kLabel.offsetY(),
-        w: kLabel.width(),
-        h: kLabel.height()
+      items.push({
+        node: kLabel,
+        box: konvaLabelBox(kLabel)
       });
     });
-    return boxes;
+    return items;
   }
 
   function redrawWalls() {
@@ -6129,10 +6948,31 @@
     if (els.liveBaseboard) els.liveBaseboard.textContent = formatMetricQty(metrics.baseboard_lf);
     if (els.liveWallArea) els.liveWallArea.textContent = formatMetricQty(metrics.wall_area_sqft);
     if (els.liveCounts) {
-      els.liveCounts.textContent =
-        metrics.door_count + (metrics.door_count === 1 ? ' door' : ' doors') +
+      var counts = metrics.door_count + (metrics.door_count === 1 ? ' door' : ' doors') +
         ' · ' + metrics.window_count + (metrics.window_count === 1 ? ' window' : ' windows') +
         ' · ' + metrics.opening_count + (metrics.opening_count === 1 ? ' opening' : ' openings');
+      if (metrics.stairs_count) {
+        counts += ' · ' + metrics.stairs_count + (metrics.stairs_count === 1 ? ' stair' : ' stairs');
+      }
+      els.liveCounts.textContent = counts;
+    }
+    if (els.liveFootprint) {
+      var showFp = metrics.wall_thickness_in > 0 && Math.abs(metrics.outside_area_sqft - metrics.inside_area_sqft) > 0.009;
+      show(els.liveFootprintWrap, showFp);
+      els.liveFootprint.textContent = formatMetricQty(metrics.outside_area_sqft);
+    }
+    if (els.liveFraming) {
+      var showFr = metrics.shared_wall_lf > 0.009;
+      show(els.liveFramingWrap, showFr);
+      els.liveFraming.textContent = formatMetricQty(metrics.framing_lf);
+    }
+    if (els.liveCabinets) {
+      var cab = (metrics.cabinet_base_lf || 0) + (metrics.cabinet_upper_lf || 0);
+      show(els.liveCabinetsWrap, cab > 0.009);
+      var cabParts = [];
+      if (metrics.cabinet_base_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_base_lf) + ' base');
+      if (metrics.cabinet_upper_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_upper_lf) + ' up');
+      els.liveCabinets.textContent = cabParts.join(' · ') || '0';
     }
     syncExportButtons();
     if (els.liveGroupList) {
@@ -6952,14 +7792,67 @@
     if (item.subtype === 'bifold') {
       return '<svg viewBox="0 0 28 20" aria-hidden="true"><path d="M4 16 L9 8 L14 16 L19 8 L24 16" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
     }
+    if (item.type === 'stairs' && item.subtype === 'l') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><path d="M4 16 V8 H16 V4 H24" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 13 H10 M4 10 H10" stroke="currentColor" stroke-width="1.1"/></svg>';
+    }
+    if (item.type === 'stairs' && item.subtype === 'u') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><path d="M6 16 V5 H22 V16" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 12 H11 M17 12 H22" stroke="currentColor" stroke-width="1.1"/></svg>';
+    }
+    if (item.type === 'stairs') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><path d="M5 16 H23 M5 13 H23 M5 10 H23 M5 7 H23" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    }
+    if (item.type === 'cabinet' && item.subtype === 'upper') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="4" y="5" width="20" height="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/></svg>';
+    }
+    if (item.type === 'cabinet' && item.subtype === 'corner') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><path d="M5 16 V6 H14 V11 H23 V16 Z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    }
+    if (item.type === 'cabinet' && item.subtype === 'island') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="4" y="6" width="20" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="9" width="14" height="4" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>';
+    }
+    if (item.type === 'cabinet') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="4" y="6" width="20" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="14" y1="6" x2="14" y2="16" stroke="currentColor" stroke-width="1.1"/></svg>';
+    }
+    if (item.subtype === 'toilet') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="9" y="3" width="10" height="5" fill="none" stroke="currentColor" stroke-width="1.4"/><ellipse cx="14" cy="13" rx="6" ry="5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+    }
+    if (item.subtype === 'tub') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="3" y="6" width="22" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    }
+    if (item.subtype === 'shower') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="6" y="4" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="4" x2="22" y2="16" stroke="currentColor" stroke-width="1.1"/></svg>';
+    }
+    if (item.subtype === 'vanity') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="3" y="7" width="22" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="14" cy="11" rx="4" ry="2.5" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>';
+    }
+    if (item.subtype === 'sofa') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="2" y="8" width="24" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="5" width="24" height="4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
+    }
+    if (item.subtype === 'bed') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><rect x="5" y="3" width="18" height="14" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="5" width="14" height="4" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>';
+    }
+    if (item.subtype === 'dining_table') {
+      return '<svg viewBox="0 0 28 20" aria-hidden="true"><ellipse cx="14" cy="10" rx="11" ry="6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    }
     return '<svg viewBox="0 0 28 20" aria-hidden="true"><path d="M6 16 A12 12 0 0 1 18 4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="16" x2="24" y2="16" stroke="currentColor" stroke-width="1.4"/><line x1="6" y1="16" x2="6" y2="5" stroke="currentColor" stroke-width="1.6"/></svg>';
   }
 
+  function paletteHostFor(item) {
+    if (item.kind === 'window') return els.paletteWindows;
+    if (item.kind === 'stairs') return els.paletteStairs;
+    if (item.kind === 'cabinet') return els.paletteCabinets;
+    if (item.kind === 'fixture') return els.paletteFixtures;
+    if (item.kind === 'furniture') return els.paletteFurniture;
+    return els.paletteDoors;
+  }
+
   function renderObjectPalette() {
-    if (!els.paletteDoors || !els.paletteWindows) return;
-    els.paletteDoors.innerHTML = '';
-    els.paletteWindows.innerHTML = '';
+    [els.paletteDoors, els.paletteWindows, els.paletteStairs, els.paletteCabinets, els.paletteFixtures, els.paletteFurniture].forEach(function (el) {
+      if (el) el.innerHTML = '';
+    });
     OBJECT_CATALOG.forEach(function (item) {
+      var host = paletteHostFor(item);
+      if (!host) return;
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'util-ra-palette__item';
@@ -6967,7 +7860,7 @@
       btn.setAttribute('aria-label', 'Place ' + item.label);
       btn.innerHTML = '<span class="util-ra-palette__icon">' + paletteIconSvg(item) + '</span><span class="util-ra-palette__name">' + esc(item.label) + '</span>';
       bindPaletteItem(btn, item);
-      (item.kind === 'window' ? els.paletteWindows : els.paletteDoors).appendChild(btn);
+      host.appendChild(btn);
     });
     syncArmedPaletteUi();
   }
@@ -7038,6 +7931,7 @@
   function togglePaletteOpen() {
     var open = els.palette && els.palette.classList.contains('is-open');
     setPaletteOpen(!open);
+    if (!open && isNarrowPalette()) setWallsOpen(false);
   }
 
   function armCatalogItem(key) {
@@ -7046,7 +7940,11 @@
     syncArmedPaletteUi();
     if (state.armedCatalogKey) {
       var item = catalogItemByKey(state.armedCatalogKey);
-      setFeedback('Tap a wall to place the ' + (item ? item.label : 'object') + '.', false);
+      if (item && catalogPlacesOnFloor(item)) {
+        setFeedback('Tap the floor to place the ' + item.label + '.', false);
+      } else {
+        setFeedback('Tap a wall to place the ' + (item ? item.label : 'object') + '.', false);
+      }
     }
   }
 
@@ -7090,6 +7988,10 @@
     }
     var screen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     var world = stageToWorld(screen);
+    if (catalogPlacesOnFloor(state.placingCatalog)) {
+      drawFreeObjectPreview(world, state.placingCatalog);
+      return;
+    }
     var snap = snapToNearestWall(world);
     if (snap) {
       drawObjectSnapPreview(snap, state.placingCatalog);
@@ -7145,7 +8047,31 @@
       opacity: 0.7,
       listening: false
     });
-    drawObjectSymbol(group, temp, place);
+    if (isFreeObject(temp)) drawFreeObjectSymbol(group, temp, place);
+    else drawObjectSymbol(group, temp, place);
+    layer.add(group);
+    flushKonva();
+  }
+
+  function drawFreeObjectPreview(pos, item) {
+    var layer = state.layers.preview;
+    if (!layer || !item || !pos) return;
+    layer.destroyChildren();
+    var temp = createObjectFromCatalog(item, null, pos);
+    state.nextObjectId -= 1;
+    var place = objectPlacement(temp);
+    if (!place) {
+      flushKonva();
+      return;
+    }
+    var group = new Konva.Group({
+      x: place.mid.x,
+      y: place.mid.y,
+      rotation: place.angle * 180 / Math.PI,
+      opacity: 0.7,
+      listening: false
+    });
+    drawFreeObjectSymbol(group, temp, place);
     layer.add(group);
     flushKonva();
   }
@@ -7153,8 +8079,22 @@
   function tryPlaceCatalogItem(item, pos) {
     if (!item || !pos) return false;
     if (!hasAnyClosedPolygon()) {
-      setFeedback('Close a room outline before placing doors or windows.', true);
+      setFeedback('Close a room outline before placing objects.', true);
       return false;
+    }
+    if (catalogPlacesOnFloor(item)) {
+      pushUndoSnapshot();
+      var floorObj = createObjectFromCatalog(item, null, pos);
+      state.objects.push(floorObj);
+      state.armedCatalogKey = null;
+      state.placingCatalog = null;
+      syncArmedPaletteUi();
+      hideObjectGhost();
+      if (els.canvasWrap) els.canvasWrap.classList.remove('is-placing-object');
+      selectObject(floorObj.id);
+      redrawAll();
+      setFeedback(item.label + ' placed.', false);
+      return true;
     }
     var snap = snapToNearestWall(pos);
     if (!snap) {
@@ -7179,7 +8119,7 @@
     return true;
   }
 
-  function selectObject(objectId) {
+  function selectObject(objectId, skipRedraw) {
     var obj = state.objects.find(function (o) { return o.id === objectId; });
     if (!obj) return;
     clearWallSelection();
@@ -7198,7 +8138,7 @@
     if (els.canvasWrap) els.canvasWrap.classList.add('is-object-edit');
     syncObjectPropertiesPanel();
     setFeedback('', false);
-    redrawAll();
+    if (!skipRedraw) redrawAll();
     updateToolbar();
   }
 
@@ -7215,13 +8155,23 @@
     var obj = selectedObject();
     if (!obj || !els.objectEdit) return;
     if (els.objectTitle) els.objectTitle.textContent = objectTitle(obj);
-    if (els.objectWidth) els.objectWidth.value = String(Math.round(obj.width * 100) / 100);
-    if (els.objectOffset) els.objectOffset.value = String(Math.round(obj.offset * 100) / 100);
+    if (els.objectWidth) els.objectWidth.value = String(Math.round((obj.width || 0) * 100) / 100);
+    if (els.objectOffset) els.objectOffset.value = String(Math.round((obj.offset || 0) * 100) / 100);
+    if (els.objectDepth) els.objectDepth.value = String(Math.round((obj.depth || 0) * 100) / 100);
+    if (els.objectRotation) els.objectRotation.value = String(Math.round((obj.rotation || 0) * 10) / 10);
     if (els.objectSwing) els.objectSwing.value = obj.swing || 'left_in';
     if (els.objectHinge) els.objectHinge.value = obj.hinge || 'left';
-    var showSwing = obj.type === 'door' && obj.subtype !== 'sliding' && obj.subtype !== 'pocket' && obj.subtype !== 'bifold';
+    var free = isFreeObject(obj);
+    var showSwing = !free && obj.type === 'door' && obj.subtype !== 'sliding' && obj.subtype !== 'pocket' && obj.subtype !== 'bifold';
     show(els.objectSwingWrap, showSwing);
     show(els.objectHingeWrap, showSwing);
+    show(els.objectOffsetWrap, !free);
+    show(els.objectDepthWrap, free);
+    show(els.objectRotationWrap, free);
+    if (els.objectFlip) {
+      var flipText = els.objectFlip.querySelector('.util-ra-object-edit__btn-text');
+      if (flipText) flipText.textContent = free ? '180°' : 'Flip';
+    }
   }
 
   function parseInchesField(raw) {
@@ -7245,8 +8195,42 @@
     }
     pushUndoSnapshot();
     obj.width = value;
-    var wall = resolveWall(obj.wall_id);
-    if (wall) clampObjectToWall(obj, wall);
+    if (!isFreeObject(obj)) {
+      var wall = resolveWall(obj.wall_id);
+      if (wall) clampObjectToWall(obj, wall);
+    }
+    syncObjectPropertiesPanel();
+    redrawAll();
+  }
+
+  function applyObjectDepth() {
+    var obj = selectedObject();
+    if (!obj || !isFreeObject(obj) || !els.objectDepth) return;
+    var value = parseInchesField(els.objectDepth.value);
+    if (value == null) {
+      setFeedback('Enter a depth in inches.', true);
+      return;
+    }
+    if (value < OBJECT_MIN_WIDTH_IN || value > OBJECT_MAX_WIDTH_IN) {
+      setFeedback('Depth must be between 6 and 240 inches.', true);
+      return;
+    }
+    pushUndoSnapshot();
+    obj.depth = value;
+    syncObjectPropertiesPanel();
+    redrawAll();
+  }
+
+  function applyObjectRotation() {
+    var obj = selectedObject();
+    if (!obj || !isFreeObject(obj) || !els.objectRotation) return;
+    var value = parseFloat(String(els.objectRotation.value || '').replace(/[°deg]/gi, ''));
+    if (!isFinite(value)) {
+      setFeedback('Enter a rotation in degrees.', true);
+      return;
+    }
+    pushUndoSnapshot();
+    obj.rotation = ((value % 360) + 360) % 360;
     syncObjectPropertiesPanel();
     redrawAll();
   }
@@ -7286,6 +8270,12 @@
     var obj = selectedObject();
     if (!obj) return;
     pushUndoSnapshot();
+    if (isFreeObject(obj)) {
+      obj.rotation = ((obj.rotation || 0) + 180) % 360;
+      syncObjectPropertiesPanel();
+      redrawAll();
+      return;
+    }
     obj.hinge = obj.hinge === 'right' ? 'left' : 'right';
     if (obj.swing) {
       obj.swing = obj.hinge === 'right'
@@ -7306,6 +8296,12 @@
     var obj = selectedObject();
     if (!obj) return;
     pushUndoSnapshot();
+    if (isFreeObject(obj)) {
+      obj.rotation = ((obj.rotation || 0) + 90) % 360;
+      syncObjectPropertiesPanel();
+      redrawAll();
+      return;
+    }
     if (obj.swing && obj.swing.indexOf('_') >= 0) {
       var parts = obj.swing.split('_');
       parts[1] = parts[1] === 'in' ? 'out' : 'in';
@@ -7346,6 +8342,14 @@
   }
 
   function moveObjectAlongWall(obj, pos) {
+    if (!obj || !pos) return;
+    if (isFreeObject(obj)) {
+      obj.x = pos.x;
+      obj.y = pos.y;
+      redrawObjects();
+      syncObjectPropertiesPanel();
+      return;
+    }
     var snap = snapToNearestWall(pos, hitTolerance(OBJECT_SNAP_PX * 2));
     if (!snap) return;
     applySnapToObject(obj, snap);
@@ -7913,25 +8917,14 @@
       .filter(function (w) { return !w.closing; });
     var n = walls.length;
     var closed = isActiveClosed();
-    show(els.typeCloseBar, n >= 1);
-    if (n < 1) return;
-    if (!closed) {
-      if (els.typeGap) {
-        els.typeGap.textContent = n + (n === 1 ? ' wall, open' : ' walls, open');
-        els.typeGap.classList.remove('is-closed', 'is-off');
-      }
-      show(els.typeAutoclose, false);
-      if (els.typeClose) els.typeClose.disabled = n < 3;
-      return;
+    show(els.typeCloseBar, n >= 1 && !closed);
+    if (n < 1 || closed) return;
+    if (els.typeGap) {
+      els.typeGap.textContent = n + (n === 1 ? ' wall, open' : ' walls, open');
+      els.typeGap.classList.remove('is-closed', 'is-off');
     }
-    var analysis = analyzeClosing(activeVertices());
-    if (els.typeGap && analysis) {
-      els.typeGap.textContent = analysis.label;
-      els.typeGap.classList.toggle('is-closed', analysis.label === 'closed');
-      els.typeGap.classList.toggle('is-off', analysis.label !== 'closed');
-    }
-    show(els.typeAutoclose, !!(analysis && analysis.canAuto));
-    if (els.typeClose) els.typeClose.disabled = true;
+    show(els.typeAutoclose, false);
+    if (els.typeClose) els.typeClose.disabled = n < 3;
   }
 
   function resetTypedWalls() {
@@ -8168,8 +9161,17 @@
 
   function nudgeSelectedObject(dx, dy) {
     var obj = selectedObject();
-    var place = obj ? objectPlacement(obj) : null;
-    if (!obj || !place) return;
+    if (!obj) return;
+    if (isFreeObject(obj)) {
+      pushUndoSnapshot();
+      obj.x = (obj.x || 0) + dx;
+      obj.y = (obj.y || 0) + dy;
+      syncObjectPropertiesPanel();
+      redrawAll();
+      return;
+    }
+    var place = objectPlacement(obj);
+    if (!place || !place.wall) return;
     var wx = place.wall.b.x - place.wall.a.x;
     var wy = place.wall.b.y - place.wall.a.y;
     var len = Math.hypot(wx, wy) || 1;
@@ -8187,10 +9189,13 @@
     if (!state.selectedVertexIndices.length) return;
     pushUndoSnapshot();
     var orig = activeVertices().map(function (v) { return { x: v.x, y: v.y }; });
+    var nudgePoly = activePolygon();
     state.selectedVertexIndices.forEach(function (idx) {
       var v = activeVertices()[idx];
       if (!v) return;
-      activeVertices()[idx] = clampToCanvas({ x: v.x + dx, y: v.y + dy });
+      var next = clampToCanvas({ x: v.x + dx, y: v.y + dy });
+      activeVertices()[idx] = next;
+      if (nudgePoly) applyLinkedVertexMove(nudgePoly.id, idx, next);
     });
     if (!isValidShape(activeVertices(), isActiveClosed())) {
       setActiveVertices(orig);
@@ -8409,6 +9414,42 @@
         togglePaletteOpen();
       });
     }
+    if (els.wallsToggle) {
+      els.wallsToggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        toggleWallsOpen();
+      });
+    }
+    root.querySelectorAll('[data-ra-thickness]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var val = btn.getAttribute('data-ra-thickness');
+        if (val === 'custom') {
+          show(els.thicknessCustom, true);
+          if (els.thicknessCustomInput) els.thicknessCustomInput.focus();
+          root.querySelectorAll('[data-ra-thickness]').forEach(function (chip) {
+            chip.classList.toggle('is-active', chip === btn);
+          });
+          return;
+        }
+        pushUndoSnapshot();
+        setWallThickness(val);
+      });
+    });
+    if (els.thicknessCustomInput) {
+      els.thicknessCustomInput.addEventListener('change', function () {
+        var n = parseFloat(els.thicknessCustomInput.value);
+        pushUndoSnapshot();
+        setWallThickness(n);
+      });
+      els.thicknessCustomInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var n = parseFloat(els.thicknessCustomInput.value);
+          pushUndoSnapshot();
+          setWallThickness(n);
+        }
+      });
+    }
     if (els.addArea) els.addArea.addEventListener('click', addAreaSameGroup);
     if (els.addAreaNewGroup) els.addAreaNewGroup.addEventListener('click', addAreaNewGroup);
     if (els.deleteArea) els.deleteArea.addEventListener('click', deleteActivePolygon);
@@ -8443,6 +9484,24 @@
         if (e.key === 'Enter') {
           e.preventDefault();
           applyObjectOffset();
+        }
+      });
+    }
+    if (els.objectDepth) {
+      els.objectDepth.addEventListener('change', applyObjectDepth);
+      els.objectDepth.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applyObjectDepth();
+        }
+      });
+    }
+    if (els.objectRotation) {
+      els.objectRotation.addEventListener('change', applyObjectRotation);
+      els.objectRotation.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applyObjectRotation();
         }
       });
     }

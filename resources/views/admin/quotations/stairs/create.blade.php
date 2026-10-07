@@ -23,11 +23,15 @@
   $formAction = ($isEdit
     ? route('admin.quotations.stairs.update', $quotation)
     : route('admin.quotations.stairs.store')).$formQuery;
+  $roomAreaImport = $roomAreaImport ?? null;
   $inputs = $isEdit ? ($quotation->inputs ?? []) : StairsQuotationCalculator::defaultInputs();
   foreach (StairsQuotationCalculator::defaultInputs() as $k => $v) {
       if (! array_key_exists($k, $inputs)) {
           $inputs[$k] = $v;
       }
+  }
+  if (! $isEdit && ! empty($roomAreaImport['inputs']) && is_array($roomAreaImport['inputs'])) {
+      $inputs = array_merge($inputs, $roomAreaImport['inputs']);
   }
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
   $linkProject = $linkProject ?? null;
@@ -182,6 +186,7 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.room_area_prefill_banner')
   <div class="fq-form-toolbar">
     <a href="{{ route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
       <i class="fa fa-arrow-left"></i> Back to list

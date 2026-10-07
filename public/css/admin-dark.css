@@ -1299,6 +1299,42 @@ html.admin-dark .util-ra-palette__item.is-armed {
   color: var(--admin-heading);
 }
 
+html.admin-dark .util-ra-walls-panel {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-thickness-chip {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-thickness-chip:hover,
+html.admin-dark .util-ra-thickness-chip:focus-visible {
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-thickness-chip.is-active {
+  background: var(--admin-primary);
+  color: #fff;
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-thickness-custom label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-live-metrics__item {
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-live-metrics__item .util-ra-live-area__label {
+  color: var(--admin-muted);
+}
+
 html.admin-dark .util-ra-object-ghost {
   background: var(--admin-elevated, var(--admin-surface));
   color: var(--admin-heading);

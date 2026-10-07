@@ -463,6 +463,95 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertSame(9.0, $metrics['wall_height_ft']);
     }
 
+    public function test_wall_thickness_off_keeps_inside_equal_to_outside(): void
+    {
+        $metrics = $this->service->layoutMetrics($this->rectangleCanvas(false), 12.0, 8.0);
+
+        $this->assertSame(80.0, $metrics['area_sqft']);
+        $this->assertSame(80.0, $metrics['inside_area_sqft']);
+        $this->assertSame(80.0, $metrics['outside_area_sqft']);
+        $this->assertSame(0.0, $metrics['wall_thickness_in']);
+        $this->assertSame(36.0, $metrics['framing_lf']);
+    }
+
+    public function test_wall_thickness_grows_footprint_but_quotes_inside_area(): void
+    {
+        $canvas = $this->rectangleCanvas(false);
+        $canvas['v'] = 4;
+        $canvas['wall_thickness_in'] = 6;
+
+        $normalized = $this->service->normalize($canvas);
+        $this->assertSame(4, $normalized['v']);
+        $this->assertSame(6.0, $normalized['wall_thickness_in']);
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
+        $this->assertSame(80.0, $metrics['area_sqft']);
+        $this->assertSame(80.0, $metrics['inside_area_sqft']);
+        $this->assertSame(6.0, $metrics['wall_thickness_in']);
+        $this->assertEqualsWithDelta(98.0, $metrics['outside_area_sqft'], 0.01);
+    }
+
+    public function test_normalizes_free_objects_and_cabinet_linear_feet(): void
+    {
+        $raw = $this->rectangleCanvas(false);
+        $raw['v'] = 4;
+        $raw['objects'] = [
+            [
+                'id' => 'cab_1',
+                'type' => 'cabinet',
+                'subtype' => 'base',
+                'x' => 40,
+                'y' => 40,
+                'width' => 36,
+                'depth' => 24,
+                'rotation' => 0,
+            ],
+            [
+                'id' => 'cab_2',
+                'type' => 'cabinet',
+                'subtype' => 'upper',
+                'x' => 80,
+                'y' => 20,
+                'width' => 24,
+                'depth' => 12,
+                'rotation' => 90,
+            ],
+            [
+                'id' => 'st_1',
+                'type' => 'stairs',
+                'subtype' => 'straight',
+                'x' => 60,
+                'y' => 70,
+                'width' => 36,
+                'depth' => 120,
+                'rotation' => 0,
+            ],
+        ];
+
+        $canvas = $this->service->normalize($raw);
+        $this->assertSame(4, $canvas['v']);
+        $this->assertCount(3, $canvas['objects']);
+        $this->assertSame('cabinet', $canvas['objects'][0]['type']);
+        $this->assertSame('stairs', $canvas['objects'][2]['type']);
+        $this->assertArrayNotHasKey('wall_id', $canvas['objects'][0]);
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
+        $this->assertSame(80.0, $metrics['area_sqft']);
+        $this->assertSame(3.0, $metrics['cabinet_base_lf']);
+        $this->assertSame(2.0, $metrics['cabinet_upper_lf']);
+        $this->assertSame(1, $metrics['stairs_count']);
+        $this->assertSame(12, $metrics['stairs_treads']);
+        $this->assertSame(10.0, $metrics['stairs_run_lf']);
+        $this->assertSame('standard', $metrics['stairs_quote_type']);
+    }
+
+    public function test_v2_canvas_without_thickness_stays_v2(): void
+    {
+        $canvas = $this->service->normalize($this->rectangleCanvas(false));
+        $this->assertSame(2, $canvas['v']);
+        $this->assertArrayNotHasKey('wall_thickness_in', $canvas);
+    }
+
     /**
      * @return array<string, mixed>
      */

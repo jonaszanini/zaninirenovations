@@ -55,6 +55,8 @@ class RoomAreaQuoteController extends Controller
                 'painting' => route('admin.quotations.painting.create', $wizardQuery),
                 'trimming' => route('admin.quotations.trimming.create', $wizardQuery),
                 'tile' => route('admin.quotations.tile.create', $wizardQuery),
+                'millwork' => route('admin.quotations.millwork.create', $wizardQuery),
+                'stairs' => route('admin.quotations.stairs.create', $wizardQuery),
             ],
             'defaultClientName' => $clientProject?->client_name
                 ?: (string) ($resolved['project']?->name ?? ''),

@@ -80,6 +80,7 @@ class RoomAreaController extends Controller
             'name' => ['sometimes', 'required', 'string', 'max:120'],
             'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
+            'wall_thickness_in' => ['nullable', 'numeric', 'min:0', 'max:12'],
             'canvas_width' => ['nullable', 'integer', 'min:1', 'max:20000'],
             'canvas_height' => ['nullable', 'integer', 'min:1', 'max:20000'],
         ]);
@@ -129,6 +130,11 @@ class RoomAreaController extends Controller
             'canvas.objects.*.hinge' => ['nullable', 'string', 'max:20'],
             'canvas.objects.*.height' => ['nullable', 'numeric'],
             'canvas.objects.*.sill_height' => ['nullable', 'numeric'],
+            'canvas.objects.*.x' => ['nullable', 'numeric'],
+            'canvas.objects.*.y' => ['nullable', 'numeric'],
+            'canvas.objects.*.depth' => ['nullable', 'numeric'],
+            'canvas.objects.*.rotation' => ['nullable', 'numeric'],
+            'canvas.wall_thickness_in' => ['nullable', 'numeric', 'min:0', 'max:12'],
             'canvas.background' => ['nullable', 'array'],
             'canvas.background.x' => ['required_with:canvas.background', 'numeric'],
             'canvas.background.y' => ['required_with:canvas.background', 'numeric'],
@@ -163,10 +169,12 @@ class RoomAreaController extends Controller
         ]);
 
         $this->syncProjectCanvasDimensions($room_area_project, $data);
+        $this->syncProjectWallThickness($room_area_project, $normalized);
 
         return response()->json([
             'ok' => true,
             'room' => $this->roomPayload($room, $canvasData),
+            'project' => $this->projectPayload($room_area_project->fresh(['clientProject', 'rooms.photos'])),
         ]);
     }
 
@@ -188,6 +196,11 @@ class RoomAreaController extends Controller
             'canvas.objects.*.hinge' => ['nullable', 'string', 'max:20'],
             'canvas.objects.*.height' => ['nullable', 'numeric'],
             'canvas.objects.*.sill_height' => ['nullable', 'numeric'],
+            'canvas.objects.*.x' => ['nullable', 'numeric'],
+            'canvas.objects.*.y' => ['nullable', 'numeric'],
+            'canvas.objects.*.depth' => ['nullable', 'numeric'],
+            'canvas.objects.*.rotation' => ['nullable', 'numeric'],
+            'canvas.wall_thickness_in' => ['nullable', 'numeric', 'min:0', 'max:12'],
             'canvas.background' => ['nullable', 'array'],
             'canvas.background.x' => ['required_with:canvas.background', 'numeric'],
             'canvas.background.y' => ['required_with:canvas.background', 'numeric'],
@@ -224,10 +237,12 @@ class RoomAreaController extends Controller
         ]);
 
         $this->syncProjectCanvasDimensions($room_area_room->project, $data);
+        $this->syncProjectWallThickness($room_area_room->project, $normalized);
 
         return response()->json([
             'ok' => true,
             'room' => $this->roomPayload($room_area_room->fresh(), $canvasData),
+            'project' => $this->projectPayload($room_area_room->project->fresh(['clientProject', 'rooms.photos'])),
         ]);
     }
 
@@ -443,6 +458,11 @@ class RoomAreaController extends Controller
             'canvas.objects.*.hinge' => ['nullable', 'string', 'max:20'],
             'canvas.objects.*.height' => ['nullable', 'numeric'],
             'canvas.objects.*.sill_height' => ['nullable', 'numeric'],
+            'canvas.objects.*.x' => ['nullable', 'numeric'],
+            'canvas.objects.*.y' => ['nullable', 'numeric'],
+            'canvas.objects.*.depth' => ['nullable', 'numeric'],
+            'canvas.objects.*.rotation' => ['nullable', 'numeric'],
+            'canvas.wall_thickness_in' => ['nullable', 'numeric', 'min:0', 'max:12'],
             'canvas.background' => ['nullable', 'array'],
             'canvas.background.x' => ['required_with:canvas.background', 'numeric'],
             'canvas.background.y' => ['required_with:canvas.background', 'numeric'],
@@ -513,6 +533,7 @@ class RoomAreaController extends Controller
             'client_project_id' => $project->client_project_id,
             'client_project_name' => $project->clientProject?->name,
             'scale_pixels_per_foot' => $project->scale_pixels_per_foot,
+            'wall_thickness_in' => (float) ($project->wall_thickness_in ?? 0),
             'canvas_width' => $project->canvas_width,
             'canvas_height' => $project->canvas_height,
             'rooms' => $project->rooms->map(fn (RoomAreaRoom $room) => $this->roomPayload($room))->values(),
@@ -642,5 +663,17 @@ class RoomAreaController extends Controller
             'canvas_width' => $data['canvas_width'],
             'canvas_height' => $data['canvas_height'],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $canvas
+     */
+    private function syncProjectWallThickness(RoomAreaProject $project, array $canvas): void
+    {
+        $thickness = app(RoomAreaCanvasData::class)->normalizeWallThickness($canvas['wall_thickness_in'] ?? 0);
+        if ((float) ($project->wall_thickness_in ?? 0) === $thickness) {
+            return;
+        }
+        $project->update(['wall_thickness_in' => $thickness]);
     }
 }

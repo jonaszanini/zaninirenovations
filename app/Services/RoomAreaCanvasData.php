@@ -4,13 +4,17 @@ namespace App\Services;
 
 /**
  * Normalizes, validates, and summarizes Room Area canvas data
- * (v1 legacy + v2 multi-group + v3 wall objects).
+ * (v1 legacy + v2 multi-group + v3 wall objects + v4 thickness / free objects).
  */
 class RoomAreaCanvasData
 {
     public const DEFAULT_GROUP_COLOR = '#024768';
 
-    public const OBJECT_TYPES = ['door', 'window', 'opening'];
+    public const WALL_OBJECT_TYPES = ['door', 'window', 'opening'];
+
+    public const FREE_OBJECT_TYPES = ['stairs', 'cabinet', 'fixture', 'furniture'];
+
+    public const OBJECT_TYPES = ['door', 'window', 'opening', 'stairs', 'cabinet', 'fixture', 'furniture'];
 
     public const OBJECT_SUBTYPES = [
         'single',
@@ -20,17 +24,37 @@ class RoomAreaCanvasData
         'bifold',
         'archway',
         'fixed',
+        'straight',
+        'l',
+        'u',
+        'base',
+        'upper',
+        'corner',
+        'island',
+        'toilet',
+        'tub',
+        'shower',
+        'vanity',
+        'sofa',
+        'bed',
+        'dining_table',
     ];
 
     public const OBJECT_SWINGS = ['left_in', 'left_out', 'right_in', 'right_out'];
 
     public const OBJECT_HINGES = ['left', 'right'];
 
+    public const WALL_THICKNESS_PRESETS_IN = [0.0, 3.5, 4.5, 5.5, 6.0];
+
     public const DEFAULT_WALL_HEIGHT_FT = 8.0;
 
     public const DEFAULT_DOOR_HEIGHT_IN = 80.0;
 
     public const DEFAULT_WINDOW_HEIGHT_IN = 36.0;
+
+    public const STAIR_TREAD_IN = 10.0;
+
+    public const MAX_WALL_THICKNESS_IN = 12.0;
 
     /** @var list<string> */
     public const GROUP_COLORS = [
@@ -45,10 +69,14 @@ class RoomAreaCanvasData
 
     private PolygonAreaService $polygonArea;
 
+    private RoomAreaSharedWalls $sharedWalls;
+
     public function __construct(
         ?PolygonAreaService $polygonArea = null,
+        ?RoomAreaSharedWalls $sharedWalls = null,
     ) {
         $this->polygonArea = $polygonArea ?? new PolygonAreaService;
+        $this->sharedWalls = $sharedWalls ?? new RoomAreaSharedWalls($this->polygonArea);
     }
 
     /**
@@ -57,6 +85,7 @@ class RoomAreaCanvasData
      *   v: int,
      *   groups: list<array{id: string, color: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>,
      *   objects?: list<array<string, mixed>>,
+     *   wall_thickness_in?: float,
      *   background?: array{x: float, y: float, width: float, height: float}
      * }
      */
@@ -85,7 +114,7 @@ class RoomAreaCanvasData
         }
 
         $version = (int) ($raw['v'] ?? 0);
-        if (in_array($version, [2, 3], true) && isset($raw['groups']) && is_array($raw['groups'])) {
+        if (in_array($version, [2, 3, 4], true) && isset($raw['groups']) && is_array($raw['groups'])) {
             return $this->normalizeGroupedCanvas($raw);
         }
 
@@ -115,6 +144,7 @@ class RoomAreaCanvasData
      *   v: int,
      *   groups: list<array{id: string, color: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>,
      *   objects?: list<array<string, mixed>>,
+     *   wall_thickness_in?: float,
      *   background?: array{x: float, y: float, width: float, height: float}
      * }
      */
@@ -173,7 +203,15 @@ class RoomAreaCanvasData
         }
 
         $objects = $this->normalizeObjects($input['objects'] ?? null, $groups);
-        $version = ((int) ($input['v'] ?? 2) >= 3 || $objects !== []) ? 3 : 2;
+        $thickness = $this->normalizeWallThickness($input['wall_thickness_in'] ?? 0);
+        $hasFree = $this->hasFreeObjects($objects);
+        $inputVersion = (int) ($input['v'] ?? 2);
+        $version = 2;
+        if ($thickness > 0 || $hasFree || $inputVersion >= 4) {
+            $version = 4;
+        } elseif ($inputVersion >= 3 || $objects !== []) {
+            $version = 3;
+        }
 
         $canvas = [
             'v' => $version,
@@ -182,6 +220,9 @@ class RoomAreaCanvasData
 
         if ($version >= 3) {
             $canvas['objects'] = $objects;
+        }
+        if ($thickness > 0) {
+            $canvas['wall_thickness_in'] = $thickness;
         }
 
         $background = $this->normalizeBackground($input['background'] ?? null);
@@ -274,6 +315,10 @@ class RoomAreaCanvasData
             $subtype = $this->defaultSubtype($type);
         }
 
+        if (in_array($type, self::FREE_OBJECT_TYPES, true)) {
+            return $this->normalizeFreeObject($item, $index, $type, $subtype);
+        }
+
         $wallId = isset($item['wall_id']) && is_string($item['wall_id'])
             ? trim($item['wall_id'])
             : '';
@@ -338,11 +383,69 @@ class RoomAreaCanvasData
         return $object;
     }
 
+    /**
+     * @param  array<mixed>  $item
+     * @return array<string, mixed>|null
+     */
+    private function normalizeFreeObject(array $item, int $index, string $type, string $subtype): ?array
+    {
+        if (! isset($item['x'], $item['y']) || ! is_numeric($item['x']) || ! is_numeric($item['y'])) {
+            return null;
+        }
+
+        $width = isset($item['width']) ? (float) $item['width'] : $this->defaultFreeSize($type, $subtype)['width'];
+        $depth = isset($item['depth']) ? (float) $item['depth'] : $this->defaultFreeSize($type, $subtype)['depth'];
+        if ($width < 6 || $width > 360 || $depth < 6 || $depth > 360) {
+            return null;
+        }
+
+        $rotation = isset($item['rotation']) && is_numeric($item['rotation'])
+            ? (float) $item['rotation']
+            : 0.0;
+        $rotation = fmod($rotation, 360.0);
+        if ($rotation < 0) {
+            $rotation += 360.0;
+        }
+
+        $id = isset($item['id']) && is_string($item['id']) && $item['id'] !== ''
+            ? $item['id']
+            : 'obj_'.$index;
+
+        return [
+            'id' => $id,
+            'type' => $type,
+            'subtype' => $subtype,
+            'x' => round((float) $item['x'], 3),
+            'y' => round((float) $item['y'], 3),
+            'width' => round($width, 3),
+            'depth' => round($depth, 3),
+            'rotation' => round($rotation, 3),
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $objects
+     */
+    private function hasFreeObjects(array $objects): bool
+    {
+        foreach ($objects as $object) {
+            if (isset($object['type']) && in_array($object['type'], self::FREE_OBJECT_TYPES, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function defaultSubtype(string $type): string
     {
         return match ($type) {
             'window' => 'fixed',
             'opening' => 'archway',
+            'stairs' => 'straight',
+            'cabinet' => 'base',
+            'fixture' => 'toilet',
+            'furniture' => 'sofa',
             default => 'single',
         };
     }
@@ -356,6 +459,43 @@ class RoomAreaCanvasData
             $type === 'opening' => 36.0,
             default => 36.0,
         };
+    }
+
+    /**
+     * @return array{width: float, depth: float}
+     */
+    public function defaultFreeSize(string $type, string $subtype): array
+    {
+        return match (true) {
+            $type === 'stairs' && $subtype === 'l' => ['width' => 72.0, 'depth' => 72.0],
+            $type === 'stairs' && $subtype === 'u' => ['width' => 72.0, 'depth' => 96.0],
+            $type === 'stairs' => ['width' => 36.0, 'depth' => 120.0],
+            $type === 'cabinet' && $subtype === 'upper' => ['width' => 36.0, 'depth' => 12.0],
+            $type === 'cabinet' && $subtype === 'corner' => ['width' => 24.0, 'depth' => 24.0],
+            $type === 'cabinet' && $subtype === 'island' => ['width' => 48.0, 'depth' => 36.0],
+            $type === 'cabinet' => ['width' => 36.0, 'depth' => 24.0],
+            $type === 'fixture' && $subtype === 'tub' => ['width' => 60.0, 'depth' => 32.0],
+            $type === 'fixture' && $subtype === 'shower' => ['width' => 36.0, 'depth' => 36.0],
+            $type === 'fixture' && $subtype === 'vanity' => ['width' => 36.0, 'depth' => 21.0],
+            $type === 'fixture' => ['width' => 20.0, 'depth' => 30.0],
+            $type === 'furniture' && $subtype === 'bed' => ['width' => 60.0, 'depth' => 80.0],
+            $type === 'furniture' && $subtype === 'dining_table' => ['width' => 72.0, 'depth' => 36.0],
+            $type === 'furniture' => ['width' => 84.0, 'depth' => 36.0],
+            default => ['width' => 36.0, 'depth' => 24.0],
+        };
+    }
+
+    public function normalizeWallThickness(mixed $inches): float
+    {
+        $value = is_numeric($inches) ? (float) $inches : 0.0;
+        if ($value <= 0) {
+            return 0.0;
+        }
+        if ($value > self::MAX_WALL_THICKNESS_IN) {
+            return self::MAX_WALL_THICKNESS_IN;
+        }
+
+        return round($value, 2);
     }
 
     /**
@@ -572,7 +712,18 @@ class RoomAreaCanvasData
      *   drywall_openings: int,
      *   inside_corners: int,
      *   outside_corners: int,
-     *   polygon_count: int
+     *   polygon_count: int,
+     *   wall_thickness_in: float,
+     *   inside_area_sqft: float,
+     *   outside_area_sqft: float,
+     *   shared_wall_lf: float,
+     *   framing_lf: float,
+     *   cabinet_base_lf: float,
+     *   cabinet_upper_lf: float,
+     *   stairs_count: int,
+     *   stairs_treads: int,
+     *   stairs_run_lf: float,
+     *   stairs_quote_type: string
      * }
      */
     public function layoutMetrics(array $canvas, float $pixelsPerFoot, float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT): array
@@ -584,6 +735,7 @@ class RoomAreaCanvasData
         $outside = 0;
         $polygonCount = 0;
         $wallHeightFt = $this->normalizeWallHeight($wallHeightFt);
+        $thicknessIn = $this->normalizeWallThickness($normalized['wall_thickness_in'] ?? 0);
 
         if ($pixelsPerFoot <= 0) {
             return $this->emptyLayoutMetrics($wallHeightFt);
@@ -611,13 +763,18 @@ class RoomAreaCanvasData
         }
 
         $objectMetrics = $this->objectDeductionMetrics($normalized['objects'] ?? [], $wallHeightFt);
+        $library = $this->libraryMetrics($normalized['objects'] ?? []);
         $perimeter = round($perimeter, 2);
+        $sharedLf = $this->sharedWalls->sharedLengthFeet($normalized, $pixelsPerFoot);
+        $framing = $this->sharedWalls->framingLf($perimeter, $sharedLf);
         $baseboard = max(0.0, round($perimeter - $objectMetrics['baseboard_deduction_lf'], 2));
         $grossWall = $perimeter * $wallHeightFt;
         $wallArea = max(0.0, round($grossWall - $objectMetrics['wall_deduction_sqft'], 2));
+        $insideArea = round($area, 2);
+        $outsideArea = $this->outsideAreaSqFt($insideArea, $perimeter, $sharedLf, $thicknessIn);
 
         return [
-            'area_sqft' => round($area, 2),
+            'area_sqft' => $insideArea,
             'perimeter_lf' => $perimeter,
             'baseboard_lf' => $baseboard,
             'wall_height_ft' => $wallHeightFt,
@@ -629,6 +786,17 @@ class RoomAreaCanvasData
             'inside_corners' => $inside,
             'outside_corners' => $outside,
             'polygon_count' => $polygonCount,
+            'wall_thickness_in' => $thicknessIn,
+            'inside_area_sqft' => $insideArea,
+            'outside_area_sqft' => $outsideArea,
+            'shared_wall_lf' => $sharedLf,
+            'framing_lf' => $framing,
+            'cabinet_base_lf' => $library['cabinet_base_lf'],
+            'cabinet_upper_lf' => $library['cabinet_upper_lf'],
+            'stairs_count' => $library['stairs_count'],
+            'stairs_treads' => $library['stairs_treads'],
+            'stairs_run_lf' => $library['stairs_run_lf'],
+            'stairs_quote_type' => $library['stairs_quote_type'],
         ];
     }
 
@@ -663,7 +831,29 @@ class RoomAreaCanvasData
             'inside_corners' => 0,
             'outside_corners' => 0,
             'polygon_count' => 0,
+            'wall_thickness_in' => 0.0,
+            'inside_area_sqft' => 0.0,
+            'outside_area_sqft' => 0.0,
+            'shared_wall_lf' => 0.0,
+            'framing_lf' => 0.0,
+            'cabinet_base_lf' => 0.0,
+            'cabinet_upper_lf' => 0.0,
+            'stairs_count' => 0,
+            'stairs_treads' => 0,
+            'stairs_run_lf' => 0.0,
+            'stairs_quote_type' => 'standard',
         ];
+    }
+
+    public function outsideAreaSqFt(float $insideArea, float $perimeterLf, float $sharedLf, float $thicknessIn): float
+    {
+        if ($thicknessIn <= 0) {
+            return round(max(0.0, $insideArea), 2);
+        }
+        $thicknessFt = $thicknessIn / 12.0;
+        $exterior = $this->sharedWalls->exteriorLf($perimeterLf, $sharedLf);
+
+        return round(max($insideArea, $insideArea + ($exterior * $thicknessFt)), 2);
     }
 
     public function normalizeWallHeight(mixed $height): float
@@ -705,7 +895,7 @@ class RoomAreaCanvasData
             $type = isset($object['type']) && is_string($object['type'])
                 ? strtolower(trim($object['type']))
                 : '';
-            if (! in_array($type, self::OBJECT_TYPES, true)) {
+            if (! in_array($type, self::WALL_OBJECT_TYPES, true)) {
                 continue;
             }
 
@@ -753,6 +943,90 @@ class RoomAreaCanvasData
             'window' => self::DEFAULT_WINDOW_HEIGHT_IN,
             'opening' => $wallHeightFt * 12.0,
             default => self::DEFAULT_DOOR_HEIGHT_IN,
+        };
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $objects
+     * @return array{
+     *   cabinet_base_lf: float,
+     *   cabinet_upper_lf: float,
+     *   stairs_count: int,
+     *   stairs_treads: int,
+     *   stairs_run_lf: float,
+     *   stairs_quote_type: string
+     * }
+     */
+    public function libraryMetrics(array $objects): array
+    {
+        $baseIn = 0.0;
+        $upperIn = 0.0;
+        $stairsCount = 0;
+        $treads = 0;
+        $runIn = 0.0;
+        $quoteType = 'standard';
+
+        foreach ($objects as $object) {
+            if (! is_array($object)) {
+                continue;
+            }
+            $type = isset($object['type']) && is_string($object['type'])
+                ? strtolower(trim($object['type']))
+                : '';
+            $subtype = isset($object['subtype']) && is_string($object['subtype'])
+                ? strtolower(trim($object['subtype']))
+                : '';
+
+            if ($type === 'cabinet') {
+                $width = isset($object['width']) ? (float) $object['width'] : 0.0;
+                $depth = isset($object['depth']) ? (float) $object['depth'] : 0.0;
+                if ($subtype === 'upper') {
+                    $upperIn += max(0.0, $width);
+                } elseif ($subtype === 'corner') {
+                    $baseIn += max(0.0, $width) + max(0.0, $depth);
+                } else {
+                    $baseIn += max(0.0, $width);
+                }
+            } elseif ($type === 'stairs') {
+                $stairsCount++;
+                $depth = isset($object['depth']) ? (float) $object['depth'] : $this->defaultFreeSize('stairs', $subtype)['depth'];
+                $runIn += max(0.0, $depth);
+                $treads += $this->stairsTreadCount($object);
+                if ($subtype === 'u') {
+                    $quoteType = 'double_landing';
+                } elseif ($subtype === 'l' && $quoteType !== 'double_landing') {
+                    $quoteType = 'single_landing';
+                }
+            }
+        }
+
+        return [
+            'cabinet_base_lf' => round($baseIn / 12.0, 2),
+            'cabinet_upper_lf' => round($upperIn / 12.0, 2),
+            'stairs_count' => $stairsCount,
+            'stairs_treads' => max(0, $treads),
+            'stairs_run_lf' => round($runIn / 12.0, 2),
+            'stairs_quote_type' => $quoteType,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $object
+     */
+    public function stairsTreadCount(array $object): int
+    {
+        $subtype = isset($object['subtype']) && is_string($object['subtype'])
+            ? strtolower(trim($object['subtype']))
+            : 'straight';
+        $depth = isset($object['depth']) && is_numeric($object['depth'])
+            ? (float) $object['depth']
+            : $this->defaultFreeSize('stairs', $subtype)['depth'];
+        $base = max(1, (int) round($depth / self::STAIR_TREAD_IN));
+
+        return match ($subtype) {
+            'l' => $base + 3,
+            'u' => $base + 6,
+            default => $base,
         };
     }
 }

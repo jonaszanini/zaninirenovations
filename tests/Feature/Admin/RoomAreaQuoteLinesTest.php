@@ -37,6 +37,8 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
             ->assertSee('value="flooring"', false)
             ->assertSee('Start a calculator', false)
             ->assertSee('lf perimeter', false)
+            ->assertSee('Millwork', false)
+            ->assertSee('Stairs', false)
             ->assertDontSee('lf walls', false);
     }
 
