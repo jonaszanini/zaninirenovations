@@ -42,7 +42,7 @@
             <label for="oc-material">Material key</label>
             <input class="admin-input" type="text" id="oc-material" name="material_key" maxlength="80" required
                    value="{{ old('material_key', $formOffcut->material_key ?? '') }}"
-                   placeholder="2x4, plywood, osb">
+                   placeholder="2x4, plywood…">
             @error('material_key') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
@@ -136,8 +136,8 @@
               $catalog = $prices[$row->material_key] ?? null;
             @endphp
             <article class="util-oc-card{{ $row->isAvailable() ? '' : ' is-used' }}">
-              <div class="util-oc-card__top">
-                <div>
+              <div class="util-oc-card__info">
+                <div class="util-oc-card__title">
                   <strong>{{ $row->displayName() }}</strong>
                   @if ($row->isSheet())
                     <span class="util-oc-pill">Sheet</span>
@@ -147,22 +147,22 @@
                   @unless ($row->isAvailable())
                     <span class="util-oc-pill util-oc-pill--used">Used</span>
                   @endunless
-                  <div class="util-oc-card__meta">
-                    {{ $row->sizeLabel() }}
-                    @if ($row->thickness_in)
-                      <span class="util-oc-muted">× {{ rtrim(rtrim(number_format((float) $row->thickness_in, 3, '.', ''), '0'), '.') }} thk</span>
-                    @endif
-                    · qty {{ $row->qty }}
-                    @if ($catalog)
-                      · ${{ number_format($catalog, 2) }}
-                    @endif
-                  </div>
-                  <div class="util-oc-muted">
-                    {{ $row->location ?: '—' }}
-                    @if ($row->notes)
-                      · {{ $row->notes }}
-                    @endif
-                  </div>
+                </div>
+                <div class="util-oc-card__meta">
+                  {{ $row->sizeLabel() }}
+                  @if ($row->thickness_in)
+                    <span class="util-oc-muted">× {{ rtrim(rtrim(number_format((float) $row->thickness_in, 3, '.', ''), '0'), '.') }} thk</span>
+                  @endif
+                  · qty {{ $row->qty }}
+                  @if ($catalog)
+                    · ${{ number_format($catalog, 2) }}
+                  @endif
+                  @if ($row->location)
+                    · {{ $row->location }}
+                  @endif
+                  @if ($row->notes)
+                    · {{ $row->notes }}
+                  @endif
                 </div>
               </div>
               <div class="util-oc-actions">

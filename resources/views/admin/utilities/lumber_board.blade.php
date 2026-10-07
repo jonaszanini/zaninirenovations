@@ -104,7 +104,7 @@
                 <i class="fa fa-save"></i> Save
               </button>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-print>
-                <i class="fa fa-print"></i> Print list
+                <i class="fa fa-print"></i> Print
               </button>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-copy>
                 <i class="fa fa-copy"></i> Copy

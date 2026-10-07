@@ -639,14 +639,14 @@
     row.setAttribute('data-lb-piece-row', '');
     var pieceUnitLabel = pieceUnit === 'ft' ? 'ft' : 'in';
     row.innerHTML =
-      '<td><input type="text" placeholder="Optional" data-lb-piece-desc value="' + (data && data.desc ? escapeAttr(data.desc) : '') + '"></td>' +
-      '<td>' +
+      '<td class="util-lb-piece-desc"><input type="text" placeholder="Description" data-lb-piece-desc value="' + (data && data.desc ? escapeAttr(data.desc) : '') + '"></td>' +
+      '<td class="util-lb-piece-len">' +
         '<div class="util-lb-stock-length-cell">' +
           '<input type="number" min="0" step="any" inputmode="decimal" placeholder="Length" data-lb-piece-length value="' + (data && data.lengthVal != null ? escapeAttr(data.lengthVal) : '') + '">' +
           '<span class="util-lb-unit-tag">' + pieceUnitLabel + '</span>' +
         '</div>' +
       '</td>' +
-      '<td><input type="number" min="1" step="1" inputmode="numeric" placeholder="1" data-lb-piece-qty value="' + (data && data.qty != null ? escapeAttr(data.qty) : '1') + '"></td>' +
+      '<td class="util-lb-piece-qty"><input type="number" min="1" step="1" inputmode="numeric" placeholder="Qty" data-lb-piece-qty value="' + (data && data.qty != null ? escapeAttr(data.qty) : '1') + '"></td>' +
       '<td class="util-lb-col-action"><button type="button" class="admin-btn admin-btn--danger admin-btn--sm util-lb-row-remove" data-lb-remove-piece title="Remove" aria-label="Remove piece"><i class="fa fa-times"></i></button></td>';
     row.querySelector('[data-lb-remove-piece]').addEventListener('click', function () {
       row.remove();
