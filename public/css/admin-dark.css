@@ -864,6 +864,10 @@ html.admin-dark .cp-utilities-item__room-area {
   color: var(--admin-heading);
 }
 
+html.admin-dark .cp-utilities-item__pdf {
+  color: var(--admin-primary);
+}
+
 html.admin-dark .sq-work-card__header,
 html.admin-dark .sq-panel-head {
   background: var(--admin-surface-hover);
@@ -1272,6 +1276,31 @@ html.admin-dark .util-ra-object-ghost {
 html.admin-dark .util-ra-object-edit {
   border-color: var(--admin-primary);
   background: var(--admin-primary-soft);
+}
+
+html.admin-dark .util-ra-live-area {
+  background: var(--admin-primary-soft);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-live-area strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-live-area__height-unit {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-live-area__exports .admin-btn--ghost {
+  background: var(--admin-surface);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-live-area__exports .admin-btn--ghost:hover {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-elevated);
 }
 
 html.admin-dark .util-ra-btn--danger-ghost:hover:not(:disabled),

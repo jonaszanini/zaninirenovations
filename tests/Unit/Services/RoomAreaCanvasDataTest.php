@@ -409,5 +409,116 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertSame(1, $metrics['outside_corners']);
         $this->assertSame(1, $metrics['polygon_count']);
         $this->assertGreaterThan(4 * sqrt(14.0), $metrics['perimeter_lf']);
+        $this->assertSame(18.0, $metrics['baseboard_lf']);
+        $this->assertSame(8.0, $metrics['wall_height_ft']);
+        $this->assertSame(144.0, $metrics['wall_area_sqft']);
+        $this->assertSame(0, $metrics['door_count']);
+        $this->assertSame(0, $metrics['window_count']);
+        $this->assertSame(0, $metrics['opening_count']);
+        $this->assertSame(0, $metrics['drywall_openings']);
+    }
+
+    public function test_v2_rooms_without_objects_do_not_subtract_from_baseboard_or_wall_area(): void
+    {
+        $canvas = $this->rectangleCanvas(false);
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
+
+        $this->assertSame(80.0, $metrics['area_sqft']);
+        $this->assertSame(36.0, $metrics['perimeter_lf']);
+        $this->assertSame(36.0, $metrics['baseboard_lf']);
+        $this->assertSame(288.0, $metrics['wall_area_sqft']);
+        $this->assertSame(0, $metrics['drywall_openings']);
+    }
+
+    public function test_wall_metrics_subtract_doors_and_openings_from_baseboard_but_not_windows(): void
+    {
+        $canvas = $this->rectangleCanvas(true);
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
+
+        $this->assertSame(80.0, $metrics['area_sqft']);
+        $this->assertSame(36.0, $metrics['perimeter_lf']);
+        $this->assertSame(1, $metrics['door_count']);
+        $this->assertSame(1, $metrics['window_count']);
+        $this->assertSame(1, $metrics['opening_count']);
+        $this->assertSame(3, $metrics['drywall_openings']);
+        // 36" door + 36" opening = 6 lf; 48" window does not reduce baseboard.
+        $this->assertSame(30.0, $metrics['baseboard_lf']);
+        // Door 36x80 and window 48x36 (explicit height) come out of wall SF; opening does not.
+        $this->assertEqualsWithDelta(256.0, $metrics['wall_area_sqft'], 0.01);
+    }
+
+    public function test_wall_metrics_use_object_height_when_present(): void
+    {
+        $canvas = $this->rectangleCanvas(true);
+        $canvas['objects'][0]['height'] = 84;
+        $canvas['objects'][1]['height'] = 24;
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 9.0);
+
+        $doorArea = (36 / 12) * (84 / 12);
+        $windowArea = (48 / 12) * (24 / 12);
+        $this->assertEqualsWithDelta(36.0 * 9.0 - $doorArea - $windowArea, $metrics['wall_area_sqft'], 0.01);
+        $this->assertSame(9.0, $metrics['wall_height_ft']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function rectangleCanvas(bool $withObjects): array
+    {
+        $canvas = [
+            'v' => $withObjects ? 3 : 2,
+            'groups' => [
+                [
+                    'id' => 'g1',
+                    'color' => '#024768',
+                    'polygons' => [
+                        [
+                            'id' => 'p1',
+                            'vertices' => [
+                                ['x' => 0, 'y' => 0],
+                                ['x' => 120, 'y' => 0],
+                                ['x' => 120, 'y' => 96],
+                                ['x' => 0, 'y' => 96],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        if ($withObjects) {
+            $canvas['objects'] = [
+                [
+                    'id' => 'obj_1',
+                    'type' => 'door',
+                    'subtype' => 'single',
+                    'wall_id' => 'wall_p1_0_1',
+                    'width' => 36,
+                    'offset' => 12,
+                ],
+                [
+                    'id' => 'obj_2',
+                    'type' => 'window',
+                    'subtype' => 'fixed',
+                    'wall_id' => 'wall_p1_1_2',
+                    'width' => 48,
+                    'offset' => 12,
+                    'height' => 36,
+                ],
+                [
+                    'id' => 'obj_3',
+                    'type' => 'opening',
+                    'subtype' => 'archway',
+                    'wall_id' => 'wall_p1_2_3',
+                    'width' => 36,
+                    'offset' => 12,
+                ],
+            ];
+        }
+
+        return $canvas;
     }
 }

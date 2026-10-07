@@ -909,6 +909,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.room-area.layouts');
     Route::post('utilities/room-area/validate', [\App\Http\Controllers\Admin\RoomAreaController::class, 'validateRoom'])
         ->name('utilities.room-area.validate');
+    Route::post('utilities/room-area/pdf', [\App\Http\Controllers\Admin\RoomAreaController::class, 'exportPdf'])
+        ->name('utilities.room-area.pdf');
     Route::post('utilities/room-area/projects', [\App\Http\Controllers\Admin\RoomAreaController::class, 'storeProject'])
         ->name('utilities.room-area.projects.store');
     Route::put('utilities/room-area/projects/{room_area_project}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'updateProject'])
@@ -927,4 +929,6 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.room-area.rooms.background');
     Route::delete('utilities/room-area/rooms/{room_area_room}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyBackground'])
         ->name('utilities.room-area.rooms.background.destroy');
+    Route::get('utilities/room-area/rooms/{room_area_room}/pdf', [\App\Http\Controllers\Admin\RoomAreaController::class, 'downloadPdf'])
+        ->name('utilities.room-area.rooms.pdf');
 });

@@ -323,16 +323,31 @@
     var outside = document.getElementById('br-dw-corners');
     if (inside) inside.value = String(Math.max(0, parseInt(opt.inside_corners, 10) || 0));
     if (outside) outside.value = String(Math.max(0, parseInt(opt.outside_corners, 10) || 0));
+    var openings = parseInt(opt.drywall_openings, 10);
+    if (!isFinite(openings) || openings < 0) {
+      openings = (parseInt(opt.door_count, 10) || 0)
+        + (parseInt(opt.window_count, 10) || 0)
+        + (parseInt(opt.opening_count, 10) || 0);
+    }
+    var openEl = document.getElementById('br-dw-open');
+    if (openEl) openEl.value = String(Math.max(0, openings));
+    var baseEl = document.getElementById('br-base');
+    if (baseEl && opt.baseboard_lf != null && opt.baseboard_lf !== '') {
+      var base = Number(opt.baseboard_lf);
+      if (isFinite(base) && base >= 0) baseEl.value = formatLayoutQty(base);
+    }
     if (status) {
       var floor = formatLayoutQty(area);
       var periLabel = formatLayoutQty(peri);
       var height = formatLayoutQty(ceilingHeightFt());
       var walls = formatLayoutQty(wallSf);
       var name = opt.short_name || opt.name || 'layout';
+      var openLabel = openings === 1 ? '1 opening' : openings + ' openings';
       status.hidden = false;
       status.classList.add('is-set');
       status.textContent = 'Imported ' + name + ': ' + floor + ' sq ft floor, '
-        + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall. Openings are not imported.';
+        + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall, '
+        + openLabel + '.';
     }
     applyingLayout = false;
     updateDwWallPlaceholder();
@@ -354,9 +369,13 @@
       var areaEl = document.getElementById('br-area');
       var area = areaEl ? parseFloat(areaEl.value) : 0;
       var name = (labelEl && labelEl.value) ? labelEl.value : 'layout';
+      var openEl = document.getElementById('br-dw-open');
+      var openings = openEl ? (parseInt(openEl.value, 10) || 0) : 0;
+      var openLabel = openings === 1 ? '1 opening' : openings + ' openings';
       status.textContent = 'Imported ' + name + ': ' + formatLayoutQty(area) + ' sq ft floor, '
         + formatLayoutQty(peri) + ' lf walls × ' + formatLayoutQty(ceilingHeightFt()) + ' ft = '
-        + formatLayoutQty(peri * ceilingHeightFt()) + ' sq ft wall drywall. Openings are not imported.';
+        + formatLayoutQty(peri * ceilingHeightFt()) + ' sq ft wall drywall, '
+        + openLabel + '.';
     }
   }
 

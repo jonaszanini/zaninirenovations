@@ -119,7 +119,7 @@
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
       'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
       'drywall_openings' => 'Door and window openings to cut and bead, counted each.',
-      'room_area_import' => 'Saved Room Area drawing. Wall drywall becomes the real perimeter × ceiling height (not a square from the floor area). Ceiling drywall uses the floor square footage. Inside and outside corners are counted from the outline. Openings are not imported — enter those separately.',
+      'room_area_import' => 'Saved Room Area drawing. Wall drywall becomes the real perimeter × ceiling height (not a square from the floor area). Ceiling drywall uses the floor square footage. Inside and outside corners are counted from the outline. Doors, windows, and openings fill the openings count; imported baseboard length fills the Doors & trim default when that field is present.',
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drop ceiling uses grid and tiles instead of hanging drywall.',
       'ceiling_sf' => 'Ceiling area. Blank uses the work area.',
