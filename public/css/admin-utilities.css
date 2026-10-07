@@ -2884,6 +2884,7 @@
 .util-ra-object-edit {
   overflow: hidden;
   box-sizing: border-box;
+  padding: 0.65rem 0.7rem;
 }
 
 .util-ra-object-edit__inner {
@@ -2995,21 +2996,39 @@
   .util-ra-rooms-head {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .util-ra-rooms-head__intro {
+    flex: 0 0 auto;
+    width: 100%;
   }
 
   .util-ra-rooms-head__actions {
+    flex: 0 0 auto;
     flex-direction: column;
     align-items: stretch;
     width: 100%;
-    flex: 1 1 auto;
+    gap: 0.5rem;
   }
 
   .util-ra-rooms-head .util-ra-total {
     width: 100%;
-    justify-content: space-between;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.5rem;
   }
 
-  .util-ra-rooms-head__actions .admin-btn {
+  .util-ra-rooms-head .util-ra-total .admin-btn {
+    width: auto;
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+
+  .util-ra-rooms-head__actions > .admin-btn {
     width: 100%;
     justify-content: center;
   }
