@@ -1240,6 +1240,40 @@ html.admin-dark .util-ra-canvas-wrap.is-ruler-edit {
   outline-color: rgba(192, 132, 252, 0.45);
 }
 
+html.admin-dark .util-ra-canvas-wrap.is-object-edit {
+  outline-color: rgba(56, 189, 248, 0.45);
+}
+
+html.admin-dark .util-ra-palette {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-palette__item {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-palette__item:hover,
+html.admin-dark .util-ra-palette__item:focus-visible,
+html.admin-dark .util-ra-palette__item.is-armed {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-object-ghost {
+  background: var(--admin-elevated, var(--admin-surface));
+  color: var(--admin-heading);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-object-edit {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
 html.admin-dark .util-ra-btn--danger-ghost:hover:not(:disabled),
 html.admin-dark .util-ra-btn--danger-ghost:focus-visible:not(:disabled) {
   background: var(--admin-danger-soft);

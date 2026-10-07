@@ -3,11 +3,28 @@
 namespace App\Services;
 
 /**
- * Normalizes, validates, and summarizes Room Area canvas data (v1 legacy + v2 multi-group).
+ * Normalizes, validates, and summarizes Room Area canvas data
+ * (v1 legacy + v2 multi-group + v3 wall objects).
  */
 class RoomAreaCanvasData
 {
     public const DEFAULT_GROUP_COLOR = '#024768';
+
+    public const OBJECT_TYPES = ['door', 'window', 'opening'];
+
+    public const OBJECT_SUBTYPES = [
+        'single',
+        'double',
+        'sliding',
+        'pocket',
+        'bifold',
+        'archway',
+        'fixed',
+    ];
+
+    public const OBJECT_SWINGS = ['left_in', 'left_out', 'right_in', 'right_out'];
+
+    public const OBJECT_HINGES = ['left', 'right'];
 
     /** @var list<string> */
     public const GROUP_COLORS = [
@@ -30,7 +47,12 @@ class RoomAreaCanvasData
 
     /**
      * @param  array<mixed>|null  $raw
-     * @return array{v: int, groups: list<array{id: string, color: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>}
+     * @return array{
+     *   v: int,
+     *   groups: list<array{id: string, color: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>,
+     *   objects?: list<array<string, mixed>>,
+     *   background?: array{x: float, y: float, width: float, height: float}
+     * }
      */
     public function normalize(?array $raw): array
     {
@@ -56,8 +78,9 @@ class RoomAreaCanvasData
             ];
         }
 
-        if (($raw['v'] ?? null) === 2 && isset($raw['groups']) && is_array($raw['groups'])) {
-            return $this->normalizeV2($raw);
+        $version = (int) ($raw['v'] ?? 0);
+        if (in_array($version, [2, 3], true) && isset($raw['groups']) && is_array($raw['groups'])) {
+            return $this->normalizeGroupedCanvas($raw);
         }
 
         return $this->emptyCanvas();
@@ -82,9 +105,14 @@ class RoomAreaCanvasData
 
     /**
      * @param  array<mixed>  $input
-     * @return array{v: int, groups: list<array{id: string, color: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>}
+     * @return array{
+     *   v: int,
+     *   groups: list<array{id: string, color: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>,
+     *   objects?: list<array<string, mixed>>,
+     *   background?: array{x: float, y: float, width: float, height: float}
+     * }
      */
-    private function normalizeV2(array $input): array
+    private function normalizeGroupedCanvas(array $input): array
     {
         $groups = [];
         $groupIndex = 0;
@@ -138,10 +166,17 @@ class RoomAreaCanvasData
             return $this->emptyCanvas();
         }
 
+        $objects = $this->normalizeObjects($input['objects'] ?? null, $groups);
+        $version = ((int) ($input['v'] ?? 2) >= 3 || $objects !== []) ? 3 : 2;
+
         $canvas = [
-            'v' => 2,
+            'v' => $version,
             'groups' => $groups,
         ];
+
+        if ($version >= 3) {
+            $canvas['objects'] = $objects;
+        }
 
         $background = $this->normalizeBackground($input['background'] ?? null);
         if ($background !== null) {
@@ -149,6 +184,167 @@ class RoomAreaCanvasData
         }
 
         return $canvas;
+    }
+
+    /**
+     * @param  list<mixed>|null  $raw
+     * @param  list<array{id: string, color: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>  $groups
+     * @return list<array<string, mixed>>
+     */
+    private function normalizeObjects(?array $raw, array $groups): array
+    {
+        if ($raw === null || $raw === []) {
+            return [];
+        }
+
+        $validWallIds = $this->collectWallIds($groups);
+        $objects = [];
+        $index = 0;
+
+        foreach ($raw as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $index++;
+            $normalized = $this->normalizeObject($item, $index, $validWallIds);
+            if ($normalized !== null) {
+                $objects[] = $normalized;
+            }
+        }
+
+        return $objects;
+    }
+
+    /**
+     * @param  list<array{id: string, polygons: list<array{id: string, vertices: list<array{x: float, y: float}>}>}>  $groups
+     * @return list<string>
+     */
+    private function collectWallIds(array $groups): array
+    {
+        $ids = [];
+        foreach ($groups as $group) {
+            foreach ($group['polygons'] as $polygon) {
+                $verts = $polygon['vertices'];
+                $count = count($verts);
+                if ($count < 2) {
+                    continue;
+                }
+                for ($i = 0; $i < $count; $i++) {
+                    $j = ($i + 1) % $count;
+                    if ($count === 2 && $i === 1) {
+                        break;
+                    }
+                    $ids[] = $this->wallId($polygon['id'], $i, $j);
+                }
+            }
+        }
+
+        return $ids;
+    }
+
+    public function wallId(string $polygonId, int $start, int $end): string
+    {
+        return 'wall_'.$polygonId.'_'.$start.'_'.$end;
+    }
+
+    /**
+     * @param  array<mixed>  $item
+     * @param  list<string>  $validWallIds
+     * @return array<string, mixed>|null
+     */
+    private function normalizeObject(array $item, int $index, array $validWallIds): ?array
+    {
+        $type = isset($item['type']) && is_string($item['type'])
+            ? strtolower(trim($item['type']))
+            : '';
+        if (! in_array($type, self::OBJECT_TYPES, true)) {
+            return null;
+        }
+
+        $subtype = isset($item['subtype']) && is_string($item['subtype'])
+            ? strtolower(trim($item['subtype']))
+            : $this->defaultSubtype($type);
+        if (! in_array($subtype, self::OBJECT_SUBTYPES, true)) {
+            $subtype = $this->defaultSubtype($type);
+        }
+
+        $wallId = isset($item['wall_id']) && is_string($item['wall_id'])
+            ? trim($item['wall_id'])
+            : '';
+        if ($wallId === '' || ! preg_match('/^wall_[A-Za-z0-9._-]+_\d+_\d+$/', $wallId)) {
+            return null;
+        }
+        if ($validWallIds !== [] && ! in_array($wallId, $validWallIds, true)) {
+            return null;
+        }
+
+        $width = isset($item['width']) ? (float) $item['width'] : $this->defaultWidth($type, $subtype);
+        if ($width < 6 || $width > 240) {
+            return null;
+        }
+
+        $offset = isset($item['offset']) ? (float) $item['offset'] : 0.0;
+        if ($offset < 0) {
+            $offset = 0.0;
+        }
+
+        $id = isset($item['id']) && is_string($item['id']) && $item['id'] !== ''
+            ? $item['id']
+            : 'obj_'.$index;
+
+        $object = [
+            'id' => $id,
+            'type' => $type,
+            'subtype' => $subtype,
+            'wall_id' => $wallId,
+            'width' => round($width, 3),
+            'offset' => round($offset, 3),
+        ];
+
+        if ($type === 'door' || $type === 'opening') {
+            $swing = isset($item['swing']) && is_string($item['swing'])
+                ? strtolower(trim($item['swing']))
+                : 'left_in';
+            $object['swing'] = in_array($swing, self::OBJECT_SWINGS, true) ? $swing : 'left_in';
+
+            $hinge = isset($item['hinge']) && is_string($item['hinge'])
+                ? strtolower(trim($item['hinge']))
+                : 'left';
+            $object['hinge'] = in_array($hinge, self::OBJECT_HINGES, true) ? $hinge : 'left';
+        }
+
+        if ($type === 'window' || $type === 'opening') {
+            $height = isset($item['height']) ? (float) $item['height'] : 48.0;
+            $sill = isset($item['sill_height']) ? (float) $item['sill_height'] : 36.0;
+            if ($height > 0 && $height <= 240) {
+                $object['height'] = round($height, 3);
+            }
+            if ($sill >= 0 && $sill <= 240) {
+                $object['sill_height'] = round($sill, 3);
+            }
+        }
+
+        return $object;
+    }
+
+    private function defaultSubtype(string $type): string
+    {
+        return match ($type) {
+            'window' => 'fixed',
+            'opening' => 'archway',
+            default => 'single',
+        };
+    }
+
+    private function defaultWidth(string $type, string $subtype): float
+    {
+        return match (true) {
+            $type === 'door' && $subtype === 'double' => 60.0,
+            $type === 'door' && in_array($subtype, ['sliding', 'pocket', 'bifold'], true) => 60.0,
+            $type === 'window' => 36.0,
+            $type === 'opening' => 36.0,
+            default => 36.0,
+        };
     }
 
     /**
