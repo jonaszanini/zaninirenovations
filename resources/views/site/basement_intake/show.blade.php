@@ -325,5 +325,5 @@
 @endsection
 
 @push('scripts')
-<script src="{{ url('js/basement-intake.js') }}?v={{ @filemtime(public_path('js/basement-intake.js')) ?: time() }}"></script>
+<script src="{{ url('js/basement-intake.js') }}?v={{ @filemtime(public_path('js/basement-intake.js')) ?: time() }}" defer></script>
 @endpush

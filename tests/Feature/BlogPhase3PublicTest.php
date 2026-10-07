@@ -21,8 +21,9 @@ class BlogPhase3PublicTest extends IntegrationTestCase
 
         $html = $this->get(route('blog.show', $post))->assertOk()->getContent();
 
-        $this->assertStringContainsString('Ottawa deck repair tips — Zanini Renovations', $html);
-        $this->assertStringContainsString('property="og:title" content="Ottawa deck repair tips — Zanini Renovations"', $html);
+        $this->assertStringContainsString('<title>Ottawa deck repair tips</title>', $html);
+        $this->assertStringContainsString('property="og:title" content="Ottawa deck repair tips"', $html);
+        $this->assertLessThanOrEqual(60, mb_strlen('Ottawa deck repair tips'));
         $this->assertStringContainsString('Visible heading about decks', $html);
     }
 

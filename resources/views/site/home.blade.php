@@ -1,7 +1,7 @@
 @extends('site.layouts.public')
 
 @section('page_title', config('seo.home_title'))
-@section('meta_description', 'Decks, fences, basement finishing, trim & built-ins across Carleton Place, Kanata, Stittsville & Ottawa. WSIB-cleared, $3M insured. Free estimates.')
+@section('meta_description', 'Decks, fences, basement finishing, trim & built-ins across Carleton Place, Kanata, Stittsville & Ottawa. Fully insured, since 2020. Free estimates.')
 @section('canonical', url('/'))
 
 @push('jsonld')
@@ -396,10 +396,7 @@
               Do you have any questions ? Feel free to contact.
             </h2>
             <p class="text-light-color">
-
-              Client oriented, long experienced and professional builders are ready
-                                                                                                                                                          to get you built your dream project.
-
+              Work directly with Jonas, from the first visit to the final walkthrough.
             </p>
           </div>
           <!--  end .col-md-8  -->
@@ -703,7 +700,7 @@
 
     @include('site.partials.home-blog')
 
-    @php $homeFaq = config('seo.home_faq', []); @endphp
+    @php $homeFaq = \App\Support\SeoStructuredData::homeFaqItems(); @endphp
     @if (is_array($homeFaq) && count($homeFaq) > 0)
     <section id="faq" class="section-content-block home-faq-section" aria-labelledby="home-faq-heading">
       <div class="container">

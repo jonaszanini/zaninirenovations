@@ -1320,7 +1320,7 @@ jQuery(function ($) {
                     
                     var contactPostUrl = $('meta[name="contact-post-url"]').attr("content");
                     if (!contactPostUrl) {
-                        contactPostUrl = "contact_email.php";
+                        contactPostUrl = "/contact-email";
                     }
                     var csrfToken = $('meta[name="csrf-token"]').attr("content");
                     var ajaxHeaders = {};

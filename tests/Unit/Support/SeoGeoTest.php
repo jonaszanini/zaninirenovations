@@ -86,6 +86,8 @@ class SeoGeoTest extends TestCase
         $this->assertArrayNotHasKey('aggregateRating', $business);
         $this->assertArrayNotHasKey('review', $business);
         $this->assertArrayNotHasKey('geo', $business, 'Geo coordinates should not be published for a service-area business');
+        $this->assertSame('2020', $business['foundingDate']);
+        $this->assertSame(config('seo.area_served'), $business['areaServed']);
         $this->assertContains(
             'https://maps.google.com/?cid=7676669856408637146',
             $business['sameAs']

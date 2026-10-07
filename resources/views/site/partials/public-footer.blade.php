@@ -22,12 +22,10 @@
               <div class="col-lg-10 col-lg-offset-1 col-md-12 col-sm-12 col-xs-12">
 
                 <figure>
-                  <img src="{{ url('images/logo-footer.webp') }}" alt="Zanini Renovations" loading="lazy" decoding="async">
+                  <img src="{{ url('images/logo-footer.webp') }}" alt="Zanini Renovations" loading="lazy" decoding="async" width="254" height="63">
                 </figure>
                 <p class="margin-top-24">
-
-                Zanini Renovations is Ontario’s trusted expert for general carpentry and complete renovations. From custom trim to full builds, we provide residential and commercial excellence with superior warranties and the best professional pricing.
-
+                Zanini Renovations is a carpentry and renovation business based in Carleton Place, in business since 2020, handling residential and commercial work, including kitchen remodels.
                 </p>
                 <div class="footer-social-icons">
 

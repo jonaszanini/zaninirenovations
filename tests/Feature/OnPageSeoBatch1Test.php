@@ -147,13 +147,15 @@ class OnPageSeoBatch1Test extends TestCase
     }
 
     /**
-     * llms.txt summary must say "one-person".
+     * llms.txt summary must not say "one-person".
      */
-    public function test_llms_txt_says_one_person(): void
+    public function test_llms_txt_does_not_say_one_person(): void
     {
-        $txt = LlmsTxtGenerator::generate(collect(), collect());
+        $txt = strtolower(LlmsTxtGenerator::generate(collect(), collect()));
 
-        $this->assertStringContainsString('one-person', strtolower($txt));
+        $this->assertStringNotContainsString('one-person', $txt);
+        $this->assertStringNotContainsString('one person', $txt);
+        $this->assertStringNotContainsString('wsib', $txt);
     }
 
     /**
