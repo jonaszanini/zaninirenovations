@@ -96,8 +96,8 @@
   function canvasPolygonFill(hex, opacity) {
     var a = opacity == null ? 1 : opacity;
     if (!isAdminDark()) return hexToRgba(hex, 0.12 * a);
-    var mixed = mixHex(hex || DEFAULT_GROUP_COLOR, '#7dd3fc', 0.62);
-    return hexToRgba(mixed, 0.26 * a);
+    var mixed = mixHex(hex || DEFAULT_GROUP_COLOR, '#7dd3fc', 0.72);
+    return hexToRgba(mixed, 0.38 * a);
   }
 
   function mixHex(aHex, bHex, t) {
