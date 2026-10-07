@@ -92,7 +92,9 @@
 
       <div class="admin-form-group">
         <label for="bp-excerpt">Excerpt <small class="admin-form-help cp-inline-help">(optional — auto-generated from content if empty)</small></label>
-        <textarea id="bp-excerpt" name="excerpt" rows="2" maxlength="500" class="admin-input">{{ old('excerpt', $post->excerpt) }}</textarea>
+        <textarea id="bp-excerpt" name="excerpt" rows="2" maxlength="{{ \App\Models\BlogPost::EXCERPT_MAX }}" class="admin-input">{{ old('excerpt', $post->excerpt) }}</textarea>
+        <p class="admin-form-help admin-char-count" id="bp-excerpt-count" aria-live="polite"></p>
+        @error('excerpt') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
       <div class="admin-form-group">
@@ -165,7 +167,14 @@
       var slugEl = document.getElementById('bp-slug');
 
       function slugify(t) {
-        return (t || '').toLowerCase().trim()
+        return (t || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/æ/g, 'ae').replace(/Æ/g, 'ae')
+          .replace(/œ/g, 'oe').replace(/Œ/g, 'oe')
+          .replace(/ß/g, 'ss')
+          .toLowerCase()
+          .trim()
           .replace(/[^a-z0-9\s-]/g, '')
           .replace(/\s+/g, '-')
           .replace(/-+/g, '-')
@@ -242,6 +251,9 @@
         height: 560,
         branding: false,
         promotion: false,
+        relative_urls: false,
+        remove_script_host: false,
+        convert_urls: true,
         paste_data_images: true,
         automatic_uploads: true,
         images_upload_handler: function (blobInfo) {
@@ -358,6 +370,16 @@
         aiStatus.classList.toggle('is-error', !!isError);
       }
 
+      function featuredImageIsPresent() {
+        var wrap = document.getElementById('bp-featured-preview-wrap');
+        var img = document.getElementById('bp-featured-preview-img');
+        if (wrap && !wrap.hidden && img && (img.getAttribute('src') || '').trim() !== '') {
+          return true;
+        }
+        var pending = document.getElementById('bp-pending-featured-path');
+        return !!(pending && pending.value.trim() !== '');
+      }
+
       function metadataFieldsHaveValues() {
         var excerpt = document.getElementById('bp-excerpt');
         var meta = document.getElementById('bp-meta');
@@ -368,7 +390,8 @@
           || (meta && meta.value.trim() !== '')
           || (tags && tags.value.trim() !== '')
           || (imagePrompt && imagePrompt.value.trim() !== '')
-          || hasCats;
+          || hasCats
+          || featuredImageIsPresent();
       }
 
       function applyFeaturedPreview(data) {
@@ -377,7 +400,6 @@
         var removeWrap = document.getElementById('bp-remove-featured-wrap');
         var removeCb = document.getElementById('bp-remove-featured');
         var pending = document.getElementById('bp-pending-featured-path');
-        var postId = parseInt(aiBtn.getAttribute('data-post-id') || '0', 10);
 
         if (!data.featured_image_url || !wrap || !img) {
           return;
@@ -395,7 +417,7 @@
         if (removeCb) removeCb.checked = false;
 
         if (pending) {
-          pending.value = (postId> 0) ? '' : (data.featured_image_path || '');
+          pending.value = data.featured_image_path || '';
         }
       }
 
@@ -470,6 +492,18 @@
             }
           },
         });
+      }
+
+      var excerptEl = document.getElementById('bp-excerpt');
+      var excerptCount = document.getElementById('bp-excerpt-count');
+      function updateExcerptCount() {
+        if (!excerptEl || !excerptCount) return;
+        var max = parseInt(excerptEl.getAttribute('maxlength') || String({{ \App\Models\BlogPost::EXCERPT_MAX }}), 10);
+        excerptCount.textContent = (excerptEl.value || '').length + ' / ' + max;
+      }
+      if (excerptEl) {
+        excerptEl.addEventListener('input', updateExcerptCount);
+        updateExcerptCount();
       }
 
       if (aiBtn) {
@@ -547,7 +581,10 @@
           }
 
           if (metadataFieldsHaveValues()) {
-            window.AdminDialog.confirm('Replace excerpt, categories, tags, meta description, AI image prompt, and featured image with AI suggestions?', { title: 'Replace metadata' }).then(function (ok) {
+            var confirmMsg = featuredImageIsPresent()
+              ? 'Replace excerpt, categories, tags, meta description, and AI image prompt with AI suggestions? A new featured image will be generated and only replace the current one when you save.'
+              : 'Replace excerpt, categories, tags, meta description, AI image prompt, and featured image with AI suggestions?';
+            window.AdminDialog.confirm(confirmMsg, { title: 'Replace metadata' }).then(function (ok) {
               if (!ok) return;
               runAi();
             });

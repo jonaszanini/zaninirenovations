@@ -177,7 +177,7 @@ class BlogPostController extends Controller
                 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
                 Rule::unique('blog_posts', 'slug')->ignore($postId),
             ],
-            'excerpt' => ['nullable', 'string', 'max:500'],
+            'excerpt' => ['nullable', 'string', 'max:'.BlogPost::EXCERPT_MAX],
             'html_content' => ['nullable', 'string'],
             'meta_description' => ['nullable', 'string', 'max:320'],
             'ai_image_prompt' => ['nullable', 'string', 'max:2000'],
@@ -201,7 +201,7 @@ class BlogPostController extends Controller
 
         if (blank($data['excerpt'] ?? null)) {
             $plain = trim(preg_replace('/\s+/', ' ', strip_tags((string) ($data['html_content'] ?? ''))));
-            $data['excerpt'] = Str::limit($plain, 500);
+            $data['excerpt'] = Str::limit($plain, BlogPost::EXCERPT_MAX);
         }
 
         // datetime-local submits "" when empty; MySQL rejects that for timestamp columns.

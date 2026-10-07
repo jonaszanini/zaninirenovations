@@ -127,14 +127,8 @@
                 </div>
               </div>
               <textarea name="body" class="form-control" rows="5" placeholder="Your comment" required maxlength="5000">{{ old('body') }}</textarea>
-              @if ($captchaMode === 'math' && $captchaChallenge)
-                <p class="blog-captcha">
-                  <label>What is {{ $captchaChallenge['a'] }} + {{ $captchaChallenge['b'] }}?</label>
-                  <input type="number" name="captcha_answer" class="form-control" required style="max-width:120px;display:inline-block;">
-                  <input type="hidden" name="captcha_token" value="{{ $captchaChallenge['token'] }}">
-                </p>
-              @elseif ($captchaMode === 'recaptcha_v2' && filled(config('blog.recaptcha_site_key')))
-                <div class="g-recaptcha" data-sitekey="{{ config('blog.recaptcha_site_key') }}"></div>
+              @include('site.blog.partials.captcha', ['captchaAnswerId' => 'captcha-answer'])
+              @if ($captchaMode === 'recaptcha_v2' && filled(config('blog.recaptcha_site_key')))
                 @push('scripts')
                   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
                 @endpush
