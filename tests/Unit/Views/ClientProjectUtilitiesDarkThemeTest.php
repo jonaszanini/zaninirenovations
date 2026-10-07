@@ -40,6 +40,7 @@ class ClientProjectUtilitiesDarkThemeTest extends TestCase
         $this->assertStringContainsString('html.admin-dark .cp-utilities-section__count', $darkCss);
         $this->assertStringContainsString('html.admin-dark .cp-utilities-section__head h3 .fa', $darkCss);
         $this->assertStringContainsString('html.admin-dark .cp-utilities-item__room-area', $darkCss);
+        $this->assertStringContainsString('html.admin-dark .cp-utilities-item__room-photos', $darkCss);
         $this->assertStringContainsString('html.admin-dark .cp-utilities-item__rooms li', $darkCss);
     }
 
@@ -62,7 +63,7 @@ class ClientProjectUtilitiesDarkThemeTest extends TestCase
                     'updated_label' => 'Sep 6, 2026',
                     'open_url' => '/admin/utilities/room-area?project=1',
                     'rooms' => [
-                        ['name' => 'Main', 'area_label' => '338.3 sq ft'],
+                        ['name' => 'Main', 'area_label' => '338.3 sq ft', 'photo_count' => 3],
                         ['name' => 'Small office', 'area_label' => '115.75 sq ft'],
                     ],
                 ],
@@ -88,6 +89,7 @@ class ClientProjectUtilitiesDarkThemeTest extends TestCase
         $this->assertStringContainsString('cp-utilities-item', $html);
         $this->assertStringContainsString('Main', $html);
         $this->assertStringContainsString('338.3 sq ft', $html);
+        $this->assertStringContainsString('3 photos', $html);
         $this->assertStringContainsString('Small office', $html);
         $this->assertStringContainsString('115.75 sq ft', $html);
         $this->assertStringContainsString('454.05 sq ft total', $html);

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\RoomAreaCanvasData;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RoomAreaRoom extends Model
 {
@@ -78,5 +79,10 @@ class RoomAreaRoom extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(RoomAreaProject::class, 'room_area_project_id');
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(RoomAreaPhoto::class)->orderBy('sort_order')->orderBy('id');
     }
 }

@@ -851,6 +851,10 @@ html.admin-dark .cp-utilities-item__name {
   color: var(--admin-heading);
 }
 
+html.admin-dark .cp-utilities-item__top {
+  color: var(--admin-text);
+}
+
 html.admin-dark .cp-utilities-item__meta {
   color: var(--admin-muted);
 }
@@ -862,6 +866,10 @@ html.admin-dark .cp-utilities-item__rooms li {
 
 html.admin-dark .cp-utilities-item__room-area {
   color: var(--admin-heading);
+}
+
+html.admin-dark .cp-utilities-item__room-photos {
+  color: var(--admin-muted);
 }
 
 html.admin-dark .cp-utilities-item__pdf {
@@ -1327,6 +1335,49 @@ html.admin-dark .util-ra-rooms-item__actions .admin-btn--ghost:hover {
   color: var(--admin-primary);
   border-color: var(--admin-primary);
   background: var(--admin-primary-soft);
+}
+
+html.admin-dark .util-ra-type-walls {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-type-walls__dir.is-active {
+  background: var(--admin-input-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-type-walls__gap.is-closed {
+  color: #4ade80;
+}
+
+html.admin-dark .util-ra-type-walls__gap.is-off {
+  color: #fdba74;
+}
+
+html.admin-dark .util-ra-photos__thumb {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-lightbox__figure {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-lightbox__caption-input {
+  background: var(--admin-input-bg);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-photos__thumb-del {
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-rooms-item__photos {
+  color: var(--admin-muted);
 }
 
 html.admin-dark .util-ra-rooms-item {
