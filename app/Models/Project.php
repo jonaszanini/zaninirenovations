@@ -10,6 +10,26 @@ use Illuminate\Support\Str;
 
 class Project extends Model
 {
+    /** Short public Town labels (no ward or neighbourhood). */
+    public const APPROVED_TOWNS = [
+        'Almonte',
+        'Alta Vista',
+        'Ashton',
+        'Barrhaven',
+        'Carleton Place',
+        'Gatineau, QC',
+        'Kanata',
+        'Nepean',
+        'Perth',
+        'Riverside South',
+        'South Keys',
+        'Stittsville',
+        'Toronto',
+        'West Carleton',
+    ];
+
+    public const OUT_OF_MARKET_TOWN = 'Toronto';
+
     protected $fillable = [
         'title',
         'slug',
@@ -17,6 +37,7 @@ class Project extends Model
         'meta_title',
         'meta_description',
         'completed_on',
+        'town',
     ];
 
     protected $casts = [
@@ -118,6 +139,44 @@ class Project extends Model
     public function publicUrl(): string
     {
         return route('portfolio.show', ['slug' => $this->slug]);
+    }
+
+    public function townLabel(): string
+    {
+        return trim((string) $this->town);
+    }
+
+    public function isOutOfMarket(): bool
+    {
+        return strcasecmp($this->townLabel(), self::OUT_OF_MARKET_TOWN) === 0;
+    }
+
+    public function isInServiceArea(): bool
+    {
+        return ! $this->isOutOfMarket();
+    }
+
+    /**
+     * In-market portfolio examples. Toronto jobs are never local examples.
+     */
+    public function scopeInServiceArea($query)
+    {
+        return $query->where(function ($inner) {
+            $inner->whereNull('town')
+                ->orWhere('town', '')
+                ->orWhereRaw('LOWER(town) <> ?', [strtolower(self::OUT_OF_MARKET_TOWN)]);
+        });
+    }
+
+    /**
+     * Projects in a named town that may be linked from local / "near X" context.
+     * Toronto always yields an empty set.
+     */
+    public function scopeNearTown($query, string $town)
+    {
+        $town = trim($town);
+
+        return $query->inServiceArea()->where('town', $town);
     }
 
     public function seoTitle(): string

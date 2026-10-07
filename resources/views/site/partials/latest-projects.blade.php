@@ -30,6 +30,9 @@
         </div>
 
       </a>
+      @if ($project->townLabel() !== '')
+        <p class="portfolio-card-town">{{ $project->townLabel() }}</p>
+      @endif
       <!-- end .gallery-light-box  -->
 
     </div>
