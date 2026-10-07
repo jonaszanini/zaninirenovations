@@ -108,7 +108,7 @@
                     'optionsSource' => 'et-invoice-options',
                     'selectedOption' => $best ? [
                       'id' => $best['invoice_id'],
-                      'name' => $best['invoice_number'].' — '.$best['client_name'].' — '.ClientProject::formatMoney($best['outstanding']),
+                      'name' => trim($best['invoice_number'].' · '.$best['client_name']),
                     ] : null,
                     'value' => $best['invoice_id'] ?? '',
                     'metaKeys' => [],
@@ -136,9 +136,9 @@
 
   <div class="cp-modal-backdrop" id="et-paste-modal" @if ($errors->any() && old('raw_text')) @else hidden @endif>
     <div class="cp-modal" role="dialog" aria-labelledby="et-paste-title" aria-modal="true">
-      <div class="cp-modal-header">
+      <div class="cp-modal-header et-paste-header">
         <h3 id="et-paste-title">Paste Interac email</h3>
-        <button type="button" class="cp-modal-close" data-et-close-paste aria-label="Close">&times;</button>
+        <button type="button" class="cp-modal-close et-paste-close" data-et-close-paste aria-label="Close">&times;</button>
       </div>
       <form method="post" action="{{ route('admin.financials.etransfers.store') }}" class="et-paste-form">
         @csrf
@@ -147,32 +147,35 @@
             <label for="et-raw-text">Email text</label>
             <textarea id="et-raw-text" name="raw_text" class="admin-input" required placeholder="Paste the Interac notification here">{{ old('raw_text') }}</textarea>
           </div>
-          <div class="et-paste-fields">
-            <div class="admin-form-group">
-              <label for="et-amount">Amount (optional override)</label>
-              <input type="text" id="et-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" value="{{ old('amount') }}" placeholder="0.00">
+          <details class="et-paste-advanced" @if (old('amount') || old('sender_name') || old('sender_email') || old('reference_number') || old('message') || old('received_at')) open @endif>
+            <summary>Optional overrides</summary>
+            <div class="et-paste-fields">
+              <div class="admin-form-group">
+                <label for="et-amount">Amount</label>
+                <input type="text" id="et-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" value="{{ old('amount') }}" placeholder="0.00">
+              </div>
+              <div class="admin-form-group">
+                <label for="et-sender-name">Sender name</label>
+                <input type="text" id="et-sender-name" name="sender_name" class="admin-input" value="{{ old('sender_name') }}">
+              </div>
+              <div class="admin-form-group">
+                <label for="et-sender-email">Sender email</label>
+                <input type="email" id="et-sender-email" name="sender_email" class="admin-input" value="{{ old('sender_email') }}">
+              </div>
+              <div class="admin-form-group">
+                <label for="et-ref">Reference</label>
+                <input type="text" id="et-ref" name="reference_number" class="admin-input" value="{{ old('reference_number') }}">
+              </div>
+              <div class="admin-form-group">
+                <label for="et-message">Message</label>
+                <input type="text" id="et-message" name="message" class="admin-input" value="{{ old('message') }}">
+              </div>
+              <div class="admin-form-group">
+                <label for="et-received">Received</label>
+                <input type="datetime-local" id="et-received" name="received_at" class="admin-input" value="{{ old('received_at') }}">
+              </div>
             </div>
-            <div class="admin-form-group">
-              <label for="et-sender-name">Sender name</label>
-              <input type="text" id="et-sender-name" name="sender_name" class="admin-input" value="{{ old('sender_name') }}">
-            </div>
-            <div class="admin-form-group">
-              <label for="et-sender-email">Sender email</label>
-              <input type="email" id="et-sender-email" name="sender_email" class="admin-input" value="{{ old('sender_email') }}">
-            </div>
-            <div class="admin-form-group">
-              <label for="et-ref">Reference</label>
-              <input type="text" id="et-ref" name="reference_number" class="admin-input" value="{{ old('reference_number') }}">
-            </div>
-            <div class="admin-form-group">
-              <label for="et-message">Message</label>
-              <input type="text" id="et-message" name="message" class="admin-input" value="{{ old('message') }}">
-            </div>
-            <div class="admin-form-group">
-              <label for="et-received">Received</label>
-              <input type="datetime-local" id="et-received" name="received_at" class="admin-input" value="{{ old('received_at') }}">
-            </div>
-          </div>
+          </details>
         </div>
         <div class="cp-modal-footer">
           <button type="button" class="admin-btn admin-btn--ghost" data-et-close-paste>Cancel</button>

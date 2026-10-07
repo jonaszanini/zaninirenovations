@@ -65,10 +65,7 @@ class EtransferNoticeController extends Controller
         $invoiceOptions = $openInvoices->map(function (ClientProjectInvoice $invoice) {
             $project = $invoice->project;
             $client = $project?->invoiceBillToName() ?: ($project?->client_name ?? '');
-            $label = $invoice->invoice_number
-                .' — '.$client
-                .' — '.($project?->name ?? 'Project')
-                .' — '.\App\Models\ClientProject::formatMoney((float) $invoice->total);
+            $label = trim($invoice->invoice_number.' · '.$client);
 
             return [
                 'id' => $invoice->id,
@@ -171,9 +168,7 @@ class EtransferNoticeController extends Controller
         return response()->json($invoices->take(20)->map(function (ClientProjectInvoice $invoice) {
             $project = $invoice->project;
             $client = $project?->invoiceBillToName() ?: ($project?->client_name ?? '');
-            $label = $invoice->invoice_number
-                .' — '.$client
-                .' — '.\App\Models\ClientProject::formatMoney((float) $invoice->total);
+            $label = trim($invoice->invoice_number.' · '.$client);
 
             return [
                 'id' => $invoice->id,
