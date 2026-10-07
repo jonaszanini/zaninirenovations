@@ -37,9 +37,13 @@ class HtmlContentSanitizer
             return $html;
         }
 
+        $html = self::stripHtmlComments($html);
         $html = self::normalizeEditorImageSources($html);
+        $html = self::unwrapMisusedCodeBlocks($html);
+        $html = trim(self::purifier()->purify($html));
+        $html = self::removeEmptyHeadingsAndParagraphs($html);
 
-        return trim(self::purifier()->purify($html));
+        return trim($html);
     }
 
     private static function purifier(): HTMLPurifier
@@ -143,6 +147,289 @@ class HtmlContentSanitizer
         }
 
         return $path;
+    }
+
+    public static function stripHtmlComments(string $html): string
+    {
+        $stripped = preg_replace('/<!--.*?-->/s', '', $html);
+
+        return is_string($stripped) ? $stripped : $html;
+    }
+
+    /**
+     * Gemini often wraps a lone image or a prose sentence in div>pre>code.
+     * Those blocks do not render as article content — unwrap them. Keep real code.
+     */
+    private static function unwrapMisusedCodeBlocks(string $html): string
+    {
+        if (stripos($html, '<pre') === false && stripos($html, '<code') === false) {
+            return $html;
+        }
+
+        $dom = self::loadFragment($html);
+        if (! $dom) {
+            return $html;
+        }
+
+        $xpath = new \DOMXPath($dom);
+        foreach (['//code', '//pre'] as $query) {
+            $nodes = iterator_to_array($xpath->query($query) ?: []);
+            foreach (array_reverse($nodes) as $node) {
+                if (! $node instanceof \DOMElement || ! $node->parentNode) {
+                    continue;
+                }
+                if (self::shouldUnwrapCodeish($node)) {
+                    self::replaceNodeWithChildren($node);
+                }
+            }
+        }
+
+        self::unwrapCodeWrapperDivs($dom);
+
+        return self::saveFragment($dom) ?? $html;
+    }
+
+    private static function shouldUnwrapCodeish(\DOMElement $node): bool
+    {
+        if (self::looksLikeRealCode($node)) {
+            return false;
+        }
+
+        return self::isImageOrProseOnly($node);
+    }
+
+    private static function looksLikeRealCode(\DOMElement $node): bool
+    {
+        $images = $node->getElementsByTagName('img');
+        if ($images->length > 0 && self::onlyImagesAndBlank($node)) {
+            return false;
+        }
+
+        $text = $node->textContent ?? '';
+        if (preg_match('/<[a-z][^>]*>/i', $text) && self::elementDescendantCount($node) === 0) {
+            return true;
+        }
+
+        if (preg_match('/\bfunction\s+\w+\s*\(/', $text)) {
+            return true;
+        }
+        if (preg_match('/\b(const|let|var)\s+\w+\s*=/', $text)) {
+            return true;
+        }
+        if (preg_match('/[{}]/', $text) && preg_match('/;/', $text)) {
+            return true;
+        }
+        if (substr_count($text, "\n") >= 2 && preg_match('/[{}=;]/', $text)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static function isImageOrProseOnly(\DOMElement $node): bool
+    {
+        if (self::onlyImagesAndBlank($node)) {
+            return $node->getElementsByTagName('img')->length > 0
+                || self::visualText($node) === '';
+        }
+
+        $allowed = ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'a', 'span', 'img', 'code'];
+        foreach ($node->getElementsByTagName('*') as $el) {
+            if (! in_array(strtolower($el->tagName), $allowed, true)) {
+                return false;
+            }
+        }
+
+        return self::visualText($node) !== '' || $node->getElementsByTagName('img')->length > 0;
+    }
+
+    private static function elementDescendantCount(\DOMElement $node): int
+    {
+        $count = 0;
+        foreach ($node->getElementsByTagName('*') as $ignored) {
+            $count++;
+        }
+
+        return $count;
+    }
+
+    private static function onlyImagesAndBlank(\DOMElement $node): bool
+    {
+        foreach ($node->childNodes as $child) {
+            if ($child instanceof \DOMText) {
+                if (self::visualTextValue($child->textContent) !== '') {
+                    return false;
+                }
+                continue;
+            }
+            if (! $child instanceof \DOMElement) {
+                continue;
+            }
+            $tag = strtolower($child->tagName);
+            if ($tag === 'br') {
+                continue;
+            }
+            if ($tag === 'code' || $tag === 'span') {
+                if (! self::onlyImagesAndBlank($child)) {
+                    return false;
+                }
+                continue;
+            }
+            if ($tag !== 'img') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function unwrapCodeWrapperDivs(\DOMDocument $dom): void
+    {
+        $xpath = new \DOMXPath($dom);
+        $divs = iterator_to_array($xpath->query('//div') ?: []);
+        foreach (array_reverse($divs) as $div) {
+            if (! $div instanceof \DOMElement || ! $div->parentNode) {
+                continue;
+            }
+            if ($div->getAttribute('id') === 'zr-root') {
+                continue;
+            }
+            $class = $div->getAttribute('class');
+            $isCodeWrap = $class !== '' && preg_match('/highlight|codehilite|language-|hljs|sourcecode|code-block/i', $class);
+            $kids = [];
+            foreach ($div->childNodes as $child) {
+                if ($child instanceof \DOMText && self::visualTextValue($child->textContent) === '') {
+                    continue;
+                }
+                $kids[] = $child;
+            }
+            if (count($kids) !== 1 || ! $kids[0] instanceof \DOMElement) {
+                continue;
+            }
+            $tag = strtolower($kids[0]->tagName);
+            if ($tag === 'img' || $isCodeWrap) {
+                self::replaceNodeWithChildren($div);
+            }
+        }
+    }
+
+    private static function removeEmptyHeadingsAndParagraphs(string $html): string
+    {
+        if ($html === '' || (stripos($html, '<h') === false && stripos($html, '<p') === false)) {
+            return $html;
+        }
+
+        $dom = self::loadFragment($html);
+        if (! $dom) {
+            return $html;
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $nodes = iterator_to_array($xpath->query('//h1|//h2|//h3|//h4|//h5|//h6|//p') ?: []);
+        foreach ($nodes as $node) {
+            if (! $node instanceof \DOMElement || ! $node->parentNode) {
+                continue;
+            }
+            if (self::isVisuallyEmptyBlock($node)) {
+                $node->parentNode->removeChild($node);
+            }
+        }
+
+        return self::saveFragment($dom) ?? $html;
+    }
+
+    private static function isVisuallyEmptyBlock(\DOMElement $node): bool
+    {
+        if ($node->getElementsByTagName('img')->length > 0
+            || $node->getElementsByTagName('iframe')->length > 0) {
+            return false;
+        }
+
+        return self::visualText($node) === '';
+    }
+
+    private static function visualText(\DOMElement $node): string
+    {
+        return self::visualTextValue($node->textContent ?? '');
+    }
+
+    private static function visualTextValue(string $text): string
+    {
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\x{00A0}|\x{200B}|\x{200C}|\x{200D}|\x{FEFF}/u', ' ', $text) ?? $text;
+
+        return trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
+    }
+
+    private static function replaceNodeWithChildren(\DOMElement $node): void
+    {
+        $parent = $node->parentNode;
+        if (! $parent) {
+            return;
+        }
+
+        $tag = strtolower($node->tagName);
+        $children = [];
+        foreach ($node->childNodes as $child) {
+            $children[] = $child;
+        }
+
+        if ($children === [] && ($tag === 'pre' || $tag === 'code')) {
+            $parent->removeChild($node);
+
+            return;
+        }
+
+        $onlyText = $children !== [] && ! array_filter($children, fn ($c) => ! $c instanceof \DOMText);
+        if ($onlyText && ($tag === 'pre' || $tag === 'code')) {
+            $text = self::visualText($node);
+            if ($text !== '') {
+                $p = $node->ownerDocument->createElement('p');
+                $p->appendChild($node->ownerDocument->createTextNode($text));
+                $parent->insertBefore($p, $node);
+            }
+            $parent->removeChild($node);
+
+            return;
+        }
+
+        foreach ($children as $child) {
+            $parent->insertBefore($child, $node);
+        }
+        $parent->removeChild($node);
+    }
+
+    private static function loadFragment(string $html): ?\DOMDocument
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $previous = libxml_use_internal_errors(true);
+        $ok = $dom->loadHTML(
+            '<?xml encoding="UTF-8"><div id="zr-root">'.$html.'</div>',
+            LIBXML_HTML_NODEFDTD
+        );
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        return $ok ? $dom : null;
+    }
+
+    private static function saveFragment(\DOMDocument $dom): ?string
+    {
+        $xpath = new \DOMXPath($dom);
+        $root = $xpath->query('//*[@id="zr-root"]')->item(0);
+        if (! $root) {
+            $root = $dom->getElementsByTagName('body')->item(0);
+        }
+        if (! $root) {
+            return null;
+        }
+
+        $html = '';
+        foreach ($root->childNodes as $child) {
+            $html .= $dom->saveHTML($child);
+        }
+
+        return $html;
     }
 
     /**

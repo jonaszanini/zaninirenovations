@@ -122,4 +122,57 @@ class HtmlContentSanitizerTest extends TestCase
         $this->assertStringContainsString('<th>A</th>', $clean);
         $this->assertStringContainsString('<td>B</td>', $clean);
     }
+
+    public function test_unwraps_pre_code_that_wraps_only_an_image(): void
+    {
+        $html = '<div class="highlight"><pre><code><img src="/storage/blog-inline/1/deck.webp" alt="Deck"></code></pre></div>';
+        $clean = HtmlContentSanitizer::sanitize($html);
+
+        $this->assertStringContainsString('src="/storage/blog-inline/1/deck.webp"', $clean);
+        $this->assertStringContainsString('alt="Deck"', $clean);
+        $this->assertStringNotContainsString('<pre', $clean);
+        $this->assertStringNotContainsString('<code', $clean);
+        $this->assertStringNotContainsString('highlight', $clean);
+    }
+
+    public function test_unwraps_pre_code_that_wraps_plain_prose(): void
+    {
+        $html = '<pre><code>Stain the deck after it dries for two days.</code></pre>';
+        $clean = HtmlContentSanitizer::sanitize($html);
+
+        $this->assertStringContainsString('Stain the deck after it dries for two days.', $clean);
+        $this->assertStringNotContainsString('<pre', $clean);
+        $this->assertStringNotContainsString('<code', $clean);
+    }
+
+    public function test_keeps_real_code_blocks(): void
+    {
+        $html = "<pre><code>function stain() {\n  return true;\n}</code></pre>";
+        $clean = HtmlContentSanitizer::sanitize($html);
+
+        $this->assertStringContainsString('<pre>', $clean);
+        $this->assertStringContainsString('function stain', $clean);
+    }
+
+    public function test_removes_headings_that_contain_only_nbsp_or_whitespace(): void
+    {
+        $html = '<h2>&nbsp;</h2><h3>   </h3><h4><span>&nbsp;</span></h4><h2>Real heading</h2>';
+        $clean = HtmlContentSanitizer::sanitize($html);
+
+        $this->assertStringContainsString('Real heading', $clean);
+        $this->assertSame(1, substr_count(strtolower($clean), '<h2'));
+        $this->assertStringNotContainsString('<h3', $clean);
+        $this->assertStringNotContainsString('<h4', $clean);
+    }
+
+    public function test_removes_empty_paragraphs_and_strips_html_comments(): void
+    {
+        $html = '<p>Keep this.</p><!-- Gemini leftover --><p>&nbsp;</p><p> <!----> </p><p></p>';
+        $clean = HtmlContentSanitizer::sanitize($html);
+
+        $this->assertStringContainsString('Keep this.', $clean);
+        $this->assertStringNotContainsString('<!--', $clean);
+        $this->assertStringNotContainsString('Gemini leftover', $clean);
+        $this->assertSame(1, substr_count(strtolower($clean), '<p'));
+    }
 }
