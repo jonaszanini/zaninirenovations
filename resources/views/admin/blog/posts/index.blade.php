@@ -57,11 +57,10 @@
           <thead>
             <tr>
               <th class="bp-list-table__post">Post</th>
-              <th class="bp-list-col">Category</th>
-              <th class="bp-list-col">Status</th>
-              <th class="bp-list-col bp-list-col-seo">SEO</th>
-              <th class="bp-list-col">Published</th>
-              <th class="bp-list-col">Views</th>
+              <th class="bp-list-col bp-list-col--cat">Category</th>
+              <th class="bp-list-col bp-list-col--status">Status</th>
+              <th class="bp-list-col bp-list-col--date">Published</th>
+              <th class="bp-list-col bp-list-col--views">Views</th>
               <th class="bp-list-table__actions"></th>
             </tr>
           </thead>
@@ -117,21 +116,12 @@
                     </span>
                   </span>
                 </td>
-                <td class="bp-list-col" data-label="Category">{{ $categoryLabel }}</td>
-                <td class="bp-list-col" data-label="Status">
+                <td class="bp-list-col bp-list-col--cat" data-label="Category">{{ $categoryLabel }}</td>
+                <td class="bp-list-col bp-list-col--status" data-label="Status">
                   <span class="{{ $statusClass }}">{{ $statusLabel }}</span>
                 </td>
-                <td class="bp-list-col bp-list-col-seo bp-list-seo" data-label="SEO">
-                  @if ($seoKeys === [])
-                    <span class="bp-seo-badge bp-seo-badge--ok">OK</span>
-                  @else
-                    @foreach ($seoKeys as $key)
-                      <span class="bp-seo-badge bp-seo-badge--warn">{{ ['meta' => 'Meta', 'seo' => 'SEO title', 'image' => 'Image', 'alt' => 'Alt'][$key] ?? $key }}</span>
-                    @endforeach
-                  @endif
-                </td>
-                <td class="bp-list-col" data-label="Published">{{ $post->published_at ? $post->displayDate() : '—' }}</td>
-                <td class="bp-list-col" data-label="Views">{{ number_format($post->views_count) }}</td>
+                <td class="bp-list-col bp-list-col--date" data-label="Published">{{ $post->published_at ? $post->displayDate() : '—' }}</td>
+                <td class="bp-list-col bp-list-col--views" data-label="Views">{{ number_format($post->views_count) }}</td>
                 <td class="admin-table__actions">
                   <div class="bp-list-actions">
                     @if ($post->isPublishedNow())
@@ -174,7 +164,7 @@
               </tr>
             @empty
               <tr>
-                <td colspan="7" class="admin-form-help">No posts match these filters.</td>
+                <td colspan="6" class="admin-form-help">No posts match these filters.</td>
               </tr>
             @endforelse
           </tbody>
