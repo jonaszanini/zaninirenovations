@@ -19,12 +19,13 @@
   };
   var MIN_CANVAS_W = 260;
   var MIN_CANVAS_H = 520;
-  var MIN_CANVAS_H_NARROW = 260;
+  var MIN_CANVAS_H_NARROW = 180;
   var NARROW_CANVAS_MAX = 700;
   var MAX_CANVAS_H = 1100;
   var CANVAS_HEIGHT_RATIO = 0.75;
   var CANVAS_MAX_VH = 0.72;
-  var CANVAS_MAX_VH_NARROW = 0.60;
+  var CANVAS_MAX_VH_NARROW = 0.42;
+  var CANVAS_MAX_VH_PHONE = 0.36;
   var FIT_LABEL_PAD = 28;
   var FIT_WIDTH_RATIO = 0.90;
   var DRAW_AREA_FACTOR = 6;
@@ -33,6 +34,11 @@
   var CLOSE_HIT = 16;
   var WALL_HIT = 14;
   var RULER_HIT = 12;
+  var TOUCH_HIT_RADIUS = 22;
+  var TOUCH_HIT_STROKE = 44;
+  var WALL_LONG_PRESS_MS = 550;
+  var NUDGE_STEP_PX = 1;
+  var NUDGE_STEP_SHIFT_PX = 10;
   var MIN_ZOOM_PERCENT = 8;
   var MAX_ZOOM_PERCENT = 500;
   var ZOOM_STEP = 1.12;
@@ -159,6 +165,11 @@
     bgShowImage: root.querySelector('[data-ra-bg-show]'),
     bgMoveToggle: root.querySelector('[data-ra-bg-move]'),
     undoVertex: root.querySelector('[data-ra-undo-vertex]'),
+    redo: root.querySelector('[data-ra-redo]'),
+    splitWall: root.querySelector('[data-ra-split-wall]'),
+    shortcuts: root.querySelector('[data-ra-shortcuts]'),
+    shortcutsToggle: root.querySelector('[data-ra-shortcuts-toggle]'),
+    shortcutsPopover: root.querySelector('[data-ra-shortcuts-popover]'),
     closeShape: root.querySelector('[data-ra-close-shape]'),
     addArea: root.querySelector('[data-ra-add-area]'),
     addAreaNewGroup: root.querySelector('[data-ra-add-area-new-group]'),
@@ -219,6 +230,8 @@
     areaName: root.querySelector('[data-ra-area-name]'),
     areaNameWrap: root.querySelector('[data-ra-area-name-wrap]'),
     palette: root.querySelector('[data-ra-palette]'),
+    paletteToggle: root.querySelector('[data-ra-palette-toggle]'),
+    paletteBody: root.querySelector('[data-ra-palette-body]'),
     paletteDoors: root.querySelector('[data-ra-palette-doors]'),
     paletteWindows: root.querySelector('[data-ra-palette-windows]'),
     dimensionsToggle: root.querySelector('[data-ra-dimensions-toggle]'),
@@ -299,6 +312,10 @@
     lastPanScreen: null,
     spaceHeld: false,
     shiftHeld: false,
+    pinching: false,
+    pinch: null,
+    wallLongPressTimer: null,
+    emptyPanFromTouch: false,
     layers: {},
     konvaLayer: null,
     bgImage: null,
@@ -325,6 +342,7 @@
     vertexDragFrom: null,
     vertexDragOrigins: null,
     undoStack: [],
+    redoStack: [],
     draggingRuler: false,
     editingRoomId: null,
     editorToken: 0,
@@ -598,7 +616,7 @@
       var place = objectPlacement(obj);
       if (!place) return;
       var d = distanceToSegment(pos, place.a, place.b);
-      if (d <= hitTolerance(18) && d < best) {
+      if (d <= hitTolerance(objectHitRadius()) && d < best) {
         best = d;
         hit = obj;
       }
@@ -1299,6 +1317,11 @@
       MAX_CANVAS_H
     );
     if (narrow) {
+      var phone = window.innerHeight < 800;
+      maxH = Math.min(
+        Math.floor(window.innerHeight * (phone ? CANVAS_MAX_VH_PHONE : CANVAS_MAX_VH_NARROW)),
+        MAX_CANVAS_H
+      );
       var bounds = rawContentBounds();
       var h;
       if (bounds.hasContent) {
@@ -1306,7 +1329,7 @@
         var bh = Math.max(bounds.maxY - bounds.minY, 1);
         h = Math.round(w * FIT_WIDTH_RATIO * (bh / bw) + 28);
       } else {
-        h = Math.round(w * 0.62);
+        h = Math.round(w * (phone ? 0.48 : 0.56));
       }
       h = Math.max(MIN_CANVAS_H_NARROW, Math.min(maxH, h));
       return { w: w, h: h };
@@ -1627,7 +1650,7 @@
   function findRulerAtPoint(pos) {
     if (!pos) return null;
     var rulers = projectRulers();
-    var hit = hitTolerance(RULER_HIT);
+    var hit = hitTolerance(isCoarsePointer() ? TOUCH_HIT_RADIUS : RULER_HIT);
     var best = null;
     var bestDist = hit + 1;
     for (var i = rulers.length - 1; i >= 0; i--) {
@@ -1987,6 +2010,7 @@
   function pushUndoSnapshot() {
     state.undoStack.push(snapshotState());
     if (state.undoStack.length > UNDO_MAX) state.undoStack.shift();
+    state.redoStack = [];
     updateToolbar();
   }
 
@@ -1998,6 +2022,7 @@
 
   function clearUndoStack() {
     state.undoStack = [];
+    state.redoStack = [];
     updateToolbar();
   }
 
@@ -2215,7 +2240,7 @@
 
   function findVertexAtPoint(pos) {
     if (!pos) return -1;
-    var hit = hitTolerance(VERTEX_HIT);
+    var hit = hitTolerance(touchHitRadius());
     for (var i = 0; i < activeVertices().length; i++) {
       if (dist(pos, activeVertices()[i]) <= hit) return i;
     }
@@ -2439,12 +2464,13 @@
   function findWallAtPoint(pos) {
     if (!pos || wallCount() === 0) return -1;
     var best = -1;
-    var bestDist = hitTolerance(WALL_HIT) + 1;
+    var wallHit = hitTolerance(touchHitRadius());
+    var bestDist = wallHit + 1;
     for (var i = 0; i < wallCount(); i++) {
       var a = activeVertices()[i];
       var b = activeVertices()[wallEndIndex(i)];
       var d = pointToSegmentDistance(pos, a, b);
-      if (d <= hitTolerance(WALL_HIT) && d < bestDist) {
+      if (d <= wallHit && d < bestDist) {
         bestDist = d;
         best = i;
       }
@@ -2457,12 +2483,12 @@
   }
 
   function canDragWalls() {
-    return wallCount() > 0 && isActiveClosed() && !state.spaceHeld && !state.rulerMode && !state.calibrating;
+    return wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating;
   }
 
   function canDragShapes() {
     return !isDrawingOpenShape()
-      && !state.spaceHeld
+      && !isPanOrPinchActive()
       && !state.rulerMode
       && !state.calibrating
       && !state.bgMoveMode
@@ -2607,11 +2633,19 @@
     }
   }
 
+  function cancelWallLongPress() {
+    if (state.wallLongPressTimer) {
+      clearTimeout(state.wallLongPressTimer);
+      state.wallLongPressTimer = null;
+    }
+  }
+
   function onWallPointerDown(wallIndex) {
     if (!canDragWalls() || wallIndex < 0 || wallIndex >= wallCount()) return;
     var pos = getPointerPos();
     if (!pos) return;
     cancelPendingWallClick();
+    cancelWallLongPress();
     clearRulerSelection();
     var a = activeVertices()[wallIndex];
     var b = activeVertices()[wallEndIndex(wallIndex)];
@@ -2623,12 +2657,25 @@
       origB: { x: b.x, y: b.y }
     };
     state.didWallDrag = false;
+    if (isCoarsePointer()) {
+      state.wallLongPressTimer = setTimeout(function () {
+        var pending = state.wallPointerDown;
+        if (!pending || state.draggingWall || state.pinching) return;
+        var idx = pending.wallIndex;
+        var splitPos = { x: pending.x, y: pending.y };
+        state.wallPointerDown = null;
+        state.didWallDrag = true;
+        cancelWallLongPress();
+        splitWallAtPoint(idx, splitPos);
+      }, WALL_LONG_PRESS_MS);
+    }
   }
 
   function tryStartWallDragFromPending(pos) {
     if (!state.wallPointerDown || state.draggingWall || !pos) return;
     var pending = state.wallPointerDown;
     if (Math.hypot(pos.x - pending.x, pos.y - pending.y) < uiSize(4)) return;
+    cancelWallLongPress();
     cancelPendingWallClick();
     state.draggingWall = true;
     state.didWallDrag = false;
@@ -2643,6 +2690,7 @@
   }
 
   function finishWallPointerUp(pos) {
+    cancelWallLongPress();
     if (state.draggingWall) {
       finishWallDrag(pos);
       state.wallPointerDown = null;
@@ -2779,14 +2827,13 @@
     }
   }
 
-  function splitWallAtPointer(wallIndex) {
+  function splitWallAtPoint(wallIndex, pos) {
     if (!canDragWalls()) return;
     if (shouldDebounceWallSplit(wallIndex)) return;
     if (state.draggingWall) {
       finishWallDrag(getPointerPos());
       state.didWallDrag = false;
     }
-    var pos = getPointerPos();
     if (!pos) return;
     pushUndoSnapshot();
     var newIdx = insertVertexOnWall(wallIndex, pos);
@@ -2800,6 +2847,19 @@
     requestAnimationFrame(function () {
       startVertexDragAt(newIdx);
     });
+  }
+
+  function splitWallAtPointer(wallIndex) {
+    splitWallAtPoint(wallIndex, getPointerPos());
+  }
+
+  function splitSelectedWall() {
+    if (state.selectedWallIndex === null) return;
+    var idx = state.selectedWallIndex;
+    var a = activeVertices()[idx];
+    var b = activeVertices()[wallEndIndex(idx)];
+    if (!a || !b) return;
+    splitWallAtPoint(idx, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   }
 
   function bindWallSplit(node, wallIndex) {
@@ -2960,8 +3020,10 @@
       var lenFt = wallLengthFeet(wallIndex);
       els.wallLength.value = lenFt !== null ? fmtFeetInches(lenFt) : '';
       els.wallLength.disabled = false;
-      els.wallLength.focus();
-      els.wallLength.select();
+      if (!isCoarsePointer()) {
+        els.wallLength.focus();
+        els.wallLength.select();
+      }
     } else if (els.wallLength) {
       els.wallLength.value = '';
       els.wallLength.disabled = true;
@@ -3283,6 +3345,61 @@
     return uiSize(base);
   }
 
+  function isCoarsePointer() {
+    try {
+      if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+    } catch (err) { /* ignore */ }
+    return window.innerWidth <= NARROW_CANVAS_MAX;
+  }
+
+  function touchHitRadius() {
+    return isCoarsePointer() ? TOUCH_HIT_RADIUS : VERTEX_HIT;
+  }
+
+  function wallHitStroke() {
+    return isCoarsePointer() ? TOUCH_HIT_STROKE : WALL_HIT * 2;
+  }
+
+  function objectHitStroke() {
+    return isCoarsePointer() ? TOUCH_HIT_STROKE : 22;
+  }
+
+  function objectHitRadius() {
+    return isCoarsePointer() ? TOUCH_HIT_RADIUS : 18;
+  }
+
+  function isPanOrPinchActive() {
+    return !!(state.spaceHeld || state.pinching);
+  }
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    if (el.isContentEditable) return true;
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    return !!(el.closest && el.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]'));
+  }
+
+  function canEmptyCanvasPan() {
+    return !isDrawingOpenShape()
+      && !state.calibrating
+      && !state.rulerMode
+      && !state.armedCatalogKey
+      && !state.placingCatalog
+      && !state.bgMoveMode
+      && !state.pinching;
+  }
+
+  function pointerHitsInteractive(pos) {
+    if (!pos) return false;
+    if (findVertexAtPoint(pos) >= 0) return true;
+    if (isActiveClosed() && findWallAtPoint(pos) >= 0) return true;
+    if (findObjectAtPoint(pos)) return true;
+    if (findRulerAtPoint(pos)) return true;
+    if (polygonInteriorAtPoint(pos)) return true;
+    return false;
+  }
+
   function updateShapeHoverCursor() {
     if (!canDragShapes() || !state.stage || state.shapePointerDown || state.draggingShape) return;
     var pos = getPointerPos();
@@ -3296,7 +3413,7 @@
   function updateCanvasCursor() {
     if (!state.stage) return;
     var el = state.stage.container();
-    if (state.panning) {
+    if (state.panning || state.pinching) {
       el.style.cursor = 'grabbing';
     } else if (state.spaceHeld) {
       el.style.cursor = 'grab';
@@ -3619,7 +3736,7 @@
         return;
       }
       if (e.code !== 'Space' || e.repeat) return;
-      if (e.target && e.target.closest('input, textarea, select')) return;
+      if (isTypingTarget(e.target)) return;
       e.preventDefault();
       state.spaceHeld = true;
       if (els.canvasWrap) els.canvasWrap.classList.add('is-pan-ready');
@@ -3661,10 +3778,130 @@
       }
       if (!state.panning) return;
       state.panning = false;
+      state.emptyPanFromTouch = false;
       state.lastPanScreen = null;
       if (els.canvasWrap) els.canvasWrap.classList.remove('is-panning');
       updateCanvasCursor();
     });
+  }
+
+  function screenPosFromClient(clientX, clientY) {
+    if (!state.stage) return { x: 0, y: 0 };
+    var rect = state.stage.container().getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  function pinchDistance(t0, t1) {
+    return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+  }
+
+  function pinchCenterScreen(t0, t1) {
+    return screenPosFromClient((t0.clientX + t1.clientX) / 2, (t0.clientY + t1.clientY) / 2);
+  }
+
+  function abortActivePointerGestures() {
+    cancelWallLongPress();
+    if (state.draggingVertex && state.layers.vertices) {
+      state.layers.vertices.getChildren().forEach(function (node) {
+        if (node && typeof node.stopDrag === 'function' && node.isDragging && node.isDragging()) {
+          node.stopDrag();
+        }
+      });
+    }
+    state.draggingVertex = false;
+    state.vertexDragFrom = null;
+    state.draggingWall = false;
+    state.wallPointerDown = null;
+    state.wallDragIndex = null;
+    state.draggingShape = false;
+    state.shapePointerDown = null;
+    state.draggingObject = false;
+    state.objectPointerDown = null;
+    state.draggingRuler = false;
+    state.panning = false;
+    state.lastPanScreen = null;
+    state.emptyPanFromTouch = false;
+    if (els.canvasWrap) els.canvasWrap.classList.remove('is-panning', 'is-shape-drag');
+  }
+
+  function startPinch(touches) {
+    abortActivePointerGestures();
+    state.pinching = true;
+    state.didPan = true;
+    state.pinch = {
+      startDist: pinchDistance(touches[0], touches[1]),
+      startScale: state.viewport.scale,
+      lastCenter: pinchCenterScreen(touches[0], touches[1])
+    };
+    if (els.canvasWrap) els.canvasWrap.classList.add('is-panning');
+    updateCanvasCursor();
+    redrawVertices();
+    redrawWalls();
+    redrawObjects();
+  }
+
+  function updatePinch(touches) {
+    if (!state.pinch || touches.length < 2) return;
+    var center = pinchCenterScreen(touches[0], touches[1]);
+    var dist = pinchDistance(touches[0], touches[1]);
+    var last = state.pinch.lastCenter;
+    state.viewport.x += center.x - last.x;
+    state.viewport.y += center.y - last.y;
+    state.pinch.lastCenter = center;
+    var scale = state.pinch.startScale * (dist / Math.max(state.pinch.startDist, 1));
+    setWorldScale(scale, center.x, center.y);
+  }
+
+  function endPinch() {
+    if (!state.pinching) return;
+    state.pinching = false;
+    state.pinch = null;
+    if (els.canvasWrap) els.canvasWrap.classList.remove('is-panning');
+    updateCanvasCursor();
+    redrawVertices();
+    redrawWalls();
+    redrawObjects();
+  }
+
+  function bindCanvasTouchGestures() {
+    if (!els.canvasWrap || els.canvasWrap._raTouchGesturesBound) return;
+    els.canvasWrap._raTouchGesturesBound = true;
+
+    els.canvasWrap.addEventListener('touchstart', function (e) {
+      if (!state.stage || e.touches.length < 2) return;
+      e.preventDefault();
+      e.stopPropagation();
+      startPinch(e.touches);
+    }, { passive: false, capture: true });
+
+    els.canvasWrap.addEventListener('touchmove', function (e) {
+      if (!state.stage) return;
+      if (e.touches.length >= 2) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!state.pinching) startPinch(e.touches);
+        else updatePinch(e.touches);
+        return;
+      }
+      if (state.pinching) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, { passive: false, capture: true });
+
+    function onTouchEnd(e) {
+      if (!state.pinching) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.touches.length >= 2) {
+        updatePinch(e.touches);
+        return;
+      }
+      endPinch();
+    }
+
+    els.canvasWrap.addEventListener('touchend', onTouchEnd, { passive: false, capture: true });
+    els.canvasWrap.addEventListener('touchcancel', onTouchEnd, { passive: false, capture: true });
   }
 
   function resizeStage() {
@@ -3769,15 +4006,19 @@
     redrawAll();
 
     state.stage.on('mousedown touchstart', function (e) {
+      if (state.pinching) return;
       var evt = e.evt;
-      var isMiddle = evt.button === 1;
-      var isSpacePan = evt.button === 0 && state.spaceHeld;
-      if (!isMiddle && !isSpacePan) {
-        if (evt.button === undefined || evt.button === 0) onShapePointerDown();
+      var isMiddle = evt && evt.button === 1;
+      var isSpacePan = evt && evt.button === 0 && state.spaceHeld;
+      var isPrimary = !evt || evt.button === undefined || evt.button === 0;
+      var emptyPan = isPrimary && canEmptyCanvasPan() && !pointerHitsInteractive(getPointerPos());
+      if (!isMiddle && !isSpacePan && !emptyPan) {
+        if (isPrimary) onShapePointerDown();
         return;
       }
-      evt.preventDefault();
+      if (evt && evt.preventDefault) evt.preventDefault();
       state.panning = true;
+      state.emptyPanFromTouch = emptyPan && !(isMiddle || isSpacePan);
       state.didPan = false;
       state.lastPanScreen = state.stage.getPointerPosition();
       if (els.canvasWrap) els.canvasWrap.classList.add('is-panning');
@@ -3785,6 +4026,7 @@
     });
 
     state.stage.on('mousemove touchmove', function () {
+      if (state.pinching) return;
       var pos = getPointerPos();
       if (state.shapePointerDown && !state.draggingShape) {
         tryStartShapeDragFromPending(pos);
@@ -3813,6 +4055,7 @@
     });
 
     state.stage.on('mousemove touchmove', function () {
+      if (state.pinching) return;
       if (state.objectPointerDown && !state.draggingObject) {
         var movePos = getPointerPos();
         if (movePos && state.objectPointerDown.start && dist(movePos, state.objectPointerDown.start) > 4) {
@@ -3847,6 +4090,7 @@
     });
 
     state.stage.on('mouseup touchend', function () {
+      if (state.pinching) return;
       if (state.draggingObject) {
         state.draggingObject = false;
         state.objectPointerDown = null;
@@ -3860,6 +4104,7 @@
       if (state.draggingWall || state.draggingShape) return;
       if (!state.panning) return;
       state.panning = false;
+      state.emptyPanFromTouch = false;
       state.lastPanScreen = null;
       if (els.canvasWrap) els.canvasWrap.classList.remove('is-panning');
       updateCanvasCursor();
@@ -3873,6 +4118,7 @@
     state.stage.on('dblclick dbltap', onStageDblClick);
 
     bindViewportEvents();
+    bindCanvasTouchGestures();
 
     drawGrid();
     redrawAll();
@@ -4480,7 +4726,7 @@
         x: place.mid.x,
         y: place.mid.y,
         rotation: place.angle * 180 / Math.PI,
-        listening: !state.spaceHeld && !state.rulerMode && !state.calibrating && !state.bgMoveMode
+        listening: !isPanOrPinchActive() && !state.rulerMode && !state.calibrating && !state.bgMoveMode
       });
       group.setAttr('objectId', obj.id);
       group.setAttr('objectType', obj.type);
@@ -4493,7 +4739,7 @@
       group.on('mousedown touchstart', function (e) {
         if (e.evt && e.evt.button !== undefined && e.evt.button !== 0) return;
         e.cancelBubble = true;
-        if (state.spaceHeld || state.rulerMode || state.calibrating) return;
+        if (isPanOrPinchActive() || state.rulerMode || state.calibrating) return;
         state.objectPointerDown = {
           id: obj.id,
           start: getPointerPos()
@@ -4524,9 +4770,30 @@
     group.add(new Konva.Line({
       points: [-w / 2, 0, w / 2, 0],
       stroke: 'rgba(0,0,0,0.001)',
-      strokeWidth: uiSize(22),
+      strokeWidth: uiSize(objectHitStroke()),
       listening: true
     }));
+    var handleR = uiSize(isCoarsePointer() ? TOUCH_HIT_RADIUS : 8);
+    [-w / 2, w / 2].forEach(function (hx) {
+      group.add(new Konva.Circle({
+        x: hx,
+        y: 0,
+        radius: handleR,
+        fill: 'rgba(0,0,0,0.001)',
+        listening: true
+      }));
+      if (selected && isCoarsePointer()) {
+        group.add(new Konva.Circle({
+          x: hx,
+          y: 0,
+          radius: uiSize(10),
+          fill: '#f9a825',
+          stroke: '#f57f17',
+          strokeWidth: uiSize(2),
+          listening: false
+        }));
+      }
+    });
 
     if (obj.type === 'window') {
       group.add(new Konva.Line({
@@ -4674,19 +4941,22 @@
       var showCloseTarget = isFirst && !isActiveClosed() && verts.length >= 3;
       (function (vertexIndex) {
         var groupColor = activeGroup() ? activeGroup().color : DEFAULT_GROUP_COLOR;
+        var visualR = uiSize(isSelected ? (isCoarsePointer() ? 14 : 10) : (showCloseTarget ? CLOSE_HIT / 2 : 8));
+        var hitR = uiSize(touchHitRadius());
         var circle = new Konva.Circle({
           x: v.x,
           y: v.y,
-          radius: uiSize(isSelected ? 10 : (showCloseTarget ? CLOSE_HIT / 2 : 8)),
+          radius: visualR,
           fill: isSelected ? '#f9a825' : (isFirst ? '#c62828' : groupColor),
           stroke: isSelected ? '#f57f17' : '#fff',
           strokeWidth: uiSize(isSelected ? 3 : 2),
-          draggable: !state.spaceHeld && !state.rulerMode && !state.bgMoveMode,
-          listening: !state.spaceHeld && !state.rulerMode && !state.bgMoveMode,
+          hitStrokeWidth: Math.max(0, (hitR - visualR) * 2),
+          draggable: !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
+          listening: !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
           dragDistance: uiSize(3)
         });
         circle.on('mouseenter', function () {
-          if (state.stage && !state.draggingVertex && !state.draggingWall && !state.spaceHeld && !state.rulerMode) {
+          if (state.stage && !state.draggingVertex && !state.draggingWall && !isPanOrPinchActive() && !state.rulerMode) {
             state.stage.container().style.cursor = 'move';
           }
         });
@@ -4694,7 +4964,7 @@
           if (state.stage && !state.draggingVertex && !state.draggingWall) updateCanvasCursor();
         });
         circle.on('dragstart', function (e) {
-          if (state.spaceHeld) {
+          if (isPanOrPinchActive()) {
             e.target.stopDrag();
             return;
           }
@@ -5171,7 +5441,7 @@
           wallLayer.add(new Konva.Line({
             points: [p0.x, p0.y, p1.x, p1.y],
             stroke: '#f9a825',
-            strokeWidth: uiSize(5),
+            strokeWidth: uiSize(isCoarsePointer() ? 8 : 5),
             lineCap: 'round',
             listening: false
           }));
@@ -5182,9 +5452,9 @@
         var hitLine = new Konva.Line({
           points: [a.x, a.y, b.x, b.y],
           stroke: 'rgba(0,0,0,0.001)',
-          strokeWidth: uiSize(WALL_HIT * 2),
+          strokeWidth: uiSize(wallHitStroke()),
           lineCap: 'round',
-          listening: !state.spaceHeld && !state.rulerMode && isActiveClosed()
+          listening: !isPanOrPinchActive() && !state.rulerMode && isActiveClosed()
         });
         bindWallDrag(hitLine, wallIndex);
         bindWallSplit(hitLine, wallIndex);
@@ -5240,7 +5510,7 @@
       strokeWidth: uiSize(isSelected ? 3 : 2),
       dash: [uiSize(6), uiSize(4)],
       listening: !!listening,
-      hitStrokeWidth: uiSize(Math.max(RULER_HIT, 12))
+      hitStrokeWidth: uiSize(isCoarsePointer() ? TOUCH_HIT_STROKE : Math.max(RULER_HIT, 12))
     });
 
     if (listening && rulerId !== null) {
@@ -5328,7 +5598,7 @@
       strokeWidth: uiSize(isSelected ? 3 : 2),
       dash: [uiSize(6), uiSize(4)],
       listening: !!listening,
-      hitStrokeWidth: uiSize(Math.max(RULER_HIT, 12))
+      hitStrokeWidth: uiSize(isCoarsePointer() ? TOUCH_HIT_STROKE : Math.max(RULER_HIT, 12))
     });
 
     if (listening) {
@@ -5411,6 +5681,7 @@
         fill: idx === 0 ? '#8e24aa' : '#6a1b9a',
         stroke: '#fff',
         strokeWidth: uiSize(canDrag ? 2 : 1.5),
+        hitStrokeWidth: uiSize(isCoarsePointer() ? Math.max(0, (TOUCH_HIT_RADIUS - (canDrag ? 8 : 5)) * 2) : 0),
         draggable: canDrag,
         listening: canDrag,
         dragDistance: uiSize(3)
@@ -5509,7 +5780,7 @@
   }
 
   function onStageClick(e) {
-    if (state.spaceHeld || state.panning || state.bgMoveMode || state.draggingBg) return;
+    if (state.spaceHeld || state.panning || state.pinching || state.bgMoveMode || state.draggingBg) return;
     var pos = getPointerPos();
     if (!pos) return;
     if (state.didPan) {
@@ -5795,7 +6066,10 @@
     if (state.draggingWall) finishWallDrag(getPointerPos());
     state.draggingVertex = false;
     state.vertexDragFrom = null;
+    var current = snapshotState();
     var snap = state.undoStack.pop();
+    state.redoStack.push(current);
+    if (state.redoStack.length > UNDO_MAX) state.redoStack.shift();
     restoreUndoSnapshot(snap);
     syncTypedWallsFromCanvas();
     renderTypedWallsList();
@@ -5803,6 +6077,24 @@
     redrawAll();
     updateToolbar();
     setFeedback('Undone.', false);
+  }
+
+  function redoAction() {
+    if (!state.redoStack.length) return;
+    if (state.draggingWall) finishWallDrag(getPointerPos());
+    state.draggingVertex = false;
+    state.vertexDragFrom = null;
+    var current = snapshotState();
+    var snap = state.redoStack.pop();
+    state.undoStack.push(current);
+    if (state.undoStack.length > UNDO_MAX) state.undoStack.shift();
+    restoreUndoSnapshot(snap);
+    syncTypedWallsFromCanvas();
+    renderTypedWallsList();
+    updateTypedCloseBar();
+    redrawAll();
+    updateToolbar();
+    setFeedback('Redone.', false);
   }
 
   function updateLiveArea() {
@@ -5864,6 +6156,8 @@
 
   function updateToolbar() {
     els.undoVertex.disabled = state.undoStack.length === 0;
+    if (els.redo) els.redo.disabled = state.redoStack.length === 0;
+    if (els.splitWall) els.splitWall.disabled = state.selectedWallIndex === null;
     els.closeShape.disabled = activeVertices().length < 3 || isActiveClosed();
     if (els.addArea) els.addArea.disabled = !isActiveClosed();
     if (els.addAreaNewGroup) els.addAreaNewGroup.disabled = !isActiveClosed();
@@ -6707,6 +7001,7 @@
         finishPaletteDrag(e);
       } else {
         armCatalogItem(item.key);
+        collapsePaletteIfNarrow();
       }
       dragging = false;
     }
@@ -6722,6 +7017,27 @@
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);
     });
+  }
+
+  function isNarrowPalette() {
+    return window.matchMedia('(max-width: 599px)').matches;
+  }
+
+  function setPaletteOpen(open) {
+    if (!els.palette) return;
+    els.palette.classList.toggle('is-open', !!open);
+    if (els.paletteToggle) {
+      els.paletteToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+  }
+
+  function collapsePaletteIfNarrow() {
+    if (isNarrowPalette()) setPaletteOpen(false);
+  }
+
+  function togglePaletteOpen() {
+    var open = els.palette && els.palette.classList.contains('is-open');
+    setPaletteOpen(!open);
   }
 
   function armCatalogItem(key) {
@@ -7812,6 +8128,231 @@
     if (els.lightboxCaption) els.lightboxCaption.value = '';
   }
 
+  function shortcutsPopoverOpen() {
+    return !!(els.shortcutsPopover && !els.shortcutsPopover.hasAttribute('hidden'));
+  }
+
+  function setShortcutsPopover(open) {
+    if (!els.shortcutsPopover || !els.shortcutsToggle) return;
+    show(els.shortcutsPopover, open);
+    els.shortcutsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    els.shortcutsToggle.classList.toggle('is-active', !!open);
+  }
+
+  function toggleShortcutsPopover() {
+    setShortcutsPopover(!shortcutsPopoverOpen());
+  }
+
+  function closeShortcutsPopover() {
+    setShortcutsPopover(false);
+  }
+
+  function nudgeSelected(dx, dy) {
+    if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) return;
+    if (state.selectedObjectId) {
+      nudgeSelectedObject(dx, dy);
+      return;
+    }
+    if (state.selectedVertexIndices.length) {
+      nudgeSelectedVertices(dx, dy);
+      return;
+    }
+    if (state.selectedWallIndex !== null) {
+      nudgeSelectedWall(dx, dy);
+      return;
+    }
+    if (state.selectedRulerId !== null) {
+      nudgeSelectedRuler(dx, dy);
+    }
+  }
+
+  function nudgeSelectedObject(dx, dy) {
+    var obj = selectedObject();
+    var place = obj ? objectPlacement(obj) : null;
+    if (!obj || !place) return;
+    var wx = place.wall.b.x - place.wall.a.x;
+    var wy = place.wall.b.y - place.wall.a.y;
+    var len = Math.hypot(wx, wy) || 1;
+    var alongPx = (dx * wx + dy * wy) / len;
+    var inches = alongPx / (pixelsPerFoot() || 12) * INCHES_PER_FOOT;
+    if (Math.abs(inches) < 1e-6) return;
+    pushUndoSnapshot();
+    obj.offset = (obj.offset || 0) + inches;
+    clampObjectToWall(obj, place.wall);
+    syncObjectPropertiesPanel();
+    redrawAll();
+  }
+
+  function nudgeSelectedVertices(dx, dy) {
+    if (!state.selectedVertexIndices.length) return;
+    pushUndoSnapshot();
+    var orig = activeVertices().map(function (v) { return { x: v.x, y: v.y }; });
+    state.selectedVertexIndices.forEach(function (idx) {
+      var v = activeVertices()[idx];
+      if (!v) return;
+      activeVertices()[idx] = clampToCanvas({ x: v.x + dx, y: v.y + dy });
+    });
+    if (!isValidShape(activeVertices(), isActiveClosed())) {
+      setActiveVertices(orig);
+      discardLastUndoSnapshot();
+      setFeedback('That nudge would make the shape cross itself.', true);
+      return;
+    }
+    rematchAllObjects();
+    redrawAll();
+  }
+
+  function nudgeSelectedWall(dx, dy) {
+    if (state.selectedWallIndex === null) return;
+    var idx = state.selectedWallIndex;
+    var endIdx = wallEndIndex(idx);
+    var a = activeVertices()[idx];
+    var b = activeVertices()[endIdx];
+    if (!a || !b) return;
+    pushUndoSnapshot();
+    var origA = { x: a.x, y: a.y };
+    var origB = { x: b.x, y: b.y };
+    activeVertices()[idx] = clampToCanvas({ x: a.x + dx, y: a.y + dy });
+    activeVertices()[endIdx] = clampToCanvas({ x: b.x + dx, y: b.y + dy });
+    if (!isValidShape(activeVertices(), isActiveClosed())) {
+      activeVertices()[idx] = origA;
+      activeVertices()[endIdx] = origB;
+      discardLastUndoSnapshot();
+      setFeedback('That nudge would make the shape cross itself.', true);
+      return;
+    }
+    rematchAllObjects();
+    refreshSelectedWallLengthInput();
+    redrawAll();
+  }
+
+  function nudgeSelectedRuler(dx, dy) {
+    var ruler = findRulerById(state.selectedRulerId);
+    if (!ruler) return;
+    ruler.p1 = clampToCanvas({ x: ruler.p1.x + dx, y: ruler.p1.y + dy });
+    ruler.p2 = clampToCanvas({ x: ruler.p2.x + dx, y: ruler.p2.y + dy });
+    redrawRulers();
+  }
+
+  function handleRoomAreaKeydown(e) {
+    if (isTypingTarget(e.target)) return;
+    if (els.lightbox && !els.lightbox.hasAttribute('hidden')) return;
+
+    var cmd = e.ctrlKey || e.metaKey;
+    var key = e.key;
+
+    if (key === 'Escape') {
+      e.preventDefault();
+      if (shortcutsPopoverOpen()) {
+        closeShortcutsPopover();
+        return;
+      }
+      if (state.armedCatalogKey || state.placingCatalog) {
+        disarmObjectPlacement();
+        return;
+      }
+      if (cancelRulerDraft()) return;
+      if (state.rulerMode) {
+        stopRulerMode();
+        return;
+      }
+      if (state.calibrating) {
+        stopCalibrationMode();
+        return;
+      }
+      if (cancelActiveDrawing()) return;
+      if (state.selectedObjectId) {
+        clearObjectSelection();
+        return;
+      }
+      if (state.selectedWallIndex !== null) {
+        clearWallSelection();
+        return;
+      }
+      if (state.selectedVertexIndices.length) {
+        clearVertexSelection();
+        return;
+      }
+      if (state.selectedRulerId !== null) {
+        clearRulerSelection();
+      }
+      return;
+    }
+
+    if (cmd && !e.altKey && key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) redoAction();
+      else undoVertex();
+      return;
+    }
+
+    if (cmd && !e.altKey && (key === 'y' || key === 'Y')) {
+      e.preventDefault();
+      redoAction();
+      return;
+    }
+
+    if (!cmd && (key === '?' || (key === '/' && e.shiftKey))) {
+      e.preventDefault();
+      toggleShortcutsPopover();
+      return;
+    }
+
+    if (!cmd && (key === '+' || key === '=' || key === 'Add')) {
+      e.preventDefault();
+      zoomIn();
+      return;
+    }
+
+    if (!cmd && (key === '-' || key === '_' || key === 'Subtract')) {
+      e.preventDefault();
+      zoomOut();
+      return;
+    }
+
+    if (!cmd && (key === '0' || key === 'Numpad0')) {
+      e.preventDefault();
+      fitViewport();
+      return;
+    }
+
+    if (!cmd && (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown')) {
+      var step = (e.shiftKey ? NUDGE_STEP_SHIFT_PX : NUDGE_STEP_PX) / uiScale();
+      var dx = 0;
+      var dy = 0;
+      if (key === 'ArrowLeft') dx = -step;
+      if (key === 'ArrowRight') dx = step;
+      if (key === 'ArrowUp') dy = -step;
+      if (key === 'ArrowDown') dy = step;
+      e.preventDefault();
+      nudgeSelected(dx, dy);
+      return;
+    }
+
+    if (key === 'Backspace' && isDrawingOpenShape()) {
+      if (!state.selectedVertexIndices.length && state.selectedWallIndex === null && state.selectedRulerId === null && !state.selectedObjectId) {
+        e.preventDefault();
+        removeLastDrawVertex();
+        return;
+      }
+    }
+
+    if (key !== 'Delete' && key !== 'Backspace') return;
+    if (state.selectedObjectId) {
+      e.preventDefault();
+      deleteSelectedObject();
+    } else if (state.selectedVertexIndices.length > 0) {
+      e.preventDefault();
+      deleteSelectedVertex();
+    } else if (state.selectedWallIndex !== null) {
+      e.preventDefault();
+      deleteSelectedWall();
+    } else if (state.selectedRulerId !== null && !state.rulerMode) {
+      e.preventDefault();
+      deleteSelectedRuler();
+    }
+  }
+
   function bindEvents() {
     els.projectSelect.addEventListener('change', function () {
       var newId = els.projectSelect.value ? parseInt(els.projectSelect.value, 10) : null;
@@ -7852,7 +8393,22 @@
     });
 
     els.undoVertex.addEventListener('click', undoVertex);
+    if (els.redo) els.redo.addEventListener('click', redoAction);
+    if (els.splitWall) els.splitWall.addEventListener('click', splitSelectedWall);
+    if (els.shortcutsToggle) {
+      els.shortcutsToggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleShortcutsPopover();
+      });
+    }
     els.closeShape.addEventListener('click', closeShape);
+    if (els.paletteToggle) {
+      els.paletteToggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        togglePaletteOpen();
+      });
+    }
     if (els.addArea) els.addArea.addEventListener('click', addAreaSameGroup);
     if (els.addAreaNewGroup) els.addAreaNewGroup.addEventListener('click', addAreaNewGroup);
     if (els.deleteArea) els.deleteArea.addEventListener('click', deleteActivePolygon);
@@ -7903,53 +8459,12 @@
     }
     bindAreaNameField();
 
-    document.addEventListener('keydown', function (e) {
-      if (e.target && e.target.closest('input, textarea, select')) return;
+    document.addEventListener('keydown', handleRoomAreaKeydown);
 
-      if (e.key === 'Escape') {
-        if (state.armedCatalogKey || state.placingCatalog) {
-          e.preventDefault();
-          disarmObjectPlacement();
-          return;
-        }
-        if (state.selectedObjectId) {
-          e.preventDefault();
-          clearObjectSelection();
-          return;
-        }
-        if (cancelRulerDraft()) {
-          e.preventDefault();
-          return;
-        }
-        if (cancelActiveDrawing()) {
-          e.preventDefault();
-          return;
-        }
-        return;
-      }
-
-      if (e.key === 'Backspace' && isDrawingOpenShape()) {
-        if (!state.selectedVertexIndices.length && state.selectedWallIndex === null && state.selectedRulerId === null) {
-          e.preventDefault();
-          removeLastDrawVertex();
-          return;
-        }
-      }
-
-      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-      if (state.selectedObjectId) {
-        e.preventDefault();
-        deleteSelectedObject();
-      } else if (state.selectedVertexIndices.length > 0) {
-        e.preventDefault();
-        deleteSelectedVertex();
-      } else if (state.selectedWallIndex !== null) {
-        e.preventDefault();
-        deleteSelectedWall();
-      } else if (state.selectedRulerId !== null && !state.rulerMode) {
-        e.preventDefault();
-        deleteSelectedRuler();
-      }
+    document.addEventListener('pointerdown', function (e) {
+      if (!shortcutsPopoverOpen()) return;
+      if (els.shortcuts && els.shortcuts.contains(e.target)) return;
+      closeShortcutsPopover();
     });
 
     if (els.wallLength) {
