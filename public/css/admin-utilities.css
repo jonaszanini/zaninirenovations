@@ -1964,6 +1964,7 @@
 
 .util-ra-toolbar__view {
   flex: 0 1 auto;
+  align-items: flex-start;
 }
 
 .util-ra-tool-group {
@@ -2144,16 +2145,26 @@
 @media (min-width: 901px) {
   .util-ra-canvas-toolbar {
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
     gap: 0.75rem 1rem;
   }
 
+  .util-ra-toolbar__groups {
+    flex: 1 1 24rem;
+    min-width: 0;
+  }
+
   .util-ra-toolbar__view {
+    flex: 1 0 auto;
     margin-left: auto;
     padding-left: 0.85rem;
     border-left: 1px solid var(--admin-border);
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.65rem 1rem;
+    max-width: 100%;
   }
 }
 
@@ -2243,7 +2254,7 @@
 
 .util-ra-zoom-controls {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.25rem;
   min-width: 0;
@@ -2791,13 +2802,20 @@
 }
 
 .util-ra-measure-unit {
-  min-width: 8.5rem;
-  max-width: 10.5rem;
-  padding: 0.35rem 0.55rem;
+  width: 13rem;
+  min-width: 13rem;
+  max-width: 14rem;
+  padding: 0.35rem 2.5rem 0.35rem 0.7rem;
   font-size: 0.82rem;
   min-height: var(--admin-control-height);
   height: var(--admin-control-height);
   border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.util-ra-tool-group--units,
+.util-ra-tool-group--zoom {
+  flex: 0 0 auto;
 }
 
 .util-ra-tool-group--units .util-ra-tool-group__actions {
@@ -3167,6 +3185,65 @@
   .util-ra-tool-group + .util-ra-tool-group {
     padding-left: 0;
     border-left: none;
+  }
+
+  .util-ra-canvas-toolbar {
+    gap: 0.4rem;
+    margin-bottom: 0.45rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .util-ra-toolbar__groups,
+  .util-ra-toolbar__view {
+    align-items: center;
+    gap: 0.35rem 0.45rem;
+  }
+
+  .util-ra-toolbar__view {
+    width: 100%;
+  }
+
+  .util-ra-tool-group--areas {
+    flex: 1 1 100%;
+  }
+
+  .util-ra-tool-group:not(.util-ra-tool-group--areas) {
+    position: relative;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+  }
+
+  .util-ra-tool-group:not(.util-ra-tool-group--areas) .util-ra-tool-group__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .util-ra-tool-group--units {
+    flex: 1 1 11rem;
+    min-width: 11rem;
+    max-width: 14rem;
+  }
+
+  .util-ra-measure-unit {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .util-ra-tool-group--zoom {
+    flex: 1 1 auto;
+  }
+
+  .util-ra-zoom-controls {
+    flex-wrap: wrap;
   }
 
   .util-ra-palette__items {

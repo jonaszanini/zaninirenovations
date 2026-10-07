@@ -181,6 +181,9 @@ class RoomAreaCanvasObjectsTest extends IntegrationTestCase
             ->assertSee('Split wall')
             ->assertSee('Keyboard shortcuts')
             ->assertSee('Pinch to zoom')
+            ->assertSee('fa-paint-brush', false)
+            ->assertSee('Start a new color group')
+            ->assertDontSee('fa-palette')
             ->assertDontSee('On a phone, type wall lengths below instead of dragging corners.');
     }
 }

@@ -210,8 +210,8 @@
                     </button>
                   </span>
                   <span class="util-ra-tip" data-tooltip="Start a new color group">
-                    <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-add-area-new-group disabled aria-label="Start a new color group">
-                      <i class="fa fa-palette" aria-hidden="true"></i>
+                    <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-add-area-new-group disabled aria-label="Start a new color group" title="Start a new color group">
+                      <i class="fa fa-paint-brush" aria-hidden="true"></i>
                     </button>
                   </span>
                 </div>
