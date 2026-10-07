@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -19,23 +20,34 @@ class BlogPost extends Model
 
     public const EXCERPT_MAX = 500;
 
+    public const SEO_TITLE_MAX = 70;
+
+    public const META_SNIPPET_MAX = 155;
+
+    public const FEATURED_ALT_MAX = 255;
+
     protected $fillable = [
         'title',
         'slug',
         'excerpt',
         'html_content',
         'featured_image_path',
+        'featured_image_alt',
         'ai_image_prompt',
         'meta_description',
+        'seo_title',
         'status',
         'published_at',
         'views_count',
         'author_name',
+        'cta_service',
+        'noindex',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
         'views_count' => 'integer',
+        'noindex' => 'boolean',
     ];
 
     public function categories(): BelongsToMany
@@ -51,6 +63,11 @@ class BlogPost extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(BlogComment::class);
+    }
+
+    public function slugRedirects(): HasMany
+    {
+        return $this->hasMany(BlogPostSlugRedirect::class);
     }
 
     public function approvedComments(): HasMany
@@ -155,21 +172,121 @@ class BlogPost extends Model
         return $this->approvedComments()->count();
     }
 
+    public static function slugify(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return 'post';
+        }
+
+        if (class_exists(\Transliterator::class)) {
+            $transliterator = \Transliterator::create('Any-Latin; Latin-ASCII');
+            if ($transliterator) {
+                $transliterated = $transliterator->transliterate($value);
+                if (is_string($transliterated) && trim($transliterated) !== '') {
+                    $value = $transliterated;
+                }
+            }
+        }
+
+        $slug = Str::slug($value);
+
+        return $slug !== '' ? $slug : 'post';
+    }
+
+    public static function slugIsTaken(string $slug, ?int $ignoreId = null): bool
+    {
+        $taken = static::query()
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->where('slug', $slug)
+            ->exists();
+
+        if ($taken) {
+            return true;
+        }
+
+        return BlogPostSlugRedirect::query()
+            ->when($ignoreId, fn ($q) => $q->where('blog_post_id', '!=', $ignoreId))
+            ->where('slug', $slug)
+            ->exists();
+    }
+
     public static function uniqueSlug(string $base, ?int $ignoreId = null): string
     {
-        $slug = Str::slug($base) ?: 'post';
+        $slug = static::slugify($base);
         $candidate = $slug;
         $n = 2;
 
-        while (static::query()
-            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
-            ->where('slug', $candidate)
-            ->exists()) {
+        while (static::slugIsTaken($candidate, $ignoreId)) {
             $candidate = $slug.'-'.$n;
             $n++;
         }
 
         return $candidate;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function authorOptions(): array
+    {
+        $names = static::query()
+            ->whereNotNull('author_name')
+            ->where('author_name', '!=', '')
+            ->distinct()
+            ->orderBy('author_name')
+            ->pluck('author_name')
+            ->all();
+
+        $users = User::query()->orderBy('name')->pluck('name')->all();
+        $merged = array_merge([(string) config('blog.author_name')], $users, $names);
+
+        return array_values(array_unique(array_filter($merged, fn ($name) => trim((string) $name) !== '')));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function seoIssueKeys(): array
+    {
+        $keys = [];
+        if (! filled($this->meta_description)) {
+            $keys[] = 'meta';
+        }
+        if (! filled($this->seo_title)) {
+            $keys[] = 'seo';
+        }
+        if (! filled($this->featured_image_path)) {
+            $keys[] = 'image';
+        } elseif (! filled($this->featured_image_alt)) {
+            $keys[] = 'alt';
+        }
+
+        return $keys;
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field = $field ?? $this->getRouteKeyName();
+        $post = static::query()->where($field, $value)->first();
+        if ($post) {
+            return $post;
+        }
+
+        if ($field === 'slug') {
+            $redirect = BlogPostSlugRedirect::query()
+                ->where('slug', $value)
+                ->with('post')
+                ->first();
+
+            if ($redirect?->post && request()->isMethod('GET') && request()->routeIs('blog.show')) {
+                throw new HttpResponseException(
+                    redirect()->to($redirect->post->publicUrl(), 301)
+                );
+            }
+        }
+
+        return null;
     }
 
     public function publicUrl(): string

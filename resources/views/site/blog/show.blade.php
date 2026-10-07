@@ -1,9 +1,12 @@
 @extends('site.layouts.public')
 
+@php $isPreview = ! empty($isPreview); @endphp
+
 @section('page_title', $post->title.' — Zanini Renovations')
 @section('meta_description', $post->meta_description ?: $post->displayExcerpt(300))
 @section('canonical', $post->publicUrl())
 @section('og_type', 'article')
+@section('meta_robots', $isPreview ? 'noindex, nofollow' : 'index,follow')
 @if ($post->featuredImageUrl())
   @section('og_image', $post->featuredImageUrl())
 @endif
@@ -17,6 +20,15 @@
 @endpush
 
 @section('content')
+  @if ($isPreview)
+    <div class="blog-preview-banner">
+      <div class="container">
+        <strong>Draft preview</strong>
+        — only signed-in staff can see this page. Search engines are told not to index it.
+        <a href="{{ route('admin.blog.posts.edit', $post) }}">Back to editor</a>
+      </div>
+    </div>
+  @endif
   <section class="page-header page-header--blog">
     <div class="container">
       <div class="row">
