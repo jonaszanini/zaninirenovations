@@ -92,9 +92,13 @@ class BlogPhase1FixesTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('maxlength="'.BlogPost::EXCERPT_MAX.'"', false)
             ->assertSee('id="bp-excerpt-count"', false)
-            ->assertSee("normalize('NFD')", false)
-            ->assertSee('featuredImageIsPresent', false)
-            ->assertSee('relative_urls: false', false);
+            ->assertSee('admin-blog-editor.js', false);
+
+        $editorJs = file_get_contents(public_path('js/admin-blog-editor.js'));
+        $this->assertNotFalse($editorJs);
+        $this->assertStringContainsString("normalize('NFD')", $editorJs);
+        $this->assertStringContainsString('featuredPresent', $editorJs);
+        $this->assertStringContainsString('relative_urls: false', $editorJs);
 
         $this->from(route('admin.blog.posts.create'))
             ->post(route('admin.blog.posts.store'), [
