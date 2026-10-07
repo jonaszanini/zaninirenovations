@@ -38,6 +38,7 @@
     $ogImageOverride = trim($__env->yieldContent('og_image'));
     $ogImagePath = $ogImageOverride !== '' ? $ogImageOverride : ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
     $ogImageAbs = str_starts_with($ogImagePath, 'http') ? $ogImagePath : url($ogImagePath);
+    $ogImageAlt = trim($__env->yieldContent('og_image_alt')) ?: $seoTitle;
   @endphp
   <meta property="og:locale" content="en_CA">
   <meta property="og:type" content="@yield('og_type', 'website')">
@@ -46,7 +47,7 @@
   <meta property="og:description" content="{!! htmlspecialchars($seoDescOg, ENT_QUOTES, 'UTF-8', false) !!}">
   <meta property="og:url" content="{{ url()->current() }}">
   <meta property="og:image" content="{{ $ogImageAbs }}">
-  <meta property="og:image:alt" content="{!! htmlspecialchars($seoTitle, ENT_QUOTES, 'UTF-8', false) !!}">
+  <meta property="og:image:alt" content="{!! htmlspecialchars($ogImageAlt, ENT_QUOTES, 'UTF-8', false) !!}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{!! htmlspecialchars($seoTitle, ENT_QUOTES, 'UTF-8', false) !!}">
   <meta name="twitter:description" content="{!! htmlspecialchars($seoDescOg, ENT_QUOTES, 'UTF-8', false) !!}">
@@ -77,7 +78,11 @@
   @stack('styles')
 </head>
 
+@if (request()->routeIs('blog.*'))
+<body class="blog-public">
+@else
 <body>
+@endif
 
 <noscript>
   <div class="container" style="padding:12px 15px;background:#f0f7fc;border-bottom:1px solid #c5d9e8;font-size:15px;line-height:1.5;">

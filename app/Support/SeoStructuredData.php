@@ -271,9 +271,17 @@ class SeoStructuredData
             $author['jobTitle'] = 'Owner & Contractor';
         }
 
-        $image = $post->featuredImageUrl();
-        if (! is_string($image) || $image === '') {
-            $image = $base.'/'.ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
+        $imageUrl = $post->featuredImageUrl();
+        if (! is_string($imageUrl) || $imageUrl === '') {
+            $imageUrl = $base.'/'.ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
+        }
+        $image = [
+            '@type' => 'ImageObject',
+            'url' => $imageUrl,
+        ];
+        $alt = method_exists($post, 'featuredImageAlt') ? $post->featuredImageAlt() : '';
+        if ($alt !== '') {
+            $image['caption'] = $alt;
         }
 
         $article = [

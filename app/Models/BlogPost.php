@@ -298,4 +298,49 @@ class BlogPost extends Model
     {
         return EasternStandardTimeDisplay::formatCalendarDate($this->published_at ?? $this->created_at);
     }
+
+    /** Public blog date, e.g. "Oct 6, 2026". */
+    public function displayDateLong(): string
+    {
+        return EasternStandardTimeDisplay::formatCalendarMediumDate($this->published_at ?? $this->created_at);
+    }
+
+    public function documentTitle(): string
+    {
+        $title = filled($this->seo_title) ? trim((string) $this->seo_title) : (string) $this->title;
+
+        return $title.' — Zanini Renovations';
+    }
+
+    public function featuredImageAlt(): string
+    {
+        return filled($this->featured_image_alt)
+            ? trim((string) $this->featured_image_alt)
+            : (string) $this->title;
+    }
+
+    /**
+     * @return array{width: int, height: int}|null
+     */
+    public function featuredImageDimensions(): ?array
+    {
+        if (! filled($this->featured_image_path)) {
+            return null;
+        }
+
+        $absolute = Storage::disk('public')->path((string) $this->featured_image_path);
+        if (is_file($absolute)) {
+            $info = @getimagesize($absolute);
+            if (is_array($info) && (int) ($info[0] ?? 0) > 0 && (int) ($info[1] ?? 0) > 0) {
+                return ['width' => (int) $info[0], 'height' => (int) $info[1]];
+            }
+        }
+
+        return ['width' => 1600, 'height' => 900];
+    }
+
+    public function scopeIndexable(Builder $query): Builder
+    {
+        return $query->published()->where('noindex', false);
+    }
 }

@@ -34,7 +34,7 @@
                   <a href="{{ route('blog.index', ['category' => $cat->slug]) }}">{{ $cat->name }}</a>@if (! $loop->last), @endif
                 @endforeach
               @endif
-              &nbsp;<i class="fa fa-calendar"></i> {{ $homeBlogFeatured->displayDate() }}
+              &nbsp;<i class="fa fa-calendar"></i> {{ $homeBlogFeatured->displayDateLong() }}
               &nbsp;<i class="fa fa-clock-o"></i> {{ $homeBlogFeatured->readTimeMinutes() }} min read
             </p>
             <p>{{ $homeBlogFeatured->displayExcerpt(260) }}</p>
@@ -52,7 +52,7 @@
                 <li class="home-blog-more__item">
                   <a href="{{ route('blog.show', $post) }}" class="home-blog-more__link">{{ $post->title }}</a>
                   <p class="home-blog-more__date">
-                    <i class="fa fa-calendar"></i> {{ $post->displayDate() }}
+                    <i class="fa fa-calendar"></i> {{ $post->displayDateLong() }}
                     &nbsp;<i class="fa fa-clock-o"></i> {{ $post->readTimeMinutes() }} min read
                   </p>
                 </li>

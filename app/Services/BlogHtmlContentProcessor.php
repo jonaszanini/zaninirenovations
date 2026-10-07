@@ -75,9 +75,15 @@ class BlogHtmlContentProcessor
             return $html;
         }
 
-        return preg_replace_callback(
+        $html = preg_replace_callback(
             '/<img(?![^>]*\bloading=)([^>]*)>/i',
             fn (array $m) => '<img loading="lazy"'.$m[1].'>',
+            $html
+        ) ?? $html;
+
+        return preg_replace_callback(
+            '/<img(?![^>]*\bdecoding=)([^>]*)>/i',
+            fn (array $m) => '<img decoding="async"'.$m[1].'>',
             $html
         ) ?? $html;
     }

@@ -15,7 +15,7 @@ class PublicSitemap
     public static function urls(?Collection $blogPosts = null, ?Collection $projects = null): array
     {
         $blogPosts = $blogPosts ?? BlogPost::query()
-            ->published()
+            ->indexable()
             ->orderByDesc('updated_at')
             ->get(['slug', 'updated_at']);
 

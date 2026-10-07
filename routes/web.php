@@ -100,7 +100,7 @@ Route::get('/', function () {
         ->values();
 
     $homeBlogPosts = BlogPost::query()
-        ->published()
+        ->indexable()
         ->with(['categories:id,name,slug'])
         ->orderByDesc('published_at')
         ->orderByDesc('id')

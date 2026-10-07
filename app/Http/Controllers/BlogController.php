@@ -7,6 +7,7 @@ use App\Models\BlogPost;
 use App\Models\BlogTag;
 use App\Services\BlogCommentCaptcha;
 use App\Services\BlogHtmlContentProcessor;
+use App\Support\BlogPublicContent;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -39,6 +40,13 @@ class BlogController extends Controller
             ->orderByDesc('id');
 
         $posts = $postsQuery->paginate(9)->withQueryString();
+
+        if ($posts->currentPage() > max(1, $posts->lastPage())) {
+            abort(404);
+        }
+        if (($categorySlug !== '' || $tagSlug !== '') && $posts->total() === 0) {
+            abort(404);
+        }
 
         $featuredPost = BlogPost::query()
             ->published()
@@ -134,11 +142,15 @@ class BlogController extends Controller
         $captchaChallenge = $captchaMode === 'math' ? $captcha->generateMathChallenge() : null;
 
         $isPreview = false;
+        $relatedProjects = BlogPublicContent::relatedProjects($post);
+        $cta = BlogPublicContent::cta($post);
 
         return view('site.blog.show', compact(
             'post',
             'approvedComments',
             'relatedPosts',
+            'relatedProjects',
+            'cta',
             'prevPost',
             'nextPost',
             'recentPosts',

@@ -836,7 +836,7 @@
             <h2 class="contact-title">Our location</h2>
 
             <p class="home-service-area-blurb wow fadeInUp">
-              Based in Carleton Place, we proudly serve Perth, Smiths Falls, Lanark County, the Ottawa region, and Gatineau.
+              {{ config('seo.service_area_text') }}
             </p>
 
             <img src="{{ url('images/truck.webp') }}" alt="Zanini Renovations service truck" class="home-service-area-image wow fadeInUp" loading="lazy" decoding="async" width="1280" height="714">
