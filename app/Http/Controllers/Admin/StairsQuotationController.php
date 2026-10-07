@@ -255,7 +255,13 @@ class StairsQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
-        $linkProject = $this->quotationLinkCandidateProject($request);
+        $roomAreaImport = ! $quotation
+            ? app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'stairs')
+            : null;
+        $linkProject = $this->mergeRoomAreaLinkProject(
+            $this->quotationLinkCandidateProject($request),
+            $roomAreaImport
+        );
         if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
             $linkProject = null;
         }
@@ -272,6 +278,7 @@ class StairsQuotationController extends Controller
                     (int) $quotation->id
                 )
                 : null,
+            'roomAreaImport' => $quotation ? null : $roomAreaImport,
         ]);
     }
 

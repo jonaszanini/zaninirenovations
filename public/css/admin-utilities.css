@@ -2967,7 +2967,21 @@
 }
 
 .util-ra-object-dock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.5rem;
   margin-bottom: 0.75rem;
+  min-width: 0;
+}
+
+.util-ra-object-dock > .util-ra-palette {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.util-ra-object-dock > .util-ra-walls-panel {
+  flex: 0 1 16rem;
 }
 
 .util-ra-palette__toggle {
@@ -3194,6 +3208,14 @@
 
   .util-ra-palette__item {
     min-width: 5rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .util-ra-object-dock > .util-ra-palette .util-ra-palette__groups {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem 0.85rem;
   }
 }
 
@@ -3543,7 +3565,21 @@
   }
 
   .util-ra-object-dock {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
     margin-bottom: 0.4rem;
+  }
+
+  .util-ra-object-dock > .util-ra-palette,
+  .util-ra-object-dock > .util-ra-walls-panel {
+    flex: none;
+    min-width: 0;
+  }
+
+  .util-ra-object-dock > .util-ra-palette.is-open,
+  .util-ra-object-dock > .util-ra-walls-panel.is-open {
+    grid-column: 1 / -1;
   }
 
   .util-ra-palette {
@@ -3599,6 +3635,50 @@
   .util-ra-palette__name {
     white-space: nowrap;
   }
+}
+
+.util-ra-thickness-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 0.35rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.1rem;
+  min-width: 0;
+}
+
+.util-ra-thickness-chip {
+  flex: 0 0 auto;
+  min-height: var(--admin-control-height);
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
+  white-space: nowrap;
+}
+
+.util-ra-thickness-chip.is-active {
+  background: var(--admin-primary);
+  color: #fff;
+  border-color: var(--admin-primary);
+}
+
+.util-ra-thickness-custom {
+  flex: 0 0 4.25rem;
+  min-width: 4.25rem;
+  margin-bottom: 0;
+}
+
+.util-ra-thickness-custom label {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+}
+
+.util-ra-thickness-custom .admin-input {
+  width: 100%;
+  min-width: 0;
 }
 
 .util-ra-live-metrics {

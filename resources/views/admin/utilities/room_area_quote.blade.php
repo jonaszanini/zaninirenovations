@@ -46,11 +46,25 @@
         <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['painting'] }}">Painting</a>
         <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['trimming'] }}">Trim</a>
         <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['tile'] }}">Tile</a>
+        <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['millwork'] }}">Millwork</a>
+        <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['stairs'] }}">Stairs</a>
       </div>
       <dl class="util-rq-metrics">
         <div><dt>Floor</dt><dd>{{ $fmt((float) ($option['area_sqft'] ?? 0)) }} sq ft</dd></div>
+        @if ((float) ($option['wall_thickness_in'] ?? 0) > 0)
+          <div><dt>Footprint</dt><dd>{{ $fmt((float) ($option['outside_area_sqft'] ?? $option['area_sqft'] ?? 0)) }} sq ft</dd></div>
+        @endif
         <div><dt>Walls</dt><dd>{{ $fmt((float) ($option['wall_area_sqft'] ?? 0)) }} sq ft</dd></div>
         <div><dt>Baseboard</dt><dd>{{ $fmt((float) ($option['baseboard_lf'] ?? 0)) }} lf</dd></div>
+        @if ((float) ($option['framing_lf'] ?? 0) > 0 && (float) ($option['shared_wall_lf'] ?? 0) > 0)
+          <div><dt>Framing</dt><dd>{{ $fmt((float) $option['framing_lf']) }} lf</dd></div>
+        @endif
+        @if ((float) ($option['cabinet_base_lf'] ?? 0) + (float) ($option['cabinet_upper_lf'] ?? 0) > 0)
+          <div><dt>Cabinets</dt><dd>{{ $fmt((float) ($option['cabinet_base_lf'] ?? 0)) }} lf base · {{ $fmt((float) ($option['cabinet_upper_lf'] ?? 0)) }} lf upper</dd></div>
+        @endif
+        @if ((int) ($option['stairs_treads'] ?? 0) > 0)
+          <div><dt>Stairs</dt><dd>{{ (int) $option['stairs_treads'] }} treads</dd></div>
+        @endif
         <div><dt>Height</dt><dd>{{ $fmt((float) ($option['wall_height_ft'] ?? 8)) }} ft</dd></div>
       </dl>
       @if ($clientProject)

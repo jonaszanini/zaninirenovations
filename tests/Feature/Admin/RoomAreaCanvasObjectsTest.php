@@ -184,8 +184,65 @@ class RoomAreaCanvasObjectsTest extends IntegrationTestCase
             ->assertSee('fa-paint-brush', false)
             ->assertSee('Start a new color group')
             ->assertSee('data-ra-palette-toggle', false)
-            ->assertSee('Doors &amp; windows', false)
+            ->assertSee('data-ra-walls-toggle', false)
+            ->assertSee('data-ra-palette-stairs', false)
+            ->assertSee('data-ra-thickness', false)
+            ->assertSee('Objects')
+            ->assertSee('Wall thickness')
             ->assertDontSee('fa-palette')
             ->assertDontSee('On a phone, type wall lengths below instead of dragging corners.');
+    }
+
+    public function test_store_room_persists_v4_thickness_and_free_objects(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = RoomAreaProject::create([
+            'name' => 'Phase 5 save project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+
+        $canvas = $this->rectangleCanvas(false);
+        $canvas['v'] = 4;
+        $canvas['wall_thickness_in'] = 3.5;
+        $canvas['objects'] = [
+            [
+                'id' => 'cab_1',
+                'type' => 'cabinet',
+                'subtype' => 'base',
+                'x' => 40,
+                'y' => 30,
+                'width' => 36,
+                'depth' => 24,
+                'rotation' => 0,
+            ],
+            [
+                'id' => 'st_1',
+                'type' => 'stairs',
+                'subtype' => 'straight',
+                'x' => 70,
+                'y' => 50,
+                'width' => 36,
+                'depth' => 120,
+                'rotation' => 90,
+            ],
+        ];
+
+        $this->postJson(route('admin.utilities.room-area.rooms.store', $project), [
+            'name' => 'Kitchen',
+            'canvas' => $canvas,
+            'canvas_width' => 900,
+            'canvas_height' => 640,
+            'scale_pixels_per_foot' => 12,
+        ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('room.canvas.v', 4)
+            ->assertJsonPath('room.canvas.wall_thickness_in', 3.5)
+            ->assertJsonPath('room.canvas.objects.0.type', 'cabinet')
+            ->assertJsonPath('room.canvas.objects.1.type', 'stairs');
+
+        $project->refresh();
+        $this->assertEqualsWithDelta(3.5, (float) $project->wall_thickness_in, 0.01);
     }
 }

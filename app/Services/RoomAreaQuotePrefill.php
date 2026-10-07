@@ -87,7 +87,65 @@ class RoomAreaQuotePrefill
                 'total_area_sqft' => $area,
                 'edge_lf' => $perimeter,
             ],
+            'millwork' => $this->millworkInputs($option),
+            'stairs' => $this->stairsInputs($option),
             default => [],
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $option
+     * @return array<string, mixed>
+     */
+    private function millworkInputs(array $option): array
+    {
+        $pieces = [];
+        $baseLf = (float) ($option['cabinet_base_lf'] ?? 0);
+        $upperLf = (float) ($option['cabinet_upper_lf'] ?? 0);
+        if ($baseLf > 0) {
+            $piece = MillworkQuotationCalculator::defaultPiece('cabinet');
+            $piece['width'] = round($baseLf * 12.0, 2);
+            $piece['height'] = 34.5;
+            $piece['depth'] = 24.0;
+            $piece['qty'] = 1;
+            $piece['unit'] = 'in';
+            $pieces[] = $piece;
+        }
+        if ($upperLf > 0) {
+            $piece = MillworkQuotationCalculator::defaultPiece('cabinet');
+            $piece['width'] = round($upperLf * 12.0, 2);
+            $piece['height'] = 30.0;
+            $piece['depth'] = 12.0;
+            $piece['qty'] = 1;
+            $piece['unit'] = 'in';
+            $pieces[] = $piece;
+        }
+
+        return $pieces === [] ? [] : ['pieces' => $pieces];
+    }
+
+    /**
+     * @param  array<string, mixed>  $option
+     * @return array<string, mixed>
+     */
+    private function stairsInputs(array $option): array
+    {
+        $treads = (int) ($option['stairs_treads'] ?? 0);
+        if ($treads <= 0) {
+            return [];
+        }
+        $type = (string) ($option['stairs_quote_type'] ?? 'standard');
+        if (! in_array($type, ['standard', 'winder', 'single_landing', 'double_landing'], true)) {
+            $type = 'standard';
+        }
+
+        return [
+            'total_steps' => $treads,
+            'segments' => [[
+                'stair_type' => $type,
+                'qty' => $treads,
+                'open_sides' => StairsQuotationCalculator::OPEN_NONE,
+            ]],
+        ];
     }
 }

@@ -100,6 +100,36 @@ class RoomAreaQuotePrefillTest extends IntegrationTestCase
         ]))->assertSee('Kitchen renovation', false);
     }
 
+    public function test_millwork_wizard_prefills_cabinet_linear_feet(): void
+    {
+        $this->actingAsAdmin();
+        $room = $this->makeRoom();
+
+        $this->get(route('admin.quotations.millwork.create', [
+            'room_area_import_id' => 'room:'.$room->id,
+        ]))
+            ->assertOk()
+            ->assertSee('Measurements filled from Room Area', false)
+            ->assertSee('name="pieces[0][width]"', false)
+            ->assertSee('value="36"', false)
+            ->assertSee('name="pieces[1][width]"', false)
+            ->assertSee('value="24"', false);
+    }
+
+    public function test_stairs_wizard_prefills_treads(): void
+    {
+        $this->actingAsAdmin();
+        $room = $this->makeRoom();
+
+        $this->get(route('admin.quotations.stairs.create', [
+            'room_area_import_id' => 'room:'.$room->id,
+        ]))
+            ->assertOk()
+            ->assertSee('Measurements filled from Room Area', false)
+            ->assertSee('name="total_steps"', false)
+            ->assertSee('value="12"', false);
+    }
+
     private function makeRoom(?ClientProject $clientProject = null): RoomAreaRoom
     {
         $project = RoomAreaProject::create([
@@ -154,6 +184,36 @@ class RoomAreaQuotePrefillTest extends IntegrationTestCase
                         'wall_id' => 'wall_p1_2_3',
                         'width' => 36,
                         'offset' => 12,
+                    ],
+                    [
+                        'id' => 'cab_1',
+                        'type' => 'cabinet',
+                        'subtype' => 'base',
+                        'x' => 40,
+                        'y' => 40,
+                        'width' => 36,
+                        'depth' => 24,
+                        'rotation' => 0,
+                    ],
+                    [
+                        'id' => 'cab_2',
+                        'type' => 'cabinet',
+                        'subtype' => 'upper',
+                        'x' => 80,
+                        'y' => 20,
+                        'width' => 24,
+                        'depth' => 12,
+                        'rotation' => 0,
+                    ],
+                    [
+                        'id' => 'st_1',
+                        'type' => 'stairs',
+                        'subtype' => 'straight',
+                        'x' => 60,
+                        'y' => 70,
+                        'width' => 36,
+                        'depth' => 120,
+                        'rotation' => 0,
                     ],
                 ],
             ],

@@ -204,11 +204,37 @@ class RoomAreaLayoutQuoteService
             $metrics['inside_corners'] += $row['inside_corners'];
             $metrics['outside_corners'] += $row['outside_corners'];
             $metrics['polygon_count'] += $row['polygon_count'];
+            $metrics['inside_area_sqft'] += $row['inside_area_sqft'] ?? $row['area_sqft'];
+            $metrics['outside_area_sqft'] += $row['outside_area_sqft'] ?? $row['area_sqft'];
+            $metrics['shared_wall_lf'] += $row['shared_wall_lf'] ?? 0;
+            $metrics['framing_lf'] += $row['framing_lf'] ?? $row['perimeter_lf'];
+            $metrics['cabinet_base_lf'] += $row['cabinet_base_lf'] ?? 0;
+            $metrics['cabinet_upper_lf'] += $row['cabinet_upper_lf'] ?? 0;
+            $metrics['stairs_count'] += $row['stairs_count'] ?? 0;
+            $metrics['stairs_treads'] += $row['stairs_treads'] ?? 0;
+            $metrics['stairs_run_lf'] += $row['stairs_run_lf'] ?? 0;
+            if (($row['stairs_quote_type'] ?? 'standard') === 'double_landing') {
+                $metrics['stairs_quote_type'] = 'double_landing';
+            } elseif (($row['stairs_quote_type'] ?? 'standard') === 'single_landing'
+                && ($metrics['stairs_quote_type'] ?? 'standard') !== 'double_landing') {
+                $metrics['stairs_quote_type'] = 'single_landing';
+            }
+            $thick = (float) ($row['wall_thickness_in'] ?? 0);
+            if ($thick > (float) ($metrics['wall_thickness_in'] ?? 0)) {
+                $metrics['wall_thickness_in'] = $thick;
+            }
         }
         $metrics['area_sqft'] = round($metrics['area_sqft'], 2);
         $metrics['perimeter_lf'] = round($metrics['perimeter_lf'], 2);
         $metrics['baseboard_lf'] = round($metrics['baseboard_lf'], 2);
         $metrics['wall_area_sqft'] = round($metrics['wall_area_sqft'], 2);
+        $metrics['inside_area_sqft'] = round((float) ($metrics['inside_area_sqft'] ?? $metrics['area_sqft']), 2);
+        $metrics['outside_area_sqft'] = round((float) ($metrics['outside_area_sqft'] ?? $metrics['area_sqft']), 2);
+        $metrics['shared_wall_lf'] = round((float) ($metrics['shared_wall_lf'] ?? 0), 2);
+        $metrics['framing_lf'] = round((float) ($metrics['framing_lf'] ?? $metrics['perimeter_lf']), 2);
+        $metrics['cabinet_base_lf'] = round((float) ($metrics['cabinet_base_lf'] ?? 0), 2);
+        $metrics['cabinet_upper_lf'] = round((float) ($metrics['cabinet_upper_lf'] ?? 0), 2);
+        $metrics['stairs_run_lf'] = round((float) ($metrics['stairs_run_lf'] ?? 0), 2);
 
         if ($metrics['perimeter_lf'] <= 0 && $metrics['area_sqft'] <= 0) {
             return null;
@@ -240,6 +266,17 @@ class RoomAreaLayoutQuoteService
         $peri = $this->formatQty((float) $metrics['perimeter_lf']);
         $base = $this->formatQty((float) ($metrics['baseboard_lf'] ?? $metrics['perimeter_lf']));
         $openings = (int) ($metrics['drywall_openings'] ?? 0);
+        $cabinetBase = (float) ($metrics['cabinet_base_lf'] ?? 0);
+        $cabinetUpper = (float) ($metrics['cabinet_upper_lf'] ?? 0);
+        $stairsTreads = (int) ($metrics['stairs_treads'] ?? 0);
+        $meta = $area.' sq ft floor · '.$peri.' lf perimeter · '.$base.' lf baseboard'
+            .($openings > 0 ? ' · '.$openings.' openings' : '');
+        if ($cabinetBase > 0 || $cabinetUpper > 0) {
+            $meta .= ' · '.$this->formatQty($cabinetBase + $cabinetUpper).' lf cabinets';
+        }
+        if ($stairsTreads > 0) {
+            $meta .= ' · '.$stairsTreads.' stair treads';
+        }
 
         return [
             'id' => $id,
@@ -260,8 +297,18 @@ class RoomAreaLayoutQuoteService
             'inside_corners' => $metrics['inside_corners'],
             'outside_corners' => $metrics['outside_corners'],
             'polygon_count' => $metrics['polygon_count'],
-            'meta' => $area.' sq ft floor · '.$peri.' lf perimeter · '.$base.' lf baseboard'
-                .($openings > 0 ? ' · '.$openings.' openings' : ''),
+            'wall_thickness_in' => (float) ($metrics['wall_thickness_in'] ?? 0),
+            'inside_area_sqft' => $metrics['inside_area_sqft'] ?? $metrics['area_sqft'],
+            'outside_area_sqft' => $metrics['outside_area_sqft'] ?? $metrics['area_sqft'],
+            'shared_wall_lf' => (float) ($metrics['shared_wall_lf'] ?? 0),
+            'framing_lf' => (float) ($metrics['framing_lf'] ?? $metrics['perimeter_lf']),
+            'cabinet_base_lf' => $cabinetBase,
+            'cabinet_upper_lf' => $cabinetUpper,
+            'stairs_count' => (int) ($metrics['stairs_count'] ?? 0),
+            'stairs_treads' => $stairsTreads,
+            'stairs_run_lf' => (float) ($metrics['stairs_run_lf'] ?? 0),
+            'stairs_quote_type' => (string) ($metrics['stairs_quote_type'] ?? 'standard'),
+            'meta' => $meta,
         ];
     }
 

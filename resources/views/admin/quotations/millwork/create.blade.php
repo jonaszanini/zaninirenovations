@@ -13,11 +13,15 @@
   $formQuery = $qs !== [] ? '?'.http_build_query($qs) : '';
   $title = $isEdit ? 'Edit '.$quotation->quote_number : 'New millwork quotation';
   $formAction = ($isEdit ? route('admin.quotations.millwork.update', $quotation) : route('admin.quotations.millwork.store')).$formQuery;
+  $roomAreaImport = $roomAreaImport ?? null;
   $inputs = $isEdit ? ($quotation->inputs ?? []) : MillworkQuotationCalculator::defaultInputs();
   foreach (MillworkQuotationCalculator::defaultInputs() as $k => $v) {
       if (! array_key_exists($k, $inputs)) {
           $inputs[$k] = $v;
       }
+  }
+  if (! $isEdit && ! empty($roomAreaImport['inputs']) && is_array($roomAreaImport['inputs'])) {
+      $inputs = array_merge($inputs, $roomAreaImport['inputs']);
   }
   $sectionList = $sections ?? MillworkQuotationCalculator::SECTIONS;
   $previewLabor = is_array($initialPreview['labor'] ?? null) ? $initialPreview['labor'] : [];
@@ -43,6 +47,7 @@
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
+  @include('admin.partials.room_area_prefill_banner')
   @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
   @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
 

@@ -335,7 +335,13 @@ class MillworkQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
-        $linkProject = $this->quotationLinkCandidateProject($request);
+        $roomAreaImport = ! $quotation
+            ? app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'millwork')
+            : null;
+        $linkProject = $this->mergeRoomAreaLinkProject(
+            $this->quotationLinkCandidateProject($request),
+            $roomAreaImport
+        );
         if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
             $linkProject = null;
         }
@@ -351,6 +357,9 @@ class MillworkQuotationController extends Controller
         $previewInputs = MillworkQuotationCalculator::defaultInputs();
         $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
+        if (! $quotation && $roomAreaImport) {
+            $previewInputs = array_merge($previewInputs, $roomAreaImport['inputs']);
+        }
         if ($quotation && is_array($quotation->inputs)) {
             foreach ($quotation->inputs as $key => $value) {
                 $previewInputs[$key] = $value;
@@ -368,6 +377,7 @@ class MillworkQuotationController extends Controller
             'initialPreview' => $initialPreview,
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
             'catalog' => $settings->resolvedCatalog(),
+            'roomAreaImport' => $quotation ? null : $roomAreaImport,
         ]);
     }
 
