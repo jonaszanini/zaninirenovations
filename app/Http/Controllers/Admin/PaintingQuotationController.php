@@ -253,10 +253,13 @@ class PaintingQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
-        $linkProject = $this->quotationLinkCandidateProject($request);
-        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
-            $linkProject = null;
-        }
+        $roomAreaImport = ! $quotation
+            ? app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'painting')
+            : null;
+        $linkProject = $this->mergeRoomAreaLinkProject(
+            $this->quotationLinkCandidateProject($request),
+            $roomAreaImport
+        );
 
         $linkedCpq = null;
         if ($quotation) {
@@ -265,10 +268,6 @@ class PaintingQuotationController extends Controller
                 (int) $quotation->id
             );
         }
-
-        $roomAreaImport = ! $quotation
-            ? app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'painting')
-            : null;
 
         return view('admin.quotations.painting.create', [
             'quotation' => $quotation,

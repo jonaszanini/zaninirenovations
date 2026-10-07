@@ -260,7 +260,7 @@ class RoomAreaLayoutQuoteService
             'inside_corners' => $metrics['inside_corners'],
             'outside_corners' => $metrics['outside_corners'],
             'polygon_count' => $metrics['polygon_count'],
-            'meta' => $area.' sq ft floor · '.$peri.' lf walls · '.$base.' lf baseboard'
+            'meta' => $area.' sq ft floor · '.$peri.' lf perimeter · '.$base.' lf baseboard'
                 .($openings > 0 ? ' · '.$openings.' openings' : ''),
         ];
     }

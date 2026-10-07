@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\ClientProject;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use Tests\IntegrationTestCase;
@@ -25,7 +26,9 @@ class RoomAreaQuotePrefillTest extends IntegrationTestCase
             ->assertSee('name="baseboard_linear_ft"', false)
             ->assertSee('value="30"', false)
             ->assertSee('Measurements filled from Room Area', false)
-            ->assertSee('Kitchen', false);
+            ->assertSee('Kitchen', false)
+            ->assertSee('lf perimeter', false)
+            ->assertDontSee('lf walls', false);
     }
 
     public function test_painting_wizard_prefills_walls_plus_ceiling(): void
@@ -58,10 +61,50 @@ class RoomAreaQuotePrefillTest extends IntegrationTestCase
             ->assertSee('value="floor_wall"', false);
     }
 
-    private function makeRoom(): RoomAreaRoom
+    public function test_linked_layout_prefills_client_and_project_on_all_four_wizards(): void
+    {
+        $this->actingAsAdmin();
+        $clientProject = ClientProject::factory()->create([
+            'client_name' => 'Maria Costa',
+            'name' => 'Kitchen renovation',
+        ]);
+        $room = $this->makeRoom($clientProject);
+
+        foreach ([
+            'admin.quotations.flooring.create',
+            'admin.quotations.painting.create',
+            'admin.quotations.trimming.create',
+            'admin.quotations.tile.create',
+        ] as $route) {
+            $response = $this->get(route($route, [
+                'room_area_import_id' => 'room:'.$room->id,
+            ]));
+            $response->assertOk()->assertSee('Maria Costa', false);
+        }
+
+        $this->get(route('admin.quotations.flooring.create', [
+            'room_area_import_id' => 'room:'.$room->id,
+        ]))->assertSee('Kitchen renovation', false);
+
+        $this->get(route('admin.quotations.painting.create', [
+            'room_area_import_id' => 'room:'.$room->id,
+        ]))->assertSee('Kitchen renovation', false);
+
+        $this->get(route('admin.quotations.trimming.create', [
+            'room_area_import_id' => 'room:'.$room->id,
+        ]))->assertSee('name="link_client_project_id"', false)
+            ->assertSee('value="'.$clientProject->id.'"', false);
+
+        $this->get(route('admin.quotations.tile.create', [
+            'room_area_import_id' => 'room:'.$room->id,
+        ]))->assertSee('Kitchen renovation', false);
+    }
+
+    private function makeRoom(?ClientProject $clientProject = null): RoomAreaRoom
     {
         $project = RoomAreaProject::create([
             'name' => 'Prefill project',
+            'client_project_id' => $clientProject?->id,
             'scale_pixels_per_foot' => 12,
         ]);
 

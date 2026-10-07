@@ -28,7 +28,7 @@
   $grout_type_id = old('grout_type_id', $inputs['grout_type_id'] ?? '');
   $labor_rate = old('labor_rate', $inputs['labor_rate'] ?? \App\Services\SharedWorkCatalog::flatRate('tile_install', 12));
   $work_description = old('work_description', $isEdit ? $quotation->work_description : '');
-  $client_name = old('client_name', $isEdit ? $quotation->client_name : '');
+  $client_name = old('client_name', $isEdit ? $quotation->client_name : optional($linkProject)->client_name);
   
   $include_demolition = old('include_demolition', $inputs['include_demolition'] ?? false);
   $demolition_complexity = old('demolition_complexity', $inputs['demolition_complexity'] ?? 'standard');

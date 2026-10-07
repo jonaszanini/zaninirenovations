@@ -35,7 +35,9 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
             ->assertDontSee('data-cp-money-entry="direct"', false)
             ->assertSee('name="trades[]"', false)
             ->assertSee('value="flooring"', false)
-            ->assertSee('Start a calculator', false);
+            ->assertSee('Start a calculator', false)
+            ->assertSee('lf perimeter', false)
+            ->assertDontSee('lf walls', false);
     }
 
     public function test_inserts_lines_into_new_quotation_with_server_computed_qty(): void

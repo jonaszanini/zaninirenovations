@@ -255,9 +255,14 @@ class FlooringQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
-        $linkProject = $this->quotationLinkCandidateProject($request);
-        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
-            $linkProject = null;
+        $previewInputs = FlooringQuotationCalculator::defaultInputs();
+        $roomAreaImport = app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'flooring');
+        $linkProject = $this->mergeRoomAreaLinkProject(
+            $this->quotationLinkCandidateProject($request),
+            $quotation ? null : $roomAreaImport
+        );
+        if (! $quotation && $roomAreaImport) {
+            $previewInputs = array_merge($previewInputs, $roomAreaImport['inputs']);
         }
 
         $linkedCpq = null;
@@ -266,12 +271,6 @@ class FlooringQuotationController extends Controller
                 ClientProjectQuotation::SOURCE_FLOORING,
                 (int) $quotation->id
             );
-        }
-
-        $previewInputs = FlooringQuotationCalculator::defaultInputs();
-        $roomAreaImport = app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'flooring');
-        if (! $quotation && $roomAreaImport) {
-            $previewInputs = array_merge($previewInputs, $roomAreaImport['inputs']);
         }
         if ($quotation && is_array($quotation->inputs)) {
             foreach ($quotation->inputs as $key => $value) {

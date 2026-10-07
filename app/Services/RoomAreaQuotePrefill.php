@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ClientProject;
 use Illuminate\Http\Request;
 
 /**
@@ -16,7 +17,7 @@ class RoomAreaQuotePrefill
     ) {}
 
     /**
-     * @return array{id: string, label: string, note: string, kind: string, inputs: array<string, mixed>}|null
+     * @return array{id: string, label: string, note: string, kind: string, inputs: array<string, mixed>, client_project: ClientProject|null, client_name: string}|null
      */
     public function forRequest(Request $request, string $wizard): ?array
     {
@@ -29,14 +30,17 @@ class RoomAreaQuotePrefill
     }
 
     /**
-     * @return array{id: string, label: string, note: string, kind: string, inputs: array<string, mixed>}|null
+     * @return array{id: string, label: string, note: string, kind: string, inputs: array<string, mixed>, client_project: ClientProject|null, client_name: string}|null
      */
     public function forLayoutId(string $id, string $wizard): ?array
     {
-        $option = $this->layouts->optionById($id);
-        if ($option === null) {
+        $resolved = $this->layouts->resolve($id);
+        if ($resolved === null) {
             return null;
         }
+
+        $option = $resolved['option'];
+        $clientProject = $resolved['client_project'];
 
         return [
             'id' => (string) $option['id'],
@@ -44,6 +48,8 @@ class RoomAreaQuotePrefill
             'note' => (string) ($option['meta'] ?? ''),
             'kind' => (string) ($option['kind'] ?? 'room'),
             'inputs' => $this->wizardInputs($wizard, $option),
+            'client_project' => $clientProject,
+            'client_name' => trim((string) ($clientProject?->client_name ?? '')),
         ];
     }
 

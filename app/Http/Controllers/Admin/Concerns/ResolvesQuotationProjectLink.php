@@ -93,6 +93,26 @@ trait ResolvesQuotationProjectLink
         return ClientProject::query()->find($id);
     }
 
+    /**
+     * Prefer ?project= / posted link id; otherwise the Client Project attached
+     * to a Room Area layout being imported into this wizard.
+     *
+     * @param  array{client_project?: ClientProject|null}|null  $roomAreaImport
+     */
+    protected function mergeRoomAreaLinkProject(?ClientProject $linkProject, ?array $roomAreaImport): ?ClientProject
+    {
+        if (! $linkProject) {
+            $fromRoom = $roomAreaImport['client_project'] ?? null;
+            $linkProject = $fromRoom instanceof ClientProject ? $fromRoom : null;
+        }
+
+        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
+            return null;
+        }
+
+        return $linkProject;
+    }
+
     /** True when linking is blocked for this project's status (soft-fail returns false). */
     protected function quotationProjectAllowsNewLink(ClientProject $project): bool
     {
