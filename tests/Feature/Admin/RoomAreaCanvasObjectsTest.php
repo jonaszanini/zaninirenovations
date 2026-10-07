@@ -183,6 +183,8 @@ class RoomAreaCanvasObjectsTest extends IntegrationTestCase
             ->assertSee('Pinch to zoom')
             ->assertSee('fa-paint-brush', false)
             ->assertSee('Start a new color group')
+            ->assertSee('data-ra-palette-toggle', false)
+            ->assertSee('Doors &amp; windows', false)
             ->assertDontSee('fa-palette')
             ->assertDontSee('On a phone, type wall lengths below instead of dragging corners.');
     }

@@ -230,6 +230,8 @@
     areaName: root.querySelector('[data-ra-area-name]'),
     areaNameWrap: root.querySelector('[data-ra-area-name-wrap]'),
     palette: root.querySelector('[data-ra-palette]'),
+    paletteToggle: root.querySelector('[data-ra-palette-toggle]'),
+    paletteBody: root.querySelector('[data-ra-palette-body]'),
     paletteDoors: root.querySelector('[data-ra-palette-doors]'),
     paletteWindows: root.querySelector('[data-ra-palette-windows]'),
     dimensionsToggle: root.querySelector('[data-ra-dimensions-toggle]'),
@@ -6999,6 +7001,7 @@
         finishPaletteDrag(e);
       } else {
         armCatalogItem(item.key);
+        collapsePaletteIfNarrow();
       }
       dragging = false;
     }
@@ -7014,6 +7017,27 @@
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);
     });
+  }
+
+  function isNarrowPalette() {
+    return window.matchMedia('(max-width: 599px)').matches;
+  }
+
+  function setPaletteOpen(open) {
+    if (!els.palette) return;
+    els.palette.classList.toggle('is-open', !!open);
+    if (els.paletteToggle) {
+      els.paletteToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+  }
+
+  function collapsePaletteIfNarrow() {
+    if (isNarrowPalette()) setPaletteOpen(false);
+  }
+
+  function togglePaletteOpen() {
+    var open = els.palette && els.palette.classList.contains('is-open');
+    setPaletteOpen(!open);
   }
 
   function armCatalogItem(key) {
@@ -8379,6 +8403,12 @@
       });
     }
     els.closeShape.addEventListener('click', closeShape);
+    if (els.paletteToggle) {
+      els.paletteToggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        togglePaletteOpen();
+      });
+    }
     if (els.addArea) els.addArea.addEventListener('click', addAreaSameGroup);
     if (els.addAreaNewGroup) els.addAreaNewGroup.addEventListener('click', addAreaNewGroup);
     if (els.deleteArea) els.deleteArea.addEventListener('click', deleteActivePolygon);

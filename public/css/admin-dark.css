@@ -1281,6 +1281,10 @@ html.admin-dark .util-ra-palette {
   border-color: var(--admin-border);
 }
 
+html.admin-dark .util-ra-palette__toggle {
+  color: var(--admin-heading);
+}
+
 html.admin-dark .util-ra-palette__item {
   background: var(--admin-surface);
   color: var(--admin-text);

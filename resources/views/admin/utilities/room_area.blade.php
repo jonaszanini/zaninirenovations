@@ -203,26 +203,28 @@
             <div class="util-ra-tool-group util-ra-tool-group--areas">
               <span class="util-ra-tool-group__label">Areas</span>
               <div class="util-ra-tool-group__actions">
-                <div class="util-ra-btn-cluster" role="group" aria-label="Add area options">
-                  <span class="util-ra-tip" data-tooltip="Add area to this group">
-                    <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-add-area disabled aria-label="Add area to this group">
-                      <i class="fa fa-plus-square" aria-hidden="true"></i>
+                <div class="util-ra-areas-main">
+                  <div class="util-ra-btn-cluster" role="group" aria-label="Add area options">
+                    <span class="util-ra-tip" data-tooltip="Add area to this group">
+                      <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-add-area disabled aria-label="Add area to this group">
+                        <i class="fa fa-plus-square" aria-hidden="true"></i>
+                      </button>
+                    </span>
+                    <span class="util-ra-tip" data-tooltip="Start a new color group">
+                      <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-add-area-new-group disabled aria-label="Start a new color group" title="Start a new color group">
+                        <i class="fa fa-paint-brush" aria-hidden="true"></i>
+                      </button>
+                    </span>
+                  </div>
+                  <span class="util-ra-tip" data-tooltip="Delete active area">
+                    <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-btn--danger-ghost" data-ra-delete-area disabled aria-label="Delete active area">
+                      <i class="fa fa-minus-circle" aria-hidden="true"></i>
                     </button>
                   </span>
-                  <span class="util-ra-tip" data-tooltip="Start a new color group">
-                    <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-add-area-new-group disabled aria-label="Start a new color group" title="Start a new color group">
-                      <i class="fa fa-paint-brush" aria-hidden="true"></i>
-                    </button>
-                  </span>
-                </div>
-                <span class="util-ra-tip" data-tooltip="Delete active area">
-                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-btn--danger-ghost" data-ra-delete-area disabled aria-label="Delete active area">
-                    <i class="fa fa-minus-circle" aria-hidden="true"></i>
-                  </button>
-                </span>
-                <div class="admin-form-group util-ra-area-name" data-ra-area-name-wrap hidden>
-                  <label for="ra-area-name" class="util-sr-only">Area name (optional)</label>
-                  <input class="admin-input" type="text" id="ra-area-name" maxlength="80" placeholder="Area name" autocomplete="off" data-ra-area-name>
+                  <div class="admin-form-group util-ra-area-name" data-ra-area-name-wrap hidden>
+                    <label for="ra-area-name" class="util-sr-only">Area name (optional)</label>
+                    <input class="admin-input" type="text" id="ra-area-name" maxlength="80" placeholder="Area name" autocomplete="off" data-ra-area-name>
+                  </div>
                 </div>
                 <span class="util-ra-group-chip" data-ra-group-chip hidden>
                   <span class="util-ra-group-chip__swatch" data-ra-group-chip-swatch></span>
@@ -343,18 +345,24 @@
 
         <div class="util-ra-object-dock">
           <section class="util-ra-palette" data-ra-palette aria-label="Door and window library">
-            <div class="util-ra-palette__head">
-              <h3 class="util-ra-palette__title">Objects</h3>
-              <p class="util-ra-palette__hint">Drag onto a wall, or tap an item then tap a wall.</p>
-            </div>
-            <div class="util-ra-palette__groups">
-              <div class="util-ra-palette__group">
-                <span class="util-ra-palette__group-label">Doors</span>
-                <div class="util-ra-palette__items" data-ra-palette-doors></div>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-palette__toggle" data-ra-palette-toggle aria-expanded="false" aria-controls="ra-palette-body">
+              <span>Doors &amp; windows</span>
+              <i class="fa fa-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="util-ra-palette__body" id="ra-palette-body" data-ra-palette-body>
+              <div class="util-ra-palette__head">
+                <h3 class="util-ra-palette__title">Objects</h3>
+                <p class="util-ra-palette__hint">Drag onto a wall, or tap an item then tap a wall.</p>
               </div>
-              <div class="util-ra-palette__group">
-                <span class="util-ra-palette__group-label">Windows</span>
-                <div class="util-ra-palette__items" data-ra-palette-windows></div>
+              <div class="util-ra-palette__groups">
+                <div class="util-ra-palette__group">
+                  <span class="util-ra-palette__group-label">Doors</span>
+                  <div class="util-ra-palette__items" data-ra-palette-doors></div>
+                </div>
+                <div class="util-ra-palette__group">
+                  <span class="util-ra-palette__group-label">Windows</span>
+                  <div class="util-ra-palette__items" data-ra-palette-windows></div>
+                </div>
               </div>
             </div>
           </section>
