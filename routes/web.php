@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\StairsDatabaseController;
 use App\Http\Controllers\Admin\StairsQuotationController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\PortfolioController;
+use App\Http\Controllers\ServiceAreaController;
 use App\Models\BlogPost;
 use App\Models\Project;
 use Illuminate\Support\Facades\Route;
@@ -129,6 +130,11 @@ Route::get('/portfolio', [PortfolioController::class, 'index'])->name('portfolio
 Route::get('/portfolio/{slug}', [PortfolioController::class, 'show'])
     ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
     ->name('portfolio.show');
+
+Route::get('/service-areas', [ServiceAreaController::class, 'index'])->name('service-areas.index');
+Route::get('/service-areas/{slug}', [ServiceAreaController::class, 'show'])
+    ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
+    ->name('service-areas.show');
 
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');

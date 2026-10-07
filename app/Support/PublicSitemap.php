@@ -62,7 +62,26 @@ class PublicSitemap
                 'changefreq' => 'weekly',
                 'priority' => '0.85',
             ],
+            [
+                'loc' => url('/service-areas'),
+                'lastmod' => self::lastmodFromFile(config_path('service_areas.php')),
+                'changefreq' => 'monthly',
+                'priority' => '0.8',
+            ],
         ];
+
+        foreach (\App\Support\ServiceAreas::publishedPages() as $page) {
+            $slug = trim((string) ($page['slug'] ?? ''));
+            if ($slug === '') {
+                continue;
+            }
+            $urls[] = [
+                'loc' => url('/service-areas/'.$slug),
+                'lastmod' => self::lastmodFromFile(config_path('service_areas.php')),
+                'changefreq' => 'monthly',
+                'priority' => '0.8',
+            ];
+        }
 
         foreach ($blogPosts as $post) {
             $updated = $post->updated_at;

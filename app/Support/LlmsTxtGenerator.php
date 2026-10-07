@@ -40,6 +40,7 @@ class LlmsTxtGenerator
             '- [Warranty]('.$base.'/warranty): Workmanship warranty and insurance details.',
             '- [Blog]('.$base.'/blog): Renovation and carpentry articles for Ottawa-area homeowners.',
             '- [Projects]('.$base.'/portfolio): Photos and details of completed carpentry and renovation work.',
+            '- [Service areas]('.$base.'/service-areas): Towns we serve in Lanark County and west Ottawa.',
             '- [Privacy policy]('.$base.'/privacy-policy)',
             '- [Terms and conditions]('.$base.'/terms-and-conditions)',
             '',
@@ -51,8 +52,19 @@ class LlmsTxtGenerator
             '## Service area',
             '',
             '- '.trim((string) config('seo.service_area_text', '')),
-            '',
+            '- [Service areas hub]('.$base.'/service-areas)',
         ];
+
+        foreach (\App\Support\ServiceAreas::publishedPages() as $page) {
+            $slug = trim((string) ($page['slug'] ?? ''));
+            $label = trim((string) ($page['hub_label'] ?? $page['name'] ?? $slug));
+            if ($slug === '' || $label === '') {
+                continue;
+            }
+            $lines[] = '- ['.$label.']('.$base.'/service-areas/'.$slug.')';
+        }
+
+        $lines[] = '';
 
         $posts = $posts ?? BlogPost::query()
             ->indexable()

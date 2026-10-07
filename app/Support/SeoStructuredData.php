@@ -502,6 +502,144 @@ class SeoStructuredData
         ];
     }
 
+    /**
+     * JSON-LD for /service-areas hub.
+     *
+     * @param  array<string, mixed>  $hub
+     * @return array<string, mixed>
+     */
+    public static function serviceAreaHub(array $hub): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $url = $base.'/service-areas';
+        $name = (string) ($hub['title'] ?? 'Service areas');
+        $description = (string) ($hub['meta_description'] ?? '');
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'Service areas', 'url' => $url],
+                ]),
+                [
+                    '@type' => 'WebPage',
+                    '@id' => $url.'#webpage',
+                    'url' => $url,
+                    'name' => $name,
+                    'description' => $description,
+                    'inLanguage' => 'en-CA',
+                    'isPartOf' => ['@id' => $base.'/#website'],
+                    'about' => ['@id' => $base.'/#business'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * JSON-LD for a published town page: LocalBusiness + Service + WebPage + FAQ.
+     *
+     * @param  array<string, mixed>  $page
+     * @return array<string, mixed>
+     */
+    public static function serviceAreaTown(array $page): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $slug = (string) ($page['slug'] ?? '');
+        $url = $base.'/service-areas/'.$slug;
+        $title = (string) ($page['title'] ?? '');
+        $description = (string) ($page['meta_description'] ?? '');
+        $h1 = (string) ($page['h1'] ?? $title);
+        $crumbName = (string) ($page['breadcrumb_name'] ?? $page['name'] ?? $h1);
+        $areas = $page['area_served'] ?? [];
+        if (! is_array($areas) || $areas === []) {
+            $areas = [['@type' => 'Place', 'name' => (string) ($page['name'] ?? 'Ottawa')]];
+        }
+
+        $business = [
+            '@type' => ['LocalBusiness', 'HomeAndConstructionBusiness'],
+            '@id' => $url.'#localbusiness',
+            'name' => 'Zanini Renovations',
+            'url' => $url,
+            'description' => $description,
+            'telephone' => '+1-647-834-7570',
+            'email' => (string) config('mail.from.address', ''),
+            'foundingDate' => '2020',
+            'address' => [
+                '@type' => 'PostalAddress',
+                'addressLocality' => 'Carleton Place',
+                'addressRegion' => 'ON',
+                'addressCountry' => 'CA',
+            ],
+            'areaServed' => $areas,
+            'founder' => [
+                '@type' => 'Person',
+                'name' => 'Jonas Zanini',
+            ],
+            'parentOrganization' => ['@id' => $base.'/#business'],
+        ];
+
+        $service = [
+            '@type' => 'Service',
+            '@id' => $url.'#service',
+            'name' => $h1,
+            'serviceType' => 'Carpentry and renovation',
+            'description' => $description,
+            'url' => $url,
+            'provider' => ['@id' => $url.'#localbusiness'],
+            'areaServed' => $areas,
+        ];
+
+        $graph = [
+            self::breadcrumb([
+                ['name' => 'Home', 'url' => $base.'/'],
+                ['name' => 'Service areas', 'url' => $base.'/service-areas'],
+                ['name' => $crumbName, 'url' => $url],
+            ]),
+            [
+                '@type' => 'WebPage',
+                '@id' => $url.'#webpage',
+                'url' => $url,
+                'name' => $title,
+                'description' => $description,
+                'inLanguage' => 'en-CA',
+                'isPartOf' => ['@id' => $base.'/#website'],
+                'about' => ['@id' => $url.'#service'],
+            ],
+            $business,
+            $service,
+        ];
+
+        $faqItems = [];
+        foreach ((array) ($page['faqs'] ?? []) as $faq) {
+            $question = trim((string) ($faq['question'] ?? ''));
+            $answer = trim((string) ($faq['answer'] ?? ''));
+            if ($question === '' || $answer === '') {
+                continue;
+            }
+            $faqItems[] = [
+                '@type' => 'Question',
+                'name' => $question,
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => $answer,
+                ],
+            ];
+        }
+        if ($faqItems !== []) {
+            $graph[] = [
+                '@type' => 'FAQPage',
+                '@id' => $url.'#faq',
+                'mainEntity' => $faqItems,
+            ];
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => $graph,
+        ];
+    }
+
     public static function absoluteUrl(string $path): string
     {
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {

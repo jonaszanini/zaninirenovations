@@ -126,6 +126,10 @@ final class SmokeTestFixtures
 
     public function slugForRoute(Route $route): string
     {
+        if ($route->getName() === 'service-areas.show') {
+            return 'carleton-place';
+        }
+
         if ($route->getName() === 'portfolio.show') {
             return $this->portfolioProject()->slug;
         }
