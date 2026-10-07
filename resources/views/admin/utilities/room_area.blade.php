@@ -460,8 +460,9 @@
             </div>
             <div class="util-ra-live-area__toolbar">
               <div class="admin-form-group util-ra-live-area__height">
-                <label for="ra-wall-height">Height (ft)</label>
+                <label for="ra-wall-height">Height</label>
                 <input class="admin-input" type="text" id="ra-wall-height" inputmode="decimal" value="8" data-ra-wall-height>
+                <span class="util-ra-live-area__height-unit">ft</span>
               </div>
               <div class="util-ra-live-area__exports">
                 <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-export-png>

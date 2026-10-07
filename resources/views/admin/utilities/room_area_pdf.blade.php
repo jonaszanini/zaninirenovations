@@ -38,7 +38,7 @@
       margin: 0 0 16px;
       page-break-inside: avoid;
     }
-    .pdf-diagram img { max-width: 100%; }
+    .pdf-diagram img { width: 480px; max-width: 100%; height: auto; }
     table.pdf-rows {
       width: 100%;
       border-collapse: collapse;

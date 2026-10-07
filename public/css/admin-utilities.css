@@ -2748,6 +2748,8 @@
   border: 1px solid var(--admin-border);
   border-radius: 10px;
   background: var(--admin-bg);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .util-ra-palette__head {
@@ -2790,6 +2792,10 @@
   color: var(--admin-muted);
 }
 
+.util-ra-palette__group {
+  min-width: 0;
+}
+
 .util-ra-palette__items {
   display: flex;
   flex-wrap: nowrap;
@@ -2797,6 +2803,8 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 0.15rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .util-ra-palette__item {
@@ -3172,17 +3180,23 @@
 }
 
 .util-ra-live-area__height {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
   margin-bottom: 0;
   width: auto;
   flex: 0 0 auto;
 }
 
 .util-ra-live-area__height label {
-  display: block;
-  margin-bottom: 0.15rem;
-  font-size: 0.72rem;
+  display: inline-block;
+  margin-bottom: 0;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--admin-muted);
+  text-transform: none;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
@@ -3192,6 +3206,12 @@
   min-width: 0;
   padding-left: 0.45rem;
   padding-right: 0.45rem;
+}
+
+.util-ra-live-area__height-unit {
+  color: var(--admin-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .util-ra-live-area__exports {
@@ -3208,12 +3228,18 @@
 @media (max-width: 700px) {
   .util-ra-live-metrics {
     grid-template-columns: 1fr 1fr;
-    gap: 0.2rem 0.45rem;
+    gap: 0.35rem 0.65rem;
     font-size: 0.84rem;
   }
 
+  .util-ra-live-metrics__item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.05rem;
+  }
+
   .util-ra-live-area__toolbar {
-    align-items: flex-end;
+    align-items: center;
   }
 
   .util-ra-live-area__exports .admin-btn {

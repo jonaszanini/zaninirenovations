@@ -6841,7 +6841,7 @@
     return roomName + ' — Room plan';
   }
 
-  function captureRoomPng() {
+  function captureRoomPng(pixelRatio) {
     if (!state.stage) return '';
     var prevShow = state.showDimensions;
     var prevViewport = {
@@ -6867,7 +6867,7 @@
     state.konvaLayer.draw();
     var dataUrl = '';
     try {
-      dataUrl = state.stage.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });
+      dataUrl = state.stage.toDataURL({ pixelRatio: pixelRatio || 2, mimeType: 'image/png' });
     } catch (err) {
       dataUrl = '';
     }
@@ -6943,7 +6943,7 @@
       return;
     }
     var metrics = computeWallMetrics();
-    var diagram = captureRoomPng();
+    var diagram = captureRoomPng(1.25);
     var form = document.createElement('form');
     form.method = 'POST';
     form.action = pdfUrl;
