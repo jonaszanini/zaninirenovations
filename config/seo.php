@@ -23,7 +23,11 @@ return [
     |--------------------------------------------------------------------------
     | Exact pin coordinates removed per service-area business guidelines.
     | Do not publish a street address, postal code, or precise geo pin.
+    |
+    | Visible service-area sentence — same wording as the home location blurb.
+    | Do not invent shorter pairings (e.g. "Ottawa or Gatineau") in new UI.
     */
+    'service_area_text' => 'Based in Carleton Place, we proudly serve Perth, Smiths Falls, Lanark County, the Ottawa region, and Gatineau.',
 
     /*
     |--------------------------------------------------------------------------

@@ -38,7 +38,7 @@ class BlogPublicContent
         $copy = config('blog.cta_copy.'.$key);
         if (! is_array($copy) || ($copy['title'] ?? '') === '') {
             $copy = config('blog.cta_copy.generic', [
-                'title' => 'Planning a renovation in Ottawa or Gatineau?',
+                'title' => 'Planning a renovation?',
                 'text' => 'Zanini Renovations can walk the site and send a free written estimate.',
             ]);
         }

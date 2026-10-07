@@ -36,48 +36,48 @@ return [
 
     'cta_copy' => [
         'generic' => [
-            'title' => 'Planning a renovation in Ottawa or Gatineau?',
+            'title' => 'Planning a renovation?',
             'text' => 'Zanini Renovations can walk the site and send a free written estimate.',
         ],
         'decks' => [
-            'title' => 'Need a deck in Ottawa or Gatineau?',
+            'title' => 'Need a deck?',
             'text' => 'We design and build decks that hold up through Ontario winters. Ask for a free estimate.',
         ],
         'fences' => [
             'title' => 'Looking for a new fence?',
-            'text' => 'Privacy and yard fences built for Ottawa and Gatineau weather. Get a free estimate.',
+            'text' => 'Privacy and yard fences built to hold up through winter. Get a free estimate.',
         ],
         'basements' => [
             'title' => 'Framing or finishing a basement?',
-            'text' => 'From layout to trim, we handle basement work in Ottawa and Gatineau. Free estimate.',
+            'text' => 'From layout to trim, we handle basement work. Free estimate.',
         ],
         'flooring' => [
             'title' => 'Planning new floors?',
-            'text' => 'Hardwood, vinyl, and other flooring installed in Ottawa and Gatineau. Free estimate.',
+            'text' => 'Hardwood, vinyl, and other flooring installed with a free written estimate.',
         ],
         'trim' => [
             'title' => 'Interior trim and moulding?',
-            'text' => 'Clean trim, casings, and baseboards for homes in Ottawa and Gatineau. Free estimate.',
+            'text' => 'Clean trim, casings, and baseboards. Ask for a free estimate.',
         ],
         'built-ins' => [
             'title' => 'Want custom built-ins?',
-            'text' => 'Shelving, benches, and millwork built to fit. Serving Ottawa and Gatineau.',
+            'text' => 'Shelving, benches, and millwork built to fit. Ask for a free estimate.',
         ],
         'drywall' => [
             'title' => 'Need drywall work?',
-            'text' => 'Hanging, taping, and finishing for renovations in Ottawa and Gatineau. Free estimate.',
+            'text' => 'Hanging, taping, and finishing for renovations. Free estimate.',
         ],
         'accent-walls' => [
             'title' => 'Thinking about an accent wall?',
-            'text' => 'Feature walls and finishes for Ottawa and Gatineau homes. Ask for a free estimate.',
+            'text' => 'Feature walls and finishes. Ask for a free estimate.',
         ],
         'staircases' => [
             'title' => 'Stairs that need an update?',
-            'text' => 'Treads, railings, and staircase work in Ottawa and Gatineau. Free estimate.',
+            'text' => 'Treads, railings, and staircase work. Free estimate.',
         ],
         'contact' => [
             'title' => 'Ready to talk through your project?',
-            'text' => 'Tell us about the work in Ottawa or Gatineau and we will send a free estimate.',
+            'text' => 'Tell us about the work and we will send a free estimate.',
         ],
     ],
 ];

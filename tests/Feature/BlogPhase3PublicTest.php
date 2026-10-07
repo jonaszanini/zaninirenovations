@@ -121,13 +121,15 @@ class BlogPhase3PublicTest extends IntegrationTestCase
         ]);
 
         $html = $this->get(route('blog.show', $post))->assertOk()->getContent();
-        $this->assertStringContainsString('Need a deck in Ottawa or Gatineau?', $html);
+        $this->assertStringContainsString('Need a deck?', $html);
         $this->assertStringContainsString('Free estimate', $html);
         $this->assertStringContainsString('tel:+16478347570', $html);
+        $this->assertStringContainsString((string) config('seo.service_area_text'), $html);
+        $this->assertStringNotContainsString('Ottawa or Gatineau', $html);
         $this->assertStringNotContainsString('licensed', strtolower($html));
 
         $introPos = strpos($html, 'First paragraph about staining a deck.');
-        $ctaPos = strpos($html, 'Need a deck in Ottawa or Gatineau?');
+        $ctaPos = strpos($html, 'Need a deck?');
         $secondPos = strpos($html, 'Second paragraph continues.');
         $this->assertNotFalse($introPos);
         $this->assertNotFalse($ctaPos);
@@ -144,7 +146,7 @@ class BlogPhase3PublicTest extends IntegrationTestCase
             'title' => 'Phase 3 public post',
             'slug' => 'phase-3-public-'.uniqid(),
             'excerpt' => 'A short excerpt.',
-            'html_content' => '<p>Body copy for Ottawa and Gatineau homeowners.</p>',
+            'html_content' => '<p>Body copy for homeowners.</p>',
             'status' => BlogPost::STATUS_PUBLISHED,
             'published_at' => now()->subDay(),
             'author_name' => 'Jonas Zanini',
