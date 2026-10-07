@@ -80,6 +80,15 @@ class BlogController extends Controller
             ->limit(20)
             ->get();
 
+        $publishedCount = BlogPost::query()->published()->count();
+        $minPosts = max(1, (int) config('seo.blog_filter_index_min_posts', 8));
+        $isSearch = $q !== '';
+        $isTaxonomyFilter = $categorySlug !== '' || $tagSlug !== '';
+        $blogRobots = 'index,follow';
+        if ($isSearch || ($isTaxonomyFilter && $publishedCount < $minPosts)) {
+            $blogRobots = 'noindex, follow';
+        }
+
         return view('site.blog.index', compact(
             'posts',
             'featuredPost',
@@ -90,7 +99,8 @@ class BlogController extends Controller
             'q',
             'categorySlug',
             'tagSlug',
-            'htmlProcessor'
+            'htmlProcessor',
+            'blogRobots'
         ));
     }
 

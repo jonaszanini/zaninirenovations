@@ -17,7 +17,9 @@
           @if ($homeBlogFeatured->featuredImageUrl())
             <div class="latest-thumbnail">
               <a href="{{ route('blog.show', $homeBlogFeatured) }}">
-                <img src="{{ $homeBlogFeatured->featuredImageUrl() }}" alt="{{ $homeBlogFeatured->title }}" loading="lazy">
+                @php $homeBlogDims = $homeBlogFeatured->featuredImageDimensions(); @endphp
+                <img src="{{ $homeBlogFeatured->featuredImageUrl() }}" alt="{{ $homeBlogFeatured->title }}" loading="lazy" decoding="async"
+                  @if ($homeBlogDims) width="{{ $homeBlogDims['width'] }}" height="{{ $homeBlogDims['height'] }}" @endif>
               </a>
             </div>
           @endif

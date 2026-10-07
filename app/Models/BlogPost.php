@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\EasternStandardTimeDisplay;
+use App\Support\PlainTextLimiter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -307,9 +308,42 @@ class BlogPost extends Model
 
     public function documentTitle(): string
     {
-        $title = filled($this->seo_title) ? trim((string) $this->seo_title) : (string) $this->title;
+        $max = 60;
+        $brand = ' | Zanini';
 
-        return $title.' — Zanini Renovations';
+        if (filled($this->seo_title)) {
+            return PlainTextLimiter::trimToLength(trim((string) $this->seo_title), $max);
+        }
+
+        $title = trim((string) $this->title);
+        $withBrand = $title.$brand;
+        if (mb_strlen($withBrand) <= $max) {
+            return $withBrand;
+        }
+
+        $room = $max - mb_strlen($brand);
+        if ($room >= 20) {
+            $truncated = PlainTextLimiter::trimToLength($title, $room);
+            $combined = $truncated.$brand;
+            if ($truncated !== '' && mb_strlen($combined) <= $max) {
+                return $combined;
+            }
+        }
+
+        return PlainTextLimiter::trimToLength($title !== '' ? $title : 'Blog', $max);
+    }
+
+    public function seoDescription(): string
+    {
+        if (filled($this->meta_description)) {
+            $raw = trim((string) $this->meta_description);
+        } elseif (filled($this->excerpt)) {
+            $raw = trim((string) $this->excerpt);
+        } else {
+            $raw = trim(preg_replace('/\s+/', ' ', strip_tags((string) $this->html_content)) ?? '');
+        }
+
+        return PlainTextLimiter::trimToLength($raw, self::META_SNIPPET_MAX);
     }
 
     public function featuredImageAlt(): string

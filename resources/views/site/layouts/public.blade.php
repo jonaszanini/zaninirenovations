@@ -13,7 +13,13 @@
   @endif
   <meta name="theme-color" content="#024768">
   <meta name="robots" content="@yield('meta_robots', 'index,follow')">
-  <link rel="canonical" href="@yield('canonical', url()->current())">
+  @php
+    $canonicalUrl = trim($__env->yieldContent('canonical')) ?: url()->current();
+    $omitCanonical = isset($exception) || trim($__env->yieldContent('omit_canonical')) !== '';
+  @endphp
+  @unless ($omitCanonical)
+  <link rel="canonical" href="{{ $canonicalUrl }}">
+  @endunless
   <link rel="shortcut icon" href="{{ url('images/favicon.png') }}">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -45,7 +51,7 @@
   <meta property="og:site_name" content="Zanini Renovations">
   <meta property="og:title" content="{!! htmlspecialchars($seoTitle, ENT_QUOTES, 'UTF-8', false) !!}">
   <meta property="og:description" content="{!! htmlspecialchars($seoDescOg, ENT_QUOTES, 'UTF-8', false) !!}">
-  <meta property="og:url" content="{{ url()->current() }}">
+  <meta property="og:url" content="{{ $canonicalUrl }}">
   <meta property="og:image" content="{{ $ogImageAbs }}">
   <meta property="og:image:alt" content="{!! htmlspecialchars($ogImageAlt, ENT_QUOTES, 'UTF-8', false) !!}">
   <meta name="twitter:card" content="summary_large_image">
@@ -101,18 +107,18 @@
 
 <a id="backTop" role="button" aria-label="Back to top">Back To Top</a>
 
-<script src="{{ url('js/jquery.min.js') }}"></script>
-<script src="{{ url('js/bootstrap.min.js') }}"></script>
+<script src="{{ url('js/jquery.min.js') }}" defer></script>
+<script src="{{ url('js/bootstrap.min.js') }}" defer></script>
 @if ($isHome)
-<script src="{{ url('js/wow.min.js') }}"></script>
+<script src="{{ url('js/wow.min.js') }}" defer></script>
 @endif
-<script src="{{ url('js/jquery.backTop.min.js') }}"></script>
-<script src="{{ url('js/waypoints.min.js') }}"></script>
-<script src="{{ url('js/waypoints-sticky.min.js') }}"></script>
+<script src="{{ url('js/jquery.backTop.min.js') }}" defer></script>
+<script src="{{ url('js/waypoints.min.js') }}" defer></script>
+<script src="{{ url('js/waypoints-sticky.min.js') }}" defer></script>
 @if ($isHome)
-<script src="{{ url('js/owl.carousel.min.js') }}"></script>
+<script src="{{ url('js/owl.carousel.min.js') }}" defer></script>
 @endif
-<script src="{{ url('js/custom-scripts.js') }}?v={{ @filemtime(public_path('js/custom-scripts.js')) ?: time() }}"></script>
+<script src="{{ url('js/custom-scripts.js') }}?v={{ @filemtime(public_path('js/custom-scripts.js')) ?: time() }}" defer></script>
 @if (filled(config('seo.ga4_measurement_id')))
 <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('seo.ga4_measurement_id') }}"></script>
 <script>

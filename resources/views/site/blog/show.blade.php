@@ -11,7 +11,7 @@
 @endphp
 
 @section('page_title', $post->documentTitle())
-@section('meta_description', $post->meta_description ?: $post->displayExcerpt(300))
+@section('meta_description', $post->seoDescription())
 @section('canonical', $post->publicUrl())
 @section('og_type', 'article')
 @section('meta_robots', $isPreview ? 'noindex, nofollow' : ($post->noindex ? 'noindex, follow' : 'index,follow'))

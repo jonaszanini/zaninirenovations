@@ -50,8 +50,7 @@ class LlmsTxtGenerator
             '',
             '## Service area',
             '',
-            '- Carleton Place, Ottawa, Kanata, Barrhaven, Orléans, Stittsville, Perth,',
-            '  Smiths Falls, and nearby Lanark County / National Capital Region communities.',
+            '- '.trim((string) config('seo.service_area_text', '')),
             '',
         ];
 

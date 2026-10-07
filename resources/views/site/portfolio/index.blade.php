@@ -37,7 +37,7 @@
       </div>
 
       <div class="row latest-projects-grid">
-        @include('site.partials.latest-projects', ['projects' => $projects])
+        @include('site.partials.latest-projects', ['projects' => $projects, 'eagerFirstCount' => 4])
       </div>
     </div>
   </section>

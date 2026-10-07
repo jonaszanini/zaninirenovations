@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Support\PublicImageDimensions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class ProjectPhoto extends Model
 {
@@ -31,5 +33,15 @@ class ProjectPhoto extends Model
         }
 
         return $url;
+    }
+
+    /**
+     * @return array{width: int, height: int}|null
+     */
+    public function dimensions(): ?array
+    {
+        $path = ltrim(str_replace('\\', '/', (string) $this->path), '/');
+
+        return PublicImageDimensions::of(Storage::disk('public')->path($path));
     }
 }

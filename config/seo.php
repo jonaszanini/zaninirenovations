@@ -33,53 +33,23 @@ return [
     |--------------------------------------------------------------------------
     | areaServed (verbatim list for JSON-LD)
     |--------------------------------------------------------------------------
+    | Names only — must match places named in service_area_text. Do not add
+    | neighbourhoods or towns that are not in that sentence.
     */
     'area_served' => [
-        ['@type' => 'City', 'name' => 'Ottawa'],
         ['@type' => 'City', 'name' => 'Carleton Place'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Centretown'],
-        ['@type' => 'AdministrativeArea', 'name' => 'The Glebe'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Old Ottawa South'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Old Ottawa East'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Sandy Hill'],
-        ['@type' => 'AdministrativeArea', 'name' => 'ByWard Market'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Lowertown'],
-        ['@type' => 'AdministrativeArea', 'name' => 'New Edinburgh'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Westboro'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Wellington Village'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Hintonburg'],
-        ['@type' => 'City', 'name' => 'Kanata'],
-        ['@type' => 'City', 'name' => 'Stittsville'],
-        ['@type' => 'City', 'name' => 'Barrhaven'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Bells Corners'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Centrepointe'],
-        ['@type' => 'City', 'name' => 'Orléans'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Beacon Hill'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Blackburn Hamlet'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Vanier'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Rockcliffe Park'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Riverside South'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Hunt Club'],
-        ['@type' => 'City', 'name' => 'Manotick'],
-        ['@type' => 'City', 'name' => 'Carp'],
-        ['@type' => 'City', 'name' => 'Dunrobin'],
-        ['@type' => 'City', 'name' => 'Greely'],
-        ['@type' => 'City', 'name' => 'Metcalfe'],
-        ['@type' => 'City', 'name' => 'Osgoode'],
-        ['@type' => 'City', 'name' => 'Richmond'],
-        ['@type' => 'City', 'name' => 'Almonte'],
-        ['@type' => 'City', 'name' => 'Ashton'],
-        ['@type' => 'City', 'name' => 'Beckwith'],
         ['@type' => 'City', 'name' => 'Perth'],
         ['@type' => 'City', 'name' => 'Smiths Falls'],
-        ['@type' => 'City', 'name' => 'Arnprior'],
-        ['@type' => 'City', 'name' => 'Innisville'],
-        ['@type' => 'City', 'name' => 'Lanark'],
-        ['@type' => 'City', 'name' => 'Pakenham'],
-        ['@type' => 'City', 'name' => 'Franktown'],
-        ['@type' => 'City', 'name' => 'Balderson'],
-        ['@type' => 'City', 'name' => 'Middleville'],
+        ['@type' => 'AdministrativeArea', 'name' => 'Lanark County'],
+        ['@type' => 'Place', 'name' => 'Ottawa region'],
+        ['@type' => 'City', 'name' => 'Gatineau'],
     ],
+
+    /*
+    | Filtered /blog?tag= and /blog?category= stay noindex until this many
+    | posts are published. /blog?q= is always noindex.
+    */
+    'blog_filter_index_min_posts' => (int) env('SEO_BLOG_FILTER_INDEX_MIN_POSTS', 8),
 
     /*
     |--------------------------------------------------------------------------
@@ -129,7 +99,7 @@ return [
         ],
         [
             'question' => 'What areas does Zanini Renovations serve?',
-            'answer' => 'We are based in Carleton Place, Ontario and serve Ottawa, Kanata, Barrhaven, Orléans, Stittsville, Perth, Smiths Falls, and communities across the National Capital Region and Lanark County.',
+            'answer_from' => 'service_area_text',
         ],
         [
             'question' => 'Is Zanini Renovations fully insured for residential work?',
