@@ -1287,6 +1287,10 @@ html.admin-dark .util-ra-live-area strong {
   color: var(--admin-heading);
 }
 
+html.admin-dark .util-ra-live-area__height-unit {
+  color: var(--admin-muted);
+}
+
 html.admin-dark .util-ra-live-area__exports .admin-btn--ghost {
   background: var(--admin-surface);
   color: var(--admin-heading);
