@@ -553,6 +553,19 @@ body.admin-body {
   border: 1px solid var(--admin-primary-ring);
 }
 
+.util-rq-prefill-banner {
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.55rem;
+}
+
+.util-rq-prefill-banner__note {
+  color: var(--admin-muted);
+  font-weight: 500;
+}
+
 .admin-code {
   font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
   font-size: 0.85em;

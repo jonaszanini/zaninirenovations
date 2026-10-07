@@ -275,6 +275,10 @@ class TrimmingQuotationController extends Controller
         $previewInputs = TrimmingQuotationCalculator::defaultInputs();
         $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
+        $roomAreaImport = app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'trimming');
+        if (! $quotation && $roomAreaImport) {
+            $previewInputs = array_merge($previewInputs, $roomAreaImport['inputs']);
+        }
         if ($quotation && is_array($quotation->inputs)) {
             foreach ($quotation->inputs as $key => $value) {
                 $previewInputs[$key] = $value;
@@ -290,6 +294,7 @@ class TrimmingQuotationController extends Controller
             'linkProject' => $linkProject,
             'linkedCpq' => $linkedCpq,
             'initialPreview' => $initialPreview,
+            'roomAreaImport' => $quotation ? null : $roomAreaImport,
         ]);
     }
 

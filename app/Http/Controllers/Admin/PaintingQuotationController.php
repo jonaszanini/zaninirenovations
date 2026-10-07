@@ -266,6 +266,10 @@ class PaintingQuotationController extends Controller
             );
         }
 
+        $roomAreaImport = ! $quotation
+            ? app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'painting')
+            : null;
+
         return view('admin.quotations.painting.create', [
             'quotation' => $quotation,
             'settings' => $settings,
@@ -273,6 +277,7 @@ class PaintingQuotationController extends Controller
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
             'linkedCpq' => $linkedCpq,
+            'roomAreaImport' => $roomAreaImport,
         ]);
     }
 

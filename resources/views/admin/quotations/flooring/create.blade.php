@@ -17,6 +17,9 @@
   foreach (FlooringQuotationCalculator::defaultInputs() as $k => $v) {
       if (! array_key_exists($k, $inputs)) { $inputs[$k] = $v; }
   }
+  if (! $isEdit && ! empty($roomAreaImport['inputs']) && is_array($roomAreaImport['inputs'])) {
+      $inputs = array_merge($inputs, $roomAreaImport['inputs']);
+  }
   $selType = (int) old('flooring_type_id', $inputs['flooring_type_id'] ?? 0);
   if (! $isEdit && $selType === 0 && $flooringTypes->isNotEmpty()) {
       $selType = (int) $flooringTypes->first()->id;
@@ -172,6 +175,7 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
     <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
       <i class="fa fa-link"></i> Linked to <a href="{{ route('admin.client-projects.show', $quotation->project) }}#quotation"><strong>{{ $quotation->project->name }}</strong></a>

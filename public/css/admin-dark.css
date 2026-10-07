@@ -1333,6 +1333,24 @@ html.admin-dark .util-ra-rooms-item {
   background: var(--admin-bg);
 }
 
+html.admin-dark .util-rq-trade {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-rq-trade.is-on {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-rq-preview__total strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--primary {
+  color: #fff;
+}
+
 html.admin-dark .util-ra-rooms-item__actions .admin-btn--danger {
   background: var(--admin-danger-soft);
   color: #fca5a5;

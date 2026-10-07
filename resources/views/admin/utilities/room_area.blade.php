@@ -32,7 +32,9 @@
     data-room-background-upload-template="{{ route('admin.utilities.room-area.rooms.background.upload', ['room_area_room' => '__ID__']) }}"
     data-room-background-destroy-template="{{ route('admin.utilities.room-area.rooms.background.destroy', ['room_area_room' => '__ID__']) }}"
     data-pdf-url="{{ route('admin.utilities.room-area.pdf') }}"
-    data-room-pdf-template="{{ route('admin.utilities.room-area.rooms.pdf', ['room_area_room' => '__ID__']) }}">
+    data-room-pdf-template="{{ route('admin.utilities.room-area.rooms.pdf', ['room_area_room' => '__ID__']) }}"
+    data-quote-room-template="{{ route('admin.utilities.room-area.quote') }}?layout=room:__ID__"
+    data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__">
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
 
     <section class="admin-card util-ra-project-bar">
@@ -474,6 +476,9 @@
                 <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-attach-pdf hidden>
                   <i class="fa fa-paperclip" aria-hidden="true"></i> Attach
                 </button>
+                <a class="admin-btn admin-btn--primary admin-btn--sm" data-ra-create-quote hidden href="#">
+                  <i class="fa fa-file-text-o" aria-hidden="true"></i> Create quote
+                </a>
               </div>
             </div>
             <span class="util-sr-only" data-ra-live-sqft aria-hidden="true">—</span>
@@ -497,6 +502,9 @@
                 <i class="fa fa-copy"></i> Copy
               </button>
             </div>
+            <a class="admin-btn admin-btn--outline admin-btn--sm util-ra-action-btn" data-ra-quote-all hidden href="#">
+              <i class="fa fa-file-text-o"></i> Quote all
+            </a>
             <button type="button" class="admin-btn admin-btn--primary admin-btn--sm util-ra-action-btn" data-ra-new-room-secondary>
               <i class="fa fa-plus"></i> New room
             </button>

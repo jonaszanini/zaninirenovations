@@ -19,6 +19,9 @@
           $inputs[$k] = $v;
       }
   }
+  if (! $isEdit && ! empty($roomAreaImport['inputs']) && is_array($roomAreaImport['inputs'])) {
+      $inputs = array_merge($inputs, $roomAreaImport['inputs']);
+  }
   $enabled = old('enabled_families', $inputs['enabled_families'] ?? []);
   if (! is_array($enabled)) {
       $enabled = [];
@@ -66,6 +69,7 @@
     </div>
   </div>
 
+  @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
       <i class="fa fa-link"></i>

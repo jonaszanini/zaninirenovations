@@ -269,6 +269,10 @@ class FlooringQuotationController extends Controller
         }
 
         $previewInputs = FlooringQuotationCalculator::defaultInputs();
+        $roomAreaImport = app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'flooring');
+        if (! $quotation && $roomAreaImport) {
+            $previewInputs = array_merge($previewInputs, $roomAreaImport['inputs']);
+        }
         if ($quotation && is_array($quotation->inputs)) {
             foreach ($quotation->inputs as $key => $value) {
                 $previewInputs[$key] = $value;
@@ -288,6 +292,7 @@ class FlooringQuotationController extends Controller
             'linkProject' => $linkProject,
             'linkedCpq' => $linkedCpq,
             'initialPreview' => $initialPreview,
+            'roomAreaImport' => $quotation ? null : $roomAreaImport,
         ]);
     }
 

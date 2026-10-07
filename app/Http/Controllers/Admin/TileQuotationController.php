@@ -58,8 +58,11 @@ class TileQuotationController extends Controller
         $products = TileProduct::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
         $edges = TileEdge::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
 
+        $roomAreaImport = app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'tile');
+
         return view('admin.quotations.tile.create', compact('linkProject', 'mortarTypes', 'groutTypes', 'products', 'edges') + [
             'linkedCpq' => null,
+            'roomAreaImport' => $roomAreaImport,
         ]);
     }
 
