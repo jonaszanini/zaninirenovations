@@ -104,7 +104,7 @@
 
 .bp-list-table .bp-list-table__post,
 .bp-list-table .bp-list-post {
-  width: auto;
+  width: 100%;
   min-width: 0;
 }
 
@@ -112,6 +112,10 @@
 .bp-list-table td:not(.bp-list-post) {
   width: 1%;
   white-space: nowrap;
+}
+
+.bp-list-table .bp-list-seo:not(.bp-list-seo--card) {
+  flex-wrap: nowrap;
 }
 
 .bp-list-post {
@@ -360,21 +364,13 @@
 
 .bp-form-actions {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
   margin-top: 8px;
 }
 
-.bp-form-actions__btns {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.bp-form-actions__btns .admin-btn {
+.bp-form-actions .admin-btn {
   padding-left: 10px;
   padding-right: 10px;
 }
@@ -523,7 +519,7 @@
 @media (min-width: 900px) {
   .bp-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr) 400px;
     align-items: start;
     gap: 12px;
   }
@@ -544,6 +540,10 @@
   .bp-block--tax,
   .bp-block--check {
     order: 0;
+  }
+
+  .bp-form-actions {
+    flex-wrap: nowrap;
   }
 }
 

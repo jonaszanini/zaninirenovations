@@ -121,19 +121,17 @@
             </div>
           </div>
           <div class="bp-form-actions" id="bp-form-actions">
-            <div class="bp-form-actions__btns">
-              <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-save" data-intent="save">Save draft</button>
-              <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-publish" data-intent="publish">Publish</button>
-              <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-btn-unpublish" data-intent="draft" hidden>Unpublish</button>
-              @if ($isEdit)
-                <a href="{{ route('admin.blog.posts.preview', $post) }}" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-preview-link" target="_blank" rel="noopener">Preview</a>
-              @else
-                <a href="#" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-preview-link" target="_blank" rel="noopener" hidden>Preview</a>
-              @endif
-              @if ($isEdit && $post->isPublishedNow())
-                <a href="{{ $post->publicUrl() }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener">View</a>
-              @endif
-            </div>
+            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-save" data-intent="save">Save draft</button>
+            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-publish" data-intent="publish">Publish</button>
+            <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-btn-unpublish" data-intent="draft" hidden>Unpublish</button>
+            @if ($isEdit)
+              <a href="{{ route('admin.blog.posts.preview', $post) }}" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-preview-link" target="_blank" rel="noopener">Preview</a>
+            @else
+              <a href="#" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-preview-link" target="_blank" rel="noopener" hidden>Preview</a>
+            @endif
+            @if ($isEdit && $post->isPublishedNow())
+              <a href="{{ $post->publicUrl() }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener">View</a>
+            @endif
             <a href="{{ route('admin.blog.posts.index') }}" class="bp-cancel-link">Cancel</a>
           </div>
           <p class="admin-form-help" id="bp-save-status" aria-live="polite"></p>
