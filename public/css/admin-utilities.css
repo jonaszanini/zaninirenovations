@@ -3569,8 +3569,7 @@
 }
 
 .util-ra-type-walls__len .admin-input,
-.util-ra-type-walls__angle .admin-input,
-.util-ra-type-walls__rect-field .admin-input {
+.util-ra-type-walls__angle .admin-input {
   width: 100%;
   min-width: 0;
   padding-left: 0.45rem;
@@ -3635,9 +3634,17 @@
 
 .util-ra-type-walls__rect-field {
   flex: 0 0 auto;
-  width: 5.2ch;
-  min-width: 5ch;
+  width: calc(5.5ch + 12px + 2px);
+  min-width: calc(5.5ch + 12px + 2px);
   margin: 0;
+}
+
+.util-ra-type-walls__rect-field .admin-input {
+  width: 100%;
+  min-width: calc(5.5ch + 12px);
+  padding-left: 6px;
+  padding-right: 6px;
+  box-sizing: border-box;
 }
 
 .util-ra-type-walls__times {
@@ -3927,9 +3934,13 @@
     gap: 0.2rem;
   }
 
-  .util-ra-type-walls__add,
-  .util-ra-type-walls__rect-add {
+  .util-ra-type-walls__add {
     padding-left: 0.45rem;
     padding-right: 0.45rem;
+  }
+
+  .util-ra-type-walls__rect-add {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
   }
 }
