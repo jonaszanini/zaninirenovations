@@ -147,13 +147,11 @@ class OnPageSeoBatch2Test extends IntegrationTestCase
 
         $home = $this->get('/')->assertOk()->getContent();
         $this->assertStringContainsString($areaText, $home);
-        $this->assertStringNotContainsString('Barrhaven', $home);
         $this->assertStringNotContainsString('Orléans', $home);
         $this->assertStringNotContainsString('Orleans', $home);
 
         $txt = LlmsTxtGenerator::generate(collect(), collect());
         $this->assertStringContainsString($areaText, $txt);
-        $this->assertStringNotContainsString('Barrhaven', $txt);
         $this->assertStringNotContainsString('Orléans', $txt);
 
         $graph = SeoStructuredData::homeGraph();

@@ -5,12 +5,16 @@
   $socialWhatsappUrl = (string) config('social.whatsapp_url');
   $isWarranty = request()->routeIs('warranty');
   $isPortfolio = request()->routeIs('portfolio.*');
+  $isServiceAreas = request()->routeIs('service-areas.*');
+  $stickyHeader = ! request()->routeIs('blog.*') && ! $isServiceAreas;
 @endphp
 
 @if (request()->routeIs('blog.*'))
 <header class="main-header-2 clearfix blog-site-header">
-@else
+@elseif ($stickyHeader)
 <header class="main-header-2 clearfix" data-sticky_header="true">
+@else
+<header class="main-header-2 clearfix">
 @endif
 
   <section class="header-wrapper navgiation-wrapper">

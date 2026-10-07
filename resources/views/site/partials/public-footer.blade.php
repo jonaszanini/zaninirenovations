@@ -27,6 +27,10 @@
                 <p class="margin-top-24">
                 Zanini Renovations is a carpentry and renovation business based in Carleton Place, in business since 2020, handling residential and commercial work, including kitchen remodels.
                 </p>
+                <p class="margin-top-24">
+                  <a href="{{ route('service-areas.index') }}">Areas we serve</a>
+                  — Carleton Place, Kanata &amp; Stittsville, Barrhaven, and across Lanark County and west Ottawa.
+                </p>
                 <div class="footer-social-icons">
 
                   <a href="{{ $socialFacebookUrl }}"@if (str_starts_with($socialFacebookUrl, 'http')) target="_blank" rel="noopener noreferrer"@endif aria-label="Facebook">
