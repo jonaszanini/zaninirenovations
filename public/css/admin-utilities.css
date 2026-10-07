@@ -4079,6 +4079,12 @@
   box-sizing: border-box;
 }
 
+@media (min-width: 900px) {
+  .util-ra-type-walls {
+    max-width: min(60rem, 100%);
+  }
+}
+
 .util-ra-type-walls__head {
   display: flex;
   flex-wrap: wrap;
@@ -4249,8 +4255,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-.util-ra-type-walls__item .util-ra-type-walls__item-len {
+.util-ra-type-walls__item .util-ra-type-walls__item-len,
+.util-ra-type-walls__item input.admin-input.util-ra-type-walls__item-len {
   flex: 0 0 110px;
+  flex-grow: 0;
+  flex-shrink: 0;
   width: 110px;
   min-width: 110px;
   max-width: 110px;
