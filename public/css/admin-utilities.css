@@ -3517,7 +3517,8 @@
   border-radius: 8px;
   background: var(--admin-surface-hover);
   min-width: 0;
-  max-width: 34rem;
+  max-width: min(34rem, 100%);
+  box-sizing: border-box;
 }
 
 .util-ra-type-walls__head {
@@ -3562,7 +3563,7 @@
 
 .util-ra-type-walls__len {
   flex: 0 0 auto;
-  width: 5.6rem;
+  width: 4.8rem;
   margin: 0;
   min-width: 0;
 }
@@ -3607,6 +3608,8 @@
 .util-ra-type-walls__auto {
   flex: 0 0 auto;
   white-space: nowrap;
+  padding-left: 0.55rem;
+  padding-right: 0.55rem;
 }
 
 .util-ra-type-walls__dir span {
@@ -3617,7 +3620,7 @@
   margin-bottom: 0.35rem;
   padding-top: 0.35rem;
   border-top: 1px solid var(--admin-border);
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .util-ra-type-walls__rect-label {
@@ -3632,7 +3635,8 @@
 
 .util-ra-type-walls__rect-field {
   flex: 0 0 auto;
-  width: 4.4rem;
+  width: 5.2ch;
+  min-width: 5ch;
   margin: 0;
 }
 
@@ -3900,12 +3904,32 @@
 
 @media (max-width: 700px) {
   .util-ra-type-walls {
-    padding: 0.45rem 0.5rem 0.5rem;
+    padding: 0.4rem 0.4rem 0.45rem;
+  }
+
+  .util-ra-type-walls__entry,
+  .util-ra-type-walls__rect,
+  .util-ra-type-walls__close {
+    gap: 0.25rem;
+  }
+
+  .util-ra-type-walls__len {
+    width: 4.2rem;
   }
 
   .util-ra-type-walls__dir {
-    padding-left: 0.3rem;
-    padding-right: 0.3rem;
-    font-size: 0.78rem;
+    padding-left: 0.22rem;
+    padding-right: 0.22rem;
+    font-size: 0.76rem;
+  }
+
+  .util-ra-type-walls__dirs {
+    gap: 0.2rem;
+  }
+
+  .util-ra-type-walls__add,
+  .util-ra-type-walls__rect-add {
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
   }
 }

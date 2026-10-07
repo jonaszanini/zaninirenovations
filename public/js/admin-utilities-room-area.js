@@ -4794,11 +4794,11 @@
     if (!labelLayer) return;
     labelLayer.destroyChildren();
 
-    drawAreaNameLabels(labelLayer);
+    var nameBoxes = drawAreaNameLabels(labelLayer);
 
     if (state.showDimensions) {
-      drawWallDimensionLabels(labelLayer);
-      drawObjectDimensionLabels(labelLayer);
+      drawWallDimensionLabels(labelLayer, nameBoxes);
+      drawObjectDimensionLabels(labelLayer, nameBoxes);
     }
 
     flushKonva();
@@ -4836,14 +4836,28 @@
     return { nx: nx, ny: ny, midX: midX, midY: midY, wallLen: wallLen };
   }
 
-  function placeDimensionLabel(midX, midY, nx, ny, labelW, labelH, a, b) {
+  function labelBoxAt(x, y, w, h) {
+    return { x: x - w / 2, y: y - h / 2, w: w, h: h };
+  }
+
+  function boxesOverlap(a, b, pad) {
+    if (!a || !b) return false;
+    var p = pad || 0;
+    return !(a.x + a.w + p < b.x || b.x + b.w + p < a.x || a.y + a.h + p < b.y || b.y + b.h + p < a.y);
+  }
+
+  function overlapsAnyBox(box, boxes, pad) {
+    return (boxes || []).some(function (other) { return boxesOverlap(box, other, pad); });
+  }
+
+  function placeDimensionLabel(midX, midY, nx, ny, labelW, labelH, a, b, avoidBoxes) {
     var handleR = uiSize(12);
     var halfW = Math.max(labelW / 2, 1);
     var halfH = Math.max(labelH / 2, 1);
     var wallLen = (a && b) ? (Math.hypot(b.x - a.x, b.y - a.y) || 1) : 1;
-    var inset = Math.max(uiSize(16), handleR + halfH + uiSize(4));
+    var inset = Math.max(uiSize(12), handleR * 0.7);
     if (wallLen < labelW + handleR * 2) {
-      inset = Math.max(inset, uiSize(26) + halfH);
+      inset = Math.max(uiSize(22) + halfH, handleR + halfH);
     }
     var x = midX + nx * inset;
     var y = midY + ny * inset;
@@ -4852,7 +4866,7 @@
       var ddx = x - p.x;
       var ddy = y - p.y;
       var d = Math.hypot(ddx, ddy);
-      var need = handleR + Math.max(halfW, halfH) * 0.65;
+      var need = handleR + Math.max(halfW, halfH) * 0.55;
       if (d < 0.01) {
         x += nx * need;
         y += ny * need;
@@ -4861,6 +4875,21 @@
         y += (ddy / d) * (need - d);
       }
     });
+    var tx = -ny;
+    var ty = nx;
+    var step = 0;
+    while (overlapsAnyBox(labelBoxAt(x, y, labelW, labelH), avoidBoxes, uiSize(3)) && step < 8) {
+      if (wallLen >= labelW + handleR * 2 && inset > uiSize(8)) {
+        inset = Math.max(uiSize(8), inset - uiSize(5));
+        x = midX + nx * inset;
+        y = midY + ny * inset;
+      } else {
+        var along = (step % 2 === 0 ? 1 : -1) * uiSize(8) * Math.ceil((step + 1) / 2);
+        x = midX + nx * inset + tx * along;
+        y = midY + ny * inset + ty * along;
+      }
+      step += 1;
+    }
     var vis = visibleWorldRect();
     var pad = uiSize(4);
     x = Math.max(vis.x + halfW + pad, Math.min(vis.x + vis.w - halfW - pad, x));
@@ -4868,7 +4897,7 @@
     return { x: x, y: y };
   }
 
-  function drawWallDimensionLabels(labelLayer) {
+  function drawWallDimensionLabels(labelLayer, nameBoxes) {
     var verts = activeVertices();
     var ppf = pixelsPerFoot();
     if (!ppf || verts.length === 0) return;
@@ -4903,7 +4932,7 @@
           fill: canvasBrandText(isSelected),
           padding: uiSize(4)
         }));
-        var pos = placeDimensionLabel(midX, midY, nx, ny, kLabel.width(), kLabel.height(), wallA, wallB);
+        var pos = placeDimensionLabel(midX, midY, nx, ny, kLabel.width(), kLabel.height(), wallA, wallB, nameBoxes);
         kLabel.position(pos);
         kLabel.offsetX(kLabel.width() / 2);
         kLabel.offsetY(kLabel.height() / 2);
@@ -4912,7 +4941,7 @@
     }
   }
 
-  function drawObjectDimensionLabels(labelLayer) {
+  function drawObjectDimensionLabels(labelLayer, nameBoxes) {
     var ppf = pixelsPerFoot();
     if (!ppf) return;
     state.objects.forEach(function (obj) {
@@ -4947,7 +4976,8 @@
         kLabel.width(),
         kLabel.height(),
         null,
-        null
+        null,
+        nameBoxes
       );
       kLabel.position(pos);
       kLabel.offsetX(kLabel.width() / 2);
@@ -5036,6 +5066,7 @@
   }
 
   function drawAreaNameLabels(labelLayer) {
+    var boxes = [];
     allPolygons().forEach(function (entry) {
       var poly = entry.polygon;
       if (!poly.closed || poly.vertices.length < 3) return;
@@ -5063,33 +5094,52 @@
         cornerRadius: uiSize(4),
         pointerDirection: 'none'
       }));
+      var slack = uiSize(10);
+      var hSpan = Math.max(0, polygonAxisSpan(center, poly.vertices, 1, 0) - slack);
+      var vSpan = Math.max(0, polygonAxisSpan(center, poly.vertices, 0, 1) - slack);
+      var minSpan = Math.min(hSpan, vSpan);
+      var font = uiSize(13);
+      var pad = uiSize(6);
+      if (minSpan < uiSize(150)) {
+        font = uiSize(11);
+        pad = uiSize(4);
+      }
+      if (minSpan < uiSize(110)) {
+        font = uiSize(10);
+        pad = uiSize(3);
+      }
       var textNode = new Konva.Text({
         text: lines.join('\n'),
-        fontSize: uiSize(13),
+        fontSize: font,
         fontFamily: 'Open Sans, sans-serif',
         fontStyle: 'bold',
         fill: isAdminDark() ? canvasAreaLabelText() : (entry.group.color || DEFAULT_GROUP_COLOR),
-        padding: uiSize(6),
+        padding: pad,
         align: 'center'
       });
-      if (textNode.width() > uiSize(160)) {
-        textNode.width(uiSize(160));
+      var maxNameW = Math.max(uiSize(72), Math.min(uiSize(160), hSpan * 0.55));
+      if (textNode.width() > maxNameW) {
+        textNode.width(maxNameW);
         textNode.wrap('word');
       }
       kLabel.add(textNode);
       kLabel.offsetX(kLabel.width() / 2);
       kLabel.offsetY(kLabel.height() / 2);
 
-      var slack = uiSize(8);
-      var hSpan = Math.max(0, polygonAxisSpan(center, poly.vertices, 1, 0) - slack);
-      var vSpan = Math.max(0, polygonAxisSpan(center, poly.vertices, 0, 1) - slack);
       var lw = kLabel.width();
       var lh = kLabel.height();
       if (labelOverflow(lh, lw, hSpan, vSpan) + 1 < labelOverflow(lw, lh, hSpan, vSpan)) {
         kLabel.rotation(-90);
       }
       labelLayer.add(kLabel);
+      boxes.push({
+        x: kLabel.x() - kLabel.offsetX(),
+        y: kLabel.y() - kLabel.offsetY(),
+        w: kLabel.width(),
+        h: kLabel.height()
+      });
     });
+    return boxes;
   }
 
   function redrawWalls() {
