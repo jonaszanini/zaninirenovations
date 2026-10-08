@@ -47,7 +47,7 @@
     @if ($fullPage)
       <header class="util-ra-full-header">
         <div class="util-ra-full-header__row util-ra-full-header__row--primary">
-          <span class="util-ra-tip util-ra-tip--start" data-tooltip="Return to the project or All utilities.">
+          <span class="util-ra-tip util-ra-tip--start" data-tooltip="{{ isset($clientProject) ? 'Return to the project page.' : 'Return to All utilities.' }}">
             <a href="{{ $backUrl }}" class="admin-btn admin-btn--ghost util-ra-full-header__back" aria-label="{{ $backLabel }}">
               <i class="fa fa-arrow-left" aria-hidden="true"></i>
               <span class="util-ra-full-header__back-label">{{ $backLabel }}</span>
