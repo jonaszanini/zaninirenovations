@@ -19,7 +19,7 @@ class BasementQuotationCalculator
         'framing' => 'Framing',
         'electrical' => 'Electrical',
         'plumbing' => 'Plumbing',
-        'insulation' => 'Insulation & Vapor Barrier',
+        'insulation' => 'Insulation & Vapour Barrier',
         'ceiling' => 'Ceiling Options',
         'drywall' => 'Drywall / Mud / Tape / Sand',
         'flooring' => 'Flooring',
@@ -47,11 +47,11 @@ class BasementQuotationCalculator
 
     /** Gypsum finish levels. Level 0 is hang only — no tape, mud, or sand. */
     public const FINISH_LEVELS = [
-        0 => 'Level 0 — hang only (no tape)',
+        0 => 'Level 0 — hang only',
         1 => 'Level 1 — fire tape',
         2 => 'Level 2 — tape + coat',
-        3 => 'Level 3 — paint-ready economy',
-        4 => 'Level 4 — standard paint-ready',
+        3 => 'Level 3 — economy',
+        4 => 'Level 4 — paint-ready',
     ];
 
     /**
@@ -76,7 +76,7 @@ class BasementQuotationCalculator
 
         return match ($preset) {
             // Electrical, plumbing, and framing stay enabled; electrical/plumbing
-            // are licensed-trade scope plus priced lines. The wizard nests those
+            // are qualified-trade scope plus priced lines. The wizard nests those
             // fields inside the Bathroom step for this preset.
             'bathroom' => ['overview', 'framing', 'plumbing', 'electrical', 'drywall', 'painting', 'bathroom', 'finishing'],
             'wall' => ['overview', 'framing', 'drywall', 'doors_trim', 'painting', 'finishing'],
@@ -917,10 +917,10 @@ class BasementQuotationCalculator
 
         // --- Electrical ---
         // Scope questions (outlets, switches, lights, panel) stay on the form
-        // for a licensed electrician. Pricing is the description/amount lines.
+        // for a qualified electrician. Pricing is the description/amount lines.
 
         // --- Plumbing ---
-        // Scope questions stay for a licensed plumber. Pricing is the lines.
+        // Scope questions stay for a qualified plumber. Pricing is the lines.
 
         // --- Insulation ---
         if ($on('insulation')) {
@@ -928,7 +928,7 @@ class BasementQuotationCalculator
             $insCeil = $this->qtyOr($inputs['insulation_ceiling_sf'], ! empty($inputs['insulate_ceiling']) ? $area : 0);
             $insSlab = $this->qtyOr($inputs['underslab_sf'], ! empty($inputs['underslab']) ? $area : 0);
             if (! empty($inputs['insulate_walls'])) {
-                $addLabor('ins_walls', 'insulation', 'Wall insulation + vapor barrier', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
+                $addLabor('ins_walls', 'insulation', 'Wall insulation + vapour barrier', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
                 $addMat('insulation_batt', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
                 $addMat('vapor_barrier', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::VAPOR_SF_PER_ROLL), 'vapor_barrier');
             }
@@ -1303,18 +1303,26 @@ class BasementQuotationCalculator
         $totalHours = round($totalHours, 2);
         $laborPre = round(QuotationHelperLabor::amount($totalHours, $ownerRate, $helperRate, $includeHelper), 2);
 
-        $matPre = 0.0;
+        $matAll = 0.0;
+        $permitPre = 0.0;
         foreach ($materials as $row) {
-            $matPre += (float) $row['amount'];
+            $amount = (float) $row['amount'];
+            $matAll += $amount;
+            if (($row['key'] ?? '') === 'building_permit') {
+                $permitPre += $amount;
+            }
         }
         foreach ($extraMaterials as $row) {
-            $matPre += (float) $row['amount'];
+            $matAll += (float) $row['amount'];
         }
-        $matPre = round($matPre, 2);
+        $matAll = round($matAll, 2);
+        $permitPre = round($permitPre, 2);
+        $matPre = round($matAll - $permitPre, 2);
         $matHst = round($matPre * BasementQuotation::HST_RATE, 2);
+        $permitHst = round($permitPre * BasementQuotation::HST_RATE, 2);
         $laborHst = round($laborPre * BasementQuotation::HST_RATE, 2);
-        $subtotal = round($laborPre + $matPre, 2);
-        $hst = round($laborHst + $matHst, 2);
+        $subtotal = round($laborPre + $matPre + $permitPre, 2);
+        $hst = round($laborHst + $matHst + $permitHst, 2);
         $trade = $this->tradeLineSummary($inputs);
         $grand = round($subtotal + $hst + $trade['tax_in'], 2);
         $wastePercent = $this->materialWastePercent($inputs);
@@ -1389,6 +1397,9 @@ class BasementQuotationCalculator
                 'materials_pre_hst' => $matPre,
                 'materials_hst' => $matHst,
                 'materials_after_hst' => round($matPre + $matHst, 2),
+                'permit_pre_hst' => $permitPre,
+                'permit_hst' => $permitHst,
+                'permit_after_hst' => round($permitPre + $permitHst, 2),
                 'material_waste_percent' => $wastePercent,
                 'subtotal_pre_hst' => $subtotal,
                 'hst' => $hst,

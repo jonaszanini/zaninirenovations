@@ -156,4 +156,106 @@ class BasementQuotationMathRoundTripTest extends IntegrationTestCase
             ->assertSee('4×8 (32 sq ft)', false)
             ->assertSee('16" o.c.', false);
     }
+
+    public function test_pdf_lines_plus_hst_match_wizard_grand_total_with_permit_split(): void
+    {
+        $this->actingAsAdmin();
+
+        $payload = [
+            'save_intent' => 'publish',
+            'client_name' => 'Permit Split Client',
+            'area_sqft' => 400,
+            'ceiling_height_ft' => 8,
+            'room_count' => 2,
+            'partition_lf' => 24,
+            'stud_spacing_in' => 16,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 0,
+            'drywall_door_openings' => 2,
+            'drywall_window_openings' => 1,
+            'drywall_sheet_size' => '4x12',
+            'material_waste_percent' => 10,
+            'include_building_permit' => 1,
+            'building_permit_amount' => '175.00',
+            'payment_installments' => 3,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
+        ];
+
+        $this->post(route('admin.quotations.basement.store'), $payload)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $quote = BasementQuotation::query()->where('client_name', 'Permit Split Client')->first();
+        $this->assertNotNull($quote);
+
+        $project = \App\Models\ClientProject::factory()->create();
+        $this->post(route('admin.quotations.basement.link', $quote), [
+            'client_project_id' => $project->id,
+        ])->assertSessionHasNoErrors();
+
+        $quote->refresh();
+
+        $labour = $quote->labourPreTaxAmountForProjectQuotation();
+        $materials = $quote->materialsPreTaxAmountForProjectQuotation();
+        $permit = $quote->permitPreTaxAmountForProjectQuotation();
+        $this->assertGreaterThan(0, $labour);
+        $this->assertGreaterThan(0, $materials);
+        $this->assertEqualsWithDelta(175.0, $permit, 0.01);
+
+        $summary = is_array($quote->calculation['summary'] ?? null) ? $quote->calculation['summary'] : [];
+        $this->assertEqualsWithDelta((float) ($summary['permit_pre_hst'] ?? 0), $permit, 0.01);
+        $this->assertEqualsWithDelta((float) ($summary['materials_pre_hst'] ?? 0), $materials, 0.01);
+
+        $lineSubtotal = round($labour + $materials + $permit, 2);
+        $hst = round(
+            round($labour * BasementQuotation::HST_RATE, 2)
+            + round($materials * BasementQuotation::HST_RATE, 2)
+            + round($permit * BasementQuotation::HST_RATE, 2),
+            2
+        );
+        $this->assertEqualsWithDelta((float) $quote->final_quote_total, $lineSubtotal + $hst, 0.01);
+
+        $cpq = \App\Models\ClientProjectQuotation::query()
+            ->where('source_type', \App\Models\ClientProjectQuotation::SOURCE_BASEMENT)
+            ->where('source_id', $quote->id)
+            ->first();
+        $this->assertNotNull($cpq);
+
+        $descriptions = collect($cpq->pdfLineItems())->pluck('description')->all();
+        $this->assertContains('Basement renovation (labour)', $descriptions);
+        $this->assertContains('Basement renovation materials', $descriptions);
+        $this->assertContains('Building permit (optional, extra charge)', $descriptions);
+        $this->assertNotContains('Basement renovation (labor)', $descriptions);
+
+        $permitLine = collect($cpq->pdfLineItems())->firstWhere('description', 'Building permit (optional, extra charge)');
+        $this->assertEqualsWithDelta(175.0, (float) ($permitLine['amount'] ?? 0), 0.01);
+
+        $materialsLine = collect($cpq->pdfLineItems())->firstWhere('description', 'Basement renovation materials');
+        $this->assertEqualsWithDelta($materials, (float) ($materialsLine['amount'] ?? 0), 0.01);
+
+        $this->assertEqualsWithDelta((float) $quote->final_quote_total, $cpq->pdfGrandTotal(), 0.01);
+        $this->assertEqualsWithDelta(
+            $cpq->pdfSubtotal() + $cpq->pdfHst(),
+            (float) $quote->final_quote_total,
+            0.01
+        );
+
+        $scope = $quote->scopeDescriptionForPdf();
+        $this->assertStringContainsString('<table', $scope);
+        $this->assertStringContainsString('Building permit (optional, extra charge)', $scope);
+        $this->assertDoesNotMatchRegularExpression('/licen[cs]e|licensed|WSIB|one-person|\\$3M/i', $scope.$this->materialsLabels($quote));
+        $this->assertStringNotContainsString('vapor', strtolower($scope.$this->materialsLabels($quote)));
+    }
+
+    private function materialsLabels(BasementQuotation $quote): string
+    {
+        $calc = is_array($quote->calculation) ? $quote->calculation : [];
+
+        return collect($calc['labor'] ?? [])->pluck('label')->implode(' ')
+            .' '.collect($calc['materials'] ?? [])->pluck('label')->implode(' ');
+    }
 }

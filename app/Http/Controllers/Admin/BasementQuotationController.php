@@ -639,7 +639,7 @@ class BasementQuotationController extends Controller
     protected function syncLineToProjectQuotation(ClientProject $project, BasementQuotation $quote): void
     {
         $items = [[
-            'description' => 'Basement renovation (labor)',
+            'description' => 'Basement renovation (labour)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
             'apply_hst' => true,
         ]];
@@ -649,6 +649,15 @@ class BasementQuotationController extends Controller
             $items[] = [
                 'description' => 'Basement renovation materials',
                 'amount' => $materialAmt,
+                'apply_hst' => true,
+            ];
+        }
+
+        $permitAmt = $quote->permitPreTaxAmountForProjectQuotation();
+        if ($permitAmt > 0) {
+            $items[] = [
+                'description' => 'Building permit (optional, extra charge)',
+                'amount' => $permitAmt,
                 'apply_hst' => true,
             ];
         }

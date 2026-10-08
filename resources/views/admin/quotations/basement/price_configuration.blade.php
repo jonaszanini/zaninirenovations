@@ -57,7 +57,7 @@
 
     <section class="cp-tab-panel{{ $startTab === 'rates' ? ' is-active' : '' }}"
              data-panel="rates" id="br-config-rates" role="tabpanel" aria-labelledby="br-tab-rates">
-      <h3 class="br-config-heading">This quote only — labor rates</h3>
+      <h3 class="br-config-heading">This quote only — labour rates</h3>
       <p class="admin-form-help br-config-help">Shared crew and overlapping trades are edited in Shared prices. Each basement quote can still override owner and helper rates on the form.</p>
       <div class="admin-form-grid-4">
         <div class="admin-form-group">
@@ -81,7 +81,7 @@
       </div>
 
       <hr class="br-config-divider">
-      <h3 class="br-config-heading">Labor productivity</h3>
+      <h3 class="br-config-heading">Labour productivity</h3>
       <p class="admin-form-help br-config-help">Hours per unit of work. Higher numbers mean faster production (more units per hour) except where the label says “hours each”.</p>
 
       @include('admin.partials.quotation_productivity_groups', [

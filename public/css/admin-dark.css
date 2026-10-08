@@ -1587,6 +1587,7 @@ html.admin-dark .br-toolbar-grand {
 html.admin-dark .br-sticky-total {
   background: var(--admin-surface);
   border-color: var(--admin-border);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
 }
 html.admin-dark .br-sheet-size__option {
   background: var(--admin-surface);

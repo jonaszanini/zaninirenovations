@@ -64,7 +64,7 @@
       'framing' => 'New wood walls, bulkheads around ducts, headers, and door openings.',
       'electrical' => 'Outlets, switches, lights, detectors, cable runs, and optional panel upgrade.',
       'plumbing' => 'Drain, vent, and supply piping for a bath, laundry, wet bar, floor drain, or water-heater move.',
-      'insulation' => 'Wall batts and vapor barrier, plus optional ceiling or under-slab insulation.',
+      'insulation' => 'Wall batts and vapour barrier, plus optional ceiling or under-slab insulation.',
       'drywall' => 'Hang, tape, mud, and sand walls and ceilings to the finish level you pick.',
       'ceiling' => 'New drywall ceiling, paint-grade, drop ceiling, or leave the existing ceiling.',
       'flooring' => 'Finish floor, underlayment, leveling, and transitions.',
@@ -77,10 +77,10 @@
       'scope_preset' => 'Pick a starting point, then add or skip trades. Unused steps stay out of the wizard.',
       'area_sqft' => 'Finished floor area of the work. Leave later quantity fields blank to auto-fill from this. Enter 0 on a field to skip it. For an irregular room, import the Room Area drawing on the Drywall step so walls use the real perimeter instead of a square. Not used on New wall quotes — enter wall length instead.',
       'room_count' => 'Rooms as they will exist when the work is done, including new dividing walls — not the current open basement. Example: rec room + bedroom + bath = 3, even if it is open now. Enter new wall length on the Framing step (or Overview for New wall).',
-      'owner_hourly_rate' => 'Your labor rate used in the live total. Helpers use the helper rate.',
+      'owner_hourly_rate' => 'Your labour rate used in the live total. Helpers use the helper rate.',
       'helper_hourly_rate' => 'Hourly rate for each helper in the 2- and 3-person ETA scenarios.',
       'existing_notes' => 'Site notes for you (moisture, headroom, existing bath). Not printed on the client PDF unless you copy them into the description.',
-      'include_demolition' => 'Adds tear-out labor and dumpster cost. Then check flooring, studs, drywall, and/or baseboard and enter the quantities. Uncheck if the space is already stripped.',
+      'include_demolition' => 'Adds tear-out labour and dumpster cost. Then check flooring, studs, drywall, and/or baseboard and enter the quantities. Uncheck if the space is already stripped.',
       'demo_include_flooring' => 'Pull up existing floor covering. Uncheck if the floor stays.',
       'demo_include_studs' => 'Tear out existing stud walls. Enter linear feet, or leave blank to use the new partition length from Framing.',
       'demo_include_drywall' => 'Strip existing drywall or ceiling. Uncheck if the concrete or joists are already exposed.',
@@ -96,20 +96,20 @@
       'bulkhead_lf' => 'Length of boxed-in ducts or beams (soffits) to work around, not a full-height wall. Use 0 if none.',
       'header_qty' => 'Load-bearing or wide openings that need a header or beam, counted each.',
       'framing_door_openings' => 'Rough openings to frame in new or existing walls, before hanging the door.',
-      'outlet_qty' => 'New receptacles to install (GFCI at wet locations). Count each device, not each gang box if you prefer. Typical bathroom: 1 at the sink, 2 on the wall. Change the count if this job differs. Used as electrician scope, not Zanini labor.',
-      'switch_qty' => 'New wall switches, including 3-way and exhaust-fan switches. Typical bathroom: 1 for the light, 1 for the exhaust. Used as electrician scope, not Zanini labor.',
-      'lighting_type' => 'Living-area lights in the finished basement rooms, not the bathroom. Bathroom fixtures and spots are chosen under Bathroom lighting. Used as electrician scope, not Zanini labor.',
-      'fixture_qty' => 'Ceiling light fixtures to hang in the basement (not recessed pots, not the bathroom). Used as electrician scope, not Zanini labor.',
-      'light_qty' => 'Recessed pot / spot lights in the basement rooms. Optional extra pots. Bathroom spots are on the Bathroom step. Used as electrician scope, not Zanini labor.',
-      'detector_qty' => 'Interconnected smoke/CO units. Ontario typically wants one on this level. Used as electrician scope, not Zanini labor.',
-      'panel_upgrade' => 'Note that the electrician should upgrade or add capacity in the electrical panel when the new circuits will not fit. Used as electrician scope, not Zanini labor.',
-      'include_plumbing' => 'Turns on plumbing scope questions to send to a licensed plumber. Priced plumbing lines sit below.',
+      'outlet_qty' => 'New receptacles to install (GFCI at wet locations). Count each device, not each gang box if you prefer. Typical bathroom: 1 at the sink, 2 on the wall. Change the count if this job differs. Used as electrician scope, not Zanini labour.',
+      'switch_qty' => 'New wall switches, including 3-way and exhaust-fan switches. Typical bathroom: 1 for the light, 1 for the exhaust. Used as electrician scope, not Zanini labour.',
+      'lighting_type' => 'Living-area lights in the finished basement rooms, not the bathroom. Bathroom fixtures and spots are chosen under Bathroom lighting. Used as electrician scope, not Zanini labour.',
+      'fixture_qty' => 'Ceiling light fixtures to hang in the basement (not recessed pots, not the bathroom). Used as electrician scope, not Zanini labour.',
+      'light_qty' => 'Recessed pot / spot lights in the basement rooms. Optional extra pots. Bathroom spots are on the Bathroom step. Used as electrician scope, not Zanini labour.',
+      'detector_qty' => 'Interconnected smoke/CO units. Ontario typically wants one on this level. Used as electrician scope, not Zanini labour.',
+      'panel_upgrade' => 'Note that the electrician should upgrade or add capacity in the electrical panel when the new circuits will not fit. Used as electrician scope, not Zanini labour.',
+      'include_plumbing' => 'Turns on plumbing scope questions to send to a qualified plumber. Priced plumbing lines sit below.',
       'bath_rough_in' => 'New drain, vent, and hot/cold supply for a basement bathroom.',
       'sink_laundry' => 'Water and drain for a laundry tub or washer hookup, not a full bathroom.',
       'wet_bar' => 'Supply and drain for a bar or kitchenette sink — not a full kitchen.',
       'floor_drain' => 'A floor drain and trap (mechanical room, bath, or low point).',
       'wh_reloc' => 'Move the existing water heater so the new layout fits. Not a new heater unless you add it as extra material.',
-      'insulate_walls' => 'Batts in the studs plus 6 mil vapor barrier on the warm side of exterior walls.',
+      'insulate_walls' => 'Batts in the studs plus 6 mil vapour barrier on the warm side of exterior walls.',
       'insulation_wall_sf' => 'Wall area to insulate. Blank uses perimeter × ceiling height.',
       'insulate_ceiling' => 'Insulation above the finished ceiling (between joists) when the floor above is cold or noisy.',
       'insulation_ceiling_sf' => 'Ceiling area to insulate. Blank uses the work area.',
@@ -119,7 +119,7 @@
       'drywall_ceiling_sf' => 'Ceiling area to hang. Blank follows Ceiling type (skipped for drop ceiling or skip). New wall quotes skip ceiling — the basement is already finished.',
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
       'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
-      'drywall_openings' => 'Other openings (archways) to cut and bead, counted each. Door and window counts above are added for labor.',
+      'drywall_openings' => 'Other openings (archways) to cut and bead, counted each. Door and window counts above are added for labour.',
       'drywall_door_openings' => 'Door rough openings. Each deducts 21 sq ft (3×7 ft) from wall drywall unless you type Opening area.',
       'drywall_window_openings' => 'Window openings. Each deducts 12 sq ft (4×3 ft) from wall drywall unless you type Opening area.',
       'drywall_opening_sf' => 'Total opening area to subtract from wall drywall. Blank uses 21 sq ft per door and 12 sq ft per window. Enter 0 if the wall area you typed is already net.',
@@ -142,7 +142,7 @@
       'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area (both sides of a new wall on the wall preset).',
       'paint_ceiling_sf' => 'Ceiling area to paint. Blank follows drywall ceiling unless you chose a drop ceiling. Hidden on New wall — no ceiling work.',
       'paint_trim_lf' => 'Base and casing to paint. Blank uses baseboard plus door casing length.',
-      'paint_colors' => 'One color = walls and ceiling the same. Two colors packs paint separately and adds tape / cut-in labor plus extra drywall finish time.',
+      'paint_colors' => 'One color = walls and ceiling the same. Two colors packs paint separately and adds tape / cut-in labour plus extra drywall finish time.',
       'paint_coats' => 'Finish coats after primer. Two is typical on new drywall.',
       'include_bathroom' => 'Adds bathroom fixture install and tile. Bathroom-only quotes keep electrical and plumbing on this step. On a full basement, turn on bathroom rough-in under Plumbing if new drains are needed.',
       'bath_type' => 'Full bath includes shower or tub. Half bath is toilet and a vanity or pedestal sink.',
@@ -153,7 +153,7 @@
       'include_shower' => 'Shower unit or valve and surround install. Tile area is the field below.',
       'include_tub' => 'Bathtub set and connect, instead of or in addition to a shower.',
       'include_exhaust_fan' => 'Bath fan, duct, and roof/soffit cap. Count a switch with the electrical switches.',
-      'include_bath_fixture' => 'Ceiling or vanity light fixture in the bathroom. Check this and set how many. Scope for the electrician — priced on Electrical lines, not as Zanini labor.',
+      'include_bath_fixture' => 'Ceiling or vanity light fixture in the bathroom. Check this and set how many. Scope for the electrician — priced on Electrical lines, not as Zanini labour.',
       'include_bath_spot' => 'Recessed pot / spot in the bathroom (for example a shower pot). You can use this together with a light fixture. Scope for the electrician — priced on Electrical lines.',
       'bath_fixture_qty' => 'How many bathroom light fixtures to hang.',
       'bath_spot_qty' => 'How many bathroom recessed pots / spot lights.',
@@ -164,7 +164,7 @@
       'include_building_permit' => 'Optional extra-charge line for a municipal building permit. Leave off if the client handles the permit or none is needed.',
       'building_permit_amount' => 'Permit allowance in CAD$. HST is added like other materials. Use 0 if you only want the reminder without a price.',
       'material_waste_percent' => 'Ordering buffer on bulk materials (drywall, lumber, paint, insulation, flooring, trim). Doors and toilets stay exact. Default 10%.',
-      'client_provides_all' => 'Labor only — you do not supply materials. Totals drop material cost (HST on labor still applies as configured).',
+      'client_provides_all' => 'Labour only — you do not supply materials. Totals drop material cost (HST on labour still applies as configured).',
   ];
 @endphp
 
@@ -179,7 +179,7 @@
   ];
   $presetHelp = [
       'full' => 'Walks every trade. Area auto-fills insulation, drywall, flooring, paint, and cleanup.',
-      'bathroom' => 'Plumbing and electrical questions stay as licensed-trade scope, plus drywall, paint, fixtures, and cleanup in one bathroom flow — not whole-basement flooring or insulation.',
+      'bathroom' => 'Plumbing and electrical questions stay as qualified-trade scope, plus drywall, paint, fixtures, and cleanup in one bathroom flow — not whole-basement flooring or insulation.',
       'wall' => 'Enter wall length and whether it needs a door. Framing, drywall, doors / trim / baseboard, paint — both sides of the new wall.',
       'custom' => 'Only the trades you check below. Overview and Review always stay.',
   ];
@@ -467,7 +467,7 @@
   <div class="br-acc__body">
     <div class="br-toggle-qty-grid">
       <div class="br-toggle-qty">
-        @include('admin.partials.checkbox', ['name' => 'insulate_walls', 'hiddenFallback' => true, 'checked' => $brOn('insulate_walls', true), 'label' => 'Wall insulation + vapor barrier', 'info' => $brInfo['insulate_walls'], 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-wall'], 'clientFilled' => $brFilled('insulate_walls')])
+        @include('admin.partials.checkbox', ['name' => 'insulate_walls', 'hiddenFallback' => true, 'checked' => $brOn('insulate_walls', true), 'label' => 'Wall insulation + vapour barrier', 'info' => $brInfo['insulate_walls'], 'inputClass' => 'admin-checkbox__input br-preview', 'attrs' => ['data-br-reveal' => 'br-ins-wall'], 'clientFilled' => $brFilled('insulate_walls')])
         <div id="br-ins-wall" class="br-toggle-qty__fields" @unless($brOn('insulate_walls', true)) hidden @endunless>
           @include('admin.quotations.basement._qty_lw', [
             'name' => 'insulation_wall_sf',
@@ -621,7 +621,7 @@
         'mode' => $qtyDim('drywall_wall_sf')['mode'],
         'lengthValue' => $qtyDim('drywall_wall_sf')['length'],
         'widthValue' => $qtyDim('drywall_wall_sf')['width'],
-        'placeholder' => $scopePreset === 'wall' ? 'Auto: wall length × height × both sides' : 'Auto from area × height',
+        'placeholder' => 'Auto',
         'info' => $brInfo['drywall_wall_sf'],
       ])
       <div data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
@@ -636,7 +636,7 @@
         'mode' => $qtyDim('drywall_ceiling_sf')['mode'],
         'lengthValue' => $qtyDim('drywall_ceiling_sf')['length'],
         'widthValue' => $qtyDim('drywall_ceiling_sf')['width'],
-        'placeholder' => 'Auto if ceiling is drywall',
+        'placeholder' => 'Auto',
         'info' => $brInfo['drywall_ceiling_sf'],
       ])
       </div>
@@ -658,7 +658,7 @@
       <div class="admin-form-group">
         <label for="br-dw-opening-sf">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_opening_sf']]) Opening area (sq ft)</label>
         <input type="number" step="0.01" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-opening-sf" name="drywall_opening_sf"
-               value="{{ $brQty('drywall_opening_sf') }}" placeholder="Auto from openings">
+               value="{{ $brQty('drywall_opening_sf') }}" placeholder="Auto">
       </div>
       <div class="admin-form-group">
         <label for="br-dw-corners">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_corners']]) Outside corners</label>
@@ -670,7 +670,7 @@
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-inside-corners" name="drywall_inside_corners"
                value="{{ $brVal('drywall_inside_corners', 0) }}">
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group br-finish-field">
         <label for="br-finish">@include('admin.partials.info_tip', ['text' => $brInfo['finish_level']]) Level of finish</label>
         <select class="admin-input br-preview" id="br-finish" name="finish_level">
           @foreach (\App\Services\BasementQuotationCalculator::FINISH_LEVELS as $lvl => $lbl)
@@ -851,7 +851,7 @@
         'mode' => $qtyDim('paint_wall_sf')['mode'],
         'lengthValue' => $qtyDim('paint_wall_sf')['length'],
         'widthValue' => $qtyDim('paint_wall_sf')['width'],
-        'placeholder' => $scopePreset === 'wall' ? 'Auto: both sides of the new wall' : 'Auto from drywall walls',
+        'placeholder' => 'Auto',
         'info' => $brInfo['paint_wall_sf'],
         'workKey' => 'paint_walls',
         'gearLabel' => 'Edit wall paint rates',
@@ -869,7 +869,7 @@
         'mode' => $qtyDim('paint_ceiling_sf')['mode'],
         'lengthValue' => $qtyDim('paint_ceiling_sf')['length'],
         'widthValue' => $qtyDim('paint_ceiling_sf')['width'],
-        'placeholder' => 'Auto unless drop ceiling',
+        'placeholder' => 'Auto',
         'info' => $brInfo['paint_ceiling_sf'],
       ])
       </div>
@@ -884,7 +884,7 @@
           'gearLabel' => 'Edit trim paint rates',
           'rate' => \App\Services\SharedWorkCatalog::rateLine('paint_trim'),
           'inputClass' => 'br-preview',
-          'placeholder' => 'Auto from base + casing',
+          'placeholder' => 'Auto',
         ])
       </div>
       <div class="admin-form-group">
@@ -1098,10 +1098,10 @@
 <details class="br-acc admin-card" data-br-step="finishing" @unless(in_array('finishing', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Final Details &amp; Cleanup</summary>
   <div class="br-acc__body">
-    <div class="br-qty-grid">
-      <div class="admin-form-group">
+    <div class="br-qty-grid br-finishing-grid">
+      <div class="admin-form-group br-hw-field">
         <label for="br-hw">@include('admin.partials.info_tip', ['text' => $brInfo['hardware_sets']]) Extra hardware sets</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-hw" name="hardware_sets"
+        <input type="number" step="1" min="0" class="admin-input br-preview br-input--hardware" id="br-hw" name="hardware_sets"
                value="{{ $brVal('hardware_sets', 0) }}">
       </div>
       @include('admin.partials.checkbox', ['name' => 'include_cleaning', 'hiddenFallback' => true, 'checked' => $brOn('include_cleaning', $scopePreset !== 'wall'), 'label' => 'Final cleaning', 'info' => $brInfo['include_cleaning'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_cleaning')])

@@ -473,11 +473,7 @@
     var wallOnly = currentPreset() === 'wall';
     var periEl = document.getElementById('br-perimeter-lf');
     var peri = periEl ? parseFloat(periEl.value) : 0;
-    if (!wallOnly && isFinite(peri) && peri > 0) {
-      dwWall.placeholder = 'Auto: ' + formatLayoutQty(peri) + ' lf × height';
-    } else {
-      dwWall.placeholder = wallOnly ? 'Auto: wall length × height × both sides' : 'Auto from area × height';
-    }
+    dwWall.placeholder = 'Auto';
   }
 
   function applyScope() {
@@ -541,7 +537,7 @@
     updateDwWallPlaceholder();
     var pWall = document.getElementById('br-p-wall');
     if (pWall) {
-      pWall.placeholder = wallOnly ? 'Auto: both sides of the new wall' : 'Auto from drywall walls';
+      pWall.placeholder = 'Auto';
     }
     if (currentIndex >= wizardKeys.length) {
       currentIndex = 0;
@@ -812,10 +808,11 @@
     var prev = document.getElementById('br-prev');
     var next = document.getElementById('br-next');
     if (prev) prev.disabled = currentIndex === 0;
-    if (next) next.textContent = key === 'review' ? 'Review' : (currentIndex === sectionKeys.length - 1 ? 'Review' : 'Next');
-    if (next && key === 'review') next.disabled = true;
-    else if (next) next.disabled = false;
-    if (scroll && !isEdit) {
+    if (next) {
+      next.textContent = key === 'review' ? 'Save' : 'Next';
+      next.disabled = false;
+    }
+    if (scroll) {
       var el = sectionEl(key);
       if (el && el.scrollIntoView) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -826,19 +823,21 @@
   applyScope();
   bindLw();
 
-  if (!isEdit) {
-    setWizardStep(0, false);
-    var prevBtn = document.getElementById('br-prev');
-    var nextBtn = document.getElementById('br-next');
-    if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
-    if (nextBtn) nextBtn.addEventListener('click', function () {
-      if (!validateCurrentStep()) return;
-      setWizardStep(currentIndex + 1, true);
-    });
-  } else {
-    var nav = document.getElementById('br-step-nav');
-    if (nav) nav.hidden = true;
-  }
+  setWizardStep(isEdit ? Math.max(0, wizardKeys.indexOf('review')) : 0, false);
+  var prevBtn = document.getElementById('br-prev');
+  var nextBtn = document.getElementById('br-next');
+  if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
+  if (nextBtn) nextBtn.addEventListener('click', function () {
+    var key = wizardKeys[currentIndex];
+    if (key === 'review') {
+      if (publishBtn) publishBtn.click();
+      else if (typeof form.requestSubmit === 'function') form.requestSubmit();
+      else form.submit();
+      return;
+    }
+    if (!validateCurrentStep()) return;
+    setWizardStep(currentIndex + 1, true);
+  });
 
   form.querySelectorAll('[data-br-scope-preset]').forEach(function (el) {
     el.addEventListener('change', function () {
@@ -871,17 +870,6 @@
       var key = btn.getAttribute('data-br-goto');
       var idx = wizardKeys.indexOf(key);
       if (idx < 0) return;
-      if (isEdit) {
-        var el = sectionEl(key);
-        if (el) {
-          el.setAttribute('open', '');
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        form.querySelectorAll('.br-progress__item').forEach(function (b) {
-          b.classList.toggle('is-current', b.getAttribute('data-br-goto') === key);
-        });
-        return;
-      }
       setWizardStep(idx, true);
     });
   });
@@ -936,16 +924,17 @@
     if (empty) empty.hidden = true;
     if (body) body.hidden = false;
     var laborPre = Number(summary.labor_pre_hst || 0) + lastAdditionalLaborPreTax;
-    var laborHst = Number(summary.labor_hst != null ? summary.labor_hst : Number(summary.labor_pre_hst || 0) * 0.13) + lastAdditionalLaborHst;
     var matPre = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
-    var matHst = Number(summary.materials_hst || 0) + lastAdditionalMaterialsHst;
+    var permitPre = Number(summary.permit_pre_hst || 0);
+    var extraHst = lastAdditionalLaborHst + lastAdditionalMaterialsHst;
+    var subtotal = laborPre + matPre + permitPre;
+    var hst = Number(summary.hst != null ? summary.hst : subtotal * 0.13) + extraHst;
     var html = '';
-    html += '<div class="pq-row"><span>Labor (pre-HST)</span><span>' + fmt(laborPre) + '</span></div>';
-    html += '<div class="pq-row"><span>Labor HST</span><span>' + fmt(laborHst) + '</span></div>';
-    html += '<div class="pq-row pq-row--sub"><span>Total labor</span><span>' + fmt(laborPre + laborHst) + '</span></div>';
-    html += '<div class="pq-row pq-row--group"><span>Materials (pre-HST)</span><span>' + fmt(matPre) + '</span></div>';
-    html += '<div class="pq-row"><span>Materials HST</span><span>' + fmt(matHst) + '</span></div>';
-    html += '<div class="pq-row pq-row--sub"><span>Total materials</span><span>' + fmt(matPre + matHst) + '</span></div>';
+    html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';
+    html += '<div class="pq-row"><span>Materials</span><span>' + fmt(matPre) + '</span></div>';
+    if (permitPre > 0) {
+      html += '<div class="pq-row"><span>Permit</span><span>' + fmt(permitPre) + '</span></div>';
+    }
     var wastePct = Number(summary.material_waste_percent);
     if (isFinite(wastePct) && wastePct > 0) {
       html += '<div class="pq-row"><span class="admin-form-help">Material waste in qtys</span><span class="admin-form-help">' + wastePct + '%</span></div>';
@@ -953,11 +942,13 @@
     html += tradeBreakdownHtml('Electrical', summary.trades && summary.trades.electrical);
     html += tradeBreakdownHtml('Plumbing', summary.trades && summary.trades.plumbing);
     if (lastCommuteAmount > 0) {
-      html += '<div class="pq-row pq-row--group"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
+      html += '<div class="pq-row"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
     }
     if (lastDebrisAmount > 0) {
-      html += '<div class="pq-row pq-row--group"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
+      html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
     }
+    html += '<div class="pq-row pq-row--sub"><span>Subtotal</span><span>' + fmt(subtotal) + '</span></div>';
+    html += '<div class="pq-row"><span>HST 13%</span><span>' + fmt(hst) + '</span></div>';
     html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
     body.innerHTML = html;
     updateDrywallNetHint(data.scope || {});
@@ -999,7 +990,7 @@
     var tbody = document.getElementById('br-labor-rows');
     if (!tbody) return;
     if (!rows.length) {
-      tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Enter the basement area to generate labor lines.</td></tr>';
+      tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Enter the basement area to generate labour lines.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function (row) {

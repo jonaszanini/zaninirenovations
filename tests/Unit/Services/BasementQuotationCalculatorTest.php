@@ -81,7 +81,12 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertGreaterThan(0, $calc['summary']['labor_pre_hst']);
         $this->assertGreaterThan(0, $calc['summary']['materials_pre_hst']);
         $this->assertEqualsWithDelta(
-            round($calc['summary']['labor_pre_hst'] + $calc['summary']['materials_pre_hst'], 2),
+            round(
+                $calc['summary']['labor_pre_hst']
+                + $calc['summary']['materials_pre_hst']
+                + ($calc['summary']['permit_pre_hst'] ?? 0),
+                2
+            ),
             $calc['summary']['subtotal_pre_hst'],
             0.01
         );
@@ -108,7 +113,9 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertEquals(
             $calc['summary']['grand_total'],
             round(
-                $calc['summary']['labor_after_hst'] + $calc['summary']['materials_after_hst'],
+                $calc['summary']['labor_after_hst']
+                + $calc['summary']['materials_after_hst']
+                + ($calc['summary']['permit_after_hst'] ?? 0),
                 2
             )
         );
@@ -575,6 +582,8 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertNotNull($vapor);
         $this->assertSame('roll', $vapor['unit']);
         $this->assertSame(1.0, $vapor['qty']);
+        $this->assertStringContainsString('vapour', strtolower((string) $vapor['label']));
+        $this->assertStringContainsString('vapour barrier', strtolower((string) collect($calc['labor'])->firstWhere('key', 'ins_walls')['label']));
 
         $this->assertNull(collect($calc['materials'])->firstWhere('key', 'nm_cable'));
 
@@ -1733,6 +1742,12 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertNotNull($permit);
         $this->assertSame('Building permit', $permit['label']);
         $this->assertEqualsWithDelta(250.0, $permit['amount'], 0.01);
+        $this->assertEqualsWithDelta(250.0, $calc['summary']['permit_pre_hst'], 0.01);
+        $this->assertEqualsWithDelta(
+            round($calc['summary']['materials_pre_hst'] + $calc['summary']['permit_pre_hst'], 2),
+            round($calc['summary']['subtotal_pre_hst'] - $calc['summary']['labor_pre_hst'], 2),
+            0.01
+        );
     }
 
     private function settings(?array $materials = null): BasementSettings

@@ -183,17 +183,41 @@ class BasementQuotation extends Model
         return max(0, round((float) ($summary['labor_pre_hst'] ?? 0), 2));
     }
 
+    public function permitPreTaxAmountForProjectQuotation(): float
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
+        if (array_key_exists('permit_pre_hst', $summary)) {
+            return max(0, round((float) $summary['permit_pre_hst'], 2));
+        }
+
+        foreach ($calc['materials'] ?? [] as $row) {
+            if (! is_array($row) || ($row['key'] ?? '') !== 'building_permit') {
+                continue;
+            }
+
+            return max(0, round((float) ($row['amount'] ?? 0), 2));
+        }
+
+        return 0.0;
+    }
+
     public function materialsPreTaxAmountForProjectQuotation(): float
     {
         $calc = is_array($this->calculation) ? $this->calculation : [];
         $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
+        $materials = max(0, round((float) ($summary['materials_pre_hst'] ?? 0), 2));
+        if (! array_key_exists('permit_pre_hst', $summary)) {
+            $materials = max(0, round($materials - $this->permitPreTaxAmountForProjectQuotation(), 2));
+        }
 
-        return max(0, round((float) ($summary['materials_pre_hst'] ?? 0), 2));
+        return $materials;
     }
 
     public function includesMaterialCharge(): bool
     {
-        return $this->materialsPreTaxAmountForProjectQuotation() > 0;
+        return $this->materialsPreTaxAmountForProjectQuotation() > 0
+            || $this->permitPreTaxAmountForProjectQuotation() > 0;
     }
 
     public function summaryDescription(): string
@@ -216,40 +240,57 @@ class BasementQuotation extends Model
 
     public function scopeDescriptionForPdf(): string
     {
+        $html = $this->scopeHtmlForPdf();
+        $work = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($this->work_description);
+        if ($work === null) {
+            return $html;
+        }
+        if (! \App\Support\QuotationWorkDescriptionHtml::isHtml($work)) {
+            return $html.'<p>'.nl2br(e($work), false).'</p>';
+        }
+
+        return $html.$work;
+    }
+
+    /**
+     * Grouped two-column scope block (DomPDF-safe table) so ~20 labour bullets stay on page 1.
+     */
+    protected function scopeHtmlForPdf(): string
+    {
         $inputs = is_array($this->inputs) ? $this->inputs : [];
         $calc = is_array($this->calculation) ? $this->calculation : [];
         $scope = is_array($calc['scope'] ?? null) ? $calc['scope'] : [];
 
-        $lines = [];
+        $intro = [];
         $area = round((float) ($scope['area_sqft'] ?? $inputs['area_sqft'] ?? 0), 0);
         $height = round((float) ($scope['ceiling_height_ft'] ?? $inputs['ceiling_height_ft'] ?? 0), 2);
         $rooms = (int) ($inputs['room_count'] ?? 0);
 
-        $lines[] = 'Basement renovation'.($area > 0 ? ' — '.number_format($area, 0).' sq ft' : '');
+        $intro[] = 'Basement renovation'.($area > 0 ? ' — '.number_format($area, 0).' sq ft' : '');
         if ($height > 0) {
-            $lines[] = 'Ceiling height: '.$height.' ft';
+            $intro[] = 'Ceiling height: '.$height.' ft';
         }
         if ($rooms > 0) {
-            $lines[] = 'Finished rooms / zones: '.$rooms;
+            $intro[] = 'Finished rooms / zones: '.$rooms;
         }
         if (! empty($inputs['include_bathroom'])) {
             $type = ($inputs['bath_type'] ?? '') === 'half' ? 'Half bath' : 'Full bath';
-            $lines[] = 'Bathroom: '.$type;
+            $intro[] = 'Bathroom: '.$type;
+        }
+        $notes = trim((string) ($inputs['existing_notes'] ?? ''));
+        if ($notes !== '') {
+            $intro[] = 'Existing conditions: '.$notes;
         }
 
+        $groups = [];
         foreach (['electrical_lines' => 'Electrical', 'plumbing_lines' => 'Plumbing'] as $key => $heading) {
             $rows = AdditionalCostsService::normalizeRows($inputs[$key] ?? [], $heading.' work');
             foreach ($rows as $row) {
                 $label = trim((string) ($row['description'] ?? ''));
                 if ($label !== '') {
-                    $lines[] = '  • '.$heading.': '.$label;
+                    $groups[$heading][] = $label;
                 }
             }
-        }
-
-        $notes = trim((string) ($inputs['existing_notes'] ?? ''));
-        if ($notes !== '') {
-            $lines[] = 'Existing conditions: '.$notes;
         }
 
         foreach ($calc['labor'] ?? [] as $row) {
@@ -257,15 +298,48 @@ class BasementQuotation extends Model
                 continue;
             }
             $label = trim((string) ($row['label'] ?? ''));
-            if ($label !== '') {
-                $lines[] = '  • '.$label;
+            if ($label === '') {
+                continue;
             }
+            $section = (string) ($row['section'] ?? 'finishing');
+            $heading = BasementQuotationCalculator::SECTIONS[$section] ?? ucfirst(str_replace('_', ' ', $section));
+            $groups[$heading][] = $label;
         }
 
-        return \App\Support\QuotationWorkDescriptionHtml::combineAutoScopeWithWork(
-            $lines,
-            $this->work_description
-        );
+        if (! empty($inputs['include_building_permit'])) {
+            $groups['Final Details & Cleanup'][] = 'Building permit (optional, extra charge)';
+        }
+
+        $html = '';
+        foreach ($intro as $line) {
+            $html .= '<p style="margin:0 0 4pt;">'.e($line).'</p>';
+        }
+
+        if ($groups === []) {
+            return $html;
+        }
+
+        $blocks = [];
+        foreach ($groups as $heading => $items) {
+            $block = '<p style="margin:0 0 2pt;font-weight:700;">'.e($heading).'</p><ul style="margin:0 0 8pt 14pt;padding:0;">';
+            foreach ($items as $item) {
+                $block .= '<li style="margin:0 0 1pt;">'.e($item).'</li>';
+            }
+            $block .= '</ul>';
+            $blocks[] = $block;
+        }
+
+        $mid = (int) ceil(count($blocks) / 2);
+        $left = implode('', array_slice($blocks, 0, $mid));
+        $right = implode('', array_slice($blocks, $mid));
+
+        $html .= '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:none;margin:4pt 0 0;border-collapse:collapse;">';
+        $html .= '<tr>';
+        $html .= '<td width="50%" valign="top" style="border:none;padding:0 10pt 0 0;vertical-align:top;">'.$left.'</td>';
+        $html .= '<td width="50%" valign="top" style="border:none;padding:0 0 0 6pt;vertical-align:top;">'.$right.'</td>';
+        $html .= '</tr></table>';
+
+        return $html;
     }
 
     public static function generateNumber(): string

@@ -56,7 +56,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
-            ->assertSee('Labor productivity')
+            ->assertSee('Labour productivity')
             ->assertSee('class="admin-form-grid-4"', false)
             ->assertSee('Default materials')
             ->assertSee('>Rates</button>', false)
@@ -119,7 +119,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertNotFalse($live);
         $this->assertLessThan($price, $context);
         $this->assertLessThan($next, $context);
-        $this->assertLessThan($live, $next);
+        $this->assertLessThan($next, $live);
         $this->assertMatchesRegularExpression(
             '/<details class="admin-accordion admin-card cp-project-context-card">/',
             $html

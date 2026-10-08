@@ -682,7 +682,7 @@ class QuotationWorkDescriptionContextBuilder
         if (in_array('insulation', $enabled, true)) {
             $insParts = [];
             if (! empty($c['insulate_walls'])) {
-                $insParts[] = 'wall insulation + vapor barrier';
+                $insParts[] = 'wall insulation + vapour barrier';
             }
             if (! empty($c['insulate_ceiling'])) {
                 $insParts[] = 'ceiling insulation';

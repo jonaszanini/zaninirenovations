@@ -169,18 +169,6 @@
         </button>
       </div>
     </div>
-    <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
-      <div class="br-step-nav" id="br-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
-      </div>
-      <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
-        <span class="br-toolbar-grand__label">Grand total</span>
-        <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
-      </div>
-    </div>
-
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">
         @php $n = 0; @endphp
@@ -247,7 +235,7 @@
               'hiddenFallback' => true,
               'checked' => (bool) old('client_provides_all', $inputs['client_provides_all'] ?? false),
               'label' => '<strong>Client provides all materials</strong> for the entire project',
-              'info' => 'Labor only — you do not supply materials. Material cost drops out of the total.',
+              'info' => 'Labour only — you do not supply materials. Material cost drops out of the total.',
               'inputClass' => 'admin-checkbox__input br-preview',
               'id' => 'br-client-all',
             ])
@@ -263,7 +251,7 @@
                   'value' => $key,
                   'checked' => in_array($key, $provideSections, true),
                   'label' => $label,
-                  'info' => 'Client buys the materials for '.$label.'; you still carry the labor for that trade.',
+                  'info' => 'Client buys the materials for '.$label.'; you still carry the labour for that trade.',
                   'inputClass' => 'admin-checkbox__input br-preview',
                   'clientFilled' => $key === 'flooring' && in_array('client_provides_sections', $filledKeys, true),
                 ])
@@ -282,7 +270,7 @@
                     'value' => $itemKey,
                     'checked' => in_array($itemKey, $provideBathItems, true),
                     'label' => $itemLabel,
-                    'info' => 'Client supplies the '.$itemLabel.'; material cost drops out. Labor stays.',
+                    'info' => 'Client supplies the '.$itemLabel.'; material cost drops out. Labour stays.',
                     'inputClass' => 'admin-checkbox__input br-preview',
                     'clientFilled' => in_array('client_provides_bath_items', $filledKeys, true) && in_array($itemKey, $provideBathItems, true),
                   ])
@@ -291,7 +279,7 @@
             </fieldset>
             </div>
 
-            <h4 class="br-review-heading">Labor hours</h4>
+            <h4 class="br-review-heading">Labour hours</h4>
             <div class="admin-table-scroll">
               <table class="admin-table br-review-table">
                 <thead>
@@ -309,7 +297,7 @@
                       <td class="cp-col-amount" data-br-labor-amt>{{ \App\Models\ClientProject::formatMoney($row['amount'] ?? 0) }}</td>
                     </tr>
                   @empty
-                    <tr class="br-empty-row"><td colspan="3" class="admin-form-help">Enter the basement area to generate labor lines.</td></tr>
+                    <tr class="br-empty-row"><td colspan="3" class="admin-form-help">Enter the basement area to generate labour lines.</td></tr>
                   @endforelse
                 </tbody>
               </table>
@@ -383,6 +371,18 @@
         </div>
       </div>
     </aside>
+
+    <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
+      <div class="br-step-nav" id="br-step-nav">
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
+        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
+        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
+      </div>
+      <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
+        <span class="br-toolbar-grand__label">Grand total</span>
+        <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
+      </div>
+    </div>
   </form>
 
   @if ($isEdit && $canSendEmail)

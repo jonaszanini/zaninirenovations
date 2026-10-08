@@ -1,6 +1,6 @@
 <div id="br-electrical-fields" class="br-electrical-fields">
   <p class="admin-form-help br-trade-scope-hint">
-    These answers are scope for a licensed electrician — they are not Zanini labor or materials. Type their quote as priced lines below.
+    These answers are scope for a qualified electrician — they are not Zanini labour or materials. Type their quote as priced lines below.
   </p>
   <div class="br-qty-grid">
     <div class="admin-form-group">
@@ -52,7 +52,7 @@
   @include('admin.quotations._amount_lines', [
     'field' => 'electrical_lines',
     'idPrefix' => 'br-elec-line',
-    'intro' => 'Priced electrical work from the licensed electrician. Each filled line appears on the client quotation.',
+    'intro' => 'Priced electrical work from the qualified electrician. Each filled line appears on the client quotation.',
     'addLabel' => 'Add line',
     'placeholder' => 'e.g. Rough-in, pot lights, panel',
     'rows' => is_array($inputs['electrical_lines'] ?? null) ? $inputs['electrical_lines'] : [],

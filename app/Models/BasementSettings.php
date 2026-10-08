@@ -178,7 +178,7 @@ class BasementSettings extends Model
             'drywall_tape' => $row('Drywall paper tape, 250 ft roll (each)', 'roll', 8.00),
             'corner_bead' => $row('8 ft corner bead (each)', 'each', 6.50),
             'insulation_batt' => $row('R-14 batt insulation, 15 in (bag, ~40 sq ft)', 'bag', round(1.20 * self::BATT_SF_PER_BAG, 4)),
-            'vapor_barrier' => $row('6 mil vapor barrier, 10x100 ft roll (each)', 'roll', round(0.25 * self::VAPOR_SF_PER_ROLL, 4)),
+            'vapor_barrier' => $row('6 mil vapour barrier, 10x100 ft roll (each)', 'roll', round(0.25 * self::VAPOR_SF_PER_ROLL, 4)),
             'underslab_insulation' => $row('2 in XPS rigid insulation 4x8 (sheet)', 'sheet', round(2.40 * self::PANEL_SF, 4)),
             'vanity' => $row('Bathroom vanity (each)', 'each', 360.00),
             'pedestal_sink' => $row('Pedestal bathroom sink (each)', 'each', 180.00),
