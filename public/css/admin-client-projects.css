@@ -8856,14 +8856,16 @@ body.cp-modal-open {
   min-width: 0;
   max-width: 100%;
 }
-.br-finishing-row > * {
+.br-finishing .br-hw-field.admin-form-group,
+.br-finishing .br-permit-amount.admin-form-group,
+.br-finishing .br-finishing-check {
   flex: 0 0 auto;
-  width: auto;
+  width: max-content;
   max-width: 100%;
 }
 .br-hw-field {
   flex: 0 0 auto;
-  width: auto;
+  width: max-content;
   min-width: 0;
   margin-bottom: 0;
 }

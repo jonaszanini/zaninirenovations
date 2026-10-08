@@ -21,6 +21,19 @@
       min-width: 10.5rem;
       padding-right: 2.6rem;
     }
+    [data-ac-card] {
+      container-type: inline-size;
+    }
+    @container (max-width: 720px) {
+      .q-ac-row,
+      .q-ac-row--with-category {
+        grid-template-columns: minmax(0, 1fr) minmax(10.5rem, 0.8fr) auto auto;
+        align-items: end;
+      }
+      .q-ac-row__desc {
+        grid-column: 1 / -1;
+      }
+    }
     .q-ac-row .admin-form-group { margin-bottom: 0; min-width: 0; }
     .q-ac-row__desc label,
     .q-ac-row__amount label,

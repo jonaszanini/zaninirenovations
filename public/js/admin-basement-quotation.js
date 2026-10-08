@@ -898,7 +898,9 @@
     if (!previewUrl) return;
     var fd = new FormData(form);
     form.querySelectorAll('input.admin-checkbox__input[name]').forEach(function (cb) {
-      fd.set(cb.name, cb.checked ? (cb.value || '1') : '0');
+      var name = cb.name || '';
+      if (!name || name.indexOf('[') !== -1) return;
+      fd.set(name, cb.checked ? (cb.value || '1') : '0');
     });
     form.querySelectorAll('.cp-money-input[name]').forEach(function (input) {
       fd.set(input.name, (input.value || '').replace(/,/g, ''));
