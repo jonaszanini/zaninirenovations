@@ -75,6 +75,9 @@ class PublicMobileNavDropdownTest extends TestCase
             '/\$contact_form\.find\(["\']button\[type=submit\]["\']\)\.on\(["\']click["\']/',
             $js
         );
+        $this->assertStringContainsString('contactSubmitting', $js);
+        $this->assertStringContainsString('safety_key', $js);
+        $this->assertStringContainsString('sms_opt_in', $js);
     }
 
     public function test_mobile_public_css_clips_owl_and_enlarges_tap_targets(): void
@@ -83,11 +86,16 @@ class PublicMobileNavDropdownTest extends TestCase
         $this->assertNotFalse($css);
         $this->assertStringContainsString('.owl-carousel .owl-stage-outer', $css);
         $this->assertStringContainsString('.footer-social-icons a', $css);
-        $this->assertStringContainsString('.about-footer a', $css);
-        $this->assertStringContainsString('.copyright-text a', $css);
+        $this->assertStringContainsString('.footer-widget-area .footer-useful-links li a', $css);
         $this->assertStringContainsString('overflow-x: clip', $css);
         $this->assertStringContainsString('min-height: 44px', $css);
         $this->assertStringContainsString('.project-gallery-modal.modal', $css);
         $this->assertStringContainsString('background-color: #fff', $css);
+        $this->assertStringContainsString('#contact-form span.error', $css);
+        $this->assertStringContainsString('#c0392b', $css);
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.about-footer a,\s*\n\s*\.copyright-text a/',
+            $css
+        );
     }
 }

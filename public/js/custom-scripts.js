@@ -1233,10 +1233,13 @@ jQuery(function ($) {
         
         var $error_border =  "border-bottom: 1px solid red;";
         var contact_form_bValid, user_name_bValid, user_email_bValid, location_city_bValid, user_email_subject_bValid, user_email_message_bValid;
-        
-        
+        var contactSubmitting = false;
+
         $contact_form.on("submit", function (e) {
                 e.preventDefault();
+                if (contactSubmitting) {
+                    return false;
+                }
 
                 contactClearFeedback();
                 contact_form_bValid = true;
@@ -1313,6 +1316,7 @@ jQuery(function ($) {
             
                 if ( contact_form_bValid === true ) {
 
+                    contactSubmitting = true;
                     $all_fields.attr("disabled", "disabled");
                     $contact_submit_btn.attr("disabled", "disabled");
                     contactClearFeedback();
@@ -1362,6 +1366,7 @@ jQuery(function ($) {
                         return payload;
                     })(),
                     success: function (data) {
+                        contactSubmitting = false;
 
                         if ( data.status === 1) {
 
@@ -1380,6 +1385,7 @@ jQuery(function ($) {
 
                     },
                     error: function (xhr) {
+                        contactSubmitting = false;
                         var msg = "Email can not be sent. Please try again.";
                         if (xhr.responseJSON && xhr.responseJSON.msg) {
                             msg = xhr.responseJSON.msg;

@@ -4,7 +4,8 @@
  *
  *   NODE_PATH=/path/to/node_modules node scripts/public-qa-sweep.js
  *
- * Does not send real contact emails: POST /contact-email is aborted.
+ * Does not send real contact emails: POST /contact-email is fulfilled
+ * with the controller's success JSON (never reaches PHP/SMTP).
  */
 const puppeteer = require('puppeteer-core');
 const fs = require('fs');
@@ -90,14 +91,33 @@ async function newPage(browser, vp, scheme) {
   });
   page.on('pageerror', (err) => pageErrors.push(String(err.message || err)));
   await page.setRequestInterception(true);
+  const contactPosts = [];
   page.on('request', (req) => {
     if (req.method() === 'POST' && req.url().includes('/contact-email')) {
-      req.abort('blockedbyclient');
+      const postData = req.postData() || '';
+      let fields = {};
+      try {
+        fields = Object.fromEntries(new URLSearchParams(postData));
+      } catch (_) {}
+      contactPosts.push({
+        url: req.url(),
+        headers: req.headers(),
+        fields,
+        postData,
+      });
+      req.respond({
+        status: 200,
+        contentType: 'application/json; charset=utf-8',
+        body: JSON.stringify({
+          status: 1,
+          msg: 'Thank you! Your message has been received. We will get back to you soon.',
+        }),
+      });
       return;
     }
     req.continue();
   });
-  page._qa = { consoleErrors, pageErrors };
+  page._qa = { consoleErrors, pageErrors, contactPosts };
   return page;
 }
 
@@ -346,8 +366,108 @@ async function interactContact(page) {
       return span;
     });
     if (!emailErr) issues.push({ kind: 'contact-email-validation', detail: 'invalid email not flagged' });
+    const errStyle = await page.evaluate(() => {
+      const el = document.querySelector('#contact-form span.error');
+      if (!el) return null;
+      const s = getComputedStyle(el);
+      return { fontSize: s.fontSize, color: s.color, marginTop: s.marginTop };
+    });
+    if (errStyle && (errStyle.fontSize !== '13px' || !errStyle.color.includes('192, 57, 43'))) {
+      issues.push({ kind: 'contact-error-style', detail: errStyle });
+    }
   } catch (e) {
     issues.push({ kind: 'contact-exception', detail: String(e.message || e) });
+  }
+  return issues;
+}
+
+const CONTACT_POST_FIELDS = [
+  'safety_key',
+  'user_name',
+  'user_email',
+  'user_phone',
+  'sms_opt_in',
+  'location_city',
+  'starting_date',
+  'budget',
+  'email_subject',
+  'email_message',
+];
+
+async function proveValidContactSubmit(page, screenshotPath) {
+  const issues = [];
+  try {
+    if (!(await page.$('#contact-form'))) return issues;
+    page._qa.contactPosts.length = 0;
+    await page.evaluate(() => {
+      const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.value = v;
+      };
+      set('user_name', 'QA Robot');
+      set('user_email', 'qa.robot@example.com');
+      set('user_phone', '(613) 555-1234');
+      set('location_city', 'Carleton Place');
+      set('starting_date', '2026-11-15');
+      set('budget', '$10,000-$25,000');
+      set('email_subject', 'QA valid submit');
+      set('email_message', 'QA valid message for contact proof.');
+      const sms = document.getElementById('sms_opt_in');
+      if (sms) sms.checked = true;
+    });
+    await page.evaluate(() => {
+      const f = document.querySelector('#contact-form');
+      if (f && typeof f.requestSubmit === 'function') {
+        f.requestSubmit();
+        f.requestSubmit();
+      } else if (f) {
+        f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      }
+    });
+    await delay(700);
+    const posts = page._qa.contactPosts;
+    if (posts.length !== 1) {
+      issues.push({ kind: 'contact-submit-count', detail: posts.length });
+    }
+    const post = posts[0];
+    if (post) {
+      for (const key of CONTACT_POST_FIELDS) {
+        if (!(key in post.fields)) {
+          issues.push({ kind: 'contact-submit-missing-field', detail: key });
+        }
+      }
+      if (post.fields.user_name !== 'QA Robot') {
+        issues.push({ kind: 'contact-submit-value', detail: 'user_name=' + post.fields.user_name });
+      }
+      if (post.fields.user_email !== 'qa.robot@example.com') {
+        issues.push({ kind: 'contact-submit-value', detail: 'user_email' });
+      }
+      if (post.fields.sms_opt_in !== '1') {
+        issues.push({ kind: 'contact-submit-value', detail: 'sms_opt_in=' + post.fields.sms_opt_in });
+      }
+      if (!String(post.fields.safety_key || '').trim()) {
+        issues.push({ kind: 'contact-submit-missing-field', detail: 'safety_key empty' });
+      }
+      const csrf = post.headers['x-csrf-token'];
+      if (!csrf) issues.push({ kind: 'contact-submit-missing-field', detail: 'X-CSRF-TOKEN' });
+    }
+    const success = await page.evaluate(() => {
+      const el = document.querySelector('#contact-form-feedback .alert-success, #contact-form .alert-success');
+      return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+    });
+    if (!/thank you/i.test(success)) {
+      issues.push({ kind: 'contact-submit-success-ui', detail: success });
+    }
+    if (screenshotPath) {
+      await page.evaluate(() => {
+        document.getElementById('contact-form-feedback')?.scrollIntoView({ block: 'center' });
+      });
+      await delay(200);
+      await page.screenshot({ path: screenshotPath });
+    }
+  } catch (e) {
+    issues.push({ kind: 'contact-submit-exception', detail: String(e.message || e) });
   }
   return issues;
 }
@@ -449,6 +569,11 @@ function normalizeInternal(href) {
               if (urlPath === '/contact' || urlPath === '/') {
                 const formIss = await interactContact(page);
                 formIss.forEach((i) => findings.push({ page: urlPath, vp: vp.name, scheme, ...i }));
+                const shot = (urlPath === '/contact' && vp.name === '390')
+                  ? path.join(OUT, 'qa-contact-success-390.png')
+                  : null;
+                const submitIss = await proveValidContactSubmit(page, shot);
+                submitIss.forEach((i) => findings.push({ page: urlPath, vp: vp.name, scheme, ...i }));
               }
             }
 
@@ -509,6 +634,17 @@ function normalizeInternal(href) {
       await shotC.screenshot({ path: path.join(OUT, 'qa-contact-validation-390.png') });
     }
     await shotC.close();
+
+    const shotFoot = await newPage(browser, VIEWPORTS[0], 'light');
+    await shotFoot.goto(BASE + '/', { waitUntil: 'networkidle0', timeout: 25000 });
+    await delay(400);
+    await shotFoot.evaluate(() => document.querySelector('footer')?.scrollIntoView());
+    await delay(200);
+    const footerEl = await shotFoot.$('footer');
+    if (footerEl) {
+      await footerEl.screenshot({ path: path.join(OUT, 'qa-footer-390-after.png') });
+    }
+    await shotFoot.close();
 
     const shotP = await newPage(browser, VIEWPORTS[0], 'light');
     await shotP.goto(BASE + '/portfolio/floating-deck-with-gravel-around', { waitUntil: 'networkidle0', timeout: 25000 });
