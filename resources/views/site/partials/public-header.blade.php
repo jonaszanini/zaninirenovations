@@ -266,15 +266,11 @@
   }
 })();
 
-// Mobile-only: tapping a nav link closes the collapsed menu. The template's
-// own delegated handler is blocked by `return false` in smooth_scrolling, so
-// without this the menu would stay open after each tap.
+// Mobile hamburger aria-expanded + FAQ accordion aria. Close-on-tap for
+// nav links lives in public/js/custom-scripts.js (skips dropdown toggles).
 (function ($) {
   if (!window.jQuery) return;
   $(function () {
-    var BREAKPOINT = 991;
-    function isMobile() { return window.innerWidth <= BREAKPOINT; }
-
     var $collapse = $('#main-nav-collapse');
     var $toggle = $('.main-header-2 .navbar-toggle');
     if (!$collapse.length) return;
@@ -290,13 +286,6 @@
       var $panel = $(e.target);
       var $trigger = $('a[href="#' + e.target.id + '"]');
       $trigger.attr('aria-expanded', e.type === 'shown' ? 'true' : 'false');
-    });
-
-    $('.main-header-2 a.nav_menu').on('click', function () {
-      if (!isMobile()) return;
-      if ($collapse.hasClass('in')) {
-        $collapse.collapse('hide');
-      }
     });
   });
 })(window.jQuery);

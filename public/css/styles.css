@@ -9065,6 +9065,46 @@ button,
     background: #d6dee6;
   }
 
+  /* Bootstrap 3 `.dropdown-menu` (Services) — open inline inside the
+     hamburger and stay readable on the light mobile bar. Template
+     `.drop-down` rules above do not apply to this markup. */
+  .main-header-2 .navbar-default .navbar-collapse,
+  .navbar-default .navbar-collapse {
+    overflow: visible;
+  }
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu,
+  .navbar-default .navbar-nav .dropdown-menu {
+    position: static;
+    float: none;
+    width: 100%;
+    margin: 0;
+    padding: 0 0 8px;
+    background: #f4f6f8;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu > li > a,
+  .navbar-default .navbar-nav .dropdown-menu > li > a {
+    color: #024768;
+    background: transparent;
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 20px 12px 36px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu > li > a:hover,
+  .navbar-default .navbar-nav .dropdown-menu > li > a:hover,
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu > li > a:focus,
+  .navbar-default .navbar-nav .dropdown-menu > li > a:focus,
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu > li > a:active,
+  .navbar-default .navbar-nav .dropdown-menu > li > a:active {
+    color: #024768;
+    background: #d6dee6;
+  }
+
   /* The mobile floating bar (#zr-mobile-fb) is built and styled
      entirely from inline JS (see public-header.blade.php). No
      stylesheet rules are needed for it here. */

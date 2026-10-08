@@ -1416,10 +1416,25 @@ jQuery(function ($) {
     //One Page Scrolling.
     smooth_scrolling();
 
-    $(document).on("click", "a.nav_menu", function () {
+    // Close the collapsed mobile menu after tapping a real destination
+    // link. Skip Bootstrap dropdown toggles (Services) so the submenu can
+    // open inline. Direct-bind so hash-link `return false` in
+    // smooth_scrolling cannot swallow the close-on-tap behaviour.
+    function zr_is_nav_dropdown_toggle($link) {
+        return $link.is(".dropdown-toggle") || $link.is("[data-toggle='dropdown']");
+    }
+
+    function zr_close_mobile_nav() {
         if ($(".navbar-toggle").is(":visible") && $(".navbar-collapse").hasClass("in")) {
             $(".navbar-collapse").collapse("hide");
         }
+    }
+
+    $(".navbar-collapse a").on("click", function () {
+        if (zr_is_nav_dropdown_toggle($(this))) {
+            return;
+        }
+        zr_close_mobile_nav();
     });
 
 
