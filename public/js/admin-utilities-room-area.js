@@ -2922,7 +2922,8 @@
   }
 
   function canDragWalls() {
-    return wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating;
+    return wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating
+      && !state.armedCatalogKey && !state.placingCatalog;
   }
 
   function canDragShapes() {
@@ -2931,7 +2932,9 @@
       && !state.rulerMode
       && !state.calibrating
       && !state.bgMoveMode
-      && !state.panning;
+      && !state.panning
+      && !state.armedCatalogKey
+      && !state.placingCatalog;
   }
 
   function polygonInteriorAtPoint(pos) {
