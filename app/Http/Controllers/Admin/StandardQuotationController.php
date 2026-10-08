@@ -163,11 +163,14 @@ class StandardQuotationController extends Controller
             if ($name === '' && $catalog) {
                 $name = $catalog->displayName();
             }
+
+            $unitPrice = round((float) ($row['unit_price'] ?? 0), 2);
+            if ($name === '' && $unitPrice == 0.0 && ! $catalog) {
+                continue;
+            }
             if ($name === '') {
                 $name = 'Material';
             }
-
-            $unitPrice = round((float) ($row['unit_price'] ?? 0), 2);
             $url = trim((string) ($row['url'] ?? ''));
             if ($url === '' && $catalog) {
                 $url = (string) ($catalog->storeProductUrl() ?? '');
@@ -709,6 +712,7 @@ class StandardQuotationController extends Controller
         foreach ($this->quotationLinkClientNameAttributes($project) as $key => $value) {
             $standardQuotation->{$key} = $value;
         }
+        $this->refreshLinkedCommuteExpense($standardQuotation, $project);
         $standardQuotation->save();
 
         $this->syncStandardLinesIntoProjectQuotation(
@@ -727,15 +731,21 @@ class StandardQuotationController extends Controller
         StandardQuotation $standardQuotation,
         ?string $lineDescription = null
     ): void {
-        $lineDescription = $lineDescription !== null
-            ? trim($lineDescription)
-            : '';
-        if ($lineDescription === '') {
-            $lineDescription = $standardQuotation->pdfSummaryLineDescription();
-        }
-
         $taxablePreHst = $this->preHstTaxableForLink($standardQuotation);
         $exemptPreHst = $this->preHstExemptForLink($standardQuotation);
+
+        /** @var ClientProjectQuotation $row */
+        $row = ClientProjectQuotation::firstOrNew([
+            'client_project_id' => $project->id,
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'source_id' => $standardQuotation->id,
+        ]);
+
+        $lineDescription = $this->resolveStandardLinkLineDescription(
+            $standardQuotation,
+            $lineDescription,
+            $row->exists ? $row : null
+        );
 
         $sqLines = [];
         if ($exemptPreHst > 0 && $taxablePreHst > 0) {
@@ -770,21 +780,16 @@ class StandardQuotationController extends Controller
         $this->appendCommuteProjectLine($sqLines, $standardQuotation);
         $this->appendDebrisRemovalProjectLine($sqLines, $standardQuotation);
 
-        /** @var ClientProjectQuotation $row */
-        $row = ClientProjectQuotation::firstOrNew([
-            'client_project_id' => $project->id,
-            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
-            'source_id' => $standardQuotation->id,
-        ]);
-
         $docType = $standardQuotation->document_type;
         if ($docType !== ClientProjectQuotation::TYPE_QUOTATION
             && $docType !== ClientProjectQuotation::TYPE_ESTIMATE) {
             $docType = ClientProjectQuotation::TYPE_QUOTATION;
         }
 
-        $includeLabour = (bool) $standardQuotation->includes_labour;
-        $includeMaterial = (bool) $standardQuotation->includes_material;
+        $includeLabour = (bool) $standardQuotation->includes_labour
+            || $standardQuotation->chargedLabourPreTax() > 0;
+        $includeMaterial = (bool) $standardQuotation->includes_material
+            || $standardQuotation->chargedMaterialsPreTax() > 0;
 
         if (! $row->exists) {
             $row->fill([
@@ -819,6 +824,24 @@ class StandardQuotationController extends Controller
         $project->syncFixedContractTotalsFromQuotation();
     }
 
+    protected function resolveStandardLinkLineDescription(
+        StandardQuotation $standardQuotation,
+        ?string $lineDescription,
+        ?ClientProjectQuotation $existing = null
+    ): string {
+        $lineDescription = trim((string) ($lineDescription ?? ''));
+        if ($lineDescription !== '') {
+            return $lineDescription;
+        }
+
+        $existingTitle = $existing ? trim((string) ($existing->title ?? '')) : '';
+        if ($existingTitle !== '') {
+            return $existingTitle;
+        }
+
+        return $standardQuotation->pdfSummaryLineDescription();
+    }
+
     /**
      * Pre-HST amount (materials taxable subtotal + taxable share of
      * contingency + labour total) that should be linked into the project
@@ -826,11 +849,7 @@ class StandardQuotationController extends Controller
      */
     protected function preHstTaxableForLink(StandardQuotation $sq): float
     {
-        [$taxableSub, $exemptSub] = $this->materialsTaxableExemptSplit($sq);
-        $contingencyTaxable = $this->contingencyTaxableShare($sq, $taxableSub, $exemptSub);
-        $labourTaxable = $sq->chargesLabourHst() ? (float) $sq->labour_total : 0.0;
-
-        return round($taxableSub + $contingencyTaxable + $labourTaxable, 2);
+        return round((float) ($sq->computedTotals()['pre_hst_taxable'] ?? 0), 2);
     }
 
     /**
@@ -840,52 +859,7 @@ class StandardQuotationController extends Controller
      */
     protected function preHstExemptForLink(StandardQuotation $sq): float
     {
-        [$taxableSub, $exemptSub] = $this->materialsTaxableExemptSplit($sq);
-        $contingencyExempt = (float) $sq->contingency_amount
-            - $this->contingencyTaxableShare($sq, $taxableSub, $exemptSub);
-        $labourExempt = $sq->chargesLabourHst() ? 0.0 : (float) $sq->labour_total;
-
-        return round($exemptSub + max(0.0, $contingencyExempt) + $labourExempt, 2);
-    }
-
-    /**
-     * @return array{0: float, 1: float} [taxableSubtotal, exemptSubtotal]
-     */
-    protected function materialsTaxableExemptSplit(StandardQuotation $sq): array
-    {
-        $taxable = 0.0;
-        $exempt = 0.0;
-        $materials = StandardQuotationCalculator::withLiveCatalogDelivery(
-            is_array($sq->materials) ? $sq->materials : []
-        );
-
-        foreach ($materials as $m) {
-            $b = StandardQuotationCalculator::breakdownMaterialRow($m);
-            if ($b === null) {
-                continue;
-            }
-            $taxable += $b['taxable_pre'];
-            $exempt += $b['exempt_pre'];
-        }
-
-        return [round($taxable, 2), round($exempt, 2)];
-    }
-
-    protected function contingencyTaxableShare(
-        StandardQuotation $sq,
-        float $taxableSub,
-        float $exemptSub
-    ): float {
-        $contingency = (float) $sq->contingency_amount;
-        if ($contingency <= 0) {
-            return 0.0;
-        }
-        $matSub = $taxableSub + $exemptSub;
-        if ($matSub <= 0) {
-            return 0.0;
-        }
-
-        return round($contingency * ($taxableSub / $matSub), 2);
+        return round((float) ($sq->computedTotals()['pre_hst_exempt'] ?? 0), 2);
     }
 
     protected function purchaseListCellHtml(string $value): string

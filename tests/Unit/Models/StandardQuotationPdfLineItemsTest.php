@@ -111,7 +111,7 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $byDesc = collect($lines)->keyBy('description');
 
         $this->assertFalse((bool) preg_grep('/Contingency/', $descriptions));
-        $this->assertEqualsWithDelta(85.62 + 157.12, $byDesc['Material']['amount'], 0.01);
+        $this->assertEqualsWithDelta(85.62 + 17.12, $byDesc['Material']['amount'], 0.01);
         $this->assertEqualsWithDelta(700.0, $byDesc[StandardQuotation::ELECTRICAL_LINE_DESCRIPTION]['amount'], 0.01);
         $this->assertSame(
             ['Material', StandardQuotation::ELECTRICAL_LINE_DESCRIPTION],
@@ -519,5 +519,98 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         $this->assertEqualsWithDelta(200.0, $byDesc['Labour']['amount'], 0.01);
         $this->assertFalse($byDesc['Labour']['apply_hst']);
         $this->assertEqualsWithDelta(0.0, $quote->computedTotals()['labour_hst'], 0.01);
+    }
+
+    public function test_client_pdf_cash_labour_plus_commute_and_debris_matches_editor_in_all_modes(): void
+    {
+        foreach ([
+            StandardQuotation::PDF_DETAIL_COMBINED,
+            StandardQuotation::PDF_DETAIL_SUMMARY,
+            StandardQuotation::PDF_DETAIL_DETAILED,
+        ] as $mode) {
+            $quote = $this->cashLabourQuoteWithHiddenExtras($mode);
+            $items = match ($mode) {
+                StandardQuotation::PDF_DETAIL_COMBINED => $quote->combinedPdfLineItems(),
+                StandardQuotation::PDF_DETAIL_SUMMARY => $quote->summaryPdfLineItems(),
+                default => $quote->detailedPdfLineItems(),
+            };
+
+            $cpq = new \App\Models\ClientProjectQuotation([
+                'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
+                'items' => $items,
+            ]);
+
+            $computed = $quote->computedTotals();
+            $editorGrand = round((float) $computed['grand_total'] + 113.0 + 50.0, 2);
+            $descriptions = array_column($cpq->pdfLineItems(), 'description');
+
+            $this->assertEqualsWithDelta($editorGrand, $cpq->pdfGrandTotal(), 0.01, $mode);
+            $this->assertEqualsWithDelta(1678.00 + 50.00, $editorGrand, 0.01, $mode);
+            $this->assertFalse((bool) preg_grep('/Commute|Debris/i', $descriptions), $mode);
+        }
+    }
+
+    public function test_includes_labour_off_still_shows_priced_labour_and_honest_wording(): void
+    {
+        $quote = new StandardQuotation([
+            'includes_material' => true,
+            'includes_labour' => false,
+            'include_labour_hst' => false,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+            'materials' => [[
+                'short_name' => 'Plywood',
+                'unit_price' => 100,
+                'quantity' => 1,
+                'apply_hst' => true,
+            ]],
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 200,
+            'labour_fixed_hst_included' => false,
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $this->assertSame('Labour and material', $quote->pdfSummaryLineDescription());
+        $this->assertEqualsWithDelta(200.0, $quote->labourPreTaxAmountForProjectQuotation(), 0.01);
+
+        $lines = $quote->summaryPdfLineItems();
+        $byDesc = collect($lines)->keyBy('description');
+        $this->assertEqualsWithDelta(100.0, $byDesc['Material']['amount'], 0.01);
+        $this->assertEqualsWithDelta(200.0, $byDesc['Labour']['amount'], 0.01);
+    }
+
+    /**
+     * Materials $500 + HST $65, cash labour $1,000, commute $113, debris $50.
+     */
+    private function cashLabourQuoteWithHiddenExtras(string $mode): StandardQuotation
+    {
+        return new StandardQuotation([
+            'includes_material' => true,
+            'includes_labour' => true,
+            'include_labour_hst' => false,
+            'pdf_detail_mode' => $mode,
+            'materials' => [[
+                'short_name' => 'Plywood',
+                'unit_price' => 500,
+                'quantity' => 1,
+                'apply_hst' => true,
+            ]],
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 1000,
+            'labour_fixed_hst_included' => false,
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'contingency_enabled' => false,
+            'include_commute' => true,
+            'commute_amount' => 113,
+            'commute_estimated_trips' => 1,
+            'include_debris_removal' => true,
+            'debris_removal_amount' => 50,
+        ]);
     }
 }

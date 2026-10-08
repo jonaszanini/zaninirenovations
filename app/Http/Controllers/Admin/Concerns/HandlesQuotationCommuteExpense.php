@@ -96,4 +96,41 @@ trait HandlesQuotationCommuteExpense
             $items[] = $line;
         }
     }
+
+    /**
+     * After the quote is attached to a project, recompute commute from that
+     * address so "Yes" is not stuck at $0 until the next save.
+     */
+    protected function refreshLinkedCommuteExpense(object $quotation, ClientProject $project): void
+    {
+        if (empty($quotation->include_commute)) {
+            return;
+        }
+
+        $table = $quotation instanceof Model ? $quotation->getTable() : null;
+        if ($table === null || ! Schema::hasColumn($table, 'include_commute')) {
+            return;
+        }
+
+        $service = app(CommuteExpenseService::class);
+        $roundTrip = $service->roundTripFuelCost($project);
+        if ($roundTrip === null) {
+            $saved = $quotation->commute_round_trip_cost ?? null;
+            $roundTrip = is_numeric($saved) && (float) $saved > 0 ? (float) $saved : null;
+        }
+
+        $oldAmount = (float) ($quotation->commute_amount ?? 0);
+        $newAmount = $service->calculateAmount(
+            $roundTrip,
+            true,
+            (float) ($quotation->commute_trip_percent ?? 100),
+            (int) ($quotation->commute_estimated_trips ?? 1)
+        );
+
+        $quotation->commute_round_trip_cost = $roundTrip;
+        $quotation->commute_amount = $newAmount;
+        if (isset($quotation->grand_total)) {
+            $quotation->grand_total = round((float) $quotation->grand_total - $oldAmount + $newAmount, 2);
+        }
+    }
 }

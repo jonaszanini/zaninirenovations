@@ -169,11 +169,18 @@ trait ResolvesQuotationProjectLink
             }
         }
 
-        if ($updates === []) {
+        if (method_exists($this, 'refreshLinkedCommuteExpense')) {
+            $this->refreshLinkedCommuteExpense($quotation, $project);
+        }
+
+        if ($updates === [] && ! $quotation->isDirty()) {
             return;
         }
 
-        $quotation->update($updates);
+        foreach ($updates as $key => $value) {
+            $quotation->{$key} = $value;
+        }
+        $quotation->save();
         $quotation->refresh();
     }
 

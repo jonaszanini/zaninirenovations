@@ -256,65 +256,67 @@ class QuotationWorkDescriptionContextBuilder
             $lines[] = 'PDF includes: '.implode(' and ', $includes);
         }
 
-        $materials = is_array($c['materials'] ?? null) ? $c['materials'] : [];
-        if ($materials !== []) {
-            $lines[] = 'Materials:';
-            foreach ($materials as $row) {
-                if (! is_array($row)) {
-                    continue;
-                }
-                $name = trim((string) ($row['short_name'] ?? $row['description'] ?? ''));
-                $desc = trim((string) ($row['description'] ?? ''));
-                $qty = trim((string) ($row['quantity'] ?? ''));
-                $unit = trim((string) ($row['unit_price'] ?? ''));
-                if ($name === '' && $desc === '') {
-                    continue;
-                }
-                $part = $name !== '' ? $name : $desc;
-                if ($desc !== '' && $desc !== $name) {
-                    $part .= ' — '.$desc;
-                }
-                if ($qty !== '' && is_numeric($qty)) {
-                    $part .= ', qty '.$qty;
-                }
-                if ($unit !== '') {
-                    $part .= ', unit '.$unit;
-                }
-                $lines[] = '  - '.$part;
-            }
-        }
-
         $jobs = is_array($c['jobs'] ?? null) ? $c['jobs'] : [];
-        if (count($jobs) > 1) {
-            $lines[] = 'Jobs:';
+        $flatMaterials = is_array($c['materials'] ?? null) ? $c['materials'] : [];
+
+        if ($jobs !== []) {
             foreach ($jobs as $i => $job) {
                 if (! is_array($job)) {
                     continue;
                 }
                 $title = trim((string) ($job['title'] ?? ''));
-                $lines[] = '  - '.($title !== '' ? $title : 'Job '.($i + 1));
+                $lines[] = 'Job '.($i + 1).($title !== '' ? ': '.$title : '');
+                $jobMaterials = is_array($job['materials'] ?? null) ? $job['materials'] : [];
+                foreach ($jobMaterials as $row) {
+                    $name = $this->standardMaterialName($row);
+                    if ($name !== '') {
+                        $lines[] = '  - '.$name;
+                    }
+                }
+                if (filter_var($job['labour_use_fixed'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                    $lines[] = '  Labour: flat fee';
+                } else {
+                    $mode = strtolower(trim((string) ($job['labour_mode'] ?? 'hours')));
+                    $lines[] = '  Labour: estimated in '.($mode === 'days' ? 'days' : 'hours');
+                }
+            }
+        } elseif ($flatMaterials !== []) {
+            $lines[] = 'Materials:';
+            foreach ($flatMaterials as $row) {
+                $name = $this->standardMaterialName($row);
+                if ($name !== '') {
+                    $lines[] = '  - '.$name;
+                }
             }
         }
 
         if (filter_var($c['contingency_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $this->appendLine($lines, 'Contingency allowance', ($c['contingency_percent'] ?? '').'%');
+            $pct = trim((string) ($c['contingency_percent'] ?? ''));
+            $this->appendLine($lines, 'Contingency allowance', $pct !== '' ? $pct.'%' : 'yes');
         }
-
-        if (filter_var($c['labour_use_fixed'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $this->appendLine($lines, 'Labour', 'Fixed amount '.($c['labour_fixed_amount'] ?? ''));
-        } else {
-            $labour = trim(implode(' ', array_filter([
-                isset($c['labour_hourly_rate']) ? 'Rate '.$c['labour_hourly_rate'].'/hr' : '',
-                isset($c['labour_quantity']) ? 'Qty '.$c['labour_quantity'].' hours' : '',
-            ])));
-            if ($labour !== '') {
-                $lines[] = 'Labour: '.$labour;
-            }
-        }
-
-        $this->appendBlock($lines, 'Totals snapshot', $c['totals_summary'] ?? null);
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @param  mixed  $row
+     */
+    private function standardMaterialName($row): string
+    {
+        if (! is_array($row)) {
+            return '';
+        }
+        $name = trim((string) ($row['short_name'] ?? $row['name'] ?? ''));
+        $desc = trim((string) ($row['description'] ?? ''));
+        if ($name === '' && $desc === '') {
+            return '';
+        }
+        $part = $name !== '' ? $name : $desc;
+        if ($desc !== '' && $desc !== $name) {
+            $part .= ' — '.$desc;
+        }
+
+        return $this->stripMoneyFromText($part);
     }
 
     /**
@@ -1155,6 +1157,7 @@ class QuotationWorkDescriptionContextBuilder
             'tm_client_pick', 'include_commute', 'include_debris_removal',
             'geometry_summary', 'totals_summary', 'sections_total',
             'material_waste_percent', 'material_waste_amount',
+            'labour_fixed_amount', 'labour_hourly_rate',
         ], true)) {
             return true;
         }

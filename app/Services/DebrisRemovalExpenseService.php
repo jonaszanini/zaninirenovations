@@ -8,9 +8,10 @@ use Illuminate\Http\Request;
 /**
  * Optional debris-removal charge on quotations.
  *
-     * Amount is treated as HST-inclusive (same as commute): it is added to the
-     * quotation grand total. The client PDF does not list it. The pre-tax
-     * portion is folded into the labour line (or Labour and material).
+ * Amount is treated as HST-inclusive (same as commute): it is added to the
+ * quotation grand total. The client PDF does not list it as its own line;
+ * the amount is folded into Labour (gross when labour is cash, pre-tax
+ * when labour is taxed so HST stays in the footer).
  */
 class DebrisRemovalExpenseService
 {

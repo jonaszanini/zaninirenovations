@@ -190,4 +190,109 @@ class StandardQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(200.0, $cash['pre_hst_exempt'], 0.01);
         $this->assertEqualsWithDelta(100.0, $cash['pre_hst_taxable'], 0.01);
     }
+
+    public function test_blank_default_material_row_is_ignored_even_with_qty(): void
+    {
+        $this->assertNull(StandardQuotationCalculator::breakdownMaterialRow([
+            'short_name' => '',
+            'description' => '',
+            'unit_price' => 0,
+            'quantity' => 1,
+            'delivery_cad' => 0,
+        ]));
+
+        $computed = (new StandardQuotationCalculator)->compute(
+            [[
+                'short_name' => '',
+                'description' => '',
+                'unit_price' => 0,
+                'quantity' => 1,
+                'apply_hst' => true,
+            ]],
+            0,
+            'hours',
+            0,
+            false,
+            0
+        );
+
+        $this->assertSame([], $computed['materials']);
+        $this->assertEqualsWithDelta(0.0, $computed['materials_subtotal_before_hst'], 0.01);
+    }
+
+    public function test_cash_labour_ignores_flat_fee_hst_included(): void
+    {
+        $works = [[
+            'title' => 'Install',
+            'materials' => [],
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 1130,
+            'labour_fixed_hst_included' => true,
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+        ]];
+
+        $calc = new StandardQuotationCalculator();
+        $withHst = $calc->computeWorks($works, false, 0, true);
+        $cash = $calc->computeWorks($works, false, 0, false);
+
+        $this->assertEqualsWithDelta(1000.0, $withHst['labour_total'], 0.01);
+        $this->assertEqualsWithDelta(130.0, $withHst['labour_hst'], 0.01);
+        $this->assertEqualsWithDelta(1130.0, $cash['labour_total'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $cash['labour_hst'], 0.01);
+        $this->assertEqualsWithDelta(1130.0, $cash['grand_total'], 0.01);
+    }
+
+    public function test_contingency_excludes_electrical_lump_sums(): void
+    {
+        $computed = (new StandardQuotationCalculator)->compute(
+            [
+                [
+                    'short_name' => 'Lumber',
+                    'unit_price' => 85.62,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ],
+                [
+                    'line_kind' => 'electrical',
+                    'entry_mode' => 'electrical',
+                    'description' => 'Electrical work (Including material)',
+                    'unit_price' => 700,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ],
+            ],
+            0,
+            'hours',
+            0,
+            true,
+            20
+        );
+
+        $this->assertEqualsWithDelta(17.12, $computed['contingency_amount'], 0.01);
+        $this->assertEqualsWithDelta(785.62, $computed['materials_subtotal_before_hst'], 0.01);
+    }
+
+    public function test_compute_keeps_saved_catalog_delivery_instead_of_live_overlay(): void
+    {
+        $computed = (new StandardQuotationCalculator)->compute(
+            [[
+                'short_name' => 'Bin',
+                'catalog_material_id' => 999999,
+                'unit_price' => 400,
+                'quantity' => 1,
+                'delivery_cad' => 25,
+                'apply_hst' => true,
+            ]],
+            0,
+            'hours',
+            0,
+            false,
+            0
+        );
+
+        $this->assertEqualsWithDelta(25.0, $computed['materials'][0]['delivery_cad'], 0.01);
+        $this->assertEqualsWithDelta(425.0, $computed['materials_subtotal_before_hst'], 0.01);
+    }
 }

@@ -587,7 +587,7 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::delete('quotations/low-deck/{low_deck_quotation}', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'destroy'])
         ->name('quotations.low-deck.destroy');
 
-    // Standard quotations (materials grid + labour, no PDF in-module).
+    // Standard quotations (materials grid + labour; client PDF is the linked project quotation).
     Route::get('quotations/standard', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'index'])
         ->name('quotations.standard.index');
     Route::get('quotations/standard/create', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'create'])

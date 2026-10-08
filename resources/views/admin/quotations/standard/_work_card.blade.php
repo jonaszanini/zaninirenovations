@@ -107,7 +107,7 @@
                 </div>
                 <p class="sq-contingency-added" id="sq-contingency-added" aria-live="polite" @unless($contingencyEnabled) hidden @endunless>
                   Adds <strong id="sq-contingency-added-amount">CA$0.00</strong>
-                  <span id="sq-contingency-added-detail">(10% of materials before HST)</span>
+                  <span id="sq-contingency-added-detail">(10% of materials before HST, not electrical work)</span>
                 </p>
                 @error('contingency_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
               </div>
