@@ -310,18 +310,18 @@ class BasementQuotation extends Model
             $groups['Final Details & Cleanup'][] = 'Building permit (optional, extra charge)';
         }
 
-        $html = '';
+        $introHtml = '';
         foreach ($intro as $line) {
-            $html .= '<p style="margin:0 0 4pt;">'.e($line).'</p>';
+            $introHtml .= '<p style="margin:0 0 4pt;">'.e($line).'</p>';
         }
 
         if ($groups === []) {
-            return $html;
+            return $introHtml;
         }
 
         $blocks = [];
         foreach ($groups as $heading => $items) {
-            $block = '<p style="margin:0 0 2pt;font-weight:700;">'.e($heading).'</p><ul style="margin:0 0 8pt 14pt;padding:0;">';
+            $block = '<p style="margin:0 0 1pt;font-weight:700;">'.e($heading).'</p><ul style="margin:0 0 4pt 12pt;padding:0;">';
             foreach ($items as $item) {
                 $block .= '<li style="margin:0 0 1pt;">'.e($item).'</li>';
             }
@@ -330,14 +330,20 @@ class BasementQuotation extends Model
         }
 
         $mid = (int) ceil(count($blocks) / 2);
-        $left = implode('', array_slice($blocks, 0, $mid));
-        $right = implode('', array_slice($blocks, $mid));
+        $left = array_slice($blocks, 0, $mid);
+        $right = array_slice($blocks, $mid);
+        $rows = max(count($left), count($right));
 
-        $html .= '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:none;margin:4pt 0 0;border-collapse:collapse;">';
-        $html .= '<tr>';
-        $html .= '<td width="50%" valign="top" style="border:none;padding:0 10pt 0 0;vertical-align:top;">'.$left.'</td>';
-        $html .= '<td width="50%" valign="top" style="border:none;padding:0 0 0 6pt;vertical-align:top;">'.$right.'</td>';
-        $html .= '</tr></table>';
+        // Short paired rows so DomPDF can start the list on page 1 (a single tall row is pushed).
+        $html = '<table class="br-pdf-scope-cols" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:none;margin:0;border-collapse:collapse;">';
+        $html .= '<tr><td colspan="2" valign="top" style="border:none;padding:0 0 4pt;vertical-align:top;">'.$introHtml.'</td></tr>';
+        for ($i = 0; $i < $rows; $i++) {
+            $html .= '<tr>';
+            $html .= '<td width="50%" valign="top" style="border:none;padding:0 10pt 4pt 0;vertical-align:top;">'.($left[$i] ?? '').'</td>';
+            $html .= '<td width="50%" valign="top" style="border:none;padding:0 0 4pt 6pt;vertical-align:top;">'.($right[$i] ?? '').'</td>';
+            $html .= '</tr>';
+        }
+        $html .= '</table>';
 
         return $html;
     }

@@ -263,6 +263,11 @@
       padding: 3pt 5pt;
       vertical-align: top;
     }
+    .quote-work-description-body--rich table.br-pdf-scope-cols,
+    .quote-work-description-body--rich table.br-pdf-scope-cols td {
+      border: none;
+      padding: 0;
+    }
 
     /* Table wrapper: DomPDF ignores page-break-inside on divs. */
     .quote-material-selection-wrap {

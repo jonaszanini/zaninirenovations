@@ -7635,7 +7635,7 @@ body.cp-modal-open {
   flex-direction: column;
   gap: 16px;
   align-items: stretch;
-  padding-bottom: 72px;
+  padding-bottom: 80px;
 }
 .br-project-context-slot {
   margin: 0 0 16px;
@@ -7765,6 +7765,7 @@ body.cp-modal-open {
   padding: 16px;
   background: var(--admin-surface, #fafbfc);
   color: var(--admin-text);
+  scroll-margin-bottom: 80px;
 }
 .br-layout .pq-row {
   display: flex;
@@ -7847,6 +7848,7 @@ body.cp-modal-open {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  scroll-margin-bottom: 80px;
 }
 .br-shell {
   display: flex;
@@ -8850,11 +8852,14 @@ body.cp-modal-open {
     grid-column: span 2;
   }
   .br-finishing-grid {
-    grid-template-columns: 110px 1fr 1fr;
+    grid-template-columns: 110px repeat(3, max-content);
+    justify-content: start;
     align-items: end;
+    column-gap: 16px;
   }
   .br-finishing-grid .admin-checkbox,
-  .br-finishing-grid .admin-checkbox__label {
+  .br-finishing-grid .admin-checkbox__label,
+  .br-finishing-grid .admin-checkbox__text {
     white-space: nowrap;
   }
   .br-toggle-qty-grid {
@@ -9018,11 +9023,14 @@ body.cp-modal-open {
     grid-column: span 2;
   }
   .br-finishing-grid {
-    grid-template-columns: 110px repeat(3, minmax(0, 1fr));
+    grid-template-columns: 110px repeat(3, max-content);
+    justify-content: start;
     align-items: end;
+    column-gap: 16px;
   }
   .br-finishing-grid .admin-checkbox,
-  .br-finishing-grid .admin-checkbox__label {
+  .br-finishing-grid .admin-checkbox__label,
+  .br-finishing-grid .admin-checkbox__text {
     white-space: nowrap;
   }
   .br-progress__item {
