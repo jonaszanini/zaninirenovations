@@ -150,13 +150,27 @@ class CutOptimizerEngineTest extends TestCase
         preg_match_all('/<g class="mw-cut-part">.*?<\/g>\s*<\/g>/s', $svg, $groups);
         $this->assertGreaterThanOrEqual(3, count($groups[0]));
         $thin = $groups[0][1];
-        $this->assertMatchesRegularExpression('/font-size="[0-9.]+"/', $thin);
-        preg_match_all('/font-size="([0-9.]+)"/', $thin, $sizes);
-        foreach ($sizes[1] as $size) {
-            $this->assertLessThan(1.8, (float) $size);
-        }
+        $this->assertStringNotContainsString('4.5×', $thin);
+        $this->assertStringNotContainsString('×35', $thin);
         $this->assertStringContainsString('48"', $svg);
         $this->assertStringContainsString('24"', $svg);
+    }
+
+    public function test_svg_hides_in_part_labels_on_narrow_strips(): void
+    {
+        $sheet = new GuillotineSheet('s4x8', 48, 96, 0.125, 0, 0, 0, 0, 0, '4×8');
+        $this->assertTrue($sheet->insert(new Part('wide', 'Side panel', 23.75, 35.98, 1), SplitHeuristic::VERTICAL_FIRST));
+        $this->assertTrue($sheet->insert(new Part('strip', 'Toe kick', 4.5, 35.98, 1), SplitHeuristic::VERTICAL_FIRST));
+
+        $visual = new SvgVisualizer();
+        $svg = $visual->renderSheet($sheet);
+        preg_match_all('/<g class="mw-cut-part">.*?<\/g>\s*<\/g>/s', $svg, $groups);
+        $this->assertGreaterThanOrEqual(2, count($groups[0]));
+        $strip = $groups[0][1];
+        $this->assertStringNotContainsString('<text', $strip);
+        $this->assertStringNotContainsString('4.5×', $strip);
+        $this->assertStringNotContainsString('rotate(-90', $strip);
+        $this->assertSame('Toe kick', $visual->legend($sheet)[1]['label']);
     }
 
     public function test_optimize_with_offcuts_uses_inventory_before_full_sheet(): void

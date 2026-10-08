@@ -197,44 +197,60 @@
         : 0;
       window.__quoteGrandTotal = liveGrand;
       document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: liveGrand } }));
-      if (!summary.grand_total || summary.grand_total <= 0) {
-        if (empty) empty.hidden = false;
-        if (body) body.hidden = true;
-        return;
-      }
-      if (empty) empty.hidden = true;
+      if (empty) empty.hidden = Number(summary.grand_total || 0) > 0;
       if (body) body.hidden = false;
+      var delivery = Number(summary.delivery_amount || 0);
+      var markup = Number(summary.markup_amount || 0);
       var laborPre = Number(summary.labor_pre_hst || 0) + lastAdditionalLaborPreTax;
-      var laborHst = Number(summary.labor_hst != null ? summary.labor_hst : Number(summary.labor_pre_hst || 0) * 0.13) + lastAdditionalLaborHst;
-      var matPre = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
-      var matHst = Number(summary.materials_hst || 0) + lastAdditionalMaterialsHst;
+      var goodsPre = summary.materials_goods_pre_hst != null
+        ? Number(summary.materials_goods_pre_hst)
+        : Math.max(0, Number(summary.materials_pre_hst || 0) - delivery);
+      goodsPre += lastAdditionalMaterialsPreTax;
+      var subtotal = Number(summary.subtotal_pre_hst || 0) + lastAdditionalLaborPreTax + lastAdditionalMaterialsPreTax;
+      var hst = Number(summary.hst || 0) + lastAdditionalLaborHst + lastAdditionalMaterialsHst;
+      var barMat = document.getElementById('mw-bar-mat');
+      var barLabor = document.getElementById('mw-bar-labor');
+      var barSub = document.getElementById('mw-bar-sub');
+      var barHst = document.getElementById('mw-bar-hst');
+      var barTotal = document.getElementById('mw-bar-total');
+      var barDelivery = document.getElementById('mw-bar-delivery');
+      var barMarkup = document.getElementById('mw-bar-markup');
+      var wrapDelivery = document.getElementById('mw-bar-delivery-wrap');
+      var wrapMarkup = document.getElementById('mw-bar-markup-wrap');
+      if (barMat) barMat.textContent = fmt(goodsPre);
+      if (barLabor) barLabor.textContent = fmt(laborPre);
+      if (barDelivery) barDelivery.textContent = fmt(delivery);
+      if (barMarkup) barMarkup.textContent = fmt(markup);
+      if (wrapDelivery) wrapDelivery.hidden = delivery <= 0;
+      if (wrapMarkup) wrapMarkup.hidden = markup <= 0;
+      if (barSub) barSub.textContent = fmt(subtotal);
+      if (barHst) barHst.textContent = fmt(hst);
+      if (barTotal) barTotal.textContent = fmt(Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount);
+      syncTotalsBarSpace();
       var html = '';
-      html += '<div class="pq-row"><span>Labor (pre-HST)</span><span>' + fmt(laborPre) + '</span></div>';
-      html += '<div class="pq-row"><span>Labor HST</span><span>' + fmt(laborHst) + '</span></div>';
-      html += '<div class="pq-row pq-row--sub"><span>Total labor</span><span>' + fmt(laborPre + laborHst) + '</span></div>';
-      html += '<div class="pq-row pq-row--group"><span>Materials (pre-HST)</span><span>' + fmt(matPre) + '</span></div>';
-      html += '<div class="pq-row"><span>Materials HST</span><span>' + fmt(matHst) + '</span></div>';
-      html += '<div class="pq-row pq-row--sub"><span>Total materials</span><span>' + fmt(matPre + matHst) + '</span></div>';
+      html += '<div class="pq-row"><span>Material</span><span>' + fmt(goodsPre) + '</span></div>';
+      html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';
+      if (delivery > 0) {
+        html += '<div class="pq-row"><span>Delivery</span><span>' + fmt(delivery) + '</span></div>';
+      }
+      if (markup > 0) {
+        html += '<div class="pq-row"><span>Markup</span><span>' + fmt(markup) + '</span></div>';
+      }
+      html += '<div class="pq-row pq-row--sub"><span>Subtotal</span><span>' + fmt(subtotal) + '</span></div>';
+      html += '<div class="pq-row"><span>HST 13%</span><span>' + fmt(hst) + '</span></div>';
       if (lastCommuteAmount > 0) {
         html += '<div class="pq-row pq-row--group"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
       }
       if (lastDebrisAmount > 0) {
         html += '<div class="pq-row pq-row--group"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
       }
-      var sheets = (data.cut_plan && data.cut_plan.sheet_count) || 0;
-      if (sheets) {
-        html += '<div class="pq-row pq-row--group"><span>Sheets</span><span>' + sheets + '</span></div>';
-      }
       var edgeLf = Number(summary.edge_band_lf || 0);
-      if (edgeLf > 0) {
-        html += '<div class="pq-row pq-row--group"><span>Edge banding</span><span>' + edgeLf.toFixed(1) + ' LF</span></div>';
-      }
       var ebMeta = document.getElementById('mw-eb-meta');
       if (ebMeta) {
         ebMeta.textContent = edgeLf > 0 ? ('Total edge banding: ' + edgeLf.toFixed(1) + ' LF required') : '';
       }
       var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
-      html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
+      html += '<div class="pq-row pq-row--hl"><span>Total</span><span>' + fmt(grand) + '</span></div>';
       body.innerHTML = html;
     }
 
@@ -361,10 +377,17 @@
       var tbody = document.getElementById('mw-labor-rows');
       if (!tbody) return;
       if (!rows.length) {
-        tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Labor appears after pieces are sized.</td></tr>';
+        tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Labour appears after pieces are sized.</td></tr>';
         return;
       }
-      tbody.innerHTML = rows.map(function (row) {
+      var laborRows = rows.filter(function (row) {
+        return row && row.key !== 'markup';
+      });
+      if (!laborRows.length) {
+        tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Labour appears after pieces are sized.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = laborRows.map(function (row) {
         return '<tr><td>' + escapeHtml(row.label) + '</td><td>' + Number(row.hours || 0).toFixed(2) + '</td>'
           + '<td class="cp-col-amount">' + fmt(row.amount || 0) + '</td></tr>';
       }).join('');
@@ -394,29 +417,80 @@
     }
     form.querySelectorAll('.mw-preview').forEach(bindPreview);
 
+    function pieceTypeOf(piece) {
+      var typeEl = piece.querySelector('[data-mw-type-input]');
+      if (!typeEl) return piece.getAttribute('data-mw-type') || 'shelf';
+      if (typeEl.type === 'radio') {
+        var checked = piece.querySelector('[data-mw-type-input]:checked');
+        return checked ? checked.value : 'shelf';
+      }
+      return typeEl.value || 'shelf';
+    }
+
+    function syncFinishFields(piece) {
+      var selects = piece.querySelectorAll('select[name$="[finish]"]');
+      if (!selects.length) return;
+      var current = '';
+      selects.forEach(function (sel) {
+        if (!sel.disabled) current = sel.value;
+      });
+      if (!current) current = selects[0].value;
+      selects.forEach(function (sel) {
+        var hide = false;
+        var node = sel.parentElement;
+        while (node && node !== piece) {
+          if (node.hasAttribute && node.hasAttribute('data-mw-show') && window.getComputedStyle(node).display === 'none') {
+            hide = true;
+            break;
+          }
+          node = node.parentElement;
+        }
+        sel.disabled = hide;
+        sel.value = current;
+      });
+    }
+
     function syncPieceType(piece) {
-      var checked = piece.querySelector('[data-mw-type-input]:checked');
-      var type = checked ? checked.value : 'shelf';
+      var type = pieceTypeOf(piece);
       piece.setAttribute('data-mw-type', type);
       var below = piece.querySelector('select[name$="[below]"]');
       piece.setAttribute('data-mw-below', (below && below.value === 'drawers') ? 'drawers' : 'divisions');
+      syncUnitLabels(piece);
+      syncFinishFields(piece);
       syncHardwareCatalog();
       syncMaterialsCatalog();
     }
 
+    function syncUnitLabels(piece) {
+      var unitEl = piece.querySelector('[data-mw-unit]');
+      var label = unitEl && unitEl.value === 'ft' ? 'ft' : 'in';
+      piece.querySelectorAll('[data-mw-unit-label]').forEach(function (el) {
+        el.textContent = label;
+      });
+    }
+
     function pieceNeedsCabinetHardware(piece) {
       var type = piece.getAttribute('data-mw-type') || 'shelf';
-      if (type === 'cabinet' || type === 'cabinet_door') return true;
+      if (type === 'cabinet' || type === 'cabinet_door' || type === 'vanity' || type === 'closet') return true;
       return type === 'bench' && piece.getAttribute('data-mw-below') === 'drawers';
+    }
+
+    function pieceNeedsClosetHardware(piece) {
+      return (piece.getAttribute('data-mw-type') || '') === 'closet';
     }
 
     function syncHardwareCatalog() {
       var show = false;
+      var showCloset = false;
       form.querySelectorAll('#mw-piece-list [data-mw-piece]').forEach(function (piece) {
         if (pieceNeedsCabinetHardware(piece)) show = true;
+        if (pieceNeedsClosetHardware(piece)) showCloset = true;
       });
       form.querySelectorAll('[data-mw-hw="cabinet-family"]').forEach(function (el) {
         el.hidden = !show;
+      });
+      form.querySelectorAll('[data-mw-hw="closet-family"]').forEach(function (el) {
+        el.hidden = !showCloset;
       });
     }
 
@@ -427,10 +501,9 @@
       var hasStain = false;
 
       form.querySelectorAll('#mw-piece-list [data-mw-piece]').forEach(function (piece) {
-        var typeInput = piece.querySelector('[data-mw-type-input]:checked');
-        var type = typeInput ? typeInput.value : (piece.getAttribute('data-mw-type') || 'shelf');
+        var type = pieceTypeOf(piece);
 
-        var backSupports = ['floating_shelf', 'kallax', 'cabinet', 'bench'].indexOf(type) !== -1;
+        var backSupports = ['floating_shelf', 'kallax', 'cabinet', 'vanity', 'closet', 'bench', 'mantel'].indexOf(type) !== -1;
         var backCb = piece.querySelector('input[type="checkbox"][name$="[include_back]"]');
         if (backSupports && backCb && backCb.checked) {
           hasBack = true;
@@ -445,7 +518,7 @@
         var finishVal = finishSel ? finishSel.value : 'none';
         if (finishVal === 'paint') {
           hasPaint = true;
-        } else if (finishVal === 'stain') {
+        } else if (finishVal === 'stain' || finishVal === 'clear') {
           hasStain = true;
         }
       });
@@ -475,11 +548,58 @@
       });
     }
 
+    var CABINET_PRESETS = {
+      base: { height: '34.5', depth: '24', toe: true },
+      upper: { height: '30', depth: '12', toe: false },
+      tall: { height: '84', depth: '24', toe: true }
+    };
+
+    function fillIfEmpty(el, value) {
+      if (!el) return;
+      if (String(el.value || '').trim() === '') el.value = value;
+    }
+
+    function applyTypeDefaults(piece, type) {
+      if (type === 'cabinet') {
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '34.5');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '24');
+      } else if (type === 'vanity') {
+        fillIfEmpty(piece.querySelector('input[name$="[width]"]'), '36');
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '34.5');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '21');
+      } else if (type === 'closet') {
+        fillIfEmpty(piece.querySelector('input[name$="[width]"]'), '72');
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '84');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '14');
+      } else if (type === 'mantel') {
+        fillIfEmpty(piece.querySelector('input[name$="[length]"]'), '60');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '10');
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '8');
+      } else if (type === 'wainscoting') {
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '36');
+      } else if (type === 'bench') {
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '18');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '16');
+      }
+    }
+
+    function applyCabinetStyle(piece, style) {
+      var preset = CABINET_PRESETS[style];
+      if (!preset) return;
+      var h = piece.querySelector('input[name$="[height]"]');
+      var d = piece.querySelector('input[name$="[depth]"]');
+      var toe = piece.querySelector('input[type="checkbox"][name$="[include_toe_kick]"]');
+      if (h) h.value = preset.height;
+      if (d) d.value = preset.depth;
+      if (toe) toe.checked = !!preset.toe;
+    }
+
     function initPiece(piece) {
       if (!piece) return;
       piece.querySelectorAll('.mw-preview').forEach(bindPreview);
       piece.querySelectorAll('[data-mw-type-input]').forEach(function (inp) {
         inp.addEventListener('change', function () {
+          applyTypeDefaults(piece, pieceTypeOf(piece));
           syncPieceType(piece);
           schedulePreview();
         });
@@ -488,6 +608,17 @@
       if (below) {
         below.addEventListener('change', function () {
           syncPieceType(piece);
+          schedulePreview();
+        });
+      }
+      var unitEl = piece.querySelector('[data-mw-unit]');
+      if (unitEl) {
+        unitEl.addEventListener('change', function () { syncUnitLabels(piece); });
+      }
+      var styleEl = piece.querySelector('[data-mw-cabinet-style]');
+      if (styleEl) {
+        styleEl.addEventListener('change', function () {
+          applyCabinetStyle(piece, styleEl.value);
           schedulePreview();
         });
       }
@@ -500,6 +631,24 @@
           piece.remove();
           reindexPieces();
           syncHardwareCatalog();
+          schedulePreview();
+        });
+      }
+      var dup = piece.querySelector('[data-mw-duplicate-piece]');
+      if (dup) {
+        dup.addEventListener('click', function () {
+          var list = document.getElementById('mw-piece-list');
+          if (!list) return;
+          var clone = piece.cloneNode(true);
+          clone.querySelectorAll('[data-mw-bound]').forEach(function (el) {
+            delete el.dataset.mwBound;
+          });
+          clone.querySelectorAll('.mw-preview').forEach(function (el) {
+            delete el.dataset.mwBound;
+          });
+          list.insertBefore(clone, piece.nextSibling);
+          reindexPieces();
+          initPiece(clone);
           schedulePreview();
         });
       }
@@ -548,6 +697,7 @@
         var piece = wrap.firstElementChild;
         pieceList.appendChild(piece);
         initPiece(piece);
+        reindexPieces();
         if (window.cpMoneyMask) window.cpMoneyMask.wire(piece.querySelectorAll('.cp-money-input'));
         schedulePreview();
       });
@@ -639,10 +789,57 @@
       if (lastPreviewData) renderPreview(lastPreviewData);
     });
 
+    form.querySelectorAll('[data-mw-nav]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var href = btn.getAttribute('data-mw-nav');
+        if (href) window.location.href = href;
+      });
+    });
+
     var printBtn = document.getElementById('mw-print-cut-list');
     if (printBtn) {
       printBtn.addEventListener('click', function () { printCutList(); });
     }
+
+    var totalsBar = document.getElementById('mw-totals-bar');
+    var totalsExpand = document.getElementById('mw-bar-expand');
+    var totalsBarMobile = function () {
+      return window.matchMedia('(max-width: 700px)').matches;
+    };
+    var syncTotalsBarSpace = function () {
+      if (!form || !totalsBar) return;
+      var h = Math.ceil(totalsBar.getBoundingClientRect().height) || 44;
+      form.style.setProperty('--mw-bar-space', (h + 12) + 'px');
+    };
+    var setTotalsBarOpen = function (open) {
+      if (!totalsBar) return;
+      totalsBar.classList.toggle('is-open', !!open);
+      if (totalsExpand) {
+        totalsExpand.setAttribute('aria-expanded', open ? 'true' : 'false');
+        totalsExpand.setAttribute('aria-label', open ? 'Hide totals details' : 'Show totals details');
+      }
+      window.requestAnimationFrame(syncTotalsBarSpace);
+    };
+    if (totalsExpand) {
+      totalsExpand.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!totalsBarMobile()) return;
+        setTotalsBarOpen(!totalsBar.classList.contains('is-open'));
+      });
+    }
+    if (totalsBar) {
+      totalsBar.addEventListener('click', function (e) {
+        if (!totalsBarMobile()) return;
+        if (e.target && e.target.closest && e.target.closest('#mw-bar-expand')) return;
+        setTotalsBarOpen(!totalsBar.classList.contains('is-open'));
+      });
+    }
+    window.addEventListener('resize', function () {
+      if (!totalsBarMobile()) setTotalsBarOpen(false);
+      syncTotalsBarSpace();
+    });
+    syncTotalsBarSpace();
 
     if (cfg.initialPreview) renderPreview(cfg.initialPreview);
     schedulePreview();

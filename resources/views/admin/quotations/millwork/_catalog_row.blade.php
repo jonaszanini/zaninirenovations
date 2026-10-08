@@ -82,7 +82,7 @@
     <td>
       <input type="hidden" name="{{ $prefix }}[unit]" value="{{ $row['unit'] ?? 'roll' }}">
     </td>
-  @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS], true))
+  @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS, MillworkSettings::SLOT_SHELF_PINS], true))
     <td class="mw-col-pack" data-label="Per pack">
       <input type="number" min="1" class="admin-input" name="{{ $prefix }}[qty_per_pack]" value="{{ $row['qty_per_pack'] ?? 100 }}">
     </td>
