@@ -1475,6 +1475,16 @@ html.admin-dark .util-ra--fullpage .util-ra-side {
   border-color: var(--admin-border);
 }
 
+html.admin-dark .util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-project-bar {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-empty {
+  background: var(--admin-bg);
+  color: var(--admin-muted);
+}
+
 html.admin-dark .util-ra-side__tab.is-active {
   background: var(--admin-primary);
   border-color: var(--admin-primary);
