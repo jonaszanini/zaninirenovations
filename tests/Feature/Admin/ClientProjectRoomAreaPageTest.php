@@ -43,7 +43,9 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             ->assertSee('data-ra-sheet-handle', false)
             ->assertSee('util-ra-full-header__back-label', false)
             ->assertSee('Kitchen remodel')
-            ->assertSee('Kitchen');
+            ->assertSee('Kitchen')
+            ->assertSee('admin-dark.css', false)
+            ->assertSee('id="admin-app"', false);
     }
 
     public function test_admin_can_open_existing_room_on_full_page(): void
@@ -181,6 +183,8 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('width: 25rem', $css);
         $this->assertStringContainsString('--ra-sheet-h', $css);
         $this->assertStringContainsString('min-height: 45vh', $css);
+        $this->assertStringContainsString('.admin-app:has(.util-ra--fullpage) .admin-sidebar', $css);
+        $this->assertStringContainsString('.admin-app:has(.util-ra--fullpage) .admin-topbar', $css);
     }
 
     /**
