@@ -226,6 +226,7 @@
       if (barSub) barSub.textContent = fmt(subtotal);
       if (barHst) barHst.textContent = fmt(hst);
       if (barTotal) barTotal.textContent = fmt(Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount);
+      syncTotalsBarSpace();
       var html = '';
       html += '<div class="pq-row"><span>Material</span><span>' + fmt(goodsPre) + '</span></div>';
       html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';
@@ -775,6 +776,46 @@
     if (printBtn) {
       printBtn.addEventListener('click', function () { printCutList(); });
     }
+
+    var totalsBar = document.getElementById('mw-totals-bar');
+    var totalsExpand = document.getElementById('mw-bar-expand');
+    var totalsBarMobile = function () {
+      return window.matchMedia('(max-width: 700px)').matches;
+    };
+    var syncTotalsBarSpace = function () {
+      if (!form || !totalsBar) return;
+      var h = Math.ceil(totalsBar.getBoundingClientRect().height) || 44;
+      form.style.setProperty('--mw-bar-space', (h + 12) + 'px');
+    };
+    var setTotalsBarOpen = function (open) {
+      if (!totalsBar) return;
+      totalsBar.classList.toggle('is-open', !!open);
+      if (totalsExpand) {
+        totalsExpand.setAttribute('aria-expanded', open ? 'true' : 'false');
+        totalsExpand.setAttribute('aria-label', open ? 'Hide totals details' : 'Show totals details');
+      }
+      window.requestAnimationFrame(syncTotalsBarSpace);
+    };
+    if (totalsExpand) {
+      totalsExpand.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!totalsBarMobile()) return;
+        setTotalsBarOpen(!totalsBar.classList.contains('is-open'));
+      });
+    }
+    if (totalsBar) {
+      totalsBar.addEventListener('click', function (e) {
+        if (!totalsBarMobile()) return;
+        if (e.target && e.target.closest && e.target.closest('#mw-bar-expand')) return;
+        setTotalsBarOpen(!totalsBar.classList.contains('is-open'));
+      });
+    }
+    window.addEventListener('resize', function () {
+      if (!totalsBarMobile()) setTotalsBarOpen(false);
+      syncTotalsBarSpace();
+    });
+    syncTotalsBarSpace();
 
     if (cfg.initialPreview) renderPreview(cfg.initialPreview);
     schedulePreview();

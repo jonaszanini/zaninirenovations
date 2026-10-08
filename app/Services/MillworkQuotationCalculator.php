@@ -700,7 +700,7 @@ class MillworkQuotationCalculator
         $wainRate = (float) ($prod['wainscot_lf_per_hr'] ?? 8);
         $add('wainscot', 'Wainscoting', $wainRate > 0 ? $wainscotLf / $wainRate : 0);
         $trimRate = (float) ($prod['trim_lf_per_hr'] ?? 20);
-        $add('trim', 'Trim / casing / base / crown', $trimRate > 0 ? $trimLf / $trimRate : 0);
+        $add('trim', 'Trim / casing / base', $trimRate > 0 ? $trimLf / $trimRate : 0);
         if ($includeInstall) {
             $instRate = (float) ($prod['install_sf_per_hr'] ?? 8);
             $add('install', 'On-site install', $instRate > 0 ? $installSf / $instRate : 0);

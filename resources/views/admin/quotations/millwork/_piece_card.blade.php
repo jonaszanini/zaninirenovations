@@ -23,7 +23,7 @@
   </div>
 
   <div class="mw-piece__row mw-piece__row--id">
-    <div class="admin-form-group">
+    <div class="admin-form-group mw-field--type">
       <label>@include('admin.partials.info_tip', ['text' => 'Pick the millwork type. Fields below change to match.']) Type</label>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][type]" data-mw-type-input>
         @foreach (MillworkPartBuilder::TYPE_GROUPS as $group => $keys)
@@ -97,6 +97,15 @@
       <label>Rows</label>
       <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][rows]" value="{{ $piece['rows'] ?? 2 }}">
     </div>
+    <div class="admin-form-group mw-field--finish" data-mw-show="kallax">
+      <label>Finish</label>
+      <select class="admin-input mw-preview" name="pieces[{{ $pi }}][finish]">
+        <option value="none" @selected(($piece['finish'] ?? 'none') === 'none')>None</option>
+        <option value="paint" @selected(($piece['finish'] ?? '') === 'paint')>Painted</option>
+        <option value="stain" @selected(($piece['finish'] ?? '') === 'stain')>Stained</option>
+        <option value="clear" @selected(($piece['finish'] ?? '') === 'clear')>Clear coat</option>
+      </select>
+    </div>
     <div class="admin-form-group" data-mw-show="closet">
       <label>Shelves / sec.</label>
       <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? 3 }}">
@@ -140,6 +149,15 @@
       <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][pull_qty]"
              placeholder="Auto" value="{{ $piece['pull_qty'] ?? '' }}">
     </div>
+    <div class="admin-form-group mw-field--finish">
+      <label>Finish</label>
+      <select class="admin-input mw-preview" name="pieces[{{ $pi }}][finish]">
+        <option value="none" @selected(($piece['finish'] ?? 'none') === 'none')>None</option>
+        <option value="paint" @selected(($piece['finish'] ?? '') === 'paint')>Painted</option>
+        <option value="stain" @selected(($piece['finish'] ?? '') === 'stain')>Stained</option>
+        <option value="clear" @selected(($piece['finish'] ?? '') === 'clear')>Clear coat</option>
+      </select>
+    </div>
   </div>
 
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="bench">
@@ -165,10 +183,19 @@
       <label>Drawers</label>
       <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}">
     </div>
+    <div class="admin-form-group mw-field--finish">
+      <label>Finish</label>
+      <select class="admin-input mw-preview" name="pieces[{{ $pi }}][finish]">
+        <option value="none" @selected(($piece['finish'] ?? 'none') === 'none')>None</option>
+        <option value="paint" @selected(($piece['finish'] ?? '') === 'paint')>Painted</option>
+        <option value="stain" @selected(($piece['finish'] ?? '') === 'stain')>Stained</option>
+        <option value="clear" @selected(($piece['finish'] ?? '') === 'clear')>Clear coat</option>
+      </select>
+    </div>
   </div>
 
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="trim">
-    <div class="admin-form-group">
+    <div class="admin-form-group mw-field--profile">
       <label>Profile</label>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][profile]">
         @foreach (MillworkPartBuilder::TRIM_PROFILES as $key => $label)
@@ -185,9 +212,18 @@
       <input type="number" min="1" step="0.5" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][stock_length_ft]"
              placeholder="12" value="{{ $piece['stock_length_ft'] ?? 12 }}">
     </div>
+    <div class="admin-form-group mw-field--finish">
+      <label>Finish</label>
+      <select class="admin-input mw-preview" name="pieces[{{ $pi }}][finish]">
+        <option value="none" @selected(($piece['finish'] ?? 'none') === 'none')>None</option>
+        <option value="paint" @selected(($piece['finish'] ?? '') === 'paint')>Painted</option>
+        <option value="stain" @selected(($piece['finish'] ?? '') === 'stain')>Stained</option>
+        <option value="clear" @selected(($piece['finish'] ?? '') === 'clear')>Clear coat</option>
+      </select>
+    </div>
   </div>
 
-  <div class="mw-piece__row mw-piece__row--pack">
+  <div class="mw-piece__row mw-piece__row--pack" data-mw-show="shelf floating_shelf cabinet_door mantel wainscoting">
     <div class="admin-form-group mw-field--finish">
       <label>Finish</label>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][finish]">

@@ -280,13 +280,16 @@
     </aside>
 
     <div class="mw-totals-bar" id="mw-totals-bar" aria-live="polite">
-      <span><em>Material</em> <strong id="mw-bar-mat">CA$0.00</strong></span>
-      <span><em>Labour</em> <strong id="mw-bar-labor">CA$0.00</strong></span>
-      <span id="mw-bar-delivery-wrap" hidden><em>Delivery</em> <strong id="mw-bar-delivery">CA$0.00</strong></span>
-      <span id="mw-bar-markup-wrap" hidden><em>Markup</em> <strong id="mw-bar-markup">CA$0.00</strong></span>
-      <span><em>Subtotal</em> <strong id="mw-bar-sub">CA$0.00</strong></span>
-      <span><em>HST 13%</em> <strong id="mw-bar-hst">CA$0.00</strong></span>
-      <span class="mw-totals-bar__total"><em>Total</em> <strong id="mw-bar-total">CA$0.00</strong></span>
+      <button type="button" class="mw-totals-bar__expand" id="mw-bar-expand" aria-expanded="false" aria-controls="mw-totals-bar" aria-label="Show totals details">
+        <i class="fa fa-chevron-down" aria-hidden="true"></i>
+      </button>
+      <span class="mw-totals-bar__detail"><em>Mat</em> <strong id="mw-bar-mat">CA$0.00</strong></span>
+      <span class="mw-totals-bar__detail"><em>Labour</em> <strong id="mw-bar-labor">CA$0.00</strong></span>
+      <span class="mw-totals-bar__detail" id="mw-bar-delivery-wrap" hidden><em>Deliv.</em> <strong id="mw-bar-delivery">CA$0.00</strong></span>
+      <span class="mw-totals-bar__detail" id="mw-bar-markup-wrap" hidden><em>Markup</em> <strong id="mw-bar-markup">CA$0.00</strong></span>
+      <span class="mw-totals-bar__core"><em>Subtotal</em> <strong id="mw-bar-sub">CA$0.00</strong></span>
+      <span class="mw-totals-bar__detail"><em>HST 13%</em> <strong id="mw-bar-hst">CA$0.00</strong></span>
+      <span class="mw-totals-bar__core mw-totals-bar__total"><em>Total</em> <strong id="mw-bar-total">CA$0.00</strong></span>
     </div>
   </form>
 

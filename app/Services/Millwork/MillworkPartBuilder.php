@@ -18,7 +18,7 @@ class MillworkPartBuilder
         'bench' => 'Bench seating',
         'wainscoting' => 'Wainscoting',
         'mantel' => 'Mantel',
-        'trim' => 'Trim / casing / base / crown',
+        'trim' => 'Trim / casing / base',
     ];
 
     public const TYPE_GROUPS = [
@@ -39,7 +39,7 @@ class MillworkPartBuilder
         'casing' => 'Casing',
         'crown' => 'Crown',
         'chair_rail' => 'Chair rail',
-        'mixed' => 'Mixed package',
+        'mixed' => 'Casing + base',
     ];
 
     /** Standard cabinet depths used as visible defaults (inches). */

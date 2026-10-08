@@ -155,7 +155,7 @@
     </div>
     <div class="mw-short-row">
       <div class="admin-form-group">
-        <label for="mw-waste">@include('admin.partials.info_tip', ['text' => 'Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.']) Waste % (linear)</label>
+        <label for="mw-waste">@include('admin.partials.info_tip', ['text' => 'Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.']) Waste %</label>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-waste" name="waste_pct"
                value="{{ old('waste_pct', $inputs['waste_pct'] ?? 10) }}">
       </div>
