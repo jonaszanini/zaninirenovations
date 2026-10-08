@@ -110,15 +110,34 @@
     @media (max-width: 700px) {
       .q-ac-row,
       .q-ac-row--with-category {
-        grid-template-columns: 1fr;
-        align-items: stretch;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: end;
       }
-      .q-ac-row__desc {
-        grid-column: auto;
+      .q-ac-row {
+        grid-template-areas:
+          "desc desc"
+          "amount hst"
+          "actions actions";
       }
+      .q-ac-row--with-category {
+        grid-template-areas:
+          "desc desc"
+          "amount category"
+          "hst actions";
+      }
+      .q-ac-row__desc { grid-area: desc; }
+      .q-ac-row__amount { grid-area: amount; }
+      .q-ac-row__category { grid-area: category; }
+      .q-ac-row__hst { grid-area: hst; }
       .q-ac-row__actions {
+        grid-area: actions;
         justify-content: flex-end;
+        align-items: center;
         padding-bottom: 0;
+      }
+      .q-ac-row__category select.admin-input {
+        min-width: 0;
+        width: 100%;
       }
     }
   </style>

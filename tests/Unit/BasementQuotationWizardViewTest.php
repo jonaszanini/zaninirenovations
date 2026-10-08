@@ -169,7 +169,7 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertMatchesRegularExpression('/id="br-helper-rate-wrap"[^>]*\bhidden\b/', $html);
     }
 
-    public function test_finishing_step_uses_two_wrapping_rows(): void
+    public function test_finishing_step_uses_wrapping_rows(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();
         $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
@@ -178,6 +178,7 @@ class BasementQuotationWizardViewTest extends TestCase
 
         $this->assertStringContainsString('class="br-finishing"', $html);
         $this->assertStringContainsString('class="br-finishing-row"', $html);
+        $this->assertStringContainsString('br-finishing-row--checks', $html);
         $this->assertStringContainsString('br-finishing-row--permit', $html);
         $this->assertStringContainsString('id="br-permit-fields"', $html);
         $this->assertStringContainsString('id="br-hw"', $html);
@@ -185,7 +186,7 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="include_touchups"', $html);
         $this->assertStringContainsString('name="include_building_permit"', $html);
         $this->assertStringContainsString('name="building_permit_amount"', $html);
-        $this->assertStringContainsString('data-cp-money-entry="direct"', $html);
+        $this->assertStringNotContainsString('data-cp-money-entry="direct"', $html);
         $this->assertStringNotContainsString('br-finishing-grid', $html);
 
         $finish = strstr($html, 'data-br-step="finishing"');

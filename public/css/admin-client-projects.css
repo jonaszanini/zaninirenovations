@@ -7737,11 +7737,6 @@ body.cp-modal-open {
 .br-step-nav__status {
   white-space: nowrap;
 }
-.br-sticky-total #br-step-status:disabled {
-  opacity: 1;
-  color: var(--admin-text);
-  cursor: default;
-}
 .br-sticky-total .br-toolbar-grand {
   flex-direction: row;
   align-items: center;
@@ -8855,6 +8850,9 @@ body.cp-modal-open {
   gap: 10px 20px;
   min-width: 0;
   max-width: 100%;
+}
+.br-finishing-row--checks {
+  align-items: center;
 }
 .br-finishing .br-hw-field.admin-form-group,
 .br-finishing .br-permit-amount.admin-form-group,

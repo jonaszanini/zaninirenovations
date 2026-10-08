@@ -54,6 +54,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Commute expense')
             ->assertSee('Material waste')
             ->assertSee('id="br-step-status"', false)
+            ->assertSee('class="br-step-nav__status"', false)
+            ->assertDontSee('data-cp-money-entry="direct"', false)
             ->assertSee('Optional extras (rentals, extra labour, etc.)', false)
             ->assertDontSee('Optional extras (permits, rentals')
             ->assertSee('placeholder="e.g. Dumpster"', false);

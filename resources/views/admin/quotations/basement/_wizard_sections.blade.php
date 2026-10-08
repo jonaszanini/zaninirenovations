@@ -1105,6 +1105,8 @@
           <input type="number" step="1" min="0" class="admin-input br-preview br-input--hardware" id="br-hw" name="hardware_sets"
                  value="{{ $brVal('hardware_sets', 0) }}">
         </div>
+      </div>
+      <div class="br-finishing-row br-finishing-row--checks">
         @include('admin.partials.checkbox', ['name' => 'include_cleaning', 'hiddenFallback' => true, 'checked' => $brOn('include_cleaning', $scopePreset !== 'wall'), 'label' => 'Final cleaning', 'info' => $brInfo['include_cleaning'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-finishing-check', 'clientFilled' => $brFilled('include_cleaning')])
         @include('admin.partials.checkbox', ['name' => 'include_touchups', 'hiddenFallback' => true, 'checked' => $brOn('include_touchups', $scopePreset !== 'wall'), 'label' => 'Touch-ups / punch list', 'info' => $brInfo['include_touchups'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-finishing-check', 'clientFilled' => $brFilled('include_touchups')])
       </div>
@@ -1123,7 +1125,6 @@
           <label for="br-permit-amount">@include('admin.partials.info_tip', ['text' => $brInfo['building_permit_amount']]) Permit amount (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input br-preview br-input--permit" id="br-permit-amount" name="building_permit_amount"
-                 data-cp-money-entry="direct"
                  value="{{ number_format((float) $brVal('building_permit_amount', 0), 2, '.', '') }}">
         </div>
       </div>
