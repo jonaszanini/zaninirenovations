@@ -121,7 +121,7 @@
   function syncLightingType() {
     var type = lightingType ? lightingType.value : 'spot';
     if (lightingLabel) {
-      lightingLabel.textContent = type === 'fixture' ? 'How many light fixtures' : 'How many spot lights';
+      lightingLabel.textContent = type === 'fixture' ? 'How many fixtures' : 'How many pot lights';
     }
     if (lightingFixtures) {
       lightingFixtures.hidden = type !== 'both';
@@ -516,7 +516,7 @@
     }
     var baseEl = document.getElementById('br-base');
     if (baseEl) {
-      baseEl.placeholder = currentPreset() === 'wall' ? 'Auto: wall length × 2' : 'Auto: room perimeter';
+      baseEl.placeholder = 'Auto';
     }
     var wallOnly = currentPreset() === 'wall';
     form.querySelectorAll('[data-br-skip-on-wall]').forEach(function (el) {
@@ -801,7 +801,9 @@
     });
     var status = document.getElementById('br-step-status');
     if (status) {
-      status.textContent = (currentIndex + 1) + ' of ' + wizardKeys.length;
+      status.textContent = key === 'review'
+        ? 'Review'
+        : ((currentIndex + 1) + ' of ' + sectionKeys.length);
     }
     var prev = document.getElementById('br-prev');
     var next = document.getElementById('br-next');

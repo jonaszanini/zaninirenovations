@@ -40,8 +40,8 @@
     .q-ac-row__category label,
     .q-ac-row__hst-label {
       display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      overflow: visible;
+      text-overflow: unset;
       white-space: nowrap;
     }
     .q-ac-row__hst-label {
@@ -143,6 +143,20 @@
         width: 100%;
         padding-right: 1.35rem;
       }
+      .q-ac-row__hst-label {
+        display: none;
+      }
+      .q-ac-row__hst {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+      }
+      .q-ac-hst-toggle.cp-visit-toggle {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
     }
   </style>
 @endonce
@@ -150,7 +164,7 @@
 @php
   $field = $field ?? 'additional_costs';
   $idPrefix = $idPrefix ?? 'q-ac-'.preg_replace('/[^a-z0-9]+/i', '-', $field);
-  $title = $title ?? '';
+  $cardTitle = $cardTitle ?? '';
   $intro = $intro ?? '';
   $addLabel = $addLabel ?? 'Add line';
   $placeholder = $placeholder ?? 'Description';
@@ -209,10 +223,10 @@
      data-ac-summary-mode="{{ $summaryMode }}"
      data-ac-default-hst-included="{{ $defaultHstIncluded ? '1' : '0' }}"
      data-ac-show-category="{{ $showCategory ? '1' : '0' }}">
-  @if($title !== '' || $intro !== '')
+  @if($cardTitle !== '' || $intro !== '')
     <div class="q-additional-costs-card__head">
-      @if($title !== '')
-        <h3 class="q-additional-costs-card__title">{{ $title }}</h3>
+      @if($cardTitle !== '')
+        <h3 class="q-additional-costs-card__title">{{ $cardTitle }}</h3>
       @endif
       @if($intro !== '')
         <p class="admin-form-help q-additional-costs-card__intro">{!! $intro !!}</p>
@@ -235,7 +249,7 @@
                  data-ac-description>
         </div>
         <div class="admin-form-group q-ac-row__amount">
-          <label for="{{ $idPrefix }}-amt-{{ $idx }}">Amount (CA$)</label>
+          <label for="{{ $idPrefix }}-amt-{{ $idx }}">Amount</label>
           <input type="text"
                  id="{{ $idPrefix }}-amt-{{ $idx }}"
                  name="{{ $field }}[{{ $idx }}][amount]"

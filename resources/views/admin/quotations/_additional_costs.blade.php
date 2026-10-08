@@ -2,7 +2,7 @@
   @include('admin.quotations._amount_lines', [
     'field' => 'additional_costs',
     'idPrefix' => 'q-ac',
-    'title' => 'Additional costs',
+    'cardTitle' => 'Additional costs',
     'intro' => $intro ?? 'Optional extras (permits, rentals, extra labour, etc.). Choose whether each line is <strong>materials</strong> or <strong>labour</strong>. Hidden from the client PDF — folded into that subtotal.',
     'addLabel' => 'Add cost',
     'placeholder' => $placeholder ?? 'e.g. Dumpster',

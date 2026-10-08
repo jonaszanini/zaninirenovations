@@ -78,7 +78,6 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/data-br-step="doors_trim"[^>]*\bhidden\b/', $html);
         $this->assertDoesNotMatchRegularExpression('/data-br-step="framing"[^>]*\bhidden\b/', $html);
         $this->assertMatchesRegularExpression('/data-br-step="flooring"[^>]*\bhidden\b/', $html);
-        $this->assertStringContainsString('Auto: wall length × 2', $html);
         $this->assertStringContainsString('placeholder="Auto"', $html);
         $this->assertMatchesRegularExpression('/data-br-skip-on-wall[^>]*\bhidden\b/', $html);
         $this->assertContains('doors_trim', $enabledNow);
@@ -116,7 +115,11 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="plumbing_lines[0][description]"', $html);
         $this->assertStringContainsString('qualified electrician', $html);
         $this->assertStringContainsString('qualified plumber', $html);
+        $this->assertStringContainsString("Electrician's quote", $html);
+        $this->assertStringContainsString("Plumber's quote", $html);
+        $this->assertStringNotContainsString('New basement renovation quotation', $html);
         $this->assertStringNotContainsString('licensed', $html);
+        $this->assertStringNotContainsString('licence', $html);
         $this->assertStringNotContainsString('name="wiring_runs"', $html);
         $this->assertStringContainsString('name="outlet_qty"', $html);
         $this->assertStringContainsString('name="bath_sink_qty"', $html);

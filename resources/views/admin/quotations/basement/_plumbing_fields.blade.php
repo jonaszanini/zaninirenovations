@@ -22,9 +22,10 @@
   @include('admin.quotations._amount_lines', [
     'field' => 'plumbing_lines',
     'idPrefix' => 'br-plumb-line',
+    'cardTitle' => "Plumber's quote",
     'intro' => 'Priced plumbing work from the qualified plumber. Each filled line appears on the client quotation.',
     'addLabel' => 'Add line',
-    'placeholder' => 'e.g. Bathroom rough-in, laundry hookup',
+    'placeholder' => 'e.g. Bath rough-in, laundry',
     'rows' => is_array($inputs['plumbing_lines'] ?? null) ? $inputs['plumbing_lines'] : [],
     'inputClass' => 'br-preview',
     'eventName' => 'trade-lines:change',

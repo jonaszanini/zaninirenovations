@@ -290,7 +290,7 @@
     <div class="admin-form-group br-notes-field">
       <label for="br-notes">@include('admin.partials.info_tip', ['text' => $brInfo['existing_notes']]) Existing condition notes</label>
       <textarea class="admin-input br-preview" id="br-notes" name="existing_notes" rows="2" maxlength="2000"
-                placeholder="Moisture, low headroom, existing bathroom, knob-and-tube, etc.">{{ $brVal('existing_notes') }}</textarea>
+                placeholder="Moisture, headroom, existing bath">{{ $brVal('existing_notes') }}</textarea>
     </div>
   </div>
 </details>
@@ -336,7 +336,7 @@
               'mode' => $qtyDim('demo_flooring_sf')['mode'],
               'lengthValue' => $qtyDim('demo_flooring_sf')['length'],
               'widthValue' => $qtyDim('demo_flooring_sf')['width'],
-              'placeholder' => 'Auto: basement area',
+              'placeholder' => 'Auto',
               'info' => $brInfo['demo_flooring_sf'],
               'workKey' => 'remove_floor',
               'gearLabel' => 'Edit floor removal rates',
@@ -406,7 +406,7 @@
             <div class="admin-form-group">
               <label for="br-demo-base">@include('admin.partials.info_tip', ['text' => $brInfo['demo_baseboard_lf']]) Existing baseboard (lf)</label>
               <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-demo-base" name="demo_baseboard_lf"
-                     value="{{ $brQty('demo_baseboard_lf') }}" placeholder="Auto: room perimeter">
+                     value="{{ $brQty('demo_baseboard_lf') }}" placeholder="Auto">
             </div>
           </div>
         </div>
@@ -499,7 +499,7 @@
             'mode' => $qtyDim('insulation_ceiling_sf')['mode'],
             'lengthValue' => $qtyDim('insulation_ceiling_sf')['length'],
             'widthValue' => $qtyDim('insulation_ceiling_sf')['width'],
-            'placeholder' => 'Auto: basement area',
+            'placeholder' => 'Auto',
             'info' => $brInfo['insulation_ceiling_sf'],
           ])
         </div>
@@ -518,7 +518,7 @@
             'mode' => $qtyDim('underslab_sf')['mode'],
             'lengthValue' => $qtyDim('underslab_sf')['length'],
             'widthValue' => $qtyDim('underslab_sf')['width'],
-            'placeholder' => 'Auto: basement area',
+            'placeholder' => 'Auto',
             'info' => $brInfo['underslab_sf'],
           ])
         </div>
@@ -553,7 +553,7 @@
         'mode' => $qtyDim('ceiling_sf')['mode'],
         'lengthValue' => $qtyDim('ceiling_sf')['length'],
         'widthValue' => $qtyDim('ceiling_sf')['width'],
-        'placeholder' => 'Auto: basement area',
+        'placeholder' => 'Auto',
         'info' => $brInfo['ceiling_sf'],
       ])
     </div>
@@ -578,7 +578,7 @@
           'name' => 'room_area_import_id',
           'value' => $layoutImportId,
           'hideLabel' => true,
-          'placeholder' => 'Search saved Room Area rooms…',
+          'placeholder' => 'Search saved rooms…',
           'ariaLabel' => 'Import a Room Area layout',
           'searchUrl' => $layoutSearchUrl,
           'selectedOption' => $layoutSelected,
@@ -711,7 +711,7 @@
         'mode' => $qtyDim('flooring_sf')['mode'],
         'lengthValue' => $qtyDim('flooring_sf')['length'],
         'widthValue' => $qtyDim('flooring_sf')['width'],
-        'placeholder' => 'Auto: basement area',
+        'placeholder' => 'Auto',
         'info' => $brInfo['flooring_sf'],
         'workKey' => 'flooring_install',
         'gearLabel' => 'Edit flooring install rates',
@@ -771,7 +771,7 @@
           'gearLabel' => 'Edit baseboard rates',
           'rate' => \App\Services\SharedWorkCatalog::rateLine('baseboard'),
           'inputClass' => 'br-preview',
-          'placeholder' => $scopePreset === 'wall' ? 'Auto: wall length × 2' : 'Auto: room perimeter',
+          'placeholder' => 'Auto',
         ])
       </div>
       <div class="admin-form-group">
@@ -890,8 +890,8 @@
       <div class="admin-form-group">
         <label for="br-colors">@include('admin.partials.info_tip', ['text' => $brInfo['paint_colors']]) @include('admin.quotations.basement._client_filled', ['key' => 'paint_colors', 'filledKeys' => $filledKeys]) Wall / ceiling colors</label>
         <select class="admin-input br-preview" id="br-colors" name="paint_colors">
-          <option value="1" @selected((int) $brVal('paint_colors', 1) === 1)>One color (walls and ceiling the same)</option>
-          <option value="2" @selected((int) $brVal('paint_colors', 1) === 2)>Two colors (walls and ceiling different)</option>
+          <option value="1" @selected((int) $brVal('paint_colors', 1) === 1)>One color</option>
+          <option value="2" @selected((int) $brVal('paint_colors', 1) === 2)>Two colors</option>
         </select>
       </div>
       <div class="admin-form-group">

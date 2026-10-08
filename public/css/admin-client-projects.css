@@ -8073,8 +8073,14 @@ body.cp-modal-open {
   margin-top: 10px;
   max-width: 16rem;
 }
-.br-electrical-fields__toggles {
+.br-electrical-fields__toggles.br-check-grid {
+  display: block;
+  width: 100%;
   margin-top: 8px;
+  grid-template-columns: minmax(0, 1fr);
+}
+.br-qty-grid > .br-field--wide {
+  grid-column: 1 / -1;
 }
 .br-review-heading {
   margin: 20px 0 8px;

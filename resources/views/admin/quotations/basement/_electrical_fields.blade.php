@@ -13,12 +13,12 @@
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-switches" name="switch_qty"
              value="{{ $brVal('switch_qty', 0) }}">
     </div>
-    <div class="admin-form-group" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
+    <div class="admin-form-group br-field--wide" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
       <label for="br-lighting-type">@include('admin.partials.info_tip', ['text' => $brInfo['lighting_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'lighting_type', 'filledKeys' => $filledKeys ?? []]) Basement ceiling lighting</label>
       <select class="admin-input br-preview" id="br-lighting-type" name="lighting_type" data-br-lighting-type>
-        <option value="fixture" @selected($brVal('lighting_type', 'spot') === 'fixture')>Light fixtures</option>
-        <option value="spot" @selected($brVal('lighting_type', 'spot') === 'spot')>Spot lights (pots / recessed)</option>
-        <option value="both" @selected($brVal('lighting_type') === 'both')>Light fixtures and spot lights</option>
+        <option value="fixture" @selected($brVal('lighting_type', 'spot') === 'fixture')>Surface fixtures</option>
+        <option value="spot" @selected($brVal('lighting_type', 'spot') === 'spot')>Pot lights</option>
+        <option value="both" @selected($brVal('lighting_type') === 'both')>Both</option>
       </select>
     </div>
     <div class="admin-form-group" id="br-lighting-fixture-qty" data-br-basement-lighting @if($scopePreset === 'bathroom' || $brVal('lighting_type', 'spot') !== 'both') hidden @endif>
@@ -27,7 +27,7 @@
              value="{{ $brVal('fixture_qty', 0) }}">
     </div>
     <div class="admin-form-group" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
-      <label for="br-lights">@include('admin.partials.info_tip', ['text' => $brInfo['light_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'light_qty', 'filledKeys' => $filledKeys ?? []]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'How many light fixtures' : 'How many spot lights' }}</span></label>
+      <label for="br-lights">@include('admin.partials.info_tip', ['text' => $brInfo['light_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'light_qty', 'filledKeys' => $filledKeys ?? []]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'How many fixtures' : 'How many pot lights' }}</span></label>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-lights" name="light_qty"
              value="{{ $brVal('light_qty', 0) }}">
     </div>
@@ -52,6 +52,7 @@
   @include('admin.quotations._amount_lines', [
     'field' => 'electrical_lines',
     'idPrefix' => 'br-elec-line',
+    'cardTitle' => "Electrician's quote",
     'intro' => 'Priced electrical work from the qualified electrician. Each filled line appears on the client quotation.',
     'addLabel' => 'Add line',
     'placeholder' => 'e.g. Rough-in, pot lights, panel',
