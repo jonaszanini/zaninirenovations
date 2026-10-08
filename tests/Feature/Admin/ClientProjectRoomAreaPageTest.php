@@ -195,6 +195,8 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('bindHelpPops', $js);
         $this->assertStringContainsString('bindFirstTip', $js);
         $this->assertStringContainsString('zr-room-area-guide-tip-v1', $js);
+        $this->assertStringContainsString('syncGuideLinks', $js);
+        $this->assertStringContainsString("get('ra_room')", $js);
         $this->assertStringContainsString('drawGrid();', $js);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
@@ -208,6 +210,8 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('.admin-app:has(.util-ra-guide) .admin-sidebar', $css);
         $this->assertStringContainsString('.util-ra-help-pop', $css);
         $this->assertStringContainsString('.util-ra-first-tip', $css);
+        $this->assertStringContainsString('.util-ra-tip[data-tooltip]::after', $css);
+        $this->assertStringContainsString('(hover: hover) and (pointer: fine)', $css);
         $this->assertStringContainsString('.util-ra-tool-group--measure', $css);
         $this->assertStringContainsString('.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-scale-status', $css);
     }
@@ -237,6 +241,20 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             'room_area_room' => $room,
         ], false);
         $this->assertStringContainsString($guideUrl, $html);
+        $this->assertStringContainsString('data-tooltip="Open the on-site Room Area walkthrough."', $html);
+        $this->assertStringContainsString('data-tooltip="Save this room\'s outline, scale, and objects."', $html);
+        $this->assertStringContainsString('data-tooltip="Fit the whole drawing in the view."', $html);
+        $this->assertStringContainsString('data-tooltip="Show or hide Measure, Math, Photos, and Rooms."', $html);
+        $this->assertStringContainsString('data-tooltip="Open doors, windows, stairs, and fixtures."', $html);
+        $this->assertStringContainsString('data-tooltip="Turn on wall thickness for drawing; quotes still use the inside."', $html);
+        $this->assertStringContainsString('data-tooltip="Tap two ends of a known wall, then type that length."', $html);
+        $this->assertStringContainsString('aria-label="Open Room Area guide"', $html);
+        $this->assertStringContainsString('aria-label="Save room"', $html);
+        $this->assertStringContainsString('aria-label="Fit drawing in view"', $html);
+        $this->assertStringContainsString('aria-label="Show or hide side panel"', $html);
+        $this->assertStringContainsString('aria-label="Open object library"', $html);
+        $this->assertStringContainsString('aria-label="Zoom in"', $html);
+        $this->assertStringContainsString('aria-label="Zoom out"', $html);
     }
 
     /**

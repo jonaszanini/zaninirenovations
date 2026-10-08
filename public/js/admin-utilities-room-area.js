@@ -7278,12 +7278,16 @@
   function updateEditUI() {
     var editing = !!state.editingRoomId;
     var saveLabel = editing ? 'Save changes' : 'Save room';
+    var saveTip = editing
+      ? 'Save changes to this room.'
+      : 'Save this room\'s outline, scale, and objects.';
     raAll('[data-ra-save-room]').forEach(function (btn) {
       btn.setAttribute('aria-label', saveLabel);
     });
     raAll('[data-ra-save-tip]').forEach(function (tip) {
-      tip.setAttribute('data-tooltip', saveLabel);
+      tip.setAttribute('data-tooltip', saveTip);
     });
+    syncGuideLinks();
     updateFullpageTitle();
     raAll('[data-ra-cancel-edit]').forEach(function (btn) {
       show(btn, editing);
@@ -7470,6 +7474,39 @@
     document.body.removeChild(ta);
   }
 
+  function guideHref() {
+    var base = root.getAttribute('data-ra-guide-url') || '';
+    if (!base || root.hasAttribute('data-ra-lock-client-project')) return base;
+    try {
+      var url = new URL(base, window.location.origin);
+      if (state.activeProjectId) {
+        url.searchParams.set('ra_project', String(state.activeProjectId));
+      } else {
+        url.searchParams.delete('ra_project');
+      }
+      if (state.editingRoomId) {
+        url.searchParams.set('ra_room', String(state.editingRoomId));
+      } else {
+        url.searchParams.delete('ra_room');
+      }
+      return url.pathname + url.search;
+    } catch (err) {
+      return base;
+    }
+  }
+
+  function syncGuideLinks() {
+    if (!isFullPage()) return;
+    var href = guideHref();
+    if (!href) return;
+    raAll('[data-ra-help-guide]').forEach(function (a) {
+      a.setAttribute('href', href);
+    });
+    raAll('[data-ra-first-tip] a[href]').forEach(function (a) {
+      a.setAttribute('href', href);
+    });
+  }
+
   function renderWorkspace() {
     var hasProject = !!state.activeProjectId;
     show(els.empty, !hasProject);
@@ -7477,6 +7514,7 @@
     show(els.deleteProjectBtn, hasProject);
     renderLinked();
     renderRooms();
+    syncGuideLinks();
 
     if (!hasProject) {
       resetEditor();
@@ -9907,10 +9945,13 @@
     renderObjectPalette();
     if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
     refreshProjectSelect();
-    var raProject = (function () {
-      try { return new URLSearchParams(window.location.search).get('ra_project'); } catch (e) { return null; }
+    var queryParams = (function () {
+      try { return new URLSearchParams(window.location.search); } catch (e) { return null; }
     })();
+    var raProject = queryParams ? queryParams.get('ra_project') : null;
+    var raRoom = queryParams ? queryParams.get('ra_room') : null;
     var initialRoom = parseInt(root.getAttribute('data-ra-initial-room-id') || '', 10);
+    if (!initialRoom && raRoom) initialRoom = parseInt(raRoom, 10);
     var lockedClient = root.hasAttribute('data-ra-lock-client-project');
     if (state.projects.length) {
       var chosen = null;
@@ -9936,6 +9977,7 @@
     if (initialRoom) {
       loadRoom(initialRoom);
     }
+    syncGuideLinks();
   }
 
   init();
