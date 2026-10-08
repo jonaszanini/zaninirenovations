@@ -413,13 +413,6 @@
     .items thead {
       display: table-header-group;
     }
-    .items tfoot {
-      /* Print totals once at the end — not on every page. */
-      display: table-row-group;
-      page-break-inside: avoid;
-      break-inside: avoid;
-      page-break-before: avoid;
-    }
     .items tr {
       page-break-inside: avoid;
       break-inside: avoid;
@@ -429,6 +422,11 @@
     }
     .items tbody tr.items-last {
       page-break-after: avoid;
+    }
+    .items tbody tr.items-totals {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
     }
     .items th, .items td {
       border: 1pt solid #d8dee4;
@@ -458,10 +456,6 @@
     .items td.hst {
       color: #4b5563;
     }
-    .items tfoot td.hst {
-      color: #4b5563;
-      font-weight: 400;
-    }
     .items tbody tr:nth-child(even) td {
       background: #f9fafb;
     }
@@ -482,23 +476,23 @@
       font-style: italic;
       margin-top: 2pt;
     }
-    .items tfoot td {
+    .items tbody tr.items-totals td {
       background: #ffffff;
       border: 0 none transparent;
       border-top: 1pt solid #d8dee4;
       font-size: 11pt;
       padding: 4pt 9pt;
     }
-    .items tfoot td.totals-label {
+    .items tbody tr.items-totals td.totals-label {
       text-align: right;
       color: #4b5563;
       font-weight: 400;
     }
-    .items tfoot td.amount {
+    .items tbody tr.items-totals td.amount {
       font-weight: 700;
       color: #1f2937;
     }
-    .items tfoot tr.grand td {
+    .items tbody tr.items-totals.grand td {
       border-top: 2pt solid #024768;
       font-size: 13pt;
       font-weight: 700;
@@ -788,21 +782,19 @@
         </tr>
         @endif
       @endforeach
-    </tbody>
-    <tfoot>
-      <tr>
+      <tr class="items-totals">
         <td class="totals-label" colspan="2">Subtotal (before HST)</td>
         <td class="amount">{{ $fmt($subtotal) }}</td>
       </tr>
-      <tr>
+      <tr class="items-totals">
         <td class="totals-label" colspan="2">HST (13% on lines marked 13%)</td>
         <td class="amount">{{ $fmt($hst) }}</td>
       </tr>
-      <tr class="grand">
+      <tr class="items-totals grand">
         <td class="totals-label" colspan="2">Total with HST</td>
         <td class="amount">{{ $fmt($grand) }}</td>
       </tr>
-    </tfoot>
+    </tbody>
   </table>
   @if ($quotation->hasSubtotalOverrideActive())
     <p style="font-size:9.5pt;color:#4b5563;margin:8pt 0 0;">

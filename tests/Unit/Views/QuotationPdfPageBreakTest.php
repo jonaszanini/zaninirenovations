@@ -43,13 +43,14 @@ class QuotationPdfPageBreakTest extends TestCase
         $tr = $this->cssDeclaration($html, '.items tr');
         $this->assertStringContainsString('page-break-inside: avoid', $tr);
 
-        $tfoot = $this->cssDeclaration($html, '.items tfoot');
-        $this->assertStringContainsString('page-break-inside: avoid', $tfoot);
-        $this->assertStringContainsString('display: table-row-group', $tfoot);
-        $this->assertStringContainsString('page-break-before: avoid', $tfoot);
+        $totals = $this->cssDeclaration($html, '.items tbody tr.items-totals');
+        $this->assertStringContainsString('page-break-inside: avoid', $totals);
+        $this->assertStringContainsString('page-break-before: avoid', $totals);
 
         $keepWithTotals = $this->cssDeclaration($html, '.items tbody tr.items-last');
         $this->assertStringContainsString('page-break-after: avoid', $keepWithTotals);
+        $this->assertStringContainsString('items-totals', $html);
+        $this->assertStringNotContainsString('<tfoot>', $html);
 
         $heading = $this->cssDeclaration($html, '.items tbody tr.items-heading');
         $this->assertStringContainsString('page-break-after: avoid', $heading);
