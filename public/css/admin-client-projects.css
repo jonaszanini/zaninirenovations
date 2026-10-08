@@ -305,7 +305,7 @@ a.cp-table-street .fa {
   padding: 0.4rem 0.75rem;
 }
 .br-review-table td:first-child {
-  white-space: nowrap;
+  white-space: normal;
 }
 .br-review-table th:not(:first-child),
 .br-review-table td:not(:first-child) {
@@ -7872,6 +7872,10 @@ body.cp-modal-open {
   min-width: 0;
   max-width: 100%;
 }
+.br-layout .admin-table-scroll {
+  min-width: 0;
+  max-width: 100%;
+}
 .br-progress {
   display: flex;
   gap: 8px;
@@ -7967,10 +7971,14 @@ body.cp-modal-open {
   grid-template-columns: 1fr;
   gap: 2px 12px;
   align-items: center;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-check-grid .admin-checkbox {
   min-height: 44px;
   margin: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-check-grid--inset {
   margin-top: 6px;
@@ -7980,8 +7988,10 @@ body.cp-modal-open {
 }
 .br-qty-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px 16px;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-qty-grid .admin-form-group,
 .br-qty-grid .br-lw {
@@ -8073,11 +8083,13 @@ body.cp-modal-open {
 }
 .br-provide-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px 16px;
   margin: 0 0 16px;
   padding: 0;
   border: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-provide-grid > legend {
   grid-column: 1 / -1;
@@ -8086,6 +8098,8 @@ body.cp-modal-open {
 }
 .br-provide-grid .admin-checkbox {
   min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-bath-provide {
   margin: 0 0 16px;
@@ -8110,11 +8124,15 @@ body.cp-modal-open {
 }
 .br-bath-provide__grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px 16px;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-bath-provide__grid .admin-checkbox {
   min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-scope-presets {
   margin: 0 0 0.75rem;
@@ -8170,6 +8188,8 @@ body.cp-modal-open {
   margin: 0 0 0.75rem;
   padding: 0;
   border: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-scope-trades .br-trade-nested {
   display: none !important;
@@ -8906,16 +8926,16 @@ body.cp-modal-open {
 
 @media (min-width: 700px) {
   .br-check-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .br-qty-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .br-finish-field {
     grid-column: span 2;
   }
   .br-toggle-qty-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .br-demo-types {
     grid-template-columns: 1fr 1fr;
@@ -8932,10 +8952,10 @@ body.cp-modal-open {
     align-items: end;
   }
   .br-provide-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .br-bath-provide__grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .br-extra-row {
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 88px 88px 110px auto auto;
@@ -9040,22 +9060,22 @@ body.cp-modal-open {
 
 @media (min-width: 900px) {
   .br-check-grid {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .br-qty-grid {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .br-toggle-qty-grid {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .br-demo-types {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .br-provide-grid {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .br-bath-provide__grid {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .br-shell {
     display: grid;

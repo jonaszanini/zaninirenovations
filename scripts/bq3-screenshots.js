@@ -65,7 +65,7 @@ async function main() {
       if (key === 'finishing') {
         const permit = page.locator('label').filter({ hasText: 'Building permit' }).first();
         if (await permit.count()) {
-          const checked = await page.locator('input[name="include_building_permit"]').first().isChecked();
+          const checked = await page.locator('input.admin-checkbox__input[name="include_building_permit"]').first().isChecked();
           if (!checked) await permit.click({ force: true });
           const amt = page.locator('#br-permit-amount');
           if (await amt.count()) await amt.fill('175.00');
