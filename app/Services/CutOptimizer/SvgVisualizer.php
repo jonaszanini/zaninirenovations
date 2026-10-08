@@ -147,10 +147,6 @@ class SvgVisualizer
         $cx = $p->x + ($p->width / 2);
         $cy = $y + ($p->height / 2);
         $minD = min($p->width, $p->height);
-        $maxD = max($p->width, $p->height);
-        $alongH = $p->width >= $p->height;
-        $along = $alongH ? $p->width : $p->height;
-        $across = $alongH ? $p->height : $p->width;
         $dim = $this->inchPair($p->width, $p->height);
         $hover = $p->part->label.' — '.$dim.($p->rotated ? ' (rotated)' : '');
 
@@ -160,22 +156,11 @@ class SvgVisualizer
         $out[] = '<rect class="mw-cut-part-fill" x="'.$this->n($p->x).'" y="'.$this->n($y).'" width="'.$this->n($p->width).'" height="'.$this->n($p->height).'" />';
         $out[] = '<g clip-path="url(#'.$clipId.')">';
 
-        if ($minD >= 7.5) {
+        if ($minD >= 8.0) {
             $nameSize = $this->fitFont($p->part->label, $p->width * 0.88, $minD * 0.28, 2.4);
             $dimSize = $this->fitFont($dim, $p->width * 0.88, $minD * 0.22, 2.0);
             $out[] = $this->label($cx, $cy - ($minD * 0.14), $p->part->label, 'mw-cut-part-label', $nameSize);
             $out[] = $this->label($cx, $cy + ($minD * 0.16), $dim, 'mw-cut-part-dim', $dimSize);
-        } elseif ($maxD >= 5.5 && $minD >= 2.4) {
-            $compact = $n.' '.$this->plainInch($p->width).'×'.$this->plainInch($p->height);
-            $size = $this->fitFont($compact, $along * 0.92, $across * 0.7, 1.7);
-            if ($size < 0.85) {
-                $compact = (string) $n;
-                $size = min(1.3, $across * 0.62);
-            }
-            $out[] = $this->label($cx, $cy, $compact, 'mw-cut-part-dim', $size, ! $alongH);
-        } else {
-            $size = min(1.35, $minD * 0.7);
-            $out[] = $this->label($cx, $cy, (string) $n, 'mw-cut-part-label', $size);
         }
 
         $out[] = '</g>';

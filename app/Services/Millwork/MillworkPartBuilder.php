@@ -193,6 +193,115 @@ class MillworkPartBuilder
     }
 
     /**
+     * Client-facing one-line description for a piece (PDF / email).
+     *
+     * @param  array<string, mixed>  $piece
+     */
+    public static function clientScopeLine(array $piece): string
+    {
+        $type = self::normalizeType((string) ($piece['type'] ?? 'shelf'));
+        $room = trim((string) ($piece['room'] ?? ''));
+        $name = trim((string) ($piece['name'] ?? ''));
+        $title = trim(($room !== '' ? $room : '').($room !== '' && $name !== '' ? ' — ' : '').$name);
+        if ($title === '') {
+            $title = self::TYPES[$type] ?? 'Millwork';
+        }
+        $finish = match (self::normalizeFinish((string) ($piece['finish'] ?? 'none'))) {
+            'paint' => 'Painted',
+            'stain' => 'Stained',
+            'clear' => 'Clear coat',
+            default => 'Unfinished',
+        };
+
+        if ($type === 'trim') {
+            $lf = self::trimQuotedLinearFeet($piece);
+            $profile = self::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
+            $profileLabel = $profile === 'mixed' ? 'casing and baseboard' : strtolower((string) self::TRIM_PROFILES[$profile]);
+            $where = $room !== '' ? $room : ($name !== '' ? $name : 'Trim');
+            $lfLabel = rtrim(rtrim(number_format($lf, 1, '.', ''), '0'), '.');
+            $line = $where.' '.$profileLabel.', approx. '.$lfLabel.' lin. ft';
+            if ($finish !== 'Unfinished') {
+                $line .= '. '.$finish;
+            }
+
+            return $line.'.';
+        }
+
+        $kind = match ($type) {
+            'cabinet' => self::normalizeCabinetStyle((string) ($piece['style'] ?? 'base')) === 'tall'
+                ? 'Tall cabinet'
+                : (self::CABINET_STYLES[self::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'))] ?? 'Cabinet').' cabinet',
+            'vanity' => 'Vanity',
+            'closet' => 'Closet system',
+            'wainscoting' => 'Wainscoting',
+            'mantel' => 'Mantel',
+            'bench' => 'Bench',
+            'kallax' => 'Cube / kallax unit',
+            'floating_shelf' => 'Floating shelf',
+            'cabinet_door' => 'Cabinet door',
+            default => 'Shelf',
+        };
+        $kind = trim(str_replace(' cabinet cabinet', ' cabinet', $kind));
+
+        $unit = (($piece['unit'] ?? 'in') === 'ft') ? 'ft' : 'in';
+        $w = self::positiveDim($piece, ['width']);
+        $h = self::positiveDim($piece, ['height']);
+        $d = self::positiveDim($piece, ['depth']);
+        $len = self::positiveDim($piece, ['length', 'linear_ft']);
+        $bits = [];
+        if ($type === 'wainscoting' && $len > 0) {
+            $lf = $unit === 'ft' || isset($piece['linear_ft']) ? $len : $len / 12.0;
+            $bits[] = 'approx. '.rtrim(rtrim(number_format($lf, 1, '.', ''), '0'), '.').' lin. ft';
+            if ($h > 0) {
+                $bits[] = self::fmtStatic(self::toInches($h, $unit)).' H';
+            }
+        } else {
+            if ($w > 0) {
+                $bits[] = self::fmtStatic(self::toInches($w, $unit)).' W';
+            }
+            if ($len > 0 && $w <= 0) {
+                $bits[] = self::fmtStatic(self::toInches($len, $unit)).' L';
+            }
+            if ($h > 0) {
+                $bits[] = self::fmtStatic(self::toInches($h, $unit)).' H';
+            }
+            if ($d > 0) {
+                $bits[] = self::fmtStatic(self::toInches($d, $unit)).' D';
+            }
+        }
+        $size = $bits === [] ? '' : ', '.implode(' × ', $bits);
+
+        return $title.'. '.$kind.$size.'. '.$finish.'.';
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     */
+    public static function trimQuotedLinearFeet(array $piece): float
+    {
+        $qty = max(1, (int) ($piece['qty'] ?? 1));
+        $lf = self::positiveDim($piece, ['linear_ft']);
+        if ($lf <= 0) {
+            $len = self::positiveDim($piece, ['length']);
+            $unit = (($piece['unit'] ?? 'ft') === 'in') ? 'in' : 'ft';
+            $lf = $len > 0 ? (self::toInches($len, $unit) / 12.0) : 0.0;
+        }
+        $openings = max(0, (int) ($piece['openings'] ?? 0));
+        $openingW = (self::positiveDim($piece, ['width']) ?: 32.0) / 12.0;
+        $openingH = (self::positiveDim($piece, ['height']) ?: 80.0) / 12.0;
+        $casingLf = $openings * ((2 * $openingH) + $openingW);
+
+        return round(($lf + $casingLf) * $qty, 1);
+    }
+
+    public static function fmtStatic(float $inches): string
+    {
+        $v = rtrim(rtrim(number_format($inches, 2, '.', ''), '0'), '.');
+
+        return $v.'"';
+    }
+
+    /**
      * Explicit 0 stays 0. Missing / blank means one pull per door and drawer.
      *
      * @param  array<string, mixed>  $piece

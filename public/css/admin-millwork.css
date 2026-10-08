@@ -1,18 +1,28 @@
 /* Custom millwork quotation — mobile-first, admin tokens. */
 
-.mw-piece {
-  margin: 0 0 12px;
-  padding: 12px;
+.mw-piece,
+.mw-piece.admin-card {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+}
+.mw-piece .admin-form-group {
+  margin-bottom: 0.35rem;
+  min-width: 0;
+}
+.mw-piece .admin-form-group label {
+  margin-bottom: 0.12rem;
+  font-size: 12px;
 }
 .mw-piece__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 .mw-piece__title {
   margin: 0;
+  font-size: 14px;
   color: var(--admin-heading);
 }
 .mw-piece__actions {
@@ -20,19 +30,53 @@
   flex-wrap: wrap;
   gap: 6px;
 }
-.mw-piece__meta .mw-piece__name {
-  grid-column: 1 / -1;
+.mw-piece__row {
+  display: none;
+  gap: 6px 8px;
+  align-items: end;
+  margin-bottom: 2px;
+}
+.mw-piece__row--id {
+  grid-template-columns: minmax(10rem, 1.1fr) minmax(7rem, 0.9fr) minmax(10rem, 1.4fr);
+}
+.mw-piece__row--dims {
+  grid-template-columns: 5.25rem 4.75rem 5.4rem 5.4rem 5.4rem;
+}
+.mw-piece__row--pack {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .mw-input--qty,
 .mw-input--dim {
-  max-width: 7.5rem;
+  max-width: 5.6rem;
+  width: 100%;
+}
+.mw-field--finish {
+  max-width: 10rem;
+}
+.mw-piece__hint {
+  margin: 2px 0 6px;
+}
+.mw-piece__more {
+  margin-top: 4px;
+}
+.mw-piece__more > summary {
+  cursor: pointer;
+  color: var(--admin-muted);
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+.mw-piece__more[open] > summary {
+  margin-bottom: 6px;
 }
 .mw-piece__flags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 6px 14px;
   align-items: center;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 .mw-client-card {
   padding: 12px 16px;
@@ -273,7 +317,19 @@
 .mw-piece[data-mw-type="bench"] .admin-form-grid-2[data-mw-show~="bench"],
 .mw-piece[data-mw-type="wainscoting"] .admin-form-grid-2[data-mw-show~="wainscoting"],
 .mw-piece[data-mw-type="mantel"] .admin-form-grid-2[data-mw-show~="mantel"],
-.mw-piece[data-mw-type="trim"] .admin-form-grid-2[data-mw-show~="trim"] {
+.mw-piece[data-mw-type="trim"] .admin-form-grid-2[data-mw-show~="trim"],
+.mw-piece .mw-piece__row:not([data-mw-show]),
+.mw-piece[data-mw-type="shelf"] .mw-piece__row[data-mw-show~="shelf"],
+.mw-piece[data-mw-type="floating_shelf"] .mw-piece__row[data-mw-show~="floating_shelf"],
+.mw-piece[data-mw-type="kallax"] .mw-piece__row[data-mw-show~="kallax"],
+.mw-piece[data-mw-type="cabinet"] .mw-piece__row[data-mw-show~="cabinet"],
+.mw-piece[data-mw-type="cabinet_door"] .mw-piece__row[data-mw-show~="cabinet_door"],
+.mw-piece[data-mw-type="vanity"] .mw-piece__row[data-mw-show~="vanity"],
+.mw-piece[data-mw-type="closet"] .mw-piece__row[data-mw-show~="closet"],
+.mw-piece[data-mw-type="bench"] .mw-piece__row[data-mw-show~="bench"],
+.mw-piece[data-mw-type="wainscoting"] .mw-piece__row[data-mw-show~="wainscoting"],
+.mw-piece[data-mw-type="mantel"] .mw-piece__row[data-mw-show~="mantel"],
+.mw-piece[data-mw-type="trim"] .mw-piece__row[data-mw-show~="trim"] {
   display: grid;
 }
 
@@ -400,15 +456,62 @@
   }
 }
 
+#mw-main-form input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+#mw-main-form input[type="number"]::-webkit-outer-spin-button,
+#mw-main-form input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.mw-short-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px 10px;
+  align-items: end;
+}
+.mw-short-row .admin-form-group {
+  margin-bottom: 0.4rem;
+}
+.mw-short-row .admin-input,
+.mw-money-row .mw-input--money {
+  max-width: 8.75rem;
+}
+.mw-money-row {
+  display: grid;
+  grid-template-columns: 8.75rem minmax(10rem, 1fr) 8.75rem;
+  gap: 6px 12px;
+  align-items: end;
+  margin-top: 4px;
+}
+.mw-money-row .admin-form-group {
+  margin-bottom: 0.4rem;
+}
+.mw-hw-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+.mw-hw-grid .admin-form-group {
+  margin-bottom: 0.45rem;
+}
+.mw-sheet-field,
+.mw-sheet-select {
+  min-width: 0;
+  width: 100%;
+}
+.mw-sheet-field {
+  margin-bottom: 0.5rem;
+}
+
 @media (min-width: 768px) {
   .mw-cut-plan {
     grid-template-columns: 1fr;
   }
   .mw-cut-svg-wrap {
     max-width: 26rem;
-  }
-  .mw-piece {
-    padding: 16px;
   }
 }
 
@@ -420,18 +523,39 @@
   .mw-cut-plan-head .admin-btn {
     min-height: 44px;
   }
-  .mw-piece .admin-form-grid-2 {
+  .mw-piece__row--id {
     grid-template-columns: 1fr 1fr;
-    gap: 0 0.75rem;
   }
-  .mw-piece__meta .admin-form-group,
-  .mw-piece__name,
-  .mw-piece .admin-form-group:has(select.admin-input) {
+  .mw-piece__row--id .mw-piece__name {
     grid-column: 1 / -1;
+  }
+  .mw-piece__row--dims {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .mw-field--qty,
+  .mw-field--unit {
+    grid-column: span 3;
+  }
+  .mw-field--w,
+  .mw-field--h,
+  .mw-field--d,
+  .mw-field--len,
+  .mw-field--lf {
+    grid-column: span 2;
+  }
+  .mw-piece__row--pack {
+    grid-template-columns: 1fr 1fr;
   }
   .mw-input--qty,
   .mw-input--dim {
     max-width: 100%;
+  }
+  .mw-short-row,
+  .mw-hw-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .mw-money-row {
+    grid-template-columns: 1fr 1fr;
   }
   .mw-totals-bar {
     gap: 6px 10px;

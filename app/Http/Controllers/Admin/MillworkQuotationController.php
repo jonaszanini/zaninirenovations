@@ -649,7 +649,7 @@ class MillworkQuotationController extends Controller
     protected function syncLineToProjectQuotation(ClientProject $project, MillworkQuotation $quote): void
     {
         $items = [[
-            'description' => 'Custom millwork (labor)',
+            'description' => 'Custom millwork (labour)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
             'apply_hst' => true,
         ]];

@@ -141,7 +141,7 @@
               'hiddenFallback' => true,
               'checked' => (bool) old('client_provides_all', $inputs['client_provides_all'] ?? false),
               'label' => '<strong>Client provides all materials</strong>',
-              'info' => 'Labor only — material cost drops out of the total.',
+              'info' => 'Labour only — material cost drops out of the total.',
               'inputClass' => 'admin-checkbox__input mw-preview',
               'id' => 'mw-client-all',
             ])
@@ -172,7 +172,7 @@
               @endforelse
             </div>
 
-            <h4 class="br-review-heading">Labor hours</h4>
+            <h4 class="br-review-heading">Labour hours</h4>
             <div class="admin-table-scroll">
               <table class="admin-table br-review-table">
                 <thead>
@@ -183,14 +183,17 @@
                   </tr>
                 </thead>
                 <tbody id="mw-labor-rows">
-                  @forelse ($previewLabor as $row)
+                  @php
+                    $previewLaborHours = array_values(array_filter($previewLabor, fn ($row) => ($row['key'] ?? '') !== 'markup'));
+                  @endphp
+                  @forelse ($previewLaborHours as $row)
                     <tr>
                       <td>{{ $row['label'] }}</td>
                       <td>{{ number_format((float) ($row['hours'] ?? 0), 2) }}</td>
                       <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($row['amount'] ?? 0) }}</td>
                     </tr>
                   @empty
-                    <tr class="br-empty-row"><td colspan="3" class="admin-form-help">Labor appears after pieces are sized.</td></tr>
+                    <tr class="br-empty-row"><td colspan="3" class="admin-form-help">Labour appears after pieces are sized.</td></tr>
                   @endforelse
                 </tbody>
               </table>
@@ -279,6 +282,8 @@
     <div class="mw-totals-bar" id="mw-totals-bar" aria-live="polite">
       <span><em>Material</em> <strong id="mw-bar-mat">CA$0.00</strong></span>
       <span><em>Labour</em> <strong id="mw-bar-labor">CA$0.00</strong></span>
+      <span id="mw-bar-delivery-wrap" hidden><em>Delivery</em> <strong id="mw-bar-delivery">CA$0.00</strong></span>
+      <span id="mw-bar-markup-wrap" hidden><em>Markup</em> <strong id="mw-bar-markup">CA$0.00</strong></span>
       <span><em>Subtotal</em> <strong id="mw-bar-sub">CA$0.00</strong></span>
       <span><em>HST 13%</em> <strong id="mw-bar-hst">CA$0.00</strong></span>
       <span class="mw-totals-bar__total"><em>Total</em> <strong id="mw-bar-total">CA$0.00</strong></span>

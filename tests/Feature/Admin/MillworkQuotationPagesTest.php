@@ -33,8 +33,8 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Cabinet door only')
             ->assertSee('Bench seating')
             ->assertSee('Edge banding')
-            ->assertSee('Inches')
-            ->assertSee('Feet')
+            ->assertSee('>In</option>', false)
+            ->assertSee('>Ft</option>', false)
             ->assertSee('Cut plan')
             ->assertSee('Print cut list')
             ->assertDontSee('mw-cut-steps', false)
@@ -53,9 +53,12 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('data-mw-mat="stain"', false)
             ->assertSee('id="mw-hinge"', false)
             ->assertSee('Waste % (linear)')
-            ->assertSee('Delivery (CAD$)')
+            ->assertSee('Delivery')
+            ->assertSee('How many')
+            ->assertSee('More options')
+            ->assertSee('Labour')
             ->assertSee('mw-totals-bar', false)
-            ->assertSee('Clear coat / lacquer');
+            ->assertSee('Clear coat');
 
         $this->get(route('admin.quotations.millwork.price-configuration'))
             ->assertOk()

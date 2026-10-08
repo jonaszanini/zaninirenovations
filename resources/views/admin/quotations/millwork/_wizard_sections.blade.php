@@ -75,17 +75,21 @@
   <summary class="br-acc__summary"><span class="br-acc__num">2</span> Materials &amp; finish</summary>
   <div class="br-acc__body">
     <p class="admin-form-help">Sheet size defaults to 4×8 from Price configuration. Waste % is applied to edge banding, finish, and linear trim. Nesting leftover is already in the cut plan — add spare sheets if you want extras.</p>
+    <div class="admin-form-group mw-sheet-field">
+      <label for="mw-sheet">@include('admin.partials.info_tip', ['text' => 'Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.']) Wood sheet</label>
+      <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
+        @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
+          @php
+            $sheetName = trim((string) ($row['name'] ?? 'Sheet'));
+            $alreadySized = (bool) preg_match('/\d+\s*[x×]\s*\d+/i', $sheetName);
+          @endphp
+          <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>
+            {{ $alreadySized ? $sheetName : $sheetName.' '.(int) ($row['width_in'] ?? 48).'×'.(int) ($row['length_in'] ?? 96) }}
+          </option>
+        @endforeach
+      </select>
+    </div>
     <div class="admin-form-grid-2">
-      <div class="admin-form-group">
-        <label for="mw-sheet">@include('admin.partials.info_tip', ['text' => 'Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.']) Wood sheet</label>
-        <select class="admin-input mw-preview" id="mw-sheet" name="sheet_id">
-          @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>
-              {{ $row['name'] }} ({{ rtrim(rtrim(number_format((float) ($row['thickness_in'] ?? 0.75), 2, '.', ''), '0'), '.') }}" · {{ (int) ($row['width_in'] ?? 48) }}×{{ (int) ($row['length_in'] ?? 96) }})
-            </option>
-          @endforeach
-        </select>
-      </div>
       <div class="admin-form-group" data-mw-mat="back" @if (! $needsBack) hidden @endif>
         <label for="mw-back">Back / 1/4" sheet</label>
         <select class="admin-input mw-preview" id="mw-back" name="back_sheet_id">
@@ -142,14 +146,14 @@
         </select>
       </div>
     </div>
-    <div class="admin-form-grid-2 mw-waste-row">
+    <div class="mw-short-row">
       <div class="admin-form-group">
         <label for="mw-waste">@include('admin.partials.info_tip', ['text' => 'Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.']) Waste % (linear)</label>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-waste" name="waste_pct"
                value="{{ old('waste_pct', $inputs['waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-edge-waste">Edge banding waste %</label>
+        <label for="mw-edge-waste">Edge waste %</label>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-edge-waste" name="edge_waste_pct"
                value="{{ old('edge_waste_pct', $inputs['edge_waste_pct'] ?? 10) }}">
       </div>
@@ -163,12 +167,17 @@
         <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" id="mw-spare" name="spare_sheets"
                value="{{ old('spare_sheets', $inputs['spare_sheets'] ?? 0) }}">
       </div>
-    </div>
-    <div class="admin-form-grid-2">
       <div class="admin-form-group">
-        <label for="mw-owner-rate">Owner hourly rate (CAD$)</label>
+        <label for="mw-markup">Markup %</label>
+        <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-markup" name="markup_pct"
+               value="{{ old('markup_pct', $inputs['markup_pct'] ?? 0) }}">
+      </div>
+    </div>
+    <div class="mw-money-row">
+      <div class="admin-form-group">
+        <label for="mw-owner-rate">Owner rate</label>
         <input type="text" inputmode="decimal" autocomplete="off"
-               class="admin-input cp-money-input mw-preview" id="mw-owner-rate" name="owner_hourly_rate"
+               class="admin-input cp-money-input mw-preview mw-input--money" id="mw-owner-rate" name="owner_hourly_rate"
                value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate), 2, '.', '')) }}">
       </div>
       <div class="admin-form-group">
@@ -180,14 +189,9 @@
         ])
       </div>
       <div class="admin-form-group">
-        <label for="mw-markup">Markup %</label>
-        <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-markup" name="markup_pct"
-               value="{{ old('markup_pct', $inputs['markup_pct'] ?? 0) }}">
-      </div>
-      <div class="admin-form-group">
-        <label for="mw-delivery">Delivery (CAD$)</label>
+        <label for="mw-delivery">Delivery</label>
         <input type="text" inputmode="decimal" autocomplete="off"
-               class="admin-input cp-money-input mw-preview" id="mw-delivery" name="delivery_amount"
+               class="admin-input cp-money-input mw-preview mw-input--money" id="mw-delivery" name="delivery_amount"
                value="{{ old('delivery_amount', number_format((float) ($inputs['delivery_amount'] ?? 0), 2, '.', '')) }}">
       </div>
     </div>
@@ -195,7 +199,7 @@
       'name' => 'include_install',
       'hiddenFallback' => true,
       'checked' => (bool) old('include_install', $inputs['include_install'] ?? true),
-      'label' => 'Include on-site install labor',
+      'label' => 'Include on-site install labour',
       'info' => 'Shop labour (cut, assemble, finish) is always quoted. This adds install hours.',
       'inputClass' => 'admin-checkbox__input mw-preview',
     ])
@@ -205,7 +209,7 @@
 <details class="br-acc admin-card" data-br-step="hardware">
   <summary class="br-acc__summary"><span class="br-acc__num">3</span> Hardware</summary>
   <div class="br-acc__body">
-    <div class="admin-form-grid-2">
+    <div class="mw-hw-grid">
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-hinge">Hinges</label>
         <select class="admin-input mw-preview" id="mw-hinge" name="hinge_id">

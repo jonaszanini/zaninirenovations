@@ -199,49 +199,57 @@
       document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: liveGrand } }));
       if (empty) empty.hidden = Number(summary.grand_total || 0) > 0;
       if (body) body.hidden = false;
+      var delivery = Number(summary.delivery_amount || 0);
+      var markup = Number(summary.markup_amount || 0);
       var laborPre = Number(summary.labor_pre_hst || 0) + lastAdditionalLaborPreTax;
-      var laborHst = Number(summary.labor_hst != null ? summary.labor_hst : Number(summary.labor_pre_hst || 0) * 0.13) + lastAdditionalLaborHst;
-      var matPre = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
-      var matHst = Number(summary.materials_hst || 0) + lastAdditionalMaterialsHst;
-      var subtotal = laborPre + matPre;
-      var hst = laborHst + matHst;
+      var goodsPre = summary.materials_goods_pre_hst != null
+        ? Number(summary.materials_goods_pre_hst)
+        : Math.max(0, Number(summary.materials_pre_hst || 0) - delivery);
+      goodsPre += lastAdditionalMaterialsPreTax;
+      var subtotal = Number(summary.subtotal_pre_hst || 0) + lastAdditionalLaborPreTax + lastAdditionalMaterialsPreTax;
+      var hst = Number(summary.hst || 0) + lastAdditionalLaborHst + lastAdditionalMaterialsHst;
       var barMat = document.getElementById('mw-bar-mat');
       var barLabor = document.getElementById('mw-bar-labor');
       var barSub = document.getElementById('mw-bar-sub');
       var barHst = document.getElementById('mw-bar-hst');
       var barTotal = document.getElementById('mw-bar-total');
-      if (barMat) barMat.textContent = fmt(matPre);
+      var barDelivery = document.getElementById('mw-bar-delivery');
+      var barMarkup = document.getElementById('mw-bar-markup');
+      var wrapDelivery = document.getElementById('mw-bar-delivery-wrap');
+      var wrapMarkup = document.getElementById('mw-bar-markup-wrap');
+      if (barMat) barMat.textContent = fmt(goodsPre);
       if (barLabor) barLabor.textContent = fmt(laborPre);
+      if (barDelivery) barDelivery.textContent = fmt(delivery);
+      if (barMarkup) barMarkup.textContent = fmt(markup);
+      if (wrapDelivery) wrapDelivery.hidden = delivery <= 0;
+      if (wrapMarkup) wrapMarkup.hidden = markup <= 0;
       if (barSub) barSub.textContent = fmt(subtotal);
       if (barHst) barHst.textContent = fmt(hst);
       if (barTotal) barTotal.textContent = fmt(Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount);
       var html = '';
-      html += '<div class="pq-row"><span>Labor (pre-HST)</span><span>' + fmt(laborPre) + '</span></div>';
-      html += '<div class="pq-row"><span>Labor HST</span><span>' + fmt(laborHst) + '</span></div>';
-      html += '<div class="pq-row pq-row--sub"><span>Total labor</span><span>' + fmt(laborPre + laborHst) + '</span></div>';
-      html += '<div class="pq-row pq-row--group"><span>Materials (pre-HST)</span><span>' + fmt(matPre) + '</span></div>';
-      html += '<div class="pq-row"><span>Materials HST</span><span>' + fmt(matHst) + '</span></div>';
-      html += '<div class="pq-row pq-row--sub"><span>Total materials</span><span>' + fmt(matPre + matHst) + '</span></div>';
+      html += '<div class="pq-row"><span>Material</span><span>' + fmt(goodsPre) + '</span></div>';
+      html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';
+      if (delivery > 0) {
+        html += '<div class="pq-row"><span>Delivery</span><span>' + fmt(delivery) + '</span></div>';
+      }
+      if (markup > 0) {
+        html += '<div class="pq-row"><span>Markup</span><span>' + fmt(markup) + '</span></div>';
+      }
+      html += '<div class="pq-row pq-row--sub"><span>Subtotal</span><span>' + fmt(subtotal) + '</span></div>';
+      html += '<div class="pq-row"><span>HST 13%</span><span>' + fmt(hst) + '</span></div>';
       if (lastCommuteAmount > 0) {
         html += '<div class="pq-row pq-row--group"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
       }
       if (lastDebrisAmount > 0) {
         html += '<div class="pq-row pq-row--group"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
       }
-      var sheets = (data.cut_plan && data.cut_plan.sheet_count) || 0;
-      if (sheets) {
-        html += '<div class="pq-row pq-row--group"><span>Sheets</span><span>' + sheets + '</span></div>';
-      }
       var edgeLf = Number(summary.edge_band_lf || 0);
-      if (edgeLf > 0) {
-        html += '<div class="pq-row pq-row--group"><span>Edge banding</span><span>' + edgeLf.toFixed(1) + ' LF</span></div>';
-      }
       var ebMeta = document.getElementById('mw-eb-meta');
       if (ebMeta) {
         ebMeta.textContent = edgeLf > 0 ? ('Total edge banding: ' + edgeLf.toFixed(1) + ' LF required') : '';
       }
       var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
-      html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
+      html += '<div class="pq-row pq-row--hl"><span>Total</span><span>' + fmt(grand) + '</span></div>';
       body.innerHTML = html;
     }
 
@@ -368,10 +376,17 @@
       var tbody = document.getElementById('mw-labor-rows');
       if (!tbody) return;
       if (!rows.length) {
-        tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Labor appears after pieces are sized.</td></tr>';
+        tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Labour appears after pieces are sized.</td></tr>';
         return;
       }
-      tbody.innerHTML = rows.map(function (row) {
+      var laborRows = rows.filter(function (row) {
+        return row && row.key !== 'markup';
+      });
+      if (!laborRows.length) {
+        tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Labour appears after pieces are sized.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = laborRows.map(function (row) {
         return '<tr><td>' + escapeHtml(row.label) + '</td><td>' + Number(row.hours || 0).toFixed(2) + '</td>'
           + '<td class="cp-col-amount">' + fmt(row.amount || 0) + '</td></tr>';
       }).join('');

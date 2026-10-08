@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\ClientProject;
+use App\Models\ClientProjectQuotation;
 use App\Models\MillworkQuotation;
+use App\Services\MillworkQuotationCalculator;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -103,6 +106,89 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
         $fresh = $quote->fresh();
         $this->assertSame('shelf', $fresh->inputs['pieces'][0]['type']);
         $this->assertGreaterThan(0, (float) $fresh->final_quote_total);
+    }
+
+    public function test_project_pdf_totals_match_calculator(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'client_name' => 'Elena Moretti',
+        ]);
+
+        $payload = $this->samplePayload('Elena Moretti');
+        $payload['link_client_project_id'] = $project->id;
+        $payload['delivery_amount'] = 45;
+        $payload['markup_pct'] = 5;
+
+        $this->post(route('admin.quotations.millwork.store'), $payload)
+            ->assertRedirect();
+
+        $quote = MillworkQuotation::query()->where('client_name', 'Elena Moretti')->first();
+        $this->assertNotNull($quote);
+        $this->assertTrue($quote->isLinked());
+
+        $calc = (new MillworkQuotationCalculator)->calculate($quote->inputs);
+        $summary = $calc['summary'];
+        $this->assertEqualsWithDelta(
+            (float) $summary['grand_total'],
+            (float) $quote->final_quote_total,
+            0.001
+        );
+        $this->assertEqualsWithDelta(
+            (float) $summary['labor_pre_hst'],
+            $quote->labourPreTaxAmountForProjectQuotation(),
+            0.001
+        );
+        $this->assertEqualsWithDelta(
+            (float) $summary['materials_pre_hst'] + (float) $summary['markup_amount'],
+            $quote->materialsPreTaxAmountForProjectQuotation(),
+            0.001
+        );
+        $this->assertEqualsWithDelta(
+            (float) $summary['materials_goods_pre_hst'] + (float) $summary['delivery_amount'],
+            (float) $summary['materials_pre_hst'],
+            0.001
+        );
+
+        $cpq = ClientProjectQuotation::findForSource(ClientProjectQuotation::SOURCE_MILLWORK, (int) $quote->id);
+        $this->assertNotNull($cpq);
+        $this->assertEqualsWithDelta((float) $summary['labor_pre_hst'], $quote->labourPreTaxAmountForProjectQuotation(), 0.001);
+        $this->assertEqualsWithDelta((float) $summary['subtotal_pre_hst'], $cpq->pdfSubtotal(), 0.001);
+        $this->assertEqualsWithDelta((float) $summary['hst'], $cpq->pdfHst(), 0.001);
+        $this->assertEqualsWithDelta((float) $summary['grand_total'], $cpq->pdfGrandTotal(), 0.001);
+
+        $html = view('admin.client_projects.quotation.pdf', [
+            'project' => $project->fresh(),
+            'quotation' => $cpq->fresh(),
+            'pdfPhotos' => collect(),
+            'acceptUrl' => 'https://example.test/accept',
+        ])->render();
+
+        $fmt = fn (float $n) => 'CA$'.number_format($n, 2, '.', ',');
+        $this->assertStringContainsString($fmt((float) $summary['labor_pre_hst']), $html);
+        $this->assertStringContainsString($fmt($quote->materialsPreTaxAmountForProjectQuotation()), $html);
+        $this->assertStringContainsString($fmt((float) $summary['grand_total']), $html);
+        $this->assertStringContainsString('Custom millwork (labour)', $html);
+        $this->assertStringContainsString('Kitchen — Kitchen pantry', $html);
+        $this->assertStringContainsString('Foyer casing and baseboard, approx.', $html);
+        $this->assertStringContainsString('lin. ft', $html);
+        $this->assertStringContainsString('Zanini Renovations is fully insured.', $html);
+        $this->assertStringContainsString('Warranty on workmanship', $html);
+        $this->assertStringNotContainsString('Shop —', $html);
+        $this->assertStringNotContainsString('Sheet goods:', $html);
+        $this->assertStringNotContainsString('Edge banding:', $html);
+        $this->assertStringNotContainsString('Warrantee', $html);
+        $this->assertStringNotContainsString('Custom millwork (labor)', $html);
+        $this->assertStringNotContainsString('licensed', $html);
+        $this->assertStringNotContainsString('WSIB', $html);
+        $this->assertStringNotContainsString('$3M', $html);
+
+        $edit = $this->get(route('admin.quotations.millwork.edit', $quote));
+        $edit->assertOk();
+        $live = (new MillworkQuotationCalculator)->calculate($quote->fresh()->inputs);
+        $this->assertEqualsWithDelta((float) $summary['grand_total'], (float) $live['summary']['grand_total'], 0.001);
+        $this->assertEqualsWithDelta((float) $summary['materials_pre_hst'], (float) $live['summary']['materials_pre_hst'], 0.001);
     }
 
     /**

@@ -332,6 +332,14 @@ class MillworkQuotationCalculator
             $wastePct
         );
         $extraMaterials = $this->extraMaterials($inputs, $providesAll);
+        $matGoods = 0.0;
+        foreach (array_merge($materials, $extraMaterials) as $row) {
+            if (! empty($row['client_provided'])) {
+                continue;
+            }
+            $matGoods += (float) ($row['amount'] ?? 0);
+        }
+        $matGoods = round($matGoods, 2);
         if ($deliveryAmount > 0 && ! $providesAll) {
             $extraMaterials[] = [
                 'key' => 'delivery',
@@ -345,14 +353,7 @@ class MillworkQuotationCalculator
                 'delivery_cad' => $deliveryAmount,
             ];
         }
-        $matPre = 0.0;
-        foreach (array_merge($materials, $extraMaterials) as $row) {
-            if (! empty($row['client_provided'])) {
-                continue;
-            }
-            $matPre += (float) ($row['amount'] ?? 0);
-        }
-        $matPre = round($matPre, 2);
+        $matPre = round($matGoods + (! $providesAll ? $deliveryAmount : 0), 2);
         $preMarkup = round($laborPre + $matPre, 2);
         $markupAmt = round($preMarkup * ($markupPct / 100), 2);
         if ($markupAmt > 0) {
@@ -402,6 +403,7 @@ class MillworkQuotationCalculator
                 'labor_pre_hst' => $laborPre,
                 'labor_hst' => $laborHst,
                 'labor_after_hst' => round($laborPre + $laborHst, 2),
+                'materials_goods_pre_hst' => $matGoods,
                 'materials_pre_hst' => $matPre,
                 'materials_hst' => $matHst,
                 'materials_after_hst' => round($matPre + $matHst, 2),

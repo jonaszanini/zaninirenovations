@@ -597,6 +597,16 @@ class MillworkQuotationCalculatorTest extends TestCase
 
         $this->assertGreaterThan($plain['summary']['materials_pre_hst'], $marked['summary']['materials_pre_hst']);
         $this->assertEqualsWithDelta(50.0, (float) $marked['summary']['delivery_amount'], 0.01);
+        $this->assertEqualsWithDelta(
+            (float) $marked['summary']['materials_goods_pre_hst'] + 50.0,
+            (float) $marked['summary']['materials_pre_hst'],
+            0.01
+        );
+        $this->assertEqualsWithDelta(
+            (float) $plain['summary']['materials_pre_hst'],
+            (float) $marked['summary']['materials_goods_pre_hst'],
+            0.01
+        );
         $this->assertGreaterThan(0, $marked['summary']['markup_amount']);
         $this->assertGreaterThan($plain['summary']['grand_total'], $marked['summary']['grand_total']);
     }
@@ -639,6 +649,38 @@ class MillworkQuotationCalculatorTest extends TestCase
     {
         $this->assertSame('shelf', MillworkPartBuilder::normalizeType('built_in_old'));
         $this->assertSame('closet', MillworkPartBuilder::normalizeType('closet'));
+    }
+
+    public function test_client_scope_line_lists_piece_not_shop_ops(): void
+    {
+        $cabinet = MillworkPartBuilder::clientScopeLine([
+            'type' => 'cabinet',
+            'name' => 'Kitchen pantry',
+            'room' => 'Kitchen',
+            'style' => 'tall',
+            'width' => 36,
+            'height' => 84,
+            'depth' => 24,
+            'unit' => 'in',
+            'finish' => 'paint',
+        ]);
+        $this->assertStringContainsString('Kitchen — Kitchen pantry', $cabinet);
+        $this->assertStringContainsString('Tall cabinet', $cabinet);
+        $this->assertStringContainsString('Painted', $cabinet);
+        $this->assertStringNotContainsString('Shop —', $cabinet);
+
+        $trim = MillworkPartBuilder::clientScopeLine([
+            'type' => 'trim',
+            'name' => 'Foyer trim',
+            'room' => 'Foyer',
+            'profile' => 'mixed',
+            'linear_ft' => 48,
+            'unit' => 'ft',
+            'openings' => 2,
+            'qty' => 1,
+            'finish' => 'paint',
+        ]);
+        $this->assertSame('Foyer casing and baseboard, approx. 80 lin. ft. Painted.', $trim);
     }
 
     private function sizeKey(float $a, float $b): string
