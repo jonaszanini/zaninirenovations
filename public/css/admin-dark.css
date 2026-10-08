@@ -1502,6 +1502,43 @@ html.admin-dark .util-ra-help-pop {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
+html.admin-dark .util-ra-unit-system {
+  border-color: var(--admin-border);
+  background: var(--admin-input-bg);
+}
+
+html.admin-dark .util-ra-unit-system__btn {
+  color: var(--admin-text);
+  background: transparent;
+}
+
+html.admin-dark .util-ra-unit-system__btn + .util-ra-unit-system__btn {
+  border-left-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-unit-system__btn.is-active {
+  background: var(--admin-primary);
+  color: #fff;
+}
+
+html.admin-dark .util-ra-templates-pop {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-templates-pop__hint {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-icon-btn.is-active[data-ra-snap-toggle],
+html.admin-dark .util-ra-icon-toggle:has([data-ra-lock-layers]:checked) {
+  background: var(--admin-primary);
+  color: #fff;
+  border-color: var(--admin-primary);
+}
+
 html.admin-dark .util-ra-first-tip {
   border-top-color: var(--admin-border);
 }

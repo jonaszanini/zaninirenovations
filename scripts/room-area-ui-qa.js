@@ -1,11 +1,13 @@
 /**
- * Room Area full-page chrome QA (Batch 0).
+ * Room Area full-page chrome QA (Batch 0 + Batch 1).
  *
  * Checks 390 / 1024 / 1280 (light + dark where specified): no overlapping
  * chrome rects, header-to-toolbar gap ≤ 8px, Help opens the guide, Back
  * returns to the editor. Writes screenshots:
  *   ra-ui-1280-light.png, ra-ui-1024-light.png, ra-ui-390-light.png,
  *   ra-ui-390-dark.png, ra-ui-guide.png
+ *   ra-b1-1280-light.png, ra-b1-1024-light.png, ra-b1-390-light.png,
+ *   ra-b1-390-dark.png
  *
  * Usage:
  *   BASE_URL=http://127.0.0.1:8000 EDITOR_PATH=/admin/client-projects/1/utilities/room-area \
@@ -27,6 +29,13 @@ const shots = [
   { name: 'ra-ui-1024-light', width: 1024, height: 900, theme: 'light' },
   { name: 'ra-ui-390-light', width: 390, height: 844, theme: 'light' },
   { name: 'ra-ui-390-dark', width: 390, height: 844, theme: 'dark' },
+];
+
+const batch1Shots = [
+  { name: 'ra-b1-1280-light', width: 1280, height: 900, theme: 'light' },
+  { name: 'ra-b1-1024-light', width: 1024, height: 900, theme: 'light' },
+  { name: 'ra-b1-390-light', width: 390, height: 844, theme: 'light' },
+  { name: 'ra-b1-390-dark', width: 390, height: 844, theme: 'dark' },
 ];
 
 function visible(el, style, rect) {
@@ -147,6 +156,12 @@ async function auditChrome(page) {
 
     const help = editor.querySelector('[data-ra-help-guide]');
     if (!help) issues.push('Help / Guide link missing');
+    if (!editor.querySelector('[data-ra-templates-toggle]')) issues.push('templates control missing');
+    if (!editor.querySelector('[data-ra-lock-layers]')) issues.push('lock layers control missing');
+    if (!editor.querySelector('[data-ra-dimensions-mode]')) issues.push('dimensions mode missing');
+    if (!editor.querySelector('[data-ra-unit-system="metric"]')) issues.push('metric toggle missing');
+    if (!editor.querySelector('[data-ra-snap-toggle]')) issues.push('snap toggle missing');
+    if (editor.querySelector('[data-ra-coming-soon]')) issues.push('coming-soon slot still present');
     const groups = ['Draw / Edit', 'Measure / Units', 'Room tools', 'View'];
     const text = editor.innerText || '';
     groups.forEach((label) => {
@@ -193,7 +208,7 @@ async function main() {
 
   const editorPath = await findEditorPath(page);
   const editorUrl = editorPath.startsWith('http') ? editorPath : `${BASE_URL}${editorPath}`;
-  const report = { editorUrl, shots: [], help: null };
+  const report = { editorUrl, shots: [], batch1: [], help: null };
 
   for (const shot of shots) {
     await page.setViewport({ width: shot.width, height: shot.height, deviceScaleFactor: shot.width <= 400 ? 2 : 1 });
@@ -236,7 +251,71 @@ async function main() {
   if (!backOnEditor) throw new Error('Back from guide did not return to the editor');
   report.help = { openedGuide: true, returnedToEditor: true, file: guideFile };
 
-  const failed = report.shots.filter((s) => s.audit.issues.length);
+  for (const shot of batch1Shots) {
+    await page.setViewport({ width: shot.width, height: shot.height, deviceScaleFactor: shot.width <= 400 ? 2 : 1 });
+    await page.goto(editorUrl, { waitUntil: 'networkidle0' });
+    await page.waitForSelector('.util-ra--fullpage', { timeout: 15000 });
+    await setTheme(page, shot.theme);
+    await page.evaluate(() => {
+      try { localStorage.removeItem('zr-room-area-guide-tip-v1'); } catch (e) {}
+      const tip = document.querySelector('[data-ra-first-tip]');
+      if (tip) tip.hidden = true;
+    });
+    await delay(200);
+    await page.evaluate(() => {
+      const w = document.querySelector('[data-ra-type-rect-w]');
+      const l = document.querySelector('[data-ra-type-rect-l]');
+      const add = document.querySelector('[data-ra-type-rect]');
+      if (w) w.value = '12';
+      if (l) l.value = '10';
+      if (add) add.click();
+    });
+    await delay(400);
+    await page.evaluate(() => {
+      const lock = document.querySelector('[data-ra-lock-layers]');
+      if (lock && !lock.checked) {
+        lock.checked = true;
+        lock.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      const dim = document.querySelector('[data-ra-dimensions-mode]');
+      if (dim) {
+        dim.value = 'all';
+        dim.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      const metric = document.querySelector('[data-ra-unit-system="imperial"]');
+      if (metric) metric.click();
+      const tpl = document.querySelector('[data-ra-templates-toggle]');
+      if (tpl) tpl.click();
+    });
+    await delay(250);
+    const audit = await page.evaluate(() => {
+      const issues = [];
+      const editor = document.querySelector('.util-ra--fullpage');
+      if (!editor) return { issues: ['full-page editor root missing'] };
+      const undo = editor.querySelector('[data-ra-undo-vertex]');
+      if (!undo || undo.disabled) issues.push('undo not enabled after canvas edit');
+      const tpl = editor.querySelector('[data-ra-templates-popover]');
+      if (!tpl || tpl.hasAttribute('hidden')) issues.push('templates menu not open');
+      const dim = editor.querySelector('[data-ra-dimensions-mode]');
+      if (!dim || dim.value !== 'all') issues.push('dimension toggle not on All');
+      const lock = editor.querySelector('[data-ra-lock-layers]');
+      if (!lock || !lock.checked) issues.push('lock layers not on');
+      const ft = editor.querySelector('[data-ra-unit-system="imperial"]');
+      if (!ft || !ft.classList.contains('is-active')) issues.push('imperial units toggle not active');
+      const labels = editor.querySelectorAll('.util-ra-tool-group__label');
+      const text = Array.from(labels).map((el) => el.textContent || '').join(' ');
+      if (text.indexOf('Room tools') === -1) issues.push('Room tools group missing');
+      return { issues };
+    });
+    const file = path.join(OUT, `${shot.name}.png`);
+    await page.screenshot({ path: file, fullPage: false });
+    report.batch1.push({ ...shot, file, audit });
+    if (audit.issues.length) console.error('QA fail', shot.name, audit);
+    else console.log('QA ok', shot.name);
+  }
+
+  const failed = report.shots.filter((s) => s.audit.issues.length)
+    .concat(report.batch1.filter((s) => s.audit.issues.length));
   fs.writeFileSync(path.join(OUT, 'ra-ui-qa-report.json'), JSON.stringify(report, null, 2));
   await browser.close();
   if (failed.length) {

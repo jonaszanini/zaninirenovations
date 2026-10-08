@@ -58,6 +58,14 @@ class RoomAreaMeasurementParserTest extends TestCase
         $this->assertEqualsWithDelta(10.0, $cm, 0.0001);
     }
 
+    public function test_explicit_suffixes_win_over_display_mode(): void
+    {
+        $this->assertEqualsWithDelta(12.5, $this->parser->parse("12' 6\"", RoomAreaMeasurementParser::UNIT_METER), 0.0001);
+        $this->assertEqualsWithDelta(3.81 / 0.3048, $this->parser->parse('3.81 m', RoomAreaMeasurementParser::UNIT_FEET_INCH_FRAC), 0.0001);
+        $this->assertEqualsWithDelta(3.81 / 0.3048, $this->parser->parse('3810 mm', RoomAreaMeasurementParser::UNIT_FEET_DECIMAL), 0.0001);
+        $this->assertEqualsWithDelta(12.5, $this->parser->parse('12.5', RoomAreaMeasurementParser::UNIT_FEET_DECIMAL), 0.0001);
+    }
+
     public function test_parses_inches_only_mode(): void
     {
         $this->assertEqualsWithDelta(

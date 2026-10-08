@@ -6122,10 +6122,95 @@ body:has(.util-ra--fullpage) {
 
 .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-measure-unit {
   order: 0;
-  flex: 0 0 13rem;
-  width: 13rem;
-  min-width: 13rem;
-  max-width: 13rem;
+  flex: 0 0 11.5rem;
+  width: 11.5rem;
+  min-width: 11.5rem;
+  max-width: 11.5rem;
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-dim-mode {
+  order: 0;
+  flex: 0 0 8.5rem;
+  width: 8.5rem;
+  min-width: 8.5rem;
+  max-width: 8.5rem;
+}
+
+.util-ra-unit-system {
+  display: inline-flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  overflow: hidden;
+  height: var(--admin-control-height);
+}
+
+.util-ra-unit-system__btn {
+  min-width: 2.75rem;
+  height: 100%;
+  padding: 0 0.55rem;
+  border: 0;
+  border-radius: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.util-ra-unit-system__btn + .util-ra-unit-system__btn {
+  border-left: 1px solid var(--admin-border);
+}
+
+.util-ra-unit-system__btn.is-active {
+  background: var(--admin-primary);
+  color: #fff;
+}
+
+.util-ra-templates {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.util-ra-templates-pop {
+  left: 0;
+  right: auto;
+  width: 16.5rem;
+}
+
+.util-ra-templates-pop__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.util-ra-templates-pop__grid .admin-btn {
+  min-height: var(--admin-control-height);
+  justify-content: center;
+}
+
+.util-ra-templates-pop__alcove {
+  width: 100%;
+  min-height: var(--admin-control-height);
+  justify-content: center;
+  margin-bottom: 0.4rem;
+}
+
+.util-ra-templates-pop__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--admin-muted);
+  line-height: 1.35;
+}
+
+.util-ra-icon-btn.is-active[data-ra-snap-toggle],
+.util-ra-icon-toggle:has([data-ra-lock-layers]:checked) {
+  background: var(--admin-primary);
+  color: #fff;
+  border-color: var(--admin-primary);
+}
+
+.util-ra-canvas-wrap.is-layers-locked {
+  cursor: default;
 }
 
 .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-area-name {
@@ -6215,6 +6300,13 @@ body:has(.util-ra--fullpage) {
     min-width: 130px;
     max-width: 130px;
     padding-right: 1.6rem;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-dim-mode {
+    flex: 0 0 7.25rem;
+    width: 7.25rem;
+    min-width: 7.25rem;
+    max-width: 7.25rem;
   }
 
   .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-area-name {

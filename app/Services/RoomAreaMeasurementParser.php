@@ -8,7 +8,8 @@ use InvalidArgumentException;
  * Parses tape-measure lengths into feet.
  *
  * Accepts forms like 12' 6", 12'6, 12 6, 12.5, 150", 12' 6 1/2",
- * and metric (3.5 m / 350 cm) when the unit mode is meter.
+ * and metric (3.5 m / 350 cm / 3810 mm). Explicit unit suffixes always win
+ * over the selected display mode so 12' 6", 3.81 m, and 3810 mm all parse.
  * Keep in sync with parseLengthInput() in public/js/admin-utilities-room-area.js.
  */
 class RoomAreaMeasurementParser
@@ -30,7 +31,15 @@ class RoomAreaMeasurementParser
      */
     public function parse(string $raw, string $unit = self::UNIT_FEET_INCH_FRAC): float
     {
-        $unit = $this->normalizeUnit($unit);
+        $detected = $this->detectExplicitUnit($raw);
+        if ($detected === 'mm') {
+            return $this->parseMillimeters($raw);
+        }
+        if ($detected !== null) {
+            $unit = $detected;
+        } else {
+            $unit = $this->normalizeUnit($unit);
+        }
 
         return match ($unit) {
             self::UNIT_METER => $this->parseMeters($raw),
@@ -38,6 +47,31 @@ class RoomAreaMeasurementParser
             self::UNIT_FEET_DECIMAL => $this->parseFeetDecimal($raw),
             default => $this->parseFeetInchFrac($raw),
         };
+    }
+
+    /**
+     * Detect an explicit unit suffix or feet-inch marks, independent of display mode.
+     */
+    public function detectExplicitUnit(string $raw): ?string
+    {
+        $s = $this->normalizeRaw($raw);
+        if ($s === '') {
+            return null;
+        }
+        if (preg_match('/\bmm\b/i', $s) || preg_match('/millimet/i', $s)) {
+            return 'mm';
+        }
+        if (preg_match('/\bcm\b/i', $s) || preg_match('/\bm(eters?|etres?)?\b/i', $s)) {
+            return self::UNIT_METER;
+        }
+        if (preg_match('/[\'′]/', $s) || preg_match('/\b(ft|feet|foot)\b/i', $s)) {
+            return self::UNIT_FEET_INCH_FRAC;
+        }
+        if (preg_match('/["″]/', $s) || preg_match('/\bin(ch(es)?)?\b/i', $s)) {
+            return self::UNIT_INCH;
+        }
+
+        return null;
     }
 
     public function normalizeUnit(string $unit): string
@@ -168,9 +202,24 @@ class RoomAreaMeasurementParser
         return $a ?: 1;
     }
 
+    private function parseMillimeters(string $raw): float
+    {
+        $s = $this->normalizeRaw($raw);
+        $s = preg_replace('/\s*(mm|millimet(er|re)s?)\s*$/i', '', $s) ?? $s;
+        $s = trim($s);
+        if ($s === '') {
+            throw new InvalidArgumentException('Enter a length in millimetres.');
+        }
+
+        return $this->positive(($this->toFloat($s) / 1000.0) / self::FEET_TO_METERS);
+    }
+
     private function parseMeters(string $raw): float
     {
         $s = $this->normalizeRaw($raw);
+        if (preg_match('/^([\d.,]+)\s*mm(s)?$/i', $s, $m)) {
+            return $this->parseMillimeters($raw);
+        }
         if (preg_match('/^([\d.,]+)\s*cm(s)?$/i', $s, $m)) {
             $cm = $this->toFloat($m[1]);
 

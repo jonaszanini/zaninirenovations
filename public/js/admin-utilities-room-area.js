@@ -25,12 +25,21 @@
   var SQFT_TO_SQM = 0.092903;
   var FEET_TO_METERS = 0.3048;
   var MEASURE_UNIT_STORAGE_KEY = 'room-area-measure-unit';
+  var DIM_MODE_STORAGE_KEY = 'room-area-dimensions-mode';
+  var LOCK_LAYERS_STORAGE_KEY = 'room-area-layers-locked';
+  var SNAP_STORAGE_KEY = 'room-area-angle-snap';
   var FIRST_TIP_STORAGE_KEY = 'zr-room-area-guide-tip-v1';
   var MEASURE_UNITS = {
     meter: 'meter',
     inch: 'inch',
     feet_decimal: 'feet_decimal',
     feet_inch_frac: 'feet_inch_frac'
+  };
+  var DIM_MODES = {
+    all: 'all',
+    main: 'main',
+    area: 'area',
+    off: 'off'
   };
   var MIN_CANVAS_W = 260;
   var MIN_CANVAS_H = 520;
@@ -261,6 +270,12 @@
     zoomReset: root.querySelector('[data-ra-zoom-reset]'),
     zoomLabel: root.querySelector('[data-ra-zoom-label]'),
     measureUnit: root.querySelector('[data-ra-measure-unit]'),
+    dimensionsMode: root.querySelector('[data-ra-dimensions-mode]'),
+    lockLayers: root.querySelector('[data-ra-lock-layers]'),
+    snapToggle: root.querySelector('[data-ra-snap-toggle]'),
+    templatesToggle: root.querySelector('[data-ra-templates-toggle]'),
+    templatesPopover: root.querySelector('[data-ra-templates-popover]'),
+    templatesRoot: root.querySelector('[data-ra-templates]'),
     areaName: root.querySelector('[data-ra-area-name]'),
     areaNameWrap: root.querySelector('[data-ra-area-name-wrap]'),
     palette: root.querySelector('[data-ra-palette]'),
@@ -336,6 +351,13 @@
     nextObjectId: 1,
     selectedObjectId: null,
     showDimensions: true,
+    dimensionsMode: DIM_MODES.all,
+    layersLocked: false,
+    angleSnap: true,
+    altHeld: false,
+    imperialUnit: MEASURE_UNITS.feet_inch_frac,
+    alignGuides: null,
+    openingHint: null,
     armedCatalogKey: null,
     placingCatalog: null,
     objectGhost: null,
@@ -2276,18 +2298,58 @@
     if (els.knownLength) els.knownLength.placeholder = ph;
   }
 
+  function isMetricDisplay() {
+    return state.measureUnit === MEASURE_UNITS.meter;
+  }
+
   function setMeasureUnit(unit) {
     if (!MEASURE_UNITS[unit]) return;
+    if (unit !== MEASURE_UNITS.meter) state.imperialUnit = unit;
     state.measureUnit = unit;
     try { localStorage.setItem(MEASURE_UNIT_STORAGE_KEY, unit); } catch (e) { /* ignore */ }
-    if (els.measureUnit) els.measureUnit.value = unit;
+    raAll('[data-ra-measure-unit]').forEach(function (sel) { sel.value = unit; });
+    syncUnitSystemUi();
     updateMeasureUnitPlaceholders();
+    updateLiveUnitLabels();
     redrawLabels();
     redrawRulers();
     refreshWallLengthInput();
+    updateLiveArea();
+    renderTypedWallsList();
     if (state.selectedRulerId !== null && els.rulerLength) {
       var ruler = findRulerById(state.selectedRulerId);
       if (ruler) els.rulerLength.textContent = rulerLengthLabel(ruler);
+    }
+  }
+
+  function syncUnitSystemUi() {
+    var metric = isMetricDisplay();
+    raAll('[data-ra-unit-system]').forEach(function (btn) {
+      var want = btn.getAttribute('data-ra-unit-system') === 'metric';
+      var on = want === metric;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function setUnitSystem(system) {
+    if (system === 'metric') {
+      setMeasureUnit(MEASURE_UNITS.meter);
+      return;
+    }
+    setMeasureUnit(state.imperialUnit && state.imperialUnit !== MEASURE_UNITS.meter
+      ? state.imperialUnit
+      : MEASURE_UNITS.feet_inch_frac);
+  }
+
+  function updateLiveUnitLabels() {
+    var area = isMetricDisplay() ? 'm²' : 'sq ft';
+    var linear = isMetricDisplay() ? 'm' : 'lf';
+    raAll('[data-ra-area-unit]').forEach(function (el) { el.textContent = area; });
+    raAll('[data-ra-linear-unit]').forEach(function (el) { el.textContent = linear; });
+    if (els.wallHeight) {
+      var unitEl = els.wallHeight.parentNode && els.wallHeight.parentNode.querySelector('.util-ra-live-area__height-unit');
+      if (unitEl) unitEl.textContent = isMetricDisplay() ? 'm' : 'ft';
     }
   }
 
@@ -2329,8 +2391,30 @@
     return n;
   }
 
+  function parseMmInput(raw) {
+    var s = String(raw).trim();
+    s = s.replace(/\s*(mm|millimet(er|re)s?)\s*$/i, '').trim();
+    if (!s) throw new Error('Enter a length in millimetres.');
+    var n = parseFloat(s.replace(/,/g, ''));
+    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
+    return (n / 1000) / FEET_TO_METERS;
+  }
+
+  function detectExplicitLengthUnit(raw) {
+    var s = String(raw).trim();
+    if (!s) return null;
+    if (/\bmm\b/i.test(s) || /millimet/i.test(s)) return 'mm';
+    if (/\bcm\b/i.test(s) || /\bm(eters?|etres?)?\b/i.test(s)) return MEASURE_UNITS.meter;
+    if (/['′]/.test(s) || /\b(ft|feet|foot)\b/i.test(s)) return MEASURE_UNITS.feet_inch_frac;
+    if (/["″]/.test(s) || /\bin(ch(es)?)?\b/i.test(s)) return MEASURE_UNITS.inch;
+    return null;
+  }
+
   function parseLengthInput(raw) {
-    switch (state.measureUnit) {
+    var detected = detectExplicitLengthUnit(raw);
+    var unit = detected || state.measureUnit;
+    if (unit === 'mm') return parseMmInput(raw);
+    switch (unit) {
       case MEASURE_UNITS.meter:
         return parseMetersInput(raw);
       case MEASURE_UNITS.inch:
@@ -2340,6 +2424,38 @@
       default:
         return parseFeetInput(raw);
     }
+  }
+
+  function geometryLocked() {
+    return !!state.layersLocked;
+  }
+
+  function warnGeometryLocked() {
+    setFeedback('Unlock layers to move walls or corners. Doors, windows, and notes stay editable.', true);
+  }
+
+  function shouldAngleSnap(e) {
+    if (state.altHeld || (e && e.evt && e.evt.altKey)) return false;
+    if (state.angleSnap) return true;
+    return !!(state.shiftHeld || (e && e.evt && e.evt.shiftKey));
+  }
+
+  function fmtAreaFromSqFt(sqft) {
+    if (sqft == null || !isFinite(sqft)) return '—';
+    if (isMetricDisplay()) return fmt(sqft * SQFT_TO_SQM, 2) + ' m²';
+    return fmt(sqft, 2) + ' sq ft';
+  }
+
+  function formatLinearQty(feet) {
+    if (feet == null || !isFinite(feet)) return '—';
+    if (isMetricDisplay()) return fmt(feet * FEET_TO_METERS, 2);
+    return fmt(feet, 2);
+  }
+
+  function formatAreaQty(sqft) {
+    if (sqft == null || !isFinite(sqft)) return '—';
+    if (isMetricDisplay()) return fmt(sqft * SQFT_TO_SQM, 2);
+    return fmt(sqft, 2);
   }
 
   function shoelaceArea(vertices) {
@@ -2638,6 +2754,122 @@
     return clampToCanvas(found ? best : raw);
   }
 
+  function alignmentThreshold() {
+    return Math.max(uiSize(5), 4);
+  }
+
+  function collectAlignmentGuides(idx, raw) {
+    if (!raw || state.altHeld) return { point: raw, guides: [] };
+    var thresh = alignmentThreshold();
+    var xHits = [];
+    var yHits = [];
+    allPolygons().forEach(function (entry) {
+      (entry.polygon.vertices || []).forEach(function (v, vi) {
+        if (entry.polygon.id === (activePolygon() && activePolygon().id) && vi === idx) return;
+        if (Math.abs(v.x - raw.x) <= thresh) xHits.push(v.x);
+        if (Math.abs(v.y - raw.y) <= thresh) yHits.push(v.y);
+      });
+    });
+    var point = { x: raw.x, y: raw.y };
+    var guides = [];
+    if (xHits.length) {
+      xHits.sort(function (a, b) { return Math.abs(a - raw.x) - Math.abs(b - raw.x); });
+      point.x = xHits[0];
+      guides.push({ type: 'v', x: point.x });
+    }
+    if (yHits.length) {
+      yHits.sort(function (a, b) { return Math.abs(a - raw.y) - Math.abs(b - raw.y); });
+      point.y = yHits[0];
+      guides.push({ type: 'h', y: point.y });
+    }
+    return { point: point, guides: guides };
+  }
+
+  function snapVertexToGuides(idx, raw) {
+    var aligned = collectAlignmentGuides(idx, raw);
+    state.alignGuides = aligned.guides;
+    return clampToCanvas(aligned.point);
+  }
+
+  function redrawAlignmentGuides() {
+    var layer = state.layers.preview;
+    if (!layer) return;
+    var guides = state.alignGuides || [];
+    var hint = state.openingHint;
+    if (!guides.length && !hint && !state.drawPreview) {
+      return;
+    }
+    guides.forEach(function (g) {
+      if (g.type === 'v') {
+        layer.add(new Konva.Line({
+          points: [g.x, 0, g.x, canvasH()],
+          stroke: isAdminDark() ? 'rgba(125, 211, 252, 0.55)' : 'rgba(2, 71, 104, 0.35)',
+          strokeWidth: uiSize(1),
+          dash: [uiSize(6), uiSize(4)],
+          listening: false
+        }));
+      } else {
+        layer.add(new Konva.Line({
+          points: [0, g.y, canvasW(), g.y],
+          stroke: isAdminDark() ? 'rgba(125, 211, 252, 0.55)' : 'rgba(2, 71, 104, 0.35)',
+          strokeWidth: uiSize(1),
+          dash: [uiSize(6), uiSize(4)],
+          listening: false
+        }));
+      }
+    });
+    if (hint && hint.point && hint.text) {
+      var kLabel = new Konva.Label({
+        x: hint.point.x,
+        y: hint.point.y,
+        listening: false
+      });
+      kLabel.add(new Konva.Tag({
+        fill: canvasTagFill(true),
+        stroke: '#f57f17',
+        strokeWidth: uiSize(1),
+        cornerRadius: uiSize(4),
+        pointerDirection: 'down',
+        pointerWidth: uiSize(8),
+        pointerHeight: uiSize(6)
+      }));
+      kLabel.add(new Konva.Text({
+        text: hint.text,
+        fontSize: uiSize(11),
+        fontFamily: 'Open Sans, sans-serif',
+        fill: '#5d4037',
+        padding: uiSize(4)
+      }));
+      kLabel.offsetX(kLabel.width() / 2);
+      layer.add(kLabel);
+    }
+  }
+
+  function clearLiveGuides() {
+    state.alignGuides = null;
+    state.openingHint = null;
+    if (state.layers.preview && !state.drawPreview) {
+      state.layers.preview.destroyChildren();
+      flushKonva();
+    }
+  }
+
+  function openingCornerHint(obj) {
+    if (!obj || isFreeObject(obj)) return null;
+    var place = objectPlacement(obj);
+    if (!place || !place.wall) return null;
+    var startIn = Math.max(0, place.offset || 0);
+    var endIn = Math.max(0, place.lengthIn - (place.offset || 0) - (place.width || 0));
+    var fromStart = startIn <= endIn;
+    var inches = fromStart ? startIn : endIn;
+    var corner = fromStart ? place.wall.a : place.wall.b;
+    return {
+      point: { x: place.mid.x, y: place.mid.y },
+      text: fmtLengthFromFeet(inches / INCHES_PER_FOOT) + (fromStart ? ' from start' : ' from end'),
+      corner: corner
+    };
+  }
+
   function fmtFeetInches(lenFt) {
     return fmtLengthFromFeet(lenFt);
   }
@@ -2690,10 +2922,11 @@
   }
 
   function snapVertexPosition(idx, raw) {
-    if (state.shiftHeld) {
-      return snapVertexPositionShift(idx, raw);
+    var next = raw;
+    if (shouldAngleSnap()) {
+      next = snapVertexPositionShift(idx, raw);
     }
-    return clampToCanvas(raw);
+    return snapVertexToGuides(idx, next);
   }
 
   /** Move one or more selected corners; group drags keep relative spacing (uniform delta). */
@@ -2742,6 +2975,10 @@
   }
 
   function deleteSelectedWall() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     var n = activeVertices().length;
     if (wallCount() === 0) return;
@@ -2867,6 +3104,10 @@
   }
 
   function deleteSelectedVertex() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedVertexIndices.length === 0) return;
     if (activeVertices().length - state.selectedVertexIndices.length < 2) {
       setFeedback('Need at least two corners to keep a wall segment.', true);
@@ -2923,12 +3164,14 @@
   }
 
   function canDragWalls() {
-    return wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating
+    return !geometryLocked()
+      && wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating
       && !state.armedCatalogKey && !state.placingCatalog;
   }
 
   function canDragShapes() {
-    return !isDrawingOpenShape()
+    return !geometryLocked()
+      && !isDrawingOpenShape()
       && !isPanOrPinchActive()
       && !state.rulerMode
       && !state.calibrating
@@ -3304,6 +3547,10 @@
   }
 
   function splitSelectedWall() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     var idx = state.selectedWallIndex;
     var a = activeVertices()[idx];
@@ -3485,6 +3732,10 @@
   }
 
   function applyWallLength() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     if (!pixelsPerFoot()) {
       setFeedback('Calibrate scale before editing wall lengths.', true);
@@ -4199,6 +4450,11 @@
         updateDrawPreviewFromPointer();
         return;
       }
+      if (e.code === 'AltLeft' || e.code === 'AltRight') {
+        state.altHeld = true;
+        updateDrawPreviewFromPointer();
+        return;
+      }
       if (e.code !== 'Space' || e.repeat) return;
       if (isTypingTarget(e.target)) return;
       e.preventDefault();
@@ -4211,6 +4467,11 @@
     document.addEventListener('keyup', function (e) {
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         state.shiftHeld = false;
+        updateDrawPreviewFromPointer();
+        return;
+      }
+      if (e.code === 'AltLeft' || e.code === 'AltRight') {
+        state.altHeld = false;
         updateDrawPreviewFromPointer();
         return;
       }
@@ -4561,7 +4822,7 @@
       var pos = getPointerPos();
       if (!pos) return;
       var preview = pos;
-      if (state.shiftHeld) preview = snapPoint(pos, state.rulerDraft[0], SHIFT_SNAP_STEP);
+      if (shouldAngleSnap()) preview = snapPoint(pos, state.rulerDraft[0], SHIFT_SNAP_STEP);
       else preview = pos;
       state.rulerPreview = clampToCanvas(preview);
       redrawRulers();
@@ -4572,6 +4833,7 @@
       if (state.draggingObject) {
         state.draggingObject = false;
         state.objectPointerDown = null;
+        clearLiveGuides();
         rematchAllObjects();
         redrawAll();
         return;
@@ -4880,6 +5142,10 @@
   }
 
   function addAreaSameGroup() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!isActiveClosed()) {
       setFeedback('Close the current shape before adding another area.', true);
       return;
@@ -4891,6 +5157,10 @@
   }
 
   function addAreaNewGroup() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!isActiveClosed()) {
       setFeedback('Close the current shape before starting a new color group.', true);
       return;
@@ -4907,6 +5177,10 @@
   }
 
   function removeLastDrawVertex() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return false;
+    }
     if (!isDrawingOpenShape() || !activeVertices().length) return false;
     pushUndoSnapshot();
     activeVertices().pop();
@@ -4965,7 +5239,7 @@
   function snapDrawPreviewPoint(pos) {
     var prev = lastDrawVertex();
     if (!prev || !pos) return null;
-    var point = state.shiftHeld ? snapPoint(pos, prev, SHIFT_SNAP_STEP) : pos;
+    var point = shouldAngleSnap() ? snapPoint(pos, prev, SHIFT_SNAP_STEP) : pos;
     var verts = activeVertices();
     if (verts.length >= 3) {
       var first = verts[0];
@@ -5014,6 +5288,7 @@
     var prev = lastDrawVertex();
     var dest = state.drawPreview;
     if (!prev || !dest || dist(prev, dest) < 1) {
+      redrawAlignmentGuides();
       flushKonva();
       return;
     }
@@ -5067,6 +5342,7 @@
       layer.add(kLabel);
     }
 
+    redrawAlignmentGuides();
     flushKonva();
   }
 
@@ -5803,7 +6079,7 @@
           stroke: isSelected ? '#f57f17' : '#fff',
           strokeWidth: uiSize(isSelected ? 3 : 2),
           hitStrokeWidth: Math.max(0, (hitR - visualR) * 2),
-          draggable: !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
+          draggable: !geometryLocked() && !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
           listening: !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
           dragDistance: uiSize(3)
         });
@@ -5816,8 +6092,9 @@
           if (state.stage && !state.draggingVertex && !state.draggingWall) updateCanvasCursor();
         });
         circle.on('dragstart', function (e) {
-          if (isPanOrPinchActive()) {
+          if (geometryLocked() || isPanOrPinchActive()) {
             e.target.stopDrag();
+            if (geometryLocked()) warnGeometryLocked();
             return;
           }
           var shiftKey = isShiftKey(e);
@@ -5878,6 +6155,7 @@
           redrawPolygonLine();
           redrawLabels();
           redrawWalls();
+          redrawDrawPreview();
           updateLiveArea();
           if (state.selectedWallIndex !== null && els.wallLength) {
             var lenFt = wallLengthFeet(state.selectedWallIndex);
@@ -5895,6 +6173,7 @@
           state.vertexDragFrom = null;
           state.vertexDragOrigins = null;
           applyVertexGroupDrag(vertexIndex, raw, true);
+          clearLiveGuides();
           if (!isValidShape(activeVertices(), isActiveClosed())) {
             var snap = state.undoStack.length ? state.undoStack[state.undoStack.length - 1] : null;
             if (snap) restoreUndoSnapshot(snap);
@@ -5919,9 +6198,16 @@
     var nameItems = buildAreaNameLabels();
     var occupied = nameItems.map(function (item) { return item.box; });
 
-    if (state.showDimensions) {
-      drawWallDimensionLabels(labelLayer, occupied);
-      drawObjectDimensionLabels(labelLayer, occupied);
+    if (state.dimensionsMode !== DIM_MODES.off) {
+      if (state.dimensionsMode === DIM_MODES.all) {
+        drawWallDimensionLabels(labelLayer, occupied);
+        drawObjectDimensionLabels(labelLayer, occupied);
+        drawOverallDimensionLabel(labelLayer, occupied);
+      } else if (state.dimensionsMode === DIM_MODES.main) {
+        drawOverallDimensionLabel(labelLayer, occupied);
+      } else if (state.dimensionsMode === DIM_MODES.area) {
+        drawOverallDimensionLabel(labelLayer, occupied, true);
+      }
     }
 
     nameItems.forEach(function (item) {
@@ -6133,6 +6419,53 @@
       labelLayer.add(kLabel);
       nameBoxes.push(box);
     });
+  }
+
+  function drawOverallDimensionLabel(labelLayer, nameBoxes, areaOnly) {
+    var verts = activeVertices();
+    var ppf = pixelsPerFoot();
+    if (!ppf || !isActiveClosed() || verts.length < 3) return;
+    var box = polygonAabbSize(verts);
+    var area = areaSqFt(verts);
+    var text;
+    if (areaOnly) {
+      text = fmtAreaFromSqFt(area);
+    } else {
+      text = fmtLengthFromFeet(box.width / ppf) + ' × ' + fmtLengthFromFeet(box.height / ppf);
+      if (area != null) text += ' · ' + fmtAreaFromSqFt(area);
+    }
+    var c = polygonCentroid(verts) || { x: box.width / 2, y: box.height / 2 };
+    var kLabel = new Konva.Label({
+      x: c.x,
+      y: c.y,
+      listening: false
+    });
+    kLabel.add(new Konva.Tag({
+      fill: canvasTagFill(false),
+      stroke: canvasBrandStroke(),
+      strokeWidth: uiSize(1),
+      cornerRadius: uiSize(4),
+      pointerDirection: 'none'
+    }));
+    kLabel.add(new Konva.Text({
+      text: text,
+      fontSize: uiSize(12),
+      fontFamily: 'Open Sans, sans-serif',
+      fontStyle: '700',
+      fill: canvasAreaLabelText(),
+      padding: uiSize(5)
+    }));
+    kLabel.offsetX(kLabel.width() / 2);
+    kLabel.offsetY(kLabel.height() / 2);
+    var boxLabel = konvaLabelBox(kLabel);
+    if (overlapsAnyBox(boxLabel, nameBoxes, uiSize(2))) {
+      kLabel.y(c.y + uiSize(18));
+      kLabel.offsetY(kLabel.height() / 2);
+      boxLabel = konvaLabelBox(kLabel);
+      if (overlapsAnyBox(boxLabel, nameBoxes, uiSize(2))) return;
+    }
+    labelLayer.add(kLabel);
+    nameBoxes.push(boxLabel);
   }
 
   function polygonCentroid(verts) {
@@ -6683,8 +7016,7 @@
     }
 
     if (state.rulerMode) {
-      var rulerShiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
-      placeRulerPoint(pos, rulerShiftSnap);
+      placeRulerPoint(pos, shouldAngleSnap(e));
       return;
     }
 
@@ -6739,11 +7071,14 @@
         }
       }
 
-      var drawShiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
+      if (geometryLocked()) {
+        warnGeometryLocked();
+        return;
+      }
       var drawPoint = pos;
       if (activeVertices().length > 0) {
         var drawPrev = activeVertices()[activeVertices().length - 1];
-        if (drawShiftSnap) {
+        if (shouldAngleSnap(e)) {
           drawPoint = snapPoint(pos, drawPrev, SHIFT_SNAP_STEP);
         }
       }
@@ -6787,14 +7122,15 @@
       }
     }
 
-    var shiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var point = pos;
     if (activeVertices().length > 0) {
       var prev = activeVertices()[activeVertices().length - 1];
-      if (shiftSnap) {
+      if (shouldAngleSnap(e)) {
         point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
-      } else {
-        point = pos;
       }
     }
     pushUndoSnapshot();
@@ -6833,6 +7169,10 @@
   }
 
   function closeShape() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (activeVertices().length < 3) return;
     if (!isSimplePolygon(activeVertices())) {
       setFeedback('Shape crosses itself — adjust corners before closing.', true);
@@ -6993,17 +7333,19 @@
     });
     els.liveArea.classList.toggle('util-ra-live-area--single', closedCount <= 1 && groupsWithAreas <= 1);
     if (els.liveActiveShape) {
-      els.liveActiveShape.textContent = activeSqft !== null ? fmt(activeSqft, 2) : '—';
+      els.liveActiveShape.textContent = activeSqft !== null ? formatAreaQty(activeSqft) : '—';
     }
     if (els.liveGrandTotal) {
-      els.liveGrandTotal.textContent = fmt(grandTotal, 2);
+      els.liveGrandTotal.textContent = formatAreaQty(grandTotal);
     }
     if (els.liveSqft) els.liveSqft.textContent = fmt(grandTotal, 2);
     if (els.liveSqm) els.liveSqm.textContent = fmt(grandTotal * SQFT_TO_SQM, 2);
+    var alt = root.querySelector('[data-ra-live-sqft-alt]');
+    if (alt) alt.textContent = fmt(grandTotal, 2);
     var metrics = computeWallMetrics();
-    if (els.livePerimeter) els.livePerimeter.textContent = formatMetricQty(metrics.perimeter_lf);
-    if (els.liveBaseboard) els.liveBaseboard.textContent = formatMetricQty(metrics.baseboard_lf);
-    if (els.liveWallArea) els.liveWallArea.textContent = formatMetricQty(metrics.wall_area_sqft);
+    if (els.livePerimeter) els.livePerimeter.textContent = formatLinearQty(metrics.perimeter_lf);
+    if (els.liveBaseboard) els.liveBaseboard.textContent = formatLinearQty(metrics.baseboard_lf);
+    if (els.liveWallArea) els.liveWallArea.textContent = formatAreaQty(metrics.wall_area_sqft);
     if (els.liveCounts) {
       var counts = metrics.door_count + (metrics.door_count === 1 ? ' door' : ' doors') +
         ' · ' + metrics.window_count + (metrics.window_count === 1 ? ' window' : ' windows') +
@@ -7016,19 +7358,19 @@
     if (els.liveFootprint) {
       var showFp = metrics.wall_thickness_in > 0 && Math.abs(metrics.outside_area_sqft - metrics.inside_area_sqft) > 0.009;
       show(els.liveFootprintWrap, showFp);
-      els.liveFootprint.textContent = formatMetricQty(metrics.outside_area_sqft);
+      els.liveFootprint.textContent = formatAreaQty(metrics.outside_area_sqft);
     }
     if (els.liveFraming) {
       var showFr = metrics.shared_wall_lf > 0.009;
       show(els.liveFramingWrap, showFr);
-      els.liveFraming.textContent = formatMetricQty(metrics.framing_lf);
+      els.liveFraming.textContent = formatLinearQty(metrics.framing_lf);
     }
     if (els.liveCabinets) {
       var cab = (metrics.cabinet_base_lf || 0) + (metrics.cabinet_upper_lf || 0);
       show(els.liveCabinetsWrap, cab > 0.009);
       var cabParts = [];
-      if (metrics.cabinet_base_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_base_lf) + ' base');
-      if (metrics.cabinet_upper_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_upper_lf) + ' up');
+      if (metrics.cabinet_base_lf > 0) cabParts.push(formatLinearQty(metrics.cabinet_base_lf) + ' base');
+      if (metrics.cabinet_upper_lf > 0) cabParts.push(formatLinearQty(metrics.cabinet_upper_lf) + ' up');
       els.liveCabinets.textContent = cabParts.join(' · ') || '0';
     }
     syncExportButtons();
@@ -7042,7 +7384,7 @@
         li.innerHTML =
           '<span class="util-ra-live-area-groups__swatch" style="background:' + esc(group.color) + '"></span>' +
           '<span class="util-ra-live-area-groups__label">Group total:</span>' +
-          '<strong>' + fmt(groupAreaSqFt(group), 2) + '</strong> sq ft' +
+          '<strong>' + formatAreaQty(groupAreaSqFt(group)) + '</strong> ' + (isMetricDisplay() ? 'm²' : 'sq ft') +
           (count > 1 ? ' <span class="util-ra-live-area-groups__count">(' + count + ' areas)</span>' : '');
         els.liveGroupList.appendChild(li);
       });
@@ -8454,9 +8796,280 @@
   }
 
   function setShowDimensions(on) {
-    state.showDimensions = !!on;
+    setDimensionsMode(on ? DIM_MODES.all : DIM_MODES.off);
+  }
+
+  function setDimensionsMode(mode) {
+    if (!DIM_MODES[mode]) mode = DIM_MODES.all;
+    state.dimensionsMode = mode;
+    state.showDimensions = mode !== DIM_MODES.off;
+    try { localStorage.setItem(DIM_MODE_STORAGE_KEY, mode); } catch (e) { /* ignore */ }
+    raAll('[data-ra-dimensions-mode]').forEach(function (sel) { sel.value = mode; });
     if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
     redrawLabels();
+  }
+
+  function loadDimensionsMode() {
+    try {
+      var saved = localStorage.getItem(DIM_MODE_STORAGE_KEY);
+      if (saved && DIM_MODES[saved]) return saved;
+    } catch (e) { /* ignore */ }
+    return DIM_MODES.all;
+  }
+
+  function setLayersLocked(on, silent) {
+    state.layersLocked = !!on;
+    try { localStorage.setItem(LOCK_LAYERS_STORAGE_KEY, on ? '1' : '0'); } catch (e) { /* ignore */ }
+    raAll('[data-ra-lock-layers]').forEach(function (box) { box.checked = state.layersLocked; });
+    if (els.canvasWrap) els.canvasWrap.classList.toggle('is-layers-locked', state.layersLocked);
+    if (state.layersLocked) {
+      clearVertexSelection();
+      // Keep opening selection; only drop vertex/wall edits.
+    }
+    updateToolbar();
+    redrawVertices();
+    redrawWalls();
+    if (!silent) {
+      setFeedback(state.layersLocked
+        ? 'Wall corners locked. Doors, windows, and notes stay editable.'
+        : 'Wall corners unlocked.', false);
+    }
+  }
+
+  function setAngleSnap(on, silent) {
+    state.angleSnap = !!on;
+    try { localStorage.setItem(SNAP_STORAGE_KEY, on ? '1' : '0'); } catch (e) { /* ignore */ }
+    raAll('[data-ra-snap-toggle]').forEach(function (btn) {
+      btn.classList.toggle('is-active', state.angleSnap);
+      btn.setAttribute('aria-pressed', state.angleSnap ? 'true' : 'false');
+    });
+    if (!silent) {
+      setFeedback(state.angleSnap ? 'Angle snap on (45° / 90°). Hold Alt to bypass.' : 'Angle snap off.', false);
+    }
+  }
+
+  function templatesPopoverOpen() {
+    return !!(els.templatesPopover && !els.templatesPopover.hasAttribute('hidden'));
+  }
+
+  function setTemplatesPopover(open) {
+    if (!els.templatesPopover || !els.templatesToggle) return;
+    show(els.templatesPopover, open);
+    els.templatesToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    els.templatesToggle.classList.toggle('is-active', !!open);
+  }
+
+  function toggleTemplatesPopover() {
+    setTemplatesPopover(!templatesPopoverOpen());
+  }
+
+  function closeTemplatesPopover() {
+    setTemplatesPopover(false);
+  }
+
+  function readTemplateSize(fallbackW, fallbackL) {
+    var w = fallbackW;
+    var l = fallbackL;
+    try {
+      if (els.typeRectW && String(els.typeRectW.value).trim()) w = parseLengthInput(els.typeRectW.value);
+    } catch (e) { /* keep fallback */ }
+    try {
+      if (els.typeRectL && String(els.typeRectL.value).trim()) l = parseLengthInput(els.typeRectL.value);
+    } catch (e) { /* keep fallback */ }
+    return { w: w, l: l };
+  }
+
+  function templateRectFeet(w, l) {
+    return [
+      { x: 0, y: 0 },
+      { x: w, y: 0 },
+      { x: w, y: l },
+      { x: 0, y: l }
+    ];
+  }
+
+  function templateLFeet(w, h, rw, rh) {
+    if (rw >= w || rh >= h) return templateRectFeet(w, h);
+    return [
+      { x: 0, y: 0 },
+      { x: w, y: 0 },
+      { x: w, y: h },
+      { x: w - rw, y: h },
+      { x: w - rw, y: h - rh },
+      { x: 0, y: h - rh }
+    ];
+  }
+
+  function templateUFeet(w, h, ow, od) {
+    if (ow >= w || od >= h) return templateRectFeet(w, h);
+    var arm = (w - ow) / 2;
+    return [
+      { x: 0, y: 0 },
+      { x: w, y: 0 },
+      { x: w, y: h },
+      { x: w - arm, y: h },
+      { x: w - arm, y: h - od },
+      { x: arm, y: h - od },
+      { x: arm, y: h },
+      { x: 0, y: h }
+    ];
+  }
+
+  function templateTFeet(bw, bh, sw, sh) {
+    if (sw >= bw) return templateRectFeet(bw, bh + sh);
+    var left = (bw - sw) / 2;
+    return [
+      { x: 0, y: 0 },
+      { x: bw, y: 0 },
+      { x: bw, y: bh },
+      { x: left + sw, y: bh },
+      { x: left + sw, y: bh + sh },
+      { x: left, y: bh + sh },
+      { x: left, y: bh },
+      { x: 0, y: bh }
+    ];
+  }
+
+  function feetTemplateToPixels(feetVerts) {
+    var ppf = ensureTypedScale();
+    var start = typedStartPoint();
+    return feetVerts.map(function (v) {
+      return clampToCanvas({ x: start.x + v.x * ppf, y: start.y + v.y * ppf });
+    });
+  }
+
+  function applyRoomTemplate(kind) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
+    ensureInitialCanvas();
+    var size = readTemplateSize(12, 10);
+    var feet;
+    if (kind === 'l') {
+      var lSize = readTemplateSize(16, 12);
+      feet = templateLFeet(lSize.w, lSize.l, Math.min(6, lSize.w / 3), Math.min(4, lSize.l / 3));
+    } else if (kind === 'u') {
+      var uSize = readTemplateSize(16, 12);
+      feet = templateUFeet(uSize.w, uSize.l, Math.min(8, uSize.w / 2), Math.min(8, uSize.l * 0.65));
+    } else if (kind === 't') {
+      var tSize = readTemplateSize(16, 12);
+      feet = templateTFeet(tSize.w, Math.min(4, tSize.l / 3), Math.min(6, tSize.w / 2.5), Math.max(6, tSize.l - 4));
+    } else {
+      feet = templateRectFeet(size.w, size.l);
+    }
+    pushUndoSnapshot();
+    setActiveVertices(feetTemplateToPixels(feet));
+    setActiveClosed(true);
+    rematchAllObjects();
+    syncTypedWallsFromCanvas();
+    renderTypedWallsList();
+    updateTypedCloseBar();
+    closeTemplatesPopover();
+    redrawAll();
+    fitViewport();
+    setFeedback((kind === 'l' ? 'L-shape' : kind === 'u' ? 'U-shape' : kind === 't' ? 'T-shape' : 'Rectangle') + ' placed. Type lengths to refine.', false);
+  }
+
+  function insertAlcoveVertices(verts, wallIndex, width, depth, closed) {
+    var n = verts.length;
+    var count = closed && n >= 3 ? n : Math.max(0, n - 1);
+    if (n < 2 || count < 1) return null;
+    var idx = ((wallIndex % count) + count) % count;
+    var a = verts[idx];
+    var b = verts[closed && n >= 3 ? (idx + 1) % n : idx + 1];
+    var dx = b.x - a.x;
+    var dy = b.y - a.y;
+    var len = Math.hypot(dx, dy);
+    if (len < 1e-6) return null;
+    width = Math.min(Math.max(width, 1), len * 0.9);
+    depth = Math.max(depth, 1);
+    var ux = dx / len;
+    var uy = dy / len;
+    var nx = -uy;
+    var ny = ux;
+    if (closed && n >= 3) {
+      var cx = 0;
+      var cy = 0;
+      verts.forEach(function (v) { cx += v.x; cy += v.y; });
+      cx /= n;
+      cy /= n;
+      var mx = (a.x + b.x) / 2;
+      var my = (a.y + b.y) / 2;
+      if (nx * (cx - mx) + ny * (cy - my) > 0) {
+        nx = -nx;
+        ny = -ny;
+      }
+    }
+    var inset = (len - width) / 2;
+    var p0 = { x: a.x + ux * inset, y: a.y + uy * inset };
+    var p1 = { x: a.x + ux * (inset + width), y: a.y + uy * (inset + width) };
+    var p0o = { x: p0.x + nx * depth, y: p0.y + ny * depth };
+    var p1o = { x: p1.x + nx * depth, y: p1.y + ny * depth };
+    var out = [];
+    verts.forEach(function (v, i) {
+      out.push({ x: v.x, y: v.y });
+      if (i === idx) {
+        out.push(p0, p0o, p1o, p1);
+      }
+    });
+    var deduped = [];
+    out.forEach(function (v) {
+      var last = deduped[deduped.length - 1];
+      if (last && Math.hypot(v.x - last.x, v.y - last.y) < 1e-6) return;
+      deduped.push(v);
+    });
+    if (deduped.length > 1) {
+      var first = deduped[0];
+      var lastPt = deduped[deduped.length - 1];
+      if (Math.hypot(first.x - lastPt.x, first.y - lastPt.y) < 1e-6) deduped.pop();
+    }
+    return deduped;
+  }
+
+  function longestWallIndex() {
+    var best = 0;
+    var bestLen = -1;
+    var count = wallCount();
+    for (var i = 0; i < count; i++) {
+      var a = activeVertices()[i];
+      var b = activeVertices()[wallEndIndex(i)];
+      var len = dist(a, b);
+      if (len > bestLen) {
+        bestLen = len;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  function addAlcove() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
+    if (wallCount() < 1) {
+      setFeedback('Draw a wall first, then add an alcove.', true);
+      return;
+    }
+    var idx = state.selectedWallIndex != null ? state.selectedWallIndex : longestWallIndex();
+    var ppf = ensureTypedScale();
+    pushUndoSnapshot();
+    var next = insertAlcoveVertices(activeVertices(), idx, 4 * ppf, 2 * ppf, isActiveClosed());
+    if (!next || !isValidShape(next, isActiveClosed())) {
+      discardLastUndoSnapshot();
+      setFeedback('Could not add an alcove on that wall.', true);
+      return;
+    }
+    setActiveVertices(next.map(clampToCanvas));
+    rematchAllObjects();
+    syncTypedWallsFromCanvas();
+    renderTypedWallsList();
+    updateTypedCloseBar();
+    closeTemplatesPopover();
+    clearWallSelection();
+    redrawAll();
+    setFeedback('Alcove added. Edit the new wall lengths if needed.', false);
   }
 
   function moveObjectAlongWall(obj, pos) {
@@ -8471,10 +9084,12 @@
     var snap = snapToNearestWall(pos, hitTolerance(OBJECT_SNAP_PX * 2));
     if (!snap) return;
     applySnapToObject(obj, snap);
+    state.openingHint = openingCornerHint(obj);
     redrawPolygonLine();
     redrawObjects();
     redrawLabels();
     redrawWalls();
+    redrawDrawPreview();
     syncObjectPropertiesPanel();
   }
 
@@ -8504,6 +9119,7 @@
   function captureRoomPng(pixelRatio) {
     if (!state.stage) return '';
     var prevShow = state.showDimensions;
+    var prevDimMode = state.dimensionsMode;
     var prevViewport = {
       scale: state.viewport.scale,
       x: state.viewport.x,
@@ -8512,6 +9128,7 @@
     };
     state.exporting = true;
     state.showDimensions = true;
+    state.dimensionsMode = DIM_MODES.all;
     fitViewport();
     redrawAll();
     var bg = new Konva.Rect({
@@ -8534,6 +9151,7 @@
     bg.destroy();
     state.exporting = false;
     state.showDimensions = prevShow;
+    state.dimensionsMode = prevDimMode;
     state.viewport.scale = prevViewport.scale;
     state.viewport.x = prevViewport.x;
     state.viewport.y = prevViewport.y;
@@ -8858,6 +9476,10 @@
   }
 
   function addTypedWall() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (isActiveClosed()) {
       setFeedback('Room is closed. Start a new area to type more walls.', true);
       return;
@@ -8893,6 +9515,10 @@
   }
 
   function addTypedRectangle() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var w;
     var l;
     try {
@@ -8932,6 +9558,10 @@
   }
 
   function autoCloseTyped() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var verts = activeVertices().slice();
     if (verts.length < 3) return;
     pushUndoSnapshot();
@@ -8963,6 +9593,11 @@
   }
 
   function editTypedWallLength(index, raw) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      renderTypedWallsList();
+      return;
+    }
     var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
@@ -8980,6 +9615,10 @@
   }
 
   function deleteTypedWall(index) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
@@ -9305,6 +9944,10 @@
   }
 
   function nudgeSelectedVertices(dx, dy) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!state.selectedVertexIndices.length) return;
     pushUndoSnapshot();
     var orig = activeVertices().map(function (v) { return { x: v.x, y: v.y }; });
@@ -9327,6 +9970,10 @@
   }
 
   function nudgeSelectedWall(dx, dy) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     var idx = state.selectedWallIndex;
     var endIdx = wallEndIndex(idx);
@@ -9369,6 +10016,10 @@
       e.preventDefault();
       if (shortcutsPopoverOpen()) {
         closeShortcutsPopover();
+        return;
+      }
+      if (templatesPopoverOpen()) {
+        closeTemplatesPopover();
         return;
       }
       if (state.armedCatalogKey || state.placingCatalog) {
@@ -9643,14 +10294,52 @@
         setShowDimensions(els.dimensionsToggle.checked);
       });
     }
+    raAll('[data-ra-dimensions-mode]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        setDimensionsMode(sel.value);
+      });
+    });
+    raAll('[data-ra-lock-layers]').forEach(function (box) {
+      box.addEventListener('change', function () {
+        setLayersLocked(box.checked);
+      });
+    });
+    raAll('[data-ra-snap-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setAngleSnap(!state.angleSnap);
+      });
+    });
+    raAll('[data-ra-unit-system]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setUnitSystem(btn.getAttribute('data-ra-unit-system'));
+      });
+    });
+    if (els.templatesToggle) {
+      els.templatesToggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleTemplatesPopover();
+      });
+    }
+    raAll('[data-ra-template]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        applyRoomTemplate(btn.getAttribute('data-ra-template'));
+      });
+    });
+    raAll('[data-ra-alcove]').forEach(function (btn) {
+      btn.addEventListener('click', addAlcove);
+    });
     bindAreaNameField();
 
     document.addEventListener('keydown', handleRoomAreaKeydown);
 
     document.addEventListener('pointerdown', function (e) {
-      if (!shortcutsPopoverOpen()) return;
-      if (els.shortcuts && els.shortcuts.contains(e.target)) return;
-      closeShortcutsPopover();
+      if (shortcutsPopoverOpen() && !(els.shortcuts && els.shortcuts.contains(e.target))) {
+        closeShortcutsPopover();
+      }
+      if (templatesPopoverOpen() && !(els.templatesRoot && els.templatesRoot.contains(e.target))) {
+        closeTemplatesPopover();
+      }
     });
 
     if (els.wallLength) {
@@ -9707,11 +10396,11 @@
       els.roomName.addEventListener('input', updateFullpageTitle);
     }
 
-    if (els.measureUnit) {
-      els.measureUnit.addEventListener('change', function () {
-        setMeasureUnit(els.measureUnit.value);
+    raAll('[data-ra-measure-unit]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        setMeasureUnit(sel.value);
       });
-    }
+    });
 
     if (els.typeDirBtns) {
       els.typeDirBtns.forEach(function (btn) {
@@ -9938,11 +10627,22 @@
   function init() {
     state.projects = parseJson('data-projects', []);
     state.measureUnit = loadMeasureUnit();
-    if (els.measureUnit) els.measureUnit.value = state.measureUnit;
+    if (state.measureUnit !== MEASURE_UNITS.meter) state.imperialUnit = state.measureUnit;
+    raAll('[data-ra-measure-unit]').forEach(function (sel) { sel.value = state.measureUnit; });
     updateMeasureUnitPlaceholders();
+    setDimensionsMode(loadDimensionsMode());
+    try {
+      setLayersLocked(localStorage.getItem(LOCK_LAYERS_STORAGE_KEY) === '1', true);
+    } catch (e) { setLayersLocked(false, true); }
+    try {
+      var snapSaved = localStorage.getItem(SNAP_STORAGE_KEY);
+      setAngleSnap(snapSaved == null ? true : snapSaved !== '0', true);
+    } catch (e2) { setAngleSnap(true, true); }
     bindEvents();
     bindViewportEvents();
     renderObjectPalette();
+    syncUnitSystemUi();
+    updateLiveUnitLabels();
     if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
     refreshProjectSelect();
     var queryParams = (function () {

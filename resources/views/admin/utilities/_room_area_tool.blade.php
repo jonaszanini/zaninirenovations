@@ -152,6 +152,7 @@
                     <div class="util-ra-shortcuts__row"><dt>Shift + arrows</dt><dd>Nudge farther</dd></div>
                     <div class="util-ra-shortcuts__row"><dt>+ / −</dt><dd>Zoom in / out</dd></div>
                     <div class="util-ra-shortcuts__row"><dt>0</dt><dd>Fit to room</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>Alt</dt><dd>Disable angle snap</dd></div>
                     <div class="util-ra-shortcuts__row"><dt>Space + drag</dt><dd>Pan</dd></div>
                     <div class="util-ra-shortcuts__row"><dt>Scroll / pinch</dt><dd>Zoom toward cursor</dd></div>
                   </dl>
@@ -434,7 +435,7 @@
                 @include('admin.utilities._room_area_help_pop', [
                   'tipId' => 'measure',
                   'label' => 'About scale and units',
-                  'text' => 'Tap calibrate, click two ends of a known wall, then type that length. Or skip the photo and type walls in the Measure panel. Units change how lengths are shown.',
+                  'text' => 'Tap calibrate, click two ends of a known wall, then type that length. Or skip the photo and type walls in the Measure panel. Switch ft-in or metres for display; type 12\' 6", 3.81 m, or 3810 mm in any mode.',
                 ])
               </div>
               <div class="util-ra-tool-group__actions">
@@ -464,6 +465,10 @@
                     <i class="fa fa-trash" aria-hidden="true"></i>
                   </button>
                 </span>
+                <div class="util-ra-unit-system" role="group" aria-label="Imperial or metric display">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-unit-system__btn is-active" data-ra-unit-system="imperial" aria-pressed="true">ft-in</button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-unit-system__btn" data-ra-unit-system="metric" aria-pressed="false">m</button>
+                </div>
                 <span class="util-ra-tip" data-tooltip="Change how wall lengths are shown and typed.">
                   <select class="admin-input util-ra-measure-unit" data-ra-measure-unit aria-label="Measurement units">
                     <option value="meter">Meter</option>
@@ -505,25 +510,49 @@
                 @include('admin.utilities._room_area_help_pop', [
                   'tipId' => 'room-tools',
                   'label' => 'About room tools',
-                  'text' => 'Show or hide wall dimensions. Templates and lock layers are reserved for a later update.',
+                  'text' => 'Dimension labels: all walls, main size only, area only, or off. Templates start a rectangle, L, U, or T. Alcove cuts a bump into the selected wall. Lock corners so doors, windows, and notes stay editable.',
                 ])
               </div>
               <div class="util-ra-tool-group__actions">
-                <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-icon-toggle util-ra-tip" data-tooltip="Show or hide wall length labels.">
-                  <input type="checkbox" class="util-sr-only" data-ra-dimensions-toggle checked>
-                  <i class="fa fa-text-width util-ra-icon-toggle__on" aria-hidden="true"></i>
-                  <i class="fa fa-eye-slash util-ra-icon-toggle__off" aria-hidden="true"></i>
-                  <span class="util-sr-only">Show or hide dimensions</span>
-                </label>
-                <span class="util-ra-tip" data-tooltip="Templates are coming in a later update.">
-                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-coming-soon="templates" disabled aria-label="Templates (coming soon)" title="Coming soon">
-                    <i class="fa fa-clone" aria-hidden="true"></i>
+                <span class="util-ra-tip" data-tooltip="All walls, main size only, area only, or off.">
+                  <select class="admin-input util-ra-dim-mode" data-ra-dimensions-mode aria-label="Dimension labels">
+                    <option value="all" selected>All dims</option>
+                    <option value="main">Main only</option>
+                    <option value="area">Area only</option>
+                    <option value="off">Dims off</option>
+                  </select>
+                </span>
+                <span class="util-ra-tip" data-tooltip="Snap walls to 45° / 90°. Hold Alt to bypass.">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn is-active" data-ra-snap-toggle aria-pressed="true" aria-label="Angle snap">
+                    <i class="fa fa-magnet" aria-hidden="true"></i>
                   </button>
                 </span>
-                <span class="util-ra-tip" data-tooltip="Lock layers are coming in a later update.">
-                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-coming-soon="lock-layers" disabled aria-label="Lock layers (coming soon)" title="Coming soon">
-                    <i class="fa fa-lock" aria-hidden="true"></i>
-                  </button>
+                <div class="util-ra-templates" data-ra-templates>
+                  <span class="util-ra-tip" data-tooltip="Start from a rectangle, L, U, or T. Uses Rect W×L when filled, otherwise 12×10 (L is 16×12 with a 6×4 return).">
+                    <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-templates-toggle aria-label="Room templates" aria-expanded="false" aria-controls="ra-templates-popover">
+                      <i class="fa fa-clone" aria-hidden="true"></i>
+                    </button>
+                  </span>
+                  <div class="util-ra-shortcuts__popover util-ra-templates-pop" id="ra-templates-popover" data-ra-templates-popover hidden role="dialog" aria-label="Room templates">
+                    <p class="util-ra-shortcuts__title">Start from a shape</p>
+                    <div class="util-ra-templates-pop__grid" role="group" aria-label="Room templates">
+                      <button type="button" class="admin-btn admin-btn--ghost" data-ra-template="rect">Rectangle</button>
+                      <button type="button" class="admin-btn admin-btn--ghost" data-ra-template="l">L-shape</button>
+                      <button type="button" class="admin-btn admin-btn--ghost" data-ra-template="u">U-shape</button>
+                      <button type="button" class="admin-btn admin-btn--ghost" data-ra-template="t">T-shape</button>
+                    </div>
+                    <button type="button" class="admin-btn admin-btn--primary util-ra-templates-pop__alcove" data-ra-alcove>
+                      Add alcove / bump-out
+                    </button>
+                  </div>
+                </div>
+                <span class="util-ra-tip" data-tooltip="Lock wall corners. Doors, windows, and notes stay editable.">
+                  <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-icon-toggle" data-ra-lock-layers-wrap>
+                    <input type="checkbox" class="util-sr-only" data-ra-lock-layers>
+                    <i class="fa fa-lock util-ra-icon-toggle__on" aria-hidden="true"></i>
+                    <i class="fa fa-unlock-alt util-ra-icon-toggle__off" aria-hidden="true"></i>
+                    <span class="util-sr-only">Lock layers</span>
+                  </label>
                 </span>
               </div>
             </div>
@@ -534,6 +563,10 @@
             <div class="util-ra-tool-group util-ra-tool-group--units">
               <span class="util-ra-tool-group__label">Units</span>
               <div class="util-ra-tool-group__actions">
+                <div class="util-ra-unit-system" role="group" aria-label="Imperial or metric display">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-unit-system__btn is-active" data-ra-unit-system="imperial" aria-pressed="true">ft-in</button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-unit-system__btn" data-ra-unit-system="metric" aria-pressed="false">m</button>
+                </div>
                 <select class="admin-input util-ra-measure-unit" data-ra-measure-unit aria-label="Measurement units">
                   <option value="meter">Meter</option>
                   <option value="inch">Inch</option>
@@ -584,6 +617,7 @@
                       <div class="util-ra-shortcuts__row"><dt>Shift + arrows</dt><dd>Nudge farther</dd></div>
                       <div class="util-ra-shortcuts__row"><dt>+ / −</dt><dd>Zoom in / out</dd></div>
                       <div class="util-ra-shortcuts__row"><dt>0</dt><dd>Fit to room</dd></div>
+                      <div class="util-ra-shortcuts__row"><dt>Alt</dt><dd>Disable angle snap</dd></div>
                       <div class="util-ra-shortcuts__row"><dt>Space + drag</dt><dd>Pan</dd></div>
                       <div class="util-ra-shortcuts__row"><dt>Scroll / pinch</dt><dd>Zoom toward cursor</dd></div>
                     </dl>
@@ -883,42 +917,42 @@
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <div class="util-ra-live-area__row util-ra-live-area__row--active">
               <span class="util-ra-live-area__label">Active shape:</span>
-              <strong data-ra-live-active-shape>—</strong> sq ft
+              <strong data-ra-live-active-shape>—</strong> <span data-ra-area-unit>sq ft</span>
             </div>
             <ul class="util-ra-live-area-groups" data-ra-live-group-list></ul>
             <div class="util-ra-live-metrics" data-ra-live-metrics>
               <div class="util-ra-live-metrics__item">
                 <span class="util-ra-live-area__label">Floor</span>
-                <strong><span data-ra-live-grand-total>—</span> sq ft</strong>
+                <strong><span data-ra-live-grand-total>—</span> <span data-ra-area-unit>sq ft</span></strong>
               </div>
               <div class="util-ra-live-metrics__item">
                 <span class="util-ra-live-area__label">Perimeter</span>
-                <strong><span data-ra-live-perimeter>—</span> lf</strong>
+                <strong><span data-ra-live-perimeter>—</span> <span data-ra-linear-unit>lf</span></strong>
               </div>
               <div class="util-ra-live-metrics__item">
                 <span class="util-ra-live-area__label">Baseboard</span>
-                <strong><span data-ra-live-baseboard>—</span> lf</strong>
+                <strong><span data-ra-live-baseboard>—</span> <span data-ra-linear-unit>lf</span></strong>
               </div>
               <div class="util-ra-live-metrics__item">
                 <span class="util-ra-live-area__label">Wall SF</span>
-                <strong><span data-ra-live-wall-area>—</span> sq ft</strong>
+                <strong><span data-ra-live-wall-area>—</span> <span data-ra-area-unit>sq ft</span></strong>
               </div>
               <div class="util-ra-live-metrics__item" data-ra-live-footprint-wrap hidden>
                 <span class="util-ra-live-area__label">Footprint</span>
-                <strong><span data-ra-live-footprint>—</span> sq ft</strong>
+                <strong><span data-ra-live-footprint>—</span> <span data-ra-area-unit>sq ft</span></strong>
               </div>
               <div class="util-ra-live-metrics__item" data-ra-live-framing-wrap hidden>
                 <span class="util-ra-live-area__label">Framing</span>
-                <strong><span data-ra-live-framing>—</span> lf</strong>
+                <strong><span data-ra-live-framing>—</span> <span data-ra-linear-unit>lf</span></strong>
               </div>
               <div class="util-ra-live-metrics__item" data-ra-live-cabinets-wrap hidden>
                 <span class="util-ra-live-area__label">Cabinets</span>
-                <strong><span data-ra-live-cabinets>—</span> lf</strong>
+                <strong><span data-ra-live-cabinets>—</span> <span data-ra-linear-unit>lf</span></strong>
               </div>
             </div>
             <div class="util-ra-live-area__row util-ra-live-area__row--counts">
               <span data-ra-live-counts>0 doors · 0 windows · 0 openings</span>
-              <span class="util-ra-live-area__secondary">(<span data-ra-live-sqm>—</span> m² floor)</span>
+              <span class="util-ra-live-area__secondary" data-ra-live-dual>(<span data-ra-live-sqm>—</span> m² · <span data-ra-live-sqft-alt>—</span> sq ft)</span>
             </div>
             <div class="util-ra-live-area__toolbar">
               <div class="admin-form-group util-ra-live-area__height">
