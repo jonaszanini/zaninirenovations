@@ -111,11 +111,14 @@ html.admin-dark .admin-btn--secondary {
   color: var(--admin-primary);
 }
 
-html.admin-dark .admin-theme-toggle__switch,
-html.admin-dark .admin-theme-toggle__btn[aria-pressed="true"] .admin-theme-toggle__switch {
+html.admin-dark .admin-sidebar .admin-theme-toggle__switch,
+html.admin-dark .admin-theme-toggle__btn[aria-pressed="true"] .admin-theme-toggle__switch,
+html.admin-dark .admin-theme-toggle__btn[aria-checked="true"] .admin-theme-toggle__switch {
   background: #024768;
 }
-html.admin-dark .admin-theme-toggle__switch::after {
+html.admin-dark .admin-sidebar .admin-theme-toggle__switch::after,
+html.admin-dark .admin-theme-toggle__btn[aria-pressed="true"] .admin-theme-toggle__switch::after,
+html.admin-dark .admin-theme-toggle__btn[aria-checked="true"] .admin-theme-toggle__switch::after {
   transform: translateX(20px);
 }
 

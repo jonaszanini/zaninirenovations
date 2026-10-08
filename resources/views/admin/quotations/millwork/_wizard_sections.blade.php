@@ -79,12 +79,8 @@
       <label for="mw-sheet">@include('admin.partials.info_tip', ['text' => 'Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.']) Wood sheet</label>
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
         @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
-          @php
-            $sheetName = trim((string) ($row['name'] ?? 'Sheet'));
-            $alreadySized = (bool) preg_match('/\d+\s*[x×]\s*\d+/i', $sheetName);
-          @endphp
           <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>
-            {{ $alreadySized ? $sheetName : $sheetName.' '.(int) ($row['width_in'] ?? 48).'×'.(int) ($row['length_in'] ?? 96) }}
+            {{ trim((string) ($row['name'] ?? 'Sheet')) }}
           </option>
         @endforeach
       </select>
