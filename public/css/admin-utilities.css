@@ -5041,6 +5041,12 @@ body:has(.util-ra--fullpage) {
   display: none;
 }
 
+.util-ra--fullpage .util-ra-project-bar + .util-ra-empty,
+.util-ra--fullpage .util-ra-empty + .util-ra-workspace,
+.util-ra--fullpage .util-ra-workspace .admin-card + .admin-card {
+  margin-top: 0;
+}
+
 .util-ra--fullpage .util-ra-workspace {
   display: flex;
   flex: 1;
@@ -5049,6 +5055,7 @@ body:has(.util-ra--fullpage) {
   overflow: hidden;
   background: var(--admin-surface);
   gap: 0;
+  margin-top: 0;
 }
 
 .util-ra--fullpage .util-ra-workspace[hidden] {
@@ -5161,6 +5168,7 @@ body:has(.util-ra--fullpage) {
   flex-direction: column;
   position: relative;
   margin: 0;
+  margin-top: 0;
   padding: 0;
   border-radius: 0;
   border: 0;
@@ -5812,9 +5820,40 @@ body:has(.util-ra--fullpage) {
 }
 
 @media (min-width: 901px) {
+  .util-ra--fullpage .util-ra-canvas-toolbar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    gap: 0.25rem 0.35rem;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__groups,
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__view {
+    flex-wrap: wrap;
+    gap: 0.2rem 0.3rem;
+  }
+
   .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__view {
     margin-left: auto;
-    padding-left: 0.65rem;
+    padding-left: 0.4rem;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group + .util-ra-tool-group {
+    padding-left: 0.3rem;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-measure-unit {
+    flex: 0 0 130px;
+    width: 130px;
+    min-width: 130px;
+    max-width: 130px;
+    padding-right: 1.6rem;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-area-name {
+    flex: 0 0 140px;
+    width: 140px;
+    min-width: 140px;
+    max-width: 140px;
   }
 }
 
