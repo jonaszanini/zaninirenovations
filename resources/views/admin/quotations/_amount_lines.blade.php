@@ -111,7 +111,9 @@
       .q-ac-row,
       .q-ac-row--with-category {
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 8px;
         align-items: end;
+        padding: 10px;
       }
       .q-ac-row {
         grid-template-areas:
@@ -120,7 +122,7 @@
           "actions actions";
       }
       .q-ac-row--with-category {
-        grid-template-columns: minmax(6rem, 0.85fr) minmax(0, 1.15fr);
+        grid-template-columns: 5rem minmax(0, 1fr);
         grid-template-areas:
           "desc desc"
           "amount category"
@@ -136,10 +138,10 @@
         align-items: center;
         padding-bottom: 0;
       }
-      .q-ac-row__category select.admin-input {
+      body .q-ac-row--with-category .q-ac-row__category select.admin-input {
         min-width: 0;
         width: 100%;
-        padding-right: 1.75rem;
+        padding-right: 1.35rem;
       }
     }
   </style>
