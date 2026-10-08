@@ -56,6 +56,7 @@ class OnPageSeoBatch3Test extends IntegrationTestCase
         foreach (PublicServices::publishedPages() as $page) {
             $path = '/services/'.$page['slug'];
             $html = $this->get($path)->assertOk()->getContent();
+            $visible = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
             $this->assertStringContainsString('<h1>'.e($page['h1']).'</h1>', $html, $path);
             $this->assertStringContainsString('Service', $html);
             $this->assertStringContainsString('FAQPage', $html);
@@ -63,8 +64,8 @@ class OnPageSeoBatch3Test extends IntegrationTestCase
             $this->assertStringContainsString((string) $page['service_type'], $html);
 
             foreach ((array) $page['faqs'] as $faq) {
-                $this->assertStringContainsString($faq['question'], $html, $path);
-                $this->assertStringContainsString($faq['answer'], $html, $path);
+                $this->assertStringContainsString($faq['question'], $visible, $path);
+                $this->assertStringContainsString($faq['answer'], $visible, $path);
             }
 
             $graph = SeoStructuredData::servicePage($page);

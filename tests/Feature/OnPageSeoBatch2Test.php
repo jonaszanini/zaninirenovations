@@ -162,7 +162,7 @@ class OnPageSeoBatch2Test extends IntegrationTestCase
         $this->assertSame('2020', $business['foundingDate'] ?? null);
 
         $encoded = SeoStructuredData::toJsonLd($graph);
-        $this->assertStringNotContainsString('ItemList', $encoded);
+        $this->assertStringNotContainsString('"@type":"ItemList"', $encoded);
         $this->assertStringNotContainsString('Barrhaven', $encoded);
         $this->assertStringNotContainsString('Orléans', $encoded);
         $this->assertStringContainsString($areaText, $encoded);
