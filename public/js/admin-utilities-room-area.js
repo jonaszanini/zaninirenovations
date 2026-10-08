@@ -4375,6 +4375,16 @@
       return;
     }
 
+    if (isFullPage()) {
+      syncDrawableDimensions();
+      state.stage.width(state.viewportW);
+      state.stage.height(state.viewportH);
+      drawGrid();
+      redrawAll();
+      applyViewport();
+      return;
+    }
+
     var oldContentW = state.viewportW;
     var oldContentH = state.viewportH;
     var oldWorldW = state.canvasW;
