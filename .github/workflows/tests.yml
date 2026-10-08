@@ -54,7 +54,11 @@ jobs:
         run: php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
 
       - name: Public CSS light-only (no database)
-        run: php artisan test tests/Unit/Views/PublicCssLightOnlyTest.php tests/Unit/Views/PublicMobileNavDropdownTest.php
+        run: |
+          php artisan test tests/Unit/Views/PublicCssLightOnlyTest.php
+          php artisan test tests/Unit/Views/PublicMobileNavDropdownTest.php
+          php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
+          php artisan test tests/Unit/Views/HomeKitchenTileImageTest.php
 
       - name: Route smoke (MySQL)
         env:
@@ -101,4 +105,4 @@ jobs:
           DB_DATABASE: zanini_renovations_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: php artisan test --filter="GlobalFinancialsTest|GlobalSearchApiTest|QuickStatusChangeTest|DuplicateQuotationTest|ExpenseAmountParsingTest|HourlyInvoiceUpdateTest|DashboardActionFirstLayoutTest|CancelledProjectInvoiceExclusionTest|ClientIndexAddressSearchTest|RoomAreaCanvasDataTest|RoomAreaCanvasObjectsTest|RoomAreaPdfExportTest|BasementRoomAreaImportTest|BasementQuotationMathRoundTripTest|BasementQuotationPagesTest|RoomAreaQuoteQuantitiesTest|RoomAreaQuoteLinesTest|RoomAreaQuotePrefillTest|RoomAreaSharedWallsTest|RoomAreaMeasurementParserTest|RoomAreaClosingErrorTest|RoomAreaPhotosTest|ClientProjectRoomAreaPageTest|HtmlContentSanitizerTest|PlainTextLimiterTest|BlogPhase1FixesTest|BlogPhase2AdminTest|BlogPostQualityTest|BlogPhase3PublicTest|SecurityHardeningTest|OnPageSeoBatch2Test|SeoGeoTest|OnPageSeoBatch3Test|OnPageSeoBatch4Test|OnPageSeoBatch5Test|PublicPageBannedWordsTest|OffcutInventoryTest|QuotationCutListImportTest|MillworkQuotationCalculatorTest|MillworkQuotationPagesTest|MillworkQuotationRoundTripTest"
+        run: php artisan test --filter="GlobalFinancialsTest|GlobalSearchApiTest|QuickStatusChangeTest|DuplicateQuotationTest|ExpenseAmountParsingTest|HourlyInvoiceUpdateTest|DashboardActionFirstLayoutTest|CancelledProjectInvoiceExclusionTest|ClientIndexAddressSearchTest|RoomAreaCanvasDataTest|RoomAreaCanvasObjectsTest|RoomAreaPdfExportTest|BasementRoomAreaImportTest|BasementQuotationMathRoundTripTest|BasementQuotationPagesTest|RoomAreaQuoteQuantitiesTest|RoomAreaQuoteLinesTest|RoomAreaQuotePrefillTest|RoomAreaSharedWallsTest|RoomAreaMeasurementParserTest|RoomAreaClosingErrorTest|RoomAreaPhotosTest|ClientProjectRoomAreaPageTest|HtmlContentSanitizerTest|PlainTextLimiterTest|BlogPhase1FixesTest|BlogPhase2AdminTest|BlogPostQualityTest|BlogPhase3PublicTest|SecurityHardeningTest|OnPageSeoBatch2Test|SeoGeoTest|OnPageSeoBatch3Test|OnPageSeoBatch4Test|OnPageSeoBatch5Test|PublicPageBannedWordsTest|OffcutInventoryTest|QuotationCutListImportTest|MillworkQuotationCalculatorTest|MillworkQuotationPagesTest|MillworkQuotationRoundTripTest|HomeServiceTileUppercaseTest"

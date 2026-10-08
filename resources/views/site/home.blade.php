@@ -403,7 +403,7 @@
             <a href="{{ url('/services/kitchen-remodel') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
-                <img src="images/services/tiles.webp" alt="Kitchen remodel and backsplash by Zanini Renovations" loading="lazy" decoding="async" width="800" height="712">
+                <img src="images/services/kitchen-remodel.webp" alt="Kitchen remodel by Zanini Renovations" loading="lazy" decoding="async" width="800" height="712">
                 <span class="fa fa-cutlery"></span>
               </figure>
 
