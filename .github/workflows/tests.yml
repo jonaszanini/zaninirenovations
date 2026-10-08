@@ -54,7 +54,11 @@ jobs:
         run: php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
 
       - name: Public CSS light-only (no database)
-        run: php artisan test tests/Unit/Views/PublicCssLightOnlyTest.php tests/Unit/Views/PublicMobileNavDropdownTest.php tests/Unit/Views/HomeServiceTileUppercaseTest.php
+        run: |
+          php artisan test tests/Unit/Views/PublicCssLightOnlyTest.php
+          php artisan test tests/Unit/Views/PublicMobileNavDropdownTest.php
+          php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
+          php artisan test tests/Unit/Views/HomeKitchenTileImageTest.php
 
       - name: Route smoke (MySQL)
         env:
