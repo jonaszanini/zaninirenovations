@@ -28,9 +28,9 @@ class MillworkPartBuilder
     ];
 
     public const CABINET_STYLES = [
-        'base' => 'Base (24" deep)',
-        'upper' => 'Upper (12" deep)',
-        'tall' => 'Tall / pantry (24" deep)',
+        'base' => 'Base',
+        'upper' => 'Upper',
+        'tall' => 'Tall / pantry',
         'custom' => 'Custom',
     ];
 

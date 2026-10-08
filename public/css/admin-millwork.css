@@ -40,6 +40,14 @@
 .mw-client-card .admin-form-group {
   margin-bottom: 0;
 }
+/* Only the totals bar stays sticky on millwork quotes. */
+#mw-main-form .br-toolbar,
+#mw-main-form .br-progress {
+  position: static;
+  top: auto;
+  max-height: none;
+}
+
 .mw-totals-bar {
   position: sticky;
   bottom: 0;
@@ -412,9 +420,18 @@
   .mw-cut-plan-head .admin-btn {
     min-height: 44px;
   }
+  .mw-piece .admin-form-grid-2 {
+    grid-template-columns: 1fr 1fr;
+    gap: 0 0.75rem;
+  }
+  .mw-piece__meta .admin-form-group,
+  .mw-piece__name,
+  .mw-piece .admin-form-group:has(select.admin-input) {
+    grid-column: 1 / -1;
+  }
   .mw-input--qty,
   .mw-input--dim {
-    max-width: none;
+    max-width: 100%;
   }
   .mw-totals-bar {
     gap: 6px 10px;

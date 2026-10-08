@@ -657,6 +657,7 @@
         var piece = wrap.firstElementChild;
         pieceList.appendChild(piece);
         initPiece(piece);
+        reindexPieces();
         if (window.cpMoneyMask) window.cpMoneyMask.wire(piece.querySelectorAll('.cp-money-input'));
         schedulePreview();
       });
