@@ -2392,6 +2392,9 @@ html.admin-dark .br-step-nav__status,
 html.admin-dark .admin-form-help {
   color: var(--admin-muted);
 }
+html.admin-dark .br-sticky-total #br-step-status:disabled {
+  color: var(--admin-text);
+}
 
 html.admin-dark .cp-projects-scope-hint {
   color: var(--admin-muted);

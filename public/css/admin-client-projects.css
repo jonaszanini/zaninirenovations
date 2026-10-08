@@ -7737,6 +7737,11 @@ body.cp-modal-open {
 .br-step-nav__status {
   white-space: nowrap;
 }
+.br-sticky-total #br-step-status:disabled {
+  opacity: 1;
+  color: var(--admin-text);
+  cursor: default;
+}
 .br-sticky-total .br-toolbar-grand {
   flex-direction: row;
   align-items: center;
@@ -8845,13 +8850,20 @@ body.cp-modal-open {
 .br-finishing-row {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-start;
   align-items: flex-end;
-  gap: 10px 16px;
+  gap: 10px 20px;
   min-width: 0;
+  max-width: 100%;
+}
+.br-finishing-row > * {
+  flex: 0 0 auto;
+  width: auto;
   max-width: 100%;
 }
 .br-hw-field {
   flex: 0 0 auto;
+  width: auto;
   min-width: 0;
   margin-bottom: 0;
 }
@@ -8859,7 +8871,8 @@ body.cp-modal-open {
   white-space: nowrap;
 }
 .br-finishing-check {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  width: auto;
   min-width: 0;
   max-width: 100%;
   min-height: 44px;
@@ -8869,9 +8882,18 @@ body.cp-modal-open {
   white-space: normal;
 }
 .br-permit-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   flex: 0 0 auto;
+  width: auto;
   min-width: 0;
   margin-bottom: 0;
+}
+.br-permit-amount > label {
+  display: flex;
+  align-items: center;
+  width: auto;
 }
 .br-permit-amount[hidden] {
   display: none !important;

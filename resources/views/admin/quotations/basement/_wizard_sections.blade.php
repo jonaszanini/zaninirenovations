@@ -1123,6 +1123,7 @@
           <label for="br-permit-amount">@include('admin.partials.info_tip', ['text' => $brInfo['building_permit_amount']]) Permit amount (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input br-preview br-input--permit" id="br-permit-amount" name="building_permit_amount"
+                 data-cp-money-entry="direct"
                  value="{{ number_format((float) $brVal('building_permit_amount', 0), 2, '.', '') }}">
         </div>
       </div>

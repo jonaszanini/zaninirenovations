@@ -52,7 +52,11 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Stud spacing')
             ->assertSee('Building permit (extra charge)')
             ->assertSee('Commute expense')
-            ->assertSee('Material waste');
+            ->assertSee('Material waste')
+            ->assertSee('id="br-step-status"', false)
+            ->assertSee('Optional extras (rentals, extra labour, etc.)', false)
+            ->assertDontSee('Optional extras (permits, rentals')
+            ->assertSee('placeholder="e.g. Dumpster"', false);
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
@@ -232,11 +236,25 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'area_sqft' => 850,
             'ceiling_height_ft' => 8,
             'flooring_type' => 'lvp',
+            'include_building_permit' => '1',
+            'building_permit_amount' => '175.00',
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
         ])->assertOk()
             ->assertJsonPath('scope.area_sqft', 850)
+            ->assertJsonPath('summary.permit_pre_hst', 175)
             ->assertJsonPath('eta.scenarios.0.crew', 1);
+
+        $withoutPermit = $this->post(route('admin.quotations.basement.preview'), [
+            'area_sqft' => 850,
+            'ceiling_height_ft' => 8,
+            'flooring_type' => 'lvp',
+            'include_building_permit' => '0',
+            'building_permit_amount' => '175.00',
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ])->assertOk()->json();
+        $this->assertEquals(0, (float) ($withoutPermit['summary']['permit_pre_hst'] ?? 0));
     }
 
     public function test_preview_uses_imported_layout_perimeter(): void

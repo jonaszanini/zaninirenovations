@@ -15,7 +15,11 @@
       border-radius: 8px;
     }
     .q-ac-row--with-category {
-      grid-template-columns: minmax(0, 1.4fr) minmax(110px, 0.5fr) minmax(120px, 0.55fr) auto auto;
+      grid-template-columns: minmax(0, 1.5fr) minmax(7rem, 0.45fr) minmax(10.5rem, 0.7fr) auto auto;
+    }
+    .q-ac-row__category select.admin-input {
+      min-width: 10.5rem;
+      padding-right: 2.6rem;
     }
     .q-ac-row .admin-form-group { margin-bottom: 0; min-width: 0; }
     .q-ac-row__desc label,

@@ -818,6 +818,7 @@
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
+    schedulePreview();
   }
 
   applyScope();
@@ -896,6 +897,9 @@
   function runPreview() {
     if (!previewUrl) return;
     var fd = new FormData(form);
+    form.querySelectorAll('input.admin-checkbox__input[name]').forEach(function (cb) {
+      fd.set(cb.name, cb.checked ? (cb.value || '1') : '0');
+    });
     form.querySelectorAll('.cp-money-input[name]').forEach(function (input) {
       fd.set(input.name, (input.value || '').replace(/,/g, ''));
     });
@@ -1040,6 +1044,7 @@
     if (el.dataset.brBound === '1') return;
     el.dataset.brBound = '1';
     el.addEventListener('input', schedulePreview);
+    el.addEventListener('keyup', schedulePreview);
     el.addEventListener('change', schedulePreview);
   }
 

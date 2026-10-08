@@ -349,7 +349,11 @@
 
             @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
             @include('admin.quotations._commute_debris_row')
-            @include('admin.quotations._additional_costs', ['quotation' => $quotation])
+            @include('admin.quotations._additional_costs', [
+                'quotation' => $quotation,
+                'intro' => 'Optional extras (rentals, extra labour, etc.). Choose whether each line is <strong>materials</strong> or <strong>labour</strong>. Hidden from the client PDF — folded into that subtotal.',
+                'placeholder' => 'e.g. Dumpster',
+            ])
 
             @if (! $isEdit)
               @include('admin.quotations._link_to_project_save_first', [
@@ -377,7 +381,7 @@
     <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
       <div class="br-step-nav" id="br-step-nav">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-step-status" disabled>1 of {{ $enabledCount }}</button>
         <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
       </div>
       <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
