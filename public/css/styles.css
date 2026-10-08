@@ -8697,26 +8697,48 @@ footer .social-icons a:hover {
   max-width: 960px;
 }
 
+.project-gallery-modal .modal-content {
+  background-color: #fff;
+}
+
 @media (max-width: 767px) {
+  /* Full-screen opaque sheet so the project hero photo cannot show
+     through the transparent modal overlay / Bootstrap backdrop. */
+  .project-gallery-modal.modal {
+    padding: 0;
+    background-color: #fff;
+  }
+
   .project-gallery-modal .modal-dialog {
     margin: 0;
     width: 100%;
+    max-width: none;
     height: 100%;
+    min-height: 100%;
   }
 
   .project-gallery-modal .modal-content {
     border-radius: 0;
     border: 0;
-    min-height: 100vh;
+    height: 100%;
+    min-height: 100%;
     box-shadow: none;
     display: flex;
     flex-direction: column;
+    background-color: #fff;
   }
 
   .project-gallery-modal .modal-body {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+  }
+
+  .project-gallery-viewport {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
     min-height: 0;
   }
 }
@@ -8734,6 +8756,8 @@ footer .social-icons a:hover {
   text-shadow: none;
   padding: 4px 8px;
   margin-top: -4px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .project-gallery-modal .close.project-gallery-close:hover,
@@ -9108,4 +9132,46 @@ button,
   /* The mobile floating bar (#zr-mobile-fb) is built and styled
      entirely from inline JS (see public-header.blade.php). No
      stylesheet rules are needed for it here. */
+
+  /* Clip Owl clones / next-slide peek so the page does not grow a
+     horizontal scrollbar. Use `clip` (not `hidden`) so overflow-y
+     stays visible and position:fixed overlays (gallery modal) are
+     not turned into a scroll container. Sticky header is already
+     disabled below 768px. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+  .owl-carousel,
+  .owl-carousel .owl-stage-outer {
+    overflow: hidden;
+  }
+  .main-header-2 .navbar-default .navbar-toggle,
+  .navbar-default .navbar-toggle,
+  .blog-site-menu-toggle {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .footer-social-icons a {
+    width: 44px;
+    height: 44px;
+    line-height: 42px;
+  }
+  .faq-layout .faq-box .panel-title > a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .footer-widget-area .footer-useful-links li a,
+  .footer-widget-area .footer-content a,
+  .footer-widget-area .footer-contact-body a,
+  .footer-widget-area .contact-us a,
+  .footer-nav li a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }

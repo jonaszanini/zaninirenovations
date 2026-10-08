@@ -1229,12 +1229,14 @@ jQuery(function ($) {
         }
 
         $all_fields.val("");
+        $contact_form.attr("novalidate", "novalidate");
         
         var $error_border =  "border-bottom: 1px solid red;";
         var contact_form_bValid, user_name_bValid, user_email_bValid, location_city_bValid, user_email_subject_bValid, user_email_message_bValid;
         
         
-        $contact_form.find("button[type=submit]").on("click", function() {
+        $contact_form.on("submit", function (e) {
+                e.preventDefault();
 
                 contactClearFeedback();
                 contact_form_bValid = true;
@@ -1656,6 +1658,7 @@ jQuery(function ($) {
         });
 
         $modal.on('shown.bs.modal', function () {
+            $modal.attr('aria-hidden', 'false');
             updateTransform();
             $(document).on('keydown.projectGallery', function (e) {
                 if (e.keyCode === 37) {
@@ -1668,6 +1671,7 @@ jQuery(function ($) {
         });
 
         $modal.on('hidden.bs.modal', function () {
+            $modal.attr('aria-hidden', 'true');
             $(document).off('keydown.projectGallery');
             $track.empty();
             $dots.empty();

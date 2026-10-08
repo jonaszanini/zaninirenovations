@@ -61,4 +61,31 @@ class PublicMobileNavDropdownTest extends TestCase
             $css
         );
     }
+
+    public function test_contact_form_uses_custom_validation_instead_of_native_bubbles(): void
+    {
+        $js = file_get_contents(public_path('js/custom-scripts.js'));
+        $this->assertNotFalse($js);
+        $this->assertStringContainsString('novalidate', $js);
+        $this->assertMatchesRegularExpression(
+            '/\$contact_form\.on\(["\']submit["\']/',
+            $js
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\$contact_form\.find\(["\']button\[type=submit\]["\']\)\.on\(["\']click["\']/',
+            $js
+        );
+    }
+
+    public function test_mobile_public_css_clips_owl_and_enlarges_tap_targets(): void
+    {
+        $css = file_get_contents(public_path('css/styles.css'));
+        $this->assertNotFalse($css);
+        $this->assertStringContainsString('.owl-carousel .owl-stage-outer', $css);
+        $this->assertStringContainsString('.footer-social-icons a', $css);
+        $this->assertStringContainsString('overflow-x: clip', $css);
+        $this->assertStringContainsString('min-height: 44px', $css);
+        $this->assertStringContainsString('.project-gallery-modal.modal', $css);
+        $this->assertStringContainsString('background-color: #fff', $css);
+    }
 }

@@ -37,3 +37,4 @@ users.txt
 /scripts/bq*-viewport-shots.js
 /scripts/bq*-render-pdf.php
 /scripts/bq*-totals.php
+/scripts/public-qa-sweep.js
