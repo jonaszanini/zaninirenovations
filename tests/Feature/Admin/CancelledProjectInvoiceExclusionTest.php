@@ -155,8 +155,7 @@ class CancelledProjectInvoiceExclusionTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('INV-FIN-ACTIVE')
             ->assertSee('INV-FIN-CANCEL')
-            ->assertSee(ClientProject::formatMoney(1130.00))
-            ->assertDontSee(ClientProject::formatMoney(2316.92));
+            ->assertSee('<div class="gf-total-tile__value gf-total-tile__value--warning">'.ClientProject::formatMoney(1130.00).'</div>', false);
     }
 
     public function test_daily_reminder_job_skips_cancelled_and_rejected_project_invoices(): void
