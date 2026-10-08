@@ -21,10 +21,14 @@ class QuotationWorkDescriptionInstructionTest extends TestCase
 
         $this->assertStringContainsString('contractor explaining the job to a homeowner', $rules);
         $this->assertStringContainsString('Short sentences', $rules);
-        $this->assertStringContainsString('58 linear feet', $rules);
+        $this->assertStringContainsString('24 linear feet', $rules);
+        $this->assertStringContainsString('The fence has 2 sections', $rules);
         $this->assertStringContainsString('Do not invent extra sections', $rules);
         $this->assertStringContainsString('fully insured', $rules);
         $this->assertStringContainsString('No sales pitch', $rules);
+        $this->assertStringNotContainsString('58 linear feet', $rules);
+        $this->assertStringNotContainsString('The fence has 3 sections', $rules);
+        $this->assertStringNotContainsString('4 ft gate', $rules);
 
         foreach (QuotationWorkDescriptionStyle::BANNED_PHRASES as $phrase) {
             $this->assertStringContainsString(

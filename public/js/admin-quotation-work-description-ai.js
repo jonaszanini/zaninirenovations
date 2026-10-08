@@ -44,6 +44,21 @@
     return el.innerText.replace(/\s+/g, ' ').trim();
   }
 
+  function collectMaterialNames(tableSelector, noteSelector) {
+    var names = [];
+    document.querySelectorAll(tableSelector + ' tbody tr').forEach(function (tr) {
+      var cells = tr.querySelectorAll('td');
+      if (!cells.length) return;
+      var cell = cells[0].cloneNode(true);
+      cell.querySelectorAll(noteSelector).forEach(function (el) {
+        el.remove();
+      });
+      var label = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+      if (label && label !== '—') names.push(label);
+    });
+    return names;
+  }
+
   function collectPaintingContext(form) {
     var excluded = [];
     form.querySelectorAll('[data-excluded-row]').forEach(function (row) {
@@ -95,13 +110,7 @@
       });
     });
 
-    var materials = [];
-    document.querySelectorAll('#fq-materials tbody tr').forEach(function (tr) {
-      var cells = tr.querySelectorAll('td');
-      if (cells.length < 2) return;
-      var label = cells[0].innerText.replace(/\s+/g, ' ').trim();
-      if (label) materials.push(label);
-    });
+    var materials = collectMaterialNames('#fq-materials', '.fq-breakdown-note');
 
     return {
       client_name: formValue(form, 'client_name'),
@@ -439,10 +448,7 @@
       width_ft: formValue(form, 'width_ft'),
       length_ft: formValue(form, 'length_ft'),
       joist_spacing_in: formValue(form, 'joist_spacing_in'),
-      geometry_summary: panelText('ld-geometry') || panelText('ld-area-value'),
-      materials_summary: panelText('ld-materials'),
-      totals_summary: panelText('ld-live-root') || panelText('ld-totals'),
-      breakdown_summary: panelText('ld-live-root')
+      materials_summary: collectMaterialNames('#ld-materials', '.ld-breakdown-note').join('\n'),
     };
   }
 
@@ -479,7 +485,7 @@
 
   function shouldSkipFormKey(key) {
     if (!key) return true;
-    if (/^(?:_token|_method|_serialised|save_intent|work_description|owner_hourly_rate|helper_hourly_rate|link_client_project_id|tm_client_pick|include_commute|include_debris_removal)$/.test(key)) {
+    if (/^(?:_token|_method|_serialised|save_intent|work_description|owner_hourly_rate|helper_hourly_rate|link_client_project_id|tm_client_pick|include_commute|include_debris_removal|material_waste_percent)$/.test(key)) {
       return true;
     }
     if (/override|unit_price|hourly_rate/.test(key)) return true;

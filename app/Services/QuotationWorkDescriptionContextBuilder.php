@@ -163,7 +163,7 @@ class QuotationWorkDescriptionContextBuilder
             $this->appendLine($lines, 'Gates', '0');
         }
 
-        $materials = $this->stripMoneyFromText((string) ($c['materials_summary'] ?? ''));
+        $materials = $this->clientFacingMaterialNames($c);
         if ($this->textMentionsConcrete($materials)) {
             $this->appendLine($lines, 'Post footings', 'concrete');
         }
@@ -180,13 +180,14 @@ class QuotationWorkDescriptionContextBuilder
         $lines = ['Quotation type: Low floating deck'];
 
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
-        $this->appendLine($lines, 'Width', isset($c['width_ft']) ? $c['width_ft'].' ft' : null);
-        $this->appendLine($lines, 'Length', isset($c['length_ft']) ? $c['length_ft'].' ft' : null);
-        $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) ? $c['joist_spacing_in'].' in (auto, max 15 in.)' : null);
+        $this->appendLine($lines, 'Width', isset($c['width_ft']) && $c['width_ft'] !== '' ? $c['width_ft'].' ft' : null);
+        $this->appendLine($lines, 'Length', isset($c['length_ft']) && $c['length_ft'] !== '' ? $c['length_ft'].' ft' : null);
+        if (isset($c['joist_spacing_in']) && $c['joist_spacing_in'] !== '' && is_numeric($c['joist_spacing_in'])) {
+            $this->appendLine($lines, 'Joist spacing', $c['joist_spacing_in'].' in');
+        }
 
-        $this->appendBlock($lines, 'Layout / geometry', $c['geometry_summary'] ?? null);
-        $this->appendBlock($lines, 'Materials list', $c['materials_summary'] ?? null);
-        $this->appendBlock($lines, 'Pricing snapshot', $c['totals_summary'] ?? null);
+        $materials = $this->clientFacingMaterialNames($c);
+        $this->appendBlock($lines, 'Materials list', $materials !== '' ? $materials : null);
 
         return implode("\n", $lines);
     }
@@ -1153,6 +1154,7 @@ class QuotationWorkDescriptionContextBuilder
             'owner_hourly_rate', 'helper_hourly_rate', 'link_client_project_id',
             'tm_client_pick', 'include_commute', 'include_debris_removal',
             'geometry_summary', 'totals_summary', 'sections_total',
+            'material_waste_percent', 'material_waste_amount',
         ], true)) {
             return true;
         }
@@ -1283,6 +1285,86 @@ class QuotationWorkDescriptionContextBuilder
         $n = rtrim(rtrim(number_format($feet, 1, '.', ''), '0'), '.');
 
         return $n.' linear feet';
+    }
+
+    /**
+     * Catalogue names only. Drops calculator notes (span counts, waste math,
+     * prices) whether they arrive as structured rows or pasted innerText.
+     *
+     * @param  array<string, mixed>  $c
+     */
+    private function clientFacingMaterialNames(array $c): string
+    {
+        $fromRows = $this->namesFromMaterialRows($c['materials'] ?? null);
+        if ($fromRows !== '') {
+            return $fromRows;
+        }
+
+        return $this->stripCalculatorTakeoffNotes((string) ($c['materials_summary'] ?? ''));
+    }
+
+    private function namesFromMaterialRows(mixed $rows): string
+    {
+        if (! is_array($rows) || $rows === []) {
+            return '';
+        }
+
+        $names = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+
+        return implode("\n", $names);
+    }
+
+    private function stripCalculatorTakeoffNotes(string $text): string
+    {
+        $text = $this->stripMoneyFromText($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $lines = preg_split('/\R+/u', $text) ?: [];
+        $out = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || $line === '—') {
+                continue;
+            }
+
+            $line = preg_replace('/\bPickets:\s*\d+\s*,?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\+\s*\d+\s+per section\s*\(\s*\d+\s*\)\s*waste/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bper section\s*\(\s*\d+\s*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\(\s*\d+\s*\/\s*section\s*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bTop board\s*\([^)]*sections[^)]*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bFence:\s*\d+\s*/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bgates:\s*\d+/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bStructural:\s*\d+\s*,?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bMax\s+\d+(?:\.\d+)?\'\s+spacing\.?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bGate on sides?:\s*\d+\s*\([^)]*\)\.?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\d+(?:\.\d+)?\s+bags\/post[^.]*waste/iu', '', $line) ?? $line;
+            $line = preg_replace('/\b2\s*[×x]\s*\d+\s+fence rails/iu', '', $line) ?? $line;
+            $line = preg_replace('/\b1 per post\b/iu', '', $line) ?? $line;
+            $line = preg_replace('/\b1 set per gate\b/iu', '', $line) ?? $line;
+            $line = preg_replace('/\+\s*\d+\s+waste\.?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bpre-waste\b/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bMaterial waste:\s*\d+(?:\.\d+)?%\s*(?:\(internal\))?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\(\s*\d+(?:\.\d+)?%\s*waste[^)]*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\(\s*internal\s*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\s{2,}/u', ' ', $line) ?? $line;
+            $line = trim($line, " \t,;·+");
+            if ($line !== '') {
+                $out[] = $line;
+            }
+        }
+
+        return implode("\n", $out);
     }
 
     private function stripMoneyFromText(string $text): string

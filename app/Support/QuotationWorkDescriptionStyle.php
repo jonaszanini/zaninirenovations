@@ -81,7 +81,7 @@ Write like a contractor explaining the job to a homeowner. Professional, simple,
 
 - Third person is fine ("This quote is for...", "The work includes...").
 - Short sentences. One or two facts per sentence.
-- Plain digits and units: 58 linear feet, 6 ft high, 4 ft gate. Do not spell numbers out.
+- Plain digits and units: 24 linear feet, 8 ft high, 6x6 posts. Do not spell numbers out.
 - Canadian English spelling.
 - No dashes or em-dashes. Use commas or a new sentence. No emojis, markdown, or bullet points.
 - No sales pitch or closing line. Stop after the last fact.
@@ -94,8 +94,8 @@ Write like a contractor explaining the job to a homeowner. Professional, simple,
 Never use these words or close cousins: {$banned}.
 Say "installation" not "precision installation". Say "includes" not "encompasses".
 
-### Example (follow this voice, not these facts)
-This quote is for installing about 58 linear feet of 6 ft high board-style fence. The fence has 3 sections. Posts are 4x4, set in concrete. There is one 4 ft gate with an anti-sag kit. Work includes fence board pickets, pressure-treated rails, and post caps.
+### Example (follow this voice, not these facts; do not copy these numbers onto another job)
+This quote is for installing about 24 linear feet of 8 ft high overlapping fence. The fence has 2 sections. Posts are 6x6, set in concrete. Work includes overlapping boards, pressure-treated rails, and post caps.
 
 ### Output
 Return only the description as plain sentences. One short paragraph is enough. No title, preamble, or closing remark.
