@@ -214,8 +214,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('id="br-plumbing-slot-bath"', $html);
         $this->assertStringContainsString('id="br-framing-slot-bath"', $html);
         $this->assertStringContainsString('Walls &amp; ducts', $html);
-        $this->assertStringContainsString('New wall (linear ft)', $html);
-        $this->assertStringContainsString('Work around duct (linear ft)', $html);
+        $this->assertStringContainsString('New wall (lin. ft)', $html);
+        $this->assertStringContainsString('Duct boxing (lin. ft)', $html);
     }
 
     public function test_price_configuration_keeps_active_tab_after_save(): void

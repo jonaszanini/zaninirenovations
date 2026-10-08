@@ -7992,10 +7992,31 @@ body.cp-modal-open {
   gap: 10px 12px;
   min-width: 0;
   max-width: 100%;
+  align-items: stretch;
 }
 .br-qty-grid .admin-form-group,
 .br-qty-grid .br-lw {
   margin-bottom: 0;
+}
+/* Pair label+input so uneven wrap still lines the controls up. */
+.br-qty-grid > .admin-form-group:not(.br-lw),
+.br-framing-fields .admin-form-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.br-qty-grid > .admin-form-group:not(.br-lw) > .sq-qty,
+.br-framing-fields [data-br-door-count-ui]:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.br-qty-grid > .br-field--phone-wide,
+.br-framing-fields > .br-field--phone-wide {
+  grid-column: 1 / -1;
 }
 .br-qty-grid__check {
   min-height: 44px;
@@ -8086,6 +8107,7 @@ body.cp-modal-open {
 }
 .br-framing-fields.admin-form-grid-4 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
 }
 .br-review-heading {
   margin: 20px 0 8px;
@@ -9112,6 +9134,10 @@ body.cp-modal-open {
 @media (min-width: 900px) {
   .br-framing-fields.admin-form-grid-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .br-qty-grid > .br-field--phone-wide,
+  .br-framing-fields > .br-field--phone-wide {
+    grid-column: auto;
   }
   .br-check-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

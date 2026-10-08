@@ -258,13 +258,13 @@
     </div>
     <div class="br-qty-grid">
       <div class="admin-form-group" data-br-hide-on-wall @if($wallPreset) hidden @endif>
-        <label for="br-rooms">@include('admin.partials.info_tip', ['text' => $brInfo['room_count']]) @include('admin.quotations.basement._client_filled', ['key' => 'room_count', 'filledKeys' => $filledKeys]) Finished rooms / zones (after reno)</label>
+        <label for="br-rooms">@include('admin.partials.info_tip', ['text' => $brInfo['room_count']]) @include('admin.quotations.basement._client_filled', ['key' => 'room_count', 'filledKeys' => $filledKeys]) Finished rooms</label>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-rooms" name="room_count"
                value="{{ $brVal('room_count', 1) }}"
                title="Count rooms as they will exist when the work is done, including new dividing walls. Not the current open basement.">
       </div>
       <div class="admin-form-group">
-        <label for="br-owner-rate">@include('admin.partials.info_tip', ['text' => $brInfo['owner_hourly_rate']]) Owner hourly rate (CAD$)</label>
+        <label for="br-owner-rate">@include('admin.partials.info_tip', ['text' => $brInfo['owner_hourly_rate']]) Owner rate (CAD$)</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input br-preview" id="br-owner-rate" name="owner_hourly_rate"
                value="{{ number_format((float) $brVal('owner_hourly_rate', $settings->owner_hourly_rate), 2, '.', '') }}">
@@ -656,7 +656,7 @@
                value="{{ $brVal('drywall_openings', 0) }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-opening-sf">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_opening_sf']]) Opening area (sq ft)</label>
+        <label for="br-dw-opening-sf">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_opening_sf']]) Opening area</label>
         <input type="number" step="0.01" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-opening-sf" name="drywall_opening_sf"
                value="{{ $brQty('drywall_opening_sf') }}" placeholder="Auto">
       </div>
@@ -764,7 +764,7 @@
         @include('admin.quotations._shared_qty_field', [
           'id' => 'br-base',
           'name' => 'baseboard_lf',
-          'label' => 'Baseboards (linear ft)',
+          'label' => 'Baseboards (lin. ft)',
           'value' => $brQty('baseboard_lf'),
           'info' => $brInfo['baseboard_lf'],
           'workKey' => 'baseboard',
@@ -778,7 +778,7 @@
         @include('admin.quotations._shared_qty_field', [
           'id' => 'br-casing',
           'name' => 'casing_openings',
-          'label' => 'Casing / door trim (openings)',
+          'label' => 'Casing openings',
           'value' => $brVal('casing_openings', 0),
           'info' => $brInfo['casing_openings'],
           'workKey' => 'casing_opening',
@@ -820,7 +820,7 @@
         @include('admin.quotations._shared_qty_field', [
           'id' => 'br-shoe',
           'name' => 'shoe_lf',
-          'label' => 'Shoe moulding (linear ft)',
+          'label' => 'Shoe (lin. ft)',
           'value' => $brQty('shoe_lf'),
           'info' => $brInfo['shoe_lf'],
           'workKey' => 'shoe_install',
@@ -877,7 +877,7 @@
         @include('admin.quotations._shared_qty_field', [
           'id' => 'br-p-trim',
           'name' => 'paint_trim_lf',
-          'label' => 'Trim (linear ft)',
+          'label' => 'Trim (lin. ft)',
           'value' => $brQty('paint_trim_lf'),
           'info' => $brInfo['paint_trim_lf'],
           'workKey' => 'paint_trim',

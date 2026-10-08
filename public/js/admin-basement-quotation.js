@@ -121,7 +121,7 @@
   function syncLightingType() {
     var type = lightingType ? lightingType.value : 'spot';
     if (lightingLabel) {
-      lightingLabel.textContent = type === 'fixture' ? 'How many fixtures' : 'How many pot lights';
+      lightingLabel.textContent = type === 'fixture' ? 'Fixtures' : 'Pot lights';
     }
     if (lightingFixtures) {
       lightingFixtures.hidden = type !== 'both';

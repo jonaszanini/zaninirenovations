@@ -1,7 +1,7 @@
 {{-- Primary new-wall inputs; relocated between Overview (wall preset) and Framing. --}}
 <div id="br-wall-primary-fields" class="br-wall-primary-fields">
   <div class="admin-form-group">
-    <label for="br-partition">@include('admin.partials.info_tip', ['text' => $brInfo['partition_lf']]) @include('admin.quotations.basement._client_filled', ['key' => 'partition_lf', 'filledKeys' => $filledKeys ?? []]) New wall (linear ft)</label>
+    <label for="br-partition">@include('admin.partials.info_tip', ['text' => $brInfo['partition_lf']]) @include('admin.quotations.basement._client_filled', ['key' => 'partition_lf', 'filledKeys' => $filledKeys ?? []]) New wall (lin. ft)</label>
     <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-partition" name="partition_lf"
            value="{{ $brVal('partition_lf', 0) }}"
            title="Interior walls only. Height uses the ceiling height from Overview.">
@@ -23,7 +23,7 @@
       </label>
     </div>
     <div data-br-door-count-ui @if(($scopePreset ?? '') === 'wall') hidden @endif>
-      <label for="br-frame-doors">@include('admin.partials.info_tip', ['text' => $brInfo['framing_door_openings']]) @include('admin.quotations.basement._client_filled', ['key' => 'framing_door_openings', 'filledKeys' => $filledKeys ?? []]) Door openings to frame</label>
+      <label for="br-frame-doors">@include('admin.partials.info_tip', ['text' => $brInfo['framing_door_openings']]) @include('admin.quotations.basement._client_filled', ['key' => 'framing_door_openings', 'filledKeys' => $filledKeys ?? []]) Doors to frame</label>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-frame-doors" name="framing_door_openings"
              value="{{ $brVal('framing_door_openings', 0) }}">
     </div>

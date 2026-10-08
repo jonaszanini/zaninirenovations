@@ -22,17 +22,17 @@
       </select>
     </div>
     <div class="admin-form-group" id="br-lighting-fixture-qty" data-br-basement-lighting @if($scopePreset === 'bathroom' || $brVal('lighting_type', 'spot') !== 'both') hidden @endif>
-      <label for="br-fixtures">@include('admin.partials.info_tip', ['text' => $brInfo['fixture_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'fixture_qty', 'filledKeys' => $filledKeys ?? []]) How many light fixtures</label>
+      <label for="br-fixtures">@include('admin.partials.info_tip', ['text' => $brInfo['fixture_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'fixture_qty', 'filledKeys' => $filledKeys ?? []]) Fixtures</label>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-fixtures" name="fixture_qty"
              value="{{ $brVal('fixture_qty', 0) }}">
     </div>
     <div class="admin-form-group" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
-      <label for="br-lights">@include('admin.partials.info_tip', ['text' => $brInfo['light_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'light_qty', 'filledKeys' => $filledKeys ?? []]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'How many fixtures' : 'How many pot lights' }}</span></label>
+      <label for="br-lights">@include('admin.partials.info_tip', ['text' => $brInfo['light_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'light_qty', 'filledKeys' => $filledKeys ?? []]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'Fixtures' : 'Pot lights' }}</span></label>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-lights" name="light_qty"
              value="{{ $brVal('light_qty', 0) }}">
     </div>
     <div class="admin-form-group">
-      <label for="br-detectors">@include('admin.partials.info_tip', ['text' => $brInfo['detector_qty']]) Smoke / CO detectors</label>
+      <label for="br-detectors">@include('admin.partials.info_tip', ['text' => $brInfo['detector_qty']]) Smoke / CO</label>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-detectors" name="detector_qty"
              value="{{ $brVal('detector_qty', 2) }}"
              title="Ontario typically requires interconnected smoke/CO on each level.">

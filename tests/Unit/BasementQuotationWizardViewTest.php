@@ -24,8 +24,8 @@ class BasementQuotationWizardViewTest extends TestCase
 
         $this->assertStringContainsString('id="br-framing-slot-bath"', $html);
         $this->assertStringContainsString('Walls &amp; ducts', $html);
-        $this->assertStringContainsString('New wall (linear ft)', $html);
-        $this->assertStringContainsString('Work around duct (linear ft)', $html);
+        $this->assertStringContainsString('New wall (lin. ft)', $html);
+        $this->assertStringContainsString('Duct boxing (lin. ft)', $html);
         $this->assertMatchesRegularExpression('/data-br-step="framing"[^>]*\bhidden\b/', $html);
         $this->assertMatchesRegularExpression('/data-br-step="electrical"[^>]*\bhidden\b/', $html);
         $this->assertMatchesRegularExpression('/data-br-step="plumbing"[^>]*\bhidden\b/', $html);
@@ -41,8 +41,8 @@ class BasementQuotationWizardViewTest extends TestCase
         $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
 
         $this->assertStringContainsString('id="br-framing-slot-step"', $html);
-        $this->assertStringContainsString('New wall (linear ft)', $html);
-        $this->assertStringContainsString('Work around duct (linear ft)', $html);
+        $this->assertStringContainsString('New wall (lin. ft)', $html);
+        $this->assertStringContainsString('Duct boxing (lin. ft)', $html);
         $this->assertDoesNotMatchRegularExpression('/data-br-step="framing"[^>]*\bhidden\b/', $html);
         $this->assertMatchesRegularExpression('/id="br-framing-slot-bath"[^>]*\bhidden\b/', $html);
     }
@@ -101,7 +101,7 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertMatchesRegularExpression('/data-br-wall-overview[^>]*\bhidden\b/', $html);
         $this->assertStringContainsString('id="br-framing-primary-slot"', $html);
         $this->assertStringContainsString('name="partition_lf"', $html);
-        $this->assertStringContainsString('Door openings to frame', $html);
+        $this->assertStringContainsString('Doors to frame', $html);
     }
 
     public function test_electrical_and_plumbing_steps_render_priced_lines_and_scope_hint(): void
@@ -124,6 +124,10 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="outlet_qty"', $html);
         $this->assertStringContainsString('name="bath_sink_qty"', $html);
         $this->assertStringContainsString('How many sinks?', $html);
+        $this->assertStringContainsString('>Pot lights</span>', $html);
+        $this->assertStringContainsString('Smoke / CO', $html);
+        $this->assertStringContainsString('Headers / beams', $html);
+        $this->assertStringContainsString('br-field--phone-wide', $html);
     }
 
     public function test_work_area_mode_toggle_sits_beside_the_label(): void
