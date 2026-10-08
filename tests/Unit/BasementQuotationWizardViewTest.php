@@ -115,8 +115,8 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="plumbing_lines[0][description]"', $html);
         $this->assertStringContainsString('qualified electrician', $html);
         $this->assertStringContainsString('qualified plumber', $html);
-        $this->assertStringContainsString("Electrician's quote", $html);
-        $this->assertStringContainsString("Plumber's quote", $html);
+        $this->assertStringContainsString(e("Electrician's quote"), $html);
+        $this->assertStringContainsString(e("Plumber's quote"), $html);
         $this->assertStringNotContainsString('New basement renovation quotation', $html);
         $this->assertStringNotContainsString('licensed', $html);
         $this->assertStringNotContainsString('licence', $html);
