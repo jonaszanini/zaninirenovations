@@ -723,7 +723,7 @@
     }
     obj.wall_id = snap.wall.wallId;
     if (item.type === 'window' || item.type === 'opening') {
-      obj.height = item.type === 'window' ? 48 : 84;
+      obj.height = item.type === 'window' ? DEFAULT_WINDOW_HEIGHT_IN : 84;
       obj.sill_height = item.type === 'window' ? 36 : 0;
     }
     applySnapToObject(obj, snap);
@@ -7253,7 +7253,9 @@
       tip.setAttribute('data-tooltip', saveLabel);
     });
     updateFullpageTitle();
-    show(els.cancelEdit, editing);
+    raAll('[data-ra-cancel-edit]').forEach(function (btn) {
+      show(btn, editing);
+    });
     syncExportButtons();
     renderRooms();
   }
@@ -7575,7 +7577,9 @@
   function saveRoom() {
     var project = activeProject();
     if (!project || !hasAnyClosedPolygon()) {
-      return Promise.reject(new Error('Complete at least one closed area before saving.'));
+      var closedErr = new Error('Complete at least one closed area before saving.');
+      setFeedback(closedErr.message, true);
+      return Promise.reject(closedErr);
     }
     var name = (els.roomName.value || '').trim();
     if (!name) {
@@ -9499,7 +9503,9 @@
     });
     if (els.newRoom) els.newRoom.addEventListener('click', startNewRoom);
     if (els.newRoomSecondary) els.newRoomSecondary.addEventListener('click', startNewRoom);
-    if (els.cancelEdit) els.cancelEdit.addEventListener('click', cancelEdit);
+    raAll('[data-ra-cancel-edit]').forEach(function (btn) {
+      btn.addEventListener('click', cancelEdit);
+    });
 
     if (els.wallApply) els.wallApply.addEventListener('click', applyWallLength);
     if (els.wallCancel) els.wallCancel.addEventListener('click', clearWallSelection);
@@ -9690,7 +9696,7 @@
 
   function updateFullpageTitle() {
     var titleEl = root.querySelector('[data-ra-full-title]');
-    if (!titleEl) return;
+    if (!titleEl || titleEl === els.roomName || titleEl.tagName === 'INPUT') return;
     var roomName = els.roomName ? String(els.roomName.value || '').trim() : '';
     var project = activeProject();
     if (roomName) {

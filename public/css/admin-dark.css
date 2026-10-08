@@ -1456,8 +1456,14 @@ html.admin-dark .util-ra-full-header {
   border-bottom-color: var(--admin-border);
 }
 
-html.admin-dark .util-ra-full-header__title {
+html.admin-dark .util-ra-full-header__title,
+html.admin-dark .util-ra-full-header__name {
   color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-full-header__name {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
 }
 
 html.admin-dark .util-ra-full-header__sub {

@@ -40,11 +40,23 @@
             <i class="fa fa-arrow-left" aria-hidden="true"></i> {{ $backLabel }}
           </a>
           <div class="util-ra-full-header__titles">
-            <h2 class="util-ra-full-header__title" data-ra-full-title>{{ $pageTitle }}</h2>
+            <label class="util-sr-only" for="ra-full-room-name">Room name</label>
+            <input
+              class="admin-input util-ra-full-header__name"
+              type="text"
+              id="ra-full-room-name"
+              maxlength="120"
+              data-ra-room-name
+              data-ra-full-title
+              value="{{ $pageTitle === 'Room Area' ? '' : $pageTitle }}"
+              placeholder="Room name">
             <p class="util-ra-full-header__sub" data-ra-full-sub>{{ $clientProject->name ?? '' }}</p>
           </div>
         </div>
         <div class="util-ra-full-header__actions">
+          <button type="button" class="admin-btn admin-btn--ghost" data-ra-cancel-edit hidden aria-label="Cancel edit">
+            Cancel
+          </button>
           <button type="button" class="admin-btn admin-btn--primary" data-ra-save-room disabled aria-label="Save room">
             <i class="fa fa-save" aria-hidden="true"></i> Save
           </button>
@@ -180,7 +192,7 @@
             <div class="util-ra-tool-group__actions">
               <div class="admin-form-group util-ra-room-name">
                 <label for="ra-room-name" class="util-sr-only">Room name</label>
-                <input class="admin-input" type="text" id="ra-room-name" maxlength="120" placeholder="Room name" data-ra-room-name>
+                <input class="admin-input" type="text" id="ra-room-name" maxlength="120" placeholder="Room name" @unless($fullPage) data-ra-room-name @endunless>
               </div>
               <span class="util-ra-tip" data-tooltip="Save room" data-ra-save-tip>
                 <button type="button" class="admin-btn admin-btn--primary util-ra-icon-btn" data-ra-save-room disabled aria-label="Save room">

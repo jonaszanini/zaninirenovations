@@ -32,6 +32,7 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             ->assertOk()
             ->assertViewIs('admin.client_projects.room_area')
             ->assertSee('data-ra-fullpage', false)
+            ->assertSee('id="ra-full-room-name"', false)
             ->assertSee('Back to project')
             ->assertSee('data-ra-save-room', false)
             ->assertSee('data-ra-zoom-in', false)
@@ -127,7 +128,11 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->get(route('admin.utilities.room-area.quote', ['layout' => 'room:'.$room->id]))
             ->assertOk()
             ->assertSee('Create quote', false)
-            ->assertSee('lf perimeter', false);
+            ->assertSee('lf perimeter', false)
+            ->assertSee(route('admin.client-projects.utilities.room-area', [
+                'client_project' => $project,
+                'room_area_room' => $room,
+            ], false), false);
 
         $this->get(route('admin.quotations.flooring.create', [
             'room_area_import_id' => 'room:'.$room->id,

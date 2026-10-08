@@ -42,11 +42,19 @@ class RoomAreaQuoteController extends Controller
             ->limit(30)
             ->get(['id', 'quote_number', 'display_title', 'client_name', 'grand_total', 'client_project_id']);
 
+        $backUrl = $clientProject
+            ? route('admin.client-projects.utilities.room-area', array_filter([
+                'client_project' => $clientProject,
+                'room_area_room' => $resolved['room']?->id,
+            ]))
+            : route('admin.utilities.room-area', $resolved['project'] ? ['ra_project' => $resolved['project']->id] : []);
+
         return view('admin.utilities.room_area_quote', [
             'layoutId' => $option['id'],
             'option' => $option,
             'roomAreaProject' => $resolved['project'],
             'clientProject' => $clientProject,
+            'backUrl' => $backUrl,
             'existingQuotes' => $existingQuotes,
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
             'trades' => RoomAreaQuoteQuantities::trades(),
