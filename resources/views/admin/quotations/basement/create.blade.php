@@ -137,11 +137,6 @@
         </a>
         <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
       </div>
-      <div class="br-step-nav" id="br-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
-      </div>
       <div class="pq-sidebar-actions br-toolbar-actions">
         @if ($isEdit)
           @include('admin.partials.quotation_view_pdf', ['iconOnly' => true])
@@ -172,10 +167,17 @@
                 aria-label="Save quotation">
           <i class="fa fa-save" aria-hidden="true"></i>
         </button>
-        <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
-          <span class="br-toolbar-grand__label">Grand total</span>
-          <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
-        </div>
+      </div>
+    </div>
+    <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
+      <div class="br-step-nav" id="br-step-nav">
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
+        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
+        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
+      </div>
+      <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
+        <span class="br-toolbar-grand__label">Grand total</span>
+        <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
       </div>
     </div>
 
@@ -199,24 +201,27 @@
       </nav>
 
       <div class="br-main">
-        <div class="admin-card fl-step-card">
-          <h4>Client &amp; scope</h4>
-          <div class="admin-form-group">
-            <label for="br-client-name">@include('admin.partials.info_tip', ['text' => 'Name printed on the quotation PDF and used when linking this quote to a project.']) Client name</label>
-            <input type="text" class="admin-input" id="br-client-name" name="client_name" maxlength="160"
-                   value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
+        <div class="admin-card fl-step-card br-client-card">
+          <div class="br-client-card__row">
+            <div class="admin-form-group">
+              <label for="br-client-name">@include('admin.partials.info_tip', ['text' => 'Name printed on the quotation PDF and used when linking this quote to a project.']) Client name</label>
+              <input type="text" class="admin-input" id="br-client-name" name="client_name" maxlength="160"
+                     value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
+            </div>
           </div>
-          <div class="admin-form-group quotation-work-desc">
-            <label for="br-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary that appears on the client PDF. Improve with AI after you fill the wizard.']) Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
-            <textarea class="admin-input" id="br-work-description" name="work_description" rows="8"
-                      placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
-            @include('admin.partials.quotation_work_description_ai', [
-                'workDescriptionTextareaId' => 'br-work-description',
-                'aiContextFormId' => 'br-main-form',
-                'aiQuotationType' => 'basement',
-            ])
-            <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
-          </div>
+          <details class="br-desc-acc" @if ($isEdit && filled($quotation->work_description)) open @endif>
+            <summary class="br-desc-acc__summary">Project description <span class="admin-form-help">(optional — client PDF)</span></summary>
+            <div class="admin-form-group quotation-work-desc">
+              <label for="br-work-description" class="visually-hidden">Project description</label>
+              <textarea class="admin-input" id="br-work-description" name="work_description" rows="4"
+                        placeholder="Optional scope summary for the client PDF.">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+              @include('admin.partials.quotation_work_description_ai', [
+                  'workDescriptionTextareaId' => 'br-work-description',
+                  'aiContextFormId' => 'br-main-form',
+                  'aiQuotationType' => 'basement',
+              ])
+            </div>
+          </details>
         </div>
 
         @include('admin.quotations.basement._wizard_sections', [
@@ -311,17 +316,7 @@
             </div>
 
             <h4 class="br-review-heading">Materials</h4>
-            <div class="br-qty-grid br-qty-grid--inset">
-              <div class="admin-form-group">
-                <label for="br-material-waste">
-                  @include('admin.partials.info_tip', ['text' => 'Ordering buffer applied to bulk materials (drywall, lumber, paint, insulation, flooring, trim sticks, etc.). Counted fixtures like doors and toilets stay exact. Default 10%.'])
-                  Material waste (%)
-                </label>
-                <input type="number" step="0.1" min="0" max="100" class="admin-input br-preview" id="br-material-waste"
-                       name="material_waste_percent"
-                       value="{{ old('material_waste_percent', $inputs['material_waste_percent'] ?? 10) }}">
-              </div>
-            </div>
+            <p class="admin-form-help">Waste % is on Overview (default 10%). Bulk quantities below already include it.</p>
             <div class="admin-table-scroll">
               <table class="admin-table br-review-table">
                 <thead>

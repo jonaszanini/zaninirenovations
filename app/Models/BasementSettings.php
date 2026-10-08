@@ -21,6 +21,27 @@ class BasementSettings extends Model
     /** 4x8 sheet. */
     public const PANEL_SF = 32;
 
+    /** 4x12 sheet (one-piece 8–9 ft basement walls). */
+    public const PANEL_SF_4X12 = 48;
+
+    /** Typical 2-6 / 3-0 door rough opening (3 ft × 7 ft). */
+    public const DRYWALL_DOOR_SF = 21.0;
+
+    /** Typical basement window (4 ft × 3 ft). */
+    public const DRYWALL_WINDOW_SF = 12.0;
+
+    /** Archway / unknown opening — treat like a door. */
+    public const DRYWALL_GENERIC_OPENING_SF = 21.0;
+
+    public const DRYWALL_SCREWS_PER_4X8 = 32;
+
+    public const DRYWALL_SCREWS_PER_4X12 = 48;
+
+    /** 1-5/8 in coarse drywall screws, 1,000-count box. */
+    public const DRYWALL_SCREWS_PER_BOX = 1000;
+
+    public const STUD_SPACING_DEFAULT = 16;
+
     public const BATT_SF_PER_BAG = 40;
 
     public const UNDERLAYMENT_SF_PER_ROLL = 100;
@@ -150,6 +171,9 @@ class BasementSettings extends Model
             'stud_2x4' => $row('2x4x8 SPF stud (each)', 'each', 5.50),
             'plate_2x4' => $row('2x4 plate lumber (lf)', 'lf', round(5.50 / self::PLATE_FEET_PER_BOARD, 4)),
             'drywall_sheet' => $row('1/2" drywall 4x8 sheet (each)', 'sheet', 18.00),
+            'drywall_sheet_4x12' => $row('1/2" drywall 4x12 sheet (each)', 'sheet', 26.00),
+            'drywall_screws' => $row('1-5/8" drywall screws, 1,000-count box (each)', 'box', 14.00),
+            'building_permit' => $row('Building permit (allowance)', 'ls', 0.00),
             'joint_compound' => $row('17 L all-purpose joint compound (pail)', 'pail', 18.00),
             'drywall_tape' => $row('Drywall paper tape, 250 ft roll (each)', 'roll', 8.00),
             'corner_bead' => $row('8 ft corner bead (each)', 'each', 6.50),

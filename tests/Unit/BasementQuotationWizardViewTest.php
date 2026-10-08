@@ -159,6 +159,11 @@ class BasementQuotationWizardViewTest extends TestCase
 
         $this->assertStringContainsString('name="include_helper"', $html);
         $this->assertStringContainsString('Include a helper', $html);
+        $this->assertStringContainsString('name="material_waste_percent"', $html);
+        $this->assertStringContainsString('name="drywall_sheet_size"', $html);
+        $this->assertStringContainsString('name="stud_spacing_in"', $html);
+        $this->assertStringContainsString('name="drywall_door_openings"', $html);
+        $this->assertStringContainsString('name="include_building_permit"', $html);
         $this->assertStringContainsString('id="br-helper-rate-wrap"', $html);
         $this->assertMatchesRegularExpression('/id="br-helper-rate-wrap"[^>]*\bhidden\b/', $html);
     }

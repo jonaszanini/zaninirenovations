@@ -312,25 +312,37 @@
     applyingLayout = true;
     var peri = Number(opt.perimeter_lf || 0);
     var area = Number(opt.area_sqft || 0);
-    var wallSf = peri > 0 ? peri * ceilingHeightFt() : 0;
+    var measuredWall = Number(opt.wall_area_sqft || 0);
+    var wallSf = measuredWall > 0 ? measuredWall : (peri > 0 ? peri * ceilingHeightFt() : 0);
     if (periEl) periEl.value = peri > 0 ? formatLayoutQty(peri) : '';
     if (labelEl) labelEl.value = opt.name || opt.label || '';
     setLwToSqft('br-area', area > 0 ? area : '');
     setLwToSqft('br-dw-wall', wallSf > 0 ? wallSf : '');
-    if (wall) wall.setAttribute('data-br-from-layout', '1');
+    if (wall) wall.setAttribute('data-br-from-layout', measuredWall > 0 ? 'net' : '1');
     setLwToSqft('br-dw-ceil', area > 0 ? area : '');
     var inside = document.getElementById('br-dw-inside-corners');
     var outside = document.getElementById('br-dw-corners');
     if (inside) inside.value = String(Math.max(0, parseInt(opt.inside_corners, 10) || 0));
     if (outside) outside.value = String(Math.max(0, parseInt(opt.outside_corners, 10) || 0));
+    var doors = parseInt(opt.door_count, 10) || 0;
+    var windows = parseInt(opt.window_count, 10) || 0;
+    var extras = parseInt(opt.opening_count, 10) || 0;
     var openings = parseInt(opt.drywall_openings, 10);
     if (!isFinite(openings) || openings < 0) {
-      openings = (parseInt(opt.door_count, 10) || 0)
-        + (parseInt(opt.window_count, 10) || 0)
-        + (parseInt(opt.opening_count, 10) || 0);
+      openings = doors + windows + extras;
     }
+    var doorEl = document.getElementById('br-dw-door-open');
+    var windowEl = document.getElementById('br-dw-window-open');
     var openEl = document.getElementById('br-dw-open');
-    if (openEl) openEl.value = String(Math.max(0, openings));
+    var openingSfEl = document.getElementById('br-dw-opening-sf');
+    if (doorEl) doorEl.value = String(Math.max(0, doors));
+    if (windowEl) windowEl.value = String(Math.max(0, windows));
+    if (openEl) openEl.value = String(Math.max(0, extras));
+    if (openingSfEl && measuredWall > 0) {
+      openingSfEl.value = '0';
+    } else if (openingSfEl) {
+      openingSfEl.value = '';
+    }
     var baseEl = document.getElementById('br-base');
     if (baseEl && opt.baseboard_lf != null && opt.baseboard_lf !== '') {
       var base = Number(opt.baseboard_lf);
@@ -346,8 +358,9 @@
       status.hidden = false;
       status.classList.add('is-set');
       status.textContent = 'Imported ' + name + ': ' + floor + ' sq ft floor, '
-        + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall, '
-        + openLabel + '.';
+        + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall'
+        + (measuredWall > 0 ? ' (openings already deducted)' : '')
+        + ', ' + openLabel + '.';
     }
     applyingLayout = false;
     updateDwWallPlaceholder();
@@ -357,7 +370,8 @@
   function refreshLayoutWallFromHeight() {
     var wall = document.getElementById('br-dw-wall');
     var periEl = document.getElementById('br-perimeter-lf');
-    if (!wall || wall.getAttribute('data-br-from-layout') !== '1' || !periEl) return;
+    var from = wall ? wall.getAttribute('data-br-from-layout') : '';
+    if (!wall || (from !== '1' && from !== 'gross') || !periEl) return;
     var peri = parseFloat(periEl.value);
     if (!isFinite(peri) || peri <= 0) return;
     applyingLayout = true;
@@ -370,12 +384,17 @@
       var area = areaEl ? parseFloat(areaEl.value) : 0;
       var name = (labelEl && labelEl.value) ? labelEl.value : 'layout';
       var openEl = document.getElementById('br-dw-open');
-      var openings = openEl ? (parseInt(openEl.value, 10) || 0) : 0;
+      var doorEl = document.getElementById('br-dw-door-open');
+      var windowEl = document.getElementById('br-dw-window-open');
+      var openings = (parseInt(openEl && openEl.value, 10) || 0)
+        + (parseInt(doorEl && doorEl.value, 10) || 0)
+        + (parseInt(windowEl && windowEl.value, 10) || 0);
       var openLabel = openings === 1 ? '1 opening' : openings + ' openings';
+      var wallNow = wall ? parseFloat(wall.value) : (peri * ceilingHeightFt());
       status.textContent = 'Imported ' + name + ': ' + formatLayoutQty(area) + ' sq ft floor, '
-        + formatLayoutQty(peri) + ' lf walls × ' + formatLayoutQty(ceilingHeightFt()) + ' ft = '
-        + formatLayoutQty(peri * ceilingHeightFt()) + ' sq ft wall drywall, '
-        + openLabel + '.';
+        + formatLayoutQty(peri) + ' lf walls × ' + formatLayoutQty(ceilingHeightFt()) + ' ft'
+        + (isFinite(wallNow) && wallNow > 0 ? ' = ' + formatLayoutQty(wallNow) + ' sq ft wall drywall' : '')
+        + ', ' + openLabel + '.';
     }
   }
 
@@ -704,6 +723,68 @@
     syncBathSinkQty();
   }
 
+  function clearStepErrors() {
+    form.querySelectorAll('.br-field-error').forEach(function (el) { el.remove(); });
+    form.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
+  }
+
+  function showFieldError(input, message) {
+    if (!input) return;
+    input.classList.add('is-invalid');
+    var group = input.closest('.admin-form-group') || input.closest('.br-lw') || input.parentElement;
+    if (!group) return;
+    var existing = group.querySelector('.br-field-error');
+    if (existing) {
+      existing.textContent = message;
+      return;
+    }
+    var p = document.createElement('p');
+    p.className = 'br-field-error';
+    p.textContent = message;
+    group.appendChild(p);
+  }
+
+  function validateCurrentStep() {
+    clearStepErrors();
+    var key = wizardKeys[currentIndex];
+    if (key !== 'overview') return true;
+    var preset = currentPreset();
+    if (preset === 'wall') {
+      var wall = document.getElementById('br-partition');
+      var lf = wall ? parseFloat(wall.value) : 0;
+      if (!isFinite(lf) || lf <= 0) {
+        showFieldError(wall, 'Enter the new wall length in linear feet.');
+        if (wall && wall.focus) wall.focus();
+        return false;
+      }
+      return true;
+    }
+    var mode = form.querySelector('[name="area_entry_mode"]:checked');
+    var useDims = mode && mode.value === 'dimensions';
+    if (useDims) {
+      var len = form.querySelector('[name="area_length_ft"]');
+      var wid = form.querySelector('[name="area_width_ft"]');
+      var l = len ? parseFloat(len.value) : 0;
+      var w = wid ? parseFloat(wid.value) : 0;
+      if (!(l > 0 && w > 0)) {
+        showFieldError(len || wid, 'Enter length and width in feet.');
+        if (len && len.focus) len.focus();
+        return false;
+      }
+      return true;
+    }
+    var area = document.getElementById('br-area');
+    var sf = area ? parseFloat(area.value) : 0;
+    if (!isFinite(sf) || sf <= 0) {
+      showFieldError(area, preset === 'bathroom'
+        ? 'Enter the bathroom / work area in square feet.'
+        : 'Enter the total basement area in square feet.');
+      if (area && area.focus) area.focus();
+      return false;
+    }
+    return true;
+  }
+
   function setWizardStep(index, scroll) {
     if (index < 0) index = 0;
     if (index >= wizardKeys.length) index = wizardKeys.length - 1;
@@ -750,7 +831,10 @@
     var prevBtn = document.getElementById('br-prev');
     var nextBtn = document.getElementById('br-next');
     if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
-    if (nextBtn) nextBtn.addEventListener('click', function () { setWizardStep(currentIndex + 1, true); });
+    if (nextBtn) nextBtn.addEventListener('click', function () {
+      if (!validateCurrentStep()) return;
+      setWizardStep(currentIndex + 1, true);
+    });
   } else {
     var nav = document.getElementById('br-step-nav');
     if (nav) nav.hidden = true;
@@ -876,6 +960,31 @@
     }
     html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
     body.innerHTML = html;
+    updateDrywallNetHint(data.scope || {});
+  }
+
+  function updateDrywallNetHint(scope) {
+    var hint = document.getElementById('br-dw-net-hint');
+    if (!hint) return;
+    var net = Number(scope.drywall_wall_net_sf || 0);
+    var opening = Number(scope.drywall_opening_sf || 0);
+    var sheet = scope.drywall_sheet_size || '4x8';
+    var sheetSf = Number(scope.drywall_sheet_sf || 32);
+    if (net <= 0 && opening <= 0) {
+      hint.hidden = true;
+      hint.textContent = '';
+      return;
+    }
+    var parts = [];
+    if (opening > 0) {
+      parts.push(formatLayoutQty(opening) + ' sq ft openings deducted');
+    }
+    if (net > 0) {
+      parts.push(formatLayoutQty(net) + ' sq ft net walls');
+    }
+    parts.push(sheet + ' sheets (' + formatLayoutQty(sheetSf) + ' sq ft each)');
+    hint.hidden = false;
+    hint.textContent = parts.join(' · ') + '.';
   }
 
   function tradeBreakdownHtml(label, trade) {

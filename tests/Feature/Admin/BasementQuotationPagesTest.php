@@ -46,7 +46,11 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Import layout')
             ->assertSee('Search saved Room Area rooms', false)
             ->assertSee('Project description', false)
-            ->assertSee('admin-form-help">(optional — appears on client PDF)', false)
+            ->assertSee('optional — client PDF', false)
+            ->assertSee('4×8 (32 sq ft)', false)
+            ->assertSee('4×12 (48 sq ft)', false)
+            ->assertSee('Stud spacing')
+            ->assertSee('Building permit (extra charge)')
             ->assertSee('Commute expense')
             ->assertSee('Material waste');
 

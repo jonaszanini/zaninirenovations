@@ -1584,6 +1584,29 @@ html.admin-dark .br-toolbar-grand {
 html.admin-dark .br-toolbar-grand {
   border-top-color: var(--admin-border);
 }
+html.admin-dark .br-sticky-total {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .br-sheet-size__option {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .br-sheet-size__option:has(input:checked) {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+html.admin-dark .br-field-error {
+  color: #fca5a5;
+}
+html.admin-dark .admin-input.is-invalid {
+  border-color: #f87171;
+}
+html.admin-dark .br-desc-acc__summary {
+  color: var(--admin-heading);
+}
 html.admin-dark .br-layout .fl-breakdown-section {
   color: var(--admin-muted);
 }

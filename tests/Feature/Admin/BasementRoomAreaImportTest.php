@@ -94,6 +94,8 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
             ->assertSee('name="drywall_openings"', false)
             ->assertSee('id="br-base"', false)
             ->assertSee('name="baseboard_lf"', false)
-            ->assertSee('Doors, windows, and openings fill the openings count', false);
+            ->assertSee('name="drywall_door_openings"', false)
+            ->assertSee('name="drywall_sheet_size"', false)
+            ->assertSee('Opening area (sq ft)', false);
     }
 }

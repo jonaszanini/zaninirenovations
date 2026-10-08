@@ -71,7 +71,7 @@
       'doors_trim' => 'Interior doors, baseboards, door casing, and window trim kits.',
       'painting' => 'Prime and paint walls, ceiling, and trim (coats and colors).',
       'bathroom' => 'Vanity, toilet, shower or tub, exhaust fan, and tile — fixtures, not the plumbing pipes.',
-      'finishing' => 'Extra hardware, final cleaning, and punch-list touch-ups.',
+      'finishing' => 'Extra hardware, final cleaning, punch-list touch-ups, and optional building-permit allowance.',
   ];
   $brInfo = [
       'scope_preset' => 'Pick a starting point, then add or skip trades. Unused steps stay out of the wizard.',
@@ -91,6 +91,7 @@
       'demo_baseboard_lf' => 'Existing baseboard to remove. Blank uses the room perimeter; enter 0 if none.',
       'demo_bin_qty' => 'How many dumpsters / bins. Unit price comes from Price configuration.',
       'partition_lf' => 'Length of the new interior 2x4 wall in linear feet. Height uses ceiling height. Drywall, paint, and baseboard use both sides. Use 0 if the bathroom already has walls.',
+      'stud_spacing_in' => 'On-centre stud spacing. 16″ o.c. is the Ontario default for basement partitions. 24″ uses fewer studs; 12″ is for tile-ready or extra-stiff walls.',
       'wall_include_door' => 'Adds one rough opening to frame and one interior door to hang. Change the door count later on the Doors step if needed.',
       'bulkhead_lf' => 'Length of boxed-in ducts or beams (soffits) to work around, not a full-height wall. Use 0 if none.',
       'header_qty' => 'Load-bearing or wide openings that need a header or beam, counted each.',
@@ -118,8 +119,12 @@
       'drywall_ceiling_sf' => 'Ceiling area to hang. Blank follows Ceiling type (skipped for drop ceiling or skip). New wall quotes skip ceiling — the basement is already finished.',
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
       'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
-      'drywall_openings' => 'Door and window openings to cut and bead, counted each.',
-      'room_area_import' => 'Saved Room Area drawing. Wall drywall becomes the real perimeter × ceiling height (not a square from the floor area). Ceiling drywall uses the floor square footage. Inside and outside corners are counted from the outline. Doors, windows, and openings fill the openings count; imported baseboard length fills the Doors & trim default when that field is present.',
+      'drywall_openings' => 'Other openings (archways) to cut and bead, counted each. Door and window counts above are added for labor.',
+      'drywall_door_openings' => 'Door rough openings. Each deducts 21 sq ft (3×7 ft) from wall drywall unless you type Opening area.',
+      'drywall_window_openings' => 'Window openings. Each deducts 12 sq ft (4×3 ft) from wall drywall unless you type Opening area.',
+      'drywall_opening_sf' => 'Total opening area to subtract from wall drywall. Blank uses 21 sq ft per door and 12 sq ft per window. Enter 0 if the wall area you typed is already net.',
+      'drywall_sheet_size' => '4×12 sheets cover a typical 8–9 ft basement wall in one piece (fewer seams). 4×8 is two rows. Sheet count and waste follow this choice.',
+      'room_area_import' => 'Saved Room Area drawing. Wall drywall uses the measured wall area (openings already deducted when the layout has doors/windows). Ceiling drywall uses the floor square footage. Corners and opening counts come from the outline.',
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drop ceiling uses grid and tiles instead of hanging drywall.',
       'ceiling_sf' => 'Ceiling area. Blank uses the work area.',
@@ -156,6 +161,9 @@
       'hardware_sets' => 'Extra towel bars, paper holders, or similar, beyond what comes with the vanity.',
       'include_cleaning' => 'Final broom/vacuum, wipe, and dust so the space is handover-ready.',
       'include_touchups' => 'Small paint and caulk fixes on a punch list after the main work.',
+      'include_building_permit' => 'Optional extra-charge line for a municipal building permit. Leave off if the client handles the permit or none is needed.',
+      'building_permit_amount' => 'Permit allowance in CAD$. HST is added like other materials. Use 0 if you only want the reminder without a price.',
+      'material_waste_percent' => 'Ordering buffer on bulk materials (drywall, lumber, paint, insulation, flooring, trim). Doors and toilets stay exact. Default 10%.',
       'client_provides_all' => 'Labor only — you do not supply materials. Totals drop material cost (HST on labor still applies as configured).',
   ];
 @endphp
@@ -268,6 +276,15 @@
           'rateId' => 'br-helper-rate',
           'rateValue' => number_format((float) $brVal('helper_hourly_rate', $settings->helper_hourly_rate), 2, '.', ''),
         ])
+      </div>
+      <div class="admin-form-group">
+        <label for="br-material-waste">
+          @include('admin.partials.info_tip', ['text' => $brInfo['material_waste_percent']])
+          Material waste (%)
+        </label>
+        <input type="number" step="0.1" min="0" max="100" class="admin-input br-preview br-input--narrow" id="br-material-waste"
+               name="material_waste_percent"
+               value="{{ old('material_waste_percent', $inputs['material_waste_percent'] ?? 10) }}">
       </div>
     </div>
     <div class="admin-form-group br-notes-field">
@@ -510,8 +527,44 @@
   </div>
 </details>
 
-{{-- 7. Drywall --}}
+{{-- 7. Ceiling (before drywall so hang area follows the ceiling type) --}}
 @php $step++; @endphp
+<details class="br-acc admin-card" data-br-step="ceiling" @unless(in_array('ceiling', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Ceiling Options</summary>
+  <div class="br-acc__body">
+    <div class="br-qty-grid">
+      <div class="admin-form-group">
+        <label for="br-ceil-type">@include('admin.partials.info_tip', ['text' => $brInfo['ceiling_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'ceiling_type', 'filledKeys' => $filledKeys]) Ceiling type</label>
+        <select class="admin-input br-preview" id="br-ceil-type" name="ceiling_type">
+          <option value="drywall" @selected($brVal('ceiling_type', 'drywall') === 'drywall')>Drywall ceiling</option>
+          <option value="paint" @selected($brVal('ceiling_type') === 'paint')>Paint-grade drywall</option>
+          <option value="drop" @selected($brVal('ceiling_type') === 'drop')>Drop ceiling</option>
+          <option value="none" @selected($brVal('ceiling_type') === 'none')>Leave existing / skip</option>
+        </select>
+      </div>
+      @include('admin.quotations.basement._qty_lw', [
+        'name' => 'ceiling_sf',
+        'id' => 'br-ceil-sf',
+        'label' => 'Ceiling area (sq ft)',
+        'value' => $brQty('ceiling_sf'),
+        'modeName' => 'qty_dims[ceiling_sf][mode]',
+        'lengthName' => 'qty_dims[ceiling_sf][length_ft]',
+        'widthName' => 'qty_dims[ceiling_sf][width_ft]',
+        'mode' => $qtyDim('ceiling_sf')['mode'],
+        'lengthValue' => $qtyDim('ceiling_sf')['length'],
+        'widthValue' => $qtyDim('ceiling_sf')['width'],
+        'placeholder' => 'Auto: basement area',
+        'info' => $brInfo['ceiling_sf'],
+      ])
+    </div>
+  </div>
+</details>
+
+{{-- 8. Drywall --}}
+@php
+  $step++;
+  $sheetSizeNow = \App\Services\BasementQuotationCalculator::normalizeSheetSize($brVal('drywall_sheet_size', '4x8'));
+@endphp
 <details class="br-acc admin-card" data-br-step="drywall" @unless(in_array('drywall', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Drywall / Mud / Tape / Sand</summary>
   <div class="br-acc__body">
@@ -544,6 +597,18 @@
         @endif
       </p>
     </div>
+    <fieldset class="br-sheet-size">
+      <legend>@include('admin.partials.info_tip', ['text' => $brInfo['drywall_sheet_size']]) Drywall sheet size</legend>
+      <div class="br-sheet-size__grid">
+        @foreach (\App\Services\BasementQuotationCalculator::SHEET_SIZES as $sizeKey => $sizeLabel)
+          <label class="br-sheet-size__option">
+            <input type="radio" class="br-preview" name="drywall_sheet_size" value="{{ $sizeKey }}"
+                   @checked($sheetSizeNow === $sizeKey)>
+            <span>{{ $sizeLabel }}</span>
+          </label>
+        @endforeach
+      </div>
+    </fieldset>
     <div class="br-qty-grid">
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'drywall_wall_sf',
@@ -576,19 +641,34 @@
       ])
       </div>
       <div class="admin-form-group">
+        <label for="br-dw-door-open">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_door_openings']]) Door openings</label>
+        <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-door-open" name="drywall_door_openings"
+               value="{{ $brVal('drywall_door_openings', 0) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="br-dw-window-open">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_window_openings']]) Window openings</label>
+        <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-window-open" name="drywall_window_openings"
+               value="{{ $brVal('drywall_window_openings', 0) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="br-dw-open">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_openings']]) Other openings</label>
+        <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-open" name="drywall_openings"
+               value="{{ $brVal('drywall_openings', 0) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="br-dw-opening-sf">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_opening_sf']]) Opening area (sq ft)</label>
+        <input type="number" step="0.01" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-opening-sf" name="drywall_opening_sf"
+               value="{{ $brQty('drywall_opening_sf') }}" placeholder="Auto from openings">
+      </div>
+      <div class="admin-form-group">
         <label for="br-dw-corners">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_corners']]) Outside corners</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-dw-corners" name="drywall_corners"
+        <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-corners" name="drywall_corners"
                value="{{ $brVal('drywall_corners', 0) }}">
       </div>
       <div class="admin-form-group">
         <label for="br-dw-inside-corners">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_inside_corners']]) Inside corners</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-dw-inside-corners" name="drywall_inside_corners"
+        <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-inside-corners" name="drywall_inside_corners"
                value="{{ $brVal('drywall_inside_corners', 0) }}">
-      </div>
-      <div class="admin-form-group">
-        <label for="br-dw-open">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_openings']]) Openings (doors / windows)</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview" id="br-dw-open" name="drywall_openings"
-               value="{{ $brVal('drywall_openings', 0) }}">
       </div>
       <div class="admin-form-group">
         <label for="br-finish">@include('admin.partials.info_tip', ['text' => $brInfo['finish_level']]) Level of finish</label>
@@ -599,39 +679,7 @@
         </select>
       </div>
     </div>
-  </div>
-</details>
-
-{{-- 8. Ceiling --}}
-@php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="ceiling" @unless(in_array('ceiling', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Ceiling Options</summary>
-  <div class="br-acc__body">
-    <div class="br-qty-grid">
-      <div class="admin-form-group">
-        <label for="br-ceil-type">@include('admin.partials.info_tip', ['text' => $brInfo['ceiling_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'ceiling_type', 'filledKeys' => $filledKeys]) Ceiling type</label>
-        <select class="admin-input br-preview" id="br-ceil-type" name="ceiling_type">
-          <option value="drywall" @selected($brVal('ceiling_type', 'drywall') === 'drywall')>Drywall ceiling</option>
-          <option value="paint" @selected($brVal('ceiling_type') === 'paint')>Paint-grade drywall</option>
-          <option value="drop" @selected($brVal('ceiling_type') === 'drop')>Drop ceiling</option>
-          <option value="none" @selected($brVal('ceiling_type') === 'none')>Leave existing / skip</option>
-        </select>
-      </div>
-      @include('admin.quotations.basement._qty_lw', [
-        'name' => 'ceiling_sf',
-        'id' => 'br-ceil-sf',
-        'label' => 'Ceiling area (sq ft)',
-        'value' => $brQty('ceiling_sf'),
-        'modeName' => 'qty_dims[ceiling_sf][mode]',
-        'lengthName' => 'qty_dims[ceiling_sf][length_ft]',
-        'widthName' => 'qty_dims[ceiling_sf][width_ft]',
-        'mode' => $qtyDim('ceiling_sf')['mode'],
-        'lengthValue' => $qtyDim('ceiling_sf')['length'],
-        'widthValue' => $qtyDim('ceiling_sf')['width'],
-        'placeholder' => 'Auto: basement area',
-        'info' => $brInfo['ceiling_sf'],
-      ])
-    </div>
+    <p class="admin-form-help br-dw-net" id="br-dw-net-hint" hidden></p>
   </div>
 </details>
 
@@ -1058,6 +1106,24 @@
       </div>
       @include('admin.partials.checkbox', ['name' => 'include_cleaning', 'hiddenFallback' => true, 'checked' => $brOn('include_cleaning', $scopePreset !== 'wall'), 'label' => 'Final cleaning', 'info' => $brInfo['include_cleaning'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_cleaning')])
       @include('admin.partials.checkbox', ['name' => 'include_touchups', 'hiddenFallback' => true, 'checked' => $brOn('include_touchups', $scopePreset !== 'wall'), 'label' => 'Touch-ups / punch list', 'info' => $brInfo['include_touchups'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_touchups')])
+      @include('admin.partials.checkbox', [
+        'name' => 'include_building_permit',
+        'hiddenFallback' => true,
+        'checked' => $brOn('include_building_permit'),
+        'label' => 'Building permit (extra charge)',
+        'info' => $brInfo['include_building_permit'],
+        'inputClass' => 'admin-checkbox__input br-preview',
+        'class' => 'br-qty-grid__check',
+        'attrs' => ['data-br-reveal' => 'br-permit-fields'],
+      ])
+    </div>
+    <div id="br-permit-fields" class="br-qty-grid" @unless($brOn('include_building_permit')) hidden @endunless>
+      <div class="admin-form-group">
+        <label for="br-permit-amount">@include('admin.partials.info_tip', ['text' => $brInfo['building_permit_amount']]) Permit amount (CAD$)</label>
+        <input type="text" inputmode="decimal" autocomplete="off"
+               class="admin-input cp-money-input br-preview br-input--money" id="br-permit-amount" name="building_permit_amount"
+               value="{{ number_format((float) $brVal('building_permit_amount', 0), 2, '.', '') }}">
+      </div>
     </div>
   </div>
 </details>
