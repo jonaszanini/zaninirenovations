@@ -8630,8 +8630,7 @@
       var dy = b.y - a.y;
       walls.push({
         lengthFt: Math.hypot(dx, dy) / ppf,
-        headingDeg: normalizeHeading((Math.atan2(dy, dx) * 180) / Math.PI),
-        closing: true
+        headingDeg: normalizeHeading((Math.atan2(dy, dx) * 180) / Math.PI)
       });
     }
     state.typedWalls = walls;
