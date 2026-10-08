@@ -1,4 +1,4 @@
-{{-- Commute and debris sit side by side from the 900px admin breakpoint. --}}
+{{-- Commute and debris stack full width of the form column on every viewport. --}}
 <div class="q-expense-pair">
   @include('admin.quotations._commute_expense', [
     'quotation' => $quotation ?? null,
