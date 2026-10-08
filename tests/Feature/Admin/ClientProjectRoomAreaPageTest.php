@@ -45,7 +45,23 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             ->assertSee('Kitchen remodel')
             ->assertSee('Kitchen')
             ->assertSee('admin-dark.css', false)
-            ->assertSee('id="admin-app"', false);
+            ->assertSee('id="admin-app"', false)
+            ->assertSee('util-ra--chrome-v2', false)
+            ->assertSee('data-ra-chrome', false)
+            ->assertSee('data-ra-help-guide', false)
+            ->assertSee('data-ra-first-tip', false)
+            ->assertSee('util-ra-tool-group--view', false)
+            ->assertSee('util-ra-tool-group--draw', false)
+            ->assertSee('util-ra-tool-group--measure', false)
+            ->assertSee('util-ra-tool-group--room-tools', false)
+            ->assertSee('Draw / Edit')
+            ->assertSee('Measure / Units')
+            ->assertSee('Room tools')
+            ->assertSee('Objects / Walls')
+            ->assertSee('Coming soon')
+            ->assertSee('data-ra-coming-soon="templates"', false)
+            ->assertSee('data-ra-coming-soon="lock-layers"', false)
+            ->assertSee(route('admin.client-projects.utilities.room-area.guide', $project, false), false);
     }
 
     public function test_admin_can_open_existing_room_on_full_page(): void
@@ -176,6 +192,9 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('data-ra-fullpage', $js);
         $this->assertStringContainsString('bindSidePanel', $js);
         $this->assertStringContainsString('bindSheetHandle', $js);
+        $this->assertStringContainsString('bindHelpPops', $js);
+        $this->assertStringContainsString('bindFirstTip', $js);
+        $this->assertStringContainsString('zr-room-area-guide-tip-v1', $js);
         $this->assertStringContainsString('drawGrid();', $js);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
@@ -186,6 +205,38 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('.admin-app:has(.util-ra--fullpage) .admin-sidebar', $css);
         $this->assertStringContainsString('.admin-app:has(.util-ra--fullpage) .admin-topbar', $css);
         $this->assertStringContainsString('.util-ra--fullpage[data-ra-lock-client-project] .util-ra-project-bar', $css);
+        $this->assertStringContainsString('.admin-app:has(.util-ra-guide) .admin-sidebar', $css);
+        $this->assertStringContainsString('.util-ra-help-pop', $css);
+        $this->assertStringContainsString('.util-ra-first-tip', $css);
+        $this->assertStringContainsString('.util-ra-tool-group--measure', $css);
+        $this->assertStringContainsString('.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-scale-status', $css);
+    }
+
+    public function test_full_page_editor_chrome_includes_help_link_and_grouped_tools(): void
+    {
+        $this->actingAsAdmin();
+        $project = ClientProject::factory()->create();
+        $room = $this->makeRoom($project, 'Bath');
+
+        $html = $this->get(route('admin.client-projects.utilities.room-area', [
+            'client_project' => $project,
+            'room_area_room' => $room,
+        ]))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('data-ra-help-guide', $html);
+        $this->assertStringContainsString('util-ra-full-header__help', $html);
+        $this->assertStringContainsString('Guide', $html);
+        $this->assertStringContainsString('data-ra-help-pop="view"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="measure"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="objects"', $html);
+        $this->assertStringContainsString('data-ra-first-tip-dismiss', $html);
+        $guideUrl = route('admin.client-projects.utilities.room-area.guide', [
+            'client_project' => $project,
+            'room_area_room' => $room,
+        ], false);
+        $this->assertStringContainsString($guideUrl, $html);
     }
 
     /**

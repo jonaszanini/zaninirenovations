@@ -476,6 +476,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.service-confirmation.send');
     // Generic on-demand "your project dates are…" email — works for any
     // billing type and can be re-sent freely (no idempotency flag).
+    Route::get('client-projects/{client_project}/utilities/room-area/guide/{room_area_room?}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'clientProjectGuide'])
+        ->name('client-projects.utilities.room-area.guide');
     Route::get('client-projects/{client_project}/utilities/room-area/{room_area_room?}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'clientProject'])
         ->name('client-projects.utilities.room-area');
     Route::put('client-projects/{client_project}/schedule-dates', [\App\Http\Controllers\Admin\ClientProjectController::class, 'updateScheduleDates'])
@@ -973,6 +975,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
 
     Route::get('utilities/room-area', [\App\Http\Controllers\Admin\RoomAreaController::class, 'index'])
         ->name('utilities.room-area');
+    Route::get('utilities/room-area/guide', [\App\Http\Controllers\Admin\RoomAreaController::class, 'guide'])
+        ->name('utilities.room-area.guide');
     Route::get('utilities/room-area/layouts', [\App\Http\Controllers\Admin\RoomAreaController::class, 'searchLayouts'])
         ->name('utilities.room-area.layouts');
     Route::get('utilities/room-area/quote', [\App\Http\Controllers\Admin\RoomAreaQuoteController::class, 'show'])

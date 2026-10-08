@@ -1470,6 +1470,64 @@ html.admin-dark .util-ra-full-header__sub {
   color: var(--admin-muted);
 }
 
+html.admin-dark .util-ra-help-q {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-help-q[aria-expanded="true"],
+html.admin-dark .util-ra-help-q:hover,
+html.admin-dark .util-ra-help-q:focus-visible {
+  color: var(--admin-heading);
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-help-pop {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-first-tip {
+  border-top-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-first-tip__text {
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-first-tip__text a {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-guide {
+  background: var(--admin-bg);
+}
+
+html.admin-dark .util-ra-guide__title,
+html.admin-dark .util-ra-guide__steps h2 {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-guide__lede,
+html.admin-dark .util-ra-guide__steps p,
+html.admin-dark .util-ra-guide__steps > li {
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-guide__body {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-guide__steps code {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-heading);
+}
+
 html.admin-dark .util-ra--fullpage .util-ra-side {
   background: var(--admin-surface);
   border-color: var(--admin-border);

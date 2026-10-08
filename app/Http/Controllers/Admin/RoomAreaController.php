@@ -85,6 +85,34 @@ class RoomAreaController extends Controller
         ]);
     }
 
+    public function guide()
+    {
+        return view('admin.utilities.room_area_guide', [
+            'clientProject' => null,
+            'room' => null,
+            'backUrl' => route('admin.utilities.room-area'),
+        ]);
+    }
+
+    public function clientProjectGuide(ClientProject $client_project, ?RoomAreaRoom $room_area_room = null)
+    {
+        if ($room_area_room) {
+            $room_area_room->loadMissing('project');
+            if ((int) ($room_area_room->project?->client_project_id) !== (int) $client_project->id) {
+                abort(404);
+            }
+        }
+
+        return view('admin.utilities.room_area_guide', [
+            'clientProject' => $client_project,
+            'room' => $room_area_room,
+            'backUrl' => route('admin.client-projects.utilities.room-area', array_filter([
+                'client_project' => $client_project,
+                'room_area_room' => $room_area_room?->id,
+            ])),
+        ]);
+    }
+
     public function searchLayouts(Request $request, RoomAreaLayoutQuoteService $layouts)
     {
         $id = trim((string) $request->get('id', ''));
