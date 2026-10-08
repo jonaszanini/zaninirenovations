@@ -89,7 +89,4 @@
   .q-debris-amount-group .cp-money-input {
     max-width: 200px;
   }
-  .q-expense-pair .q-debris-amount-group .cp-money-input {
-    max-width: none;
-  }
 </style>

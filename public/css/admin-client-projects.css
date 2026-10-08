@@ -7483,7 +7483,7 @@ body.cp-modal-open {
   }
 }
 
-/* Quotation editors — commute + debris share one row on wide screens */
+/* Quotation editors — commute + debris stack full width on every viewport */
 .q-expense-pair {
   display: grid;
   grid-template-columns: 1fr;
@@ -7589,20 +7589,6 @@ body.cp-modal-open {
     grid-template-columns: minmax(0, 140px) minmax(0, 160px);
     justify-content: start;
     gap: 10px 16px;
-  }
-}
-
-@media (min-width: 768px) {
-  .q-expense-pair {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .q-expense-pair .q-commute-card__fields {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .q-expense-pair .q-commute-field--pct .admin-input {
-    max-width: none;
   }
 }
 
