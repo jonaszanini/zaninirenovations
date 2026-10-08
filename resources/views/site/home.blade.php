@@ -25,6 +25,9 @@
 
 @push('styles')
 <style>
+  .service-block-link { display: block; color: inherit; text-decoration: none; }
+  .service-block-link:hover,
+  .service-block-link:focus { color: inherit; text-decoration: none; }
   .home-geo-intro { padding-top: 28px; padding-bottom: 8px; }
   .home-geo-intro__title {
     max-width: 40rem;
@@ -245,6 +248,7 @@
 
           <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
 
+            <a href="{{ url('/services/fences-gates') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
                 <img src="images/services/fence.webp" alt="Wood privacy fence built by Zanini Renovations" loading="lazy" decoding="async" width="800" height="712">
@@ -254,12 +258,14 @@
               <h3>Fencing</h3>
 
             </article>
+            </a>
 
           </div>
           <!--  end .col-lg-4 col-md-4 col-sm-12  -->
 
           <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
 
+            <a href="{{ url('/services/decks') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
                 <img src="images/services/deck.webp" alt="Residential deck built by Zanini Renovations" loading="lazy" decoding="async" width="800" height="712">
@@ -269,12 +275,14 @@
               <h3>Decks</h3>
 
             </article>
+            </a>
 
           </div>
           <!--  end .col-lg-4 col-md-4 col-sm-12  -->
 
           <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
 
+            <a href="{{ url('/services/basement-finishing') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
                 <img src="images/services/basement-renovation.webp" alt="Basement framing and finishing by Zanini Renovations" loading="lazy" decoding="async" width="800" height="712">
@@ -284,12 +292,14 @@
               <h3>Basement Renovation</h3>
 
             </article>
+            </a>
 
           </div>
           <!--  end .col-lg-4 col-md-4 col-sm-12  -->
 
           <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
 
+            <a href="{{ url('/services/finish-carpentry-trim') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
                 <img src="images/services/trim.webp" alt="Interior trim and moulding installation" loading="lazy" decoding="async" width="800" height="712">
@@ -299,12 +309,14 @@
               <h3>Trim &amp; Moulding</h3>
 
             </article>
+            </a>
 
           </div>
           <!--  end .col-lg-4 col-md-4 col-sm-12  -->
 
           <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
 
+            <a href="{{ url('/services/custom-built-ins-closets') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
                 <img src="images/services/shelves.webp" alt="Custom built-in shelving" loading="lazy" decoding="async" width="800" height="712">
@@ -314,12 +326,14 @@
               <h3>Shelving</h3>
 
             </article>
+            </a>
 
           </div>
           <!--  end .col-lg-4 col-md-4 col-sm-12  -->
 
           <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
 
+            <a href="{{ url('/services/flooring-installation') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
                 <img src="images/services/flooring.webp" alt="Hardwood flooring installation" loading="lazy" decoding="async" width="800" height="712">
@@ -329,12 +343,14 @@
               <h3>Flooring</h3>
 
             </article>
+            </a>
 
           </div>
           <!--  end .col-lg-4 col-md-4 col-sm-12  -->
 
           <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
 
+            <a href="{{ url('/services/flooring-installation') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
                 <img src="images/services/tiles.webp" alt="Tile installation" loading="lazy" decoding="async" width="800" height="712">
@@ -344,12 +360,14 @@
               <h3>Tile</h3>
 
             </article>
+            </a>
 
           </div>
           <!--  end .col-lg-4 col-md-4 col-sm-12  -->
 
           <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
 
+            <a href="{{ url('/services/finish-carpentry-trim') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
                 <img src="images/services/accent-walls.webp" alt="Accent wall and wainscoting carpentry" loading="lazy" decoding="async" width="800" height="712">
@@ -359,11 +377,13 @@
               <h3>Accent Walls</h3>
 
             </article>
+            </a>
           </div>
           <!--  end .col-lg-4 col-md-4 col-sm-12  -->
 
           <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
 
+            <a href="{{ url('/services/staircases') }}" class="service-block-link">
             <article class="service-block-2 text-center">
               <figure>
                 <img src="images/services/stairs.webp" alt="Wood staircase carpentry" loading="lazy" decoding="async" width="800" height="712">
@@ -373,6 +393,24 @@
               <h3>Stairs</h3>
 
             </article>
+            </a>
+
+          </div>
+          <!--  end .col-lg-4 col-md-4 col-sm-12  -->
+
+          <div class="col-md-4 col-sm-10 col-xs-10 col-md-offset-0 col-sm-offset-1 col-xs-offset-1">
+
+            <a href="{{ url('/services/kitchen-remodel') }}" class="service-block-link">
+            <article class="service-block-2 text-center">
+              <figure>
+                <img src="images/services/tiles.webp" alt="Kitchen remodel and backsplash by Zanini Renovations" loading="lazy" decoding="async" width="800" height="712">
+                <span class="fa fa-cutlery"></span>
+              </figure>
+
+              <h3>Kitchen Remodel</h3>
+
+            </article>
+            </a>
 
           </div>
           <!--  end .col-lg-4 col-md-4 col-sm-12  -->
@@ -489,7 +527,7 @@
                 <p class="subheading-alt-style">
                   Hi, I am Jonas Zanini. After 20 years in IT with global leaders like IBM and Infosys, I moved from Brazil to Ontario in 2019 and discovered a true passion for construction. At Zanini Renovations, I apply that same software developer precision to every carpentry and renovation project I build. My goal is to deliver high quality craftsmanship that makes you and your family fall in love with your home all over again.
                 </p>
-                <a href="#about" class="btn btn-theme margin-top-24 nav_menu">More about us</a>
+                <a href="{{ url('/about') }}" class="btn btn-theme margin-top-24">More about us</a>
               </div>
               <!-- end .col-sm-12  -->
 
@@ -677,6 +715,12 @@
             <div class="testimonials-google-cta">
               <a
                 class="btn btn-theme btn-square"
+                href="{{ url('/reviews') }}"
+              >
+                See all reviews
+              </a>
+              <a
+                class="btn btn-theme btn-square"
                 href="{{ \App\Support\SeoStructuredData::googleBusinessUrl() }}"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -846,67 +890,7 @@
 
               <h2 class="contact-title">Send a message</h2>
 
-              <form role="form" action="#" method="post" id="contact-form">
-
-                <div class="form-group">
-                  <label for="user_name" class="sr-only">Your name</label>
-                  <input type="text" class="form-control" id="user_name" name="user_name" placeholder="Your name" required autocomplete="name" data-msg="Please enter your name">
-                </div>
-
-                <div class="form-group">
-                  <label for="user_email" class="sr-only">Email address</label>
-                  <input type="email" class="form-control" id="user_email" name="user_email" placeholder="Email address" required autocomplete="email" data-msg="Please enter a valid email">
-                </div>
-
-                <div class="form-group">
-                  <label class="home-contact-date-label" for="user_phone">Phone number <span class="text-muted">(optional)</span></label>
-                  <input type="tel" class="form-control" id="user_phone" name="user_phone" placeholder="e.g. (613) 555-1234" maxlength="30" autocomplete="tel">
-                </div>
-
-                <div class="form-group home-contact-sms-opt-in">
-                  <label class="home-contact-sms-opt-in__label" for="sms_opt_in">
-                    <input type="checkbox" class="home-contact-sms-opt-in__input" id="sms_opt_in" name="sms_opt_in" value="1">
-                    <span class="home-contact-sms-opt-in__text">
-                      By checking this box, I agree to receive service notifications via SMS from Zanini Renovations, including project alerts, schedule updates, and quotation notifications. Message frequency varies. Message and data rates may apply. Reply STOP to opt out. See our
-                      <a href="{{ route('terms-and-conditions') }}" target="_blank" rel="noopener noreferrer">Terms of Service</a>
-                      and
-                      <a href="{{ route('privacy-policy') }}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
-                    </span>
-                  </label>
-                </div>
-
-                <div class="form-group">
-                  <label for="location_city" class="sr-only">Location or city</label>
-                  <input type="text" class="form-control" id="location_city" name="location_city" placeholder="Location / city" required autocomplete="address-level2" data-msg="Please enter your location or city">
-                </div>
-
-                <div class="form-group">
-                  <label class="home-contact-date-label" for="starting_date">Starting date <span class="text-muted">(optional)</span></label>
-                  <input type="date" class="form-control home-contact-date-input" id="starting_date" name="starting_date">
-                </div>
-
-                <div class="form-group">
-                  <label class="home-contact-date-label" for="budget">What is your budget? <span class="text-muted">(optional)</span></label>
-                  <input type="text" class="form-control" id="budget" name="budget" placeholder="e.g. $10,000–$25,000 or a ballpark amount" maxlength="500" autocomplete="off">
-                </div>
-
-                <div class="form-group">
-                  <label for="email_subject" class="sr-only">Subject</label>
-                  <input type="text" class="form-control" id="email_subject" name="email_subject" placeholder="Subject" required data-msg="Please enter a subject">
-                </div>
-
-                <div class="form-group">
-                  <label for="email_message" class="sr-only">Message</label>
-                  <textarea class="form-control" rows="5" name="email_message" id="email_message" placeholder="Describe your project, timeline, and what you have in mind" required data-msg="Please enter your message"></textarea>
-                </div>
-
-                <div class="form-group">
-                  <button type="submit" class="btn btn-theme btn-custom">Send now</button>
-                </div>
-
-                <div id="contact-form-feedback" class="home-contact-form-feedback" role="status" aria-live="polite"></div>
-
-              </form>
+              @include('site.partials.contact-form', ['formClass' => ''])
 
             </div>
 

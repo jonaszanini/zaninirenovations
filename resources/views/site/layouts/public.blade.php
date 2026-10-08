@@ -95,7 +95,7 @@
     <strong>Zanini Renovations</strong> — fully insured carpentry and renovation business in Carleton Place, Ontario (Ottawa region), since 2020.
     Services: decks, fencing, basement framing, interior trim, custom built-ins, flooring, drywall, accent walls, and staircases.
     Phone: <a href="tel:+16478347570">(647) 834-7570</a>.
-    <a href="{{ url('/') }}">Home</a> · <a href="{{ url('/') }}#contact-location">Contact</a>
+    <a href="{{ url('/') }}">Home</a> · <a href="{{ url('/contact') }}">Contact</a>
   </div>
 </noscript>
 

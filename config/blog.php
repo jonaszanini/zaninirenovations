@@ -31,8 +31,8 @@ return [
 
     'phone_display' => '(647) 834-7570',
     'phone_tel' => '+16478347570',
-    'estimate_url' => '/#contact-location',
-    'service_url' => '/#services',
+    'estimate_url' => '/contact',
+    'service_url' => '/services',
 
     'cta_copy' => [
         'generic' => [

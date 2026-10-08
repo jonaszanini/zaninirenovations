@@ -62,7 +62,7 @@ class OnPageSeoBatch2Test extends IntegrationTestCase
         $this->assertStringNotContainsString('unattache', $desc);
         $this->assertStringNotContainsString('WSIB', $desc);
         $this->assertSame(
-            'One-year workmanship warranty and $3M general liability insurance, explained. Renovate with confidence in Lanark County and Ottawa.',
+            'One-year workmanship warranty and fully insured coverage, explained. Renovate with confidence in Lanark County and Ottawa.',
             $desc
         );
     }
@@ -162,7 +162,7 @@ class OnPageSeoBatch2Test extends IntegrationTestCase
         $this->assertSame('2020', $business['foundingDate'] ?? null);
 
         $encoded = SeoStructuredData::toJsonLd($graph);
-        $this->assertStringNotContainsString('ItemList', $encoded);
+        $this->assertStringNotContainsString('"@type":"ItemList"', $encoded);
         $this->assertStringNotContainsString('Barrhaven', $encoded);
         $this->assertStringNotContainsString('Orléans', $encoded);
         $this->assertStringContainsString($areaText, $encoded);

@@ -21,7 +21,7 @@ class LlmsTxtGenerator
             $summary = 'Fully insured carpentry and renovation business in Carleton Place since 2020.';
         }
 
-        $insurance = trim((string) config('seo.liability_insurance', '$3 million'));
+        $insurance = trim((string) config('seo.liability_insurance', 'Fully insured'));
         $phone = '(647) 834-7570';
 
         $lines = [
@@ -32,11 +32,15 @@ class LlmsTxtGenerator
             'Zanini Renovations is owned by Jonas Zanini.',
             'Office and marketing: Mayara Zanini. Based in Carleton Place, Ontario.',
             'Phone: '.$phone.'. Quotes are in Canadian dollars.',
-            'Insurance: '.$insurance.' general liability.',
+            'Insurance: '.$insurance.'.',
             '',
             '## Pages',
             '',
             '- [Home]('.$base.'/): Services, service area, team, reviews, and FAQ.',
+            '- [About]('.$base.'/about): Jonas Zanini and how Zanini Renovations works.',
+            '- [Reviews]('.$base.'/reviews): Client Google reviews.',
+            '- [Contact]('.$base.'/contact): Free estimate form, phone, and service area.',
+            '- [Services]('.$base.'/services): Decks, fences, basements, trim, built-ins, stairs, flooring, drywall, and kitchen remodels.',
             '- [Warranty]('.$base.'/warranty): Workmanship warranty and insurance details.',
             '- [Blog]('.$base.'/blog): Renovation and carpentry articles for Ottawa-area homeowners.',
             '- [Projects]('.$base.'/portfolio): Photos and details of completed carpentry and renovation work.',
@@ -46,14 +50,23 @@ class LlmsTxtGenerator
             '',
             '## Services',
             '',
-            '- Fencing, decks, basement framing and finishing, interior trim, custom built-ins,',
-            '  flooring, drywall, accent walls, and wood staircases.',
+            '- Decks, fences and gates, basement finishing, finish carpentry and trim,',
+            '  custom built-ins and closets, staircases, flooring, drywall, and kitchen remodels.',
             '',
             '## Service area',
             '',
             '- '.trim((string) config('seo.service_area_text', '')),
             '- [Service areas hub]('.$base.'/service-areas)',
         ];
+
+        foreach (\App\Support\PublicServices::publishedPages() as $page) {
+            $slug = trim((string) ($page['slug'] ?? ''));
+            $label = trim((string) ($page['hub_label'] ?? $page['nav_label'] ?? $slug));
+            if ($slug === '' || $label === '') {
+                continue;
+            }
+            $lines[] = '- ['.$label.']('.$base.'/services/'.$slug.')';
+        }
 
         foreach (\App\Support\ServiceAreas::publishedPages() as $page) {
             $slug = trim((string) ($page['slug'] ?? ''));

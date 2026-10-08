@@ -16,7 +16,7 @@ return [
         'heading' => 'Request a free estimate',
         'text' => 'Call (647) 834-7570 or send a message. Fully insured · in business since 2020 · one-year workmanship warranty.',
         'button_label' => 'Get a free estimate',
-        'button_url' => '/#contact',
+        'button_url' => '/contact',
         'phone_label' => 'Call (647) 834-7570',
         'phone_href' => 'tel:+16478347570',
     ],
