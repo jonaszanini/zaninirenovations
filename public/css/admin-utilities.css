@@ -2213,13 +2213,34 @@
   transform: translateY(0.2rem);
 }
 
+.util-ra-tip--below[data-tooltip]::after {
+  bottom: auto;
+  top: calc(100% + 0.4rem);
+  transform: translateX(-50%) translateY(-0.2rem);
+}
+
+.util-ra-tip--end.util-ra-tip--below[data-tooltip]::after,
+.util-ra-tip--start.util-ra-tip--below[data-tooltip]::after {
+  transform: translateY(-0.2rem);
+}
+
 .util-ra-tip[data-tooltip]:focus-within:has(:focus-visible)::after {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
 
 .util-ra-tip--end[data-tooltip]:focus-within:has(:focus-visible)::after,
-.util-ra-tip--start[data-tooltip]:focus-within:has(:focus-visible)::after {
+.util-ra-tip--start[data-tooltip]:focus-within:has(:focus-visible)::after,
+.util-ra-tip--below[data-tooltip]:focus-within:has(:focus-visible)::after {
+  transform: translateY(0);
+}
+
+.util-ra-tip--below[data-tooltip]:focus-within:has(:focus-visible)::after {
+  transform: translateX(-50%) translateY(0);
+}
+
+.util-ra-tip--end.util-ra-tip--below[data-tooltip]:focus-within:has(:focus-visible)::after,
+.util-ra-tip--start.util-ra-tip--below[data-tooltip]:focus-within:has(:focus-visible)::after {
   transform: translateY(0);
 }
 
@@ -2230,8 +2251,24 @@
   }
 
   .util-ra-tip--end[data-tooltip]:hover::after,
-  .util-ra-tip--start[data-tooltip]:hover::after {
+  .util-ra-tip--start[data-tooltip]:hover::after,
+  .util-ra-tip--below[data-tooltip]:hover::after {
     transform: translateY(0);
+  }
+
+  .util-ra-tip--below[data-tooltip]:hover::after {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .util-ra-tip--end.util-ra-tip--below[data-tooltip]:hover::after,
+  .util-ra-tip--start.util-ra-tip--below[data-tooltip]:hover::after {
+    transform: translateY(0);
+  }
+
+  /* Keep CSS tips from being clipped by the scrollable tool strips. */
+  .util-ra-full-header__row--tools,
+  .util-ra--fullpage .util-ra-canvas-toolbar {
+    overflow: visible;
   }
 }
 

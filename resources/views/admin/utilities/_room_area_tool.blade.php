@@ -47,7 +47,7 @@
     @if ($fullPage)
       <header class="util-ra-full-header">
         <div class="util-ra-full-header__row util-ra-full-header__row--primary">
-          <span class="util-ra-tip util-ra-tip--start" data-tooltip="{{ isset($clientProject) ? 'Return to the project page.' : 'Return to All utilities.' }}">
+          <span class="util-ra-tip util-ra-tip--start util-ra-tip--below" data-tooltip="{{ isset($clientProject) ? 'Return to the project page.' : 'Return to All utilities.' }}">
             <a href="{{ $backUrl }}" class="admin-btn admin-btn--ghost util-ra-full-header__back" aria-label="{{ $backLabel }}">
               <i class="fa fa-arrow-left" aria-hidden="true"></i>
               <span class="util-ra-full-header__back-label">{{ $backLabel }}</span>
@@ -66,19 +66,19 @@
               placeholder="Room name">
             <p class="util-ra-full-header__sub" data-ra-full-sub>{{ $clientProject->name ?? '' }}</p>
           </div>
-          <span class="util-ra-tip util-ra-tip--end" data-tooltip="Open the on-site Room Area walkthrough.">
+          <span class="util-ra-tip util-ra-tip--end util-ra-tip--below" data-tooltip="Open the on-site Room Area walkthrough.">
             <a href="{{ $guideUrl }}" class="admin-btn admin-btn--ghost util-ra-full-header__help" data-ra-help-guide aria-label="Open Room Area guide">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
               <span class="util-ra-full-header__help-label">Guide</span>
             </a>
           </span>
-          <span class="util-ra-tip util-ra-tip--end" data-tooltip="Discard unsaved edits and leave this room.">
+          <span class="util-ra-tip util-ra-tip--end util-ra-tip--below" data-tooltip="Discard unsaved edits and leave this room.">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__cancel" data-ra-cancel-edit hidden aria-label="Cancel edit">
               <i class="fa fa-times" aria-hidden="true"></i>
               <span class="util-ra-full-header__cancel-label">Cancel</span>
             </button>
           </span>
-          <span class="util-ra-tip util-ra-tip--end" data-tooltip="Save this room's outline, scale, and objects." data-ra-save-tip>
+          <span class="util-ra-tip util-ra-tip--end util-ra-tip--below" data-tooltip="Save this room's outline, scale, and objects." data-ra-save-tip>
             <button type="button" class="admin-btn admin-btn--primary util-ra-full-header__save" data-ra-save-room disabled aria-label="Save room">
               <i class="fa fa-save" aria-hidden="true"></i>
               <span class="util-ra-full-header__save-label">Save</span>
