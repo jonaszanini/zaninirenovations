@@ -8868,6 +8868,11 @@ body.cp-modal-open {
   width: auto;
 }
 .br-hw-field {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
   flex: 0 0 auto;
   width: auto;
   min-width: 0;
@@ -8875,6 +8880,7 @@ body.cp-modal-open {
 }
 .br-hw-field > label {
   white-space: nowrap;
+  margin-bottom: 0;
 }
 .br-finishing-check {
   flex: 0 0 auto;
