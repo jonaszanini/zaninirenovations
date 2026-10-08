@@ -417,19 +417,3 @@
     height: 280px;
   }
 }
-
-@media (prefers-color-scheme: dark) {
-  .sa-page {
-    --sa-bg: #121820;
-    --sa-surface: #1b2530;
-    --sa-text: #e6eef4;
-    --sa-heading: #9ad0e8;
-    --sa-muted: #b7c3cd;
-    --sa-border: #334155;
-    --sa-link: #8ec5dc;
-    --sa-btn-bg: #024768;
-    --sa-btn-text: #ffffff;
-    --sa-btn-ghost-bg: transparent;
-    --sa-btn-ghost-text: #9ad0e8;
-  }
-}

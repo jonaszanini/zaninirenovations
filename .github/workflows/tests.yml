@@ -51,7 +51,7 @@ jobs:
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
 
       - name: Admin dark-theme CSS coverage (no database)
-        run: php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
+        run: php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php tests/Unit/Views/PublicCssLightOnlyTest.php
 
       - name: Route smoke (MySQL)
         env:
