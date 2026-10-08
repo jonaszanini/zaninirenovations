@@ -835,9 +835,9 @@
   <div class="closing">
     <ul>
       <li>Prices are firm for 10 days.</li>
-      <li>Zanini Renovations carries a liability insurance.</li>
-      <li>Warrantee on workmanship: 1 year.</li>
-      <li>Warrantee on workmanship: damages caused by external forces (&ldquo;Act of God&rdquo;) such as weather are not covered under warrantee.</li>
+      <li>Zanini Renovations is fully insured.</li>
+      <li>Warranty on workmanship: 1 year.</li>
+      <li>Warranty on workmanship: damages caused by external forces (&ldquo;Act of God&rdquo;) such as weather are not covered under warranty.</li>
       <li>If you have any questions, please do not hesitate to call.</li>
     </ul>
 

@@ -57,7 +57,7 @@
 
     <section class="cp-tab-panel{{ $startTab === 'rates' ? ' is-active' : '' }}"
              data-panel="rates" id="mw-config-rates" role="tabpanel" aria-labelledby="mw-tab-rates">
-      <h3 class="br-config-heading">This quote only — labor rates</h3>
+      <h3 class="br-config-heading">This quote only — labour rates</h3>
       <div class="admin-form-grid-4">
         <div class="admin-form-group">
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
@@ -112,7 +112,7 @@
                   <th class="mw-col-thickness">Thickness (in)</th>
                   <th class="mw-col-coverage-lf">Coverage (LF)</th>
                   <th></th>
-                @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS], true))
+                @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS, MillworkSettings::SLOT_SHELF_PINS], true))
                   <th class="mw-col-pack">Qty / pack</th>
                   <th colspan="2"></th>
                 @else

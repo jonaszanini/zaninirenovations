@@ -448,11 +448,18 @@ class MillworkQuotationController extends Controller
         $out['include_install'] = $request->boolean('include_install');
         $out['include_helper'] = $request->boolean('include_helper');
         $out['client_provides_all'] = $request->boolean('client_provides_all');
+        $out['waste_pct'] = $this->boundedPct($request->input('waste_pct', $defaults['waste_pct']));
+        $out['edge_waste_pct'] = $this->boundedPct($request->input('edge_waste_pct', $defaults['edge_waste_pct']));
+        $out['finish_waste_pct'] = $this->boundedPct($request->input('finish_waste_pct', $defaults['finish_waste_pct']));
+        $out['markup_pct'] = $this->boundedPct($request->input('markup_pct', $defaults['markup_pct']));
+        $out['delivery_amount'] = round(max(0, (float) $request->input('delivery_amount', $defaults['delivery_amount'])), 2);
+        $out['spare_sheets'] = max(0, (int) $request->input('spare_sheets', $defaults['spare_sheets']));
         foreach ([
             'sheet_id', 'back_sheet_id', 'edge_banding_id', 'paint_id', 'stain_id',
             'hinge_id', 'pull_id', 'screw_id', 'nail_id', 'slide_id', 'glue_id',
+            'rod_id', 'pin_id', 'trim_id',
         ] as $key) {
-            $out[$key] = trim((string) $request->input($key, $defaults[$key]));
+            $out[$key] = trim((string) $request->input($key, $defaults[$key] ?? ''));
         }
         $out['pieces'] = $this->piecesFromRequest($request);
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
@@ -481,8 +488,12 @@ class MillworkQuotationController extends Controller
             $row['type'] = $type;
             $row['qty'] = max(0, (int) ($piece['qty'] ?? 1));
             $row['unit'] = strtolower((string) ($piece['unit'] ?? 'in')) === 'ft' ? 'ft' : 'in';
+            $row['name'] = trim((string) ($piece['name'] ?? ''));
+            $row['room'] = trim((string) ($piece['room'] ?? ''));
+            $row['style'] = \App\Services\Millwork\MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
+            $row['profile'] = \App\Services\Millwork\MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
             foreach ([
-                'width', 'height', 'depth', 'length', 'thickness',
+                'width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft',
             ] as $dim) {
                 $row[$dim] = is_numeric($piece[$dim] ?? null) ? round((float) $piece[$dim], 4) : ($piece[$dim] ?? '');
             }
@@ -500,8 +511,13 @@ class MillworkQuotationController extends Controller
             $row['overlay'] = MillworkPartBuilder::normalizeOverlay((string) ($piece['overlay'] ?? 'full'));
             $style = strtolower((string) ($piece['hinge_style'] ?? 'overlay'));
             $row['hinge_style'] = in_array($style, ['overlay', 'inset', 'soft_close'], true) ? $style : 'overlay';
-            foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'pull_qty'] as $intKey) {
-                $row[$intKey] = max(0, (int) ($piece[$intKey] ?? $row[$intKey]));
+            foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $intKey) {
+                $row[$intKey] = max(0, (int) ($piece[$intKey] ?? ($row[$intKey] ?? 0)));
+            }
+            if (array_key_exists('pull_qty', $piece) && $piece['pull_qty'] !== '' && $piece['pull_qty'] !== null) {
+                $row['pull_qty'] = max(0, (int) $piece['pull_qty']);
+            } else {
+                unset($row['pull_qty']);
             }
             $sets = [];
             foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
@@ -587,6 +603,15 @@ class MillworkQuotationController extends Controller
         return $out;
     }
 
+    private function boundedPct($value): float
+    {
+        if (! is_numeric($value)) {
+            return 0.0;
+        }
+
+        return round(max(0, min(100, (float) $value)), 2);
+    }
+
     protected function autoLinkIfRequested(MillworkQuotation $quote, Request $request, array &$warnings): bool
     {
         if ($quote->isLinked() || $quote->is_draft) {
@@ -624,7 +649,7 @@ class MillworkQuotationController extends Controller
     protected function syncLineToProjectQuotation(ClientProject $project, MillworkQuotation $quote): void
     {
         $items = [[
-            'description' => 'Custom millwork (labor)',
+            'description' => 'Custom millwork (labour)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
             'apply_hst' => true,
         ]];
