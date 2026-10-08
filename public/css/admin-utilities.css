@@ -5908,6 +5908,20 @@ body:has(.util-ra--fullpage) {
   .util-ra--fullpage .util-ra-object-edit__btn-text {
     display: none;
   }
+
+  .util-ra--fullpage .util-ra-object-dock > .util-ra-palette,
+  .util-ra--fullpage .util-ra-object-dock > .util-ra-walls-panel {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .util-ra--fullpage .util-ra-object-dock .util-ra-palette__toggle,
+  .util-ra--fullpage .util-ra-object-dock .util-ra-walls-panel__toggle {
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+  }
 }
 
 /* Full-page: one scrollable tool row, no overlapping chrome, no grey gaps. */
