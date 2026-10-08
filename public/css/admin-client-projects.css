@@ -7635,7 +7635,9 @@ body.cp-modal-open {
   flex-direction: column;
   gap: 16px;
   align-items: stretch;
-  padding-bottom: 80px;
+  min-width: 0;
+  max-width: 100%;
+  padding-bottom: 0;
 }
 .br-project-context-slot {
   margin: 0 0 16px;
@@ -7710,13 +7712,20 @@ body.cp-modal-open {
   z-index: 40;
   box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.1);
 }
+.br-sticky-spacer {
+  height: var(--br-sticky-bar-h, 64px);
+  flex: 0 0 auto;
+  width: 100%;
+  pointer-events: none;
+}
 .br-acc,
 .br-acc__body .admin-checkbox,
 .br-acc__body .admin-form-group,
 .br-acc__body .br-qty-grid,
-.br-acc__body .br-check-grid {
+.br-acc__body .br-check-grid,
+.br-acc__body .br-finishing {
   scroll-margin-top: 12px;
-  scroll-margin-bottom: 72px;
+  scroll-margin-bottom: var(--br-sticky-bar-h, 72px);
 }
 .br-sticky-total .br-step-nav {
   display: flex;
@@ -7765,7 +7774,7 @@ body.cp-modal-open {
   padding: 16px;
   background: var(--admin-surface, #fafbfc);
   color: var(--admin-text);
-  scroll-margin-bottom: 80px;
+  scroll-margin-bottom: var(--br-sticky-bar-h, 80px);
 }
 .br-layout .pq-row {
   display: flex;
@@ -7848,17 +7857,20 @@ body.cp-modal-open {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
-  scroll-margin-bottom: 80px;
+  max-width: 100%;
+  scroll-margin-bottom: var(--br-sticky-bar-h, 80px);
 }
 .br-shell {
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  max-width: 100%;
   width: 100%;
 }
 .br-main {
   min-width: 0;
+  max-width: 100%;
 }
 .br-progress {
   display: flex;
@@ -7912,6 +7924,8 @@ body.cp-modal-open {
 .br-acc {
   margin: 0 0 12px;
   overflow: visible;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-acc__summary {
   list-style: none;
@@ -7937,6 +7951,8 @@ body.cp-modal-open {
 }
 .br-acc__body {
   padding-top: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-check-stack {
   display: flex;
@@ -8519,6 +8535,8 @@ body.cp-modal-open {
   gap: 8px;
   padding: 12px 0;
   border-bottom: 1px dashed #e8edf2;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-extra-row .admin-form-group {
   margin: 0;
@@ -8793,6 +8811,51 @@ body.cp-modal-open {
 .br-input--money {
   max-width: 10rem;
 }
+.br-input--permit {
+  width: 7.5rem;
+  max-width: 7.5rem;
+}
+.br-finishing {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+.br-finishing-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 16px;
+  min-width: 0;
+  max-width: 100%;
+}
+.br-hw-field {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.br-hw-field > label {
+  white-space: nowrap;
+}
+.br-finishing-check {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  align-self: flex-end;
+}
+.br-finishing-check .admin-checkbox__text {
+  white-space: normal;
+}
+.br-permit-amount {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.br-permit-amount[hidden] {
+  display: none !important;
+}
 .br-sheet-size {
   margin: 0 0 12px;
   padding: 0;
@@ -8850,17 +8913,6 @@ body.cp-modal-open {
   }
   .br-finish-field {
     grid-column: span 2;
-  }
-  .br-finishing-grid {
-    grid-template-columns: 110px repeat(3, max-content);
-    justify-content: start;
-    align-items: end;
-    column-gap: 16px;
-  }
-  .br-finishing-grid .admin-checkbox,
-  .br-finishing-grid .admin-checkbox__label,
-  .br-finishing-grid .admin-checkbox__text {
-    white-space: nowrap;
   }
   .br-toggle-qty-grid {
     grid-template-columns: 1fr 1fr;
@@ -9022,17 +9074,6 @@ body.cp-modal-open {
   .br-finish-field {
     grid-column: span 2;
   }
-  .br-finishing-grid {
-    grid-template-columns: 110px repeat(3, max-content);
-    justify-content: start;
-    align-items: end;
-    column-gap: 16px;
-  }
-  .br-finishing-grid .admin-checkbox,
-  .br-finishing-grid .admin-checkbox__label,
-  .br-finishing-grid .admin-checkbox__text {
-    white-space: nowrap;
-  }
   .br-progress__item {
     width: 100%;
   }
@@ -9046,9 +9087,10 @@ body.cp-modal-open {
   .br-acc__body .admin-checkbox,
   .br-acc__body .admin-form-group,
   .br-acc__body .br-qty-grid,
-  .br-acc__body .br-check-grid {
+  .br-acc__body .br-check-grid,
+  .br-acc__body .br-finishing {
     scroll-margin-top: 72px;
-    scroll-margin-bottom: 72px;
+    scroll-margin-bottom: var(--br-sticky-bar-h, 72px);
   }
   .br-sticky-total {
     left: 0;
@@ -9081,10 +9123,6 @@ body.cp-modal-open {
   }
   .br-sticky-total .br-toolbar-grand__label {
     display: none;
-  }
-  .br-finishing-grid .admin-checkbox,
-  .br-finishing-grid .admin-checkbox__label {
-    white-space: nowrap;
   }
 }
 

@@ -1098,31 +1098,33 @@
 <details class="br-acc admin-card" data-br-step="finishing" @unless(in_array('finishing', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Final Details &amp; Cleanup</summary>
   <div class="br-acc__body">
-    <div class="br-qty-grid br-finishing-grid">
-      <div class="admin-form-group br-hw-field">
-        <label for="br-hw">@include('admin.partials.info_tip', ['text' => $brInfo['hardware_sets']]) Extra hardware sets</label>
-        <input type="number" step="1" min="0" class="admin-input br-preview br-input--hardware" id="br-hw" name="hardware_sets"
-               value="{{ $brVal('hardware_sets', 0) }}">
+    <div class="br-finishing">
+      <div class="br-finishing-row">
+        <div class="admin-form-group br-hw-field">
+          <label for="br-hw">@include('admin.partials.info_tip', ['text' => $brInfo['hardware_sets']]) Extra hardware sets</label>
+          <input type="number" step="1" min="0" class="admin-input br-preview br-input--hardware" id="br-hw" name="hardware_sets"
+                 value="{{ $brVal('hardware_sets', 0) }}">
+        </div>
+        @include('admin.partials.checkbox', ['name' => 'include_cleaning', 'hiddenFallback' => true, 'checked' => $brOn('include_cleaning', $scopePreset !== 'wall'), 'label' => 'Final cleaning', 'info' => $brInfo['include_cleaning'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-finishing-check', 'clientFilled' => $brFilled('include_cleaning')])
+        @include('admin.partials.checkbox', ['name' => 'include_touchups', 'hiddenFallback' => true, 'checked' => $brOn('include_touchups', $scopePreset !== 'wall'), 'label' => 'Touch-ups / punch list', 'info' => $brInfo['include_touchups'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-finishing-check', 'clientFilled' => $brFilled('include_touchups')])
       </div>
-      @include('admin.partials.checkbox', ['name' => 'include_cleaning', 'hiddenFallback' => true, 'checked' => $brOn('include_cleaning', $scopePreset !== 'wall'), 'label' => 'Final cleaning', 'info' => $brInfo['include_cleaning'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_cleaning')])
-      @include('admin.partials.checkbox', ['name' => 'include_touchups', 'hiddenFallback' => true, 'checked' => $brOn('include_touchups', $scopePreset !== 'wall'), 'label' => 'Touch-ups / punch list', 'info' => $brInfo['include_touchups'], 'inputClass' => 'admin-checkbox__input br-preview', 'class' => 'br-qty-grid__check', 'clientFilled' => $brFilled('include_touchups')])
-      @include('admin.partials.checkbox', [
-        'name' => 'include_building_permit',
-        'hiddenFallback' => true,
-        'checked' => $brOn('include_building_permit'),
-        'label' => 'Building permit (extra charge)',
-        'info' => $brInfo['include_building_permit'],
-        'inputClass' => 'admin-checkbox__input br-preview',
-        'class' => 'br-qty-grid__check',
-        'attrs' => ['data-br-reveal' => 'br-permit-fields'],
-      ])
-    </div>
-    <div id="br-permit-fields" class="br-qty-grid" @unless($brOn('include_building_permit')) hidden @endunless>
-      <div class="admin-form-group">
-        <label for="br-permit-amount">@include('admin.partials.info_tip', ['text' => $brInfo['building_permit_amount']]) Permit amount (CAD$)</label>
-        <input type="text" inputmode="decimal" autocomplete="off"
-               class="admin-input cp-money-input br-preview br-input--money" id="br-permit-amount" name="building_permit_amount"
-               value="{{ number_format((float) $brVal('building_permit_amount', 0), 2, '.', '') }}">
+      <div class="br-finishing-row br-finishing-row--permit">
+        @include('admin.partials.checkbox', [
+          'name' => 'include_building_permit',
+          'hiddenFallback' => true,
+          'checked' => $brOn('include_building_permit'),
+          'label' => 'Building permit (extra charge)',
+          'info' => $brInfo['include_building_permit'],
+          'inputClass' => 'admin-checkbox__input br-preview',
+          'class' => 'br-finishing-check',
+          'attrs' => ['data-br-reveal' => 'br-permit-fields'],
+        ])
+        <div id="br-permit-fields" class="admin-form-group br-permit-amount" @unless($brOn('include_building_permit')) hidden @endunless>
+          <label for="br-permit-amount">@include('admin.partials.info_tip', ['text' => $brInfo['building_permit_amount']]) Permit amount (CAD$)</label>
+          <input type="text" inputmode="decimal" autocomplete="off"
+                 class="admin-input cp-money-input br-preview br-input--permit" id="br-permit-amount" name="building_permit_amount"
+                 value="{{ number_format((float) $brVal('building_permit_amount', 0), 2, '.', '') }}">
+        </div>
       </div>
     </div>
   </div>

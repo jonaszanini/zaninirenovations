@@ -253,7 +253,9 @@ class BasementQuotation extends Model
     }
 
     /**
-     * Grouped two-column scope block (DomPDF-safe table) so ~20 labour bullets stay on page 1.
+     * Grouped two-column scope block (DomPDF-safe table).
+     * Trades follow work sequence and flow left-to-right, row by row.
+     * Page breaks are allowed between rows, not inside a trade group.
      */
     protected function scopeHtmlForPdf(): string
     {
@@ -310,9 +312,21 @@ class BasementQuotation extends Model
             $groups['Final Details & Cleanup'][] = 'Building permit (optional, extra charge)';
         }
 
+        $ordered = [];
+        foreach (BasementQuotationCalculator::SECTIONS as $heading) {
+            if (! empty($groups[$heading])) {
+                $ordered[$heading] = $groups[$heading];
+                unset($groups[$heading]);
+            }
+        }
+        foreach ($groups as $heading => $items) {
+            $ordered[$heading] = $items;
+        }
+        $groups = $ordered;
+
         $introHtml = '';
         foreach ($intro as $line) {
-            $introHtml .= '<p style="margin:0 0 4pt;">'.e($line).'</p>';
+            $introHtml .= '<p style="margin:0 0 2pt;line-height:1.25;">'.e($line).'</p>';
         }
 
         if ($groups === []) {
@@ -321,26 +335,25 @@ class BasementQuotation extends Model
 
         $blocks = [];
         foreach ($groups as $heading => $items) {
-            $block = '<p style="margin:0 0 1pt;font-weight:700;">'.e($heading).'</p><ul style="margin:0 0 4pt 12pt;padding:0;">';
+            $block = '<div class="br-pdf-scope-group" style="page-break-inside:avoid;break-inside:avoid;">';
+            $block .= '<p style="margin:0 0 1pt;font-weight:700;line-height:1.2;">'.e($heading).'</p>';
+            $block .= '<ul style="margin:0 0 3pt 11pt;padding:0;line-height:1.2;">';
             foreach ($items as $item) {
-                $block .= '<li style="margin:0 0 1pt;">'.e($item).'</li>';
+                $block .= '<li style="margin:0;padding:0;line-height:1.2;">'.e($item).'</li>';
             }
-            $block .= '</ul>';
+            $block .= '</ul></div>';
             $blocks[] = $block;
         }
 
-        $mid = (int) ceil(count($blocks) / 2);
-        $left = array_slice($blocks, 0, $mid);
-        $right = array_slice($blocks, $mid);
-        $rows = max(count($left), count($right));
-
-        // Short paired rows so DomPDF can start the list on page 1 (a single tall row is pushed).
-        $html = '<table class="br-pdf-scope-cols" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:none;margin:0;border-collapse:collapse;">';
-        $html .= '<tr><td colspan="2" valign="top" style="border:none;padding:0 0 4pt;vertical-align:top;">'.$introHtml.'</td></tr>';
-        for ($i = 0; $i < $rows; $i++) {
-            $html .= '<tr>';
-            $html .= '<td width="50%" valign="top" style="border:none;padding:0 10pt 4pt 0;vertical-align:top;">'.($left[$i] ?? '').'</td>';
-            $html .= '<td width="50%" valign="top" style="border:none;padding:0 0 4pt 6pt;vertical-align:top;">'.($right[$i] ?? '').'</td>';
+        // Consecutive pairs so reading order is work sequence across two columns.
+        // Breaks are allowed between rows; each group stays together.
+        $html = $introHtml;
+        $html .= '<table class="br-pdf-scope-cols" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:none;margin:0;border-collapse:collapse;page-break-inside:auto;">';
+        $count = count($blocks);
+        for ($i = 0; $i < $count; $i += 2) {
+            $html .= '<tr style="page-break-inside:auto;">';
+            $html .= '<td width="50%" valign="top" style="border:none;padding:0 8pt 2pt 0;vertical-align:top;page-break-inside:avoid;">'.($blocks[$i] ?? '').'</td>';
+            $html .= '<td width="50%" valign="top" style="border:none;padding:0 0 2pt 4pt;vertical-align:top;page-break-inside:avoid;">'.($blocks[$i + 1] ?? '').'</td>';
             $html .= '</tr>';
         }
         $html .= '</table>';

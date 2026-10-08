@@ -249,6 +249,18 @@ class BasementQuotationMathRoundTripTest extends IntegrationTestCase
         $this->assertStringContainsString('Building permit (optional, extra charge)', $scope);
         $this->assertDoesNotMatchRegularExpression('/licen[cs]e|licensed|WSIB|one-person|\\$3M/i', $scope.$this->materialsLabels($quote));
         $this->assertStringNotContainsString('vapor', strtolower($scope.$this->materialsLabels($quote)));
+
+        $headings = [];
+        foreach (\App\Services\BasementQuotationCalculator::SECTIONS as $heading) {
+            if (str_contains($scope, '>'.e($heading).'<')) {
+                $headings[] = $heading;
+            }
+        }
+        $this->assertNotEmpty($headings);
+        $positions = array_map(fn ($heading) => strpos($scope, '>'.e($heading).'<'), $headings);
+        $sorted = $positions;
+        sort($sorted, SORT_NUMERIC);
+        $this->assertSame($sorted, $positions, 'PDF trade groups must follow work-sequence order');
     }
 
     private function materialsLabels(BasementQuotation $quote): string

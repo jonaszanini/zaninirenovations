@@ -823,6 +823,20 @@
   applyScope();
   bindLw();
 
+  function syncStickyBarSpace() {
+    var bar = document.getElementById('br-sticky-total');
+    if (!bar) return;
+    var h = Math.ceil(bar.getBoundingClientRect().height);
+    if (!isFinite(h) || h < 1) h = 64;
+    document.documentElement.style.setProperty('--br-sticky-bar-h', h + 'px');
+  }
+  syncStickyBarSpace();
+  window.addEventListener('resize', syncStickyBarSpace);
+  if (typeof ResizeObserver !== 'undefined') {
+    var stickyBar = document.getElementById('br-sticky-total');
+    if (stickyBar) new ResizeObserver(syncStickyBarSpace).observe(stickyBar);
+  }
+
   setWizardStep(isEdit ? Math.max(0, wizardKeys.indexOf('review')) : 0, false);
   var prevBtn = document.getElementById('br-prev');
   var nextBtn = document.getElementById('br-next');

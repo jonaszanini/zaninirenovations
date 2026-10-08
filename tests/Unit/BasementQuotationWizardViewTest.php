@@ -169,6 +169,38 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertMatchesRegularExpression('/id="br-helper-rate-wrap"[^>]*\bhidden\b/', $html);
     }
 
+    public function test_finishing_step_uses_two_wrapping_rows(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('class="br-finishing"', $html);
+        $this->assertStringContainsString('class="br-finishing-row"', $html);
+        $this->assertStringContainsString('br-finishing-row--permit', $html);
+        $this->assertStringContainsString('id="br-permit-fields"', $html);
+        $this->assertStringContainsString('id="br-hw"', $html);
+        $this->assertStringContainsString('name="include_cleaning"', $html);
+        $this->assertStringContainsString('name="include_touchups"', $html);
+        $this->assertStringContainsString('name="include_building_permit"', $html);
+        $this->assertStringContainsString('name="building_permit_amount"', $html);
+        $this->assertStringNotContainsString('br-finishing-grid', $html);
+
+        $finish = strstr($html, 'data-br-step="finishing"');
+        $this->assertNotFalse($finish);
+        $hw = strpos($finish, 'id="br-hw"');
+        $clean = strpos($finish, 'name="include_cleaning"');
+        $touch = strpos($finish, 'name="include_touchups"');
+        $permit = strpos($finish, 'name="include_building_permit"');
+        $amount = strpos($finish, 'id="br-permit-amount"');
+        $this->assertNotFalse($hw);
+        $this->assertGreaterThan($hw, $clean);
+        $this->assertGreaterThan($clean, $touch);
+        $this->assertGreaterThan($touch, $permit);
+        $this->assertGreaterThan($permit, $amount);
+    }
+
     /**
      * @param  array<string, mixed>  $inputs
      * @param  list<string>  $enabledNow

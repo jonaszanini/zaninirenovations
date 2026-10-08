@@ -268,6 +268,33 @@
       border: none;
       padding: 0;
     }
+    .quote-work-description-body--rich table.br-pdf-scope-cols {
+      page-break-inside: auto;
+      break-inside: auto;
+      margin: 0;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols tr {
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols td {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols p,
+    .quote-work-description-body--rich table.br-pdf-scope-cols li {
+      margin: 0;
+      line-height: 1.2;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols ul {
+      margin: 0 0 3pt 11pt;
+      padding: 0;
+      line-height: 1.2;
+    }
+    .quote-work-description-body--rich .br-pdf-scope-group {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
 
     /* Table wrapper: DomPDF ignores page-break-inside on divs. */
     .quote-material-selection-wrap {
@@ -374,6 +401,7 @@
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 12pt;
+      page-break-before: avoid;
       page-break-inside: avoid;
       break-inside: avoid;
     }

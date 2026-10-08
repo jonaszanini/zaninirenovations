@@ -372,6 +372,8 @@
       </div>
     </aside>
 
+    <div class="br-sticky-spacer" aria-hidden="true"></div>
+
     <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
       <div class="br-step-nav" id="br-step-nav">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
