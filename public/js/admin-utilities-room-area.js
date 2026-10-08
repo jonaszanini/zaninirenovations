@@ -8605,15 +8605,21 @@
     };
   }
 
-  function wallsFromVertices(verts) {
+  function wallsFromVertices(verts, closed) {
     var ppf = pixelsPerFoot() || DEFAULT_TYPED_PPF;
     var walls = [];
-    for (var i = 0; i < verts.length - 1; i++) {
-      var dx = verts[i + 1].x - verts[i].x;
-      var dy = verts[i + 1].y - verts[i].y;
+    var n = (verts || []).length;
+    if (n < 2) return walls;
+    var count = closed && n >= 3 ? n : n - 1;
+    var minFt = 1 / 16 / INCHES_PER_FOOT;
+    for (var i = 0; i < count; i++) {
+      var a = verts[i];
+      var b = verts[(i + 1) % n];
+      var lengthFt = Math.hypot(b.x - a.x, b.y - a.y) / ppf;
+      if (closed && lengthFt < minFt) continue;
       walls.push({
-        lengthFt: Math.hypot(dx, dy) / ppf,
-        headingDeg: normalizeHeading((Math.atan2(dy, dx) * 180) / Math.PI)
+        lengthFt: lengthFt,
+        headingDeg: normalizeHeading((Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI)
       });
     }
     return walls;
@@ -8621,18 +8627,7 @@
 
   function syncTypedWallsFromCanvas() {
     var verts = activeVertices();
-    var walls = wallsFromVertices(verts);
-    if (isActiveClosed() && verts.length >= 3) {
-      var ppf = pixelsPerFoot() || DEFAULT_TYPED_PPF;
-      var a = verts[verts.length - 1];
-      var b = verts[0];
-      var dx = b.x - a.x;
-      var dy = b.y - a.y;
-      walls.push({
-        lengthFt: Math.hypot(dx, dy) / ppf,
-        headingDeg: normalizeHeading((Math.atan2(dy, dx) * 180) / Math.PI)
-      });
-    }
+    var walls = wallsFromVertices(verts, isActiveClosed());
     state.typedWalls = walls;
     if (verts.length) {
       state.typedStart = { x: verts[0].x, y: verts[0].y };
@@ -8810,7 +8805,7 @@
     ensureTypedScale();
     pushUndoSnapshot();
     var start = typedStartPoint();
-    var walls = state.typedWalls.length ? state.typedWalls.slice() : wallsFromVertices(activeVertices());
+    var walls = state.typedWalls.length ? state.typedWalls.slice() : wallsFromVertices(activeVertices(), isActiveClosed());
     var heading;
     if (walls.length === 0) {
       heading = 0;
@@ -8873,7 +8868,7 @@
     var verts = activeVertices().slice();
     if (verts.length < 3) return;
     pushUndoSnapshot();
-    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(verts))
+    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(verts, isActiveClosed()))
       .filter(function (w) { return !w.closing; })
       .map(function (w) {
         return { lengthFt: w.lengthFt, headingDeg: snapHeading(w.headingDeg) };
@@ -8901,7 +8896,7 @@
   }
 
   function editTypedWallLength(index, raw) {
-    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices()))
+    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
     var lengthFt;
@@ -8918,7 +8913,7 @@
   }
 
   function deleteTypedWall(index) {
-    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices()))
+    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
     pushUndoSnapshot();
@@ -8928,7 +8923,7 @@
 
   function renderTypedWallsList() {
     if (!els.typeList) return;
-    var walls = state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices());
+    var walls = state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed());
     if (!walls.length && activeVertices().length) {
       syncTypedWallsFromCanvas();
       walls = state.typedWalls;
@@ -8970,7 +8965,7 @@
 
   function updateTypedCloseBar() {
     if (!els.typeCloseBar) return;
-    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices()))
+    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     var n = walls.length;
     var closed = isActiveClosed();
