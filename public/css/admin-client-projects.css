@@ -7458,17 +7458,8 @@ body.cp-modal-open {
   white-space: nowrap;
 }
 
-.cp-utilities-item__pdf {
-  color: var(--admin-primary);
-  font-weight: 600;
-  font-size: 0.78rem;
+.cp-utilities-item__pdf.admin-btn {
   text-decoration: none;
-  white-space: nowrap;
-}
-
-.cp-utilities-item__pdf:hover,
-.cp-utilities-item__pdf:focus-visible {
-  text-decoration: underline;
 }
 .cp-utilities-item__actions {
   flex-shrink: 0;

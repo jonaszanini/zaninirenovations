@@ -28,7 +28,7 @@
         <span class="util-rq-toolbar-meta">{{ $option['meta'] }}</span>
       @endif
     </p>
-    <a href="{{ route('admin.utilities.room-area', $roomAreaProject ? ['ra_project' => $roomAreaProject->id] : []) }}" class="admin-btn admin-btn--ghost">
+    <a href="{{ $backUrl ?? route('admin.utilities.room-area', $roomAreaProject ? ['ra_project' => $roomAreaProject->id] : []) }}" class="admin-btn admin-btn--ghost">
       <i class="fa fa-arrow-left"></i> Room Area
     </a>
   </div>

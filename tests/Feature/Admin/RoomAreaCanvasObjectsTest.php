@@ -180,7 +180,7 @@ class RoomAreaCanvasObjectsTest extends IntegrationTestCase
             ->assertSee('data-ra-split-wall', false)
             ->assertSee('Split wall')
             ->assertSee('Keyboard shortcuts')
-            ->assertSee('Pinch to zoom')
+            ->assertSee('Pinch or scroll to zoom')
             ->assertSee('fa-paint-brush', false)
             ->assertSee('Start a new color group')
             ->assertSee('data-ra-palette-toggle', false)
@@ -199,6 +199,7 @@ class RoomAreaCanvasObjectsTest extends IntegrationTestCase
         $this->assertNotFalse($js);
         $this->assertStringContainsString('return base / uiScale();', $js);
         $this->assertStringNotContainsString('Math.min(uiScale(), 1)', $js);
+        $this->assertStringNotContainsString('!e.shiftKey) return', $js);
         $this->assertStringContainsString('buildAreaNameLabels', $js);
         $this->assertStringContainsString('caption.rotation(-place.angle * 180 / Math.PI)', $js);
 

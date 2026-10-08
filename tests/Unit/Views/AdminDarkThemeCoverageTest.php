@@ -80,6 +80,11 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .util-lb-sheet-group',
             'html.admin-dark .util-oc-pill',
             'html.admin-dark .util-oc-card',
+            'html.admin-dark .util-ra-full-header',
+            'html.admin-dark .util-ra-full-header__name',
+            'html.admin-dark .util-ra--fullpage .util-ra-side',
+            'html.admin-dark .util-ra-sheet-handle__bar',
+            'html.admin-dark .util-ra--fullpage .util-ra-canvas-card',
         ] as $selector) {
             $this->assertStringContainsString($selector, $dark, "Missing dark rule {$selector}");
         }

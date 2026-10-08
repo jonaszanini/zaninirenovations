@@ -41,6 +41,50 @@ class RoomAreaController extends Controller
         ]);
     }
 
+    public function clientProject(ClientProject $client_project, ?RoomAreaRoom $room_area_room = null)
+    {
+        if ($room_area_room) {
+            $room_area_room->loadMissing('project');
+            if ((int) ($room_area_room->project?->client_project_id) !== (int) $client_project->id) {
+                abort(404);
+            }
+        }
+
+        $projects = RoomAreaProject::query()
+            ->where('client_project_id', $client_project->id)
+            ->with([
+                'rooms.photos',
+                'clientProject:id,name',
+            ])
+            ->orderBy('name')
+            ->get();
+
+        if ($projects->isEmpty()) {
+            $created = RoomAreaProject::create([
+                'name' => $client_project->name ?: 'Room plans',
+                'client_project_id' => $client_project->id,
+            ]);
+            $created->load(['rooms.photos', 'clientProject:id,name']);
+            $projects = collect([$created]);
+        }
+
+        $clientProjects = ClientProject::query()
+            ->whereKey($client_project->id)
+            ->get(['id', 'name', 'client_name']);
+
+        $pageTitle = $room_area_room?->name ?: 'Room Area';
+
+        return view('admin.client_projects.room_area', [
+            'clientProject' => $client_project,
+            'projects' => $projects,
+            'clientProjects' => $clientProjects,
+            'projectsJson' => $projects->map(fn (RoomAreaProject $project) => $this->projectPayload($project))->values(),
+            'pageTitle' => $pageTitle,
+            'backUrl' => route('admin.client-projects.show', $client_project).'#utilities',
+            'initialRoomId' => $room_area_room?->id,
+        ]);
+    }
+
     public function searchLayouts(Request $request, RoomAreaLayoutQuoteService $layouts)
     {
         $id = trim((string) $request->get('id', ''));

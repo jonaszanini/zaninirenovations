@@ -7,6 +7,20 @@
   var root = document.querySelector('[data-room-area]');
   if (!root) return;
 
+  function isFullPage() {
+    return root.hasAttribute('data-ra-fullpage');
+  }
+
+  function raAll(sel) {
+    return Array.prototype.slice.call(root.querySelectorAll(sel));
+  }
+
+  function setSaveDisabled(disabled) {
+    raAll('[data-ra-save-room]').forEach(function (btn) {
+      btn.disabled = !!disabled;
+    });
+  }
+
   var INCHES_PER_FOOT = 12;
   var SQFT_TO_SQM = 0.092903;
   var FEET_TO_METERS = 0.3048;
@@ -709,7 +723,7 @@
     }
     obj.wall_id = snap.wall.wallId;
     if (item.type === 'window' || item.type === 'opening') {
-      obj.height = item.type === 'window' ? 48 : 84;
+      obj.height = item.type === 'window' ? DEFAULT_WINDOW_HEIGHT_IN : 84;
       obj.sill_height = item.type === 'window' ? 36 : 0;
     }
     applySnapToObject(obj, snap);
@@ -1718,6 +1732,13 @@
     if (!wrap || wrapW < 1) {
       return { w: state.viewportW || 900, h: state.viewportH || 640 };
     }
+    if (isFullPage()) {
+      var wrapH = Math.floor(wrap.getBoundingClientRect().height || wrap.clientHeight);
+      return {
+        w: Math.max(MIN_CANVAS_W, wrapW),
+        h: Math.max(1, wrapH || 240)
+      };
+    }
     var w = wrapW;
     var narrow = isNarrowCanvas(w);
     var maxH = Math.min(
@@ -1758,6 +1779,7 @@
 
   function syncCanvasWrapSize(w, h) {
     if (!els.canvasWrap) return;
+    if (isFullPage()) return;
     els.canvasWrap.style.height = h + 'px';
   }
 
@@ -2900,7 +2922,8 @@
   }
 
   function canDragWalls() {
-    return wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating;
+    return wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating
+      && !state.armedCatalogKey && !state.placingCatalog;
   }
 
   function canDragShapes() {
@@ -2909,7 +2932,9 @@
       && !state.rulerMode
       && !state.calibrating
       && !state.bgMoveMode
-      && !state.panning;
+      && !state.panning
+      && !state.armedCatalogKey
+      && !state.placingCatalog;
   }
 
   function polygonInteriorAtPoint(pos) {
@@ -4040,10 +4065,12 @@
   }
 
   function redrawZoomUi() {
+    drawGrid();
     redrawPolygonLine();
     redrawVertices();
     redrawLabels();
     redrawWalls();
+    redrawObjects();
     redrawCalib();
     redrawRulers();
     redrawDrawPreview();
@@ -4117,9 +4144,9 @@
   }
 
   function updateZoomUI() {
-    if (els.zoomLabel) {
-      els.zoomLabel.textContent = state.viewport.zoomPercent + '%';
-    }
+    raAll('[data-ra-zoom-label]').forEach(function (el) {
+      el.textContent = state.viewport.zoomPercent + '%';
+    });
   }
 
   function zoomAt(screenX, screenY, newScale) {
@@ -4141,14 +4168,27 @@
     if (!els.canvasWrap || els.canvasWrap._raViewportBound) return;
     els.canvasWrap._raViewportBound = true;
 
+    if (isFullPage() && typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(function () {
+        scheduleStageResize();
+      }).observe(els.canvasWrap);
+    }
+
     els.canvasWrap.addEventListener('wheel', function (e) {
-      if (!state.stage || !e.shiftKey) return;
+      if (!state.stage) return;
       e.preventDefault();
       var rect = state.stage.container().getBoundingClientRect();
       var x = e.clientX - rect.left;
       var y = e.clientY - rect.top;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.4 && !e.ctrlKey && !e.metaKey) {
+        state.viewport.x -= e.deltaX;
+        state.viewport.y -= e.deltaY;
+        applyViewport();
+        return;
+      }
+      var intensity = e.ctrlKey || e.metaKey ? Math.min(Math.abs(e.deltaY) / 80, 1) : 1;
       var dir = e.deltaY < 0 ? 1 : -1;
-      var factor = dir > 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+      var factor = dir > 0 ? Math.pow(ZOOM_STEP, intensity) : 1 / Math.pow(ZOOM_STEP, intensity);
       setZoomPercent(state.viewport.zoomPercent * factor, x, y);
     }, { passive: false });
 
@@ -4335,6 +4375,16 @@
       return;
     }
 
+    if (isFullPage()) {
+      syncDrawableDimensions();
+      state.stage.width(state.viewportW);
+      state.stage.height(state.viewportH);
+      drawGrid();
+      redrawAll();
+      applyViewport();
+      return;
+    }
+
     var oldContentW = state.viewportW;
     var oldContentH = state.viewportH;
     var oldWorldW = state.canvasW;
@@ -4390,6 +4440,10 @@
     }
 
     syncDrawableDimensions();
+
+    if (typeof Konva.pixelRatio === 'number') {
+      Konva.pixelRatio = Math.max(window.devicePixelRatio || 1, 1);
+    }
 
     state.stage = new Konva.Stage({
       container: 'ra-konva-container',
@@ -4554,11 +4608,13 @@
     var step = gridStepPx();
     var w = canvasW();
     var h = canvasH();
+    var minor = uiSize(0.5);
+    var major = uiSize(1);
     for (var x = 0; x <= w; x += step) {
       layer.add(new Konva.Line({
         points: [x, 0, x, h],
         stroke: gridStrokeColor(),
-        strokeWidth: x % (step * 5) === 0 ? 1 : 0.5,
+        strokeWidth: x % (step * 5) === 0 ? major : minor,
         listening: false
       }));
     }
@@ -4566,7 +4622,7 @@
       layer.add(new Konva.Line({
         points: [0, y, w, y],
         stroke: gridStrokeColor(),
-        strokeWidth: y % (step * 5) === 0 ? 1 : 0.5,
+        strokeWidth: y % (step * 5) === 0 ? major : minor,
         listening: false
       }));
     }
@@ -6921,7 +6977,7 @@
     var grandTotal = hasAnyClosedPolygon() ? canvasTotalAreaSqFt() : null;
     if (grandTotal === null) {
       show(els.liveArea, false);
-      els.saveRoom.disabled = true;
+      setSaveDisabled(true);
       updateGroupChip();
       return;
     }
@@ -6991,14 +7047,20 @@
       });
     }
     updateGroupChip();
-    els.saveRoom.disabled = !pixelsPerFoot();
+    setSaveDisabled(!pixelsPerFoot());
+  }
+
+  function setAllDisabled(sel, disabled) {
+    raAll(sel).forEach(function (btn) {
+      btn.disabled = !!disabled;
+    });
   }
 
   function updateToolbar() {
-    els.undoVertex.disabled = state.undoStack.length === 0;
-    if (els.redo) els.redo.disabled = state.redoStack.length === 0;
+    setAllDisabled('[data-ra-undo-vertex]', state.undoStack.length === 0);
+    setAllDisabled('[data-ra-redo]', state.redoStack.length === 0);
     if (els.splitWall) els.splitWall.disabled = state.selectedWallIndex === null;
-    els.closeShape.disabled = activeVertices().length < 3 || isActiveClosed();
+    setAllDisabled('[data-ra-close-shape]', activeVertices().length < 3 || isActiveClosed());
     if (els.addArea) els.addArea.disabled = !isActiveClosed();
     if (els.addAreaNewGroup) els.addAreaNewGroup.disabled = !isActiveClosed();
     if (els.deleteArea) {
@@ -7209,13 +7271,16 @@
   function updateEditUI() {
     var editing = !!state.editingRoomId;
     var saveLabel = editing ? 'Save changes' : 'Save room';
-    if (els.saveRoom) {
-      els.saveRoom.setAttribute('aria-label', saveLabel);
-    }
-    if (els.saveTip) {
-      els.saveTip.setAttribute('data-tooltip', saveLabel);
-    }
-    show(els.cancelEdit, editing);
+    raAll('[data-ra-save-room]').forEach(function (btn) {
+      btn.setAttribute('aria-label', saveLabel);
+    });
+    raAll('[data-ra-save-tip]').forEach(function (tip) {
+      tip.setAttribute('data-tooltip', saveLabel);
+    });
+    updateFullpageTitle();
+    raAll('[data-ra-cancel-edit]').forEach(function (btn) {
+      show(btn, editing);
+    });
     syncExportButtons();
     renderRooms();
   }
@@ -7537,7 +7602,9 @@
   function saveRoom() {
     var project = activeProject();
     if (!project || !hasAnyClosedPolygon()) {
-      return Promise.reject(new Error('Complete at least one closed area before saving.'));
+      var closedErr = new Error('Complete at least one closed area before saving.');
+      setFeedback(closedErr.message, true);
+      return Promise.reject(closedErr);
     }
     var name = (els.roomName.value || '').trim();
     if (!name) {
@@ -7559,7 +7626,7 @@
       return Promise.reject(scaleErr);
     }
 
-    els.saveRoom.disabled = true;
+    setSaveDisabled(true);
     return fetch(url, {
       method: method,
       credentials: 'same-origin',
@@ -7602,7 +7669,7 @@
         return result;
       })
       .then(function (result) {
-        els.saveRoom.disabled = false;
+        setSaveDisabled(false);
         if (isUpdate) {
           var idx = project.rooms.findIndex(function (r) { return r.id === result.data.room.id; });
           if (idx >= 0) {
@@ -7641,7 +7708,7 @@
         );
       })
       .catch(function (e) {
-        els.saveRoom.disabled = false;
+        setSaveDisabled(false);
         setFeedback(e.message, true);
         throw e;
       });
@@ -7894,7 +7961,7 @@
         finishPaletteDrag(e);
       } else {
         armCatalogItem(item.key);
-        collapsePaletteIfNarrow();
+        collapsePaletteAfterArm();
       }
       dragging = false;
     }
@@ -7910,10 +7977,20 @@
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);
     });
+
+    btn.addEventListener('click', function () {
+      if (pointerId != null) return;
+      armCatalogItem(item.key);
+      collapsePaletteAfterArm();
+    });
   }
 
   function isNarrowPalette() {
     return window.matchMedia('(max-width: 599px)').matches;
+  }
+
+  function collapsePaletteAfterArm() {
+    if (isNarrowPalette() || isFullPage()) setPaletteOpen(false);
   }
 
   function setPaletteOpen(open) {
@@ -7922,10 +7999,6 @@
     if (els.paletteToggle) {
       els.paletteToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
-  }
-
-  function collapsePaletteIfNarrow() {
-    if (isNarrowPalette()) setPaletteOpen(false);
   }
 
   function togglePaletteOpen() {
@@ -8554,15 +8627,21 @@
     };
   }
 
-  function wallsFromVertices(verts) {
+  function wallsFromVertices(verts, closed) {
     var ppf = pixelsPerFoot() || DEFAULT_TYPED_PPF;
     var walls = [];
-    for (var i = 0; i < verts.length - 1; i++) {
-      var dx = verts[i + 1].x - verts[i].x;
-      var dy = verts[i + 1].y - verts[i].y;
+    var n = (verts || []).length;
+    if (n < 2) return walls;
+    var count = closed && n >= 3 ? n : n - 1;
+    var minFt = 1 / 16 / INCHES_PER_FOOT;
+    for (var i = 0; i < count; i++) {
+      var a = verts[i];
+      var b = verts[(i + 1) % n];
+      var lengthFt = Math.hypot(b.x - a.x, b.y - a.y) / ppf;
+      if (closed && lengthFt < minFt) continue;
       walls.push({
-        lengthFt: Math.hypot(dx, dy) / ppf,
-        headingDeg: normalizeHeading((Math.atan2(dy, dx) * 180) / Math.PI)
+        lengthFt: lengthFt,
+        headingDeg: normalizeHeading((Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI)
       });
     }
     return walls;
@@ -8570,19 +8649,7 @@
 
   function syncTypedWallsFromCanvas() {
     var verts = activeVertices();
-    var walls = wallsFromVertices(verts);
-    if (isActiveClosed() && verts.length >= 3) {
-      var ppf = pixelsPerFoot() || DEFAULT_TYPED_PPF;
-      var a = verts[verts.length - 1];
-      var b = verts[0];
-      var dx = b.x - a.x;
-      var dy = b.y - a.y;
-      walls.push({
-        lengthFt: Math.hypot(dx, dy) / ppf,
-        headingDeg: normalizeHeading((Math.atan2(dy, dx) * 180) / Math.PI),
-        closing: true
-      });
-    }
+    var walls = wallsFromVertices(verts, isActiveClosed());
     state.typedWalls = walls;
     if (verts.length) {
       state.typedStart = { x: verts[0].x, y: verts[0].y };
@@ -8710,6 +8777,13 @@
         y: last.y + px * Math.sin(rad)
       });
     });
+    if (closeIt && pts.length >= 4) {
+      var closeLast = pts[pts.length - 1];
+      var closeFirst = pts[0];
+      if (Math.hypot(closeLast.x - closeFirst.x, closeLast.y - closeFirst.y) < 0.5) {
+        pts.pop();
+      }
+    }
     setActiveVertices(pts.map(clampToCanvas));
     setActiveClosed(!!closeIt && pts.length >= 3);
     state.typedStart = { x: start.x, y: start.y };
@@ -8753,7 +8827,7 @@
     ensureTypedScale();
     pushUndoSnapshot();
     var start = typedStartPoint();
-    var walls = state.typedWalls.length ? state.typedWalls.slice() : wallsFromVertices(activeVertices());
+    var walls = state.typedWalls.length ? state.typedWalls.slice() : wallsFromVertices(activeVertices(), isActiveClosed());
     var heading;
     if (walls.length === 0) {
       heading = 0;
@@ -8816,7 +8890,7 @@
     var verts = activeVertices().slice();
     if (verts.length < 3) return;
     pushUndoSnapshot();
-    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(verts))
+    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(verts, isActiveClosed()))
       .filter(function (w) { return !w.closing; })
       .map(function (w) {
         return { lengthFt: w.lengthFt, headingDeg: snapHeading(w.headingDeg) };
@@ -8844,7 +8918,7 @@
   }
 
   function editTypedWallLength(index, raw) {
-    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices()))
+    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
     var lengthFt;
@@ -8861,17 +8935,17 @@
   }
 
   function deleteTypedWall(index) {
-    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices()))
+    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
     pushUndoSnapshot();
     walls.splice(index, 1);
-    applyTypedWalls(walls, typedStartPoint(), isActiveClosed() && walls.length >= 3);
+    applyTypedWalls(walls, typedStartPoint(), false);
   }
 
   function renderTypedWallsList() {
     if (!els.typeList) return;
-    var walls = state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices());
+    var walls = state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed());
     if (!walls.length && activeVertices().length) {
       syncTypedWallsFromCanvas();
       walls = state.typedWalls;
@@ -8913,7 +8987,7 @@
 
   function updateTypedCloseBar() {
     if (!els.typeCloseBar) return;
-    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices()))
+    var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     var n = walls.length;
     var closed = isActiveClosed();
@@ -9397,8 +9471,12 @@
       applyScale();
     });
 
-    els.undoVertex.addEventListener('click', undoVertex);
-    if (els.redo) els.redo.addEventListener('click', redoAction);
+    raAll('[data-ra-undo-vertex]').forEach(function (btn) {
+      btn.addEventListener('click', undoVertex);
+    });
+    raAll('[data-ra-redo]').forEach(function (btn) {
+      btn.addEventListener('click', redoAction);
+    });
     if (els.splitWall) els.splitWall.addEventListener('click', splitSelectedWall);
     if (els.shortcutsToggle) {
       els.shortcutsToggle.addEventListener('click', function (e) {
@@ -9454,12 +9532,16 @@
     if (els.addAreaNewGroup) els.addAreaNewGroup.addEventListener('click', addAreaNewGroup);
     if (els.deleteArea) els.deleteArea.addEventListener('click', deleteActivePolygon);
     els.clearShape.addEventListener('click', clearShape);
-    els.saveRoom.addEventListener('click', function () {
-      saveRoom().catch(function () {});
+    raAll('[data-ra-save-room]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        saveRoom().catch(function () {});
+      });
     });
     if (els.newRoom) els.newRoom.addEventListener('click', startNewRoom);
     if (els.newRoomSecondary) els.newRoomSecondary.addEventListener('click', startNewRoom);
-    if (els.cancelEdit) els.cancelEdit.addEventListener('click', cancelEdit);
+    raAll('[data-ra-cancel-edit]').forEach(function (btn) {
+      btn.addEventListener('click', cancelEdit);
+    });
 
     if (els.wallApply) els.wallApply.addEventListener('click', applyWallLength);
     if (els.wallCancel) els.wallCancel.addEventListener('click', clearWallSelection);
@@ -9569,10 +9651,14 @@
     if (els.exportPdf) els.exportPdf.addEventListener('click', exportPdf);
     if (els.attachPdf) els.attachPdf.addEventListener('click', attachPdf);
 
-    if (els.zoomIn) els.zoomIn.addEventListener('click', zoomIn);
-    if (els.zoomOut) els.zoomOut.addEventListener('click', zoomOut);
-    if (els.zoom100) els.zoom100.addEventListener('click', resetViewport);
-    if (els.zoomReset) els.zoomReset.addEventListener('click', fitViewport);
+    raAll('[data-ra-zoom-in]').forEach(function (btn) { btn.addEventListener('click', zoomIn); });
+    raAll('[data-ra-zoom-out]').forEach(function (btn) { btn.addEventListener('click', zoomOut); });
+    raAll('[data-ra-zoom-100]').forEach(function (btn) { btn.addEventListener('click', resetViewport); });
+    raAll('[data-ra-zoom-reset]').forEach(function (btn) { btn.addEventListener('click', fitViewport); });
+    bindSidePanel();
+    if (els.roomName) {
+      els.roomName.addEventListener('input', updateFullpageTitle);
+    }
 
     if (els.measureUnit) {
       els.measureUnit.addEventListener('change', function () {
@@ -9644,6 +9730,113 @@
     });
   }
 
+  function updateFullpageTitle() {
+    var titleEl = root.querySelector('[data-ra-full-title]');
+    if (!titleEl || titleEl === els.roomName || titleEl.tagName === 'INPUT') return;
+    var roomName = els.roomName ? String(els.roomName.value || '').trim() : '';
+    var project = activeProject();
+    if (roomName) {
+      titleEl.textContent = roomName;
+    } else if (project && project.name) {
+      titleEl.textContent = project.name;
+    } else {
+      titleEl.textContent = 'Room Area';
+    }
+  }
+
+  function setSidePane(pane) {
+    if (root.classList.contains('is-side-collapsed')) {
+      root.classList.remove('is-side-collapsed');
+      var toggle = root.querySelector('[data-ra-side-toggle]');
+      if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    }
+    raAll('[data-ra-side-tab]').forEach(function (tab) {
+      var on = tab.getAttribute('data-ra-side-tab') === pane;
+      tab.classList.toggle('is-active', on);
+      tab.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    raAll('[data-ra-side-pane]').forEach(function (el) {
+      el.classList.toggle('is-active', el.getAttribute('data-ra-side-pane') === pane);
+    });
+    scheduleStageResize();
+  }
+
+  function bindSidePanel() {
+    var toggle = root.querySelector('[data-ra-side-toggle]');
+    if (toggle) {
+      toggle.addEventListener('click', function () {
+        var collapsed = root.classList.toggle('is-side-collapsed');
+        toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        scheduleStageResize();
+      });
+    }
+    raAll('[data-ra-side-tab]').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        setSidePane(tab.getAttribute('data-ra-side-tab'));
+      });
+    });
+    bindSheetHandle();
+  }
+
+  function bindSheetHandle() {
+    var handle = root.querySelector('[data-ra-sheet-handle]');
+    var side = root.querySelector('[data-ra-side]');
+    if (!handle || !side || !isFullPage()) return;
+    var dragging = false;
+    var startY = 0;
+    var startH = 0;
+    var pointerId = null;
+
+    function eventY(e) {
+      if (e.touches && e.touches[0]) return e.touches[0].clientY;
+      if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientY;
+      return e.clientY;
+    }
+
+    function clampSheet(height) {
+      var minH = Math.round(Math.min(window.innerHeight * 0.22, 168));
+      var maxH = Math.round(window.innerHeight * 0.55);
+      return Math.max(minH, Math.min(maxH, Math.round(height)));
+    }
+
+    function applySheet(height) {
+      root.style.setProperty('--ra-sheet-h', clampSheet(height) + 'px');
+      scheduleStageResize();
+    }
+
+    function onDown(e) {
+      if (window.matchMedia('(min-width: 901px)').matches) return;
+      dragging = true;
+      startY = eventY(e);
+      startH = side.getBoundingClientRect().height;
+      if (e.pointerId != null && handle.setPointerCapture) {
+        pointerId = e.pointerId;
+        try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+      }
+      e.preventDefault();
+    }
+
+    function onMove(e) {
+      if (!dragging) return;
+      var next = startH + (startY - eventY(e));
+      applySheet(next);
+      e.preventDefault();
+    }
+
+    function onUp() {
+      dragging = false;
+      pointerId = null;
+    }
+
+    handle.addEventListener('pointerdown', onDown);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
+    handle.addEventListener('touchstart', onDown, { passive: false });
+    handle.addEventListener('touchmove', onMove, { passive: false });
+    handle.addEventListener('touchend', onUp);
+  }
+
   function init() {
     state.projects = parseJson('data-projects', []);
     state.measureUnit = loadMeasureUnit();
@@ -9657,7 +9850,17 @@
     var raProject = (function () {
       try { return new URLSearchParams(window.location.search).get('ra_project'); } catch (e) { return null; }
     })();
-    if (raProject) {
+    var initialRoom = parseInt(root.getAttribute('data-ra-initial-room-id') || '', 10);
+    if (isFullPage() && state.projects.length) {
+      var chosen = null;
+      if (initialRoom) {
+        chosen = state.projects.find(function (p) {
+          return (p.rooms || []).some(function (r) { return r.id === initialRoom; });
+        });
+      }
+      state.activeProjectId = (chosen || state.projects[0]).id;
+      refreshProjectSelect();
+    } else if (raProject) {
       var raId = parseInt(raProject, 10);
       if (state.projects.some(function (p) { return p.id === raId; })) {
         state.activeProjectId = raId;
@@ -9665,6 +9868,10 @@
       }
     }
     renderWorkspace();
+    updateFullpageTitle();
+    if (initialRoom) {
+      loadRoom(initialRoom);
+    }
   }
 
   init();
