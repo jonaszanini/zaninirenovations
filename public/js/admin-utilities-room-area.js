@@ -7936,7 +7936,7 @@
         finishPaletteDrag(e);
       } else {
         armCatalogItem(item.key);
-        collapsePaletteIfNarrow();
+        collapsePaletteAfterArm();
       }
       dragging = false;
     }
@@ -7952,10 +7952,20 @@
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);
     });
+
+    btn.addEventListener('click', function () {
+      if (pointerId != null) return;
+      armCatalogItem(item.key);
+      collapsePaletteAfterArm();
+    });
   }
 
   function isNarrowPalette() {
     return window.matchMedia('(max-width: 599px)').matches;
+  }
+
+  function collapsePaletteAfterArm() {
+    if (isNarrowPalette() || isFullPage()) setPaletteOpen(false);
   }
 
   function setPaletteOpen(open) {
@@ -7964,10 +7974,6 @@
     if (els.paletteToggle) {
       els.paletteToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
-  }
-
-  function collapsePaletteIfNarrow() {
-    if (isNarrowPalette()) setPaletteOpen(false);
   }
 
   function togglePaletteOpen() {
