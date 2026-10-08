@@ -30,7 +30,7 @@ class ClientProjectInvoiceReminderService
 
     /**
      * Sent invoices with a due date before today (Toronto), excluding
-     * cancelled/rejected projects.
+     * cancelled/rejected projects via {@see ClientProjectInvoice::scopeCollectible()}.
      *
      * @return Collection<int, ClientProjectInvoice>
      */
@@ -39,17 +39,12 @@ class ClientProjectInvoiceReminderService
         $today = Carbon::today('America/Toronto')->toDateString();
 
         return ClientProjectInvoice::query()
+            ->collectible()
             ->with('project')
             ->where('status', ClientProjectInvoice::STATUS_SENT)
             ->whereNull('reminders_paused_at')
             ->whereNotNull('due_on')
             ->whereDate('due_on', '<', $today)
-            ->whereHas('project', function ($q) {
-                $q->whereNotIn('status', [
-                    ClientProject::STATUS_CANCELLED,
-                    ClientProject::STATUS_REJECTED,
-                ]);
-            })
             ->orderBy('due_on')
             ->get();
     }
@@ -59,6 +54,10 @@ class ClientProjectInvoiceReminderService
      */
     public function sendPaymentReminder(ClientProject $project, ClientProjectInvoice $invoice): array
     {
+        if ($project->excludesInvoicesFromReceivables()) {
+            return ['ok' => false, 'channel' => null, 'detail' => 'Reminders are not sent for invoices on cancelled or rejected projects.'];
+        }
+
         if (! $invoice->isSent()) {
             return ['ok' => false, 'channel' => null, 'detail' => 'Invoice has not been sent yet.'];
         }

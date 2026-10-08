@@ -23,7 +23,7 @@ class AdminDashboardService
 {
     private const CACHE_TTL_SECONDS = 120;
 
-    private const CACHE_KEY = 'admin_dashboard_payload_v2';
+    private const CACHE_KEY = 'admin_dashboard_payload_v3';
 
     public function build(bool $refresh = false): array
     {
@@ -405,6 +405,7 @@ class AdminDashboardService
         $activeValue = (float) $active->sum(fn (ClientProject $p) => (float) ($p->total_amount ?? 0));
 
         $outstanding = (float) ClientProjectInvoice::query()
+            ->collectible()
             ->where('status', ClientProjectInvoice::STATUS_SENT)
             ->sum('total');
 
@@ -437,6 +438,7 @@ class AdminDashboardService
 
         $today = $now->toDateString();
         $overdueQuery = ClientProjectInvoice::query()
+            ->collectible()
             ->where('status', ClientProjectInvoice::STATUS_SENT)
             ->whereNotNull('due_on')
             ->whereDate('due_on', '<', $today);
@@ -664,6 +666,10 @@ class AdminDashboardService
             }
             $reasons = [];
 
+            if ($p->excludesInvoicesFromReceivables()) {
+                continue;
+            }
+
             $overdueInv = $p->invoices->filter(function ($inv) use ($today) {
                 return $inv->isSent() && ! $inv->isPaid() && $inv->due_on
                     && Carbon::parse($inv->due_on)->lt($today);
@@ -714,6 +720,7 @@ class AdminDashboardService
         $today = now()->toDateString();
 
         return ClientProjectInvoice::query()
+            ->collectible()
             ->with('project')
             ->where('status', ClientProjectInvoice::STATUS_SENT)
             ->whereNotNull('due_on')
