@@ -6136,6 +6136,15 @@ body:has(.util-ra--fullpage) {
   max-width: 8.5rem;
 }
 
+@media (max-width: 900px) {
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-dim-mode {
+    flex: 0 0 6.5rem;
+    width: 6.5rem;
+    min-width: 6.5rem;
+    max-width: 6.5rem;
+  }
+}
+
 .util-ra-unit-system {
   display: inline-flex;
   align-items: stretch;

@@ -304,18 +304,35 @@ async function main() {
       if (imperial) imperial.click();
       const roomTools = document.querySelector('.util-ra-tool-group--room-tools');
       const toolbar = document.querySelector('.util-ra-canvas-toolbar');
-      if (toolbar && roomTools) toolbar.scrollLeft = Math.max(0, roomTools.offsetLeft - 12);
+      const lockWrap = document.querySelector('[data-ra-lock-layers-wrap]');
+      if (toolbar && roomTools) {
+        const t = toolbar.getBoundingClientRect();
+        const r = roomTools.getBoundingClientRect();
+        toolbar.scrollLeft += (r.left - t.left - 8);
+      }
+      if (toolbar && lockWrap) {
+        const t = toolbar.getBoundingClientRect();
+        const l = lockWrap.getBoundingClientRect();
+        if (l.right > t.right - 4) toolbar.scrollLeft += (l.right - t.right + 8);
+      }
       const tpl = document.querySelector('[data-ra-templates-toggle]');
       if (tpl) tpl.click();
     });
     await delay(250);
   }
 
+  let batch1Loaded = false;
   for (const shot of batch1Shots) {
     await page.setViewport({ width: shot.width, height: shot.height, deviceScaleFactor: shot.width <= 400 ? 2 : 1 });
-    await gotoReady(page, editorUrl);
-    await waitForEditor(page);
-    await page.waitForSelector('[data-ra-template="rect"]', { timeout: 15000 });
+    if (!batch1Loaded) {
+      await gotoReady(page, editorUrl);
+      await waitForEditor(page);
+      await page.waitForSelector('[data-ra-template="rect"]', { timeout: 15000 });
+      batch1Loaded = true;
+    } else {
+      await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+      await delay(250);
+    }
     await setTheme(page, shot.theme);
     await prepareBatch1(page);
     const audit = await page.evaluate(() => {
