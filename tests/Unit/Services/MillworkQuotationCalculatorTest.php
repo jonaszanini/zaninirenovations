@@ -393,6 +393,44 @@ class MillworkQuotationCalculatorTest extends TestCase
         $this->assertNotContains('stain', $materialKeys);
     }
 
+    public function test_blank_or_primary_back_sheet_uses_quarter_inch_stock(): void
+    {
+        $piece = [
+            'type' => 'closet',
+            'qty' => 1,
+            'width' => 72,
+            'height' => 84,
+            'depth' => 14,
+            'unit' => 'in',
+            'include_back' => true,
+            'include_doors' => false,
+            'edge_banding' => false,
+            'finish' => 'none',
+        ];
+        $primary = 'ws_ply_34_cab_48x96';
+        $empty = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [$piece],
+            'sheet_id' => $primary,
+            'back_sheet_id' => '',
+            'include_install' => false,
+        ], $this->settings());
+        $sameAsPrimary = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [$piece],
+            'sheet_id' => $primary,
+            'back_sheet_id' => $primary,
+            'include_install' => false,
+        ], $this->settings());
+
+        $this->assertEqualsWithDelta(
+            (float) $empty['summary']['materials_goods_pre_hst'],
+            (float) $sameAsPrimary['summary']['materials_goods_pre_hst'],
+            0.01
+        );
+        $labels = array_map(fn ($r) => (string) ($r['label'] ?? ''), $empty['materials']);
+        $this->assertNotFalse(collect($labels)->first(fn ($n) => str_contains($n, '1/4"')));
+        $this->assertSame($empty['summary']['materials_goods_pre_hst'], $sameAsPrimary['summary']['materials_goods_pre_hst']);
+    }
+
     public function test_hst_is_thirteen_percent_of_labour_and_materials(): void
     {
         $calc = (new MillworkQuotationCalculator)->calculate([

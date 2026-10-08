@@ -159,10 +159,18 @@ class MillworkQuotationCalculator
         $includeHelper = QuotationHelperLabor::enabled($inputs);
         $providesAll = ! empty($inputs['client_provides_all']);
 
-        $sheet = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_WOOD_SHEETS, (string) ($inputs['sheet_id'] ?? ''));
-        $backSheet = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_WOOD_SHEETS, (string) ($inputs['back_sheet_id'] ?? ''), true)
+        $sheetId = (string) ($inputs['sheet_id'] ?? '');
+        $backId = (string) ($inputs['back_sheet_id'] ?? '');
+        $sheet = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_WOOD_SHEETS, $sheetId);
+        $backSheet = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_WOOD_SHEETS, $backId, true)
             ?? $this->firstSheetOfThickness($catalog, 0.25)
             ?? $sheet;
+        if ($backId === '' || $backId === $sheetId) {
+            $thinBack = $this->firstSheetOfThickness($catalog, 0.25);
+            if ($thinBack) {
+                $backSheet = $thinBack;
+            }
+        }
         $thickness = (float) ($sheet['thickness_in'] ?? 0.75);
         $ebItem = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_EDGE_BANDING, (string) ($inputs['edge_banding_id'] ?? ''));
         $ebThick = (float) ($cut['edge_band_thickness_in'] ?? ($ebItem['thickness_in'] ?? 0.018));

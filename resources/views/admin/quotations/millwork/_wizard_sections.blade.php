@@ -93,8 +93,19 @@
       <div class="admin-form-group" data-mw-mat="back" @if (! $needsBack) hidden @endif>
         <label for="mw-back">Back / 1/4" sheet</label>
         <select class="admin-input mw-preview" id="mw-back" name="back_sheet_id">
+          @php
+            $backSelected = (string) $mwVal('back_sheet_id');
+            if ($backSelected === '') {
+                foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row) {
+                    if ((float) ($row['thickness_in'] ?? 0) <= 0.3) {
+                        $backSelected = (string) ($row['id'] ?? '');
+                        break;
+                    }
+                }
+            }
+          @endphp
           @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('back_sheet_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
+            <option value="{{ $row['id'] }}" @selected($backSelected === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
           @endforeach
         </select>
       </div>

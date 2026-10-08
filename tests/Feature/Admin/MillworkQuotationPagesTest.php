@@ -48,6 +48,7 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('data-mw-show="cabinet cabinet_door vanity closet bench-drawers"', false)
             ->assertSee('data-mw-hw="cabinet-family"', false)
             ->assertSee('data-mw-mat="back"', false)
+            ->assertSee('ws_ply_14_48x96', false)
             ->assertSee('data-mw-mat="edge-banding"', false)
             ->assertSee('data-mw-mat="paint"', false)
             ->assertSee('data-mw-mat="stain"', false)
