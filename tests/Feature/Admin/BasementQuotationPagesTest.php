@@ -48,7 +48,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('fa-info-circle', false)
             ->assertSee('New drain, vent, and hot/cold supply')
             ->assertSee('Import layout')
-            ->assertSee('Search saved rooms', false)
+            ->assertSee('Search rooms', false)
             ->assertSee('Project description', false)
             ->assertSee('optional — client PDF', false)
             ->assertSee('4×8 (32 sq ft)', false)
@@ -99,7 +99,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->get(route('admin.quotations.basement.create'))
             ->assertOk()
             ->assertSee('Import layout')
-            ->assertSee('Search saved rooms', false)
+            ->assertSee('Search rooms', false)
             ->assertSee('name="perimeter_lf"', false)
             ->assertSee('data-br-layout-picker', false);
     }

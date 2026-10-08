@@ -122,11 +122,22 @@
           "actions actions";
       }
       .q-ac-row--with-category {
-        grid-template-columns: 5rem minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas:
           "desc desc"
           "amount category"
-          "hst actions";
+          "taxrow taxrow";
+      }
+      .q-ac-row--with-category .q-ac-row__hst,
+      .q-ac-row--with-category .q-ac-row__actions {
+        grid-area: taxrow;
+      }
+      .q-ac-row--with-category .q-ac-row__hst {
+        padding-right: 52px;
+      }
+      .q-ac-row--with-category .q-ac-row__actions {
+        justify-self: end;
+        align-self: center;
       }
       .q-ac-row__desc { grid-area: desc; }
       .q-ac-row__amount { grid-area: amount; }
@@ -139,8 +150,8 @@
         padding-bottom: 0;
       }
       body .q-ac-row--with-category .q-ac-row__category select.admin-input {
-        min-width: 0;
-        width: 100%;
+        min-width: 8rem;
+        width: auto;
         padding-right: 1.35rem;
       }
       .q-ac-row__hst-label {

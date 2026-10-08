@@ -578,7 +578,7 @@
           'name' => 'room_area_import_id',
           'value' => $layoutImportId,
           'hideLabel' => true,
-          'placeholder' => 'Search saved rooms…',
+          'placeholder' => 'Search rooms…',
           'ariaLabel' => 'Import a Room Area layout',
           'searchUrl' => $layoutSearchUrl,
           'selectedOption' => $layoutSelected,
