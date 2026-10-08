@@ -6174,6 +6174,7 @@ body:has(.util-ra--fullpage) {
   left: 0;
   right: auto;
   width: 16.5rem;
+  z-index: 80;
 }
 
 .util-ra-templates-pop__grid {

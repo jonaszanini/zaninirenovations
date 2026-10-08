@@ -88,6 +88,7 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('drawOverallDimensionLabel', $js);
         $this->assertStringContainsString('room-area-layers-locked', $js);
         $this->assertStringContainsString('room-area-dimensions-mode', $js);
+        $this->assertStringContainsString("els.templatesPopover.style.position = 'fixed'", $js);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
         $this->assertNotFalse($css);

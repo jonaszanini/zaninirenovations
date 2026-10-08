@@ -8857,6 +8857,15 @@
     show(els.templatesPopover, open);
     els.templatesToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     els.templatesToggle.classList.toggle('is-active', !!open);
+    if (open) {
+      var r = els.templatesToggle.getBoundingClientRect();
+      var left = Math.max(8, Math.min(r.left, window.innerWidth - 280));
+      els.templatesPopover.style.position = 'fixed';
+      els.templatesPopover.style.top = Math.round(r.bottom + 8) + 'px';
+      els.templatesPopover.style.left = Math.round(left) + 'px';
+      els.templatesPopover.style.right = 'auto';
+      els.templatesPopover.style.zIndex = '80';
+    }
   }
 
   function toggleTemplatesPopover() {

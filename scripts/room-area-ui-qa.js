@@ -44,15 +44,25 @@ function visible(el, style, rect) {
   return rect.width > 0 && rect.height > 0;
 }
 
+async function gotoReady(page, url) {
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+}
+
+async function waitForEditor(page) {
+  await page.waitForSelector('.util-ra--fullpage', { timeout: 20000 });
+  await page.waitForFunction(() => typeof window.Konva !== 'undefined', { timeout: 20000 });
+  await delay(400);
+}
+
 async function login(page) {
-  await page.goto(`${BASE_URL}/admin/login`, { waitUntil: 'networkidle0' });
+  await gotoReady(page, `${BASE_URL}/admin/login`);
   const email = await page.$('input[name="email"]');
   if (!email) throw new Error('Login form not found');
   await page.type('input[name="email"]', EMAIL);
   await page.type('input[name="password"]', PASSWORD);
   await Promise.all([
     page.click('button[type="submit"]'),
-    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 45000 }),
   ]);
 }
 
@@ -70,7 +80,7 @@ async function setTheme(page, theme) {
 
 async function findEditorPath(page) {
   if (EDITOR_PATH) return EDITOR_PATH;
-  await page.goto(`${BASE_URL}/admin/client-projects`, { waitUntil: 'networkidle0' });
+  await gotoReady(page, `${BASE_URL}/admin/client-projects`);
   const href = await page.evaluate(() => {
     const link = document.querySelector('a[href*="/utilities/room-area"]');
     if (link) return link.getAttribute('href');
@@ -79,7 +89,7 @@ async function findEditorPath(page) {
   });
   if (href && href.includes('room-area')) return href;
   if (href) {
-    await page.goto(`${BASE_URL}${href}`, { waitUntil: 'networkidle0' });
+    await gotoReady(page, `${BASE_URL}${href}`);
     const fromProject = await page.evaluate(() => {
       const a = document.querySelector('a[href*="/utilities/room-area"]');
       return a ? a.getAttribute('href') : null;
@@ -212,8 +222,8 @@ async function main() {
 
   for (const shot of shots) {
     await page.setViewport({ width: shot.width, height: shot.height, deviceScaleFactor: shot.width <= 400 ? 2 : 1 });
-    await page.goto(editorUrl, { waitUntil: 'networkidle0' });
-    await page.waitForSelector('.util-ra--fullpage', { timeout: 15000 });
+    await gotoReady(page, editorUrl);
+    await waitForEditor(page);
     await setTheme(page, shot.theme);
     await page.evaluate(() => {
       try { localStorage.removeItem('zr-room-area-guide-tip-v1'); } catch (e) {}
@@ -233,11 +243,12 @@ async function main() {
   }
 
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
-  await page.goto(editorUrl, { waitUntil: 'networkidle0' });
+  await gotoReady(page, editorUrl);
+  await waitForEditor(page);
   await page.waitForSelector('[data-ra-help-guide]');
   await Promise.all([
     page.click('[data-ra-help-guide]'),
-    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 45000 }),
   ]);
   const onGuide = await page.evaluate(() => !!document.querySelector('[data-ra-guide]'));
   if (!onGuide) throw new Error('Help did not open the guide');
@@ -245,32 +256,39 @@ async function main() {
   await page.screenshot({ path: guideFile, fullPage: true });
   await Promise.all([
     page.click('[data-ra-guide-back]'),
-    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 45000 }),
   ]);
   const backOnEditor = await page.evaluate(() => !!document.querySelector('.util-ra--fullpage'));
   if (!backOnEditor) throw new Error('Back from guide did not return to the editor');
   report.help = { openedGuide: true, returnedToEditor: true, file: guideFile };
 
-  for (const shot of batch1Shots) {
-    await page.setViewport({ width: shot.width, height: shot.height, deviceScaleFactor: shot.width <= 400 ? 2 : 1 });
-    await page.goto(editorUrl, { waitUntil: 'networkidle0' });
-    await page.waitForSelector('.util-ra--fullpage', { timeout: 15000 });
-    await setTheme(page, shot.theme);
+  async function prepareBatch1(page) {
     await page.evaluate(() => {
-      try { localStorage.removeItem('zr-room-area-guide-tip-v1'); } catch (e) {}
+      try {
+        localStorage.removeItem('zr-room-area-guide-tip-v1');
+        localStorage.setItem('room-area-layers-locked', '0');
+      } catch (e) {}
       const tip = document.querySelector('[data-ra-first-tip]');
       if (tip) tip.hidden = true;
-    });
-    await delay(200);
-    await page.evaluate(() => {
       const w = document.querySelector('[data-ra-type-rect-w]');
       const l = document.querySelector('[data-ra-type-rect-l]');
-      const add = document.querySelector('[data-ra-type-rect]');
-      if (w) w.value = '12';
-      if (l) l.value = '10';
-      if (add) add.click();
+      if (w) w.value = '';
+      if (l) l.value = '';
+      const lock = document.querySelector('[data-ra-lock-layers]');
+      if (lock && lock.checked) {
+        lock.checked = false;
+        lock.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     });
-    await delay(400);
+    await delay(80);
+    await page.evaluate(() => {
+      const rect = document.querySelector('[data-ra-template="rect"]');
+      if (rect) rect.click();
+    });
+    await page.waitForFunction(() => {
+      const undo = document.querySelector('[data-ra-undo-vertex]');
+      return undo && !undo.disabled;
+    }, { timeout: 8000 });
     await page.evaluate(() => {
       const lock = document.querySelector('[data-ra-lock-layers]');
       if (lock && !lock.checked) {
@@ -282,12 +300,24 @@ async function main() {
         dim.value = 'all';
         dim.dispatchEvent(new Event('change', { bubbles: true }));
       }
-      const metric = document.querySelector('[data-ra-unit-system="imperial"]');
-      if (metric) metric.click();
+      const imperial = document.querySelector('[data-ra-unit-system="imperial"]');
+      if (imperial) imperial.click();
+      const roomTools = document.querySelector('.util-ra-tool-group--room-tools');
+      const toolbar = document.querySelector('.util-ra-canvas-toolbar');
+      if (toolbar && roomTools) toolbar.scrollLeft = Math.max(0, roomTools.offsetLeft - 12);
       const tpl = document.querySelector('[data-ra-templates-toggle]');
       if (tpl) tpl.click();
     });
     await delay(250);
+  }
+
+  for (const shot of batch1Shots) {
+    await page.setViewport({ width: shot.width, height: shot.height, deviceScaleFactor: shot.width <= 400 ? 2 : 1 });
+    await gotoReady(page, editorUrl);
+    await waitForEditor(page);
+    await page.waitForSelector('[data-ra-template="rect"]', { timeout: 15000 });
+    await setTheme(page, shot.theme);
+    await prepareBatch1(page);
     const audit = await page.evaluate(() => {
       const issues = [];
       const editor = document.querySelector('.util-ra--fullpage');
