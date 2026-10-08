@@ -8761,6 +8761,13 @@
         y: last.y + px * Math.sin(rad)
       });
     });
+    if (closeIt && pts.length >= 4) {
+      var closeLast = pts[pts.length - 1];
+      var closeFirst = pts[0];
+      if (Math.hypot(closeLast.x - closeFirst.x, closeLast.y - closeFirst.y) < 0.5) {
+        pts.pop();
+      }
+    }
     setActiveVertices(pts.map(clampToCanvas));
     setActiveClosed(!!closeIt && pts.length >= 3);
     state.typedStart = { x: start.x, y: start.y };
