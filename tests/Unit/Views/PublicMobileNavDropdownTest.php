@@ -83,6 +83,8 @@ class PublicMobileNavDropdownTest extends TestCase
         $this->assertNotFalse($css);
         $this->assertStringContainsString('.owl-carousel .owl-stage-outer', $css);
         $this->assertStringContainsString('.footer-social-icons a', $css);
+        $this->assertStringContainsString('.about-footer a', $css);
+        $this->assertStringContainsString('.copyright-text a', $css);
         $this->assertStringContainsString('overflow-x: clip', $css);
         $this->assertStringContainsString('min-height: 44px', $css);
         $this->assertStringContainsString('.project-gallery-modal.modal', $css);

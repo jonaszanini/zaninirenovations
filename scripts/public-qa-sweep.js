@@ -244,7 +244,10 @@ async function interactFaq(page) {
   try {
     const details = await page.$('details.sa-faq__item, .sa-faq details');
     if (details) {
-      await details.evaluate((el) => el.click());
+      await details.evaluate((el) => {
+        const summary = el.querySelector('summary') || el;
+        summary.click();
+      });
       await delay(200);
       const open = await details.evaluate((el) => el.open || el.hasAttribute('open'));
       if (!open) issues.push({ kind: 'faq-details', detail: 'did not open' });

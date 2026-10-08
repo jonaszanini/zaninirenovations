@@ -9169,9 +9169,19 @@ button,
   .footer-widget-area .footer-content a,
   .footer-widget-area .footer-contact-body a,
   .footer-widget-area .contact-us a,
-  .footer-nav li a {
+  .footer-nav li a,
+  .about-footer a,
+  .copyright-text a {
     display: inline-flex;
     align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .team-layout-1 .team-info .team-social-share a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
     min-height: 44px;
   }
 }
