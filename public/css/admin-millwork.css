@@ -565,7 +565,8 @@
   .mw-piece__row--id {
     grid-template-columns: 1fr 1fr;
   }
-  .mw-piece__row--id .mw-piece__name {
+  .mw-piece__row--id .mw-piece__name,
+  .mw-piece__row--id .mw-field--type {
     grid-column: 1 / -1;
   }
   .mw-field--type select,
@@ -588,6 +589,11 @@
   }
   .mw-piece__row--pack {
     grid-template-columns: 1fr 1fr;
+  }
+  .mw-field--style,
+  .mw-field--profile,
+  .mw-field--sides {
+    grid-column: 1 / -1;
   }
   .mw-input--qty,
   .mw-input--dim {

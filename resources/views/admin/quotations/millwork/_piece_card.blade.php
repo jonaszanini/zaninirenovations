@@ -117,7 +117,7 @@
   </div>
 
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="cabinet vanity closet">
-    <div class="admin-form-group" data-mw-show="cabinet">
+    <div class="admin-form-group mw-field--style" data-mw-show="cabinet">
       <label>Style</label>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][style]" data-mw-cabinet-style>
         @foreach (MillworkPartBuilder::CABINET_STYLES as $key => $label)
@@ -161,7 +161,7 @@
   </div>
 
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="bench">
-    <div class="admin-form-group">
+    <div class="admin-form-group mw-field--sides">
       <label>Sides</label>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][sides]">
         <option value="panel" @selected(($piece['sides'] ?? 'panel') === 'panel')>Panel sides</option>
