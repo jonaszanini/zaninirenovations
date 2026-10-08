@@ -448,32 +448,3 @@
     align-items: start;
   }
 }
-
-@media (prefers-color-scheme: dark) {
-  .pp-page {
-    --pp-bg: #121820;
-    --pp-surface: #1b2530;
-    --pp-text: #e6eef4;
-    --pp-heading: #9ad0e8;
-    --pp-muted: #b7c3cd;
-    --pp-border: #334155;
-    --pp-link: #8ec5dc;
-    --pp-quote: #1a2833;
-  }
-
-  .pp-page .pp-btn--ghost,
-  .pp-page .sa-btn--ghost {
-    color: #9ad0e8;
-    border-color: #9ad0e8;
-  }
-
-  .pp-quote-cite {
-    color: var(--pp-muted);
-  }
-
-  .pp-tag {
-    background: var(--pp-surface);
-    color: var(--pp-muted);
-    border-color: var(--pp-border);
-  }
-}

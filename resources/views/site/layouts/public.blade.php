@@ -12,6 +12,7 @@
   <meta name="keywords" content="@yield('meta_keywords')">
   @endif
   <meta name="theme-color" content="#024768">
+  <meta name="color-scheme" content="light">
   <meta name="robots" content="@yield('meta_robots', 'index,follow')">
   @php
     $canonicalUrl = trim($__env->yieldContent('canonical')) ?: url()->current();
@@ -34,6 +35,7 @@
   @endphp
 
   <style>
+    html { color-scheme: light; }
     body { font-family: "Open Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   </style>
 
