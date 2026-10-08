@@ -7703,6 +7703,13 @@ body.cp-modal-open {
   z-index: 20;
   box-shadow: var(--admin-shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.06));
 }
+.br-acc,
+.br-acc__body .admin-checkbox,
+.br-acc__body .admin-form-group,
+.br-acc__body .br-qty-grid,
+.br-acc__body .br-check-grid {
+  scroll-margin-top: 132px;
+}
 .br-sticky-total .br-step-nav {
   display: flex;
   align-items: center;
@@ -8991,6 +8998,13 @@ body.cp-modal-open {
 }
 
 @media (max-width: 768px) {
+  .br-acc,
+  .br-acc__body .admin-checkbox,
+  .br-acc__body .admin-form-group,
+  .br-acc__body .br-qty-grid,
+  .br-acc__body .br-check-grid {
+    scroll-margin-top: 112px;
+  }
   .br-sticky-total {
     top: 56px;
   }
