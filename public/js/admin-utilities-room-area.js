@@ -8918,7 +8918,7 @@
     if (!walls[index]) return;
     pushUndoSnapshot();
     walls.splice(index, 1);
-    applyTypedWalls(walls, typedStartPoint(), isActiveClosed() && walls.length >= 3);
+    applyTypedWalls(walls, typedStartPoint(), false);
   }
 
   function renderTypedWallsList() {
