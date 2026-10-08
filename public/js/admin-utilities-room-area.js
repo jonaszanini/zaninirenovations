@@ -7,6 +7,20 @@
   var root = document.querySelector('[data-room-area]');
   if (!root) return;
 
+  function isFullPage() {
+    return root.hasAttribute('data-ra-fullpage');
+  }
+
+  function raAll(sel) {
+    return Array.prototype.slice.call(root.querySelectorAll(sel));
+  }
+
+  function setSaveDisabled(disabled) {
+    raAll('[data-ra-save-room]').forEach(function (btn) {
+      btn.disabled = !!disabled;
+    });
+  }
+
   var INCHES_PER_FOOT = 12;
   var SQFT_TO_SQM = 0.092903;
   var FEET_TO_METERS = 0.3048;
@@ -1718,6 +1732,13 @@
     if (!wrap || wrapW < 1) {
       return { w: state.viewportW || 900, h: state.viewportH || 640 };
     }
+    if (isFullPage()) {
+      var wrapH = Math.floor(wrap.getBoundingClientRect().height || wrap.clientHeight);
+      return {
+        w: Math.max(MIN_CANVAS_W, wrapW),
+        h: Math.max(MIN_CANVAS_H_NARROW, wrapH || 640)
+      };
+    }
     var w = wrapW;
     var narrow = isNarrowCanvas(w);
     var maxH = Math.min(
@@ -1758,6 +1779,7 @@
 
   function syncCanvasWrapSize(w, h) {
     if (!els.canvasWrap) return;
+    if (isFullPage()) return;
     els.canvasWrap.style.height = h + 'px';
   }
 
@@ -4040,10 +4062,12 @@
   }
 
   function redrawZoomUi() {
+    drawGrid();
     redrawPolygonLine();
     redrawVertices();
     redrawLabels();
     redrawWalls();
+    redrawObjects();
     redrawCalib();
     redrawRulers();
     redrawDrawPreview();
@@ -4117,9 +4141,9 @@
   }
 
   function updateZoomUI() {
-    if (els.zoomLabel) {
-      els.zoomLabel.textContent = state.viewport.zoomPercent + '%';
-    }
+    raAll('[data-ra-zoom-label]').forEach(function (el) {
+      el.textContent = state.viewport.zoomPercent + '%';
+    });
   }
 
   function zoomAt(screenX, screenY, newScale) {
@@ -4142,13 +4166,20 @@
     els.canvasWrap._raViewportBound = true;
 
     els.canvasWrap.addEventListener('wheel', function (e) {
-      if (!state.stage || !e.shiftKey) return;
+      if (!state.stage) return;
       e.preventDefault();
       var rect = state.stage.container().getBoundingClientRect();
       var x = e.clientX - rect.left;
       var y = e.clientY - rect.top;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.4 && !e.ctrlKey && !e.metaKey) {
+        state.viewport.x -= e.deltaX;
+        state.viewport.y -= e.deltaY;
+        applyViewport();
+        return;
+      }
+      var intensity = e.ctrlKey || e.metaKey ? Math.min(Math.abs(e.deltaY) / 80, 1) : 1;
       var dir = e.deltaY < 0 ? 1 : -1;
-      var factor = dir > 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+      var factor = dir > 0 ? Math.pow(ZOOM_STEP, intensity) : 1 / Math.pow(ZOOM_STEP, intensity);
       setZoomPercent(state.viewport.zoomPercent * factor, x, y);
     }, { passive: false });
 
@@ -4391,6 +4422,10 @@
 
     syncDrawableDimensions();
 
+    if (typeof Konva.pixelRatio === 'number') {
+      Konva.pixelRatio = Math.max(window.devicePixelRatio || 1, 1);
+    }
+
     state.stage = new Konva.Stage({
       container: 'ra-konva-container',
       width: state.viewportW,
@@ -4554,11 +4589,13 @@
     var step = gridStepPx();
     var w = canvasW();
     var h = canvasH();
+    var minor = uiSize(0.5);
+    var major = uiSize(1);
     for (var x = 0; x <= w; x += step) {
       layer.add(new Konva.Line({
         points: [x, 0, x, h],
         stroke: gridStrokeColor(),
-        strokeWidth: x % (step * 5) === 0 ? 1 : 0.5,
+        strokeWidth: x % (step * 5) === 0 ? major : minor,
         listening: false
       }));
     }
@@ -4566,7 +4603,7 @@
       layer.add(new Konva.Line({
         points: [0, y, w, y],
         stroke: gridStrokeColor(),
-        strokeWidth: y % (step * 5) === 0 ? 1 : 0.5,
+        strokeWidth: y % (step * 5) === 0 ? major : minor,
         listening: false
       }));
     }
@@ -6921,7 +6958,7 @@
     var grandTotal = hasAnyClosedPolygon() ? canvasTotalAreaSqFt() : null;
     if (grandTotal === null) {
       show(els.liveArea, false);
-      els.saveRoom.disabled = true;
+      setSaveDisabled(true);
       updateGroupChip();
       return;
     }
@@ -6991,7 +7028,7 @@
       });
     }
     updateGroupChip();
-    els.saveRoom.disabled = !pixelsPerFoot();
+    setSaveDisabled(!pixelsPerFoot());
   }
 
   function updateToolbar() {
@@ -7209,12 +7246,13 @@
   function updateEditUI() {
     var editing = !!state.editingRoomId;
     var saveLabel = editing ? 'Save changes' : 'Save room';
-    if (els.saveRoom) {
-      els.saveRoom.setAttribute('aria-label', saveLabel);
-    }
-    if (els.saveTip) {
-      els.saveTip.setAttribute('data-tooltip', saveLabel);
-    }
+    raAll('[data-ra-save-room]').forEach(function (btn) {
+      btn.setAttribute('aria-label', saveLabel);
+    });
+    raAll('[data-ra-save-tip]').forEach(function (tip) {
+      tip.setAttribute('data-tooltip', saveLabel);
+    });
+    updateFullpageTitle();
     show(els.cancelEdit, editing);
     syncExportButtons();
     renderRooms();
@@ -7559,7 +7597,7 @@
       return Promise.reject(scaleErr);
     }
 
-    els.saveRoom.disabled = true;
+    setSaveDisabled(true);
     return fetch(url, {
       method: method,
       credentials: 'same-origin',
@@ -7602,7 +7640,7 @@
         return result;
       })
       .then(function (result) {
-        els.saveRoom.disabled = false;
+        setSaveDisabled(false);
         if (isUpdate) {
           var idx = project.rooms.findIndex(function (r) { return r.id === result.data.room.id; });
           if (idx >= 0) {
@@ -7641,7 +7679,7 @@
         );
       })
       .catch(function (e) {
-        els.saveRoom.disabled = false;
+        setSaveDisabled(false);
         setFeedback(e.message, true);
         throw e;
       });
@@ -9454,8 +9492,10 @@
     if (els.addAreaNewGroup) els.addAreaNewGroup.addEventListener('click', addAreaNewGroup);
     if (els.deleteArea) els.deleteArea.addEventListener('click', deleteActivePolygon);
     els.clearShape.addEventListener('click', clearShape);
-    els.saveRoom.addEventListener('click', function () {
-      saveRoom().catch(function () {});
+    raAll('[data-ra-save-room]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        saveRoom().catch(function () {});
+      });
     });
     if (els.newRoom) els.newRoom.addEventListener('click', startNewRoom);
     if (els.newRoomSecondary) els.newRoomSecondary.addEventListener('click', startNewRoom);
@@ -9569,10 +9609,14 @@
     if (els.exportPdf) els.exportPdf.addEventListener('click', exportPdf);
     if (els.attachPdf) els.attachPdf.addEventListener('click', attachPdf);
 
-    if (els.zoomIn) els.zoomIn.addEventListener('click', zoomIn);
-    if (els.zoomOut) els.zoomOut.addEventListener('click', zoomOut);
-    if (els.zoom100) els.zoom100.addEventListener('click', resetViewport);
-    if (els.zoomReset) els.zoomReset.addEventListener('click', fitViewport);
+    raAll('[data-ra-zoom-in]').forEach(function (btn) { btn.addEventListener('click', zoomIn); });
+    raAll('[data-ra-zoom-out]').forEach(function (btn) { btn.addEventListener('click', zoomOut); });
+    raAll('[data-ra-zoom-100]').forEach(function (btn) { btn.addEventListener('click', resetViewport); });
+    raAll('[data-ra-zoom-reset]').forEach(function (btn) { btn.addEventListener('click', fitViewport); });
+    bindSidePanel();
+    if (els.roomName) {
+      els.roomName.addEventListener('input', updateFullpageTitle);
+    }
 
     if (els.measureUnit) {
       els.measureUnit.addEventListener('change', function () {
@@ -9644,6 +9688,53 @@
     });
   }
 
+  function updateFullpageTitle() {
+    var titleEl = root.querySelector('[data-ra-full-title]');
+    if (!titleEl) return;
+    var roomName = els.roomName ? String(els.roomName.value || '').trim() : '';
+    var project = activeProject();
+    if (roomName) {
+      titleEl.textContent = roomName;
+    } else if (project && project.name) {
+      titleEl.textContent = project.name;
+    } else {
+      titleEl.textContent = 'Room Area';
+    }
+  }
+
+  function setSidePane(pane) {
+    if (root.classList.contains('is-side-collapsed')) {
+      root.classList.remove('is-side-collapsed');
+      var toggle = root.querySelector('[data-ra-side-toggle]');
+      if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    }
+    raAll('[data-ra-side-tab]').forEach(function (tab) {
+      var on = tab.getAttribute('data-ra-side-tab') === pane;
+      tab.classList.toggle('is-active', on);
+      tab.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    raAll('[data-ra-side-pane]').forEach(function (el) {
+      el.classList.toggle('is-active', el.getAttribute('data-ra-side-pane') === pane);
+    });
+    scheduleStageResize();
+  }
+
+  function bindSidePanel() {
+    var toggle = root.querySelector('[data-ra-side-toggle]');
+    if (toggle) {
+      toggle.addEventListener('click', function () {
+        var collapsed = root.classList.toggle('is-side-collapsed');
+        toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        scheduleStageResize();
+      });
+    }
+    raAll('[data-ra-side-tab]').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        setSidePane(tab.getAttribute('data-ra-side-tab'));
+      });
+    });
+  }
+
   function init() {
     state.projects = parseJson('data-projects', []);
     state.measureUnit = loadMeasureUnit();
@@ -9657,7 +9748,17 @@
     var raProject = (function () {
       try { return new URLSearchParams(window.location.search).get('ra_project'); } catch (e) { return null; }
     })();
-    if (raProject) {
+    var initialRoom = parseInt(root.getAttribute('data-ra-initial-room-id') || '', 10);
+    if (isFullPage() && state.projects.length) {
+      var chosen = null;
+      if (initialRoom) {
+        chosen = state.projects.find(function (p) {
+          return (p.rooms || []).some(function (r) { return r.id === initialRoom; });
+        });
+      }
+      state.activeProjectId = (chosen || state.projects[0]).id;
+      refreshProjectSelect();
+    } else if (raProject) {
       var raId = parseInt(raProject, 10);
       if (state.projects.some(function (p) { return p.id === raId; })) {
         state.activeProjectId = raId;
@@ -9665,6 +9766,10 @@
       }
     }
     renderWorkspace();
+    updateFullpageTitle();
+    if (initialRoom) {
+      loadRoom(initialRoom);
+    }
   }
 
   init();

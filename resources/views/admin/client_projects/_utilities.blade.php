@@ -6,7 +6,7 @@
       'title' => 'Room Area',
       'icon' => 'fa-object-group',
       'items' => $linkedUtilities['room_area'] ?? [],
-      'new_url' => $links['room_area'] ?? route('admin.utilities.room-area'),
+      'new_url' => $links['room_area'] ?? route('admin.client-projects.utilities.room-area', $project),
       'new_label' => 'Open Room Area tool',
     ],
     'measurement' => [
@@ -126,7 +126,10 @@
                             <span class="cp-utilities-item__room-photos">{{ $room['photo_count'] }} {{ \Illuminate\Support\Str::plural('photo', $room['photo_count']) }}</span>
                           @endif
                           @if (!empty($room['pdf_url']))
-                            <a href="{{ $room['pdf_url'] }}" class="cp-utilities-item__pdf" target="_blank" rel="noopener">PDF</a>
+                            <a href="{{ $room['pdf_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-utilities-item__pdf" target="_blank" rel="noopener">PDF</a>
+                          @endif
+                          @if (!empty($room['open_url']))
+                            <a href="{{ $room['open_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm">Open</a>
                           @endif
                         </span>
                       </li>

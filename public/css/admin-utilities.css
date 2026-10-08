@@ -4877,3 +4877,349 @@
     padding-right: 0.55rem;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Room Area full-page drawing workspace                                */
+/* ------------------------------------------------------------------ */
+
+.admin-app:has(.util-ra--fullpage) {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.admin-app:has(.util-ra--fullpage) .admin-main {
+  min-height: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.admin-app:has(.util-ra--fullpage) .admin-content {
+  padding: 0;
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-app:has(.util-ra--fullpage) .admin-flash {
+  margin: 0.5rem 0.75rem 0;
+}
+
+@media (min-width: 901px) {
+  .admin-app:has(.util-ra--fullpage) .admin-topbar {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-app:has(.util-ra--fullpage) .admin-topbar {
+    padding: 0.35rem 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .admin-app:has(.util-ra--fullpage) .admin-topbar h1 {
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-app:has(.util-ra--fullpage) .admin-global-search-btn {
+    display: none;
+  }
+}
+
+.util-ra--fullpage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--admin-bg);
+}
+
+.util-ra-full-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--admin-surface);
+  border-bottom: 1px solid var(--admin-border);
+  flex-shrink: 0;
+}
+
+.util-ra-full-header__start {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.util-ra-full-header__back {
+  flex-shrink: 0;
+}
+
+.util-ra-full-header__titles {
+  min-width: 0;
+}
+
+.util-ra-full-header__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--admin-heading);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.util-ra-full-header__sub {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--admin-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.util-ra-full-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.util-ra-full-header__zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.util-ra-full-header__zoom .util-ra-icon-btn {
+  min-width: var(--admin-control-height);
+}
+
+.util-ra--fullpage .util-ra-project-bar,
+.util-ra--fullpage .util-ra-empty {
+  display: none;
+}
+
+.util-ra--fullpage .util-ra-workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.util-ra--fullpage .util-ra-workspace[hidden] {
+  display: none;
+}
+
+.util-ra-stage {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.util-ra--fullpage .util-ra-stage {
+  flex: 1;
+  min-height: 0;
+  flex-direction: row;
+}
+
+.util-ra-stage__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.util-ra--fullpage .util-ra-stage__main {
+  flex: 1;
+  min-height: 0;
+}
+
+.util-ra--fullpage .util-ra-controls {
+  margin: 0;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+.util-ra--fullpage .util-ra-canvas-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.65rem;
+  border-radius: 0;
+  border: 0;
+  overflow: hidden;
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar {
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
+.util-ra--fullpage .util-ra-tool-group--zoom {
+  display: none;
+}
+
+.util-ra--fullpage .util-ra-canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  border-radius: 8px;
+}
+
+.util-ra-side {
+  min-width: 0;
+}
+
+.util-ra:not(.util-ra--fullpage) .util-ra-side__tabs {
+  display: none;
+}
+
+.util-ra:not(.util-ra--fullpage) .util-ra-side__pane {
+  display: block;
+}
+
+.util-ra--fullpage .util-ra-side {
+  display: flex;
+  flex-direction: column;
+  width: 22rem;
+  max-width: 100%;
+  flex-shrink: 0;
+  background: var(--admin-surface);
+  border-left: 1px solid var(--admin-border);
+  min-height: 0;
+}
+
+.util-ra--fullpage.is-side-collapsed .util-ra-side {
+  display: none;
+}
+
+.util-ra-side__tabs {
+  display: none;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  padding: 0.45rem 0.55rem 0;
+  overflow-x: auto;
+}
+
+.util-ra--fullpage .util-ra-side__tabs {
+  display: flex;
+}
+
+.util-ra-side__tab {
+  flex: 1 1 0;
+  min-width: 4.5rem;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+}
+
+.util-ra-side__tab.is-active {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+}
+
+.util-ra-side__body {
+  min-width: 0;
+}
+
+.util-ra--fullpage .util-ra-side__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.55rem 0.65rem 0.85rem;
+}
+
+.util-ra--fullpage .util-ra-side__pane {
+  display: none;
+}
+
+.util-ra--fullpage .util-ra-side__pane.is-active {
+  display: block;
+}
+
+.util-ra--fullpage .util-ra-type-walls,
+.util-ra--fullpage .util-ra-canvas-footer,
+.util-ra--fullpage .util-ra-photos,
+.util-ra--fullpage .util-ra-rooms-card {
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+
+.util-ra--fullpage .util-ra-hint--inline {
+  display: none;
+}
+
+.util-ra--fullpage .util-ra-live-area {
+  margin-top: 0;
+}
+
+.util-ra--fullpage .util-ra-desktop-notice {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .util-ra--fullpage .util-ra-stage {
+    flex-direction: column;
+  }
+
+  .util-ra--fullpage .util-ra-side {
+    width: 100%;
+    max-height: 42vh;
+    border-left: 0;
+    border-top: 1px solid var(--admin-border);
+  }
+
+  .util-ra--fullpage.is-side-collapsed .util-ra-side {
+    display: none;
+  }
+
+  .util-ra-full-header__title {
+    font-size: 0.92rem;
+  }
+
+  .util-ra-full-header__zoom .util-ra-icon-btn[data-ra-zoom-100],
+  .util-ra-full-header__zoom .util-ra-icon-btn[data-ra-zoom-reset] {
+    min-width: auto;
+    padding: 0 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 700px) {
+  .util-ra--fullpage .util-ra-side {
+    max-height: 46vh;
+  }
+
+  .util-ra-full-header {
+    padding: 0.35rem 0.55rem;
+  }
+
+  .util-ra-full-header__actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .util-ra--fullpage .util-ra-controls {
+    padding: 0.4rem 0.55rem;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-card {
+    padding: 0.4rem 0.55rem 0.5rem;
+  }
+}
+
