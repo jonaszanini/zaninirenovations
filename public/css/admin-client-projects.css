@@ -1875,6 +1875,20 @@ a:hover .cp-expense-receipt-pdf {
   margin: 0;
   color: var(--admin-muted);
 }
+@media (max-width: 767px) {
+  .cp-invoice-actions--readonly.admin-table-actions .admin-btn:not(.admin-actions-dropdown__toggle) {
+    display: inline-flex;
+    min-height: var(--admin-control-height);
+  }
+  .cp-invoice-actions--readonly.admin-table-actions .admin-actions-dropdown {
+    display: none;
+  }
+  .cp-invoice-actions--readonly {
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
 
 /* =================================================================
    Calendar page

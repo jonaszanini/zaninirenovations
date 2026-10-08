@@ -157,7 +157,7 @@
         ];
     }
   @endphp
-  <div class="cp-invoice-actions admin-table-actions">
+  <div class="cp-invoice-actions cp-invoice-actions--readonly admin-table-actions">
     @if ($invoice->hasContent() || $invoice->total > 0)
       <a href="{{ route('admin.client-projects.invoices.pdf', [$project, $invoice]) }}"
          target="_blank"
