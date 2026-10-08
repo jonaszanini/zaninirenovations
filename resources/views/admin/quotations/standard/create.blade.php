@@ -242,6 +242,7 @@
   @endif
 
   <form action="{{ $formAction }}" method="post" id="sq-standard-form" data-quotation-editor
+        data-quote-id="{{ $isEdit ? $quotation->id : 'new' }}"
         data-electrical-desc="{{ \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION }}">
     @csrf
     @if ($isEdit)
@@ -520,7 +521,7 @@
             'label' => 'Line description on project quotation',
             'value' => old('link_line_description', 'Standard quotation'),
             'placeholder' => 'Standard quotation',
-            'help' => 'Shown as the line item text (quote number is appended automatically).',
+            'help' => 'Shown as the line item text on the project quotation. Saved as you type it.',
         ],
     ])
   @endif

@@ -64,4 +64,16 @@ class QuotationExpensePairLayoutTest extends TestCase
             'Quotation types that show both charge cards must use _commute_debris_row so they stay stacked.'
         );
     }
+
+    public function test_commute_partial_exposes_status_and_debris_help_says_folded_into_labour(): void
+    {
+        $commute = file_get_contents(resource_path('views/admin/quotations/_commute_expense.blade.php'));
+        $debris = file_get_contents(resource_path('views/admin/quotations/_debris_removal.blade.php'));
+
+        $this->assertNotFalse($commute);
+        $this->assertNotFalse($debris);
+        $this->assertStringContainsString('data-cp-commute-status', $commute);
+        $this->assertStringContainsString('folded into Labour', $debris);
+        $this->assertStringNotContainsString('its own line on the client PDF', $debris);
+    }
 }

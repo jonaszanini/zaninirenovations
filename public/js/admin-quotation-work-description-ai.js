@@ -165,45 +165,37 @@
   }
 
   function collectStandardContext(form) {
-    var materials = [];
-    form.querySelectorAll('.sq-material-row').forEach(function (row) {
-      var shortName = row.querySelector('input[name*="[short_name]"]');
-      var desc = row.querySelector('input[name*="[description]"], textarea[name*="[description]"]');
-      var qty = row.querySelector('input[name*="[quantity]"]');
-      var unit = row.querySelector('input[name*="[unit_price]"]');
-      materials.push({
-        short_name: shortName ? shortName.value.trim() : '',
-        description: desc ? desc.value.trim() : '',
-        quantity: qty ? qty.value.trim() : '',
-        unit_price: unit ? unit.value.trim() : '',
-      });
-    });
-
     var jobs = [];
     form.querySelectorAll('.sq-work-card').forEach(function (card) {
       var title = card.querySelector('.sq-work-title');
       var useFixed = card.querySelector('.sq-labour-use-fixed-cb');
-      var fixedAmt = card.querySelector('.sq-labour-fixed-amount');
-      var rate = card.querySelector('.sq-labour-rate');
-      var qty = card.querySelector('.sq-labour-qty');
+      var modeEl = card.querySelector('.sq-labour-mode:checked');
+      var materials = [];
+      card.querySelectorAll('.sq-material-row').forEach(function (row) {
+        var shortName = row.querySelector('input[name*="[short_name]"]');
+        var desc = row.querySelector('input[name*="[description]"], textarea[name*="[description]"]');
+        var source = row.querySelector('.sq-mat-source-radio:checked');
+        var name = shortName ? shortName.value.trim() : '';
+        var description = desc ? desc.value.trim() : '';
+        if (source && source.value === 'electrical' && description === '') {
+          description = 'Electrical work';
+        }
+        if (name === '' && description === '') return;
+        materials.push({
+          short_name: name,
+          description: description,
+        });
+      });
       jobs.push({
         title: title ? title.value.trim() : '',
         labour_use_fixed: !!(useFixed && useFixed.checked),
-        labour_fixed_amount: fixedAmt ? fixedAmt.value.trim() : '',
-        labour_hourly_rate: rate ? rate.value.trim() : '',
-        labour_quantity: qty ? qty.value.trim() : '',
+        labour_mode: modeEl ? modeEl.value : 'hours',
+        materials: materials,
       });
     });
 
-    var first = jobs[0] || {};
     var docTypeEl = form.querySelector('input[name="document_type"]:checked');
     var pdfModeEl = form.querySelector('input[name="pdf_detail_mode"]:checked');
-
-    var totals = [
-      panelText('sq-mat-with-hst') ? 'Materials w/ HST: ' + panelText('sq-mat-with-hst') : '',
-      panelText('sq-g-labour-total') ? 'Labour w/ HST: ' + panelText('sq-g-labour-total') : '',
-      panelText('sq-g-grand') ? 'Grand total: ' + panelText('sq-g-grand') : '',
-    ].filter(Boolean).join('; ');
 
     return {
       client_name: formValue(form, 'client_name'),
@@ -214,13 +206,7 @@
       includes_labour: form.elements['includes_labour'] && form.elements['includes_labour'].checked,
       contingency_enabled: form.elements['contingency_enabled'] && form.elements['contingency_enabled'].checked,
       contingency_percent: formValue(form, 'contingency_percent'),
-      labour_use_fixed: !!first.labour_use_fixed,
-      labour_fixed_amount: first.labour_fixed_amount || '',
-      labour_hourly_rate: first.labour_hourly_rate || '',
-      labour_quantity: first.labour_quantity || '',
-      materials: materials,
       jobs: jobs,
-      totals_summary: totals,
     };
   }
 
@@ -488,7 +474,7 @@
     if (/^(?:_token|_method|_serialised|save_intent|work_description|owner_hourly_rate|helper_hourly_rate|link_client_project_id|tm_client_pick|include_commute|include_debris_removal|material_waste_percent)$/.test(key)) {
       return true;
     }
-    if (/override|unit_price|hourly_rate/.test(key)) return true;
+    if (/override|unit_price|hourly_rate|labour_fixed_amount/.test(key)) return true;
     if (/^(?:payment_|commute_|fp_|debris_|additional_cost)/.test(key)) return true;
     return false;
   }

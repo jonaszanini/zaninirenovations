@@ -9,9 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * StandardQuotation — standalone materials + labour estimate.
  *
- * Linking appends one line to the project's ClientProjectQuotation with
- * amount = grand_total and apply_hst = false (total already includes
- * material HST; labour is untaxed).
+ * Linking syncs pre-HST taxable/exempt lines (plus hidden commute/debris)
+ * into the project's ClientProjectQuotation. The client PDF rebuilds from
+ * this quote and folds commute/debris into Labour.
  */
 class StandardQuotation extends Model
 {
@@ -187,6 +187,14 @@ class StandardQuotation extends Model
         $material = (bool) $this->includes_material;
         $labour = (bool) $this->includes_labour;
 
+        // Includes is PDF wording, but never contradict priced lines.
+        if (! $labour && $this->chargedLabourPreTax() > 0) {
+            $labour = true;
+        }
+        if (! $material && $this->chargedMaterialsPreTax() > 0) {
+            $material = true;
+        }
+
         if ($material && $labour) {
             return 'Labour and material';
         }
@@ -198,6 +206,28 @@ class StandardQuotation extends Model
         }
 
         return 'Labour and material';
+    }
+
+    public function chargedLabourPreTax(): float
+    {
+        $computed = $this->computedTotals();
+        $fromCompute = max(0, round((float) ($computed['labour_total'] ?? 0), 2));
+        if ($fromCompute > 0) {
+            return $fromCompute;
+        }
+
+        return max(0, round((float) ($this->labour_total ?? 0), 2));
+    }
+
+    public function chargedMaterialsPreTax(): float
+    {
+        $computed = $this->computedTotals();
+        $fromCompute = max(0, round((float) ($computed['materials_subtotal_before_hst'] ?? 0), 2));
+        if ($fromCompute > 0) {
+            return $fromCompute;
+        }
+
+        return max(0, round((float) ($this->materials_subtotal_before_hst ?? 0), 2));
     }
 
     /**
@@ -274,17 +304,7 @@ class StandardQuotation extends Model
     /** Pre-HST labour only (excludes materials, commute, and debris). */
     public function labourPreTaxAmountForProjectQuotation(): float
     {
-        if ($this->includes_labour === false) {
-            return 0.0;
-        }
-
-        $computed = $this->computedTotals();
-        $fromCompute = max(0, round((float) ($computed['labour_total'] ?? 0), 2));
-        if ($fromCompute > 0) {
-            return $fromCompute;
-        }
-
-        return max(0, round((float) ($this->labour_total ?? 0), 2));
+        return $this->chargedLabourPreTax();
     }
 
     public static function isElectricalMaterialRow(array $row): bool
@@ -567,7 +587,11 @@ class StandardQuotation extends Model
         $computed = $this->computedTotals();
         $jobs = is_array($computed['works'] ?? null) ? $computed['works'] : [];
         $lines = [];
-        $totalMatPre = (float) ($computed['materials_subtotal_before_hst'] ?? 0);
+        $jobNonElecPre = [];
+        foreach ($jobs as $idx => $job) {
+            $jobNonElecPre[$idx] = $this->nonElectricalMaterialsPreTax(is_array($job) ? $job : []);
+        }
+        $totalMatPre = round(array_sum($jobNonElecPre), 2);
         $contAmt = ! empty($computed['contingency_enabled'])
             ? (float) ($computed['contingency_amount'] ?? 0)
             : 0.0;
@@ -593,7 +617,7 @@ class StandardQuotation extends Model
                 'is_heading' => true,
             ];
 
-            $jobMatPre = (float) ($job['materials_subtotal_before_hst'] ?? 0);
+            $jobMatPre = $jobNonElecPre[$idx] ?? 0.0;
             $isLast = $idx === $jobCount - 1;
             if ($totalMatPre > 0 && $contAmt > 0) {
                 if ($isLast) {
@@ -677,5 +701,21 @@ class StandardQuotation extends Model
         $this->appendCommuteAndDebrisPdfLines($lines);
 
         return $lines;
+    }
+
+    /**
+     * @param  array<string, mixed>  $job
+     */
+    protected function nonElectricalMaterialsPreTax(array $job): float
+    {
+        $sum = 0.0;
+        foreach ($job['materials'] ?? [] as $row) {
+            if (! is_array($row) || self::isElectricalMaterialRow($row)) {
+                continue;
+            }
+            $sum += (float) ($row['line_subtotal'] ?? 0);
+        }
+
+        return round($sum, 2);
     }
 }

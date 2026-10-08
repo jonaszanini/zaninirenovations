@@ -79,6 +79,7 @@
         <span class="q-commute-metric__value q-commute-metric__value--hl" data-cp-commute-added>CA$0.00</span>
       </div>
     </div>
+    <p class="admin-form-help" data-cp-commute-status hidden></p>
 
     <div class="q-commute-card__fields">
       <div class="admin-form-group q-commute-field q-commute-field--pct">
@@ -132,6 +133,7 @@
   }
   .q-commute-choice__input { margin: 0; }
   .q-commute-choice__text { font-size: 0.9rem; color: var(--admin-heading, #0f172a); }
+  [data-cp-commute-status] { margin: 8px 0 0; }
   .util-sr-only {
     position: absolute;
     width: 1px;

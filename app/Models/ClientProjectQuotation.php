@@ -578,9 +578,9 @@ class ClientProjectQuotation extends Model
      * Commute fuel is never shown as its own row: the pre-tax amount is split
      * evenly across each job's Labour line (remainder cents on the last job)
      * so HST stays in the footer. Additional costs are rolled into the
-     * materials line. Debris removal is never its own row: the entered
-     * HST-inclusive amount is converted to pre-tax and added to each job's
-     * Labour line (or the combined Labour and material line).
+     * materials line. Debris and commute are never their own rows: the
+     * HST-inclusive amount is folded into Labour (pre-tax when that line
+     * is taxed, gross when labour is cash) so the PDF total matches the editor.
      *
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
@@ -678,7 +678,7 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Client PDFs: fold debris into labour (pre-tax) so HST stays in the footer.
+     * Client PDFs: fold debris into Labour (never a labeled debris row).
      * Tile quotations also label materials as "Materials".
      *
      * @param  list<array<string, mixed>>  $items
@@ -702,24 +702,17 @@ class ClientProjectQuotation extends Model
             $filtered[] = $row;
         }
 
-        if ($debrisGross > 0 && $this->commuteLabourLineIndexes($filtered) !== []) {
+        if ($debrisGross > 0) {
             $filtered = $this->mergeCommuteIntoLabourLines($filtered, $debrisGross);
-        } elseif ($debrisGross > 0) {
-            $filtered[] = [
-                'description' => DebrisRemovalExpenseService::LINE_DESCRIPTION,
-                'amount' => round($debrisGross, 2),
-                'apply_hst' => false,
-                'hst_included' => true,
-                'is_standalone' => true,
-            ];
         }
 
         return array_values($filtered);
     }
 
     /**
-     * Client PDFs: merge a hidden HST-inclusive expense into one labour or
-     * materials line as pre-tax, so HST (13%) includes that tax.
+     * Client PDFs: hide commute / extra labour inside Labour (or the combined
+     * labour-and-material line). Folded amounts keep the editor grand total:
+     * pre-tax when the target is taxed (HST in the footer), gross when it is not.
      *
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
@@ -745,7 +738,7 @@ class ClientProjectQuotation extends Model
             $filtered[] = $row;
         }
 
-        if ($filtered === []) {
+        if ($filtered === [] && $labourHiddenGross <= 0 && $materialsHiddenGross <= 0) {
             return $items;
         }
 
@@ -760,34 +753,59 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Split an HST-inclusive commute amount evenly across job labour lines.
+     * Fold an HST-inclusive commute/debris amount into labour (or create a
+     * Labour line) so the client PDF never labels those extras, and the
+     * folded money still matches the editor grand total.
      *
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
      */
     protected function mergeCommuteIntoLabourLines(array $items, float $hiddenGross): array
     {
-        $indexes = $this->commuteLabourLineIndexes($items);
-        if ($indexes === []) {
+        if ($hiddenGross <= 0) {
             return $items;
         }
 
-        $allTaxIn = true;
-        foreach ($indexes as $idx) {
-            $row = $items[$idx];
-            if (empty($row['hst_included']) || ! empty($row['apply_hst'])) {
-                $allTaxIn = false;
-                break;
+        $indexes = $this->commuteLabourLineIndexes($items);
+        if ($indexes === []) {
+            $items[] = [
+                'description' => 'Labour',
+                'amount' => 0.0,
+                'apply_hst' => false,
+                'hst_included' => true,
+            ];
+            $indexes = $this->commuteLabourLineIndexes($items);
+            if ($indexes === []) {
+                return $items;
             }
         }
 
-        $total = $allTaxIn ? round($hiddenGross, 2) : self::preTaxFromHstIncluded($hiddenGross);
-        if ($total <= 0) {
+        $taxed = [];
+        $untaxed = [];
+        foreach ($indexes as $idx) {
+            if (! empty($items[$idx]['apply_hst'])) {
+                $taxed[] = $idx;
+            } else {
+                $untaxed[] = $idx;
+            }
+        }
+
+        // Taxed labour: add pre-tax so the footer 13% covers the extra.
+        // Cash / tax-in labour: add the gross so 13% is not stripped away.
+        if ($taxed !== []) {
+            $total = self::preTaxFromHstIncluded($hiddenGross);
+            $targets = $taxed;
+        } else {
+            $total = round($hiddenGross, 2);
+            $targets = $untaxed;
+        }
+
+        if ($total <= 0 || $targets === []) {
             return $items;
         }
 
-        $shares = self::splitAmountEvenly($total, count($indexes));
-        foreach ($indexes as $i => $idx) {
+        $shares = self::splitAmountEvenly($total, count($targets));
+        foreach ($targets as $i => $idx) {
             $row = &$items[$idx];
             $this->addAmountToPdfLine($row, $shares[$i]);
             unset($row);
@@ -1586,6 +1604,13 @@ class ClientProjectQuotation extends Model
      */
     public function includesLabourInSupplyScope(): bool
     {
+        if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
+            $sq = StandardQuotation::query()->find($this->source_id);
+            if ($sq && (float) ($sq->labour_total ?? 0) > 0) {
+                return true;
+            }
+        }
+
         if ($this->source_type === self::SOURCE_STAIRS && $this->source_id) {
             return true;
         }
@@ -1626,6 +1651,13 @@ class ClientProjectQuotation extends Model
      */
     public function includesMaterialInSupplyScope(): bool
     {
+        if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
+            $sq = StandardQuotation::query()->find($this->source_id);
+            if ($sq && (float) ($sq->materials_subtotal_before_hst ?? 0) > 0) {
+                return true;
+            }
+        }
+
         if ($this->source_type === self::SOURCE_STAIRS && $this->source_id) {
             $stairs = StairsQuotation::query()->find($this->source_id);
 
