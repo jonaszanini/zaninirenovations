@@ -29,7 +29,7 @@ class SeoGeoTest extends TestCase
         $txt = LlmsTxtGenerator::generate(collect(), collect());
 
         $this->assertStringContainsString('# Zanini Renovations', $txt);
-        $this->assertStringContainsString('$3 million', $txt);
+        $this->assertStringContainsString('Fully insured', $txt);
         $this->assertStringContainsString('(647) 834-7570', $txt);
         $this->assertStringContainsString('/warranty', $txt);
         $this->assertStringNotContainsString('/admin', $txt);
@@ -96,7 +96,7 @@ class SeoGeoTest extends TestCase
             fn ($node) => ($node['@type'] ?? '') === 'WebPage'
         );
         $this->assertSame((string) config('seo.home_title'), $webpage['name']);
-        $this->assertStringContainsString('$3 million', $business['description']);
+        $this->assertStringContainsString('fully insured', strtolower((string) $business['description']));
         $encoded = SeoStructuredData::toJsonLd($graph);
         $this->assertStringNotContainsString('$2M', $encoded);
         $this->assertStringNotContainsString('aggregateRating', $encoded);

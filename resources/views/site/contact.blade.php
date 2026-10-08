@@ -32,40 +32,37 @@
 
     <section class="sa-section pp-section">
       <div class="container pp-wrap pp-prose">
-        <h2>Reach us directly</h2>
-        <ul>
-          <li><strong>Phone:</strong> <a href="tel:+16478347570">(647) 834-7570</a></li>
-          <li><strong>WhatsApp:</strong> <a href="{{ $socialWhatsappUrl }}" @if (str_starts_with($socialWhatsappUrl, 'http')) target="_blank" rel="noopener noreferrer" @endif>Message us on WhatsApp</a></li>
-          <li><strong>Email:</strong> <a href="mailto:zaninirenovations@gmail.com">zaninirenovations@gmail.com</a></li>
-          <li><strong>Hours:</strong> Monday to Friday, 9 AM to 6 PM. Closed Saturday and Sunday.</li>
-          <li><strong>Based in:</strong> Carleton Place, Ontario</li>
-        </ul>
+        <div class="pp-contact-split">
+          <div class="pp-contact-split__info">
+            <h2>Reach us directly</h2>
+            <ul>
+              <li><strong>Phone:</strong> <a href="tel:+16478347570">(647) 834-7570</a></li>
+              <li><strong>WhatsApp:</strong> <a href="{{ $socialWhatsappUrl }}" @if (str_starts_with($socialWhatsappUrl, 'http')) target="_blank" rel="noopener noreferrer" @endif>Message us on WhatsApp</a></li>
+              <li><strong>Email:</strong> <a href="mailto:zaninirenovations@gmail.com">zaninirenovations@gmail.com</a></li>
+              <li><strong>Hours:</strong> Monday to Friday, 9 AM to 6 PM. Closed Saturday and Sunday.</li>
+              <li><strong>Based in:</strong> Carleton Place, Ontario</li>
+            </ul>
 
-        <h2>Where we work</h2>
-        <p>We're based in Carleton Place and take on projects across the area:</p>
-        <ul>
-          <li><strong>Lanark County:</strong> Carleton Place, Beckwith, Franktown, Almonte and Mississippi Mills, Pakenham, Perth, Smiths Falls, Lanark Highlands and the rest of Lanark County</li>
-          <li><strong>Ottawa:</strong> Kanata, Stittsville, Carp, Ashton, Richmond, Barrhaven, Nepean, Manotick, Riverside South and other parts of the city</li>
-          <li><strong>Nearby:</strong> Arnprior, and Gatineau, Quebec</li>
-        </ul>
-        <p>Not sure if you're in our area? Ask, and we'll tell you honestly whether we can take it on.</p>
-
-        @if ($mapEmbedSrc)
-          <div class="pp-map">
-            <iframe
-              src="{{ $mapEmbedSrc }}"
-              title="Zanini Renovations service area on Google Maps"
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              allowfullscreen
-            ></iframe>
+            <h2>Where we work</h2>
+            <p>We're based in Carleton Place and take on projects across the area:</p>
+            <ul>
+              <li><strong>Lanark County:</strong> Carleton Place, Beckwith, Franktown, Almonte and Mississippi Mills, Pakenham, Perth, Smiths Falls, Lanark Highlands and the rest of Lanark County</li>
+              <li><strong>Ottawa:</strong> Kanata, Stittsville, Carp, Ashton, Richmond, Barrhaven, Nepean, Manotick, Riverside South and other parts of the city</li>
+              <li><strong>Nearby:</strong> Arnprior, and Gatineau, Quebec</li>
+            </ul>
+            <p>Not sure if you're in our area? Ask, and we'll tell you honestly whether we can take it on.</p>
+            <p class="pp-map-actions">
+              <a class="btn btn-theme sa-btn sa-btn--ghost" href="{{ \App\Support\SeoStructuredData::googleBusinessUrl() }}" rel="noopener noreferrer" target="_blank">Open in Google Maps</a>
+            </p>
           </div>
-        @endif
 
-        <h2>Request a free estimate</h2>
-        <p>Fill in the form below and we'll get back to you to talk through the project and, if needed, set up a site visit. After that you'll receive a written estimate in Canadian dollars. We can quote labour-only or include materials.</p>
-        <div class="pp-form">
-          @include('site.partials.contact-form')
+          <div class="pp-contact-split__form">
+            <h2>Request a free estimate</h2>
+            <p>Fill in the form below and we'll get back to you to talk through the project and, if needed, set up a site visit. After that you'll receive a written estimate in Canadian dollars. We can quote labour-only or include materials.</p>
+            <div class="pp-form">
+              @include('site.partials.contact-form')
+            </div>
+          </div>
         </div>
 
         <h2>What to include in your request</h2>
@@ -88,7 +85,7 @@
           <li><strong>Site visit</strong>, when the job needs one, to measure and look at the space.</li>
           <li><strong>Written estimate</strong> with the scope, materials and what's included, before any work is booked.</li>
         </ol>
-        <p>Zanini Renovations is fully insured ($3M), and our workmanship is covered by a one-year limited warranty. See the <a href="{{ url('/warranty') }}">warranty page</a> for details.</p>
+        <p>Zanini Renovations is fully insured, and our workmanship is covered by a one-year limited warranty. See the <a href="{{ url('/warranty') }}">warranty page</a> for details.</p>
       </div>
     </section>
   </main>

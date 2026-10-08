@@ -25,7 +25,7 @@
           <span>About</span>
         </nav>
         <h1>{{ $page['h1'] }}</h1>
-        <figure class="pp-photo">
+        <figure class="pp-photo pp-photo--portrait">
           <img src="{{ url($page['photo'] ?? 'images/about-us/jonas.webp') }}" alt="{{ $page['photo_alt'] ?? 'Jonas Zanini' }}" width="800" height="860" decoding="async">
         </figure>
       </div>
@@ -39,7 +39,7 @@
         <p>In Jonas's own words:</p>
         <blockquote class="pp-quote-block">
           <p>“I love the blend of practical engineering and meticulous craftsmanship that challenges my mind on every build. More than that, I truly enjoy collaborating with homeowners to create smart solutions that make daily life easier and turn their house into a true home.”</p>
-          <footer>Jonas Zanini, owner</footer>
+          <p class="pp-quote-cite">Jonas Zanini, owner</p>
         </blockquote>
 
         <h2>How we work</h2>
@@ -53,11 +53,11 @@
         <p><strong>Mayara Zanini, Office &amp; Marketing</strong>, looks after the office and marketing side of the business.</p>
 
         <h2>Insurance and warranty</h2>
-        <p>Zanini Renovations is fully insured, with $3M in coverage, and we're happy to share our certificate of insurance before your project starts. Our work in Ontario is done to the Ontario Building Code (O.Reg. 332/12). Our workmanship is covered by a one-year limited warranty, and materials such as flooring or decking boards carry their manufacturer's warranty. The details are on our <a href="{{ url('/warranty') }}">warranty page</a>.</p>
+        <p>Zanini Renovations is fully insured, and we're happy to share our certificate of insurance before your project starts. Our work in Ontario is done to the Ontario Building Code (O.Reg. 332/12). Our workmanship is covered by a one-year limited warranty, and materials such as flooring or decking boards carry their manufacturer's warranty. The details are on our <a href="{{ url('/warranty') }}">warranty page</a>.</p>
 
         <h2>What we build</h2>
         <p>We work in homes, condos and commercial spaces. Most of the carpentry and renovation work we do in houses, we also do for condo owners and businesses, from a custom office desk built at a client's workplace to our most recent kitchen, which was a condo project. Our services:</p>
-        <ul>
+        <ul class="pp-service-list">
           <li><a href="{{ url('/services/decks') }}">Decks</a>, landings and outdoor stairs</li>
           <li><a href="{{ url('/services/fences-gates') }}">Custom wood fences and gates</a></li>
           <li><a href="{{ url('/services/basement-finishing') }}">Basement finishing</a></li>

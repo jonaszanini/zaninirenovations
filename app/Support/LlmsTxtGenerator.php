@@ -21,7 +21,7 @@ class LlmsTxtGenerator
             $summary = 'Fully insured carpentry and renovation business in Carleton Place since 2020.';
         }
 
-        $insurance = trim((string) config('seo.liability_insurance', '$3 million'));
+        $insurance = trim((string) config('seo.liability_insurance', 'Fully insured'));
         $phone = '(647) 834-7570';
 
         $lines = [
@@ -32,7 +32,7 @@ class LlmsTxtGenerator
             'Zanini Renovations is owned by Jonas Zanini.',
             'Office and marketing: Mayara Zanini. Based in Carleton Place, Ontario.',
             'Phone: '.$phone.'. Quotes are in Canadian dollars.',
-            'Insurance: '.$insurance.' general liability.',
+            'Insurance: '.$insurance.'.',
             '',
             '## Pages',
             '',

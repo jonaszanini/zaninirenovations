@@ -72,14 +72,14 @@ return [
         'Part 9 housing and small buildings',
     ],
 
-    'liability_insurance' => '$3 million',
+    'liability_insurance' => 'Fully insured',
 
     /*
     |--------------------------------------------------------------------------
     | Short, quotable homepage summary (WebPage + visible intro for AI/SEO)
     |--------------------------------------------------------------------------
     */
-    'home_summary' => 'Zanini Renovations is a fully insured carpentry and renovation business based in Carleton Place, Ontario, since 2020. Decks, fences and gates, basement finishing, finish carpentry and trim, custom built-ins and closets, staircases, drywall and flooring—with $3 million general liability insurance.',
+    'home_summary' => 'Zanini Renovations is a fully insured carpentry and renovation business based in Carleton Place, Ontario, since 2020. Decks, fences and gates, basement finishing, finish carpentry and trim, custom built-ins and closets, staircases, drywall and flooring.',
 
     'home_title' => 'Carpenter & Renovation Contractor in Carleton Place | Zanini',
 
@@ -103,7 +103,7 @@ return [
         ],
         [
             'question' => 'Is Zanini Renovations fully insured for residential work?',
-            'answer' => 'Yes. Zanini Renovations carries $3 million in general liability insurance, ensuring your home and project are fully protected. All of our work strictly adheres to the Ontario Building Code (O.Reg. 332/12) requirements for Part 9 housing and small buildings, delivering structural integrity and professional craftsmanship you can trust.',
+            'answer' => 'Yes. Zanini Renovations is fully insured, ensuring your home and project are protected. All of our work strictly adheres to the Ontario Building Code (O.Reg. 332/12) requirements for Part 9 housing and small buildings, delivering structural integrity and professional craftsmanship you can trust.',
         ],
         [
             'question' => 'How do I get a quote for a renovation or carpentry project?',

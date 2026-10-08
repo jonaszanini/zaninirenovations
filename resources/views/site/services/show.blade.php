@@ -48,10 +48,7 @@
           <ul class="pp-projects">
             @foreach ($page['projects'] as $item)
               <li>
-                <a href="{{ url('/portfolio/'.$item['slug']) }}">{{ $item['label'] }}</a>
-                @if (! empty($item['text']))
-                  : {{ $item['text'] }}
-                @endif
+                <a href="{{ url('/portfolio/'.$item['slug']) }}">{{ $item['label'] }}</a>@if (! empty($item['text'])): {{ $item['text'] }}@endif
               </li>
             @endforeach
           </ul>
@@ -78,10 +75,10 @@
           @foreach ($page['reviews'] as $review)
             <blockquote class="pp-quote">
               <p>“{{ $review['quote'] }}”</p>
-              <footer>
+              <p class="pp-quote-cite">
                 {{ $review['author'] }},
                 <a href="{{ \App\Support\GoogleReviews::profileUrl() }}" rel="noopener noreferrer" target="_blank">Google</a>
-              </footer>
+              </p>
             </blockquote>
           @endforeach
         </div>

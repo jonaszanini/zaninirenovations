@@ -8,7 +8,7 @@ return [
 
     'cta' => [
         'heading' => 'Get a free estimate',
-        'text' => 'Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+        'text' => 'Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
         'button_label' => 'Get a free estimate',
         'button_url' => '/contact',
         'phone_label' => 'Call (647) 834-7570',
@@ -67,7 +67,7 @@ return [
             'hero_alt' => 'Floating deck with gravel around, built in Kanata',
             'hero_project_slug' => 'floating-deck-with-gravel-around',
             'cta_heading' => 'Get a free deck estimate',
-            'cta_text' => 'Send us a few photos of the spot and a rough size, and we\'ll set up a visit. Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+            'cta_text' => 'Send us a few photos of the spot and a rough size, and we\'ll set up a visit. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
             'faqs_heading' => 'Deck building FAQ',
             'faqs' => [
                 [
@@ -123,7 +123,7 @@ return [
             'hero_alt' => 'Custom wood fence and gates in Carleton Place',
             'hero_project_slug' => 'side-yard-fence-gates-carleton-place',
             'cta_heading' => 'Get a free fence estimate',
-            'cta_text' => 'Send a photo of the yard and a rough line for the fence, and we\'ll come out to measure. Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+            'cta_text' => 'Send a photo of the yard and a rough line for the fence, and we\'ll come out to measure. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
             'faqs_heading' => 'Fence and gate FAQ',
             'faqs' => [
                 [
@@ -183,7 +183,7 @@ return [
             'hero_alt' => 'Finished basement family room in Barrhaven',
             'hero_project_slug' => 'basement-finishing',
             'cta_heading' => 'Get a free basement estimate',
-            'cta_text' => 'Tell us roughly how big the space is and how you\'d like to use it, and send a few photos if you can. Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+            'cta_text' => 'Tell us roughly how big the space is and how you\'d like to use it, and send a few photos if you can. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
             'faqs_heading' => 'Basement finishing FAQ',
             'faqs' => [
                 [
@@ -238,7 +238,7 @@ return [
             'hero_alt' => 'Custom classic fireplace mantel in Perth',
             'hero_project_slug' => 'custom-classic-fireplace-mantel',
             'cta_heading' => 'Get a free estimate for trim or a mantel',
-            'cta_text' => 'Send photos of the room and any trim you\'d like to match. Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+            'cta_text' => 'Send photos of the room and any trim you\'d like to match. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
             'faqs_heading' => 'Finish carpentry FAQ',
             'faqs' => [
                 [
@@ -297,7 +297,7 @@ return [
             'hero_alt' => 'Built-in shelving wall in Kanata',
             'hero_project_slug' => 'built-in-shelving-wall-kanata',
             'cta_heading' => 'Get a free built-in estimate',
-            'cta_text' => 'Send us a photo of the space, rough measurements and a picture of something you like. Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+            'cta_text' => 'Send us a photo of the space, rough measurements and a picture of something you like. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
             'faqs_heading' => 'Built-ins and closets FAQ',
             'faqs' => [
                 [
@@ -353,7 +353,7 @@ return [
             'hero_alt' => 'Finished interior staircase after a carpet-to-wood makeover',
             'hero_project_slug' => '2nd-floor-and-stairs-renovation',
             'cta_heading' => 'Get a free stair estimate',
-            'cta_text' => 'Send a photo of your staircase, or of the spot where you need outdoor stairs. Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+            'cta_text' => 'Send a photo of your staircase, or of the spot where you need outdoor stairs. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
             'faqs_heading' => 'Staircase FAQ',
             'faqs' => [
                 [
@@ -404,7 +404,7 @@ return [
             'hero_alt' => 'Engineered hardwood flooring installation',
             'hero_project_slug' => 'engineering-hard-wood-flooring-installation',
             'cta_heading' => 'Get a free flooring estimate',
-            'cta_text' => 'Tell us the rooms, the rough square footage and what\'s on the floor now. Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+            'cta_text' => 'Tell us the rooms, the rough square footage and what\'s on the floor now. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
             'faqs_heading' => 'Flooring FAQ',
             'faqs' => [
                 [
@@ -460,7 +460,7 @@ return [
             'hero_alt' => 'Drywall installation and finishing in progress',
             'hero_project_slug' => 'basement-flood-restoration',
             'cta_heading' => 'Get a free drywall estimate',
-            'cta_text' => 'Send a few photos and the rough size of the area. Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+            'cta_text' => 'Send a few photos and the rough size of the area. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
             'faqs_heading' => 'Drywall FAQ',
             'faqs' => [
                 [
@@ -516,7 +516,7 @@ return [
             'hero_alt' => 'Kitchen remodel with custom cabinet doors and backsplash',
             'hero_project_slug' => 'kitchen-renovations',
             'cta_heading' => 'Get a free kitchen estimate',
-            'cta_text' => 'Send us photos of your kitchen as it is now, and a picture of the look you want if you have one. Monday to Friday, 9 AM to 6 PM. Fully insured ($3M) · in business since 2020 · based in Carleton Place.',
+            'cta_text' => 'Send us photos of your kitchen as it is now, and a picture of the look you want if you have one. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
             'faqs_heading' => 'Kitchen remodel FAQ',
             'faqs' => [
                 [

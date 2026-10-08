@@ -81,7 +81,15 @@ class OnPageSeoBatch3Test extends IntegrationTestCase
                 $this->assertStringContainsString('/portfolio/'.$project['slug'], $html, $path.' missing '.$project['slug']);
             }
 
-            $this->assertStringContainsString('Fully insured ($3M)', $html, $path);
+            if ($page['slug'] === 'decks') {
+                $this->assertStringContainsString('</a>: a 290 sq ft', $html);
+                $this->assertStringNotContainsString('</a> :', $html);
+            }
+            if (! empty($page['reviews'])) {
+                $this->assertStringContainsString('pp-quote-cite', $html, $path);
+            }
+
+            $this->assertStringContainsString('Fully insured', $html, $path);
             $this->assertStringContainsString('/contact', $html, $path);
         }
     }
@@ -118,9 +126,10 @@ class OnPageSeoBatch3Test extends IntegrationTestCase
         $this->assertStringContainsString('About Jonas Zanini', $about);
         $this->assertStringContainsString('Mayara Zanini, Office &amp; Marketing', $about);
         $this->assertStringContainsString('AboutPage', $about);
+        $this->assertStringContainsString('pp-quote-cite', $about);
         $this->assertStringContainsString('#person-jonas', $about);
         $this->assertStringContainsString('Ontario Building Code', $about);
-        $this->assertStringContainsString('$3M', $about);
+        $this->assertStringContainsString('fully insured', strtolower($about));
 
         $reviews = $this->get('/reviews')->assertOk()->getContent();
         $this->assertStringContainsString('Client Reviews', $reviews);
@@ -130,6 +139,9 @@ class OnPageSeoBatch3Test extends IntegrationTestCase
         $this->assertStringContainsString('AggregateRating', $reviews);
         $this->assertStringContainsString('reviewCount', $reviews);
         $this->assertStringContainsString('Beatriz C.', $reviews);
+        $this->assertStringContainsString('pp-quote-cite', $reviews);
+        $this->assertStringContainsString('pp-quote-grid', $reviews);
+        $this->assertStringContainsString('Leave a Google review', $reviews);
         $this->assertStringNotContainsString('Houzz', $reviews);
 
         $graph = SeoStructuredData::reviewsPage((array) config('public_services.reviews'));
@@ -143,7 +155,10 @@ class OnPageSeoBatch3Test extends IntegrationTestCase
         $this->assertStringContainsString('ContactPage', $contact);
         $this->assertStringContainsString('sms:+16478347570', $contact);
         $this->assertStringContainsString('id="contact-form"', $contact);
-        $this->assertStringContainsString('maps.google.com/maps?cid=7676669856408637146', $contact);
+        $this->assertStringContainsString('Open in Google Maps', $contact);
+        $this->assertStringContainsString('7676669856408637146', $contact);
+        $this->assertStringNotContainsString('output=embed', $contact);
+        $this->assertStringNotContainsString('<iframe', $contact);
         $this->assertStringNotContainsString('Orléans', $contact);
         $this->assertStringNotContainsString('Orleans', $contact);
     }

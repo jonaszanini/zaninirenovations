@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Support\PublicServices;
-use App\Support\ServiceAreas;
 use Illuminate\View\View;
 
 class PublicSiteController extends Controller
@@ -29,9 +28,8 @@ class PublicSiteController extends Controller
     {
         $page = PublicServices::contact();
         $cta = PublicServices::cta();
-        $mapEmbedSrc = ServiceAreas::mapEmbedSrc();
         $services = PublicServices::publishedPages();
 
-        return view('site.contact', compact('page', 'cta', 'mapEmbedSrc', 'services'));
+        return view('site.contact', compact('page', 'cta', 'services'));
     }
 }

@@ -13,6 +13,8 @@ class PublicPageBannedWordsTest extends IntegrationTestCase
         'wsib',
         'one-person',
         'one person',
+        '$3m',
+        '3 million',
     ];
 
     public function test_licensed_wsib_and_one_person_appear_nowhere_in_public_page_output(): void
