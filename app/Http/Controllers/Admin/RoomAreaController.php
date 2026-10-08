@@ -85,12 +85,12 @@ class RoomAreaController extends Controller
         ]);
     }
 
-    public function guide()
+    public function guide(Request $request)
     {
         return view('admin.utilities.room_area_guide', [
             'clientProject' => null,
             'room' => null,
-            'backUrl' => route('admin.utilities.room-area'),
+            'backUrl' => route('admin.utilities.room-area', $this->standaloneEditorReturnParams($request)),
         ]);
     }
 
@@ -676,6 +676,40 @@ class RoomAreaController extends Controller
         if ((int) $photo->room_area_room_id !== (int) $room->id) {
             abort(404);
         }
+    }
+
+    /**
+     * Restore the standalone editor to the same layout (and room, if any)
+     * the user had open when they followed Guide.
+     *
+     * @return array{ra_project?: int, ra_room?: int}
+     */
+    private function standaloneEditorReturnParams(Request $request): array
+    {
+        $projectId = $request->integer('ra_project');
+        $roomId = $request->integer('ra_room');
+
+        $project = $projectId > 0
+            ? RoomAreaProject::query()->find($projectId)
+            : null;
+        $room = $roomId > 0
+            ? RoomAreaRoom::query()->find($roomId)
+            : null;
+
+        $params = [];
+        if ($room) {
+            if (! $project || (int) $room->room_area_project_id === (int) $project->id) {
+                $params['ra_project'] = (int) $room->room_area_project_id;
+                $params['ra_room'] = (int) $room->id;
+
+                return $params;
+            }
+        }
+        if ($project) {
+            $params['ra_project'] = (int) $project->id;
+        }
+
+        return $params;
     }
 
     private function deleteRoomPhotos(RoomAreaRoom $room): void

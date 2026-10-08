@@ -101,6 +101,8 @@ class UtilitiesRoomAreaPageTest extends IntegrationTestCase
         $js = file_get_contents(public_path('js/admin-utilities-room-area.js'));
         $this->assertNotFalse($js);
         $this->assertStringContainsString("get('ra_project')", $js);
+        $this->assertStringContainsString("get('ra_room')", $js);
+        $this->assertStringContainsString('syncGuideLinks', $js);
         $this->assertStringContainsString('data-ra-lock-client-project', $js);
         $this->assertStringContainsString('data-ra-fullpage', $js);
 

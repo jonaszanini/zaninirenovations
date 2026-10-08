@@ -35,8 +35,51 @@ class RoomAreaGuidePageTest extends IntegrationTestCase
             ->assertSee('Check Math')
             ->assertSee('Save rooms, then quote')
             ->assertSee('Zoom, pan, Fit, and Panel')
+            ->assertSee('data-ra-guide-samples', false)
+            ->assertSee('data-ra-guide-chip="guide"', false)
+            ->assertSee('data-ra-guide-chip="add-rect"', false)
+            ->assertSee('data-ra-guide-chip="objects"', false)
+            ->assertSee('data-ra-guide-chip="walls"', false)
+            ->assertSee('data-ra-guide-chip="math"', false)
+            ->assertSee('data-ra-guide-chip="save"', false)
+            ->assertSee('data-ra-guide-chip="zoom"', false)
+            ->assertSee('data-ra-guide-chip="fit"', false)
+            ->assertSee('data-ra-guide-chip="panel"', false)
+            ->assertSee('data-ra-guide-chip="r90"', false)
+            ->assertSee('util-ra-guide__sample', false)
             ->assertSee(route('admin.utilities.room-area', [], false), false)
             ->assertSee('admin-dark.css', false);
+    }
+
+    public function test_standalone_guide_back_keeps_selected_project(): void
+    {
+        $this->actingAsAdmin();
+        $layout = RoomAreaProject::create([
+            'name' => 'On-site layout',
+            'scale_pixels_per_foot' => 10,
+        ]);
+        $room = $this->makeStandaloneRoom($layout, 'Office');
+
+        $editorUrl = route('admin.utilities.room-area', ['ra_project' => $layout->id], false);
+        $guideUrl = route('admin.utilities.room-area.guide', ['ra_project' => $layout->id], false);
+        $guideWithRoom = route('admin.utilities.room-area.guide', [
+            'ra_project' => $layout->id,
+            'ra_room' => $room->id,
+        ], false);
+
+        $this->get(route('admin.utilities.room-area', ['ra_project' => $layout->id]))
+            ->assertOk()
+            ->assertSee($guideUrl, false);
+
+        $this->get($guideUrl)
+            ->assertOk()
+            ->assertSee('data-ra-guide-back', false)
+            ->assertSee($editorUrl, false);
+
+        $this->get($guideWithRoom)
+            ->assertOk()
+            ->assertSee('ra_project='.$layout->id, false)
+            ->assertSee('ra_room='.$room->id, false);
     }
 
     public function test_admin_can_open_client_project_guide_and_return_to_editor(): void
@@ -83,11 +126,43 @@ class RoomAreaGuidePageTest extends IntegrationTestCase
         $this->assertStringContainsString('.admin-app:has(.util-ra-guide) .admin-sidebar', $css);
         $this->assertStringContainsString('.admin-app:has(.util-ra-guide) .admin-topbar', $css);
         $this->assertStringContainsString('.util-ra-guide__steps', $css);
+        $this->assertStringContainsString('.util-ra-guide__samples', $css);
+        $this->assertStringContainsString('.util-ra-guide__step', $css);
+        $this->assertStringContainsString('grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.9fr)', $css);
 
         $dark = file_get_contents(public_path('css/admin-dark.css'));
         $this->assertNotFalse($dark);
         $this->assertStringContainsString('html.admin-dark .util-ra-guide', $dark);
         $this->assertStringContainsString('html.admin-dark .util-ra-guide__body', $dark);
+        $this->assertStringContainsString('html.admin-dark .util-ra-guide__samples', $dark);
+    }
+
+    private function makeStandaloneRoom(RoomAreaProject $layout, string $name): RoomAreaRoom
+    {
+        return RoomAreaRoom::create([
+            'room_area_project_id' => $layout->id,
+            'name' => $name,
+            'scale_pixels_per_foot' => 10,
+            'area_sqft' => 96,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'v' => 3,
+                'groups' => [[
+                    'id' => 'g1',
+                    'color' => '#024768',
+                    'polygons' => [[
+                        'id' => 'p1',
+                        'name' => $name,
+                        'vertices' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 120, 'y' => 0],
+                            ['x' => 120, 'y' => 80],
+                            ['x' => 0, 'y' => 80],
+                        ],
+                    ]],
+                ]],
+            ],
+        ]);
     }
 
     private function makeRoom(ClientProject $clientProject, string $name): RoomAreaRoom

@@ -1507,13 +1507,16 @@ html.admin-dark .util-ra-guide {
 }
 
 html.admin-dark .util-ra-guide__title,
-html.admin-dark .util-ra-guide__steps h2 {
+html.admin-dark .util-ra-guide__steps h2,
+html.admin-dark .util-ra-guide__copy h2 {
   color: var(--admin-heading);
 }
 
 html.admin-dark .util-ra-guide__lede,
 html.admin-dark .util-ra-guide__steps p,
-html.admin-dark .util-ra-guide__steps > li {
+html.admin-dark .util-ra-guide__copy p,
+html.admin-dark .util-ra-guide__steps > li,
+html.admin-dark .util-ra-guide__step {
   color: var(--admin-text);
 }
 
@@ -1526,6 +1529,16 @@ html.admin-dark .util-ra-guide__steps code {
   background: var(--admin-input-bg);
   border-color: var(--admin-border);
   color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-guide__samples {
+  background: var(--admin-elevated, var(--admin-input-bg));
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-guide__chip-label,
+html.admin-dark .util-ra-guide__samples .util-ra-zoom-label {
+  color: var(--admin-muted);
 }
 
 html.admin-dark .util-ra--fullpage .util-ra-side {
