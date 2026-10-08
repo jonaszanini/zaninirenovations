@@ -4932,7 +4932,7 @@ body:has(.util-ra--fullpage) {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--admin-bg);
+  background: var(--admin-surface);
   overflow-x: hidden;
 }
 
@@ -5047,6 +5047,8 @@ body:has(.util-ra--fullpage) {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  background: var(--admin-surface);
+  gap: 0;
 }
 
 .util-ra--fullpage .util-ra-workspace[hidden] {
@@ -5065,6 +5067,8 @@ body:has(.util-ra--fullpage) {
   min-width: 0;
   flex-direction: row;
   overflow: hidden;
+  background: var(--admin-surface);
+  gap: 0;
 }
 
 .util-ra-stage__main {
@@ -5078,15 +5082,18 @@ body:has(.util-ra--fullpage) {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  background: var(--admin-surface);
+  gap: 0;
 }
 
 .util-ra--fullpage .util-ra-controls {
   display: flex;
+  flex-direction: column;
   flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.45rem 0.75rem;
+  align-items: stretch;
+  gap: 0.15rem;
   margin: 0;
-  padding: 0.2rem 0.55rem;
+  padding: 0.2rem 0.55rem 0.25rem;
   border: 0;
   border-radius: 0;
   border-bottom: 1px solid var(--admin-border);
@@ -5120,17 +5127,31 @@ body:has(.util-ra--fullpage) {
   display: none;
 }
 
+.util-ra--fullpage .util-ra-controls .util-ra-tool-group__actions {
+  flex-wrap: nowrap;
+}
+
+.util-ra--fullpage .util-ra-scale-input {
+  flex: 0 0 9rem;
+  width: 9rem;
+  min-width: 8rem;
+  max-width: 9rem;
+}
+
 .util-ra--fullpage .util-ra-controls .util-ra-scale-status,
 .util-ra--fullpage .util-ra-scale-status {
+  display: block;
+  width: 100%;
   margin: 0;
   padding: 0;
   border: 0;
   font-size: 0.75rem;
+  line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
 }
 
 .util-ra--fullpage .util-ra-canvas-card {
@@ -5138,8 +5159,9 @@ body:has(.util-ra--fullpage) {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
   margin: 0;
-  padding: 0.2rem 0.55rem 0.3rem;
+  padding: 0;
   border-radius: 0;
   border: 0;
   box-shadow: none;
@@ -5376,6 +5398,7 @@ body:has(.util-ra--fullpage) {
 }
 
 .util-ra--fullpage .util-ra-rooms-item {
+  flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   gap: 0.4rem;
@@ -5404,6 +5427,9 @@ body:has(.util-ra--fullpage) {
 .util-ra--fullpage .util-ra-rooms-item__actions {
   flex-wrap: nowrap;
   flex-shrink: 0;
+  border-top: 0;
+  padding-top: 0;
+  justify-content: flex-end;
 }
 
 .util-ra--fullpage .util-ra-rooms-item__action-label {
@@ -5527,7 +5553,7 @@ body:has(.util-ra--fullpage) {
   }
 
   .util-ra--fullpage .util-ra-canvas-card {
-    padding: 0.15rem 0.35rem 0.2rem;
+    padding: 0;
   }
 
   .util-ra--fullpage .util-ra-canvas-toolbar {
@@ -5555,27 +5581,77 @@ body:has(.util-ra--fullpage) {
     order: 5;
   }
 
+  .util-ra--fullpage .util-ra-object-edit {
+    overflow: hidden;
+    max-width: 100%;
+    padding: 0.4rem 0.4rem 0.45rem;
+  }
+
   .util-ra--fullpage .util-ra-object-edit__inner {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: flex-end;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch;
+    gap: 0.3rem 0.35rem;
+    max-width: 100%;
+    min-width: 0;
+    overflow: visible;
   }
 
   .util-ra--fullpage .util-ra-object-edit__title {
     grid-column: auto;
+    flex: 0 0 auto;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .util-ra--fullpage .util-ra-object-edit__field {
+    flex: 0 0 auto;
+  }
+
+  .util-ra--fullpage .util-ra-object-edit__field label {
+    white-space: nowrap;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: 0.15rem;
+    font-size: 0.7rem;
+  }
+
+  .util-ra--fullpage .util-ra-object-edit__field--num {
+    width: 64px;
+    flex: 0 0 64px;
+  }
+
+  .util-ra--fullpage .util-ra-object-edit__field--swing {
+    width: 6.25rem;
+    flex: 0 0 6.25rem;
+  }
+
+  .util-ra--fullpage .util-ra-object-edit__field--hinge {
+    width: 4.25rem;
+    flex: 0 0 4.25rem;
   }
 
   .util-ra--fullpage .util-ra-object-edit__actions {
     grid-column: auto;
     width: auto;
     flex: 0 0 auto;
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
   }
 
-  .util-ra--fullpage .util-ra-object-edit__field--num {
-    width: 4.25rem;
+  .util-ra--fullpage .util-ra-object-edit__btn-text {
+    display: none;
+  }
+
+  .util-ra--fullpage .util-ra-object-edit__actions .util-ra-action-btn {
+    width: var(--admin-control-height);
+    min-width: var(--admin-control-height);
+    padding-left: 0;
+    padding-right: 0;
+    flex: 0 0 auto;
+    justify-content: center;
   }
 }
 
@@ -5589,15 +5665,156 @@ body:has(.util-ra--fullpage) {
   }
 
   .util-ra--fullpage .util-ra-canvas-card {
-    padding: 0.1rem 0.3rem 0.2rem;
+    padding: 0;
   }
 
   .util-ra--fullpage .util-ra-rooms-item {
+    flex-direction: row;
     flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .util-ra--fullpage .util-ra-rooms-item__actions {
+    border-top: 0;
+    padding-top: 0;
+    justify-content: flex-end;
   }
 
   .util-ra--fullpage .util-ra-object-edit__btn-text {
     display: none;
+  }
+}
+
+/* Full-page: one scrollable tool row, no overlapping chrome, no grey gaps. */
+.util-ra--fullpage .util-ra-canvas-toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  border-bottom: 1px solid var(--admin-border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.util-ra--fullpage .util-ra-object-dock,
+.util-ra--fullpage .util-ra-edit-dock:has([data-ra-wall-edit]:not([hidden])),
+.util-ra--fullpage .util-ra-edit-dock:has([data-ra-vertex-edit]:not([hidden])),
+.util-ra--fullpage .util-ra-edit-dock:has([data-ra-ruler-edit]:not([hidden])),
+.util-ra--fullpage .util-ra-edit-dock:has([data-ra-object-edit]:not([hidden])) {
+  margin-left: 0.55rem;
+  margin-right: 0.55rem;
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__groups,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__view,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group--areas,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group--units,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group--zoom,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group__actions,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-areas-main,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-btn-cluster {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  order: 0;
+  min-width: 0;
+  max-width: none;
+  width: auto;
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__groups,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__view {
+  gap: 0.25rem 0.4rem;
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group + .util-ra-tool-group {
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--admin-border);
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-areas-main {
+  gap: 0.25rem;
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-group-chip {
+  order: 0;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  min-width: max-content;
+  max-width: none;
+  overflow: visible;
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-measure-unit {
+  order: 0;
+  flex: 0 0 13rem;
+  width: 13rem;
+  min-width: 13rem;
+  max-width: 13rem;
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-area-name {
+  flex: 0 0 auto;
+  min-width: 8rem;
+  max-width: 12rem;
+}
+
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tip,
+.util-ra--fullpage .util-ra-canvas-toolbar .admin-btn,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-icon-btn,
+.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-icon-toggle {
+  flex-shrink: 0;
+}
+
+.util-ra--fullpage .util-ra-canvas-wrap {
+  margin: 0.25rem 0.55rem 0.3rem;
+}
+
+@media (max-width: 900px) {
+  .util-ra--fullpage .util-ra-canvas-toolbar {
+    padding: 0.15rem 0.35rem;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-wrap {
+    margin: 0.15rem 0.35rem 0.2rem;
+  }
+
+  .util-ra--fullpage .util-ra-object-dock,
+  .util-ra--fullpage .util-ra-edit-dock:has([data-ra-wall-edit]:not([hidden])),
+  .util-ra--fullpage .util-ra-edit-dock:has([data-ra-vertex-edit]:not([hidden])),
+  .util-ra--fullpage .util-ra-edit-dock:has([data-ra-ruler-edit]:not([hidden])),
+  .util-ra--fullpage .util-ra-edit-dock:has([data-ra-object-edit]:not([hidden])) {
+    margin-left: 0.35rem;
+    margin-right: 0.35rem;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 1.75rem;
+    height: calc(var(--admin-control-height) + 0.4rem);
+    pointer-events: none;
+    z-index: 3;
+    background: linear-gradient(to right, transparent, var(--admin-surface));
+  }
+}
+
+@media (min-width: 901px) {
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__view {
+    margin-left: auto;
+    padding-left: 0.65rem;
   }
 }
 

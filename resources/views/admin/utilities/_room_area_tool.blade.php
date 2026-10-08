@@ -500,11 +500,11 @@
               <div class="util-ra-wall-edit__inner util-ra-object-edit__inner">
                 <span class="util-ra-wall-edit__label util-ra-object-edit__title" data-ra-object-title>Object</span>
                 <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num">
-                  <label for="ra-object-width">Width (in)</label>
+                  <label for="ra-object-width">{{ $fullPage ? 'W″' : 'Width (in)' }}</label>
                   <input class="admin-input" type="text" id="ra-object-width" inputmode="decimal" data-ra-object-width>
                 </div>
                 <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num" data-ra-object-offset-wrap>
-                  <label for="ra-object-offset">Offset (in)</label>
+                  <label for="ra-object-offset">{{ $fullPage ? 'Offset″' : 'Offset (in)' }}</label>
                   <input class="admin-input" type="text" id="ra-object-offset" inputmode="decimal" data-ra-object-offset>
                 </div>
                 <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--num" data-ra-object-depth-wrap hidden>
