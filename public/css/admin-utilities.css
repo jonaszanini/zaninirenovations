@@ -5832,6 +5832,17 @@ body:has(.util-ra--fullpage) {
     gap: 0.2rem 0.3rem;
   }
 
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__groups {
+    flex: 1 1 auto;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group__actions {
+    flex-wrap: wrap;
+  }
+
   .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__view {
     margin-left: auto;
     padding-left: 0.4rem;
@@ -5854,6 +5865,14 @@ body:has(.util-ra--fullpage) {
     width: 140px;
     min-width: 140px;
     max-width: 140px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1024px) {
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__view {
+    flex: 1 0 100%;
+    margin-left: 0;
+    padding-left: 0;
   }
 }
 
