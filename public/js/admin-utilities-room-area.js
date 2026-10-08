@@ -25,6 +25,7 @@
   var SQFT_TO_SQM = 0.092903;
   var FEET_TO_METERS = 0.3048;
   var MEASURE_UNIT_STORAGE_KEY = 'room-area-measure-unit';
+  var FIRST_TIP_STORAGE_KEY = 'zr-room-area-guide-tip-v1';
   var MEASURE_UNITS = {
     meter: 'meter',
     inch: 'inch',
@@ -7120,12 +7121,18 @@
 
   function updateScaleUI() {
     var ppf = pixelsPerFoot();
-    if (ppf > 0) {
-      els.scaleStatus.textContent = 'Scale: ' + fmt(ppf, 2) + ' px per foot (1 grid cell ≈ 1 ft when calibrated).';
-      els.scaleStatus.className = 'util-ra-scale-status is-set';
-    } else {
-      els.scaleStatus.textContent = 'Scale not set — calibrate before saving rooms.';
-      els.scaleStatus.className = 'util-ra-scale-status';
+    if (els.scaleStatus) {
+      if (ppf > 0) {
+        els.scaleStatus.textContent = isFullPage()
+          ? ('Scale set · ' + fmt(ppf, 1) + ' px/ft')
+          : ('Scale: ' + fmt(ppf, 2) + ' px per foot (1 grid cell ≈ 1 ft when calibrated).');
+        els.scaleStatus.className = 'util-ra-scale-status is-set';
+      } else {
+        els.scaleStatus.textContent = isFullPage()
+          ? 'Scale not set'
+          : 'Scale not set — calibrate before saving rooms.';
+        els.scaleStatus.className = 'util-ra-scale-status';
+      }
     }
     drawGrid();
     redrawPolygonLine();
@@ -9445,9 +9452,9 @@
         els.projectSelect.value = newId ? String(newId) : '';
         state.calibrating = false;
         state.calibPoints = [];
-        els.calibrateToggle.classList.remove('is-active');
-        els.knownLength.disabled = true;
-        els.applyScale.disabled = true;
+        if (els.calibrateToggle) els.calibrateToggle.classList.remove('is-active');
+        if (els.knownLength) els.knownLength.disabled = true;
+        if (els.applyScale) els.applyScale.disabled = true;
         stopRulerMode();
         clearRulerSelection();
         renderWorkspace();
@@ -9464,8 +9471,8 @@
       updateProjectLink(els.linkClientProject.value);
     });
 
-    els.calibrateToggle.addEventListener('click', toggleCalibrate);
-    els.applyScale.addEventListener('click', function (e) {
+    if (els.calibrateToggle) els.calibrateToggle.addEventListener('click', toggleCalibrate);
+    if (els.applyScale) els.applyScale.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
       applyScale();
@@ -9618,14 +9625,14 @@
       });
     }
 
-    els.bgFile.addEventListener('change', function () {
+    if (els.bgFile) els.bgFile.addEventListener('change', function () {
       if (els.bgFile.files && els.bgFile.files[0]) {
         uploadBackground(els.bgFile.files[0]);
         els.bgFile.value = '';
       }
     });
 
-    els.bgRemove.addEventListener('click', removeBackground);
+    if (els.bgRemove) els.bgRemove.addEventListener('click', removeBackground);
     if (els.bgDeleteCanvas) els.bgDeleteCanvas.addEventListener('click', removeBackground);
     if (els.bgShowImage) {
       els.bgShowImage.addEventListener('change', function () {
@@ -9656,6 +9663,8 @@
     raAll('[data-ra-zoom-100]').forEach(function (btn) { btn.addEventListener('click', resetViewport); });
     raAll('[data-ra-zoom-reset]').forEach(function (btn) { btn.addEventListener('click', fitViewport); });
     bindSidePanel();
+    bindHelpPops();
+    bindFirstTip();
     if (els.roomName) {
       els.roomName.addEventListener('input', updateFullpageTitle);
     }
@@ -9759,6 +9768,57 @@
       el.classList.toggle('is-active', el.getAttribute('data-ra-side-pane') === pane);
     });
     scheduleStageResize();
+  }
+
+  function closeHelpPops() {
+    raAll('[data-ra-help-pop-panel]').forEach(function (panel) {
+      panel.hidden = true;
+    });
+    raAll('[data-ra-help-pop]').forEach(function (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function bindHelpPops() {
+    raAll('[data-ra-help-pop]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var id = btn.getAttribute('data-ra-help-pop');
+        var panel = root.querySelector('[data-ra-help-pop-panel="' + id + '"]');
+        var wasOpen = panel && !panel.hidden;
+        closeHelpPops();
+        if (panel && !wasOpen) {
+          panel.hidden = false;
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+    document.addEventListener('pointerdown', function (e) {
+      if (e.target.closest && e.target.closest('.util-ra-help')) return;
+      closeHelpPops();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeHelpPops();
+    });
+  }
+
+  function bindFirstTip() {
+    if (!isFullPage()) return;
+    var banner = root.querySelector('[data-ra-first-tip]');
+    if (!banner) return;
+    try {
+      if (window.localStorage.getItem(FIRST_TIP_STORAGE_KEY) === '1') return;
+    } catch (err) {}
+    banner.hidden = false;
+    var dismiss = banner.querySelector('[data-ra-first-tip-dismiss]');
+    if (!dismiss) return;
+    dismiss.addEventListener('click', function () {
+      banner.hidden = true;
+      try {
+        window.localStorage.setItem(FIRST_TIP_STORAGE_KEY, '1');
+      } catch (err2) {}
+    });
   }
 
   function bindSidePanel() {

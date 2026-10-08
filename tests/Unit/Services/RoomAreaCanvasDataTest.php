@@ -418,6 +418,100 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertSame(0, $metrics['drywall_openings']);
     }
 
+    public function test_rect_12_by_10_with_door_and_window_keeps_batch0_math(): void
+    {
+        $canvas = [
+            'v' => 3,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 144, 'y' => 0],
+                        ['x' => 144, 'y' => 120],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+            'objects' => [
+                [
+                    'id' => 'obj_1',
+                    'type' => 'door',
+                    'subtype' => 'single',
+                    'wall_id' => 'wall_p1_0_1',
+                    'width' => 36,
+                    'offset' => 24,
+                ],
+                [
+                    'id' => 'obj_2',
+                    'type' => 'window',
+                    'subtype' => 'fixed',
+                    'wall_id' => 'wall_p1_1_2',
+                    'width' => 48,
+                    'offset' => 24,
+                    'height' => 36,
+                ],
+            ],
+        ];
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
+
+        $this->assertEqualsWithDelta(120.0, $metrics['area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(44.0, $metrics['perimeter_lf'], 0.01);
+        $this->assertEqualsWithDelta(41.0, $metrics['baseboard_lf'], 0.01);
+        $this->assertEqualsWithDelta(320.0, $metrics['wall_area_sqft'], 0.01);
+    }
+
+    public function test_l_16_by_12_notch_6_by_4_with_door_and_window_keeps_batch0_math(): void
+    {
+        $canvas = [
+            'v' => 3,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 192, 'y' => 0],
+                        ['x' => 192, 'y' => 144],
+                        ['x' => 120, 'y' => 144],
+                        ['x' => 120, 'y' => 96],
+                        ['x' => 0, 'y' => 96],
+                    ],
+                ]],
+            ]],
+            'objects' => [
+                [
+                    'id' => 'obj_1',
+                    'type' => 'door',
+                    'subtype' => 'single',
+                    'wall_id' => 'wall_p1_0_1',
+                    'width' => 36,
+                    'offset' => 24,
+                ],
+                [
+                    'id' => 'obj_2',
+                    'type' => 'window',
+                    'subtype' => 'fixed',
+                    'wall_id' => 'wall_p1_1_2',
+                    'width' => 48,
+                    'offset' => 24,
+                    'height' => 36,
+                ],
+            ],
+        ];
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
+
+        $this->assertEqualsWithDelta(152.0, $metrics['area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(56.0, $metrics['perimeter_lf'], 0.01);
+        $this->assertEqualsWithDelta(53.0, $metrics['baseboard_lf'], 0.01);
+        $this->assertEqualsWithDelta(416.0, $metrics['wall_area_sqft'], 0.01);
+    }
+
     public function test_v2_rooms_without_objects_do_not_subtract_from_baseboard_or_wall_area(): void
     {
         $canvas = $this->rectangleCanvas(false);

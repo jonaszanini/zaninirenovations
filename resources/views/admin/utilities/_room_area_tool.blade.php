@@ -5,11 +5,18 @@
   $backLabel = $backLabel ?? 'All utilities';
   $initialRoomId = $initialRoomId ?? null;
   $lockClientProjectId = $lockClientProjectId ?? null;
+  $guideUrl = isset($clientProject)
+    ? route('admin.client-projects.utilities.room-area.guide', array_filter([
+        'client_project' => $clientProject,
+        'room_area_room' => $initialRoomId,
+      ]))
+    : route('admin.utilities.room-area.guide');
 @endphp
   <div
-    class="util-ra{{ $fullPage ? ' util-ra--fullpage' : '' }}"
+    class="util-ra{{ $fullPage ? ' util-ra--fullpage util-ra--chrome-v2' : '' }}"
     data-room-area
-    @if ($fullPage) data-ra-fullpage="1" @endif
+    @if ($fullPage) data-ra-fullpage="1" data-ra-chrome="1" @endif
+    data-ra-guide-url="{{ $guideUrl }}"
     @if ($initialRoomId) data-ra-initial-room-id="{{ $initialRoomId }}" @endif
     @if ($lockClientProjectId) data-ra-lock-client-project="{{ $lockClientProjectId }}" @endif
     data-projects="{{ json_encode($projectsJson) }}"
@@ -53,6 +60,10 @@
               placeholder="Room name">
             <p class="util-ra-full-header__sub" data-ra-full-sub>{{ $clientProject->name ?? '' }}</p>
           </div>
+          <a href="{{ $guideUrl }}" class="admin-btn admin-btn--ghost util-ra-full-header__help" data-ra-help-guide aria-label="Open Room Area guide">
+            <i class="fa fa-question-circle" aria-hidden="true"></i>
+            <span class="util-ra-full-header__help-label">Guide</span>
+          </a>
           <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__cancel" data-ra-cancel-edit hidden aria-label="Cancel edit">
             <i class="fa fa-times" aria-hidden="true"></i>
             <span class="util-ra-full-header__cancel-label">Cancel</span>
@@ -63,33 +74,83 @@
           </button>
         </div>
         <div class="util-ra-full-header__row util-ra-full-header__row--tools">
-          <div class="util-ra-full-header__draw">
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-undo-vertex disabled aria-label="Undo">
-              <i class="fa fa-undo" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-redo disabled aria-label="Redo">
-              <i class="fa fa-repeat" aria-hidden="true"></i>
-            </button>
+          <div class="util-ra-tool-group util-ra-tool-group--view">
+            <div class="util-ra-tool-group__head">
+              <span class="util-ra-tool-group__label">View</span>
+              @include('admin.utilities._room_area_help_pop', [
+                'tipId' => 'view',
+                'label' => 'About view tools',
+                'text' => 'Undo and redo last edits. Zoom with +/−, Fit to see the whole room, Panel to show Measure, Math, Photos, and Rooms.',
+              ])
+            </div>
+            <div class="util-ra-tool-group__actions util-ra-full-header__view-actions">
+              <span class="util-ra-tip" data-tooltip="Undo">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-undo-vertex disabled aria-label="Undo">
+                  <i class="fa fa-undo" aria-hidden="true"></i>
+                </button>
+              </span>
+              <span class="util-ra-tip" data-tooltip="Redo">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-redo disabled aria-label="Redo">
+                  <i class="fa fa-repeat" aria-hidden="true"></i>
+                </button>
+              </span>
+              <div class="util-ra-zoom-controls util-ra-full-header__zoom">
+                <span class="util-ra-tip" data-tooltip="Zoom out">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-out aria-label="Zoom out">
+                    <i class="fa fa-minus" aria-hidden="true"></i>
+                  </button>
+                </span>
+                <span class="util-ra-zoom-label" data-ra-zoom-label>100%</span>
+                <span class="util-ra-tip" data-tooltip="Zoom in">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-in aria-label="Zoom in">
+                    <i class="fa fa-plus" aria-hidden="true"></i>
+                  </button>
+                </span>
+                <span class="util-ra-tip" data-tooltip="Reset zoom to 100%">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-100 aria-label="Reset zoom to 100%">
+                    <i class="fa fa-search" aria-hidden="true"></i>
+                  </button>
+                </span>
+              </div>
+              <span class="util-ra-tip" data-tooltip="Fit the whole drawing in view">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__fit" data-ra-zoom-reset aria-label="Fit drawing in view">
+                  Fit
+                </button>
+              </span>
+              <span class="util-ra-tip" data-tooltip="Show or hide Measure, Math, Photos, Rooms">
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__panel" data-ra-side-toggle aria-expanded="true" aria-controls="ra-side-panel">
+                  <i class="fa fa-sliders" aria-hidden="true"></i>
+                  <span class="util-ra-full-header__panel-label">Panel</span>
+                </button>
+              </span>
+              <div class="util-ra-shortcuts" data-ra-shortcuts>
+                <span class="util-ra-tip util-ra-tip--end" data-tooltip="Keyboard shortcuts">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-shortcuts-toggle aria-label="Keyboard shortcuts" aria-expanded="false" aria-controls="ra-shortcuts-popover">
+                    <i class="fa fa-keyboard-o" aria-hidden="true"></i>
+                  </button>
+                </span>
+                <div class="util-ra-shortcuts__popover" id="ra-shortcuts-popover" data-ra-shortcuts-popover hidden role="dialog" aria-label="Keyboard shortcuts">
+                  <p class="util-ra-shortcuts__title">Keyboard shortcuts</p>
+                  <dl class="util-ra-shortcuts__list">
+                    <div class="util-ra-shortcuts__row"><dt>Delete / Backspace</dt><dd>Delete selected</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>Ctrl/Cmd+Z</dt><dd>Undo</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>Ctrl/Cmd+Shift+Z, Y</dt><dd>Redo</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>Esc</dt><dd>Cancel draw / deselect</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>Arrow keys</dt><dd>Nudge selected</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>Shift + arrows</dt><dd>Nudge farther</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>+ / −</dt><dd>Zoom in / out</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>0</dt><dd>Fit to room</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>Space + drag</dt><dd>Pan</dd></div>
+                    <div class="util-ra-shortcuts__row"><dt>Scroll / pinch</dt><dd>Zoom toward cursor</dd></div>
+                  </dl>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="util-ra-zoom-controls util-ra-full-header__zoom">
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-out aria-label="Zoom out">
-              <i class="fa fa-minus" aria-hidden="true"></i>
-            </button>
-            <span class="util-ra-zoom-label" data-ra-zoom-label>100%</span>
-            <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-in aria-label="Zoom in">
-              <i class="fa fa-plus" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost" data-ra-zoom-100 aria-label="Reset zoom to 100%">
-              100%
-            </button>
-            <button type="button" class="admin-btn admin-btn--ghost" data-ra-zoom-reset aria-label="Fit drawing in view">
-              Fit
-            </button>
-          </div>
-          <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__panel" data-ra-side-toggle aria-expanded="true" aria-controls="ra-side-panel">
-            <i class="fa fa-sliders" aria-hidden="true"></i>
-            <span class="util-ra-full-header__panel-label">Panel</span>
-          </button>
+        </div>
+        <div class="util-ra-first-tip" data-ra-first-tip hidden>
+          <p class="util-ra-first-tip__text">New here? Open the <a href="{{ $guideUrl }}">Room Area guide</a> for a short on-site walkthrough.</p>
+          <button type="button" class="admin-btn admin-btn--primary util-ra-first-tip__dismiss" data-ra-first-tip-dismiss>Got it</button>
         </div>
       </header>
     @endif
@@ -158,7 +219,8 @@
     <div class="util-ra-workspace" data-ra-workspace hidden>
       <div class="util-ra-stage">
       <div class="util-ra-stage__main">
-      {{-- Compact setup + save row --}}
+      {{-- Compact setup + save row (non-fullpage only; full-page uses header + tool row) --}}
+      @unless ($fullPage)
       <section class="admin-card util-ra-controls">
         <div class="util-ra-controls__bar">
           <div class="util-ra-tool-group">
@@ -226,6 +288,7 @@
         </div>
         <p class="util-ra-scale-status" data-ra-scale-status>Scale not set — calibrate before saving rooms.</p>
       </section>
+      @endunless
 
       {{-- Full-width drawing area --}}
       <section class="admin-card util-ra-canvas-card">
@@ -235,8 +298,10 @@
         </p>
         <div class="util-ra-canvas-toolbar">
           <div class="util-ra-toolbar__groups">
-            <div class="util-ra-tool-group">
-              <span class="util-ra-tool-group__label">Draw</span>
+            <div class="util-ra-tool-group util-ra-tool-group--draw">
+              <div class="util-ra-tool-group__head">
+                <span class="util-ra-tool-group__label">{{ $fullPage ? 'Draw / Edit' : 'Draw' }}</span>
+              </div>
               <div class="util-ra-tool-group__actions">
                 @unless($fullPage)
                 <span class="util-ra-tip" data-tooltip="Undo">
@@ -255,9 +320,50 @@
                     <i class="fa fa-check-circle" aria-hidden="true"></i>
                   </button>
                 </span>
+                @if ($fullPage)
+                <div class="util-ra-areas-main">
+                  <div class="util-ra-btn-cluster" role="group" aria-label="Add area options">
+                    <span class="util-ra-tip" data-tooltip="Add area to this group">
+                      <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-add-area disabled aria-label="Add area to this group">
+                        <i class="fa fa-plus-square" aria-hidden="true"></i>
+                      </button>
+                    </span>
+                    <span class="util-ra-tip" data-tooltip="Start a new color group">
+                      <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-add-area-new-group disabled aria-label="Start a new color group" title="Start a new color group">
+                        <i class="fa fa-paint-brush" aria-hidden="true"></i>
+                      </button>
+                    </span>
+                  </div>
+                  <span class="util-ra-tip" data-tooltip="Delete active area">
+                    <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-btn--danger-ghost" data-ra-delete-area disabled aria-label="Delete active area">
+                      <i class="fa fa-minus-circle" aria-hidden="true"></i>
+                    </button>
+                  </span>
+                  <div class="admin-form-group util-ra-area-name" data-ra-area-name-wrap hidden>
+                    <label for="ra-area-name" class="util-sr-only">Area name (optional)</label>
+                    <input class="admin-input" type="text" id="ra-area-name" maxlength="80" placeholder="Area name" autocomplete="off" data-ra-area-name>
+                  </div>
+                </div>
+                <span class="util-ra-group-chip" data-ra-group-chip hidden>
+                  <span class="util-ra-group-chip__swatch" data-ra-group-chip-swatch></span>
+                  <span class="util-ra-group-chip__label">Group</span>
+                  <strong data-ra-group-chip-total>—</strong>
+                </span>
+                <span class="util-ra-tip" data-tooltip="Measure distance">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-ruler-toggle aria-label="Measure distance">
+                    <i class="fa fa-arrows-alt" aria-hidden="true"></i>
+                  </button>
+                </span>
+                <span class="util-ra-tip" data-tooltip="Clear all areas">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-clear-shape aria-label="Clear all areas">
+                    <i class="fa fa-eraser" aria-hidden="true"></i>
+                  </button>
+                </span>
+                @endif
               </div>
             </div>
 
+            @unless ($fullPage)
             <div class="util-ra-tool-group util-ra-tool-group--areas">
               <span class="util-ra-tool-group__label">Areas</span>
               <div class="util-ra-tool-group__actions">
@@ -300,12 +406,6 @@
                     <i class="fa fa-arrows-alt" aria-hidden="true"></i>
                   </button>
                 </span>
-                <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-icon-toggle util-ra-tip" data-tooltip="Show or hide dimensions">
-                  <input type="checkbox" class="util-sr-only" data-ra-dimensions-toggle checked>
-                  <i class="fa fa-text-width util-ra-icon-toggle__on" aria-hidden="true"></i>
-                  <i class="fa fa-eye-slash util-ra-icon-toggle__off" aria-hidden="true"></i>
-                  <span class="util-sr-only">Show or hide dimensions</span>
-                </label>
                 <span class="util-ra-tip" data-tooltip="Clear all areas">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-clear-shape aria-label="Clear all areas">
                     <i class="fa fa-eraser" aria-hidden="true"></i>
@@ -313,6 +413,55 @@
                 </span>
               </div>
             </div>
+            @endunless
+
+            @if ($fullPage)
+            <div class="util-ra-tool-group util-ra-tool-group--measure">
+              <div class="util-ra-tool-group__head">
+                <span class="util-ra-tool-group__label">Measure / Units</span>
+                @include('admin.utilities._room_area_help_pop', [
+                  'tipId' => 'measure',
+                  'label' => 'About scale and units',
+                  'text' => 'Tap calibrate, click two ends of a known wall, then type that length. Or skip the photo and type walls in the Measure panel. Units change how lengths are shown.',
+                ])
+              </div>
+              <div class="util-ra-tool-group__actions">
+                <span class="util-ra-tip" data-tooltip="Calibrate scale from a known wall">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-calibrate-toggle aria-label="Calibrate scale from a known wall">
+                    <i class="fa fa-arrows-h" aria-hidden="true"></i>
+                  </button>
+                </span>
+                <div class="admin-form-group util-ra-scale-input">
+                  <label for="ra-known-length" class="util-sr-only">Known length</label>
+                  <input class="admin-input" type="text" id="ra-known-length" inputmode="decimal" placeholder="e.g. 12.5 ft" data-ra-known-length disabled>
+                </div>
+                <span class="util-ra-tip" data-tooltip="Apply known length">
+                  <button type="button" class="admin-btn admin-btn--primary util-ra-icon-btn" data-ra-apply-scale disabled aria-label="Apply known length">
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                  </button>
+                </span>
+                <span class="util-ra-tip" data-tooltip="Upload floor plan">
+                  <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-file-label">
+                    <i class="fa fa-upload" aria-hidden="true"></i>
+                    <span class="util-sr-only">Upload floor plan</span>
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/avif,.avif" data-ra-bg-file hidden>
+                  </label>
+                </span>
+                <span class="util-ra-tip" data-tooltip="Delete floor plan image">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-btn--danger-ghost" data-ra-bg-remove hidden aria-label="Delete floor plan image">
+                    <i class="fa fa-trash" aria-hidden="true"></i>
+                  </button>
+                </span>
+                <select class="admin-input util-ra-measure-unit" data-ra-measure-unit aria-label="Measurement units">
+                  <option value="meter">Meter</option>
+                  <option value="inch">Inch</option>
+                  <option value="feet_decimal">Feet Decimal</option>
+                  <option value="feet_inch_frac" selected>Feet Inch Frac</option>
+                </select>
+                <span class="util-ra-scale-status" data-ra-scale-status>Scale not set</span>
+              </div>
+            </div>
+            @endif
 
             <div class="util-ra-tool-group util-ra-tool-group--plan">
               <span class="util-ra-tool-group__label">Plan</span>
@@ -335,8 +484,38 @@
                 </span>
               </div>
             </div>
+
+            <div class="util-ra-tool-group util-ra-tool-group--room-tools">
+              <div class="util-ra-tool-group__head">
+                <span class="util-ra-tool-group__label">Room tools</span>
+                @include('admin.utilities._room_area_help_pop', [
+                  'tipId' => 'room-tools',
+                  'label' => 'About room tools',
+                  'text' => 'Show or hide wall dimensions. Templates and lock layers are reserved for a later update.',
+                ])
+              </div>
+              <div class="util-ra-tool-group__actions">
+                <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-icon-toggle util-ra-tip" data-tooltip="Show or hide dimensions">
+                  <input type="checkbox" class="util-sr-only" data-ra-dimensions-toggle checked>
+                  <i class="fa fa-text-width util-ra-icon-toggle__on" aria-hidden="true"></i>
+                  <i class="fa fa-eye-slash util-ra-icon-toggle__off" aria-hidden="true"></i>
+                  <span class="util-sr-only">Show or hide dimensions</span>
+                </label>
+                <span class="util-ra-tip" data-tooltip="Coming soon">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-coming-soon="templates" disabled aria-label="Templates (coming soon)" title="Coming soon">
+                    <i class="fa fa-clone" aria-hidden="true"></i>
+                  </button>
+                </span>
+                <span class="util-ra-tip" data-tooltip="Coming soon">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-coming-soon="lock-layers" disabled aria-label="Lock layers (coming soon)" title="Coming soon">
+                    <i class="fa fa-lock" aria-hidden="true"></i>
+                  </button>
+                </span>
+              </div>
+            </div>
           </div>
 
+          @unless ($fullPage)
           <div class="util-ra-toolbar__view">
             <div class="util-ra-tool-group util-ra-tool-group--units">
               <span class="util-ra-tool-group__label">Units</span>
@@ -399,9 +578,18 @@
               </div>
             </div>
           </div>
+          @endunless
         </div>
 
         <div class="util-ra-object-dock">
+          <div class="util-ra-object-dock__head">
+            <span class="util-ra-tool-group__label">Objects / Walls</span>
+            @include('admin.utilities._room_area_help_pop', [
+              'tipId' => 'objects',
+              'label' => 'About objects and walls',
+              'text' => 'Objects: drop doors and windows on walls; stairs, cabinets, and fixtures on the floor. Walls: optional thickness. Quotes always use the inside.',
+            ])
+          </div>
           <section class="util-ra-palette" data-ra-palette aria-label="Object library">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-palette__toggle" data-ra-palette-toggle aria-expanded="false" aria-controls="ra-palette-body">
               <span>Objects</span>
