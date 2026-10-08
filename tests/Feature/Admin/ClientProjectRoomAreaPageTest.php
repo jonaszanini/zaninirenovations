@@ -204,6 +204,7 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('min-height: 45vh', $css);
         $this->assertStringContainsString('.admin-app:has(.util-ra--fullpage) .admin-sidebar', $css);
         $this->assertStringContainsString('.admin-app:has(.util-ra--fullpage) .admin-topbar', $css);
+        $this->assertStringContainsString('.util-ra--fullpage[data-ra-lock-client-project] .util-ra-project-bar', $css);
         $this->assertStringContainsString('.admin-app:has(.util-ra-guide) .admin-sidebar', $css);
         $this->assertStringContainsString('.util-ra-help-pop', $css);
         $this->assertStringContainsString('.util-ra-first-tip', $css);

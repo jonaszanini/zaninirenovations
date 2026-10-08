@@ -5164,9 +5164,50 @@ body:has(.util-ra--fullpage) {
   display: none;
 }
 
-.util-ra--fullpage .util-ra-project-bar,
-.util-ra--fullpage .util-ra-empty {
+/* Client-project entry locks to one job and auto-opens a layout. */
+.util-ra--fullpage[data-ra-lock-client-project] .util-ra-project-bar,
+.util-ra--fullpage[data-ra-lock-client-project] .util-ra-empty {
   display: none;
+}
+
+/* Standalone Utilities → Room Area still needs to pick / create layouts. */
+.util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-project-bar {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  border: 0;
+  border-bottom: 1px solid var(--admin-border);
+  border-radius: 0;
+  background: var(--admin-surface);
+  box-shadow: none;
+}
+
+.util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-project-bar__row {
+  gap: 0.5rem 0.75rem;
+}
+
+.util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-project-bar .admin-form-group label,
+.util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-link-edit__label-row {
+  margin-bottom: 0.2rem;
+}
+
+.util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-new-project {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+}
+
+.util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-empty {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--admin-bg);
 }
 
 .util-ra--fullpage .util-ra-project-bar + .util-ra-empty,

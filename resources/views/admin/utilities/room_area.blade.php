@@ -7,20 +7,13 @@
 @endpush
 
 @section('content')
-  <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Draw room outlines on a grid, calibrate scale from a known wall length, and compute square footage.
-      Save rooms under a project and optionally link it to a client job.
-    </p>
-    <a href="{{ route('admin.utilities.index') }}" class="admin-btn admin-btn--ghost">
-      <i class="fa fa-arrow-left"></i> All utilities
-    </a>
-  </div>
-
   @include('admin.utilities._room_area_tool', [
     'projectsJson' => $projectsJson,
     'clientProjects' => $clientProjects,
-    'fullPage' => false,
+    'fullPage' => true,
+    'pageTitle' => 'Room Area',
+    'backUrl' => route('admin.utilities.index'),
+    'backLabel' => 'All utilities',
   ])
 @endsection
 

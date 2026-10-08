@@ -9911,19 +9911,23 @@
       try { return new URLSearchParams(window.location.search).get('ra_project'); } catch (e) { return null; }
     })();
     var initialRoom = parseInt(root.getAttribute('data-ra-initial-room-id') || '', 10);
-    if (isFullPage() && state.projects.length) {
+    var lockedClient = root.hasAttribute('data-ra-lock-client-project');
+    if (state.projects.length) {
       var chosen = null;
       if (initialRoom) {
         chosen = state.projects.find(function (p) {
           return (p.rooms || []).some(function (r) { return r.id === initialRoom; });
-        });
+        }) || null;
       }
-      state.activeProjectId = (chosen || state.projects[0]).id;
-      refreshProjectSelect();
-    } else if (raProject) {
-      var raId = parseInt(raProject, 10);
-      if (state.projects.some(function (p) { return p.id === raId; })) {
-        state.activeProjectId = raId;
+      if (!chosen && raProject) {
+        var raId = parseInt(raProject, 10);
+        chosen = state.projects.find(function (p) { return p.id === raId; }) || null;
+      }
+      if (chosen) {
+        state.activeProjectId = chosen.id;
+        refreshProjectSelect();
+      } else if (isFullPage() && lockedClient) {
+        state.activeProjectId = state.projects[0].id;
         refreshProjectSelect();
       }
     }
