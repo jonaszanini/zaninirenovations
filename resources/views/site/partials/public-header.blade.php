@@ -6,7 +6,12 @@
   $isWarranty = request()->routeIs('warranty');
   $isPortfolio = request()->routeIs('portfolio.*');
   $isServiceAreas = request()->routeIs('service-areas.*');
-  $stickyHeader = ! request()->routeIs('blog.*') && ! $isServiceAreas;
+  $isServices = request()->routeIs('services.*');
+  $isAbout = request()->routeIs('about');
+  $isReviews = request()->routeIs('reviews');
+  $isContact = request()->routeIs('contact');
+  $stickyHeader = ! request()->routeIs('blog.*') && ! $isServiceAreas && ! $isServices && ! $isAbout && ! $isReviews && ! $isContact;
+  $servicePages = \App\Support\PublicServices::publishedPages();
 @endphp
 
 @if (request()->routeIs('blog.*'))
@@ -33,11 +38,11 @@
           <div class="col-lg-6 col-md-6 col-sm-6 text-right">
 
             <div class="top-bar-link">
-              <a href="{{ $home }}#testimonials" class="nav_menu">Reviews</a>
+              <a href="{{ route('reviews') }}" class="nav_menu">Reviews</a>
               <span class="separator-line"></span>
               <a href="{{ route('warranty') }}"@if ($isWarranty) class="text-primary-color"@endif>Warranty</a>
               <span class="separator-line"></span>
-              <a href="{{ $home }}#contact" class="nav_menu">Contact</a>
+              <a href="{{ route('contact') }}" class="nav_menu">Contact</a>
             </div>
 
           </div>
@@ -97,7 +102,7 @@
               </div>
 
               <div class="col-md-4 col-sm-4 clearfix">
-                <a class="btn btn-theme btn-square btn-header-cta margin-top-36 pull-right nav_menu" href="{{ $home }}#contact-location" title="GET FREE ESTIMATE">FREE ESTIMATE</a>
+                <a class="btn btn-theme btn-square btn-header-cta margin-top-36 pull-right" href="{{ route('contact') }}" title="GET FREE ESTIMATE">FREE ESTIMATE</a>
               </div>
 
             </div>
@@ -112,25 +117,33 @@
         <div class="navbar-collapse collapse pull-left" id="main-nav-collapse">
           <ul class="nav navbar-nav">
             <li>
-              <a href="{{ $home }}#home" class="nav_menu @if (! $isWarranty) link-active @endif" title="Home">Home</a>
+              <a href="{{ $home }}#home" class="nav_menu @if (! $isWarranty && ! $isPortfolio && ! $isServiceAreas && ! $isServices && ! $isAbout && ! $isReviews && ! $isContact && ! request()->routeIs('blog.*')) link-active @endif" title="Home">Home</a>
             </li>
-            <li>
-              <a href="{{ $home }}#services" class="nav_menu" title="Services">Services</a>
+            <li class="dropdown @if ($isServices) active @endif">
+              <a href="{{ route('services.index') }}" class="dropdown-toggle nav_menu @if ($isServices) link-active @endif" data-toggle="dropdown" title="Services" aria-haspopup="true" aria-expanded="false">
+                Services <span class="caret"></span>
+              </a>
+              <ul class="dropdown-menu">
+                <li><a href="{{ route('services.index') }}">All services</a></li>
+                @foreach ($servicePages as $service)
+                  <li><a href="{{ url('/services/'.$service['slug']) }}">{{ $service['nav_label'] ?? $service['hub_label'] }}</a></li>
+                @endforeach
+              </ul>
             </li>
             <li>
               <a href="{{ route('portfolio.index') }}" class="nav_menu @if ($isPortfolio) link-active @endif" title="Latest projects">Projects</a>
             </li>
             <li>
-              <a href="{{ $home }}#about" class="nav_menu" title="About us">About</a>
+              <a href="{{ route('about') }}" class="nav_menu @if ($isAbout) link-active @endif" title="About us">About</a>
             </li>
             <li>
               <a href="{{ route('blog.index') }}" class="nav_menu @if (request()->routeIs('blog.*')) link-active @endif" title="Blog">Blog</a>
             </li>
             <li>
-              <a href="{{ $home }}#testimonials" class="nav_menu" title="Testimonials">Testimonials</a>
+              <a href="{{ route('reviews') }}" class="nav_menu @if ($isReviews) link-active @endif" title="Testimonials">Testimonials</a>
             </li>
             <li>
-              <a href="{{ $home }}#contact" class="nav_menu" title="Contact">Contact</a>
+              <a href="{{ route('contact') }}" class="nav_menu @if ($isContact) link-active @endif" title="Contact">Contact</a>
             </li>
           </ul>
         </div>

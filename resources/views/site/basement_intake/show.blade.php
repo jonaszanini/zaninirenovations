@@ -87,7 +87,7 @@
 
               <section class="bi-card">
                 <h2 class="bi-card__title">Electrical</h2>
-                <p class="bi-card__lead">These answers go to a licensed electrician. Zanini does not price this work from this form.</p>
+                <p class="bi-card__lead">These answers go to a qualified, certified electrician. Zanini does not price this work from this form.</p>
                 <div class="bi-grid bi-grid--2">
                   <div class="bi-field">
                     <label for="outlet_qty">New outlets</label>
@@ -128,7 +128,7 @@
 
               <section class="bi-card">
                 <h2 class="bi-card__title">Plumbing extras</h2>
-                <p class="bi-card__lead">These answers go to a licensed plumber. Zanini does not price this work from this form.</p>
+                <p class="bi-card__lead">These answers go to a qualified, certified plumber. Zanini does not price this work from this form.</p>
                 @include('site.basement_intake._yesno', ['name' => 'bath_rough_in', 'label' => 'Bathroom drain, vent, and water lines (rough-in)?', 'form' => $form])
                 @include('site.basement_intake._yesno', ['name' => 'sink_laundry', 'label' => 'Laundry / sink hookup?', 'form' => $form])
                 @include('site.basement_intake._yesno', ['name' => 'wet_bar', 'label' => 'Wet bar?', 'form' => $form])
@@ -193,7 +193,7 @@
               <section class="bi-card">
                 <h2 class="bi-card__title">Bathroom</h2>
                 @if ($isBathroomOnly)
-                  <p class="bi-card__lead">Rough-in answers go to a licensed plumber. Zanini does not price that work from this form.</p>
+                  <p class="bi-card__lead">Rough-in answers go to a qualified, certified plumber. Zanini does not price that work from this form.</p>
                   @include('site.basement_intake._yesno', ['name' => 'bath_rough_in', 'label' => 'New drain, vent, and water lines (rough-in)?', 'form' => $form])
                 @endif
                 <div class="bi-field">
@@ -252,7 +252,7 @@
                   @include('site.basement_intake._supply', ['name' => 'tub_provide', 'label' => 'Who supplies the tub?', 'form' => $form, 'reveal' => 'include_tub=1'])
                 </div>
                 @include('site.basement_intake._yesno', ['name' => 'include_exhaust_fan', 'label' => 'Bathroom exhaust fan?', 'form' => $form])
-                <p class="bi-card__lead">Bathroom lights go to a licensed electrician. Zanini does not price that work from this form.</p>
+                <p class="bi-card__lead">Bathroom lights go to a qualified, certified electrician. Zanini does not price that work from this form.</p>
                 @include('site.basement_intake._yesno', ['name' => 'include_bath_fixture', 'label' => 'Bathroom light fixture?', 'form' => $form])
                 <div class="bi-field" data-bi-reveal="include_bath_fixture=1" hidden>
                   <label for="bath_fixture_qty">How many bathroom light fixtures</label>

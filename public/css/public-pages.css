@@ -1,0 +1,379 @@
+/* SEO batch 3 public pages — mobile-first, compact, no sticky chrome. */
+
+.pp-page {
+  --pp-bg: #f4f6f8;
+  --pp-surface: #ffffff;
+  --pp-text: #333333;
+  --pp-heading: #024768;
+  --pp-muted: #5a6570;
+  --pp-border: #d5dde3;
+  --pp-link: #024768;
+  --pp-quote: #edf3f6;
+  background: var(--pp-bg);
+  color: var(--pp-text);
+  padding: 0 0 1.5rem;
+}
+
+.pp-page a {
+  color: var(--pp-link);
+}
+
+.pp-page h1,
+.pp-page h2,
+.pp-page h3 {
+  color: var(--pp-heading);
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.pp-page h1 {
+  font-size: 1.55rem;
+  line-height: 1.25;
+  margin-bottom: 0.65rem;
+}
+
+.pp-page h2 {
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+.pp-page h3 {
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.pp-page p,
+.pp-page li {
+  margin: 0 0 0.75rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.pp-page ul,
+.pp-page ol {
+  margin: 0 0 0.85rem;
+  padding-left: 1.2rem;
+}
+
+.pp-wrap {
+  max-width: 52rem;
+}
+
+.pp-hero,
+.pp-section,
+.pp-cta-bottom {
+  padding: 0.7rem 0;
+}
+
+.pp-hero {
+  background: var(--pp-surface);
+  border-bottom: 1px solid var(--pp-border);
+}
+
+.pp-hero__media {
+  margin: 0.75rem 0 0;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--pp-border);
+}
+
+.pp-hero__media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 18rem;
+  object-fit: cover;
+}
+
+.pp-cta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+}
+
+.pp-page .pp-btn,
+.pp-page .sa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.55rem 1rem;
+  margin: 0;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.95rem;
+  background: #024768;
+  color: #ffffff;
+  border: 2px solid #024768;
+  text-decoration: none;
+}
+
+.pp-page .pp-btn:hover,
+.pp-page .pp-btn:focus,
+.pp-page .sa-btn:hover,
+.pp-page .sa-btn:focus {
+  background: #01344c;
+  border-color: #01344c;
+  color: #ffffff;
+}
+
+.pp-page .pp-btn--ghost,
+.pp-page .sa-btn--ghost {
+  background: transparent;
+  color: #024768;
+  border-color: #024768;
+}
+
+.pp-page .pp-btn--ghost:hover,
+.pp-page .pp-btn--ghost:focus,
+.pp-page .sa-btn--ghost:hover,
+.pp-page .sa-btn--ghost:focus {
+  background: #024768;
+  color: #ffffff;
+}
+
+.pp-prose p + h2,
+.pp-prose ul + h2,
+.pp-prose ol + h2 {
+  margin-top: 1.1rem;
+}
+
+.pp-prose strong {
+  color: var(--pp-heading);
+}
+
+.pp-projects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-projects li {
+  margin: 0 0 0.45rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--pp-surface);
+  border: 1px solid var(--pp-border);
+  border-radius: 4px;
+}
+
+.pp-quote {
+  margin: 0 0 0.85rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--pp-quote);
+  border-left: 4px solid var(--pp-heading);
+  border-radius: 0 4px 4px 0;
+}
+
+.pp-quote p {
+  margin: 0 0 0.4rem;
+}
+
+.pp-quote footer {
+  color: var(--pp-muted);
+  font-size: 0.9rem;
+}
+
+.pp-tag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--pp-border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--pp-muted);
+}
+
+.pp-links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-links li {
+  margin: 0;
+}
+
+.pp-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.pp-map {
+  margin: 0.6rem 0 0;
+  border: 1px solid var(--pp-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--pp-surface);
+}
+
+.pp-map iframe {
+  display: block;
+  width: 100%;
+  height: 220px;
+  border: 0;
+}
+
+.pp-form {
+  background: var(--pp-surface);
+  border: 1px solid var(--pp-border);
+  border-radius: 4px;
+  padding: 0.85rem;
+}
+
+.pp-form .form-group {
+  margin-bottom: 0.7rem;
+}
+
+.pp-form .form-control {
+  min-height: 44px;
+  width: 100%;
+}
+
+.pp-form textarea.form-control {
+  min-height: 8rem;
+}
+
+.pp-hub-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-hub-card {
+  display: block;
+  background: var(--pp-surface);
+  border: 1px solid var(--pp-border);
+  border-radius: 4px;
+  padding: 0.75rem 0.85rem;
+  color: inherit;
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.pp-hub-card h2 {
+  margin-bottom: 0.3rem;
+}
+
+.pp-hub-card p {
+  margin: 0;
+  color: var(--pp-muted);
+}
+
+.pp-page .sa-faq__item {
+  background: var(--pp-surface);
+  border: 1px solid var(--pp-border);
+  border-radius: 4px;
+  margin: 0 0 0.45rem;
+  padding: 0;
+}
+
+.pp-page .sa-faq__item summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.7rem 0.85rem;
+  min-height: 44px;
+  font-weight: 700;
+  color: var(--pp-heading);
+}
+
+.pp-page .sa-faq__item summary::-webkit-details-marker {
+  display: none;
+}
+
+.pp-page .sa-faq__item[open] summary {
+  border-bottom: 1px solid var(--pp-border);
+}
+
+.pp-page .sa-faq__item p {
+  padding: 0.7rem 0.85rem 0.85rem;
+  margin: 0;
+}
+
+.pp-photo {
+  margin: 0.75rem 0 1rem;
+  border: 1px solid var(--pp-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pp-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pp-quote-block {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--pp-quote);
+  border-left: 4px solid var(--pp-heading);
+}
+
+@media (min-width: 768px) {
+  .pp-page h1 {
+    font-size: 1.75rem;
+  }
+
+  .pp-cta-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .pp-hub-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pp-hero__media img {
+    max-height: 22rem;
+  }
+
+  .pp-map iframe {
+    height: 280px;
+  }
+
+  .pp-hero,
+  .pp-section,
+  .pp-cta-bottom {
+    padding: 0.85rem 0;
+  }
+}
+
+@media (min-width: 900px) {
+  .pp-hub-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .pp-wrap {
+    max-width: 56rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .pp-page {
+    --pp-bg: #121820;
+    --pp-surface: #1b2530;
+    --pp-text: #e6eef4;
+    --pp-heading: #9ad0e8;
+    --pp-muted: #b7c3cd;
+    --pp-border: #334155;
+    --pp-link: #8ec5dc;
+    --pp-quote: #1a2833;
+  }
+
+  .pp-page .pp-btn--ghost,
+  .pp-page .sa-btn--ghost {
+    color: #9ad0e8;
+    border-color: #9ad0e8;
+  }
+}

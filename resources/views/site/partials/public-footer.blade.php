@@ -119,43 +119,47 @@
                 <ul class="footer-useful-links clearfix">
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Fencing
+                    <a href="{{ url('/services/fences-gates') }}">Fencing</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Decks
+                    <a href="{{ url('/services/decks') }}">Decks</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Basement Reno
+                    <a href="{{ url('/services/basement-finishing') }}">Basement Reno</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Kitchen Remodel
+                    <a href="{{ url('/services/kitchen-remodel') }}">Kitchen Remodel</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Trim &amp; Moulding
+                    <a href="{{ url('/services/finish-carpentry-trim') }}">Trim &amp; Moulding</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Shelving
+                    <a href="{{ url('/services/custom-built-ins-closets') }}">Shelving</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Flooring
+                    <a href="{{ url('/services/flooring-installation') }}">Flooring</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Tile
+                    <a href="{{ url('/services/flooring-installation') }}">Tile</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Accent Walls
+                    <a href="{{ url('/services/finish-carpentry-trim') }}">Accent Walls</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Stairs
+                    <a href="{{ url('/services/staircases') }}">Stairs</a>
+                  </li>
+                  <li>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    <a href="{{ url('/services/drywall') }}">Drywall</a>
                   </li>
                 </ul>
 

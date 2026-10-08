@@ -79,7 +79,7 @@
               If you have questions about our warranty or would like to see our certificate of insurance before starting your project, please contact us. We are committed to making sure you are 100% satisfied with the final result.
             </p>
             <p class="text-center margin-top-32 margin-bottom-0 warranty-cta-buttons">
-              <a href="{{ $home }}#contact-location" class="btn btn-theme btn-square nav_menu">Get in touch</a>
+              <a href="{{ url('/contact') }}" class="btn btn-theme btn-square">Get in touch</a>
             </p>
 
           </div>

@@ -67,6 +67,7 @@ return [
         'Hardwood flooring installation',
         'Drywall',
         'Wood staircase refinishing',
+        'Kitchen remodeling',
         'Ontario Building Code O.Reg. 332/12',
         'Part 9 housing and small buildings',
     ],
@@ -94,7 +95,7 @@ return [
     'home_faq' => [
         [
             'question' => 'What renovation and carpentry services does Zanini Renovations offer?',
-            'answer' => 'We offer residential carpentry and renovation services including decks and outdoor living, fencing, basement framing and finishing, interior trim and moulding, custom built-ins and shelving, hardwood flooring, drywall, accent walls and wainscoting, and wood staircase refinishing. Projects are completed by a fully insured contractor.',
+            'answer' => 'We offer residential carpentry and renovation services including decks and outdoor living, fencing, basement framing and finishing, interior trim and moulding, custom built-ins and shelving, hardwood flooring, drywall, accent walls and wainscoting, wood staircase refinishing, and kitchen remodels. Projects are completed by a fully insured contractor.',
         ],
         [
             'question' => 'What areas does Zanini Renovations serve?',

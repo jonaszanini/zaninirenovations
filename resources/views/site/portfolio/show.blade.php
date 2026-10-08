@@ -152,7 +152,7 @@
           </p>
         </div>
         <div class="col-lg-3 col-md-3 col-sm-12 col-xs-12 text-center">
-          <a class="btn btn-theme btn-square btn-theme-invert" href="{{ url('/#contact-location') }}">Contact us</a>
+          <a class="btn btn-theme btn-square btn-theme-invert" href="{{ url('/contact') }}">Contact us</a>
         </div>
       </div>
     </div>

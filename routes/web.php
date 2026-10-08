@@ -17,7 +17,9 @@ use App\Http\Controllers\Admin\StairsDatabaseController;
 use App\Http\Controllers\Admin\StairsQuotationController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\PortfolioController;
+use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\ServiceAreaController;
+use App\Http\Controllers\ServicePageController;
 use App\Models\BlogPost;
 use App\Models\Project;
 use Illuminate\Support\Facades\Route;
@@ -39,7 +41,15 @@ Route::view('/warranty', 'site.warranty')->name('warranty');
 Route::view('/privacy-policy', 'site.privacy-policy')->name('privacy-policy');
 Route::view('/terms-and-conditions', 'site.terms-and-conditions')->name('terms-and-conditions');
 
-Route::permanentRedirect('/services/custom-kitchen-remodel', '/');
+Route::permanentRedirect('/services/custom-kitchen-remodel', '/services/kitchen-remodel');
+
+Route::get('/about', [PublicSiteController::class, 'about'])->name('about');
+Route::get('/reviews', [PublicSiteController::class, 'reviews'])->name('reviews');
+Route::get('/contact', [PublicSiteController::class, 'contact'])->name('contact');
+Route::get('/services', [ServicePageController::class, 'index'])->name('services.index');
+Route::get('/services/{slug}', [ServicePageController::class, 'show'])
+    ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
+    ->name('services.show');
 
 Route::get('/sitemap.xml', function () {
     $urls = \App\Support\PublicSitemap::urls();
