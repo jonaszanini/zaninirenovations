@@ -1861,11 +1861,16 @@ a.nav-btn-highlight:hover {
   font-size: 24px;
   font-weight: 600;
   line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  hyphens: none;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 @media (max-width: 767px) {
   .section-core-services .service-block-2 h3 {
-    font-size: 20px;
+    font-size: 18px;
   }
 }
 
