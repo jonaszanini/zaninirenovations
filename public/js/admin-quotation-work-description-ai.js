@@ -334,7 +334,7 @@
   function collectMillworkContext(form) {
     var pieces = [];
     form.querySelectorAll('.mw-piece').forEach(function (el) {
-      var typeInput = el.querySelector('[data-mw-type-input]:checked');
+      var typeInput = el.querySelector('[data-mw-type-input]:checked') || el.querySelector('[data-mw-type-input]');
       var type = typeInput ? typeInput.value : (el.getAttribute('data-mw-type') || 'shelf');
       var qtyInput = el.querySelector('input[name*="[qty]"]');
       var unitSelect = el.querySelector('select[name*="[unit]"]');

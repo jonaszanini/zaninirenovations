@@ -126,7 +126,7 @@ class MillworkQuotation extends Model
         $scope = is_array($calc['scope'] ?? null) ? $calc['scope'] : [];
 
         $lines = [];
-        $lines[] = 'Custom millwork — cabinets, shelving, and sheet-good fabrication.';
+        $lines[] = 'Custom millwork — shop-built cabinets, closets, built-ins, and finish carpentry.';
         $summary = trim((string) ($scope['piece_summary'] ?? ''));
         if ($summary !== '') {
             $lines[] = $summary;
@@ -134,7 +134,12 @@ class MillworkQuotation extends Model
 
         $sheets = $this->sheetCount();
         if ($sheets > 0) {
-            $lines[] = 'Sheet goods: '.$sheets.' sheet'.($sheets === 1 ? '' : 's').' (see cut plan).';
+            $lines[] = 'Sheet goods: '.$sheets.' sheet'.($sheets === 1 ? '' : 's').' nested on a cut plan.';
+        }
+
+        $edgeLf = (float) ($calc['summary']['edge_band_lf'] ?? 0);
+        if ($edgeLf > 0) {
+            $lines[] = 'Edge banding: '.rtrim(rtrim(number_format($edgeLf, 1, '.', ''), '0'), '.').' lf.';
         }
 
         foreach ($calc['labor'] ?? [] as $row) {
@@ -142,12 +147,12 @@ class MillworkQuotation extends Model
                 continue;
             }
             $label = trim((string) ($row['label'] ?? ''));
-            if ($label !== '') {
+            if ($label !== '' && ($row['key'] ?? '') !== 'markup') {
                 $lines[] = '  • '.$label;
             }
         }
 
-        $finish = trim((string) ($inputs['finish'] ?? $scope['finish_label'] ?? ''));
+        $finish = trim((string) ($scope['finish_label'] ?? ''));
         if ($finish !== '') {
             $lines[] = 'Finish: '.$finish;
         }

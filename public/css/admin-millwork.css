@@ -15,6 +15,68 @@
   margin: 0;
   color: var(--admin-heading);
 }
+.mw-piece__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mw-piece__meta .mw-piece__name {
+  grid-column: 1 / -1;
+}
+.mw-input--qty,
+.mw-input--dim {
+  max-width: 7.5rem;
+}
+.mw-piece__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin-top: 8px;
+}
+.mw-client-card {
+  padding: 12px 16px;
+}
+.mw-client-card .admin-form-group {
+  margin-bottom: 0;
+}
+.mw-totals-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 18;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 8px 12px;
+  min-height: 44px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+}
+.mw-totals-bar span {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.mw-totals-bar em {
+  font-style: normal;
+  color: var(--admin-muted);
+  font-weight: 600;
+}
+.mw-totals-bar__total {
+  font-size: 15px;
+  color: var(--admin-heading);
+}
+.mw-totals-bar__total strong {
+  color: var(--admin-primary);
+}
 .mw-set-row {
   padding: 10px 0;
   border-top: 1px solid var(--admin-border);
@@ -183,7 +245,12 @@
 .mw-piece[data-mw-type="kallax"] [data-mw-show~="kallax"],
 .mw-piece[data-mw-type="cabinet"] [data-mw-show~="cabinet"],
 .mw-piece[data-mw-type="cabinet_door"] [data-mw-show~="cabinet_door"],
+.mw-piece[data-mw-type="vanity"] [data-mw-show~="vanity"],
+.mw-piece[data-mw-type="closet"] [data-mw-show~="closet"],
 .mw-piece[data-mw-type="bench"] [data-mw-show~="bench"],
+.mw-piece[data-mw-type="wainscoting"] [data-mw-show~="wainscoting"],
+.mw-piece[data-mw-type="mantel"] [data-mw-show~="mantel"],
+.mw-piece[data-mw-type="trim"] [data-mw-show~="trim"],
 .mw-piece[data-mw-type="bench"][data-mw-below="divisions"] [data-mw-show~="bench-divisions"],
 .mw-piece[data-mw-type="bench"][data-mw-below="drawers"] [data-mw-show~="bench-drawers"] {
   display: block;
@@ -193,7 +260,12 @@
 .mw-piece[data-mw-type="kallax"] .admin-form-grid-2[data-mw-show~="kallax"],
 .mw-piece[data-mw-type="cabinet"] .admin-form-grid-2[data-mw-show~="cabinet"],
 .mw-piece[data-mw-type="cabinet_door"] .admin-form-grid-2[data-mw-show~="cabinet_door"],
-.mw-piece[data-mw-type="bench"] .admin-form-grid-2[data-mw-show~="bench"] {
+.mw-piece[data-mw-type="vanity"] .admin-form-grid-2[data-mw-show~="vanity"],
+.mw-piece[data-mw-type="closet"] .admin-form-grid-2[data-mw-show~="closet"],
+.mw-piece[data-mw-type="bench"] .admin-form-grid-2[data-mw-show~="bench"],
+.mw-piece[data-mw-type="wainscoting"] .admin-form-grid-2[data-mw-show~="wainscoting"],
+.mw-piece[data-mw-type="mantel"] .admin-form-grid-2[data-mw-show~="mantel"],
+.mw-piece[data-mw-type="trim"] .admin-form-grid-2[data-mw-show~="trim"] {
   display: grid;
 }
 
@@ -339,5 +411,16 @@
   .mw-piece__head .admin-btn,
   .mw-cut-plan-head .admin-btn {
     min-height: 44px;
+  }
+  .mw-input--qty,
+  .mw-input--dim {
+    max-width: none;
+  }
+  .mw-totals-bar {
+    gap: 6px 10px;
+    padding: 8px;
+  }
+  .mw-totals-bar span {
+    font-size: 12px;
   }
 }

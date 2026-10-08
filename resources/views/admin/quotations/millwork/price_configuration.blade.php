@@ -112,7 +112,7 @@
                   <th class="mw-col-thickness">Thickness (in)</th>
                   <th class="mw-col-coverage-lf">Coverage (LF)</th>
                   <th></th>
-                @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS], true))
+                @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS, MillworkSettings::SLOT_SHELF_PINS], true))
                   <th class="mw-col-pack">Qty / pack</th>
                   <th colspan="2"></th>
                 @else

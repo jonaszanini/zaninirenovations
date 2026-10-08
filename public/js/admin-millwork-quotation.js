@@ -197,17 +197,24 @@
         : 0;
       window.__quoteGrandTotal = liveGrand;
       document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: liveGrand } }));
-      if (!summary.grand_total || summary.grand_total <= 0) {
-        if (empty) empty.hidden = false;
-        if (body) body.hidden = true;
-        return;
-      }
-      if (empty) empty.hidden = true;
+      if (empty) empty.hidden = Number(summary.grand_total || 0) > 0;
       if (body) body.hidden = false;
       var laborPre = Number(summary.labor_pre_hst || 0) + lastAdditionalLaborPreTax;
       var laborHst = Number(summary.labor_hst != null ? summary.labor_hst : Number(summary.labor_pre_hst || 0) * 0.13) + lastAdditionalLaborHst;
       var matPre = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
       var matHst = Number(summary.materials_hst || 0) + lastAdditionalMaterialsHst;
+      var subtotal = laborPre + matPre;
+      var hst = laborHst + matHst;
+      var barMat = document.getElementById('mw-bar-mat');
+      var barLabor = document.getElementById('mw-bar-labor');
+      var barSub = document.getElementById('mw-bar-sub');
+      var barHst = document.getElementById('mw-bar-hst');
+      var barTotal = document.getElementById('mw-bar-total');
+      if (barMat) barMat.textContent = fmt(matPre);
+      if (barLabor) barLabor.textContent = fmt(laborPre);
+      if (barSub) barSub.textContent = fmt(subtotal);
+      if (barHst) barHst.textContent = fmt(hst);
+      if (barTotal) barTotal.textContent = fmt(Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount);
       var html = '';
       html += '<div class="pq-row"><span>Labor (pre-HST)</span><span>' + fmt(laborPre) + '</span></div>';
       html += '<div class="pq-row"><span>Labor HST</span><span>' + fmt(laborHst) + '</span></div>';
@@ -394,29 +401,56 @@
     }
     form.querySelectorAll('.mw-preview').forEach(bindPreview);
 
+    function pieceTypeOf(piece) {
+      var typeEl = piece.querySelector('[data-mw-type-input]');
+      if (!typeEl) return piece.getAttribute('data-mw-type') || 'shelf';
+      if (typeEl.type === 'radio') {
+        var checked = piece.querySelector('[data-mw-type-input]:checked');
+        return checked ? checked.value : 'shelf';
+      }
+      return typeEl.value || 'shelf';
+    }
+
     function syncPieceType(piece) {
-      var checked = piece.querySelector('[data-mw-type-input]:checked');
-      var type = checked ? checked.value : 'shelf';
+      var type = pieceTypeOf(piece);
       piece.setAttribute('data-mw-type', type);
       var below = piece.querySelector('select[name$="[below]"]');
       piece.setAttribute('data-mw-below', (below && below.value === 'drawers') ? 'drawers' : 'divisions');
+      syncUnitLabels(piece);
       syncHardwareCatalog();
       syncMaterialsCatalog();
     }
 
+    function syncUnitLabels(piece) {
+      var unitEl = piece.querySelector('[data-mw-unit]');
+      var label = unitEl && unitEl.value === 'ft' ? 'ft' : 'in';
+      piece.querySelectorAll('[data-mw-unit-label]').forEach(function (el) {
+        el.textContent = label;
+      });
+    }
+
     function pieceNeedsCabinetHardware(piece) {
       var type = piece.getAttribute('data-mw-type') || 'shelf';
-      if (type === 'cabinet' || type === 'cabinet_door') return true;
+      if (type === 'cabinet' || type === 'cabinet_door' || type === 'vanity' || type === 'closet') return true;
       return type === 'bench' && piece.getAttribute('data-mw-below') === 'drawers';
+    }
+
+    function pieceNeedsClosetHardware(piece) {
+      return (piece.getAttribute('data-mw-type') || '') === 'closet';
     }
 
     function syncHardwareCatalog() {
       var show = false;
+      var showCloset = false;
       form.querySelectorAll('#mw-piece-list [data-mw-piece]').forEach(function (piece) {
         if (pieceNeedsCabinetHardware(piece)) show = true;
+        if (pieceNeedsClosetHardware(piece)) showCloset = true;
       });
       form.querySelectorAll('[data-mw-hw="cabinet-family"]').forEach(function (el) {
         el.hidden = !show;
+      });
+      form.querySelectorAll('[data-mw-hw="closet-family"]').forEach(function (el) {
+        el.hidden = !showCloset;
       });
     }
 
@@ -427,10 +461,9 @@
       var hasStain = false;
 
       form.querySelectorAll('#mw-piece-list [data-mw-piece]').forEach(function (piece) {
-        var typeInput = piece.querySelector('[data-mw-type-input]:checked');
-        var type = typeInput ? typeInput.value : (piece.getAttribute('data-mw-type') || 'shelf');
+        var type = pieceTypeOf(piece);
 
-        var backSupports = ['floating_shelf', 'kallax', 'cabinet', 'bench'].indexOf(type) !== -1;
+        var backSupports = ['floating_shelf', 'kallax', 'cabinet', 'vanity', 'closet', 'bench', 'mantel'].indexOf(type) !== -1;
         var backCb = piece.querySelector('input[type="checkbox"][name$="[include_back]"]');
         if (backSupports && backCb && backCb.checked) {
           hasBack = true;
@@ -445,7 +478,7 @@
         var finishVal = finishSel ? finishSel.value : 'none';
         if (finishVal === 'paint') {
           hasPaint = true;
-        } else if (finishVal === 'stain') {
+        } else if (finishVal === 'stain' || finishVal === 'clear') {
           hasStain = true;
         }
       });
@@ -475,11 +508,58 @@
       });
     }
 
+    var CABINET_PRESETS = {
+      base: { height: '34.5', depth: '24', toe: true },
+      upper: { height: '30', depth: '12', toe: false },
+      tall: { height: '84', depth: '24', toe: true }
+    };
+
+    function fillIfEmpty(el, value) {
+      if (!el) return;
+      if (String(el.value || '').trim() === '') el.value = value;
+    }
+
+    function applyTypeDefaults(piece, type) {
+      if (type === 'cabinet') {
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '34.5');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '24');
+      } else if (type === 'vanity') {
+        fillIfEmpty(piece.querySelector('input[name$="[width]"]'), '36');
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '34.5');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '21');
+      } else if (type === 'closet') {
+        fillIfEmpty(piece.querySelector('input[name$="[width]"]'), '72');
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '84');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '14');
+      } else if (type === 'mantel') {
+        fillIfEmpty(piece.querySelector('input[name$="[length]"]'), '60');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '10');
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '8');
+      } else if (type === 'wainscoting') {
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '36');
+      } else if (type === 'bench') {
+        fillIfEmpty(piece.querySelector('input[name$="[height]"]'), '18');
+        fillIfEmpty(piece.querySelector('input[name$="[depth]"]'), '16');
+      }
+    }
+
+    function applyCabinetStyle(piece, style) {
+      var preset = CABINET_PRESETS[style];
+      if (!preset) return;
+      var h = piece.querySelector('input[name$="[height]"]');
+      var d = piece.querySelector('input[name$="[depth]"]');
+      var toe = piece.querySelector('input[type="checkbox"][name$="[include_toe_kick]"]');
+      if (h) h.value = preset.height;
+      if (d) d.value = preset.depth;
+      if (toe) toe.checked = !!preset.toe;
+    }
+
     function initPiece(piece) {
       if (!piece) return;
       piece.querySelectorAll('.mw-preview').forEach(bindPreview);
       piece.querySelectorAll('[data-mw-type-input]').forEach(function (inp) {
         inp.addEventListener('change', function () {
+          applyTypeDefaults(piece, pieceTypeOf(piece));
           syncPieceType(piece);
           schedulePreview();
         });
@@ -488,6 +568,17 @@
       if (below) {
         below.addEventListener('change', function () {
           syncPieceType(piece);
+          schedulePreview();
+        });
+      }
+      var unitEl = piece.querySelector('[data-mw-unit]');
+      if (unitEl) {
+        unitEl.addEventListener('change', function () { syncUnitLabels(piece); });
+      }
+      var styleEl = piece.querySelector('[data-mw-cabinet-style]');
+      if (styleEl) {
+        styleEl.addEventListener('change', function () {
+          applyCabinetStyle(piece, styleEl.value);
           schedulePreview();
         });
       }
@@ -500,6 +591,24 @@
           piece.remove();
           reindexPieces();
           syncHardwareCatalog();
+          schedulePreview();
+        });
+      }
+      var dup = piece.querySelector('[data-mw-duplicate-piece]');
+      if (dup) {
+        dup.addEventListener('click', function () {
+          var list = document.getElementById('mw-piece-list');
+          if (!list) return;
+          var clone = piece.cloneNode(true);
+          clone.querySelectorAll('[data-mw-bound]').forEach(function (el) {
+            delete el.dataset.mwBound;
+          });
+          clone.querySelectorAll('.mw-preview').forEach(function (el) {
+            delete el.dataset.mwBound;
+          });
+          list.insertBefore(clone, piece.nextSibling);
+          reindexPieces();
+          initPiece(clone);
           schedulePreview();
         });
       }
@@ -637,6 +746,13 @@
       var d = e.detail || {};
       lastCommuteAmount = d.included ? Number(d.amount || 0) : 0;
       if (lastPreviewData) renderPreview(lastPreviewData);
+    });
+
+    form.querySelectorAll('[data-mw-nav]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var href = btn.getAttribute('data-mw-nav');
+        if (href) window.location.href = href;
+      });
     });
 
     var printBtn = document.getElementById('mw-print-cut-list');

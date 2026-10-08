@@ -91,10 +91,10 @@
           </a>
         @endif
         @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <a href="{{ route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-nav="{{ route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []) }}">
           <i class="fa fa-arrow-left"></i> Back to list
-        </a>
-        <a href="{{ route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
+        </button>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-nav="{{ route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []) }}">Cancel</button>
         @include('admin.partials.quotation_view_pdf')
       </div>
       <div class="br-step-nav" id="mw-step-nav">
@@ -117,23 +117,13 @@
       </nav>
 
       <div class="br-main">
-        <div class="admin-card fl-step-card">
-          <h4>Client</h4>
-          <div class="admin-form-group">
-            <label for="mw-client-name">@include('admin.partials.info_tip', ['text' => 'Name printed on the quotation PDF and used when linking this quote to a project.']) Client name</label>
-            <input type="text" class="admin-input" id="mw-client-name" name="client_name" maxlength="160"
-                   value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
-          </div>
-          <div class="admin-form-group quotation-work-desc">
-            <label for="mw-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary on the client PDF. Improve with AI after you fill the wizard.']) Description</label>
-            <textarea class="admin-input" id="mw-work-description" name="work_description" rows="8"
-                      placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
-            @include('admin.partials.quotation_work_description_ai', [
-                'workDescriptionTextareaId' => 'mw-work-description',
-                'aiContextFormId' => 'mw-main-form',
-                'aiQuotationType' => 'millwork',
-            ])
-            <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
+        <div class="admin-card fl-step-card mw-client-card">
+          <div class="admin-form-grid-2">
+            <div class="admin-form-group">
+              <label for="mw-client-name">@include('admin.partials.info_tip', ['text' => 'Name printed on the quotation PDF and used when linking this quote to a project.']) Client name</label>
+              <input type="text" class="admin-input" id="mw-client-name" name="client_name" maxlength="160"
+                     value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
+            </div>
           </div>
         </div>
 
@@ -248,6 +238,18 @@
               @include('admin.quotations.millwork._extra_material_row', ['i' => '__I__', 'row' => []])
             </template>
 
+            <div class="admin-form-group quotation-work-desc">
+              <label for="mw-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary on the client PDF. Improve with AI after you fill the wizard.']) Description</label>
+              <textarea class="admin-input" id="mw-work-description" name="work_description" rows="5"
+                        placeholder="Describe the millwork to be built and installed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
+              @include('admin.partials.quotation_work_description_ai', [
+                  'workDescriptionTextareaId' => 'mw-work-description',
+                  'aiContextFormId' => 'mw-main-form',
+                  'aiQuotationType' => 'millwork',
+              ])
+              <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
+            </div>
+
             @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
             @include('admin.quotations._commute_debris_row')
             @include('admin.quotations._building', ['quotation' => $quotation, 'inputs' => $inputs ?? [], 'previewClass' => 'mw-preview'])
@@ -266,13 +268,21 @@
 
     <aside class="br-aside">
       <div class="pq-summary-card">
-        <h4 style="margin:0 0 10px;">Live breakdown</h4>
+        <h4>Live breakdown</h4>
         <div id="mw-live-root">
-          <p class="admin-form-help" id="mw-live-empty">Add piece dimensions to see totals and the cut plan.</p>
-          <div id="mw-live-body" hidden></div>
+          <p class="admin-form-help" id="mw-live-empty">Add piece dimensions to see the cut plan.</p>
+          <div id="mw-live-body"></div>
         </div>
       </div>
     </aside>
+
+    <div class="mw-totals-bar" id="mw-totals-bar" aria-live="polite">
+      <span><em>Material</em> <strong id="mw-bar-mat">CA$0.00</strong></span>
+      <span><em>Labour</em> <strong id="mw-bar-labor">CA$0.00</strong></span>
+      <span><em>Subtotal</em> <strong id="mw-bar-sub">CA$0.00</strong></span>
+      <span><em>HST 13%</em> <strong id="mw-bar-hst">CA$0.00</strong></span>
+      <span class="mw-totals-bar__total"><em>Total</em> <strong id="mw-bar-total">CA$0.00</strong></span>
+    </div>
   </form>
 
   @if ($isEdit && ! $quotation->isLinked())

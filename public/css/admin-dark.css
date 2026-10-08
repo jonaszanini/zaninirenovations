@@ -1630,6 +1630,9 @@ html.admin-dark .mw-cut-dim {
 html.admin-dark .mw-cut-legend__n {
   color: var(--admin-primary);
 }
+html.admin-dark .mw-totals-bar {
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+}
 html.admin-dark .mw-cut-kerf {
   fill: #e2e8f0;
   stroke: #e2e8f0;

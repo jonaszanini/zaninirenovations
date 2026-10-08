@@ -393,6 +393,254 @@ class MillworkQuotationCalculatorTest extends TestCase
         $this->assertNotContains('stain', $materialKeys);
     }
 
+    public function test_hst_is_thirteen_percent_of_labour_and_materials(): void
+    {
+        $calc = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'finish' => 'none',
+                'sets' => [['qty' => 2, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 80,
+            'waste_pct' => 0,
+            'edge_waste_pct' => 0,
+            'finish_waste_pct' => 0,
+            'markup_pct' => 0,
+        ], $this->settings());
+
+        $labor = (float) $calc['summary']['labor_pre_hst'];
+        $mat = (float) $calc['summary']['materials_pre_hst'];
+        $this->assertGreaterThan(0, $labor);
+        $this->assertGreaterThan(0, $mat);
+        $this->assertEqualsWithDelta(round($labor * 0.13, 2), (float) $calc['summary']['labor_hst'], 0.01);
+        $this->assertEqualsWithDelta(round($mat * 0.13, 2), (float) $calc['summary']['materials_hst'], 0.01);
+        $this->assertEqualsWithDelta(
+            (float) $calc['summary']['subtotal_pre_hst'] + (float) $calc['summary']['hst'],
+            (float) $calc['summary']['grand_total'],
+            0.01
+        );
+    }
+
+    public function test_tall_cabinet_uses_four_hinges_per_door(): void
+    {
+        $out = (new MillworkPartBuilder)->explode([
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => 24,
+            'height' => 84,
+            'depth' => 24,
+            'unit' => 'in',
+            'include_doors' => true,
+            'door_count' => 1,
+            'include_toe_kick' => false,
+            'shelf_count' => 0,
+        ], 0.75, 0.018);
+
+        $this->assertSame(1, $out['door_count']);
+        $this->assertSame(4.0, (float) $out['hardware']['hinges']);
+    }
+
+    public function test_blank_pull_qty_defaults_to_doors_plus_drawers(): void
+    {
+        $out = (new MillworkPartBuilder)->explode([
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => 36,
+            'height' => 34.5,
+            'depth' => 24,
+            'unit' => 'in',
+            'include_doors' => true,
+            'door_count' => 2,
+            'drawer_count' => 1,
+            'include_toe_kick' => true,
+        ], 0.75, 0.018);
+
+        $this->assertSame(3.0, (float) $out['hardware']['pulls']);
+        $this->assertSame(1.0, (float) $out['hardware']['drawer_slides']);
+    }
+
+    public function test_explicit_zero_pulls_stays_zero(): void
+    {
+        $out = (new MillworkPartBuilder)->explode([
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => 36,
+            'height' => 34.5,
+            'depth' => 24,
+            'unit' => 'in',
+            'include_doors' => true,
+            'door_count' => 2,
+            'pull_qty' => 0,
+        ], 0.75, 0.018);
+
+        $this->assertSame(0.0, (float) $out['hardware']['pulls']);
+    }
+
+    public function test_closet_counts_rods_pins_and_parts(): void
+    {
+        $out = (new MillworkPartBuilder)->explode([
+            'type' => 'closet',
+            'qty' => 1,
+            'name' => 'Reach-in',
+            'room' => 'Bedroom',
+            'width' => 72,
+            'height' => 84,
+            'depth' => 14,
+            'unit' => 'in',
+            'columns' => 2,
+            'shelf_count' => 3,
+            'rod_count' => 1,
+            'include_doors' => false,
+            'include_back' => true,
+        ], 0.75, 0.018);
+
+        $this->assertSame(1, $out['unit_count']);
+        $this->assertSame(1.0, (float) $out['hardware']['rods']);
+        $this->assertSame(24.0, (float) $out['hardware']['shelf_pins']);
+        $this->assertNotEmpty($out['parts']);
+        $this->assertStringContainsString('Bedroom', $out['labels'][0]);
+        $this->assertGreaterThan(0, $out['box_sf']);
+    }
+
+    public function test_trim_linear_feet_applies_waste_and_hst(): void
+    {
+        $calc = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'trim',
+                'profile' => 'baseboard',
+                'linear_ft' => 40,
+                'unit' => 'ft',
+                'openings' => 0,
+                'qty' => 1,
+                'edge_banding' => false,
+            ]],
+            'include_install' => false,
+            'waste_pct' => 10,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertEqualsWithDelta(44.0, (float) $calc['summary']['trim_lf'], 0.01);
+        $trimRows = array_values(array_filter($calc['materials'], fn ($r) => ($r['key'] ?? '') === 'trim'));
+        $this->assertNotEmpty($trimRows);
+        $this->assertEqualsWithDelta(44.0, (float) $trimRows[0]['qty'], 0.01);
+        $this->assertGreaterThan(0, $calc['summary']['labor_pre_hst']);
+        $this->assertEqualsWithDelta(
+            round(((float) $calc['summary']['labor_pre_hst'] + (float) $calc['summary']['materials_pre_hst']) * 0.13, 2),
+            (float) $calc['summary']['hst'],
+            0.02
+        );
+    }
+
+    public function test_vanity_defaults_depth_and_counts_as_cabinet(): void
+    {
+        $out = (new MillworkPartBuilder)->explode([
+            'type' => 'vanity',
+            'qty' => 1,
+            'width' => 36,
+            'unit' => 'in',
+            'include_doors' => true,
+            'door_count' => 2,
+            'drawer_count' => 1,
+        ], 0.75, 0.018);
+
+        $this->assertSame(2, $out['door_count']);
+        $this->assertSame(1, $out['drawer_count']);
+        $this->assertNotEmpty($out['parts']);
+        $this->assertStringContainsString('vanity', $out['labels'][0]);
+    }
+
+    public function test_wainscoting_and_mantel_produce_parts(): void
+    {
+        $wain = (new MillworkPartBuilder)->explode([
+            'type' => 'wainscoting',
+            'linear_ft' => 16,
+            'height' => 36,
+            'unit' => 'in',
+            'qty' => 1,
+        ], 0.75, 0.018);
+        $this->assertGreaterThan(0, $wain['linear_lf']);
+        $this->assertNotEmpty($wain['parts']);
+
+        $mantel = (new MillworkPartBuilder)->explode([
+            'type' => 'mantel',
+            'length' => 60,
+            'depth' => 10,
+            'height' => 8,
+            'unit' => 'in',
+        ], 0.75, 0.018);
+        $this->assertSame(1, $mantel['unit_count']);
+        $this->assertGreaterThanOrEqual(4, array_sum(array_map(fn ($p) => $p->quantity, $mantel['parts'])));
+    }
+
+    public function test_markup_and_delivery_increase_totals(): void
+    {
+        $base = [
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'sets' => [['qty' => 2, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 80,
+            'waste_pct' => 0,
+            'edge_waste_pct' => 0,
+            'markup_pct' => 0,
+            'delivery_amount' => 0,
+        ];
+        $plain = (new MillworkQuotationCalculator)->calculate($base, $this->settings());
+        $marked = (new MillworkQuotationCalculator)->calculate(array_merge($base, [
+            'markup_pct' => 10,
+            'delivery_amount' => 50,
+        ]), $this->settings());
+
+        $this->assertGreaterThan($plain['summary']['materials_pre_hst'], $marked['summary']['materials_pre_hst']);
+        $this->assertEqualsWithDelta(50.0, (float) $marked['summary']['delivery_amount'], 0.01);
+        $this->assertGreaterThan(0, $marked['summary']['markup_amount']);
+        $this->assertGreaterThan($plain['summary']['grand_total'], $marked['summary']['grand_total']);
+    }
+
+    public function test_blank_and_zero_inputs_stay_zero(): void
+    {
+        $calc = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'cabinet',
+                'width' => '',
+                'height' => 0,
+                'depth' => null,
+                'qty' => 1,
+            ]],
+            'waste_pct' => '',
+            'delivery_amount' => '',
+        ], $this->settings());
+
+        $this->assertSame(0.0, $calc['summary']['labor_pre_hst']);
+        $this->assertSame(0.0, $calc['summary']['grand_total']);
+        $this->assertSame(0, $calc['cut_plan']['sheet_count']);
+    }
+
+    public function test_inches_and_feet_convert_for_shelves(): void
+    {
+        $in = (new MillworkPartBuilder)->explode([
+            'type' => 'shelf',
+            'sets' => [['qty' => 1, 'length' => 48, 'depth' => 12, 'unit' => 'in']],
+        ], 0.75, 0.018);
+        $ft = (new MillworkPartBuilder)->explode([
+            'type' => 'shelf',
+            'sets' => [['qty' => 1, 'length' => 4, 'depth' => 1, 'unit' => 'ft']],
+        ], 0.75, 0.018);
+
+        $this->assertSame($in['box_sf'], $ft['box_sf']);
+        $this->assertSame($in['unit_count'], $ft['unit_count']);
+    }
+
+    public function test_legacy_unknown_type_still_normalizes_to_shelf(): void
+    {
+        $this->assertSame('shelf', MillworkPartBuilder::normalizeType('built_in_old'));
+        $this->assertSame('closet', MillworkPartBuilder::normalizeType('closet'));
+    }
+
     private function sizeKey(float $a, float $b): string
     {
         $lo = round(min($a, $b), 2);
