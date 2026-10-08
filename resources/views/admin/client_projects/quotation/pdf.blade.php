@@ -215,6 +215,7 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: #024768;
+      page-break-after: avoid;
     }
     .quote-work-description-body {
       margin: 0;
@@ -244,6 +245,7 @@
       color: #024768;
       font-weight: 700;
       line-height: 1.3;
+      page-break-after: avoid;
     }
     .quote-work-description-body--rich h1 { font-size: 13pt; }
     .quote-work-description-body--rich h2 { font-size: 12pt; }
@@ -323,6 +325,7 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: #92400e;
+      page-break-after: avoid;
     }
     .quote-material-selection-table {
       width: 100%;
@@ -362,6 +365,7 @@
       font-size: 10.5pt;
       font-weight: 700;
       color: #024768;
+      page-break-after: avoid;
     }
     .quote-payment-schedule ul {
       margin: 0;
@@ -395,19 +399,36 @@
       line-height: 1.45;
     }
 
-    /* Items table — keep Description/Amount + totals on one page when they fit;
-       DomPDF still splits only if the table is taller than a full page. */
+    /* Items table — allow the price table to start under the scope and
+       continue on the next page. Forcing page-break-inside:avoid on the
+       whole table made DomPDF push it (and sometimes the scope) to page 2
+       whenever the remaining page-1 space was shorter than the table. */
     .items {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 12pt;
-      page-break-before: avoid;
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    .items thead {
+      display: table-header-group;
+    }
+    .items tfoot {
+      /* Print totals once at the end — not on every page. */
+      display: table-row-group;
       page-break-inside: avoid;
       break-inside: avoid;
+      page-break-before: avoid;
     }
     .items tr {
       page-break-inside: avoid;
       break-inside: avoid;
+    }
+    .items tbody tr.items-heading {
+      page-break-after: avoid;
+    }
+    .items tbody tr.items-last {
+      page-break-after: avoid;
     }
     .items th, .items td {
       border: 1pt solid #d8dee4;
@@ -529,6 +550,7 @@
       font-weight: 700;
       color: #024768;
       margin: 0 0 6pt;
+      page-break-after: avoid;
     }
     .pdf-photos-intro {
       font-size: 10pt;
@@ -743,11 +765,11 @@
     <tbody>
       @foreach ($items as $row)
         @if (!empty($row['is_heading']))
-          <tr class="items-heading">
+          <tr class="items-heading{{ $loop->last ? ' items-last' : '' }}">
             <td colspan="3">{{ $row['description'] }}</td>
           </tr>
         @else
-        <tr class="{{ ! empty($row['is_standalone']) ? 'items-standalone' : '' }}">
+        <tr class="{{ trim((! empty($row['is_standalone']) ? 'items-standalone ' : '').($loop->last ? 'items-last' : '')) }}">
           @php
             $desc = e($row['description']);
             $note = 'Note: Material price is subject to change depending on store price at the time of purchase.';

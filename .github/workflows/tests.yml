@@ -43,7 +43,7 @@ jobs:
           php artisan key:generate
 
       - name: Blade syntax smoke (no database)
-        run: php artisan test tests/Unit/Views/BladeSyntaxTest.php tests/Unit/BasementQuotationWizardViewTest.php tests/Unit/Models/BasementQuotationScopePdfTest.php
+        run: php artisan test tests/Unit/Views/BladeSyntaxTest.php tests/Unit/Views/QuotationPdfPageBreakTest.php tests/Unit/BasementQuotationWizardViewTest.php tests/Unit/Models/BasementQuotationScopePdfTest.php
 
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
