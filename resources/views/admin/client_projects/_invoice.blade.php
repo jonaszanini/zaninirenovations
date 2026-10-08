@@ -19,7 +19,9 @@
 @php
   $isHourly = $project->isHourly();
   $isAccepted = $project->isAccepted();
+  $isClosed = $project->isClosed();
   $invoices = $project->invoices;
+  $showExistingInvoices = $invoices->isNotEmpty();
 
   $missing = $project->missingClientContactFields();
   $hasContactInfo = empty($missing);
@@ -38,7 +40,93 @@
   </div>
 @endif
 
-@if ($isHourly)
+@if ($isClosed)
+  {{-- Cancelled / rejected: keep past invoices visible and deletable.
+       Creating, sending, and reminding stay locked. --}}
+  <div class="admin-card cp-invoice-closed-note">
+    <h3>{{ $project->statusLabel() }} project</h3>
+    <p>
+      @if ($showExistingInvoices)
+        Existing invoices are shown read-only. You can view the PDF or delete an unpaid invoice.
+        New invoices cannot be created while the project is {{ strtolower($project->statusLabel()) }}.
+      @else
+        Invoices stay locked while this project is {{ strtolower($project->statusLabel()) }}. No invoices were issued.
+      @endif
+    </p>
+  </div>
+
+  @if ($showExistingInvoices)
+    <div class="admin-card cp-contract-card">
+      <div class="cp-contract-header">
+        <div class="cp-contract-meta">
+          <h3>Existing invoices</h3>
+        </div>
+      </div>
+      <div class="admin-table-scroll">
+        <table class="admin-table cp-invoices-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th style="width:120px;">Subtotal</th>
+              <th style="width:120px;">HST</th>
+              <th style="width:130px;">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
+              <th style="width:130px;">Status</th>
+              <th style="width:200px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($invoices->sortByDesc('id') as $invoice)
+              @php
+                $statusLabel = \App\Models\ClientProjectInvoice::statusLabel($invoice->status);
+                $statusColor = \App\Models\ClientProjectInvoice::statusColor($invoice->status);
+              @endphp
+              <tr>
+                <td data-label="Description">
+                  {{ $invoice->installmentTitle() }}
+                  @if ($invoice->isHstExempt())
+                    <div style="margin-top:4px;">
+                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment — no HST charged on this invoice.">
+                        <i class="fa fa-money"></i> HST excluded
+                      </span>
+                    </div>
+                  @endif
+                </td>
+                <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
+                <td class="cp-col-amount" data-label="HST">
+                  @if ($invoice->isHstExempt())
+                    <span class="admin-form-help" style="font-style:italic;">— excluded</span>
+                  @else
+                    {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
+                  @endif
+                </td>
+                <td class="cp-col-amount" data-label="Total">
+                  <strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong>
+                </td>
+                <td data-label="Status">
+                  <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
+                    {{ $statusLabel }}
+                    <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
+                  </span>
+                </td>
+                <td data-label="Actions">
+                  @include('admin.client_projects._invoice_row_actions', [
+                    'project' => $project,
+                    'invoice' => $invoice,
+                    'installmentNumber' => $invoice->installment_number,
+                    'hasContactInfo' => $hasContactInfo,
+                    'missing' => $missing,
+                    'invoiceActionsReadOnly' => true,
+                  ])
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    </div>
+  @endif
+
+@elseif ($isHourly)
   {{-- =================================================================
        HOURLY FLOW — separate from anything fixed-price below. Leaves
        all installment / payment-plan logic untouched.
@@ -492,7 +580,7 @@
      non-locked state (hourly and fixed-price both use it). The pre-accept
      lock branch returns before this point, so we gate on that one case.
      ===================================================================== --}}
-@if ($isHourly || $isAccepted)
+@if (($isHourly || $isAccepted) && ! $isClosed)
   <div class="cp-modal-backdrop" id="cp-mark-paid-modal" hidden>
     <div class="cp-modal" role="dialog" aria-labelledby="cp-mark-paid-title">
       <div class="cp-modal-header">

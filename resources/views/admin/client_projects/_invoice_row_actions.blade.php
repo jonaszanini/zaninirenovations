@@ -9,11 +9,14 @@
     $installmentNumber  - int|null (null = manual invoice / creation for installment N)
     $hasContactInfo     - bool
     $missing            - array (labels of missing client fields)
+    $invoiceActionsReadOnly - bool (cancelled/rejected: PDF + delete only)
 --}}
 
 @php
   use App\Models\ClientProjectInvoice;
   use App\Services\MoceanSmsService;
+
+  $invoiceActionsReadOnly = $invoiceActionsReadOnly ?? false;
 
   /** @var MoceanSmsService $moceanSms */
   $moceanSms = app(MoceanSmsService::class);
@@ -102,17 +105,126 @@
   }
 @endphp
 @if (!$invoice)
-  {{-- No invoice yet for this installment → offer to create one. --}}
-  <form action="{{ route('admin.client-projects.invoices.create', $project) }}"
-        method="post"
-        class="cp-inline-form">
-    @csrf
-    <input type="hidden" name="mode" value="installment">
-    <input type="hidden" name="installment_number" value="{{ $installmentNumber }}">
-    <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
-      <i class="fa fa-plus"></i> Create Invoice
-    </button>
-  </form>
+  @unless ($invoiceActionsReadOnly)
+    {{-- No invoice yet for this installment → offer to create one. --}}
+    <form action="{{ route('admin.client-projects.invoices.create', $project) }}"
+          method="post"
+          class="cp-inline-form">
+      @csrf
+      <input type="hidden" name="mode" value="installment">
+      <input type="hidden" name="installment_number" value="{{ $installmentNumber }}">
+      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-plus"></i> Create Invoice
+      </button>
+    </form>
+  @endunless
+@elseif ($invoiceActionsReadOnly)
+  @php
+    $clientEmail = $project->clientEmailRecipientsLabel();
+    if ($invoice->wasEverSent()) {
+        $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to {$clientEmail}. Deleting it removes the invoice from our records. The client will still have the old PDF in their inbox. Continue?";
+    } else {
+        $deleteConfirm = 'Delete this draft invoice? This cannot be undone.';
+    }
+    $readOnlyDropdownItems = [];
+    if ($invoice->hasContent() || $invoice->total > 0) {
+        $readOnlyDropdownItems[] = [
+            'type' => 'link',
+            'href' => route('admin.client-projects.invoices.pdf', [$project, $invoice]),
+            'icon' => 'fa-file-pdf-o',
+            'label' => 'PDF',
+            'target' => '_blank',
+        ];
+    }
+    if ($invoice->isPaid()) {
+        $readOnlyDropdownItems[] = [
+            'type' => 'link',
+            'href' => route('admin.client-projects.invoices.receipt', [$project, $invoice]),
+            'icon' => 'fa-download',
+            'label' => 'Receipt',
+            'target' => '_blank',
+            'class' => 'admin-actions-dropdown__item--success',
+        ];
+    } else {
+        $readOnlyDropdownItems[] = [
+            'type' => 'form',
+            'action' => route('admin.client-projects.invoices.destroy', [$project, $invoice]),
+            'method' => 'DELETE',
+            'icon' => 'fa-trash',
+            'label' => 'Delete',
+            'confirm' => $deleteConfirm,
+            'class' => 'admin-actions-dropdown__item--danger',
+        ];
+    }
+  @endphp
+  <div class="cp-invoice-actions admin-table-actions">
+    @if ($invoice->hasContent() || $invoice->total > 0)
+      <a href="{{ route('admin.client-projects.invoices.pdf', [$project, $invoice]) }}"
+         target="_blank"
+         rel="noopener"
+         class="admin-btn admin-btn--ghost admin-btn--sm"
+         aria-label="View invoice PDF">
+        <i class="fa fa-file-pdf-o" aria-hidden="true"></i>
+        PDF
+      </a>
+    @endif
+    @if ($invoice->isPaid())
+      <a href="{{ route('admin.client-projects.invoices.receipt', [$project, $invoice]) }}"
+         target="_blank"
+         rel="noopener"
+         class="admin-btn admin-btn--success admin-btn--sm"
+         aria-label="Receipt">
+        <i class="fa fa-download" aria-hidden="true"></i>
+        Receipt
+      </a>
+    @else
+      <form action="{{ route('admin.client-projects.invoices.destroy', [$project, $invoice]) }}"
+            method="post"
+            class="cp-inline-form"
+            onsubmit="return confirm({{ json_encode($deleteConfirm) }});">
+        @csrf
+        @method('DELETE')
+        <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm" aria-label="Delete invoice">
+          <i class="fa fa-trash" aria-hidden="true"></i>
+          Delete
+        </button>
+      </form>
+    @endif
+
+    @if (count($readOnlyDropdownItems) > 0)
+      <div class="admin-actions-dropdown">
+        <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions menu">
+          <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+        </button>
+        <div class="admin-actions-dropdown__menu">
+          @foreach ($readOnlyDropdownItems as $item)
+            @if ($item['type'] === 'link')
+              <a href="{{ $item['href'] }}"
+                 class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}"
+                 @if (! empty($item['target'])) target="{{ $item['target'] }}" rel="noopener" @endif>
+                <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+                {{ $item['label'] }}
+              </a>
+            @elseif ($item['type'] === 'form')
+              <form action="{{ $item['action'] }}"
+                    method="post"
+                    class="admin-actions-dropdown__form"
+                    @if (! empty($item['confirm'])) onsubmit="return confirm({{ json_encode($item['confirm']) }});" @endif>
+                @csrf
+                @if (! empty($item['method']) && $item['method'] === 'DELETE')
+                  @method('DELETE')
+                @endif
+                <button type="submit" class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}">
+                  <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+                  {{ $item['label'] }}
+                </button>
+              </form>
+            @endif
+          @endforeach
+        </div>
+      </div>
+    @endif
+  </div>
 @else
   @php
     $canMarkPaid = $invoice->hasContent() && (float) $invoice->total > 0;

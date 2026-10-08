@@ -100,13 +100,17 @@ class GlobalFinancialsController extends Controller
             });
         }
 
+        $outstanding = (float) (clone $query)
+            ->collectible()
+            ->where('status', ClientProjectInvoice::STATUS_SENT)
+            ->sum('total');
+
         $results = $query->select([
             DB::raw('COUNT(*) as count'),
             DB::raw('COALESCE(SUM(subtotal), 0) as subtotal'),
             DB::raw('COALESCE(SUM(hst), 0) as hst'),
             DB::raw('COALESCE(SUM(total), 0) as total'),
             DB::raw('COALESCE(SUM(CASE WHEN status = "paid" THEN total ELSE 0 END), 0) as paid'),
-            DB::raw('COALESCE(SUM(CASE WHEN status = "sent" THEN total ELSE 0 END), 0) as outstanding'),
         ])->first();
 
         return [
@@ -115,7 +119,7 @@ class GlobalFinancialsController extends Controller
             'hst' => round((float) $results->hst, 2),
             'total' => round((float) $results->total, 2),
             'paid' => round((float) $results->paid, 2),
-            'outstanding' => round((float) $results->outstanding, 2),
+            'outstanding' => round($outstanding, 2),
         ];
     }
 

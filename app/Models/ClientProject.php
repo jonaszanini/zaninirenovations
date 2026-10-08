@@ -671,6 +671,28 @@ class ClientProject extends Model
     }
 
     /**
+     * Project statuses whose invoices must not be treated as owed or
+     * reminder-eligible (dashboard overdue/receivables, Attention,
+     * global outstanding, daily reminder jobs).
+     *
+     * Cancelled and Rejected are inactive. There is no Lost status.
+     * Completed stays collectible — work was accepted and a sent invoice
+     * may still be unpaid.
+     *
+     * @return list<string>
+     */
+    public static function statusesExcludedFromReceivables(): array
+    {
+        return self::terminalStatuses();
+    }
+
+    /** True when this project's invoices must be excluded from receivables and reminders. */
+    public function excludesInvoicesFromReceivables(): bool
+    {
+        return in_array($this->status, self::statusesExcludedFromReceivables(), true);
+    }
+
+    /**
      * Statuses available when reopening a rejected project.
      *
      * @return list<string>

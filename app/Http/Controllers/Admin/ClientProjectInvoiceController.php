@@ -79,6 +79,10 @@ class ClientProjectInvoiceController extends Controller
 
         $mode = $data['mode'] ?? ($request->filled('installment_number') ? 'installment' : 'manual');
 
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'New invoices cannot be created on a cancelled or rejected project.')) {
+            return $redirect;
+        }
+
         // Guard: mode vs billing type must line up. This keeps the
         // fixed-price (installment / manual) and hourly flows strictly
         // separated so a form bug can't cross-contaminate them.
@@ -142,6 +146,13 @@ class ClientProjectInvoiceController extends Controller
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
+        if ($client_project->excludesInvoicesFromReceivables()) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('invoice')
+                ->with('info', 'This project is '.$client_project->statusLabel().'. Existing invoices are read-only — use the PDF or delete an unpaid invoice.');
+        }
+
         return view('admin.client_projects.invoice.edit', [
             'project' => $client_project,
             'invoice' => $invoice,
@@ -159,6 +170,10 @@ class ClientProjectInvoiceController extends Controller
     public function update(Request $request, ClientProject $client_project, ClientProjectInvoice $invoice)
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Invoices on cancelled or rejected projects cannot be edited.')) {
+            return $redirect;
+        }
 
         if ($invoice->isPaid()) {
             return back()->with('error', 'Paid invoices cannot be edited.');
@@ -362,6 +377,10 @@ class ClientProjectInvoiceController extends Controller
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Invoices on cancelled or rejected projects cannot be sent.')) {
+            return $redirect;
+        }
+
         if ($invoice->isPaid()) {
             return back()->with('error', 'This invoice has already been paid.');
         }
@@ -487,6 +506,10 @@ class ClientProjectInvoiceController extends Controller
     ) {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Invoices on cancelled or rejected projects cannot be sent.')) {
+            return $redirect;
+        }
+
         if ($invoice->isPaid()) {
             return back()->with('error', 'This invoice has already been paid.');
         }
@@ -541,6 +564,10 @@ class ClientProjectInvoiceController extends Controller
     ) {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Payment reminders are not sent for invoices on cancelled or rejected projects.')) {
+            return $redirect;
+        }
+
         if (! $invoice->isSent()) {
             return back()->with('error', 'Reminders can only be sent after the invoice has been emailed at least once.');
         }
@@ -574,6 +601,10 @@ class ClientProjectInvoiceController extends Controller
         ClientProjectStatusService $statusService,
     ) {
         $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Daily reminders cannot be changed on a cancelled or rejected project.')) {
+            return $redirect;
+        }
 
         if (! $invoice->isSent()) {
             return back()->with('error', 'Daily reminders can only be paused after the invoice has been sent.');
@@ -615,6 +646,10 @@ class ClientProjectInvoiceController extends Controller
     public function markPaid(Request $request, ClientProject $client_project, ClientProjectInvoice $invoice)
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Invoices on cancelled or rejected projects cannot be marked paid from this tab.')) {
+            return $redirect;
+        }
 
         if ($invoice->isPaid()) {
             return back()->with('error', 'This invoice is already marked paid.');
@@ -771,5 +806,21 @@ class ClientProjectInvoiceController extends Controller
     protected function authorizeInvoiceForProject(ClientProject $project, ClientProjectInvoice $invoice): void
     {
         abort_unless($invoice->client_project_id === $project->id, 404);
+    }
+
+    /**
+     * Cancelled / rejected projects keep existing invoices visible so they
+     * can be viewed or deleted, but must not create, send, or remind.
+     */
+    protected function rejectClosedProjectMutation(ClientProject $project, string $message)
+    {
+        if (! $project->excludesInvoicesFromReceivables()) {
+            return null;
+        }
+
+        return redirect()
+            ->route('admin.client-projects.show', $project)
+            ->withFragment('invoice')
+            ->with('error', $message);
     }
 }

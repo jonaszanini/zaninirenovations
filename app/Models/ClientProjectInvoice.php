@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Http\Controllers\Admin\ClientProjectFinanceController;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -109,6 +110,29 @@ class ClientProjectInvoice extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(ClientProject::class, 'client_project_id');
+    }
+
+    /**
+     * Sent/unpaid invoices on cancelled or rejected projects are not
+     * collectible — exclude them from overdue lists, receivables, and
+     * reminder jobs. Completed projects stay included.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeCollectible(Builder $query): Builder
+    {
+        return $query->whereHas('project', function (Builder $projectQuery) {
+            $projectQuery->whereNotIn('status', ClientProject::statusesExcludedFromReceivables());
+        });
+    }
+
+    /** In-memory counterpart to {@see scopeCollectible()}. */
+    public function isCollectible(): bool
+    {
+        $project = $this->relationLoaded('project') ? $this->project : $this->project()->first();
+
+        return $project !== null && ! $project->excludesInvoicesFromReceivables();
     }
 
     /**
