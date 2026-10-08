@@ -54,13 +54,13 @@
 
 @if (! empty($laborRows))
   <div class="cp-vd-section">
-    <div class="cp-vd-section__title">Labor</div>
+    <div class="cp-vd-section__title">Labour</div>
     <ul class="cp-vd-sides-list">
       @foreach ($laborRows as $row)
         <li class="cp-vd-side-chip">{{ $row['label'] }} — {{ number_format((float) $row['hours'], 2) }} hr</li>
       @endforeach
     </ul>
-    <p class="admin-form-help" style="margin-top:8px;">Labor (pre-HST): {{ \App\Models\ClientProject::formatMoney($labourPre) }}</p>
+    <p class="admin-form-help" style="margin-top:8px;">Labour (pre-HST): {{ \App\Models\ClientProject::formatMoney($labourPre) }}</p>
   </div>
 @endif
 

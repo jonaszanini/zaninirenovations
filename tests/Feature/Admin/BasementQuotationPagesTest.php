@@ -39,20 +39,34 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Length × width')
             ->assertSee('Flooring')
             ->assertSee('Basement ceiling lighting')
-            ->assertSee('Spot lights', false)
+            ->assertSee('Pot lights', false)
+            ->assertSee("Electrician's quote")
+            ->assertSee("Plumber's quote")
+            ->assertDontSee('licensed')
+            ->assertDontSee('licence')
             ->assertSee('Wall / ceiling colors')
             ->assertSee('fa-info-circle', false)
             ->assertSee('New drain, vent, and hot/cold supply')
             ->assertSee('Import layout')
-            ->assertSee('Search saved Room Area rooms', false)
+            ->assertSee('Search rooms', false)
             ->assertSee('Project description', false)
-            ->assertSee('admin-form-help">(optional — appears on client PDF)', false)
+            ->assertSee('optional — client PDF', false)
+            ->assertSee('4×8 (32 sq ft)', false)
+            ->assertSee('4×12 (48 sq ft)', false)
+            ->assertSee('Stud spacing')
+            ->assertSee('Building permit (extra charge)')
             ->assertSee('Commute expense')
-            ->assertSee('Material waste');
+            ->assertSee('Material waste')
+            ->assertSee('id="br-step-status"', false)
+            ->assertSee('class="br-step-nav__status"', false)
+            ->assertDontSee('data-cp-money-entry="direct"', false)
+            ->assertSee('Optional extras (rentals, extra labour, etc.)', false)
+            ->assertDontSee('Optional extras (permits, rentals')
+            ->assertSee('placeholder="e.g. Dumpster"', false);
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
-            ->assertSee('Labor productivity')
+            ->assertSee('Labour productivity')
             ->assertSee('class="admin-form-grid-4"', false)
             ->assertSee('Default materials')
             ->assertSee('>Rates</button>', false)
@@ -85,7 +99,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->get(route('admin.quotations.basement.create'))
             ->assertOk()
             ->assertSee('Import layout')
-            ->assertSee('Search saved Room Area rooms', false)
+            ->assertSee('Search rooms', false)
             ->assertSee('name="perimeter_lf"', false)
             ->assertSee('data-br-layout-picker', false);
     }
@@ -115,7 +129,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertNotFalse($live);
         $this->assertLessThan($price, $context);
         $this->assertLessThan($next, $context);
-        $this->assertLessThan($live, $next);
+        $this->assertLessThan($next, $live);
         $this->assertMatchesRegularExpression(
             '/<details class="admin-accordion admin-card cp-project-context-card">/',
             $html
@@ -200,8 +214,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('id="br-plumbing-slot-bath"', $html);
         $this->assertStringContainsString('id="br-framing-slot-bath"', $html);
         $this->assertStringContainsString('Walls &amp; ducts', $html);
-        $this->assertStringContainsString('New wall (linear ft)', $html);
-        $this->assertStringContainsString('Work around duct (linear ft)', $html);
+        $this->assertStringContainsString('New wall (lin. ft)', $html);
+        $this->assertStringContainsString('Duct boxing (lin. ft)', $html);
     }
 
     public function test_price_configuration_keeps_active_tab_after_save(): void
@@ -228,11 +242,25 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'area_sqft' => 850,
             'ceiling_height_ft' => 8,
             'flooring_type' => 'lvp',
+            'include_building_permit' => '1',
+            'building_permit_amount' => '175.00',
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
         ])->assertOk()
             ->assertJsonPath('scope.area_sqft', 850)
+            ->assertJsonPath('summary.permit_pre_hst', 175)
             ->assertJsonPath('eta.scenarios.0.crew', 1);
+
+        $withoutPermit = $this->post(route('admin.quotations.basement.preview'), [
+            'area_sqft' => 850,
+            'ceiling_height_ft' => 8,
+            'flooring_type' => 'lvp',
+            'include_building_permit' => '0',
+            'building_permit_amount' => '175.00',
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ])->assertOk()->json();
+        $this->assertEquals(0, (float) ($withoutPermit['summary']['permit_pre_hst'] ?? 0));
     }
 
     public function test_preview_uses_imported_layout_perimeter(): void

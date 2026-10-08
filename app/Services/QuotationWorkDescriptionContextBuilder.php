@@ -634,6 +634,9 @@ class QuotationWorkDescriptionContextBuilder
             if ((float) ($c['partition_lf'] ?? 0) > 0) {
                 $lines[] = 'Partition framing: '.(float) $c['partition_lf'].' lf';
             }
+            if (isset($c['stud_spacing_in']) && $c['stud_spacing_in'] !== '') {
+                $this->appendLine($lines, 'Stud spacing', $c['stud_spacing_in'].' in o.c.');
+            }
         }
 
         // Drywall: only if drywall trade is enabled
@@ -641,6 +644,12 @@ class QuotationWorkDescriptionContextBuilder
             $finishLevel = (int) ($c['finish_level'] ?? 4);
             $levelLabel = BasementQuotationCalculator::FINISH_LEVELS[$finishLevel] ?? 'Level '.$finishLevel;
             $lines[] = 'Drywall finish level: '.$levelLabel;
+            $sheetSize = BasementQuotationCalculator::normalizeSheetSize($c['drywall_sheet_size'] ?? '4x8');
+            $lines[] = 'Drywall sheet size: '.$sheetSize;
+            $openingSf = BasementQuotationCalculator::drywallOpeningSf($c);
+            if ($openingSf > 0) {
+                $lines[] = 'Drywall openings deducted: '.number_format($openingSf, 2).' sq ft';
+            }
         }
 
         // Flooring: only if flooring trade is enabled and specified
@@ -673,7 +682,7 @@ class QuotationWorkDescriptionContextBuilder
         if (in_array('insulation', $enabled, true)) {
             $insParts = [];
             if (! empty($c['insulate_walls'])) {
-                $insParts[] = 'wall insulation + vapor barrier';
+                $insParts[] = 'wall insulation + vapour barrier';
             }
             if (! empty($c['insulate_ceiling'])) {
                 $insParts[] = 'ceiling insulation';

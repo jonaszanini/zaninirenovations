@@ -402,11 +402,12 @@ class BasementQuotationController extends Controller
             'partition_lf', 'bulkhead_lf',
             'bath_tile_sf', 'owner_hourly_rate', 'helper_hourly_rate',
             'material_waste_percent',
+            'building_permit_amount',
         ];
         $optionalQty = [
             'demo_flooring_sf', 'demo_drywall_sf', 'demo_studs_lf', 'demo_baseboard_lf',
             'insulation_wall_sf', 'insulation_ceiling_sf', 'underslab_sf',
-            'drywall_wall_sf', 'drywall_ceiling_sf', 'ceiling_sf',
+            'drywall_wall_sf', 'drywall_ceiling_sf', 'drywall_opening_sf', 'ceiling_sf',
             'flooring_sf', 'baseboard_lf', 'shoe_lf',
             'paint_wall_sf', 'paint_ceiling_sf', 'paint_trim_lf',
             'area_length_ft', 'area_width_ft',
@@ -415,7 +416,10 @@ class BasementQuotationController extends Controller
         $ints = [
             'room_count', 'demo_bin_qty', 'header_qty', 'framing_door_openings',
             'outlet_qty', 'switch_qty', 'light_qty', 'detector_qty',
-            'drywall_corners', 'drywall_inside_corners', 'drywall_openings', 'finish_level', 'transition_qty',
+            'drywall_corners', 'drywall_inside_corners', 'drywall_openings',
+            'drywall_door_openings', 'drywall_window_openings',
+            'stud_spacing_in',
+            'finish_level', 'transition_qty',
             'door_qty', 'casing_openings', 'window_trim_qty', 'paint_coats', 'paint_colors',
             'fixture_qty', 'hardware_sets', 'bath_fixture_qty', 'bath_spot_qty',
         ];
@@ -428,13 +432,18 @@ class BasementQuotationController extends Controller
             'include_bathroom', 'include_vanity', 'include_pedestal_sink', 'include_toilet', 'include_shower',
             'include_tub', 'include_exhaust_fan', 'include_bath_fixture', 'include_bath_spot',
             'include_cleaning', 'include_touchups', 'include_shoe',
+            'include_building_permit',
             'client_provides_all', 'include_helper',
         ];
-        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label'];
+        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size'];
 
         $out = $defaults;
         foreach ($floats as $key) {
-            $out[$key] = round(max(0, (float) $request->input($key, $defaults[$key])), 4);
+            $raw = $request->input($key, $defaults[$key]);
+            if (is_string($raw)) {
+                $raw = str_replace([',', '$', ' '], '', $raw);
+            }
+            $out[$key] = round(max(0, (float) $raw), 4);
         }
         foreach ($optionalQty as $key) {
             $raw = $request->input($key);
@@ -448,8 +457,19 @@ class BasementQuotationController extends Controller
             $out[$key] = max(0, (int) $request->input($key, $defaults[$key]));
         }
         $out['finish_level'] = BasementQuotationCalculator::normalizeFinishLevel($out['finish_level']);
+        $out['stud_spacing_in'] = BasementQuotationCalculator::normalizeStudSpacing($out['stud_spacing_in'] ?? 16);
+        $out['drywall_sheet_size'] = BasementQuotationCalculator::normalizeSheetSize($out['drywall_sheet_size'] ?? '4x8');
         foreach ($bools as $key) {
-            $out[$key] = $request->boolean($key);
+            $raw = $request->input($key);
+            if (is_array($raw)) {
+                $out[$key] = in_array('1', $raw, true)
+                    || in_array(1, $raw, true)
+                    || in_array(true, $raw, true)
+                    || in_array('true', $raw, true)
+                    || in_array('on', $raw, true);
+            } else {
+                $out[$key] = $request->boolean($key);
+            }
         }
         foreach (['demo_include_flooring', 'demo_include_studs', 'demo_include_drywall', 'demo_include_baseboard'] as $key) {
             if (! $request->exists($key)) {
@@ -628,7 +648,7 @@ class BasementQuotationController extends Controller
     protected function syncLineToProjectQuotation(ClientProject $project, BasementQuotation $quote): void
     {
         $items = [[
-            'description' => 'Basement renovation (labor)',
+            'description' => 'Basement renovation (labour)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
             'apply_hst' => true,
         ]];
@@ -638,6 +658,15 @@ class BasementQuotationController extends Controller
             $items[] = [
                 'description' => 'Basement renovation materials',
                 'amount' => $materialAmt,
+                'apply_hst' => true,
+            ];
+        }
+
+        $permitAmt = $quote->permitPreTaxAmountForProjectQuotation();
+        if ($permitAmt > 0) {
+            $items[] = [
+                'description' => 'Building permit (optional, extra charge)',
+                'amount' => $permitAmt,
                 'apply_hst' => true,
             ];
         }

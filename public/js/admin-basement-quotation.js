@@ -121,7 +121,7 @@
   function syncLightingType() {
     var type = lightingType ? lightingType.value : 'spot';
     if (lightingLabel) {
-      lightingLabel.textContent = type === 'fixture' ? 'How many light fixtures' : 'How many spot lights';
+      lightingLabel.textContent = type === 'fixture' ? 'Fixtures' : 'Pot lights';
     }
     if (lightingFixtures) {
       lightingFixtures.hidden = type !== 'both';
@@ -312,25 +312,37 @@
     applyingLayout = true;
     var peri = Number(opt.perimeter_lf || 0);
     var area = Number(opt.area_sqft || 0);
-    var wallSf = peri > 0 ? peri * ceilingHeightFt() : 0;
+    var measuredWall = Number(opt.wall_area_sqft || 0);
+    var wallSf = measuredWall > 0 ? measuredWall : (peri > 0 ? peri * ceilingHeightFt() : 0);
     if (periEl) periEl.value = peri > 0 ? formatLayoutQty(peri) : '';
     if (labelEl) labelEl.value = opt.name || opt.label || '';
     setLwToSqft('br-area', area > 0 ? area : '');
     setLwToSqft('br-dw-wall', wallSf > 0 ? wallSf : '');
-    if (wall) wall.setAttribute('data-br-from-layout', '1');
+    if (wall) wall.setAttribute('data-br-from-layout', measuredWall > 0 ? 'net' : '1');
     setLwToSqft('br-dw-ceil', area > 0 ? area : '');
     var inside = document.getElementById('br-dw-inside-corners');
     var outside = document.getElementById('br-dw-corners');
     if (inside) inside.value = String(Math.max(0, parseInt(opt.inside_corners, 10) || 0));
     if (outside) outside.value = String(Math.max(0, parseInt(opt.outside_corners, 10) || 0));
+    var doors = parseInt(opt.door_count, 10) || 0;
+    var windows = parseInt(opt.window_count, 10) || 0;
+    var extras = parseInt(opt.opening_count, 10) || 0;
     var openings = parseInt(opt.drywall_openings, 10);
     if (!isFinite(openings) || openings < 0) {
-      openings = (parseInt(opt.door_count, 10) || 0)
-        + (parseInt(opt.window_count, 10) || 0)
-        + (parseInt(opt.opening_count, 10) || 0);
+      openings = doors + windows + extras;
     }
+    var doorEl = document.getElementById('br-dw-door-open');
+    var windowEl = document.getElementById('br-dw-window-open');
     var openEl = document.getElementById('br-dw-open');
-    if (openEl) openEl.value = String(Math.max(0, openings));
+    var openingSfEl = document.getElementById('br-dw-opening-sf');
+    if (doorEl) doorEl.value = String(Math.max(0, doors));
+    if (windowEl) windowEl.value = String(Math.max(0, windows));
+    if (openEl) openEl.value = String(Math.max(0, extras));
+    if (openingSfEl && measuredWall > 0) {
+      openingSfEl.value = '0';
+    } else if (openingSfEl) {
+      openingSfEl.value = '';
+    }
     var baseEl = document.getElementById('br-base');
     if (baseEl && opt.baseboard_lf != null && opt.baseboard_lf !== '') {
       var base = Number(opt.baseboard_lf);
@@ -346,8 +358,9 @@
       status.hidden = false;
       status.classList.add('is-set');
       status.textContent = 'Imported ' + name + ': ' + floor + ' sq ft floor, '
-        + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall, '
-        + openLabel + '.';
+        + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall'
+        + (measuredWall > 0 ? ' (openings already deducted)' : '')
+        + ', ' + openLabel + '.';
     }
     applyingLayout = false;
     updateDwWallPlaceholder();
@@ -357,7 +370,8 @@
   function refreshLayoutWallFromHeight() {
     var wall = document.getElementById('br-dw-wall');
     var periEl = document.getElementById('br-perimeter-lf');
-    if (!wall || wall.getAttribute('data-br-from-layout') !== '1' || !periEl) return;
+    var from = wall ? wall.getAttribute('data-br-from-layout') : '';
+    if (!wall || (from !== '1' && from !== 'gross') || !periEl) return;
     var peri = parseFloat(periEl.value);
     if (!isFinite(peri) || peri <= 0) return;
     applyingLayout = true;
@@ -370,12 +384,17 @@
       var area = areaEl ? parseFloat(areaEl.value) : 0;
       var name = (labelEl && labelEl.value) ? labelEl.value : 'layout';
       var openEl = document.getElementById('br-dw-open');
-      var openings = openEl ? (parseInt(openEl.value, 10) || 0) : 0;
+      var doorEl = document.getElementById('br-dw-door-open');
+      var windowEl = document.getElementById('br-dw-window-open');
+      var openings = (parseInt(openEl && openEl.value, 10) || 0)
+        + (parseInt(doorEl && doorEl.value, 10) || 0)
+        + (parseInt(windowEl && windowEl.value, 10) || 0);
       var openLabel = openings === 1 ? '1 opening' : openings + ' openings';
+      var wallNow = wall ? parseFloat(wall.value) : (peri * ceilingHeightFt());
       status.textContent = 'Imported ' + name + ': ' + formatLayoutQty(area) + ' sq ft floor, '
-        + formatLayoutQty(peri) + ' lf walls × ' + formatLayoutQty(ceilingHeightFt()) + ' ft = '
-        + formatLayoutQty(peri * ceilingHeightFt()) + ' sq ft wall drywall, '
-        + openLabel + '.';
+        + formatLayoutQty(peri) + ' lf walls × ' + formatLayoutQty(ceilingHeightFt()) + ' ft'
+        + (isFinite(wallNow) && wallNow > 0 ? ' = ' + formatLayoutQty(wallNow) + ' sq ft wall drywall' : '')
+        + ', ' + openLabel + '.';
     }
   }
 
@@ -454,11 +473,7 @@
     var wallOnly = currentPreset() === 'wall';
     var periEl = document.getElementById('br-perimeter-lf');
     var peri = periEl ? parseFloat(periEl.value) : 0;
-    if (!wallOnly && isFinite(peri) && peri > 0) {
-      dwWall.placeholder = 'Auto: ' + formatLayoutQty(peri) + ' lf × height';
-    } else {
-      dwWall.placeholder = wallOnly ? 'Auto: wall length × height × both sides' : 'Auto from area × height';
-    }
+    dwWall.placeholder = 'Auto';
   }
 
   function applyScope() {
@@ -501,7 +516,7 @@
     }
     var baseEl = document.getElementById('br-base');
     if (baseEl) {
-      baseEl.placeholder = currentPreset() === 'wall' ? 'Auto: wall length × 2' : 'Auto: room perimeter';
+      baseEl.placeholder = 'Auto';
     }
     var wallOnly = currentPreset() === 'wall';
     form.querySelectorAll('[data-br-skip-on-wall]').forEach(function (el) {
@@ -522,7 +537,7 @@
     updateDwWallPlaceholder();
     var pWall = document.getElementById('br-p-wall');
     if (pWall) {
-      pWall.placeholder = wallOnly ? 'Auto: both sides of the new wall' : 'Auto from drywall walls';
+      pWall.placeholder = 'Auto';
     }
     if (currentIndex >= wizardKeys.length) {
       currentIndex = 0;
@@ -704,6 +719,68 @@
     syncBathSinkQty();
   }
 
+  function clearStepErrors() {
+    form.querySelectorAll('.br-field-error').forEach(function (el) { el.remove(); });
+    form.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
+  }
+
+  function showFieldError(input, message) {
+    if (!input) return;
+    input.classList.add('is-invalid');
+    var group = input.closest('.admin-form-group') || input.closest('.br-lw') || input.parentElement;
+    if (!group) return;
+    var existing = group.querySelector('.br-field-error');
+    if (existing) {
+      existing.textContent = message;
+      return;
+    }
+    var p = document.createElement('p');
+    p.className = 'br-field-error';
+    p.textContent = message;
+    group.appendChild(p);
+  }
+
+  function validateCurrentStep() {
+    clearStepErrors();
+    var key = wizardKeys[currentIndex];
+    if (key !== 'overview') return true;
+    var preset = currentPreset();
+    if (preset === 'wall') {
+      var wall = document.getElementById('br-partition');
+      var lf = wall ? parseFloat(wall.value) : 0;
+      if (!isFinite(lf) || lf <= 0) {
+        showFieldError(wall, 'Enter the new wall length in linear feet.');
+        if (wall && wall.focus) wall.focus();
+        return false;
+      }
+      return true;
+    }
+    var mode = form.querySelector('[name="area_entry_mode"]:checked');
+    var useDims = mode && mode.value === 'dimensions';
+    if (useDims) {
+      var len = form.querySelector('[name="area_length_ft"]');
+      var wid = form.querySelector('[name="area_width_ft"]');
+      var l = len ? parseFloat(len.value) : 0;
+      var w = wid ? parseFloat(wid.value) : 0;
+      if (!(l > 0 && w > 0)) {
+        showFieldError(len || wid, 'Enter length and width in feet.');
+        if (len && len.focus) len.focus();
+        return false;
+      }
+      return true;
+    }
+    var area = document.getElementById('br-area');
+    var sf = area ? parseFloat(area.value) : 0;
+    if (!isFinite(sf) || sf <= 0) {
+      showFieldError(area, preset === 'bathroom'
+        ? 'Enter the bathroom / work area in square feet.'
+        : 'Enter the total basement area in square feet.');
+      if (area && area.focus) area.focus();
+      return false;
+    }
+    return true;
+  }
+
   function setWizardStep(index, scroll) {
     if (index < 0) index = 0;
     if (index >= wizardKeys.length) index = wizardKeys.length - 1;
@@ -731,30 +808,51 @@
     var prev = document.getElementById('br-prev');
     var next = document.getElementById('br-next');
     if (prev) prev.disabled = currentIndex === 0;
-    if (next) next.textContent = key === 'review' ? 'Review' : (currentIndex === sectionKeys.length - 1 ? 'Review' : 'Next');
-    if (next && key === 'review') next.disabled = true;
-    else if (next) next.disabled = false;
-    if (scroll && !isEdit) {
+    if (next) {
+      next.textContent = key === 'review' ? 'Save' : 'Next';
+      next.disabled = false;
+    }
+    if (scroll) {
       var el = sectionEl(key);
       if (el && el.scrollIntoView) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
+    schedulePreview();
   }
 
   applyScope();
   bindLw();
 
-  if (!isEdit) {
-    setWizardStep(0, false);
-    var prevBtn = document.getElementById('br-prev');
-    var nextBtn = document.getElementById('br-next');
-    if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
-    if (nextBtn) nextBtn.addEventListener('click', function () { setWizardStep(currentIndex + 1, true); });
-  } else {
-    var nav = document.getElementById('br-step-nav');
-    if (nav) nav.hidden = true;
+  function syncStickyBarSpace() {
+    var bar = document.getElementById('br-sticky-total');
+    if (!bar) return;
+    var h = Math.ceil(bar.getBoundingClientRect().height);
+    if (!isFinite(h) || h < 1) h = 64;
+    document.documentElement.style.setProperty('--br-sticky-bar-h', h + 'px');
   }
+  syncStickyBarSpace();
+  window.addEventListener('resize', syncStickyBarSpace);
+  if (typeof ResizeObserver !== 'undefined') {
+    var stickyBar = document.getElementById('br-sticky-total');
+    if (stickyBar) new ResizeObserver(syncStickyBarSpace).observe(stickyBar);
+  }
+
+  setWizardStep(isEdit ? Math.max(0, wizardKeys.indexOf('review')) : 0, false);
+  var prevBtn = document.getElementById('br-prev');
+  var nextBtn = document.getElementById('br-next');
+  if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
+  if (nextBtn) nextBtn.addEventListener('click', function () {
+    var key = wizardKeys[currentIndex];
+    if (key === 'review') {
+      if (publishBtn) publishBtn.click();
+      else if (typeof form.requestSubmit === 'function') form.requestSubmit();
+      else form.submit();
+      return;
+    }
+    if (!validateCurrentStep()) return;
+    setWizardStep(currentIndex + 1, true);
+  });
 
   form.querySelectorAll('[data-br-scope-preset]').forEach(function (el) {
     el.addEventListener('change', function () {
@@ -787,17 +885,6 @@
       var key = btn.getAttribute('data-br-goto');
       var idx = wizardKeys.indexOf(key);
       if (idx < 0) return;
-      if (isEdit) {
-        var el = sectionEl(key);
-        if (el) {
-          el.setAttribute('open', '');
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        form.querySelectorAll('.br-progress__item').forEach(function (b) {
-          b.classList.toggle('is-current', b.getAttribute('data-br-goto') === key);
-        });
-        return;
-      }
       setWizardStep(idx, true);
     });
   });
@@ -810,6 +897,11 @@
   function runPreview() {
     if (!previewUrl) return;
     var fd = new FormData(form);
+    form.querySelectorAll('input.admin-checkbox__input[name]').forEach(function (cb) {
+      var name = cb.name || '';
+      if (!name || name.indexOf('[') !== -1) return;
+      fd.set(name, cb.checked ? (cb.value || '1') : '0');
+    });
     form.querySelectorAll('.cp-money-input[name]').forEach(function (input) {
       fd.set(input.name, (input.value || '').replace(/,/g, ''));
     });
@@ -852,16 +944,17 @@
     if (empty) empty.hidden = true;
     if (body) body.hidden = false;
     var laborPre = Number(summary.labor_pre_hst || 0) + lastAdditionalLaborPreTax;
-    var laborHst = Number(summary.labor_hst != null ? summary.labor_hst : Number(summary.labor_pre_hst || 0) * 0.13) + lastAdditionalLaborHst;
     var matPre = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
-    var matHst = Number(summary.materials_hst || 0) + lastAdditionalMaterialsHst;
+    var permitPre = Number(summary.permit_pre_hst || 0);
+    var extraHst = lastAdditionalLaborHst + lastAdditionalMaterialsHst;
+    var subtotal = laborPre + matPre + permitPre;
+    var hst = Number(summary.hst != null ? summary.hst : subtotal * 0.13) + extraHst;
     var html = '';
-    html += '<div class="pq-row"><span>Labor (pre-HST)</span><span>' + fmt(laborPre) + '</span></div>';
-    html += '<div class="pq-row"><span>Labor HST</span><span>' + fmt(laborHst) + '</span></div>';
-    html += '<div class="pq-row pq-row--sub"><span>Total labor</span><span>' + fmt(laborPre + laborHst) + '</span></div>';
-    html += '<div class="pq-row pq-row--group"><span>Materials (pre-HST)</span><span>' + fmt(matPre) + '</span></div>';
-    html += '<div class="pq-row"><span>Materials HST</span><span>' + fmt(matHst) + '</span></div>';
-    html += '<div class="pq-row pq-row--sub"><span>Total materials</span><span>' + fmt(matPre + matHst) + '</span></div>';
+    html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';
+    html += '<div class="pq-row"><span>Materials</span><span>' + fmt(matPre) + '</span></div>';
+    if (permitPre > 0) {
+      html += '<div class="pq-row"><span>Permit</span><span>' + fmt(permitPre) + '</span></div>';
+    }
     var wastePct = Number(summary.material_waste_percent);
     if (isFinite(wastePct) && wastePct > 0) {
       html += '<div class="pq-row"><span class="admin-form-help">Material waste in qtys</span><span class="admin-form-help">' + wastePct + '%</span></div>';
@@ -869,13 +962,40 @@
     html += tradeBreakdownHtml('Electrical', summary.trades && summary.trades.electrical);
     html += tradeBreakdownHtml('Plumbing', summary.trades && summary.trades.plumbing);
     if (lastCommuteAmount > 0) {
-      html += '<div class="pq-row pq-row--group"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
+      html += '<div class="pq-row"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
     }
     if (lastDebrisAmount > 0) {
-      html += '<div class="pq-row pq-row--group"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
+      html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
     }
+    html += '<div class="pq-row pq-row--sub"><span>Subtotal</span><span>' + fmt(subtotal) + '</span></div>';
+    html += '<div class="pq-row"><span>HST 13%</span><span>' + fmt(hst) + '</span></div>';
     html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
     body.innerHTML = html;
+    updateDrywallNetHint(data.scope || {});
+  }
+
+  function updateDrywallNetHint(scope) {
+    var hint = document.getElementById('br-dw-net-hint');
+    if (!hint) return;
+    var net = Number(scope.drywall_wall_net_sf || 0);
+    var opening = Number(scope.drywall_opening_sf || 0);
+    var sheet = scope.drywall_sheet_size || '4x8';
+    var sheetSf = Number(scope.drywall_sheet_sf || 32);
+    if (net <= 0 && opening <= 0) {
+      hint.hidden = true;
+      hint.textContent = '';
+      return;
+    }
+    var parts = [];
+    if (opening > 0) {
+      parts.push(formatLayoutQty(opening) + ' sq ft openings deducted');
+    }
+    if (net > 0) {
+      parts.push(formatLayoutQty(net) + ' sq ft net walls');
+    }
+    parts.push(sheet + ' sheets (' + formatLayoutQty(sheetSf) + ' sq ft each)');
+    hint.hidden = false;
+    hint.textContent = parts.join(' · ') + '.';
   }
 
   function tradeBreakdownHtml(label, trade) {
@@ -890,7 +1010,7 @@
     var tbody = document.getElementById('br-labor-rows');
     if (!tbody) return;
     if (!rows.length) {
-      tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Enter the basement area to generate labor lines.</td></tr>';
+      tbody.innerHTML = '<tr class="br-empty-row"><td colspan="3" class="admin-form-help">Enter the basement area to generate labour lines.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function (row) {
@@ -926,6 +1046,7 @@
     if (el.dataset.brBound === '1') return;
     el.dataset.brBound = '1';
     el.addEventListener('input', schedulePreview);
+    el.addEventListener('keyup', schedulePreview);
     el.addEventListener('change', schedulePreview);
   }
 

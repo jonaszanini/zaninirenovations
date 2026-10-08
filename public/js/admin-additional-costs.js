@@ -212,7 +212,7 @@
     var hstIncluded = data.hst_included !== false && data.hst_included !== 0 && data.hst_included !== '0';
     var category = (data.category === 'labour' || data.category === 'labor') ? 'labour' : 'materials';
     var showCategory = attr(card, 'data-ac-show-category', '0') === '1';
-    var ph = escapeAttr(attr(card, 'data-ac-placeholder', 'e.g. Dumpster rental, permits'));
+    var ph = escapeAttr(attr(card, 'data-ac-placeholder', 'e.g. Dumpster'));
     var html = ''
       + '<div class="q-ac-row' + (showCategory ? ' q-ac-row--with-category' : '') + '" data-ac-row data-ac-index="' + idx + '">'
       +   '<div class="admin-form-group q-ac-row__desc">'
@@ -222,7 +222,7 @@
       +            ' value="' + escapeAttr(desc) + '" data-ac-description>'
       +   '</div>'
       +   '<div class="admin-form-group q-ac-row__amount">'
-      +     '<label for="' + prefix + '-amt-' + idx + '">Amount (CA$)</label>'
+      +     '<label for="' + prefix + '-amt-' + idx + '">Amount</label>'
       +     '<input type="text" id="' + prefix + '-amt-' + idx + '" name="' + field + '[' + idx + '][amount]"'
       +            ' class="admin-input cp-money-input' + extraCls + '" inputmode="decimal" autocomplete="off"'
       +            ' placeholder="0.00" value="' + escapeAttr(amount) + '" data-ac-amount>'
