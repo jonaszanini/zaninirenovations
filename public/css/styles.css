@@ -9180,24 +9180,6 @@ button,
     display: flex;
     align-items: center;
   }
-  /* Stacked footer lists: padding for a ~44px tap row. Do not stretch
-     inline sentence links (Areas we serve, copyright). */
-  .footer-widget-area .footer-useful-links li a {
-    display: block;
-    box-sizing: border-box;
-    padding: 11px 8px 11px 0;
-    min-height: 44px;
-    line-height: 22px;
-  }
-  .footer-widget-area .footer-contact-body a,
-  .footer-widget-area .contact-us a,
-  .footer-nav li a {
-    display: inline-block;
-    box-sizing: border-box;
-    padding: 11px 0;
-    min-height: 44px;
-    line-height: 22px;
-  }
   .team-layout-1 .team-info .team-social-share a {
     display: inline-flex;
     align-items: center;
