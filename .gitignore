@@ -30,3 +30,10 @@ yarn-error.log
 
 # Sensitive / notes files that should never be committed
 users.txt
+
+# Local walkthrough / clip-audit helpers — do not deploy
+/scripts/bq*-screenshots.js
+/scripts/bq*-clip-audit.js
+/scripts/bq*-viewport-shots.js
+/scripts/bq*-render-pdf.php
+/scripts/bq*-totals.php

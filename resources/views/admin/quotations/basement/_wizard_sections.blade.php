@@ -359,7 +359,7 @@
             <div class="admin-form-group">
               <label for="br-demo-studs">@include('admin.partials.info_tip', ['text' => $brInfo['demo_studs_lf']]) Existing studs (lf)</label>
               <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-demo-studs" name="demo_studs_lf"
-                     value="{{ $brQty('demo_studs_lf') }}" placeholder="Auto: partition wall length">
+                     value="{{ $brQty('demo_studs_lf') }}" placeholder="Auto">
             </div>
           </div>
         </div>
@@ -480,7 +480,7 @@
             'mode' => $qtyDim('insulation_wall_sf')['mode'],
             'lengthValue' => $qtyDim('insulation_wall_sf')['length'],
             'widthValue' => $qtyDim('insulation_wall_sf')['width'],
-            'placeholder' => 'Auto: perimeter × height',
+            'placeholder' => 'Auto',
             'info' => $brInfo['insulation_wall_sf'],
           ])
         </div>
@@ -533,7 +533,7 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Ceiling Options</summary>
   <div class="br-acc__body">
     <div class="br-qty-grid">
-      <div class="admin-form-group">
+      <div class="admin-form-group br-field--wide">
         <label for="br-ceil-type">@include('admin.partials.info_tip', ['text' => $brInfo['ceiling_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'ceiling_type', 'filledKeys' => $filledKeys]) Ceiling type</label>
         <select class="admin-input br-preview" id="br-ceil-type" name="ceiling_type">
           <option value="drywall" @selected($brVal('ceiling_type', 'drywall') === 'drywall')>Drywall ceiling</option>
@@ -624,7 +624,7 @@
         'placeholder' => 'Auto',
         'info' => $brInfo['drywall_wall_sf'],
       ])
-      <div data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
+      <div class="br-field--wide" data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'drywall_ceiling_sf',
         'id' => 'br-dw-ceil',
@@ -689,7 +689,7 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Flooring</summary>
   <div class="br-acc__body">
     <div class="br-qty-grid">
-      <div class="admin-form-group">
+      <div class="admin-form-group br-field--wide">
         <label for="br-fl-type">@include('admin.partials.info_tip', ['text' => $brInfo['flooring_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'flooring_type', 'filledKeys' => $filledKeys]) Final flooring type</label>
         <select class="admin-input br-preview" id="br-fl-type" name="flooring_type">
           <option value="lvp" @selected($brVal('flooring_type', 'lvp') === 'lvp')>LVP</option>
@@ -786,7 +786,7 @@
           'rate' => \App\Services\SharedWorkCatalog::rateLine('casing_opening'),
           'inputClass' => 'br-preview',
           'step' => '1',
-          'placeholder' => 'Auto: door count',
+          'placeholder' => 'Auto',
         ])
       </div>
       <div class="admin-form-group">
@@ -827,7 +827,7 @@
           'gearLabel' => 'Edit shoe moulding rates',
           'rate' => \App\Services\SharedWorkCatalog::rateLine('shoe_install').' · '.\App\Services\SharedWorkCatalog::rateLine('shoe_caulk_paint'),
           'inputClass' => 'br-preview',
-          'placeholder' => 'Auto: same as baseboard',
+          'placeholder' => 'Auto',
         ])
       </div>
     </div>
@@ -857,7 +857,7 @@
         'gearLabel' => 'Edit wall paint rates',
         'rate' => \App\Services\SharedWorkCatalog::rateLine('paint_walls'),
       ])
-      <div data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
+      <div class="br-field--wide" data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'paint_ceiling_sf',
         'id' => 'br-p-ceil',
