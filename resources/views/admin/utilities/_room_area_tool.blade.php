@@ -35,9 +35,10 @@
 
     @if ($fullPage)
       <header class="util-ra-full-header">
-        <div class="util-ra-full-header__start">
-          <a href="{{ $backUrl }}" class="admin-btn admin-btn--ghost util-ra-full-header__back">
-            <i class="fa fa-arrow-left" aria-hidden="true"></i> {{ $backLabel }}
+        <div class="util-ra-full-header__row util-ra-full-header__row--primary">
+          <a href="{{ $backUrl }}" class="admin-btn admin-btn--ghost util-ra-full-header__back" aria-label="{{ $backLabel }}">
+            <i class="fa fa-arrow-left" aria-hidden="true"></i>
+            <span class="util-ra-full-header__back-label">{{ $backLabel }}</span>
           </a>
           <div class="util-ra-full-header__titles">
             <label class="util-sr-only" for="ra-full-room-name">Room name</label>
@@ -52,14 +53,24 @@
               placeholder="Room name">
             <p class="util-ra-full-header__sub" data-ra-full-sub>{{ $clientProject->name ?? '' }}</p>
           </div>
+          <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__cancel" data-ra-cancel-edit hidden aria-label="Cancel edit">
+            <i class="fa fa-times" aria-hidden="true"></i>
+            <span class="util-ra-full-header__cancel-label">Cancel</span>
+          </button>
+          <button type="button" class="admin-btn admin-btn--primary util-ra-full-header__save" data-ra-save-room disabled aria-label="Save room">
+            <i class="fa fa-save" aria-hidden="true"></i>
+            <span class="util-ra-full-header__save-label">Save</span>
+          </button>
         </div>
-        <div class="util-ra-full-header__actions">
-          <button type="button" class="admin-btn admin-btn--ghost" data-ra-cancel-edit hidden aria-label="Cancel edit">
-            Cancel
-          </button>
-          <button type="button" class="admin-btn admin-btn--primary" data-ra-save-room disabled aria-label="Save room">
-            <i class="fa fa-save" aria-hidden="true"></i> Save
-          </button>
+        <div class="util-ra-full-header__row util-ra-full-header__row--tools">
+          <div class="util-ra-full-header__draw">
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-undo-vertex disabled aria-label="Undo">
+              <i class="fa fa-undo" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-redo disabled aria-label="Redo">
+              <i class="fa fa-repeat" aria-hidden="true"></i>
+            </button>
+          </div>
           <div class="util-ra-zoom-controls util-ra-full-header__zoom">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-out aria-label="Zoom out">
               <i class="fa fa-minus" aria-hidden="true"></i>
@@ -76,7 +87,8 @@
             </button>
           </div>
           <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__panel" data-ra-side-toggle aria-expanded="true" aria-controls="ra-side-panel">
-            <i class="fa fa-sliders" aria-hidden="true"></i> Panel
+            <i class="fa fa-sliders" aria-hidden="true"></i>
+            <span class="util-ra-full-header__panel-label">Panel</span>
           </button>
         </div>
       </header>
@@ -569,6 +581,9 @@
       </div>{{-- stage__main --}}
 
       <aside class="util-ra-side" id="ra-side-panel" data-ra-side>
+        <button type="button" class="util-ra-sheet-handle" data-ra-sheet-handle aria-label="Drag to resize panel">
+          <span class="util-ra-sheet-handle__bar" aria-hidden="true"></span>
+        </button>
         <div class="util-ra-side__tabs" data-ra-side-tabs role="tablist" aria-label="Room Area panel">
           <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab is-active" data-ra-side-tab="measure" role="tab" aria-selected="true">Measure</button>
           <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab" data-ra-side-tab="math" role="tab" aria-selected="false">Math</button>

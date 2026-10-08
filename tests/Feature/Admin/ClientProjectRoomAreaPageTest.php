@@ -40,6 +40,8 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             ->assertSee('data-ra-zoom-100', false)
             ->assertSee('data-ra-zoom-reset', false)
             ->assertSee('data-ra-side', false)
+            ->assertSee('data-ra-sheet-handle', false)
+            ->assertSee('util-ra-full-header__back-label', false)
             ->assertSee('Kitchen remodel')
             ->assertSee('Kitchen');
     }
@@ -171,7 +173,14 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringNotContainsString('!e.shiftKey) return', $js);
         $this->assertStringContainsString('data-ra-fullpage', $js);
         $this->assertStringContainsString('bindSidePanel', $js);
+        $this->assertStringContainsString('bindSheetHandle', $js);
         $this->assertStringContainsString('drawGrid();', $js);
+
+        $css = file_get_contents(public_path('css/admin-utilities.css'));
+        $this->assertNotFalse($css);
+        $this->assertStringContainsString('width: 25rem', $css);
+        $this->assertStringContainsString('--ra-sheet-h', $css);
+        $this->assertStringContainsString('min-height: 45vh', $css);
     }
 
     /**

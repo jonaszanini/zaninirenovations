@@ -1736,7 +1736,7 @@
       var wrapH = Math.floor(wrap.getBoundingClientRect().height || wrap.clientHeight);
       return {
         w: Math.max(MIN_CANVAS_W, wrapW),
-        h: Math.max(MIN_CANVAS_H_NARROW, wrapH || 640)
+        h: Math.max(1, wrapH || 240)
       };
     }
     var w = wrapW;
@@ -4167,6 +4167,12 @@
   function bindViewportEvents() {
     if (!els.canvasWrap || els.canvasWrap._raViewportBound) return;
     els.canvasWrap._raViewportBound = true;
+
+    if (isFullPage() && typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(function () {
+        scheduleStageResize();
+      }).observe(els.canvasWrap);
+    }
 
     els.canvasWrap.addEventListener('wheel', function (e) {
       if (!state.stage) return;
@@ -7034,11 +7040,17 @@
     setSaveDisabled(!pixelsPerFoot());
   }
 
+  function setAllDisabled(sel, disabled) {
+    raAll(sel).forEach(function (btn) {
+      btn.disabled = !!disabled;
+    });
+  }
+
   function updateToolbar() {
-    els.undoVertex.disabled = state.undoStack.length === 0;
-    if (els.redo) els.redo.disabled = state.redoStack.length === 0;
+    setAllDisabled('[data-ra-undo-vertex]', state.undoStack.length === 0);
+    setAllDisabled('[data-ra-redo]', state.redoStack.length === 0);
     if (els.splitWall) els.splitWall.disabled = state.selectedWallIndex === null;
-    els.closeShape.disabled = activeVertices().length < 3 || isActiveClosed();
+    setAllDisabled('[data-ra-close-shape]', activeVertices().length < 3 || isActiveClosed());
     if (els.addArea) els.addArea.disabled = !isActiveClosed();
     if (els.addAreaNewGroup) els.addAreaNewGroup.disabled = !isActiveClosed();
     if (els.deleteArea) {
@@ -9449,8 +9461,12 @@
       applyScale();
     });
 
-    els.undoVertex.addEventListener('click', undoVertex);
-    if (els.redo) els.redo.addEventListener('click', redoAction);
+    raAll('[data-ra-undo-vertex]').forEach(function (btn) {
+      btn.addEventListener('click', undoVertex);
+    });
+    raAll('[data-ra-redo]').forEach(function (btn) {
+      btn.addEventListener('click', redoAction);
+    });
     if (els.splitWall) els.splitWall.addEventListener('click', splitSelectedWall);
     if (els.shortcutsToggle) {
       els.shortcutsToggle.addEventListener('click', function (e) {
@@ -9749,6 +9765,66 @@
         setSidePane(tab.getAttribute('data-ra-side-tab'));
       });
     });
+    bindSheetHandle();
+  }
+
+  function bindSheetHandle() {
+    var handle = root.querySelector('[data-ra-sheet-handle]');
+    var side = root.querySelector('[data-ra-side]');
+    if (!handle || !side || !isFullPage()) return;
+    var dragging = false;
+    var startY = 0;
+    var startH = 0;
+    var pointerId = null;
+
+    function eventY(e) {
+      if (e.touches && e.touches[0]) return e.touches[0].clientY;
+      if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientY;
+      return e.clientY;
+    }
+
+    function clampSheet(height) {
+      var minH = Math.round(Math.min(window.innerHeight * 0.22, 168));
+      var maxH = Math.round(window.innerHeight * 0.55);
+      return Math.max(minH, Math.min(maxH, Math.round(height)));
+    }
+
+    function applySheet(height) {
+      root.style.setProperty('--ra-sheet-h', clampSheet(height) + 'px');
+      scheduleStageResize();
+    }
+
+    function onDown(e) {
+      if (window.matchMedia('(min-width: 901px)').matches) return;
+      dragging = true;
+      startY = eventY(e);
+      startH = side.getBoundingClientRect().height;
+      if (e.pointerId != null && handle.setPointerCapture) {
+        pointerId = e.pointerId;
+        try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+      }
+      e.preventDefault();
+    }
+
+    function onMove(e) {
+      if (!dragging) return;
+      var next = startH + (startY - eventY(e));
+      applySheet(next);
+      e.preventDefault();
+    }
+
+    function onUp() {
+      dragging = false;
+      pointerId = null;
+    }
+
+    handle.addEventListener('pointerdown', onDown);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
+    handle.addEventListener('touchstart', onDown, { passive: false });
+    handle.addEventListener('touchmove', onMove, { passive: false });
+    handle.addEventListener('touchend', onUp);
   }
 
   function init() {
