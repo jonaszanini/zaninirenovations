@@ -108,7 +108,7 @@
 .mw-totals-bar {
   position: sticky;
   bottom: 0;
-  z-index: 18;
+  z-index: 40;
   display: flex;
   flex-wrap: nowrap;
   gap: 4px 10px;

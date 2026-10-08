@@ -427,12 +427,36 @@
       return typeEl.value || 'shelf';
     }
 
+    function syncFinishFields(piece) {
+      var selects = piece.querySelectorAll('select[name$="[finish]"]');
+      if (!selects.length) return;
+      var current = '';
+      selects.forEach(function (sel) {
+        if (!sel.disabled) current = sel.value;
+      });
+      if (!current) current = selects[0].value;
+      selects.forEach(function (sel) {
+        var hide = false;
+        var node = sel.parentElement;
+        while (node && node !== piece) {
+          if (node.hasAttribute && node.hasAttribute('data-mw-show') && window.getComputedStyle(node).display === 'none') {
+            hide = true;
+            break;
+          }
+          node = node.parentElement;
+        }
+        sel.disabled = hide;
+        sel.value = current;
+      });
+    }
+
     function syncPieceType(piece) {
       var type = pieceTypeOf(piece);
       piece.setAttribute('data-mw-type', type);
       var below = piece.querySelector('select[name$="[below]"]');
       piece.setAttribute('data-mw-below', (below && below.value === 'drawers') ? 'drawers' : 'divisions');
       syncUnitLabels(piece);
+      syncFinishFields(piece);
       syncHardwareCatalog();
       syncMaterialsCatalog();
     }
