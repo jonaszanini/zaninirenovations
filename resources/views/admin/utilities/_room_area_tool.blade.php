@@ -238,6 +238,7 @@
             <div class="util-ra-tool-group">
               <span class="util-ra-tool-group__label">Draw</span>
               <div class="util-ra-tool-group__actions">
+                @unless($fullPage)
                 <span class="util-ra-tip" data-tooltip="Undo">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-undo-vertex disabled aria-label="Undo">
                     <i class="fa fa-undo" aria-hidden="true"></i>
@@ -248,6 +249,7 @@
                     <i class="fa fa-repeat" aria-hidden="true"></i>
                   </button>
                 </span>
+                @endunless
                 <span class="util-ra-tip" data-tooltip="Close shape">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-close-shape disabled aria-label="Close shape">
                     <i class="fa fa-check-circle" aria-hidden="true"></i>
