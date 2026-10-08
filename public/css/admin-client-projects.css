@@ -8548,6 +8548,11 @@ body.cp-modal-open {
   color: var(--admin-primary);
   min-width: 72px;
   text-align: center;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 6px;
+  pointer-events: none;
 }
 .br-extra-row {
   display: grid;

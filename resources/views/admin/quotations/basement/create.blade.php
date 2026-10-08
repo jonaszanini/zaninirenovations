@@ -381,7 +381,7 @@
     <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
       <div class="br-step-nav" id="br-step-nav">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
+        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount + 1 }}</span>
         <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
       </div>
       <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">

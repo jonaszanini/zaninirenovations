@@ -801,7 +801,7 @@
     });
     var status = document.getElementById('br-step-status');
     if (status) {
-      status.textContent = (currentIndex + 1) + ' of ' + sectionKeys.length;
+      status.textContent = (currentIndex + 1) + ' of ' + wizardKeys.length;
     }
     var prev = document.getElementById('br-prev');
     var next = document.getElementById('br-next');

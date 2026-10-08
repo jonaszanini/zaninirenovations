@@ -120,6 +120,7 @@
           "actions actions";
       }
       .q-ac-row--with-category {
+        grid-template-columns: minmax(6rem, 0.85fr) minmax(0, 1.15fr);
         grid-template-areas:
           "desc desc"
           "amount category"
@@ -138,6 +139,7 @@
       .q-ac-row__category select.admin-input {
         min-width: 0;
         width: 100%;
+        padding-right: 1.75rem;
       }
     }
   </style>
