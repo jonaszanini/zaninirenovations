@@ -1502,15 +1502,6 @@
     });
   }
 
-  if (existingPostCreditInput && repriceInput) {
-    existingPostCreditInput.addEventListener('input', function () {
-      repriceInput.value = '0';
-    });
-    existingPostCreditInput.addEventListener('change', function () {
-      repriceInput.value = '0';
-    });
-  }
-
   if (generateWorkDescriptionBtn && workDescriptionInput) {
     generateWorkDescriptionBtn.addEventListener('click', function () {
       if (!lastCalc || !lastCalc.suggested_work_description) {

@@ -44,7 +44,8 @@ jobs:
 
       - name: Blade syntax smoke (no database)
         run: |
-          php artisan test tests/Unit/Views/BladeSyntaxTest.php tests/Unit/Views/AdminInfoTipComponentTest.php
+          php artisan test tests/Unit/Views/BladeSyntaxTest.php
+          php artisan test tests/Unit/Views/AdminInfoTipComponentTest.php
           php artisan test tests/Unit/Views/QuotationPdfPageBreakTest.php tests/Unit/BasementQuotationWizardViewTest.php tests/Unit/Models/BasementQuotationScopePdfTest.php
           php artisan test tests/Unit/Support/AdminListFiltersTest.php
           php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php

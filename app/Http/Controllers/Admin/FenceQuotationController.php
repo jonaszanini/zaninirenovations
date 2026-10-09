@@ -678,14 +678,14 @@ class FenceQuotationController extends Controller
 
     /**
      * Blank and missing credit fields use the same fallback as save:
-     * re-price → config; else stored quote; else config for new quotes.
-     * Posted "0" stays 0.
+     * posted value (including "0") always wins — even during re-price;
+     * else re-price → config; else stored quote; else config for new quotes.
      */
     protected function prepareExistingPostLabourCreditOnRequest(Request $request, ?FenceQuotation $quote = null): void
     {
         $raw = $request->input('existing_post_labour_credit');
         $missing = $raw === null || $raw === '';
-        if (! $missing && ! $request->boolean('reprice')) {
+        if (! $missing) {
             return;
         }
 
@@ -699,23 +699,24 @@ class FenceQuotationController extends Controller
     }
 
     /**
-     * Posted credit (including the string "0") wins. If the field is missing,
-     * reuse the stored quote value; new quotes fall back to formula config.
-     * Re-price always takes the current config.
+     * Posted credit (including the string "0") always wins, including
+     * when `reprice` is set. Re-price only supplies the current config
+     * when the field is missing or blank. Re-price still means live
+     * catalogue prices on update().
      */
     protected function resolveExistingPostLabourCredit(
         array $data,
         ?FenceQuotation $quote = null,
         bool $reprice = false
     ): float {
-        if ($reprice) {
-            return FenceFormulaSetting::current()->existingPostLabourCredit();
-        }
-
         if (array_key_exists('existing_post_labour_credit', $data)
             && $data['existing_post_labour_credit'] !== null
             && $data['existing_post_labour_credit'] !== '') {
             return round(max(0, (float) $data['existing_post_labour_credit']), 2);
+        }
+
+        if ($reprice) {
+            return FenceFormulaSetting::current()->existingPostLabourCredit();
         }
 
         if ($quote !== null && $quote->existing_post_labour_credit !== null) {

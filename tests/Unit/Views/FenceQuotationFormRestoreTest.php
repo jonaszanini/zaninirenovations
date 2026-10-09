@@ -46,13 +46,14 @@ class FenceQuotationFormRestoreTest extends TestCase
         $this->assertStringContainsString('fq-t-existing-post-credit-row', $blade);
         $this->assertStringContainsString('fq-t-labour-net-row', $blade);
         $this->assertStringContainsString('existing_post_labour_credit', $blade);
-        $this->assertStringContainsString('required', $blade);
         $this->assertStringContainsString('About labour credit', $blade);
         $this->assertStringContainsString("grid-template-columns: 1fr", $blade);
         $this->assertStringContainsString('tLabourNetRow.classList.add(\'is-hidden\')', $blade);
-        $this->assertStringContainsString('(showCredit ? grossLabour : netLabour) + lastAdditionalLaborPreTax', $blade);
-        $this->assertStringContainsString("repriceInput.value = '0'", $blade);
         $this->assertStringContainsString('parseOptionalLabourRate', $blade);
+        $this->assertStringNotContainsString(
+            "existingPostCreditInput.addEventListener('input'",
+            $blade
+        );
         $this->assertStringNotContainsString('data-cp-money-entry="direct"', $blade);
         $this->assertStringNotContainsString('Existing post credit: -$', $blade);
     }

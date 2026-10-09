@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\ClientProjectQuotation;
 use App\Models\FenceFormulaSetting;
+use App\Models\FenceMaterial;
 use App\Models\FenceQuotation;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
@@ -125,11 +126,12 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(0.0, (float) $old->existing_post_labour_credit, 0.001);
         $this->assertEqualsWithDelta(24 * 55, (float) $old->labour_total, 0.02);
 
-        $this->put(route('admin.quotations.fence.update', $old), $this->storePayload([
+        $repriceOnly = $this->storePayload([
             'sides' => [['length_ft' => 24, 'already_have_post_left' => '1']],
-            'existing_post_labour_credit' => 0,
             'reprice' => '1',
-        ]))->assertRedirect();
+        ]);
+        unset($repriceOnly['existing_post_labour_credit']);
+        $this->put(route('admin.quotations.fence.update', $old), $repriceOnly)->assertRedirect();
 
         $old->refresh();
         $this->assertEqualsWithDelta(30.0, (float) $old->existing_post_labour_credit, 0.001);
@@ -151,6 +153,12 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
             '/id="fq-existing-post-credit"[^>]*class="[^"]*cp-money-input/',
             $html
         );
+        $this->assertSame(1, preg_match(
+            '/<input\b[^>]*\bid="fq-existing-post-credit"[^>]*>/',
+            $html,
+            $creditInput
+        ));
+        $this->assertMatchesRegularExpression('/\brequired\b/', $creditInput[0]);
         $this->assertStringNotContainsString('data-cp-money-entry="direct"', $html);
         $this->assertStringContainsString('admin-info-tip', $html);
     }
@@ -261,6 +269,13 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
         $this->from(route('admin.quotations.fence.create'))
             ->post(route('admin.quotations.fence.store'), $this->storePayload([
                 'existing_post_labour_credit' => 'abc',
+            ]))
+            ->assertRedirect(route('admin.quotations.fence.create'))
+            ->assertSessionHasErrors('existing_post_labour_credit');
+
+        $this->from(route('admin.quotations.fence.create'))
+            ->post(route('admin.quotations.fence.store'), $this->storePayload([
+                'existing_post_labour_credit' => [],
             ]))
             ->assertRedirect(route('admin.quotations.fence.create'))
             ->assertSessionHasErrors('existing_post_labour_credit');
@@ -444,6 +459,145 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
             'items' => $items,
         ]);
         $this->assertEqualsWithDelta($editorTotal, $pdf->pdfGrandTotal(), 0.02);
+    }
+
+    public function test_reprice_then_edit_credit_saves_catalogue_prices_matching_preview(): void
+    {
+        $this->actingAsAdmin();
+        FenceFormulaSetting::current()->update(['existing_post_labour_credit' => 30]);
+
+        $this->post(route('admin.quotations.fence.store'), $this->storePayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => '1']],
+            'existing_post_labour_credit' => 0,
+        ]))->assertRedirect();
+
+        $quote = FenceQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $this->assertEqualsWithDelta(0.0, (float) $quote->existing_post_labour_credit, 0.001);
+        $this->assertSame('catalogue', $quote->calculation['price_source'] ?? null);
+
+        $frozenPrices = collect($quote->calculation['materials'] ?? [])
+            ->filter(fn ($row) => is_array($row) && ($row['key'] ?? '') !== '')
+            ->mapWithKeys(fn (array $row) => [(string) $row['key'] => (float) $row['unit_price']])
+            ->all();
+        $this->assertNotEmpty($frozenPrices);
+
+        foreach (FenceMaterial::query()->with('material')->get() as $row) {
+            if ($row->material) {
+                $row->material->update([
+                    'price_cad' => round((float) $row->material->price_cad + 12.34, 2),
+                ]);
+            } else {
+                $row->update([
+                    'price_cad' => round((float) $row->price_cad + 12.34, 2),
+                ]);
+            }
+        }
+
+        $payload = [
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => 1]],
+            'existing_post_labour_credit' => 45,
+            'reprice' => '1',
+            'fence_quotation_id' => $quote->id,
+        ];
+
+        $preview = $this->postJson(route('admin.quotations.fence.preview'), $this->previewPayload($payload))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame('catalogue', $preview['price_source'] ?? null);
+        $this->assertEqualsWithDelta(45.0, (float) $preview['inputs']['existing_post_labour_credit'], 0.001);
+
+        $this->put(
+            route('admin.quotations.fence.update', $quote),
+            $this->storePayload($payload)
+        )->assertRedirect();
+
+        $quote->refresh();
+        $this->assertEqualsWithDelta(45.0, (float) $quote->existing_post_labour_credit, 0.001);
+        $this->assertSame('catalogue', $quote->calculation['price_source'] ?? null);
+        $this->assertEqualsWithDelta(
+            $preview['totals']['labour_subtotal'],
+            (float) $quote->labour_total,
+            0.02
+        );
+        $this->assertEqualsWithDelta(
+            $preview['totals']['grand_total'],
+            $quote->calculation['totals']['grand_total'],
+            0.02
+        );
+        $this->assertEqualsWithDelta(
+            $preview['totals']['materials_subtotal'],
+            (float) $quote->materials_subtotal,
+            0.02
+        );
+
+        $savedPrices = collect($quote->calculation['materials'] ?? [])
+            ->filter(fn ($row) => is_array($row) && ($row['key'] ?? '') !== '')
+            ->mapWithKeys(fn (array $row) => [(string) $row['key'] => (float) $row['unit_price']])
+            ->all();
+        $previewPrices = collect($preview['materials'] ?? [])
+            ->filter(fn ($row) => is_array($row) && ($row['key'] ?? '') !== '')
+            ->mapWithKeys(fn (array $row) => [(string) $row['key'] => (float) $row['unit_price']])
+            ->all();
+
+        $this->assertSame(array_keys($previewPrices), array_keys($savedPrices));
+        $changed = false;
+        foreach ($previewPrices as $key => $livePrice) {
+            $this->assertEqualsWithDelta($livePrice, $savedPrices[$key], 0.001, $key);
+            if (array_key_exists($key, $frozenPrices) && abs($livePrice - $frozenPrices[$key]) > 0.009) {
+                $changed = true;
+            }
+        }
+        $this->assertTrue($changed, 'Re-price should persist live catalogue unit prices, not the frozen snapshot.');
+    }
+
+    public function test_labour_minus_credit_equals_net_including_additional_labour(): void
+    {
+        $this->actingAsAdmin();
+        FenceFormulaSetting::current()->update([
+            'existing_post_labour_credit' => 30,
+            'labour_per_additional_gate' => 80,
+        ]);
+
+        $preview = $this->postJson(route('admin.quotations.fence.preview'), $this->previewPayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => 1]],
+            'gate_count' => 2,
+            'existing_post_labour_credit' => 30,
+        ]))->assertOk()->json();
+
+        $gross = (float) $preview['totals']['labour_before_credit'];
+        $credit = (float) $preview['totals']['existing_post_credit']['amount'];
+        $net = (float) $preview['totals']['labour_subtotal'];
+        $this->assertEqualsWithDelta(24 * 55 + 80, $gross, 0.02);
+        $this->assertEqualsWithDelta(30.0, $credit, 0.001);
+        $this->assertEqualsWithDelta($gross - $credit, $net, 0.001);
+
+        $additionalLabour = 100.0;
+        $this->post(route('admin.quotations.fence.store'), $this->storePayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => '1']],
+            'gate_count' => 2,
+            'existing_post_labour_credit' => 30,
+            'include_labour_hst' => '0',
+            'additional_costs' => [[
+                'description' => 'Extra crew',
+                'amount' => $additionalLabour,
+                'hst_included' => '0',
+                'category' => 'labour',
+            ]],
+        ]))->assertRedirect();
+
+        $quote = FenceQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $editorLabour = (float) $quote->calculation['totals']['labour_before_credit'] + $additionalLabour;
+        $editorNet = (float) $quote->calculation['totals']['labour_subtotal'] + $additionalLabour;
+        $this->assertEqualsWithDelta(
+            $editorLabour - (float) $quote->calculation['totals']['existing_post_credit']['amount'],
+            $editorNet,
+            0.02
+        );
+        $this->assertEqualsWithDelta($gross + $additionalLabour, $editorLabour, 0.02);
+        $this->assertEqualsWithDelta($net + $additionalLabour, $editorNet, 0.02);
     }
 
     /**
