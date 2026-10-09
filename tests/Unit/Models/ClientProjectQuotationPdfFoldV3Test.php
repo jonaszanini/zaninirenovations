@@ -271,7 +271,7 @@ class ClientProjectQuotationPdfFoldV3Test extends TestCase
             array_column($quote->pdfLineItems(), 'description')
         );
         $material = collect($quote->pdfLineItems())->firstWhere('description', 'Material');
-        $this->assertTrue((bool) ($material['is_standalone'] ?? false));
+        $this->assertFalse((bool) ($material['is_standalone'] ?? false));
         $this->assertEquals($quote->editorHst(), $quote->pdfHst());
     }
 
@@ -433,6 +433,63 @@ class ClientProjectQuotationPdfFoldV3Test extends TestCase
             ['Building permit', 'Material', 'Labour'],
             array_column($quote->pdfLineItems(), 'description')
         );
+        foreach ($quote->pdfLineItems() as $row) {
+            $this->assertFalse((bool) ($row['is_standalone'] ?? false), $row['description']);
+        }
+    }
+
+    public function test_single_job_permit_plus_extra_does_not_draw_standalone_rule(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'pdf_fold_version' => 3,
+            'items' => [
+                ['description' => 'Building permit', 'amount' => 300.00, 'apply_hst' => false],
+                ['description' => 'Labour', 'amount' => 1000.00, 'apply_hst' => true],
+                [
+                    'description' => 'Additional cost — Dumpster',
+                    'amount' => 113.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $this->assertSame(
+            ['Building permit', 'Material', 'Labour'],
+            array_column($quote->pdfLineItems(), 'description')
+        );
+        foreach ($quote->pdfLineItems() as $row) {
+            $this->assertFalse((bool) ($row['is_standalone'] ?? false), $row['description']);
+        }
+        $this->assertEquals($quote->editorHst(), $quote->pdfHst());
+    }
+
+    public function test_no_headings_and_second_labour_row_are_not_standalone(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_MILLWORK,
+            'pdf_fold_version' => 3,
+            'items' => [
+                ['description' => 'Custom millwork materials', 'amount' => 1000.00, 'apply_hst' => true],
+                ['description' => 'Labour', 'amount' => 500.00, 'apply_hst' => false],
+                [
+                    'description' => 'Commute expense',
+                    'amount' => 113.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $labours = array_values(array_filter(
+            $quote->pdfLineItems(),
+            static fn (array $row): bool => ($row['description'] ?? '') === 'Labour'
+        ));
+        $this->assertGreaterThanOrEqual(2, count($labours));
+        foreach ($quote->pdfLineItems() as $row) {
+            $this->assertFalse((bool) ($row['is_standalone'] ?? false), $row['description']);
+        }
     }
 
     public function test_d1_merges_into_existing_taxed_material(): void
@@ -487,7 +544,10 @@ class ClientProjectQuotationPdfFoldV3Test extends TestCase
             array_column($quote->pdfLineItems(), 'description')
         );
         $lines = $quote->pdfLineItems();
-        $this->assertTrue((bool) ($lines[4]['is_standalone'] ?? false));
+        $this->assertFalse((bool) ($lines[4]['is_standalone'] ?? false));
+        foreach ($lines as $row) {
+            $this->assertFalse((bool) ($row['is_standalone'] ?? false), $row['description']);
+        }
         $this->assertEquals($quote->editorHst(), $quote->pdfHst());
     }
 

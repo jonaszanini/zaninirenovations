@@ -24,6 +24,22 @@ class ClientProjectQuotationPdfFoldV2SqLinkedIdentityTest extends IntegrationTes
             }
         }
         $this->assertGreaterThanOrEqual(20, $multi, 'Need multi-job SQ-linked v2 fixtures');
+        $remainder = 0;
+        foreach ($rows as $key => $fx) {
+            $works = $fx['sq']['works'] ?? [];
+            $building = ! empty($fx['sq']['include_building']);
+            $last = is_array($works) && $works !== [] ? $works[array_key_last($works)] : [];
+            $lastLabour = (float) ($last['labour_fixed_amount'] ?? 0);
+            if ($building && count($works) >= 2 && $lastLabour == 0.0) {
+                $remainder++;
+            }
+        }
+        $this->assertGreaterThanOrEqual(4, $remainder, 'Need several multi-job building-remainder fixtures');
+        $this->assertArrayHasKey('sq_multi_job_remainder', $rows);
+        $this->assertArrayHasKey('sq_multi_job_remainder_two_job', $rows);
+        $this->assertArrayHasKey('sq_multi_job_remainder_four_job', $rows);
+        $this->assertArrayHasKey('sq_multi_job_remainder_pct20', $rows);
+        $this->assertArrayHasKey('sq_multi_job_remainder_with_contingency', $rows);
         $mismatches = 0;
         $sawHstAmount = false;
         foreach ($rows as $key => $fx) {

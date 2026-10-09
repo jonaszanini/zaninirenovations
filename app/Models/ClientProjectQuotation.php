@@ -1201,9 +1201,9 @@ class ClientProjectQuotation extends Model
 
     /**
      * Quote-level extras sit in the last job's category (Material after
-     * that job's Material rows, Labour after its Labour). The standalone
-     * flag draws the template's section separator so they are not read as
-     * part of the last job.
+     * that job's Material rows, Labour after its Labour). A standalone
+     * separator is only for a true after-all-jobs extra on a multi-job
+     * quote — never inside a job or on a single-job / no-heading quote.
      *
      * @param  list<array<string, mixed>>  $items
      * @param  array<string, mixed>  $line
@@ -1211,22 +1211,53 @@ class ClientProjectQuotation extends Model
      */
     protected function insertQuoteLevelPdfLine(array $items, array $line, string $bucket): array
     {
-        $line['is_standalone'] = true;
+        $headingCount = 0;
         $start = 0;
         foreach ($items as $i => $row) {
             if (! empty($row['is_heading'])) {
+                $headingCount++;
                 $start = $i + 1;
             }
         }
+
+        $insertAt = count($items);
         if ($start > 0) {
             $suffix = array_values(array_slice($items, $start));
-            $local = $this->pdfCategoryInsertIndex($suffix, $bucket);
-            $after = $start + $local - 1;
-
-            return $this->insertPdfLineAtCategory($items, $line, $bucket, $after >= 0 ? $after : null);
+            $insertAt = $start + $this->pdfCategoryInsertIndex($suffix, $bucket);
+        } else {
+            $insertAt = $this->pdfCategoryInsertIndex($items, $bucket);
         }
 
-        return $this->insertPdfLineAtCategory($items, $line, $bucket);
+        if ($this->quoteLevelLineIsStandalone($items, $insertAt, $headingCount, $bucket)) {
+            $line['is_standalone'] = true;
+        }
+
+        $after = $insertAt - 1;
+
+        return $this->insertPdfLineAtCategory($items, $line, $bucket, $after >= 0 ? $after : null);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    protected function quoteLevelLineIsStandalone(array $items, int $insertAt, int $headingCount, string $bucket): bool
+    {
+        if ($headingCount < 2 || $insertAt < count($items) || $bucket !== 'materials') {
+            return false;
+        }
+        if ($items !== [] && ! empty($items[count($items) - 1]['is_heading'])) {
+            return false;
+        }
+
+        for ($i = count($items) - 1; $i >= 0; $i--) {
+            if (! empty($items[$i]['is_heading'])) {
+                continue;
+            }
+
+            return self::isPdfLabourLine($items[$i]) || self::isPdfCombinedSummaryLine($items[$i]);
+        }
+
+        return false;
     }
 
     /**

@@ -169,6 +169,133 @@ $named = [
         'building_labor_percent' => 30,
         'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_DETAILED,
     ]),
+    'sq_multi_job_remainder_two_job' => baseSq([
+        'works' => [
+            [
+                'title' => 'Labour job',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 2.30,
+            ],
+            [
+                'title' => 'Materials only',
+                'materials' => [[
+                    'short_name' => 'Tile',
+                    'unit_price' => 10,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 0,
+            ],
+        ],
+        'include_building' => true,
+        'building_labor_percent' => 30,
+        'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_DETAILED,
+    ]),
+    'sq_multi_job_remainder_four_job' => baseSq([
+        'works' => [
+            [
+                'title' => 'Job one',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 3.45,
+            ],
+            [
+                'title' => 'Job two',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 1.15,
+            ],
+            [
+                'title' => 'Job three',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 4.60,
+            ],
+            [
+                'title' => 'Materials only',
+                'materials' => [[
+                    'short_name' => 'Tile',
+                    'unit_price' => 25,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 0,
+            ],
+        ],
+        'include_building' => true,
+        'building_labor_percent' => 25,
+        'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_DETAILED,
+    ]),
+    'sq_multi_job_remainder_pct20' => baseSq([
+        'works' => [
+            [
+                'title' => 'Job one',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 1.15,
+            ],
+            [
+                'title' => 'Job two',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 2.30,
+            ],
+            [
+                'title' => 'Materials only',
+                'materials' => [[
+                    'short_name' => 'Tile',
+                    'unit_price' => 7.77,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 0,
+            ],
+        ],
+        'include_building' => true,
+        'building_labor_percent' => 20,
+        'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_DETAILED,
+    ]),
+    'sq_multi_job_remainder_with_contingency' => baseSq([
+        'works' => [
+            [
+                'title' => 'Job one',
+                'materials' => [[
+                    'short_name' => 'Plywood',
+                    'unit_price' => 11.11,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 1.15,
+            ],
+            [
+                'title' => 'Job two',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 5.55,
+            ],
+            [
+                'title' => 'Materials only',
+                'materials' => [[
+                    'short_name' => 'Tile',
+                    'unit_price' => 33.33,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 0,
+            ],
+        ],
+        'include_building' => true,
+        'building_labor_percent' => 30,
+        'contingency_enabled' => true,
+        'contingency_percent' => 10,
+        'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_DETAILED,
+    ]),
     'sq_two_job_summary' => baseSq([
         'works' => [
             [
