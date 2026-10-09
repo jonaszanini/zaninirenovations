@@ -12,6 +12,12 @@ const VIEWPORTS = [
   { name: 'phone', width: 390, height: 720, isMobile: true, hasTouch: true },
   { name: 'desktop', width: 1280, height: 800, isMobile: false, hasTouch: false },
 ];
+/** Wait after Tab/focus so a setTimeout(0) showPicker would still be caught. */
+const SETTIMEOUT_OPEN_WAIT_MS = 80;
+
+function waitMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function startServer() {
   return new Promise((resolve, reject) => {
@@ -250,6 +256,7 @@ async function activateShowPickerThrows(page, selector, pointerType) {
     });
     assert.strictEqual(await page.evaluate(() => document.activeElement && document.activeElement.id), 'client-name');
     await page.keyboard.press('Tab');
+    await waitMs(SETTIMEOUT_OPEN_WAIT_MS);
     const afterTab = await page.evaluate(() => ({
       active: document.activeElement && document.activeElement.id,
       calls: window.__pickerCalls,
@@ -264,6 +271,7 @@ async function activateShowPickerThrows(page, selector, pointerType) {
       document.getElementById('notes').focus();
     });
     await page.focus('#due-date');
+    await waitMs(SETTIMEOUT_OPEN_WAIT_MS);
     const afterFocus = await page.evaluate(() => ({
       active: document.activeElement && document.activeElement.id,
       calls: window.__pickerCalls,
