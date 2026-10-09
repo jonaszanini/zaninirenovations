@@ -64,6 +64,7 @@ jobs:
           npm ci --no-fund
           node tests/js/room-area-lib.test.js
           node tests/js/room-area-phone-geometry.test.js
+          node tests/js/shared-prices-effective.test.js
 
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
