@@ -86,6 +86,59 @@ function startStaticServer(konvaFile) {
   });
 }
 
+async function waitForStableCanvasFit(page, options) {
+  const opts = options || {};
+  await page.evaluate(() => {
+    window.__raFitStable = { sig: '', n: 0 };
+  });
+  await page.waitForFunction((minW, maxW, needGrown, needFirstFitGone, needEditing) => {
+    const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
+    const canvas = wrapEl && wrapEl.querySelector('canvas');
+    const world = window.Konva && window.Konva.stages && window.Konva.stages[0]
+      && window.Konva.stages[0].getLayers()[0]
+      && window.Konva.stages[0].getLayers()[0].getChildren()[0];
+    const feedback = document.querySelector('[data-ra-feedback]');
+    if (!wrapEl || !canvas || !world) return false;
+    const wrap = wrapEl.getBoundingClientRect();
+    if (wrap.width <= minW || wrap.width >= maxW) return false;
+    if (needGrown && !document.documentElement.classList.contains('is-geom-grown')) return false;
+    if (needFirstFitGone && document.documentElement.classList.contains('is-geom-first-fit')) return false;
+    if (needEditing && !(feedback && /Editing/.test(feedback.textContent || ''))) return false;
+    const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
+    const scale = world.scaleX();
+    const pos = world.position();
+    const screen = verts.map((v) => ({
+      x: wrap.left + pos.x + v.x * scale,
+      y: wrap.top + pos.y + v.y * scale,
+    }));
+    const minX = Math.min.apply(null, screen.map((p) => p.x));
+    const maxX = Math.max.apply(null, screen.map((p) => p.x));
+    const minY = Math.min.apply(null, screen.map((p) => p.y));
+    const maxY = Math.max.apply(null, screen.map((p) => p.y));
+    const inside = minX >= wrap.left - 2 && maxX <= wrap.right + 2
+      && minY >= wrap.top - 2 && maxY <= wrap.bottom + 2;
+    const signature = [
+      wrap.width.toFixed(2),
+      wrap.height.toFixed(2),
+      Number(scale).toFixed(6),
+      Number(pos.x).toFixed(2),
+      Number(pos.y).toFixed(2),
+    ].join('|');
+    if (!inside || !(scale > 0)) {
+      window.__raFitStable = { sig: '', n: 0 };
+      return false;
+    }
+    const prev = window.__raFitStable || { sig: '', n: 0 };
+    if (prev.sig === signature) prev.n += 1;
+    else {
+      prev.sig = signature;
+      prev.n = 1;
+    }
+    window.__raFitStable = prev;
+    return prev.n >= 8;
+  }, { timeout: opts.timeout || 15000 }, opts.minWidth ?? 200, opts.maxWidth ?? 500, !!opts.grown, !!opts.firstFitGone, !!opts.editing);
+}
+
 async function measureViewports() {
   let puppeteer;
   try {
@@ -222,22 +275,12 @@ async function measureViewports() {
 
     await page.setViewport({ width: 390, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
-    await page.waitForFunction(() => {
-      const wrap = document.querySelector('[data-ra-canvas-wrap]');
-      const canvas = wrap && wrap.querySelector('canvas');
-      const feedback = document.querySelector('[data-ra-feedback]');
-      const world = window.Konva && window.Konva.stages && window.Konva.stages[0]
-        && window.Konva.stages[0].getLayers()[0]
-        && window.Konva.stages[0].getLayers()[0].getChildren()[0];
-      return !!(wrap && wrap.getBoundingClientRect().width > 200
-        && wrap.getBoundingClientRect().width < 500
-        && canvas && canvas.width > 10
-        && feedback && /Editing/.test(feedback.textContent || '')
-        && world);
-    }, { timeout: 15000 });
-    await page.evaluate(() => new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    }));
+    await waitForStableCanvasFit(page, {
+      minWidth: 200,
+      maxWidth: 500,
+      firstFitGone: true,
+      editing: true,
+    });
     const fitted = await page.evaluate(() => {
       const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
       const wrap = wrapEl.getBoundingClientRect();
@@ -296,18 +339,11 @@ async function measureViewports() {
     await page.setViewport({ width: 390, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     await page.goto('http://127.0.0.1:' + port + '/layout-change', { waitUntil: 'load' });
     try {
-      await page.waitForFunction(() => {
-        const wrap = document.querySelector('[data-ra-canvas-wrap]');
-        const canvas = wrap && wrap.querySelector('canvas');
-        const world = window.Konva && window.Konva.stages && window.Konva.stages[0]
-          && window.Konva.stages[0].getLayers()[0]
-          && window.Konva.stages[0].getLayers()[0].getChildren()[0];
-        return !!(document.documentElement.classList.contains('is-geom-grown')
-          && wrap && wrap.getBoundingClientRect().width > 300
-          && wrap.getBoundingClientRect().width < 450
-          && canvas && canvas.width > 10
-          && world);
-      }, { timeout: 15000 });
+      await waitForStableCanvasFit(page, {
+        minWidth: 300,
+        maxWidth: 450,
+        grown: true,
+      });
     } catch (err) {
       const dump = await page.evaluate(() => {
         const wrap = document.querySelector('[data-ra-canvas-wrap]');
@@ -324,9 +360,6 @@ async function measureViewports() {
       });
       throw new Error('layout-change wait failed: ' + JSON.stringify(dump) + ' — ' + err.message);
     }
-    await page.evaluate(() => new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    }));
     const relayout = await page.evaluate(() => {
       const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
       const wrap = wrapEl.getBoundingClientRect();

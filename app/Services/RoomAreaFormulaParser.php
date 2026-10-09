@@ -13,6 +13,8 @@ class RoomAreaFormulaParser
 
     public const MAX_DEPTH = 24;
 
+    private const WHITESPACE = '[\s\p{Z}\x{0085}\x{180E}\x{200B}\x{FEFF}]';
+
     /**
      * @return list<string>
      */
@@ -167,14 +169,14 @@ class RoomAreaFormulaParser
 
     private function trimFormula(string $formula): string
     {
-        $trimmed = preg_replace('/^[\s\p{Z}\x{FEFF}]+|[\s\p{Z}\x{FEFF}]+$/u', '', $formula);
+        $trimmed = preg_replace('/^'.self::WHITESPACE.'+|'.self::WHITESPACE.'+$/u', '', $formula);
 
         return is_string($trimmed) ? $trimmed : trim($formula);
     }
 
     private function isWhitespace(string $ch): bool
     {
-        return $ch !== '' && preg_match('/^[\s\p{Z}\x{FEFF}]$/u', $ch) === 1;
+        return $ch !== '' && preg_match('/^'.self::WHITESPACE.'$/u', $ch) === 1;
     }
 
     private function operatorType(string $ch): ?string

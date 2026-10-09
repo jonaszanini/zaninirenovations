@@ -964,6 +964,7 @@
   function cornerCounts(verts, minTurnDeg) {
     var n = verts && verts.length ? verts.length : 0;
     if (n < 3) return { inside: 0, outside: 0 };
+    if (!isSimplePolygon(verts)) return { inside: 0, outside: 0 };
     var signed = signedArea2(verts);
     if (Math.abs(signed) < 1e-9) return { inside: 0, outside: 0 };
     var positiveWinding = signed > 0;
@@ -1113,12 +1114,15 @@
     };
   }
 
-  function formulaCharAt(raw, i) {
-    return raw.charAt(i);
+  var FORMULA_WHITESPACE = /[\s\u0085\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]/;
+  var FORMULA_WHITESPACE_TRIM = /^[\s\u0085\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]+|[\s\u0085\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]+$/g;
+
+  function formulaChars(raw) {
+    return Array.from(String(raw || ''));
   }
 
   function isFormulaWhitespace(ch) {
-    return ch !== '' && /[\s\u00A0\u1680\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]/.test(ch);
+    return ch !== '' && FORMULA_WHITESPACE.test(ch);
   }
 
   function formulaOperatorType(ch) {
@@ -1136,15 +1140,16 @@
   }
 
   function trimFormula(raw) {
-    return String(raw || '').replace(/^[\s\u00A0\u1680\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]+|[\s\u00A0\u1680\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]+$/g, '');
+    return String(raw || '').replace(FORMULA_WHITESPACE_TRIM, '');
   }
 
   function tokenizeFormula(raw) {
     var tokens = [];
+    var chars = formulaChars(raw);
     var i = 0;
-    var len = raw.length;
+    var len = chars.length;
     while (i < len) {
-      var ch = formulaCharAt(raw, i);
+      var ch = chars[i];
       if (isFormulaWhitespace(ch)) {
         i += 1;
         continue;
@@ -1155,34 +1160,34 @@
         i += 1;
         continue;
       }
-      if (/[0-9]/.test(ch) || (ch === '.' && i + 1 < len && /[0-9]/.test(formulaCharAt(raw, i + 1)))) {
+      if (/[0-9]/.test(ch) || (ch === '.' && i + 1 < len && /[0-9]/.test(chars[i + 1]))) {
         var start = i;
         var hasDot = ch === '.';
         if (hasDot) i += 1;
-        while (i < len && /[0-9]/.test(formulaCharAt(raw, i))) i += 1;
-        if (i < len && formulaCharAt(raw, i) === '.') {
+        while (i < len && /[0-9]/.test(chars[i])) i += 1;
+        if (i < len && chars[i] === '.') {
           if (hasDot) throw new Error(unexpectedFormulaChar('.'));
           hasDot = true;
           i += 1;
-          if (i >= len || !/[0-9]/.test(formulaCharAt(raw, i))) {
+          if (i >= len || !/[0-9]/.test(chars[i])) {
             throw new Error('Enter a number after the decimal point.');
           }
-          while (i < len && /[0-9]/.test(formulaCharAt(raw, i))) i += 1;
+          while (i < len && /[0-9]/.test(chars[i])) i += 1;
         }
-        if (i < len && formulaCharAt(raw, i) === '.') {
+        if (i < len && chars[i] === '.') {
           throw new Error(unexpectedFormulaChar('.'));
         }
-        if (i < len && (formulaCharAt(raw, i) === 'e' || formulaCharAt(raw, i) === 'E')) {
+        if (i < len && (chars[i] === 'e' || chars[i] === 'E')) {
           throw new Error('Scientific notation is not allowed. Write the full number.');
         }
-        tokens.push({ type: 'number', value: raw.slice(start, i) });
+        tokens.push({ type: 'number', value: chars.slice(start, i).join('') });
         continue;
       }
       if (/[A-Za-z_]/.test(ch)) {
         var nameStart = i;
         i += 1;
-        while (i < len && /[A-Za-z0-9_]/.test(formulaCharAt(raw, i))) i += 1;
-        tokens.push({ type: 'name', value: raw.slice(nameStart, i).toLowerCase() });
+        while (i < len && /[A-Za-z0-9_]/.test(chars[i])) i += 1;
+        tokens.push({ type: 'name', value: chars.slice(nameStart, i).join('').toLowerCase() });
         continue;
       }
       throw new Error(unexpectedFormulaChar(ch));
@@ -1218,7 +1223,7 @@
   function evaluateFormula(formula, variables) {
     var raw = trimFormula(formula);
     if (!raw) return { ok: false, value: null, error: 'Enter a formula.' };
-    if (raw.length > FORMULA_MAX_LENGTH) return { ok: false, value: null, error: 'Formula is too long.' };
+    if (formulaChars(raw).length > FORMULA_MAX_LENGTH) return { ok: false, value: null, error: 'Formula is too long.' };
     try {
       var tokens = tokenizeFormula(raw);
       var i = 0;

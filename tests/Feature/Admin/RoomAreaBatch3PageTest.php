@@ -71,6 +71,75 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
                 'whole_units' => true,
             ]],
         ])->assertCreated()->assertJsonPath('ok', true);
+
+        $this->postJson(route('admin.utilities.room-area.assemblies.store'), [
+            'name' => 'Invisible space kit',
+            'lines' => [[
+                'name' => 'Sheets',
+                'formula' => "2\u{200B}+\u{0085}3\u{180E}*1",
+                'unit' => 'sheet',
+                'whole_units' => true,
+            ]],
+        ])->assertCreated()->assertJsonPath('ok', true);
+    }
+
+    public function test_emoji_formula_returns_422(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->postJson(route('admin.utilities.room-area.assemblies.store'), [
+            'name' => 'Emoji kit',
+            'lines' => [[
+                'name' => 'Sheets',
+                'formula' => 'floor_sf + 😀',
+                'unit' => 'sheet',
+                'whole_units' => true,
+            ]],
+        ])->assertStatus(422)->assertJsonValidationErrors(['lines.0.formula']);
+    }
+
+    public function test_three_200_sf_rooms_need_two_tape_rolls(): void
+    {
+        app(RoomAreaAssemblyDefaults::class)->ensure();
+        $assembly = RoomAreaAssembly::query()->where('name', 'Drywall wall')->firstOrFail();
+        $project = RoomAreaProject::create([
+            'name' => 'Three 200 sf walls',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $vertices = [
+            'v' => 3,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 120, 'y' => 0],
+                        ['x' => 120, 'y' => 30],
+                        ['x' => 0, 'y' => 30],
+                    ],
+                ]],
+            ]],
+            'objects' => [],
+        ];
+        foreach (['A', 'B', 'C'] as $name) {
+            $room = RoomAreaRoom::create([
+                'room_area_project_id' => $project->id,
+                'name' => $name,
+                'scale_pixels_per_foot' => 12,
+                'wall_height_ft' => 8,
+                'vertices' => $vertices,
+            ]);
+            $room->assemblies()->sync([$assembly->id]);
+            $this->assertEquals(200.0, $room->layoutMetrics()['net_wall_area_sqft']);
+        }
+
+        $project->refresh();
+        $totals = app(RoomAreaAssemblyEvaluator::class)->evaluateProject($project);
+        $tape = collect($totals[0]['lines'])->firstWhere('name', 'Tape (500 sf)');
+        $this->assertNotNull($tape);
+        $this->assertEquals(2.0, $tape['qty']);
     }
 
     public function test_project_totals_sum_raw_then_round_once(): void
@@ -137,6 +206,10 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('function renderKits(', $js);
         $this->assertStringContainsString('RA.evaluateAssemblyLine(', $js);
         $this->assertStringContainsString('function bindKits(', $js);
+        $this->assertStringContainsString('typeof ResizeObserver', $js);
+        $this->assertStringContainsString('refitCanvasToLayout()', $js);
+        $this->assertStringNotContainsString('isFullPage() && typeof ResizeObserver', $js);
+        $this->assertStringContainsString("addEventListener('pageshow'", $js);
         $this->assertDoesNotMatchRegularExpression('/\beval\s*\(/', $js);
 
         $lib = file_get_contents(public_path('js/room-area-lib.js'));

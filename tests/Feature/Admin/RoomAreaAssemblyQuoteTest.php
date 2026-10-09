@@ -173,6 +173,86 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
 
         $this->assertCount(1, $quote->fresh()->flattenedMaterials());
         $this->assertSame($line->id, (int) ($quote->fresh()->flattenedMaterials()[0]['assembly_line_id'] ?? $line->id));
+        $this->assertSame('room:'.$room->id, (string) ($quote->fresh()->flattenedMaterials()[0]['assembly_layout_id'] ?? ''));
+    }
+
+    public function test_same_kit_from_another_room_is_added_and_edit_keeps_the_key(): void
+    {
+        $this->actingAsAdmin();
+        $project = RoomAreaProject::create([
+            'name' => 'Two-room kit quote',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $kitchen = $this->makeRoom(null, 'Kitchen', $project);
+        $bathroom = $this->makeRoom(null, 'Bathroom', $project);
+        $assembly = RoomAreaAssembly::create([
+            'name' => 'Drywall wall',
+            'notes' => null,
+            'sort_order' => 0,
+        ]);
+        $line = $assembly->lines()->create([
+            'name' => 'Sheets',
+            'formula' => '2',
+            'unit' => 'sheet',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+        $kitchen->assemblies()->sync([$assembly->id]);
+        $bathroom->assemblies()->sync([$assembly->id]);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'room:'.$kitchen->id,
+            'idempotency_token' => $this->quoteToken($kitchen),
+            'assembly_ids' => [$assembly->id],
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Kitchen kits',
+        ])->assertRedirect();
+
+        $quote = StandardQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $this->assertCount(1, $quote->flattenedMaterials());
+        $this->assertSame($line->id, (int) $quote->flattenedMaterials()[0]['assembly_line_id']);
+        $this->assertSame('room:'.$kitchen->id, (string) $quote->flattenedMaterials()[0]['assembly_layout_id']);
+
+        $this->get(route('admin.quotations.standard.edit', $quote))
+            ->assertOk()
+            ->assertSee('name="works[0][materials][0][assembly_line_id]"', false)
+            ->assertSee('name="works[0][materials][0][assembly_layout_id]"', false)
+            ->assertSee('value="'.$line->id.'"', false)
+            ->assertSee('value="room:'.$kitchen->id.'"', false);
+
+        $this->put(route('admin.quotations.standard.update', $quote), $this->quoteUpdatePayload($quote))
+            ->assertRedirect(route('admin.quotations.standard.edit', $quote));
+
+        $quote->refresh();
+        $this->assertSame($line->id, (int) $quote->flattenedMaterials()[0]['assembly_line_id']);
+        $this->assertSame('room:'.$kitchen->id, (string) $quote->flattenedMaterials()[0]['assembly_layout_id']);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'room:'.$bathroom->id,
+            'idempotency_token' => $this->quoteToken($bathroom),
+            'assembly_ids' => [$assembly->id],
+            'quotation_id' => $quote->id,
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Kitchen kits',
+        ])->assertRedirect(route('admin.quotations.standard.edit', $quote));
+
+        $quote->refresh();
+        $materials = $quote->flattenedMaterials();
+        $this->assertCount(2, $materials);
+        $layouts = collect($materials)->pluck('assembly_layout_id')->sort()->values()->all();
+        $this->assertSame(['room:'.$bathroom->id, 'room:'.$kitchen->id], $layouts);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'room:'.$kitchen->id,
+            'idempotency_token' => $this->quoteToken($kitchen),
+            'assembly_ids' => [$assembly->id],
+            'quotation_id' => $quote->id,
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Kitchen kits',
+        ])->assertRedirect(route('admin.quotations.standard.edit', $quote));
+
+        $this->assertCount(2, $quote->fresh()->flattenedMaterials());
     }
 
     private function quoteToken(RoomAreaRoom $room): string
@@ -186,9 +266,44 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         return $match[1];
     }
 
-    private function makeRoom(?ClientProject $clientProject = null): RoomAreaRoom
+    /**
+     * @return array<string, mixed>
+     */
+    private function quoteUpdatePayload(StandardQuotation $quote): array
     {
-        $project = RoomAreaProject::create([
+        $materials = [];
+        foreach ($quote->flattenedMaterials() as $row) {
+            $materials[] = [
+                'short_name' => $row['short_name'] ?? '',
+                'description' => $row['description'] ?? '',
+                'unit_price' => $row['unit_price'] ?? 0,
+                'quantity' => $row['quantity'] ?? 0,
+                'apply_hst' => 1,
+                'entry_mode' => $row['entry_mode'] ?? 'manual',
+                'assembly_line_id' => $row['assembly_line_id'] ?? null,
+                'assembly_layout_id' => $row['assembly_layout_id'] ?? null,
+            ];
+        }
+
+        return [
+            'client_name' => $quote->client_name,
+            'display_title' => $quote->display_title,
+            'document_type' => 'quotation',
+            'pdf_detail_mode' => 'detailed',
+            'includes_material' => 1,
+            'payment_installments' => 1,
+            'works' => [[
+                'title' => 'Room Area',
+                'labour_use_fixed' => 1,
+                'labour_fixed_amount' => 0,
+                'materials' => $materials,
+            ]],
+        ];
+    }
+
+    private function makeRoom(?ClientProject $clientProject = null, string $name = 'Kitchen', ?RoomAreaProject $project = null): RoomAreaRoom
+    {
+        $project ??= RoomAreaProject::create([
             'name' => 'Kit quote project',
             'client_project_id' => $clientProject?->id,
             'scale_pixels_per_foot' => 12,
@@ -196,7 +311,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
 
         return RoomAreaRoom::create([
             'room_area_project_id' => $project->id,
-            'name' => 'Kitchen',
+            'name' => $name,
             'scale_pixels_per_foot' => 12,
             'area_sqft' => 120,
             'wall_height_ft' => 8,

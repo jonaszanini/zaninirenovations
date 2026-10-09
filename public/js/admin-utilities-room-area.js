@@ -4602,9 +4602,9 @@
     if (!els.canvasWrap || els.canvasWrap._raViewportBound) return;
     els.canvasWrap._raViewportBound = true;
 
-    if (isFullPage() && typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== 'undefined') {
       new ResizeObserver(function () {
-        scheduleStageResize();
+        refitCanvasToLayout();
       }).observe(els.canvasWrap);
     }
 
@@ -11264,10 +11264,10 @@
     unit = String(unit || '');
     if (!unit) return '';
     if (Math.abs(Number(qty)) === 1) return unit;
-    if (/(?:s|x)$/i.test(unit)) return unit;
-    if (/pail$/i.test(unit)) return unit.replace(/pail$/i, 'pails');
+    if (/pail/i.test(unit)) return unit.replace(/pail/i, 'pails');
     if (/box$/i.test(unit)) return unit.replace(/box$/i, 'boxes');
     if (/stick$/i.test(unit)) return unit.replace(/stick$/i, 'sticks');
+    if (/(?:s|x)$/i.test(unit)) return unit;
     if (/^(ea|lf|sf|gal|qt|in|ft|mm|cm|m|sq)$/i.test(unit)) return unit;
     return unit + 's';
   }
@@ -11325,6 +11325,7 @@
         if (line.error) {
           return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><span class="util-ra-kit__line-err">' + esc(line.error) + '</span></li>';
         }
+        if (line.qty != null && Number(line.qty) <= 0) return '';
         var extra = line.material_name ? '<span class="util-ra-kit__mat">' + esc(line.material_name) + '</span>' : '';
         return '<li class="util-ra-kit__line"><span>' + esc(line.name) + extra + '</span><strong>' + esc(formatKitQty(line.qty, line.unit, line.whole_units)) + '</strong></li>';
       }).join('');
@@ -11384,6 +11385,7 @@
               var line = kit.lines[key];
               if (line.error) return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><span class="util-ra-kit__line-err">' + esc(line.error) + '</span></li>';
               var qty = RA.applyFormulaRounding(line.raw, !!line.whole);
+              if (qty != null && Number(qty) <= 0) return '';
               return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><strong>' + esc(formatKitQty(qty, line.unit, line.whole)) + '</strong></li>';
             }).join('') + '</ul>';
           projectList.appendChild(item);
@@ -11607,6 +11609,10 @@
     if (cancel) cancel.addEventListener('click', closeKitEditor);
     var form = root.querySelector('[data-ra-kit-editor]');
     if (form) form.addEventListener('submit', saveKitEditor);
+    window.addEventListener('pageshow', function () {
+      var saveBtn = root.querySelector('[data-ra-kit-save]');
+      if (saveBtn) saveBtn.disabled = false;
+    });
     var addLine = root.querySelector('[data-ra-kit-add-line]');
     if (addLine) {
       addLine.addEventListener('click', function () {

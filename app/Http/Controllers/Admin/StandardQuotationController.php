@@ -424,6 +424,8 @@ class StandardQuotationController extends Controller
                 StandardQuotation::LINE_KIND_MATERIAL,
                 StandardQuotation::LINE_KIND_ELECTRICAL,
             ])],
+            'assembly_line_id' => ['nullable', 'integer', 'min:1'],
+            'assembly_layout_id' => ['nullable', 'string', 'max:40'],
         ];
 
         $data = $request->validate(array_merge([
@@ -450,6 +452,8 @@ class StandardQuotationController extends Controller
             'works.*.materials.*.delivery_cad' => $materialRowRules['delivery_cad'],
             'works.*.materials.*.entry_mode' => $materialRowRules['entry_mode'],
             'works.*.materials.*.line_kind' => $materialRowRules['line_kind'],
+            'works.*.materials.*.assembly_line_id' => $materialRowRules['assembly_line_id'],
+            'works.*.materials.*.assembly_layout_id' => $materialRowRules['assembly_layout_id'],
             'works.*.labour_use_fixed' => ['nullable'],
             'works.*.labour_fixed_amount' => ['nullable', 'numeric', 'min:0'],
             'works.*.labour_fixed_hst_included' => ['nullable'],
@@ -603,6 +607,12 @@ class StandardQuotationController extends Controller
                 'delivery_cad' => $isElectrical ? 0.0 : round(max(0.0, (float) ($m['delivery_cad'] ?? 0)), 2),
                 'line_kind' => $lineKind,
                 'entry_mode' => $entryMode,
+                'assembly_line_id' => isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0
+                    ? (int) $m['assembly_line_id']
+                    : null,
+                'assembly_layout_id' => ($layoutId = trim((string) ($m['assembly_layout_id'] ?? ''))) !== ''
+                    ? mb_substr($layoutId, 0, 40)
+                    : null,
             ];
         };
 

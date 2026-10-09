@@ -114,6 +114,10 @@ class RoomAreaQuoteLineInserter
                     if (isset($fromPosted['assembly_line_id']) && (int) $fromPosted['assembly_line_id'] > 0) {
                         $row['assembly_line_id'] = (int) $fromPosted['assembly_line_id'];
                     }
+                    $layoutId = trim((string) ($fromPosted['assembly_layout_id'] ?? ''));
+                    if ($layoutId !== '') {
+                        $row['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+                    }
                     $jobMaterials[] = $row;
                 }
                 foreach ($jobMaterials as $row) {
@@ -208,6 +212,9 @@ class RoomAreaQuoteLineInserter
             'assembly_line_id' => isset($line['assembly_line_id']) && (int) $line['assembly_line_id'] > 0
                 ? (int) $line['assembly_line_id']
                 : null,
+            'assembly_layout_id' => ($layoutId = trim((string) ($line['assembly_layout_id'] ?? ''))) !== ''
+                ? mb_substr($layoutId, 0, 40)
+                : null,
         ];
     }
 
@@ -264,6 +271,9 @@ class RoomAreaQuoteLineInserter
             'entry_mode' => $catalogId ? 'catalog' : 'manual',
             'assembly_line_id' => isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0
                 ? (int) $m['assembly_line_id']
+                : null,
+            'assembly_layout_id' => ($layoutId = trim((string) ($m['assembly_layout_id'] ?? ''))) !== ''
+                ? mb_substr($layoutId, 0, 40)
                 : null,
         ];
     }

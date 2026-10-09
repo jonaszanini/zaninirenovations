@@ -23,17 +23,17 @@
       if ($unit === '' || $n === null || abs((float) $n) === 1.0) {
           return $unit;
       }
-      if (preg_match('/(?:s|x)$/i', $unit)) {
-          return $unit;
-      }
-      if (preg_match('/pail$/i', $unit)) {
-          return preg_replace('/pail$/i', 'pails', $unit) ?: $unit;
+      if (preg_match('/pail/i', $unit)) {
+          return preg_replace('/pail/i', 'pails', $unit) ?: $unit;
       }
       if (preg_match('/box$/i', $unit)) {
           return preg_replace('/box$/i', 'boxes', $unit) ?: $unit;
       }
       if (preg_match('/stick$/i', $unit)) {
           return preg_replace('/stick$/i', 'sticks', $unit) ?: $unit;
+      }
+      if (preg_match('/(?:s|x)$/i', $unit)) {
+          return $unit;
       }
       if (preg_match('/^(ea|lf|sf|gal|qt|in|ft|mm|cm|m|sq)$/i', $unit)) {
           return $unit;
@@ -90,6 +90,9 @@
           </label>
           <ul class="util-ra-kit-quote__lines">
             @foreach ($kit['lines'] as $line)
+              @if (empty($line['error']) && ($line['qty'] ?? 0) <= 0)
+                @continue
+              @endif
               <li>
                 <span>{{ $line['name'] }}</span>
                 @if (!empty($line['error']))
@@ -159,6 +162,13 @@
         if (btn) {
           btn.disabled = true;
           btn.setAttribute('aria-busy', 'true');
+        }
+      });
+      window.addEventListener('pageshow', function () {
+        var btn = form.querySelector('[data-ra-kit-quote-submit]');
+        if (btn) {
+          btn.disabled = false;
+          btn.removeAttribute('aria-busy');
         }
       });
     })();

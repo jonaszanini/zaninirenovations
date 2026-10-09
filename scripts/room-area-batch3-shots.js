@@ -12,8 +12,11 @@ const path = require('path');
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:8000';
 const EDITOR_PATH = process.env.EDITOR_PATH || '/admin/client-projects/1/utilities/room-area?ra_room=1';
-const EMAIL = process.env.ADMIN_EMAIL || 'admin@zanini.ca';
-const PASSWORD = process.env.ADMIN_PASSWORD || 'password';
+const EMAIL = process.env.ADMIN_EMAIL;
+const PASSWORD = process.env.ADMIN_PASSWORD;
+if (!EMAIL || !PASSWORD) {
+  throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be set.');
+}
 const OUT = process.env.QA_OUT || '/opt/cursor/artifacts/screenshots';
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

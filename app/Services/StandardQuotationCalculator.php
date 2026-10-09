@@ -186,6 +186,12 @@ class StandardQuotationCalculator
                 'entry_mode' => $lineKind === StandardQuotation::LINE_KIND_ELECTRICAL
                     ? 'electrical'
                     : (strtolower(trim((string) ($row['entry_mode'] ?? ''))) === 'catalog' || $catalogId > 0 ? 'catalog' : 'manual'),
+                'assembly_line_id' => isset($row['assembly_line_id']) && (int) $row['assembly_line_id'] > 0
+                    ? (int) $row['assembly_line_id']
+                    : null,
+                'assembly_layout_id' => ($layoutId = trim((string) ($row['assembly_layout_id'] ?? ''))) !== ''
+                    ? mb_substr($layoutId, 0, 40)
+                    : null,
                 'line_subtotal' => $b['line_subtotal'],
                 'line_hst' => $b['line_hst'],
                 'line_total_with_hst' => $b['line_total_with_hst'],
