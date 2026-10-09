@@ -74,6 +74,12 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertIsString($invoiceEdit);
         $this->assertStringNotContainsString('parseHybridCadMoney', $invoiceEdit);
         $this->assertMatchesRegularExpression('/amtRaw\s*=\s*amtInput\s*\?\s*parseAmount\(\s*amtInput\s*\)/', $invoiceEdit);
+        $this->assertStringContainsString('data-cp-money-allow-negative', $invoiceEdit);
+        $this->assertStringContainsString('moneyAllowsNegative', $js);
+        $this->assertDoesNotMatchRegularExpression(
+            '/parsed\.negative[\s\S]{0,160}input\.value\s*=\s*[\'"][\'"]/',
+            $js
+        );
     }
 
     public function test_flooring_add_type_saves_4_75_and_keeps_existing(): void
@@ -138,6 +144,8 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->actingAs($user);
         ClientProject::factory()->create(['name' => 'Money sweep project']);
         $invoiceUrl = $this->makeInstallmentInvoiceEditUrl();
+        [$negStandard, $negStandardUrl] = $this->makeNegativeLineInvoice('standard');
+        [$negHourly, $negHourlyUrl] = $this->makeNegativeLineInvoice('hourly');
 
         $this->assertTrue(is_dir(base_path('node_modules/puppeteer')), 'Puppeteer must be installed');
         $pages = $this->moneySweepPages();
@@ -145,6 +153,8 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             $this->get($url)->assertOk();
         }
         $this->get($invoiceUrl)->assertOk();
+        $this->get($negStandardUrl)->assertOk();
+        $this->get($negHourlyUrl)->assertOk();
 
         $existing = FlooringType::query()->orderBy('id')->get()
             ->mapWithKeys(fn (FlooringType $t) => [$t->id => (float) $t->installation_price_per_sqft])
@@ -161,6 +171,8 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             .' MONEY_BASE='.escapeshellarg($base)
             .' MONEY_PAGES='.escapeshellarg(json_encode($pages))
             .' MONEY_INVOICE_URL='.escapeshellarg($invoiceUrl)
+            .' MONEY_NEG_STANDARD_URL='.escapeshellarg($negStandardUrl)
+            .' MONEY_NEG_HOURLY_URL='.escapeshellarg($negHourlyUrl)
             .' MONEY_OUT='.escapeshellarg($out)
             .' node '.escapeshellarg($script);
         $output = [];
@@ -214,17 +226,30 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertSame('1,459', $report['behaviors']['gasCommaShown'] ?? '');
         $this->assertNotSame('1,459.000', $report['behaviors']['gasCommaShown'] ?? '');
         $this->assertNotSame('1459.000', $report['behaviors']['gasCommaShown'] ?? '');
-        $this->assertTrue((bool) ($report['behaviors']['storedNegativeBlank'] ?? false));
-        $this->assertTrue((bool) ($report['behaviors']['storedNegativeSubmitAllowed'] ?? false));
-        $this->assertFalse((bool) ($report['behaviors']['storedNegativeInvalid'] ?? true));
+        $this->assertFalse((bool) ($report['behaviors']['storedNegativeBlank'] ?? true));
+        $this->assertStringContainsString('-', (string) ($report['behaviors']['storedNegativeShown'] ?? ''));
+        $this->assertFalse((bool) ($report['behaviors']['storedNegativeSubmitAllowed'] ?? true));
+        $this->assertTrue((bool) ($report['behaviors']['storedNegativeInvalid'] ?? false));
+        $this->assertEqualsWithDelta(-200.0, (float) ($report['behaviors']['allowNegativeNum'] ?? 0), 0.0001);
+        $this->assertTrue((bool) ($report['behaviors']['allowNegativeSubmitAllowed'] ?? false));
+        $this->assertFalse((bool) ($report['behaviors']['allowNegativeInvalid'] ?? true));
+        $this->assertEqualsWithDelta(-200.0, (float) ($report['behaviors']['allowNegativeTypedNum'] ?? 0), 0.0001);
+        $this->assertFalse((bool) ($report['behaviors']['allowNegativeTypedInvalid'] ?? true));
 
         $this->assertIsArray($report['keypress'] ?? null);
         $this->assertTrue((bool) ($report['keypress']['typedMinus']['invalid'] ?? false));
         $this->assertStringContainsString('-', (string) ($report['keypress']['typedMinus']['value'] ?? ''));
         $this->assertStringContainsString('negative', strtolower((string) ($report['keypress']['typedMinus']['message'] ?? '')));
+        $this->assertFalse((bool) ($report['keypress']['allowMinus']['invalid'] ?? true));
+        $this->assertEqualsWithDelta(-200.0, (float) str_replace(',', '', (string) ($report['keypress']['allowMinus']['value'] ?? '')), 0.0001);
         $this->assertTrue((bool) ($report['keypress']['gasComma']['invalid'] ?? false));
         $this->assertNotSame('1459.000', $report['keypress']['gasComma']['value'] ?? '');
         $this->assertEqualsWithDelta(1.01, $this->parseMoney($report['keypress']['halfUp']['value'] ?? ''), 0.0001);
+
+        $this->assertIsArray($report['negativeResave'] ?? null);
+        $negStandard->refresh();
+        $negHourly->refresh();
+        $this->assertNegativeLineTotals($negStandard, $negHourly);
 
         $created = FlooringType::query()->where('name', 'Direct entry oak')->first();
         $this->assertNotNull($created, 'browser save must create the add-type row');
@@ -273,6 +298,60 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         ]);
 
         return parse_url(route('admin.client-projects.invoices.edit', [$project, $invoice]), PHP_URL_PATH);
+    }
+
+    /**
+     * @return array{0: ClientProjectInvoice, 1: string}
+     */
+    private function makeNegativeLineInvoice(string $kind): array
+    {
+        $hourly = $kind === 'hourly';
+        $project = ClientProject::factory()->create([
+            'name' => $hourly ? 'Hourly credit invoice' : 'Standard credit invoice',
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+            'billing_type' => $hourly ? ClientProject::BILLING_HOURLY : ClientProject::BILLING_FIXED,
+            'hourly_rate' => $hourly ? 50 : null,
+            'payment_plan' => $hourly ? null : 1,
+            'total_amount' => $hourly ? null : 1000,
+        ]);
+        $items = $hourly
+            ? [
+                ['description' => 'Hours', 'amount' => 1000.00, 'line_kind' => ClientProjectInvoice::LINE_KIND_LABOUR],
+                ['description' => 'Prepaid labour credit', 'amount' => -200.00, 'line_kind' => ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT],
+            ]
+            : [
+                ['description' => 'Labour', 'amount' => 1000.00, 'line_kind' => ClientProjectInvoice::LINE_KIND_LABOUR],
+                ['description' => 'Deposit credit', 'amount' => -200.00],
+            ];
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->create([
+            'installment_number' => null,
+            'installment_description' => $hourly ? 'Hourly work' : 'Manual invoice',
+            'items' => $items,
+            'subtotal' => 800.00,
+            'hst' => 104.00,
+            'total' => 904.00,
+            'hst_exempt' => false,
+            'status' => ClientProjectInvoice::STATUS_DRAFT,
+        ]);
+
+        return [
+            $invoice,
+            parse_url(route('admin.client-projects.invoices.edit', [$project, $invoice]), PHP_URL_PATH),
+        ];
+    }
+
+    private function assertNegativeLineTotals(ClientProjectInvoice $standard, ClientProjectInvoice $hourly): void
+    {
+        $this->assertEqualsWithDelta(800.00, (float) $standard->subtotal, 0.0001);
+        $this->assertEqualsWithDelta(104.00, (float) $standard->hst, 0.0001);
+        $this->assertEqualsWithDelta(904.00, (float) $standard->total, 0.0001);
+        $standardCredit = collect($standard->cleanItems())->firstWhere('description', 'Deposit credit');
+        $this->assertNotNull($standardCredit);
+        $this->assertEqualsWithDelta(-200.00, (float) $standardCredit['amount'], 0.0001);
+
+        $this->assertEqualsWithDelta(800.00, (float) $hourly->subtotal, 0.0001);
+        $this->assertEqualsWithDelta(104.00, (float) $hourly->hst, 0.0001);
+        $this->assertEqualsWithDelta(904.00, (float) $hourly->total, 0.0001);
     }
 
     /**

@@ -16,8 +16,9 @@
  *     show an inline error instead of guessing. On 3+ decimal fields,
  *     `1,459` is flagged (not read as 1459).
  *   - Extra fractional digits use decimal-safe rounding on blur (1.005 → 1.01).
- *     Typed/pasted negatives show an inline error. A stored negative is
- *     blanked on wire so it cannot block the rest of the form.
+ *     Typed/pasted negatives show an inline error unless the field has
+ *     `data-cp-money-allow-negative` (invoice line amounts). A stored
+ *     negative is never blanked.
  *   - A lone "." is rejected and blocks submit.
  *   - Thousand separators are applied on blur and stripped on submit so
  *     server-side numeric validation works. This also runs for native
@@ -47,17 +48,27 @@
     return p;
   }
 
+  function moneyAllowsNegative(input) {
+    return !!(input && input.hasAttribute && input.hasAttribute('data-cp-money-allow-negative'));
+  }
+
+  function moneyParseOpts(input) {
+    return { allowNegative: moneyAllowsNegative(input) };
+  }
+
   /** minorUnits = amount × 10^places (integer). */
   function formatMinorUnits(minorUnits, places) {
     var divisor = Math.pow(10, places);
-    var whole = Math.floor(minorUnits / divisor);
-    var frac = minorUnits % divisor;
+    var sign = minorUnits < 0 ? '-' : '';
+    var abs = Math.abs(minorUnits);
+    var whole = Math.floor(abs / divisor);
+    var frac = abs % divisor;
     var wholeStr = whole.toLocaleString('en-US');
     if (places < 1) {
-      return wholeStr;
+      return sign + wholeStr;
     }
     var fracStr = String(frac).padStart(places, '0');
-    return wholeStr + '.' + fracStr;
+    return sign + wholeStr + '.' + fracStr;
   }
 
   /**
@@ -67,8 +78,10 @@
    * On 3+ place fields, a grouping comma without a decimal (1,459) is flagged.
    * Mixed EU (1.234,56) and other ambiguous forms → error.
    */
-  function parseDirectCadMoney(value, places) {
+  function parseDirectCadMoney(value, places, opts) {
     places = places || 2;
+    opts = opts || {};
+    var allowNegative = !!opts.allowNegative;
     if (value == null) {
       return { ok: true, num: 0, normalized: '', empty: true };
     }
@@ -76,11 +89,18 @@
     if (s === '') {
       return { ok: true, num: 0, normalized: '', empty: true };
     }
-    if (s.indexOf('-') !== -1) {
+    var negative = false;
+    if (s.charAt(0) === '-') {
+      negative = true;
+      s = s.slice(1);
+    } else if (s.indexOf('-') !== -1) {
       return { ok: false, num: NaN, normalized: s, negative: true, error: 'Amount cannot be negative.' };
     }
-    if (s === '.' || s === ',') {
-      return { ok: false, num: NaN, normalized: s, error: 'Enter a valid amount.' };
+    if (negative && !allowNegative) {
+      return { ok: false, num: NaN, normalized: '-' + s, negative: true, error: 'Amount cannot be negative.' };
+    }
+    if (s === '' || s === '.' || s === ',') {
+      return { ok: false, num: NaN, normalized: (negative ? '-' : '') + s, error: 'Enter a valid amount.' };
     }
 
     var hasComma = s.indexOf(',') !== -1;
@@ -117,6 +137,10 @@
     var num = parseFloat(normalized);
     if (!isFinite(num)) {
       return { ok: false, num: NaN, normalized: normalized, error: 'Enter a valid amount.' };
+    }
+    if (negative) {
+      num = -num;
+      normalized = '-' + normalized;
     }
     return { ok: true, num: num, normalized: normalized };
   }
@@ -188,13 +212,8 @@
         clearMoneyFieldError(input);
         return;
       }
-      var parsed = parseDirectCadMoney(raw, moneyPlaces(input));
+      var parsed = parseDirectCadMoney(raw, moneyPlaces(input), moneyParseOpts(input));
       if (!parsed.ok) {
-        if (parsed.negative && !input._cpMoneyTouched) {
-          input.value = '';
-          clearMoneyFieldError(input);
-          return;
-        }
         setMoneyFieldError(input, parsed.error);
         invalid = true;
       }
@@ -205,7 +224,7 @@
   function stripMoneyCommasOnForm(form) {
     if (!form || !form.querySelectorAll) return;
     form.querySelectorAll('.cp-money-input').forEach(function (input) {
-      var parsed = parseDirectCadMoney(input.value, moneyPlaces(input));
+      var parsed = parseDirectCadMoney(input.value, moneyPlaces(input), moneyParseOpts(input));
       if (!parsed.ok || parsed.empty) {
         if (parsed && parsed.empty) input.value = '';
         return;
@@ -239,20 +258,15 @@
     };
   }
 
-  function normalizeDirectMoneyOnBlur(input, places, mode) {
+  function normalizeDirectMoneyOnBlur(input, places) {
     places = places || 2;
     var raw = (input.value || '').trim();
     if (!raw) {
       clearMoneyFieldError(input);
       return;
     }
-    var parsed = parseDirectCadMoney(raw, places);
+    var parsed = parseDirectCadMoney(raw, places, moneyParseOpts(input));
     if (!parsed.ok) {
-      if (parsed.negative && mode !== 'user') {
-        input.value = '';
-        clearMoneyFieldError(input);
-        return;
-      }
       setMoneyFieldError(input, parsed.error);
       return;
     }
@@ -272,12 +286,12 @@
     var places = moneyPlaces(input);
     if (input._cpMoneyWired) {
       if (typeof document === 'undefined' || document.activeElement !== input) {
-        normalizeDirectMoneyOnBlur(input, places, 'init');
+        normalizeDirectMoneyOnBlur(input, places);
       }
       return;
     }
     input._cpMoneyWired = true;
-    normalizeDirectMoneyOnBlur(input, places, 'init');
+    normalizeDirectMoneyOnBlur(input, places);
 
     input.addEventListener('keydown', function (ev) {
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
@@ -312,14 +326,9 @@
     });
 
     input.addEventListener('input', function () {
-      input._cpMoneyTouched = true;
       var raw = input.value;
-      var parsed = parseDirectCadMoney(raw, places);
-      if (parsed.negative || raw.indexOf('-') !== -1) {
-        setMoneyFieldError(input, 'Amount cannot be negative.');
-        return;
-      }
-      if (!parsed.ok && raw.trim() !== '' && raw.trim() !== '.' && raw.trim() !== ',') {
+      var parsed = parseDirectCadMoney(raw, places, moneyParseOpts(input));
+      if (!parsed.ok && raw.trim() !== '' && raw.trim() !== '.' && raw.trim() !== ',' && raw.trim() !== '-') {
         setMoneyFieldError(input, parsed.error);
         return;
       }
@@ -327,7 +336,7 @@
     });
 
     input.addEventListener('blur', function () {
-      normalizeDirectMoneyOnBlur(input, places, 'user');
+      normalizeDirectMoneyOnBlur(input, places);
     });
 
     if (input.form && !input.form._cpMoneyFormWired) {
@@ -355,8 +364,8 @@
       }
     },
     /** Parse a masked value ("1,234.56" or "4,75") into a Number. NaN/empty/invalid → 0. */
-    parse: function (value, places) {
-      var parsed = parseDirectCadMoney(value, places);
+    parse: function (value, places, opts) {
+      var parsed = parseDirectCadMoney(value, places, opts);
       return parsed.ok ? parsed.num : 0;
     },
     /** Strip thousands separators on `.cp-money-input` before a programmatic submit. */

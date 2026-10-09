@@ -287,7 +287,7 @@
                          name="items[{{ $i }}][amount]"
                          value="{{ $row['amount'] !== '' ? number_format((float) $row['amount'], 2, '.', '') : '' }}"
                          class="admin-input cp-money-input cp-quotation-row-amount"
-                         placeholder="0.00" data-cp-money-entry="direct">
+                         placeholder="0.00" data-cp-money-entry="direct" data-cp-money-allow-negative>
                 </td>
                 <td class="col-actions">
                   <button type="button"
@@ -473,7 +473,7 @@
                  autocomplete="off"
                  name="items[__INDEX__][amount]"
                  class="admin-input cp-money-input cp-quotation-row-amount"
-                 placeholder="0.00" data-cp-money-entry="direct">
+                 placeholder="0.00" data-cp-money-entry="direct" data-cp-money-allow-negative>
         </td>
         <td class="col-actions">
           <button type="button"
@@ -507,7 +507,7 @@
                  autocomplete="off"
                  name="items[__INDEX__][amount]"
                  class="admin-input cp-money-input cp-quotation-row-amount"
-                 placeholder="0.00" data-cp-money-entry="direct">
+                 placeholder="0.00" data-cp-money-entry="direct" data-cp-money-allow-negative>
         </td>
         <td class="col-actions">
           <button type="button"
@@ -593,7 +593,9 @@
       function parseAmount(input) {
         if (!input) return 0;
         if (window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function') {
-          return window.cpMoneyMask.parse(input.value);
+          return window.cpMoneyMask.parse(input.value, undefined, {
+            allowNegative: input.hasAttribute('data-cp-money-allow-negative')
+          });
         }
         var n = parseFloat(String(input.value).replace(/,/g, ''));
         return isFinite(n) ? n : 0;

@@ -13,6 +13,8 @@ const password = process.env.MONEY_PASSWORD;
 const base = process.env.MONEY_BASE;
 const pages = JSON.parse(process.env.MONEY_PAGES || '[]');
 const invoiceUrl = process.env.MONEY_INVOICE_URL || '';
+const negStandardUrl = process.env.MONEY_NEG_STANDARD_URL || '';
+const negHourlyUrl = process.env.MONEY_NEG_HOURLY_URL || '';
 const outPath = process.env.MONEY_OUT || path.join(process.cwd(), 'storage/app/money-direct-entry.json');
 
 function parseMoney(value) {
@@ -154,6 +156,9 @@ function parseMoney(value) {
         if (opts.direct) {
           input.setAttribute('data-cp-money-entry', 'direct');
         }
+        if (opts.allowNegative) {
+          input.setAttribute('data-cp-money-allow-negative', '');
+        }
         if (opts.stored) {
           input.value = raw;
         }
@@ -189,6 +194,8 @@ function parseMoney(value) {
       const loneDot = probe('.', { skipBlur: true });
       const gasComma = probe('1,459', { places: 3 });
       const storedNeg = probe('-5.00', { stored: true });
+      const allowStored = probe('-200.00', { stored: true, allowNegative: true });
+      const allowTyped = probe('-200', { allowNegative: true });
 
       return {
         untaggedFour: untagged.num,
@@ -209,14 +216,22 @@ function parseMoney(value) {
         gasCommaShown: gasComma.value,
         gasCommaNum: isFinite(gasComma.num) ? gasComma.num : 0,
         storedNegativeBlank: storedNeg.value === '',
+        storedNegativeShown: storedNeg.value,
         storedNegativeSubmitAllowed: storedNeg.submitAllowed,
         storedNegativeInvalid: storedNeg.invalid,
+        allowNegativeShown: allowStored.value,
+        allowNegativeNum: isFinite(allowStored.num) ? allowStored.num : 0,
+        allowNegativeSubmitAllowed: allowStored.submitAllowed,
+        allowNegativeInvalid: allowStored.invalid,
+        allowNegativeTypedShown: allowTyped.value,
+        allowNegativeTypedNum: isFinite(allowTyped.num) ? allowTyped.num : 0,
+        allowNegativeTypedInvalid: allowTyped.invalid,
       };
     });
   }
 
-  async function mountKeypressField(id, places) {
-    await page.evaluate((fieldId, fieldPlaces) => {
+  async function mountKeypressField(id, places, allowNegative) {
+    await page.evaluate((fieldId, fieldPlaces, allowNeg) => {
       const existing = document.getElementById(fieldId);
       if (existing && existing.closest('form')) {
         existing.closest('form').remove();
@@ -227,12 +242,15 @@ function parseMoney(value) {
       input.className = 'cp-money-input admin-input';
       input.setAttribute('data-cp-money-places', String(fieldPlaces));
       input.setAttribute('data-cp-money-entry', 'direct');
+      if (allowNeg) {
+        input.setAttribute('data-cp-money-allow-negative', '');
+      }
       input.style.width = '220px';
       input.style.height = '44px';
       form.appendChild(input);
       document.body.appendChild(form);
       window.cpMoneyMask.wire(input);
-    }, id, places);
+    }, id, places, !!allowNegative);
   }
 
   async function readKeypressField(id) {
@@ -264,15 +282,46 @@ function parseMoney(value) {
     await page.keyboard.press('Tab');
     const halfUp = await readKeypressField('cp-kp-round');
 
-    return { typedMinus, gasComma, halfUp };
+    await mountKeypressField('cp-kp-allow-neg', 2, true);
+    await page.click('#cp-kp-allow-neg');
+    await page.keyboard.type('-200', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const allowMinus = await readKeypressField('cp-kp-allow-neg');
+
+    return { typedMinus, gasComma, halfUp, allowMinus };
   }
 
-  const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null };
+  async function resaveInvoiceUntouched(url) {
+    if (!url) {
+      throw new Error('Negative invoice URL missing');
+    }
+    await go(base + url);
+    await page.waitForSelector('#cp-invoice-form');
+    const before = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('#cp-invoice-items .cp-quotation-row-amount')).map((el) => ({
+        name: el.name || '',
+        value: el.value || '',
+        allowNegative: el.hasAttribute('data-cp-money-allow-negative'),
+        invalid: el.classList.contains('is-invalid') || el.validity.customError,
+      }));
+    });
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      page.click('[data-cp-invoice-intent="draft"]'),
+    ]);
+    return { before, afterUrl: page.url() };
+  }
+
+  const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null, negativeResave: null };
   try {
     await login();
     report.invoicePreview = await invoiceDiscountPreview();
     report.behaviors = await behaviorChecks();
     report.keypress = await keypressChecks();
+    report.negativeResave = {
+      standard: await resaveInvoiceUntouched(negStandardUrl),
+      hourly: await resaveInvoiceUntouched(negHourlyUrl),
+    };
     for (const url of pages) {
       await go(base + url);
       if (page.url().includes('/admin/login')) {
@@ -367,16 +416,37 @@ function parseMoney(value) {
     if (!b.gasCommaInvalid || String(b.gasCommaShown) === '1,459.000' || String(b.gasCommaShown) === '1459.000') {
       throw new Error('1,459 on a 3-place field was read as ' + b.gasCommaShown);
     }
-    if (!b.storedNegativeBlank || !b.storedNegativeSubmitAllowed || b.storedNegativeInvalid) {
-      throw new Error('Stored negative blocked the form: ' + JSON.stringify({
-        blank: b.storedNegativeBlank,
+    if (b.storedNegativeBlank || String(b.storedNegativeShown) === '') {
+      throw new Error('Stored negative was blanked: ' + b.storedNegativeShown);
+    }
+    if (!b.storedNegativeInvalid || b.storedNegativeSubmitAllowed) {
+      throw new Error('Stored negative on a default field must stay visible and block submit: ' + JSON.stringify({
+        shown: b.storedNegativeShown,
         submit: b.storedNegativeSubmitAllowed,
         invalid: b.storedNegativeInvalid,
+      }));
+    }
+    if (Math.abs((b.allowNegativeNum || 0) + 200) > 0.0001 || b.allowNegativeInvalid || !b.allowNegativeSubmitAllowed) {
+      throw new Error('Allow-negative stored -200.00 failed: ' + JSON.stringify({
+        shown: b.allowNegativeShown,
+        num: b.allowNegativeNum,
+        submit: b.allowNegativeSubmitAllowed,
+        invalid: b.allowNegativeInvalid,
+      }));
+    }
+    if (Math.abs((b.allowNegativeTypedNum || 0) + 200) > 0.0001 || b.allowNegativeTypedInvalid) {
+      throw new Error('Allow-negative typed -200 failed: ' + JSON.stringify({
+        shown: b.allowNegativeTypedShown,
+        num: b.allowNegativeTypedNum,
+        invalid: b.allowNegativeTypedInvalid,
       }));
     }
     const kp = report.keypress || {};
     if (!kp.typedMinus || !kp.typedMinus.invalid || String(kp.typedMinus.value).indexOf('-') === -1) {
       throw new Error('Typed -5 did not show the inline negative error: ' + JSON.stringify(kp.typedMinus));
+    }
+    if (!kp.allowMinus || kp.allowMinus.invalid || Math.abs(parseFloat(String(kp.allowMinus.value || '').replace(/,/g, '')) + 200) > 0.0001) {
+      throw new Error('Allow-negative keypress -200 failed: ' + JSON.stringify(kp.allowMinus));
     }
     if (!kp.gasComma || !kp.gasComma.invalid || String(kp.gasComma.value) === '1,459.000' || String(kp.gasComma.value) === '1459.000') {
       throw new Error('Keypress 1,459 on 3-place was not flagged: ' + JSON.stringify(kp.gasComma));
@@ -384,6 +454,18 @@ function parseMoney(value) {
     if (!kp.halfUp || Math.abs(parseFloat(String(kp.halfUp.value || '').replace(/,/g, '')) - 1.01) > 0.0001) {
       throw new Error('Keypress 1.005 did not round to 1.01: ' + JSON.stringify(kp.halfUp));
     }
+    const neg = report.negativeResave || {};
+    ['standard', 'hourly'].forEach((kind) => {
+      const row = neg[kind] || {};
+      const fields = row.before || [];
+      const credit = fields.find((f) => String(f.value || '').indexOf('-200') !== -1);
+      if (!credit || credit.invalid || !credit.allowNegative) {
+        throw new Error('Untouched ' + kind + ' -200 line was not ready to save: ' + JSON.stringify(row));
+      }
+      if (!String(row.afterUrl || '').includes('/invoices/')) {
+        throw new Error('Untouched ' + kind + ' invoice did not re-save: ' + row.afterUrl);
+      }
+    });
     await browser.close();
     process.exit(0);
   } catch (err) {
