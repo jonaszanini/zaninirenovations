@@ -29,6 +29,16 @@ function assertCssGeometry() {
   );
   const collapsed = CSS.slice(CSS.indexOf('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side'));
   assert.ok(/height:\s*auto/.test(collapsed.slice(0, 220)), 'collapsed sheet height is auto');
+  assert.ok(
+    CSS.includes('.util-ra-first-tip[hidden]') && CSS.includes('.util-ra-first-tip:empty'),
+    'first-tip collapses when hidden or empty'
+  );
+  const firstTipCollapse = CSS.slice(CSS.indexOf('.util-ra-first-tip[hidden]'));
+  assert.ok(/height:\s*0/.test(firstTipCollapse.slice(0, 280)), 'hidden first-tip height is 0');
+  assert.ok(
+    /\.util-ra-first-tip\s*\{[^}]*flex:\s*0 0 auto/.test(CSS.replace(/\s+/g, ' ')),
+    'first-tip must not grow with flex: 1 0 100%'
+  );
 }
 
 function downloadFile(url, destPath) {
@@ -77,6 +87,7 @@ function startStaticServer(konvaFile) {
   const fixturesDir = path.join(__dirname, 'fixtures');
   const fixture = path.join(fixturesDir, 'room-area-phone-geometry.html');
   const savedRoomFixture = path.join(fixturesDir, 'room-area-saved-room-fit.html');
+  const chromeFixture = path.join(fixturesDir, 'room-area-chrome-geometry.html');
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
@@ -85,6 +96,8 @@ function startStaticServer(konvaFile) {
         file = fixture;
       } else if (urlPath === '/saved-room' || urlPath === '/saved-room.html') {
         file = savedRoomFixture;
+      } else if (urlPath === '/chrome' || urlPath === '/chrome.html') {
+        file = chromeFixture;
       } else if (urlPath === '/vendor-test/konva.min.js') {
         file = konvaFile;
       } else {
@@ -92,6 +105,7 @@ function startStaticServer(konvaFile) {
       }
       const allowed = file === fixture
         || file === savedRoomFixture
+        || file === chromeFixture
         || file === konvaFile
         || file.startsWith(publicDir + path.sep);
       if (!allowed) {
@@ -316,6 +330,58 @@ async function measureViewports() {
       fitted.room.width >= fitted.wrap.width * 0.72,
       'saved room fills most of the wrap width at 390: ' + fitted.room.width + ' vs ' + fitted.wrap.width
     );
+
+    for (const width of [1024, 1280]) {
+      await page.setViewport({ width, height: 800, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+      await page.goto('http://127.0.0.1:' + port + '/chrome', { waitUntil: 'load' });
+      const strip = await page.evaluate(() => {
+        const tools = document.querySelector('.util-ra-full-header__row--tools');
+        const bar = document.querySelector('.util-ra-project-bar');
+        const tip = document.querySelector('[data-ra-first-tip]');
+        const feedback = document.querySelector('[data-ra-feedback]');
+        if (!tools || !bar) return { missing: true };
+        const t = tools.getBoundingClientRect();
+        const b = bar.getBoundingClientRect();
+        const empties = [];
+        document.querySelectorAll('.util-ra *').forEach((el) => {
+          if (el === tools || tools.contains(el) || el === bar || bar.contains(el)) return;
+          if (el.classList && el.classList.contains('util-ra-full-header')) return;
+          const r = el.getBoundingClientRect();
+          if (r.height <= 4 || r.width < 40) return;
+          if (r.bottom <= t.bottom + 0.5 || r.top >= b.top - 0.5) return;
+          const cs = getComputedStyle(el);
+          const text = (el.innerText || '').trim();
+          const empty = el.hasAttribute('hidden') || cs.display === 'none' || !text;
+          if (empty) {
+            empties.push({
+              className: String(el.className || el.tagName),
+              height: Math.round(r.height * 10) / 10,
+              display: cs.display,
+            });
+          }
+        });
+        const tipBox = tip ? tip.getBoundingClientRect() : { height: 0 };
+        const tipCs = tip ? getComputedStyle(tip) : { display: 'none' };
+        const feedbackBox = feedback ? feedback.getBoundingClientRect() : { height: 0 };
+        return {
+          empties,
+          tipHeight: tipBox.height,
+          tipDisplay: tipCs.display,
+          tipHidden: !!(tip && tip.hasAttribute('hidden')),
+          feedbackHeight: feedbackBox.height,
+          gap: Math.round((b.top - t.bottom) * 10) / 10,
+        };
+      });
+      assert.ok(!strip.missing, 'chrome fixture rendered at ' + width);
+      assert.ok(strip.tipHidden, 'first-tip stays hidden when no status is shown at ' + width);
+      assert.ok(strip.tipDisplay === 'none' && strip.tipHeight < 0.5, 'hidden first-tip takes no space at ' + width + ': ' + JSON.stringify(strip));
+      assert.ok(strip.feedbackHeight < 0.5, 'hidden status line takes no space at ' + width + ': ' + strip.feedbackHeight);
+      assert.strictEqual(
+        strip.empties.length,
+        0,
+        'no empty block taller than 4px between toolbar and Project at ' + width + ': ' + JSON.stringify(strip)
+      );
+    }
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));
