@@ -9,7 +9,9 @@
   $unit = (($row[$dimName.'_unit'] ?? $row['unit'] ?? $fallbackUnit ?? 'in') === 'ft') ? 'ft' : 'in';
   $setField = $setField ?? null;
 @endphp
-<div class="admin-form-group mw-field--{{ $dimField }} mw-dim-field"@if ($dimShow) data-mw-show="{{ $dimShow }}"@endif@if ($setField) data-mw-set-field="{{ $setField }}"@endif>
+<div class="admin-form-group mw-field--{{ $dimField }} mw-dim-field"
+     @if ($dimShow) data-mw-show="{{ $dimShow }}" @endif
+     @if ($setField) data-mw-set-field="{{ $setField }}" @endif>
   <label>{{ $dimLabel }}</label>
   <div class="mw-dim">
     <input type="text" inputmode="decimal" autocomplete="off"

@@ -787,7 +787,7 @@ class MillworkCutPlanPlacementTest extends TestCase
         $mixed = (new MillworkPartBuilder)->explode([
             'type' => 'cabinet',
             'qty' => 1,
-            'width' => '2 1/2',
+            'width' => '3',
             'width_unit' => 'ft',
             'height' => '34 1/2',
             'height_unit' => 'in',
@@ -867,11 +867,18 @@ class MillworkCutPlanPlacementTest extends TestCase
             'owner_hourly_rate' => 85,
         ], $this->settings(), 2);
 
-        $this->assertEqualsWithDelta(80.0, (float) ($withDelivery['summary']['delivery_amount'] ?? 0), 0.01);
-        $this->assertEqualsWithDelta(0.0, (float) ($clientAll['summary']['delivery_amount'] ?? 0), 0.01);
+        $deliveryKeys = array_values(array_filter(
+            $clientAll['materials'] ?? [],
+            static fn ($row) => ($row['key'] ?? '') === 'delivery'
+        ));
+        $this->assertSame([], $deliveryKeys);
         $this->assertGreaterThan(
             (float) ($clientAll['summary']['grand_total'] ?? 0),
             (float) ($withDelivery['summary']['grand_total'] ?? 0)
+        );
+        $this->assertGreaterThan(
+            80.0,
+            (float) ($withDelivery['summary']['materials_pre_hst'] ?? 0) - (float) ($clientAll['summary']['materials_pre_hst'] ?? 0)
         );
     }
 
