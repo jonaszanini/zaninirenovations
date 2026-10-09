@@ -492,6 +492,7 @@ async function puppeteerClick() {
       const boxes = Array.from(list.querySelectorAll('input[name$="[edge_banding]"][type="checkbox"]'));
       const ids = boxes.map((el) => el.id);
       const tails = boxes.map((el) => list.querySelector('label.admin-checkbox__tail[for="' + CSS.escape(el.id) + '"]') || list.querySelector('label[for="' + CSS.escape(el.id) + '"]'));
+      const fors = tails.map((el) => el ? el.getAttribute('for') : null);
       const bubbles = Array.from(list.querySelectorAll('.admin-info-tip__bubble[id]')).map((el) => el.id);
       tails[0].click();
       tails[2].click();
@@ -513,7 +514,7 @@ async function puppeteerClick() {
         unique: new Set(ids).size,
         checked: boxes.map((el) => el.checked),
         values,
-        fors: tails.map((el) => el ? el.getAttribute('for') : null),
+        fors,
         bubbles,
         uniqueBubbles: new Set(bubbles).size,
         afterDupUnique: new Set(afterDup).size,
