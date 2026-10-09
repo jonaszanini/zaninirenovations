@@ -89,6 +89,9 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('room-area-layers-locked', $js);
         $this->assertStringContainsString('room-area-dimensions-mode', $js);
         $this->assertStringContainsString("els.templatesPopover.style.position = 'fixed'", $js);
+        $this->assertStringContainsString('function serializeEditorPrefs()', $js);
+        $this->assertStringContainsString('function applyEditorPrefs(', $js);
+        $this->assertStringContainsString('window.__roomAreaQA', $js);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
         $this->assertNotFalse($css);
@@ -96,6 +99,90 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('.util-ra-templates-pop', $css);
         $this->assertStringContainsString('.util-ra-dim-mode', $css);
         $this->assertStringContainsString('.util-ra-canvas-wrap.is-layers-locked', $css);
+    }
+
+    public function test_saved_room_editor_prefs_round_trip(): void
+    {
+        $this->actingAsAdmin();
+        $layout = RoomAreaProject::create([
+            'name' => 'Batch 1 prefs',
+            'scale_pixels_per_foot' => 12,
+        ]);
+
+        $canvas = [
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 144, 'y' => 0],
+                        ['x' => 144, 'y' => 120],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+            'editor' => [
+                'layers_locked' => true,
+                'dimensions_mode' => 'area',
+                'unit_system' => 'metric',
+                'angle_snap' => false,
+                'template' => 'l',
+            ],
+        ];
+
+        $store = $this->postJson(route('admin.utilities.room-area.rooms.store', $layout), [
+            'name' => 'Office',
+            'canvas' => $canvas,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $store->assertJsonPath('room.canvas.editor.layers_locked', true)
+            ->assertJsonPath('room.canvas.editor.dimensions_mode', 'area')
+            ->assertJsonPath('room.canvas.editor.unit_system', 'metric')
+            ->assertJsonPath('room.canvas.editor.angle_snap', false)
+            ->assertJsonPath('room.canvas.editor.template', 'l');
+
+        $roomId = $store->json('room.id');
+        $this->assertNotEmpty($roomId);
+
+        $room = RoomAreaRoom::query()->findOrFail($roomId);
+        $this->assertSame('l', $room->vertices['editor']['template'] ?? null);
+        $this->assertTrue($room->vertices['editor']['layers_locked'] ?? false);
+
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Office',
+            'canvas' => $room->vertices,
+            'scale_pixels_per_foot' => 12,
+        ])
+            ->assertOk()
+            ->assertJsonPath('room.canvas.editor.template', 'l')
+            ->assertJsonPath('room.canvas.editor.unit_system', 'metric');
+    }
+
+    public function test_old_saved_room_without_editor_prefs_still_loads(): void
+    {
+        $this->actingAsAdmin();
+        $project = ClientProject::factory()->create(['name' => 'Legacy kitchen']);
+        $room = $this->makeRoom($project, 'Kitchen');
+
+        $this->assertArrayNotHasKey('editor', $room->vertices);
+
+        $this->get(route('admin.client-projects.utilities.room-area', [
+            'client_project' => $project,
+            'room_area_room' => $room,
+        ]))
+            ->assertOk()
+            ->assertSee('data-ra-initial-room-id="'.$room->id.'"', false)
+            ->assertSee('Kitchen');
+
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Kitchen',
+            'canvas' => $room->vertices,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk()->assertJsonPath('ok', true);
     }
 
     private function makeRoom(ClientProject $clientProject, string $name): RoomAreaRoom

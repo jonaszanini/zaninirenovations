@@ -464,6 +464,96 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertEqualsWithDelta(320.0, $metrics['wall_area_sqft'], 0.01);
     }
 
+    public function test_editor_prefs_round_trip_and_do_not_change_math(): void
+    {
+        $canvas = [
+            'v' => 3,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 144, 'y' => 0],
+                        ['x' => 144, 'y' => 120],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+            'objects' => [
+                [
+                    'id' => 'obj_1',
+                    'type' => 'door',
+                    'subtype' => 'single',
+                    'wall_id' => 'wall_p1_0_1',
+                    'width' => 36,
+                    'offset' => 24,
+                ],
+                [
+                    'id' => 'obj_2',
+                    'type' => 'window',
+                    'subtype' => 'fixed',
+                    'wall_id' => 'wall_p1_1_2',
+                    'width' => 48,
+                    'offset' => 24,
+                    'height' => 36,
+                ],
+            ],
+            'editor' => [
+                'layers_locked' => true,
+                'dimensions_mode' => 'main',
+                'unit_system' => 'metric',
+                'angle_snap' => false,
+                'template' => 'rect',
+                'unknown' => 'drop-me',
+            ],
+        ];
+
+        $normalized = $this->service->normalize($canvas);
+        $this->assertSame([
+            'layers_locked' => true,
+            'dimensions_mode' => 'main',
+            'unit_system' => 'metric',
+            'angle_snap' => false,
+            'template' => 'rect',
+        ], $normalized['editor']);
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
+        $this->assertEqualsWithDelta(120.0, $metrics['area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(44.0, $metrics['perimeter_lf'], 0.01);
+        $this->assertEqualsWithDelta(41.0, $metrics['baseboard_lf'], 0.01);
+        $this->assertEqualsWithDelta(320.0, $metrics['wall_area_sqft'], 0.01);
+    }
+
+    public function test_old_rooms_without_editor_prefs_still_normalize(): void
+    {
+        $legacy = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 144, 'y' => 0],
+            ['x' => 144, 'y' => 120],
+            ['x' => 0, 'y' => 120],
+        ];
+
+        $canvas = $this->service->normalize($legacy);
+        $this->assertArrayNotHasKey('editor', $canvas);
+        $this->assertSame(2, $canvas['v']);
+        $this->assertCount(4, $canvas['groups'][0]['polygons'][0]['vertices']);
+
+        $v2 = $this->service->normalize([
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => $legacy,
+                ]],
+            ]],
+        ]);
+        $this->assertArrayNotHasKey('editor', $v2);
+    }
+
     public function test_l_16_by_12_notch_6_by_4_with_door_and_window_keeps_batch0_math(): void
     {
         $canvas = [

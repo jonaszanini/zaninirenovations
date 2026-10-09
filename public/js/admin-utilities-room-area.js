@@ -353,6 +353,7 @@
     showDimensions: true,
     dimensionsMode: DIM_MODES.all,
     layersLocked: false,
+    templateKind: null,
     angleSnap: true,
     altHeld: false,
     imperialUnit: MEASURE_UNITS.feet_inch_frac,
@@ -1463,7 +1464,28 @@
     if (thickness > 0) payload.wall_thickness_in = thickness;
     var bg = captureBackgroundLayoutForSave();
     if (bg) payload.background = bg;
+    payload.editor = serializeEditorPrefs();
     return payload;
+  }
+
+  function serializeEditorPrefs() {
+    var editor = {
+      layers_locked: !!state.layersLocked,
+      dimensions_mode: DIM_MODES[state.dimensionsMode] ? state.dimensionsMode : DIM_MODES.all,
+      unit_system: isMetricDisplay() ? 'metric' : 'imperial',
+      angle_snap: state.angleSnap !== false
+    };
+    if (state.templateKind) editor.template = state.templateKind;
+    return editor;
+  }
+
+  function applyEditorPrefs(editor, silent) {
+    if (!editor || typeof editor !== 'object') return;
+    if (editor.dimensions_mode) setDimensionsMode(editor.dimensions_mode);
+    if (editor.unit_system) setUnitSystem(editor.unit_system);
+    if (editor.layers_locked != null) setLayersLocked(!!editor.layers_locked, silent !== false);
+    if (editor.angle_snap != null) setAngleSnap(!!editor.angle_snap, silent !== false);
+    if (editor.template) state.templateKind = editor.template;
   }
 
   function serializeObjects() {
@@ -1579,6 +1601,7 @@
       if (raw.background) out.background = raw.background;
       if (Array.isArray(raw.objects)) out.objects = raw.objects;
       if (raw.wall_thickness_in != null) out.wall_thickness_in = raw.wall_thickness_in;
+      if (raw.editor && typeof raw.editor === 'object') out.editor = raw.editor;
       return out;
     }
     return { v: 2, groups: [] };
@@ -1634,6 +1657,7 @@
     }
     hydrateObjects(data.objects || []);
     setWallThickness(data.wall_thickness_in != null ? data.wall_thickness_in : (activeProject() && activeProject().wall_thickness_in) || 0, true);
+    if (data.editor) applyEditorPrefs(data.editor, true);
   }
 
   function hydrateObjects(rawObjects) {
@@ -8975,6 +8999,7 @@
     renderTypedWallsList();
     updateTypedCloseBar();
     closeTemplatesPopover();
+    state.templateKind = (kind === 'l' || kind === 'u' || kind === 't') ? kind : 'rect';
     redrawAll();
     fitViewport();
     setFeedback((kind === 'l' ? 'L-shape' : kind === 'u' ? 'U-shape' : kind === 't' ? 'T-shape' : 'Rectangle') + ' placed. Type lengths to refine.', false);
@@ -9077,6 +9102,7 @@
     updateTypedCloseBar();
     closeTemplatesPopover();
     clearWallSelection();
+    state.templateKind = 'alcove';
     redrawAll();
     setFeedback('Alcove added. Edit the new wall lengths if needed.', false);
   }
@@ -10688,6 +10714,23 @@
     }
     syncGuideLinks();
   }
+
+  window.__roomAreaQA = {
+    showSnapGuides: function () {
+      var verts = activeVertices();
+      if (!verts || verts.length < 2) return false;
+      state.alignGuides = [
+        { type: 'v', x: verts[0].x },
+        { type: 'h', y: verts[0].y }
+      ];
+      state.openingHint = {
+        point: { x: (verts[0].x + verts[1].x) / 2, y: verts[0].y },
+        text: '4′ 0″ from corner'
+      };
+      redrawAll();
+      return true;
+    }
+  };
 
   init();
 })();

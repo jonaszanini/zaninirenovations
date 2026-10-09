@@ -46,6 +46,12 @@ class RoomAreaCanvasData
 
     public const WALL_THICKNESS_PRESETS_IN = [0.0, 3.5, 4.5, 5.5, 6.0];
 
+    public const EDITOR_DIM_MODES = ['all', 'main', 'area', 'off'];
+
+    public const EDITOR_UNIT_SYSTEMS = ['imperial', 'metric'];
+
+    public const EDITOR_TEMPLATES = ['rect', 'l', 'u', 't', 'alcove'];
+
     public const DEFAULT_WALL_HEIGHT_FT = 8.0;
 
     public const DEFAULT_DOOR_HEIGHT_IN = 80.0;
@@ -230,7 +236,54 @@ class RoomAreaCanvasData
             $canvas['background'] = $background;
         }
 
+        $editor = $this->normalizeEditorPrefs($input['editor'] ?? null);
+        if ($editor !== null) {
+            $canvas['editor'] = $editor;
+        }
+
         return $canvas;
+    }
+
+    /**
+     * Optional Batch 1 editor prefs. Missing or invalid keys are dropped so
+     * older saved rooms still load.
+     *
+     * @param  mixed  $raw
+     * @return array{
+     *   layers_locked?: bool,
+     *   dimensions_mode?: string,
+     *   unit_system?: string,
+     *   angle_snap?: bool,
+     *   template?: string
+     * }|null
+     */
+    public function normalizeEditorPrefs($raw): ?array
+    {
+        if (! is_array($raw) || $raw === []) {
+            return null;
+        }
+
+        $out = [];
+        if (array_key_exists('layers_locked', $raw)) {
+            $out['layers_locked'] = filter_var($raw['layers_locked'], FILTER_VALIDATE_BOOLEAN);
+        }
+        $mode = isset($raw['dimensions_mode']) ? (string) $raw['dimensions_mode'] : '';
+        if (in_array($mode, self::EDITOR_DIM_MODES, true)) {
+            $out['dimensions_mode'] = $mode;
+        }
+        $units = isset($raw['unit_system']) ? (string) $raw['unit_system'] : '';
+        if (in_array($units, self::EDITOR_UNIT_SYSTEMS, true)) {
+            $out['unit_system'] = $units;
+        }
+        if (array_key_exists('angle_snap', $raw)) {
+            $out['angle_snap'] = filter_var($raw['angle_snap'], FILTER_VALIDATE_BOOLEAN);
+        }
+        $template = isset($raw['template']) ? (string) $raw['template'] : '';
+        if (in_array($template, self::EDITOR_TEMPLATES, true)) {
+            $out['template'] = $template;
+        }
+
+        return $out === [] ? null : $out;
     }
 
     /**
