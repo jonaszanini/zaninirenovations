@@ -278,87 +278,28 @@ class MillworkQuotationCalculator
             (float) ($cut['trim_in'] ?? 0.125),
             (float) ($cut['min_offcut_in'] ?? 2.0)
         );
+        $cutPlan['builder_version'] = $builder->version();
 
-        $unplacedPieceIndexes = [];
-        foreach ($cutPlan['unplaced'] ?? [] as $missing) {
-            $indexes = $missing['piece_indexes'] ?? [];
-            if (! is_array($indexes) || $indexes === []) {
-                $indexes = isset($missing['piece_index']) ? [$missing['piece_index']] : [];
-            }
-            foreach ($indexes as $idx) {
-                $unplacedPieceIndexes[(int) $idx] = true;
-            }
-        }
-        if ($unplacedPieceIndexes !== []) {
-            foreach ($unplacedPieceIndexes as $idx => $_) {
-                $row = $explodedByPiece[$idx] ?? null;
-                if (! is_array($row)) {
-                    continue;
-                }
-                $ex = $row['exploded'];
-                $type = MillworkPartBuilder::normalizeType((string) ($row['piece']['type'] ?? 'shelf'));
-                if ($type === 'shelf') {
-                    $shelfUnits -= (int) ($ex['unit_count'] ?? 0);
-                }
-                if ($type === 'floating_shelf') {
-                    $floatingUnits -= (int) ($ex['unit_count'] ?? 0);
-                }
-                if ($type === 'kallax') {
-                    $cubeCount -= (int) ($ex['cube_count'] ?? 0);
-                }
-                if (in_array($type, ['cabinet', 'vanity'], true)) {
-                    $cabinetBoxSf -= (float) ($ex['box_sf'] ?? 0);
-                }
-                if ($type === 'closet') {
-                    $closetSf -= (float) ($ex['box_sf'] ?? 0);
-                }
-                if ($type === 'bench') {
-                    $benchSf -= (float) ($ex['box_sf'] ?? 0);
-                }
-                if ($type === 'mantel') {
-                    $mantelUnits -= (int) ($ex['unit_count'] ?? 0);
-                }
-                if ($type === 'wainscoting') {
-                    $wainscotLf -= (float) ($ex['linear_lf'] ?? 0);
-                }
-                if ($type === 'trim') {
-                    $trimLf -= (float) ($ex['linear_lf'] ?? 0);
-                }
-                $boxSf -= (float) ($ex['box_sf'] ?? 0);
-                $doorCount -= (int) ($ex['door_count'] ?? 0);
-            }
-            $shelfUnits = max(0, $shelfUnits);
-            $floatingUnits = max(0, $floatingUnits);
-            $cubeCount = max(0, $cubeCount);
-            $cabinetBoxSf = max(0, $cabinetBoxSf);
-            $closetSf = max(0, $closetSf);
-            $benchSf = max(0, $benchSf);
-            $mantelUnits = max(0, $mantelUnits);
-            $wainscotLf = max(0.0, $wainscotLf);
-            $trimLf = max(0.0, $trimLf);
-            $boxSf = max(0.0, $boxSf);
-            $doorCount = max(0, $doorCount);
-        }
-        if ((int) ($cutPlan['placed_part_count'] ?? 0) === 0 && ($cutPlan['unplaced'] ?? []) !== []) {
-            $shelfUnits = 0;
-            $floatingUnits = 0;
-            $cubeCount = 0;
-            $cabinetBoxSf = 0.0;
-            $doorCount = 0;
-            $benchSf = 0.0;
-            $closetSf = 0.0;
-            $mantelUnits = 0;
-            $wainscotLf = 0.0;
-            $trimLf = 0.0;
-            $boxSf = 0.0;
-            $edgeLf = 0.0;
-            $paintSf = 0.0;
-            $stainSf = 0.0;
-            $fasteners = 0;
-            foreach ($hardware as $k => $_) {
-                $hardware[$k] = 0.0;
-            }
-        }
+        $this->chargePlacedPartsOnly(
+            $explodedByPiece,
+            $cutPlan,
+            $hardware,
+            $edgeLf,
+            $paintSf,
+            $stainSf,
+            $fasteners,
+            $boxSf,
+            $shelfUnits,
+            $floatingUnits,
+            $cubeCount,
+            $cabinetBoxSf,
+            $doorCount,
+            $benchSf,
+            $closetSf,
+            $mantelUnits,
+            $wainscotLf,
+            $trimLf
+        );
 
         $edgeLfQuoted = $edgeLf * (1 + ($edgeWastePct / 100));
         $paintSfQuoted = $paintSf * (1 + ($finishWastePct / 100));
@@ -634,6 +575,7 @@ class MillworkQuotationCalculator
         $usedByStock = [];
         $unplaced = [];
         $seams = [];
+        $placedById = [];
         $originalPartCount = $this->partQty($primary) + $this->partQty($backs);
         $packedPartCount = 0;
 
@@ -650,7 +592,8 @@ class MillworkQuotationCalculator
             &$usedByStock,
             &$unplaced,
             &$seams,
-            &$packedPartCount
+            &$packedPartCount,
+            &$placedById
         ): void {
             if ($parts === []) {
                 return;
@@ -672,6 +615,8 @@ class MillworkQuotationCalculator
                 foreach ($packed->placedParts as $placed) {
                     $id = $placed->part->id;
                     $placedCounts[$id] = ($placedCounts[$id] ?? 0) + 1;
+                    $baseId = $this->packerBaseId($id);
+                    $placedById[$baseId] = ($placedById[$baseId] ?? 0) + 1;
                 }
                 $key = $this->inchKey($packed->width, $packed->length).'|'.$group;
                 if (! isset($usedByStock[$key])) {
@@ -696,8 +641,8 @@ class MillworkQuotationCalculator
                     continue;
                 }
                 $missing[] = [
-                    'id' => $part->id,
-                    'label' => $part->label,
+                    'id' => $this->packerBaseId($part->id),
+                    'label' => $this->packerBaseLabel($part->id, $part->label),
                     'size' => $this->partSizeLabel($part),
                     'reason' => 'Does not fit on any sheet we stock',
                     'piece_index' => $part->sourcePieceIndex,
@@ -728,6 +673,7 @@ class MillworkQuotationCalculator
             'stock_used' => array_values($usedByStock),
             'original_part_count' => $originalPartCount,
             'placed_part_count' => $packedPartCount,
+            'placed_by_id' => $placedById,
             'unplaced' => $unplaced,
             'seams' => $seams,
         ];
@@ -774,7 +720,7 @@ class MillworkQuotationCalculator
                 (float) ($preferred['unit_price'] ?? 0),
                 isset($preferred['catalog_material_id']) ? (int) $preferred['catalog_material_id'] : null
             );
-            if ($thk >= 0.7) {
+            if ($thk >= 0.7 && is_array($preferred) && MillworkSettings::allowsSyntheticSheetSwap($preferred)) {
                 $fallbackPrice = (float) ($preferred['unit_price'] ?? 0);
                 $options[] = new StockOption('half', '4×4 sheet', 48, 48, round($fallbackPrice * 0.55, 2));
                 $options[] = new StockOption('quarter', '2×4 sheet', 24, 48, round($fallbackPrice * 0.32, 2));
@@ -1299,15 +1245,206 @@ class MillworkQuotationCalculator
         return $a.'×'.$b;
     }
 
-    /** Grain length × across, with inch marks (100"×12"). */
+    /** Longest × shortest, with inch marks (100"×12"). */
     private function partSizeLabel(Part $part): string
     {
-        return $this->fmtInches($part->length).'×'.$this->fmtInches($part->width);
+        return $this->sizeLabel($part->length, $part->width);
+    }
+
+    private function sizeLabel(float $a, float $b): string
+    {
+        return $this->fmtInches(max($a, $b)).'×'.$this->fmtInches(min($a, $b));
     }
 
     private function fmtInches(float $inches): string
     {
         return rtrim(rtrim(number_format($inches, 2, '.', ''), '0'), '.').'"';
+    }
+
+    /**
+     * Charge labour, edge banding, finish, and hardware for placed parts only.
+     * A piece with one leftover set keeps the sets that fit.
+     *
+     * @param  array<int, array<string, mixed>>  $explodedByPiece
+     * @param  array<string, mixed>  $cutPlan
+     * @param  array<string, float>  $hardware
+     */
+    private function chargePlacedPartsOnly(
+        array $explodedByPiece,
+        array $cutPlan,
+        array &$hardware,
+        float &$edgeLf,
+        float &$paintSf,
+        float &$stainSf,
+        int &$fasteners,
+        float &$boxSf,
+        int &$shelfUnits,
+        int &$floatingUnits,
+        int &$cubeCount,
+        float &$cabinetBoxSf,
+        int &$doorCount,
+        float &$benchSf,
+        float &$closetSf,
+        int &$mantelUnits,
+        float &$wainscotLf,
+        float &$trimLf
+    ): void {
+        if ((int) ($cutPlan['placed_part_count'] ?? 0) === 0 && ($cutPlan['unplaced'] ?? []) !== []) {
+            $shelfUnits = 0;
+            $floatingUnits = 0;
+            $cubeCount = 0;
+            $cabinetBoxSf = 0.0;
+            $doorCount = 0;
+            $benchSf = 0.0;
+            $closetSf = 0.0;
+            $mantelUnits = 0;
+            $wainscotLf = 0.0;
+            $trimLf = 0.0;
+            $boxSf = 0.0;
+            $edgeLf = 0.0;
+            $paintSf = 0.0;
+            $stainSf = 0.0;
+            $fasteners = 0;
+            foreach ($hardware as $k => $_) {
+                $hardware[$k] = 0.0;
+            }
+
+            return;
+        }
+        if (($cutPlan['unplaced'] ?? []) === []) {
+            return;
+        }
+
+        $placedById = is_array($cutPlan['placed_by_id'] ?? null) ? $cutPlan['placed_by_id'] : [];
+        $hardware = ['hinges' => 0.0, 'pulls' => 0.0, 'drawer_slides' => 0.0, 'glue' => 0.0, 'rods' => 0.0, 'shelf_pins' => 0.0];
+        $edgeLf = 0.0;
+        $paintSf = 0.0;
+        $stainSf = 0.0;
+        $fasteners = 0;
+        $boxSf = 0.0;
+        $shelfUnits = 0;
+        $floatingUnits = 0;
+        $cubeCount = 0;
+        $cabinetBoxSf = 0.0;
+        $doorCount = 0;
+        $benchSf = 0.0;
+        $closetSf = 0.0;
+        $mantelUnits = 0;
+        $wainscotLf = 0.0;
+        $trimLf = 0.0;
+
+        foreach ($explodedByPiece as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $ex = is_array($row['exploded'] ?? null) ? $row['exploded'] : [];
+            $piece = is_array($row['piece'] ?? null) ? $row['piece'] : [];
+            $parts = is_array($ex['parts'] ?? null) ? $ex['parts'] : [];
+            $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+            $finish = MillworkPartBuilder::normalizeFinish((string) ($piece['finish'] ?? 'none'));
+
+            $totalQty = 0;
+            $placedQty = 0;
+            foreach ($parts as $part) {
+                if (! $part instanceof Part) {
+                    continue;
+                }
+                $qty = max(1, (int) $part->quantity);
+                $totalQty += $qty;
+                $id = $part->id;
+                $got = min($qty, (int) ($placedById[$id] ?? 0));
+                $placedById[$id] = max(0, (int) ($placedById[$id] ?? 0) - $got);
+                $placedQty += $got;
+                if ($got <= 0) {
+                    continue;
+                }
+                $edgeLf += $this->partEdgeLf($part) * $got;
+                $face = 2.0 * ($part->width * $part->length) / 144.0 * $got;
+                if ($finish === 'paint') {
+                    $paintSf += $face;
+                } elseif (in_array($finish, ['stain', 'clear'], true)) {
+                    $stainSf += $face;
+                }
+            }
+
+            $ratio = 1.0;
+            if ($parts !== [] && $totalQty > 0) {
+                $ratio = $placedQty / $totalQty;
+            }
+
+            foreach ($hardware as $k => $_) {
+                $hardware[$k] += (float) ($ex['hardware'][$k] ?? 0) * $ratio;
+            }
+            $fasteners += (int) round(((int) ($ex['fastener_count'] ?? 0)) * $ratio);
+            $scaledBox = (float) ($ex['box_sf'] ?? 0) * $ratio;
+            $boxSf += $scaledBox;
+            $scaledUnits = (int) round(((int) ($ex['unit_count'] ?? 0)) * $ratio);
+            $scaledDoors = (int) round(((int) ($ex['door_count'] ?? 0)) * $ratio);
+            $scaledCubes = (int) round(((int) ($ex['cube_count'] ?? 0)) * $ratio);
+            $scaledLinear = (float) ($ex['linear_lf'] ?? 0) * $ratio;
+
+            if ($type === 'shelf') {
+                $shelfUnits += $scaledUnits;
+            }
+            if ($type === 'floating_shelf') {
+                $floatingUnits += $scaledUnits;
+            }
+            if ($type === 'kallax') {
+                $cubeCount += $scaledCubes;
+            }
+            if (in_array($type, ['cabinet', 'vanity'], true)) {
+                $cabinetBoxSf += $scaledBox;
+            }
+            if ($type === 'closet') {
+                $closetSf += $scaledBox;
+            }
+            if ($type === 'bench') {
+                $benchSf += $scaledBox;
+            }
+            if ($type === 'mantel') {
+                $mantelUnits += $scaledUnits;
+            }
+            if ($type === 'wainscoting') {
+                $wainscotLf += $scaledLinear;
+            }
+            if ($type === 'trim') {
+                $trimLf += $scaledLinear;
+            }
+            $doorCount += $scaledDoors;
+        }
+    }
+
+    private function packerBaseId(string $id): string
+    {
+        return (string) preg_replace('/#\d+$/', '', $id);
+    }
+
+    private function packerBaseLabel(string $id, string $label): string
+    {
+        if (! str_contains($id, '#')) {
+            return $label;
+        }
+
+        return (string) preg_replace('/\s+\d+$/', '', $label);
+    }
+
+    private function partEdgeLf(Part $part): float
+    {
+        $lf = 0.0;
+        if ($part->edgeBandTop > 0) {
+            $lf += $part->length / 12.0;
+        }
+        if ($part->edgeBandBottom > 0) {
+            $lf += $part->length / 12.0;
+        }
+        if ($part->edgeBandLeft > 0) {
+            $lf += $part->width / 12.0;
+        }
+        if ($part->edgeBandRight > 0) {
+            $lf += $part->width / 12.0;
+        }
+
+        return $lf;
     }
 
     /**
@@ -1318,7 +1455,8 @@ class MillworkQuotationCalculator
     {
         $groups = [];
         foreach ($rows as $row) {
-            $key = (string) ($row['label'] ?? '').'|'.(string) ($row['size'] ?? '');
+            $piece = (int) ($row['piece_index'] ?? 0);
+            $key = $piece.'|'.(string) ($row['label'] ?? '').'|'.(string) ($row['size'] ?? '');
             if (! isset($groups[$key])) {
                 $groups[$key] = $row + ['qty' => 0, 'piece_indexes' => []];
             }
@@ -1331,11 +1469,16 @@ class MillworkQuotationCalculator
         foreach ($groups as $group) {
             $qty = (int) ($group['qty'] ?? 1);
             $label = (string) ($group['label'] ?? 'Part');
+            $size = (string) ($group['size'] ?? '');
             $indexes = array_values(array_unique(array_map('intval', $group['piece_indexes'] ?? [])));
+            $grouped = $qty > 1 ? $qty.'× '.$label : $label;
+            if ($size !== '') {
+                $grouped .= ' '.$size;
+            }
             $out[] = [
                 'id' => $group['id'] ?? '',
-                'label' => $qty > 1 ? $qty.'× '.$label : $label,
-                'size' => $group['size'] ?? '',
+                'label' => $grouped,
+                'size' => $size,
                 'qty' => $qty,
                 'reason' => $group['reason'] ?? 'Does not fit on any sheet we stock',
                 'piece_index' => $indexes[0] ?? $group['piece_index'] ?? null,

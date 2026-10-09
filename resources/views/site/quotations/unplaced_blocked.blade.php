@@ -16,7 +16,7 @@
             <p class="qa-kicker">Zanini Renovations</p>
             <h1 class="qa-title">Quotation unavailable</h1>
             <p class="qa-message">{{ $message }}</p>
-            <p class="qa-contact">{{ config('mail.from.name', 'Zanini Renovations') }} · (647) 834-7570</p>
+            @include('site.partials.business_contact')
           </div>
         </div>
       </div>

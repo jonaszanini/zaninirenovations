@@ -71,8 +71,8 @@ class MillworkPanelSplitter
     private function splitPart(Part $part, StockOption $stock): ?array
     {
         $attempts = [
-            ['split' => 'width', 'overflow' => $part->width, 'keep' => $part->length, 'axis' => 'width'],
-            ['split' => 'length', 'overflow' => $part->length, 'keep' => $part->width, 'axis' => 'height'],
+            ['split' => 'width', 'overflow' => $part->width, 'keep' => $part->length, 'axis' => 'height'],
+            ['split' => 'length', 'overflow' => $part->length, 'keep' => $part->width, 'axis' => 'width'],
         ];
 
         $best = null;
@@ -146,7 +146,7 @@ class MillworkPanelSplitter
             'seam' => [
                 'part_id' => $part->id,
                 'label' => $part->label,
-                'original' => $this->fmt($part->width).'×'.$this->fmt($part->length),
+                'original' => $this->sizeLabel($part->width, $part->length),
                 'finished_width' => $originalW,
                 'finished_height' => $originalH,
                 'seam_at' => $seamAt,
@@ -155,7 +155,7 @@ class MillworkPanelSplitter
                 'note' => 'seam at '.$this->fmt($seamAt).' along '.$this->fmt($overflow).' '.$axis,
                 'panels' => array_map(fn (Part $p) => $p->label, $panels),
                 'panel_sizes' => array_map(
-                    fn (Part $p) => $this->fmt($p->width).'×'.$this->fmt($p->length),
+                    fn (Part $p) => $this->sizeLabel($p->width, $p->length),
                     $panels
                 ),
             ],
@@ -220,5 +220,10 @@ class MillworkPanelSplitter
     private function fmt(float $inches): string
     {
         return rtrim(rtrim(number_format($inches, 2, '.', ''), '0'), '.').'"';
+    }
+
+    private function sizeLabel(float $a, float $b): string
+    {
+        return $this->fmt(max($a, $b)).'×'.$this->fmt(min($a, $b));
     }
 }

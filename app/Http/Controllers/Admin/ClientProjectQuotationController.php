@@ -166,8 +166,11 @@ class ClientProjectQuotationController extends Controller
             return null;
         }
 
-        $message = MillworkQuotation::unplacedClientMessage();
-        $view = auth()->check()
+        $isAdmin = auth()->check();
+        $message = $isAdmin
+            ? MillworkQuotation::unplacedAdminMessage()
+            : MillworkQuotation::unplacedClientMessage();
+        $view = $isAdmin
             ? 'admin.quotations.millwork.unplaced_blocked'
             : 'site.quotations.unplaced_blocked';
 
@@ -235,7 +238,7 @@ class ClientProjectQuotationController extends Controller
         }
 
         if ($this->millworkHasUnplacedParts($quotation)) {
-            return back()->with('error', MillworkQuotation::unplacedClientMessage());
+            return back()->with('error', MillworkQuotation::unplacedAdminMessage());
         }
 
         $emailTo = trim((string) $client_project->client_email);
@@ -446,7 +449,7 @@ class ClientProjectQuotationController extends Controller
                 return redirect()
                     ->route('admin.client-projects.show', $client_project)
                     ->withFragment('quotation')
-                    ->with('error', MillworkQuotation::unplacedClientMessage());
+                    ->with('error', MillworkQuotation::unplacedAdminMessage());
             }
             $result = app(\App\Services\QuoteAcceptanceService::class)->accept(
                 $quotation,
@@ -461,7 +464,7 @@ class ClientProjectQuotationController extends Controller
                     ->route('admin.client-projects.show', $client_project)
                     ->withFragment('quotation')
                     ->with('error', $result === \App\Services\QuoteAcceptanceService::STATUS_INCOMPLETE
-                        ? MillworkQuotation::unplacedClientMessage()
+                        ? MillworkQuotation::unplacedAdminMessage()
                         : 'This quotation cannot be accepted in its current state.');
             }
 
@@ -652,7 +655,7 @@ class ClientProjectQuotationController extends Controller
             $out[] = 'Add at least one line item before sending an SMS link.';
         }
         if ($this->millworkHasUnplacedParts($quotation)) {
-            $out[] = MillworkQuotation::unplacedClientMessage();
+            $out[] = MillworkQuotation::unplacedAdminMessage();
         }
 
         if (! $mocean->isConfigured()) {

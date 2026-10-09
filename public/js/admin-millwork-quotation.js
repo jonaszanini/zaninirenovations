@@ -192,7 +192,7 @@
         return !String(r.key || '').startsWith('extra_');
       }));
       renderCutPlan(data.cut_plan || {});
-      renderUnplacedBanner(data.cut_plan || {});
+      renderUnplacedBanner(data.cut_plan || {}, data);
       var liveGrand = Number(summary.grand_total || 0) > 0
         ? Number(summary.grand_total) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount
         : 0;
@@ -255,7 +255,17 @@
       body.innerHTML = html;
     }
 
-    function renderUnplacedBanner(plan) {
+    function seamTipHtml(original) {
+      var text = 'Finished sizes still add up to ' + original + '.';
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.html === 'function') {
+        return ' ' + window.AdminInfoTip.html(text, 'Finished size');
+      }
+      return ' <button type="button" class="admin-info-tip" aria-expanded="false" aria-label="Finished size">'
+        + '<i class="fa fa-info-circle" aria-hidden="true"></i>'
+        + '<span class="admin-info-tip__bubble" role="tooltip">' + escapeHtml(text) + '</span></button>';
+    }
+
+    function renderUnplacedBanner(plan, data) {
       var banner = document.getElementById('mw-unplaced-banner');
       var list = document.getElementById('mw-unplaced-list');
       var seamsRoot = document.getElementById('mw-cut-seams');
@@ -263,23 +273,23 @@
       var recalcText = document.getElementById('mw-recalc-text');
       var unplaced = plan.unplaced || [];
       var seams = plan.seams || [];
-      var notice = plan.recalc_notice || null;
+      var notice = (data && data.recalc_notice) || (plan && plan.recalc_notice) || null;
       if (banner) {
         banner.hidden = unplaced.length === 0;
       }
       if (list) {
         list.innerHTML = unplaced.map(function (row) {
-          var label = escapeHtml(row.label || 'Part');
-          var size = row.size ? ' · ' + escapeHtml(row.size) : '';
-          return '<li>' + label + size + '</li>';
+          return '<li>' + escapeHtml(row.label || 'Part') + '</li>';
         }).join('');
       }
       if (recalc) {
         recalc.hidden = !notice;
       }
       if (recalcText && notice) {
-        recalcText.textContent = 'was $' + Number(notice.was).toFixed(2)
-          + ', now $' + Number(notice.now).toFixed(2)
+        var wasLabel = notice.was_label || fmt(notice.was);
+        var nowLabel = notice.now_label || fmt(notice.now);
+        recalcText.textContent = 'was ' + wasLabel
+          + ', now ' + nowLabel
           + '. Review the cut plan before you save.';
       }
       if (seamsRoot) {
@@ -288,12 +298,7 @@
           var panels = (seam.panels || []).join(' + ');
           var note = seam.note || '';
           var original = seam.original || '';
-          var tip = original
-            ? ' <button type="button" class="admin-info-tip" aria-expanded="false" aria-label="Finished size">'
-              + '<i class="fa fa-info-circle" aria-hidden="true"></i>'
-              + '<span class="admin-info-tip__bubble" role="tooltip">Finished sizes still add up to '
-              + escapeHtml(original) + '.</span></button>'
-            : '';
+          var tip = original ? seamTipHtml(original) : '';
           return '<p>' + escapeHtml(seam.label || 'Back') + ': ' + escapeHtml(note)
             + (panels ? ' (' + escapeHtml(panels) + ')' : '')
             + tip + '</p>';
@@ -887,6 +892,18 @@
       syncTotalsBarSpace();
     });
     syncTotalsBarSpace();
+
+    var upgradeBtn = document.getElementById('mw-upgrade-cut-plan-btn');
+    if (upgradeBtn) {
+      upgradeBtn.addEventListener('click', function () {
+        var flag = document.getElementById('mw-upgrade-cut-plan');
+        var ver = document.getElementById('mw-builder-version');
+        if (flag) flag.value = '1';
+        if (ver) ver.value = '2';
+        runPreview();
+        upgradeBtn.hidden = true;
+      });
+    }
 
     if (cfg.initialPreview) renderPreview(cfg.initialPreview);
     schedulePreview();

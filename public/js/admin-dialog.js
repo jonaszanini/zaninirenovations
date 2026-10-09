@@ -358,6 +358,27 @@
 
 })(window);
 
+(function (global) {
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  global.AdminInfoTip = global.AdminInfoTip || {
+    html: function (text, label) {
+      var tip = String(text == null ? '' : text);
+      var aria = String(label == null || label === '' ? 'More info' : label);
+      return '<button type="button" class="admin-info-tip" aria-expanded="false" aria-label="'
+        + escapeHtml(aria) + '">'
+        + '<i class="fa fa-info-circle" aria-hidden="true"></i>'
+        + '<span class="admin-info-tip__bubble" role="tooltip">' + escapeHtml(tip) + '</span></button>';
+    }
+  };
+})(window);
+
 (function () {
   function closeTips(except) {
     document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach(function (btn) {

@@ -385,6 +385,9 @@ class MillworkCutPlanPlacementTest extends TestCase
             $this->assertDoesNotMatchRegularExpression('/\b4(\.0+)?["\']?$/', (string) $size);
         }
 
+        $this->assertStringContainsString('width', (string) $seam['note']);
+        $this->assertStringNotContainsString('along 100" height', (string) $seam['note']);
+
         $mixed = (new MillworkQuotationCalculator)->calculate([
             'pieces' => [
                 ['type' => 'shelf', 'edge_banding' => false, 'sets' => [['qty' => 1, 'length' => 100, 'depth' => 12, 'unit' => 'in']]],
@@ -393,10 +396,165 @@ class MillworkCutPlanPlacementTest extends TestCase
             ],
             'include_install' => false,
         ], $this->settings());
-        $this->assertCount(1, $mixed['cut_plan']['unplaced']);
-        $this->assertSame(3, (int) $mixed['cut_plan']['unplaced'][0]['qty']);
-        $this->assertStringStartsWith('3×', (string) $mixed['cut_plan']['unplaced'][0]['label']);
-        $this->assertSame('100"×12"', (string) $mixed['cut_plan']['unplaced'][0]['size']);
+        $this->assertCount(3, $mixed['cut_plan']['unplaced']);
+        foreach ($mixed['cut_plan']['unplaced'] as $row) {
+            $this->assertSame(1, (int) ($row['qty'] ?? 1));
+            $this->assertSame('100"×12"', (string) ($row['size'] ?? ''));
+            $this->assertStringContainsString('100"×12"', (string) ($row['label'] ?? ''));
+        }
+
+        $qtyTwo = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'sets' => [['qty' => 2, 'length' => 100, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+        ], $this->settings());
+        $this->assertCount(1, $qtyTwo['cut_plan']['unplaced']);
+        $this->assertSame(2, (int) $qtyTwo['cut_plan']['unplaced'][0]['qty']);
+        $this->assertStringContainsString('2×', (string) $qtyTwo['cut_plan']['unplaced'][0]['label']);
+        $this->assertStringContainsString('100"×12"', (string) $qtyTwo['cut_plan']['unplaced'][0]['label']);
+    }
+
+    public function test_legacy_quotes_without_stored_unplaced_are_never_blocked(): void
+    {
+        $presets = [
+            ['pieces' => [MillworkQuotationCalculator::defaultPiece('closet')]],
+            ['pieces' => [$this->heavyShelfPiece()]],
+            ['pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => 24,
+                'height' => 84,
+                'depth' => 24,
+                'unit' => 'in',
+                'include_doors' => true,
+                'door_count' => 2,
+                'include_toe_kick' => true,
+                'include_back' => false,
+                'shelf_count' => 1,
+            ]]],
+            ['pieces' => [[
+                'type' => 'cabinet_door',
+                'sets' => [['qty' => 2, 'width' => 18, 'height' => 80, 'unit' => 'in']],
+            ]]],
+        ];
+
+        foreach ($presets as $inputs) {
+            $quote = new MillworkQuotation([
+                'inputs' => $inputs,
+                'calculation' => [
+                    'cut_plan' => ['sheet_count' => 2, 'layouts' => []],
+                    'summary' => ['grand_total' => 1663.90],
+                ],
+            ]);
+            $this->assertArrayNotHasKey('unplaced', $quote->calculation['cut_plan']);
+            $this->assertFalse($quote->hasUnplacedCutParts());
+            $this->assertTrue($quote->usesLegacyCutBuilder());
+        }
+
+        $blocked = new MillworkQuotation([
+            'calculation' => [
+                'cut_plan' => [
+                    'version' => 2,
+                    'unplaced' => [['label' => 'Shelf 100"×12"', 'qty' => 1]],
+                ],
+            ],
+        ]);
+        $this->assertTrue($blocked->hasUnplacedCutParts());
+    }
+
+    public function test_custom_maple_sheet_does_not_swap_to_cabinet_offcut(): void
+    {
+        $settings = $this->settings();
+        $catalog = $settings->catalog;
+        $catalog[MillworkSettings::SLOT_WOOD_SHEETS][] = [
+            'id' => 'ws_custom_maple',
+            'catalog_material_id' => 9991,
+            'name' => '3/4" Custom maple plywood 4×8',
+            'unit' => 'sheet',
+            'unit_price' => 180.00,
+            'thickness_in' => 0.75,
+            'width_in' => 48,
+            'length_in' => 96,
+            'material_kind' => 'plywood',
+            'grade' => 'cabinet',
+        ];
+        $settings->catalog = $catalog;
+
+        $this->assertNotSame(
+            'cabinet_ply',
+            MillworkSettings::sheetSpecies([
+                'id' => 'ws_custom_maple',
+                'name' => '3/4" Custom maple plywood 4×8',
+                'catalog_material_id' => 9991,
+                'material_kind' => 'plywood',
+                'grade' => 'cabinet',
+            ])
+        );
+
+        $calc = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'sets' => [['qty' => 1, 'length' => 30, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'sheet_id' => 'ws_custom_maple',
+            'include_install' => false,
+        ], $settings);
+
+        $this->assertNotEmpty($calc['cut_plan']['stock_used']);
+        foreach ($calc['cut_plan']['stock_used'] as $stock) {
+            $this->assertEqualsWithDelta(180.0, (float) $stock['unit_price'], 0.01);
+            $this->assertStringContainsStringIgnoringCase('maple', (string) $stock['name']);
+            $this->assertNotEquals(24.0, (float) $stock['unit_price']);
+        }
+    }
+
+    public function test_unplaced_set_does_not_drop_placed_set_labour_or_keep_its_banding(): void
+    {
+        $oneShelf = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => true,
+                'finish' => 'paint',
+                'sets' => [['qty' => 1, 'length' => 30, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+        $mixed = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => true,
+                'finish' => 'paint',
+                'sets' => [
+                    ['qty' => 1, 'length' => 30, 'depth' => 12, 'unit' => 'in'],
+                    ['qty' => 1, 'length' => 100, 'depth' => 12, 'unit' => 'in'],
+                ],
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+
+        $this->assertSame(1, $mixed['cut_plan']['placed_part_count']);
+        $this->assertNotEmpty($mixed['cut_plan']['unplaced']);
+        $this->assertEqualsWithDelta(
+            (float) $oneShelf['summary']['labor_pre_hst'],
+            (float) $mixed['summary']['labor_pre_hst'],
+            0.05
+        );
+        $this->assertEqualsWithDelta(
+            (float) $oneShelf['summary']['edge_band_lf'],
+            (float) $mixed['summary']['edge_band_lf'],
+            0.05
+        );
+        $this->assertEqualsWithDelta(
+            (float) $oneShelf['summary']['paint_sf'],
+            (float) $mixed['summary']['paint_sf'],
+            0.05
+        );
     }
 
     public function test_builder_version_gate_keeps_v1_side_orientation(): void

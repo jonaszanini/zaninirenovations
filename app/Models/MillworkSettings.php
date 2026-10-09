@@ -535,8 +535,11 @@ class MillworkSettings extends Model
         if ($explicit !== '') {
             return $explicit;
         }
+        $catalogId = (int) ($row['catalog_material_id'] ?? 0);
+        $sku = strtolower(trim((string) ($row['sku'] ?? '')));
         $id = strtolower((string) ($row['id'] ?? ''));
         $name = strtolower((string) ($row['name'] ?? ''));
+
         if (str_starts_with($id, 'ws_bb_bb_') || str_contains($name, 'bb/bb')) {
             return 'baltic_bb_bb';
         }
@@ -555,7 +558,42 @@ class MillworkSettings extends Model
         if (str_contains($name, 'baltic')) {
             return 'baltic_birch';
         }
+        if (str_starts_with($id, 'ws_ply_34_cab_')
+            || (str_contains($name, 'cabinet-grade') && str_contains($name, 'plywood'))) {
+            return 'cabinet_ply';
+        }
 
-        return 'cabinet_ply';
+        if ($catalogId > 0) {
+            return 'material:'.$catalogId;
+        }
+        if ($sku !== '') {
+            return 'sku:'.$sku;
+        }
+        if ($id !== '') {
+            return 'id:'.$id;
+        }
+        if ($name !== '') {
+            return 'name:'.$name;
+        }
+
+        return 'unknown';
+    }
+
+    /**
+     * Synthetic 4×4 / 2×4 leftovers are only for known stocked families.
+     */
+    public static function allowsSyntheticSheetSwap(array $row): bool
+    {
+        $key = self::sheetSpecies($row);
+
+        return in_array($key, [
+            'cabinet_ply',
+            'utility_ply',
+            'mdf',
+            'baltic_birch',
+            'baltic_bb_bb',
+            'baltic_b_bb',
+            'baltic_5x5',
+        ], true);
     }
 }

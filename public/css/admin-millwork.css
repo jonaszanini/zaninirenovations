@@ -223,6 +223,12 @@
   flex-shrink: 0;
   align-self: flex-end;
 }
+.mw-cut-plan-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
 
 .mw-recalc-banner,
 .mw-unplaced-banner {
@@ -251,10 +257,19 @@
   border-radius: 8px;
   background: var(--admin-surface);
   color: var(--admin-text);
+  overflow: visible;
 }
 .mw-cut-seams p {
+  position: relative;
   margin: 0 0 6px;
   font-size: 13px;
+  overflow: visible;
+}
+.mw-cut-seams .admin-info-tip {
+  vertical-align: middle;
+}
+.mw-cut-seams .admin-info-tip__bubble {
+  z-index: 80;
 }
 .mw-cut-seams p:last-child {
   margin-bottom: 0;

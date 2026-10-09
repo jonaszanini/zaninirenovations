@@ -185,89 +185,246 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
         $this->assertNotSame(ClientProjectQuotation::STATUS_ACCEPTED, $quotation->status);
     }
 
-    public function test_old_quote_without_unplaced_key_is_blocked_when_inputs_do_not_fit(): void
+    public function test_old_quote_without_unplaced_key_is_not_blocked(): void
     {
         $this->actingAsAdmin();
-        $project = ClientProject::factory()->create(['client_name' => 'Legacy Unplaced']);
-        $inputs = [
-            'pieces' => [[
-                'type' => 'shelf',
-                'sets' => [['qty' => 1, 'length' => 100, 'depth' => 12, 'unit' => 'in']],
-            ]],
-        ];
-        $mw = MillworkQuotation::query()->create([
-            'quote_number' => 'MW-V1-UNPLACED',
-            'client_name' => 'Legacy Unplaced',
-            'client_project_id' => $project->id,
-            'is_draft' => false,
-            'inputs' => $inputs,
-            'calculation' => [
-                'cut_plan' => ['sheet_count' => 0, 'layouts' => []],
-                'summary' => ['grand_total' => 100, 'labor_pre_hst' => 50, 'materials_pre_hst' => 50],
-            ],
-            'final_quote_total' => 100,
-        ]);
-        $this->assertArrayNotHasKey('unplaced', $mw->calculation['cut_plan']);
-        $this->assertTrue($mw->hasUnplacedCutParts());
+        $presets = $this->legacyPresetInputs();
+        foreach ($presets as $i => $inputs) {
+            $project = ClientProject::factory()->create(['client_name' => 'Legacy Open '.$i]);
+            $mw = MillworkQuotation::query()->create([
+                'quote_number' => 'MW-V1-OPEN-'.$i,
+                'client_name' => 'Legacy Open '.$i,
+                'client_project_id' => $project->id,
+                'is_draft' => false,
+                'inputs' => $inputs,
+                'calculation' => [
+                    'cut_plan' => ['sheet_count' => 2, 'layouts' => []],
+                    'summary' => ['grand_total' => 1663.90, 'labor_pre_hst' => 900, 'materials_pre_hst' => 200],
+                ],
+                'final_quote_total' => 1663.90,
+            ]);
+            $this->assertArrayNotHasKey('unplaced', $mw->calculation['cut_plan']);
+            $this->assertFalse($mw->hasUnplacedCutParts());
 
-        $quotation = ClientProjectQuotation::query()->create([
-            'client_project_id' => $project->id,
-            'source_type' => ClientProjectQuotation::SOURCE_MILLWORK,
-            'source_id' => $mw->id,
-            'title' => 'Custom millwork',
-            'status' => ClientProjectQuotation::STATUS_DRAFT,
-            'type' => ClientProjectQuotation::TYPE_QUOTATION,
-            'quotation_number' => 'Q-V1-UNPLACED',
-            'version' => 1,
-            'labour' => true,
-            'material' => false,
-            'items' => [['description' => 'Custom millwork (labour)', 'amount' => 50, 'apply_hst' => true]],
-        ]);
+            $quotation = ClientProjectQuotation::query()->create([
+                'client_project_id' => $project->id,
+                'source_type' => ClientProjectQuotation::SOURCE_MILLWORK,
+                'source_id' => $mw->id,
+                'title' => 'Custom millwork',
+                'status' => ClientProjectQuotation::STATUS_DRAFT,
+                'type' => ClientProjectQuotation::TYPE_QUOTATION,
+                'quotation_number' => 'Q-V1-OPEN-'.$i,
+                'version' => 1,
+                'labour' => true,
+                'material' => false,
+                'items' => [['description' => 'Custom millwork (labour)', 'amount' => 900, 'apply_hst' => true]],
+            ]);
 
-        $this->get(route('admin.client-projects.quotation.pdf', [$project, $quotation]))
-            ->assertStatus(422)
-            ->assertSee('do not fit on any sheet');
+            if ($i === 0) {
+                $this->get(route('admin.client-projects.quotation.pdf', [$project, $quotation]))
+                    ->assertOk()
+                    ->assertDontSee('Quotation unavailable');
+            }
+        }
     }
 
-    public function test_edit_page_shows_recalculated_notice_for_old_cut_plan(): void
+    public function test_recalculate_button_preview_shows_was_now_notice_with_extras(): void
     {
         $this->actingAsAdmin();
         $path = base_path('tests/fixtures/millwork-cut-plan-v1/heavy_shelf.json');
         $fixture = json_decode((string) file_get_contents($path), true);
         $this->assertIsArray($fixture);
 
+        $inputs = [
+            'pieces' => [[
+                'type' => 'kallax',
+                'qty' => 1,
+                'width' => 96,
+                'height' => 84,
+                'depth' => 24,
+                'unit' => 'in',
+                'columns' => 3,
+                'rows' => 5,
+                'include_back' => true,
+                'edge_banding' => true,
+                'finish' => 'none',
+            ]],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+            '_builder_version' => 1,
+        ];
         $quote = MillworkQuotation::query()->create([
             'quote_number' => 'MW-V1-HEAVY',
             'client_name' => 'Legacy Heavy',
             'is_draft' => true,
-            'inputs' => [
-                'pieces' => [[
-                    'type' => 'kallax',
-                    'qty' => 1,
-                    'width' => 96,
-                    'height' => 84,
-                    'depth' => 24,
-                    'unit' => 'in',
-                    'columns' => 3,
-                    'rows' => 5,
-                    'include_back' => true,
-                    'edge_banding' => true,
-                    'finish' => 'none',
-                ]],
-                'include_install' => true,
-                'owner_hourly_rate' => 85,
-            ],
+            'inputs' => $inputs,
             'calculation' => $fixture['calculation'],
-            'final_quote_total' => (float) $fixture['grand_total'],
+            'final_quote_total' => 3565.43,
+            'include_commute' => true,
+            'commute_amount' => 150,
+            'include_debris_removal' => true,
+            'debris_removal_amount' => 80,
+            'additional_costs' => [[
+                'description' => 'Hardware extras',
+                'amount' => 100,
+                'hst_included' => true,
+                'category' => 'materials',
+            ]],
         ]);
 
         $html = $this->get(route('admin.quotations.millwork.edit', $quote))
             ->assertOk()
-            ->assertSee('Recalculated with the new cut plan')
+            ->assertSee('Recalculate with new cut plan')
             ->assertSee('mw-recalc-banner', false)
             ->getContent();
-        $this->assertDoesNotMatchRegularExpression('/id="mw-recalc-banner"[^>]*hidden/', $html);
-        $this->assertStringContainsString('3,235.43', $html);
+        $this->assertMatchesRegularExpression('/id="mw-recalc-banner"[^>]*hidden/', $html);
+
+        $payload = [
+            'pieces' => $inputs['pieces'],
+            'include_install' => 1,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            'upgrade_cut_plan' => 1,
+            '_builder_version' => 1,
+            'include_commute' => 1,
+            'commute_trip_percent' => 100,
+            'commute_estimated_trips' => 1,
+            'commute_round_trip_cost' => 150,
+            'include_debris_removal' => 1,
+            'debris_removal_amount' => 80,
+            'additional_costs' => [[
+                'description' => 'Hardware extras',
+                'amount' => '100.00',
+                'hst_included' => 1,
+                'category' => 'materials',
+            ]],
+        ];
+
+        $preview = $this->post(route('admin.quotations.millwork.calculate-existing', $quote), $payload)
+            ->assertOk()
+            ->assertJsonPath('recalc_notice.was', 3565.43)
+            ->json();
+
+        $this->assertIsArray($preview['recalc_notice'] ?? null);
+        $this->assertStringContainsString('3,565.43', (string) $preview['recalc_notice']['was_label']);
+        $this->assertMatchesRegularExpression('/\d,\d{3}\.\d{2}/', (string) $preview['recalc_notice']['now_label']);
+        $this->assertGreaterThan(3565.43 - 0.01, (float) $preview['recalc_notice']['now']);
+    }
+
+    public function test_resaving_legacy_quote_unchanged_keeps_exact_total(): void
+    {
+        $this->actingAsAdmin();
+        $inputs = [
+            'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            '_builder_version' => 1,
+        ];
+        $v1 = (new MillworkQuotationCalculator)->calculate($inputs, null, 1);
+        $stored = $v1;
+        unset($stored['cut_plan']['unplaced'], $stored['cut_plan']['version'], $stored['cut_plan']['builder_version']);
+        $total = round((float) ($v1['summary']['grand_total'] ?? 0), 2);
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V1-CLOSET-SAVE',
+            'client_name' => 'Legacy Closet',
+            'is_draft' => false,
+            'inputs' => $inputs,
+            'calculation' => $stored,
+            'final_quote_total' => $total,
+        ]);
+
+        $this->put(route('admin.quotations.millwork.update', $quote), [
+            'save_intent' => 'publish',
+            'client_name' => 'Legacy Closet',
+            'pieces' => $inputs['pieces'],
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            'include_install' => 1,
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'include_commute' => 0,
+            'ask_reply_to_accept' => '0',
+            '_builder_version' => 1,
+        ])->assertRedirect();
+
+        $fresh = $quote->fresh();
+        $this->assertEqualsWithDelta($total, (float) $fresh->final_quote_total, 0.001);
+        $this->assertTrue($fresh->usesLegacyCutBuilder());
+        $this->assertSame(1, $fresh->builderVersion());
+    }
+
+    public function test_client_unplaced_page_uses_plain_wording_and_configured_contact(): void
+    {
+        config([
+            'blog.phone_display' => '(555) 010-9999',
+            'blog.phone_tel' => '+15550109999',
+            'mail.from.address' => 'shop@example.test',
+            'mail.from.name' => 'Example Shop',
+        ]);
+
+        [$project, $mw, $quotation] = $this->linkedUnplacedQuote();
+        $url = \Illuminate\Support\Facades\URL::signedRoute('public.client-project.quotation-pdf', [
+            'client_project' => $project,
+            'quotation' => $quotation,
+        ]);
+
+        $this->get($url)
+            ->assertStatus(422)
+            ->assertSee('This quote is being updated')
+            ->assertSee('Please contact us')
+            ->assertSee('(555) 010-9999')
+            ->assertSee('shop@example.test')
+            ->assertDontSee('Change the size or pick a larger sheet');
+
+        $accept = \Illuminate\Support\Facades\URL::signedRoute('public.quotations.accept', [
+            'quotation' => $quotation,
+        ]);
+        $this->get($accept)
+            ->assertOk()
+            ->assertSee('This quote is being updated')
+            ->assertSee('(555) 010-9999')
+            ->assertSee('shop@example.test')
+            ->assertDontSee('do not fit on any sheet');
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function legacyPresetInputs(): array
+    {
+        return [
+            ['pieces' => [MillworkQuotationCalculator::defaultPiece('closet')]],
+            ['pieces' => [[
+                'type' => 'kallax',
+                'qty' => 1,
+                'width' => 96,
+                'height' => 84,
+                'depth' => 24,
+                'unit' => 'in',
+                'columns' => 3,
+                'rows' => 5,
+                'include_back' => true,
+            ]]],
+            ['pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => 24,
+                'height' => 84,
+                'depth' => 24,
+                'unit' => 'in',
+                'include_doors' => true,
+                'door_count' => 2,
+                'include_toe_kick' => true,
+                'include_back' => false,
+                'shelf_count' => 1,
+            ]]],
+            ['pieces' => [[
+                'type' => 'cabinet_door',
+                'sets' => [['qty' => 2, 'width' => 18, 'height' => 80, 'unit' => 'in']],
+            ]]],
+        ];
     }
 
     /**

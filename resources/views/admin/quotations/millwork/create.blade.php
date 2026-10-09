@@ -66,6 +66,8 @@
     @csrf
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="mw-save-intent" value="publish">
+    <input type="hidden" name="_builder_version" id="mw-builder-version" value="{{ (int) ($builderVersion ?? ($isEdit && $quotation ? $quotation->builderVersion() : 2)) }}">
+    <input type="hidden" name="upgrade_cut_plan" id="mw-upgrade-cut-plan" value="0">
 
     <div class="br-toolbar" aria-label="Quotation actions">
       <div class="pq-sidebar-actions">
@@ -148,9 +150,16 @@
 
             <div class="mw-cut-plan-head">
               <h4 class="br-review-heading">Cut plan</h4>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-print-cut-list" @disabled($cutLayouts === [])>
-                <i class="fa fa-print"></i> Print cut list
-              </button>
+              <div class="mw-cut-plan-head__actions">
+                @if ($isEdit && $quotation && $quotation->usesLegacyCutBuilder())
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-upgrade-cut-plan-btn">
+                    Recalculate with new cut plan
+                  </button>
+                @endif
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-print-cut-list" @disabled($cutLayouts === [])>
+                  <i class="fa fa-print"></i> Print cut list
+                </button>
+              </div>
             </div>
             @php
               $unplacedParts = is_array($initialPreview['cut_plan']['unplaced'] ?? null) ? $initialPreview['cut_plan']['unplaced'] : [];
@@ -174,7 +183,7 @@
               <p>These parts are not in the cut plan and are not in the price. Change the size or pick a larger sheet. The client PDF cannot be downloaded until every part fits.</p>
               <ul id="mw-unplaced-list">
                 @foreach ($unplacedParts as $missing)
-                  <li>{{ $missing['label'] ?? 'Part' }}{{ ! empty($missing['size']) ? ' · '.$missing['size'] : '' }}</li>
+                  <li>{{ $missing['label'] ?? 'Part' }}</li>
                 @endforeach
               </ul>
             </div>

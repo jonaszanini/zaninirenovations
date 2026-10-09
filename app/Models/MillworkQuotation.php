@@ -73,40 +73,27 @@ class MillworkQuotation extends Model
         return max(0, (int) ($cut['sheet_count'] ?? 0));
     }
 
-    public static function unplacedClientMessage(): string
+    public static function unplacedAdminMessage(): string
     {
         return 'This quotation has parts that do not fit on any sheet. Change the size or pick a larger sheet before sending, downloading, or accepting.';
     }
 
+    public static function unplacedClientMessage(): string
+    {
+        return 'This quote is being updated and is not available to download or accept yet. Please contact us if you have questions.';
+    }
+
     /**
-     * Live v2 plans store leftover parts. Old snapshots without an unplaced
-     * key are recomputed from inputs when possible (D7).
+     * Only the stored unplaced list written by the new builder may block a
+     * client PDF or accept page. Legacy snapshots without that key stay open.
      */
     public function hasUnplacedCutParts(): bool
     {
         $calc = is_array($this->calculation) ? $this->calculation : [];
         $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
         $unplaced = $cut['unplaced'] ?? null;
-        if (is_array($unplaced)) {
-            return $unplaced !== [];
-        }
 
-        $inputs = is_array($this->inputs) ? $this->inputs : [];
-        if ($inputs === []) {
-            return false;
-        }
-
-        try {
-            $live = (new \App\Services\MillworkQuotationCalculator)->calculate(
-                $inputs,
-                null,
-                max(1, $this->cutPlanVersion())
-            );
-        } catch (\Throwable) {
-            return false;
-        }
-
-        return ($live['cut_plan']['unplaced'] ?? []) !== [];
+        return is_array($unplaced) && $unplaced !== [];
     }
 
     public function cutPlanVersion(): int
@@ -115,6 +102,26 @@ class MillworkQuotation extends Model
         $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
 
         return (int) ($cut['version'] ?? 1);
+    }
+
+    public function builderVersion(): int
+    {
+        $inputs = is_array($this->inputs) ? $this->inputs : [];
+        if (isset($inputs['_builder_version']) && is_numeric($inputs['_builder_version'])) {
+            return ((int) $inputs['_builder_version']) >= 2 ? 2 : 1;
+        }
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
+        if (isset($cut['builder_version']) && is_numeric($cut['builder_version'])) {
+            return ((int) $cut['builder_version']) >= 2 ? 2 : 1;
+        }
+
+        return $this->cutPlanVersion() >= 2 ? 2 : 1;
+    }
+
+    public function usesLegacyCutBuilder(): bool
+    {
+        return $this->builderVersion() < \App\Services\Millwork\MillworkPartBuilder::BUILDER_VERSION;
     }
 
     public function displayTitle(): string
