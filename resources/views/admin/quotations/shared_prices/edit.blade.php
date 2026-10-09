@@ -314,7 +314,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
-      "label trailing"
+      "label label"
+      "trailing trailing"
       "rate sell"
       "unit price"
       "name name";
@@ -346,7 +347,12 @@
   .sp-col-unit { grid-area: unit; }
   .sp-col-price { grid-area: price; }
   .sp-col-name { grid-area: name; }
-  .sp-col-trailing { grid-area: trailing; justify-self: end; }
+  .sp-col-trailing { grid-area: trailing; justify-self: stretch; }
+  .sp-trailing {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+  }
+  .sp-consumers { flex: 1 1 auto; }
 
   .sp-col-label {
     font-weight: 600;
