@@ -39,6 +39,8 @@ class FenceMaterial extends Model
 
     public const KEY_POST_CAP = 'post_cap';
 
+    public const KEY_POST_CAP_6X6 = 'post_cap_6x6';
+
     public const KEY_GATE_HARDWARE = 'gate_hardware';
 
     /**
@@ -59,6 +61,18 @@ class FenceMaterial extends Model
         self::KEY_CONCRETE,
         self::KEY_BRACKET,
         self::KEY_POST_CAP,
+        self::KEY_POST_CAP_6X6,
+    ];
+
+    /**
+     * Optional extras on the purchase list (nails, gate hardware) so
+     * they are not forgotten at the store.
+     *
+     * @var list<string>
+     */
+    public const ALSO_BUY_KEYS = [
+        self::KEY_NAILS,
+        self::KEY_GATE_HARDWARE,
     ];
 
     /** @var list<string> */
@@ -81,6 +95,12 @@ class FenceMaterial extends Model
         }
 
         return $use6x6 ? self::KEY_POST_6X6_10 : self::KEY_POST_10;
+    }
+
+    /** Catalogue key for post caps based on post cross-section. */
+    public static function postCapKeyFor(string $postSize): string
+    {
+        return $postSize === '6x6' ? self::KEY_POST_CAP_6X6 : self::KEY_POST_CAP;
     }
 
     protected $fillable = [
@@ -203,7 +223,7 @@ class FenceMaterial extends Model
     public static function catalogueByKey()
     {
         return static::query()
-            ->with('material')
+            ->with(['material.vendor'])
             ->orderBy('sort_order')
             ->get()
             ->keyBy('key');

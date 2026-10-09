@@ -100,6 +100,8 @@
       var leftInput = card.querySelector('.fq-side-post-left');
       var rightInput = card.querySelector('.fq-side-post-right');
       var gateInput = card.querySelector('.fq-side-gate-here');
+      var connectedInput = card.querySelector('.fq-side-connected');
+      var gatePreset = card.querySelector('.fq-side-gate-preset');
       var lengthFt = lengthInput ? String(lengthInput.value || '').trim() : '';
       if (!lengthFt || Number(lengthFt) <= 0) return;
       sides.push({
@@ -107,10 +109,14 @@
         already_have_post_left: !!(leftInput && leftInput.checked),
         already_have_post_right: !!(rightInput && rightInput.checked),
         gate_goes_here: !!(gateInput && gateInput.checked),
+        connected_to_previous: !!(connectedInput && connectedInput.checked),
+        gate_preset: gatePreset ? String(gatePreset.value || '') : '',
       });
     });
 
-    var materials = collectMaterialNames('#fq-materials', '.fq-breakdown-note');
+    var materials = collectMaterialNames('#fq-materials', '.fq-breakdown-note').filter(function (name) {
+      return !/\bdelivery\b/i.test(name);
+    });
 
     return {
       client_name: formValue(form, 'client_name'),
@@ -118,6 +124,7 @@
       post_size: formSelectValue(form, 'post_size') || formValue(form, 'post_size'),
       board_style: formValue(form, 'board_style'),
       gate_count: formValue(form, 'gate_count'),
+      extra_gate_preset: formValue(form, 'extra_gate_preset'),
       sides: sides,
       section_count: sides.length,
       materials_summary: materials.join('\n'),

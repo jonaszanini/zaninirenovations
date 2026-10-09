@@ -31,6 +31,8 @@ class FenceQuotation extends Model
 
     public const POST_SIZE_6X6 = '6x6';
 
+    public const MAX_RUNS = 8;
+
     protected $fillable = [
         'client_project_id',
         'quote_number',
@@ -103,23 +105,54 @@ class FenceQuotation extends Model
     }
 
     /**
-     * Short human-friendly description used when linking a fence quote
-     * into a project's main Quotation as a line item. Example:
-     *   "Pressure treated wood fence 6' high, 4×4 posts — 40 linear ft, 1 gate"
+     * Short contractor-facing line for the project Quotation PDF.
+     * Example: "6 ft standard board fence, 4×4 posts in concrete, 58 linear ft (3 runs), one 4 ft single gate"
      */
     public function summaryDescription(): string
     {
-        $totalFt = collect($this->sides ?? [])
-            ->sum(fn ($s) => (float) ($s['length_ft'] ?? 0));
+        $sides = collect($this->sides ?? [])->values();
+        $totalFt = $sides->sum(fn ($s) => (float) ($s['length_ft'] ?? 0));
+        $runCount = $sides->filter(fn ($s) => (float) ($s['length_ft'] ?? 0) > 0)->count();
         $height = (int) round((float) $this->fence_height_ft);
-        $gates = (int) $this->gate_count;
-        $gatesPart = $gates > 0 ? ', '.$gates.' '.\Illuminate\Support\Str::plural('gate', $gates) : '';
+        $style = $this->board_style === self::BOARD_STYLE_OVERLAPPING
+            ? 'overlapping board'
+            : 'standard board';
+        $lf = rtrim(rtrim(number_format($totalFt, 2), '0'), '.');
+        $runsPart = $runCount.' '.($runCount === 1 ? 'run' : 'runs');
+
+        $gateLabels = [];
+        foreach ($sides as $side) {
+            if (! is_array($side) || empty($side['gate_goes_here'])) {
+                continue;
+            }
+            $gateLabels[] = \App\Support\FenceGateSpec::fromSide($side)->shortLabel();
+        }
+        $placed = count($gateLabels);
+        $stated = max(0, (int) $this->gate_count);
+        $extra = max(0, $stated - $placed);
+        $extraPreset = is_array($this->calculation)
+            ? ($this->calculation['inputs']['extra_gate_preset'] ?? \App\Support\FenceGateSpec::DEFAULT_KEY)
+            : \App\Support\FenceGateSpec::DEFAULT_KEY;
+        for ($i = 0; $i < $extra; $i++) {
+            $gateLabels[] = \App\Support\FenceGateSpec::fromKey($extraPreset)->shortLabel();
+        }
+
+        $gatesPart = '';
+        if ($gateLabels !== []) {
+            if (count($gateLabels) === 1) {
+                $gatesPart = ', one '.$gateLabels[0].' gate';
+            } else {
+                $gatesPart = ', '.count($gateLabels).' gates ('.implode(', ', $gateLabels).')';
+            }
+        }
 
         return sprintf(
-            "Pressure treated wood fence %d' high, %s posts — %s linear ft%s",
+            '%d ft %s fence, %s posts in concrete, %s linear ft (%s)%s',
             $height,
+            $style,
             $this->postSizeLabel(),
-            rtrim(rtrim(number_format($totalFt, 2), '0'), '.'),
+            $lf,
+            $runsPart,
             $gatesPart
         );
     }

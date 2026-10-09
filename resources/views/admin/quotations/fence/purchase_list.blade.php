@@ -115,7 +115,7 @@
       · {{ e($quotation->client_name) }}
     @endif
     <br>
-    Quantities reflect the <strong>last saved</strong> quotation breakdown. Nails and gate hardware are not listed.
+    Quantities reflect the <strong>last saved</strong> quotation breakdown.
   </p>
 
   @if (empty($rows))
@@ -160,6 +160,39 @@
         </tr>
       </tfoot>
       @endif
+    </table>
+  @endif
+
+  @if (! empty($alsoBuyRows))
+    <h2 style="margin:28px 0 8px;font-size:16px;">Also buy</h2>
+    <p class="meta">Nails and gate hardware — easy to forget at the store.</p>
+    <table>
+      <thead>
+        <tr>
+          <th class="qty">Quantity</th>
+          <th>Long name</th>
+          <th>SKU</th>
+          <th>Model</th>
+          @if ($showPrices)
+            <th class="money">Unit price</th>
+            <th class="money">Total</th>
+          @endif
+        </tr>
+      </thead>
+      <tbody>
+        @foreach ($alsoBuyRows as $row)
+          <tr>
+            <td class="qty">{{ e($row['quantity_label']) }}</td>
+            <td>{!! $row['long_name_html'] !!}</td>
+            <td>{!! $row['store_sku_html'] !== null && $row['store_sku_html'] !== '' ? $row['store_sku_html'] : '—' !!}</td>
+            <td>{!! $row['model_html'] !== null && $row['model_html'] !== '' ? $row['model_html'] : '—' !!}</td>
+            @if ($showPrices)
+              <td class="money">{{ \App\Models\ClientProject::formatMoney((float) ($row['unit_price'] ?? 0)) }}</td>
+              <td class="money">{{ \App\Models\ClientProject::formatMoney((float) ($row['subtotal'] ?? 0)) }}</td>
+            @endif
+          </tr>
+        @endforeach
+      </tbody>
     </table>
   @endif
 

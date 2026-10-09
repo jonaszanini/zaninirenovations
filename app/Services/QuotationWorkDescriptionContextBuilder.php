@@ -131,7 +131,7 @@ class QuotationWorkDescriptionContextBuilder
         foreach ($sides as $i => $side) {
             $len = (float) ($side['length_ft'] ?? 0);
             $totalLf += $len;
-            $part = 'Section '.($i + 1).': '.$this->linearFtLabel($len);
+            $part = 'Run '.($i + 1).': '.$this->linearFtLabel($len);
             $existing = [];
             if (! empty($side['already_have_post_left'])) {
                 $existing[] = 'existing post on left';
@@ -139,8 +139,14 @@ class QuotationWorkDescriptionContextBuilder
             if (! empty($side['already_have_post_right'])) {
                 $existing[] = 'existing post on right';
             }
+            if (array_key_exists('connected_to_previous', $side) && $i > 0) {
+                $existing[] = ! empty($side['connected_to_previous'])
+                    ? 'connected to previous run'
+                    : 'not connected to previous run';
+            }
             if (! empty($side['gate_goes_here'])) {
-                $existing[] = '4 ft gate on this run';
+                $spec = \App\Support\FenceGateSpec::fromSide($side);
+                $existing[] = $spec->shortLabel().' gate on this run';
                 $gatesOnSides++;
             }
             if ($existing !== []) {
@@ -150,15 +156,15 @@ class QuotationWorkDescriptionContextBuilder
         }
 
         if ($sectionCount > 0) {
-            $lines[] = 'Fence sections (runs entered on this quote): '.$sectionCount;
+            $lines[] = 'Fence runs entered on this quote: '.$sectionCount;
             $lines[] = 'Total length: '.$this->linearFtLabel($totalLf);
-            $lines[] = 'Quantity rule: use this section count exactly. Do not add sections from post spacing, rails, pickets, or other material quantities.';
+            $lines[] = 'Quantity rule: use this run count exactly. Do not add runs from post spacing, rails, pickets, or other material quantities.';
             $lines[] = 'Fence runs: '.implode('; ', $sideParts);
         }
 
         $gateCount = $this->fenceGateCount($c, $gatesOnSides);
         if ($gateCount > 0) {
-            $this->appendLine($lines, 'Gates', $gateCount.' (each 4 ft wide)');
+            $this->appendLine($lines, 'Gates', $this->fenceGateSummary($c, $sides, $gateCount, $gatesOnSides));
         } elseif (array_key_exists('gate_count', $c) || array_key_exists('gates', $c)) {
             $this->appendLine($lines, 'Gates', '0');
         }
@@ -1252,6 +1258,32 @@ class QuotationWorkDescriptionContextBuilder
         return max($stated, $gatesOnSides, 0);
     }
 
+    /**
+     * @param  array<string, mixed>  $c
+     * @param  list<array<string, mixed>>  $sides
+     */
+    private function fenceGateSummary(array $c, array $sides, int $gateCount, int $gatesOnSides): string
+    {
+        $labels = [];
+        foreach ($sides as $side) {
+            if (empty($side['gate_goes_here'])) {
+                continue;
+            }
+            $labels[] = \App\Support\FenceGateSpec::fromSide($side)->shortLabel();
+        }
+        $extra = max(0, $gateCount - $gatesOnSides);
+        $extraSpec = \App\Support\FenceGateSpec::fromKey($c['extra_gate_preset'] ?? \App\Support\FenceGateSpec::DEFAULT_KEY);
+        for ($i = 0; $i < $extra; $i++) {
+            $labels[] = $extraSpec->shortLabel();
+        }
+
+        if ($labels === []) {
+            return (string) $gateCount;
+        }
+
+        return $gateCount.' ('.implode(', ', $labels).')';
+    }
+
     private function fenceHeightLabel(mixed $value): ?string
     {
         $text = is_scalar($value) ? trim((string) $value) : '';
@@ -1318,9 +1350,10 @@ class QuotationWorkDescriptionContextBuilder
                 continue;
             }
             $name = trim((string) ($row['name'] ?? ''));
-            if ($name !== '') {
-                $names[] = $name;
+            if ($name === '' || preg_match('/\bdelivery\b/i', $name) === 1) {
+                continue;
             }
+            $names[] = $name;
         }
 
         return implode("\n", $names);
@@ -1337,15 +1370,15 @@ class QuotationWorkDescriptionContextBuilder
         $out = [];
         foreach ($lines as $line) {
             $line = trim($line);
-            if ($line === '' || $line === '—') {
+            if ($line === '' || $line === '—' || preg_match('/\bdelivery\b/i', $line) === 1) {
                 continue;
             }
 
             $line = preg_replace('/\bPickets:\s*\d+\s*,?/iu', '', $line) ?? $line;
-            $line = preg_replace('/\+\s*\d+\s+per section\s*\(\s*\d+\s*\)\s*waste/iu', '', $line) ?? $line;
-            $line = preg_replace('/\bper section\s*\(\s*\d+\s*\)/iu', '', $line) ?? $line;
-            $line = preg_replace('/\(\s*\d+\s*\/\s*section\s*\)/iu', '', $line) ?? $line;
-            $line = preg_replace('/\bTop board\s*\([^)]*sections[^)]*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\+\s*\d+\s+per (?:section|panel)\s*\(\s*\d+\s*\)\s*waste/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bper (?:section|panel)\s*\(\s*\d+\s*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\(\s*\d+\s*\/\s*(?:section|panel)\s*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bTop board\s*\([^)]*(?:sections?|panels?|clear span)[^)]*\)/iu', '', $line) ?? $line;
             $line = preg_replace('/\bFence:\s*\d+\s*/iu', '', $line) ?? $line;
             $line = preg_replace('/\bgates:\s*\d+/iu', '', $line) ?? $line;
             $line = preg_replace('/\bStructural:\s*\d+\s*,?/iu', '', $line) ?? $line;

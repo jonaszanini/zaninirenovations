@@ -56,6 +56,7 @@ class FenceQuotationCalculatorTest extends TestCase
             $make(FenceMaterial::KEY_NAILS, 100, 1000),
             $make(FenceMaterial::KEY_BRACKET, 3),
             $make(FenceMaterial::KEY_POST_CAP, 5),
+            $make(FenceMaterial::KEY_POST_CAP_6X6, 8),
             $make(FenceMaterial::KEY_GATE_HARDWARE, 25),
         ])->keyBy('key');
     }
@@ -335,6 +336,9 @@ class FenceQuotationCalculatorTest extends TestCase
         $postRow = collect($result['materials'])->firstWhere('key', FenceMaterial::KEY_POST_6X6_10);
         $this->assertNotNull($postRow);
         $this->assertSame(FenceMaterial::KEY_POST_6X6_10, $postRow['key']);
+        $capRow = collect($result['materials'])->firstWhere('key', FenceMaterial::KEY_POST_CAP_6X6);
+        $this->assertNotNull($capRow);
+        $this->assertNull(collect($result['materials'])->firstWhere('key', FenceMaterial::KEY_POST_CAP));
 
         $eightFt = $calculator->calculate([
             'sides' => [['length_ft' => 16]],

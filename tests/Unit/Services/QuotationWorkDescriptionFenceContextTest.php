@@ -30,15 +30,15 @@ class QuotationWorkDescriptionFenceContextTest extends TestCase
             'materials_summary' => "Fence board pickets — CA$400\nPressure treated fence rails — CA$120\nPost caps — CA$40\nConcrete — CA$80\nAnti-sag kit",
         ]);
 
-        $this->assertStringContainsString('Fence sections (runs entered on this quote): 3', $text);
+        $this->assertStringContainsString('Fence runs entered on this quote: 3', $text);
         $this->assertStringContainsString('Total length: 58 linear feet', $text);
-        $this->assertStringContainsString('Section 1: 20 linear feet', $text);
-        $this->assertStringContainsString('Section 2: 20 linear feet', $text);
-        $this->assertStringContainsString('Section 3: 18 linear feet', $text);
+        $this->assertStringContainsString('Run 1: 20 linear feet', $text);
+        $this->assertStringContainsString('Run 2: 20 linear feet', $text);
+        $this->assertStringContainsString('Run 3: 18 linear feet', $text);
         $this->assertStringContainsString('6 ft', $text);
         $this->assertStringContainsString('4x4', $text);
         $this->assertStringContainsString('standard board', $text);
-        $this->assertStringContainsString('Gates: 1 (each 4 ft wide)', $text);
+        $this->assertStringContainsString('Gates: 1 (4 ft single)', $text);
         $this->assertStringContainsString('Post footings: concrete', $text);
         $this->assertStringContainsString('Fence board pickets', $text);
         $this->assertStringContainsString('Anti-sag kit', $text);
@@ -68,8 +68,8 @@ class QuotationWorkDescriptionFenceContextTest extends TestCase
         $this->assertSame(58.0, (float) $calc['geometry']['total_linear_ft']);
 
         $notes = collect($calc['materials'])->pluck('notes')->implode("\n");
-        $this->assertMatchesRegularExpression('/per section\s*\(\s*8\s*\)/i', $notes);
-        $this->assertMatchesRegularExpression('/\(\s*2\s*\/\s*section\s*\)/i', $notes);
+        $this->assertMatchesRegularExpression('/per panel\s*\(\s*8\s*\)/i', $notes);
+        $this->assertMatchesRegularExpression('/\(\s*2\s*\/\s*panel\s*\)/i', $notes);
 
         $leakyInnerText = collect($calc['materials'])->map(function (array $row): string {
             return trim(($row['name'] ?? '').' '.($row['notes'] ?? ''));
@@ -90,7 +90,7 @@ class QuotationWorkDescriptionFenceContextTest extends TestCase
             'materials_summary' => $leakyInnerText,
         ]);
 
-        $this->assertStringContainsString('Fence sections (runs entered on this quote): 3', $text);
+        $this->assertStringContainsString('Fence runs entered on this quote: 3', $text);
         $this->assertStringContainsString('board_6', $text);
         $this->assertStringContainsString('rail', $text);
         $this->assertStringContainsString('concrete', $text);
@@ -150,6 +150,7 @@ class QuotationWorkDescriptionFenceContextTest extends TestCase
             $make(FenceMaterial::KEY_NAILS, 100, 1000),
             $make(FenceMaterial::KEY_BRACKET, 3),
             $make(FenceMaterial::KEY_POST_CAP, 5),
+            $make(FenceMaterial::KEY_POST_CAP_6X6, 8),
             $make(FenceMaterial::KEY_GATE_HARDWARE, 25),
         ])->keyBy('key');
     }
