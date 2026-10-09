@@ -82,7 +82,7 @@
             @error('contact_email') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </div>
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save business contact</button>
+        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save business contact</button>
       </form>
     </div>
 

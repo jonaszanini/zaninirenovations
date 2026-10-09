@@ -22,6 +22,9 @@ class AdminHotkeySaveMarkupTest extends TestCase
             'resources/views/admin/blog/posts/form.blade.php' => ['id="bp-btn-save"', 'data-hotkey-save'],
             'resources/views/admin/ai_instructions/edit.blade.php' => ['data-hotkey-save', 'Save changes'],
             'resources/views/admin/quotations/basement/price_configuration.blade.php' => ['data-hotkey-save', 'Save configuration'],
+            'resources/views/admin/vehicles/index.blade.php' => ['data-hotkey-save', 'Save business contact', 'Save gas price', 'Save home address'],
+            'resources/views/admin/quotations/fence/config/index.blade.php' => ['data-hotkey-save', 'Save links', 'Save formula'],
+            'resources/views/admin/quotations/low_deck/config/index.blade.php' => ['data-hotkey-save', 'Save links'],
         ];
 
         foreach ($files as $rel => $needles) {

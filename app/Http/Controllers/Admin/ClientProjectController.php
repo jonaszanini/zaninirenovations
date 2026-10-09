@@ -242,7 +242,9 @@ class ClientProjectController extends Controller
 
         // Pulled out before array_merge below because it isn't a column
         // on the projects table — it controls the onCreated side-effect.
-        $sendClientEmail = (bool) ($data['send_client_email'] ?? true);
+        $sendClientEmail = $request->boolean('_hotkey_save')
+            ? false
+            : (bool) ($data['send_client_email'] ?? true);
         $syncDirectory = (bool) ($data['sync_client_directory'] ?? true);
         unset($data['send_client_email'], $data['sync_client_directory'], $data['photos'], $data['document_links']);
 
@@ -711,11 +713,13 @@ class ClientProjectController extends Controller
         }
 
         $scheduleClientWarning = null;
-        $fixedSched = $service->maybeSendFixedScheduleConfirmationToClient($client_project->fresh());
-        if ($fixedSched === 'sent') {
-            $successMessage .= ' Schedule confirmation emailed to the client.';
-        } elseif ($fixedSched === 'failed') {
-            $scheduleClientWarning = 'The client schedule confirmation email failed to send. Check logs.';
+        if (! request()->boolean('_hotkey_save')) {
+            $fixedSched = $service->maybeSendFixedScheduleConfirmationToClient($client_project->fresh());
+            if ($fixedSched === 'sent') {
+                $successMessage .= ' Schedule confirmation emailed to the client.';
+            } elseif ($fixedSched === 'failed') {
+                $scheduleClientWarning = 'The client schedule confirmation email failed to send. Check logs.';
+            }
         }
 
         $redirect = redirect()

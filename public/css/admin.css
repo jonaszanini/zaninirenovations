@@ -4916,21 +4916,22 @@ body.asp-open {
   background: var(--admin-elevated);
   color: var(--admin-text);
   box-shadow: var(--admin-shadow-md);
+  opacity: 1;
 }
 .admin-toast--success {
-  background: var(--admin-success-soft);
-  color: var(--admin-success);
-  border-color: rgba(46, 125, 74, 0.35);
+  background: #dcfce7;
+  color: #14532d;
+  border-color: #86efac;
 }
 .admin-toast--error {
-  background: var(--admin-danger-soft);
-  color: var(--admin-danger);
-  border-color: rgba(198, 40, 40, 0.35);
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-color: #fca5a5;
 }
 .admin-toast--warning {
-  background: var(--admin-warn-tile-bg);
-  color: var(--admin-warn-tile-text);
-  border-color: var(--admin-warn-tile-border);
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
 }
 .admin-toast__icon {
   margin-top: 0.15rem;

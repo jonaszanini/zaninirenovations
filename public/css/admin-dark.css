@@ -3495,21 +3495,21 @@ html.admin-dark .admin-toast__card {
 }
 
 html.admin-dark .admin-toast--success {
-  background: var(--admin-success-soft);
-  color: #86efac;
-  border-color: rgba(74, 222, 128, 0.35);
+  background: #14532d;
+  color: #bbf7d0;
+  border-color: #166534;
 }
 
 html.admin-dark .admin-toast--error {
-  background: var(--admin-danger-soft);
-  color: #fca5a5;
-  border-color: rgba(248, 113, 113, 0.35);
+  background: #7f1d1d;
+  color: #fecaca;
+  border-color: #991b1b;
 }
 
 html.admin-dark .admin-toast--warning {
-  background: var(--admin-warn-tile-bg);
-  color: var(--admin-warn-tile-text);
-  border-color: var(--admin-warn-tile-border);
+  background: #7c2d12;
+  color: #fed7aa;
+  border-color: #9a3412;
 }
 
 html.admin-dark .admin-toast__close:hover,

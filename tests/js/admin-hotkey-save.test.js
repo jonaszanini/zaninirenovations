@@ -7,9 +7,12 @@ const toast = require('../../public/js/admin-toast.js');
 function chord(overrides) {
   const e = Object.assign({
     key: 's',
+    code: 'KeyS',
     ctrlKey: true,
     metaKey: false,
     altKey: false,
+    shiftKey: false,
+    repeat: false,
     prevented: false,
     stopped: false,
     preventDefault() { this.prevented = true; },
@@ -21,8 +24,11 @@ function chord(overrides) {
 assert.strictEqual(hotkey.isSaveChord(chord()), true, 'Ctrl+S is a save chord');
 assert.strictEqual(hotkey.isSaveChord(chord({ ctrlKey: false, metaKey: true })), true, 'Cmd+S is a save chord');
 assert.strictEqual(hotkey.isSaveChord(chord({ key: 'S' })), true, 'capital S still matches');
-assert.strictEqual(hotkey.isSaveChord(chord({ key: 'k' })), false, 'Ctrl+K is not save');
-assert.strictEqual(hotkey.isSaveChord(chord({ altKey: true })), false, 'Alt+Ctrl+S is ignored');
+assert.strictEqual(hotkey.isSaveChord(chord({ key: 'k', code: 'KeyK' })), false, 'Ctrl+K is not save');
+assert.strictEqual(hotkey.isSaveChord(chord({ altKey: true })), false, 'AltGr / Alt+Ctrl+S is ignored');
+assert.strictEqual(hotkey.isSaveChord(chord({ shiftKey: true })), false, 'Ctrl+Shift+S is ignored');
+assert.strictEqual(hotkey.isSaveChord(chord({ key: 'ы', code: 'KeyS' })), true, 'physical KeyS still matches on non-Latin layouts');
+assert.strictEqual(hotkey.shouldTriggerSave(chord({ repeat: true })), false, 'held-key repeat is ignored');
 assert.strictEqual(hotkey.isSaveChord(chord({ ctrlKey: false, metaKey: false })), false, 'plain S is ignored');
 
 assert.strictEqual(hotkey.shortcutLabel({ navigator: { platform: 'Win32' } }), 'Ctrl+S');
@@ -76,7 +82,14 @@ function makeEl(tag, attrs, children) {
       contains(name) { return !!this.items[name]; },
     },
     get id() { return this.attrs.id || ''; },
+    set id(v) { this.attrs.id = v; },
     get name() { return this.attrs.name || ''; },
+    set name(v) { this.attrs.name = v; },
+    get type() { return this.attrs.type || ''; },
+    set type(v) { this.attrs.type = v; },
+    get ownerDocument() { return this.doc; },
+    checked: !!attrs.checked,
+    validity: { valid: !attrs.invalid },
     get form() {
       let n = this;
       while (n) {
@@ -124,6 +137,11 @@ function makeEl(tag, attrs, children) {
     },
     querySelector(sel) {
       return this.querySelectorAll(sel)[0] || null;
+    },
+    contains(node) {
+      let found = false;
+      walk(this, (child) => { if (child === node) found = true; });
+      return found;
     },
     click() { this.clicked += 1; },
     focus() { if (this.doc) this.doc.activeElement = this; },
@@ -179,7 +197,11 @@ function makeDoc(rootChildren) {
       this.listeners[type] = this.listeners[type] || [];
       this.listeners[type].push(fn);
     },
-    createElement(tag) { return makeEl(tag); },
+    createElement(tag) {
+      const el = makeEl(tag);
+      el.doc = doc;
+      return el;
+    },
   };
   body.doc = doc;
   (rootChildren || []).forEach((child) => {
@@ -302,7 +324,11 @@ Object.keys(mapping).forEach((type) => {
   assert.strictEqual(btn.clicked, 1, 'key repeat / double press clicks once inside debounce');
   now = 5800;
   inst.handleKeydown(chord());
-  assert.strictEqual(btn.clicked, 2, 'after debounce a full-page save can fire again');
+  assert.strictEqual(btn.clicked, 1, 'in-flight lock blocks another save after debounce');
+  inst.reset();
+  now = 7000;
+  inst.handleKeydown(chord());
+  assert.strictEqual(btn.clicked, 2, 'after the save finishes Ctrl+S works again');
   inst.reset();
 })();
 
@@ -336,8 +362,8 @@ Object.keys(mapping).forEach((type) => {
   const api = apiFor(doc);
   api.handleKeydown(chord());
   assert.strictEqual(btn.clicked, 1, 'save fires while focus is in an input');
-  assert.ok(input.blurred, 'pending value is committed via blur');
   assert.ok(input.changed || (input.events && input.events.indexOf('change') !== -1), 'change is dispatched before save');
+  assert.strictEqual(doc.activeElement, input, 'focus stays on the field after Ctrl+S');
   api.reset();
 })();
 
@@ -389,5 +415,178 @@ assert.ok(!toast.rectsOverlap(
   { left: 0, top: 0, right: 20, bottom: 20 },
   { left: 80, top: 80, right: 120, bottom: 120 }
 ), 'far rects do not overlap');
+assert.ok(toast.AVOID_SEL.indexOf('.br-sticky-total') !== -1, 'toast avoids sticky totals');
+assert.ok(toast.AVOID_SEL.indexOf('.br-step-nav') !== -1, 'toast avoids step nav');
+assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
 
-console.log('admin-hotkey-save tests: ok');
+(function heldKeyRepeat() {
+  const doc = page('standard');
+  const btn = doc.getElementById('sq-save');
+  const inst = apiFor(doc);
+  inst.handleKeydown(chord({ repeat: true }));
+  assert.strictEqual(btn.clicked, 0, 'keydown.repeat does not click Save');
+  inst.handleKeydown(chord());
+  assert.strictEqual(btn.clicked, 1, 'first non-repeat Ctrl+S clicks once');
+  inst.handleKeydown(chord({ repeat: true }));
+  assert.strictEqual(btn.clicked, 1, 'held-key repeats stay locked after the first save');
+  inst.reset();
+})();
+
+(function neverEmail() {
+  const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
+  checkbox.checked = true;
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [checkbox, btn]);
+  const doc = makeDoc([form]);
+  const inst = apiFor(doc);
+  inst.handleKeydown(chord());
+  assert.strictEqual(checkbox.checked, false, 'Ctrl+S unchecks send_client_email');
+  const flag = form.children.find((c) => c.name === '_hotkey_save' || (c.getAttribute && c.getAttribute('name') === '_hotkey_save'));
+  assert.ok(flag, 'Ctrl+S posts _hotkey_save');
+  assert.strictEqual(flag.value, '1');
+  inst.reset();
+})();
+
+(function focusedFormChoice() {
+  const homeInput = makeEl('input', { id: 'home-address', name: 'home_address' });
+  const homeBtn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'save-home' });
+  const homeForm = makeEl('form', { id: 'home-form' }, [homeInput, homeBtn]);
+
+  const phone = makeEl('input', { id: 'company-contact-phone', name: 'contact_phone' });
+  const contactBtn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'save-contact' });
+  const contactForm = makeEl('form', { id: 'contact-form' }, [phone, contactBtn]);
+
+  const gas = makeEl('input', { id: 'company-gas-price', name: 'gas_price_per_liter' });
+  const gasBtn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'save-gas' });
+  const gasForm = makeEl('form', { id: 'gas-form' }, [gas, gasBtn]);
+
+  const formula = makeEl('input', { id: 'fq-labour-6', name: 'labour_rate_per_ft' });
+  const formulaBtn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'save-formula' });
+  const formulaForm = makeEl('form', { id: 'formula-form' }, [formula, formulaBtn]);
+  const linksBtn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'save-links' });
+  const linksForm = makeEl('form', { id: 'links-form' }, [linksBtn]);
+
+  const doc = makeDoc([homeForm, contactForm, gasForm, linksForm, formulaForm]);
+  const inst = apiFor(doc);
+
+  doc.activeElement = doc.body;
+  assert.strictEqual(inst.findTargetButton().id, 'save-home', 'no focus falls back to the first main save');
+
+  doc.activeElement = phone;
+  assert.strictEqual(inst.findTargetButton().id, 'save-contact', 'vehicles business contact form wins when focused');
+
+  doc.activeElement = gas;
+  assert.strictEqual(inst.findTargetButton().id, 'save-gas', 'vehicles gas price form wins when focused');
+
+  doc.activeElement = formula;
+  assert.strictEqual(inst.findTargetButton().id, 'save-formula', 'fence/low-deck formula form wins when focused');
+
+  doc.activeElement = doc.body;
+  inst.handleKeydown(chord());
+  assert.strictEqual(homeBtn.clicked, 1, 'unfocused Ctrl+S clicks the main form save');
+  assert.strictEqual(contactBtn.clicked, 0);
+  inst.reset();
+})();
+
+(function confirmDialogNoOp() {
+  const pageBtn = makeEl('button', { type: 'button', 'data-hotkey-save': '', id: 'page-save' });
+  const dialog = makeEl('div', { id: 'admin-dialog', role: 'alertdialog' });
+  const doc = makeDoc([pageBtn, dialog]);
+  doc.documentElement.classList.add('admin-dialog-open');
+  const inst = apiFor(doc);
+  const e = chord();
+  inst.handleKeydown(e);
+  assert.strictEqual(e.prevented, true, 'confirm-open still blocks the browser Save dialog');
+  assert.strictEqual(pageBtn.clicked, 0, 'Ctrl+S does nothing while a confirm dialog is open');
+  inst.reset();
+})();
+
+(function ajaxResultRules() {
+  const inst = apiFor(page('standard'));
+  const json = { headers: { get() { return 'application/json'; } }, ok: true, status: 200 };
+  assert.strictEqual(inst.parseAjaxResult(json, { ok: true }).kind, 'saved');
+  assert.strictEqual(inst.parseAjaxResult(json, { ok: false, message: 'nope' }).kind, 'error');
+  const html = { headers: { get() { return 'text/html'; } }, ok: true, status: 200 };
+  const htmlResult = inst.parseAjaxResult(html, '<html><body>Projects</body></html>');
+  assert.strictEqual(htmlResult.kind, 'error', 'HTML 200 is not Saved');
+  const login = inst.parseAjaxResult(html, '<html>Sign in</html>');
+  assert.strictEqual(login.title, 'Sign in required');
+  inst.reset();
+})();
+
+(function dottedErrorKeys() {
+  assert.strictEqual(hotkey.laravelToName('pieces.0.width'), 'pieces[0][width]');
+})();
+
+(function previewDoesNotClearSave() {
+  const btn = makeEl('button', { type: 'button', 'data-hotkey-save': '', id: 'br-btn-draft' });
+  const form = makeEl('form', { id: 'br-main-form', action: '/admin/quotations/basement' }, [btn]);
+  const doc = makeDoc([form]);
+  const toasts = [];
+  const pending = [];
+  function fakeFetch(url) {
+    let resolve;
+    const p = new Promise((res) => { resolve = res; });
+    pending.push({ url: String(url), resolve, promise: p });
+    return p;
+  }
+  let now = 4000;
+  const win = {
+    navigator: { platform: 'Linux' },
+    fetch: fakeFetch,
+    setTimeout,
+    clearTimeout,
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return now; },
+    toast: {
+      saved() { toasts.push('saved'); },
+      error(msg, _env, title) { toasts.push('error:' + (title || msg)); },
+      validation() { toasts.push('validation'); },
+    },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  btn.click = function () {
+    this.clicked += 1;
+    win.fetch('/admin/quotations/basement-calculate', { method: 'POST' });
+    win.fetch('/admin/quotations/basement', { method: 'POST' });
+  };
+  inst.handleKeydown(chord());
+  assert.strictEqual(pending.length, 2, 'draft click starts preview and save');
+  assert.ok(inst.isInflight(), 'save lock stays on after the click');
+
+  pending[0].resolve({
+    ok: true,
+    status: 200,
+    headers: { get() { return 'application/json'; } },
+    json() { return Promise.resolve({ ok: true, preview: true }); },
+    clone() { return this; },
+  });
+
+  return Promise.resolve().then(() => Promise.resolve()).then(() => {
+    assert.ok(inst.isInflight(), 'preview must not release the save lock');
+    assert.deepStrictEqual(toasts, [], 'preview must not show Saved');
+    pending[1].resolve({
+      ok: true,
+      status: 200,
+      headers: { get() { return 'application/json'; } },
+      json() { return Promise.resolve({ ok: true }); },
+      clone() { return this; },
+    });
+    return Promise.resolve()
+      .then(() => Promise.resolve())
+      .then(() => Promise.resolve())
+      .then(() => Promise.resolve());
+  }).then(() => {
+    assert.strictEqual(inst.isInflight(), false, 'real save releases the lock');
+    assert.deepStrictEqual(toasts, ['saved'], 'Saved only after the real save JSON');
+    inst.reset();
+  });
+})().then(() => {
+  console.log('admin-hotkey-save tests: ok');
+}).catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

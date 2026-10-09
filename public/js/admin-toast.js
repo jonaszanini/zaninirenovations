@@ -35,12 +35,21 @@
     '.util-ra-full-header__save',
     '.br-toolbar-actions',
     '.admin-toolbar-actions',
+    '.br-sticky-total',
+    '.br-step-nav',
+    '#br-next',
+    '#mw-next',
+    '#sh-next',
+    '#tm-next',
   ].join(',');
 
   var hideTimer = null;
   var host = null;
-  var card = null;
   var lastOptions = null;
+  var viewportBound = false;
+  var fieldWatchBound = false;
+  var keyBound = false;
+  var lastEnv = null;
 
   function envDoc(env) {
     return (env && env.document) || (typeof document !== 'undefined' ? document : null);
@@ -182,9 +191,33 @@
     });
   }
 
+  function revealWizardFor(el) {
+    if (!el || !el.closest) return;
+    var step = el.closest('[data-br-step], [data-mw-step], [data-sh-step], [data-tm-step], .br-acc');
+    if (step) {
+      step.hidden = false;
+      if (step.classList) step.classList.add('is-active');
+      try { step.setAttribute('open', ''); } catch (err) { /* ignore */ }
+      var key = step.getAttribute('data-br-step')
+        || step.getAttribute('data-mw-step')
+        || step.getAttribute('data-sh-step')
+        || step.getAttribute('data-tm-step');
+      if (key) {
+        var doc = el.ownerDocument || (typeof document !== 'undefined' ? document : null);
+        var nav = doc && doc.querySelector
+          ? doc.querySelector('[data-br-goto="' + key + '"], [data-mw-goto="' + key + '"], [data-sh-goto="' + key + '"]')
+          : null;
+        if (nav && nav.click) nav.click();
+      }
+    }
+    var hiddenParent = el.closest('[hidden]');
+    if (hiddenParent) hiddenParent.hidden = false;
+  }
+
   function focusField(field, env) {
     var el = field && field.el;
     if (!el) return;
+    revealWizardFor(el);
     try {
       if (el.scrollIntoView) {
         el.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -207,6 +240,63 @@
     }
   }
 
+  function onViewportChange() {
+    if (!host || host.hidden) return;
+    pickPlacement(lastEnv || {});
+  }
+
+  function bindViewport(env) {
+    var win = envWin(env);
+    if (!win || viewportBound || !win.addEventListener) return;
+    viewportBound = true;
+    win.addEventListener('scroll', onViewportChange, true);
+    win.addEventListener('resize', onViewportChange);
+  }
+
+  function onFieldEdit(e) {
+    if (!lastOptions || !lastOptions.fields || !lastOptions.fields.length) return;
+    var target = e && e.target;
+    if (!target) return;
+    var hit = false;
+    lastOptions.fields.forEach(function (field) {
+      if (!field.el) return;
+      if (field.el === target || (field.el.contains && field.el.contains(target))) {
+        field.edited = true;
+        hit = true;
+      }
+    });
+    if (!hit) return;
+    var remaining = lastOptions.fields.filter(function (field) {
+      if (!field.el) return false;
+      if (field.el.validity && !field.el.validity.valid) return true;
+      if (typeof field.el.checkValidity === 'function' && !field.el.checkValidity()) return true;
+      return !field.edited;
+    });
+    if (remaining.length === 0) close(lastEnv || {});
+  }
+
+  function bindFieldWatch(env) {
+    var doc = envDoc(env);
+    if (!doc || fieldWatchBound || !doc.addEventListener) return;
+    fieldWatchBound = true;
+    doc.addEventListener('input', onFieldEdit, true);
+    doc.addEventListener('change', onFieldEdit, true);
+  }
+
+  function onDocKeydown(e) {
+    if (!e) return;
+    if (e.key !== 'Escape' && e.code !== 'Escape') return;
+    if (!host || host.hidden) return;
+    close(lastEnv || {});
+  }
+
+  function bindEsc(env) {
+    var doc = envDoc(env);
+    if (!doc || keyBound || !doc.addEventListener) return;
+    keyBound = true;
+    doc.addEventListener('keydown', onDocKeydown, true);
+  }
+
   function close(env) {
     clearTimer();
     var node = host || (envDoc(env) && envDoc(env).querySelector('[data-admin-toast-host]'));
@@ -225,7 +315,11 @@
     env = env || {};
     var doc = envDoc(env);
     if (!doc) return null;
+    lastEnv = env;
     ensureHost(env);
+    bindViewport(env);
+    bindFieldWatch(env);
+    bindEsc(env);
     clearTimer();
 
     if (lastOptions && lastOptions.fields) {
@@ -282,10 +376,10 @@
     return show({ type: 'success', title: 'Saved', sticky: false, duration: SUCCESS_MS }, env);
   }
 
-  function error(message, env) {
+  function error(message, env, title) {
     return show({
       type: 'error',
-      title: 'Could not save',
+      title: title || 'Could not save',
       message: message || 'The server could not save your changes.',
       sticky: true,
     }, env);
@@ -324,6 +418,7 @@
   return {
     SUCCESS_MS: SUCCESS_MS,
     PLACEMENTS: PLACEMENTS,
+    AVOID_SEL: AVOID_SEL,
     show: show,
     saved: saved,
     error: error,
@@ -333,5 +428,7 @@
     overlapsAvoided: overlapsAvoided,
     rectsOverlap: rectsOverlap,
     escapeHtml: escapeHtml,
+    revealWizardFor: revealWizardFor,
+    bindFieldWatch: bindFieldWatch,
   };
 });

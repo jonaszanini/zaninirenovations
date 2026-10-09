@@ -39,12 +39,55 @@
     <button type="button" id="layout-save" class="admin-btn admin-btn--primary" data-hotkey-save style="position:fixed;top:12px;right:12px;">Save</button>
     <label for="layout-field">Name</label>
     <input id="layout-field" class="admin-input" required>
+    <div class="br-sticky-total" id="br-sticky-total" style="position:fixed;left:0;right:0;bottom:0;height:56px;background:#024768;color:#fff;">
+      <div class="br-step-nav" id="br-step-nav">
+        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-vehicles" class="pad" hidden>
+    <form id="home-form" action="/save/home" method="post">
+      <input id="home-address" name="home_address" value="1 Main">
+      <button type="button" id="save-home" data-hotkey-save>Save home address</button>
+    </form>
+    <form id="contact-form" action="/save/contact" method="post">
+      <input id="company-contact-phone" name="contact_phone" value="6478347570">
+      <button type="button" id="save-contact" data-hotkey-save>Save business contact</button>
+    </form>
+    <form id="gas-form" action="/save/gas" method="post">
+      <input id="company-gas-price" name="gas_price_per_liter" value="1.450">
+      <button type="button" id="save-gas" data-hotkey-save>Save gas price</button>
+    </form>
+  </div>
+
+  <div id="page-email" class="pad" hidden>
+    <form id="cp-create-project-form" action="/save/project" method="post">
+      <input type="hidden" name="send_client_email" value="0">
+      <input type="checkbox" id="cp-send-client-email" name="send_client_email" value="1" checked>
+      <button type="button" id="cp-create-save" data-hotkey-save>Create project</button>
+    </form>
+  </div>
+
+  <div id="page-preview" class="pad" hidden>
+    <form id="br-main-form">
+      <input id="br-rooms" name="room_count" value="2">
+      <button type="button" id="br-btn-draft" data-hotkey-save>Save as draft</button>
+    </form>
+  </div>
+
+  <div id="page-tinymce" class="pad" hidden>
+    <form id="contract-form">
+      <textarea id="contract-body" name="body">Hello</textarea>
+      <button type="button" id="contract-save" data-hotkey-save data-ajax-save>Save</button>
+    </form>
   </div>
 
   <script src="/js/admin-toast.js"></script>
   <script src="/js/admin-hotkey-save.js"></script>
   <script>
     window.__saves = [];
+    window.__fetches = [];
     function mockSave(kind) {
       window.__saves.push(kind);
       return fetch('/save/' + kind, {
@@ -63,6 +106,52 @@
     document.getElementById('sq-standard-form').addEventListener('submit', function (e) {
       e.preventDefault();
     });
+    function postForm(form, kind) {
+      window.__saves.push(kind);
+      var body = new URLSearchParams(new FormData(form)).toString();
+      return fetch('/save/' + kind, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+      });
+    }
+    document.getElementById('save-home').addEventListener('click', function () {
+      postForm(document.getElementById('home-form'), 'home');
+    });
+    document.getElementById('save-contact').addEventListener('click', function () {
+      postForm(document.getElementById('contact-form'), 'contact');
+    });
+    document.getElementById('save-gas').addEventListener('click', function () {
+      postForm(document.getElementById('gas-form'), 'gas');
+    });
+    document.getElementById('cp-create-save').addEventListener('click', function () {
+      postForm(document.getElementById('cp-create-project-form'), 'project');
+    });
+    document.getElementById('br-btn-draft').addEventListener('click', function () {
+      window.__fetches.push('calculate');
+      fetch('/admin/quotations/basement-calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preview: true })
+      });
+      mockSave('basement');
+    });
+    document.getElementById('contract-save').addEventListener('click', function (e) {
+      e.preventDefault();
+      mockSave('contract');
+    });
+    window.tinymce = {
+      editors: [],
+      on: function () {},
+      triggerSave: function () { window.__tinySaved = true; },
+      activeEditor: {
+        getElement: function () { return document.getElementById('contract-body'); },
+        on: function (name, fn) {
+          window.__tinyKeydown = fn;
+        }
+      }
+    };
+    window.tinymce.editors.push(window.tinymce.activeEditor);
   </script>
 </body>
 </html>

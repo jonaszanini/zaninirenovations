@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Mail\ClientProjectQuoteReceivedClient;
 use App\Models\AiInstruction;
 use App\Models\Client;
 use App\Models\ClientProject;
 use App\Models\ClientProjectInvoice;
+use Illuminate\Support\Facades\Mail;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -124,5 +126,43 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
         $this->get('/')->assertOk()->assertDontSee('admin-hotkey-save.js', false)->assertDontSee('admin-toast.js', false);
         $this->get('/contact')->assertOk()->assertDontSee('admin-hotkey-save.js', false);
         $this->get(route('login'))->assertOk()->assertDontSee('admin-hotkey-save.js', false);
+    }
+
+    public function test_vehicles_and_config_pages_mark_each_form_save(): void
+    {
+        $this->actingAsAdmin();
+
+        $vehicles = $this->get(route('admin.vehicles.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('Save business contact', $vehicles);
+        $this->assertMatchesRegularExpression('/Save business contact[\\s\\S]*?data-hotkey-save|data-hotkey-save[\\s\\S]*?Save business contact/', $vehicles);
+
+        $fence = $this->get(route('admin.quotations.fence.config'))->assertOk()->getContent();
+        $this->assertStringContainsString('data-hotkey-save', $fence);
+        $this->assertStringContainsString('Save formula', $fence);
+
+        $deck = $this->get(route('admin.quotations.low-deck.config'))->assertOk()->getContent();
+        $this->assertStringContainsString('data-hotkey-save', $deck);
+    }
+
+    public function test_hotkey_save_never_sends_the_client_quote_email(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $this->post(route('admin.client-projects.store'), [
+            'name' => 'Hotkey no-email',
+            'contacted_via' => 'email',
+            'client_name' => 'Hotkey Client',
+            'client_email' => 'client@example.com',
+            'billing_type' => 'fixed',
+            'send_client_email' => '1',
+            '_hotkey_save' => '1',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        Mail::assertNotSent(ClientProjectQuoteReceivedClient::class);
+
+        $project = ClientProject::where('name', 'Hotkey no-email')->first();
+        $this->assertNotNull($project);
+        $this->assertStringContainsString('No client email sent', session('success'));
     }
 }

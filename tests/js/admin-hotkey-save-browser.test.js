@@ -13,12 +13,18 @@ function startServer() {
     const publicDir = path.join(ROOT, 'public');
     const server = http.createServer((req, res) => {
       const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-      if (urlPath.startsWith('/save/')) {
+      if (urlPath.startsWith('/save/') || /calculate|\/preview/.test(urlPath)) {
         const chunks = [];
         req.on('data', (c) => chunks.push(c));
         req.on('end', () => {
+          const isPreview = /calculate|\/preview/.test(urlPath);
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: true, path: urlPath, body: Buffer.concat(chunks).toString('utf8') }));
+          res.end(JSON.stringify({
+            ok: true,
+            preview: isPreview,
+            path: urlPath,
+            body: Buffer.concat(chunks).toString('utf8'),
+          }));
         });
         return;
       }
@@ -80,7 +86,7 @@ async function resetSaveState(page) {
 
 async function showOnly(page, id) {
   await page.evaluate((keep) => {
-    ['page-quotation', 'page-room-area', 'page-toast-layout'].forEach((pid) => {
+    ['page-quotation', 'page-room-area', 'page-toast-layout', 'page-vehicles', 'page-email', 'page-preview', 'page-tinymce'].forEach((pid) => {
       const el = document.getElementById(pid);
       if (el) el.hidden = pid !== keep;
     });
@@ -95,7 +101,7 @@ async function showOnly(page, id) {
     const page = await browser.newPage();
     const requests = [];
     page.on('request', (req) => {
-      if (req.url().includes('/save/')) {
+      if (req.url().includes('/save/') || req.url().includes('calculate') || req.url().includes('/preview')) {
         requests.push({ url: req.url(), method: req.method(), postData: req.postData() });
       }
     });
@@ -195,9 +201,111 @@ async function showOnly(page, id) {
     const dark = await page.evaluate(() => {
       const card = document.querySelector('.admin-toast__card');
       const styles = getComputedStyle(card);
-      return { bg: styles.backgroundColor, color: styles.color };
+      const bg = styles.backgroundColor;
+      const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/);
+      const alpha = m && m[4] != null ? Number(m[4]) : 1;
+      return { bg, color: styles.color, alpha };
     });
     assert.ok(dark.bg, 'dark-mode toast has a background');
+    assert.ok(dark.alpha >= 0.99, 'dark-mode toast background is opaque');
+
+    await page.setViewport({ width: 1280, height: 800 });
+    await showOnly(page, 'page-toast-layout');
+    await page.evaluate(() => {
+      window.AdminToast.close();
+      window.AdminToast.saved();
+    });
+    const sticky = await page.evaluate(() => {
+      const toast = document.querySelector('[data-admin-toast-host]');
+      const bar = document.getElementById('br-sticky-total');
+      const next = document.getElementById('br-next');
+      const tr = toast.getBoundingClientRect();
+      function hits(r) {
+        return !(tr.right < r.left - 8 || tr.left > r.right + 8 || tr.bottom < r.top - 8 || tr.top > r.bottom + 8);
+      }
+      return {
+        coversBar: hits(bar.getBoundingClientRect()),
+        coversNext: hits(next.getBoundingClientRect()),
+      };
+    });
+    assert.strictEqual(sticky.coversBar, false, 'toast stays off the sticky totals');
+    assert.strictEqual(sticky.coversNext, false, 'toast stays off Next');
+
+    await showOnly(page, 'page-vehicles');
+    await resetSaveState(page);
+    await page.evaluate(() => { window.__saves = []; });
+    requests.length = 0;
+    await page.focus('#company-contact-phone');
+    await pressSave(page);
+    await page.waitForFunction(() => window.__saves && window.__saves.indexOf('contact') !== -1);
+    assert.strictEqual(requests.filter((r) => r.url.includes('/save/contact')).length, 1, 'focused business contact form is saved');
+    assert.strictEqual(requests.filter((r) => r.url.includes('/save/home')).length, 0, 'home address is not saved while contact is focused');
+
+    await showOnly(page, 'page-email');
+    await resetSaveState(page);
+    await page.evaluate(() => { window.__saves = []; });
+    requests.length = 0;
+    await page.focus('#cp-send-client-email');
+    await pressSave(page);
+    await page.waitForFunction(() => window.__saves && window.__saves.indexOf('project') !== -1);
+    const emailBody = requests.find((r) => r.url.includes('/save/project'));
+    assert.ok(emailBody, 'project create save fired');
+    assert.ok(!/send_client_email=1/.test(emailBody.postData || ''), 'Ctrl+S does not post send_client_email=1');
+    assert.ok(/_hotkey_save=1/.test(emailBody.postData || ''), 'Ctrl+S posts _hotkey_save=1');
+
+    await showOnly(page, 'page-preview');
+    await resetSaveState(page);
+    await page.evaluate(() => {
+      window.__saves = [];
+      window.__fetches = [];
+      if (window.AdminToast) window.AdminToast.close();
+    });
+    requests.length = 0;
+    await page.focus('#br-rooms');
+    await pressSave(page);
+    await page.waitForFunction(() => window.__saves && window.__saves.indexOf('basement') !== -1);
+    await page.waitForFunction(() => {
+      const host = document.querySelector('[data-admin-toast-host]');
+      return host && !host.hidden && host.textContent.indexOf('Saved') !== -1;
+    });
+    const previewState = await page.evaluate(() => ({
+      fetches: window.__fetches.slice(),
+      saves: window.__saves.slice(),
+      toast: (document.querySelector('[data-admin-toast-host]') || {}).textContent || '',
+    }));
+    assert.ok(previewState.fetches.indexOf('calculate') !== -1, 'preview still runs');
+    assert.strictEqual(previewState.saves.filter((s) => s === 'basement').length, 1, 'one real basement save');
+    assert.ok(previewState.toast.indexOf('Saved') !== -1, 'Saved toast is from the real save');
+
+    await showOnly(page, 'page-tinymce');
+    await resetSaveState(page);
+    await page.evaluate(() => { window.__saves = []; });
+    await page.evaluate(() => {
+      const inst = window.AdminHotkeySave.instance();
+      inst.bind();
+      if (window.tinymce && window.tinymce.activeEditor && !window.tinymce.activeEditor.__adminHotkeyBound) {
+        const editor = window.tinymce.activeEditor;
+        editor.__adminHotkeyBound = true;
+        editor.on('keydown', function (evt) { inst.handleKeydown(evt); });
+      }
+    });
+    const tinyHandled = await page.evaluate(() => {
+      const ev = {
+        key: 's',
+        code: 'KeyS',
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false,
+        repeat: false,
+        preventDefault() { this.prevented = true; },
+        stopPropagation() {},
+      };
+      window.AdminHotkeySave.instance().handleKeydown(ev);
+      return { prevented: ev.prevented, saves: window.__saves.slice() };
+    });
+    assert.strictEqual(tinyHandled.prevented, true, 'TinyMCE Ctrl+S prevents the browser dialog');
+    assert.ok(tinyHandled.saves.indexOf('contract') !== -1, 'TinyMCE Ctrl+S clicks the draft save');
 
     console.log('admin-hotkey-save browser tests: ok');
   } finally {

@@ -348,16 +348,16 @@
       </header>
       <main class="admin-content">
         @if (session('success'))
-          <div class="admin-flash admin-flash--success">{{ session('success') }}</div>
+          <div class="admin-flash admin-flash--success" data-admin-flash="success">{{ session('success') }}</div>
         @endif
         @if (session('warning'))
-          <div class="admin-flash admin-flash--warning">{{ session('warning') }}</div>
+          <div class="admin-flash admin-flash--warning" data-admin-flash="warning">{{ session('warning') }}</div>
         @endif
         @if (session('error'))
-          <div class="admin-flash admin-flash--error">{{ session('error') }}</div>
+          <div class="admin-flash admin-flash--error" data-admin-flash="error">{{ session('error') }}</div>
         @endif
         @if ($errors->any())
-          <div class="admin-flash admin-flash--error" role="alert">
+          <div class="admin-flash admin-flash--error" data-admin-flash="error" role="alert">
             <strong>Please fix the following:</strong>
             <ul style="margin:8px 0 0 18px;">
               @foreach ($errors->all() as $message)
@@ -492,13 +492,14 @@
             ];
         }
     }
+    $adminToastFlash = [
+        'success' => (bool) session('success'),
+        'error' => session('error'),
+        'warning' => session('warning'),
+        'fields' => $adminToastFields,
+    ];
   @endphp
-  <script type="application/json" id="admin-toast-flash">@json([
-    'success' => (bool) session('success'),
-    'error' => session('error'),
-    'warning' => session('warning'),
-    'fields' => $adminToastFields,
-  ])</script>
+  <script type="application/json" id="admin-toast-flash">{!! json_encode($adminToastFlash, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
   <script src="{{ asset('js/admin-toast.js') }}?v={{ @filemtime(public_path('js/admin-toast.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-hotkey-save.js') }}?v={{ @filemtime(public_path('js/admin-hotkey-save.js')) ?: time() }}"></script>
 

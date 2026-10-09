@@ -30,5 +30,8 @@ class PublicLayoutExcludesAdminHotkeySaveTest extends TestCase
         $this->assertStringContainsString('admin-hotkey-save.js', $html);
         $this->assertStringContainsString('admin-toast.js', $html);
         $this->assertStringContainsString('id="admin-toast-flash"', $html);
+        $this->assertStringContainsString('$adminToastFlash', $html);
+        $this->assertStringContainsString('json_encode($adminToastFlash', $html);
+        $this->assertDoesNotMatchRegularExpression('/@json\(\s*\[/', $html);
     }
 }
