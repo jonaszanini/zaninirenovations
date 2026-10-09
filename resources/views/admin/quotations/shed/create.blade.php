@@ -41,6 +41,26 @@
 @section('heading', $title)
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Shed',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.shed.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'sh-main-form',
+    'saveId' => 'sh-btn-publish',
+    'draftId' => 'sh-btn-draft',
+    'draftHotkey' => true,
+    'wizard' => [
+      'navId' => 'sh-step-nav',
+      'prevId' => 'sh-prev',
+      'nextId' => 'sh-next',
+      'statusId' => 'sh-step-status',
+      'count' => $enabledCount,
+    ],
+  ])
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
@@ -66,27 +86,6 @@
     @csrf
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="sh-save-intent" value="publish">
-
-    @include('admin.partials.quotation_editor_header', [
-      'title' => $title,
-      'typeLabel' => 'Shed',
-      'project' => $projectForReturn,
-      'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
-      'listUrl' => route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
-      'cancelUrl' => route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
-      'priceConfigUrl' => route('admin.quotations.shed.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-      'formId' => 'sh-main-form',
-      'saveId' => 'sh-btn-publish',
-      'draftId' => 'sh-btn-draft',
-      'draftHotkey' => true,
-      'wizard' => [
-        'navId' => 'sh-step-nav',
-        'prevId' => 'sh-prev',
-        'nextId' => 'sh-next',
-        'statusId' => 'sh-step-status',
-        'count' => $enabledCount,
-      ],
-    ])
 
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">

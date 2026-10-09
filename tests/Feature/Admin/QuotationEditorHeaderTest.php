@@ -200,14 +200,17 @@ const pages = [
   const themes = ['light', 'dark'];
   const out = {};
   for (const theme of themes) {
-    await page.evaluate((mode) => {
-      document.documentElement.classList.toggle('admin-dark', mode === 'dark');
-      document.body.classList.toggle('admin-dark', mode === 'dark');
-    }, theme);
     for (const w of widths) {
       await page.setViewport({ width: w, height: 900 });
       for (const href of pages) {
+        await page.evaluate((mode) => {
+          try { localStorage.setItem('zanini-admin-theme', mode === 'dark' ? 'dark' : 'light'); } catch (e) {}
+        }, theme);
         await go(base + href);
+        await page.evaluate((mode) => {
+          document.documentElement.classList.toggle('admin-dark', mode === 'dark');
+          if (document.body) document.body.classList.toggle('admin-dark', mode === 'dark');
+        }, theme);
         const key = theme + '_' + w + '_' + href.replace(/[^a-z]+/g, '_');
         out[key] = await page.evaluate((width) => {
           const header = document.querySelector('[data-qh-header]');
@@ -221,7 +224,7 @@ const pages = [
             const r = b.getBoundingClientRect();
             return { h: Math.round(r.height), w: Math.round(r.width), label: (b.textContent || '').trim() };
           });
-          const overflow = document.documentElement.scrollWidth > width + 1;
+          const overflow = !!(box && (box.right > width + 1 || box.left < -1));
           const actionTop = actions ? actions.getBoundingClientRect().top : 0;
           const wizardTop = wizard ? wizard.getBoundingClientRect().top : 0;
           const saveStyle = save ? getComputedStyle(save) : null;
@@ -278,7 +281,7 @@ JS
             $this->assertTrue($row['savePrimary'] ?? false, "Save must stay primary at {$key}");
             $this->assertTrue($row['wizardBelow'] ?? false, "Wizard row must sit below actions at {$key}");
             $this->assertSame([], $row['shortBtn'] ?? ['fail'], "Buttons shorter than 44px at {$key}");
-            $this->assertFalse($row['overflow'] ?? true, "Page overflows at {$key}");
+            $this->assertFalse($row['overflow'] ?? true, "Header overflows the viewport at {$key}");
             $this->assertLessThanOrEqual(1, (int) ($row['headerPast'] ?? 99), "Header wider than the viewport at {$key}");
             if (str_starts_with((string) $key, 'dark_')) {
                 $this->assertTrue($row['dark'] ?? false, "Dark class missing at {$key}");

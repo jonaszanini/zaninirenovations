@@ -77,6 +77,26 @@
 @section('heading', $title)
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Basement',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'br-main-form',
+    'saveId' => 'br-btn-publish',
+    'draftId' => 'br-btn-draft',
+    'draftHotkey' => true,
+    'wizard' => [
+      'navId' => 'br-step-nav',
+      'prevId' => 'br-prev',
+      'nextId' => 'br-next',
+      'statusId' => 'br-step-status',
+      'count' => $enabledCount,
+    ],
+  ])
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
@@ -125,26 +145,6 @@
                       ? "Add the client's email address to email this quotation."
                       : 'Cannot send email yet.')));
     @endphp
-    @include('admin.partials.quotation_editor_header', [
-      'title' => $title,
-      'typeLabel' => 'Basement',
-      'project' => $projectForReturn,
-      'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
-      'listUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
-      'cancelUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
-      'priceConfigUrl' => route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-      'formId' => 'br-main-form',
-      'saveId' => 'br-btn-publish',
-      'draftId' => 'br-btn-draft',
-      'draftHotkey' => true,
-      'wizard' => [
-        'navId' => 'br-step-nav',
-        'prevId' => 'br-prev',
-        'nextId' => 'br-next',
-        'statusId' => 'br-step-status',
-        'count' => $enabledCount,
-      ],
-    ])
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">
         @php $n = 0; @endphp

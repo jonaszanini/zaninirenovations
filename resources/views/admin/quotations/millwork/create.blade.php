@@ -44,6 +44,26 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Millwork',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.millwork.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'mw-main-form',
+    'saveId' => 'mw-btn-publish',
+    'draftId' => 'mw-btn-draft',
+    'draftHotkey' => true,
+    'wizard' => [
+      'navId' => 'mw-step-nav',
+      'prevId' => 'mw-prev',
+      'nextId' => 'mw-next',
+      'statusId' => 'mw-step-status',
+      'count' => $enabledCount,
+    ],
+  ])
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
@@ -68,27 +88,6 @@
     <input type="hidden" name="save_intent" id="mw-save-intent" value="publish">
     <input type="hidden" name="_cut_plan_version" id="mw-cut-plan-version" value="{{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->cutPlanVersion() : 2)) }}">
     <input type="hidden" name="upgrade_cut_plan" id="mw-upgrade-cut-plan" value="0">
-
-    @include('admin.partials.quotation_editor_header', [
-      'title' => $title,
-      'typeLabel' => 'Millwork',
-      'project' => $projectForReturn,
-      'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
-      'listUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
-      'cancelUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
-      'priceConfigUrl' => route('admin.quotations.millwork.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-      'formId' => 'mw-main-form',
-      'saveId' => 'mw-btn-publish',
-      'draftId' => 'mw-btn-draft',
-      'draftHotkey' => true,
-      'wizard' => [
-        'navId' => 'mw-step-nav',
-        'prevId' => 'mw-prev',
-        'nextId' => 'mw-next',
-        'statusId' => 'mw-step-status',
-        'count' => $enabledCount,
-      ],
-    ])
 
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">

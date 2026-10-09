@@ -4877,6 +4877,9 @@ body.asp-open {
   gap: 8px;
   margin: 0 0 12px;
   padding: 10px 12px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius, 10px);
