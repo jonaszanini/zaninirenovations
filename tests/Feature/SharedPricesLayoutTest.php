@@ -147,18 +147,30 @@ class SharedPricesLayoutTest extends IntegrationTestCase
 
         $this->assertStringContainsString('title="{{ $work->label }}"', $blade);
         $this->assertStringContainsString('grid-area: search', $css);
-        $this->assertStringContainsString('@media (min-width: 1100px)', $css);
-        $this->assertStringContainsString('@media (max-width: 1099px)', $css);
+        $this->assertStringContainsString('@media (min-width: 68.75em)', $css);
+        $this->assertStringContainsString('@media (max-width: 68.6875em)', $css);
         $this->assertDoesNotMatchRegularExpression('/\.sp-col-sell:has\(\.admin-info-tip\)\s+\.sp-input\s*\{[^}]*padding-right:\s*1\.85rem/', $css);
         $this->assertMatchesRegularExpression('/\.sp-table\s+\.sp-work\s*\{[^}]*padding:\s*0/', $css);
         $this->assertDoesNotMatchRegularExpression('/\.sp-group \.admin-table-scroll\s*\{[^}]*overflow-x:\s*hidden/', $css);
         $this->assertDoesNotMatchRegularExpression('/\.sp-group \.admin-table-scroll\s*\{[^}]*overflow:\s*clip/', $css);
-        $this->assertMatchesRegularExpression('/\.sp-group \.admin-table-scroll\s*\{[^}]*overflow:\s*visible/', $css);
+        $this->assertMatchesRegularExpression('/\.sp-group \.admin-table-scroll\s*\{[^}]*overflow(-x)?:\s*(visible|auto)/', $css);
+        $this->assertMatchesRegularExpression(
+            '/\.sp-consumers:has\(\.sp-chip--more\)\s+\.sp-chip:not\(\.sp-chip--more\)\s*\{[^}]*max-width:/',
+            $css,
+            'Chip max-width must remain so +N rows cannot overflow the card'
+        );
+        $this->assertStringContainsString('sp-group__sell-tip', $blade);
         $this->assertStringContainsString('.sp-effective', $css);
         $this->assertStringContainsString('updateSpEffective', $blade);
         $this->assertStringContainsString("document.addEventListener('keydown'", $blade);
         $this->assertStringContainsString('MutationObserver', $blade);
         $this->assertMatchesRegularExpression("/addEventListener\('click'[\s\S]*,\s*true\)/", $blade);
+        $this->assertMatchesRegularExpression("/addEventListener\('scroll'/", $blade);
+        $this->assertSame(2, substr_count($blade, "'tipLabel' => \$spSellTipLabel"), 'Sell ⓘ belongs on the thead and group header only');
+        preg_match_all('/aria-label="[^"]*effective sell[^"]*"/i', $html, $sellTips);
+        $groupCount = substr_count($html, 'class="sp-group__summary"');
+        $this->assertGreaterThan(0, $groupCount);
+        $this->assertLessThanOrEqual($groupCount * 2, count($sellTips[0]), 'Stacked rows must not repeat the Sell ⓘ');
 
         $this->assertBrowserGeometry($user->email);
     }
@@ -186,8 +198,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
      */
     private function desktopGridColumns(string $css): array
     {
-        $this->assertMatchesRegularExpression('/@media \(min-width: 1100px\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css);
-        preg_match('/@media \(min-width: 1100px\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css, $match);
+        $this->assertMatchesRegularExpression('/@media \(min-width: 68\.75em\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css);
+        preg_match('/@media \(min-width: 68\.75em\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css, $match);
         $raw = trim(preg_replace('/\s+/', ' ', $match[1]));
         preg_match_all('/minmax\([^)]+\)|[^\s]+/', $raw, $parts);
 
@@ -361,6 +373,17 @@ const base = process.env.SP_GEO_BASE;
         clippedShort,
         chipVsCard,
         chipSpare: chipSpare === 999 ? 0 : Math.round(chipSpare * 10) / 10,
+        chipMaxWidth: (() => {
+          const chip = document.querySelector('.sp-consumers:has(.sp-chip--more) .sp-chip:not(.sp-chip--more)');
+          return chip ? getComputedStyle(chip).maxWidth : '';
+        })(),
+        sellTipsVisible: [...document.querySelectorAll('.admin-info-tip')].filter((t) => {
+          const label = (t.getAttribute('aria-label') || '').toLowerCase();
+          if (!label.includes('effective sell')) return false;
+          const s = getComputedStyle(t);
+          return s.display !== 'none' && t.getClientRects().length > 0;
+        }).length,
+        groupCount: document.querySelectorAll('details.sp-group').length,
         tableSpare: (() => {
           if (!table || !scroller) return 0;
           const prev = table.style.width;
@@ -445,12 +468,16 @@ const base = process.env.SP_GEO_BASE;
           const vw = window.innerWidth;
           const vh = window.innerHeight;
           const off = r.left < -1 || r.top < -1 || r.right > vw + 1 || r.bottom > vh + 1;
+          const cap = Math.min(280, vw * 0.7);
           return {
             open: true,
             left: Math.round(r.left),
             right: Math.round(r.right),
             top: Math.round(r.top),
             bottom: Math.round(r.bottom),
+            width: Math.round(r.width),
+            cap: Math.round(cap),
+            capped: r.width <= cap + 1,
             vw,
             docW: document.documentElement.scrollWidth,
             off,
@@ -459,8 +486,39 @@ const base = process.env.SP_GEO_BASE;
         }, selector);
       };
       out[String(w)].crewTip = await measureInfoTip('.sp-heading .admin-info-tip');
-      out[String(w)].sellTip = await measureInfoTip('.sp-sell-phone-label .admin-info-tip, .sp-th-sell .admin-info-tip');
+      out[String(w)].sellTip = await measureInfoTip('.sp-group__sell-tip .admin-info-tip, .sp-th-sell .admin-info-tip');
       await page.evaluate(() => {
+        document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+      });
+    }
+
+    if (w === 1280) {
+      await page.evaluate(() => {
+        const btn = document.querySelector('.sp-th-sell .admin-info-tip, .sp-group__sell-tip .admin-info-tip');
+        if (btn) btn.click();
+      });
+      await new Promise((r) => setTimeout(r, 80));
+      const tipGap = () => page.evaluate(() => {
+        const btn = document.querySelector('.admin-info-tip[aria-expanded="true"]');
+        const bubble = btn && (btn.querySelector('.admin-info-tip__bubble') || (btn.parentElement && btn.parentElement.querySelector('.admin-info-tip__bubble')));
+        if (!btn || !bubble || getComputedStyle(bubble).display === 'none') return { open: false, gap: 999, width: 0, cap: 0 };
+        const a = btn.getBoundingClientRect();
+        const b = bubble.getBoundingClientRect();
+        const cap = Math.min(280, window.innerWidth * 0.7);
+        return { open: true, gap: Math.round(b.top - a.bottom), width: Math.round(b.width), cap: Math.round(cap) };
+      });
+      const before = await tipGap();
+      await page.evaluate(() => window.scrollBy(0, 200));
+      await new Promise((r) => setTimeout(r, 80));
+      const after = await tipGap();
+      out[String(w)].tipScroll = {
+        before,
+        after,
+        follows: !after.open || Math.abs((after.gap || 0) - (before.gap || 0)) <= 8,
+        capped: !after.open || after.width <= (after.cap || 280) + 1,
+      };
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
         document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
       });
     }
@@ -536,6 +594,40 @@ const base = process.env.SP_GEO_BASE;
     }
   }
 
+  for (const root of [18, 20]) {
+    await page.evaluate((px) => { document.documentElement.style.fontSize = px + 'px'; }, root);
+    for (const rw of [1100, 1280]) {
+      await page.setViewport({ width: rw, height: 900 });
+      await openPage();
+      out['root' + root + '_' + rw] = await page.evaluate(() => {
+        const card = document.querySelector('details.sp-group.admin-card');
+        const scroller = document.querySelector('.sp-group .admin-table-scroll');
+        const table = document.querySelector('.sp-table');
+        const cardBox = card ? card.getBoundingClientRect() : null;
+        const usedBy = document.querySelector('.sp-col-consumers');
+        const usedRight = usedBy ? usedBy.getBoundingClientRect().right : 0;
+        const overflowX = scroller ? getComputedStyle(scroller).overflowX : '';
+        return {
+          docW: document.documentElement.scrollWidth,
+          viewW: window.innerWidth,
+          pageScroll: document.documentElement.scrollWidth > window.innerWidth + 1,
+          usedPastCard: cardBox && usedRight > cardBox.right + 1 ? Math.round(usedRight - cardBox.right) : 0,
+          tablePastCard: cardBox && table && table.getBoundingClientRect().right > cardBox.right + 1
+            ? Math.round(table.getBoundingClientRect().right - cardBox.right) : 0,
+          scrollerOverflow: overflowX,
+          stacked: (() => {
+            const row = document.querySelector('.sp-table tbody tr');
+            const thead = document.querySelector('.sp-table thead');
+            const rowStyle = row ? getComputedStyle(row) : null;
+            return !rowStyle || rowStyle.gridTemplateColumns.split(' ').filter(Boolean).length <= 2
+              || (thead && getComputedStyle(thead).display === 'none');
+          })(),
+        };
+      });
+    }
+  }
+  await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+
   await browser.close();
   process.stdout.write(JSON.stringify(out));
 })().catch((err) => { console.error(err); process.exit(2); });
@@ -576,8 +668,15 @@ JS
             $this->assertTrue($row['longChipOk'] ?? false, "Long consumer chip must ellipsize with a title at {$w}");
             $this->assertFalse($row['zLow'] ?? true, "Open +N row must not stay at z-index 1 at {$w}");
             $this->assertFalse($row['catalogOverflow'] ?? true, "Catalog button must stay inside its row at {$w}");
+            $this->assertNotSame('none', $row['chipMaxWidth'] ?? 'none', "Chip max-width must be set at {$w}");
+            $this->assertNotSame('', $row['chipMaxWidth'] ?? '', "Chip max-width must be set at {$w}");
 
             if ($w <= 1099) {
+                $this->assertSame(
+                    (int) ($row['groupCount'] ?? 0),
+                    (int) ($row['sellTipsVisible'] ?? -1),
+                    "Stacked mode must show one Sell ⓘ per group, not per row, at {$w}"
+                );
                 $this->assertTrue($row['stacked'] ?? false, "Must use stacked cards at {$w}");
             } else {
                 $this->assertFalse($row['stacked'] ?? true, "Must use the 8-column grid at {$w}");
@@ -602,6 +701,28 @@ JS
             (float) ($json['1100']['tableSpare'] ?? 0),
             'Need ≥12px spare between the table min-content and the scroller at 1100: '.json_encode($json['1100'] ?? [])
         );
+        foreach ([1100, 1280] as $w) {
+            $this->assertGreaterThanOrEqual(
+                8,
+                (float) ($json[(string) $w]['chipSpare'] ?? 0),
+                "Need ≥8px chip-to-card spare at {$w}: ".json_encode($json[(string) $w] ?? [])
+            );
+        }
+
+        $this->assertTrue($json['1280']['tipScroll']['follows'] ?? false, 'Open tip must follow or close on scroll: '.json_encode($json['1280']['tipScroll'] ?? []));
+        $this->assertTrue($json['1280']['tipScroll']['capped'] ?? false, 'Desktop tip must stay ≤ min(280px, 70vw): '.json_encode($json['1280']['tipScroll'] ?? []));
+
+        foreach (['root18_1100', 'root18_1280', 'root20_1100', 'root20_1280'] as $key) {
+            $row = $json[$key] ?? null;
+            $this->assertIsArray($row, "Missing root-font geometry {$key}");
+            $this->assertFalse($row['pageScroll'] ?? true, "Larger root font must not widen the page ({$key}): ".json_encode($row));
+            $spills = (int) ($row['usedPastCard'] ?? 0);
+            $scrollsInside = in_array($row['scrollerOverflow'] ?? '', ['auto', 'scroll'], true);
+            $this->assertTrue(
+                $spills === 0 || $scrollsInside,
+                "Used-by must stay in the card or scroll inside it ({$key}): ".json_encode($row)
+            );
+        }
 
         $this->assertTrue($json['1024']['liveSell']['ok'] ?? false, 'Effective sell must update live when Rate or Sell changes: '.json_encode($json['1024']['liveSell'] ?? []));
         $this->assertTrue($json['1100']['liveSell']['ok'] ?? false, 'Effective sell must update live on the desktop grid: '.json_encode($json['1100']['liveSell'] ?? []));
@@ -617,6 +738,8 @@ JS
             $this->assertTrue($json[$w]['sellTip']['open'] ?? false, "Sell ⓘ must open at {$w}: ".json_encode($json[$w]['sellTip'] ?? []));
             $this->assertFalse($json[$w]['sellTip']['off'] ?? true, "Sell ⓘ must stay fully on-screen at {$w}: ".json_encode($json[$w]['sellTip'] ?? []));
             $this->assertFalse($json[$w]['sellTip']['pageScroll'] ?? true, "Sell ⓘ must not widen the page at {$w}: ".json_encode($json[$w]['sellTip'] ?? []));
+            $this->assertTrue($json[$w]['sellTip']['capped'] ?? false, "Sell ⓘ must stay ≤ min(280px, 70vw) at {$w}: ".json_encode($json[$w]['sellTip'] ?? []));
+            $this->assertTrue($json[$w]['crewTip']['capped'] ?? false, "Crew rates ⓘ must stay ≤ min(280px, 70vw) at {$w}: ".json_encode($json[$w]['crewTip'] ?? []));
         }
     }
 

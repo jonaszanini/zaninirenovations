@@ -206,6 +206,8 @@ jobs:
           php artisan test tests/Unit/Services/RoomAreaTemplatesTest.php
           php artisan test tests/Unit/Models/BlogPostListHelpersTest.php
           php artisan test tests/Feature/Admin/BlogPostsIndexLayoutTest.php
+          php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
+          php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
           php artisan test tests/Feature/SharedPricesLayoutTest.php
           php artisan test tests/Feature/SharedPricesTest.php
 

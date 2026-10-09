@@ -38,25 +38,34 @@
   font-size: 1.1rem;
 }
 .sp-group { margin-bottom: 1rem; }
-/* Desktop grid only from 1100px — 901–1099 with the sidebar open is too
-   narrow and must stay on stacked cards. Never clip the table silently. */
-@media (min-width: 1100px) and (max-width: 1200px) {
+/* Desktop grid from 68.75em (1100px at 16px root). Larger browser fonts
+   stay on stacked cards longer so rem tracks cannot blow the page width.
+   If the grid is still wider than the card, scroll inside the card. */
+@media (min-width: 68.75em) and (max-width: 75em) {
   .admin-content:has(.sp-table) {
     padding-left: 0.65rem;
     padding-right: 0.65rem;
   }
 }
-@media (min-width: 1100px) {
-  details.sp-group.admin-card { padding: 1rem 0.2rem; }
-  .sp-group .admin-table-scroll { overflow: visible; }
+@media (min-width: 68.75em) {
+  details.sp-group.admin-card { padding: 1rem 0.55rem 1rem 0.2rem; }
+  .sp-group .admin-table-scroll {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
 }
 .sp-group__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   font-weight: 600;
   font-size: 1rem;
   padding: 0.75rem 0;
   cursor: pointer;
   color: var(--admin-heading);
 }
+.sp-group__title { min-width: 0; }
+.sp-group__sell-tip { display: none; }
 .sp-group__summary::-webkit-details-marker { display: none; }
 .sp-group__summary::before {
   content: '▶';
@@ -85,7 +94,7 @@
   display: block;
   width: 100%;
 }
-@media (min-width: 1100px) {
+@media (min-width: 68.75em) {
   .sp-table thead tr,
   .sp-table tbody tr {
     display: grid;
@@ -125,6 +134,7 @@
     justify-content: flex-start;
     align-self: stretch;
     vertical-align: middle;
+    padding-right: 0.5rem;
   }
   .sp-table td.sp-col-label,
   .sp-table td.sp-col-rate,
@@ -210,7 +220,7 @@
   overflow: visible;
   z-index: 14;
 }
-@media (min-width: 1100px) {
+@media (min-width: 68.75em) {
   .sp-mat-name-input:focus {
     position: absolute;
     left: 0;
@@ -314,6 +324,7 @@
 }
 .sp-th-sell .admin-info-tip,
 .sp-sell-phone-label .admin-info-tip,
+.sp-group__sell-tip .admin-info-tip,
 .sp-heading .admin-info-tip {
   position: relative;
   width: 28px;
@@ -325,6 +336,7 @@
 }
 .sp-th-sell .admin-info-tip__bubble,
 .sp-sell-phone-label .admin-info-tip__bubble,
+.sp-group__sell-tip .admin-info-tip__bubble,
 .sp-heading .admin-info-tip__bubble {
   z-index: 80;
 }
@@ -413,7 +425,7 @@
   pointer-events: none;
   transition: opacity 0.1s;
 }
-@media (min-width: 1100px) {
+@media (min-width: 68.75em) {
   .sp-search-wrap.sp-search-wrap--hidden {
     left: auto;
     right: 0;
@@ -561,8 +573,8 @@
   font-size: 0.8rem;
 }
 
-/* Stacked cards through 1099px (sidebar-open 901–1099 included). */
-@media (max-width: 1099px) {
+/* Stacked cards below 68.75em (1099px at 16px; larger roots stay stacked). */
+@media (max-width: 68.6875em) {
   .sp-group .admin-table-scroll {
     overflow: visible;
   }
@@ -675,9 +687,11 @@
   .sp-col-catalog,
   .sp-col-consumers { min-height: 44px; }
   .sp-sell-phone-label { display: inline-flex; }
+  .sp-group__sell-tip { display: inline-flex; }
   .sp-col-sell::before { display: none !important; }
   .sp-th-sell .admin-info-tip,
   .sp-sell-phone-label .admin-info-tip,
+  .sp-group__sell-tip .admin-info-tip,
   .sp-heading .admin-info-tip {
     width: 28px;
     height: 28px;
@@ -792,7 +806,15 @@
         @continue
       @endif
       <details class="admin-card sp-group" id="group-{{ $groupKey }}" open>
-        <summary class="sp-group__summary">{{ $groupLabel }} ({{ $groupWorks->count() }})</summary>
+        <summary class="sp-group__summary">
+          <span class="sp-group__title">{{ $groupLabel }} ({{ $groupWorks->count() }})</span>
+          <span class="sp-group__sell-tip" onclick="event.preventDefault(); event.stopPropagation();">
+            @include('admin.partials.info_tip', [
+              'tipText' => $spSellTipText,
+              'tipLabel' => $spSellTipLabel,
+            ])
+          </span>
+        </summary>
         <div class="admin-table-scroll">
           <table class="sp-table">
             <thead>
@@ -868,13 +890,7 @@
                     @endif
                   </td>
                   <td class="sp-col-sell" data-label="">
-                    <span class="sp-sell-phone-label">
-                      Sell rate
-                      @include('admin.partials.info_tip', [
-                        'tipText' => $spSellTipText,
-                        'tipLabel' => $spSellTipLabel,
-                      ])
-                    </span>
+                    <span class="sp-sell-phone-label">Sell rate</span>
                     <div class="sp-sell-wrap">
                       <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                              class="sp-input sp-input--sm cp-money-input" id="sp-flat-{{ $work->id }}"
@@ -989,6 +1005,7 @@
       tip.style.left = '';
       tip.style.right = '';
       tip.style.maxWidth = '';
+      tip.style.width = '';
     }
 
     function clampBox(el, anchor) {
@@ -996,16 +1013,16 @@
       var pad = 8;
       var vw = window.innerWidth || document.documentElement.clientWidth || 0;
       var vh = window.innerHeight || document.documentElement.clientHeight || 0;
-      var maxW = Math.max(120, vw - pad * 2);
+      var cap = Math.min(280, vw * 0.7);
       el.style.position = 'fixed';
       el.style.right = 'auto';
       el.style.left = pad + 'px';
       el.style.top = pad + 'px';
-      el.style.maxWidth = maxW + 'px';
-      el.style.width = 'auto';
+      el.style.maxWidth = cap + 'px';
+      el.style.width = '';
       var r = el.getBoundingClientRect();
-      var width = Math.min(r.width || maxW, maxW);
-      el.style.width = Math.round(width) + 'px';
+      var width = Math.min(r.width || cap, cap);
+      if (width > 0) el.style.width = Math.round(width) + 'px';
       var ar = anchor.getBoundingClientRect();
       r = el.getBoundingClientRect();
       var left = ar.left;
@@ -1059,10 +1076,12 @@
       }
       closeSpMoreTips();
     });
-    window.addEventListener('resize', function() {
+    function repositionSpOpenTips() {
       document.querySelectorAll('.sp-chip--more[aria-expanded="true"]').forEach(positionSpMoreTip);
       positionSpInfoTips();
-    });
+    }
+    window.addEventListener('resize', repositionSpOpenTips);
+    window.addEventListener('scroll', repositionSpOpenTips, true);
     document.addEventListener('click', function() {
       setTimeout(positionSpInfoTips, 0);
     }, true);
