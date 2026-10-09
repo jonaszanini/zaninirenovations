@@ -14,7 +14,7 @@
         <i class="fa fa-arrow-left"></i> Back to list
       </a>
       @include('admin.partials.quotation_back_to_quote')
-      <x-admin.info-tip>Manage stone types, fixed material rates, and the pricing engine used by the paving quotation calculator.</x-admin.info-tip>
+      <x-admin.info-tip label="Paving price configuration">Manage stone types, fixed material rates, and the pricing engine used by the paving quotation calculator.</x-admin.info-tip>
     </div>
   </div>
 

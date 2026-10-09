@@ -2,7 +2,7 @@
 
 @section('heading')
   Team &amp; roles
-  <x-admin.info-tip>Admins have full access, including deleting records. Staff accounts can use the CRM day-to-day but are blocked from delete actions.</x-admin.info-tip>
+  <x-admin.info-tip label="Team & roles">Admins have full access, including deleting records. Staff accounts can use the CRM day-to-day but are blocked from delete actions.</x-admin.info-tip>
 @endsection
 
 @section('content')

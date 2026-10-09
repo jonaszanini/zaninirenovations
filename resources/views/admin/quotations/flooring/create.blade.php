@@ -200,10 +200,12 @@
                  value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
         </div>
         <div class="admin-form-group quotation-work-desc">
-          <label for="fl-work-description">
-            Project description <span class="admin-form-help">(optional — appears on client PDF)</span>
-            <x-admin.info-tip>Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
-          </label>
+          <span class="admin-label-with-tip">
+            <label for="fl-work-description">
+              Project description <span class="admin-form-help">(optional — appears on client PDF)</span>
+            </label>
+            <x-admin.info-tip label="Project description">Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+          </span>
           <textarea class="admin-input" id="fl-work-description" name="work_description" rows="8"
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
@@ -263,7 +265,7 @@
       <div class="admin-card fl-step-card">
         <h4>
           Optional add-ons
-          <x-admin.info-tip>Rates from <a href="{{ route('admin.quotations.flooring.price-configuration') }}">price configuration</a>.</x-admin.info-tip>
+          <x-admin.info-tip label="Optional add-ons">Rates from <a href="{{ route('admin.quotations.flooring.price-configuration') }}">price configuration</a>.</x-admin.info-tip>
         </h4>
 
         <div class="fl-addon-row">

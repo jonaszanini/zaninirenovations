@@ -2,7 +2,7 @@
 
 @section('heading')
   AI Image
-  <x-admin.info-tip>Generate new images from prompts or edit existing photos with AI. Each workflow has its own history and gallery.</x-admin.info-tip>
+  <x-admin.info-tip label="AI Image">Generate new images from prompts or edit existing photos with AI. Each workflow has its own history and gallery.</x-admin.info-tip>
 @endsection
 
 @section('content')

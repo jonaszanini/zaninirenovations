@@ -2,7 +2,7 @@
 
 @section('heading')
   Nano Banana 2
-  <x-admin.info-tip>Generate images with Gemini (Nano Banana 2). Choose aspect ratio and resolution, then download the full original or an optimized WebP copy from history. The API returns a full-resolution original; a compressed WebP copy is saved for fast gallery preview ({{ (int) config('webp.quality', 75) }}% quality, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB).</x-admin.info-tip>
+  <x-admin.info-tip label="Nano Banana 2">Generate images with Gemini (Nano Banana 2). Choose aspect ratio and resolution, then download the full original or an optimized WebP copy from history. The API returns a full-resolution original; a compressed WebP copy is saved for fast gallery preview ({{ (int) config('webp.quality', 75) }}% quality, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB).</x-admin.info-tip>
 @endsection
 
 @section('content')
@@ -15,7 +15,7 @@
   <div class="admin-card nb2-prompt-card">
     <h2 class="nb2-card-title">
       Nano Banana 2
-      <x-admin.info-tip>Describe the image you want. The API returns a full-resolution original; a compressed WebP copy is saved for fast gallery preview ({{ (int) config('webp.quality', 75) }}% quality, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB).</x-admin.info-tip>
+      <x-admin.info-tip label="Nano Banana 2">Describe the image you want. The API returns a full-resolution original; a compressed WebP copy is saved for fast gallery preview ({{ (int) config('webp.quality', 75) }}% quality, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB).</x-admin.info-tip>
     </h2>
 
     <div class="admin-form-group">

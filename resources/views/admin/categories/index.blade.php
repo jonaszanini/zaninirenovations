@@ -2,7 +2,7 @@
 
 @section('heading')
   Portfolio categories
-  <x-admin.info-tip>These labels appear on the Latest projects section of the public site. Slugs are for internal use and stable links.</x-admin.info-tip>
+  <x-admin.info-tip label="Portfolio categories">These labels appear on the Latest projects section of the public site. Slugs are for internal use and stable links.</x-admin.info-tip>
 @endsection
 
 @section('content')

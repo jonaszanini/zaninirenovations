@@ -108,7 +108,7 @@
         <i class="fa fa-arrow-left"></i> Stairs quotations
       </a>
       @include('admin.partials.quotation_back_to_quote')
-      <x-admin.info-tip>These rates power the stairs calculator. After saving, return to the list to create or edit quotations.</x-admin.info-tip>
+      <x-admin.info-tip label="Stairs price configuration">These rates power the stairs calculator. After saving, return to the list to create or edit quotations.</x-admin.info-tip>
     </div>
     <a href="{{ route('admin.quotations.stairs.create', $qparam) }}" class="admin-btn admin-btn--primary admin-btn--sm">
       <i class="fa fa-plus"></i> New stairs quotation

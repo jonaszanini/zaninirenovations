@@ -9,7 +9,7 @@
     <div class="br-intake-bar__head">
       <strong>
         Client questionnaire
-        <x-admin.info-tip>Send this link so the client can fill fixtures, sizes, and who supplies materials. You can still edit every field after they submit.</x-admin.info-tip>
+        <x-admin.info-tip label="Client questionnaire">Send this link so the client can fill fixtures, sizes, and who supplies materials. You can still edit every field after they submit.</x-admin.info-tip>
       </strong>
       @if ($intakeSubmitted)
         <span class="br-intake-bar__chip br-intake-bar__chip--done">Submitted {{ $quotation->client_intake_submitted_at->timezone(config('app.timezone', 'America/Toronto'))->format('M j, Y g:ia') }}</span>

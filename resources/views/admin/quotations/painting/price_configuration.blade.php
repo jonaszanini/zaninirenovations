@@ -40,32 +40,32 @@
 
     <h3 style="margin:0 0 12px;">
       This quote only — paint catalog
-      <x-admin.info-tip>Wall labor per sq ft is shared. Coverage, paint SKUs, and the expendables fee stay here.</x-admin.info-tip>
+      <x-admin.info-tip label="This quote only — paint catalog">Wall labor per sq ft is shared. Coverage, paint SKUs, and the expendables fee stay here.</x-admin.info-tip>
     </h3>
     <input type="hidden" name="labor_per_sqf" value="{{ number_format(\App\Services\SharedWorkCatalog::flatRate('paint_walls', (float) $settings->labor_per_sqf), 4, '.', '') }}">
 
     <div class="admin-form-grid-4">
       <div class="admin-form-group">
-        <label for="paint_per_gallon">
-          Paint price per gallon (CAD$)
-          <x-admin.info-tip>Premium paint e.g. Dulux Lifemaster</x-admin.info-tip>
-        </label>
+        <span class="admin-label-with-tip">
+          <label for="paint_per_gallon">Paint price per gallon (CAD$)</label>
+          <x-admin.info-tip label="Paint price per gallon">Premium paint e.g. Dulux Lifemaster</x-admin.info-tip>
+        </span>
         <input type="text" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" id="paint_per_gallon" name="paint_per_gallon"
                placeholder="0.00" value="{{ old('paint_per_gallon', number_format((float) $settings->paint_per_gallon, 2, '.', '')) }}" required>
       </div>
       <div class="admin-form-group">
-        <label for="material_addon_fee">
-          Material add-on fixed fee (CAD$)
-          <x-admin.info-tip>Brushes, sleeves, masking, etc.</x-admin.info-tip>
-        </label>
+        <span class="admin-label-with-tip">
+          <label for="material_addon_fee">Material add-on fixed fee (CAD$)</label>
+          <x-admin.info-tip label="Material add-on fixed fee">Brushes, sleeves, masking, etc.</x-admin.info-tip>
+        </span>
         <input type="text" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" id="material_addon_fee" name="material_addon_fee"
                placeholder="0.00" value="{{ old('material_addon_fee', number_format((float) $settings->material_addon_fee, 2, '.', '')) }}" required>
       </div>
       <div class="admin-form-group">
-        <label for="sqf_per_gallon">
-          Sq ft floor coverage per gallon (2 top coats)
-          <x-admin.info-tip>Default 70 sq ft per gallon</x-admin.info-tip>
-        </label>
+        <span class="admin-label-with-tip">
+          <label for="sqf_per_gallon">Sq ft floor coverage per gallon (2 top coats)</label>
+          <x-admin.info-tip label="Sq ft floor coverage per gallon">Default 70 sq ft per gallon</x-admin.info-tip>
+        </span>
         <input type="number" step="0.01" min="0.01" class="admin-input" id="sqf_per_gallon" name="sqf_per_gallon"
                value="{{ old('sqf_per_gallon', $settings->sqf_per_gallon) }}" required>
       </div>
@@ -75,7 +75,7 @@
 
     <h3 style="margin:0 0 12px;">
       Paint brands / lines
-      <x-admin.info-tip>Shown in the quotation form dropdown. Pricing uses the per-gallon rate above.</x-admin.info-tip>
+      <x-admin.info-tip label="Paint brands / lines">Shown in the quotation form dropdown. Pricing uses the per-gallon rate above.</x-admin.info-tip>
     </h3>
 
     @foreach ($paintLines as $i => $line)

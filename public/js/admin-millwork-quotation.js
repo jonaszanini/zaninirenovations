@@ -640,6 +640,9 @@
           var list = document.getElementById('mw-piece-list');
           if (!list) return;
           var clone = piece.cloneNode(true);
+          if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshIds === 'function') {
+            window.AdminInfoTip.refreshIds(clone);
+          }
           clone.querySelectorAll('[data-mw-bound]').forEach(function (el) {
             delete el.dataset.mwBound;
           });

@@ -2,7 +2,7 @@
 
 @section('heading')
   Measurement Conversion
-  <x-admin.info-tip>Convert a single measurement into every common construction format. Organise rows by job-site project and optionally link a project to a real client job.</x-admin.info-tip>
+  <x-admin.info-tip label="Measurement Conversion">Convert a single measurement into every common construction format. Organise rows by job-site project and optionally link a project to a real client job.</x-admin.info-tip>
 @endsection
 
 @push('head')

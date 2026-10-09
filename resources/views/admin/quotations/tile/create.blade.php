@@ -203,10 +203,10 @@
         @endif
 
         <div class="admin-form-group quotation-work-desc">
-          <label class="admin-form-label" for="tl-work-description">
-            Work Description (Appears on PDF)
-            <x-admin.info-tip>Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
-          </label>
+          <span class="admin-label-with-tip">
+            <label class="admin-form-label" for="tl-work-description">Work Description (Appears on PDF)</label>
+            <x-admin.info-tip label="Work Description">Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+          </span>
           <textarea id="tl-work-description" name="work_description" class="admin-input" rows="8"
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ $work_description }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
@@ -366,10 +366,10 @@
         <div id="tl-edge-details" style="display:{{ $include_edge ? 'block' : 'none' }};">
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
-              <label class="admin-form-label" for="tl-tile-edge-id">
-                Edge product
-                <x-admin.info-tip>Sold in 8 ft pieces; LF is rounded up to whole pieces.</x-admin.info-tip>
-              </label>
+              <span class="admin-label-with-tip">
+                <label class="admin-form-label" for="tl-tile-edge-id">Edge product</label>
+                <x-admin.info-tip label="Edge product">Sold in 8 ft pieces; LF is rounded up to whole pieces.</x-admin.info-tip>
+              </span>
               <select name="tile_edge_id" id="tl-tile-edge-id" class="admin-input tl-live-trigger">
                 <option value="">-- Select edge --</option>
                 @foreach ($edges as $edge)

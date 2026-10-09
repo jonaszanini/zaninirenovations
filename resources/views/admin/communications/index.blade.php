@@ -2,7 +2,7 @@
 
 @section('heading')
   Email / SMS log
-  <x-admin.info-tip>Audit trail of every email and SMS sent by the system.</x-admin.info-tip>
+  <x-admin.info-tip label="Email / SMS log">Audit trail of every email and SMS sent by the system.</x-admin.info-tip>
 @endsection
 
 @push('head')

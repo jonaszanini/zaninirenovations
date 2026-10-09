@@ -18,12 +18,14 @@
   $required = $required ?? false;
 @endphp
 <div class="admin-form-group admin-places-field">
-  <label for="{{ $inputId }}-widget">
-    {{ $label }}@if ($required) <span class="cp-required">*</span>@endif
+  <span class="admin-label-with-tip">
+    <label for="{{ $inputId }}-widget">
+      {{ $label }}@if ($required) <span class="cp-required">*</span>@endif
+    </label>
     @if ($help)
-      <x-admin.info-tip>{{ $help }}</x-admin.info-tip>
+      <x-admin.info-tip :label="$label">{{ $help }}</x-admin.info-tip>
     @endif
-  </label>
+  </span>
   <div class="admin-places-autocomplete-wrap"
        data-places-mount
        data-address-input="{{ $inputId }}"

@@ -12,7 +12,7 @@
     <div class="sp-shared-banner__head">
       <h3 class="sp-heading">
         Shared
-        <x-admin.info-tip>These labor and material rates are shared across quotation types. Changing them here is not possible — open Shared prices.</x-admin.info-tip>
+        <x-admin.info-tip label="Shared">These labor and material rates are shared across quotation types. Changing them here is not possible — open Shared prices.</x-admin.info-tip>
       </h3>
       <a href="{{ route('admin.quotations.shared-prices.edit') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-cog"></i> Edit in Shared prices

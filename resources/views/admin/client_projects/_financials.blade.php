@@ -56,7 +56,7 @@
   <div class="admin-card">
     <h3>
       Hourly billing
-      <x-admin.info-tip>This project is billed by the hour. The amount earned is calculated from the rate × hours logged in the Time Tracking tab.</x-admin.info-tip>
+      <x-admin.info-tip label="Hourly billing">This project is billed by the hour. The amount earned is calculated from the rate × hours logged in the Time Tracking tab.</x-admin.info-tip>
     </h3>
 
     <form action="{{ route('admin.client-projects.update', $project) }}" method="post">
@@ -399,10 +399,10 @@
       </div>
     </div>
     <div class="admin-form-group cp-expense-receipt-field">
-      <label for="cp-expense-receipt">
-        <i class="fa fa-camera"></i> Receipt (optional)
-        <x-admin.info-tip>Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
-      </label>
+      <span class="admin-label-with-tip">
+        <label for="cp-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
+        <x-admin.info-tip label="Receipt">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
+      </span>
       <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf" capture="environment">
     </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror

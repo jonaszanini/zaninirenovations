@@ -2,7 +2,7 @@
 
 @section('heading')
   Materials — Config
-  <x-admin.info-tip>Bulk import Home Depot SKUs, manage categories and vendors, and copy local commands for your PC.</x-admin.info-tip>
+  <x-admin.info-tip label="Materials — Config">Bulk import Home Depot SKUs, manage categories and vendors, and copy local commands for your PC.</x-admin.info-tip>
 @endsection
 
 @push('head')
@@ -48,10 +48,10 @@
               data-step-url="{{ route('admin.materials.bulk-import.step') }}">
           @csrf
           <div class="admin-form-group">
-            <label for="mat-bulk-skus">
-              SKUs or product URLs
-              <x-admin.info-tip>One SKU (e.g. <code>1000108771</code>) or full Home Depot product URL per line. Blank lines are ignored. If the same SKU appears more than once in your paste, only the first is imported; the rest are skipped. SKUs already in the catalog are updated.</x-admin.info-tip>
-            </label>
+            <span class="admin-label-with-tip">
+              <label for="mat-bulk-skus">SKUs or product URLs</label>
+              <x-admin.info-tip label="SKUs or product URLs">One SKU (e.g. <code>1000108771</code>) or full Home Depot product URL per line. Blank lines are ignored. If the same SKU appears more than once in your paste, only the first is imported; the rest are skipped. SKUs already in the catalog are updated.</x-admin.info-tip>
+            </span>
             <textarea id="mat-bulk-skus" name="skus" rows="8" class="admin-input @error('skus') is-invalid @enderror" aria-label="SKU list, one per line" placeholder="Paste one SKU or product URL per line…">{{ old('skus') }}</textarea>
             @error('skus') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
@@ -136,7 +136,7 @@
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
         <span class="admin-accordion__title">
           Short names (Gemini)
-          <x-admin.info-tip>Generate compact short names from store product titles using Gemini. Prompt is editable under <a href="{{ route('admin.ai-instructions.edit', \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME) }}" class="admin-text-link">Tools → AI Instructions</a>.</x-admin.info-tip>
+          <x-admin.info-tip label="Short names (Gemini)">Generate compact short names from store product titles using Gemini. Prompt is editable under <a href="{{ route('admin.ai-instructions.edit', \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME) }}" class="admin-text-link">Tools → AI Instructions</a>.</x-admin.info-tip>
         </span>
       </summary>
       <div class="admin-accordion__panel">
@@ -208,7 +208,7 @@
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
         <span class="admin-accordion__title">
           Local commands (your PC)
-          <x-admin.info-tip>
+          <x-admin.info-tip label="Local commands (your PC)">
             Run from your project root in PowerShell or Terminal.
             @if ($usesSerpApi)
               On your PC, leave <code>MATERIALS_SCRAPER_SERPAPI_KEY</code> unset so price sync uses the free Home Depot store API instead of SerpApi credits.

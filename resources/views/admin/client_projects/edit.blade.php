@@ -146,10 +146,10 @@
             @error('invoice_billing_name') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
-            <label for="cp-invoice-billing-address">
-              Billing address
-              <x-admin.info-tip>Leave blank to use the client address above on PDFs.</x-admin.info-tip>
-            </label>
+            <span class="admin-label-with-tip">
+              <label for="cp-invoice-billing-address">Billing address</label>
+              <x-admin.info-tip label="Billing address">Leave blank to use the client address above on PDFs.</x-admin.info-tip>
+            </span>
               <textarea id="cp-invoice-billing-address" name="invoice_billing_address" rows="3" maxlength="2000"
                         class="admin-input" placeholder="Registered office or mailing address for AP"
                         @disabled($clientFieldsLocked)>{{ old('invoice_billing_address', $project->invoice_billing_address) }}</textarea>

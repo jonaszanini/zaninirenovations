@@ -20,7 +20,7 @@
     <div class="admin-card fq-hub-intro">
       <h3 style="margin:0 0 8px;">
         Standalone quotations
-        <x-admin.info-tip>Calculators produce saved quotes that you can tie to a project when you're ready — either from here or via the project's Quotation tab.</x-admin.info-tip>
+        <x-admin.info-tip label="Standalone quotations">Calculators produce saved quotes that you can tie to a project when you're ready — either from here or via the project's Quotation tab.</x-admin.info-tip>
       </h3>
     </div>
   @endif

@@ -20,7 +20,7 @@
 
     <h3 class="cp-form-help-flush" style="margin:0 0 8px;">
       Work description template
-      <x-admin.info-tip>Used by <strong>Generate description</strong> on the low deck quotation form. Plain text — line breaks are preserved on the client PDF.</x-admin.info-tip>
+      <x-admin.info-tip label="Work description template">Used by <strong>Generate description</strong> on the low deck quotation form. Plain text — line breaks are preserved on the client PDF.</x-admin.info-tip>
     </h3>
 
     <div class="admin-form-group">

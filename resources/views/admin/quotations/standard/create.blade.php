@@ -367,7 +367,7 @@
         <section class="sq-field-box">
           <h4 class="sq-field-box-title">
             Description of the work
-            <x-admin.info-tip>Shown on the client PDF beneath the priced line items. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+            <x-admin.info-tip label="Description of the work">Shown on the client PDF beneath the priced line items. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
           </h4>
           <div class="admin-form-group sq-intro-work-desc quotation-work-desc">
             <label for="sq-work-description" class="visually-hidden">Description of the work</label>

@@ -250,10 +250,10 @@
         </div>
 
         <div class="admin-form-group quotation-work-desc">
-          <label for="ld-work-description">
-            Description of the work
-            <x-admin.info-tip>Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
-          </label>
+          <span class="admin-label-with-tip">
+            <label for="ld-work-description">Description of the work</label>
+            <x-admin.info-tip label="Description of the work">Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+          </span>
           <textarea id="ld-work-description" name="work_description" rows="8"
                     @class(['admin-input', 'is-invalid' => $errors->has('work_description')])
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
@@ -274,7 +274,7 @@
         <div class="admin-form-section ld-section">
           <h4 class="cp-heading-sm">
             Deck dimensions
-            <x-admin.info-tip>Maximum {{ rtrim(rtrim(number_format((float) $settings->max_area_sq_ft, 2), '0'), '.') }} sq ft footprint (Ontario Building Code floating deck guardrail). Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.</x-admin.info-tip>
+            <x-admin.info-tip label="Deck dimensions">Maximum {{ rtrim(rtrim(number_format((float) $settings->max_area_sq_ft, 2), '0'), '.') }} sq ft footprint (Ontario Building Code floating deck guardrail). Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.</x-admin.info-tip>
           </h4>
           <div class="ld-dims-grid">
             <div class="admin-form-group">
@@ -296,15 +296,17 @@
             Total area: <strong id="ld-area-value">0</strong> sq ft
           </p>
           <div class="admin-form-group cp-form-group-spaced">
-            <label class="admin-checkbox">
-              <input type="hidden" name="include_under_deck_gravel" value="0">
-              <input type="checkbox" class="admin-checkbox__input" id="ld-under-deck-gravel"
-                     name="include_under_deck_gravel" value="1"
-                     @checked($initialIncludeUnderDeckGravel)>
-              <span class="admin-checkbox__mark" aria-hidden="true"></span>
-              <span class="admin-checkbox__text">Gravel under the deck</span>
-              <x-admin.info-tip>Adds under-deck gravel bags (1 per {{ rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.') }} sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.</x-admin.info-tip>
-            </label>
+            <span class="admin-label-with-tip">
+              <label class="admin-checkbox">
+                <input type="hidden" name="include_under_deck_gravel" value="0">
+                <input type="checkbox" class="admin-checkbox__input" id="ld-under-deck-gravel"
+                       name="include_under_deck_gravel" value="1"
+                       @checked($initialIncludeUnderDeckGravel)>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">Gravel under the deck</span>
+              </label>
+              <x-admin.info-tip label="Gravel under the deck">Adds under-deck gravel bags (1 per {{ rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.') }} sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.</x-admin.info-tip>
+            </span>
           </div>
         </div>
 
@@ -312,7 +314,7 @@
         <div class="admin-form-section ld-section">
           <h4 class="cp-heading-sm">
             Rates for this quotation
-            <x-admin.info-tip>Prefilled from configuration defaults. Change them here to adjust this project only.</x-admin.info-tip>
+            <x-admin.info-tip label="Rates for this quotation">Prefilled from configuration defaults. Change them here to adjust this project only.</x-admin.info-tip>
           </h4>
           <div class="ld-rates-grid">
             <div class="admin-form-group">
@@ -324,10 +326,10 @@
               @error('labour_rate_per_sqft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group">
-              <label for="ld-material-waste">
-                Material waste (%)
-                <x-admin.info-tip>Extra material for cuts and breakage. Internal ordering buffer — not shown on the client quotation.</x-admin.info-tip>
-              </label>
+              <span class="admin-label-with-tip">
+                <label for="ld-material-waste">Material waste (%)</label>
+                <x-admin.info-tip label="Material waste">Extra material for cuts and breakage. Internal ordering buffer — not shown on the client quotation.</x-admin.info-tip>
+              </span>
               <input id="ld-material-waste" type="number" min="0" max="100" step="0.1" name="material_waste_percent"
                      @class(['admin-input', 'is-invalid' => $errors->has('material_waste_percent')])
                      value="{{ rtrim(rtrim(number_format((float) $initialMaterialWaste, 2, '.', ''), '0'), '.') }}"

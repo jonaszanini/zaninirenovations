@@ -27,7 +27,7 @@
     <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
     <span class="admin-accordion__title">
       Client Email Message
-      <x-admin.info-tip>Optional. When filled in, this opens the client email after the greeting. The usual “pleasure discussing” line is left out, and the PDF sentence follows your message. Not shown on the PDF.</x-admin.info-tip>
+      <x-admin.info-tip label="Client Email Message">Optional. When filled in, this opens the client email after the greeting. The usual “pleasure discussing” line is left out, and the PDF sentence follows your message. Not shown on the PDF.</x-admin.info-tip>
     </span>
     @if ($hasValue)
       <span class="cp-client-email-card__badge" title="A message will be added to the client email">

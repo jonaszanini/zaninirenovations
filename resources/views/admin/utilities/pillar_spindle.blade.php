@@ -2,7 +2,7 @@
 
 @section('heading')
   Pillar &amp; Spindle Calculator
-  <x-admin.info-tip>Plan an even run of pillars, posts, or spindles. Enter the total length and either a target spacing or a fixed count — the layout, spacing, and a scaled diagram update as you type.</x-admin.info-tip>
+  <x-admin.info-tip label="Pillar & Spindle Calculator">Plan an even run of pillars, posts, or spindles. Enter the total length and either a target spacing or a fixed count — the layout, spacing, and a scaled diagram update as you type.</x-admin.info-tip>
 @endsection
 
 @push('head')

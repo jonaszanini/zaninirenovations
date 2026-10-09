@@ -53,18 +53,20 @@
             via the store price API
           @endif
           ({{ number_format($linkedSyncCount) }} syncable).
-          <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
-          @if ($usesSerpApi)
-            · <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>
-          @else
-            · On production, set <code>MATERIALS_SCRAPER_SERPAPI_KEY</code> for online sync.
-          @endif
         </x-admin.info-tip>
         <button type="submit" class="admin-btn admin-btn--primary">
           <i class="fa fa-save"></i> Save links
         </button>
       </div>
     </div>
+    @unless ($usesSerpApi)
+      <p class="admin-form-help mat-serpapi-hint">
+        Online sync requires SerpApi on the server. On production, set
+        <code>MATERIALS_SCRAPER_SERPAPI_KEY</code>.
+        Update linked materials from your PC — see
+        <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>.
+      </p>
+    @endunless
 
     <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <div class="admin-table-scroll">

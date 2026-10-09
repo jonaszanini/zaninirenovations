@@ -1,5 +1,5 @@
 <div id="br-plumbing-fields" class="br-plumbing-fields">
-  <x-admin.info-tip>These answers are scope for a qualified plumber — they are not Zanini labour or materials. Type their quote as priced lines below.</x-admin.info-tip>
+  <x-admin.info-tip label="Plumbing scope">These answers are scope for a qualified plumber — they are not Zanini labour or materials. Type their quote as priced lines below.</x-admin.info-tip>
   @include('admin.partials.checkbox', [
     'name' => 'include_plumbing',
     'hiddenFallback' => true,

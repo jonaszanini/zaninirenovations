@@ -82,7 +82,7 @@
   <div class="admin-card">
     <h3>
       Quick expense entry
-      <x-admin.info-tip>Add an expense to any active project. On mobile, tap the camera button to snap a receipt photo.</x-admin.info-tip>
+      <x-admin.info-tip label="Quick expense entry">Add an expense to any active project. On mobile, tap the camera button to snap a receipt photo.</x-admin.info-tip>
     </h3>
     <form action="{{ route('admin.financials.expenses.store') }}" method="post" enctype="multipart/form-data" id="gf-quick-expense-form">
       @csrf
@@ -121,10 +121,10 @@
         </div>
       </div>
       <div class="admin-form-group gf-quick-expense-receipt">
-        <label for="gf-expense-receipt">
-          <i class="fa fa-camera"></i> Receipt (optional)
-          <x-admin.info-tip>Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
-        </label>
+        <span class="admin-label-with-tip">
+          <label for="gf-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
+          <x-admin.info-tip label="Receipt">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
+        </span>
         <input type="file" id="gf-expense-receipt" name="receipt" class="admin-input" accept="image/*,application/pdf" capture="environment">
         @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>

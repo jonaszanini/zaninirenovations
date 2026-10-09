@@ -37,7 +37,7 @@
         <div class="admin-form-group__label-row">
           <span class="admin-form-group-label">
             Categories
-            <x-admin.info-tip>Select all that apply (e.g. tile and wood).</x-admin.info-tip>
+            <x-admin.info-tip label="Categories">Select all that apply (e.g. tile and wood).</x-admin.info-tip>
           </span>
           <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
             <i class="fa fa-cog" aria-hidden="true"></i> Configure

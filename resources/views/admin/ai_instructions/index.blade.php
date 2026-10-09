@@ -2,7 +2,7 @@
 
 @section('heading')
   AI instructions
-  <x-admin.info-tip>System prompts sent to Gemini for each AI feature. Edit the instruction text to change how the model drafts contracts and other content.</x-admin.info-tip>
+  <x-admin.info-tip label="AI instructions">System prompts sent to Gemini for each AI feature. Edit the instruction text to change how the model drafts contracts and other content.</x-admin.info-tip>
 @endsection
 
 @section('content')

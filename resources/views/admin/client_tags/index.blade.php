@@ -2,7 +2,7 @@
 
 @section('heading')
   Client tags
-  <x-admin.info-tip>Segment the client directory (e.g. VIP, Repeat customer, Referral). Assign tags from each client's edit page.</x-admin.info-tip>
+  <x-admin.info-tip label="Client tags">Segment the client directory (e.g. VIP, Repeat customer, Referral). Assign tags from each client's edit page.</x-admin.info-tip>
 @endsection
 
 @section('content')

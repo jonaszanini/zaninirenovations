@@ -31,7 +31,7 @@
         <div class="admin-form-group__label-row">
           <span class="admin-form-group-label">
             Categories
-            <x-admin.info-tip>Select all that apply (e.g. tile and wood).</x-admin.info-tip>
+            <x-admin.info-tip label="Categories">Select all that apply (e.g. tile and wood).</x-admin.info-tip>
           </span>
           <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
             <i class="fa fa-cog" aria-hidden="true"></i> Configure
@@ -61,7 +61,7 @@
           <div class="admin-form-group__label-row">
             <span class="admin-form-group-label">
               Photos
-              <x-admin.info-tip>Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> to straighten, rotate, crop, or add a Before or During label (saved as WebP). Select photos with the checkbox, then use <strong>Before</strong>, <strong>During</strong>, <strong>Delete</strong>, or <strong>Apply AI improvements</strong> below.</x-admin.info-tip>
+              <x-admin.info-tip label="Photos">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> to straighten, rotate, crop, or add a Before or During label (saved as WebP). Select photos with the checkbox, then use <strong>Before</strong>, <strong>During</strong>, <strong>Delete</strong>, or <strong>Apply AI improvements</strong> below.</x-admin.info-tip>
             </span>
             <div class="admin-photo-bulk-actions">
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-photo-bulk-label" id="admin-photo-bulk-before" disabled
@@ -303,10 +303,10 @@
         </div>
         <div id="admin-photo-edit-replace" class="admin-photo-edit-replace" hidden>
           <div class="admin-form-group">
-            <label for="admin-photo-edit-replace-file">
-              Upload
-              <x-admin.info-tip>Upload a new photo or pick one from Google Photos. It replaces this photo and keeps its place in the gallery.</x-admin.info-tip>
-            </label>
+            <span class="admin-label-with-tip">
+              <label for="admin-photo-edit-replace-file">Upload</label>
+              <x-admin.info-tip label="Upload">Upload a new photo or pick one from Google Photos. It replaces this photo and keeps its place in the gallery.</x-admin.info-tip>
+            </span>
             <input class="admin-input" type="file" id="admin-photo-edit-replace-file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
           </div>
           @include('admin.partials.google_photos_picker', [

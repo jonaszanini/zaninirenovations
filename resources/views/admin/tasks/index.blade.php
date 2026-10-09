@@ -2,7 +2,7 @@
 
 @section('heading')
   Tasks &amp; reminders
-  <x-admin.info-tip>Your own follow-up list — not visible to clients.</x-admin.info-tip>
+  <x-admin.info-tip label="Tasks & reminders">Your own follow-up list — not visible to clients.</x-admin.info-tip>
 @endsection
 
 @section('content')

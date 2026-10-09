@@ -2,7 +2,7 @@
 
 @section('heading')
   Latest Projects Photos
-  <x-admin.info-tip>
+  <x-admin.info-tip label="Latest Projects Photos">
     @php
       $portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
     @endphp

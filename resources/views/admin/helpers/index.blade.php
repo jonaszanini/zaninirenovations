@@ -2,7 +2,7 @@
 
 @section('heading')
   Helpers
-  <x-admin.info-tip>Register helpers, their hourly rates, and contact details. Assign them to projects on the Time tracking tab.</x-admin.info-tip>
+  <x-admin.info-tip label="Helpers">Register helpers, their hourly rates, and contact details. Assign them to projects on the Time tracking tab.</x-admin.info-tip>
 @endsection
 
 @section('content')

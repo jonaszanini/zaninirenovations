@@ -42,7 +42,7 @@
 
     <h3 style="margin:0 0 12px;">
       This quote only — add-on rates
-      <x-admin.info-tip>Carpet removal and shoe moulding live in Shared prices. Closet doors and re-screw stay here.</x-admin.info-tip>
+      <x-admin.info-tip label="This quote only — add-on rates">Carpet removal and shoe moulding live in Shared prices. Closet doors and re-screw stay here.</x-admin.info-tip>
     </h3>
     <input type="hidden" name="remove_carpet_dispose_rate" value="{{ number_format($settings->removeCarpetRate(), 4, '.', '') }}">
     <input type="hidden" name="install_shoe_moulding_rate" value="{{ number_format($settings->shoeInstallRate(), 4, '.', '') }}">
@@ -65,7 +65,7 @@
 
     <h3 style="margin:0 0 12px;">
       Flooring types
-      <x-admin.info-tip>Installation rate per sq ft for each flooring product type.</x-admin.info-tip>
+      <x-admin.info-tip label="Flooring types">Installation rate per sq ft for each flooring product type.</x-admin.info-tip>
     </h3>
 
     @foreach ($flooringTypes as $i => $type)

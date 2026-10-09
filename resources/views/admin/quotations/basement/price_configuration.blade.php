@@ -59,7 +59,7 @@
              data-panel="rates" id="br-config-rates" role="tabpanel" aria-labelledby="br-tab-rates">
       <h3 class="br-config-heading">
         This quote only — labour rates
-        <x-admin.info-tip>Shared crew and overlapping trades are edited in Shared prices. Each basement quote can still override owner and helper rates on the form.</x-admin.info-tip>
+        <x-admin.info-tip label="This quote only — labour rates">Shared crew and overlapping trades are edited in Shared prices. Each basement quote can still override owner and helper rates on the form.</x-admin.info-tip>
       </h3>
       <div class="admin-form-grid-4">
         <div class="admin-form-group">
@@ -75,10 +75,10 @@
                  value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required>
         </div>
         <div class="admin-form-group">
-          <label for="hours_per_day">
-            Hours per working day
-            <x-admin.info-tip>Used for calendar-day estimates (1 / 2 / 3 people).</x-admin.info-tip>
-          </label>
+          <span class="admin-label-with-tip">
+            <label for="hours_per_day">Hours per working day</label>
+            <x-admin.info-tip label="Hours per working day">Used for calendar-day estimates (1 / 2 / 3 people).</x-admin.info-tip>
+          </span>
           <input type="number" step="0.25" min="0.5" max="16" class="admin-input" id="hours_per_day" name="hours_per_day"
                  value="{{ old('hours_per_day', $settings->hours_per_day) }}" required>
         </div>
@@ -87,7 +87,7 @@
       <hr class="br-config-divider">
       <h3 class="br-config-heading">
         Labour productivity
-        <x-admin.info-tip>Hours per unit of work. Higher numbers mean faster production (more units per hour) except where the label says “hours each”.</x-admin.info-tip>
+        <x-admin.info-tip label="Labour productivity">Hours per unit of work. Higher numbers mean faster production (more units per hour) except where the label says “hours each”.</x-admin.info-tip>
       </h3>
 
       @include('admin.partials.quotation_productivity_groups', [
@@ -99,7 +99,7 @@
              data-panel="materials" id="br-config-materials" role="tabpanel" aria-labelledby="br-tab-materials">
       <h3 class="br-config-heading">
         Default materials
-        <x-admin.info-tip>
+        <x-admin.info-tip label="Default materials">
           Each line is priced in the unit shown: tile, LVP, and similar finishes are <strong>per sq ft</strong>; toilets and fans are <strong>each</strong>; drywall is per <strong>sheet</strong>; compound is per <strong>17 L pail</strong>.
           Link a Materials DB product to fill the name, a starting price, and delivery — or leave the search empty and type the CAD$ yourself.
           After linking you can still edit the price. On each quotation you can change it again if the client picks a cheaper or more expensive product.

@@ -2,7 +2,7 @@
 
 @section('heading')
   Vehicles
-  <x-admin.info-tip>Track company vehicles, fuel costs, and your home / office address for project travel estimates.</x-admin.info-tip>
+  <x-admin.info-tip label="Vehicles">Track company vehicles, fuel costs, and your home / office address for project travel estimates.</x-admin.info-tip>
 @endsection
 
 @push('head')
@@ -27,7 +27,7 @@
     <div class="admin-card admin-vehicles-home-card">
       <h3>
         Home / office address
-        <x-admin.info-tip>Used as the starting point for round-trip travel cost on each project.</x-admin.info-tip>
+        <x-admin.info-tip label="Home / office address">Used as the starting point for round-trip travel cost on each project.</x-admin.info-tip>
       </h3>
       <form action="{{ route('admin.vehicles.settings.home-address') }}" method="post">
         @csrf
@@ -66,10 +66,10 @@
         @csrf
         @method('PUT')
         <div class="admin-form-group admin-vehicles-gas-field">
-          <label for="company-gas-price">
-            Current gas price (CAD / L)
-            <x-admin.info-tip>Company-wide — used with each vehicle’s L/100 km for fuel estimates.</x-admin.info-tip>
-          </label>
+          <span class="admin-label-with-tip">
+            <label for="company-gas-price">Current gas price (CAD / L)</label>
+            <x-admin.info-tip label="Current gas price">Company-wide — used with each vehicle’s L/100 km for fuel estimates.</x-admin.info-tip>
+          </span>
           <div class="admin-vehicles-gas-row">
             <input class="admin-input cp-money-input" type="text"
                    id="company-gas-price"

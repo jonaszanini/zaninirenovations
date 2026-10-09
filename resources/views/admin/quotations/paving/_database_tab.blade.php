@@ -21,7 +21,7 @@
     <div class="admin-card">
       <h4 class="cp-form-help-spaced">
         Stone types
-        <x-admin.info-tip>Used by the paving stone dropdowns. Enter length × width (in), click <strong>Fill</strong> (or tab out of width) to compute sq ft per stone, or enter sq ft manually. Provide either <strong>Price/sq ft</strong> or both <strong>Sq ft/stone</strong> and <strong>$/stone</strong>.</x-admin.info-tip>
+        <x-admin.info-tip label="Stone types">Used by the paving stone dropdowns. Enter length × width (in), click <strong>Fill</strong> (or tab out of width) to compute sq ft per stone, or enter sq ft manually. Provide either <strong>Price/sq ft</strong> or both <strong>Sq ft/stone</strong> and <strong>$/stone</strong>.</x-admin.info-tip>
       </h4>
       <div class="admin-table-scroll">
         <div class="pq-db-stone-list" style="margin-top:12px;">
@@ -226,7 +226,7 @@
     <div class="admin-card">
       <h4 style="margin:0 0 8px;">
         Fixed costs &amp; equipment
-        <x-admin.info-tip>Unit prices used by the calculator. <strong>Labour</strong> rates are defaults for new quotations (you can still override them on each quote). Equipment day rates pair with rental days on the quotation form.</x-admin.info-tip>
+        <x-admin.info-tip label="Fixed costs & equipment">Unit prices used by the calculator. <strong>Labour</strong> rates are defaults for new quotations (you can still override them on each quote). Equipment day rates pair with rental days on the quotation form.</x-admin.info-tip>
       </h4>
       <div class="pq-db-rates-groups">
         @foreach ($materialRateGroups as $category => $rates)
@@ -267,7 +267,7 @@
     <div class="admin-card pq-db-tiers">
       <h4 class="cp-form-help-spaced">
         Pricing engine — $/sq ft by area
-        <x-admin.info-tip>Interpolated linearly between rows (matches Excel reference table). Use Add row for extra breakpoints, then save. Areas should stay sorted ascending for clearest interpolation.</x-admin.info-tip>
+        <x-admin.info-tip label="Pricing engine — $/sq ft by area">Interpolated linearly between rows (matches Excel reference table). Use Add row for extra breakpoints, then save. Areas should stay sorted ascending for clearest interpolation.</x-admin.info-tip>
       </h4>
       <form method="post" action="{{ route('admin.quotations.paving.database.tiers.sync') }}">
         @csrf

@@ -22,6 +22,20 @@
     return root ? root.querySelector(':scope > .admin-info-tip__bubble') : null;
   }
 
+  function wrapsIn(scope) {
+    var root = scope && scope.querySelectorAll ? scope : document;
+    var list = [];
+    if (root.matches && root.matches('.admin-info-tip-wrap')) {
+      list.push(root);
+    }
+    if (root.querySelectorAll) {
+      root.querySelectorAll('.admin-info-tip-wrap').forEach(function (wrap) {
+        list.push(wrap);
+      });
+    }
+    return list;
+  }
+
   function resetBubble(bubble) {
     if (!bubble) return;
     bubble.style.position = '';
@@ -67,6 +81,12 @@
 
     bubble.style.top = Math.round(top) + 'px';
     bubble.style.left = Math.round(left) + 'px';
+  }
+
+  function repositionOpenTips() {
+    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN).forEach(function (root) {
+      positionBubble(buttonOf(root), bubbleOf(root));
+    });
   }
 
   function closeTip(root) {
@@ -116,12 +136,16 @@
       .replace(/'/g, '&#39;');
   }
 
+  function newTipId() {
+    return 'admin-info-tip-' + Math.random().toString(36).slice(2, 12);
+  }
+
   /**
-   * Markup for JS-rendered rows (fence run cards, etc.).
+   * Markup for JS-rendered rows (fence run cards, lumber tools, etc.).
    * text is escaped. label becomes aria-label="About {label}".
    */
   function html(text, label) {
-    var id = 'admin-info-tip-' + Math.random().toString(36).slice(2, 12);
+    var id = newTipId();
     var aria = label ? ('About ' + String(label)) : 'More info';
     return (
       '<span class="admin-info-tip-wrap">' +
@@ -134,8 +158,46 @@
   }
 
   /**
-   * Move tips that were nested in <label for> / wrapping labels out so the
-   * ⓘ is not part of the input's accessible name.
+   * Give every tip in scope a fresh bubble id and matching aria-controls /
+   * aria-describedby. Call after cloneNode / template insert so uniqid
+   * attributes from the source row are not reused.
+   */
+  function refreshIds(scope) {
+    wrapsIn(scope).forEach(function (wrap) {
+      var btn = buttonOf(wrap);
+      var bubble = bubbleOf(wrap);
+      if (!btn || !bubble) return;
+      var id = newTipId();
+      bubble.id = id;
+      btn.setAttribute('aria-controls', id);
+      btn.setAttribute('aria-describedby', id);
+    });
+    return wrapsIn(scope).length;
+  }
+
+  function refreshDuplicateIds(scope) {
+    var seen = Object.create(null);
+    wrapsIn(scope).forEach(function (wrap) {
+      var btn = buttonOf(wrap);
+      var bubble = bubbleOf(wrap);
+      if (!btn || !bubble) return;
+      var id = bubble.id || '';
+      if (!id || seen[id]) {
+        var next = newTipId();
+        bubble.id = next;
+        btn.setAttribute('aria-controls', next);
+        btn.setAttribute('aria-describedby', next);
+        seen[next] = true;
+        return;
+      }
+      seen[id] = true;
+    });
+  }
+
+  /**
+   * Fallback: move tips that were nested in <label for> / wrapping labels
+   * so the ⓘ is not part of the input's accessible name. Preferred markup
+   * is already a sibling via .admin-label-with-tip (form_field / checkbox).
    */
   function hoistFromLabels(scope) {
     var root = scope && scope.querySelectorAll ? scope : document;
@@ -156,6 +218,12 @@
       row.appendChild(label);
       row.appendChild(wrap);
     });
+  }
+
+  function prepareAddedNode(node) {
+    if (!node || node.nodeType !== 1) return;
+    hoistFromLabels(node);
+    refreshDuplicateIds(node);
   }
 
   document.addEventListener('mousedown', function (e) {
@@ -182,16 +250,21 @@
   }, true);
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') {
-      closeTips(null);
+    if (e.key !== 'Escape') return;
+    var active = document.activeElement;
+    var fromRoot = rootOf(active);
+    closeTips(null);
+    if (fromRoot) {
+      var btn = buttonOf(fromRoot);
+      if (btn && typeof btn.focus === 'function') {
+        btn.focus();
+      }
     }
   });
 
-  window.addEventListener('resize', function () {
-    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN).forEach(function (root) {
-      positionBubble(buttonOf(root), bubbleOf(root));
-    });
-  });
+  window.addEventListener('resize', repositionOpenTips);
+
+  document.addEventListener('scroll', repositionOpenTips, { capture: true, passive: true });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { hoistFromLabels(document); });
@@ -199,9 +272,29 @@
     hoistFromLabels(document);
   }
 
+  if (typeof MutationObserver === 'function' && document.documentElement) {
+    var mo = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        mutation.addedNodes.forEach(prepareAddedNode);
+      });
+    });
+    function observe() {
+      if (document.body) {
+        mo.observe(document.body, { childList: true, subtree: true });
+      }
+    }
+    if (document.body) {
+      observe();
+    } else {
+      document.addEventListener('DOMContentLoaded', observe);
+    }
+  }
+
   global.AdminInfoTip = {
     html: html,
     hoist: hoistFromLabels,
+    refreshIds: refreshIds,
     closeAll: function () { closeTips(null); },
+    positionOpen: repositionOpenTips,
   };
 })(window);

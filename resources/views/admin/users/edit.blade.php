@@ -35,10 +35,10 @@
 
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
-          <label for="usr-password">
-            New password
-            <x-admin.info-tip>Leave blank to keep the current password.</x-admin.info-tip>
-          </label>
+          <span class="admin-label-with-tip">
+            <label for="usr-password">New password</label>
+            <x-admin.info-tip label="New password">Leave blank to keep the current password.</x-admin.info-tip>
+          </span>
           <input class="admin-input" type="password" id="usr-password" name="password" autocomplete="new-password">
           @error('password') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>

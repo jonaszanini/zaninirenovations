@@ -31,7 +31,7 @@
             @if (! empty($scheduleToggleId)) data-schedule-toggle="#{{ $scheduleToggleId }}" @endif>
       <i class="fa fa-calendar" aria-hidden="true"></i> Pick on calendar
     </button>
-    <x-admin.info-tip>{{ $hint }}</x-admin.info-tip>
+    <x-admin.info-tip label="Pick on calendar">{{ $hint }}</x-admin.info-tip>
   </div>
 @endunless
 

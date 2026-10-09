@@ -2,7 +2,7 @@
 
 @section('heading')
   Project Calendar
-  <x-admin.info-tip>Job timelines and visit days from projects. <strong>Personal</strong> events (red) are only on this calendar — click to edit. Project events open the project.</x-admin.info-tip>
+  <x-admin.info-tip label="Project Calendar">Job timelines and visit days from projects. <strong>Personal</strong> events (red) are only on this calendar — click to edit. Project events open the project.</x-admin.info-tip>
 @endsection
 
 @push('head')

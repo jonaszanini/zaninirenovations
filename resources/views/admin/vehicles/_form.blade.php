@@ -77,14 +77,16 @@
 
 <div class="admin-form-group">
   <input type="hidden" name="is_active" value="0">
-  <label class="cp-visit-toggle cp-helper-active-toggle" for="vehicle-is-active">
-    <input type="checkbox"
-           name="is_active"
-           value="1"
-           id="vehicle-is-active"
-           @checked(old('is_active', $vehicle?->is_active ?? ! $isEdit))>
-    <span class="cp-visit-toggle__control" aria-hidden="true"></span>
-    <span class="cp-visit-toggle__label">Set as active vehicle</span>
-    <x-admin.info-tip>Only one vehicle can be active. It is used for project travel fuel estimates.</x-admin.info-tip>
-  </label>
+  <span class="admin-label-with-tip">
+    <label class="cp-visit-toggle cp-helper-active-toggle" for="vehicle-is-active">
+      <input type="checkbox"
+             name="is_active"
+             value="1"
+             id="vehicle-is-active"
+             @checked(old('is_active', $vehicle?->is_active ?? ! $isEdit))>
+      <span class="cp-visit-toggle__control" aria-hidden="true"></span>
+      <span class="cp-visit-toggle__label">Set as active vehicle</span>
+    </label>
+    <x-admin.info-tip label="Set as active vehicle">Only one vehicle can be active. It is used for project travel fuel estimates.</x-admin.info-tip>
+  </span>
 </div>

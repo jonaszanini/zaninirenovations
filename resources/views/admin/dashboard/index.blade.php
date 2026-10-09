@@ -76,7 +76,7 @@
       <div class="dash-card dash-card--stat" title="Projects not completed, cancelled, or rejected, with contract total where set.">
         <span class="dash-stat-label">
           Active projects
-          <x-admin.info-tip>Excludes completed, cancelled &amp; rejected</x-admin.info-tip>
+          <x-admin.info-tip label="Active projects">Excludes completed, cancelled &amp; rejected</x-admin.info-tip>
         </span>
         <span class="dash-stat-value">{{ $c['active_projects_count'] }}</span>
         <span class="dash-stat-sub">Contract total {{ ClientProject::formatMoney($c['active_projects_value']) }}</span>

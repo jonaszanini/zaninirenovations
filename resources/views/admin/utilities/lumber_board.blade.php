@@ -2,7 +2,7 @@
 
 @section('heading')
   Lumber / Board Material Calculator
-  <x-admin.info-tip>Plan how many boards to buy for a job. Add one or more board types (2×4, 2×6, decking, etc.), enter required pieces for each, and see cutting layouts with waste and cost estimates.</x-admin.info-tip>
+  <x-admin.info-tip label="Lumber / Board Material Calculator">Plan how many boards to buy for a job. Add one or more board types (2×4, 2×6, decking, etc.), enter required pieces for each, and see cutting layouts with waste and cost estimates.</x-admin.info-tip>
 @endsection
 
 @push('head')

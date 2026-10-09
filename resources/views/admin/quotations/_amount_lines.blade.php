@@ -240,11 +240,11 @@
         <h3 class="q-additional-costs-card__title">
           {{ $cardTitle }}
           @if($intro !== '')
-            <x-admin.info-tip>{!! $intro !!}</x-admin.info-tip>
+            <x-admin.info-tip :label="$cardTitle">{!! $intro !!}</x-admin.info-tip>
           @endif
         </h3>
       @elseif($intro !== '')
-        <x-admin.info-tip>{!! $intro !!}</x-admin.info-tip>
+        <x-admin.info-tip label="Additional costs">{!! $intro !!}</x-admin.info-tip>
       @endif
     </div>
   @endif

@@ -2,7 +2,7 @@
   <div class="admin-card">
     <h4 class="cp-form-help-spaced">
       Marble types
-      <x-admin.info-tip>Bagged decorative marble for shallow beds. Enter <strong>sq ft per bag</strong> at the <strong>reference depth</strong> (usually 2 in.). The calculator scales bag quantity when the quotation depth differs.</x-admin.info-tip>
+      <x-admin.info-tip label="Marble types">Bagged decorative marble for shallow beds. Enter <strong>sq ft per bag</strong> at the <strong>reference depth</strong> (usually 2 in.). The calculator scales bag quantity when the quotation depth differs.</x-admin.info-tip>
     </h4>
     <div class="admin-table-scroll">
       <div class="pq-db-stone-list" style="margin-top:12px;">

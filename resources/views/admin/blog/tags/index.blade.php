@@ -16,7 +16,7 @@
       <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
       <span class="admin-accordion__title">
         Bulk add tags
-        <x-admin.info-tip>One tag per line. Existing tags (matched by name, case-insensitive) and duplicate lines are skipped automatically.</x-admin.info-tip>
+        <x-admin.info-tip label="Bulk add tags">One tag per line. Existing tags (matched by name, case-insensitive) and duplicate lines are skipped automatically.</x-admin.info-tip>
       </span>
     </summary>
     <div class="admin-accordion__panel">

@@ -2,7 +2,7 @@
 
 @section('heading')
   {{ $editing ? 'Edit offcut' : 'Offcut inventory' }}
-  <x-admin.info-tip>Leftover lumber and sheet goods from cut lists. Millwork leftovers show here as sheets and in the lumber calculator as usable lengths.</x-admin.info-tip>
+  <x-admin.info-tip label="{{ $editing ? 'Edit offcut' : 'Offcut inventory' }}">Leftover lumber and sheet goods from cut lists. Millwork leftovers show here as sheets and in the lumber calculator as usable lengths.</x-admin.info-tip>
 @endsection
 
 @push('head')
