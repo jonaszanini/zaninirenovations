@@ -19,6 +19,12 @@
   if (! is_array($initialSides) || $initialSides === []) {
     $initialSides = [$blankRun];
   }
+  $initialSides = \App\Support\FenceSideFlags::normaliseSides($initialSides);
+  $initialReprice = \App\Support\FenceSideFlags::isOn(old('reprice', 0));
+  $initialTickedGates = count(array_filter(
+      $initialSides,
+      static fn (array $side): bool => ! empty($side['gate_goes_here'])
+  ));
 
   $initialHeight = (int) old('fence_height_ft', $isEdit ? (int) round((float) $quotation->fence_height_ft) : 6);
   $initialPostSize = old(
@@ -263,7 +269,8 @@
       pointer-events: none;
     }
     .fq-side-gate-size { margin-top: 8px; }
-    .fq-side-gate-size.is-hidden { display: none; }
+    .fq-side-gate-size.is-hidden,
+    #fq-extra-gate-wrap.is-hidden { display: none; }
     .fq-breakdown-card {
       position: sticky;
       top: 88px;
@@ -519,8 +526,7 @@
           <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
         @endif
 
-        <input type="hidden" name="reprice" id="fq-reprice" value="0">
-        <input type="hidden" name="extra_gate_preset" id="fq-extra-gate-preset" value="{{ $initialExtraGatePreset }}">
+        <input type="hidden" name="reprice" id="fq-reprice" value="{{ $initialReprice ? '1' : '0' }}">
 
         {{-- 1. Client ------------------------------------------------ --}}
         <div class="admin-form-group">
@@ -596,7 +602,19 @@
             <input id="fq-gates" type="number" min="0" max="16" step="1"
                    name="gate_count" class="admin-input"
                    value="{{ $initialGates }}">
-            <p class="admin-form-help">Tick “Gate goes here” on a run. Extra gates not on a run use a 4 ft single unless you set a size there.</p>
+            <p class="admin-form-help">Tick “Gate goes here” on a run. Extra gates (count higher than ticked runs) use Extra gate size.</p>
+          </div>
+
+          <div class="admin-form-group{{ $initialGates > $initialTickedGates ? '' : ' is-hidden' }}" id="fq-extra-gate-wrap">
+            <label for="fq-extra-gate-preset">Extra gate size</label>
+            <select name="extra_gate_preset" id="fq-extra-gate-preset" class="admin-input">
+              @foreach ($gatePresets as $preset)
+                <option value="{{ $preset['key'] }}" @selected($initialExtraGatePreset === $preset['key'])>
+                  {{ $preset['label'] }}
+                </option>
+              @endforeach
+            </select>
+            <p class="admin-form-help">Size for gates not ticked on a run.</p>
           </div>
         </div>
 
@@ -687,11 +705,12 @@
       <p class="admin-form-help cp-breakdown-intro">
         Preview updates as you type. <span class="fq-badge" id="fq-status-badge">Calculating…</span>
       </p>
-      @if ($isEdit && ! empty($priceDelta['changed']))
+      @if ($isEdit && ! empty($priceDelta['changed']) && ! $initialReprice)
         <div class="fq-price-banner" id="fq-price-banner">
-          Catalogue prices have changed since this quote was saved
+          Catalogue unit prices have changed since this quote was saved
           (materials {{ ($priceDelta['delta'] ?? 0) >= 0 ? '+' : '' }}{{ \App\Models\ClientProject::formatMoney((float) ($priceDelta['delta'] ?? 0)) }}).
-          Save keeps last-save prices unless you re-price.
+          Save keeps last-save unit prices; quantities still follow the current runs.
+          Re-price updates unit prices from the catalogue.
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-reprice-btn">
             Re-price from catalogue
           </button>
@@ -784,7 +803,7 @@
   var initialCalc = @json($initialCalc);
   var gatePresets = @json($gatePresets);
   var frozenUnitPrices = @json($frozenUnitPrices);
-  var useFrozenPrices = @json($isEdit && !empty($frozenUnitPrices));
+  var useFrozenPrices = @json($isEdit && !empty($frozenUnitPrices) && !$initialReprice);
   var generateWorkDescriptionBtn = document.getElementById('fq-generate-work-description');
   var workDescriptionInput = document.getElementById('fq-work-description');
 
@@ -840,13 +859,19 @@
     }).join('');
   }
 
+  function flagOn(value) {
+    return value === true || value === 1 || value === '1';
+  }
+
   function renderSides(sides) {
     sidesEl.innerHTML = '';
     sides.forEach(function (side, i) {
-      var leftChecked = !!(side && side.already_have_post_left);
-      var rightChecked = !!(side && side.already_have_post_right);
-      var gateChecked = !!(side && side.gate_goes_here);
-      var connectedChecked = side && side.connected_to_previous === false ? false : true;
+      var leftChecked = !!(side && flagOn(side.already_have_post_left));
+      var rightChecked = !!(side && flagOn(side.already_have_post_right));
+      var gateChecked = !!(side && flagOn(side.gate_goes_here));
+      var connectedChecked = !side || side.connected_to_previous === undefined || side.connected_to_previous === null
+        ? true
+        : flagOn(side.connected_to_previous);
       var preset = (side && side.gate_preset) ? side.gate_preset : '4_single';
       var card = document.createElement('div');
       card.className = 'fq-side-card';
@@ -984,17 +1009,48 @@
     updateGateCheckboxState();
   }
 
+  function gateWidthForPreset(key) {
+    var found = (gatePresets || []).find(function (preset) { return preset.key === key; });
+    return found ? Number(found.width_ft) : 4;
+  }
+
+  function extraGateLabel() {
+    if (!extraGatePresetInput || extraGatePresetInput.selectedIndex < 0) return '4 ft single';
+    var opt = extraGatePresetInput.options[extraGatePresetInput.selectedIndex];
+    return opt ? opt.text : '4 ft single';
+  }
+
+  function toggleExtraGateSize() {
+    var wrap = document.getElementById('fq-extra-gate-wrap');
+    if (!wrap || !gatesInput) return;
+    var ticked = sidesEl.querySelectorAll('.fq-side-gate-here:checked').length;
+    var count = parseInt(gatesInput.value, 10) || 0;
+    wrap.classList.toggle('is-hidden', count <= ticked);
+  }
+
   function updateGateCountWarning() {
     if (!gateWarnEl || !gatesInput) return;
+    var messages = [];
     var ticked = sidesEl.querySelectorAll('.fq-side-gate-here:checked').length;
     var count = parseInt(gatesInput.value, 10) || 0;
     if (count > ticked) {
-      gateWarnEl.textContent = 'Gates (' + count + ') is higher than ticked runs (' + ticked + '). Extra gates are treated as 4 ft singles not on a run.';
+      messages.push('Gates (' + count + ') is higher than ticked runs (' + ticked + '). Extra gates use Extra gate size (' + extraGateLabel() + ').');
+    }
+    collectSides().forEach(function (s, i) {
+      if (!s.gate_goes_here || !s.length_ft) return;
+      var width = gateWidthForPreset(s.gate_preset);
+      if (width > s.length_ft) {
+        messages.push('Run ' + (i + 1) + ' is ' + formatFt(s.length_ft) + ' ft, shorter than the ' + width + ' ft gate. Opening is clamped to the run.');
+      }
+    });
+    if (messages.length) {
+      gateWarnEl.innerHTML = messages.map(escapeHtml).join('<br>');
       gateWarnEl.classList.remove('is-hidden');
     } else {
       gateWarnEl.textContent = '';
       gateWarnEl.classList.add('is-hidden');
     }
+    toggleExtraGateSize();
   }
 
   function updateAddRemoveState() {
@@ -1392,6 +1448,10 @@
       }
       if (e.target.matches('.fq-side-length')) {
         updateTotalLf();
+        updateGateCountWarning();
+      }
+      if (e.target.matches('#fq-extra-gate-preset, .fq-side-gate-preset')) {
+        updateGateCountWarning();
       }
       if (e.target.matches('#fq-labour-rate-6, #fq-labour-rate-8, #fq-include-labour-hst, #fq-form input, #fq-form select')) {
         schedulePreview();

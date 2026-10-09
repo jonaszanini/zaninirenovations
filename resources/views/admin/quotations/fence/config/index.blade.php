@@ -296,14 +296,14 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-rails-6">Rails per section — 6' fence</label>
+        <label for="fq-rails-6">Rails per panel — 6' fence</label>
         <input id="fq-rails-6" type="number" min="1" step="1" name="rails_per_section_6ft"
                class="admin-input"
                value="{{ old('rails_per_section_6ft', $settings->rails_per_section_6ft) }}">
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-rails-8">Rails per section — 8' fence</label>
+        <label for="fq-rails-8">Rails per panel — 8' fence</label>
         <input id="fq-rails-8" type="number" min="1" step="1" name="rails_per_section_8ft"
                class="admin-input"
                value="{{ old('rails_per_section_8ft', $settings->rails_per_section_8ft) }}">

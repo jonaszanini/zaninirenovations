@@ -56,11 +56,13 @@ final class FenceWorkDescriptionGenerator
      */
     public static function generateFromTemplate(array $calc, string $template): string
     {
-        return str_replace(
+        $text = str_replace(
             array_keys(self::replacements($calc)),
             array_values(self::replacements($calc)),
             $template
         );
+
+        return preg_replace('/\b1 runs\b/', '1 run', $text) ?? $text;
     }
 
     /**
@@ -92,6 +94,13 @@ final class FenceWorkDescriptionGenerator
             self::PLACEHOLDER_GATES => self::gatesPhrase($calc),
             self::PLACEHOLDER_POSTS => (string) max(0, $posts),
         ];
+    }
+
+    public static function runCountPhrase(int $runs): string
+    {
+        $n = max(0, $runs);
+
+        return $n === 1 ? '1 run' : $n.' runs';
     }
 
     /**

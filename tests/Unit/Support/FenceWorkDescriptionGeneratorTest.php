@@ -43,4 +43,26 @@ class FenceWorkDescriptionGeneratorTest extends TestCase
             'geometry' => ['sides_breakdown' => [['length_ft' => 16]]],
         ]));
     }
+
+    public function test_one_run_uses_singular(): void
+    {
+        $text = FenceWorkDescriptionGenerator::generateFromTemplate([
+            'inputs' => [
+                'fence_height_ft' => 6,
+                'board_style' => 'standard',
+                'post_size' => '4x4',
+                'gate_count' => 0,
+            ],
+            'geometry' => [
+                'total_linear_ft' => 16,
+                'posts_before_waste' => 3,
+                'sides_breakdown' => [['length_ft' => 16]],
+            ],
+        ], FenceWorkDescriptionGenerator::defaultTemplate());
+
+        $this->assertStringContainsString('1 run', $text);
+        $this->assertStringNotContainsString('1 runs', $text);
+        $this->assertSame('1 run', FenceWorkDescriptionGenerator::runCountPhrase(1));
+        $this->assertSame('3 runs', FenceWorkDescriptionGenerator::runCountPhrase(3));
+    }
 }

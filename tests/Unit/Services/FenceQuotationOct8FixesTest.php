@@ -52,6 +52,72 @@ class FenceQuotationOct8FixesTest extends TestCase
         $this->assertSame($placedBoards, $unplacedBoards);
     }
 
+    public function test_one_shared_existing_corner_tick_still_dedupes(): void
+    {
+        $rightOnly = $this->calculator()->calculate([
+            'sides' => [
+                ['length_ft' => 20, 'already_have_post_right' => true],
+                ['length_ft' => 20],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+        $leftOnly = $this->calculator()->calculate([
+            'sides' => [
+                ['length_ft' => 20],
+                ['length_ft' => 20, 'already_have_post_left' => true],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $this->assertSame(3, $rightOnly['geometry']['sides_breakdown'][0]['posts']);
+        $this->assertSame(4, $rightOnly['geometry']['sides_breakdown'][1]['posts']);
+        $this->assertSame(6, $rightOnly['geometry']['structural_posts']);
+        $this->assertSame(6, $leftOnly['geometry']['structural_posts']);
+    }
+
+    public function test_posted_string_zero_flags_are_off(): void
+    {
+        $result = $this->calculator()->calculate([
+            'sides' => [[
+                'length_ft' => 20,
+                'already_have_post_left' => '0',
+                'already_have_post_right' => '0',
+                'gate_goes_here' => '0',
+                'connected_to_previous' => '0',
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $side = $result['geometry']['sides_breakdown'][0];
+        $this->assertFalse($side['already_have_post_left']);
+        $this->assertFalse($side['already_have_post_right']);
+        $this->assertFalse($side['gate_goes_here']);
+        $this->assertSame(4, $side['posts']);
+    }
+
+    public function test_gate_wider_than_run_clamps_opening(): void
+    {
+        $result = $this->calculator()->calculate([
+            'sides' => [[
+                'length_ft' => 8,
+                'gate_goes_here' => true,
+                'gate_preset' => '10_double',
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 1,
+        ]);
+
+        $this->assertSame(8.0, $result['geometry']['sides_breakdown'][0]['gate_opening_ft']);
+        $this->assertSame(8.0, $result['geometry']['gates'][0]['width_ft']);
+    }
+
     public function test_disconnected_runs_do_not_share_a_corner_post(): void
     {
         $connected = $this->calculator()->calculate([

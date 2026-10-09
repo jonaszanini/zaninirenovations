@@ -7,6 +7,7 @@ use App\Models\FenceMaterial;
 use App\Models\FenceQuotation;
 use App\Support\CatalogMaterialDelivery;
 use App\Support\FenceGateSpec;
+use App\Support\FenceSideFlags;
 
 /**
  * FenceQuotationCalculator — the structural math engine behind the
@@ -154,12 +155,14 @@ class FenceQuotationCalculator
             $gateSpec = FenceGateSpec::fromSide($side);
             $connected = $index === 0
                 ? false
-                : filter_var($side['connected_to_previous'] ?? true, FILTER_VALIDATE_BOOLEAN);
+                : (array_key_exists('connected_to_previous', $side)
+                    ? FenceSideFlags::isOn($side['connected_to_previous'])
+                    : true);
             $sides[] = [
                 'length_ft' => round($len, 2),
-                'already_have_post_left' => filter_var($side['already_have_post_left'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                'already_have_post_right' => filter_var($side['already_have_post_right'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                'gate_goes_here' => filter_var($side['gate_goes_here'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'already_have_post_left' => FenceSideFlags::isOn($side['already_have_post_left'] ?? false),
+                'already_have_post_right' => FenceSideFlags::isOn($side['already_have_post_right'] ?? false),
+                'gate_goes_here' => FenceSideFlags::isOn($side['gate_goes_here'] ?? false),
                 'connected_to_previous' => $connected,
                 'gate_preset' => $gateSpec->key,
                 'gate_width_ft' => $gateSpec->widthFt,
@@ -219,13 +222,16 @@ class FenceQuotationCalculator
         $gatesAssigned = 0;
         $postWidthIn = $this->postWidthInFor($in);
 
-        $gateSpecs = [];
+        $gateRows = [];
 
         foreach ($in['sides'] as $idx => $side) {
             $sideLengthFt = (float) $side['length_ft'];
             $gateHere = (bool) ($side['gate_goes_here'] ?? false) && $gatesRemaining > 0;
             $gateSpec = $gateHere ? FenceGateSpec::fromSide($side) : null;
             $openingFt = $gateSpec?->widthFt ?? 0.0;
+            if ($gateHere && $openingFt > $sideLengthFt) {
+                $openingFt = $sideLengthFt;
+            }
             $fenceLengthFt = $gateHere
                 ? max(0.0, $sideLengthFt - $openingFt)
                 : $sideLengthFt;
@@ -262,7 +268,10 @@ class FenceQuotationCalculator
                 }
                 $gatesRemaining--;
                 $gatesAssigned++;
-                $gateSpecs[] = $gateSpec;
+                $gateRows[] = [
+                    'spec' => $gateSpec,
+                    'width_ft' => $openingFt,
+                ];
             }
 
             $picketLinearFt += max(0.0, $sideLengthFt - ($gateHere ? $openingFt : 0.0));
@@ -298,7 +307,9 @@ class FenceQuotationCalculator
             }
             $prevRightExisting = (bool) ($in['sides'][$i - 1]['already_have_post_right'] ?? false);
             $currLeftExisting = (bool) ($in['sides'][$i]['already_have_post_left'] ?? false);
-            if (! $prevRightExisting && ! $currLeftExisting) {
+            // Connected runs always share the corner post. Deduct unless
+            // both sides already excluded that same existing corner.
+            if (! ($prevRightExisting && $currLeftExisting)) {
                 $structuralPosts -= 1;
             }
         }
@@ -309,7 +320,10 @@ class FenceQuotationCalculator
         $gatePosts = 0;
         for ($i = 0; $i < $extraGateCount; $i++) {
             $gatePosts += $extraSpec->standalonePostCount();
-            $gateSpecs[] = $extraSpec;
+            $gateRows[] = [
+                'spec' => $extraSpec,
+                'width_ft' => $extraSpec->widthFt,
+            ];
         }
         $postsBeforeWaste = $structuralPosts + $gatePosts;
 
@@ -324,13 +338,18 @@ class FenceQuotationCalculator
             'gates_on_sides' => $gatesAssigned,
             'posts_before_waste' => $postsBeforeWaste,
             'sides_breakdown' => $sidesBreakdown,
-            'gates' => array_map(static fn (FenceGateSpec $spec): array => [
-                'preset' => $spec->key,
-                'width_ft' => $spec->widthFt,
-                'type' => $spec->type,
-                'label' => $spec->label,
-                'hardware_sets' => $spec->hardwareSets(),
-            ], $gateSpecs),
+            'gates' => array_map(static function (array $row): array {
+                /** @var FenceGateSpec $spec */
+                $spec = $row['spec'];
+
+                return [
+                    'preset' => $spec->key,
+                    'width_ft' => (float) $row['width_ft'],
+                    'type' => $spec->type,
+                    'label' => $spec->label,
+                    'hardware_sets' => $spec->hardwareSets(),
+                ];
+            }, $gateRows),
         ];
     }
 
