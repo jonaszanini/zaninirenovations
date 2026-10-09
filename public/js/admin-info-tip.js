@@ -1,24 +1,25 @@
 /**
  * Admin info-tip: click/tap ⓘ toggles a popover. Event delegation so
  * dynamically added rows work. No hover-only behaviour.
+ *
+ * Markup: wrap > button.admin-info-tip + sibling .admin-info-tip__bubble
+ * (bubble is never nested inside the button).
  */
 (function (global) {
   var OPEN = 'is-open';
   var PAD = 12;
+  var MAX_W = 273;
 
   function rootOf(el) {
-    if (!el || !el.closest) return null;
-    return el.closest('.admin-info-tip-wrap') || el.closest('.admin-info-tip');
+    return el && el.closest ? el.closest('.admin-info-tip-wrap') : null;
   }
 
   function buttonOf(root) {
-    if (!root) return null;
-    if (root.classList.contains('admin-info-tip')) return root;
-    return root.querySelector('.admin-info-tip');
+    return root ? root.querySelector(':scope > .admin-info-tip') : null;
   }
 
   function bubbleOf(root) {
-    return root ? root.querySelector('.admin-info-tip__bubble') : null;
+    return root ? root.querySelector(':scope > .admin-info-tip__bubble') : null;
   }
 
   function resetBubble(bubble) {
@@ -34,7 +35,7 @@
 
   function positionBubble(btn, bubble) {
     if (!btn || !bubble) return;
-    var maxW = Math.min(320, Math.max(160, window.innerWidth - PAD * 2));
+    var maxW = Math.min(MAX_W, Math.max(120, window.innerWidth - PAD * 2));
     bubble.style.position = 'fixed';
     bubble.style.maxWidth = maxW + 'px';
     bubble.style.width = 'max-content';
@@ -79,9 +80,8 @@
   }
 
   function closeTips(exceptRoot) {
-    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN + ', .admin-info-tip[aria-expanded="true"]').forEach(function (node) {
-      var root = rootOf(node);
-      if (root && root !== exceptRoot) {
+    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN).forEach(function (root) {
+      if (root !== exceptRoot) {
         closeTip(root);
       }
     });
@@ -116,16 +116,46 @@
       .replace(/'/g, '&#39;');
   }
 
-  function html(text) {
-    var id = 'admin-info-tip-' + Math.random().toString(36).slice(2, 10);
+  /**
+   * Markup for JS-rendered rows (fence run cards, etc.).
+   * text is escaped. label becomes aria-label="About {label}".
+   */
+  function html(text, label) {
+    var id = 'admin-info-tip-' + Math.random().toString(36).slice(2, 12);
+    var aria = label ? ('About ' + String(label)) : 'More info';
     return (
       '<span class="admin-info-tip-wrap">' +
-        '<button type="button" class="admin-info-tip" aria-label="More info" aria-expanded="false" aria-controls="' + id + '">' +
+        '<button type="button" class="admin-info-tip" aria-label="' + escapeHtml(aria) + '" aria-expanded="false" aria-controls="' + id + '" aria-describedby="' + id + '">' +
           '<i class="fa fa-info-circle" aria-hidden="true"></i>' +
         '</button>' +
         '<span id="' + id + '" class="admin-info-tip__bubble" role="tooltip">' + escapeHtml(text) + '</span>' +
       '</span>'
     );
+  }
+
+  /**
+   * Move tips that were nested in <label for> / wrapping labels out so the
+   * ⓘ is not part of the input's accessible name.
+   */
+  function hoistFromLabels(scope) {
+    var root = scope && scope.querySelectorAll ? scope : document;
+    root.querySelectorAll('label .admin-info-tip-wrap').forEach(function (wrap) {
+      var label = wrap.closest('label');
+      if (!label || !label.parentNode) return;
+      var control = label.control || (label.htmlFor ? document.getElementById(label.htmlFor) : null);
+      if (!control && !label.querySelector('input, select, textarea')) {
+        return;
+      }
+      if (label.parentNode.classList.contains('admin-label-with-tip')) {
+        label.parentNode.appendChild(wrap);
+        return;
+      }
+      var row = document.createElement('span');
+      row.className = 'admin-label-with-tip';
+      label.parentNode.insertBefore(row, label);
+      row.appendChild(label);
+      row.appendChild(wrap);
+    });
   }
 
   document.addEventListener('mousedown', function (e) {
@@ -135,14 +165,20 @@
   }, true);
 
   document.addEventListener('click', function (e) {
-    var btn = e.target.closest ? e.target.closest('.admin-info-tip') : null;
-    if (!btn) {
+    var root = rootOf(e.target);
+    if (!root) {
       closeTips(null);
+      return;
+    }
+    if (e.target.closest('.admin-info-tip__bubble')) {
+      return;
+    }
+    if (!e.target.closest('.admin-info-tip')) {
       return;
     }
     e.preventDefault();
     e.stopPropagation();
-    toggleTip(rootOf(btn));
+    toggleTip(root);
   }, true);
 
   document.addEventListener('keydown', function (e) {
@@ -152,14 +188,20 @@
   });
 
   window.addEventListener('resize', function () {
-    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN + ', .admin-info-tip[aria-expanded="true"]').forEach(function (node) {
-      var root = rootOf(node);
+    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN).forEach(function (root) {
       positionBubble(buttonOf(root), bubbleOf(root));
     });
   });
 
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { hoistFromLabels(document); });
+  } else {
+    hoistFromLabels(document);
+  }
+
   global.AdminInfoTip = {
     html: html,
+    hoist: hoistFromLabels,
     closeAll: function () { closeTips(null); },
   };
 })(window);

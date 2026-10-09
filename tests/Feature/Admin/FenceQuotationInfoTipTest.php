@@ -24,14 +24,19 @@ class FenceQuotationInfoTipTest extends IntegrationTestCase
         $response = $this->get(route('admin.quotations.fence.edit', $quote));
 
         $response->assertOk();
-        $response->assertSee('aria-label="More info"', false);
+        $response->assertSee('aria-label="About Board style"', false);
+        $response->assertSee('aria-label="About Gates"', false);
+        $response->assertSee('aria-label="About Labour rate"', false);
         $response->assertSee('aria-expanded="false"', false);
         $response->assertSee('aria-controls="', false);
+        $response->assertSee('aria-describedby="', false);
         $response->assertSee('role="tooltip"', false);
         $response->assertSee('Clear span between posts is at most the max spacing', false);
         $response->assertSee('Tick “Gate goes here” on a run', false);
         $response->assertSee('First gate is included in the per-foot rate', false);
+        $response->assertSee('Preview updates as you type', false);
         $response->assertDontSee('<p class="admin-form-help">Clear span between posts', false);
         $response->assertDontSee('<p class="admin-form-help">Tick “Gate goes here”', false);
+        $response->assertDontSee('<p class="admin-form-help">Length in feet', false);
     }
 }

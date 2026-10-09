@@ -1624,12 +1624,12 @@ a.admin-client-link:focus-visible {
 .admin-info-tip__bubble {
   display: none;
   position: absolute;
-  z-index: 80;
+  z-index: 150;
   left: 0;
   top: calc(100% - 4px);
   box-sizing: border-box;
   width: max-content;
-  max-width: calc(100vw - 24px);
+  max-width: min(273px, calc(100vw - 24px));
   min-width: 10rem;
   padding: 0.7rem 0.85rem;
   border: 1px solid var(--admin-border);
@@ -1647,9 +1647,22 @@ a.admin-client-link:focus-visible {
   overflow-wrap: anywhere;
 }
 .admin-info-tip-wrap.is-open > .admin-info-tip__bubble,
-.admin-info-tip[aria-expanded="true"] + .admin-info-tip__bubble,
-.admin-info-tip[aria-expanded="true"] .admin-info-tip__bubble {
+.admin-info-tip[aria-expanded="true"] + .admin-info-tip__bubble {
   display: block;
+}
+.admin-label-with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-wrap: wrap;
+}
+.admin-form-group > .admin-label-with-tip {
+  display: flex;
+  margin-bottom: 0.4rem;
+}
+.admin-label-with-tip > label,
+.admin-label-with-tip > .admin-form-group-label {
+  margin-bottom: 0;
 }
 .admin-form-group > label:has(.admin-info-tip),
 .admin-form-group > label:has(.admin-info-tip-wrap),
@@ -1673,7 +1686,8 @@ legend:has(.admin-info-tip-wrap),
   align-items: center;
   gap: 0.15rem;
 }
-.admin-checkbox .admin-info-tip {
+.admin-checkbox .admin-info-tip,
+.admin-label-with-tip > .admin-info-tip-wrap .admin-info-tip {
   margin: -10px -6px;
 }
 

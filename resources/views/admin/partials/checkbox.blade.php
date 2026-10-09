@@ -23,6 +23,7 @@
   $attrs = $attrs ?? [];
   $clientFilled = $clientFilled ?? false;
 @endphp
+@if (! empty($info))<span class="admin-label-with-tip">@endif
 <label class="{{ $class }}" @if (! empty($id)) for="{{ $id }}" @endif>
   @if ($hiddenFallback)
     <input type="hidden" name="{{ $name }}" value="0">
@@ -35,9 +36,6 @@
          @checked($checked)
          @foreach ($attrs as $attrKey => $attrVal) {{ $attrKey }}="{{ $attrVal }}" @endforeach>
   <span class="admin-checkbox__mark" aria-hidden="true"></span>
-  @if (! empty($info))
-    @include('admin.partials.info_tip', ['text' => $info])
-  @endif
   @if (! empty($clientFilled))
     @include('admin.quotations.basement._client_filled', ['force' => true])
   @endif
@@ -45,3 +43,7 @@
     <span class="admin-checkbox__text">{!! $label !!}</span>
   @endif
 </label>
+@if (! empty($info))
+  @include('admin.partials.info_tip', ['text' => $info, 'label' => trim(strip_tags($label ?? 'this field'))])
+</span>
+@endif

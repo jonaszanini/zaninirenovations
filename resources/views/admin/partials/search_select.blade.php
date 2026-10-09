@@ -83,12 +83,16 @@
      @endforeach
   >
   @unless ($hideLabel)
-    <label for="{{ $id }}-input" class="{{ ! empty($labelHint) ? 'cp-label-with-hint' : '' }}">
-      {{ $label }}
+    <span class="admin-label-with-tip{{ ! empty($labelHint) ? ' cp-label-with-hint' : '' }}">
+      <label for="{{ $id }}-input">{{ $label }}</label>
       @if (! empty($labelHint))
-        @include('admin.client_projects._cp_field_hint', is_array($labelHint) ? $labelHint : ['text' => $labelHint])
+        @php
+          $ssHint = is_array($labelHint) ? $labelHint : ['text' => $labelHint];
+          $ssHint['label'] = $ssHint['label'] ?? $label;
+        @endphp
+        @include('admin.client_projects._cp_field_hint', $ssHint)
       @endif
-    </label>
+    </span>
   @endunless
 
   <input type="hidden"

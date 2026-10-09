@@ -64,18 +64,20 @@
   <h4 style="margin:0 0 8px;">
     {{ $title }}
     @if (! empty($helpText))
-      <x-admin.info-tip>{!! $helpText !!}</x-admin.info-tip>
+      <x-admin.info-tip :label="$title">{!! $helpText !!}</x-admin.info-tip>
     @endif
   </h4>
 
   @if (! empty($sharedLineDescription))
     <div class="admin-form-group fq-link-shared-line-desc">
-      <label for="{{ $sharedLineDescription['id'] }}">
-        {{ $sharedLineDescription['label'] ?? 'Line description (optional)' }}
+      <span class="admin-label-with-tip">
+        <label for="{{ $sharedLineDescription['id'] }}">
+          {{ $sharedLineDescription['label'] ?? 'Line description (optional)' }}
+        </label>
         @if (! empty($sharedLineDescription['help']))
-          <x-admin.info-tip>{{ $sharedLineDescription['help'] }}</x-admin.info-tip>
+          <x-admin.info-tip :label="$sharedLineDescription['label'] ?? 'Line description'">{{ $sharedLineDescription['help'] }}</x-admin.info-tip>
         @endif
-      </label>
+      </span>
       <input type="text"
              id="{{ $sharedLineDescription['id'] }}"
              name="link_line_description"

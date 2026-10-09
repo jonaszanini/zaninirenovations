@@ -21,13 +21,15 @@
   $invalid = $errors->has($name);
 @endphp
 <div class="admin-form-group">
-  <label for="{{ $id }}">
-    {{ $label }}
-    @if ($required)<span class="cp-required">*</span>@endif
+  <span class="admin-label-with-tip">
+    <label for="{{ $id }}">
+      {{ $label }}
+      @if ($required)<span class="cp-required">*</span>@endif
+    </label>
     @if (! empty($help))
-      @include('admin.partials.info_tip', ['text' => $help])
+      @include('admin.partials.info_tip', ['text' => $help, 'label' => $label])
     @endif
-  </label>
+  </span>
 
   @if ($type === 'textarea')
     <textarea id="{{ $id }}" name="{{ $name }}"
