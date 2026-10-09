@@ -63,74 +63,7 @@ class SharedPriceLibraryController extends Controller
 
         $this->assertUniqueLabelsInGroup($data);
 
-        try {
-            DB::transaction(function () use ($data) {
-                $crew = SharedCrewRate::current();
-                $crew->fill([
-                    'owner_hourly_rate' => round((float) $data['owner_hourly_rate'], 2),
-                    'helper_hourly_rate' => round((float) $data['helper_hourly_rate'], 2),
-                    'hours_per_day' => round((float) $data['hours_per_day'], 2),
-                ]);
-                $crew->save();
-
-                foreach ($data['works'] ?? [] as $row) {
-                    if (! is_array($row)) {
-                        continue;
-                    }
-                    $work = SharedWork::query()->find((int) $row['id']);
-                    if (! $work) {
-                        continue;
-                    }
-                    $label = SharedWork::displayLabel((string) ($row['label'] ?? ''));
-                    if ($label !== '') {
-                        $work->label = $label;
-                    }
-                    $catalogId = (int) ($row['catalog_material_id'] ?? 0);
-                    $owner = (float) $crew->owner_hourly_rate;
-                    $ratePosted = array_key_exists('rate', $row) && $row['rate'] !== '' && $row['rate'] !== null;
-                    $flat = isset($row['flat_rate']) && $row['flat_rate'] !== '' && $row['flat_rate'] !== null
-                        ? round((float) $row['flat_rate'], 4)
-                        : null;
-
-                    if ($work->isPricedPerArea()) {
-                        $work->labor_kind = SharedWork::KIND_FLAT;
-                        $work->flat_rate = $flat;
-                        if ($ratePosted) {
-                            $work->rate = round((float) $row['rate'], 4);
-                        } elseif ($flat !== null && $flat > 0 && $owner > 0) {
-                            $work->rate = round($owner / $flat, 4);
-                        }
-                    } else {
-                        if ($ratePosted) {
-                            $work->rate = round((float) $row['rate'], 4);
-                        }
-                        $work->flat_rate = $flat !== null ? $flat : $work->flat_rate;
-                    }
-                    $work->catalog_material_id = $catalogId > 0 ? $catalogId : null;
-                    $name = trim((string) ($row['material_name'] ?? ''));
-                    if ($name !== '') {
-                        $work->material_name = $name;
-                    }
-                    $unit = trim((string) ($row['material_unit'] ?? ''));
-                    if ($unit !== '') {
-                        $work->material_unit = $unit;
-                    }
-                    if (isset($row['material_unit_price']) && is_numeric($row['material_unit_price'])) {
-                        $work->material_unit_price = round((float) $row['material_unit_price'], 4);
-                    }
-                    $work->save();
-                }
-
-                $this->createNewWorks($data);
-            });
-        } catch (QueryException $e) {
-            if ($this->isLabelUniqueFailure($e)) {
-                throw ValidationException::withMessages([
-                    'new_works' => 'That name is already used in this group.',
-                ]);
-            }
-            throw $e;
-        }
+        $this->saveLibraryWithKeyRetry($data);
 
         SharedWorkCatalog::forgetCache();
 
@@ -155,6 +88,7 @@ class SharedPriceLibraryController extends Controller
             'helper_hourly_rate.max' => $priceMax,
             'owner_hourly_rate.min' => $priceMin,
             'helper_hourly_rate.min' => $priceMin,
+            'hours_per_day.min' => 'Hours/day must be at least 0.5.',
             'works.*.rate.max' => $priceMax,
             'works.*.flat_rate.max' => $priceMax,
             'works.*.material_unit_price.max' => $priceMax,
@@ -331,6 +265,108 @@ class SharedPriceLibraryController extends Controller
     }
 
     /**
+     * Persist crew + works. A duplicate item key is retried in a fresh
+     * transaction (new snapshot) up to 5 times so parallel saves do not
+     * exhaust allocateUniqueKey inside REPEATABLE READ.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function saveLibraryWithKeyRetry(array $data): void
+    {
+        $attempts = 0;
+        while (true) {
+            try {
+                DB::transaction(function () use ($data) {
+                    $this->persistLibrary($data);
+                });
+
+                return;
+            } catch (QueryException $e) {
+                if ($this->isLabelUniqueFailure($e)) {
+                    throw ValidationException::withMessages([
+                        'new_works' => 'That name is already used in this group.',
+                    ]);
+                }
+                if ($this->isKeyUniqueFailure($e) && $attempts < 4) {
+                    $attempts++;
+
+                    continue;
+                }
+                if ($this->isKeyUniqueFailure($e)) {
+                    throw ValidationException::withMessages([
+                        'new_works' => 'Could not allocate a unique item key. Try a different name.',
+                    ]);
+                }
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function persistLibrary(array $data): void
+    {
+        $crew = SharedCrewRate::current();
+        $crew->fill([
+            'owner_hourly_rate' => round((float) $data['owner_hourly_rate'], 2),
+            'helper_hourly_rate' => round((float) $data['helper_hourly_rate'], 2),
+            'hours_per_day' => round((float) $data['hours_per_day'], 2),
+        ]);
+        $crew->save();
+
+        foreach ($data['works'] ?? [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $work = SharedWork::query()->find((int) $row['id']);
+            if (! $work) {
+                continue;
+            }
+            $label = SharedWork::displayLabel((string) ($row['label'] ?? ''));
+            if ($label !== '') {
+                $work->label = $label;
+            }
+            $catalogId = (int) ($row['catalog_material_id'] ?? 0);
+            $owner = (float) $crew->owner_hourly_rate;
+            $ratePosted = array_key_exists('rate', $row) && $row['rate'] !== '' && $row['rate'] !== null;
+            $flat = isset($row['flat_rate']) && $row['flat_rate'] !== '' && $row['flat_rate'] !== null
+                ? round((float) $row['flat_rate'], 4)
+                : null;
+
+            if ($work->isPricedPerArea()) {
+                $work->labor_kind = SharedWork::KIND_FLAT;
+                $work->flat_rate = $flat;
+                if ($ratePosted) {
+                    $work->rate = round((float) $row['rate'], 4);
+                } elseif ($flat !== null && $flat > 0 && $owner > 0) {
+                    $work->rate = round($owner / $flat, 4);
+                }
+            } else {
+                if ($ratePosted) {
+                    $work->rate = round((float) $row['rate'], 4);
+                }
+                $work->flat_rate = $flat !== null ? $flat : $work->flat_rate;
+            }
+            $work->catalog_material_id = $catalogId > 0 ? $catalogId : null;
+            $name = trim((string) ($row['material_name'] ?? ''));
+            if ($name !== '') {
+                $work->material_name = $name;
+            }
+            $unit = trim((string) ($row['material_unit'] ?? ''));
+            if ($unit !== '') {
+                $work->material_unit = $unit;
+            }
+            if (isset($row['material_unit_price']) && is_numeric($row['material_unit_price'])) {
+                $work->material_unit_price = round((float) $row['material_unit_price'], 4);
+            }
+            $work->save();
+        }
+
+        $this->createNewWorks($data);
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     protected function createNewWorks(array $data): void
@@ -399,23 +435,9 @@ class SharedPriceLibraryController extends Controller
      */
     protected function createWorkWithUniqueKey(array $attrs): SharedWork
     {
-        $label = (string) $attrs['label'];
-        $attempt = 0;
-        while ($attempt < 8) {
-            $attrs['key'] = SharedWork::allocateUniqueKey($label);
-            try {
-                return SharedWork::query()->create($attrs);
-            } catch (QueryException $e) {
-                if ($this->isLabelUniqueFailure($e) || ! $this->isKeyUniqueFailure($e)) {
-                    throw $e;
-                }
-                $attempt++;
-            }
-        }
+        $attrs['key'] = SharedWork::allocateUniqueKey((string) $attrs['label']);
 
-        throw ValidationException::withMessages([
-            'new_works' => 'Could not allocate a unique item key. Try a different name.',
-        ]);
+        return SharedWork::query()->create($attrs);
     }
 
     protected function isUniqueConstraintFailure(QueryException $e): bool

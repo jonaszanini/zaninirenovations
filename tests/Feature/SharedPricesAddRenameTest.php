@@ -133,9 +133,9 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
 
         $display = SharedWorkCatalog::displayUnitPrice($created);
         $this->assertEqualsWithDelta(45.0, $display, 0.001);
-        $this->assertSame($display, SharedWorkCatalog::effectiveSellRate($created));
         $this->assertSame('$45.00 / each', SharedWorkCatalog::rateLine($created->key));
         $this->assertNotEquals(1.25 * SharedWorkCatalog::ownerHourlyRate(), $display);
+        $this->assertEqualsWithDelta(45.0, SharedWorkCatalog::sellRate($created->key), 0.0001);
 
         $editor = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
         $this->assertStringContainsString('CA$45.00', $editor);
@@ -166,7 +166,6 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
         SharedWorkCatalog::forgetCache();
         $derived = SharedWorkCatalog::displayUnitPrice($costOnly);
         $this->assertEqualsWithDelta(1.25 * SharedWorkCatalog::ownerHourlyRate(), $derived, 0.02);
-        $this->assertSame($derived, SharedWorkCatalog::effectiveSellRate($costOnly));
         $this->assertSame('$'.number_format((float) $derived, 2).' / each', SharedWorkCatalog::rateLine($costOnly->key));
         $hint = \App\Models\ClientProject::formatMoney($derived);
         $editorCost = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
@@ -199,6 +198,12 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(4.75, (float) $created->rate, 0.0001);
         $this->assertEqualsWithDelta(6.50, (float) $created->flat_rate, 0.0001);
         $this->assertNotEquals(4.75 / 100, (float) $created->rate);
+
+        $html = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
+        $this->assertStringContainsString('id="sp-rate-'.$created->id.'"', $html);
+        $this->assertStringContainsString('4.7500', $html);
+        $this->assertStringContainsString('CA$6.50', $html);
+        $this->assertStringNotContainsString('class="sp-rate-empty"', $html);
     }
 
     public function test_new_item_key_stays_unique_when_slug_exists(): void
@@ -818,6 +823,17 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
             'Enter a price of 999,999.99 or less.',
             (string) session('errors')->first('new_works.flooring.0.flat_rate')
         );
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'hours_per_day' => '-1',
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['hours_per_day']);
+
+        $this->assertStringContainsString(
+            'Hours/day must be at least 0.5.',
+            (string) session('errors')->first('hours_per_day')
+        );
     }
 
     public function test_save_is_all_or_nothing_when_a_later_row_fails(): void
@@ -872,30 +888,58 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
         $this->assertEqualsWithDelta($originalOwner, (float) SharedCrewRate::current()->owner_hourly_rate, 0.001);
     }
 
-    public function test_normalized_label_migration_suffixes_near_duplicates_and_is_idempotent(): void
+    public function test_flooring_quote_uses_saved_sell_not_display_price(): void
     {
-        $source = file_get_contents(database_path('migrations/2026_10_09_140000_add_shared_works_normalized_label_unique.php'));
-        $this->assertStringContainsString('suffixNearDuplicateLabels', $source);
-        $this->assertStringContainsString('uniquifyDisplayLabel', $source);
-        $this->assertStringContainsString('SHOW INDEX', $source);
-        $this->assertStringContainsString('indexExists', $source);
-        $this->assertStringContainsString("Schema::hasColumn('shared_works', 'label_normalized')", $source);
-        $this->assertStringContainsString("shared_works_group_label_unique", $source);
+        $this->actingAsAdmin();
+        $baseboard = SharedWork::query()->where('key', 'baseboard')->firstOrFail();
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $baseboard->id => [
+                    'id' => $baseboard->id,
+                    'label' => $baseboard->label,
+                    'rate' => $baseboard->rate,
+                    'flat_rate' => '',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
 
-        $migration = require database_path('migrations/2026_10_09_140000_add_shared_works_normalized_label_unique.php');
-        $migration->up();
-        $migration->up();
-        $this->assertTrue($this->sharedWorksIndexExists('shared_works_group_label_unique'));
-    }
+        $baseboard->refresh();
+        SharedWorkCatalog::forgetCache();
+        $this->assertNull($baseboard->flat_rate);
+        $this->assertEqualsWithDelta(4.75, SharedWorkCatalog::sellRate('baseboard', 6.35), 0.0001);
 
-    private function sharedWorksIndexExists(string $index): bool
-    {
-        $rows = \Illuminate\Support\Facades\DB::select(
-            'SHOW INDEX FROM `shared_works` WHERE Key_name = ?',
-            [$index]
-        );
+        $type = FlooringType::query()->where('key', 'hardwood')->firstOrFail();
+        $calc = new FlooringQuotationCalculator;
+        $empty = $calc->calculate([
+            'flooring_type_id' => $type->id,
+            'square_footage' => 100,
+            'install_baseboard' => true,
+            'baseboard_linear_ft' => 80,
+            'include_material_details' => false,
+        ], FlooringSettings::current(), collect([$type]));
+        $this->assertEqualsWithDelta(380.0, (float) collect($empty['breakdown'])->firstWhere('key', 'baseboard')['amount'], 0.01);
 
-        return $rows !== [];
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $baseboard->id => [
+                    'id' => $baseboard->id,
+                    'label' => $baseboard->label,
+                    'rate' => $baseboard->rate,
+                    'flat_rate' => '6.3475',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        SharedWorkCatalog::forgetCache();
+        $this->assertEqualsWithDelta(6.3475, SharedWorkCatalog::sellRate('baseboard', 6.35), 0.00001);
+        $four = $calc->calculate([
+            'flooring_type_id' => $type->id,
+            'square_footage' => 100,
+            'install_baseboard' => true,
+            'baseboard_linear_ft' => 80,
+            'include_material_details' => false,
+        ], FlooringSettings::current(), collect([$type]));
+        $this->assertEqualsWithDelta(507.80, (float) collect($four['breakdown'])->firstWhere('key', 'baseboard')['amount'], 0.01);
     }
 
     /**

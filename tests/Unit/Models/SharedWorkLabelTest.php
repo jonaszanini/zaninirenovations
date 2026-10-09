@@ -39,5 +39,11 @@ class SharedWorkLabelTest extends TestCase
             'Unique name',
             SharedWork::uniquifyDisplayLabel('Unique name', fn (string $norm) => isset($taken[$norm]))
         );
+
+        $long = str_repeat('a', SharedWork::LABEL_MAX);
+        $takenLong = [mb_strtolower($long) => true];
+        $suffixed = SharedWork::uniquifyDisplayLabel($long, fn (string $norm) => isset($takenLong[$norm]) || $norm === mb_strtolower($long));
+        $this->assertLessThanOrEqual(SharedWork::LABEL_MAX, mb_strlen($suffixed));
+        $this->assertStringEndsWith(' (2)', $suffixed);
     }
 }

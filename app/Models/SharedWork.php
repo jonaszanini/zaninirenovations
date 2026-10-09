@@ -221,7 +221,9 @@ class SharedWork extends Model
         }
         $n = 2;
         do {
-            $candidate = $base.' ('.$n.')';
+            $suffix = ' ('.$n.')';
+            $maxBase = self::LABEL_MAX - mb_strlen($suffix);
+            $candidate = mb_substr($base, 0, max(1, $maxBase)).$suffix;
             $n++;
         } while ($isTaken(self::normalizeLabel($candidate)));
 

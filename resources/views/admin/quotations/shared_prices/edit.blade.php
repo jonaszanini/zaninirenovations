@@ -994,7 +994,7 @@
                   $catalogId = (int) old('works.'.$work->id.'.catalog_material_id', $work->catalog_material_id ?? 0);
                   $selected = $catalogId > 0 ? ($catalogById->get($catalogId) ?? null) : null;
                   $isArea = $work->isPricedPerArea();
-                  $effective = $isArea ? null : \App\Services\SharedWorkCatalog::displayUnitPrice($work);
+                  $effective = \App\Services\SharedWorkCatalog::displayUnitPrice($work);
                   $consumers = is_array($work->consumers) ? $work->consumers : [];
                   $consumerLabels = [];
                   foreach ($consumers as $consumer) {
@@ -1036,15 +1036,11 @@
                     </span>
                   </td>
                   <td class="sp-col-rate" data-label="{{ $work->costUnitLabel() }}">
-                    @if ($isArea)
-                      <span class="sp-rate-empty">—</span>
-                    @else
-                      <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
-                             class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
-                             name="works[{{ $work->id }}][rate]"
-                             value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '') }}"
-                             placeholder="0.00">
-                    @endif
+                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                           class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
+                           name="works[{{ $work->id }}][rate]"
+                           value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '') }}"
+                           placeholder="0.00">
                   </td>
                   <td class="sp-col-sell" data-label="">
                     <span class="sp-sell-phone-label">Sell rate</span>
@@ -1354,10 +1350,6 @@
       document.querySelectorAll('tr.sp-row').forEach(function(row) {
         var out = row.querySelector('[data-sp-effective]');
         if (!out) return;
-        if (row.getAttribute('data-sp-area') === '1') {
-          out.hidden = true;
-          return;
-        }
         var rateInput = row.querySelector('.sp-col-rate input');
         var sellInput = row.querySelector('.sp-col-sell input');
         var priceInput = row.querySelector('.sp-col-price input');
