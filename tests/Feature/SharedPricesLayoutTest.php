@@ -425,7 +425,7 @@ JS
             .' && SP_GEO_EMAIL='.escapeshellarg($email)
             .' SP_GEO_PASSWORD='.escapeshellarg('password')
             .' SP_GEO_BASE='.escapeshellarg($base)
-            .' timeout 90s node '.escapeshellarg($script);
+            .' timeout -k 5s 90s node '.escapeshellarg($script);
         $output = [];
         $code = 0;
         exec($cmd, $output, $code);
@@ -481,7 +481,14 @@ JS
     {
         $port = $this->layoutServerPort;
         $base = 'http://127.0.0.1:'.$port;
-        $cmd = 'exec '.escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('artisan')).' serve --host=127.0.0.1 --port='.$port;
+        $router = base_path('server.php');
+        if (! is_file($router)) {
+            $router = public_path('index.php');
+        }
+        $cmd = 'exec '.escapeshellarg(PHP_BINARY)
+            .' -S 127.0.0.1:'.$port
+            .' -t '.escapeshellarg(public_path())
+            .' '.escapeshellarg($router);
         $env = [];
         foreach (array_merge($_SERVER, $_ENV) as $key => $value) {
             if (is_string($key) && is_string($value)) {
@@ -535,7 +542,7 @@ JS
             }
             @proc_terminate($this->layoutServerProcess, 9);
         }
-        @exec('pkill -f '.escapeshellarg('artisan serve --host=127.0.0.1 --port='.$port).' 2>/dev/null');
+        @exec('pkill -f '.escapeshellarg('127.0.0.1:'.$port).' 2>/dev/null');
         $this->layoutServerProcess = null;
     }
 
