@@ -134,7 +134,14 @@
     justify-content: flex-start;
     align-self: stretch;
     vertical-align: middle;
-    padding-right: 0.5rem;
+    padding-right: 0.75rem;
+  }
+  .sp-table .sp-consumers {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 4px;
   }
   .sp-table td.sp-col-label,
   .sp-table td.sp-col-rate,
@@ -370,10 +377,11 @@
 }
 .sp-consumers {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
+  align-content: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 4px 6px;
 }
 .sp-catalog-btn {
   display: inline-flex;
@@ -444,7 +452,7 @@
   width: 100%;
 }
 .sp-consumers:has(.sp-chip--more) .sp-chip:not(.sp-chip--more) {
-  max-width: calc(100% - 36px);
+  max-width: 100%;
 }
 @media (max-width: 414px) {
   .sp-col-consumers {
@@ -465,7 +473,8 @@
   align-items: center;
   justify-content: flex-start;
   box-sizing: border-box;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  width: max-content;
   min-width: 0;
   max-width: 100%;
   min-height: 32px;

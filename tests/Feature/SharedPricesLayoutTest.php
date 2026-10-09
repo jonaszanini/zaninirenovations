@@ -239,10 +239,13 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $base = $this->startLayoutServer();
         $script = storage_path('app/sp-layout-geometry.js');
         file_put_contents($script, <<<'JS'
+const fs = require('fs');
+const path = require('path');
 const puppeteer = require('puppeteer');
 const email = process.env.SP_GEO_EMAIL;
 const password = process.env.SP_GEO_PASSWORD;
 const base = process.env.SP_GEO_BASE;
+const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app');
 (async () => {
   const browser = await puppeteer.launch({
     headless: true,
@@ -308,12 +311,17 @@ const base = process.env.SP_GEO_BASE;
         return Math.min(min, edge - r.right);
       }, 999);
       const chips = [...document.querySelectorAll('.sp-chip:not(.sp-chip--more)')];
-      const clippedShort = chips.filter((c) => {
+      const chipMetrics = chips.map((c) => {
         const label = c.querySelector('.sp-chip__label') || c;
         const text = (label.textContent || '').trim();
-        if (text.length > 12 || width < 390) return false;
-        return label.scrollWidth > label.clientWidth + 2;
-      }).map((c) => (c.textContent || '').trim());
+        return {
+          text,
+          scroll: label.scrollWidth,
+          client: label.clientWidth,
+          clipped: text.length <= 12 && width >= 390 && label.scrollWidth > label.clientWidth + 2,
+        };
+      });
+      const clippedShort = chipMetrics.filter((c) => c.clipped).map((c) => c.text);
       const longChip = chips.map((c) => {
         const label = c.querySelector('.sp-chip__label') || c;
         return { text: (label.textContent || '').trim(), title: c.getAttribute('title') || '', scroll: label.scrollWidth, client: label.clientWidth };
@@ -373,6 +381,7 @@ const base = process.env.SP_GEO_BASE;
         stacked,
         colCount: rowStyle ? rowStyle.gridTemplateColumns.split(' ').filter(Boolean).length : 0,
         clippedShort,
+        chipMetrics,
         chipVsCard,
         chipSpare: chipSpare === 999 ? 0 : Math.round(chipSpare * 10) / 10,
         chipMaxWidth: (() => {
@@ -650,6 +659,12 @@ const base = process.env.SP_GEO_BASE;
   }
   await cdp.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 13 } }).catch(() => {});
 
+  await page.setViewport({ width: 1100, height: 900 });
+  await openPage();
+  fs.mkdirSync(outDir, { recursive: true });
+  await page.screenshot({ path: path.join(outDir, 'sp-layout-1100.png'), fullPage: true });
+  fs.writeFileSync(path.join(outDir, 'sp-layout-geometry.json'), JSON.stringify(out, null, 2));
+
   await browser.close();
   process.stdout.write(JSON.stringify(out));
 })().catch((err) => { console.error(err); process.exit(2); });
@@ -660,6 +675,7 @@ JS
             .' && SP_GEO_EMAIL='.escapeshellarg($email)
             .' SP_GEO_PASSWORD='.escapeshellarg('password')
             .' SP_GEO_BASE='.escapeshellarg($base)
+            .' SP_GEO_OUT='.escapeshellarg(storage_path('app'))
             .' timeout -k 5s 90s node '.escapeshellarg($script);
         $output = [];
         $code = 0;

@@ -214,6 +214,16 @@ jobs:
           php artisan test tests/Feature/SharedPricesLayoutTest.php
           php artisan test tests/Feature/SharedPricesTest.php
 
+      - name: Upload Shared prices geometry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-prices-geometry
+          path: |
+            storage/app/sp-layout-geometry.json
+            storage/app/sp-layout-1100.png
+          if-no-files-found: warn
+
       - name: Blog posts live layout geometry
         env:
           DB_CONNECTION: mysql
