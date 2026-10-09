@@ -103,7 +103,7 @@
 .bp-list-table.admin-table {
   width: 100%;
   min-width: 0;
-  table-layout: auto;
+  table-layout: fixed;
 }
 
 .bp-list-table.admin-table th,
@@ -112,8 +112,8 @@
 }
 
 .bp-list-table .bp-list-col--post {
-  width: 52%;
-  min-width: 16.25rem;
+  width: auto;
+  min-width: 0;
 }
 
 .bp-list > .admin-card {
@@ -121,25 +121,24 @@
 }
 
 .bp-list-table .bp-list-col--cat {
-  width: 1%;
-  max-width: 9rem;
+  width: 10.25rem;
   overflow: visible;
 }
 
 .bp-list-table .bp-list-col--status {
-  width: 1%;
+  width: 5.25rem;
   white-space: nowrap;
   overflow: visible;
 }
 
 .bp-list-table .bp-list-col--date {
-  width: 1%;
+  width: 5.5rem;
   white-space: nowrap;
   overflow: visible;
 }
 
 .bp-list-table .bp-list-col--views {
-  width: 1%;
+  width: 2.75rem;
   white-space: nowrap;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -149,7 +148,7 @@
 .bp-list-table th.bp-list-col--actions,
 .bp-list-table td.bp-list-col--actions,
 .bp-list-table td.admin-table__actions {
-  width: 1%;
+  width: 6.75rem;
   white-space: nowrap;
   overflow: visible;
 }
@@ -169,7 +168,7 @@
   align-items: center;
   gap: 4px;
   width: auto;
-  max-width: 8.75rem;
+  max-width: 100%;
 }
 
 .bp-list-cat__name {
@@ -178,9 +177,11 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
   min-width: 0;
   flex: 0 1 auto;
+  max-width: 7.75rem;
   font-size: 12px;
   line-height: 1.3;
 }
@@ -662,16 +663,26 @@
     padding: 6px 4px;
   }
 
-  .bp-list-table .bp-list-col--post {
-    width: 58%;
-  }
-
   .bp-list-table .bp-list-col--cat {
-    max-width: 7.75rem;
+    width: 10rem;
   }
 
-  .bp-list-cat {
-    max-width: 7.5rem;
+  .bp-list-table .bp-list-col--status {
+    width: 5rem;
+  }
+
+  .bp-list-table .bp-list-col--date {
+    width: 5.25rem;
+  }
+
+  .bp-list-table .bp-list-col--views {
+    width: 2.5rem;
+  }
+
+  .bp-list-table th.bp-list-col--actions,
+  .bp-list-table td.bp-list-col--actions,
+  .bp-list-table td.admin-table__actions {
+    width: 6.5rem;
   }
 
   .bp-list-thumb {
@@ -842,6 +853,10 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
+  }
+
+  .bp-list-cat__name {
+    max-width: none;
   }
 
   .bp-list-post__meta {
