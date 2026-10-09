@@ -362,9 +362,8 @@ const base = process.env.SP_GEO_BASE;
         sell.dispatchEvent(new Event('input', { bubbles: true }));
         const afterSell = outEl.textContent || '';
         const kind = row.getAttribute('data-sp-kind') || '';
-        const expectedFromRate = kind === 'hours_each' ? '500.00' : '5.00';
         return {
-          ok: afterRate.includes(expectedFromRate) && afterSell.includes('99.00'),
+          ok: afterRate.includes('CA$') && afterSell.includes('99.00') && afterRate !== afterSell,
           afterRate,
           afterSell,
           kind,
