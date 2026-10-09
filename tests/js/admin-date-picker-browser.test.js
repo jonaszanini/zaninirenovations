@@ -137,23 +137,30 @@ async function activate(page, selector, pointerType) {
 async function activateShowPickerThrows(page, selector, pointerType) {
   return page.evaluate((sel, type) => {
     const el = document.querySelector(sel);
-    let threwToCaller = false;
+    const errors = [];
+    const onError = function (e) {
+      errors.push((e && e.message) || String(e));
+    };
+    const prevOnError = window.onerror;
+    window.addEventListener('error', onError);
+    window.onerror = function (msg) {
+      errors.push(String(msg));
+      return true;
+    };
     let calls = 0;
     el.showPicker = function () {
       calls += 1;
       throw new Error('showPicker failed');
     };
-    try {
-      const opts = { bubbles: true, cancelable: true, pointerType: type, pointerId: 1 };
-      el.dispatchEvent(new PointerEvent('pointerdown', opts));
-      el.dispatchEvent(new PointerEvent('pointerup', opts));
-      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    } catch (err) {
-      threwToCaller = true;
-    }
+    const opts = { bubbles: true, cancelable: true, pointerType: type, pointerId: 1 };
+    el.dispatchEvent(new PointerEvent('pointerdown', opts));
+    el.dispatchEvent(new PointerEvent('pointerup', opts));
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    window.removeEventListener('error', onError);
+    window.onerror = prevOnError;
     return {
-      threwToCaller: threwToCaller,
       calls: calls,
+      errors: errors,
       notesStillThere: !!document.getElementById('notes'),
     };
   }, selector, pointerType);
@@ -235,38 +242,43 @@ async function activateShowPickerThrows(page, selector, pointerType) {
     const typedDate = await page.$eval('#due-date', (el) => el.value);
     assert.strictEqual(typedDate, '2026-10-15', 'mouse click then typing saves the date value, got ' + typedDate);
 
-    const tabResult = await page.evaluate(() => {
+    await page.evaluate(() => {
       const date = document.querySelector('#due-date');
-      let calls = 0;
-      date.showPicker = function () { calls += 1; };
+      window.__pickerCalls = 0;
+      date.showPicker = function () { window.__pickerCalls += 1; };
       document.getElementById('client-name').focus();
-      return { start: document.activeElement && document.activeElement.id };
     });
-    assert.strictEqual(tabResult.start, 'client-name');
+    assert.strictEqual(await page.evaluate(() => document.activeElement && document.activeElement.id), 'client-name');
     await page.keyboard.press('Tab');
-    const afterTab = await page.evaluate(() => {
-      const date = document.querySelector('#due-date');
-      return {
-        active: document.activeElement && document.activeElement.id,
-        // Re-read calls from a fresh spy around Tab:
-      };
-    });
+    const afterTab = await page.evaluate(() => ({
+      active: document.activeElement && document.activeElement.id,
+      calls: window.__pickerCalls,
+    }));
     assert.strictEqual(afterTab.active, 'due-date', 'Tab moves focus to the date field');
+    assert.strictEqual(afterTab.calls, 0, 'real Tab must not call showPicker (keydown/keyup included)');
 
-    const tabDidNotOpen = await page.evaluate(() => {
+    await page.evaluate(() => {
       const date = document.querySelector('#due-date');
-      let calls = 0;
-      date.showPicker = function () { calls += 1; };
-      document.getElementById('client-name').focus();
-      date.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
-      date.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
-      return calls;
+      window.__pickerCalls = 0;
+      date.showPicker = function () { window.__pickerCalls += 1; };
+      document.getElementById('notes').focus();
     });
-    assert.strictEqual(tabDidNotOpen, 0, 'Tab / focus does not open the picker');
+    await page.focus('#due-date');
+    const afterFocus = await page.evaluate(() => ({
+      active: document.activeElement && document.activeElement.id,
+      calls: window.__pickerCalls,
+    }));
+    assert.strictEqual(afterFocus.active, 'due-date', 'focus() lands on the date field');
+    assert.strictEqual(afterFocus.calls, 0, 'focus alone must not call showPicker');
 
+    const pageErrors = [];
+    const onPageError = (err) => { pageErrors.push(String(err)); };
+    page.on('pageerror', onPageError);
     const boom = await activateShowPickerThrows(page, '#due-date', 'touch');
+    page.off('pageerror', onPageError);
     assert.strictEqual(boom.calls, 1, 'throwing showPicker was still invoked on touch');
-    assert.strictEqual(boom.threwToCaller, false, 'a throwing showPicker does not break the page');
+    assert.deepStrictEqual(boom.errors, [], 'window error / onerror must stay empty when showPicker throws');
+    assert.deepStrictEqual(pageErrors, [], 'no uncaught pageerror when showPicker throws');
     assert.strictEqual(boom.notesStillThere, true, 'DOM remains usable after showPicker throws');
   } finally {
     await browser.close();
