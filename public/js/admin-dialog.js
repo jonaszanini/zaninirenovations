@@ -359,21 +359,71 @@
 })(window);
 
 (function () {
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
+    });
+  }
+
+  function bubbleFor(btn) {
+    if (!btn) return null;
+    var id = btn.getAttribute('aria-controls');
+    if (id) {
+      var byId = document.getElementById(id);
+      if (byId) return byId;
+    }
+    var next = btn.nextElementSibling;
+    if (next && next.classList.contains('admin-info-tip__bubble')) {
+      return next;
+    }
+    return btn.querySelector('.admin-info-tip__bubble');
+  }
+
+  function setOpen(btn, open) {
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    var wrap = btn.closest('.admin-info-tip-wrap');
+    if (wrap) {
+      wrap.classList.toggle('is-open', !!open);
+    }
+    if (open) {
+      positionBubble(btn, bubbleFor(btn));
+    }
+  }
+
   function closeTips(except) {
     document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach(function (btn) {
       if (btn !== except) {
-        btn.setAttribute('aria-expanded', 'false');
+        setOpen(btn, false);
       }
     });
   }
 
-  document.addEventListener('mousedown', function (e) {
-    if (e.target.closest && e.target.closest('.admin-info-tip')) {
-      e.preventDefault();
+  function positionBubble(btn, bubble) {
+    if (!btn || !bubble) return;
+    bubble.style.left = '0px';
+    bubble.style.right = 'auto';
+    var pad = 12;
+    var rect = bubble.getBoundingClientRect();
+    if (rect.right > window.innerWidth - pad) {
+      bubble.style.left = (window.innerWidth - pad - rect.right) + 'px';
+      rect = bubble.getBoundingClientRect();
     }
-  }, true);
+    if (rect.left < pad) {
+      var anchor = btn.closest('.admin-info-tip-wrap') || btn;
+      bubble.style.left = (pad - anchor.getBoundingClientRect().left) + 'px';
+      bubble.style.right = 'auto';
+      rect = bubble.getBoundingClientRect();
+      if (rect.right > window.innerWidth - pad) {
+        bubble.style.left = 'auto';
+        bubble.style.right = '0px';
+      }
+    }
+  }
 
   document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('.admin-info-tip__bubble')) {
+      return;
+    }
     var btn = e.target.closest ? e.target.closest('.admin-info-tip') : null;
     if (!btn) {
       closeTips(null);
@@ -383,7 +433,7 @@
     e.stopPropagation();
     var open = btn.getAttribute('aria-expanded') === 'true';
     closeTips(btn);
-    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    setOpen(btn, !open);
   }, true);
 
   document.addEventListener('keydown', function (e) {
@@ -391,4 +441,26 @@
       closeTips(null);
     }
   });
+
+  window.addEventListener('resize', function () {
+    document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach(function (btn) {
+      positionBubble(btn, bubbleFor(btn));
+    });
+  });
+
+  var tipSeq = 0;
+  window.adminInfoTip = {
+    html: function (text, label) {
+      tipSeq += 1;
+      var id = 'admin-info-tip-js-' + tipSeq + '-' + Date.now();
+      var wrap = document.createElement('span');
+      wrap.className = 'admin-info-tip-wrap';
+      wrap.innerHTML =
+        '<button type="button" class="admin-info-tip" aria-expanded="false" aria-controls="' + id +
+        '" aria-describedby="' + id + '" aria-label="' + escapeHtml(label || 'More information') + '">' +
+        '<i class="fa fa-info-circle" aria-hidden="true"></i></button>' +
+        '<span id="' + id + '" class="admin-info-tip__bubble" role="tooltip">' + escapeHtml(text) + '</span>';
+      return wrap;
+    }
+  };
 })();

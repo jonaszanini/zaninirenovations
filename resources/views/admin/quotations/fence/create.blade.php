@@ -451,6 +451,9 @@
     .fq-quote-labour-grid {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
+    @media (max-width: 640px) {
+      .fq-quote-labour-grid { grid-template-columns: 1fr; }
+    }
     .fq-quote-labour-section .cp-heading-sm {
       display: flex;
       align-items: center;
@@ -635,7 +638,9 @@
         <div class="admin-form-section fq-quote-labour-section">
           <h4 class="cp-heading-sm">
             Labour rate for this quotation
-            <x-admin.info-tip :text="($isEdit
+            <x-admin.info-tip
+              label="About labour rates"
+              :text="($isEdit
                 ? 'Stored with this quote. '
                 : 'Stored with this quote (prefilled from formula defaults). ')
                 .'Labour is run length × this rate, plus extra-gate labour if any. '
@@ -660,10 +665,15 @@
               @error('labour_rate_8ft_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group" id="fq-labour-credit-wrap">
-              <label for="fq-existing-post-credit">Labour credit per existing post</label>
+              <div class="admin-label-with-tip">
+                <label for="fq-existing-post-credit">Labour credit per existing post</label>
+                <x-admin.info-tip
+                  label="About labour credit"
+                  text="Subtracted from labour when a left/right tick actually removes a post." />
+              </div>
               <input id="fq-existing-post-credit" type="text" name="existing_post_labour_credit"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('existing_post_labour_credit')])
-                     inputmode="decimal" autocomplete="off"
+                     inputmode="decimal" autocomplete="off" required
                      value="{{ number_format((float) $initialExistingPostCredit, 2, '.', '') }}">
               @error('existing_post_labour_credit') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
@@ -1188,9 +1198,12 @@
       extra_gate_preset: extraGatePresetInput ? extraGatePresetInput.value : '4_single',
       labour_rate_per_ft: parseLabourRate(labourRate6Input),
       labour_rate_8ft_per_ft: parseLabourRate(labourRate8Input),
-      existing_post_labour_credit: parseLabourRate(existingPostCreditInput),
       include_labour_hst: includeLabourHstInput ? !!includeLabourHstInput.checked : true
     };
+    var postedCredit = parseOptionalLabourRate(existingPostCreditInput);
+    if (postedCredit !== null) {
+      payload.existing_post_labour_credit = postedCredit;
+    }
     if (fenceQuotationId) {
       payload.fence_quotation_id = fenceQuotationId;
     }
@@ -1212,6 +1225,13 @@
     }
     var v = parseFloat(raw);
     return isFinite(v) ? v : 0;
+  }
+
+  function parseOptionalLabourRate(input) {
+    if (!input) return null;
+    var raw = String(input.value || '').replace(/,/g, '').trim();
+    if (raw === '') return null;
+    return parseLabourRate(input);
   }
 
   function runPreview() {
@@ -1276,6 +1296,8 @@
     tLabour.textContent = 'CA$0.00';
     if (tExistingPostCreditRow) tExistingPostCreditRow.classList.add('is-hidden');
     if (tExistingPostCredit) tExistingPostCredit.textContent = 'CA$0.00';
+    if (tLabourNetRow) tLabourNetRow.classList.add('is-hidden');
+    if (tLabourNet) tLabourNet.textContent = 'CA$0.00';
     tGrand.textContent = 'CA$0.00';
     window.__quoteGrandTotal = 0;
     document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: 0 } }));
@@ -1399,7 +1421,7 @@
     var showCredit = creditCount > 0 && creditAmount > 0;
     var grossLabour = Number(t.labour_before_credit != null ? t.labour_before_credit : (t.labour_subtotal || 0));
     var netLabour = Number(t.labour_subtotal || 0);
-    tLabour.textContent = money(showCredit ? grossLabour : (netLabour + lastAdditionalLaborPreTax));
+    tLabour.textContent = money((showCredit ? grossLabour : netLabour) + lastAdditionalLaborPreTax);
     tLabourHst.textContent = money(Number(t.labour_hst || 0) + lastAdditionalLaborHst);
     if (tLabourHstRow) {
       tLabourHstRow.classList.toggle(
@@ -1477,6 +1499,15 @@
       var banner = document.getElementById('fq-price-banner');
       if (banner) banner.classList.add('is-hidden');
       schedulePreview();
+    });
+  }
+
+  if (existingPostCreditInput && repriceInput) {
+    existingPostCreditInput.addEventListener('input', function () {
+      repriceInput.value = '0';
+    });
+    existingPostCreditInput.addEventListener('change', function () {
+      repriceInput.value = '0';
     });
   }
 

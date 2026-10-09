@@ -592,6 +592,55 @@ class FenceQuotationCalculatorTest extends TestCase
         );
     }
 
+    public function test_eight_point_three_three_foot_existing_tick_is_a_no_op(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $baseInputs = [
+            'sides' => [['length_ft' => 8.33]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 30,
+        ];
+
+        $base = $calculator->calculate($baseInputs);
+        $ticked = $calculator->calculate(array_merge($baseInputs, [
+            'sides' => [['length_ft' => 8.33, 'already_have_post_left' => true]],
+        ]));
+
+        $this->assertSame(
+            $base['geometry']['structural_posts'],
+            $ticked['geometry']['structural_posts']
+        );
+        $this->assertSame(0, $ticked['totals']['existing_post_credit']['count']);
+        $this->assertSame(0.0, $ticked['totals']['existing_post_credit']['amount']);
+        $this->assertSame($base['totals']['labour_subtotal'], $ticked['totals']['labour_subtotal']);
+    }
+
+    public function test_string_zero_tick_flags_do_not_apply_credit(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $ticked = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 24,
+                'already_have_post_left' => '0',
+                'already_have_post_right' => '0',
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 30,
+        ]);
+
+        $this->assertFalse($ticked['inputs']['sides'][0]['already_have_post_left']);
+        $this->assertFalse($ticked['inputs']['sides'][0]['already_have_post_right']);
+        $this->assertSame(0, $ticked['totals']['existing_post_credit']['count']);
+        $this->assertSame(0.0, $ticked['totals']['existing_post_credit']['amount']);
+        $this->assertSame(24.0 * 55.0, $ticked['totals']['labour_subtotal']);
+    }
+
     public function test_zero_string_credit_is_a_no_op_tick(): void
     {
         $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());

@@ -1,23 +1,37 @@
 {{--
-  Compact ⓘ click-to-open help. Reuses .admin-info-tip so admin-dialog.js
-  handles Esc / outside click. Pass $text (plain explanation).
+  Compact ⓘ click-to-open help. Bubble is a sibling of the button so it
+  stays selectable and does not sit in the control's accessible name.
+  Pass $text (escaped) or a slot (trusted Blade HTML).
 --}}
 @props([
     'text' => '',
     'id' => null,
+    'label' => 'More information',
 ])
-@if (filled($text))
+@php
+    $hasSlot = isset($slot) && trim((string) $slot) !== '';
+@endphp
+@if ($hasSlot || filled($text))
   @php
     $tipId = $id ?: 'admin-info-tip-'.str_replace('.', '', uniqid('', true));
   @endphp
-  <button
-    type="button"
-    {{ $attributes->except(['text', 'id'])->class('admin-info-tip') }}
-    aria-expanded="false"
-    aria-controls="{{ $tipId }}"
-    aria-label="More information"
-  >
-    <i class="fa fa-info-circle" aria-hidden="true"></i>
-    <span id="{{ $tipId }}" class="admin-info-tip__bubble" role="tooltip">{{ $text }}</span>
-  </button>
+  <span {{ $attributes->except(['text', 'id', 'label'])->class('admin-info-tip-wrap') }}>
+    <button
+      type="button"
+      class="admin-info-tip"
+      aria-expanded="false"
+      aria-controls="{{ $tipId }}"
+      aria-describedby="{{ $tipId }}"
+      aria-label="{{ $label }}"
+    >
+      <i class="fa fa-info-circle" aria-hidden="true"></i>
+    </button>
+    <span id="{{ $tipId }}" class="admin-info-tip__bubble" role="tooltip">
+      @if ($hasSlot)
+        {!! $slot !!}
+      @else
+        {{ $text }}
+      @endif
+    </span>
+  </span>
 @endif

@@ -337,6 +337,115 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
         $this->assertEqualsWithDelta($editorTotal, $pdf->pdfGrandTotal(), 0.02);
     }
 
+    public function test_blank_credit_preview_total_equals_saved_total(): void
+    {
+        $this->actingAsAdmin();
+        FenceFormulaSetting::current()->update(['existing_post_labour_credit' => 30]);
+
+        $preview = $this->postJson(route('admin.quotations.fence.preview'), $this->previewPayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => 1]],
+            'existing_post_labour_credit' => '',
+        ]))->assertOk()->json();
+
+        $this->post(route('admin.quotations.fence.store'), $this->storePayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => '1']],
+            'existing_post_labour_credit' => '',
+        ]))->assertRedirect();
+
+        $quote = FenceQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $this->assertEqualsWithDelta(30.0, (float) $preview['inputs']['existing_post_labour_credit'], 0.001);
+        $this->assertEqualsWithDelta(30.0, (float) $quote->existing_post_labour_credit, 0.001);
+        $this->assertEqualsWithDelta(
+            $preview['totals']['grand_total'],
+            $quote->calculation['totals']['grand_total'],
+            0.02
+        );
+        $this->assertEqualsWithDelta(
+            $preview['totals']['labour_subtotal'],
+            (float) $quote->labour_total,
+            0.02
+        );
+    }
+
+    public function test_backfilled_quote_stays_unchanged_without_reprice(): void
+    {
+        $this->actingAsAdmin();
+        FenceFormulaSetting::current()->update(['existing_post_labour_credit' => 30]);
+
+        $old = FenceQuotation::create([
+            'quote_number' => 'FQ-TEST-BACKFILL',
+            'client_name' => 'Backfilled fence',
+            'fence_height_ft' => 6,
+            'board_style' => FenceQuotation::BOARD_STYLE_STANDARD,
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'labour_rate_8ft_per_ft' => 60,
+            'existing_post_labour_credit' => 0,
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'calculation' => ['totals' => ['labour_subtotal' => 1320]],
+            'materials_subtotal' => 0,
+            'hst' => 0,
+            'labour_total' => 1320,
+            'grand_total' => 1320,
+            'include_labour_hst' => true,
+        ]);
+
+        $this->put(route('admin.quotations.fence.update', $old), $this->storePayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => '1']],
+            'existing_post_labour_credit' => 0,
+        ]))->assertRedirect();
+
+        $old->refresh();
+        $this->assertEqualsWithDelta(0.0, (float) $old->existing_post_labour_credit, 0.001);
+        $this->assertEqualsWithDelta(24 * 55, (float) $old->labour_total, 0.02);
+        $this->assertEqualsWithDelta(0.0, $old->calculation['totals']['existing_post_credit']['amount'], 0.001);
+    }
+
+    public function test_editor_total_matches_pdf_with_labour_hst_off_and_additional_costs(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->post(route('admin.quotations.fence.store'), $this->storePayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => '1']],
+            'existing_post_labour_credit' => 30,
+            'include_labour_hst' => '0',
+            'include_commute' => '0',
+            'include_debris_removal' => '0',
+            'additional_costs' => [
+                [
+                    'description' => 'Extra labour',
+                    'amount' => 100,
+                    'hst_included' => '0',
+                    'category' => 'labour',
+                ],
+                [
+                    'description' => 'Site setup',
+                    'amount' => 25,
+                    'hst_included' => '0',
+                    'category' => 'labour',
+                ],
+            ],
+        ]))->assertRedirect();
+
+        $quote = FenceQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $this->assertFalse((bool) $quote->include_labour_hst);
+        $this->assertEqualsWithDelta(30.0, $quote->calculation['totals']['existing_post_credit']['amount'], 0.02);
+
+        $editorTotal = (float) $quote->grand_total;
+        $items = $quote->projectQuotationLineItems();
+        foreach (\App\Services\AdditionalCostsService::projectLineItems($quote->additional_costs ?? []) as $line) {
+            $items[] = $line;
+        }
+
+        $pdf = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_FENCE,
+            'items' => $items,
+        ]);
+        $this->assertEqualsWithDelta($editorTotal, $pdf->pdfGrandTotal(), 0.02);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>

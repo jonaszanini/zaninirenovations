@@ -259,10 +259,12 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-existing-post-credit">
-          Labour credit per existing post
-          <x-admin.info-tip text="Subtracted from labour when a left/right tick actually removes a post." />
-        </label>
+        <div class="admin-label-with-tip">
+          <label for="fq-existing-post-credit">Labour credit per existing post</label>
+          <x-admin.info-tip
+            label="About labour credit"
+            text="Subtracted from labour when a left/right tick actually removes a post." />
+        </div>
         <input id="fq-existing-post-credit" type="text" name="existing_post_labour_credit"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
                value="{{ old('existing_post_labour_credit', number_format((float) ($settings->existing_post_labour_credit ?? 30), 2, '.', '')) }}">
