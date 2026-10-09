@@ -50,13 +50,21 @@
     }
   }
 
+  function isLatinLetter(key) {
+    return typeof key === 'string' && key.length === 1 && /[a-zA-Z]/.test(key);
+  }
+
   function isSaveChord(e) {
     if (!e) return false;
     if (e.shiftKey) return false;
     if (e.altKey && e.ctrlKey) return false;
-    var code = e.code || '';
     var key = e.key || '';
-    if (code !== 'KeyS' && key !== 's' && key !== 'S') return false;
+    var code = e.code || '';
+    var keyIsS = key === 's' || key === 'S';
+    if (!keyIsS) {
+      if (isLatinLetter(key)) return false;
+      if (code !== 'KeyS') return false;
+    }
     return !!(e.ctrlKey || e.metaKey);
   }
 
@@ -145,6 +153,23 @@
     return false;
   }
 
+  function isPaletteOpen(env) {
+    env = defaultEnv(env);
+    var doc = env.document;
+    if (!doc) return false;
+    var pal = doc.getElementById('admin-search-palette');
+    if (pal && !pal.hidden && pal.getAttribute('aria-hidden') !== 'true') return true;
+    var win = env.window;
+    if (win && win.AdminSearchPalette && typeof win.AdminSearchPalette.isOpen === 'function') {
+      try { if (win.AdminSearchPalette.isOpen()) return true; } catch (err) { /* ignore */ }
+    }
+    var active = doc.activeElement;
+    if (active && (active.id === 'asp-input' || (active.closest && active.closest('#admin-search-palette')))) {
+      return true;
+    }
+    return false;
+  }
+
   function openDialog(env) {
     env = defaultEnv(env);
     var doc = env.document;
@@ -225,7 +250,7 @@
     env = defaultEnv(env);
     var doc = env.document;
     if (!doc) return null;
-    if (isConfirmOpen(env)) return null;
+    if (isConfirmOpen(env) || isPaletteOpen(env)) return null;
     var dialog = openDialog(env);
     if (dialog) {
       return firstAvailable(dialog.querySelectorAll('[data-hotkey-save]'), env);
@@ -341,7 +366,19 @@
   function fieldsFromPayload(list, env) {
     env = defaultEnv(env);
     var doc = env.document;
-    var form = doc ? doc.querySelector('form') : null;
+    var form = null;
+    if (doc && doc.querySelectorAll) {
+      var forms = doc.querySelectorAll('form');
+      for (var i = 0; i < forms.length; i++) {
+        var candidate = forms[i];
+        var id = (candidate.id || '').toLowerCase();
+        if (id === 'logout-form' || id === 'logout') continue;
+        form = candidate;
+        if (candidate.querySelector && candidate.querySelector('[data-hotkey-save], input:not([type="hidden"]), textarea, select')) {
+          break;
+        }
+      }
+    }
     return (list || []).map(function (item) {
       var el = item.el || null;
       if (!el && doc) {
@@ -409,6 +446,12 @@
     }
   }
 
+  function clearExpect(env) {
+    var store = storage(env);
+    if (!store || !store.removeItem) return;
+    try { store.removeItem(EXPECT_KEY); } catch (err) { /* ignore */ }
+  }
+
   function ensureHidden(form, name, value, env) {
     if (!form || !form.querySelector) return null;
     var el = form.querySelector('input[name="' + name + '"][data-admin-hotkey-field]');
@@ -429,11 +472,62 @@
     return el;
   }
 
+  function snapshotEmail(form, env) {
+    env = defaultEnv(env);
+    var snap = [];
+    if (!form || !form.querySelectorAll) return snap;
+    EMAIL_FIELDS.forEach(function (name) {
+      var nodes = form.querySelectorAll('[name="' + name + '"]');
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        snap.push({
+          el: el,
+          checked: !!el.checked,
+          value: el.value,
+        });
+      }
+    });
+    return snap;
+  }
+
+  function removeHotkeyFields(form) {
+    if (!form) return;
+    var nodes = [];
+    if (form.querySelectorAll) {
+      nodes = Array.prototype.slice.call(form.querySelectorAll('[data-admin-hotkey-field]'));
+    }
+    if (!nodes.length && form.children) {
+      for (var i = 0; i < form.children.length; i++) {
+        var child = form.children[i];
+        if (child.getAttribute && child.getAttribute('data-admin-hotkey-field')) nodes.push(child);
+        if (child.name === HOTKEY_FIELD) nodes.push(child);
+      }
+    }
+    nodes.forEach(function (el) {
+      if (el.parentNode && el.parentNode.removeChild) {
+        el.parentNode.removeChild(el);
+      }
+    });
+  }
+
+  function restoreEmail(snap, form) {
+    (snap || []).forEach(function (item) {
+      if (!item || !item.el) return;
+      if (item.el.type === 'checkbox' || item.el.type === 'radio') {
+        item.el.checked = item.checked;
+      } else {
+        item.el.value = item.value;
+      }
+    });
+    removeHotkeyFields(form);
+  }
+
   function neutralizeEmail(form, env) {
     env = defaultEnv(env);
-    var doc = env.document || form;
+    if (!form) return [];
+    var snap = snapshotEmail(form, env);
     EMAIL_FIELDS.forEach(function (name) {
-      var nodes = (form || doc).querySelectorAll('[name="' + name + '"]');
+      var nodes = form.querySelectorAll('[name="' + name + '"]');
       for (var i = 0; i < nodes.length; i++) {
         var el = nodes[i];
         if (el.type === 'checkbox' || el.type === 'radio') {
@@ -443,7 +537,9 @@
         }
       }
     });
-    if (form) ensureHidden(form, HOTKEY_FIELD, '1', env);
+    ensureHidden(form, HOTKEY_FIELD, '1', env);
+    form.__adminEmailSnap = snap;
+    return snap;
   }
 
   function hideDuplicateFlash(kind, env) {
@@ -478,14 +574,33 @@
     var session = null;
     var bound = false;
     var unwrap = null;
+    var emailUndo = [];
+    var tinyWatch = null;
+    var tinyBoundApi = null;
 
     function toast() {
       return env.toast || root.AdminToast;
     }
 
-    function showSaved() {
+    function showSaved(message) {
       var t = toast();
-      if (t && t.saved) t.saved(env);
+      if (t && t.saved) t.saved(env, message);
+    }
+
+    function rememberEmailUndo(form, snap) {
+      if (!form) return;
+      emailUndo.push({ form: form, snap: snap || form.__adminEmailSnap || [] });
+    }
+
+    function undoHotkeyMutations() {
+      emailUndo.forEach(function (item) {
+        restoreEmail(item.snap, item.form);
+      });
+      emailUndo = [];
+    }
+
+    function isPlainSaved(text) {
+      return /^(saved\.?|changes saved\.?)$/i.test(String(text || '').trim());
     }
 
     function showError(message, title) {
@@ -498,12 +613,17 @@
       if (t && t.validation) t.validation(fields, opts || {}, env);
     }
 
-    function finishSession() {
+    function finishSession(opts) {
+      opts = opts || {};
       if (session) {
         var focus = session.focus;
+        var keep = !!opts.keepHotkeyFields;
         session.inflight = false;
         session = null;
+        if (!keep) undoHotkeyMutations();
         restoreFocus(focus);
+      } else if (!opts.keepHotkeyFields) {
+        undoHotkeyMutations();
       }
       if (unwrap) {
         try { unwrap(); } catch (err) { /* ignore */ }
@@ -527,11 +647,15 @@
       if (body && body.errors) {
         return { kind: 'validation', fields: fieldsFromPayload(laravelErrors(body.errors), env) };
       }
-      if (res.ok && body && body.ok === true) {
-        return { kind: 'saved' };
-      }
       if (body && body.ok === false) {
         return { kind: 'error', title: 'Could not save', message: body.message || body.error || 'The save was not confirmed.' };
+      }
+      if (res.ok && body && (body.ok === true || body.event)) {
+        return { kind: 'saved' };
+      }
+      var status = res.status || 0;
+      if (status === 401 || status === 419 || (typeof body === 'string' && /login|sign in|page expired/i.test(body))) {
+        return { kind: 'error', title: 'Sign in required', message: 'Your session expired. Sign in and save again.' };
       }
       return { kind: 'error', title: 'Could not save', message: (body && (body.message || body.error)) || 'The save was not confirmed.' };
     }
@@ -553,10 +677,14 @@
     function readBody(res) {
       if (!res) return Promise.resolve(null);
       var clone = res.clone ? res.clone() : res;
-      if (clone.json) {
-        return clone.json().catch(function () {
-          return clone.text ? clone.text() : Promise.resolve(null);
+      if (clone.text) {
+        return clone.text().then(function (text) {
+          if (text == null || text === '') return null;
+          try { return JSON.parse(text); } catch (err) { return text; }
         });
+      }
+      if (clone.json) {
+        return clone.json().catch(function () { return null; });
       }
       return Promise.resolve(null);
     }
@@ -647,7 +775,7 @@
       }
 
       var timer = timeoutFn(function () {
-        if (session && session.inflight && session.mode !== 'form') {
+        if (session && session.inflight) {
           finishSession();
         }
       }, WATCH_MS);
@@ -666,8 +794,23 @@
       if (!session || !session.inflight) return;
       var form = e.target;
       if (session.form && form !== session.form) return;
-      session.mode = 'form';
-      setExpect(env);
+      var timeoutFn = (env.window && env.window.setTimeout) || setTimeout;
+      timeoutFn(function () {
+        if (!session || !session.inflight) return;
+        if (e.defaultPrevented) {
+          if (session.mode === 'ajax') return;
+          session.mode = null;
+          clearExpect(env);
+          timeoutFn(function () {
+            if (session && session.inflight && session.mode !== 'ajax' && session.mode !== 'form') {
+              finishSession();
+            }
+          }, 50);
+          return;
+        }
+        session.mode = 'form';
+        setExpect(env);
+      }, 0);
     }
 
     function beginSession(btn, fromHotkey) {
@@ -675,11 +818,13 @@
       var focus = activeEditable(env);
       commitPendingValue(focus, env);
       var form = buttonForm(btn, env);
-      if (fromHotkey && form) neutralizeEmail(form, env);
       if (form && typeof form.checkValidity === 'function' && !form.checkValidity()) {
         showValidation(collectInvalidFields(form, env));
         restoreFocus(focus);
         return false;
+      }
+      if (fromHotkey && form) {
+        rememberEmailUndo(form, neutralizeEmail(form, env));
       }
       session = {
         inflight: true,
@@ -711,7 +856,7 @@
       if (e.preventDefault) e.preventDefault();
       if (e.stopPropagation) e.stopPropagation();
       if (e.repeat) return true;
-      if (isConfirmOpen(env)) return true;
+      if (isConfirmOpen(env) || isPaletteOpen(env)) return true;
       var t = env.now();
       if (t - lastFire < DEBOUNCE_MS) return true;
       if (session && session.inflight) return true;
@@ -736,24 +881,50 @@
 
     function bindTiny() {
       var tm = tinymceApi(env);
-      if (!tm) return;
-      var hook = function (editor) {
-        if (!editor || editor.__adminHotkeyBound) return;
-        editor.__adminHotkeyBound = true;
-        editor.on('keydown', function (evt) {
-          if (handleKeydown(evt)) {
-            if (evt && evt.preventDefault) evt.preventDefault();
-            return false;
-          }
-          return true;
-        });
-      };
+      if (!tm) {
+        watchTiny();
+        return;
+      }
+      if (tinyBoundApi === tm) {
+        if (tm.editors && tm.editors.forEach) tm.editors.forEach(hookTinyEditor);
+        return;
+      }
+      tinyBoundApi = tm;
       if (typeof tm.on === 'function') {
-        tm.on('AddEditor', function (e) { hook(e.editor); });
+        tm.on('AddEditor', function (e) { hookTinyEditor(e.editor); });
       }
       if (tm.editors && tm.editors.forEach) {
-        tm.editors.forEach(hook);
+        tm.editors.forEach(hookTinyEditor);
       }
+    }
+
+    function hookTinyEditor(editor) {
+      if (!editor || editor.__adminHotkeyBound) return;
+      editor.__adminHotkeyBound = true;
+      editor.on('keydown', function (evt) {
+        if (handleKeydown(evt)) {
+          if (evt && evt.preventDefault) evt.preventDefault();
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function watchTiny() {
+      if (tinyWatch) return;
+      var win = env.window;
+      var timeoutFn = (win && win.setTimeout) || setTimeout;
+      var tries = 0;
+      var poll = function () {
+        tries += 1;
+        if (tinymceApi(env)) {
+          tinyWatch = null;
+          bindTiny();
+          return;
+        }
+        if (tries < 40) tinyWatch = timeoutFn(poll, 250);
+      };
+      tinyWatch = timeoutFn(poll, 250);
     }
 
     function consumeFlash(payload) {
@@ -778,14 +949,23 @@
         return;
       }
       if (expected && payload.success) {
-        showSaved();
-        hideDuplicateFlash('success', env);
+        var text = payload.success === true ? 'Saved' : String(payload.success);
+        showSaved(text);
+        if (isPlainSaved(text)) hideDuplicateFlash('success', env);
       }
     }
 
     function onPageHide() {
       if (session && session.mode === 'form') {
         session.inflight = false;
+      }
+    }
+
+    function onPageShow(e) {
+      if (e && e.persisted) {
+        undoHotkeyMutations();
+        clearExpect(env);
+        finishSession();
       }
     }
 
@@ -799,6 +979,7 @@
       doc.addEventListener('submit', onFormSubmit, true);
       if (env.window && env.window.addEventListener) {
         env.window.addEventListener('pagehide', onPageHide);
+        env.window.addEventListener('pageshow', onPageShow);
       }
       annotateAll();
       bindTiny();
@@ -832,15 +1013,22 @@
       buttonForm: function (btn) { return buttonForm(btn, env); },
       commitPendingValue: function (el) { return commitPendingValue(el, env); },
       neutralizeEmail: function (form) { return neutralizeEmail(form, env); },
+      restoreEmail: function (snap, form) { return restoreEmail(snap, form); },
+      undoHotkeyMutations: undoHotkeyMutations,
       laravelToName: laravelToName,
       isIgnoredUrl: isIgnoredUrl,
       parseAjaxResult: parseAjaxResult,
       collectInvalidFields: function (form) { return collectInvalidFields(form, env); },
       handleKeydown: handleKeydown,
       onMarkedClick: onMarkedClick,
+      onFormSubmit: onFormSubmit,
+      onPageShow: onPageShow,
       consumeFlash: consumeFlash,
       setExpect: function () { setExpect(env); },
       consumeExpect: function () { return consumeExpect(env); },
+      clearExpect: function () { return clearExpect(env); },
+      releaseInflight: function () { finishSession(); },
+      bindTiny: bindTiny,
       bind: bind,
       reset: reset,
       isInflight: function () { return !!(session && session.inflight); },
@@ -874,6 +1062,7 @@
     isButtonAvailable: isButtonAvailable,
     isBusy: isBusy,
     isEmailButton: isEmailButton,
+    isPaletteOpen: isPaletteOpen,
     findTargetButton: findTargetButton,
     commitPendingValue: commitPendingValue,
     neutralizeEmail: neutralizeEmail,

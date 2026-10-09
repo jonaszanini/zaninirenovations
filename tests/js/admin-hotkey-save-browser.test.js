@@ -86,7 +86,7 @@ async function resetSaveState(page) {
 
 async function showOnly(page, id) {
   await page.evaluate((keep) => {
-    ['page-quotation', 'page-room-area', 'page-toast-layout', 'page-vehicles', 'page-email', 'page-preview', 'page-tinymce'].forEach((pid) => {
+    ['page-quotation', 'page-room-area', 'page-toast-layout', 'page-vehicles', 'page-email', 'page-preview', 'page-cancelled', 'page-tinymce'].forEach((pid) => {
       const el = document.getElementById(pid);
       if (el) el.hidden = pid !== keep;
     });
@@ -204,10 +204,11 @@ async function showOnly(page, id) {
       const bg = styles.backgroundColor;
       const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/);
       const alpha = m && m[4] != null ? Number(m[4]) : 1;
-      return { bg, color: styles.color, alpha };
+      return { bg, color: styles.color, alpha, opacity: Number(styles.opacity) };
     });
     assert.ok(dark.bg, 'dark-mode toast has a background');
     assert.ok(dark.alpha >= 0.99, 'dark-mode toast background is opaque');
+    assert.ok(dark.opacity >= 0.99, 'dark-mode toast card opacity is solid');
 
     await page.setViewport({ width: 1280, height: 800 });
     await showOnly(page, 'page-toast-layout');
@@ -306,6 +307,130 @@ async function showOnly(page, id) {
     });
     assert.strictEqual(tinyHandled.prevented, true, 'TinyMCE Ctrl+S prevents the browser dialog');
     assert.ok(tinyHandled.saves.indexOf('contract') !== -1, 'TinyMCE Ctrl+S clicks the draft save');
+    const tinyHooked = await page.evaluate(() => {
+      const inst = window.AdminHotkeySave.instance();
+      inst.bindTiny();
+      return typeof window.tinymce._addEditor === 'function';
+    });
+    assert.ok(tinyHooked, 'bindTiny registers the TinyMCE AddEditor hook');
+
+    await showOnly(page, 'page-email');
+    await resetSaveState(page);
+    const n1 = await page.evaluate(() => {
+      const form = document.getElementById('cp-create-project-form');
+      const name = document.createElement('input');
+      name.id = 'cp-client-name';
+      name.name = 'client_name';
+      name.required = true;
+      name.value = '';
+      form.insertBefore(name, form.firstChild);
+      const box = document.getElementById('cp-send-client-email');
+      box.checked = true;
+      const ev = {
+        key: 's', code: 'KeyS', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false, repeat: false,
+        preventDefault() {},
+        stopPropagation() {},
+      };
+      window.AdminHotkeySave.instance().handleKeydown(ev);
+      return {
+        checked: box.checked,
+        hotkeyField: !!form.querySelector('[name="_hotkey_save"]'),
+      };
+    });
+    assert.strictEqual(n1.checked, true, 'failed Ctrl+S leaves the email box ticked');
+    assert.strictEqual(n1.hotkeyField, false, 'failed Ctrl+S does not persist _hotkey_save');
+
+    const bfcache = await page.evaluate(() => {
+      const form = document.getElementById('cp-create-project-form');
+      const name = document.getElementById('cp-client-name');
+      if (name) name.remove();
+      const box = document.getElementById('cp-send-client-email');
+      box.checked = true;
+      const inst = window.AdminHotkeySave.instance();
+      inst.reset();
+      inst.handleKeydown({
+        key: 's', code: 'KeyS', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false, repeat: false,
+        preventDefault() {},
+        stopPropagation() {},
+      });
+      const afterSave = { checked: box.checked, hotkey: !!form.querySelector('[name="_hotkey_save"]') };
+      inst.onPageShow({ persisted: true });
+      return {
+        afterSave,
+        checked: box.checked,
+        hotkey: !!form.querySelector('[name="_hotkey_save"]'),
+        expect: sessionStorage.getItem('admin-save-expect'),
+      };
+    });
+    assert.strictEqual(bfcache.afterSave.checked, false, 'successful Ctrl+S unchecks email');
+    assert.strictEqual(bfcache.checked, true, 'pageshow restores the email box');
+    assert.strictEqual(bfcache.hotkey, false, 'pageshow removes _hotkey_save');
+    assert.strictEqual(bfcache.expect, null, 'pageshow clears the expect flag');
+
+    await showOnly(page, 'page-cancelled');
+    await resetSaveState(page);
+    const cancelled = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const btn = document.getElementById('date-save');
+        const inst = window.AdminHotkeySave.instance();
+        btn.click();
+        setTimeout(() => {
+          const locked = inst.isInflight();
+          const ev = {
+            target: btn,
+            prevented: false,
+            stopped: false,
+            preventDefault() { this.prevented = true; },
+            stopImmediatePropagation() { this.stopped = true; },
+          };
+          inst.onMarkedClick(ev);
+          resolve({ locked: locked, swallowed: ev.prevented });
+        }, 80);
+      });
+    });
+    assert.strictEqual(cancelled.locked, false, 'cancelled submit releases the lock');
+    assert.strictEqual(cancelled.swallowed, false, 'later Save clicks are not swallowed');
+
+    await page.evaluate(() => {
+      document.getElementById('admin-search-palette').hidden = false;
+      document.getElementById('asp-input').focus();
+    });
+    await resetSaveState(page);
+    await page.evaluate(() => { window.__saves = []; });
+    await pressSave(page);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const paletteSaves = await page.evaluate(() => window.__saves.slice());
+    assert.deepStrictEqual(paletteSaves, [], 'search palette Ctrl+S does not save the page');
+    await page.evaluate(() => { document.getElementById('admin-search-palette').hidden = true; });
+
+    async function assertToastMissesChrome(width, height) {
+      await page.setViewport({ width, height });
+      await showOnly(page, 'page-toast-layout');
+      await page.evaluate(() => {
+        window.AdminToast.close();
+        window.AdminToast.validation([
+          { el: document.getElementById('layout-field'), label: 'Name', message: 'is required' },
+        ]);
+      });
+      const hit = await page.evaluate(() => {
+        const toast = document.querySelector('[data-admin-toast-host]');
+        const bar = document.getElementById('br-sticky-total');
+        const nav = document.getElementById('br-step-nav');
+        const next = document.getElementById('br-next');
+        const tr = toast.getBoundingClientRect();
+        function hits(el) {
+          const r = el.getBoundingClientRect();
+          return !(tr.right < r.left - 8 || tr.left > r.right + 8 || tr.bottom < r.top - 8 || tr.top > r.bottom + 8);
+        }
+        return { bar: hits(bar), nav: hits(nav), next: hits(next), placement: toast.getAttribute('data-placement') };
+      });
+      assert.strictEqual(hit.bar, false, width + ' toast does not cover sticky totals');
+      assert.strictEqual(hit.nav, false, width + ' toast does not cover step nav');
+      assert.strictEqual(hit.next, false, width + ' toast does not cover Next');
+    }
+    await assertToastMissesChrome(390, 720);
+    await assertToastMissesChrome(1024, 800);
+    await assertToastMissesChrome(1280, 800);
 
     console.log('admin-hotkey-save browser tests: ok');
   } finally {

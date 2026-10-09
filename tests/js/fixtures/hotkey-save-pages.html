@@ -76,6 +76,18 @@
     </form>
   </div>
 
+  <div id="page-cancelled" class="pad" hidden>
+    <form id="cp-date-form" action="/save/dates" method="post">
+      <input id="start-date" name="start_date" value="2026-11-10">
+      <input id="end-date" name="end_date" value="2026-11-05">
+      <button type="submit" id="date-save" data-hotkey-save>Create project</button>
+    </form>
+  </div>
+
+  <div id="admin-search-palette" class="asp" hidden>
+    <input type="text" id="asp-input" class="asp__input" value="">
+  </div>
+
   <div id="page-tinymce" class="pad" hidden>
     <form id="contract-form">
       <textarea id="contract-body" name="body">Hello</textarea>
@@ -140,12 +152,20 @@
       e.preventDefault();
       mockSave('contract');
     });
+    document.getElementById('cp-date-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      window.__dateWarned = true;
+    });
     window.tinymce = {
       editors: [],
-      on: function () {},
+      _addEditor: null,
+      on: function (name, fn) {
+        if (name === 'AddEditor') this._addEditor = fn;
+      },
       triggerSave: function () { window.__tinySaved = true; },
       activeEditor: {
         getElement: function () { return document.getElementById('contract-body'); },
+        hasFocus: function () { return false; },
         on: function (name, fn) {
           window.__tinyKeydown = fn;
         }

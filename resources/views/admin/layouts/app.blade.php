@@ -493,7 +493,7 @@
         }
     }
     $adminToastFlash = [
-        'success' => (bool) session('success'),
+        'success' => session('success'),
         'error' => session('error'),
         'warning' => session('warning'),
         'fields' => $adminToastFields,

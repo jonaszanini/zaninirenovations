@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Mail\ClientProjectFixedScheduleConfirmationClient;
 use App\Mail\ClientProjectQuoteReceivedClient;
+use App\Models\AdminCalendarEvent;
 use App\Models\AiInstruction;
 use App\Models\Client;
 use App\Models\ClientProject;
@@ -144,7 +146,26 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
         $this->assertStringContainsString('data-hotkey-save', $deck);
     }
 
-    public function test_hotkey_save_never_sends_the_client_quote_email(): void
+    public function test_explicit_send_client_email_wins_over_hotkey_flag(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $this->post(route('admin.client-projects.store'), [
+            'name' => 'Hotkey send-wins',
+            'contacted_via' => 'email',
+            'client_name' => 'Hotkey Client',
+            'client_email' => 'client@example.com',
+            'billing_type' => 'fixed',
+            'send_client_email' => '1',
+            '_hotkey_save' => '1',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        Mail::assertSent(ClientProjectQuoteReceivedClient::class);
+        $this->assertStringContainsString('Acknowledgement emailed', session('success'));
+    }
+
+    public function test_hotkey_save_skips_client_email_when_box_is_off(): void
     {
         Mail::fake();
         $this->actingAsAdmin();
@@ -155,7 +176,7 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
             'client_name' => 'Hotkey Client',
             'client_email' => 'client@example.com',
             'billing_type' => 'fixed',
-            'send_client_email' => '1',
+            'send_client_email' => '0',
             '_hotkey_save' => '1',
         ])->assertRedirect()->assertSessionHas('success');
 
@@ -164,5 +185,141 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
         $project = ClientProject::where('name', 'Hotkey no-email')->first();
         $this->assertNotNull($project);
         $this->assertStringContainsString('No client email sent', session('success'));
+    }
+
+    public function test_hotkey_duplicate_check_does_not_flash_email_box_off(): void
+    {
+        $this->actingAsAdmin();
+
+        $client = Client::create([
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+        ]);
+        ClientProject::factory()->create([
+            'name' => 'Front deck',
+            'client_id' => $client->id,
+            'client_name' => 'Jane Doe',
+            'client_email' => 'jane@example.com',
+        ]);
+
+        $response = $this->from(route('admin.client-projects.create'))
+            ->post(route('admin.client-projects.store'), [
+                'name' => 'Front Deck Repair',
+                'contacted_via' => 'email',
+                'client_id' => $client->id,
+                'client_name' => 'Jane Doe',
+                'client_email' => 'jane@example.com',
+                'billing_type' => 'fixed',
+                'send_client_email' => '0',
+                '_hotkey_save' => '1',
+            ]);
+
+        $response->assertRedirect(route('admin.client-projects.create'));
+        $response->assertSessionHas('duplicate_project_candidates');
+        $this->assertNull(session()->getOldInput('send_client_email'));
+        $this->assertNull(session()->getOldInput('_hotkey_save'));
+
+        $html = $this->get(route('admin.client-projects.create'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/id="cp-send-client-email"[^>]*checked|checked[^>]*id="cp-send-client-email"/',
+            $html
+        );
+    }
+
+    public function test_hotkey_save_notes_when_schedule_confirmation_is_held_back(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+        $project = $this->scheduledPaidProject();
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => $project->name,
+            'client_name' => $project->client_name,
+            'client_email' => $project->client_email,
+            'client_phone' => preg_replace('/\D+/', '', (string) $project->client_phone) ?: '6135550100',
+            'client_address' => $project->client_address,
+            'start_date' => '2026-11-01',
+            'end_date' => '2026-11-10',
+            '_hotkey_save' => '1',
+            'send_client_email' => '0',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        Mail::assertNotSent(ClientProjectFixedScheduleConfirmationClient::class);
+        $this->assertStringContainsString('Schedule confirmation not sent (Ctrl+S)', session('success'));
+        $this->assertNull($project->fresh()->fixed_schedule_confirmation_sent_at);
+    }
+
+    public function test_explicit_send_client_email_wins_for_schedule_confirmation(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+        $project = $this->scheduledPaidProject();
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => $project->name,
+            'client_name' => $project->client_name,
+            'client_email' => $project->client_email,
+            'client_phone' => preg_replace('/\D+/', '', (string) $project->client_phone) ?: '6135550100',
+            'client_address' => $project->client_address,
+            'start_date' => '2026-11-01',
+            'end_date' => '2026-11-10',
+            '_hotkey_save' => '1',
+            'send_client_email' => '1',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        Mail::assertSent(ClientProjectFixedScheduleConfirmationClient::class);
+        $this->assertStringContainsString('Schedule confirmation emailed', session('success'));
+        $this->assertNotNull($project->fresh()->fixed_schedule_confirmation_sent_at);
+    }
+
+    public function test_calendar_personal_event_json_includes_ok(): void
+    {
+        $this->actingAsAdmin();
+
+        $created = $this->postJson(route('calendar.personal-events.store'), [
+            'title' => 'Holiday',
+            'description' => 'Off',
+            'start_date' => '2026-12-24',
+            'end_date' => '2026-12-26',
+        ]);
+        $created->assertCreated();
+        $created->assertJsonPath('ok', true);
+        $created->assertJsonPath('event.title', 'Holiday');
+
+        $event = AdminCalendarEvent::query()->first();
+        $this->assertNotNull($event);
+
+        $updated = $this->putJson(route('calendar.personal-events.update', $event), [
+            'title' => 'Holiday week',
+            'start_date' => '2026-12-24',
+            'end_date' => '2026-12-31',
+        ]);
+        $updated->assertOk();
+        $updated->assertJsonPath('ok', true);
+        $updated->assertJsonPath('event.title', 'Holiday week');
+    }
+
+    private function scheduledPaidProject(): ClientProject
+    {
+        $project = ClientProject::factory()->create([
+            'name' => 'Scheduled kitchen',
+            'client_name' => 'Pat Client',
+            'client_email' => 'pat@example.com',
+            'client_phone' => '6135550100',
+            'client_address' => '1 Main St, Ottawa, ON',
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'start_date' => '2026-11-01',
+            'end_date' => '2026-11-10',
+        ]);
+        $project->installments()->create([
+            'sort_order' => 0,
+            'label' => '1st',
+            'percentage' => 100,
+            'amount' => 100,
+            'is_paid' => true,
+            'paid_on' => now(),
+        ]);
+
+        return $project;
     }
 }

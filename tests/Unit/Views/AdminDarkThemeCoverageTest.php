@@ -110,6 +110,20 @@ class AdminDarkThemeCoverageTest extends TestCase
             $this->assertStringContainsString($selector, $dark, "Missing dark rule {$selector}");
         }
 
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-toast__card\s*\{[^}]*opacity:\s*1/s',
+            $dark,
+            'Dark toast card must be opaque'
+        );
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-toast--success\s*\{[^}]*opacity:\s*1/s',
+            $dark
+        );
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-toast--error\s*\{[^}]*opacity:\s*1/s',
+            $dark
+        );
+
         $this->assertStringNotContainsString(
             'html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]) {',
             $dark

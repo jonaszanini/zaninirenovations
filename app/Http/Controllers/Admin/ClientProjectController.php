@@ -233,8 +233,14 @@ class ClientProjectController extends Controller
         if (! $request->boolean('confirm_duplicate_project')) {
             $duplicates = $this->duplicateProjectCandidates($data);
             if ($duplicates->isNotEmpty()) {
+                $except = ['confirm_duplicate_project', 'photos'];
+                if ($request->boolean('_hotkey_save')) {
+                    $except[] = 'send_client_email';
+                    $except[] = '_hotkey_save';
+                }
+
                 return back()
-                    ->withInput($request->except(['confirm_duplicate_project', 'photos']))
+                    ->withInput($request->except($except))
                     ->with('duplicate_project_candidates', $duplicates)
                     ->with('warning', 'A similar project already exists for this client or address. Open it below, or click "Create anyway" if this is a separate job.');
             }
@@ -242,9 +248,13 @@ class ClientProjectController extends Controller
 
         // Pulled out before array_merge below because it isn't a column
         // on the projects table — it controls the onCreated side-effect.
-        $sendClientEmail = $request->boolean('_hotkey_save')
-            ? false
-            : (bool) ($data['send_client_email'] ?? true);
+        // An explicit send_client_email=1 always wins (e.g. leftover
+        // _hotkey_save after a failed Ctrl+S). Ctrl+S only skips when
+        // the box is absent or 0.
+        $sendClientEmail = $this->shouldSendClientEmail(
+            $request,
+            (bool) ($data['send_client_email'] ?? true)
+        );
         $syncDirectory = (bool) ($data['sync_client_directory'] ?? true);
         unset($data['send_client_email'], $data['sync_client_directory'], $data['photos'], $data['document_links']);
 
@@ -713,13 +723,16 @@ class ClientProjectController extends Controller
         }
 
         $scheduleClientWarning = null;
-        if (! request()->boolean('_hotkey_save')) {
-            $fixedSched = $service->maybeSendFixedScheduleConfirmationToClient($client_project->fresh());
+        $freshForSchedule = $client_project->fresh();
+        if ($this->shouldSendClientEmail(request(), true)) {
+            $fixedSched = $service->maybeSendFixedScheduleConfirmationToClient($freshForSchedule);
             if ($fixedSched === 'sent') {
                 $successMessage .= ' Schedule confirmation emailed to the client.';
             } elseif ($fixedSched === 'failed') {
                 $scheduleClientWarning = 'The client schedule confirmation email failed to send. Check logs.';
             }
+        } elseif ($this->fixedScheduleConfirmationIsPending($freshForSchedule)) {
+            $successMessage .= ' Schedule confirmation not sent (Ctrl+S).';
         }
 
         $redirect = redirect()
@@ -1238,6 +1251,34 @@ class ClientProjectController extends Controller
         if ($merge !== []) {
             $request->merge($merge);
         }
+    }
+
+    /**
+     * An explicit send_client_email=1 always wins. Ctrl+S (_hotkey_save)
+     * only skips the client email when the box is absent or 0.
+     */
+    private function shouldSendClientEmail(Request $request, bool $default): bool
+    {
+        if ($request->boolean('send_client_email')) {
+            return true;
+        }
+        if ($request->boolean('_hotkey_save')) {
+            return false;
+        }
+        if ($request->has('send_client_email')) {
+            return $request->boolean('send_client_email');
+        }
+
+        return $default;
+    }
+
+    private function fixedScheduleConfirmationIsPending(ClientProject $project): bool
+    {
+        return ! $project->isHourly()
+            && $project->hasSchedule()
+            && $project->firstInstallmentPaid()
+            && ! $project->fixed_schedule_confirmation_sent_at
+            && $project->hasClientContactInfo();
     }
 
     /** @return array<string, mixed>|null */

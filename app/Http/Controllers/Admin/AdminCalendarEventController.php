@@ -16,6 +16,7 @@ class AdminCalendarEventController extends Controller
         $event = AdminCalendarEvent::create($data);
 
         return response()->json([
+            'ok' => true,
             'event' => $event->toFullCalendarEvent(),
         ], 201);
     }
@@ -27,6 +28,7 @@ class AdminCalendarEventController extends Controller
         $admin_calendar_event->update($data);
 
         return response()->json([
+            'ok' => true,
             'event' => $admin_calendar_event->fresh()->toFullCalendarEvent(),
         ]);
     }

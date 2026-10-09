@@ -28,6 +28,8 @@ assert.strictEqual(hotkey.isSaveChord(chord({ key: 'k', code: 'KeyK' })), false,
 assert.strictEqual(hotkey.isSaveChord(chord({ altKey: true })), false, 'AltGr / Alt+Ctrl+S is ignored');
 assert.strictEqual(hotkey.isSaveChord(chord({ shiftKey: true })), false, 'Ctrl+Shift+S is ignored');
 assert.strictEqual(hotkey.isSaveChord(chord({ key: 'ы', code: 'KeyS' })), true, 'physical KeyS still matches on non-Latin layouts');
+assert.strictEqual(hotkey.isSaveChord(chord({ key: 'o', code: 'KeyS' })), false, 'Dvorak Ctrl+O (KeyS) is not save');
+assert.strictEqual(hotkey.isSaveChord(chord({ key: 's', code: 'KeyO' })), true, 'e.key s still saves when code is not KeyS');
 assert.strictEqual(hotkey.shouldTriggerSave(chord({ repeat: true })), false, 'held-key repeat is ignored');
 assert.strictEqual(hotkey.isSaveChord(chord({ ctrlKey: false, metaKey: false })), false, 'plain S is ignored');
 
@@ -49,13 +51,33 @@ function matches(el, sel) {
   if (sel.indexOf('[role="dialog"]') === 0) return el.getAttribute('role') === 'dialog';
   if (sel.indexOf('[role="alertdialog"]') === 0) return el.getAttribute('role') === 'alertdialog';
   if (sel.charAt(0) === '#') return el.id === sel.slice(1) || el.getAttribute('id') === sel.slice(1);
+  if (sel.charAt(0) === '.') {
+    const cls = sel.slice(1);
+    if (el.classList && el.classList.contains(cls)) return true;
+    return !!(el.className && String(el.className).split(/\s+/).indexOf(cls) !== -1);
+  }
   if (sel.indexOf('label[for="') === 0) {
     const id = sel.slice('label[for="'.length, -2);
     return el.tagName === 'LABEL' && el.getAttribute('for') === id;
   }
-  if (sel.indexOf('[name="') === 0) {
+  if (sel.indexOf('[name="') === 0 && sel.indexOf('[data-') === -1) {
     const name = sel.slice('[name="'.length, -2);
     return el.getAttribute('name') === name;
+  }
+  if (sel.indexOf('[data-admin-hotkey-field]') !== -1) {
+    if (!el.hasAttribute('data-admin-hotkey-field')) return false;
+    const nameMatch = sel.match(/\[name="([^"]+)"\]/);
+    if (nameMatch) return el.getAttribute('name') === nameMatch[1];
+    return true;
+  }
+  if (sel.indexOf('[data-admin-flash=') === 0) {
+    const kind = sel.match(/\[data-admin-flash="([^"]+)"\]/);
+    return kind && el.getAttribute('data-admin-flash') === kind[1];
+  }
+  if (sel.indexOf('[data-br-step]') === 0) return el.hasAttribute('data-br-step');
+  if (sel.indexOf('[data-br-goto=') === 0) {
+    const key = sel.match(/\[data-br-goto="([^"]+)"\]/);
+    return key && el.getAttribute('data-br-goto') === key[1];
   }
   return false;
 }
@@ -72,6 +94,7 @@ function makeEl(tag, attrs, children) {
     hidden: !!attrs.hidden,
     value: attrs.value != null ? String(attrs.value) : '',
     clicked: 0,
+    style: {},
     invalid: !!attrs.invalid,
     validationMessage: attrs.validationMessage || '',
     isContentEditable: !!attrs.contenteditable,
@@ -98,6 +121,12 @@ function makeEl(tag, attrs, children) {
       }
       return null;
     },
+    get parentNode() { return this.parent; },
+    get textContent() {
+      if (this._text != null) return this._text;
+      return (this.children || []).map((c) => c.textContent || '').join('');
+    },
+    set textContent(v) { this._text = String(v); },
     getAttribute(k) {
       if (k === 'hidden' && this.hidden) return '';
       return this.attrs[k] != null ? String(this.attrs[k]) : null;
@@ -109,6 +138,11 @@ function makeEl(tag, attrs, children) {
       child.parent = this;
       child.doc = this.doc;
       this.children.push(child);
+      return child;
+    },
+    removeChild(child) {
+      this.children = this.children.filter((c) => c !== child);
+      if (child.parent === this) child.parent = null;
       return child;
     },
     closest(sel) {
@@ -163,6 +197,11 @@ function makeEl(tag, attrs, children) {
       return this.rect || { left: 0, top: 0, right: 40, bottom: 40, width: 40, height: 40 };
     },
   };
+  if (attrs.class || attrs.className) {
+    const cls = String(attrs.class || attrs.className);
+    el.className = cls;
+    cls.split(/\s+/).forEach((c) => { if (c) el.classList.add(c); });
+  }
   (children || []).forEach((child) => el.appendChild(child));
   return el;
 }
@@ -445,6 +484,9 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   assert.ok(flag, 'Ctrl+S posts _hotkey_save');
   assert.strictEqual(flag.value, '1');
   inst.reset();
+  assert.strictEqual(checkbox.checked, true, 'finish restores the email box');
+  assert.ok(!form.children.some((c) => c.name === '_hotkey_save' || (c.getAttribute && c.getAttribute('name') === '_hotkey_save')),
+    'finish removes leftover _hotkey_save');
 })();
 
 (function focusedFormChoice() {
@@ -506,16 +548,316 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   const json = { headers: { get() { return 'application/json'; } }, ok: true, status: 200 };
   assert.strictEqual(inst.parseAjaxResult(json, { ok: true }).kind, 'saved');
   assert.strictEqual(inst.parseAjaxResult(json, { ok: false, message: 'nope' }).kind, 'error');
+  const created = { headers: { get() { return 'application/json'; } }, ok: true, status: 201 };
+  assert.strictEqual(inst.parseAjaxResult(created, { event: { id: 1 } }).kind, 'saved', 'calendar {event} is ok');
   const html = { headers: { get() { return 'text/html'; } }, ok: true, status: 200 };
   const htmlResult = inst.parseAjaxResult(html, '<html><body>Projects</body></html>');
   assert.strictEqual(htmlResult.kind, 'error', 'HTML 200 is not Saved');
   const login = inst.parseAjaxResult(html, '<html>Sign in</html>');
   assert.strictEqual(login.title, 'Sign in required');
+  const expired = inst.parseAjaxResult(
+    { headers: { get() { return 'text/html'; } }, ok: false, status: 419 },
+    '<html>Page Expired. Please sign in.</html>'
+  );
+  assert.strictEqual(expired.title, 'Sign in required', '419 HTML is a login/session message');
+  assert.ok(/session expired/i.test(expired.message));
   inst.reset();
 })();
 
 (function dottedErrorKeys() {
   assert.strictEqual(hotkey.laravelToName('pieces.0.width'), 'pieces[0][width]');
+})();
+
+(function failedHotkeyDoesNotPersistEmailSkip() {
+  const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
+  checkbox.checked = true;
+  const name = makeEl('input', { name: 'client_name', invalid: true, required: true });
+  name.invalid = true;
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [checkbox, name, btn]);
+  const doc = makeDoc([form]);
+  const inst = apiFor(doc);
+  inst.handleKeydown(chord());
+  assert.strictEqual(btn.clicked, 0, 'invalid Ctrl+S does not click Save');
+  assert.strictEqual(checkbox.checked, true, 'failed Ctrl+S leaves the email box ticked');
+  assert.ok(!form.children.some((c) => c.name === '_hotkey_save'), 'failed Ctrl+S does not append _hotkey_save');
+  inst.reset();
+})();
+
+(function pageshowRestoresEmailAndClearsExpect() {
+  const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
+  checkbox.checked = true;
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [checkbox, btn]);
+  const doc = makeDoc([form]);
+  const store = {};
+  const inst = hotkey.create({
+    document: doc,
+    window: { navigator: { platform: 'Linux' } },
+    now() { return 4000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: {
+      getItem(k) { return store[k] || null; },
+      setItem(k, v) { store[k] = String(v); },
+      removeItem(k) { delete store[k]; },
+    },
+  });
+  inst.handleKeydown(chord());
+  assert.strictEqual(checkbox.checked, false);
+  inst.setExpect();
+  inst.onPageShow({ persisted: true });
+  assert.strictEqual(checkbox.checked, true, 'bfcache restores the email box');
+  assert.ok(!form.children.some((c) => c.name === '_hotkey_save'), 'bfcache removes _hotkey_save');
+  assert.strictEqual(inst.consumeExpect(), false, 'bfcache clears the expect flag');
+  assert.strictEqual(inst.isInflight(), false);
+  inst.reset();
+})();
+
+(function cancelledSubmitReleasesLock() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const inst = hotkey.create({
+    document: doc,
+    window: {
+      navigator: { platform: 'Linux' },
+      setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+      clearTimeout() {},
+    },
+    now() { return 8000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.onMarkedClick({ target: btn, preventDefault() {}, stopImmediatePropagation() {} });
+  assert.ok(inst.isInflight(), 'mouse save starts a session');
+  inst.onFormSubmit({ target: form, defaultPrevented: true });
+  timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
+  timers.filter((t) => t.ms === 50).forEach((t) => t.fn());
+  assert.strictEqual(inst.isInflight(), false, 'cancelled submit releases the lock');
+  const later = {
+    target: btn,
+    prevented: false,
+    stopped: false,
+    preventDefault() { this.prevented = true; },
+    stopImmediatePropagation() { this.stopped = true; },
+  };
+  inst.onMarkedClick(later);
+  assert.strictEqual(later.prevented, false, 'later mouse click is not swallowed');
+  assert.strictEqual(later.stopped, false);
+  inst.reset();
+})();
+
+(function clickSwallowWhileInflight() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'save' });
+  const form = makeEl('form', { id: 'f' }, [btn]);
+  const doc = makeDoc([form]);
+  const inst = apiFor(doc);
+  inst.onMarkedClick({ target: btn, preventDefault() {}, stopImmediatePropagation() {} });
+  assert.ok(inst.isInflight());
+  const click = {
+    target: btn,
+    prevented: false,
+    stopped: false,
+    preventDefault() { this.prevented = true; },
+    stopImmediatePropagation() { this.stopped = true; },
+  };
+  inst.onMarkedClick(click);
+  assert.strictEqual(click.prevented, true, 'in-flight click is preventDefaulted');
+  assert.strictEqual(click.stopped, true, 'in-flight click is stopImmediatePropagationed');
+  inst.reset();
+})();
+
+(function debounceAfterReleaseInflight() {
+  const doc = page('standard');
+  const btn = doc.getElementById('sq-save');
+  let now = 9000;
+  const inst = hotkey.create({
+    document: doc,
+    window: { navigator: { platform: 'Linux' } },
+    now() { return now; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  assert.strictEqual(btn.clicked, 1);
+  inst.releaseInflight();
+  now = 9200;
+  inst.handleKeydown(chord());
+  assert.strictEqual(btn.clicked, 1, 'debounce still applies after releaseInflight without reset');
+  now = 9800;
+  inst.handleKeydown(chord());
+  assert.strictEqual(btn.clicked, 2, 'Ctrl+S works again after debounce');
+  inst.reset();
+})();
+
+(function consumeFlashNeedsExpectAndKeepsActionableText() {
+  const banner = makeEl('div', { 'data-admin-flash': 'success', id: 'flash' });
+  banner.textContent = 'Schedule confirmation emailed to the client.';
+  banner.hidden = false;
+  const doc = makeDoc([banner]);
+  const toasts = [];
+  const store = {};
+  const inst = hotkey.create({
+    document: doc,
+    window: { navigator: { platform: 'Linux' } },
+    now() { return 1000; },
+    toast: {
+      saved(_env, message) { toasts.push(message || 'Saved'); },
+      error() {},
+      validation() {},
+    },
+    storage: {
+      getItem(k) { return store[k] || null; },
+      setItem(k, v) { store[k] = String(v); },
+      removeItem(k) { delete store[k]; },
+    },
+  });
+  inst.consumeFlash({ success: 'Schedule confirmation emailed to the client.' });
+  assert.deepStrictEqual(toasts, [], 'reload without expect does not show Saved');
+  assert.strictEqual(banner.hidden, false, 'banner stays visible without expect');
+  inst.setExpect();
+  inst.consumeFlash({ success: 'Schedule confirmation emailed to the client.' });
+  assert.deepStrictEqual(toasts, ['Schedule confirmation emailed to the client.']);
+  assert.strictEqual(banner.hidden, false, 'actionable flash is not hidden');
+  inst.setExpect();
+  inst.consumeFlash({ success: 'Saved' });
+  assert.strictEqual(banner.hidden, true, 'plain Saved banner is hidden');
+  inst.reset();
+})();
+
+(function paletteIsANoOp() {
+  const pal = makeEl('div', { id: 'admin-search-palette' });
+  const input = makeEl('input', { id: 'asp-input' });
+  pal.appendChild(input);
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'page-save' });
+  const form = makeEl('form', { id: 'f' }, [btn]);
+  const doc = makeDoc([pal, form]);
+  doc.activeElement = input;
+  const inst = apiFor(doc);
+  const e = chord();
+  inst.handleKeydown(e);
+  assert.strictEqual(e.prevented, true, 'palette still blocks the browser Save dialog');
+  assert.strictEqual(btn.clicked, 0, 'Ctrl+S does nothing in the search palette');
+  inst.reset();
+})();
+
+(function bindTinyRegistersAddEditor() {
+  const btn = makeEl('button', { type: 'button', 'data-hotkey-save': '', id: 'tiny-save' });
+  const doc = makeDoc([btn]);
+  const editors = [];
+  let addEditor = null;
+  const tm = {
+    editors,
+    on(name, fn) { if (name === 'AddEditor') addEditor = fn; },
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: { navigator: { platform: 'Linux' }, tinymce: tm, setTimeout, clearTimeout },
+    now() { return 1000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.bindTiny();
+  assert.ok(typeof addEditor === 'function', 'bindTiny hooks tinymce AddEditor');
+  let keydown = null;
+  addEditor({ editor: { on(name, fn) { if (name === 'keydown') keydown = fn; } } });
+  assert.ok(typeof keydown === 'function', 'new editors receive the hotkey keydown hook');
+  inst.reset();
+})();
+
+(function wizardRevealAndEscAndClearOnFix() {
+  const field = makeEl('input', { id: 'pieces-0-width', name: 'pieces[0][width]' });
+  const step = makeEl('div', { 'data-br-step': 'framing', hidden: true }, [field]);
+  step.hidden = true;
+  const nav = makeEl('button', { 'data-br-goto': 'framing', id: 'goto-framing' });
+  const host = makeEl('div', { 'data-admin-toast-host': '' });
+  host.hidden = true;
+  const doc = makeDoc([step, nav, host]);
+  field.closest = function (sel) {
+    if (sel.indexOf('[data-br-step]') !== -1) return step;
+    return null;
+  };
+  toast.revealWizardFor(field);
+  assert.strictEqual(step.hidden, false, 'wizard step is opened');
+  assert.ok(step.classList.contains('is-active'), 'wizard step is marked active');
+  assert.strictEqual(nav.clicked, 1, 'step nav is clicked');
+
+  const env = { document: doc, window: { innerWidth: 1024, innerHeight: 800, addEventListener() {} } };
+  toast.validation([{ el: field, label: 'Width', message: 'is required' }], {}, env);
+  assert.strictEqual(host.hidden, false, 'validation toast is shown');
+  field.validity = { valid: true };
+  field.invalid = false;
+  if (doc.listeners.input) {
+    doc.listeners.input.forEach((fn) => fn({ target: field }));
+  }
+  assert.strictEqual(host.hidden, true, 'toast closes once the field is fixed');
+
+  toast.error('boom', env);
+  assert.strictEqual(host.hidden, false);
+  if (doc.listeners.keydown) {
+    doc.listeners.keydown.forEach((fn) => fn({ key: 'Escape', code: 'Escape' }));
+  }
+  assert.strictEqual(host.hidden, true, 'Esc closes the toast');
+})();
+
+(function toastAvoidsStickyFallback() {
+  const sticky = makeEl('div', { class: 'br-sticky-total', id: 'br-sticky-total' });
+  sticky.className = 'br-sticky-total';
+  sticky.rect = { left: 0, top: 744, right: 1024, bottom: 800, width: 1024, height: 56 };
+  const next = makeEl('button', { id: 'br-next' });
+  next.rect = { left: 900, top: 750, right: 1010, bottom: 794, width: 110, height: 44 };
+  const save = makeEl('button', { 'data-hotkey-save': '', id: 'toolbar-save' });
+  save.rect = { left: 900, top: 8, right: 1010, bottom: 52, width: 110, height: 44 };
+  const doc = makeDoc([sticky, next, save]);
+  const host = makeEl('div', { 'data-admin-toast-host': '' });
+  host.hidden = true;
+  host.getBoundingClientRect = function () {
+    const place = this.getAttribute('data-placement') || 'bottom-center';
+    const pinned = parseFloat((this.style && this.style.bottom) || '');
+    if (place === 'bottom-center' && pinned > 40) {
+      const bottom = 800 - pinned;
+      return { left: 362, right: 662, top: bottom - 80, bottom, width: 300, height: 80 };
+    }
+    if (place === 'bottom-center' || place === 'bottom-left' || place === 'bottom-right') {
+      return { left: 362, right: 662, top: 700, bottom: 780, width: 300, height: 80 };
+    }
+    return { left: 362, right: 662, top: 20, bottom: 100, width: 300, height: 80 };
+  };
+  doc.body.appendChild(host);
+  const env = { document: doc, window: { innerWidth: 1024, innerHeight: 800, addEventListener() {} } };
+  toast.validation([{ el: save, label: 'Area', message: 'is required' }], {}, env);
+  const tr = host.getBoundingClientRect();
+  function hits(r) {
+    return !(tr.right < r.left - 8 || tr.left > r.right + 8 || tr.bottom < r.top - 8 || tr.top > r.bottom + 8);
+  }
+  assert.strictEqual(hits(sticky.rect), false, 'scored placement does not cover sticky totals');
+  assert.strictEqual(hits(next.rect), false, 'scored placement does not cover Next');
+  assert.ok(toast.PRIORITY_AVOID_SEL.indexOf('.br-sticky-total') !== -1);
+})();
+
+(function darkCardOpacityIsSolid() {
+  const fs = require('fs');
+  const path = require('path');
+  const dark = fs.readFileSync(path.resolve(__dirname, '../../public/css/admin-dark.css'), 'utf8');
+  assert.ok(/html\.admin-dark \.admin-toast__card\s*\{[^}]*opacity:\s*1/.test(dark), 'dark toast card is opaque');
+  assert.ok(/html\.admin-dark \.admin-toast--success\s*\{[^}]*opacity:\s*1/.test(dark), 'dark success toast is opaque');
+  assert.ok(/html\.admin-dark \.admin-toast--error\s*\{[^}]*opacity:\s*1/.test(dark), 'dark error toast is opaque');
+})();
+
+(function logoutFormIsSkippedForErrors() {
+  const logout = makeEl('form', { id: 'logout-form' });
+  const field = makeEl('input', { name: 'pieces[0][width]', id: 'w' });
+  const form = makeEl('form', { id: 'br-main-form' }, [field]);
+  const doc = makeDoc([logout, form]);
+  const inst = apiFor(doc);
+  const mapped = inst.parseAjaxResult(
+    { headers: { get() { return 'application/json'; } }, ok: false, status: 422 },
+    { errors: { 'pieces.0.width': ['required'] } }
+  );
+  assert.strictEqual(mapped.kind, 'validation');
+  assert.strictEqual(mapped.fields[0].el, field, 'dotted errors resolve on the real form, not logout');
+  inst.reset();
 })();
 
 (function previewDoesNotClearSave() {

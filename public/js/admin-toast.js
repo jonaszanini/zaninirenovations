@@ -24,6 +24,14 @@
     'top-left',
     'top-right',
   ];
+  var PRIORITY_AVOID_SEL = [
+    '.br-sticky-total',
+    '.br-step-nav',
+    '#br-next',
+    '#mw-next',
+    '#sh-next',
+    '#tm-next',
+  ].join(',');
   var AVOID_SEL = [
     '[data-hotkey-save]',
     '[data-ra-save-room]',
@@ -35,12 +43,7 @@
     '.util-ra-full-header__save',
     '.br-toolbar-actions',
     '.admin-toolbar-actions',
-    '.br-sticky-total',
-    '.br-step-nav',
-    '#br-next',
-    '#mw-next',
-    '#sh-next',
-    '#tm-next',
+    PRIORITY_AVOID_SEL,
   ].join(',');
 
   var hideTimer = null;
@@ -110,34 +113,91 @@
     return r;
   }
 
+  function isPriorityAvoid(el) {
+    if (!el || !el.matches) {
+      var id = el && el.id;
+      var cls = el && el.className && String(el.className);
+      return id === 'br-next' || id === 'mw-next' || id === 'sh-next' || id === 'tm-next'
+        || (cls && (cls.indexOf('br-sticky-total') !== -1 || cls.indexOf('br-step-nav') !== -1));
+    }
+    try { return el.matches(PRIORITY_AVOID_SEL); } catch (err) { return false; }
+  }
+
   function avoidRects(doc, win) {
     var rects = [];
     var nodes = doc.querySelectorAll(AVOID_SEL);
     for (var i = 0; i < nodes.length; i++) {
       var r = visibleRect(nodes[i], win);
-      if (r) rects.push(r);
+      if (r) rects.push({ rect: r, priority: isPriorityAvoid(nodes[i]) });
     }
     var active = doc.activeElement;
     if (active && active !== doc.body && active !== doc.documentElement) {
       var ar = visibleRect(active, win);
-      if (ar) rects.push(ar);
+      if (ar) rects.push({ rect: ar, priority: false });
     }
     return rects;
+  }
+
+  function overlapArea(a, b, pad) {
+    pad = pad == null ? AVOID_PAD : pad;
+    var left = Math.max(a.left, b.left - pad);
+    var right = Math.min(a.right, b.right + pad);
+    var top = Math.max(a.top, b.top - pad);
+    var bottom = Math.min(a.bottom, b.bottom + pad);
+    if (right <= left || bottom <= top) return 0;
+    return (right - left) * (bottom - top);
   }
 
   function applyPlacement(node, name) {
     node.setAttribute('data-placement', name);
     node.className = 'admin-toast admin-toast--' + name;
+    if (node.style) {
+      node.style.top = '';
+      node.style.bottom = '';
+      node.style.left = '';
+      node.style.right = '';
+      node.style.transform = '';
+    }
   }
 
-  function placementOverlaps(node, name, rects) {
+  function scorePlacement(node, name, rects) {
     applyPlacement(node, name);
-    if (!node.getBoundingClientRect) return false;
+    if (!node.getBoundingClientRect) return { score: 0, priority: 0 };
     var toastRect = node.getBoundingClientRect();
+    var priority = 0;
+    var other = 0;
     for (var i = 0; i < rects.length; i++) {
-      if (rectsOverlap(toastRect, rects[i])) return true;
+      var item = rects[i];
+      var rect = item.rect || item;
+      var area = overlapArea(toastRect, rect);
+      if (!area) continue;
+      if (item.priority) priority += area;
+      else other += area;
     }
-    return false;
+    return { score: priority * 1000 + other, priority: priority };
+  }
+
+  function pinAboveSticky(node, doc, win) {
+    var sticky = doc.querySelector('.br-sticky-total, .br-step-nav');
+    var next = doc.getElementById('br-next') || doc.getElementById('mw-next') || doc.getElementById('sh-next');
+    var bar = sticky && visibleRect(sticky, win);
+    if (!bar && next) bar = visibleRect(next, win);
+    if (!bar || !node.style) return false;
+    applyPlacement(node, 'bottom-center');
+    var gap = AVOID_PAD + 8;
+    var vh = (win && win.innerHeight) || 0;
+    var vw = (win && win.innerWidth) || 0;
+    var bottom = Math.max(8, vh - bar.top + gap);
+    node.style.bottom = bottom + 'px';
+    node.style.top = 'auto';
+    if (vw && vw <= 700) {
+      node.style.left = '0.75rem';
+      node.style.right = '0.75rem';
+      node.style.transform = 'none';
+    } else {
+      node.style.transform = 'translateX(-50%)';
+    }
+    return true;
   }
 
   function pickPlacement(env) {
@@ -146,13 +206,22 @@
     var node = ensureHost(env);
     if (!node || !doc) return 'bottom-center';
     var rects = avoidRects(doc, win);
+    var best = null;
     for (var i = 0; i < PLACEMENTS.length; i++) {
-      if (!placementOverlaps(node, PLACEMENTS[i], rects)) {
+      var result = scorePlacement(node, PLACEMENTS[i], rects);
+      if (result.priority === 0 && result.score === 0) {
+        applyPlacement(node, PLACEMENTS[i]);
         return PLACEMENTS[i];
       }
+      if (!best || result.score < best.score) {
+        best = { name: PLACEMENTS[i], score: result.score, priority: result.priority };
+      }
     }
-    applyPlacement(node, 'bottom-center');
-    return 'bottom-center';
+    if (best && best.priority > 0) {
+      if (pinAboveSticky(node, doc, win)) return 'bottom-center';
+    }
+    applyPlacement(node, best ? best.name : 'bottom-center');
+    return best ? best.name : 'bottom-center';
   }
 
   function iconFor(type) {
@@ -372,8 +441,15 @@
     return host;
   }
 
-  function saved(env) {
-    return show({ type: 'success', title: 'Saved', sticky: false, duration: SUCCESS_MS }, env);
+  function saved(env, message) {
+    var text = message && String(message).trim();
+    var plain = !text || /^(saved\.?|changes saved\.?)$/i.test(text);
+    return show({
+      type: 'success',
+      title: plain ? 'Saved' : text,
+      sticky: false,
+      duration: SUCCESS_MS,
+    }, env);
   }
 
   function error(message, env, title) {
@@ -410,7 +486,8 @@
     var toastRect = node.getBoundingClientRect();
     var rects = avoidRects(doc, win);
     for (var i = 0; i < rects.length; i++) {
-      if (rectsOverlap(toastRect, rects[i])) return true;
+      var rect = rects[i].rect || rects[i];
+      if (rectsOverlap(toastRect, rect)) return true;
     }
     return false;
   }
@@ -419,6 +496,7 @@
     SUCCESS_MS: SUCCESS_MS,
     PLACEMENTS: PLACEMENTS,
     AVOID_SEL: AVOID_SEL,
+    PRIORITY_AVOID_SEL: PRIORITY_AVOID_SEL,
     show: show,
     saved: saved,
     error: error,

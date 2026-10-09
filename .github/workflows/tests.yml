@@ -85,7 +85,6 @@ jobs:
           php artisan test tests/Unit/Views/PublicCssLightOnlyTest.php
           php artisan test tests/Unit/Views/PublicMobileNavDropdownTest.php
           php artisan test tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
-          php artisan test tests/Unit/Views/AdminHotkeySaveMarkupTest.php
           php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
           php artisan test tests/Unit/Views/HomeKitchenTileImageTest.php
 
@@ -219,6 +218,7 @@ jobs:
           php artisan test tests/Unit/Models/BlogPostListHelpersTest.php
           php artisan test tests/Feature/Admin/BlogPostsIndexLayoutTest.php
           php artisan test tests/Feature/Admin/AdminHotkeySaveMarkerTest.php
+          php artisan test tests/Feature/Admin/AdminHotkeySaveMarkupTest.php
           php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
           php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
           php artisan test tests/Feature/SharedPricesLayoutTest.php
