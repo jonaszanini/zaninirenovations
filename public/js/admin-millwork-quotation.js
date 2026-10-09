@@ -938,9 +938,11 @@
         setUpgradeFlags(true);
         fetchPreview().then(function (data) {
           var notice = data && data.recalc_notice;
-          var wasLabel = (notice && notice.was_label) || fmt(cfg.storedTotal || 0);
-          var nowLabel = (notice && notice.now_label) || (data && data.summary ? fmt(data.summary.grand_total) : '');
-          var msg = 'Was ' + wasLabel + ', now ' + nowLabel + '. Recalculate this quote with the new cut plan? You can undo before saving.';
+          var wasLabel = notice && notice.was_label ? String(notice.was_label) : '';
+          var nowLabel = notice && notice.now_label ? String(notice.now_label) : '';
+          var msg = (wasLabel && nowLabel)
+            ? ('Was ' + wasLabel + ', now ' + nowLabel + '. Recalculate this quote with the new cut plan? You can undo before saving.')
+            : 'Recalculate this quote with the new cut plan? You can undo before saving.';
           return confirmRecalc(msg).then(function (ok) {
             if (ok) {
               if (data) renderPreview(data);

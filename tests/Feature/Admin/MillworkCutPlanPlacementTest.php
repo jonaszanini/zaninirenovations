@@ -543,6 +543,74 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             ->assertDontSee('do not fit on any sheet');
     }
 
+    public function test_available_accept_page_hides_business_contact(): void
+    {
+        \App\Models\CompanySetting::current()->update([
+            'contact_phone' => '(555) 010-8888',
+            'contact_phone_tel' => '+15550108888',
+            'contact_email' => 'hidden@example.test',
+        ]);
+
+        $calc = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ]);
+        $project = ClientProject::factory()->create(['client_name' => 'Acceptable Closet']);
+        $mw = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-OK-1',
+            'client_name' => 'Acceptable Closet',
+            'client_project_id' => $project->id,
+            'cut_plan_version' => 2,
+            'is_draft' => false,
+            'inputs' => ['pieces' => [MillworkQuotationCalculator::defaultPiece('closet')]],
+            'calculation' => $calc,
+            'final_quote_total' => (float) ($calc['summary']['grand_total'] ?? 0),
+        ]);
+        $quotation = ClientProjectQuotation::query()->create([
+            'client_project_id' => $project->id,
+            'source_type' => ClientProjectQuotation::SOURCE_MILLWORK,
+            'source_id' => $mw->id,
+            'title' => 'Custom millwork',
+            'status' => ClientProjectQuotation::STATUS_DRAFT,
+            'type' => ClientProjectQuotation::TYPE_QUOTATION,
+            'quotation_number' => 'Q-OK-1',
+            'version' => 1,
+            'labour' => true,
+            'material' => false,
+            'items' => [[
+                'description' => 'Custom millwork (labour)',
+                'amount' => (float) ($calc['summary']['grand_total'] ?? 0),
+                'apply_hst' => true,
+            ]],
+        ]);
+
+        $accept = \Illuminate\Support\Facades\URL::signedRoute('public.quotations.accept', [
+            'quotation' => $quotation,
+        ]);
+        $this->get($accept)
+            ->assertOk()
+            ->assertSee('Accept this quote')
+            ->assertDontSee('(555) 010-8888')
+            ->assertDontSee('hidden@example.test');
+    }
+
+    public function test_vehicles_business_contact_help_is_behind_info_tip(): void
+    {
+        $this->actingAsAdmin();
+        $html = $this->get(route('admin.vehicles.index'))
+            ->assertOk()
+            ->assertSee('Business contact')
+            ->assertSee('admin-info-tip', false)
+            ->assertSee('Shown to clients on quote pages when a download or accept link is not available.')
+            ->getContent();
+
+        $this->assertStringNotContainsString(
+            '<p class="admin-form-help">Shown to clients on quote pages when a download or accept link is not available.</p>',
+            $html
+        );
+    }
+
     /**
      * @return list<array<string, mixed>>
      */

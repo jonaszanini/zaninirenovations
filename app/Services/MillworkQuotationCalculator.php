@@ -1569,6 +1569,7 @@ class MillworkQuotationCalculator
         $finish = MillworkPartBuilder::normalizeFinish((string) ($piece['finish'] ?? 'none'));
         $totalQty = 0;
         $placedQty = 0;
+        $placedBox = 0.0;
         foreach ($parts as $part) {
             if (! $part instanceof Part) {
                 continue;
@@ -1582,6 +1583,7 @@ class MillworkQuotationCalculator
             if ($got <= 0) {
                 continue;
             }
+            $placedBox += ($part->width * $part->length * $got) / 144.0;
             $edgeLf += $this->partEdgeLf($part) * $got;
             $face = 2.0 * ($part->width * $part->length) / 144.0 * $got;
             if ($finish === 'paint') {
@@ -1600,7 +1602,7 @@ class MillworkQuotationCalculator
             $hardware[$k] += (float) ($ex['hardware'][$k] ?? 0) * $ratio;
         }
         $fasteners += (int) round(((int) ($ex['fastener_count'] ?? 0)) * $ratio);
-        $scaledBox = (float) ($ex['box_sf'] ?? 0) * $ratio;
+        $scaledBox = $placedBox;
         $boxSf += $scaledBox;
         $this->addTypeShopCharges(
             MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf')),
@@ -1711,10 +1713,16 @@ class MillworkQuotationCalculator
     {
         $groups = [];
         foreach ($rows as $row) {
-            $piece = (int) ($row['piece_index'] ?? 0);
-            $key = $piece.'|'.(string) ($row['label'] ?? '').'|'.(string) ($row['size'] ?? '');
+            $size = $this->canonicalUnplacedSize((string) ($row['size'] ?? ''));
+            $name = $this->unplacedNameWithoutSize((string) ($row['label'] ?? 'Part'));
+            $key = $name.'|'.$size;
             if (! isset($groups[$key])) {
-                $groups[$key] = $row + ['qty' => 0, 'piece_indexes' => []];
+                $groups[$key] = $row + [
+                    'qty' => 0,
+                    'piece_indexes' => [],
+                    'size' => $size,
+                    'name' => $name,
+                ];
             }
             $groups[$key]['qty']++;
             if (isset($row['piece_index'])) {
@@ -1724,16 +1732,16 @@ class MillworkQuotationCalculator
         $out = [];
         foreach ($groups as $group) {
             $qty = (int) ($group['qty'] ?? 1);
-            $label = (string) ($group['label'] ?? 'Part');
+            $name = (string) ($group['name'] ?? 'Part');
             $size = (string) ($group['size'] ?? '');
             $indexes = array_values(array_unique(array_map('intval', $group['piece_indexes'] ?? [])));
-            $grouped = $qty > 1 ? $qty.'× '.$label : $label;
-            if ($size !== '' && ! str_contains($grouped, $size)) {
-                $grouped .= ' '.$size;
+            $label = $qty > 1 ? $qty.'× '.$name : $name;
+            if ($size !== '') {
+                $label .= ' '.$size;
             }
             $out[] = [
                 'id' => $group['id'] ?? '',
-                'label' => $grouped,
+                'label' => $label,
                 'size' => $size,
                 'qty' => $qty,
                 'reason' => $group['reason'] ?? 'Does not fit on any sheet we stock',
@@ -1743,6 +1751,23 @@ class MillworkQuotationCalculator
         }
 
         return $out;
+    }
+
+    private function unplacedNameWithoutSize(string $label): string
+    {
+        $stripped = preg_replace('/\s*\d+(?:\.\d+)?"\s*[×xX]\s*\d+(?:\.\d+)?"/u', '', $label) ?? $label;
+        $stripped = trim(preg_replace('/\s+/', ' ', $stripped) ?? $stripped);
+
+        return $stripped !== '' ? $stripped : 'Part';
+    }
+
+    private function canonicalUnplacedSize(string $size): string
+    {
+        if (preg_match('/(\d+(?:\.\d+)?)"\s*[×xX]\s*(\d+(?:\.\d+)?)"/u', $size, $m)) {
+            return $this->sizeLabel((float) $m[1], (float) $m[2]);
+        }
+
+        return $size;
     }
 
     /**

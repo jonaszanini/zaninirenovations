@@ -48,8 +48,10 @@
     </div>
 
     <div class="admin-card admin-vehicles-contact-card">
-      <h3>Business contact</h3>
-      <p class="admin-form-help">Shown to clients on quote pages when a download or accept link is not available.</p>
+      <h3>Business contact @include('admin.partials.info_tip', [
+        'tipText' => 'Shown to clients on quote pages when a download or accept link is not available.',
+        'tipLabel' => 'About business contact',
+      ])</h3>
       <form action="{{ route('admin.vehicles.settings.business-contact') }}" method="post">
         @csrf
         @method('PUT')

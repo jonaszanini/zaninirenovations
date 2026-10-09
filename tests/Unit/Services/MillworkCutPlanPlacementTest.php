@@ -396,12 +396,14 @@ class MillworkCutPlanPlacementTest extends TestCase
             ],
             'include_install' => false,
         ], $this->settings());
-        $this->assertCount(3, $mixed['cut_plan']['unplaced']);
-        foreach ($mixed['cut_plan']['unplaced'] as $row) {
-            $this->assertSame(1, (int) ($row['qty'] ?? 1));
-            $this->assertSame('100"×12"', (string) ($row['size'] ?? ''));
-            $this->assertStringContainsString('100"×12"', (string) ($row['label'] ?? ''));
-        }
+        $this->assertCount(1, $mixed['cut_plan']['unplaced']);
+        $this->assertSame(3, (int) ($mixed['cut_plan']['unplaced'][0]['qty'] ?? 0));
+        $this->assertSame('100"×12"', (string) ($mixed['cut_plan']['unplaced'][0]['size'] ?? ''));
+        $this->assertSame('3× Shelf 100"×12"', (string) ($mixed['cut_plan']['unplaced'][0]['label'] ?? ''));
+        $this->assertSame(
+            1,
+            substr_count((string) $mixed['cut_plan']['unplaced'][0]['label'], '100"×12"')
+        );
 
         $qtyTwo = (new MillworkQuotationCalculator)->calculate([
             'pieces' => [[
@@ -672,9 +674,9 @@ class MillworkCutPlanPlacementTest extends TestCase
         $this->assertEqualsWithDelta(72.25, $this->laborAmount($cubeOnly, 'kallax'), 0.05);
     }
 
-    public function test_legacy_calculator_matches_main_for_edited_presets(): void
+    public function test_legacy_calculator_matches_frozen_main_94489657_output(): void
     {
-        $expected = [
+        $expectedTotals = [
             'closet_labor_override' => 2057.70,
             'closet_helper' => 2424.61,
             'closet_plus_inch' => 1672.54,
@@ -683,20 +685,62 @@ class MillworkCutPlanPlacementTest extends TestCase
         ];
         foreach ($this->legacyEditedCases() as $name => $inputs) {
             $viaGate = (new MillworkQuotationCalculator)->calculate($inputs, $this->settings(), 1);
-            $viaLegacy = (new \App\Services\Millwork\LegacyMillworkQuotationCalculator)
-                ->calculate($inputs, $this->settings());
-            $this->assertEqualsWithDelta(
-                (float) ($viaLegacy['summary']['grand_total'] ?? 0),
-                (float) ($viaGate['summary']['grand_total'] ?? 0),
-                0.001,
-                $name
-            );
             $this->assertArrayNotHasKey('unplaced', $viaGate['cut_plan'] ?? []);
             $this->assertSame(1, (int) ($viaGate['cut_plan']['version'] ?? 0));
-            if (isset($expected[$name])) {
-                $this->assertEqualsWithDelta($expected[$name], (float) ($viaGate['summary']['grand_total'] ?? 0), 0.01, $name.' dollars');
+            $this->assertArrayNotHasKey('species', $viaGate['sheet'] ?? []);
+            if (is_array($viaGate['back_sheet'] ?? null)) {
+                $this->assertArrayNotHasKey('species', $viaGate['back_sheet']);
             }
+            if (isset($expectedTotals[$name])) {
+                $this->assertEqualsWithDelta(
+                    $expectedTotals[$name],
+                    (float) ($viaGate['summary']['grand_total'] ?? 0),
+                    0.01,
+                    $name.' dollars'
+                );
+            }
+
+            $fixturePath = base_path('tests/fixtures/millwork-cut-plan-v1/main-94489657/'.$name.'.json');
+            $this->assertFileExists($fixturePath, $name);
+            $expected = (string) file_get_contents($fixturePath);
+            $actual = $this->encodeLegacySnapshot($this->legacyOutputSnapshot($viaGate));
+            $this->assertSame($expected, $actual, $name.' must stay byte-equal to main 94489657');
         }
+    }
+
+    public function test_partly_placed_piece_charges_install_on_placed_parts_only(): void
+    {
+        $twoSmall = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'sets' => [['qty' => 2, 'length' => 30, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+        $mixed = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'sets' => [
+                    ['qty' => 2, 'length' => 30, 'depth' => 12, 'unit' => 'in'],
+                    ['qty' => 1, 'length' => 100, 'depth' => 12, 'unit' => 'in'],
+                ],
+            ]],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+
+        $this->assertSame(2, $mixed['cut_plan']['placed_part_count']);
+        $this->assertNotEmpty($mixed['cut_plan']['unplaced']);
+        $this->assertEqualsWithDelta(53.55, $this->laborAmount($twoSmall, 'install'), 0.01);
+        $this->assertEqualsWithDelta(
+            $this->laborAmount($twoSmall, 'install'),
+            $this->laborAmount($mixed, 'install'),
+            0.01
+        );
+        $this->assertNotEquals(94.35, $this->laborAmount($mixed, 'install'));
     }
 
     /**
@@ -896,6 +940,49 @@ class MillworkCutPlanPlacementTest extends TestCase
         $this->assertIsArray($json);
 
         return $json;
+    }
+
+    /**
+     * @param  array<string, mixed>  $calc
+     * @return array<string, mixed>
+     */
+    private function legacyOutputSnapshot(array $calc): array
+    {
+        $cut = $calc['cut_plan'] ?? [];
+        unset($cut['version'], $cut['unplaced'], $cut['placed_by_id'], $cut['builder_version']);
+        $layouts = [];
+        foreach ($cut['layouts'] ?? [] as $layout) {
+            $layouts[] = [
+                'svg' => $layout['svg'] ?? '',
+                'legend' => $layout['legend'] ?? [],
+                'stats' => $layout['stats'] ?? [],
+                'group' => $layout['group'] ?? null,
+            ];
+        }
+
+        return [
+            'scope' => $calc['scope'] ?? [],
+            'sheet' => $calc['sheet'] ?? null,
+            'back_sheet' => $calc['back_sheet'] ?? null,
+            'labor' => $calc['labor'] ?? [],
+            'materials' => $calc['materials'] ?? [],
+            'extra_materials' => $calc['extra_materials'] ?? [],
+            'summary' => $calc['summary'] ?? [],
+            'cut_plan' => [
+                'sheet_count' => $cut['sheet_count'] ?? 0,
+                'yield_pct' => $cut['yield_pct'] ?? 0,
+                'stock_used' => $cut['stock_used'] ?? [],
+                'layouts' => $layouts,
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     */
+    private function encodeLegacySnapshot(array $snapshot): string
+    {
+        return json_encode($snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n";
     }
 
     private function settings(): MillworkSettings

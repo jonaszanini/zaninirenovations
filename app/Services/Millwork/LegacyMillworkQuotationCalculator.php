@@ -5,9 +5,9 @@ namespace App\Services\Millwork;
 use App\Models\MillworkQuotation;
 use App\Models\MillworkSettings;
 use App\Services\CutOptimizer\LegacyCutOptimizerEngine;
+use App\Services\CutOptimizer\LegacySvgVisualizer;
 use App\Services\CutOptimizer\Part;
 use App\Services\CutOptimizer\StockOption;
-use App\Services\CutOptimizer\SvgVisualizer;
 use App\Support\QuotationBuildingLabor;
 use App\Support\QuotationHelperLabor;
 
@@ -152,7 +152,7 @@ class LegacyMillworkQuotationCalculator
         $inputs = array_merge(self::defaultInputs(), $inputs);
         $prod = $settings->resolvedProductivity();
         $cut = $settings->resolvedCutSettings();
-        $catalog = $settings->resolvedCatalog();
+        $catalog = $this->catalogWithoutSpecies($settings->resolvedCatalog());
         $ownerRate = round(max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate)), 2);
         $helperRate = round(max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate)), 2);
         $includeHelper = QuotationHelperLabor::enabled($inputs);
@@ -160,14 +160,16 @@ class LegacyMillworkQuotationCalculator
 
         $sheetId = (string) ($inputs['sheet_id'] ?? '');
         $backId = (string) ($inputs['back_sheet_id'] ?? '');
-        $sheet = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_WOOD_SHEETS, $sheetId);
-        $backSheet = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_WOOD_SHEETS, $backId, true)
+        $sheet = $this->stripSpecies($this->pickCatalogItem($catalog, MillworkSettings::SLOT_WOOD_SHEETS, $sheetId));
+        $backSheet = $this->stripSpecies(
+            $this->pickCatalogItem($catalog, MillworkSettings::SLOT_WOOD_SHEETS, $backId, true)
             ?? $this->firstSheetOfThickness($catalog, 0.25)
-            ?? $sheet;
+            ?? $sheet
+        );
         if ($backId === '' || $backId === $sheetId) {
             $thinBack = $this->firstSheetOfThickness($catalog, 0.25);
             if ($thinBack) {
-                $backSheet = $thinBack;
+                $backSheet = $this->stripSpecies($thinBack);
             }
         }
         $thickness = (float) ($sheet['thickness_in'] ?? 0.75);
@@ -526,7 +528,7 @@ class LegacyMillworkQuotationCalculator
         float $minOffcut
     ): array {
         $engine = new LegacyCutOptimizerEngine();
-        $visual = new SvgVisualizer();
+        $visual = new LegacySvgVisualizer();
         $layouts = [];
         $sheetCount = 0;
         $usedByStock = [];
@@ -988,6 +990,40 @@ class LegacyMillworkQuotationCalculator
         }
 
         return $extra;
+    }
+
+    /**
+     * Main 94489657 never wrote species onto catalog sheets.
+     *
+     * @param  array<string, list<array<string, mixed>>>  $catalog
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function catalogWithoutSpecies(array $catalog): array
+    {
+        foreach ($catalog as $slot => $items) {
+            if (! is_array($items)) {
+                continue;
+            }
+            foreach ($items as $i => $item) {
+                $catalog[$slot][$i] = $this->stripSpecies($item) ?? $item;
+            }
+        }
+
+        return $catalog;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $item
+     * @return array<string, mixed>|null
+     */
+    private function stripSpecies(?array $item): ?array
+    {
+        if ($item === null) {
+            return null;
+        }
+        unset($item['species']);
+
+        return $item;
     }
 
     /**
