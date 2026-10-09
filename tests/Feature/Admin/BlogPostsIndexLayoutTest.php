@@ -37,7 +37,7 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
             'status' => BlogPost::STATUS_DRAFT,
             'published_at' => null,
             'author_name' => 'Jonas Zanini',
-            'views_count' => 128,
+            'views_count' => 123456,
             'featured_image_path' => $placeholder,
             'featured_image_alt' => 'Deck boards',
         ]);
@@ -54,6 +54,10 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('onerror=', $html);
         $this->assertStringNotContainsString('bp-list-thumb--empty', $html);
         $this->assertStringContainsString('>Views<', $html);
+        $this->assertStringContainsString('123.5K', $html);
+        $this->assertStringContainsString('title="123,456"', $html);
+        $this->assertStringContainsString('aria-expanded="false"', $html);
+        $this->assertStringContainsString('aria-haspopup="menu"', $html);
 
         foreach ([
             'bp-list-col--post',
@@ -130,7 +134,7 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         $this->assertStringNotContainsString('bp-list-cat__more', $html);
     }
 
-    public function test_index_omits_thumb_when_featured_image_file_is_missing(): void
+    public function test_index_shows_missing_image_warning_when_featured_file_is_absent(): void
     {
         $this->actingAsAdmin();
 
@@ -145,8 +149,124 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
 
         $html = $this->get(route('admin.blog.posts.index'))->getContent();
         $this->assertStringContainsString('Missing image post', $html);
+        $this->assertStringContainsString('missing image', $html);
         $this->assertStringNotContainsString('bp-list-thumb', $html);
         $this->assertStringNotContainsString('does-not-exist.jpg', $html);
+    }
+
+    public function test_featured_image_list_src_keeps_absolute_cdn_hosts(): void
+    {
+        $post = new BlogPost([
+            'featured_image_path' => 'https://cdn.example.com/blog/deck.webp',
+        ]);
+
+        $this->assertSame('https://cdn.example.com/blog/deck.webp', $post->featuredImageListSrc());
+        $this->assertFalse($post->featuredImageIsMissing());
+    }
+
+    public function test_format_views_count_compacts_five_and_six_digit_totals(): void
+    {
+        $this->assertSame('42', (new BlogPost(['views_count' => 42]))->formatViewsCount());
+        $this->assertSame('1,234', (new BlogPost(['views_count' => 1234]))->formatViewsCount());
+        $this->assertSame('12.3K', (new BlogPost(['views_count' => 12345]))->formatViewsCount());
+        $this->assertSame('123.5K', (new BlogPost(['views_count' => 123456]))->formatViewsCount());
+    }
+
+    public function test_column_geometry_css_prevents_overflow_at_1024_and_768(): void
+    {
+        $css = file_get_contents(public_path('css/admin-blog.css'));
+        $this->assertNotFalse($css);
+
+        $this->assertMatchesRegularExpression(
+            '/\.bp-list-table \.bp-list-col--date\s*\{[^}]*width:\s*6\.25rem/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.bp-list-table \.bp-list-col--views\s*\{[^}]*width:\s*4\.75rem/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.bp-list-table th\.bp-list-col--actions[\s\S]*?width:\s*7\.25rem/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media \(min-width: 901px\) and \(max-width: 1100px\)[\s\S]*\.bp-list-col--date\s*\{[^}]*width:\s*6rem/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media \(min-width: 901px\) and \(max-width: 1100px\)[\s\S]*\.bp-list-col--views\s*\{[^}]*width:\s*4\.5rem/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media \(min-width: 901px\) and \(max-width: 1100px\)[\s\S]*\.bp-list-col--actions[\s\S]*?width:\s*7rem/s',
+            $css
+        );
+        $this->assertStringContainsString('text-overflow: ellipsis', $css);
+        $this->assertDoesNotMatchRegularExpression(
+            '/@media \(min-width: 768px\)[\s\S]*\.bp-list-seo--card\s*\{\s*flex-wrap:\s*nowrap/s',
+            $css
+        );
+
+        $this->actingAsAdmin();
+        BlogPost::query()->create([
+            'title' => 'Six-digit views geometry post',
+            'slug' => 'six-digit-views-geometry',
+            'html_content' => '<p>Body.</p>',
+            'status' => BlogPost::STATUS_PUBLISHED,
+            'published_at' => now()->subDay(),
+            'author_name' => 'Jonas Zanini',
+            'views_count' => 123456,
+        ]);
+        $html = $this->get(route('admin.blog.posts.index'))->getContent();
+        $this->assertStringContainsString('123.5K', $html);
+        $this->assertStringNotContainsString('123,456</td>', $html);
+
+        $this->assertBlogPostsGeometryHarness();
+    }
+
+    public function test_dropdown_script_moves_focus_into_portaled_menu(): void
+    {
+        $js = file_get_contents(public_path('js/admin-actions-dropdown.js'));
+        $this->assertNotFalse($js);
+        $this->assertStringContainsString('aria-expanded', $js);
+        $this->assertStringContainsString('items[0].focus()', $js);
+        $this->assertStringContainsString("e.key !== 'Tab'", $js);
+        $this->assertStringContainsString('toggle.focus()', $js);
+    }
+
+    public function test_published_badge_and_dark_tabs_meet_aa_contrast_tokens(): void
+    {
+        $light = file_get_contents(public_path('css/admin-blog.css'));
+        $this->assertMatchesRegularExpression(
+            '/\.bp-status-badge\.blog-post-status--published\s*\{[^}]*color:\s*#146c34/s',
+            $light
+        );
+        $this->assertStringContainsString('a.bp-list-tab.is-active', $light);
+    }
+
+    private function assertBlogPostsGeometryHarness(): void
+    {
+        $chrome = '/usr/bin/google-chrome';
+        $script = base_path('tests/Feature/Admin/blog-posts-geometry.js');
+        $this->assertFileExists($script);
+        $puppeteer = base_path('node_modules/puppeteer-core');
+        if (! is_file($chrome) || ! is_dir($puppeteer)) {
+            return;
+        }
+
+        $socket = @fsockopen('127.0.0.1', 8000, $errno, $errstr, 0.2);
+        if (! is_resource($socket)) {
+            return;
+        }
+        fclose($socket);
+
+        $cmd = 'NODE_PATH='.escapeshellarg(base_path('node_modules')).' node '.escapeshellarg($script).' 2>&1';
+        $output = [];
+        $code = 0;
+        exec($cmd, $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+        $joined = implode("\n", $output);
+        $this->assertStringContainsString('"overflowing":[]', $joined);
     }
 
     private function storeListPlaceholderImage(): string

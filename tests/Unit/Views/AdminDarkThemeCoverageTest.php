@@ -100,9 +100,15 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .admin-filters-accordion .bp-list-filters',
             'html.admin-dark .bp-list-cat__more',
             'html.admin-dark .bp-status-badge',
+            'html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not([class*="btn"]):not([class*="nav"])',
         ] as $selector) {
             $this->assertStringContainsString($selector, $dark, "Missing dark rule {$selector}");
         }
+
+        $this->assertStringNotContainsString(
+            'html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]) {',
+            $dark
+        );
     }
 
     public function test_dark_mode_audit_script_is_in_the_repo(): void

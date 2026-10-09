@@ -101,7 +101,8 @@
                 $extraCategoryCount = max(0, $categoryNames->count() - 1);
                 $categoryTitle = $categoryNames->implode(', ');
                 $publishedLabel = $post->published_at ? $post->displayDate() : '—';
-                $viewsLabel = number_format($post->views_count);
+                $viewsLabel = $post->formatViewsCount();
+                $viewsExact = number_format((int) $post->views_count);
               @endphp
               <tr>
                 <td class="bp-list-col bp-list-col--post">
@@ -117,7 +118,10 @@
                         <span class="bp-seo-badge bp-seo-badge--warn">{{ $post->pending_comments_count }} pending</span>
                       @endif
                       <span class="bp-list-seo bp-list-seo--card">
-                        @if ($seoKeys === [])
+                        @if ($post->featuredImageIsMissing())
+                          <span class="bp-seo-badge bp-seo-badge--warn">missing image</span>
+                        @endif
+                        @if ($seoKeys === [] && ! $post->featuredImageIsMissing())
                           <span class="bp-seo-badge bp-seo-badge--ok">OK</span>
                         @else
                           @foreach ($seoKeys as $key)
@@ -161,7 +165,7 @@
                   <span class="bp-status-badge {{ $statusClass }}">{{ $statusLabel }}</span>
                 </td>
                 <td class="bp-list-col bp-list-col--date" data-label="Published">{{ $publishedLabel }}</td>
-                <td class="bp-list-col bp-list-col--views" data-label="Views">{{ $viewsLabel }}</td>
+                <td class="bp-list-col bp-list-col--views" data-label="Views" title="{{ $viewsExact }}">{{ $viewsLabel }}</td>
                 <td class="admin-table__actions bp-list-col bp-list-col--actions">
                   <div class="bp-list-actions">
                     @if ($post->isPublishedNow())
@@ -177,7 +181,7 @@
                       <i class="fa fa-pencil" aria-hidden="true"></i>
                     </a>
                     <div class="admin-actions-dropdown">
-                      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn admin-actions-dropdown__toggle" aria-label="More actions">
+                      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn admin-actions-dropdown__toggle" aria-label="More actions" aria-expanded="false" aria-haspopup="menu">
                         <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
                       </button>
                       <div class="admin-actions-dropdown__menu">

@@ -2149,10 +2149,10 @@ html.admin-dark .cp-recalc-banner__title {
 }
 
 /* Links in admin tables and content */
-html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]) {
+html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not([class*="btn"]):not([class*="nav"]) {
   color: var(--admin-primary);
 }
-html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]):visited {
+html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not([class*="btn"]):not([class*="nav"]):visited {
   color: var(--admin-primary);
 }
 html.admin-dark .admin-table a {

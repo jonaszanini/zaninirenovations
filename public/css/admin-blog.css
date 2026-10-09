@@ -44,6 +44,18 @@
   color: #fff;
 }
 
+html.admin-dark .admin-content a.bp-list-tab,
+html.admin-dark .admin-content a.bp-list-tab:visited {
+  color: var(--admin-text);
+}
+
+html.admin-dark .admin-content a.bp-list-tab.is-active,
+html.admin-dark .admin-content a.bp-list-tab.is-active:visited,
+html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
+  color: #fff;
+  opacity: 1;
+}
+
 .bp-list-tab__count {
   font-variant-numeric: tabular-nums;
   color: inherit;
@@ -132,23 +144,25 @@
 }
 
 .bp-list-table .bp-list-col--date {
-  width: 5.5rem;
+  width: 6.25rem;
   white-space: nowrap;
-  overflow: visible;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bp-list-table .bp-list-col--views {
-  width: 2.75rem;
+  width: 4.75rem;
   white-space: nowrap;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  overflow: visible;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bp-list-table th.bp-list-col--actions,
 .bp-list-table td.bp-list-col--actions,
 .bp-list-table td.admin-table__actions {
-  width: 6.75rem;
+  width: 7.25rem;
   white-space: nowrap;
   overflow: visible;
 }
@@ -216,7 +230,7 @@
 }
 
 .bp-status-badge.blog-post-status--published {
-  color: #15803d;
+  color: #146c34;
   background: var(--admin-success-soft);
   border-color: #86efac;
 }
@@ -274,6 +288,7 @@
 }
 
 .bp-list-post__title {
+  position: relative;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -287,6 +302,16 @@
   text-decoration: none;
   overflow-wrap: break-word;
   word-break: normal;
+}
+
+.bp-list-post__title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  margin-top: -22px;
 }
 
 .bp-list-seo {
@@ -338,6 +363,7 @@
 }
 
 .bp-list-icon-btn {
+  position: relative;
   width: 44px;
   min-width: 44px;
   padding: 0;
@@ -643,8 +669,11 @@
     padding: 0;
   }
 
-  .bp-list-seo--card {
-    flex-wrap: nowrap;
+  .bp-list-table .bp-list-icon-btn.admin-btn::after,
+  .bp-list-table .admin-actions-dropdown__toggle::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
   }
 }
 
@@ -672,7 +701,7 @@
   .bp-list-table th.bp-list-col--actions,
   .bp-list-table td.bp-list-col--actions,
   .bp-list-table td.admin-table__actions {
-    width: 6.75rem;
+    width: 7rem;
   }
 
   .bp-list-table .bp-list-col--cat {
@@ -684,11 +713,11 @@
   }
 
   .bp-list-table .bp-list-col--date {
-    width: 5rem;
+    width: 6rem;
   }
 
   .bp-list-table .bp-list-col--views {
-    width: 2.25rem;
+    width: 4.5rem;
   }
 
   .bp-list-actions {

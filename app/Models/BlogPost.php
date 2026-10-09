@@ -127,8 +127,9 @@ class BlogPost extends Model
     }
 
     /**
-     * Same-origin list src. Returns null when the stored file is missing
-     * so the admin table never paints a broken-image icon.
+     * Admin list src. Keeps http(s) CDN / absolute hosts. Returns null
+     * when a local stored file is missing so the table can show a warning
+     * instead of a broken-image icon.
      */
     public function featuredImageListSrc(): ?string
     {
@@ -136,15 +137,46 @@ class BlogPost extends Model
             return null;
         }
 
-        $absolute = Storage::disk('public')->path((string) $this->featured_image_path);
+        $path = (string) $this->featured_image_path;
+        if (preg_match('#^https?://#i', $path) === 1) {
+            return $path;
+        }
+
+        $absolute = Storage::disk('public')->path($path);
         if (! is_file($absolute)) {
             return null;
         }
 
-        $url = Storage::disk('public')->url($this->featured_image_path);
-        $path = parse_url($url, PHP_URL_PATH) ?: '/storage/'.ltrim((string) $this->featured_image_path, '/');
+        $url = Storage::disk('public')->url($path);
+        $src = parse_url($url, PHP_URL_PATH) ?: '/storage/'.ltrim($path, '/');
 
-        return $path.'?v='.filemtime($absolute);
+        return $src.'?v='.filemtime($absolute);
+    }
+
+    public function featuredImageIsMissing(): bool
+    {
+        if (! filled($this->featured_image_path)) {
+            return false;
+        }
+
+        $path = (string) $this->featured_image_path;
+        if (preg_match('#^https?://#i', $path) === 1) {
+            return false;
+        }
+
+        return ! is_file(Storage::disk('public')->path($path));
+    }
+
+    public function formatViewsCount(): string
+    {
+        $n = (int) $this->views_count;
+        if ($n >= 10000) {
+            $thousands = $n / 1000;
+
+            return rtrim(rtrim(number_format($thousands, 1, '.', ''), '0'), '.').'K';
+        }
+
+        return number_format($n);
     }
 
     public function readTimeMinutes(): int
