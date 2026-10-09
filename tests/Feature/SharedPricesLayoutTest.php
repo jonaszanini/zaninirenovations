@@ -475,11 +475,13 @@ JS
 
     private $layoutServerProcess = null;
 
+    private $layoutServerPort = 8011;
+
     private function startLayoutServer(): string
     {
-        $port = 8011;
+        $port = $this->layoutServerPort;
         $base = 'http://127.0.0.1:'.$port;
-        $cmd = escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('artisan')).' serve --host=127.0.0.1 --port='.$port;
+        $cmd = 'exec '.escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('artisan')).' serve --host=127.0.0.1 --port='.$port;
         $env = [];
         foreach (array_merge($_SERVER, $_ENV) as $key => $value) {
             if (is_string($key) && is_string($value)) {
@@ -523,11 +525,18 @@ JS
 
     private function stopLayoutServer(): void
     {
+        $port = (int) $this->layoutServerPort;
         if (is_resource($this->layoutServerProcess)) {
-            proc_terminate($this->layoutServerProcess);
-            proc_close($this->layoutServerProcess);
-            $this->layoutServerProcess = null;
+            $status = @proc_get_status($this->layoutServerProcess);
+            $pid = (int) ($status['pid'] ?? 0);
+            if ($pid > 0) {
+                @exec('kill -TERM '.$pid.' 2>/dev/null');
+                @exec('pkill -TERM -P '.$pid.' 2>/dev/null');
+            }
+            @proc_terminate($this->layoutServerProcess, 9);
         }
+        @exec('pkill -f '.escapeshellarg('artisan serve --host=127.0.0.1 --port='.$port).' 2>/dev/null');
+        $this->layoutServerProcess = null;
     }
 
     protected function tearDown(): void

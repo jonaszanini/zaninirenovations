@@ -623,7 +623,21 @@
     opacity: 1;
     pointer-events: auto;
   }
-  .sp-col-consumers { grid-area: consumers; justify-self: start; }
+  .sp-col-consumers {
+    grid-area: consumers;
+    justify-self: stretch;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .sp-consumers {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .sp-consumers:has(.sp-chip--more) .sp-chip:not(.sp-chip--more) {
+    max-width: min(140px, calc(100% - 52px));
+  }
 
   .sp-col-label {
     font-weight: 600;
