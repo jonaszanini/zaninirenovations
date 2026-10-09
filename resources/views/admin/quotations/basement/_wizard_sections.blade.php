@@ -271,19 +271,24 @@
     </div>
     <div class="br-qty-grid">
       <div class="admin-form-group" data-br-hide-on-wall @if($wallPreset) hidden @endif>
-        <span class="admin-label-with-tip">
-  <label for="br-rooms">@include('admin.quotations.basement._client_filled', ['key' => 'room_count', 'filledKeys' => $filledKeys]) Finished rooms</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['room_count'], 'tipLabel' => 'Finished rooms'])
-</span>
+        @include('admin.partials.tipped_label', [
+          'label' => 'Finished rooms',
+          'for' => 'br-rooms',
+          'tipText' => $brInfo['room_count'],
+          'tipLabel' => 'Finished rooms',
+          'prefixHtml' => view('admin.quotations.basement._client_filled', ['key' => 'room_count', 'filledKeys' => $filledKeys])->render(),
+        ])
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-rooms" name="room_count"
                value="{{ $brVal('room_count', 1) }}"
                title="Count rooms as they will exist when the work is done, including new dividing walls. Not the current open basement.">
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-  <label for="br-owner-rate">Owner rate (CAD$)</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['owner_hourly_rate'], 'tipLabel' => 'Owner rate (CAD$)'])
-</span>
+        @include('admin.partials.tipped_label', [
+          'label' => 'Owner rate (CAD$)',
+          'for' => 'br-owner-rate',
+          'tipText' => $brInfo['owner_hourly_rate'],
+          'tipLabel' => 'Owner rate (CAD$)',
+        ])
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input br-preview" id="br-owner-rate" name="owner_hourly_rate"
                value="{{ number_format((float) $brVal('owner_hourly_rate', $settings->owner_hourly_rate), 2, '.', '') }}">
@@ -297,10 +302,12 @@
         ])
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-  <label for="br-material-waste">Material waste (%)</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['material_waste_percent'], 'tipLabel' => 'Material waste (%)'])
-</span>
+        @include('admin.partials.tipped_label', [
+          'label' => 'Material waste (%)',
+          'for' => 'br-material-waste',
+          'tipText' => $brInfo['material_waste_percent'],
+          'tipLabel' => 'Material waste (%)',
+        ])
         <input type="number" step="0.1" min="0" max="100" class="admin-input br-preview br-input--narrow" id="br-material-waste"
                name="material_waste_percent"
                value="{{ old('material_waste_percent', $inputs['material_waste_percent'] ?? 10) }}">

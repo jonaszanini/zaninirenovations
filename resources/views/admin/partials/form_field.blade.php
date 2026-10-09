@@ -21,15 +21,20 @@
   $invalid = $errors->has($name);
 @endphp
 <div class="admin-form-group">
-  <span class="admin-label-with-tip">
+  @if (! empty($help))
+    @include('admin.partials.tipped_label', [
+      'label' => $label,
+      'for' => $id,
+      'tipText' => $help,
+      'tipLabel' => $label,
+      'required' => $required,
+    ])
+  @else
     <label for="{{ $id }}">
       {{ $label }}
       @if ($required)<span class="cp-required">*</span>@endif
     </label>
-    @if (! empty($help))
-      @include('admin.partials.info_tip', ['tipText' => $help, 'tipLabel' => $label, 'tipHtml' => null, 'tipId' => null])
-    @endif
-  </span>
+  @endif
 
   @if ($type === 'textarea')
     <textarea id="{{ $id }}" name="{{ $name }}"

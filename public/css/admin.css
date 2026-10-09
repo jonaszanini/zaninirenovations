@@ -1668,13 +1668,33 @@ a.admin-client-link:focus-visible {
   max-width: 100%;
   flex: 1 1 auto;
 }
-.admin-form-group .admin-label-with-tip > label,
+.admin-form-group .admin-label-with-tip > label:not(.admin-checkbox),
 .admin-form-group .admin-label-with-tip > .admin-form-group-label,
-.admin-label-with-tip > label,
+.admin-label-with-tip > label:not(.admin-checkbox),
 .admin-label-with-tip > .admin-form-group-label {
   display: inline;
   margin-bottom: 0;
   white-space: normal;
+}
+.admin-label-with-tip > label.admin-checkbox,
+.admin-label-with-tip > label.admin-checkbox--block,
+.br-toggle-qty .admin-label-with-tip > label.admin-checkbox,
+.br-check-stack .admin-label-with-tip > label.admin-checkbox {
+  display: inline-flex;
+}
+.admin-label-with-tip__end {
+  white-space: nowrap;
+}
+.admin-label-with-tip__end > label {
+  display: inline;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+.admin-form-grid-2 > .admin-form-group > .admin-label-with-tip,
+.br-qty-grid > .admin-form-group:not(.br-lw) > .admin-label-with-tip,
+.br-framing-fields .admin-form-group > .admin-label-with-tip {
+  display: block;
+  min-height: 2.6em;
 }
 .admin-label-with-tip > .admin-info-tip-wrap,
 .br-acc__summary > .admin-info-tip-wrap,

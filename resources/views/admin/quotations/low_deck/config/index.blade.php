@@ -37,6 +37,11 @@
           <x-admin.info-tip label="Materials catalogue">
             Link each low deck line item to a row in the <a href="{{ route('admin.materials.index') }}" class="admin-text-link">materials catalog</a>.
             Prices and product details are read live from the linked material.
+            @unless ($usesSerpApi)
+              Online sync requires SerpApi on the server. Update linked materials from your PC with
+              <code>php artisan materials:sync-prices</code>
+              (see <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>).
+            @endunless
           </x-admin.info-tip>
         </h3>
       </div>
@@ -59,14 +64,6 @@
         </button>
       </div>
     </div>
-    @unless ($usesSerpApi)
-      <p class="admin-form-help mat-serpapi-hint">
-        Online sync requires SerpApi on the server. Update linked materials from your PC with
-        <code>php artisan materials:sync-prices</code>
-        (see <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>).
-      </p>
-    @endunless
-
     <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <div class="admin-table-scroll">
       <table class="admin-table fq-materials-table">

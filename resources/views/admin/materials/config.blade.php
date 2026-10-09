@@ -2,7 +2,14 @@
 
 @section('heading')
   Materials — Config
-  <x-admin.info-tip label="Materials — Config">Bulk import Home Depot SKUs, manage categories and vendors, and copy local commands for your PC.</x-admin.info-tip>
+  <x-admin.info-tip label="Materials — Config">
+    Bulk import Home Depot SKUs, manage categories and vendors, and copy local commands for your PC.
+    @if (! empty($usesSerpApi))
+      Admin sync on this server uses SerpApi.
+      <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">Open the SerpApi dashboard</a>
+      to see search usage, remaining credits, and recent requests.
+    @endif
+  </x-admin.info-tip>
 @endsection
 
 @push('head')
@@ -27,14 +34,6 @@
       </a>
     </div>
   </div>
-
-  @if ($usesSerpApi)
-    <p class="admin-form-help mat-serpapi-hint">
-      Admin sync on this server uses SerpApi.
-      <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">Open the SerpApi dashboard</a>
-      to see search usage, remaining credits, and recent requests.
-    </p>
-  @endif
 
   <div class="mat-admin-panels">
     <details class="admin-accordion admin-card mat-config-accordion mat-bulk-import" @if(old('skus')) open @endif>

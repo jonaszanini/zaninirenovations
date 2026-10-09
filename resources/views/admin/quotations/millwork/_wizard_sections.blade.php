@@ -74,9 +74,11 @@
 </details>
 
 <details class="br-acc admin-card" data-br-step="materials">
-  <summary class="br-acc__summary"><span class="br-acc__num">2</span> Materials &amp; finish</summary>
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">2</span> Materials &amp; finish
+    <x-admin.info-tip label="Materials & finish">Sheet size defaults to 4×8 from Price configuration. Waste % is applied to edge banding, finish, and linear trim. Nesting leftover is already in the cut plan — add spare sheets if you want extras.</x-admin.info-tip>
+  </summary>
   <div class="br-acc__body">
-    <p class="admin-form-help">Sheet size defaults to 4×8 from Price configuration. Waste % is applied to edge banding, finish, and linear trim. Nesting leftover is already in the cut plan — add spare sheets if you want extras.</p>
     <div class="admin-form-group mw-sheet-field">
       <span class="admin-label-with-tip">
   <label for="mw-sheet">Wood sheet</label>

@@ -55,6 +55,32 @@ class AdminInfoTipIdIsolationTest extends TestCase
         $this->assertInputIdResolvesToControl($html, ['br-area']);
     }
 
+    public function test_bare_include_does_not_leak_parent_tip_keys_without_factory(): void
+    {
+        $html = $this->renderWithStockFactory(
+            '@php $tipHtml = "<em>LEAKED HTML</em>"; $tipLabel = "Leaked"; $tipId = "br-area"; $tipText = "LEAKED TEXT"; @endphp'
+            .'@include("admin.partials.info_tip")'
+        );
+
+        $this->assertStringNotContainsString('admin-info-tip', $html);
+        $this->assertStringNotContainsString('About Leaked', $html);
+        $this->assertStringNotContainsString('LEAKED TEXT', $html);
+        $this->assertStringNotContainsString('LEAKED HTML', $html);
+    }
+
+    public function test_field_hint_does_not_leak_parent_tip_keys_when_tip_text_is_passed(): void
+    {
+        $html = $this->renderWithStockFactory(
+            '@php $tipHtml = "<em>LEAKED HTML</em>"; $tipLabel = "Leaked"; $tipId = "br-area"; $tipText = "LEAKED TEXT"; @endphp'
+            .'@include("admin.client_projects._cp_field_hint", ["tipText" => "Room area help"])'
+        );
+
+        $this->assertStringContainsString('Room area help', $html);
+        $this->assertStringNotContainsString('About Leaked', $html);
+        $this->assertStringNotContainsString('LEAKED TEXT', $html);
+        $this->assertStringNotContainsString('LEAKED HTML', $html);
+    }
+
     public function test_info_tip_include_does_not_inherit_parent_tip_keys(): void
     {
         $html = Blade::render(
@@ -126,7 +152,11 @@ class AdminInfoTipIdIsolationTest extends TestCase
         $this->assertUniqueIds($html);
         $this->assertInputIdResolvesToControl($html, ['admin-field-store_sku']);
         $this->assertStringContainsString('aria-label="About Store SKU"', $html);
-        $this->assertMatchesRegularExpression('/<\/label>\s*<span class="admin-info-tip-wrap"/', $html);
+        $this->assertStringContainsString('admin-label-with-tip__end', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<label[^>]*>[^<]*<span class="admin-info-tip-wrap"/',
+            $html
+        );
     }
 
     public function test_materials_config_bulk_sync_checkbox_keeps_its_input_id(): void
@@ -164,10 +194,40 @@ class AdminInfoTipIdIsolationTest extends TestCase
         $this->assertUniqueIds($html);
         $this->assertInputIdResolvesToControl($html, ['br-area']);
         $this->assertStringContainsString('aria-label="About Finished area"', $html);
+        $this->assertStringContainsString('admin-label-with-tip__end', $html);
         $this->assertMatchesRegularExpression(
-            '/<label for="br-area"[^>]*>[\s\S]*?<\/label>\s*<span class="admin-info-tip-wrap"/',
+            '/<label for="br-area"[^>]*>[\s\S]*?<\/label>/',
             $html
         );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<label for="br-area"[^>]*>[^<]*admin-info-tip-wrap/',
+            $html
+        );
+    }
+
+    private function renderWithStockFactory(string $blade): string
+    {
+        $original = $this->app['view'];
+        $stock = new \Illuminate\View\Factory(
+            $original->getEngineResolver(),
+            $original->getFinder(),
+            $original->getDispatcher()
+        );
+        $stock->setContainer($this->app);
+        foreach ($original->getShared() as $key => $value) {
+            $stock->share($key, $value);
+        }
+        $stock->share('__env', $stock);
+        $this->app->instance('view', $stock);
+        \Illuminate\Support\Facades\View::clearResolvedInstances();
+
+        try {
+            return \Illuminate\Support\Facades\Blade::render($blade);
+        } finally {
+            $this->app->instance('view', $original);
+            $original->share('__env', $original);
+            \Illuminate\Support\Facades\View::clearResolvedInstances();
+        }
     }
 
     /**

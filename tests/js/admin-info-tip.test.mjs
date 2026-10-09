@@ -418,7 +418,7 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
 
 // --- repeated millwork / standard cards get unique About labels ---
 {
-  const { document, body, AdminInfoTip } = createEnv();
+  const { document, body, AdminInfoTip, listeners } = createEnv();
   const piece = document.createElement('article');
   piece.setAttribute('data-mw-piece', '');
   const n = document.createElement('span');
@@ -450,6 +450,22 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   body.appendChild(card);
   AdminInfoTip.refreshRepeatLabels(card);
   assert.equal(b2.getAttribute('aria-label'), 'About Materials — job 3');
+
+  const { wrap: w3, btn: b3 } = makeTip(document, 'admin-info-tip-job-type', 'Type');
+  card.appendChild(w3);
+  AdminInfoTip.refreshRepeatLabels(card);
+  assert.equal(b3.getAttribute('aria-label'), 'About Type — job 3', 'standard cards rename every tip, not only Materials/Labour/HST');
+
+  title.value = 'Kitchen';
+  const inputL = listeners.document.input && listeners.document.input[0];
+  assert.ok(inputL, 'input listener updates names when a piece/job title is edited');
+  inputL.fn({ target: title });
+  assert.equal(b2.getAttribute('aria-label'), 'About Materials — Kitchen');
+  assert.equal(b3.getAttribute('aria-label'), 'About Type — Kitchen');
+
+  name.value = 'Wardrobe';
+  inputL.fn({ target: name });
+  assert.equal(btn.getAttribute('aria-label'), 'About Type — Wardrobe');
 }
 
 console.log('admin-info-tip.test.mjs: ok');

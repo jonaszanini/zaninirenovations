@@ -86,6 +86,57 @@ class AdminInfoTipTest extends TestCase
         ])->render();
     }
 
+    public function test_with_legacy_text_key_throws(): void
+    {
+        $this->expectException(\Illuminate\View\ViewException::class);
+        $this->expectExceptionMessage("no longer accepts 'text' or 'html'");
+
+        view('admin.partials.info_tip')->with('text', 'silently dropped')->render();
+    }
+
+    public function test_field_hint_with_legacy_html_key_throws(): void
+    {
+        $this->expectException(\Illuminate\View\ViewException::class);
+        $this->expectExceptionMessage("no longer accepts 'text' or 'html'");
+
+        view('admin.client_projects._cp_field_hint')->with([
+            'tipText' => 'ok',
+            'html' => '<em>nope</em>',
+        ])->render();
+    }
+
+    public function test_include_first_and_view_paths_compile_to_explicit_render(): void
+    {
+        $compiler = $this->app['blade.compiler'];
+        $include = $compiler->compileString("@include('admin.partials.info_tip', ['tipText' => 'Room area help'])");
+        $this->assertStringContainsString('AdminInfoTipInclude::render', $include);
+
+        $hint = $compiler->compileString("@include('admin.client_projects._cp_field_hint', ['tipText' => 'Room area help'])");
+        $this->assertStringContainsString('AdminInfoTipInclude::renderHint', $hint);
+
+        $first = $compiler->compileString("@includeFirst(['admin.partials.info_tip'], ['tipText' => 'Room area help'])");
+        $this->assertStringContainsString('AdminInfoTipInclude::render', $first);
+
+        $bare = $compiler->compileString("@include('admin.partials.info_tip')");
+        $this->assertStringContainsString('AdminInfoTipInclude::render([])', $bare);
+    }
+
+    public function test_split_label_keeps_the_last_word_for_nowrap(): void
+    {
+        $this->assertSame(
+            ['lead' => 'Finished', 'last' => 'rooms'],
+            \App\Support\AdminInfoTipInclude::splitLabel('Finished rooms')
+        );
+        $this->assertSame(
+            ['lead' => 'Owner rate', 'last' => '(CAD$)'],
+            \App\Support\AdminInfoTipInclude::splitLabel('Owner rate (CAD$)')
+        );
+        $this->assertSame(
+            ['lead' => '', 'last' => 'SKU'],
+            \App\Support\AdminInfoTipInclude::splitLabel('SKU')
+        );
+    }
+
     public function test_text_attribute_matches_slot_api(): void
     {
         $html = Blade::render('<x-admin.info-tip :text="$text" label="Existing post credit" />', [

@@ -24,7 +24,11 @@ The include wrapper **does not** inherit parent `$text` / `$html` / `$id` / `$la
 <x-admin.info-tip :text="'Plain explanation.'" label="Labour rate" />
 ```
 
-`admin.client_projects._cp_field_hint` and `search_select` `$labelHint` use the same keys (`tipText` / `tipHtml` / `tipLabel`). Do not pass `'text'` or `'html'` — those keys are ignored and CI fails the leftover scan.
+`admin.client_projects._cp_field_hint` and `search_select` `$labelHint` use the same keys (`tipText` / `tipHtml` / `tipLabel`). Do not pass `'text'` or `'html'` — those keys throw outside production (`AdminInfoTipInclude::MESSAGE`) on `@include`, `@includeFirst`, `view()`, and `->with()`, and CI fails the leftover scan.
+
+`@include` of `admin.partials.info_tip` / `_cp_field_hint` is compiled to `AdminInfoTipInclude::render($data)` / `renderHint($data)` so parent `tipHtml` / `tipLabel` / `tipId` cannot leak (does not rely on the IsolatingFactory view override).
+
+Field labels keep the last word and the ⓘ in `.admin-label-with-tip__end` (`white-space: nowrap`) so two-column grids stay aligned at 390px.
 
 HTML (links, `<code>`, `<strong>`) goes in the slot (trusted Blade only):
 

@@ -5,12 +5,14 @@ namespace App\Providers;
 use App\Models\BlogComment;
 use App\Models\EtransferNotice;
 use App\Models\Task;
+use App\Support\AdminInfoTipInclude;
 use App\Support\Logging\RequestContext;
 use App\Support\ProductionDatabaseGuard;
 use App\View\IsolatingFactory;
 use Illuminate\View\Factory as ViewFactory;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -42,6 +44,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        Blade::precompiler(function (string $value) {
+            return AdminInfoTipInclude::rewriteBlade($value);
+        });
+
         if ($this->app->environment('production')) {
             $root = rtrim((string) config('app.url'), '/');
             if ($root !== '') {

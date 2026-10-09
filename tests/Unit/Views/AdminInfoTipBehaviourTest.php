@@ -19,13 +19,14 @@ class AdminInfoTipBehaviourTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('admin-label-with-tip', $html);
+        $this->assertStringContainsString('admin-label-with-tip__end', $html);
         $this->assertStringContainsString('aria-label="About Store SKU"', $html);
         $this->assertDoesNotMatchRegularExpression(
             '/<label[^>]*>[^<]*<span class="admin-info-tip-wrap"/',
             $html
         );
         $this->assertMatchesRegularExpression(
-            '/<\/label>\s*<span class="admin-info-tip-wrap"/',
+            '/admin-label-with-tip__end[\s\S]*admin-info-tip-wrap/',
             $html
         );
     }
@@ -111,7 +112,10 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString("bubble.style.overflowY = 'auto'", $js);
         $this->assertStringContainsString('function bindSummaryGuard', $js);
         $this->assertStringContainsString('function refreshRepeatLabels', $js);
-        $this->assertStringContainsString("e.target.closest('.admin-info-tip')", $js);
+        $this->assertStringContainsString('function glueLastWord', $js);
+        $this->assertStringContainsString("'.mw-totals-bar'", $js);
+        $this->assertStringContainsString("document.addEventListener('input'", $js);
+        $this->assertStringContainsString("t.classList.contains('sq-work-title')", $js);
         $this->assertStringContainsString('function refreshIds(scope)', $js);
         $this->assertStringContainsString('refreshIds: refreshIds', $js);
         $this->assertStringContainsString('btn.focus()', $js);
@@ -127,7 +131,15 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-label-with-tip\s*>\s*label[^}]*display:\s*inline/',
+            '/\.admin-label-with-tip\s*>\s*label:not\(\.admin-checkbox\)[^}]*display:\s*inline/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip\s*>\s*label\.admin-checkbox[^}]*display:\s*inline-flex/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/',
             $css
         );
         $this->assertDoesNotMatchRegularExpression(
@@ -220,12 +232,18 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('MATERIALS_SCRAPER_SERPAPI_KEY', $fence);
         $this->assertStringContainsString('admin.materials.config', $fence);
         $this->assertStringContainsString('serpapi.com/dashboard', $fence);
+        $this->assertStringNotContainsString('mat-serpapi-hint', $fence);
 
         $this->assertStringContainsString('@unless ($usesSerpApi)', $low);
         $this->assertStringContainsString('Online sync requires SerpApi', $low);
         $this->assertStringContainsString('php artisan materials:sync-prices', $low);
         $this->assertStringContainsString('admin.materials.config', $low);
         $this->assertStringContainsString('serpapi.com/dashboard', $low);
+        $this->assertStringNotContainsString('mat-serpapi-hint', $low);
+
+        $materials = file_get_contents(resource_path('views/admin/materials/config.blade.php'));
+        $this->assertStringContainsString('Admin sync on this server uses SerpApi', $materials);
+        $this->assertStringNotContainsString('mat-serpapi-hint', $materials);
     }
 
     public function test_wizard_sections_keep_tips_beside_labels_and_group_legends(): void
@@ -287,7 +305,10 @@ class AdminInfoTipBehaviourTest extends TestCase
         $millwork = file_get_contents(resource_path('views/admin/quotations/millwork/_wizard_sections.blade.php'));
         $this->assertStringContainsString('Add each millwork item — cabinets, closets, vanities, trim, and more.', $millwork);
         $this->assertStringContainsString('label="Pieces"', $millwork);
+        $this->assertStringContainsString('label="Materials & finish"', $millwork);
+        $this->assertStringContainsString('Sheet size defaults to 4×8 from Price configuration', $millwork);
         $this->assertStringNotContainsString('<p class="admin-form-help">Add each millwork item', $millwork);
+        $this->assertStringNotContainsString('<p class="admin-form-help">Sheet size defaults to 4×8', $millwork);
 
         $basement = file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php'));
         $this->assertStringContainsString("'tipLabel' => 'How many fixtures'", $basement);

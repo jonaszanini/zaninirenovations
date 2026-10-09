@@ -10,8 +10,19 @@
   var PAD = 12;
   var MAX_W = 273;
 
+  function eventElement(el) {
+    if (!el) return null;
+    if (el.nodeType === 3) return el.parentElement || el.parentNode || null;
+    return el;
+  }
+
+  function closestFrom(el, sel) {
+    var node = eventElement(el);
+    return node && node.closest ? node.closest(sel) : null;
+  }
+
   function rootOf(el) {
-    return el && el.closest ? el.closest('.admin-info-tip-wrap') : null;
+    return closestFrom(el, '.admin-info-tip-wrap');
   }
 
   function buttonOf(root) {
@@ -53,7 +64,7 @@
   function bottomReserve() {
     var reserve = PAD;
     if (!document.querySelectorAll) return reserve;
-    ['.br-sticky-total', '.br-sticky-bar', '.admin-sticky-footer'].forEach(function (sel) {
+    ['.br-sticky-total', '.br-sticky-bar', '.admin-sticky-footer', '.mw-totals-bar'].forEach(function (sel) {
       document.querySelectorAll(sel).forEach(function (el) {
         if (!el.getBoundingClientRect) return;
         var r = el.getBoundingClientRect();
@@ -341,6 +352,7 @@
       row.appendChild(wrap);
     });
     deriveMissingLabels(root);
+    glueLastWord(root);
     bindSummaryGuard(root);
     refreshRepeatLabels(root);
   }
@@ -351,7 +363,7 @@
       wrap.setAttribute('data-tip-summary-bound', '1');
       wrap.addEventListener('click', function (e) {
         if (!wrap.closest || !wrap.closest('summary')) return;
-        if (!e.target.closest || !e.target.closest('.admin-info-tip__bubble')) return;
+        if (!closestFrom(e.target, '.admin-info-tip__bubble')) return;
         e.stopPropagation();
         if (!isLinkTarget(e.target)) {
           e.preventDefault();
@@ -382,9 +394,7 @@
         var title = card.querySelector('.sq-work-title');
         var suffix = (title && String(title.value || '').trim()) || ('job ' + ((num && num.textContent) || '1'));
         var base = current.slice(6).replace(/\s+[—-]\s+.*$/, '');
-        if (/^(Materials|Labour|HST included)\b/.test(base)) {
-          btn.setAttribute('aria-label', 'About ' + base.replace(/\s+[—-]\s+.*$/, '') + ' — ' + suffix);
-        }
+        btn.setAttribute('aria-label', 'About ' + base + ' — ' + suffix);
       }
     });
   }
@@ -399,11 +409,80 @@
   }
 
   function isLinkTarget(el) {
-    return !!(el && el.closest && el.closest('a'));
+    return !!closestFrom(el, 'a');
+  }
+
+  function takeLastWord(label) {
+    var nodes = [];
+    function walk(node) {
+      var kids = node.childNodes || [];
+      for (var i = 0; i < kids.length; i++) {
+        walk(kids[i]);
+      }
+      if (node.nodeType === 3 && String(node.textContent || '').replace(/\s+/g, ' ').trim()) {
+        nodes.push(node);
+      }
+    }
+    walk(label);
+    var textNode = nodes[nodes.length - 1];
+    if (!textNode) return '';
+    var raw = String(textNode.textContent || '');
+    var trimmed = raw.replace(/\s+$/g, '');
+    var space = trimmed.lastIndexOf(' ');
+    if (space === -1) {
+      textNode.textContent = raw.slice(trimmed.length);
+      return trimmed;
+    }
+    var last = trimmed.slice(space + 1);
+    textNode.textContent = trimmed.slice(0, space) + raw.slice(trimmed.length);
+    return last;
+  }
+
+  function glueLastWord(scope) {
+    var root = scope && scope.querySelectorAll ? scope : document;
+    if (!root.querySelectorAll) return;
+    root.querySelectorAll('.admin-label-with-tip').forEach(function (row) {
+      if (row.querySelector('.admin-label-with-tip__end')) return;
+      var tip = null;
+      var label = null;
+      var kids = row.children || [];
+      for (var i = 0; i < kids.length; i++) {
+        var child = kids[i];
+        if (child.classList && child.classList.contains('admin-info-tip-wrap')) {
+          tip = child;
+        } else if (child.tagName === 'LABEL' || (child.classList && child.classList.contains('admin-form-group-label'))) {
+          label = child;
+        }
+      }
+      if (!tip || !label) return;
+      if (label.classList && label.classList.contains('admin-checkbox')) return;
+      var last = takeLastWord(label);
+      if (!last) return;
+      var end = document.createElement('span');
+      end.className = 'admin-label-with-tip__end';
+      var lastLabel = document.createElement(label.tagName === 'LABEL' ? 'label' : 'span');
+      if (label.tagName === 'LABEL') {
+        var htmlFor = label.htmlFor || (label.getAttribute && label.getAttribute('for')) || '';
+        if (htmlFor) {
+          lastLabel.htmlFor = htmlFor;
+          if (lastLabel.setAttribute) lastLabel.setAttribute('for', htmlFor);
+        }
+      } else if (label.className) {
+        lastLabel.className = label.className;
+      }
+      lastLabel.textContent = last;
+      if (row.insertBefore) {
+        row.insertBefore(end, tip);
+      } else {
+        row.appendChild(end);
+      }
+      end.appendChild(lastLabel);
+      end.appendChild(tip);
+    });
   }
 
   document.addEventListener('mousedown', function (e) {
-    if (!e.target.closest || !e.target.closest('.admin-info-tip-wrap')) return;
+    if (!closestFrom(e.target, '.admin-info-tip-wrap')) return;
     if (isLinkTarget(e.target)) return;
     e.preventDefault();
   }, true);
@@ -414,16 +493,33 @@
       closeTips(null);
       return;
     }
-    if (e.target.closest('.admin-info-tip__bubble')) {
+    if (closestFrom(e.target, '.admin-info-tip__bubble')) {
       return;
     }
-    if (!e.target.closest('.admin-info-tip')) {
+    if (!closestFrom(e.target, '.admin-info-tip')) {
       return;
     }
     e.preventDefault();
     e.stopPropagation();
     toggleTip(root);
   }, true);
+
+  document.addEventListener('input', function (e) {
+    var t = eventElement(e.target);
+    if (!t || !t.closest) return;
+    var fieldName = t.getAttribute && t.getAttribute('name');
+    if (t.tagName === 'INPUT' && fieldName && /\[name\]$/.test(fieldName)) {
+      var piece = t.closest('[data-mw-piece]');
+      if (piece) {
+        refreshRepeatLabels(piece);
+        return;
+      }
+    }
+    if (t.classList && t.classList.contains('sq-work-title')) {
+      var card = t.closest('.sq-work-card');
+      if (card) refreshRepeatLabels(card);
+    }
+  });
 
   document.addEventListener('focusout', function (e) {
     var root = rootOf(e.target);
