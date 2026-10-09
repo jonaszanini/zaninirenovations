@@ -634,7 +634,7 @@
               <input id="fq-labour-rate-6" type="text" name="labour_rate_per_ft"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_per_ft')])
                      inputmode="decimal" autocomplete="off" required
-                     value="{{ number_format((float) $initialLabour6, 2, '.', '') }}">
+                     value="{{ number_format((float) $initialLabour6, 2, '.', '') }}" data-cp-money-entry="direct">
               @error('labour_rate_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group" id="fq-labour-8-wrap">
@@ -642,7 +642,7 @@
               <input id="fq-labour-rate-8" type="text" name="labour_rate_8ft_per_ft"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_8ft_per_ft')])
                      inputmode="decimal" autocomplete="off" required
-                     value="{{ number_format((float) $initialLabour8, 2, '.', '') }}">
+                     value="{{ number_format((float) $initialLabour8, 2, '.', '') }}" data-cp-money-entry="direct">
               @error('labour_rate_8ft_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
           </div>

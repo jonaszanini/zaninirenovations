@@ -267,7 +267,7 @@
         <label for="br-owner-rate">@include('admin.partials.info_tip', ['text' => $brInfo['owner_hourly_rate']]) Owner rate (CAD$)</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input br-preview" id="br-owner-rate" name="owner_hourly_rate"
-               value="{{ number_format((float) $brVal('owner_hourly_rate', $settings->owner_hourly_rate), 2, '.', '') }}">
+               value="{{ number_format((float) $brVal('owner_hourly_rate', $settings->owner_hourly_rate), 2, '.', '') }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         @include('admin.quotations._include_helper', [
@@ -1125,7 +1125,7 @@
           <label for="br-permit-amount">@include('admin.partials.info_tip', ['text' => $brInfo['building_permit_amount']]) Permit amount (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input br-preview br-input--permit" id="br-permit-amount" name="building_permit_amount"
-                 value="{{ number_format((float) $brVal('building_permit_amount', 0), 2, '.', '') }}">
+                 value="{{ number_format((float) $brVal('building_permit_amount', 0), 2, '.', '') }}" data-cp-money-entry="direct">
         </div>
       </div>
     </div>

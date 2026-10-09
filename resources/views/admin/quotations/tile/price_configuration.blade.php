@@ -104,7 +104,7 @@
                 <td><input type="number" step="0.01" name="mortars[{{ $index }}][bag_weight_lbs]" class="admin-input" value="{{ (float)$m->bag_weight_lbs }}" required></td>
                 <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                            name="mortars[{{ $index }}][cost_price]" class="admin-input cp-money-input"
-                           value="{{ number_format((float) $m->cost_price, 4, '.', '') }}" required></td>
+                           value="{{ number_format((float) $m->cost_price, 4, '.', '') }}" required data-cp-money-entry="direct"></td>
                 <td><input type="number" name="mortars[{{ $index }}][sort_order]" class="admin-input" value="{{ $m->sort_order }}"></td>
                 <td style="text-align:center;">
                   <input type="checkbox" name="mortars[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $m->is_active ? 'checked' : '' }}>
@@ -149,7 +149,7 @@
                 <td><input type="number" step="0.0001" name="grouts[{{ $index }}][density_factor]" class="admin-input" value="{{ (float)$g->density_factor }}" required></td>
                 <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                            name="grouts[{{ $index }}][cost_price]" class="admin-input cp-money-input"
-                           value="{{ number_format((float) $g->cost_price, 4, '.', '') }}" required></td>
+                           value="{{ number_format((float) $g->cost_price, 4, '.', '') }}" required data-cp-money-entry="direct"></td>
                 <td><input type="number" name="grouts[{{ $index }}][sort_order]" class="admin-input" value="{{ $g->sort_order }}"></td>
                 <td style="text-align:center;">
                   <input type="checkbox" name="grouts[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $g->is_active ? 'checked' : '' }}>
@@ -211,7 +211,7 @@
                 <td><input type="number" step="0.0001" name="products[{{ $index }}][thickness_inches]" class="admin-input" value="{{ (float)$p->thickness_inches }}" required></td>
                 <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                            name="products[{{ $index }}][cost_per_sqft]" class="admin-input cp-money-input"
-                           value="{{ number_format((float) $p->cost_per_sqft, 4, '.', '') }}" required></td>
+                           value="{{ number_format((float) $p->cost_per_sqft, 4, '.', '') }}" required data-cp-money-entry="direct"></td>
                 <td><input type="number" name="products[{{ $index }}][sort_order]" class="admin-input" value="{{ $p->sort_order }}"></td>
                 <td style="text-align:center;">
                   <input type="checkbox" name="products[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $p->is_active ? 'checked' : '' }}>
@@ -261,7 +261,7 @@
                 <td><input type="text" name="edges[{{ $index }}][color]" class="admin-input" value="{{ $e->color }}" placeholder="White"></td>
                 <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                            name="edges[{{ $index }}][unit_price]" class="admin-input cp-money-input"
-                           value="{{ number_format((float) $e->unit_price, 4, '.', '') }}" required></td>
+                           value="{{ number_format((float) $e->unit_price, 4, '.', '') }}" required data-cp-money-entry="direct"></td>
                 <td><input type="number" name="edges[{{ $index }}][sort_order]" class="admin-input" value="{{ $e->sort_order }}"></td>
                 <td style="text-align:center;">
                   <input type="checkbox" name="edges[{{ $index }}][is_active]" value="1" class="admin-checkbox__input--standalone" {{ $e->is_active ? 'checked' : '' }}>
@@ -295,7 +295,7 @@
         <td><input type="text" name="new_mortars[${mIdx}][name]" class="admin-input" placeholder="Name"></td>
         <td><input type="number" step="0.01" name="new_mortars[${mIdx}][bag_weight_lbs]" class="admin-input" value="50"></td>
         <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
-                   name="new_mortars[${mIdx}][cost_price]" class="admin-input cp-money-input" value="0"></td>
+                   name="new_mortars[${mIdx}][cost_price]" class="admin-input cp-money-input" value="0" data-cp-money-entry="direct"></td>
         <td></td><td></td>
         <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
       `;
@@ -315,7 +315,7 @@
         <td><input type="number" step="0.01" name="new_grouts[${gIdx}][bag_weight_lbs]" class="admin-input" value="10"></td>
         <td><input type="number" step="0.0001" name="new_grouts[${gIdx}][density_factor]" class="admin-input" value="1.6"></td>
         <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
-                   name="new_grouts[${gIdx}][cost_price]" class="admin-input cp-money-input" value="0"></td>
+                   name="new_grouts[${gIdx}][cost_price]" class="admin-input cp-money-input" value="0" data-cp-money-entry="direct"></td>
         <td></td><td></td>
         <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
       `;
@@ -338,7 +338,7 @@
         <td><input type="number" step="0.0001" name="new_products[${pIdx}][width_inches]" class="admin-input" value="12" required></td>
         <td><input type="number" step="0.0001" name="new_products[${pIdx}][thickness_inches]" class="admin-input" value="0.25" required></td>
         <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
-                   name="new_products[${pIdx}][cost_per_sqft]" class="admin-input cp-money-input" value="0" required></td>
+                   name="new_products[${pIdx}][cost_per_sqft]" class="admin-input cp-money-input" value="0" required data-cp-money-entry="direct"></td>
         <td></td>
         <td style="text-align:center;"><span class="admin-form-help" title="New tiles are active by default">Active</span></td>
         <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
@@ -362,7 +362,7 @@
         <td><input type="text" name="new_edges[${eIdx}][thickness]" class="admin-input" placeholder="5/16"></td>
         <td><input type="text" name="new_edges[${eIdx}][color]" class="admin-input" placeholder="White"></td>
         <td><input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
-                   name="new_edges[${eIdx}][unit_price]" class="admin-input cp-money-input" value="0"></td>
+                   name="new_edges[${eIdx}][unit_price]" class="admin-input cp-money-input" value="0" data-cp-money-entry="direct"></td>
         <td></td><td></td>
         <td><button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="this.closest('tr').remove()" style="padding:4px 8px; color:#ef4444;"><i class="fa fa-times"></i></button></td>
       `;
