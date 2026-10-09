@@ -785,7 +785,9 @@ class ClientProjectQuotation extends Model
                 'description' => 'Labour',
                 'amount' => 0.0,
                 'apply_hst' => $taxNewLabour,
-                'hst_included' => ! $taxNewLabour,
+                // v1 keeps "13% incl." on an untaxed created Labour row.
+                // v2 does not claim included HST when the footer HST is 0.
+                'hst_included' => ! $taxNewLabour && $this->usesLegacyPdfNonMaterialFold(),
             ];
             $indexes = $this->commuteLabourLineIndexes($items);
             if ($indexes === []) {
@@ -827,7 +829,7 @@ class ClientProjectQuotation extends Model
             $row = &$items[$idx];
             $hstBefore = self::lineHstAmount($row);
             $this->addAmountToPdfLine($row, $shares[$i]);
-            if (! empty($row['apply_hst']) && $hstShares[$i] != 0.0) {
+            if (! empty($row['apply_hst']) && $leftoverHst > 0 && ! $this->usesLegacyPdfNonMaterialFold()) {
                 $row['hst_amount'] = round($hstBefore + $hstShares[$i], 2);
             }
             unset($row);
@@ -915,14 +917,21 @@ class ClientProjectQuotation extends Model
     /**
      * @param  array<string, mixed>  $row
      */
+    /**
+     * Allow-list: the general Labour line only. Exclusions (electrical,
+     * plumbing, demolition, permits, supply, custom) are checked first so
+     * "Electrical labour" never becomes a fold target.
+     *
+     * @param  array<string, mixed>  $row
+     */
     protected static function isPdfLabourLine(array $row): bool
     {
-        if (! empty($row['is_heading'])) {
+        if (! empty($row['is_heading']) || self::isPdfExcludedFoldLine($row)) {
             return false;
         }
 
-        $desc = (string) ($row['description'] ?? '');
-        if (stripos($desc, 'HST exempt') !== false) {
+        $desc = trim((string) ($row['description'] ?? ''));
+        if ($desc === '' || stripos($desc, 'HST exempt') !== false) {
             return false;
         }
         if (DebrisRemovalExpenseService::isLineDescription($desc)) {
@@ -932,23 +941,19 @@ class ClientProjectQuotation extends Model
         return $desc === 'Labour'
             || $desc === 'Labor'
             || str_ends_with($desc, ' — Labour')
-            || str_ends_with($desc, ' — Labor')
-            || (bool) preg_match('/\blabou?r\b/i', $desc);
+            || str_ends_with($desc, ' — Labor');
     }
 
     /**
-     * Combined materials+labour job summary (fence / low-deck / paving /
-     * "Labour and material"). Never permits, supply-only, electrical,
-     * demolition, or custom lines.
+     * Allow-list: combined materials+labour summary only ("Labour and
+     * material", or a fence / deck / paving job line). Never a trade,
+     * permit, supply, or custom line.
      *
      * @param  array<string, mixed>  $row
      */
     protected static function isPdfCombinedSummaryLine(array $row): bool
     {
-        if (! empty($row['is_heading']) || self::isPdfLabourLine($row)) {
-            return false;
-        }
-        if (self::isPdfExcludedFoldLine($row) || self::isPdfMaterialOnlyLine($row)) {
+        if (! empty($row['is_heading']) || self::isPdfExcludedFoldLine($row) || self::isPdfMaterialOnlyLine($row)) {
             return false;
         }
 
@@ -959,8 +964,15 @@ class ClientProjectQuotation extends Model
         if (DebrisRemovalExpenseService::isLineDescription($desc)) {
             return false;
         }
+        if (empty($row['apply_hst']) && empty($row['hst_included'])) {
+            return false;
+        }
 
-        return ! empty($row['apply_hst']) || ! empty($row['hst_included']);
+        if (preg_match('/\b(?:labour|labor)\s+and\s+material|\bmaterial\s+and\s+(?:labour|labor)\b/i', $desc)) {
+            return true;
+        }
+
+        return (bool) preg_match('/\b(?:fence|deck|paving|interlock|unilock|patio)\b/i', $desc);
     }
 
     /**
@@ -990,14 +1002,8 @@ class ClientProjectQuotation extends Model
     protected static function isPdfExcludedFoldLine(array $row): bool
     {
         $desc = (string) ($row['description'] ?? '');
-        if (preg_match('/\b(permits?|electrical|demolition|demo)\b/i', $desc)) {
-            return true;
-        }
-        if (preg_match('/supply[\s-]+only/i', $desc)) {
-            return true;
-        }
 
-        return (bool) preg_match('/\bcustom\b/i', $desc);
+        return (bool) preg_match('/\b(permits?|electrical|plumbing|demolition|demo|supply|custom)\b/i', $desc);
     }
 
     /**
@@ -1224,20 +1230,30 @@ class ClientProjectQuotation extends Model
             $description = (string) ($row['description'] ?? '');
             $amount = (float) ($row['amount'] ?? 0);
 
-            if (DebrisRemovalExpenseService::isLineDescription($description)
+            // v1 matches main: only debris is left at its stored amount.
+            // v2 also leaves commute / additional-cost rows alone so the
+            // fold does not pre-tax them twice.
+            $isHiddenExtra = DebrisRemovalExpenseService::isLineDescription($description)
                 || self::isLabourHiddenInternalExpenseLineDescription($description)
-                || self::isMaterialsHiddenInternalExpenseLineDescription($description)) {
+                || self::isMaterialsHiddenInternalExpenseLineDescription($description);
+            if (DebrisRemovalExpenseService::isLineDescription($description)
+                || ($isHiddenExtra && ! $this->usesLegacyPdfFold())) {
                 $normalized[] = $row;
 
                 continue;
             }
 
             if (! empty($row['hst_included'])) {
-                $normalized[] = [
+                $preTax = self::preTaxFromHstIncluded($amount);
+                $line = [
                     'description' => $description,
-                    'amount' => self::preTaxFromHstIncluded($amount),
+                    'amount' => $preTax,
                     'apply_hst' => true,
                 ];
+                if (! $this->usesLegacyPdfFold()) {
+                    $line['hst_amount'] = round($amount - $preTax, 2);
+                }
+                $normalized[] = $line;
 
                 continue;
             }
@@ -1253,11 +1269,23 @@ class ClientProjectQuotation extends Model
                     $preTaxAmount = round($taxableBase + self::preTaxFromHstIncluded($includedPortion), 2);
                 }
 
-                $normalized[] = [
+                $line = [
                     'description' => $description,
                     'amount' => round($preTaxAmount, 2),
                     'apply_hst' => true,
                 ];
+                if (array_key_exists('hst_taxable_amount', $row)) {
+                    $line['hst_taxable_amount'] = $taxableBase;
+                }
+                if (! $this->usesLegacyPdfFold()) {
+                    $editorLineTotal = round($amount + self::lineHstAmount([
+                        'apply_hst' => true,
+                        'amount' => $amount,
+                        'hst_taxable_amount' => $taxableBase,
+                    ]), 2);
+                    $line['hst_amount'] = round($editorLineTotal - $line['amount'], 2);
+                }
+                $normalized[] = $line;
 
                 continue;
             }
@@ -1450,7 +1478,13 @@ class ClientProjectQuotation extends Model
                 if (empty($row['apply_hst'])) {
                     continue;
                 }
-                $sum += self::lineHstAmount($row) * $ratio;
+                // v1: scale the face amount then apply 13% (main).
+                // v2: scale the per-line HST (honours leftover cents).
+                if ($this->usesLegacyPdfFold()) {
+                    $sum += (float) ($row['amount'] ?? 0) * $ratio * self::HST_RATE;
+                } else {
+                    $sum += self::lineHstAmount($row) * $ratio;
+                }
             }
 
             return round($sum, 2);

@@ -382,6 +382,7 @@ class StandardQuotation extends Model
         $lines = [];
 
         $taxable = 0.0;
+        $taxableHst = 0.0;
         $exempt = 0.0;
         $electricalLines = [];
 
@@ -401,12 +402,14 @@ class StandardQuotation extends Model
                     'description' => $desc !== '' ? $desc : self::ELECTRICAL_LINE_DESCRIPTION,
                     'amount' => $amount,
                     'apply_hst' => (bool) ($row['apply_hst'] ?? true),
+                    'hst_amount' => $this->materialRowHst($row),
                 ];
                 continue;
             }
 
             if (filter_var($row['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
                 $taxable += $amount;
+                $taxableHst += $this->materialRowHst($row);
             } else {
                 $exempt += $amount;
             }
@@ -414,6 +417,7 @@ class StandardQuotation extends Model
 
         if (! empty($computed['contingency_enabled']) && (float) ($computed['contingency_amount'] ?? 0) > 0) {
             $taxable += round((float) ($computed['contingency_amount_taxable'] ?? 0), 2);
+            $taxableHst += round((float) ($computed['contingency_hst'] ?? 0), 2);
             $exempt += round((float) ($computed['contingency_amount_exempt'] ?? 0), 2);
         }
 
@@ -425,6 +429,7 @@ class StandardQuotation extends Model
                 'description' => 'Material',
                 'amount' => $taxable,
                 'apply_hst' => true,
+                'hst_amount' => round($taxableHst, 2),
             ];
         }
         if ($exempt > 0) {
@@ -482,6 +487,7 @@ class StandardQuotation extends Model
             }
 
             $taxableCombined = 0.0;
+            $taxableCombinedHst = 0.0;
             $exemptMaterial = 0.0;
             $mergedTaxableLabour = false;
             $passthrough = [];
@@ -498,11 +504,13 @@ class StandardQuotation extends Model
                 }
                 if ($curDesc === 'Material' && ! empty($cur['apply_hst'])) {
                     $taxableCombined += (float) ($cur['amount'] ?? 0);
+                    $taxableCombinedHst += ClientProjectQuotation::lineHstAmount($cur);
                 } elseif (str_starts_with($curDesc, 'Material')) {
                     $exemptMaterial += (float) ($cur['amount'] ?? 0);
                 } elseif ($curDesc === 'Labour') {
                     if (! empty($cur['apply_hst'])) {
                         $taxableCombined += (float) ($cur['amount'] ?? 0);
+                        $taxableCombinedHst += ClientProjectQuotation::lineHstAmount($cur);
                         $mergedTaxableLabour = true;
                     } else {
                         $passthrough[] = $cur;
@@ -525,6 +533,7 @@ class StandardQuotation extends Model
                     'description' => $lineLabel,
                     'amount' => $taxableCombined,
                     'apply_hst' => true,
+                    'hst_amount' => round($taxableCombinedHst, 2),
                 ];
             }
             if ($exemptMaterial > 0) {
@@ -638,6 +647,7 @@ class StandardQuotation extends Model
             $jobContExempt = round($jobCont - $jobContTax, 2);
 
             $taxable = 0.0;
+            $taxableHst = 0.0;
             $exempt = 0.0;
             $electricalLines = [];
 
@@ -657,18 +667,21 @@ class StandardQuotation extends Model
                         'description' => $desc !== '' ? $desc : self::ELECTRICAL_LINE_DESCRIPTION,
                         'amount' => $amount,
                         'apply_hst' => (bool) ($row['apply_hst'] ?? true),
+                        'hst_amount' => $this->materialRowHst($row),
                     ];
                     continue;
                 }
 
                 if (filter_var($row['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
                     $taxable += $amount;
+                    $taxableHst += $this->materialRowHst($row);
                 } else {
                     $exempt += $amount;
                 }
             }
 
             $taxable = round($taxable + $jobContTax, 2);
+            $taxableHst = round($taxableHst + round($jobContTax * ClientProjectQuotation::HST_RATE, 2), 2);
             $exempt = round($exempt + $jobContExempt, 2);
 
             if ($taxable > 0) {
@@ -676,6 +689,7 @@ class StandardQuotation extends Model
                     'description' => 'Material',
                     'amount' => $taxable,
                     'apply_hst' => true,
+                    'hst_amount' => $taxableHst,
                 ];
             }
             if ($exempt > 0) {
@@ -702,6 +716,24 @@ class StandardQuotation extends Model
         $this->appendCommuteAndDebrisPdfLines($lines);
 
         return $lines;
+    }
+
+    /**
+     * Per-row HST as the editor JS computes it (round each line, then sum).
+     *
+     * @param  array<string, mixed>  $row
+     */
+    protected function materialRowHst(array $row): float
+    {
+        if (array_key_exists('line_hst', $row)) {
+            return round((float) $row['line_hst'], 2);
+        }
+
+        if (! filter_var($row['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
+            return 0.0;
+        }
+
+        return round((float) ($row['line_subtotal'] ?? 0) * ClientProjectQuotation::HST_RATE, 2);
     }
 
     /**

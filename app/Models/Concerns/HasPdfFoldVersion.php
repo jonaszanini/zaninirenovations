@@ -36,6 +36,11 @@ trait HasPdfFoldVersion
         });
     }
 
+    /**
+     * Null means v1 on a persisted row (pre-column quotes and any save
+     * that never stored a version). Null on an unsaved model means v2 —
+     * a new quote that has not been assigned a version yet.
+     */
     public function usesLegacyPdfFold(): bool
     {
         $version = $this->getAttribute('pdf_fold_version');

@@ -11,6 +11,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
     public function test_pdf_folds_debris_into_labour_line(): void
     {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_FENCE,
             'items' => [
                 [
@@ -58,6 +59,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
     public function test_pdf_folds_debris_into_labour_and_material_line(): void
     {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
             'items' => [
                 [
@@ -85,6 +87,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
     public function test_pdf_still_folds_commute_into_labour(): void
     {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_FENCE,
             'items' => [
                 [
@@ -111,6 +114,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
     public function test_pdf_splits_commute_evenly_across_job_labour_lines(): void
     {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
             'items' => [
                 [
@@ -183,6 +187,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
     public function test_tile_pdf_folds_debris_into_labour_and_renames_materials(): void
     {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_TILE,
             'items' => [
                 [
@@ -219,6 +224,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
     public function test_pdf_folds_additional_costs_into_materials_or_labour_by_category(): void
     {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_FLOORING,
             'items' => [
                 [
@@ -259,6 +265,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
     public function test_pdf_cash_labour_keeps_commute_and_debris_gross_so_total_matches_editor(): void
     {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_FENCE,
             'items' => [
                 [
@@ -299,6 +306,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
     public function test_pdf_creates_labour_line_when_commute_has_no_labour_or_taxable_target(): void
     {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
             'items' => [
                 [
@@ -328,6 +336,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
     public function test_pdf_creates_labour_line_for_debris_when_there_is_no_labour(): void
     {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
             'items' => [
                 [
@@ -363,6 +372,7 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
         float $expectedTotal
     ): void {
         $quote = new ClientProjectQuotation([
+            'pdf_fold_version' => 1,
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
             'items' => $items,
         ]);

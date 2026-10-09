@@ -584,6 +584,134 @@ class StandardQuotationPdfLineItemsTest extends TestCase
     }
 
     /**
+     * D5: the aggregated Material PDF line must use per-row HST (same as
+     * admin-standard-quotation.js), not one round on the summed subtotal.
+     * Executes the real editor arithmetic extracted from that file.
+     */
+    public function test_aggregated_material_hst_matches_real_editor_js(): void
+    {
+        $jsPath = public_path('js/admin-standard-quotation.js');
+        $this->assertFileExists($jsPath);
+        $source = (string) file_get_contents($jsPath);
+        $this->assertTrue(
+            (bool) preg_match(
+                '/var lineGross = Math\.round\(\(unit \* qty \+ delivery\) \* 100\) \/ 100;.*?lineTot = lineSub;\n      \}/s',
+                $source,
+                $m
+            ),
+            'Must extract the real material-row math from admin-standard-quotation.js'
+        );
+        $extracted = $m[0];
+        $this->assertStringContainsString('Math.round((unit * qty + delivery) * 100) / 100', $extracted);
+        $this->assertStringContainsString('Math.round(lineSub * HST * 100) / 100', $extracted);
+
+        $cases = [
+            [['unit' => 33.33, 'qty' => 1], ['unit' => 33.33, 'qty' => 1]],
+            [['unit' => 10.01, 'qty' => 3], ['unit' => 7.77, 'qty' => 2], ['unit' => 1.13, 'qty' => 4]],
+        ];
+        for ($i = 1; $i <= 80; $i++) {
+            $rows = [];
+            $n = ($i % 4) + 2;
+            for ($r = 0; $r < $n; $r++) {
+                $rows[] = [
+                    'unit' => round((($i * 17 + $r * 31) % 9000) / 100, 2),
+                    'qty' => (($i + $r) % 5) + 1,
+                ];
+            }
+            $cases[] = $rows;
+        }
+
+        $flat = [];
+        foreach ($cases as $caseIdx => $rows) {
+            foreach ($rows as $row) {
+                $flat[] = [
+                    'case' => $caseIdx,
+                    'unit' => $row['unit'],
+                    'qty' => $row['qty'],
+                    'delivery' => 0,
+                    'inclusive' => false,
+                    'chargePreTax' => true,
+                ];
+            }
+        }
+
+        $script = <<<JS
+var HST = 0.13;
+function lineMath(unit, qty, delivery, inclusive, chargePreTax) {
+  {$extracted}
+  return {lineSub: lineSub, lineHst: lineHst, lineTot: lineTot};
+}
+var rows = JSON.parse(process.argv[2]);
+var out = rows.map(function (r) {
+  return Object.assign({case: r.case}, lineMath(r.unit, r.qty, r.delivery, !!r.inclusive, !!r.chargePreTax));
+});
+process.stdout.write(JSON.stringify(out));
+JS;
+
+        $tmp = tempnam(sys_get_temp_dir(), 'sq-d5-');
+        file_put_contents($tmp, $script);
+        $output = [];
+        $code = 0;
+        exec('node '.escapeshellarg($tmp).' '.escapeshellarg(json_encode($flat)).' 2>&1', $output, $code);
+        @unlink($tmp);
+        $this->assertSame(0, $code, implode("\n", $output));
+        $jsRows = json_decode(implode('', $output), true);
+        $this->assertIsArray($jsRows);
+        $this->assertNotSame([], $jsRows);
+
+        $byCase = [];
+        foreach ($jsRows as $row) {
+            $byCase[$row['case']][] = $row;
+        }
+
+        $mismatches = 0;
+        foreach ($cases as $caseIdx => $rows) {
+            $materials = [];
+            foreach ($rows as $i => $row) {
+                $materials[] = [
+                    'short_name' => 'Row '.$i,
+                    'unit_price' => $row['unit'],
+                    'quantity' => $row['qty'],
+                    'apply_hst' => true,
+                ];
+            }
+            $sq = new StandardQuotation([
+                'materials' => $materials,
+                'labour_hourly_rate' => 0,
+                'labour_mode' => 'hours',
+                'labour_quantity' => 0,
+                'labour_use_fixed' => false,
+                'contingency_enabled' => false,
+                'include_commute' => false,
+                'include_debris_removal' => false,
+            ]);
+            $cpq = new \App\Models\ClientProjectQuotation([
+                'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
+                'pdf_fold_version' => 2,
+                'items' => $sq->summaryPdfLineItems(),
+            ]);
+
+            $jsHst = 0.0;
+            $jsGrand = 0.0;
+            foreach ($byCase[$caseIdx] ?? [] as $jsRow) {
+                $jsHst += (float) $jsRow['lineHst'];
+                $jsGrand += (float) $jsRow['lineTot'];
+            }
+            $jsHst = round($jsHst, 2);
+            $jsGrand = round($jsGrand, 2);
+
+            if (abs($jsHst - $cpq->pdfHst()) > 0.001 || abs($jsGrand - $cpq->pdfGrandTotal()) > 0.001) {
+                $mismatches++;
+            }
+            $this->assertEquals($jsHst, $cpq->pdfHst(), 'HST case '.$caseIdx);
+            $this->assertEquals($jsGrand, $cpq->pdfGrandTotal(), 'total case '.$caseIdx);
+        }
+
+        $this->assertSame(0, $mismatches);
+        $this->assertGreaterThan(80, count($cases));
+    }
+
+    /**
      * Materials $500 + HST $65, cash labour $1,000, commute $113, debris $50.
      */
     private function cashLabourQuoteWithHiddenExtras(string $mode): StandardQuotation
