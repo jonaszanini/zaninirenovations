@@ -604,6 +604,11 @@ body.admin-body {
   flex-shrink: 0;
 }
 
+.admin-btn[hidden],
+button.admin-btn[hidden] {
+  display: none !important;
+}
+
 .admin-btn--primary {
   background: var(--admin-primary);
   color: #fff;
@@ -1769,8 +1774,11 @@ a.admin-client-link:focus-visible {
   white-space: nowrap;
 }
 .admin-label-with-tip:has(> label.admin-checkbox):has(.br-client-filled) {
-  padding-left: 60px;
-  text-indent: -60px;
+  padding-left: 64px;
+  text-indent: -64px;
+}
+.sp-heading {
+  display: block;
 }
 .admin-heading-copy {
   display: inline;
@@ -1832,9 +1840,6 @@ legend > .admin-info-tip-wrap,
 .admin-topbar h1 .admin-info-tip-wrap {
   display: inline-flex;
   vertical-align: middle;
-}
-.admin-heading-tip {
-  white-space: nowrap;
 }
 .admin-checkbox .admin-info-tip,
 .admin-label-with-tip > .admin-info-tip-wrap .admin-info-tip {
@@ -4499,6 +4504,7 @@ body.admin-ai-text-history-open {
 
 /* Shared Price Library */
 .sp-heading {
+  display: block;
   margin: 0 0 0.5rem;
   color: var(--admin-heading);
   font-size: 1.05rem;
@@ -4778,6 +4784,7 @@ body.admin-ai-text-history-open {
   align-items: center;
   gap: 10px;
   width: 100%;
+  min-height: 44px;
   padding: 10px 14px;
   border: none;
   background: none;

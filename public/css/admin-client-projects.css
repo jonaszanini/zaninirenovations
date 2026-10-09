@@ -6389,9 +6389,7 @@ body.cp-modal-open {
   margin-bottom: 8px;
 }
 .sq-intro-option-title {
-  display: flex;
-  align-items: center;
-  gap: 0;
+  display: block;
   margin: 0 0 6px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--admin-border, #dbe3ea);

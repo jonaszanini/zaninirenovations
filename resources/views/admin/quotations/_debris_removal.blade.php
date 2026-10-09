@@ -49,8 +49,10 @@
     <div class="admin-form-group q-debris-amount-group">
       <span class="admin-label-with-tip">
         <label for="q-debris-amount">Amount to charge</label>
-        <span class="cp-required">*</span>
-        <x-admin.info-tip label="Amount to charge">Incl. HST — folded into Labour on the client PDF (not shown as its own line).</x-admin.info-tip>
+        <span class="admin-label-with-tip__end">
+          <span class="cp-required">*</span>
+          <x-admin.info-tip label="Amount to charge">Incl. HST — folded into Labour on the client PDF (not shown as its own line).</x-admin.info-tip>
+        </span>
       </span>
       <input type="text"
              id="q-debris-amount"

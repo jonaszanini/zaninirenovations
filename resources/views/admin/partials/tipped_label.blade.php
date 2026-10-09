@@ -3,7 +3,7 @@
   grids keep inputs aligned when the icon would otherwise wrap alone.
 
   Order is always: label text, then *, then <small>, then ⓘ.
-  Required * is a sibling after the words — never inside the nowrap with the tip.
+  Required * is wrapped with the ⓘ so they stay on one line.
 
   @param string      $label
   @param string|null $for
@@ -38,13 +38,15 @@
   @endif
   @if ($required)
     <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}</label>
-    <span class="cp-required">*</span>
-    @include('admin.partials.info_tip', [
-      'tipText' => $tipText,
-      'tipHtml' => $tipHtml,
-      'tipLabel' => $tipLabel,
-      'tipId' => $tipId,
-    ])
+    <span class="admin-label-with-tip__end">
+      <span class="cp-required">*</span>
+      @include('admin.partials.info_tip', [
+        'tipText' => $tipText,
+        'tipHtml' => $tipHtml,
+        'tipLabel' => $tipLabel,
+        'tipId' => $tipId,
+      ])
+    </span>
   @else
     <span class="admin-label-with-tip__end">
       <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}</label>

@@ -357,3 +357,25 @@
   };
 
 })(window);
+
+(function (global) {
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  global.AdminInfoTip = global.AdminInfoTip || {
+    html: function (text, label) {
+      var tip = String(text == null ? '' : text);
+      var raw = String(label == null || label === '' ? '' : label).replace(/^\s*About\s+/i, '').trim();
+      var aria = raw ? ('About ' + raw) : 'More info';
+      return '<button type="button" class="admin-info-tip" aria-expanded="false" aria-label="'
+        + escapeHtml(aria) + '">'
+        + '<i class="fa fa-info-circle" aria-hidden="true"></i>'
+        + '<span class="admin-info-tip__bubble" role="tooltip">' + escapeHtml(tip) + '</span></button>';
+    }
+  };
+})(window);

@@ -89,7 +89,6 @@
           <div class="admin-form-group">
             <span class="admin-label-with-tip">
               <label for="cp-client-email-secondary">Secondary email</label>
-              <small class="admin-form-help cp-inline-help">(CC'd)</small>
               <x-admin.info-tip label="Secondary email">Optional — CC'd on every client email.</x-admin.info-tip>
             </span>
             <input class="admin-input" type="email" id="cp-client-email-secondary" name="client_email_secondary"

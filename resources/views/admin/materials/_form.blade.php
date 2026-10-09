@@ -29,8 +29,10 @@
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
           <label for="mat-name">Store name</label>
-          <span class="cp-required">*</span>
-          <x-admin.info-tip label="Store name">Full product title from the store — updated when you sync prices.</x-admin.info-tip>
+          <span class="admin-label-with-tip__end">
+            <span class="cp-required">*</span>
+            <x-admin.info-tip label="Store name">Full product title from the store — updated when you sync prices.</x-admin.info-tip>
+          </span>
         </span>
         <input @class(['admin-input', 'is-invalid' => $errors->has('name')]) type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255">
         @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror

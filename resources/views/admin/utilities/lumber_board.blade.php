@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('heading')
-  Lumber / Board Material <span class="admin-heading-tip">Calculator <x-admin.info-tip label="Lumber / Board Material Calculator">Plan how many boards to buy for a job. Add one or more board types (2×4, 2×6, decking, etc.), enter required pieces for each, and see cutting layouts with waste and cost estimates.</x-admin.info-tip></span>
+  Lumber / Board Material <span class="admin-heading-copy">Calculator <x-admin.info-tip label="Lumber / Board Material Calculator">Plan how many boards to buy for a job. Add one or more board types (2×4, 2×6, decking, etc.), enter required pieces for each, and see cutting layouts with waste and cost estimates.</x-admin.info-tip></span>
 @endsection
 
 @push('head')

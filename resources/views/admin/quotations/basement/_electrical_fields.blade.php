@@ -28,7 +28,10 @@
              value="{{ $brVal('fixture_qty', 0) }}">
     </div>
     <div class="admin-form-group" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
-      <label for="br-lights">@include('admin.quotations.basement._client_filled', ['key' => 'light_qty', 'filledKeys' => $filledKeys ?? []]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'Fixtures' : 'Pot lights' }}</span></label>
+      <span class="admin-label-with-tip">
+        <label for="br-lights">@include('admin.quotations.basement._client_filled', ['key' => 'light_qty', 'filledKeys' => $filledKeys ?? []]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'Fixtures' : 'Pot lights' }}</span></label>
+        @include('admin.partials.info_tip', ['tipText' => $brInfo['light_qty'], 'tipLabel' => 'Ceiling lights'])
+      </span>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-lights" name="light_qty"
              value="{{ $brVal('light_qty', 0) }}">
     </div>

@@ -197,15 +197,18 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('function glueLastWord', $js);
         $this->assertStringContainsString('function setLabelText', $js);
         $this->assertStringContainsString('function glueLastTextNode', $js);
-        $this->assertStringContainsString('if (!prev || prev.nodeType !== 3) return null', $js);
+        $this->assertStringContainsString('function wrapElementAndTip', $js);
+        $this->assertStringContainsString('function wrapHeadingCopy', $js);
+        $this->assertStringContainsString('function lastUnlockedTextNode', $js);
         $this->assertStringNotContainsString('function moveTrailingSkipped', $js);
-        $this->assertStringNotContainsString('function wrapHeadingCopy', $js);
         $this->assertStringNotContainsString('function skipGlueNode', $js);
+        $this->assertStringNotContainsString('admin-heading-tip', $js);
+        $this->assertStringContainsString('function aboutLabel', $js);
         $this->assertStringContainsString('function refreshControlIds', $js);
         $this->assertStringContainsString('refreshControlIds: refreshControlIds', $js);
         $this->assertStringContainsString('function idFromControlName', $js);
         $this->assertStringContainsString("idFromControlName(input.getAttribute && input.getAttribute('name'))", $js);
-        $this->assertStringContainsString("btn.setAttribute('aria-label', 'About ' + aria)", $js);
+        $this->assertStringContainsString("btn.setAttribute('aria-label', aboutLabel(aria))", $js);
         $this->assertStringContainsString("label.admin-checkbox, .admin-checkbox-row > .admin-label-with-tip__end", $js);
         $this->assertStringContainsString("'.mw-totals-bar'", $js);
         $this->assertStringContainsString('setLabelText: setLabelText', $js);
@@ -270,7 +273,26 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertStringContainsString('.admin-heading-copy', $css);
-        $this->assertStringContainsString('padding-left: 60px', $css);
+        $this->assertStringNotContainsString('.admin-heading-tip', $css);
+        $this->assertStringContainsString('padding-left: 64px', $css);
+        $this->assertStringContainsString('text-indent: -64px', $css);
+        $this->assertMatchesRegularExpression(
+            '/\.admin-accordion__title\s*\{[^}]*white-space:\s*normal/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-accordion__title\s*\{[^}]*min-width:\s*0/',
+            $css
+        );
+        $darkCss = file_get_contents(public_path('css/admin-dark.css'));
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-form-group \.admin-checkbox-row[\s\S]{0,80}color:\s*var\(--admin-text\)/',
+            $darkCss
+        );
+        $this->assertStringContainsString('.admin-btn[hidden]', $css);
+        $dialog = file_get_contents(public_path('js/admin-dialog.js'));
+        $this->assertStringContainsString('global.AdminInfoTip = global.AdminInfoTip ||', $dialog);
+        $this->assertStringNotContainsString("e.target.closest('.admin-info-tip')", $dialog);
         $this->assertMatchesRegularExpression(
             '/\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/',
             $css
@@ -517,43 +539,45 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringNotContainsString('<p class="admin-form-help">Write a rough description first', $descAi);
 
         $edit = file_get_contents(resource_path('views/admin/client_projects/edit.blade.php'));
-        $this->assertStringContainsString('(CC\'d)', $edit);
+        $this->assertStringNotContainsString('(CC\'d)', $edit);
         $this->assertStringContainsString('Optional — CC\'d on every client email.', $edit);
         $clients = file_get_contents(resource_path('views/admin/clients/create.blade.php'));
-        $this->assertStringContainsString('(optional)', $clients);
+        $this->assertStringNotContainsString('cp-inline-help">(optional)', $clients);
+        $this->assertStringContainsString('Optional — CC\'d on every client email.', $clients);
     }
 
     public function test_required_star_sits_before_the_tip_in_blade(): void
     {
         $mat = file_get_contents(resource_path('views/admin/materials/_form.blade.php'));
         $this->assertMatchesRegularExpression(
-            '#<label for="mat-name">Store name</label>\s*<span class="cp-required">\*</span>\s*<x-admin.info-tip#',
+            '#<label for="mat-name">Store name</label>\s*<span class="admin-label-with-tip__end">\s*<span class="cp-required">\*</span>\s*<x-admin.info-tip#',
             $mat
         );
         $invoice = file_get_contents(resource_path('views/admin/client_projects/invoice/edit.blade.php'));
         $this->assertMatchesRegularExpression(
-            '#<label for="cp-invoice-due">Due date</label>\s*<span class="cp-required">\*</span>\s*<x-admin.info-tip#',
+            '#<label for="cp-invoice-due">Due date</label>\s*<span class="admin-label-with-tip__end">\s*<span class="cp-required">\*</span>\s*<x-admin.info-tip#',
             $invoice
         );
         $debris = file_get_contents(resource_path('views/admin/quotations/_debris_removal.blade.php'));
         $this->assertMatchesRegularExpression(
-            '#<label for="q-debris-amount">Amount to charge</label>\s*<span class="cp-required">\*</span>\s*<x-admin.info-tip#',
+            '#<label for="q-debris-amount">Amount to charge</label>\s*<span class="admin-label-with-tip__end">\s*<span class="cp-required">\*</span>\s*<x-admin.info-tip#',
             $debris
         );
         $places = file_get_contents(resource_path('views/admin/partials/places_address_field.blade.php'));
-        $this->assertMatchesRegularExpression(
-            '#<label for="\{\{ \$inputId \}\}-widget">\{\{ \$label \}\}</label>\s*@if \(\$required\) <span class="cp-required">\*</span>@endif\s*@if \(\$help\)\s*<x-admin.info-tip#',
-            $places
-        );
+        $this->assertStringContainsString('admin-label-with-tip__end', $places);
+        $this->assertStringContainsString('<span class="cp-required">*</span>', $places);
         $tipped = file_get_contents(resource_path('views/admin/partials/tipped_label.blade.php'));
-        $this->assertStringContainsString('<span class="cp-required">*</span>', $tipped);
+        $this->assertMatchesRegularExpression(
+            '#admin-label-with-tip__end[\s\S]*<span class="cp-required">\*</span>[\s\S]*info_tip#',
+            $tipped
+        );
         $this->assertDoesNotMatchRegularExpression(
             '#\{\{ \$last \}\}@if \(\$required\)<span class="cp-required">\*</span>#',
             $tipped
         );
         $reply = file_get_contents(resource_path('views/admin/partials/quotation_reply_to_accept.blade.php'));
         $this->assertMatchesRegularExpression(
-            '#<span class="cp-required">\*</span>\s*<x-admin.info-tip label="Ask client to reply I accept">#',
+            '#admin-label-with-tip__end[\s\S]*<span class="cp-required">\*</span>[\s\S]*<x-admin.info-tip label="Ask client to reply I accept">#',
             $reply
         );
     }
@@ -561,8 +585,12 @@ class AdminInfoTipBehaviourTest extends TestCase
     public function test_restating_field_tips_were_removed_from_dense_clusters(): void
     {
         $drywall = file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php'));
-        $this->assertStringNotContainsString("'tipLabel' => 'Door openings'", $drywall);
-        $this->assertStringNotContainsString("'tipLabel' => 'Window openings'", $drywall);
+        $this->assertStringContainsString("'tipLabel' => 'Door openings'", $drywall);
+        $this->assertStringContainsString("'tipLabel' => 'Window openings'", $drywall);
+        $this->assertStringContainsString("'tipLabel' => 'Inside corners'", $drywall);
+        $this->assertStringContainsString("'tipLabel' => 'Other openings'", $drywall);
+        $this->assertStringContainsString('skipped on Level 0', $drywall);
+        $this->assertStringContainsString('added for labour', $drywall);
         $this->assertStringNotContainsString("'tipLabel' => 'Outside corners'", $drywall);
         $this->assertStringContainsString("'tipLabel' => 'Opening area'", $drywall);
         $this->assertStringContainsString("'tipLabel' => 'Level of finish'", $drywall);
@@ -570,12 +598,15 @@ class AdminInfoTipBehaviourTest extends TestCase
         $elec = file_get_contents(resource_path('views/admin/quotations/basement/_electrical_fields.blade.php'));
         $this->assertStringNotContainsString("'tipLabel' => 'New outlets'", $elec);
         $this->assertStringNotContainsString("'tipLabel' => 'Switches'", $elec);
+        $this->assertStringContainsString("'tipLabel' => 'Ceiling lights'", $elec);
+        $this->assertStringContainsString('Bathroom spots', $drywall);
         $this->assertStringContainsString("'tipLabel' => 'Basement ceiling lighting'", $elec);
         $this->assertStringContainsString("'tipLabel' => 'Smoke / CO'", $elec);
 
         $shed = file_get_contents(resource_path('views/admin/quotations/shed/_wizard_sections.blade.php'));
         $this->assertStringNotContainsString("'tipLabel' => 'Wall height (ft)'", $shed);
-        $this->assertStringNotContainsString("'tipLabel' => 'Area'", $shed);
+        $this->assertStringContainsString("'tipLabel' => 'Area'", $shed);
+        $this->assertStringContainsString('without a building permit', $shed);
         $this->assertStringContainsString("'tipLabel' => 'Length (ft)'", $shed);
 
         $paint = file_get_contents(resource_path('views/admin/quotations/painting/price_configuration.blade.php'));

@@ -14,6 +14,9 @@ class AdminInfoTipTest extends TestCase
         $this->assertStringContainsString('type="button"', $html);
         $this->assertStringContainsString('class="admin-info-tip"', $html);
         $this->assertStringContainsString('aria-label="About Board style"', $html);
+        $aboutAbout = Blade::render('<x-admin.info-tip label="About business contact">Shown to clients.</x-admin.info-tip>');
+        $this->assertStringContainsString('aria-label="About business contact"', $aboutAbout);
+        $this->assertStringNotContainsString('About About', $aboutAbout);
         $this->assertStringContainsString('aria-expanded="false"', $html);
         $this->assertStringContainsString('aria-controls="', $html);
         $this->assertStringContainsString('aria-describedby="', $html);

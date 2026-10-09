@@ -189,9 +189,14 @@
    * Markup for JS-rendered rows (fence run cards, lumber tools, etc.).
    * text is escaped. label becomes aria-label="About {label}".
    */
+  function aboutLabel(label) {
+    var t = String(label == null ? '' : label).replace(/^\s*About\s+/i, '').trim();
+    return t ? ('About ' + t) : 'More info';
+  }
+
   function html(text, label) {
     var id = newTipId();
-    var aria = label ? ('About ' + String(label)) : 'More info';
+    var aria = aboutLabel(label);
     return (
       '<span class="admin-info-tip-wrap">' +
         '<button type="button" class="admin-info-tip" aria-label="' + escapeHtml(aria) + '" aria-expanded="false" aria-controls="' + id + '" aria-describedby="' + id + '">' +
@@ -408,7 +413,7 @@
       if (current && current !== 'More info') return;
       var text = labelTextNear(wrap);
       if (text) {
-        btn.setAttribute('aria-label', 'About ' + text);
+        btn.setAttribute('aria-label', aboutLabel(text));
       }
     });
   }
@@ -507,39 +512,149 @@
     return n;
   }
 
-  /**
-   * Only allowed DOM change: split the last text node immediately before
-   * the ⓘ and wrap that last word + tip in a nowrap span. Never move or
-   * reorder element children (*, small, badge, chevron, label).
-   */
-  function glueLastTextNode(tip, extraClass) {
-    if (!tip || !tip.parentNode) return null;
-    if (tip.parentNode.classList && (
-      tip.parentNode.classList.contains('admin-label-with-tip__end')
-      || tip.parentNode.classList.contains('admin-heading-tip')
-    )) {
-      return null;
+  function isHeadingChrome(el) {
+    if (!el || el.nodeType !== 1 || !el.classList) return false;
+    return el.classList.contains('br-acc__num')
+      || el.classList.contains('admin-chevron-down')
+      || el.classList.contains('admin-filters-accordion__badge')
+      || el.classList.contains('admin-filters-accordion__icon');
+  }
+
+  function isGlueSkipElement(el) {
+    if (!el || el.nodeType !== 1 || !el.classList) return true;
+    if (isHeadingChrome(el)) return true;
+    if (el.classList.contains('admin-info-tip-wrap')) return true;
+    if (el.classList.contains('admin-label-with-tip__end')) return true;
+    if (el.classList.contains('admin-heading-copy')) return true;
+    if (el.classList.contains('admin-checkbox')) return true;
+    return false;
+  }
+
+  function lastUnlockedTextNode(el) {
+    var found = null;
+    function walk(node) {
+      if (!node) return;
+      if (node.nodeType === 1) {
+        if (node !== el && node.id) return;
+        if (node.classList && (
+          node.classList.contains('admin-info-tip-wrap')
+          || node.classList.contains('admin-label-with-tip__end')
+        )) return;
+        var kids = node.childNodes || [];
+        for (var i = 0; i < kids.length; i++) walk(kids[i]);
+        return;
+      }
+      if (node.nodeType === 3 && String(node.textContent || '').replace(/\s+/g, ' ').trim()) {
+        found = node;
+      }
     }
-    var prev = previousNonEmptyNode(tip);
-    if (!prev || prev.nodeType !== 3) return null;
-    var raw = String(prev.textContent || '');
+    walk(el);
+    return found;
+  }
+
+  function splitTextNodeLastWord(textNode) {
+    if (!textNode || textNode.nodeType !== 3) return '';
+    var raw = String(textNode.textContent || '');
     var trimmed = raw.replace(/\s+$/g, '');
-    if (!trimmed) return null;
+    if (!trimmed) return '';
     var space = trimmed.lastIndexOf(' ');
     var last = space === -1 ? trimmed : trimmed.slice(space + 1);
     var keep = space === -1
       ? raw.slice(trimmed.length)
       : (trimmed.slice(0, space + 1) + raw.slice(trimmed.length));
-    if (!last) return null;
-    prev.textContent = keep;
+    if (!last) return '';
+    textNode.textContent = keep;
+    return last;
+  }
+
+  function makeEnd(extraClass) {
     var end = document.createElement('span');
     end.className = extraClass || 'admin-label-with-tip__end';
+    return end;
+  }
+
+  function wrapWordAndTip(tip, last, extraClass) {
+    if (!tip || !tip.parentNode || !last) return null;
+    var end = makeEnd(extraClass);
     var word = document.createElement('span');
     word.textContent = last;
     end.appendChild(word);
     tip.parentNode.insertBefore(end, tip);
     end.appendChild(tip);
     return end;
+  }
+
+  /**
+   * Wrap the preceding inline element together with the tip. Visual order
+   * stays the same — never reorder siblings (chevron, badge, lead label).
+   */
+  function wrapElementAndTip(unit, tip, extraClass) {
+    if (!unit || !tip || unit === tip) return null;
+    if (unit.contains && unit.contains(tip)) return null;
+    var parent = tip.parentNode;
+    if (!parent || unit.parentNode !== parent || !parent.insertBefore) return null;
+    var end = makeEnd(extraClass);
+    parent.insertBefore(end, unit);
+    end.appendChild(unit);
+    end.appendChild(tip);
+    return end;
+  }
+
+  /**
+   * Glue the ⓘ to the last text word or the preceding inline element
+   * (*, small, label, span) via a nowrap span. Never reorder children.
+   */
+  function glueLastTextNode(tip, extraClass) {
+    if (!tip || !tip.parentNode) return null;
+    if (tip.parentNode.classList && tip.parentNode.classList.contains('admin-label-with-tip__end')) {
+      return null;
+    }
+    extraClass = extraClass || 'admin-label-with-tip__end';
+    var prev = previousNonEmptyNode(tip);
+    if (!prev) return null;
+    if (prev.nodeType === 3) {
+      var last = splitTextNodeLastWord(prev);
+      return last ? wrapWordAndTip(tip, last, extraClass) : null;
+    }
+    if (prev.nodeType !== 1 || isGlueSkipElement(prev)) return null;
+    var textNode = lastUnlockedTextNode(prev);
+    if (textNode) {
+      var whole = String(prev.textContent || '').replace(/\s+/g, ' ').trim();
+      var raw = String(textNode.textContent || '');
+      var trimmed = raw.replace(/\s+$/g, '');
+      var space = trimmed.lastIndexOf(' ');
+      var lastWord = space === -1 ? trimmed : trimmed.slice(space + 1);
+      if (lastWord && lastWord !== whole) {
+        var word = splitTextNodeLastWord(textNode);
+        if (word) return wrapWordAndTip(tip, word, extraClass);
+      }
+    }
+    return wrapElementAndTip(prev, tip, extraClass);
+  }
+
+  function wrapHeadingCopy(heading, tip) {
+    if (!heading || !tip) return heading;
+    var existing = heading.querySelector ? heading.querySelector(':scope > .admin-heading-copy') : null;
+    if (existing) {
+      if (tip.parentNode !== existing) existing.appendChild(tip);
+      return existing;
+    }
+    var copy = document.createElement('span');
+    copy.className = 'admin-heading-copy';
+    var nodes = [];
+    var kids = heading.childNodes || [];
+    for (var i = 0; i < kids.length; i++) nodes.push(kids[i]);
+    var placed = false;
+    nodes.forEach(function (n) {
+      if (n.nodeType === 1 && isHeadingChrome(n)) return;
+      if (!placed) {
+        heading.insertBefore(copy, n);
+        placed = true;
+      }
+      copy.appendChild(n);
+    });
+    if (!copy.parentNode) heading.appendChild(copy);
+    return copy;
   }
 
   function splitLabelText(label) {
@@ -620,7 +735,7 @@
     var btn = el.querySelector ? el.querySelector('.admin-info-tip') : null;
     if (btn) {
       var aria = String(text || '').replace(/\s+/g, ' ').trim();
-      if (aria) btn.setAttribute('aria-label', 'About ' + aria);
+      if (aria) btn.setAttribute('aria-label', aboutLabel(aria));
     }
     return labelCopy(el);
   }
@@ -632,10 +747,13 @@
       if (tip.closest && tip.closest('label.admin-checkbox, .admin-checkbox-row > .admin-label-with-tip__end')) {
         return;
       }
-      var inHeading = tip.closest && tip.closest(
-        'h1, h2, h3, h4, h5, summary, legend, .br-acc__summary, .admin-accordion__title, .admin-filters-accordion__title, .cp-heading-sm, .cp-heading-md, .q-additional-costs-card__title'
+      var heading = tip.closest && tip.closest(
+        'h1, h2, h3, h4, h5, summary, legend, .br-acc__summary, .admin-accordion__title, .admin-filters-accordion__title, .cp-heading-sm, .cp-heading-md, .q-additional-costs-card__title, .sp-heading, .sq-intro-option-title'
       );
-      glueLastTextNode(tip, inHeading ? 'admin-label-with-tip__end admin-heading-tip' : 'admin-label-with-tip__end');
+      if (heading) {
+        wrapHeadingCopy(heading, tip);
+      }
+      glueLastTextNode(tip, 'admin-label-with-tip__end');
     });
   }
 

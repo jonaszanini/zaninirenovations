@@ -30,7 +30,7 @@
   font-size: 0.85rem;
   height: 34px;
 }
-.sp-heading { margin: 0 0 0.5rem; font-size: 1.1rem; }
+.sp-heading { display: block; margin: 0 0 0.5rem; font-size: 1.1rem; }
 .sp-group { margin-bottom: 1rem; }
 /* Tighter card padding on desktop so Rate/Sell/Mat. price and Mat. name all fit. */
 @media (min-width: 901px) {

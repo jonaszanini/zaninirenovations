@@ -20,9 +20,13 @@
 <div class="admin-form-group admin-places-field">
   <span class="admin-label-with-tip">
     <label for="{{ $inputId }}-widget">{{ $label }}</label>
-    @if ($required) <span class="cp-required">*</span>@endif
-    @if ($help)
-      <x-admin.info-tip :label="$label">{{ $help }}</x-admin.info-tip>
+    @if ($required || $help)
+      <span class="admin-label-with-tip__end">
+        @if ($required) <span class="cp-required">*</span>@endif
+        @if ($help)
+          <x-admin.info-tip :label="$label">{{ $help }}</x-admin.info-tip>
+        @endif
+      </span>
     @endif
   </span>
   <div class="admin-places-autocomplete-wrap"

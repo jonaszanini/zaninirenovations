@@ -34,8 +34,10 @@ assert.match(adminCss, /\.admin-checkbox-row/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/);
 assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S]{0,160}pointer-events:\s*auto/);
 assert.match(source, /function glueLastTextNode/);
+assert.match(source, /function wrapHeadingCopy/);
+assert.match(source, /function wrapElementAndTip/);
 assert.doesNotMatch(source, /function moveTrailingSkipped/);
-assert.doesNotMatch(source, /function wrapHeadingCopy/);
+assert.doesNotMatch(source, /admin-heading-tip/);
 
 function renderPieceCard() {
   const php = `<?php
@@ -50,9 +52,11 @@ function renderPieceCard() {
   return execSync('php', { input: php, cwd: repoRoot, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
 }
 
+const millworkJs = readFileSync(path.resolve(repoRoot, 'public/js/admin-millwork-quotation.js'), 'utf8');
 const pieceCardHtml = renderPieceCard();
 assert.match(pieceCardHtml, /pieces-__P__-edge_banding/, 'real millwork template must expose rewriteable checkbox ids');
 assert.match(pieceCardHtml, /admin-info-tip__bubble/, 'real millwork template includes tip bubbles');
+assert.match(millworkJs, /refreshControlIds/, 'production millwork JS must uniquify cloned controls');
 
 function jsDomClick() {
   const { document, body, listeners } = createEnv();
@@ -278,12 +282,63 @@ function fixtureHtml() {
         <span id="t-lights" class="admin-info-tip__bubble" role="tooltip">Count pot lights.</span>
       </span>
     </span>
-    <form id="mw-test-form">
+    <form id="mw-main-form">
       <div id="mw-piece-list"></div>
       <button type="button" id="mw-add-piece">Add piece</button>
       <template id="mw-piece-template">${pieceCardHtml}</template>
     </form>
+    <h5 class="sq-intro-option-title" id="doc-type-heading">Document type
+      <span class="admin-info-tip-wrap">
+        <button type="button" class="admin-info-tip" aria-label="About Document type" aria-expanded="false" aria-controls="t-doc">i</button>
+        <span id="t-doc" class="admin-info-tip__bubble" role="tooltip">Switch anytime.</span>
+      </span>
+    </h5>
+    <h3 class="sp-heading" id="crew-heading">Crew rates
+      <span class="admin-info-tip-wrap">
+        <button type="button" class="admin-info-tip" aria-label="About Crew rates" aria-expanded="false" aria-controls="t-crew">i</button>
+        <span id="t-crew" class="admin-info-tip__bubble" role="tooltip">Shared crew rates.</span>
+      </span>
+    </h3>
+    <h5 class="sq-intro-option-title" id="pdf-wording-heading">Includes (PDF wording)
+      <span class="admin-info-tip-wrap">
+        <button type="button" class="admin-info-tip" aria-label="About Includes (PDF wording)" aria-expanded="false" aria-controls="t-word">i</button>
+        <span id="t-word" class="admin-info-tip__bubble" role="tooltip">Labour and material or Labour.</span>
+      </span>
+    </h5>
+    <summary class="br-acc__summary" id="materials-summary"><span class="br-acc__num">2</span> Materials &amp; finish
+      <span class="admin-info-tip-wrap">
+        <button type="button" class="admin-info-tip" aria-label="About Materials & finish" aria-expanded="false" aria-controls="t-mat">i</button>
+        <span id="t-mat" class="admin-info-tip__bubble" role="tooltip">Sheet size defaults to 4×8.</span>
+      </span>
+    </summary>
+    <div class="admin-form-group">
+      <span class="admin-label-with-tip admin-checkbox-row" id="client-filled-check">
+        <label class="admin-checkbox" for="br-client-filled-demo">
+          <input type="checkbox" class="admin-checkbox__input" id="br-client-filled-demo" checked>
+          <span class="admin-checkbox__mark"></span>
+          <span class="br-client-filled" title="Filled from client form" aria-label="Filled from client form"><i class="fa fa-user" aria-hidden="true"></i></span>
+          <span class="admin-checkbox__text">Client provides painted trim and all finish hardware for the wrapped </span>
+        </label><span class="admin-label-with-tip__end">
+          <label for="br-client-filled-demo" class="admin-checkbox__tail">line</label>
+          <span class="admin-info-tip-wrap">
+            <button type="button" class="admin-info-tip" aria-label="About Client provides painted trim" aria-expanded="false" aria-controls="t-cf">i</button>
+            <span id="t-cf" class="admin-info-tip__bubble" role="tooltip">Filled from the client form.</span>
+          </span>
+        </span>
+      </span>
+    </div>
+    <div class="admin-form-group" id="labour-gate-group">
+      <span class="admin-label-with-tip" id="labour-gate-row">
+        <label for="labour-gate">Labour per additional gate (CAD$)</label>
+        <span class="admin-info-tip-wrap">
+          <button type="button" class="admin-info-tip" aria-label="About Labour per additional gate (CAD$)" aria-expanded="false" aria-controls="t-gate">i</button>
+          <span id="t-gate" class="admin-info-tip__bubble" role="tooltip">Each extra gate after the first.</span>
+        </span>
+      </span>
+    </div>
     <script>${source}</script>
+    <script>window.MW_QUOTATION = { sectionKeys: [], isEdit: false, previewUrl: '' };</script>
+    <script>${millworkJs}</script>
   </body></html>`;
 }
 
@@ -423,15 +478,16 @@ async function puppeteerClick() {
     assert.equal(d2.fixtures, 'Fixtures');
     assert.equal(d2.back, 'Pot lights');
     assert.equal(d2.stillInLabel, true, 'do not move the JS-updated span');
-    assert.equal(d2.glued, false, 'previous sibling of the tip is a label, so do not glue');
+    assert.equal(d2.glued, true, 'wrap the preceding label with the tip; do not split #br-lights-label');
 
     const headingGlue = await page.evaluate(() => {
       const h = document.getElementById('pricing-heading');
-      const end = h.querySelector('.admin-label-with-tip__end, .admin-heading-tip');
+      const end = h.querySelector('.admin-label-with-tip__end');
       const pdf = document.getElementById('pdf-line-heading');
       const pdfEnd = pdf.querySelector('.admin-label-with-tip__end');
       const review = document.getElementById('review-summary');
-      const reviewEnd = review.querySelector('.admin-heading-tip, .admin-label-with-tip__end');
+      const reviewEnd = review.querySelector('.admin-label-with-tip__end');
+      const copy = h.querySelector('.admin-heading-copy');
       const legend = document.getElementById('reply-legend');
       const star = legend.querySelector('.cp-required');
       const tip = legend.querySelector('.admin-info-tip-wrap');
@@ -443,9 +499,11 @@ async function puppeteerClick() {
         reviewHasNum: !!(review.querySelector('.br-acc__num') && review.querySelector('.br-acc__num').parentNode === review),
         reviewLast: reviewEnd ? reviewEnd.textContent.replace(/\s+/g, ' ').trim() : '',
         starText: star ? star.textContent : '',
-        starBeforeTip: !!(star && tip && star.nextElementSibling === tip),
+        starBeforeTip: !!(star && tip && (star.nextElementSibling === tip || (star.parentNode && star.parentNode.contains(tip) && star.parentNode.classList.contains('admin-label-with-tip__end')))),
+        hasCopy: !!copy,
       };
     });
+    assert.equal(headingGlue.hasCopy, true, 'heading text + glued end live in .admin-heading-copy');
     assert.equal(headingGlue.hasEnd, true, 'D5: heading last word is glued');
     assert.match(headingGlue.last, /area/);
     assert.match(headingGlue.pdfLast, /items/);
@@ -456,39 +514,22 @@ async function puppeteerClick() {
     assert.equal(headingGlue.starText, '*');
     assert.equal(headingGlue.starBeforeTip, true, 'N4: required * stays before the ⓘ');
 
+    await page.evaluate(() => {
+      const orig = window.AdminInfoTip.refreshControlIds.bind(window.AdminInfoTip);
+      window.__tipRefreshCalls = [];
+      window.AdminInfoTip.refreshControlIds = function (scope) {
+        const n = orig(scope);
+        window.__tipRefreshCalls.push(n);
+        return n;
+      };
+    });
+    await page.click('#mw-add-piece');
+    await page.waitForSelector('#mw-piece-list [data-mw-piece]');
+    await page.click('#mw-add-piece');
+    await page.click('#mw-add-piece');
     const millwork = await page.evaluate(() => {
       const list = document.getElementById('mw-piece-list');
-      const tpl = document.getElementById('mw-piece-template');
-      const form = document.getElementById('mw-test-form');
-      function reindexPieces() {
-        list.querySelectorAll('[data-mw-piece]').forEach(function (piece, i) {
-          piece.querySelectorAll('[name]').forEach(function (input) {
-            input.name = input.name.replace(/pieces\[\d+\]/, 'pieces[' + i + ']');
-            if (input.id) input.id = input.id.replace(/pieces-\d+/, 'pieces-' + i);
-          });
-          piece.querySelectorAll('label[for]').forEach(function (lab) {
-            const next = (lab.getAttribute('for') || '').replace(/pieces-\d+/, 'pieces-' + i);
-            lab.setAttribute('for', next);
-            lab.htmlFor = next;
-          });
-        });
-      }
-      function addPiece() {
-        const i = list.querySelectorAll('[data-mw-piece]').length;
-        const wrap = document.createElement('div');
-        wrap.innerHTML = tpl.innerHTML.replace(/__P__/g, String(i)).trim();
-        const piece = wrap.firstElementChild;
-        list.appendChild(piece);
-        reindexPieces();
-        const n = window.AdminInfoTip.refreshControlIds(piece);
-        refreshedCounts.push(n);
-      }
-      const refreshedCounts = [];
-      addPiece();
-      addPiece();
-      const beforeRefresh = [];
-      document.querySelectorAll('#mw-piece-list .admin-info-tip__bubble[id]').forEach((el) => beforeRefresh.push(el.id));
-      addPiece();
+      const form = document.getElementById('mw-main-form');
       const boxes = Array.from(list.querySelectorAll('input[name$="[edge_banding]"][type="checkbox"]'));
       const ids = boxes.map((el) => el.id);
       const tails = boxes.map((el) => list.querySelector('label.admin-checkbox__tail[for="' + CSS.escape(el.id) + '"]') || list.querySelector('label[for="' + CSS.escape(el.id) + '"]'));
@@ -499,16 +540,8 @@ async function puppeteerClick() {
       const submitted = {};
       new FormData(form).forEach((value, key) => { submitted[key] = value; });
       const values = [0, 1, 2].map((i) => submitted['pieces[' + i + '][edge_banding]']);
-      const first = list.querySelector('[data-mw-piece]');
-      const clone = first.cloneNode(true);
-      list.insertBefore(clone, first.nextSibling);
-      reindexPieces();
-      const dupRefreshed = window.AdminInfoTip.refreshControlIds(clone);
-      const afterDup = Array.from(list.querySelectorAll('.admin-info-tip__bubble[id]')).map((el) => el.id);
-      const dupBoxes = Array.from(list.querySelectorAll('input[name$="[edge_banding]"][type="checkbox"]'));
       return {
-        refreshedCounts,
-        dupRefreshed,
+        refreshedCounts: window.__tipRefreshCalls.slice(),
         count: boxes.length,
         ids,
         unique: new Set(ids).size,
@@ -517,12 +550,22 @@ async function puppeteerClick() {
         fors,
         bubbles,
         uniqueBubbles: new Set(bubbles).size,
+      };
+    });
+    await page.click('#mw-piece-list [data-mw-piece] [data-mw-duplicate-piece]');
+    const millworkDup = await page.evaluate(() => {
+      const list = document.getElementById('mw-piece-list');
+      const afterDup = Array.from(list.querySelectorAll('.admin-info-tip__bubble[id]')).map((el) => el.id);
+      const dupBoxes = Array.from(list.querySelectorAll('input[name$="[edge_banding]"][type="checkbox"]'));
+      return {
+        dupRefreshed: window.__tipRefreshCalls[window.__tipRefreshCalls.length - 1] || 0,
         afterDupUnique: new Set(afterDup).size,
         afterDupCount: afterDup.length,
         dupBoxUnique: new Set(dupBoxes.map((el) => el.id)).size,
         dupBoxCount: dupBoxes.length,
       };
     });
+    Object.assign(millwork, millworkDup);
     assert.equal(millwork.count, 3, 'M1: three added pieces');
     assert.ok(millwork.refreshedCounts.every((n) => n >= 1), 'refreshControlIds must return wrap count (a no-op fails)');
     assert.ok(millwork.dupRefreshed >= 1, 'cloneNode path must call a working refreshControlIds');
@@ -609,13 +652,15 @@ async function puppeteerClick() {
     assert.match(visual.entityText, /Include demolition &\s*debris/);
     assert.ok(!visual.entityText.includes('&amp;amp;'));
 
+    const geometryByWidth = {};
     for (const theme of ['light', 'dark']) {
       await page.evaluate((mode) => {
         document.documentElement.classList.toggle('admin-dark', mode === 'dark');
       }, theme);
-      for (const width of [320, 390, 1280]) {
+      for (const width of [320, 390, 768, 1024, 1280]) {
         await page.setViewport({ width, height: 800 });
-        const aligned = await page.evaluate((vp) => {
+        const aligned = await page.evaluate(() => {
+          window.scrollTo(0, 240);
           function sameLine(a, b) {
             if (!a || !b) return { sameLine: false, aTop: null, bTop: null };
             const ar = a.getBoundingClientRect();
@@ -624,10 +669,69 @@ async function puppeteerClick() {
             const wrappedBelow = br.top > ar.bottom + 2;
             return { sameLine: overlap && !wrappedBelow, aTop: ar.top, bTop: br.top };
           }
-          function onScreen(el) {
-            if (!el) return false;
+          function inCard(el, card) {
+            if (!el || !card) return false;
             const r = el.getBoundingClientRect();
-            return r.width > 0 && r.left >= -1 && r.right <= vp + 1 && r.top >= -1;
+            const c = card.getBoundingClientRect();
+            return r.width > 0 && r.left >= c.left - 2 && r.right <= c.right + 2;
+          }
+          function lastWordTop(tipWrap) {
+            const btn = tipWrap.querySelector('.admin-info-tip');
+            if (!btn) return { orphan: true, wordTop: null, tipTop: null };
+            const tipTop = btn.getBoundingClientRect().top;
+            const end = tipWrap.closest('.admin-label-with-tip__end');
+            let wordEl = null;
+            if (end) {
+              wordEl = Array.from(end.childNodes).find((n) => n !== tipWrap && n.nodeType === 1);
+              if (!wordEl) {
+                const tn = Array.from(end.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
+                if (tn) {
+                  const range = document.createRange();
+                  range.selectNodeContents(tn);
+                  return { orphan: Math.abs(range.getBoundingClientRect().top - tipTop) > 4, wordTop: range.getBoundingClientRect().top, tipTop };
+                }
+              }
+            }
+            if (!wordEl) {
+              let prev = tipWrap.previousSibling;
+              while (prev && prev.nodeType === 3 && !String(prev.textContent || '').trim()) prev = prev.previousSibling;
+              if (prev && prev.nodeType === 1) wordEl = prev;
+              else if (prev && prev.nodeType === 3) {
+                const range = document.createRange();
+                const raw = String(prev.textContent || '');
+                const trimmed = raw.replace(/\s+$/g, '');
+                const space = trimmed.lastIndexOf(' ');
+                range.setStart(prev, Math.max(0, space === -1 ? 0 : space + 1));
+                range.setEnd(prev, raw.length);
+                return { orphan: Math.abs(range.getBoundingClientRect().top - tipTop) > 4, wordTop: range.getBoundingClientRect().top, tipTop };
+              }
+            }
+            if (!wordEl) return { orphan: true, wordTop: null, tipTop };
+            return { orphan: Math.abs(wordEl.getBoundingClientRect().top - tipTop) > 4, wordTop: wordEl.getBoundingClientRect().top, tipTop };
+          }
+          function headingProblem(el) {
+            const tip = el.querySelector('.admin-info-tip-wrap');
+            if (!tip) return null;
+            const aria = String((tip.querySelector('.admin-info-tip') || {}).getAttribute && tip.querySelector('.admin-info-tip').getAttribute('aria-label') || '')
+              .replace(/^\s*About\s+/i, '')
+              .replace(/\s+[—-]\s+.*$/, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            const visible = String(el.innerText || '').replace(/\s+/g, ' ').trim();
+            const missingSpace = !!(aria && !visible.includes(aria) && visible.replace(/\s+/g, '').includes(aria.replace(/\s+/g, '')));
+            const cs = getComputedStyle(el);
+            const isFlex = cs.display === 'flex' || cs.display === 'inline-flex';
+            let columns = false;
+            if (isFlex && (cs.flexDirection === 'row' || cs.flexDirection === 'row-reverse' || !cs.flexDirection)) {
+              const chrome = ['br-acc__num', 'admin-chevron-down', 'admin-filters-accordion__badge', 'admin-filters-accordion__icon'];
+              const kids = Array.from(el.children).filter((c) => {
+                if (chrome.some((cls) => c.classList.contains(cls))) return false;
+                const s = getComputedStyle(c);
+                return s.display !== 'none' && s.position !== 'absolute';
+              });
+              columns = kids.length > 1;
+            }
+            return { missingSpace, columns, visible, aria };
           }
           const checks = Array.from(document.querySelectorAll('#review-check, #toggle-check, #stack-check, #hst-check')).map((row) => {
             const tail = row.querySelector('.admin-checkbox__tail');
@@ -635,7 +739,7 @@ async function puppeteerClick() {
             return sameLine(tail, tip);
           });
           const review = document.getElementById('review-summary');
-          const reviewLast = review.querySelector('.admin-heading-tip, .admin-label-with-tip__end');
+          const reviewLast = review.querySelector('.admin-label-with-tip__end');
           const reviewTip = review.querySelector('.admin-info-tip');
           const reviewLine = sameLine(reviewLast, reviewTip);
           const emailTip = document.querySelector('#email-summary .admin-info-tip');
@@ -646,25 +750,60 @@ async function puppeteerClick() {
           const bathText = bath.querySelector('.admin-checkbox__text');
           const markTop = bathMark.getBoundingClientRect().top;
           const textTop = bathText.getBoundingClientRect().top;
+          const orphans = [];
+          document.querySelectorAll('.admin-info-tip-wrap').forEach((wrap) => {
+            const btn = wrap.querySelector('.admin-info-tip');
+            if (!btn || btn.getBoundingClientRect().width <= 0) return;
+            const hit = lastWordTop(wrap);
+            if (hit.orphan) orphans.push((btn.getAttribute('aria-label') || '').slice(0, 60));
+          });
+          const headingIssues = [];
+          document.querySelectorAll('h1, h2, h3, h4, h5, summary, legend, .br-acc__summary, .admin-accordion__title, .admin-filters-accordion__title, .sp-heading, .sq-intro-option-title').forEach((el) => {
+            const hit = headingProblem(el);
+            if (hit && (hit.missingSpace || hit.columns)) headingIssues.push(hit);
+          });
+          const cf = document.getElementById('client-filled-check');
+          const cfText = cf ? cf.querySelector('.admin-checkbox__text') : null;
+          let clientFilledOffset = 0;
+          if (cfText) {
+            const range = document.createRange();
+            range.selectNodeContents(cfText);
+            const rects = Array.from(range.getClientRects()).filter((r) => r.width > 1);
+            if (rects.length >= 2) clientFilledOffset = Math.abs(rects[0].left - rects[1].left);
+          }
           return {
             checks,
             reviewLine,
-            emailOnScreen: onScreen(emailTip),
-            storeOnScreen: onScreen(storeTip),
-            filtersOnScreen: onScreen(filtersTip),
+            emailOnScreen: inCard(emailTip, document.getElementById('email-acc')),
+            storeOnScreen: inCard(storeTip, document.getElementById('store-name-row')),
+            filtersOnScreen: inCard(filtersTip, document.getElementById('filters-acc')),
             bathOffset: Math.abs(markTop - textTop),
+            orphanCount: orphans.length,
+            orphans,
+            headingCount: headingIssues.length,
+            headingIssues,
+            clientFilledOffset,
           };
-        }, width);
+        });
         aligned.checks.forEach((row, i) => {
           assert.ok(row.sameLine, `D4/C3 ${theme}: checkbox ${i} tip stays on the last word at ${width}px (tail ${row.aTop} tip ${row.bTop})`);
         });
         assert.ok(aligned.reviewLine.sameLine, `N8 ${theme}: review summary ⓘ stays with the last word at ${width}px`);
-        assert.ok(aligned.emailOnScreen, `N2 ${theme}: accordion ⓘ stays on-screen at ${width}px`);
-        assert.ok(aligned.storeOnScreen, `N1 ${theme}: Store name ⓘ stays on-screen at ${width}px`);
-        assert.ok(aligned.filtersOnScreen, `N3 ${theme}: Filters ⓘ stays on-screen at ${width}px`);
+        assert.ok(aligned.emailOnScreen, `N2 ${theme}: accordion ⓘ stays inside the card at ${width}px`);
+        assert.ok(aligned.storeOnScreen, `N1 ${theme}: Store name ⓘ stays inside its row at ${width}px`);
+        assert.ok(aligned.filtersOnScreen, `N3 ${theme}: Filters ⓘ stays inside the card at ${width}px`);
         assert.ok(aligned.bathOffset < 12, `D3 ${theme}: bath light text offset ${aligned.bathOffset}px at ${width}px`);
+        assert.equal(aligned.orphanCount, 0, `${theme}: orphaned ⓘ at ${width}px: ${aligned.orphans.join(' | ')}`);
+        assert.equal(aligned.headingCount, 0, `${theme}: flex heading issues at ${width}px: ${JSON.stringify(aligned.headingIssues)}`);
+        if (width <= 390) {
+          assert.ok(aligned.clientFilledOffset <= 1, `${theme}: client-filled wrapped line offset ${aligned.clientFilledOffset}px at ${width}px`);
+        }
+        if (theme === 'light') {
+          geometryByWidth[width] = { orphans: aligned.orphanCount, headings: aligned.headingCount };
+        }
       }
     }
+    console.log('info-tip geometry', JSON.stringify(geometryByWidth));
     await page.evaluate(() => document.documentElement.classList.remove('admin-dark'));
     assert.deepEqual(consoleErrors, [], 'fixture page must have zero console errors: ' + consoleErrors.join(' | '));
 

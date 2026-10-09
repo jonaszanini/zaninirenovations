@@ -19,7 +19,8 @@
         $body = e($text);
     }
     $tipId = $id ?: ('admin-info-tip-'.str_replace('.', '', uniqid('', true)));
-    $ariaLabel = filled($label) ? ('About '.$label) : 'More info';
+    $plain = filled($label) ? preg_replace('/^\s*About\s+/i', '', (string) $label) : '';
+    $ariaLabel = filled($plain) ? ('About '.$plain) : 'More info';
 @endphp
 @if (filled($body))
 <span {{ $attributes->class('admin-info-tip-wrap') }}>

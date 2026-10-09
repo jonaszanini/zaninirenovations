@@ -83,7 +83,10 @@
                value="{{ $shVal('overhang_in', 12) }}">
       </div>
       <div class="admin-form-group">
-        <label>Area</label>
+        <span class="admin-label-with-tip">
+          <label>Area</label>
+          @include('admin.partials.info_tip', ['tipText' => 'Detached, one-storey, storage-only sheds can be up to '.ShedQuotationCalculator::permitExemptMaxLabel().' without a building permit.', 'tipLabel' => 'Area'])
+        </span>
         <p class="sh-area-readout" id="sh-area-readout">—</p>
       </div>
     </div>

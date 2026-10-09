@@ -690,17 +690,26 @@
       ])
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-door-open">Door openings</label>
+        <span class="admin-label-with-tip">
+          <label for="br-dw-door-open">Door openings</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_door_openings'], 'tipLabel' => 'Door openings'])
+        </span>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-door-open" name="drywall_door_openings"
                value="{{ $brVal('drywall_door_openings', 0) }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-window-open">Window openings</label>
+        <span class="admin-label-with-tip">
+          <label for="br-dw-window-open">Window openings</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_window_openings'], 'tipLabel' => 'Window openings'])
+        </span>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-window-open" name="drywall_window_openings"
                value="{{ $brVal('drywall_window_openings', 0) }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-open">Other openings</label>
+        <span class="admin-label-with-tip">
+          <label for="br-dw-open">Other openings</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_openings'], 'tipLabel' => 'Other openings'])
+        </span>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-open" name="drywall_openings"
                value="{{ $brVal('drywall_openings', 0) }}">
       </div>
@@ -718,7 +727,10 @@
                value="{{ $brVal('drywall_corners', 0) }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-inside-corners">Inside corners</label>
+        <span class="admin-label-with-tip">
+          <label for="br-dw-inside-corners">Inside corners</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_inside_corners'], 'tipLabel' => 'Inside corners'])
+        </span>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-inside-corners" name="drywall_inside_corners"
                value="{{ $brVal('drywall_inside_corners', 0) }}">
       </div>
