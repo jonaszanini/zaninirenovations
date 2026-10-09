@@ -6228,8 +6228,26 @@ body:has(.util-ra--fullpage) {
   }
 
   .util-ra--fullpage .util-ra-feedback {
-    order: 5;
+    position: absolute;
+    left: 0.45rem;
+    right: 0.45rem;
+    bottom: 0.2rem;
+    z-index: 3;
+    margin: 0;
+    padding: 0.08rem 0.4rem;
+    max-height: 1.4em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--admin-surface) 88%, transparent);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    line-height: 1.25;
   }
+
+  .util-ra--fullpage .util-ra-feedback.is-ok { color: var(--admin-success, #2e7d32); }
+  .util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }
 
   .util-ra--fullpage .util-ra-object-edit {
     overflow: hidden;
@@ -7343,20 +7361,27 @@ body:has(.util-ra-guide) {
   }
 
   .util-ra--fullpage .util-ra-feedback {
-    position: static;
-    top: auto;
-    left: auto;
-    right: auto;
-    z-index: auto;
+    position: absolute;
+    left: 0.45rem;
+    right: 0.45rem;
+    bottom: 0.2rem;
+    z-index: 3;
     flex: 0 0 auto;
-    order: 5;
-    margin: 0.25rem 0.5rem 0.35rem;
-    padding: 0.2rem 0.4rem;
+    margin: 0;
+    padding: 0.08rem 0.4rem;
+    max-height: 1.4em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     pointer-events: none;
-    background: var(--admin-surface);
-    color: var(--admin-text);
+    background: color-mix(in srgb, var(--admin-surface) 88%, transparent);
     border-radius: 6px;
+    font-size: 0.78rem;
+    line-height: 1.25;
   }
+
+  .util-ra--fullpage .util-ra-feedback.is-ok { color: var(--admin-success, #2e7d32); }
+  .util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }
 
   .util-ra--fullpage .util-ra-side {
     height: var(--ra-sheet-h, auto);

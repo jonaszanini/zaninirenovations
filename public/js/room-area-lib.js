@@ -1077,6 +1077,19 @@
     inside_corners: true, inside_corner_count: true
   };
 
+  function firstFiniteMetric(metrics, keys, fallback) {
+    metrics = metrics || {};
+    keys = keys || [];
+    for (var i = 0; i < keys.length; i++) {
+      if (!Object.prototype.hasOwnProperty.call(metrics, keys[i])) continue;
+      var value = metrics[keys[i]];
+      if (value == null || value === '') continue;
+      var n = Number(value);
+      if (isFinite(n)) return n;
+    }
+    return fallback;
+  }
+
   function formulaVariablesFromMetrics(metrics) {
     metrics = metrics || {};
     var floor = Number(metrics.area_sqft != null ? metrics.area_sqft : (metrics.inside_area_sqft != null ? metrics.inside_area_sqft : metrics.floor_sf)) || 0;
@@ -1089,8 +1102,7 @@
     var doors = Number(metrics.door_count != null ? metrics.door_count : metrics.doors) || 0;
     var windows = Number(metrics.window_count != null ? metrics.window_count : metrics.windows) || 0;
     var openings = Number(metrics.opening_count != null ? metrics.opening_count : metrics.openings) || 0;
-    var height = Number(metrics.wall_height_ft != null ? metrics.wall_height_ft : (metrics.wall_height != null ? metrics.wall_height : metrics.height));
-    if (!isFinite(height)) height = 8;
+    var height = firstFiniteMetric(metrics, ['wall_height_ft', 'wall_height', 'height'], 8);
     var boxes = Number(metrics.flooring_boxes != null ? metrics.flooring_boxes : metrics.boxes) || 0;
     var waste = Number(metrics.flooring_waste_percent != null ? metrics.flooring_waste_percent : metrics.waste);
     if (!isFinite(waste)) waste = 10;

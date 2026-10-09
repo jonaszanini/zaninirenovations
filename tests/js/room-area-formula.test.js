@@ -42,12 +42,22 @@ cases.errors.forEach(function (row) {
 const mixed = lib.formulaVariablesFromMetrics({
   area_sqft: 132,
   inside_area_sqft: 132,
-  inside_corners: 4.4,
+  inside_corners: 4,
   wall_height_ft: null,
 });
 assert.strictEqual(mixed.inside_area_sqft, 132);
-assert.strictEqual(mixed.inside_corners, 4.4);
+assert.strictEqual(mixed.inside_corners, 4);
 assert.strictEqual(mixed.wall_height_ft, 8);
+
+[
+  { wall_height_ft: null, wall_height: null },
+  { wall_height_ft: '', wall_height: '' },
+  { wall_height_ft: 'abc', wall_height: 'abc' },
+].forEach(function (row) {
+  const heightVars = lib.formulaVariablesFromMetrics(row);
+  assert.strictEqual(heightVars.wall_height_ft, 8, JSON.stringify(row) + ' should fall back to 8');
+  assert.strictEqual(heightVars.wall_height, 8, JSON.stringify(row) + ' alias should fall back to 8');
+});
 
 const drywall = lib.evaluateAssemblyLine(
   { formula: 'ceil(net_wall_sf * 1.12 / 32)', whole_units: true, unit: 'sheet' },

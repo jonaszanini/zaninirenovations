@@ -51,10 +51,12 @@ class RoomAreaAssemblyEvaluator
 
     /**
      * Sum attached-kit quantities across every room in the project.
+     * Raw per-room values are added first, then rounding is applied once.
      *
+     * @param  (callable(RoomAreaRoom, array<string, mixed>): bool)|null  $includeRoom
      * @return list<array<string, mixed>>
      */
-    public function evaluateProject(RoomAreaProject $project): array
+    public function evaluateProject(RoomAreaProject $project, ?callable $includeRoom = null): array
     {
         $project->loadMissing(['rooms.assemblies.lines.material']);
         $byAssembly = [];
@@ -72,6 +74,9 @@ class RoomAreaAssemblyEvaluator
                     ];
                 }
                 foreach ($evaluated['lines'] as $line) {
+                    if ($includeRoom && ! $includeRoom($room, $line)) {
+                        continue;
+                    }
                     $key = (string) ($line['id'] ?? $line['name']);
                     if (! isset($byAssembly[$assembly->id]['lines'][$key])) {
                         $byAssembly[$assembly->id]['lines'][$key] = $line;

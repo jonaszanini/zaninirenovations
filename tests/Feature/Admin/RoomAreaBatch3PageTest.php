@@ -215,6 +215,11 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString("if (/s$/i.test(unit)) return unit;", $js);
         $this->assertStringContainsString("if (/\\bpails\\b/i.test(unit)", $js);
         $this->assertStringContainsString("addEventListener('pageshow'", $js);
+        $this->assertStringContainsString('var shiftPan', $js);
+        $this->assertMatchesRegularExpression(
+            '/function deleteCurrentKit\([\s\S]*payload\.ok === false[\s\S]*Kit deleted/',
+            $js
+        );
         $this->assertDoesNotMatchRegularExpression('/\beval\s*\(/', $js);
 
         $lib = file_get_contents(public_path('js/room-area-lib.js'));
@@ -227,6 +232,8 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $css = file_get_contents(public_path('css/admin-utilities.css'));
         $this->assertStringContainsString('.util-ra-kits', $css);
         $this->assertStringContainsString('.util-ra-kit__line', $css);
+        $this->assertStringContainsString('.util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }', $css);
+        $this->assertStringContainsString('position: absolute', $css);
 
         $dark = file_get_contents(public_path('css/admin-dark.css'));
         $this->assertStringContainsString('html.admin-dark .util-ra-kits', $dark);

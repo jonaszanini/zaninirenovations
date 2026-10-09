@@ -54,17 +54,7 @@ class RoomAreaFormulaParser
         $doors = (float) ($metrics['door_count'] ?? $metrics['doors'] ?? 0);
         $windows = (float) ($metrics['window_count'] ?? $metrics['windows'] ?? 0);
         $openings = (float) ($metrics['opening_count'] ?? $metrics['openings'] ?? 0);
-        $rawHeight = array_key_exists('wall_height_ft', $metrics) && $metrics['wall_height_ft'] !== null
-            ? $metrics['wall_height_ft']
-            : (array_key_exists('wall_height', $metrics) && $metrics['wall_height'] !== null
-                ? $metrics['wall_height']
-                : (array_key_exists('height', $metrics) && $metrics['height'] !== null
-                    ? $metrics['height']
-                    : null));
-        $height = $rawHeight === null || $rawHeight === '' ? NAN : (float) $rawHeight;
-        if (! is_finite($height)) {
-            $height = 8.0;
-        }
+        $height = self::firstFiniteMetric($metrics, ['wall_height_ft', 'wall_height', 'height'], 8.0);
         $boxes = (float) ($metrics['flooring_boxes'] ?? $metrics['boxes'] ?? 0);
         $waste = (float) ($metrics['flooring_waste_percent'] ?? $metrics['waste'] ?? 10);
         $outsideCorners = (float) ($metrics['outside_corners'] ?? $metrics['outside_corner_count'] ?? 0);
@@ -107,6 +97,31 @@ class RoomAreaFormulaParser
             'inside_corners' => $insideCorners,
             'inside_corner_count' => $insideCorners,
         ];
+    }
+
+    /**
+     * @param  list<string>  $keys
+     */
+    private static function firstFiniteMetric(array $metrics, array $keys, float $fallback): float
+    {
+        foreach ($keys as $key) {
+            if (! array_key_exists($key, $metrics)) {
+                continue;
+            }
+            $value = $metrics[$key];
+            if ($value === null || $value === '') {
+                continue;
+            }
+            if (is_bool($value) || (is_string($value) && ! is_numeric($value))) {
+                continue;
+            }
+            $n = (float) $value;
+            if (is_finite($n)) {
+                return $n;
+            }
+        }
+
+        return $fallback;
     }
 
     /**

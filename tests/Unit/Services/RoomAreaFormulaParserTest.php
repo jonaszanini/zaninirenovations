@@ -53,12 +53,22 @@ class RoomAreaFormulaParserTest extends TestCase
         $vars = RoomAreaFormulaParser::variablesFromMetrics([
             'area_sqft' => 132,
             'inside_area_sqft' => 132,
-            'inside_corners' => 4.4,
+            'inside_corners' => 4,
             'wall_height_ft' => null,
         ]);
         $this->assertSame(132.0, $vars['inside_area_sqft']);
-        $this->assertEqualsWithDelta(4.4, $vars['inside_corners'], 1e-9);
+        $this->assertEqualsWithDelta(4.0, $vars['inside_corners'], 1e-9);
         $this->assertSame(8.0, $vars['wall_height_ft']);
+
+        foreach ([
+            ['wall_height_ft' => null, 'wall_height' => null],
+            ['wall_height_ft' => '', 'wall_height' => ''],
+            ['wall_height_ft' => 'abc', 'wall_height' => 'abc'],
+        ] as $row) {
+            $heightVars = RoomAreaFormulaParser::variablesFromMetrics($row);
+            $this->assertSame(8.0, $heightVars['wall_height_ft'], json_encode($row));
+            $this->assertSame(8.0, $heightVars['wall_height'], json_encode($row).' alias');
+        }
     }
 
     public function test_parser_source_does_not_use_eval(): void

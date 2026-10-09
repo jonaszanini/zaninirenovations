@@ -4617,7 +4617,9 @@
       var rect = state.stage.container().getBoundingClientRect();
       var x = e.clientX - rect.left;
       var y = e.clientY - rect.top;
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.4 && !e.ctrlKey && !e.metaKey) {
+      var shiftPan = !!(e.shiftKey && !e.ctrlKey && !e.metaKey);
+      var horizontalPan = Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.4 && !e.ctrlKey && !e.metaKey;
+      if (shiftPan || horizontalPan) {
         markUserViewport();
         state.viewport.x -= e.deltaX;
         state.viewport.y -= e.deltaY;
@@ -11562,7 +11564,11 @@
       method: 'DELETE',
       headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() }
     }).then(function (res) { return RA.readFetchJson(res, 'Could not delete that kit.'); })
-      .then(function (data) {
+      .then(function (payload) {
+        var data = payload && payload.data ? payload.data : payload;
+        if (payload && payload.ok === false) {
+          throw new Error((data && data.message) || 'Could not delete that kit.');
+        }
         if (data.assemblies) applyAssembliesPayload(data.assemblies);
         closeKitEditor();
         setFeedback('Kit deleted.', false);

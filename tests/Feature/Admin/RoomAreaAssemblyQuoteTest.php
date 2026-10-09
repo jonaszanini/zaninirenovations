@@ -304,7 +304,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertCount($countAfterProject, $quote->fresh()->flattenedMaterials());
     }
 
-    public function test_room_kits_then_project_kits_do_not_double_count(): void
+    public function test_room_kits_then_project_kits_add_only_rooms_not_on_quote(): void
     {
         $this->actingAsAdmin();
         $project = RoomAreaProject::create([
@@ -318,7 +318,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             'notes' => null,
             'sort_order' => 0,
         ]);
-        $assembly->lines()->create([
+        $line = $assembly->lines()->create([
             'name' => 'Sheets',
             'formula' => '2',
             'unit' => 'sheet',
@@ -338,7 +338,9 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
 
         $quote = StandardQuotation::query()->latest('id')->first();
         $this->assertNotNull($quote);
-        $countAfterRoom = count($quote->flattenedMaterials());
+        $this->assertCount(1, $quote->flattenedMaterials());
+        $this->assertEquals(2.0, (float) $quote->flattenedMaterials()[0]['quantity']);
+        $quoteNumber = $quote->quote_number;
 
         $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
             'layout' => 'project:'.$project->id,
@@ -347,9 +349,22 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             'quotation_id' => $quote->id,
             'client_name' => 'Pat Owner',
             'display_title' => 'Kitchen first',
-        ])->assertRedirect(route('admin.quotations.standard.edit', $quote));
+        ])->assertRedirect(route('admin.quotations.standard.edit', $quote))
+            ->assertSessionHas('success', function ($message) use ($quoteNumber) {
+                return is_string($message)
+                    && str_contains($message, 'Added Bathroom Sheets to '.$quoteNumber)
+                    && str_contains($message, 'Skipped Kitchen Sheets (already on that quote)');
+            });
 
-        $this->assertCount($countAfterRoom, $quote->fresh()->flattenedMaterials());
+        $quote->refresh();
+        $materials = $quote->flattenedMaterials();
+        $this->assertCount(2, $materials);
+        $byLayout = collect($materials)->keyBy('assembly_layout_id');
+        $this->assertTrue($byLayout->has('room:'.$kitchen->id));
+        $this->assertTrue($byLayout->has('project:'.$project->id));
+        $this->assertEquals(2.0, (float) $byLayout['room:'.$kitchen->id]['quantity']);
+        $this->assertEquals(2.0, (float) $byLayout['project:'.$project->id]['quantity']);
+        $this->assertSame($line->id, (int) $byLayout['project:'.$project->id]['assembly_line_id']);
     }
 
     public function test_project_add_skips_only_duplicated_kit_lines(): void
@@ -411,8 +426,8 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         ])->assertRedirect(route('admin.quotations.standard.edit', $quote))
             ->assertSessionHas('success', function ($message) use ($quoteNumber) {
                 return is_string($message)
-                    && str_contains($message, 'Skipped')
-                    && str_contains($message, $quoteNumber);
+                    && str_contains($message, 'Added Bathroom Baseboard to '.$quoteNumber)
+                    && str_contains($message, 'Skipped Kitchen Sheets (already on that quote)');
             });
 
         $materials = $quote->fresh()->flattenedMaterials();

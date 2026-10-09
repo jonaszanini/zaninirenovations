@@ -27,8 +27,19 @@ function assertCssGeometry() {
   );
   const collapsed = CSS.slice(CSS.indexOf('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side'));
   assert.ok(/height:\s*auto/.test(collapsed.slice(0, 220)), 'collapsed sheet height is auto');
-  const phoneFeedback = CSS.slice(CSS.lastIndexOf('.util-ra--fullpage .util-ra-feedback'));
-  assert.ok(/position:\s*static/.test(phoneFeedback.slice(0, 220)), '390 feedback stays in flow, not over the canvas');
+  const phoneFeedback = CSS.slice(CSS.lastIndexOf('.util-ra--fullpage .util-ra-feedback {'));
+  const phoneFeedbackHead = phoneFeedback.slice(0, 420);
+  assert.ok(/position:\s*absolute/.test(phoneFeedbackHead), '390 feedback overlays the canvas edge');
+  assert.ok(/bottom:/.test(phoneFeedbackHead), '390 feedback sits on the canvas bottom edge');
+  assert.ok(!/color:\s*var\(--admin-text\)/.test(phoneFeedbackHead), '390 feedback must not override status colours');
+  assert.ok(
+    CSS.includes('.util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }'),
+    'phone CSS keeps error status red'
+  );
+  assert.ok(
+    CSS.includes('.util-ra--fullpage .util-ra-feedback.is-ok { color: var(--admin-success, #2e7d32); }'),
+    'phone CSS keeps success status green'
+  );
 }
 
 function resolveKonvaFile() {
@@ -141,6 +152,8 @@ async function zoomAndPan(page) {
     const world = window.Konva.stages[0].getLayers()[0].getChildren()[0];
     return world && world.scaleX() < prev * 0.75;
   }, { timeout: 8000 }, start.scale);
+  const afterZoom = await page.evaluate(readCameraScript());
+  assert.ok(afterZoom && afterZoom.scale < start.scale * 0.75, 'zoom out lowered scale: ' + (afterZoom && afterZoom.scale) + ' from ' + start.scale);
   await page.evaluate(() => {
     const wrap = document.querySelector('[data-ra-canvas-wrap]');
     wrap.dispatchEvent(new WheelEvent('wheel', {
@@ -150,11 +163,25 @@ async function zoomAndPan(page) {
       cancelable: true,
     }));
   });
-  const after = await page.evaluate(readCameraScript());
-  assert.ok(after && after.scale < start.scale * 0.75, 'zoom out lowered scale: ' + (after && after.scale) + ' from ' + start.scale);
+  const afterX = await page.evaluate(readCameraScript());
   assert.ok(
-    Math.abs(after.worldCx - start.worldCx) > 1 || Math.abs(after.worldCy - start.worldCy) > 1,
-    'pan moved the centre: ' + JSON.stringify({ start, after })
+    afterX && Math.abs(afterX.worldCx - afterZoom.worldCx) > 1,
+    'horizontal wheel panned X: ' + JSON.stringify({ afterZoom, afterX })
+  );
+  await page.evaluate(() => {
+    const wrap = document.querySelector('[data-ra-canvas-wrap]');
+    wrap.dispatchEvent(new WheelEvent('wheel', {
+      deltaX: 0,
+      deltaY: 80,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    }));
+  });
+  const after = await page.evaluate(readCameraScript());
+  assert.ok(
+    after && Math.abs(after.worldCy - afterX.worldCy) > 1,
+    'shift+vertical wheel panned Y: ' + JSON.stringify({ afterX, after })
   );
   return after;
 }

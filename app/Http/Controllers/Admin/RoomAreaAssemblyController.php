@@ -272,9 +272,46 @@ class RoomAreaAssemblyController extends Controller
 
             $roomLabel = (string) ($option['short_name'] ?? $option['name'] ?? 'Room Area');
             $layoutId = (string) ($option['id'] ?? $data['layout']);
-            if (($option['kind'] ?? '') === 'project' && $resolved['project']) {
-                $evaluated = $this->evaluator->evaluateProject($resolved['project']);
+
+            $existing = null;
+            if (! empty($data['quotation_id'])) {
+                $existing = StandardQuotation::query()
+                    ->lockForUpdate()
+                    ->find((int) $data['quotation_id']);
+                if ($existing && $clientProject && (int) $existing->client_project_id !== (int) $clientProject->id) {
+                    throw ValidationException::withMessages([
+                        'quotation_id' => 'That quotation is not for the linked client project.',
+                    ]);
+                }
+            }
+            $alreadyOnQuote = $this->assemblyKeysOnQuote($existing);
+            $addedBits = [];
+            $skippedBits = [];
+            $pendingAddedByLine = [];
+            $isProjectAdd = ($option['kind'] ?? '') === 'project' && $resolved['project'];
+
+            if ($isProjectAdd) {
+                $project = $resolved['project'];
                 $wanted = array_flip(array_map('intval', $data['assembly_ids']));
+                $evaluated = $this->evaluator->evaluateProject($project, function ($room, $line) use ($alreadyOnQuote, $project, $wanted, &$skippedBits, &$pendingAddedByLine) {
+                    $assemblyId = (int) ($line['assembly_id'] ?? 0);
+                    if ($assemblyId > 0 && ! isset($wanted[$assemblyId])) {
+                        return false;
+                    }
+                    $lineId = (int) ($line['id'] ?? 0);
+                    $label = trim(($room->name ?: 'Room').' '.($line['name'] ?? 'line'));
+                    $roomKey = $this->assemblySourceKey($lineId, 'room:'.$room->id);
+                    $projectKey = $this->assemblySourceKey($lineId, 'project:'.$project->id);
+                    if (($roomKey !== null && isset($alreadyOnQuote[$roomKey]))
+                        || ($projectKey !== null && isset($alreadyOnQuote[$projectKey]))) {
+                        $skippedBits[] = $label;
+
+                        return false;
+                    }
+                    $pendingAddedByLine[$lineId][] = $label;
+
+                    return true;
+                });
                 $evaluated = array_values(array_filter($evaluated, fn ($row) => isset($wanted[(int) $row['id']])));
                 $qtyLines = [];
                 foreach ($evaluated as $kit) {
@@ -298,19 +335,6 @@ class RoomAreaAssemblyController extends Controller
                 $qtyLines = $this->evaluator->quoteLines($assemblies, $option, $roomLabel);
             }
 
-            $existing = null;
-            if (! empty($data['quotation_id'])) {
-                $existing = StandardQuotation::query()
-                    ->lockForUpdate()
-                    ->find((int) $data['quotation_id']);
-                if ($existing && $clientProject && (int) $existing->client_project_id !== (int) $clientProject->id) {
-                    throw ValidationException::withMessages([
-                        'quotation_id' => 'That quotation is not for the linked client project.',
-                    ]);
-                }
-            }
-            $alreadyOnQuote = $this->assemblyKeysOnQuote($existing);
-            $skipped = 0;
             $built = [];
             foreach ($qtyLines as $qtyLine) {
                 if (($qtyLine['qty'] ?? 0) <= 0) {
@@ -319,12 +343,13 @@ class RoomAreaAssemblyController extends Controller
                 $assemblyLineId = (int) ($qtyLine['assembly_line_id'] ?? 0);
                 $assemblyLayoutId = trim((string) ($qtyLine['assembly_layout_id'] ?? $layoutId));
                 $sourceKey = $this->assemblySourceKey($assemblyLineId, $assemblyLayoutId);
+                $lineLabel = trim($roomLabel.' '.($qtyLine['label'] ?? 'line'));
                 if ($sourceKey !== null && isset($alreadyOnQuote[$sourceKey])) {
-                    $skipped++;
+                    $skippedBits[] = $lineLabel;
                     continue;
                 }
-                if ($this->lineOverlapsQuote($alreadyOnQuote, $assemblyLineId, $assemblyLayoutId, $resolved['project'] ?? null)) {
-                    $skipped++;
+                if (! $isProjectAdd && $this->lineOverlapsQuote($alreadyOnQuote, $assemblyLineId, $assemblyLayoutId, $resolved['project'] ?? null)) {
+                    $skippedBits[] = $lineLabel;
                     continue;
                 }
                 $lineId = (string) ($qtyLine['assembly_line_id'] ?? $qtyLine['label']);
@@ -352,6 +377,13 @@ class RoomAreaAssemblyController extends Controller
                     'assembly_line_id' => $assemblyLineId > 0 ? $assemblyLineId : null,
                     'assembly_layout_id' => $assemblyLayoutId !== '' ? $assemblyLayoutId : null,
                 ]);
+                if ($isProjectAdd && isset($pendingAddedByLine[$assemblyLineId])) {
+                    foreach ($pendingAddedByLine[$assemblyLineId] as $bit) {
+                        $addedBits[] = $bit;
+                    }
+                } else {
+                    $addedBits[] = $lineLabel;
+                }
             }
 
             if ($built === []) {
@@ -392,15 +424,7 @@ class RoomAreaAssemblyController extends Controller
             );
             $this->consumeQuoteToken($token, $quote->id);
 
-            $message = $existing
-                ? 'Kit lines added to '.$quote->quote_number.'.'
-                : 'Quotation '.$quote->quote_number.' created from Room Area kits.';
-            if ($skipped > 0) {
-                $message = ($existing
-                    ? 'Added kit lines that were not already on '.$quote->quote_number.'.'
-                    : 'Quotation '.$quote->quote_number.' created from Room Area kits.'
-                ).' Skipped '.$skipped.' line'.($skipped === 1 ? '' : 's').' already on that quote.';
-            }
+            $message = $this->quoteSuccessMessage($quote, (bool) $existing, $addedBits, $skippedBits);
 
             return redirect()
                 ->route('admin.quotations.standard.edit', $quote)
@@ -602,6 +626,51 @@ class RoomAreaAssemblyController extends Controller
         }
 
         return $keys;
+    }
+
+    /**
+     * @param  list<string>  $addedBits
+     * @param  list<string>  $skippedBits
+     */
+    private function quoteSuccessMessage($quote, bool $existing, array $addedBits, array $skippedBits): string
+    {
+        $added = $this->joinQuoteParts($addedBits);
+        $skipped = $this->joinQuoteParts($skippedBits);
+        if ($added !== '' && $skipped !== '') {
+            return 'Added '.$added.' to '.$quote->quote_number.'. Skipped '.$skipped.' (already on that quote).';
+        }
+        if ($added !== '' && $existing) {
+            return 'Added '.$added.' to '.$quote->quote_number.'.';
+        }
+        if ($existing) {
+            return 'Kit lines added to '.$quote->quote_number.'.';
+        }
+
+        return 'Quotation '.$quote->quote_number.' created from Room Area kits.';
+    }
+
+    /**
+     * @param  list<string>  $parts
+     */
+    private function joinQuoteParts(array $parts): string
+    {
+        $parts = array_values(array_unique(array_filter(
+            array_map(static fn ($part) => trim((string) $part), $parts),
+            static fn ($part) => $part !== ''
+        )));
+        $count = count($parts);
+        if ($count === 0) {
+            return '';
+        }
+        if ($count === 1) {
+            return $parts[0];
+        }
+        if ($count === 2) {
+            return $parts[0].' and '.$parts[1];
+        }
+        $last = array_pop($parts);
+
+        return implode(', ', $parts).', and '.$last;
     }
 
     private function lineOverlapsQuote(array $alreadyOnQuote, int $assemblyLineId, string $layoutId, $project): bool
