@@ -63,18 +63,26 @@
     grid-column: 2;
   }
 }
-/* Table column widths - nowrap for key columns */
-.gf-expenses-table { width: 100%; }
-.gf-expenses-table th:nth-child(1),
-.gf-expenses-table td:nth-child(1) { white-space: nowrap; } /* # */
-.gf-expenses-table th:nth-child(2),
-.gf-expenses-table td:nth-child(2) { white-space: nowrap; } /* Date */
-.gf-expenses-table th:nth-child(3),
-.gf-expenses-table td:nth-child(3) { white-space: nowrap; } /* Project */
-.gf-expenses-table th:nth-child(4),
-.gf-expenses-table td:nth-child(4) { white-space: nowrap; } /* Client */
-.gf-expenses-table th:nth-child(6),
-.gf-expenses-table td:nth-child(6) { white-space: nowrap; text-align: right; } /* Amount */
+/* Table column widths — clip instead of spilling into neighbours */
+.gf-expenses-table { width: 100%; min-width: 0; }
+@media (min-width: 641px) {
+  .gf-expenses-table th,
+  .gf-expenses-table td { overflow: hidden; text-overflow: ellipsis; }
+  .gf-expenses-table th:nth-child(1),
+  .gf-expenses-table td:nth-child(1) { white-space: nowrap; width: 5.5rem; } /* # */
+  .gf-expenses-table th:nth-child(2),
+  .gf-expenses-table td:nth-child(2) { white-space: nowrap; width: 6.5rem; } /* Date */
+  .gf-expenses-table th:nth-child(3),
+  .gf-expenses-table td:nth-child(3) { white-space: nowrap; } /* Project */
+  .gf-expenses-table th:nth-child(4),
+  .gf-expenses-table td:nth-child(4) { white-space: nowrap; } /* Client */
+  .gf-expenses-table th:nth-child(5),
+  .gf-expenses-table td:nth-child(5) { overflow-wrap: anywhere; text-overflow: unset; } /* Description */
+  .gf-expenses-table th:nth-child(6),
+  .gf-expenses-table td:nth-child(6) { white-space: nowrap; text-align: right; width: 6.5rem; } /* Amount */
+  .gf-expenses-table th:nth-child(8),
+  .gf-expenses-table td:nth-child(8) { width: 3.5rem; overflow: visible; } /* Actions */
+}
 </style>
 @endpush
 
@@ -194,7 +202,7 @@
       </div>
     @else
       <div class="admin-table-scroll">
-        <table class="admin-table admin-table--stack gf-expenses-table">
+        <table class="admin-table admin-table--stack admin-table--fixed gf-expenses-table">
           <thead>
             <tr>
               <th>#</th>

@@ -804,6 +804,24 @@ body.admin-body {
   vertical-align: middle;
 }
 
+/* Fixed-layout list tables: header and body share one column grid.
+   Cells clip instead of spilling into neighbours. Actions stay visible. */
+.admin-table--fixed {
+  table-layout: fixed;
+  min-width: 0;
+  width: 100%;
+}
+.admin-table--fixed th,
+.admin-table--fixed td {
+  overflow: hidden;
+}
+.admin-table--fixed td.admin-table__actions,
+.admin-table--fixed th.admin-table__actions,
+.admin-table--fixed td.admin-table-actions,
+.admin-table--fixed .admin-table-actions {
+  overflow: visible;
+}
+
 .admin-table th {
   font-size: 0.7rem;
   text-transform: uppercase;
@@ -926,6 +944,10 @@ body.admin-body {
   }
   .admin-table--stack td.admin-table__actions::before {
     display: none;
+  }
+  .admin-table--stack.admin-table--fixed th,
+  .admin-table--stack.admin-table--fixed td {
+    overflow: visible;
   }
 }
 

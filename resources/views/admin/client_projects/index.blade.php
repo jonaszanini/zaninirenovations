@@ -132,7 +132,7 @@
   @else
     <div class="admin-card">
       <div class="admin-table-scroll">
-        <table class="admin-table cp-table">
+        <table class="admin-table admin-table--fixed cp-table">
           <thead>
             <tr>
               <th>Client</th>

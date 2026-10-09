@@ -326,11 +326,22 @@ a.cp-table-street .fa {
 .cp-table th {
   vertical-align: top;
 }
+.cp-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 0;
+}
+.cp-table td:first-child,
+.cp-table th:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .cp-table-project-cell {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  max-width: 100%;
 }
 .cp-table-project-ref {
   font-size: 11px;
@@ -342,14 +353,17 @@ a.cp-table-street .fa {
 }
 .cp-table-project-name {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--admin-heading);
   line-height: 1.35;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .cp-table th:nth-child(2),
 .cp-table td:nth-child(2) {
-  min-width: 120px;
-  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
 }
 .cp-table th:nth-child(7),
 .cp-table td:nth-child(7) {
