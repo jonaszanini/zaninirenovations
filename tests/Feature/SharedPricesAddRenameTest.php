@@ -688,19 +688,20 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
         });
 
         try {
-            $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
-                'new_works' => [
-                    'flooring' => [
-                        [
-                            'label' => 'Retry key item',
-                            'unit' => 'each',
-                            'rate' => '1.00',
-                            'flat_rate' => '2.00',
-                            'consumers' => ['flooring'],
+            $this->from(route('admin.quotations.shared-prices.edit'))
+                ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                    'new_works' => [
+                        'flooring' => [
+                            [
+                                'label' => 'Retry key item',
+                                'unit' => 'each',
+                                'rate' => '1.00',
+                                'flat_rate' => '2.00',
+                                'consumers' => ['flooring'],
+                            ],
                         ],
                     ],
-                ],
-            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+                ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
                 ->assertSessionDoesntHaveErrors();
         } finally {
             $once->done = true;
@@ -759,7 +760,19 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
             ->assertSessionHasErrors(['new_works.flooring.0.label']);
 
         $this->assertSame(SharedWork::normalizeLabel($existing->label), SharedWork::normalizeLabel($nbspName));
-        $this->assertSame(0, SharedWork::query()->where('label', $nbspName)->count());
+        $this->assertSame(
+            1,
+            SharedWork::query()
+                ->where('group_key', 'flooring')
+                ->where('label_normalized', SharedWork::normalizeLabel($existing->label))
+                ->count()
+        );
+        $this->assertNull(
+            SharedWork::query()
+                ->where('label_normalized', SharedWork::normalizeLabel($existing->label))
+                ->where('key', 'like', 'custom_%')
+                ->first()
+        );
     }
 
     public function test_friendly_message_for_negative_prices_and_over_limit(): void

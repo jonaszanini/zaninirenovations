@@ -431,10 +431,10 @@ class SharedPriceLibraryController extends Controller
         if (! $this->isUniqueConstraintFailure($e)) {
             return false;
         }
-        $haystack = strtolower($e->getMessage().' '.implode(' ', array_map('strval', $e->errorInfo ?? [])));
+        $haystack = strtolower($this->uniqueConstraintHaystack($e));
 
         return str_contains($haystack, 'shared_works_group_label_unique')
-            || str_contains($haystack, 'label_normalized');
+            || str_contains($haystack, 'unique constraint failed: shared_works.label_normalized');
     }
 
     protected function isKeyUniqueFailure(QueryException $e): bool
@@ -442,9 +442,16 @@ class SharedPriceLibraryController extends Controller
         if (! $this->isUniqueConstraintFailure($e)) {
             return false;
         }
-        $haystack = strtolower($e->getMessage().' '.implode(' ', array_map('strval', $e->errorInfo ?? [])));
+        $haystack = strtolower($this->uniqueConstraintHaystack($e));
 
         return str_contains($haystack, 'shared_works_key_unique')
-            || str_contains($haystack, 'shared_works.key');
+            || str_contains($haystack, 'unique constraint failed: shared_works.key');
+    }
+
+    protected function uniqueConstraintHaystack(QueryException $e): string
+    {
+        $info = $e->errorInfo ?? [];
+
+        return (string) ($info[2] ?? $e->getMessage());
     }
 }
