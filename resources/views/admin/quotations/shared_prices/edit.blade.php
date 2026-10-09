@@ -40,7 +40,7 @@
 .sp-group { margin-bottom: 1rem; }
 /* Tighter card padding so Rate / work-item / trailing all fit at 1024. */
 @media (min-width: 901px) {
-  details.sp-group.admin-card { padding: 1rem 0.35rem; }
+  details.sp-group.admin-card { padding: 1rem 0.2rem; }
   .sp-group .admin-table-scroll { overflow: clip; }
   .sp-group .admin-table-scroll:has(.sp-search-wrap--hidden:focus-within),
   .sp-group .admin-table-scroll:has(.sp-chip--more[aria-expanded="true"]),
@@ -88,14 +88,14 @@
   .sp-table tbody tr {
     display: grid;
     grid-template-columns:
-      minmax(4rem, 1.1fr)
+      minmax(7.5rem, 1.55fr)
       5rem
-      minmax(6.5rem, 6.75rem)
-      minmax(4.6rem, 5rem)
-      minmax(6.5rem, 6.75rem)
-      minmax(7.5rem, 8rem)
+      minmax(6rem, 6.15rem)
+      minmax(4.6rem, 4.85rem)
+      minmax(5.5rem, 5.75rem)
+      minmax(4.25rem, 5rem)
       2.5rem
-      5.25rem;
+      6.5rem;
     column-gap: 0.08rem;
     align-items: stretch;
     width: 100%;
@@ -382,16 +382,16 @@
   width: 100%;
 }
 .sp-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  display: block;
+  box-sizing: border-box;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
   padding: 0.2rem 0.4rem;
   font-size: 0.65rem;
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.2;
+  text-align: left;
   background: var(--admin-primary-soft);
   color: var(--admin-primary);
   border: 1px solid var(--admin-primary);
@@ -400,10 +400,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.sp-consumers .sp-chip:not(.sp-chip--more) {
-  flex: 1 1 auto;
-}
 .sp-chip--more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   position: relative;
   flex: 0 0 auto;
   overflow: visible;
@@ -484,6 +485,7 @@
     grid-template-areas:
       "label label"
       "catalog consumers"
+      "search search"
       "rate sell"
       "unit price"
       "name name";
@@ -515,7 +517,28 @@
   .sp-col-unit { grid-area: unit; }
   .sp-col-price { grid-area: price; }
   .sp-col-name { grid-area: name; }
-  .sp-col-catalog { grid-area: catalog; justify-self: start; }
+  .sp-table td.sp-col-catalog {
+    display: contents;
+  }
+  .sp-catalog-btn { grid-area: catalog; justify-self: start; }
+  .sp-search-wrap { grid-area: search; width: 100%; max-width: 100%; }
+  .sp-search-wrap.sp-search-wrap--hidden {
+    position: static;
+    left: auto;
+    right: auto;
+    top: auto;
+    width: 100%;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .sp-search-wrap--hidden:focus-within {
+    height: auto;
+    overflow: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
   .sp-col-consumers { grid-area: consumers; justify-self: start; }
 
   .sp-col-label {
@@ -690,7 +713,7 @@
                   <td class="sp-col-label" data-label="Work item">
                     <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
                     <span class="sp-work">
-                      <span class="sp-work-label">{{ $work->label }}</span>
+                      <span class="sp-work-label" title="{{ $work->label }}">{{ $work->label }}</span>
                       @if ($workMeta)
                         <small class="sp-work-meta">{{ $workMeta }}</small>
                       @endif

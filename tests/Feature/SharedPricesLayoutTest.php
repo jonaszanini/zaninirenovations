@@ -75,26 +75,33 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertDoesNotMatchRegularExpression('/align-items:\s*flex-start/', $consumers);
 
         $chip = $this->cssBlock($css, '.sp-chip');
-        $this->assertMatchesRegularExpression('/justify-content:\s*center/', $chip);
-        $this->assertMatchesRegularExpression('/align-items:\s*center/', $chip);
-        $this->assertMatchesRegularExpression('/text-align:\s*center/', $chip);
+        $this->assertMatchesRegularExpression('/display:\s*block/', $chip);
+        $this->assertMatchesRegularExpression('/text-overflow:\s*ellipsis/', $chip);
+        $this->assertDoesNotMatchRegularExpression('/display:\s*inline-flex/', $chip);
         $this->assertGreaterThanOrEqual(0.65, $this->cssFontRem($chip));
 
         $more = $this->cssBlock($css, '.sp-chip--more');
         $this->assertDoesNotMatchRegularExpression('/\.sp-chip--more:focus\s+\.sp-chip-more__tip/', $css);
         $this->assertMatchesRegularExpression('/min-width:\s*32px/', $more);
+        $this->assertMatchesRegularExpression('/justify-content:\s*center/', $more);
 
         $columns = $this->desktopGridColumns($css);
         $this->assertCount(8, $columns);
-        $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[2]), 'Sell must fit 12.9000 and 99,999.9999');
+        $this->assertGreaterThanOrEqual(7.5, $this->cssMinRem($columns[0]), 'Work item must show ~18–20 characters at 1024');
+        $this->assertGreaterThanOrEqual(6.0, $this->cssMinRem($columns[2]), 'Sell must fit 12.9000 and 99,999.9999');
         $this->assertTrue(
             str_contains($columns[3], '7ch') || $this->cssMinRem($columns[3]) >= 4.6,
             'Unit must be ~7ch so opening does not clip'
         );
-        $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
-        $this->assertGreaterThanOrEqual(7.5, $this->cssMinRem($columns[5]), 'Mat. name should show ~16–18 characters');
-        $this->assertLessThanOrEqual(5.5, $this->cssMinRem($columns[7]), 'Used-by shrinks to ~5.5rem with +N');
-        $this->assertGreaterThanOrEqual(5.0, $this->cssMinRem($columns[7]));
+        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
+        $this->assertGreaterThanOrEqual(4.25, $this->cssMinRem($columns[5]));
+        $this->assertLessThanOrEqual(5.25, $this->cssMinRem($columns[5]), 'Mat. name gives surplus to Work item');
+        $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
+
+        $this->assertStringContainsString('title="{{ $work->label }}"', file_get_contents(resource_path('views/admin/quotations/shared_prices/edit.blade.php')));
+        $this->assertStringContainsString('grid-area: search', $css);
+
+        $this->assertBrowserChipAndWorkGeometry();
 
         $this->assertMatchesRegularExpression('/\.sp-col-sell:has\(\.admin-info-tip\)\s+\.sp-input\s*\{[^}]*padding-right:\s*1\.85rem/', $css);
         $this->assertMatchesRegularExpression('/\.sp-table\s+\.sp-work\s*\{[^}]*padding:\s*0/', $css);
@@ -146,6 +153,63 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         }
 
         $this->fail("Could not parse rem min from {$token}");
+    }
+
+    /**
+     * When Puppeteer is installed, measure real 1024 layout so a tight Used-by
+     * column or a squeezed Work item fails CI/local the same way the screenshots do.
+     */
+    private function assertBrowserChipAndWorkGeometry(): void
+    {
+        if (! is_dir(base_path('node_modules/puppeteer'))) {
+            return;
+        }
+
+        $script = sys_get_temp_dir().'/sp-layout-geometry.js';
+        file_put_contents($script, <<<'JS'
+const puppeteer = require('puppeteer');
+(async () => {
+  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1024, height: 900 });
+  await page.goto('http://127.0.0.1:8000/admin/login', { waitUntil: 'networkidle0' });
+  if (page.url().includes('/admin/login')) {
+    await page.type('input[name="email"]', 'admin@zanini.ca');
+    await page.type('input[name="password"]', 'password');
+    await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.click('button[type="submit"]')]);
+  }
+  await page.goto('http://127.0.0.1:8000/admin/quotations/shared-prices', { waitUntil: 'networkidle0' });
+  const result = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('.sp-chip:not(.sp-chip--more)')];
+    const clipped = chips.filter((c) => c.scrollWidth > c.clientWidth + 1).map((c) => ({
+      text: (c.textContent || '').trim(),
+      scroll: c.scrollWidth,
+      client: c.clientWidth,
+    }));
+    const labels = [...document.querySelectorAll('.sp-work-label')];
+    const workW = labels.length ? Math.round(labels[0].closest('.sp-col-label').getBoundingClientRect().width) : 0;
+    return { clipped, workW, chipCount: chips.length };
+  });
+  await browser.close();
+  process.stdout.write(JSON.stringify(result));
+})().catch((err) => { console.error(err); process.exit(2); });
+JS
+        );
+
+        $cmd = 'cd '.escapeshellarg(base_path()).' && node '.escapeshellarg($script).' 2>/dev/null';
+        exec($cmd, $output, $code);
+        @unlink($script);
+        if ($code !== 0) {
+            return;
+        }
+
+        $json = json_decode(implode("\n", $output), true);
+        if (! is_array($json)) {
+            return;
+        }
+
+        $this->assertSame([], $json['clipped'] ?? ['failed'], 'Chip labels must not clip (scrollWidth <= clientWidth)');
+        $this->assertGreaterThanOrEqual(115, (int) ($json['workW'] ?? 0), 'Work item column must be ≥18ch (~115px) at 1024');
     }
 
     private function cssFontRem(string $block): float
