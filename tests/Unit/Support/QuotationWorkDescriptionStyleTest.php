@@ -108,5 +108,21 @@ class QuotationWorkDescriptionStyleTest extends TestCase
             'Build a A-frame shed.',
             QuotationWorkDescriptionStyle::apply('Build a A-frame shed.')
         );
+        $this->assertSame(
+            'About 24 lin. ft. of board.',
+            QuotationWorkDescriptionStyle::apply('About 24 lin. ft. of board.')
+        );
+        $this->assertSame(
+            'Min. depth is 4 ft.',
+            QuotationWorkDescriptionStyle::apply('Min. depth is 4 ft.')
+        );
+        $this->assertSame(
+            'Posts are set in. then backfill.',
+            QuotationWorkDescriptionStyle::apply('Posts are set in. then backfill.')
+        );
+        $this->assertSame(
+            '3 . 5 m of pipe.',
+            QuotationWorkDescriptionStyle::apply('3 . 5 m of pipe.')
+        );
     }
 }

@@ -727,7 +727,6 @@ class ClientProjectQuotationController extends Controller
                 'payment_percentages' => $quotation->payment_percentages,
                 'quotation_number' => $newNumber,
                 'version' => 1,
-                'pdf_fold_version' => $quotation->pdf_fold_version ?? 1,
             ]);
             $newQuotation->save();
 

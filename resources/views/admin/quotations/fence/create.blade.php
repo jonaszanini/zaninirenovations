@@ -712,7 +712,8 @@
         <div class="fq-price-banner" id="fq-price-banner">
           Catalogue unit prices have changed since this quote was saved{{ $priceDeltaAmountLabel }}.
           @include('admin.partials.info_tip', [
-            'text' => 'Save keeps the unit prices from the last save. Quantities still follow the current runs. Re-price updates unit prices from the catalogue.',
+            'tipText' => 'Save keeps the unit prices from the last save. Quantities still follow the current runs. Re-price updates unit prices from the catalogue.',
+            'tipLabel' => 'About saved unit prices',
           ])
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-reprice-btn">
             Re-price from catalogue

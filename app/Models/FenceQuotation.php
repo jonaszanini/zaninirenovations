@@ -21,7 +21,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class FenceQuotation extends Model
 {
     use \App\Models\Concerns\HasClientEmailMessage;
-    use \App\Models\Concerns\HasPdfFoldVersion;
     use \App\Models\Concerns\HasReplyToAcceptChoice;
 
     public const HST_RATE = 0.13;

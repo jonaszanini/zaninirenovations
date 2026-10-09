@@ -141,10 +141,11 @@ TXT;
         $text = preg_replace('/\s+,/u', ',', $text) ?? $text;
         $text = preg_replace('/\s+;/u', ';', $text) ?? $text;
         $text = preg_replace('/,\s*,/u', ',', $text) ?? $text;
-        $text = preg_replace('/\s+\./u', '.', $text) ?? $text;
+        // Leave spaced decimals ("3 . 5 m") alone.
+        $text = preg_replace('/(?<!\d)\s+\./u', '.', $text) ?? $text;
         // Collapse doubled periods, but leave ellipses ("posts... then") intact.
         $text = preg_replace('/(?<!\.)\.\s*\.(?!\.)/u', '.', $text) ?? $text;
-        $text = preg_replace('/(?:^|\s)\.(?:\s|$)/u', ' ', $text) ?? $text;
+        $text = preg_replace('/(?<!\d)(?:^|\s)\.(?:\s|$)(?!\d)/u', ' ', $text) ?? $text;
         $text = preg_replace('/\s{2,}/u', ' ', $text) ?? $text;
 
         $text = trim($text);
@@ -174,7 +175,7 @@ TXT;
             if (preg_match('/\.{2,}\s*$/u', $before)) {
                 continue;
             }
-            if (preg_match('/\b(?:sq|ft|in|approx|etc|no|vs|oct|e\.g|i\.e)\.\s*$/iu', $before)) {
+            if (preg_match('/\b(?:sq|ft|in|lin|min|approx|etc|no|vs|oct|e\.g|i\.e)\.\s*$/iu', $before)) {
                 continue;
             }
             $text = substr($text, 0, $letterPos).mb_strtoupper($letter).substr($text, $letterPos + strlen($letter));
