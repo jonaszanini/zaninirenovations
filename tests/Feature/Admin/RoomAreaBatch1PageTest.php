@@ -107,6 +107,8 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('function parseLengthInput', $lib);
         $this->assertStringContainsString('function insertAlcove', $lib);
         $this->assertStringContainsString('function shapeFromKind', $lib);
+        $this->assertStringContainsString('function planUploadErrorAfterRoomSaved', $lib);
+        $this->assertStringContainsString('Floor plan upload failed. The room itself was saved. Save again to retry.', $lib);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
         $this->assertNotFalse($css);
@@ -134,7 +136,8 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('Expand or collapse panel', $html);
         $this->assertStringContainsString('is-overflowing::after', $css);
         $this->assertStringContainsString("describeParsedLength(feet)", $js);
-        $this->assertStringContainsString('Floor plan upload failed. The room itself was saved. Save again to retry.', $js);
+        $this->assertStringContainsString('RA.planUploadErrorAfterRoomSaved(err)', $js);
+        $this->assertStringNotContainsString("friendlyNetworkError(err, 'Could not upload the floor plan. Check your connection and try again.')", $js);
         $this->assertStringContainsString('Could not delete room. Check your connection and try again.', $js);
         $this->assertStringContainsString('Could not delete project. Check your connection and try again.', $js);
         $this->assertStringContainsString('Could not delete photo. Check your connection and try again.', $js);
@@ -146,6 +149,8 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringNotContainsString('return res.json().then(function (data) {'."\n".'            return { ok: res.ok, data: data };', $js);
         $this->assertStringContainsString(':not([data-ra-more-close])', $css);
         $this->assertStringContainsString('.util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-more-sheet__head .admin-btn.util-ra-icon-btn', $css);
+        $this->assertStringContainsString('min-width: 44px;', $css);
+        $this->assertStringContainsString('padding: 0 0.75rem;', $css);
         $this->assertStringContainsString('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side', $css);
         $this->assertStringContainsString('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side__tabs', $css);
         $this->assertStringContainsString('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side__body', $css);

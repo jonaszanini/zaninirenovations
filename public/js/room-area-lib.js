@@ -487,6 +487,20 @@
     });
   }
 
+  function planUploadErrorAfterRoomSaved(err) {
+    var raw = err && err.message ? String(err.message) : '';
+    var status = Number(err && err.status);
+    if (status === 413 || status >= 500 || /413/.test(raw) || /payload too large/i.test(raw)
+      || /too large to upload/i.test(raw) || /server error/i.test(raw)
+      || !raw || /failed to fetch/i.test(raw) || /networkerror/i.test(raw)
+      || /unexpected token/i.test(raw) || /not valid json/i.test(raw)
+      || /could not upload/i.test(raw) || /could not read/i.test(raw)
+      || /check your connection/i.test(raw)) {
+      return 'Floor plan upload failed. The room itself was saved. Save again to retry.';
+    }
+    return 'Floor plan upload failed. The room itself was saved. Save again to retry.';
+  }
+
   function friendlyNetworkError(err, fallbackMessage) {
     var raw = err && err.message ? String(err.message) : '';
     if (err && (err.status === 413 || /413/.test(raw) || /payload too large/i.test(raw))) {
@@ -601,6 +615,7 @@
     isAxisAlignedRectangle: isAxisAlignedRectangle,
     overallDimensionText: overallDimensionText,
     readFetchJson: readFetchJson,
-    friendlyNetworkError: friendlyNetworkError
+    friendlyNetworkError: friendlyNetworkError,
+    planUploadErrorAfterRoomSaved: planUploadErrorAfterRoomSaved
   };
 }));

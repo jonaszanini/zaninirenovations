@@ -8176,7 +8176,7 @@
             savedRoom.background_url = bgResult.background_url;
             return { ok: true, data: { room: savedRoom }, created: !isUpdate };
           }).catch(function (err) {
-            throw new Error(friendlyNetworkError(err, 'Floor plan upload failed. The room itself was saved. Save again to retry.'));
+            throw new Error(RA.planUploadErrorAfterRoomSaved(err));
           });
         }
         return result;
@@ -8303,14 +8303,13 @@
       })
       .then(function (result) {
         if (!result.ok) {
-          throw new Error(saveErrorMessage(result.data, result.status === 413
+          var err = new Error(saveErrorMessage(result.data, result.status === 413
             ? 'That file is too large to upload.'
             : 'Could not upload the floor plan.'));
+          err.status = result.status;
+          throw err;
         }
         return result.data;
-      })
-      .catch(function (err) {
-        throw new Error(friendlyNetworkError(err, 'Could not upload the floor plan. Check your connection and try again.'));
       });
   }
 
@@ -8333,7 +8332,9 @@
           captureSavedSnapshot();
           setFeedback('Floor plan uploaded for this room.', false);
         })
-        .catch(function (e) { setFeedback(e.message, true); });
+        .catch(function (e) {
+          setFeedback(friendlyNetworkError(e, 'Could not upload the floor plan. Check your connection and try again.'), true);
+        });
       return;
     }
 

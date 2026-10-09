@@ -139,6 +139,11 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.friendlyNetworkError(new Error('Failed to fetch'), 'Could not delete project. Check your connection and try again.'), 'Could not delete project. Check your connection and try again.');
   assert.strictEqual(lib.friendlyNetworkError({ message: 'Unexpected token < in JSON' }, 'Could not upload photos. Check your connection and try again.'), 'Could not upload photos. Check your connection and try again.');
   assert.strictEqual(lib.friendlyNetworkError({ status: 413, message: 'Payload Too Large' }, 'x'), 'That file is too large to upload.');
+  var saved = 'Floor plan upload failed. The room itself was saved. Save again to retry.';
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 413, message: 'Payload Too Large' }), saved);
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 500, message: 'Server Error' }), saved);
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved(new Error('Failed to fetch')), saved);
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved(new Error('Could not upload the floor plan. Check your connection and try again.')), saved);
   console.log('room-area-lib tests: ' + process.uptime().toFixed(3) + 's ok');
 }).catch(function (err) {
   console.error(err);

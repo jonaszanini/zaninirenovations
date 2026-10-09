@@ -106,6 +106,10 @@ async function measureViewports() {
             width: r.width,
             height: r.height,
             cssWidth: cs.width,
+            paddingLeft: parseFloat(cs.paddingLeft) || 0,
+            paddingRight: parseFloat(cs.paddingRight) || 0,
+            minWidth: cs.minWidth,
+            icon: !!(el.querySelector && el.querySelector('i, .fa')),
           };
         };
         return {
@@ -121,7 +125,9 @@ async function measureViewports() {
         };
       });
       assert.ok(geom.close, 'Close exists at ' + width);
-      assert.ok(geom.close.width > 8 && geom.close.width < width * 0.55, 'Close is auto-width at ' + width + ': ' + geom.close.width);
+      assert.ok(geom.close.icon, 'Close includes the icon at ' + width);
+      assert.ok(geom.close.width >= 44 && geom.close.width < width * 0.55, 'Close is padded auto-width at ' + width + ': ' + geom.close.width);
+      assert.ok(geom.close.paddingLeft >= 8 && geom.close.paddingRight >= 8, 'Close has horizontal padding at ' + width + ': ' + geom.close.paddingLeft);
       assert.ok(geom.close.right <= geom.innerWidth + 0.5, 'Close stays inside viewport at ' + width + ': right=' + geom.close.right);
       assert.ok(geom.close.left >= -0.5, 'Close left edge is on-screen at ' + width);
       ['objects', 'walls', 'area'].forEach((key) => {
