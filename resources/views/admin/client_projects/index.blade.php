@@ -11,29 +11,28 @@
     $isOngoingList = (($filters['list'] ?? 'ongoing') === 'ongoing');
   @endphp
 
-  <div class="admin-toolbar">
-    <a href="{{ route('admin.client-projects.create') }}" class="admin-btn admin-btn--primary">
-      <i class="fa fa-plus"></i> New project
-    </a>
-  </div>
-
   <div class="cp-projects-scope-bar">
     <div class="cp-projects-scope-head">
-      <span class="cp-projects-scope-label">Show</span>
-      <div class="cp-projects-scope-toggles">
-        <a href="{{ route('admin.client-projects.index', $toggleQueryBase('ongoing')) }}"
-           class="cp-projects-scope-chip {{ $isOngoingList ? 'cp-projects-scope-chip--active' : '' }}"
-           aria-current="{{ $isOngoingList ? 'page' : 'false' }}"
-           title="Hide Completed and Rejected (focus on work in motion).">
-          <i class="fa fa-spinner"></i> Ongoing pipeline
-        </a>
-        <a href="{{ route('admin.client-projects.index', $toggleQueryBase('all')) }}"
-           class="cp-projects-scope-chip {{ ! $isOngoingList ? 'cp-projects-scope-chip--active' : '' }}"
-           aria-current="{{ ! $isOngoingList ? 'page' : 'false' }}"
-           title="Include Completed and Rejected with every other status.">
-          <i class="fa fa-th-large"></i> All projects
-        </a>
+      <div class="cp-projects-scope-start">
+        <span class="cp-projects-scope-label">Show</span>
+        <div class="cp-projects-scope-toggles">
+          <a href="{{ route('admin.client-projects.index', $toggleQueryBase('ongoing')) }}"
+             class="cp-projects-scope-chip {{ $isOngoingList ? 'cp-projects-scope-chip--active' : '' }}"
+             aria-current="{{ $isOngoingList ? 'page' : 'false' }}"
+             title="Hide Completed and Rejected (focus on work in motion).">
+            <i class="fa fa-spinner"></i> Ongoing pipeline
+          </a>
+          <a href="{{ route('admin.client-projects.index', $toggleQueryBase('all')) }}"
+             class="cp-projects-scope-chip {{ ! $isOngoingList ? 'cp-projects-scope-chip--active' : '' }}"
+             aria-current="{{ ! $isOngoingList ? 'page' : 'false' }}"
+             title="Include Completed and Rejected with every other status.">
+            <i class="fa fa-th-large"></i> All projects
+          </a>
+        </div>
       </div>
+      <a href="{{ route('admin.client-projects.create') }}" class="admin-btn admin-btn--primary cp-projects-scope-create">
+        <i class="fa fa-plus"></i> New project
+      </a>
     </div>
   </div>
 

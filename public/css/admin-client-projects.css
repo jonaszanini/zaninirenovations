@@ -108,7 +108,19 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 10px 14px;
+}
+.cp-projects-scope-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  min-width: 0;
+}
+.cp-projects-scope-create {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 .cp-projects-scope-label {
   font-size: 13px;
