@@ -272,6 +272,28 @@ async function main() {
   await closeMore(phone);
   const phoneLight = await shot(phone, 'ra-b1-390-light');
 
+  await phone.evaluate(() => {
+    const math = document.querySelector('[data-ra-side-tab="math"]');
+    if (math) math.click();
+    const root = document.querySelector('[data-room-area]');
+    if (root) {
+      root.classList.add('is-sheet-expanded');
+      root.style.setProperty('--ra-sheet-h', '280px');
+    }
+  });
+  await delay(350);
+  await shot(phone, 'ra-b1-390-sheet-light');
+  await phone.evaluate(() => {
+    const measure = document.querySelector('[data-ra-side-tab="measure"]');
+    if (measure) measure.click();
+    const root = document.querySelector('[data-room-area]');
+    if (root) {
+      root.classList.remove('is-sheet-expanded');
+      root.style.setProperty('--ra-sheet-h', '64px');
+    }
+  });
+  await delay(200);
+
   await openMore(phone);
   await shot(phone, 'ra-b1-390-more');
 
@@ -292,7 +314,10 @@ async function main() {
     const math = document.querySelector('[data-ra-side-tab="math"]');
     if (math) math.click();
     const root = document.querySelector('[data-room-area]');
-    if (root) root.style.setProperty('--ra-sheet-h', '280px');
+    if (root) {
+      root.classList.add('is-sheet-expanded');
+      root.style.setProperty('--ra-sheet-h', '280px');
+    }
   });
   await delay(350);
   await shot(phone, 'ra-b1-390-sheet');
