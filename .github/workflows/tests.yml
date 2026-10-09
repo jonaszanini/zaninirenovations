@@ -54,6 +54,14 @@ jobs:
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
 
+      - name: Admin info-tip unit tests (no database)
+        run: |
+          php artisan test tests/Unit/Views/AdminInfoTipTest.php
+          php artisan test tests/Unit/Views/AdminInfoTipBehaviourTest.php
+          php artisan test tests/Unit/Views/AdminInfoTipIdIsolationTest.php
+          php artisan test tests/Unit/Views/AdminInfoTipCallerContractTest.php
+          php artisan test tests/Unit/Views/FencePriceBannerTipTest.php
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -64,6 +72,11 @@ jobs:
           npm ci --no-fund
           node tests/js/room-area-lib.test.js
           node tests/js/room-area-phone-geometry.test.js
+
+      - name: Admin info-tip JS behaviour (no database)
+        run: |
+          node tests/js/admin-info-tip.test.mjs
+          node tests/js/admin-info-tip-click.test.mjs
 
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
@@ -199,6 +212,7 @@ jobs:
           php artisan test tests/Unit/Views/FenceQuotationFormRestoreTest.php
           php artisan test tests/Feature/Admin/FenceQuotationFormRestoreTest.php
           php artisan test tests/Unit/Views/FencePriceBannerTipTest.php
+          php artisan test tests/Feature/Admin/FenceQuotationInfoTipTest.php
           php artisan test tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php

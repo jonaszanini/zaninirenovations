@@ -48,8 +48,12 @@
   @else
     <form action="{{ route('admin.client-projects.helpers.sync', $project) }}" method="post" class="cp-helper-assign-form">
       @csrf
-      <h4 class="cp-time-saved-heading">Helpers on this project</h4>
-      <p class="admin-form-help cp-time-saved-help">Select who may log time here. Rates are set under Manage helpers.</p>
+      <h4 class="cp-time-saved-heading">Helpers on this project
+        @include('admin.partials.info_tip', [
+          'tipText' => 'Select who may log time here. Rates are set under Manage helpers.',
+          'tipLabel' => 'Helpers on this project',
+        ])
+      </h4>
       <div class="cp-helper-assign-row">
         <div class="cp-helper-assign-grid">
           @foreach ($activeHelpers as $helper)
@@ -125,8 +129,12 @@
         </div>
       </form>
 
-      <h4 class="cp-time-saved-heading" style="margin-top:20px;">Log other payment</h4>
-      <p class="admin-form-help cp-time-saved-help">Reimburse the helper for meals, materials they bought, Uber, etc.</p>
+      <h4 class="cp-time-saved-heading" style="margin-top:20px;">Log other payment
+        @include('admin.partials.info_tip', [
+          'tipText' => 'Reimburse the helper for meals, materials they bought, Uber, etc.',
+          'tipLabel' => 'Log other payment',
+        ])
+      </h4>
       <form action="{{ route('admin.client-projects.helper-time.store', $project) }}"
             method="post"
             class="cp-finance-form cp-helper-panel cp-helper-expense-form">

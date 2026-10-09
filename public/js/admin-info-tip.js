@@ -412,18 +412,29 @@
     return !!closestFrom(el, 'a');
   }
 
+  function skipGlueNode(node, isRoot) {
+    if (isRoot || !node || node.nodeType !== 1) return false;
+    if (node.id) return true;
+    var cls = node.classList;
+    if (cls && (cls.contains('admin-info-tip-wrap') || cls.contains('admin-info-tip__bubble') || cls.contains('admin-label-with-tip__end'))) {
+      return true;
+    }
+    return false;
+  }
+
   function takeLastWord(label) {
     var nodes = [];
-    function walk(node) {
+    function walk(node, isRoot) {
+      if (skipGlueNode(node, isRoot)) return;
       var kids = node.childNodes || [];
       for (var i = 0; i < kids.length; i++) {
-        walk(kids[i]);
+        walk(kids[i], false);
       }
       if (node.nodeType === 3 && String(node.textContent || '').replace(/\s+/g, ' ').trim()) {
         nodes.push(node);
       }
     }
-    walk(label);
+    walk(label, true);
     var textNode = nodes[nodes.length - 1];
     if (!textNode) return '';
     var raw = String(textNode.textContent || '');
@@ -436,6 +447,108 @@
     var last = trimmed.slice(space + 1);
     textNode.textContent = trimmed.slice(0, space) + raw.slice(trimmed.length);
     return last;
+  }
+
+  function splitLabelText(label) {
+    label = String(label || '').replace(/\s+/g, ' ').trim();
+    if (!label) return { lead: '', last: '' };
+    var pos = label.lastIndexOf(' ');
+    if (pos === -1) return { lead: '', last: label };
+    return { lead: label.slice(0, pos), last: label.slice(pos + 1) };
+  }
+
+  function setElementPlainText(el, text) {
+    if (!el) return;
+    var kids = el.childNodes || [];
+    var textNodes = [];
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].nodeType === 3) textNodes.push(kids[i]);
+    }
+    if (textNodes.length) {
+      textNodes[0].textContent = text;
+      for (var j = 1; j < textNodes.length; j++) textNodes[j].textContent = '';
+      return;
+    }
+    if (el.ownerDocument && el.ownerDocument.createTextNode) {
+      el.appendChild(el.ownerDocument.createTextNode(text));
+      return;
+    }
+    el.textContent = text;
+  }
+
+  function labelCopy(el) {
+    if (!el) return '';
+    var parts = [];
+    var labels = el.querySelectorAll ? el.querySelectorAll('label') : [];
+    for (var i = 0; i < labels.length; i++) {
+      var lab = labels[i];
+      if (lab.closest && lab.closest('.admin-info-tip-wrap')) continue;
+      var t = String(lab.textContent || '').replace(/\s+/g, ' ').trim();
+      if (t) parts.push(t);
+    }
+    if (parts.length) return parts.join(' ');
+    return String(el.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Rewrite a tipped label (id on the .admin-label-with-tip wrapper) without
+   * destroying the ⓘ. Used by applyScope for #br-area-label.
+   */
+  function setLabelText(el, text) {
+    if (typeof el === 'string') {
+      el = document.getElementById(el);
+    }
+    if (!el) return '';
+    var parts = splitLabelText(text);
+    var end = el.querySelector ? el.querySelector('.admin-label-with-tip__end') : null;
+    var lastLab = end ? end.querySelector('label') : null;
+    var leadLab = null;
+    var labels = el.querySelectorAll ? el.querySelectorAll('label') : [];
+    for (var i = 0; i < labels.length; i++) {
+      var lab = labels[i];
+      if (lab === lastLab) continue;
+      if (lab.classList && (lab.classList.contains('admin-checkbox') || lab.classList.contains('admin-checkbox__tail'))) continue;
+      leadLab = lab;
+      break;
+    }
+    if (leadLab && lastLab) {
+      if (parts.lead) {
+        setElementPlainText(leadLab, parts.lead);
+        lastLab.textContent = parts.last;
+      } else {
+        setElementPlainText(leadLab, '');
+        lastLab.textContent = parts.last;
+      }
+      return labelCopy(el);
+    }
+    if (lastLab) {
+      lastLab.textContent = text;
+      return labelCopy(el);
+    }
+    if (leadLab) {
+      setElementPlainText(leadLab, text);
+      return labelCopy(el);
+    }
+    return labelCopy(el);
+  }
+
+  function wrapLastAndTip(host, tip, last, tagName, htmlFor, extraClass) {
+    var end = document.createElement('span');
+    end.className = extraClass || 'admin-label-with-tip__end';
+    var lastEl = document.createElement(tagName || 'span');
+    if (htmlFor && lastEl.setAttribute) {
+      lastEl.setAttribute('for', htmlFor);
+      lastEl.htmlFor = htmlFor;
+    }
+    lastEl.textContent = last;
+    if (host.insertBefore) {
+      host.insertBefore(end, tip);
+    } else {
+      host.appendChild(end);
+    }
+    end.appendChild(lastEl);
+    end.appendChild(tip);
+    return end;
   }
 
   function glueLastWord(scope) {
@@ -458,26 +571,26 @@
       if (label.classList && label.classList.contains('admin-checkbox')) return;
       var last = takeLastWord(label);
       if (!last) return;
-      var end = document.createElement('span');
-      end.className = 'admin-label-with-tip__end';
-      var lastLabel = document.createElement(label.tagName === 'LABEL' ? 'label' : 'span');
+      var htmlFor = '';
       if (label.tagName === 'LABEL') {
-        var htmlFor = label.htmlFor || (label.getAttribute && label.getAttribute('for')) || '';
-        if (htmlFor) {
-          lastLabel.htmlFor = htmlFor;
-          if (lastLabel.setAttribute) lastLabel.setAttribute('for', htmlFor);
-        }
-      } else if (label.className) {
-        lastLabel.className = label.className;
+        htmlFor = label.htmlFor || (label.getAttribute && label.getAttribute('for')) || '';
       }
-      lastLabel.textContent = last;
-      if (row.insertBefore) {
-        row.insertBefore(end, tip);
-      } else {
-        row.appendChild(end);
-      }
-      end.appendChild(lastLabel);
-      end.appendChild(tip);
+      wrapLastAndTip(row, tip, last, label.tagName === 'LABEL' ? 'label' : 'span', htmlFor, 'admin-label-with-tip__end');
+    });
+    glueHeadingTips(root);
+  }
+
+  function glueHeadingTips(scope) {
+    var root = scope && scope.querySelectorAll ? scope : document;
+    if (!root.querySelectorAll) return;
+    var sels = 'h1, h2, h3, h4, h5, summary, legend, .br-acc__summary, .admin-accordion__title, .admin-filters-accordion__title, .cp-heading-sm, .cp-heading-md, .q-additional-costs-card__title';
+    root.querySelectorAll(sels).forEach(function (heading) {
+      if (heading.querySelector && heading.querySelector('.admin-label-with-tip__end, .admin-heading-tip')) return;
+      var tip = heading.querySelector ? heading.querySelector(':scope > .admin-info-tip-wrap') : null;
+      if (!tip) return;
+      var last = takeLastWord(heading);
+      if (!last) return;
+      wrapLastAndTip(heading, tip, last, 'span', '', 'admin-label-with-tip__end admin-heading-tip');
     });
   }
 
@@ -575,6 +688,8 @@
     hoist: hoistFromLabels,
     refreshIds: refreshIds,
     refreshRepeatLabels: refreshRepeatLabels,
+    setLabelText: setLabelText,
+    labelCopy: labelCopy,
     closeAll: function () { closeTips(null); },
     positionOpen: repositionOpenTips,
   };

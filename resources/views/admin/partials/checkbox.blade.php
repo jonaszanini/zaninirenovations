@@ -22,8 +22,21 @@
   $hiddenFallback = $hiddenFallback ?? false;
   $attrs = $attrs ?? [];
   $clientFilled = $clientFilled ?? false;
+  $hasInfo = ! empty($info);
+  if ($hasInfo && empty($id)) {
+    $id = 'admin-checkbox-'.str_replace('.', '', uniqid('', true));
+  }
+  $rawLabel = isset($label) ? (string) $label : '';
+  $plainLabel = trim((string) preg_replace('/\s+/u', ' ', strip_tags($rawLabel)));
+  $parts = $hasInfo ? \App\Support\AdminInfoTipInclude::splitLabel($plainLabel) : ['lead' => '', 'last' => ''];
+  $tailWord = $hasInfo ? $parts['last'] : '';
+  $leadHtml = $rawLabel;
+  if ($hasInfo && $tailWord !== '') {
+    $leadHtml = (string) preg_replace('/(?:\s|<[^>]*>)*'.preg_quote($tailWord, '/').'(?:\s|<[^>]*>)*$/u', '', $rawLabel);
+    $leadHtml = rtrim($leadHtml);
+  }
 @endphp
-@if (! empty($info))<span class="admin-label-with-tip">@endif
+@if ($hasInfo)<span class="admin-label-with-tip">@endif
 <label class="{{ $class }}" @if (! empty($id)) for="{{ $id }}" @endif>
   @if ($hiddenFallback)
     <input type="hidden" name="{{ $name }}" value="0">
@@ -40,10 +53,15 @@
     @include('admin.quotations.basement._client_filled', ['force' => true])
   @endif
   @if (isset($label))
-    <span class="admin-checkbox__text">{!! $label !!}</span>
+    <span class="admin-checkbox__text">{!! $leadHtml !!}</span>
   @endif
 </label>
-@if (! empty($info))
-  @include('admin.partials.info_tip', ['tipText' => $info, 'tipLabel' => trim(strip_tags($label ?? 'this field')), 'tipHtml' => null, 'tipId' => null])
+@if ($hasInfo)
+  <span class="admin-label-with-tip__end">
+    @if ($tailWord !== '')
+      <label for="{{ $id }}" class="admin-checkbox__tail">{{ $tailWord }}</label>
+    @endif
+    @include('admin.partials.info_tip', ['tipText' => $info, 'tipLabel' => $plainLabel !== '' ? $plainLabel : 'this field', 'tipHtml' => null, 'tipId' => null])
+  </span>
 </span>
 @endif

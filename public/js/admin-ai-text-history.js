@@ -170,11 +170,12 @@
       backdrop.innerHTML = ''
         + '<div class="admin-ai-text-history-modal" role="dialog" aria-modal="true" aria-labelledby="' + modalId + '-title">'
         + '<div class="admin-ai-text-history-modal__header">'
-        + '<h3 class="admin-ai-text-history-modal__title" id="' + modalId + '-title">' + escapeHtml(title) + '</h3>'
+        + '<h3 class="admin-ai-text-history-modal__title" id="' + modalId + '-title">' + escapeHtml(title)
+        + (window.AdminInfoTip ? (' ' + window.AdminInfoTip.html('Original text and each AI result are saved for this session. Restore any version into the field.', title)) : '')
+        + '</h3>'
         + '<button type="button" class="admin-ai-text-history-modal__close" data-ai-history-close aria-label="Close">&times;</button>'
         + '</div>'
         + '<div class="admin-ai-text-history-modal__body">'
-        + '<p class="admin-form-help admin-ai-text-history-modal__lede">Original text and each AI result are saved for this session. Restore any version into the field.</p>'
         + '<div class="admin-ai-text-history-list"></div>'
         + '</div>'
         + '<div class="admin-ai-text-history-modal__footer">'

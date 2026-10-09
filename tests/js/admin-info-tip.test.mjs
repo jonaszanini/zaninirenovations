@@ -468,4 +468,128 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   assert.equal(btn.getAttribute('aria-label'), 'About Type — Wardrobe');
 }
 
+// --- M18/M22: glue last word; never extract from id'd / JS-updated spans ---
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
+  row.className = 'admin-label-with-tip';
+  const label = document.createElement('label');
+  label.setAttribute('for', 'br-rooms');
+  label.textContent = 'Finished rooms';
+  const { wrap } = makeTip(document, 'admin-info-tip-glue', 'Finished rooms');
+  row.appendChild(label);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  AdminInfoTip.hoist(document);
+  const end = row.querySelector('.admin-label-with-tip__end');
+  assert.ok(end, 'M18: glueLastWord wraps the last word + tip');
+  assert.equal(end.contains(wrap), true);
+  assert.match(String(end.textContent || ''), /rooms/);
+  assert.match(String(label.textContent || ''), /Finished/);
+  assert.ok(!String(label.textContent || '').includes('rooms') || String(label.textContent || '').trim() === 'Finished');
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
+  row.className = 'admin-label-with-tip';
+  const label = document.createElement('label');
+  label.setAttribute('for', 'br-lights');
+  const span = document.createElement('span');
+  span.id = 'br-lights-label';
+  span.textContent = 'Pot lights';
+  label.appendChild(span);
+  const { wrap } = makeTip(document, 'admin-info-tip-lights', 'Ceiling lights');
+  row.appendChild(label);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  AdminInfoTip.hoist(document);
+  assert.equal(span.textContent, 'Pot lights', 'D2/M18: do not glue words out of #br-lights-label');
+  assert.equal(row.querySelector('.admin-label-with-tip__end'), null, 'id\'d child is not split');
+  span.textContent = 'Fixtures';
+  assert.equal(span.textContent, 'Fixtures', 'D2: JS rewrite stays exact');
+  span.textContent = 'Pot lights';
+  assert.equal(span.textContent, 'Pot lights');
+  assert.ok(!String(row.textContent || '').includes('Fixtures lights'));
+  assert.ok(!String(row.textContent || '').includes('Pot lights lights'));
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
+  row.className = 'admin-label-with-tip';
+  const label = document.createElement('label');
+  label.className = 'admin-checkbox';
+  label.textContent = 'Sync prices after import';
+  const { wrap } = makeTip(document, 'admin-info-tip-cb', 'Sync prices after import');
+  row.appendChild(label);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  AdminInfoTip.hoist(document);
+  assert.equal(row.querySelector('.admin-label-with-tip__end'), null, 'M19: glueLastWord skips checkboxes');
+  assert.equal(label.textContent.replace(/\s+/g, ' ').trim(), 'Sync prices after import');
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const heading = document.createElement('h4');
+  heading.textContent = 'Pricing engine — $/sq ft by area';
+  const { wrap } = makeTip(document, 'admin-info-tip-heading-glue', 'Pricing engine — $/sq ft by area');
+  heading.appendChild(wrap);
+  body.appendChild(heading);
+  AdminInfoTip.hoist(document);
+  const end = heading.querySelector('.admin-label-with-tip__end, .admin-heading-tip');
+  assert.ok(end, 'D5/M19: heading last word is glued to the tip');
+  assert.equal(end.contains(wrap), true);
+  assert.match(String(end.textContent || ''), /area/);
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
+  row.className = 'admin-label-with-tip';
+  row.id = 'br-area-label';
+  const lead = document.createElement('label');
+  lead.setAttribute('for', 'br-area');
+  lead.textContent = 'Total basement area (sq';
+  const end = document.createElement('span');
+  end.className = 'admin-label-with-tip__end';
+  const last = document.createElement('label');
+  last.setAttribute('for', 'br-area');
+  last.textContent = 'ft)';
+  const { wrap } = makeTip(document, 'admin-info-tip-area', 'Total basement area (sq ft)');
+  end.appendChild(last);
+  end.appendChild(wrap);
+  row.appendChild(lead);
+  row.appendChild(end);
+  body.appendChild(row);
+  const afterFull = AdminInfoTip.setLabelText(row, 'Total basement area (sq ft)');
+  assert.equal(afterFull, 'Total basement area (sq ft)', 'D1: full basement label stays exact');
+  assert.ok(row.contains(wrap), 'setLabelText must not destroy the tip');
+  const afterBath = AdminInfoTip.setLabelText('br-area-label', 'Bathroom / work area (sq ft)');
+  assert.equal(afterBath, 'Bathroom / work area (sq ft)', 'D1: bathroom preset label is exact');
+  assert.equal(AdminInfoTip.labelCopy(row), 'Bathroom / work area (sq ft)');
+  assert.ok(!String(afterBath).includes('ft) ft)'), 'no leftover ft) from the split lead');
+}
+
+// --- M22: millwork totals bar is reserved like other sticky bars ---
+{
+  const { document, body, listeners, window } = createEnv();
+  window.innerHeight = 844;
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-mw-bar', 'Pieces');
+  bubble._rect = { top: 0, bottom: 120, left: 0, right: 200, width: 200, height: 120 };
+  btn._rect = { top: 800, bottom: 844, left: 40, right: 84, width: 44, height: 44 };
+  const bar = document.createElement('div');
+  bar.className = 'mw-totals-bar';
+  bar._rect = { top: 780, bottom: 844, left: 0, right: 390, width: 390, height: 64 };
+  body.appendChild(bar);
+  body.appendChild(wrap);
+  wrap.classList.add('is-open');
+  btn.setAttribute('aria-expanded', 'true');
+  listeners.window.resize[0].fn();
+  const top = parseInt(bubble.style.top, 10);
+  const floor = 844 - (844 - 780 + 12);
+  assert.ok(top + 120 <= floor + 1, 'M22: bubble stays above .mw-totals-bar, top=' + top + ' floor=' + floor);
+}
+
 console.log('admin-info-tip.test.mjs: ok');

@@ -512,7 +512,10 @@
         wall: 'Basement area (sq ft, optional)',
         custom: 'Work area (sq ft)'
       };
-      areaLabel.textContent = labels[currentPreset()] || labels.full;
+      var nextLabel = labels[currentPreset()] || labels.full;
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.setLabelText === 'function') {
+        window.AdminInfoTip.setLabelText(areaLabel, nextLabel);
+      }
     }
     var baseEl = document.getElementById('br-base');
     if (baseEl) {

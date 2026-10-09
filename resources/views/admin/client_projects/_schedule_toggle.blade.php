@@ -51,10 +51,14 @@
         @error('start_date') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
       <div class="admin-form-group">
-        <label for="{{ $endDateId }}">End date</label>
+        @include('admin.partials.tipped_label', [
+          'label' => 'End date',
+          'for' => $endDateId,
+          'tipText' => 'Same-day start & end is allowed for small projects.',
+          'tipLabel' => 'End date',
+        ])
         <input class="admin-input" type="date" id="{{ $endDateId }}" name="end_date" value="{{ $endDateValue }}">
         @error('end_date') <p class="admin-form-error">{{ $message }}</p> @enderror
-        <p class="admin-form-help">Same-day start &amp; end is allowed for small projects.</p>
       </div>
     </div>
   </div>

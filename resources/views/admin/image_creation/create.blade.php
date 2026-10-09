@@ -42,9 +42,14 @@
     </div>
 
     <div class="admin-form-group">
-      <label for="nb2-image-size">Image size</label>
+      @include('admin.partials.tipped_label', [
+        'label' => 'Image size',
+        'for' => 'nb2-image-size',
+        'tipText' => 'Pixel dimensions update when you change aspect ratio.',
+        'tipLabel' => 'Image size',
+        'tipId' => 'nb2-size-help',
+      ])
       <select id="nb2-image-size" class="admin-input"></select>
-      <p class="admin-form-help" id="nb2-size-help">Pixel dimensions update when you change aspect ratio.</p>
     </div>
 
     <div class="nb2-generate-row">

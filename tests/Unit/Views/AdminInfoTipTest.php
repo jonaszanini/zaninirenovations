@@ -119,6 +119,32 @@ class AdminInfoTipTest extends TestCase
 
         $bare = $compiler->compileString("@include('admin.partials.info_tip')");
         $this->assertStringContainsString('AdminInfoTipInclude::render([])', $bare);
+
+        $tipped = $compiler->compileString("@include('admin.partials.tipped_label', ['label' => 'Town', 'tipText' => 'Short name'])");
+        $this->assertStringContainsString('AdminInfoTipInclude::renderTippedLabel', $tipped);
+    }
+
+    public function test_include_when_and_unless_compile_and_render(): void
+    {
+        $compiler = $this->app['blade.compiler'];
+        $when = $compiler->compileString("@includeWhen(\$ok, 'admin.partials.info_tip', ['tipText' => 'When shown'])");
+        $this->assertStringContainsString('if ($ok)', $when);
+        $this->assertStringContainsString('AdminInfoTipInclude::render', $when);
+        $this->assertStringNotContainsString('$directive', $when);
+
+        $unless = $compiler->compileString("@includeUnless(\$skip, 'admin.partials.info_tip', ['tipText' => 'Unless shown'])");
+        $this->assertStringContainsString('if (! ($skip))', $unless);
+        $this->assertStringContainsString('AdminInfoTipInclude::render', $unless);
+
+        $shown = \Illuminate\Support\Facades\Blade::render("@includeWhen(true, 'admin.partials.info_tip', ['tipText' => 'When shown'])");
+        $this->assertStringContainsString('When shown', $shown);
+        $hidden = \Illuminate\Support\Facades\Blade::render("@includeWhen(false, 'admin.partials.info_tip', ['tipText' => 'When hidden'])");
+        $this->assertStringNotContainsString('When hidden', $hidden);
+
+        $unlessHidden = \Illuminate\Support\Facades\Blade::render("@includeUnless(true, 'admin.partials.info_tip', ['tipText' => 'Unless hidden'])");
+        $this->assertStringNotContainsString('Unless hidden', $unlessHidden);
+        $unlessShown = \Illuminate\Support\Facades\Blade::render("@includeUnless(false, 'admin.partials.info_tip', ['tipText' => 'Unless shown'])");
+        $this->assertStringContainsString('Unless shown', $unlessShown);
     }
 
     public function test_split_label_keeps_the_last_word_for_nowrap(): void

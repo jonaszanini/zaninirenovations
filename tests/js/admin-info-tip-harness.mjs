@@ -76,18 +76,36 @@ function matchSimple(el, raw) {
   return true;
 }
 
+class FakeText {
+  constructor(text, owner) {
+    this.nodeType = 3;
+    this.ownerDocument = owner;
+    this.parentNode = null;
+    this.childNodes = [];
+    this.children = [];
+    this._text = String(text ?? '');
+  }
+  get textContent() {
+    return this._text;
+  }
+  set textContent(v) {
+    this._text = String(v ?? '');
+  }
+}
+
 class FakeEl {
   constructor(tag, owner) {
     this.tagName = String(tag).toUpperCase();
     this.ownerDocument = owner;
     this.children = [];
+    this.childNodes = [];
     this.parentNode = null;
     this.attributes = Object.create(null);
     this._className = '';
     this.classList = new ClassList(this);
     this.style = {};
     this.id = '';
-    this.textContent = '';
+    this._text = '';
     this.nodeType = 1;
     this.value = '';
     this.open = false;
@@ -95,6 +113,26 @@ class FakeEl {
     this._listeners = Object.create(null);
     this.control = null;
     this.htmlFor = '';
+  }
+
+  get textContent() {
+    if (this.childNodes.length) {
+      return this.childNodes.map((c) => (c.textContent ?? '')).join('');
+    }
+    return this._text || '';
+  }
+  set textContent(v) {
+    this._text = String(v ?? '');
+    this.children.forEach((c) => {
+      if (c.parentNode === this) c.parentNode = null;
+    });
+    this.children = [];
+    this.childNodes = [];
+    if (this._text !== '') {
+      const t = new FakeText(this._text, this.ownerDocument);
+      t.parentNode = this;
+      this.childNodes.push(t);
+    }
   }
 
   get className() {
@@ -213,23 +251,37 @@ class FakeEl {
     return i > 0 ? this.parentNode.children[i - 1] : null;
   }
 
-  appendChild(el) {
-    if (el.parentNode) {
-      el.parentNode.children = el.parentNode.children.filter((c) => c !== el);
+  _detach(el) {
+    if (!el || !el.parentNode) return;
+    const parent = el.parentNode;
+    if (Array.isArray(parent.children)) {
+      parent.children = parent.children.filter((c) => c !== el);
     }
+    if (Array.isArray(parent.childNodes)) {
+      parent.childNodes = parent.childNodes.filter((c) => c !== el);
+    }
+    el.parentNode = null;
+  }
+
+  appendChild(el) {
+    this._detach(el);
     el.parentNode = this;
-    this.children.push(el);
+    this.childNodes.push(el);
+    if (el.nodeType === 1) this.children.push(el);
     return el;
   }
 
   insertBefore(el, ref) {
-    if (el.parentNode) {
-      el.parentNode.children = el.parentNode.children.filter((c) => c !== el);
-    }
+    this._detach(el);
     el.parentNode = this;
-    const i = ref ? this.children.indexOf(ref) : -1;
-    if (i === -1) this.children.push(el);
-    else this.children.splice(i, 0, el);
+    const i = ref ? this.childNodes.indexOf(ref) : -1;
+    if (i === -1) this.childNodes.push(el);
+    else this.childNodes.splice(i, 0, el);
+    if (el.nodeType === 1) {
+      const ci = ref && ref.nodeType === 1 ? this.children.indexOf(ref) : -1;
+      if (ci === -1) this.children.push(el);
+      else this.children.splice(ci, 0, el);
+    }
     return el;
   }
 
@@ -261,12 +313,15 @@ class FakeEl {
     const clone = this.ownerDocument.createElement(this.tagName.toLowerCase());
     clone.className = this.className;
     clone.id = this.id;
-    clone.textContent = this.textContent;
     clone.value = this.value;
     Object.assign(clone.attributes, this.attributes);
     clone.htmlFor = this.htmlFor;
-    for (const child of this.children) {
-      clone.appendChild(child.cloneNode());
+    for (const child of this.childNodes) {
+      if (child.nodeType === 3) {
+        clone.appendChild(this.ownerDocument.createTextNode(child.textContent));
+      } else {
+        clone.appendChild(child.cloneNode());
+      }
     }
     return clone;
   }
@@ -286,6 +341,9 @@ export function createEnv() {
       const el = new FakeEl(tag, document);
       document._els.push(el);
       return el;
+    },
+    createTextNode(text) {
+      return new FakeText(text, document);
     },
     getElementById(id) {
       return document._els.find((el) => el.id === id) || null;

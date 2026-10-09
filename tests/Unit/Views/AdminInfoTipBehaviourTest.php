@@ -42,13 +42,19 @@ class AdminInfoTipBehaviourTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('admin-label-with-tip', $html);
+        $this->assertStringContainsString('admin-label-with-tip__end', $html);
+        $this->assertStringContainsString('admin-checkbox__tail', $html);
         $this->assertStringContainsString('aria-label="About Sync prices after import"', $html);
         $this->assertDoesNotMatchRegularExpression(
             '/<label[^>]*>[\s\S]*admin-info-tip-wrap[\s\S]*<\/label>/',
             $html
         );
         $this->assertMatchesRegularExpression(
-            '/<\/label>\s*<span class="admin-info-tip-wrap"/',
+            '/admin-checkbox__tail[^>]*>import<\/label>\s*<span class="admin-info-tip-wrap"/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/admin-checkbox__text[^>]*>\s+/',
             $html
         );
     }
@@ -113,7 +119,16 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('function bindSummaryGuard', $js);
         $this->assertStringContainsString('function refreshRepeatLabels', $js);
         $this->assertStringContainsString('function glueLastWord', $js);
+        $this->assertStringContainsString('function glueHeadingTips', $js);
+        $this->assertStringContainsString('function setLabelText', $js);
+        $this->assertStringContainsString('function skipGlueNode', $js);
+        $this->assertStringContainsString('if (node.id) return true', $js);
+        $this->assertStringContainsString("label.classList.contains('admin-checkbox')) return", $js);
         $this->assertStringContainsString("'.mw-totals-bar'", $js);
+        $this->assertStringContainsString('setLabelText: setLabelText', $js);
+        $basementJs = file_get_contents(public_path('js/admin-basement-quotation.js'));
+        $this->assertStringContainsString('AdminInfoTip.setLabelText', $basementJs);
+        $this->assertStringNotContainsString('areaLabel.textContent', $basementJs);
         $this->assertStringContainsString("document.addEventListener('input'", $js);
         $this->assertStringContainsString("t.classList.contains('sq-work-title')", $js);
         $this->assertStringContainsString('function refreshIds(scope)', $js);
@@ -136,6 +151,22 @@ class AdminInfoTipBehaviourTest extends TestCase
         );
         $this->assertMatchesRegularExpression(
             '/\.admin-label-with-tip\s*>\s*label\.admin-checkbox[^}]*display:\s*inline-flex/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s*\{[^}]*text-indent:\s*-34px/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s*\{[^}]*display:\s*block/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s+\.admin-checkbox__mark\s*\{[^}]*vertical-align:\s*-6px/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-checkbox__tail\s*\{[^}]*white-space:\s*nowrap/',
             $css
         );
         $this->assertMatchesRegularExpression(
@@ -328,5 +359,87 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('larger uploads use the File API', $modify);
         $nb2 = file_get_contents(resource_path('views/admin/image_creation/nano_banana_2.blade.php'));
         $this->assertSame(1, substr_count($nb2, 'label="Nano Banana 2"'));
+    }
+
+    public function test_leftover_static_explainers_live_in_tips(): void
+    {
+        $travel = file_get_contents(resource_path('views/admin/client_projects/_travel_cost.blade.php'));
+        $this->assertStringContainsString('Round trip from your home / office', $travel);
+        $this->assertStringNotContainsString('<p class="admin-form-help">Round trip from your home', $travel);
+
+        $time = file_get_contents(resource_path('views/admin/client_projects/_time.blade.php'));
+        $this->assertStringContainsString('Newest at the top. Tap a row to expand', $time);
+        $this->assertStringNotContainsString('cp-time-saved-help', $time);
+
+        $helper = file_get_contents(resource_path('views/admin/client_projects/_helper_time.blade.php'));
+        $this->assertStringContainsString('Select who may log time here', $helper);
+        $this->assertStringContainsString('Reimburse the helper for meals', $helper);
+        $this->assertStringNotContainsString('<p class="admin-form-help cp-time-saved-help">Select who may log time', $helper);
+        $this->assertStringNotContainsString('<p class="admin-form-help cp-time-saved-help">Reimburse the helper', $helper);
+
+        $town = file_get_contents(resource_path('views/admin/partials/portfolio_town_and_completed.blade.php'));
+        $this->assertStringContainsString('Short name on the public page', $town);
+        $this->assertStringContainsString('newest completion first', $town);
+        $this->assertStringNotContainsString('<p class="admin-form-help">Short name on the public page', $town);
+        $this->assertStringNotContainsString('<p class="admin-form-help">Used to order projects', $town);
+
+        $cat = file_get_contents(resource_path('views/admin/partials/portfolio_category_ai.blade.php'));
+        $this->assertStringContainsString('Sends the title, description, and up to 8 photos', $cat);
+        $this->assertStringNotContainsString('portfolio-category-ai__help', $cat);
+
+        $create = file_get_contents(resource_path('views/admin/image_creation/create.blade.php'));
+        $this->assertStringContainsString("'tipId' => 'nb2-size-help'", $create);
+        $this->assertStringNotContainsString('<p class="admin-form-help" id="nb2-size-help">', $create);
+        $nb2 = file_get_contents(resource_path('views/admin/image_creation/nano_banana_2.blade.php'));
+        $this->assertStringContainsString("'tipId' => 'nb2-size-help'", $nb2);
+        $this->assertStringNotContainsString('<p class="admin-form-help" id="nb2-size-help">', $nb2);
+
+        $sched = file_get_contents(resource_path('views/admin/client_projects/_schedule_toggle.blade.php'));
+        $this->assertStringContainsString('Same-day start & end is allowed for small projects.', $sched);
+        $this->assertStringNotContainsString('<p class="admin-form-help">Same-day start', $sched);
+
+        $history = file_get_contents(public_path('js/admin-ai-text-history.js'));
+        $this->assertStringContainsString('AdminInfoTip.html', $history);
+        $this->assertStringContainsString('Original text and each AI result are saved for this session', $history);
+        $this->assertStringNotContainsString('admin-ai-text-history-modal__lede', $history);
+    }
+
+    public function test_qty_lw_puts_label_id_on_the_wrapper_not_the_lead(): void
+    {
+        $html = view('admin.quotations.basement._qty_lw', [
+            'name' => 'area_sf',
+            'id' => 'br-area',
+            'label' => 'Total basement area (sq ft)',
+            'labelId' => 'br-area-label',
+            'value' => 100,
+            'modeName' => 'qty_dims[area_sf][mode]',
+            'lengthName' => 'qty_dims[area_sf][length_ft]',
+            'widthName' => 'qty_dims[area_sf][width_ft]',
+            'info' => 'Finished floor area.',
+        ])->render();
+
+        $this->assertMatchesRegularExpression(
+            '/<span class="admin-label-with-tip"[^>]*id="br-area-label"/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<label[^>]*id="br-area-label"/',
+            $html
+        );
+        $this->assertStringContainsString('Total basement area (sq', $html);
+        $this->assertStringContainsString('>ft)</label>', $html);
+        $this->assertStringNotContainsString('sq ft) ft)', $html);
+        $this->assertStringContainsString('admin-info-tip-wrap', $html);
+    }
+
+    public function test_electrical_lights_label_keeps_the_full_js_updated_span(): void
+    {
+        $src = file_get_contents(resource_path('views/admin/quotations/basement/_electrical_fields.blade.php'));
+        $this->assertMatchesRegularExpression(
+            '/<span id="br-lights-label">\{\{ \$brVal\(\'lighting_type\', \'spot\'\) === \'fixture\' \? \'Fixtures\' : \'Pot lights\' \}\}<\/span>/',
+            $src
+        );
+        $this->assertStringContainsString('id="br-lights-label"', $src);
+        $this->assertStringNotContainsString('Pot lights lights', $src);
     }
 }

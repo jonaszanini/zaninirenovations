@@ -12,6 +12,8 @@ class AdminInfoTipInclude
 
     public const FIELD_HINT_VIEW = 'admin.client_projects._cp_field_hint';
 
+    public const TIPPED_LABEL_VIEW = 'admin.partials.tipped_label';
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -91,6 +93,32 @@ class AdminInfoTipInclude
     }
 
     /**
+     * Render a label + ⓘ from an explicit data bag only — never a parent Blade scope.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function renderTippedLabel(array $data = []): string
+    {
+        return view(self::TIPPED_LABEL_VIEW, self::tippedLabelBag($data))->render();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function tippedLabelBag(array $data): array
+    {
+        $bag = [];
+        foreach (['label', 'for', 'tipText', 'tipHtml', 'tipLabel', 'tipId', 'required', 'labelId', 'prefixHtml'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $bag[$key] = $data[$key];
+            }
+        }
+
+        return $bag;
+    }
+
+    /**
      * Keep the last word with the ⓘ so two-column labels wrap as
      * "Finished" / "rooms ⓘ" instead of "Finished rooms" / "ⓘ".
      *
@@ -121,12 +149,16 @@ class AdminInfoTipInclude
     {
         $value = self::rewriteIncludeCalls($value, self::INFO_TIP_VIEW, 'render');
         $value = self::rewriteIncludeCalls($value, self::FIELD_HINT_VIEW, 'renderHint');
+        $value = self::rewriteIncludeCalls($value, self::TIPPED_LABEL_VIEW, 'renderTippedLabel');
         $value = self::rewriteWhenUnless($value, 'includeWhen', self::INFO_TIP_VIEW, 'render');
         $value = self::rewriteWhenUnless($value, 'includeWhen', self::FIELD_HINT_VIEW, 'renderHint');
+        $value = self::rewriteWhenUnless($value, 'includeWhen', self::TIPPED_LABEL_VIEW, 'renderTippedLabel');
         $value = self::rewriteWhenUnless($value, 'includeUnless', self::INFO_TIP_VIEW, 'render');
         $value = self::rewriteWhenUnless($value, 'includeUnless', self::FIELD_HINT_VIEW, 'renderHint');
+        $value = self::rewriteWhenUnless($value, 'includeUnless', self::TIPPED_LABEL_VIEW, 'renderTippedLabel');
         $value = self::rewriteIncludeFirst($value, self::INFO_TIP_VIEW, 'render');
         $value = self::rewriteIncludeFirst($value, self::FIELD_HINT_VIEW, 'renderHint');
+        $value = self::rewriteIncludeFirst($value, self::TIPPED_LABEL_VIEW, 'renderTippedLabel');
 
         return $value;
     }
@@ -146,7 +178,7 @@ class AdminInfoTipInclude
 
     private static function rewriteWhenUnless(string $value, string $directive, string $view, string $method): string
     {
-        return self::replaceDirectiveCalls($value, $directive, $view, function (string $args) use ($method, $view) {
+        return self::replaceDirectiveCalls($value, $directive, $view, function (string $args) use ($method, $view, $directive) {
             $parts = self::splitTopLevelArgs($args);
             $condition = trim($parts[0] ?? 'false');
             $data = '[]';

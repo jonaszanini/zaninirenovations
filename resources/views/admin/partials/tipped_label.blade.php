@@ -13,28 +13,33 @@
   @param string      $prefixHtml   Trusted HTML before the lead words (icons)
 --}}
 @php
-  $for = $for ?? '';
-  $label = $label ?? '';
-  $required = $required ?? false;
-  $prefixHtml = $prefixHtml ?? '';
-  $labelId = $labelId ?? null;
+  $defined = \App\Support\AdminInfoTipInclude::tippedLabelBag((isset($__data) && is_array($__data)) ? $__data : []);
+  $for = array_key_exists('for', $defined) ? (string) $defined['for'] : '';
+  $label = array_key_exists('label', $defined) ? (string) $defined['label'] : '';
+  $required = ! empty($defined['required']);
+  $prefixHtml = array_key_exists('prefixHtml', $defined) ? (string) $defined['prefixHtml'] : '';
+  $labelId = array_key_exists('labelId', $defined) && filled($defined['labelId']) ? (string) $defined['labelId'] : null;
+  $tipText = array_key_exists('tipText', $defined) ? $defined['tipText'] : null;
+  $tipHtml = array_key_exists('tipHtml', $defined) ? $defined['tipHtml'] : null;
+  $tipLabel = array_key_exists('tipLabel', $defined) ? $defined['tipLabel'] : $label;
+  $tipId = array_key_exists('tipId', $defined) ? $defined['tipId'] : null;
   $parts = \App\Support\AdminInfoTipInclude::splitLabel(trim(strip_tags((string) $label)));
   $lead = $parts['lead'];
   $last = $parts['last'];
   $forAttr = $for !== '' ? ' for="'.e($for).'"' : '';
-  $idAttr = ! empty($labelId) ? ' id="'.e($labelId).'"' : '';
+  $idAttr = $labelId !== null ? ' id="'.e($labelId).'"' : '';
 @endphp
-<span class="admin-label-with-tip">
+<span class="admin-label-with-tip"{!! $idAttr !!}>
   @if ($lead !== '')
-    <label{!! $forAttr !!}{!! $idAttr !!}>{!! $prefixHtml !!}{{ $lead }}</label>
+    <label{!! $forAttr !!}>{!! $prefixHtml !!}{{ $lead }}</label>
   @endif
   <span class="admin-label-with-tip__end">
-    <label{!! $forAttr !!}@if ($lead === ''){!! $idAttr !!}@endif>{{ $last }}@if ($required)<span class="cp-required">*</span>@endif</label>
+    <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}@if ($required)<span class="cp-required">*</span>@endif</label>
     @include('admin.partials.info_tip', [
-      'tipText' => $tipText ?? null,
-      'tipHtml' => $tipHtml ?? null,
-      'tipLabel' => $tipLabel ?? $label,
-      'tipId' => $tipId ?? null,
+      'tipText' => $tipText,
+      'tipHtml' => $tipHtml,
+      'tipLabel' => $tipLabel,
+      'tipId' => $tipId,
     ])
   </span>
 </span>

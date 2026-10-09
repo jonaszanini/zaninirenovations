@@ -46,7 +46,7 @@ class IsolatingFactory extends Factory
     public function make($view, $data = [], $mergeData = [])
     {
         $name = is_string($view) ? $this->normalizeName($view) : $view;
-        if (in_array($name, [AdminInfoTipInclude::INFO_TIP_VIEW, AdminInfoTipInclude::FIELD_HINT_VIEW], true)) {
+        if (in_array($name, [AdminInfoTipInclude::INFO_TIP_VIEW, AdminInfoTipInclude::FIELD_HINT_VIEW, AdminInfoTipInclude::TIPPED_LABEL_VIEW], true)) {
             $mergeData = [];
             $parsed = $this->parseData($data);
             if (is_array($parsed)) {

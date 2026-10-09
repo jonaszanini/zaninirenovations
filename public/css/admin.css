@@ -1682,6 +1682,54 @@ a.admin-client-link:focus-visible {
 .br-check-stack .admin-label-with-tip > label.admin-checkbox {
   display: inline-flex;
 }
+/* Fix C: hanging indent so the ⓘ stays with the last word inside
+   .admin-form-group, where `label.admin-checkbox { display:flex }` would
+   otherwise park the tip on the next line at 320/390. */
+.admin-label-with-tip:has(> label.admin-checkbox) {
+  display: block;
+  padding-left: 34px;
+  text-indent: -34px;
+  min-height: 44px;
+}
+.admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox,
+.admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox--block,
+.admin-form-group .admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox,
+.admin-form-group .admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox--block,
+.admin-form-group .admin-label-with-tip > label.admin-checkbox,
+.admin-form-group .admin-label-with-tip > label.admin-checkbox--block {
+  display: inline;
+  align-items: unset;
+  margin-bottom: 0;
+  text-indent: 0;
+}
+.admin-label-with-tip:has(> label.admin-checkbox) .admin-checkbox__mark {
+  display: inline-block;
+  vertical-align: -6px;
+  margin-right: 10px;
+  text-indent: 0;
+  flex-shrink: 0;
+}
+.admin-label-with-tip:has(> label.admin-checkbox) .admin-checkbox__text {
+  display: inline;
+  flex: none;
+}
+.admin-label-with-tip:has(> label.admin-checkbox) > .admin-label-with-tip__end {
+  white-space: nowrap;
+  text-indent: 0;
+}
+.admin-checkbox__tail {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-indent: 0;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: normal;
+}
 .admin-label-with-tip__end {
   white-space: nowrap;
 }

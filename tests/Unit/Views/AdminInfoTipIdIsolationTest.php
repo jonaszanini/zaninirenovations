@@ -178,6 +178,43 @@ class AdminInfoTipIdIsolationTest extends TestCase
         );
     }
 
+    public function test_tipped_label_does_not_inherit_parent_tip_html_or_id(): void
+    {
+        $html = \Illuminate\Support\Facades\Blade::render(
+            '@php $tipHtml = "<em>LEAKED HTML</em>"; $tipId = "br-area"; $tipText = "LEAKED TEXT"; $tipLabel = "Leaked"; @endphp'
+            .'@include("admin.partials.tipped_label", ["label" => "Finished area", "for" => "br-area", "tipText" => "Room area help"])'
+            .'<input id="br-area" type="number">'
+        );
+
+        $this->assertStringContainsString('Room area help', $html);
+        $this->assertStringContainsString('About Finished area', $html);
+        $this->assertStringNotContainsString('LEAKED TEXT', $html);
+        $this->assertStringNotContainsString('LEAKED HTML', $html);
+        $this->assertStringNotContainsString('About Leaked', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="br-area"[^>]*admin-info-tip__bubble|admin-info-tip__bubble[^>]*id="br-area"/',
+            $html
+        );
+        $this->assertInputIdResolvesToControl($html, ['br-area']);
+        $this->assertMatchesRegularExpression(
+            '/<span class="admin-label-with-tip"/',
+            $html
+        );
+    }
+
+    public function test_tipped_label_stock_factory_does_not_leak_parent_tip_keys(): void
+    {
+        $html = $this->renderWithStockFactory(
+            '@php $tipHtml = "<em>LEAKED HTML</em>"; $tipId = "br-area"; $tipText = "LEAKED TEXT"; $tipLabel = "Leaked"; @endphp'
+            .'@include("admin.partials.tipped_label", ["label" => "Finished area", "for" => "br-area", "tipText" => "Room area help"])'
+        );
+
+        $this->assertStringContainsString('Room area help', $html);
+        $this->assertStringNotContainsString('LEAKED TEXT', $html);
+        $this->assertStringNotContainsString('LEAKED HTML', $html);
+        $this->assertStringNotContainsString('About Leaked', $html);
+    }
+
     public function test_qty_lw_partial_does_not_put_the_bubble_on_the_input_id(): void
     {
         $html = view('admin.quotations.basement._qty_lw', [
