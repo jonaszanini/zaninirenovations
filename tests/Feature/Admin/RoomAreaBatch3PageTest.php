@@ -35,6 +35,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
             ->getContent();
 
         $this->assertStringContainsString('data-ra-help-pop="kits"', $html);
+        $this->assertStringContainsString('data-ra-toolbar-overflow', $html);
         $this->assertStringContainsString('util-ra--fullpage', $html);
         $this->assertStringContainsString('id="ra-catalog-options"', $html);
         $this->assertStringContainsString('maxlength="120"', $html);
@@ -218,6 +219,11 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString("addEventListener('pageshow'", $js);
         $this->assertStringContainsString('var shiftPan', $js);
         $this->assertStringContainsString('e.shiftKey', $js);
+        $this->assertStringContainsString('Click Save to keep changes', $js);
+        $this->assertStringContainsString('function syncToolbarOverflow(', $js);
+        $this->assertStringContainsString('visibleWrapSize', $js);
+        $inserter = file_get_contents(app_path('Services/RoomAreaQuoteLineInserter.php'));
+        $this->assertStringContainsString('usesCurrentPdfFold()', $inserter);
         $this->assertMatchesRegularExpression(
             '/function deleteCurrentKit\([\s\S]*payload\.ok === false[\s\S]*Kit deleted/',
             $js
@@ -242,7 +248,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('position: absolute', $css);
         $this->assertStringContainsString('min-height: 280px', $css);
         $this->assertMatchesRegularExpression(
-            '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,400}?flex-wrap:\s*wrap/',
+            '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,900}?max-height:\s*calc\(\(var\(--admin-control-height\) \* 2\)/',
             $css
         );
         $this->assertDoesNotMatchRegularExpression(

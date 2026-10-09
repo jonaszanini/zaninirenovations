@@ -67,6 +67,24 @@ const nbspEight = lib.formulaVariablesFromMetrics({ wall_height_ft: '\u00A08', w
 assert.strictEqual(nbspEight.wall_height_ft, 8, 'NBSP before 8 is 8');
 const nbspNine = lib.formulaVariablesFromMetrics({ wall_height_ft: '\u00A09', wall_height: '\u00A09' });
 assert.strictEqual(nbspNine.wall_height_ft, 9, 'NBSP before 9 is 9');
+[
+  { raw: '\u20288', expect: 8, label: 'line separator before 8' },
+  { raw: '\u20299', expect: 9, label: 'paragraph separator before 9' },
+  { raw: '\u00008', expect: 8, label: 'NUL before 8' },
+].forEach(function (row) {
+  const parsed = lib.formulaVariablesFromMetrics({ wall_height_ft: row.raw, wall_height: row.raw });
+  assert.strictEqual(parsed.wall_height_ft, row.expect, row.label);
+});
+const nbspCounts = lib.formulaVariablesFromMetrics({
+  area_sqft: '\u00A0120',
+  inside_area_sqft: '\u00A0118',
+  outside_corners: '\u00A02',
+  inside_corners: '\u00A04',
+});
+assert.strictEqual(nbspCounts.area_sqft, 120, 'NBSP area is 120');
+assert.strictEqual(nbspCounts.inside_area_sqft, 118, 'NBSP inside area is 118');
+assert.strictEqual(nbspCounts.outside_corners, 2, 'NBSP outside corners is 2');
+assert.strictEqual(nbspCounts.inside_corners, 4, 'NBSP inside corners is 4');
 
 const drywall = lib.evaluateAssemblyLine(
   { formula: 'ceil(net_wall_sf * 1.12 / 32)', whole_units: true, unit: 'sheet' },

@@ -1078,7 +1078,7 @@
   };
 
   function normalizeNumericString(value) {
-    return String(value).replace(/[\u00A0\u1680\u180E\u2000-\u200B\u202F\u205F\u3000\uFEFF\u0085]+/g, ' ').trim();
+    return String(value).replace(/[\u0000\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF\u0085]+/g, ' ').trim();
   }
 
   function isPlainFiniteNumber(value) {
@@ -1106,22 +1106,21 @@
 
   function formulaVariablesFromMetrics(metrics) {
     metrics = metrics || {};
-    var floor = Number(metrics.area_sqft != null ? metrics.area_sqft : (metrics.inside_area_sqft != null ? metrics.inside_area_sqft : metrics.floor_sf)) || 0;
-    var insideArea = Number(metrics.inside_area_sqft != null ? metrics.inside_area_sqft : floor) || 0;
-    var netWall = Number(metrics.net_wall_area_sqft != null ? metrics.net_wall_area_sqft : (metrics.wall_area_sqft != null ? metrics.wall_area_sqft : metrics.net_wall_sf)) || 0;
-    var ceiling = Number(metrics.ceiling_area_sqft != null ? metrics.ceiling_area_sqft : (metrics.ceiling_sf != null ? metrics.ceiling_sf : floor)) || 0;
-    var perimeter = Number(metrics.perimeter_lf != null ? metrics.perimeter_lf : metrics.perimeter) || 0;
-    var baseboard = Number(metrics.baseboard_lf != null ? metrics.baseboard_lf : (metrics.baseboard != null ? metrics.baseboard : perimeter)) || 0;
-    var casing = Number(metrics.casing_lf != null ? metrics.casing_lf : metrics.casing) || 0;
-    var doors = Number(metrics.door_count != null ? metrics.door_count : metrics.doors) || 0;
-    var windows = Number(metrics.window_count != null ? metrics.window_count : metrics.windows) || 0;
-    var openings = Number(metrics.opening_count != null ? metrics.opening_count : metrics.openings) || 0;
+    var floor = firstFiniteMetric(metrics, ['area_sqft', 'inside_area_sqft', 'floor_sf'], 0);
+    var insideArea = firstFiniteMetric(metrics, ['inside_area_sqft'], floor);
+    var netWall = firstFiniteMetric(metrics, ['net_wall_area_sqft', 'wall_area_sqft', 'net_wall_sf'], 0);
+    var ceiling = firstFiniteMetric(metrics, ['ceiling_area_sqft', 'ceiling_sf'], floor);
+    var perimeter = firstFiniteMetric(metrics, ['perimeter_lf', 'perimeter'], 0);
+    var baseboard = firstFiniteMetric(metrics, ['baseboard_lf', 'baseboard'], perimeter);
+    var casing = firstFiniteMetric(metrics, ['casing_lf', 'casing'], 0);
+    var doors = firstFiniteMetric(metrics, ['door_count', 'doors'], 0);
+    var windows = firstFiniteMetric(metrics, ['window_count', 'windows'], 0);
+    var openings = firstFiniteMetric(metrics, ['opening_count', 'openings'], 0);
     var height = firstFiniteMetric(metrics, ['wall_height_ft', 'wall_height', 'height'], 8);
-    var boxes = Number(metrics.flooring_boxes != null ? metrics.flooring_boxes : metrics.boxes) || 0;
-    var waste = Number(metrics.flooring_waste_percent != null ? metrics.flooring_waste_percent : metrics.waste);
-    if (!isFinite(waste)) waste = 10;
-    var outside = Number(metrics.outside_corners != null ? metrics.outside_corners : metrics.outside_corner_count) || 0;
-    var insideCorners = Number(metrics.inside_corners != null ? metrics.inside_corners : metrics.inside_corner_count) || 0;
+    var boxes = firstFiniteMetric(metrics, ['flooring_boxes', 'boxes'], 0);
+    var waste = firstFiniteMetric(metrics, ['flooring_waste_percent', 'waste'], 10);
+    var outside = firstFiniteMetric(metrics, ['outside_corners', 'outside_corner_count'], 0);
+    var insideCorners = firstFiniteMetric(metrics, ['inside_corners', 'inside_corner_count'], 0);
     return {
       floor_sf: floor, floor: floor, area_sqft: floor, inside_area_sqft: insideArea,
       net_wall_sf: netWall, net_wall: netWall, net_wall_area_sqft: netWall, wall_sf: netWall, wall_area_sqft: netWall,

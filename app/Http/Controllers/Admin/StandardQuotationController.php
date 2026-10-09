@@ -427,6 +427,7 @@ class StandardQuotationController extends Controller
             'assembly_line_id' => ['nullable', 'integer', 'min:1'],
             'assembly_layout_id' => ['nullable', 'string', 'max:40'],
             'assembly_covered_layouts' => ['nullable', 'string'],
+            'assembly_quoted_at' => ['nullable', 'string', 'max:40'],
         ];
 
         $data = $request->validate(array_merge([
@@ -456,6 +457,7 @@ class StandardQuotationController extends Controller
             'works.*.materials.*.assembly_line_id' => $materialRowRules['assembly_line_id'],
             'works.*.materials.*.assembly_layout_id' => $materialRowRules['assembly_layout_id'],
             'works.*.materials.*.assembly_covered_layouts' => $materialRowRules['assembly_covered_layouts'],
+            'works.*.materials.*.assembly_quoted_at' => $materialRowRules['assembly_quoted_at'],
             'works.*.labour_use_fixed' => ['nullable'],
             'works.*.labour_fixed_amount' => ['nullable', 'numeric', 'min:0'],
             'works.*.labour_fixed_hst_included' => ['nullable'],
@@ -624,6 +626,10 @@ class StandardQuotationController extends Controller
             $covered = trim((string) $covered);
             if ($covered !== '') {
                 $mapped['assembly_covered_layouts'] = $covered;
+            }
+            $quotedAt = trim((string) ($m['assembly_quoted_at'] ?? ''));
+            if ($quotedAt !== '') {
+                $mapped['assembly_quoted_at'] = mb_substr($quotedAt, 0, 40);
             }
 
             return $mapped;

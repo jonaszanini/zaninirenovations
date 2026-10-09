@@ -98,6 +98,46 @@
       <div class="util-ra-stage">
         <div class="util-ra-stage__main">
           <div class="util-ra-canvas-card">
+            <div class="util-ra-canvas-toolbar">
+              <div class="util-ra-toolbar__groups">
+                <div class="util-ra-tool-group util-ra-tool-group--draw">
+                  <div class="util-ra-tool-group__head">
+                    <span class="util-ra-tool-group__label">Draw / Edit</span>
+                    <div class="util-ra-help"><button type="button" class="util-ra-help-q" data-ra-help-pop="draw" aria-label="About draw">ⓘ</button></div>
+                  </div>
+                  <div class="util-ra-tool-group__actions">
+                    <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-close-shape aria-label="Close shape">C</button>
+                  </div>
+                </div>
+                <div class="util-ra-tool-group util-ra-tool-group--measure">
+                  <div class="util-ra-tool-group__head">
+                    <span class="util-ra-tool-group__label">Measure / Units</span>
+                    <div class="util-ra-help"><button type="button" class="util-ra-help-q" data-ra-help-pop="measure" aria-label="About measure">ⓘ</button></div>
+                  </div>
+                </div>
+                <div class="util-ra-tool-group util-ra-tool-group--plan">
+                  <div class="util-ra-tool-group__head">
+                    <span class="util-ra-tool-group__label">Plan</span>
+                    <div class="util-ra-help"><button type="button" class="util-ra-help-q" data-ra-help-pop="plan" aria-label="About plan">ⓘ</button></div>
+                  </div>
+                </div>
+                <div class="util-ra-tool-group util-ra-tool-group--room-tools">
+                  <div class="util-ra-tool-group__head">
+                    <span class="util-ra-tool-group__label">Room tools</span>
+                    <div class="util-ra-help"><button type="button" class="util-ra-help-q" data-ra-help-pop="room-tools" aria-label="About room tools">ⓘ</button></div>
+                  </div>
+                  <div class="util-ra-tool-group__actions">
+                    <select class="admin-input util-ra-dim-mode" data-ra-dimensions-mode aria-label="Dimension labels">
+                      <option value="all" selected>All dims</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-toolbar-overflow-btn" data-ra-toolbar-overflow hidden aria-label="More tools" aria-expanded="false" aria-controls="ra-toolbar-overflow">
+                <span class="util-ra-more-btn-label">More</span>
+              </button>
+              <div class="util-ra-toolbar-overflow" id="ra-toolbar-overflow" data-ra-toolbar-overflow-menu hidden></div>
+            </div>
             <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
               <div id="ra-konva-container" class="util-ra-konva"></div>
               <p class="util-ra-feedback" data-ra-feedback hidden aria-live="polite"></p>

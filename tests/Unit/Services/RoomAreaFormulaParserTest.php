@@ -84,6 +84,25 @@ class RoomAreaFormulaParserTest extends TestCase
             'wall_height' => "\u{00A0}9",
         ]);
         $this->assertSame(9.0, $nbspNine['wall_height_ft']);
+
+        foreach (["\u{2028}8", "\u{2029}9", "\0"."8"] as $raw) {
+            $parsed = RoomAreaFormulaParser::variablesFromMetrics([
+                'wall_height_ft' => $raw,
+                'wall_height' => $raw,
+            ]);
+            $this->assertSame((float) preg_replace('/\D+/', '', $raw), $parsed['wall_height_ft'], json_encode($raw));
+        }
+
+        $nbspCounts = RoomAreaFormulaParser::variablesFromMetrics([
+            'area_sqft' => "\u{00A0}120",
+            'inside_area_sqft' => "\u{00A0}118",
+            'outside_corners' => "\u{00A0}2",
+            'inside_corners' => "\u{00A0}4",
+        ]);
+        $this->assertSame(120.0, $nbspCounts['area_sqft']);
+        $this->assertSame(118.0, $nbspCounts['inside_area_sqft']);
+        $this->assertSame(2.0, $nbspCounts['outside_corners']);
+        $this->assertSame(4.0, $nbspCounts['inside_corners']);
     }
 
     public function test_parser_source_does_not_use_eval(): void

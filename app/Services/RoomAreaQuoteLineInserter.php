@@ -98,42 +98,6 @@ class RoomAreaQuoteLineInserter
     }
 
     /**
-     * Update quantity / covered rooms on existing material rows, then recompute totals.
-     *
-     * @param  list<array{work: int, material: int, qty?: float, covered?: string}>  $patches
-     */
-    public function patchMaterials(
-        StandardQuotation $quote,
-        array $patches,
-        string $clientName,
-        string $displayTitle,
-        ?ClientProject $clientProject = null,
-    ): StandardQuotation {
-        if ($patches === []) {
-            return $quote;
-        }
-
-        return DB::transaction(function () use ($quote, $patches, $clientName, $displayTitle, $clientProject) {
-            $works = $quote->resolvedWorks();
-            foreach ($patches as $patch) {
-                $workIndex = (int) ($patch['work'] ?? -1);
-                $materialIndex = (int) ($patch['material'] ?? -1);
-                if (! isset($works[$workIndex]['materials'][$materialIndex]) || ! is_array($works[$workIndex]['materials'][$materialIndex])) {
-                    continue;
-                }
-                if (array_key_exists('qty', $patch)) {
-                    $works[$workIndex]['materials'][$materialIndex]['quantity'] = (float) $patch['qty'];
-                }
-                if (array_key_exists('covered', $patch)) {
-                    $works[$workIndex]['materials'][$materialIndex]['assembly_covered_layouts'] = (string) $patch['covered'];
-                }
-            }
-
-            return $this->persistComputedWorks($quote, $works, $clientName, $displayTitle, $clientProject);
-        });
-    }
-
-    /**
      * @param  list<array<string, mixed>>  $works
      */
     private function persistComputedWorks(
@@ -149,7 +113,8 @@ class RoomAreaQuoteLineInserter
             (float) ($quote->contingency_percent ?? 0),
             (bool) ($quote->include_labour_hst ?? true),
             (bool) ($quote->include_building ?? false),
-            (float) ($quote->building_labor_percent ?? 0)
+            (float) ($quote->building_labor_percent ?? 0),
+            $quote->usesCurrentPdfFold()
         );
 
         $worksForStorage = [];
@@ -277,6 +242,10 @@ class RoomAreaQuoteLineInserter
         $covered = trim((string) $covered);
         if ($covered !== '') {
             $row['assembly_covered_layouts'] = $covered;
+        }
+        $quotedAt = trim((string) ($from['assembly_quoted_at'] ?? ''));
+        if ($quotedAt !== '') {
+            $row['assembly_quoted_at'] = mb_substr($quotedAt, 0, 40);
         }
 
         return $row;

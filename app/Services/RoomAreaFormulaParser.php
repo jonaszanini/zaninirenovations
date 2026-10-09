@@ -44,21 +44,21 @@ class RoomAreaFormulaParser
      */
     public static function variablesFromMetrics(array $metrics): array
     {
-        $floor = (float) ($metrics['area_sqft'] ?? $metrics['inside_area_sqft'] ?? $metrics['floor_sf'] ?? 0);
-        $inside = (float) ($metrics['inside_area_sqft'] ?? $floor);
-        $netWall = (float) ($metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft'] ?? $metrics['net_wall_sf'] ?? 0);
-        $ceiling = (float) ($metrics['ceiling_area_sqft'] ?? $metrics['ceiling_sf'] ?? $floor);
-        $perimeter = (float) ($metrics['perimeter_lf'] ?? $metrics['perimeter'] ?? 0);
-        $baseboard = (float) ($metrics['baseboard_lf'] ?? $metrics['baseboard'] ?? $perimeter);
-        $casing = (float) ($metrics['casing_lf'] ?? $metrics['casing'] ?? 0);
-        $doors = (float) ($metrics['door_count'] ?? $metrics['doors'] ?? 0);
-        $windows = (float) ($metrics['window_count'] ?? $metrics['windows'] ?? 0);
-        $openings = (float) ($metrics['opening_count'] ?? $metrics['openings'] ?? 0);
+        $floor = self::firstFiniteMetric($metrics, ['area_sqft', 'inside_area_sqft', 'floor_sf'], 0.0);
+        $inside = self::firstFiniteMetric($metrics, ['inside_area_sqft'], $floor);
+        $netWall = self::firstFiniteMetric($metrics, ['net_wall_area_sqft', 'wall_area_sqft', 'net_wall_sf'], 0.0);
+        $ceiling = self::firstFiniteMetric($metrics, ['ceiling_area_sqft', 'ceiling_sf'], $floor);
+        $perimeter = self::firstFiniteMetric($metrics, ['perimeter_lf', 'perimeter'], 0.0);
+        $baseboard = self::firstFiniteMetric($metrics, ['baseboard_lf', 'baseboard'], $perimeter);
+        $casing = self::firstFiniteMetric($metrics, ['casing_lf', 'casing'], 0.0);
+        $doors = self::firstFiniteMetric($metrics, ['door_count', 'doors'], 0.0);
+        $windows = self::firstFiniteMetric($metrics, ['window_count', 'windows'], 0.0);
+        $openings = self::firstFiniteMetric($metrics, ['opening_count', 'openings'], 0.0);
         $height = self::firstFiniteMetric($metrics, ['wall_height_ft', 'wall_height', 'height'], 8.0);
-        $boxes = (float) ($metrics['flooring_boxes'] ?? $metrics['boxes'] ?? 0);
-        $waste = (float) ($metrics['flooring_waste_percent'] ?? $metrics['waste'] ?? 10);
-        $outsideCorners = (float) ($metrics['outside_corners'] ?? $metrics['outside_corner_count'] ?? 0);
-        $insideCorners = (float) ($metrics['inside_corners'] ?? $metrics['inside_corner_count'] ?? 0);
+        $boxes = self::firstFiniteMetric($metrics, ['flooring_boxes', 'boxes'], 0.0);
+        $waste = self::firstFiniteMetric($metrics, ['flooring_waste_percent', 'waste'], 10.0);
+        $outsideCorners = self::firstFiniteMetric($metrics, ['outside_corners', 'outside_corner_count'], 0.0);
+        $insideCorners = self::firstFiniteMetric($metrics, ['inside_corners', 'inside_corner_count'], 0.0);
 
         return [
             'floor_sf' => $floor,
@@ -120,7 +120,7 @@ class RoomAreaFormulaParser
 
     public static function normalizeNumericString(string $value): string
     {
-        $value = preg_replace('/[\x{00A0}\x{1680}\x{180E}\x{2000}-\x{200B}\x{202F}\x{205F}\x{3000}\x{FEFF}\x{0085}]+/u', ' ', $value) ?? $value;
+        $value = preg_replace('/[\x00\x{00A0}\x{1680}\x{180E}\x{2000}-\x{200B}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}\x{0085}]+/u', ' ', $value) ?? $value;
 
         return trim($value);
     }

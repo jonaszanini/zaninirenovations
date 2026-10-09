@@ -205,6 +205,10 @@ class StandardQuotationCalculator
             if ($covered !== '') {
                 $clean['assembly_covered_layouts'] = $covered;
             }
+            $quotedAt = trim((string) ($row['assembly_quoted_at'] ?? ''));
+            if ($quotedAt !== '') {
+                $clean['assembly_quoted_at'] = mb_substr($quotedAt, 0, 40);
+            }
             $cleanMaterials[] = $clean;
         }
 
@@ -320,7 +324,8 @@ class StandardQuotationCalculator
         float $contingencyPercent = 10.0,
         bool $includeLabourHst = true,
         bool $includeBuilding = false,
-        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT
+        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT,
+        ?bool $useCurrentPdfFold = null
     ): array {
         if ($works === []) {
             $works = [[

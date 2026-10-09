@@ -18,6 +18,11 @@
       && window.matchMedia('(max-width: 900px)').matches;
   }
 
+  function isCompactToolbar() {
+    return isFullPage() && typeof window.matchMedia === 'function'
+      && window.matchMedia('(min-width: 901px) and (max-width: 1024px)').matches;
+  }
+
   function raAll(sel) {
     return Array.prototype.slice.call(root.querySelectorAll(sel));
   }
@@ -302,6 +307,8 @@
     moreToggle: root.querySelector('[data-ra-more-toggle]'),
     moreClose: root.querySelector('[data-ra-more-close]'),
     moreSheet: root.querySelector('[data-ra-more-sheet]'),
+    toolbarOverflow: root.querySelector('[data-ra-toolbar-overflow]'),
+    toolbarOverflowMenu: root.querySelector('[data-ra-toolbar-overflow-menu]'),
     sheetTotal: root.querySelector('[data-ra-sheet-total]'),
     areaName: root.querySelector('[data-ra-area-name]'),
     areaNameWrap: root.querySelector('[data-ra-area-name-wrap]'),
@@ -1964,13 +1971,32 @@
     }
   }
 
-  function measureWrapWidth() {
-    var wrap = els.canvasWrap;
-    if (!wrap) return 0;
+  function canvasGutterInsets(wrap) {
+    wrap = wrap || els.canvasWrap;
+    if (!wrap) return { top: 0, right: 0, bottom: 0, left: 0 };
+    var cs = window.getComputedStyle(wrap);
+    return {
+      top: parseFloat(cs.paddingTop) || 0,
+      right: parseFloat(cs.paddingRight) || 0,
+      bottom: parseFloat(cs.paddingBottom) || 0,
+      left: parseFloat(cs.paddingLeft) || 0
+    };
+  }
+
+  function visibleWrapSize(wrap) {
+    wrap = wrap || els.canvasWrap;
+    if (!wrap) return { w: 0, h: 0 };
     var rect = wrap.getBoundingClientRect();
-    var w = Math.floor(rect.width);
-    if (w < 1) w = Math.floor(wrap.clientWidth);
-    return w > 0 ? w : 0;
+    var inset = canvasGutterInsets(wrap);
+    var w = Math.floor(rect.width - inset.left - inset.right);
+    var h = Math.floor(rect.height - inset.top - inset.bottom);
+    if (w < 1) w = Math.floor(wrap.clientWidth - inset.left - inset.right);
+    if (h < 1) h = Math.floor(wrap.clientHeight - inset.top - inset.bottom);
+    return { w: Math.max(0, w), h: Math.max(0, h) };
+  }
+
+  function measureWrapWidth() {
+    return visibleWrapSize().w;
   }
 
   function isNarrowCanvas(width) {
@@ -2004,10 +2030,10 @@
       return { w: state.viewportW || 900, h: state.viewportH || 640 };
     }
     if (isFullPage()) {
-      var wrapH = Math.floor(wrap.getBoundingClientRect().height || wrap.clientHeight);
+      var vis = visibleWrapSize(wrap);
       return {
-        w: Math.max(MIN_CANVAS_W, wrapW),
-        h: Math.max(1, wrapH || 240)
+        w: Math.max(MIN_CANVAS_W, vis.w || wrapW),
+        h: Math.max(1, vis.h || 240)
       };
     }
     var w = wrapW;
@@ -4448,9 +4474,9 @@
       if (state.stage.height() > 1) vh = state.stage.height();
     }
     if (els.canvasWrap) {
-      var rect = els.canvasWrap.getBoundingClientRect();
-      if (rect.width > 1) vw = Math.floor(rect.width);
-      if (rect.height > 1) vh = Math.floor(rect.height);
+      var vis = visibleWrapSize(els.canvasWrap);
+      if (vis.w > 1) vw = vis.w;
+      if (vis.h > 1) vh = vis.h;
     }
     return { w: Math.max(1, vw), h: Math.max(1, vh) };
   }
@@ -4837,6 +4863,7 @@
   }
 
   function resizeStage() {
+    syncToolbarOverflow();
     if (!state.stage || !els.canvasWrap) return;
     var prevW = state.viewportW || state.stage.width();
     var prevH = state.viewportH || state.stage.height();
@@ -4845,12 +4872,12 @@
     var worldCy = prevScale > 0 ? (prevH / 2 - state.viewport.y) / prevScale : 0;
 
     var vp = getViewportDimensions();
-    var wrapRect = els.canvasWrap.getBoundingClientRect();
-    if (wrapRect.width > 1) {
-      vp.w = isFullPage() ? Math.max(MIN_CANVAS_W, Math.floor(wrapRect.width)) : Math.floor(wrapRect.width);
+    var vis = visibleWrapSize(els.canvasWrap);
+    if (vis.w > 1) {
+      vp.w = isFullPage() ? Math.max(MIN_CANVAS_W, vis.w) : vis.w;
     }
-    if (isFullPage() && wrapRect.height > 1) {
-      vp.h = Math.max(1, Math.floor(wrapRect.height));
+    if (isFullPage() && vis.h > 1) {
+      vp.h = Math.max(1, vis.h);
     }
     if (vp.w === state.viewportW && vp.h === state.viewportH
       && state.stage.width() === vp.w && state.stage.height() === vp.h) {
@@ -4884,7 +4911,10 @@
 
   function scheduleStageResize() {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(resizeStage, 120);
+    resizeTimer = setTimeout(function () {
+      syncToolbarOverflow();
+      resizeStage();
+    }, 120);
   }
 
   function initStage() {
@@ -8119,7 +8149,7 @@
       requestAnimationFrame(refitCanvasToLayout);
       captureSavedSnapshot();
       renderKits();
-      setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
+      setFeedback('Editing "' + currentRoom.name + '". Click Save to keep changes.', false);
     });
   }
 
@@ -9466,6 +9496,31 @@
       e.preventDefault();
       first.focus();
     }
+  }
+
+  function setToolbarOverflowOpen(open) {
+    if (!els.toolbarOverflow || !els.toolbarOverflowMenu) return;
+    var showMenu = !!open && isCompactToolbar();
+    els.toolbarOverflow.setAttribute('aria-expanded', showMenu ? 'true' : 'false');
+    els.toolbarOverflow.classList.toggle('is-active', showMenu);
+    if (showMenu) els.toolbarOverflowMenu.removeAttribute('hidden');
+    else els.toolbarOverflowMenu.setAttribute('hidden', '');
+  }
+
+  function syncToolbarOverflow() {
+    if (!els.toolbarOverflow || !els.toolbarOverflowMenu) return;
+    var groups = root.querySelector('.util-ra-toolbar__groups');
+    var extras = root.querySelectorAll('.util-ra-tool-group--room-tools, .util-ra-tool-group--plan');
+    var compact = isCompactToolbar();
+    show(els.toolbarOverflow, compact);
+    extras.forEach(function (el) {
+      if (compact && el.parentElement !== els.toolbarOverflowMenu) {
+        els.toolbarOverflowMenu.appendChild(el);
+      } else if (!compact && groups && el.parentElement !== groups) {
+        groups.appendChild(el);
+      }
+    });
+    if (!compact) setToolbarOverflowOpen(false);
   }
 
   function setMoreOpen(open) {
@@ -10981,6 +11036,15 @@
         toggleTemplatesPopover();
       });
     });
+    raAll('[data-ra-toolbar-overflow]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isCompactToolbar()) return;
+        var open = !!(els.toolbarOverflowMenu && els.toolbarOverflowMenu.hasAttribute('hidden'));
+        setToolbarOverflowOpen(open);
+      });
+    });
     raAll('[data-ra-more-toggle]').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.preventDefault();
@@ -11023,6 +11087,12 @@
       }
       if (templatesPopoverOpen() && !(els.templatesRoot && els.templatesRoot.contains(e.target))) {
         closeTemplatesPopover();
+      }
+      if (els.toolbarOverflowMenu && !els.toolbarOverflowMenu.hasAttribute('hidden')) {
+        var overflowBtn = els.toolbarOverflow;
+        if (!(els.toolbarOverflowMenu.contains(e.target) || (overflowBtn && overflowBtn.contains(e.target)))) {
+          setToolbarOverflowOpen(false);
+        }
       }
     });
 
@@ -11839,6 +11909,7 @@
     bindEvents();
     bindViewportEvents();
     bindTemplatesPopoverFollow();
+    syncToolbarOverflow();
     renderObjectPalette();
     syncUnitSystemUi();
     updateLiveUnitLabels();

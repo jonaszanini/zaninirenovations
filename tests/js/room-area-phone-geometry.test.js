@@ -50,8 +50,8 @@ function assertCssGeometry() {
     '320 status sits on the canvas bottom edge'
   );
   assert.ok(
-    /@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,400}?flex-wrap:\s*wrap/.test(CSS),
-    '1024 toolbar wraps instead of sideways scroll'
+    /@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,900}?max-height:\s*calc\(\(var\(--admin-control-height\) \* 2\)/.test(CSS),
+    '1024 toolbar caps at two control rows'
   );
 }
 
@@ -119,10 +119,19 @@ function startStaticServer(konvaFile) {
 function readCameraScript() {
   return () => {
     const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
-    const wrap = wrapEl.getBoundingClientRect();
     const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
     const world = stage && stage.getLayers()[0] && stage.getLayers()[0].getChildren()[0];
     if (!wrapEl || !stage || !world) return null;
+    const wrap = wrapEl.getBoundingClientRect();
+    const cs = getComputedStyle(wrapEl);
+    const pad = {
+      top: parseFloat(cs.paddingTop) || 0,
+      right: parseFloat(cs.paddingRight) || 0,
+      bottom: parseFloat(cs.paddingBottom) || 0,
+      left: parseFloat(cs.paddingLeft) || 0,
+    };
+    const visW = wrap.width - pad.left - pad.right;
+    const visH = wrap.height - pad.top - pad.bottom;
     const scale = world.scaleX();
     const pos = world.position();
     return {
@@ -130,10 +139,14 @@ function readCameraScript() {
       zoomPercent: Math.round(scale * 100),
       x: pos.x,
       y: pos.y,
-      worldCx: (wrap.width / 2 - pos.x) / scale,
-      worldCy: (wrap.height / 2 - pos.y) / scale,
+      worldCx: (visW / 2 - pos.x) / scale,
+      worldCy: (visH / 2 - pos.y) / scale,
       wrapW: wrap.width,
       wrapH: wrap.height,
+      visW,
+      visH,
+      padTop: pad.top,
+      padBottom: pad.bottom,
       stageW: stage.width(),
       stageH: stage.height(),
     };
@@ -218,6 +231,98 @@ async function assertExtremePanClamped(page, label) {
   assertRoomStaysOnScreen(clamped, label);
 }
 
+function readVisibleRoomGeometryScript() {
+  return () => {
+    const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
+    const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
+    const world = stage && stage.getLayers()[0] && stage.getLayers()[0].getChildren()[0];
+    const feedback = document.querySelector('[data-ra-feedback]');
+    if (!wrapEl || !stage || !world) return null;
+    const wrap = wrapEl.getBoundingClientRect();
+    const cs = getComputedStyle(wrapEl);
+    const pad = {
+      top: parseFloat(cs.paddingTop) || 0,
+      right: parseFloat(cs.paddingRight) || 0,
+      bottom: parseFloat(cs.paddingBottom) || 0,
+      left: parseFloat(cs.paddingLeft) || 0,
+    };
+    const vis = {
+      left: wrap.left + pad.left,
+      right: wrap.right - pad.right,
+      top: wrap.top + pad.top,
+      bottom: wrap.bottom - pad.bottom,
+      width: wrap.width - pad.left - pad.right,
+      height: wrap.height - pad.top - pad.bottom,
+    };
+    const stageBox = stage.container().getBoundingClientRect();
+    const scale = world.scaleX();
+    const pos = world.position();
+    const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
+    const screen = verts.map((v) => ({
+      x: stageBox.left + pos.x + v.x * scale,
+      y: stageBox.top + pos.y + v.y * scale,
+    }));
+    const minX = Math.min.apply(null, screen.map((p) => p.x));
+    const maxX = Math.max.apply(null, screen.map((p) => p.x));
+    const minY = Math.min.apply(null, screen.map((p) => p.y));
+    const maxY = Math.max.apply(null, screen.map((p) => p.y));
+    const fb = feedback && !feedback.hasAttribute('hidden') ? feedback.getBoundingClientRect() : null;
+    const texts = [];
+    world.find('Text').forEach((node) => {
+      const box = node.getClientRect({ skipTransform: false });
+      texts.push({
+        left: stageBox.left + box.x,
+        right: stageBox.left + box.x + box.width,
+        top: stageBox.top + box.y,
+        bottom: stageBox.top + box.y + box.height,
+        text: node.text ? node.text() : '',
+      });
+    });
+    return {
+      wrap: { left: wrap.left, right: wrap.right, top: wrap.top, bottom: wrap.bottom, width: wrap.width, height: wrap.height },
+      vis,
+      pad,
+      stage: { w: stage.width(), h: stage.height(), left: stageBox.left, top: stageBox.top, width: stageBox.width, height: stageBox.height },
+      room: { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY },
+      scale,
+      pos,
+      firstFit: document.documentElement.classList.contains('is-geom-first-fit'),
+      feedback: (feedback && feedback.textContent) || '',
+      feedbackBox: fb && { left: fb.left, right: fb.right, top: fb.top, bottom: fb.bottom, width: fb.width, height: fb.height },
+      labels: texts,
+    };
+  };
+}
+
+function rectsOverlap(a, b, slop) {
+  const pad = slop == null ? 0.5 : slop;
+  return a.left < b.right - pad && a.right > b.left + pad && a.top < b.bottom - pad && a.bottom > b.top + pad;
+}
+
+function assertVisibleCanvasGeometry(geom, label) {
+  assert.ok(geom, label + ' geometry exists');
+  assert.ok(Math.abs(geom.stage.w - geom.vis.width) < 3, label + ' stage width matches visible canvas: ' + JSON.stringify({ stage: geom.stage, vis: geom.vis }));
+  assert.ok(Math.abs(geom.stage.h - geom.vis.height) < 3, label + ' stage height matches visible canvas: ' + JSON.stringify({ stage: geom.stage, vis: geom.vis }));
+  assert.ok(
+    geom.room.minX >= geom.vis.left - 2 && geom.room.maxX <= geom.vis.right + 2
+      && geom.room.minY >= geom.vis.top - 2 && geom.room.maxY <= geom.vis.bottom + 2,
+    label + ' room stays on the visible canvas: ' + JSON.stringify(geom)
+  );
+  if (geom.feedbackBox && geom.feedbackBox.height > 2) {
+    const roomBox = {
+      left: geom.room.minX,
+      right: geom.room.maxX,
+      top: geom.room.minY,
+      bottom: geom.room.maxY,
+    };
+    assert.ok(!rectsOverlap(geom.feedbackBox, roomBox, 1), label + ' status does not cover the room: ' + JSON.stringify({ feedback: geom.feedbackBox, room: roomBox }));
+    geom.labels.forEach((box, i) => {
+      if (box.right - box.left < 2 || box.bottom - box.top < 2) return;
+      assert.ok(!rectsOverlap(geom.feedbackBox, box, 1), label + ' status does not cover label ' + i + ': ' + JSON.stringify({ feedback: geom.feedbackBox, label: box }));
+    });
+  }
+}
+
 function assertRoomStaysOnScreen(cam, label) {
   const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
   const xs = verts.map((v) => cam.x + v.x * cam.scale);
@@ -227,7 +332,7 @@ function assertRoomStaysOnScreen(cam, label) {
   const minY = Math.min.apply(null, ys);
   const maxY = Math.max.apply(null, ys);
   assert.ok(
-    maxX > 8 && minX < cam.wrapW - 8 && maxY > 8 && minY < cam.wrapH - 8,
+    maxX > 8 && minX < (cam.visW || cam.wrapW) - 8 && maxY > 8 && minY < (cam.visH || cam.wrapH) - 8,
     label + ' keeps part of the room on screen: ' + JSON.stringify({ cam, minX, maxX, minY, maxY })
   );
 }
@@ -262,6 +367,17 @@ async function waitForStableCanvasFit(page, options) {
     const feedback = document.querySelector('[data-ra-feedback]');
     if (!wrapEl || !canvas || !world) return false;
     const wrap = wrapEl.getBoundingClientRect();
+    const cs = getComputedStyle(wrapEl);
+    const padL = parseFloat(cs.paddingLeft) || 0;
+    const padR = parseFloat(cs.paddingRight) || 0;
+    const padT = parseFloat(cs.paddingTop) || 0;
+    const padB = parseFloat(cs.paddingBottom) || 0;
+    const vis = {
+      left: wrap.left + padL,
+      right: wrap.right - padR,
+      top: wrap.top + padT,
+      bottom: wrap.bottom - padB,
+    };
     if (wrap.width <= minW || wrap.width >= maxW) return false;
     if (needGrown && !document.documentElement.classList.contains('is-geom-grown')) return false;
     if (needFirstFitGone && document.documentElement.classList.contains('is-geom-first-fit')) return false;
@@ -269,16 +385,17 @@ async function waitForStableCanvasFit(page, options) {
     const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
     const scale = world.scaleX();
     const pos = world.position();
+    const stageBox = window.Konva.stages[0].container().getBoundingClientRect();
     const screen = verts.map((v) => ({
-      x: wrap.left + pos.x + v.x * scale,
-      y: wrap.top + pos.y + v.y * scale,
+      x: stageBox.left + pos.x + v.x * scale,
+      y: stageBox.top + pos.y + v.y * scale,
     }));
     const minX = Math.min.apply(null, screen.map((p) => p.x));
     const maxX = Math.max.apply(null, screen.map((p) => p.x));
     const minY = Math.min.apply(null, screen.map((p) => p.y));
     const maxY = Math.max.apply(null, screen.map((p) => p.y));
-    const inside = minX >= wrap.left - 2 && maxX <= wrap.right + 2
-      && minY >= wrap.top - 2 && maxY <= wrap.bottom + 2;
+    const inside = minX >= vis.left - 2 && maxX <= vis.right + 2
+      && minY >= vis.top - 2 && maxY <= vis.bottom + 2;
     const signature = [
       wrap.width.toFixed(2),
       wrap.height.toFixed(2),
@@ -443,31 +560,7 @@ async function measureViewports() {
       firstFitGone: true,
       editing: true,
     });
-    const fitted = await page.evaluate(() => {
-      const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
-      const wrap = wrapEl.getBoundingClientRect();
-      const stage = window.Konva.stages[0];
-      const world = stage.getLayers()[0].getChildren()[0];
-      const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
-      const scale = world ? world.scaleX() : stage.scaleX();
-      const pos = world ? world.position() : stage.position();
-      const screen = verts.map((v) => ({
-        x: wrap.left + pos.x + v.x * scale,
-        y: wrap.top + pos.y + v.y * scale,
-      }));
-      const minX = Math.min.apply(null, screen.map((p) => p.x));
-      const maxX = Math.max.apply(null, screen.map((p) => p.x));
-      const minY = Math.min.apply(null, screen.map((p) => p.y));
-      const maxY = Math.max.apply(null, screen.map((p) => p.y));
-      return {
-        wrap: { left: wrap.left, right: wrap.right, top: wrap.top, bottom: wrap.bottom, width: wrap.width, height: wrap.height },
-        room: { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY },
-        scale,
-        pos,
-        firstFit: document.documentElement.classList.contains('is-geom-first-fit'),
-        feedback: (document.querySelector('[data-ra-feedback]') || {}).textContent || '',
-      };
-    });
+    const fitted = await page.evaluate(readVisibleRoomGeometryScript());
     assert.ok(!fitted.firstFit, 'stale 900×640 first-fit wrap must be released before asserting');
     assert.ok(fitted.wrap.width >= 200 && fitted.wrap.width < 500, 'canvas wrap is the 390 layout: ' + fitted.wrap.width);
     assert.ok(fitted.scale > 1.2 && fitted.scale < 2.85, 'saved room was re-fitted after wrap shrink, scale=' + fitted.scale);
@@ -489,6 +582,75 @@ async function measureViewports() {
       fitted.room.width >= fitted.wrap.width * 0.72,
       'saved room fills most of the wrap width at 390: ' + fitted.room.width + ' vs ' + fitted.wrap.width
     );
+    assertVisibleCanvasGeometry(fitted, '390×720');
+    assert.ok(/Click Save/.test(fitted.feedback), 'editing status names the Save button: ' + fitted.feedback);
+
+    const viewportCases = [
+      { width: 320, height: 568 },
+      { width: 320, height: 720 },
+      { width: 360, height: 640 },
+      { width: 375, height: 667 },
+      { width: 390, height: 664 },
+      { width: 414, height: 736 },
+      { width: 1024, height: 768, desktop: true },
+    ];
+    for (const vp of viewportCases) {
+      await page.setViewport({
+        width: vp.width,
+        height: vp.height,
+        deviceScaleFactor: 1,
+        isMobile: !vp.desktop,
+        hasTouch: !vp.desktop,
+      });
+      await waitForStableCanvasFit(page, {
+        minWidth: vp.desktop ? 200 : 160,
+        maxWidth: vp.desktop ? 1600 : 500,
+        firstFitGone: true,
+        editing: true,
+      });
+      const geom = await page.evaluate(readVisibleRoomGeometryScript());
+      assertVisibleCanvasGeometry(geom, vp.width + '×' + vp.height);
+      if (vp.width === 1024) {
+        const bar = await page.evaluate(() => {
+          const toolbar = document.querySelector('.util-ra-canvas-toolbar');
+          const overflow = document.querySelector('[data-ra-toolbar-overflow]');
+          const menu = document.querySelector('[data-ra-toolbar-overflow-menu]');
+          const helps = Array.from(document.querySelectorAll('.util-ra-canvas-toolbar .util-ra-help')).map((el) => {
+            const r = el.getBoundingClientRect();
+            return { width: r.width, height: r.height, top: r.top };
+          });
+          const barBox = toolbar.getBoundingClientRect();
+          return {
+            height: barBox.height,
+            overflowShown: !!(overflow && !overflow.hasAttribute('hidden') && overflow.getBoundingClientRect().width > 8),
+            extrasInMenu: !!(menu && menu.querySelector('.util-ra-tool-group--room-tools')),
+            helpOnOwnRow: helps.some((h) => h.height > 8 && h.width > 8),
+          };
+        });
+        assert.ok(bar.height <= 108, '1024 toolbar stays within two rows: ' + bar.height);
+        assert.ok(bar.overflowShown, '1024 overflow More button is visible');
+        assert.ok(bar.extrasInMenu, '1024 extras live in the overflow menu');
+        assert.ok(!bar.helpOnOwnRow, '1024 toolbar ⓘ are not on their own row');
+      }
+    }
+
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true, editing: true });
+    await page.evaluate(() => {
+      const handle = document.querySelector('[data-ra-sheet-handle]');
+      if (handle) handle.click();
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('[data-room-area]');
+      return !!(root && root.classList.contains('is-sheet-expanded'));
+    }, { timeout: 8000 });
+    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true, editing: true });
+    const sheetOpen = await page.evaluate(readVisibleRoomGeometryScript());
+    assertVisibleCanvasGeometry(sheetOpen, '390×844 sheet open');
+    await page.evaluate(() => {
+      const handle = document.querySelector('[data-ra-sheet-handle]');
+      if (handle) handle.click();
+    });
 
     const layoutChangeHtml = fs.readFileSync(path.join(__dirname, 'fixtures/room-area-layout-change-fit.html'), 'utf8');
     assert.ok(!/width:\s*900px/.test(layoutChangeHtml), 'layout-change fixture must not force 900px');
@@ -523,27 +685,43 @@ async function measureViewports() {
       throw new Error('layout-change wait failed: ' + JSON.stringify(dump) + ' — ' + err.message);
     }
     const relayout = await page.evaluate(() => {
-      const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
-      const wrap = wrapEl.getBoundingClientRect();
-      const stage = window.Konva.stages[0];
-      const world = stage.getLayers()[0].getChildren()[0];
-      const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
-      const scale = world ? world.scaleX() : stage.scaleX();
-      const pos = world ? world.position() : stage.position();
-      const screen = verts.map((v) => ({
-        x: wrap.left + pos.x + v.x * scale,
-        y: wrap.top + pos.y + v.y * scale,
-      }));
-      const minX = Math.min.apply(null, screen.map((p) => p.x));
-      const maxX = Math.max.apply(null, screen.map((p) => p.x));
-      const minY = Math.min.apply(null, screen.map((p) => p.y));
-      const maxY = Math.max.apply(null, screen.map((p) => p.y));
-      return {
-        wrap: { left: wrap.left, right: wrap.right, top: wrap.top, bottom: wrap.bottom, width: wrap.width, height: wrap.height },
-        room: { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY },
-        scale,
-        grown: document.documentElement.classList.contains('is-geom-grown'),
-      };
+      const data = (function () {
+        const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
+        const stage = window.Konva.stages[0];
+        const world = stage.getLayers()[0].getChildren()[0];
+        const wrap = wrapEl.getBoundingClientRect();
+        const cs = getComputedStyle(wrapEl);
+        const padL = parseFloat(cs.paddingLeft) || 0;
+        const padR = parseFloat(cs.paddingRight) || 0;
+        const padT = parseFloat(cs.paddingTop) || 0;
+        const padB = parseFloat(cs.paddingBottom) || 0;
+        const vis = {
+          left: wrap.left + padL,
+          right: wrap.right - padR,
+          top: wrap.top + padT,
+          bottom: wrap.bottom - padB,
+        };
+        const stageBox = stage.container().getBoundingClientRect();
+        const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
+        const scale = world ? world.scaleX() : stage.scaleX();
+        const pos = world ? world.position() : stage.position();
+        const screen = verts.map((v) => ({
+          x: stageBox.left + pos.x + v.x * scale,
+          y: stageBox.top + pos.y + v.y * scale,
+        }));
+        const minX = Math.min.apply(null, screen.map((p) => p.x));
+        const maxX = Math.max.apply(null, screen.map((p) => p.x));
+        const minY = Math.min.apply(null, screen.map((p) => p.y));
+        const maxY = Math.max.apply(null, screen.map((p) => p.y));
+        return {
+          wrap: { left: wrap.left, right: wrap.right, top: wrap.top, bottom: wrap.bottom, width: wrap.width, height: wrap.height },
+          vis,
+          room: { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY },
+          scale,
+          grown: document.documentElement.classList.contains('is-geom-grown'),
+        };
+      })();
+      return data;
     });
     assert.ok(relayout.grown, 'layout-change wrap must grow after the first fallback fit');
     assert.ok(relayout.wrap.width >= 360 && relayout.wrap.width <= 420, 'layout-change wrap is a real 390 box: ' + relayout.wrap.width);
@@ -574,7 +752,9 @@ async function measureViewports() {
         const stage = window.Konva.stages[0];
         if (!wrap || !stage) return false;
         const wrapW = wrap.getBoundingClientRect().width;
-        return wrapW < prevW - 40 && Math.abs(stage.width() - wrapW) < 2;
+        const cs = getComputedStyle(wrap);
+        const visW = wrapW - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+        return wrapW < prevW - 40 && Math.abs(stage.width() - visW) < 3;
       }, { timeout: 8000 }, embedZoomed.wrapW);
     } catch (err) {
       const dump = await page.evaluate(readCameraScript());
@@ -595,7 +775,9 @@ async function measureViewports() {
       const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
       if (window.innerWidth !== 1240 || !wrap || !stage) return false;
       const wrapW = wrap.getBoundingClientRect().width;
-      return Math.abs(stage.width() - prevStageW) > 1 && Math.abs(stage.width() - wrapW) < 2;
+      const cs = getComputedStyle(wrap);
+      const visW = wrapW - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+      return Math.abs(stage.width() - prevStageW) > 1 && Math.abs(stage.width() - visW) < 3;
     }, { timeout: 8000 }, deskZoomed.stageW);
     const deskAfterResize = await page.evaluate(readCameraScript());
     assertCameraHeld(deskZoomed, deskAfterResize, '1280 window resize');
@@ -610,7 +792,9 @@ async function measureViewports() {
         const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
         if (!root || !root.classList.contains('is-side-collapsed') || !wrap || !stage) return false;
         const wrapW = wrap.getBoundingClientRect().width;
-        return Math.abs(wrapW - prevW) > 8 && Math.abs(stage.width() - wrapW) < 2;
+        const cs = getComputedStyle(wrap);
+        const visW = wrapW - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+        return Math.abs(wrapW - prevW) > 8 && Math.abs(stage.width() - visW) < 3;
       }, { timeout: 8000 }, deskAfterResize.wrapW);
     } catch (err) {
       const dump = await page.evaluate(readCameraScript());
@@ -642,7 +826,9 @@ async function measureViewports() {
         const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
         if (!root || !root.classList.contains('is-sheet-expanded') || !wrap || !stage) return false;
         const wrapH = wrap.getBoundingClientRect().height;
-        return Math.abs(wrapH - prevH) > 8 && Math.abs(stage.height() - wrapH) < 2;
+        const cs = getComputedStyle(wrap);
+        const visH = wrapH - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+        return Math.abs(wrapH - prevH) > 8 && Math.abs(stage.height() - visH) < 3;
       }, { timeout: 8000 }, phoneZoomed.wrapH);
     } catch (err) {
       const dump = await page.evaluate(() => {
