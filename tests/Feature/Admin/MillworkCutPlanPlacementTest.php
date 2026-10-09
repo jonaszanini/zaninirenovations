@@ -8,6 +8,7 @@ use App\Models\MillworkQuotation;
 use App\Services\MillworkQuotationCalculator;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
+use Tests\Support\AssertsAdminInfoTipAria;
 
 /**
  * Tester PR A acceptance check 5: red banner, PDF 422, no file.
@@ -15,6 +16,7 @@ use Tests\Support\ActsAsAdmin;
 class MillworkCutPlanPlacementTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
+    use AssertsAdminInfoTipAria;
 
     public function test_oversized_shelf_preview_lists_unplaced_parts(): void
     {
@@ -596,9 +598,9 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             ->assertSee('Business contact')
             ->assertSee('admin-info-tip', false)
             ->assertSee('Shown to clients on quote accept pages and the blocked PDF page.')
-            ->assertSee('aria-label="Business contact"', false)
-            ->assertDontSee('About business contact')
+            ->assertDontSee('aria-label="About About ', false)
             ->getContent();
+        $this->assertAdminInfoTipAriaLabel($html, 'Business contact');
 
         $this->assertStringNotContainsString(
             '<p class="admin-form-help">Shown to clients on quote accept pages and the blocked PDF page.</p>',
