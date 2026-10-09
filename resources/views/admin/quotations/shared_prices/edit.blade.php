@@ -40,7 +40,8 @@
 .sp-group { margin-bottom: 1rem; }
 /* Tighter card padding so Rate / work-item / trailing all fit at 1024. */
 @media (min-width: 901px) {
-  details.sp-group.admin-card { padding: 1rem 0.65rem; }
+  details.sp-group.admin-card { padding: 1rem 0.5rem; }
+  .sp-group .admin-table-scroll { overflow-x: hidden; }
 }
 .sp-group__summary {
   font-weight: 600;
@@ -66,7 +67,9 @@
  */
 .sp-table {
   width: 100%;
-  border-collapse: collapse;
+  max-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.85rem;
 }
 .sp-table thead,
@@ -74,39 +77,44 @@
   display: block;
   width: 100%;
 }
-.sp-table thead tr,
-.sp-table tbody tr {
-  display: grid;
-  grid-template-columns:
-    minmax(9rem, 1.4fr)
-    minmax(6.5rem, 6.75rem)
-    minmax(5.25rem, 5.5rem)
-    minmax(3.25rem, 3.75rem)
-    minmax(5.25rem, 5.5rem)
-    minmax(5.75rem, 0.65fr)
-    6.75rem;
-  column-gap: 0.3rem;
-  align-items: center;
-  width: 100%;
+@media (min-width: 901px) {
+  .sp-table thead tr,
+  .sp-table tbody tr {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1.1fr)
+      minmax(6.5rem, 6.75rem)
+      minmax(4.6rem, 4.85rem)
+      minmax(2.85rem, 3.1rem)
+      minmax(4.85rem, 5.1rem)
+      minmax(7.5rem, 1.2fr)
+      7.75rem;
+    column-gap: 0.2rem;
+    align-items: center;
+    width: 100%;
+  }
 }
 .sp-table th,
 .sp-table td {
   display: block;
   min-width: 0;
-  padding: 0.4rem 0.15rem;
-  border: none;
+  padding: 0.4rem 0.1rem;
+  border: 0;
+  box-shadow: none;
+  background-image: none;
 }
 .sp-col-label,
 .sp-col-name {
   overflow: hidden;
 }
-.sp-table thead tr {
-  border-bottom: 1px solid var(--admin-border);
+.sp-col-trailing {
+  overflow: visible;
 }
+.sp-table thead tr,
 .sp-table tbody tr {
-  border-bottom: 1px solid var(--admin-border);
+  box-shadow: inset 0 -1px 0 var(--admin-border);
 }
-.sp-table tbody tr:last-child { border-bottom: none; }
+.sp-table tbody tr:last-child { box-shadow: none; }
 .sp-table th {
   text-align: left;
   font-size: 0.65rem;
@@ -132,25 +140,28 @@
 .sp-col-price .sp-input {
   width: 100%;
   min-width: 0;
-  padding-left: 0.3rem;
-  padding-right: 0.3rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
   box-sizing: border-box;
   font-variant-numeric: tabular-nums;
 }
 .sp-col-unit .sp-input {
   width: 100%;
   min-width: 0;
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
   box-sizing: border-box;
 }
 
+.sp-col-label input[type="hidden"] { display: none !important; }
 .sp-work {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 0.1rem;
   min-width: 0;
+  border: 0;
+  box-shadow: none;
 }
 .sp-work-label {
   font-weight: 500;
@@ -186,7 +197,7 @@
   position: relative;
 }
 .sp-col-sell .sp-input {
-  padding-right: 1.35rem;
+  padding-right: 1.15rem;
 }
 .sp-col-sell .admin-info-tip {
   position: absolute;
@@ -213,11 +224,11 @@
 }
 .sp-consumers {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 2px;
-  min-width: 0;
+  gap: 3px;
+  flex-shrink: 0;
 }
 .sp-catalog-btn {
   display: inline-flex;
@@ -263,7 +274,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.15rem 0.4rem;
+  flex-shrink: 0;
+  padding: 0.2rem 0.4rem;
   font-size: 0.55rem;
   font-weight: 600;
   line-height: 1;
@@ -271,6 +283,37 @@
   color: var(--admin-primary);
   border-radius: 3px;
   white-space: nowrap;
+}
+.sp-chip--more {
+  position: relative;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sp-chip-more__tip {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  min-width: 7.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  box-shadow: var(--admin-shadow-sm);
+}
+.sp-chip--more:hover .sp-chip-more__tip,
+.sp-chip--more:focus .sp-chip-more__tip,
+.sp-chip--more[aria-expanded="true"] .sp-chip-more__tip {
+  display: block;
 }
 
 /* Compact inputs */
@@ -352,7 +395,7 @@
     justify-content: flex-start;
     flex-wrap: nowrap;
   }
-  .sp-consumers { flex: 1 1 auto; }
+  .sp-consumers { flex: 0 0 auto; }
 
   .sp-col-label {
     font-weight: 600;
@@ -470,6 +513,12 @@
                   $isArea = $work->isPricedPerArea();
                   $effective = $isArea ? null : \App\Services\SharedWorkCatalog::effectiveSellRate($work);
                   $consumers = is_array($work->consumers) ? $work->consumers : [];
+                  $consumerLabels = [];
+                  foreach ($consumers as $consumer) {
+                      $consumerLabels[] = \App\Services\SharedWorkCatalog::CONSUMER_LABELS[$consumer] ?? $consumer;
+                  }
+                  $firstConsumer = $consumerLabels[0] ?? null;
+                  $extraConsumerCount = max(count($consumerLabels) - 1, 0);
                   $areaPrice = old('works.'.$work->id.'.flat_rate');
                   if ($areaPrice === null) {
                       $derivedArea = \App\Services\SharedWorkCatalog::unitDisplayRate($work);
@@ -569,9 +618,18 @@
                         ])
                       </div>
                       <div class="sp-consumers">
-                        @foreach ($consumers as $consumer)
-                          <span class="sp-chip">{{ \App\Services\SharedWorkCatalog::CONSUMER_LABELS[$consumer] ?? $consumer }}</span>
-                        @endforeach
+                        @if ($firstConsumer)
+                          <span class="sp-chip">{{ $firstConsumer }}</span>
+                        @endif
+                        @if ($extraConsumerCount > 0)
+                          <button type="button" class="sp-chip sp-chip--more"
+                                  aria-expanded="false"
+                                  title="{{ implode(', ', $consumerLabels) }}"
+                                  aria-label="Also used by {{ implode(', ', array_slice($consumerLabels, 1)) }}">
+                            +{{ $extraConsumerCount }}
+                            <span class="sp-chip-more__tip" role="tooltip">{{ implode(', ', $consumerLabels) }}</span>
+                          </button>
+                        @endif
                       </div>
                     </div>
                   </td>
@@ -588,6 +646,24 @@
     document.querySelectorAll('.sp-mat-name-input').forEach(function(input) {
       input.addEventListener('input', function() {
         this.title = this.value;
+      });
+    });
+    document.querySelectorAll('.sp-chip--more').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var open = this.getAttribute('aria-expanded') === 'true';
+        document.querySelectorAll('.sp-chip--more').forEach(function(other) {
+          other.setAttribute('aria-expanded', 'false');
+        });
+        this.setAttribute('aria-expanded', open ? 'false' : 'true');
+      });
+    });
+    document.addEventListener('click', function(e) {
+      if (e.target.closest && e.target.closest('.sp-chip--more')) {
+        return;
+      }
+      document.querySelectorAll('.sp-chip--more').forEach(function(btn) {
+        btn.setAttribute('aria-expanded', 'false');
       });
     });
   </script>

@@ -27,6 +27,7 @@ class SharedPricesLayoutTest extends IntegrationTestCase
             ->assertSee('class="sp-work-label"', false)
             ->assertSee('class="sp-work-meta"', false)
             ->assertSee('class="sp-chip"', false)
+            ->assertSee('sp-chip--more', false)
             ->assertSee('cp-money-input', false)
             ->getContent();
 
@@ -48,6 +49,9 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('align-items: center', $html);
         $this->assertStringContainsString('inline-flex', $html);
         $this->assertStringContainsString('minmax(6.5rem, 6.75rem)', $html);
-        $this->assertStringContainsString('minmax(5.75rem, 0.65fr)', $html);
+        $this->assertStringContainsString('minmax(7.5rem, 1.2fr)', $html);
+        $this->assertStringContainsString('7.75rem;', $html);
+        $this->assertStringContainsString('sp-chip-more__tip', $html);
+        $this->assertStringContainsString('+2', $html);
     }
 }
