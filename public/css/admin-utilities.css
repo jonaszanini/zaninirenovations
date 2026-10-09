@@ -6527,7 +6527,20 @@ body:has(.util-ra-guide) {
 }
 
 .util-ra-more-sheet {
-  display: contents;
+  display: none;
+}
+
+@media (min-width: 901px) {
+  .util-ra-more-sheet {
+    display: contents;
+  }
+
+  .util-ra-more-sheet__chrome,
+  .util-ra-more-help,
+  .util-ra-more-block__title,
+  .util-ra-more-btn-label {
+    display: none !important;
+  }
 }
 
 .util-ra-more-sheet__chrome,
@@ -6619,10 +6632,10 @@ body:has(.util-ra-guide) {
     position: absolute;
     top: 0;
     right: 44px;
-    width: 1.75rem;
+    width: 2.5rem;
     height: 100%;
     pointer-events: none;
-    background: linear-gradient(to right, transparent, var(--admin-surface));
+    background: linear-gradient(to right, transparent 0%, var(--admin-surface) 72%);
   }
 
   .util-ra--fullpage .util-ra-phone-bar__scroll > .admin-btn,
@@ -6662,6 +6675,10 @@ body:has(.util-ra-guide) {
     display: none;
   }
 
+  .util-ra--fullpage:not(.is-more-open) .util-ra-more-sheet {
+    display: none !important;
+  }
+
   .util-ra--fullpage .util-ra-more-sheet {
     display: none;
     position: fixed;
@@ -6670,7 +6687,7 @@ body:has(.util-ra-guide) {
     bottom: 0;
     top: auto;
     z-index: 90;
-    max-height: min(72vh, calc(100% - 120px));
+    max-height: min(58vh, calc(100% - 168px));
     overflow: auto;
     flex-direction: column;
     gap: 0.65rem;
@@ -6680,10 +6697,12 @@ body:has(.util-ra-guide) {
     border-top: 1px solid var(--admin-border);
     box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.18);
     overflow-x: hidden;
+    overflow-anchor: none;
+    justify-content: flex-start;
   }
 
   .util-ra--fullpage.is-more-open .util-ra-more-sheet {
-    display: flex;
+    display: flex !important;
   }
 
   .util-ra--fullpage .util-ra-more-sheet__chrome {
@@ -6768,13 +6787,31 @@ body:has(.util-ra-guide) {
     padding: 0 0.75rem;
   }
 
-  .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-unit-system,
-  .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-more-sheet__zoom {
+  .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-unit-system {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.35rem;
     width: 100%;
+    min-width: 0;
+  }
+
+  .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-more-sheet__zoom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    gap: 0.35rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-more-sheet__zoom .util-ra-zoom-label {
+    grid-column: 1 / -1;
+    font-weight: 700;
+  }
+
+  .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-more-sheet__zoom .admin-btn.util-ra-icon-btn {
+    width: auto;
     min-width: 0;
   }
 

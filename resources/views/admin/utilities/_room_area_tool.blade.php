@@ -334,9 +334,6 @@
               <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-templates-toggle aria-label="Room templates" aria-expanded="false" aria-controls="ra-templates-popover">
                 <i class="fa fa-clone" aria-hidden="true"></i>
               </button>
-              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-reset aria-label="Fit drawing in view">
-                <i class="fa fa-compress" aria-hidden="true"></i>
-              </button>
             </div>
             <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-phone-bar__more" data-ra-more-toggle aria-label="More tools" aria-expanded="false" aria-controls="ra-more-sheet">
               <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
@@ -368,6 +365,10 @@
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-100 aria-label="Reset zoom to 100%">
                     <i class="fa fa-search" aria-hidden="true"></i>
                     <span class="util-ra-more-btn-label">Reset 100%</span>
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-reset aria-label="Fit drawing in view">
+                    <i class="fa fa-compress" aria-hidden="true"></i>
+                    <span class="util-ra-more-btn-label">Fit</span>
                   </button>
                 </div>
               </div>

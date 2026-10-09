@@ -47,7 +47,7 @@ async function visibleBox(page, selector) {
     const el = Array.from(document.querySelectorAll(sel)).find((node) => {
       if (node.hidden) return false;
       const cs = getComputedStyle(node);
-      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return false;
       const r = node.getBoundingClientRect();
       return r.width > 2 && r.height > 2;
     });
@@ -60,13 +60,17 @@ async function visibleBox(page, selector) {
 
 async function tap(page, selector) {
   await page.waitForFunction((sel) => {
-    return Array.from(document.querySelectorAll(sel)).some((node) => {
+    const el = Array.from(document.querySelectorAll(sel)).find((node) => {
       if (node.hidden) return false;
       const cs = getComputedStyle(node);
-      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return false;
       const r = node.getBoundingClientRect();
       return r.width > 2 && r.height > 2;
     });
+    if (!el) return false;
+    el.scrollIntoView({ block: 'center', inline: 'nearest' });
+    const r = el.getBoundingClientRect();
+    return r.width > 2 && r.height > 2 && r.top < window.innerHeight && r.bottom > 0;
   }, { timeout: 8000 }, selector);
   const box = await visibleBox(page, selector);
   if (!box) throw new Error('no box for ' + selector);
@@ -98,6 +102,56 @@ async function setTheme(page, mode) {
   }, mode);
 }
 
+async function closeMore(page) {
+  await page.evaluate(() => {
+    const root = document.querySelector('[data-room-area]');
+    if (root) root.classList.remove('is-more-open');
+    const sheet = document.querySelector('[data-ra-more-sheet]');
+    if (sheet) {
+      sheet.style.setProperty('display', 'none', 'important');
+      sheet.scrollTop = 0;
+    }
+    const feedback = document.querySelector('[data-ra-feedback]');
+    if (feedback) {
+      feedback.hidden = true;
+      feedback.textContent = '';
+    }
+  });
+  await delay(150);
+}
+
+async function openMore(page) {
+  await page.evaluate(() => {
+    const root = document.querySelector('[data-room-area]');
+    const sheet = document.querySelector('[data-ra-more-sheet]');
+    if (root) root.classList.add('is-more-open');
+    if (!sheet) return;
+    sheet.style.removeProperty('display');
+  });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.evaluate(() => {
+    const sheet = document.querySelector('[data-ra-more-sheet]');
+    if (sheet) sheet.scrollTop = 0;
+  });
+  await delay(150);
+}
+
+async function openTemplates(page) {
+  await page.evaluate(() => {
+    const root = document.querySelector('[data-room-area]');
+    const sheet = document.querySelector('[data-ra-more-sheet]');
+    if (root) root.classList.add('is-more-open');
+    if (sheet) sheet.style.removeProperty('display');
+  });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.evaluate(() => {
+    const sheet = document.querySelector('[data-ra-more-sheet]');
+    const sec = document.querySelector('[data-ra-more-templates]');
+    if (sheet && sec) sheet.scrollTop = sec.offsetTop;
+  });
+  await delay(150);
+}
+
 async function resetEditor(page) {
   await page.evaluate(() => {
     try {
@@ -119,29 +173,26 @@ async function resetEditor(page) {
 
 async function applyLTemplate(page) {
   const phone = page.viewport() && page.viewport().width <= 500;
-  if (phone) {
-    await tap(page, '[data-ra-phone-bar] [data-ra-templates-toggle]');
-    await delay(250);
-  } else {
-    const open = await page.evaluate(() => {
-      const pop = document.querySelector('[data-ra-templates-popover]');
-      return pop && !pop.hidden;
-    });
-    if (!open) await tap(page, '[data-ra-templates-toggle]');
-    await delay(200);
-  }
-  await tap(page, '[data-ra-template="l"]');
+  await page.evaluate((isPhone) => {
+    const root = document.querySelector('[data-room-area]');
+    const sheet = document.querySelector('[data-ra-more-sheet]');
+    const pop = document.querySelector('[data-ra-templates-popover]');
+    if (isPhone && root) root.classList.add('is-more-open');
+    if (isPhone && sheet) sheet.removeAttribute('hidden');
+    if (pop) pop.removeAttribute('hidden');
+    const btn = document.querySelector('[data-ra-template="l"]');
+    if (!btn) return;
+    btn.scrollIntoView({ block: 'center', inline: 'nearest' });
+    btn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    btn.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+    btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  }, !!phone);
   await delay(250);
   await page.waitForFunction(() => {
     const undo = document.querySelector('[data-ra-undo-vertex]');
     return undo && !undo.disabled;
   }, { timeout: 8000 });
-  if (phone) {
-    await page.evaluate(() => {
-      const root = document.querySelector('[data-room-area]');
-      if (root) root.classList.remove('is-more-open');
-    });
-  }
+  if (phone) await closeMore(page);
 }
 
 async function prepareScene(page, opts) {
@@ -164,7 +215,10 @@ async function prepareScene(page, opts) {
     }, opts.dimMode);
   }
   if (opts.metric) {
-    await tap(page, '[data-ra-unit-system="metric"]');
+    await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('[data-ra-unit-system="metric"]')).find((n) => n.getBoundingClientRect().width > 2) || document.querySelector('[data-ra-unit-system="metric"]');
+      if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
     await delay(80);
     await page.evaluate(() => {
       const height = document.querySelector('[data-ra-wall-height]');
@@ -221,50 +275,30 @@ async function main() {
   await phone.evaluate(() => window.dispatchEvent(new Event('resize')));
   await delay(250);
   await prepareScene(phone, { dimMode: 'all' });
+  await closeMore(phone);
   const phoneLight = await shot(phone, 'ra-b1-390-light');
 
-  await setTheme(phone, 'dark');
-  await delay(150);
-  const phoneDark = await shot(phone, 'ra-b1-390-dark');
-
-  await tap(phone, '[data-ra-more-toggle]');
-  await delay(350);
+  await openMore(phone);
   await shot(phone, 'ra-b1-390-more');
 
-  await tap(phone, '[data-ra-phone-bar] [data-ra-templates-toggle]');
-  await delay(400);
-  await phone.waitForFunction(() => {
-    const grid = document.querySelector('[data-ra-more-templates] .util-ra-templates-pop__grid');
-    if (!grid) return false;
-    const r = grid.getBoundingClientRect();
-    return r.width > 40 && r.height > 40 && r.top < window.innerHeight && r.bottom > 80;
-  }, { timeout: 8000 });
+  await openTemplates(phone);
   await shot(phone, 'ra-b1-390-templates');
 
+  await closeMore(phone);
   await setTheme(phone, 'dark');
   await delay(150);
-  await tap(phone, '[data-ra-more-toggle]');
-  await delay(200);
-  if (!(await phone.evaluate(() => document.querySelector('[data-room-area]')?.classList.contains('is-more-open')))) {
-    await tap(phone, '[data-ra-more-toggle]');
-    await delay(250);
-  }
-  await phone.evaluate(() => {
-    const sheet = document.querySelector('[data-ra-more-sheet]');
-    if (sheet) sheet.scrollTop = 0;
-  });
-  await delay(150);
+  await closeMore(phone);
+  const phoneDark = await shot(phone, 'ra-b1-390-dark');
+
+  await openMore(phone);
   await shot(phone, 'ra-b1-390-more-dark');
 
+  await closeMore(phone);
   await phone.evaluate(() => {
-    const root = document.querySelector('[data-room-area]');
-    if (root) {
-      root.classList.remove('is-more-open');
-      root.style.setProperty('--ra-sheet-h', '280px');
-    }
     const math = document.querySelector('[data-ra-side-tab="math"]');
     if (math) math.click();
-    window.dispatchEvent(new Event('resize'));
+    const root = document.querySelector('[data-room-area]');
+    if (root) root.style.setProperty('--ra-sheet-h', '280px');
   });
   await delay(350);
   await shot(phone, 'ra-b1-390-sheet');
