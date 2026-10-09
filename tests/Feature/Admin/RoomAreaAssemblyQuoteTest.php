@@ -835,7 +835,12 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             'whole_units' => true,
             'sort_order' => 0,
         ]);
-        foreach ([$this->makeRoom(null, 'Kitchen', $projectA, 144, 120), $this->makeRoom(null, 'Bathroom', $projectA, 120, 96), $this->makeRoom(null, 'Hall', $projectA, 120, 96)] as $room) {
+        foreach ([
+            $this->makeRoom(null, 'Kitchen', $projectA, 144, 120),
+            $this->makeRoom(null, 'Bathroom', $projectA, 120, 96),
+            $this->makeRoom(null, 'Hall', $projectA, 120, 96),
+            $this->makeRoom(null, 'Closet', $projectA, 48, 48),
+        ] as $room) {
             $room->assemblies()->sync([$assembly->id]);
         }
         foreach ([$this->makeRoom(null, 'Kitchen', $projectB, 144, 120), $this->makeRoom(null, 'Bathroom', $projectB, 120, 96)] as $room) {
@@ -853,7 +858,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $quote = StandardQuotation::query()->latest('id')->first();
         $this->assertNotNull($quote);
         $this->assertCount(1, $quote->flattenedMaterials());
-        $this->assertEquals(28.0, (float) $quote->flattenedMaterials()[0]['quantity']);
+        $this->assertEquals(29.0, (float) $quote->flattenedMaterials()[0]['quantity']);
 
         $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
             'layout' => 'project:'.$projectB->id,
@@ -870,9 +875,9 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $quote->refresh();
         $materials = $quote->flattenedMaterials();
         $this->assertCount(2, $materials);
-        $this->assertEquals(28.0, (float) $materials[0]['quantity']);
+        $this->assertEquals(29.0, (float) $materials[0]['quantity']);
         $this->assertEquals(20.0, (float) $materials[1]['quantity']);
-        $this->assertEqualsWithDelta(48.0, (float) $materials[0]['quantity'] + (float) $materials[1]['quantity'], 0.01);
+        $this->assertEqualsWithDelta(49.0, (float) $materials[0]['quantity'] + (float) $materials[1]['quantity'], 0.01);
     }
 
     public function test_hand_edited_line_qty_is_left_untouched_when_adding_rooms(): void
@@ -943,6 +948,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             'scale_pixels_per_foot' => 12,
         ]);
         $kitchen = $this->makeRoom(null, 'Kitchen', $project, 144, 120);
+        $bath = $this->makeRoom(null, 'Bathroom', $project, 120, 96);
         $assembly = RoomAreaAssembly::create([
             'name' => 'Drywall wall',
             'notes' => null,
@@ -956,6 +962,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             'sort_order' => 0,
         ]);
         $kitchen->assemblies()->sync([$assembly->id]);
+        $bath->assemblies()->sync([$assembly->id]);
 
         $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
             'layout' => 'project:'.$project->id,
@@ -968,7 +975,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $quote = StandardQuotation::query()->latest('id')->first();
         $this->assertNotNull($quote);
         $this->assertCount(1, $quote->flattenedMaterials());
-        $this->assertEquals(12.0, (float) $quote->flattenedMaterials()[0]['quantity']);
+        $this->assertEquals(20.0, (float) $quote->flattenedMaterials()[0]['quantity']);
 
         $kitchen->update(['area_sqft' => 400]);
         $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
@@ -982,7 +989,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
 
         $quote->refresh();
         $this->assertCount(1, $quote->flattenedMaterials());
-        $this->assertEquals(12.0, (float) $quote->flattenedMaterials()[0]['quantity']);
+        $this->assertEquals(20.0, (float) $quote->flattenedMaterials()[0]['quantity']);
     }
 
     public function test_legacy_empty_covered_uses_created_at_not_updated_at(): void
