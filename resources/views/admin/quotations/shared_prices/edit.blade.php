@@ -573,9 +573,9 @@
   font-size: 0.8rem;
 }
 
-/* Stacked cards below 68.75em — use width < so nothing sits between
-   this query and min-width: 68.75em (18px@1237, 20px@1374, fractional zoom). */
-@media (width < 68.75em) {
+/* Stacked cards below 68.75em — not all and (min-width) so nothing sits
+   between this query and min-width: 68.75em, and iOS < 16.4 still matches. */
+@media not all and (min-width: 68.75em) {
   .sp-group .admin-table-scroll {
     overflow: visible;
   }

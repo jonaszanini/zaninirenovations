@@ -148,10 +148,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('title="{{ $work->label }}"', $blade);
         $this->assertStringContainsString('grid-area: search', $css);
         $this->assertStringContainsString('@media (min-width: 68.75em)', $css);
-        $this->assertTrue(
-            str_contains($css, '@media (width < 68.75em)') || str_contains($css, '@media not all and (min-width: 68.75em)'),
-            'Stacked query must abut min-width: 68.75em with no gap'
-        );
+        $this->assertStringContainsString('@media not all and (min-width: 68.75em)', $css);
+        $this->assertStringNotContainsString('@media (width < 68.75em)', $css);
         $this->assertStringNotContainsString('@media (max-width: 68.6875em)', $css);
         $this->assertDoesNotMatchRegularExpression('/\.sp-col-sell:has\(\.admin-info-tip\)\s+\.sp-input\s*\{[^}]*padding-right:\s*1\.85rem/', $css);
         $this->assertMatchesRegularExpression('/\.sp-table\s+\.sp-work\s*\{[^}]*padding:\s*0/', $css);
