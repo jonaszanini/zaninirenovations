@@ -1804,9 +1804,30 @@ summary > .admin-heading-copy {
 .admin-label-with-tip__end {
   white-space: nowrap;
 }
-.admin-label-with-tip__end > label {
+.admin-label-with-tip__end > span {
   display: inline;
-  margin-bottom: 0;
+  flex: none;
+  margin: 0;
+  white-space: nowrap;
+}
+.admin-label-with-tip__end > label,
+.admin-form-group .admin-label-with-tip__end > label,
+.admin-label-with-tip__end > label.admin-label-with-tip__tail,
+.admin-form-group .admin-label-with-tip__end > label.admin-label-with-tip__tail {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-label-with-tip__end > .admin-form-group-label,
+.admin-label-with-tip__end > .admin-accordion__title,
+.admin-heading-copy .admin-label-with-tip__end > .admin-accordion__title,
+.admin-label-with-tip__end > .admin-filters-accordion__title {
+  display: inline;
+  flex: none;
+  min-width: 0;
+  margin: 0;
   white-space: nowrap;
 }
 .admin-form-grid-2 > .admin-form-group > .admin-label-with-tip,

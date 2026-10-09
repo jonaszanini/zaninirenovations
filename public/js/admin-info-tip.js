@@ -573,11 +573,97 @@
     return end;
   }
 
-  function wrapWordAndTip(tip, last, extraClass) {
+  function styleSource(node) {
+    var el = node;
+    if (el && el.nodeType === 3) {
+      el = el.parentElement || el.parentNode;
+    }
+    while (el && el.nodeType === 1 && el.classList && (
+      el.classList.contains('admin-heading-copy')
+      || el.classList.contains('admin-label-with-tip__end')
+    )) {
+      el = el.parentElement;
+    }
+    return el && el.nodeType === 1 ? el : null;
+  }
+
+  function copyVisibleClasses(word, src) {
+    if (!word || !src || !src.classList) return;
+    if (/^H[1-6]$/.test(src.tagName) || src.tagName === 'SUMMARY' || src.tagName === 'LEGEND') {
+      return;
+    }
+    var skip = {
+      'admin-heading-copy': 1,
+      'admin-label-with-tip': 1,
+      'admin-label-with-tip__end': 1,
+      'admin-info-tip-wrap': 1,
+      'admin-checkbox': 1,
+      'br-acc__summary': 1,
+      'admin-accordion__summary': 1,
+      'admin-filters-accordion__summary': 1,
+      'sp-heading': 1,
+    };
+    var kept = [];
+    String(src.className || '').split(/\s+/).forEach(function (cls) {
+      if (cls && !skip[cls]) kept.push(cls);
+    });
+    if (kept.length) {
+      word.className = (String(word.className || '').trim() + ' ' + kept.join(' ')).trim();
+    }
+  }
+
+  function ensureLabelId(el) {
+    if (!el) return '';
+    if (el.id) return el.id;
+    el.id = 'admin-tip-lab-' + Math.random().toString(36).slice(2, 10);
+    return el.id;
+  }
+
+  function linkSplitLabels(leadLabel, tailLabel) {
+    if (!leadLabel || !tailLabel) return;
+    var forId = tailLabel.htmlFor || (tailLabel.getAttribute && tailLabel.getAttribute('for'))
+      || leadLabel.htmlFor || (leadLabel.getAttribute && leadLabel.getAttribute('for')) || '';
+    var input = forId && document.getElementById ? document.getElementById(forId) : null;
+    if (!input || !input.setAttribute) return;
+    var ids = [];
+    function take(el) {
+      var id = ensureLabelId(el);
+      if (id && ids.indexOf(id) === -1) ids.push(id);
+    }
+    take(leadLabel);
+    take(tailLabel);
+    String(input.getAttribute('aria-labelledby') || '').split(/\s+/).forEach(function (id) {
+      if (id && ids.indexOf(id) === -1) ids.push(id);
+    });
+    input.setAttribute('aria-labelledby', ids.join(' '));
+  }
+
+  function makeWordEl(last, source) {
+    var src = styleSource(source);
+    var forId = '';
+    if (src && src.tagName === 'LABEL' && !isGlueSkipElement(src)) {
+      forId = src.htmlFor || (src.getAttribute && src.getAttribute('for')) || '';
+    }
+    var el;
+    if (forId) {
+      el = document.createElement('label');
+      el.htmlFor = forId;
+      if (el.setAttribute) el.setAttribute('for', forId);
+      el.className = 'admin-label-with-tip__tail';
+      copyVisibleClasses(el, src);
+      linkSplitLabels(src, el);
+    } else {
+      el = document.createElement('span');
+      copyVisibleClasses(el, src);
+    }
+    el.textContent = last;
+    return el;
+  }
+
+  function wrapWordAndTip(tip, last, extraClass, source) {
     if (!tip || !tip.parentNode || !last) return null;
     var end = makeEnd(extraClass);
-    var word = document.createElement('span');
-    word.textContent = last;
+    var word = makeWordEl(last, source);
     end.appendChild(word);
     tip.parentNode.insertBefore(end, tip);
     end.appendChild(tip);
@@ -614,7 +700,7 @@
     if (!prev) return null;
     if (prev.nodeType === 3) {
       var last = splitTextNodeLastWord(prev);
-      return last ? wrapWordAndTip(tip, last, extraClass) : null;
+      return last ? wrapWordAndTip(tip, last, extraClass, prev) : null;
     }
     if (prev.nodeType !== 1 || isGlueSkipElement(prev)) return null;
     var textNode = lastUnlockedTextNode(prev);
@@ -626,7 +712,7 @@
       var lastWord = space === -1 ? trimmed : trimmed.slice(space + 1);
       if (lastWord && lastWord !== whole) {
         var word = splitTextNodeLastWord(textNode);
-        if (word) return wrapWordAndTip(tip, word, extraClass);
+        if (word) return wrapWordAndTip(tip, word, extraClass, prev);
       }
     }
     return wrapElementAndTip(prev, tip, extraClass);

@@ -32,10 +32,16 @@ assert.match(adminCss, /\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0
 assert.match(adminCss, /\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}color:\s*inherit/);
 assert.match(adminCss, /\.admin-checkbox-row/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/);
+assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,220}display:\s*inline/);
+assert.match(adminCss, /admin-label-with-tip__tail/);
 assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S]{0,160}pointer-events:\s*auto/);
+assert.match(cpCss, /\.tm-chip-row\s*>\s*\.admin-checkbox-row/);
 assert.match(source, /function glueLastTextNode/);
 assert.match(source, /function wrapHeadingCopy/);
 assert.match(source, /function wrapElementAndTip/);
+assert.match(source, /function makeWordEl/);
+assert.match(source, /function linkSplitLabels/);
+assert.match(source, /admin-label-with-tip__tail/);
 assert.doesNotMatch(source, /function moveTrailingSkipped/);
 assert.doesNotMatch(source, /admin-heading-tip/);
 
@@ -334,6 +340,38 @@ function fixtureHtml() {
           <span id="t-gate" class="admin-info-tip__bubble" role="tooltip">Each extra gate after the first.</span>
         </span>
       </span>
+      <input class="admin-input" id="labour-gate" value="">
+    </div>
+    <div class="admin-form-group" id="outlets-group">
+      <span class="admin-label-with-tip" id="outlets-row">
+        <label for="br-outlets">New outlets</label>
+        <span class="admin-info-tip-wrap">
+          <button type="button" class="admin-info-tip" aria-label="About New outlets" aria-expanded="false" aria-controls="t-out">i</button>
+          <span id="t-out" class="admin-info-tip__bubble" role="tooltip">Count new receptacles.</span>
+        </span>
+      </span>
+      <input class="admin-input" id="br-outlets" value="0">
+    </div>
+    <span class="admin-label-with-tip" id="improve-row">
+      <span class="admin-form-group-label">Improve description</span>
+      <span class="admin-info-tip-wrap">
+        <button type="button" class="admin-info-tip" aria-label="About Improve description" aria-expanded="false" aria-controls="t-imp">i</button>
+        <span id="t-imp" class="admin-info-tip__bubble" role="tooltip">Write a rough description first.</span>
+      </span>
+    </span>
+    <div class="tm-chip-row" id="tm-chip-row">
+      <span class="admin-label-with-tip admin-checkbox-row" id="tm-client-all-row">
+        <label class="admin-checkbox" for="tm-client-all">
+          <input type="checkbox" class="admin-checkbox__input" id="tm-client-all">
+          <span class="admin-checkbox__mark"></span><span class="admin-checkbox__text">Client supplies </span>
+        </label><span class="admin-label-with-tip__end">
+          <label for="tm-client-all" class="admin-checkbox__tail">materials</label>
+          <span class="admin-info-tip-wrap">
+            <button type="button" class="admin-info-tip" aria-label="About Client supplies materials" aria-expanded="false" aria-controls="t-tm">i</button>
+            <span id="t-tm" class="admin-info-tip__bubble" role="tooltip">Labour only.</span>
+          </span>
+        </span>
+      </span>
     </div>
     <script>${source}</script>
     <script>window.MW_QUOTATION = { sectionKeys: [], isEdit: false, previewUrl: '' };</script>
@@ -512,6 +550,64 @@ async function puppeteerClick() {
     assert.match(headingGlue.reviewLast, /edits/);
     assert.equal(headingGlue.starText, '*');
     assert.equal(headingGlue.starBeforeTip, true, 'N4: required * stays before the ⓘ');
+
+    const splitWord = await page.evaluate(() => {
+      function nameOf(input) {
+        const ids = String(input.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+        if (!ids.length) return '';
+        return ids.map((id) => {
+          const el = document.getElementById(id);
+          return String(el ? el.textContent : '').replace(/\s+/g, ' ').trim();
+        }).filter(Boolean).join(' ');
+      }
+      function styles(el) {
+        const cs = getComputedStyle(el);
+        return {
+          transform: cs.textTransform,
+          weight: cs.fontWeight,
+          size: cs.fontSize,
+          color: cs.color,
+        };
+      }
+      const gate = document.getElementById('labour-gate');
+      const gateLead = document.querySelector('#labour-gate-row > label');
+      const gateTail = document.querySelector('#labour-gate-row .admin-label-with-tip__end > label');
+      const outlets = document.getElementById('br-outlets');
+      const outLead = document.querySelector('#outlets-row > label');
+      const outTail = document.querySelector('#outlets-row .admin-label-with-tip__end > label');
+      const improve = document.querySelector('#improve-row .admin-form-group-label');
+      const improveWord = document.querySelector('#improve-row .admin-label-with-tip__end .admin-form-group-label');
+      const emailWord = document.querySelector('#email-title .admin-label-with-tip__end .admin-accordion__title, #email-title .admin-label-with-tip__end span');
+      return {
+        gateTag: gateTail ? gateTail.tagName : '',
+        gateFor: gateTail ? gateTail.htmlFor : '',
+        gateName: nameOf(gate),
+        gateLead: styles(gateLead),
+        gateTail: styles(gateTail),
+        outName: nameOf(outlets),
+        outLead: styles(outLead),
+        outTail: styles(outTail),
+        improveClass: improveWord ? improveWord.className : '',
+        improveLead: styles(improve),
+        improveTail: styles(improveWord),
+        emailClass: emailWord ? emailWord.className : '',
+      };
+    });
+    assert.equal(splitWord.gateTag, 'LABEL', 'moved (CAD$) is a second label');
+    assert.equal(splitWord.gateFor, 'labour-gate');
+    assert.equal(splitWord.gateName, 'Labour per additional gate (CAD$)');
+    assert.equal(splitWord.outName, 'New outlets', 'accessible name must keep the last word');
+    for (const key of ['transform', 'weight', 'size', 'color']) {
+      assert.equal(splitWord.gateTail[key], splitWord.gateLead[key], `labour-gate tail ${key} must match the label`);
+      assert.equal(splitWord.outTail[key], splitWord.outLead[key], `outlets tail ${key} must match the label`);
+      assert.equal(splitWord.improveTail[key], splitWord.improveLead[key], `Improve description word ${key} must match the source span`);
+    }
+    assert.match(String(splitWord.improveClass), /admin-form-group-label/);
+    assert.match(String(splitWord.emailClass), /admin-accordion__title/);
+
+    await page.click('#labour-gate-row .admin-label-with-tip__end > label');
+    const focused = await page.evaluate(() => document.activeElement && document.activeElement.id);
+    assert.equal(focused, 'labour-gate', 'clicking the moved word focuses the input');
 
     await page.evaluate(() => {
       const orig = window.AdminInfoTip.refreshControlIds.bind(window.AdminInfoTip);
@@ -754,6 +850,9 @@ async function puppeteerClick() {
             const hit = headingProblem(el);
             if (hit && (hit.missingSpace || hit.columns)) headingIssues.push(hit);
           });
+          const tmTail = document.querySelector('#tm-client-all-row .admin-checkbox__tail');
+          const tmTip = document.querySelector('#tm-client-all-row .admin-info-tip');
+          const tmLine = sameLine(tmTail, tmTip);
           const cf = document.getElementById('client-filled-check');
           const cfText = cf ? cf.querySelector('.admin-checkbox__text') : null;
           let clientFilledOffset = 0;
@@ -775,6 +874,7 @@ async function puppeteerClick() {
             headingCount: headingIssues.length,
             headingIssues,
             clientFilledOffset,
+            tmLine,
           };
         });
         aligned.checks.forEach((row, i) => {
@@ -789,6 +889,7 @@ async function puppeteerClick() {
         assert.equal(aligned.headingCount, 0, `${theme}: flex heading issues at ${width}px: ${JSON.stringify(aligned.headingIssues)}`);
         if (width <= 390) {
           assert.ok(aligned.clientFilledOffset <= 1, `${theme}: client-filled wrapped line offset ${aligned.clientFilledOffset}px at ${width}px`);
+          assert.ok(aligned.tmLine.sameLine, `${theme}: Client supplies materials ⓘ stays with the last word at ${width}px`);
         }
         if (theme === 'light') {
           geometryByWidth[width] = { orphans: aligned.orphanCount, headings: aligned.headingCount };

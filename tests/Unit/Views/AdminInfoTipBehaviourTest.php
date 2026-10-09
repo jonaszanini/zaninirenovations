@@ -200,6 +200,10 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('function wrapElementAndTip', $js);
         $this->assertStringContainsString('function wrapHeadingCopy', $js);
         $this->assertStringContainsString('function lastUnlockedTextNode', $js);
+        $this->assertStringContainsString('function makeWordEl', $js);
+        $this->assertStringContainsString('function linkSplitLabels', $js);
+        $this->assertStringContainsString('admin-label-with-tip__tail', $js);
+        $this->assertStringContainsString('aria-labelledby', $js);
         $this->assertStringNotContainsString('function moveTrailingSkipped', $js);
         $this->assertStringNotContainsString('function skipGlueNode', $js);
         $this->assertStringNotContainsString('admin-heading-tip', $js);
@@ -297,6 +301,11 @@ class AdminInfoTipBehaviourTest extends TestCase
             '/\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/',
             $css
         );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,220}display:\s*inline/',
+            $css
+        );
+        $this->assertStringContainsString('admin-label-with-tip__tail', $css);
         $this->assertDoesNotMatchRegularExpression(
             '/\.admin-form-group\s*>\s*label:has\(\.admin-info-tip\)[\s\S]{0,400}align-items:\s*center/',
             $css
@@ -308,6 +317,7 @@ class AdminInfoTipBehaviourTest extends TestCase
         $cpCss = file_get_contents(public_path('css/admin-client-projects.css'));
         $this->assertStringContainsString('.br-layout--create .br-acc__summary .admin-info-tip', $cpCss);
         $this->assertStringContainsString('pointer-events: auto', $cpCss);
+        $this->assertStringContainsString('.tm-chip-row > .admin-checkbox-row', $cpCss);
     }
 
     public function test_clone_sites_refresh_tip_ids(): void
