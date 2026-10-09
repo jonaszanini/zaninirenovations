@@ -291,18 +291,35 @@ async function measureViewports() {
 
     await page.setViewport({ width: 390, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     await page.goto('http://127.0.0.1:' + port + '/layout-change', { waitUntil: 'load' });
-    await page.waitForFunction(() => {
-      const wrap = document.querySelector('[data-ra-canvas-wrap]');
-      const canvas = wrap && wrap.querySelector('canvas');
-      const world = window.Konva && window.Konva.stages && window.Konva.stages[0]
-        && window.Konva.stages[0].getLayers()[0]
-        && window.Konva.stages[0].getLayers()[0].getChildren()[0];
-      return !!(document.documentElement.classList.contains('is-geom-grown')
-        && wrap && wrap.getBoundingClientRect().width > 300
-        && wrap.getBoundingClientRect().width < 450
-        && canvas && canvas.width > 10
-        && world);
-    }, { timeout: 15000 });
+    try {
+      await page.waitForFunction(() => {
+        const wrap = document.querySelector('[data-ra-canvas-wrap]');
+        const canvas = wrap && wrap.querySelector('canvas');
+        const world = window.Konva && window.Konva.stages && window.Konva.stages[0]
+          && window.Konva.stages[0].getLayers()[0]
+          && window.Konva.stages[0].getLayers()[0].getChildren()[0];
+        return !!(document.documentElement.classList.contains('is-geom-grown')
+          && wrap && wrap.getBoundingClientRect().width > 300
+          && wrap.getBoundingClientRect().width < 450
+          && canvas && canvas.width > 10
+          && world);
+      }, { timeout: 15000 });
+    } catch (err) {
+      const dump = await page.evaluate(() => {
+        const wrap = document.querySelector('[data-ra-canvas-wrap]');
+        const world = window.Konva && window.Konva.stages && window.Konva.stages[0]
+          && window.Konva.stages[0].getLayers()[0]
+          && window.Konva.stages[0].getLayers()[0].getChildren()[0];
+        return {
+          grown: document.documentElement.classList.contains('is-geom-grown'),
+          wrapW: wrap ? wrap.getBoundingClientRect().width : null,
+          scale: world ? world.scaleX() : null,
+          stages: !!(window.Konva && window.Konva.stages && window.Konva.stages[0]),
+          feedback: (document.querySelector('[data-ra-feedback]') || {}).textContent || '',
+        };
+      });
+      throw new Error('layout-change wait failed: ' + JSON.stringify(dump) + ' — ' + err.message);
+    }
     await page.evaluate(() => new Promise((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     }));

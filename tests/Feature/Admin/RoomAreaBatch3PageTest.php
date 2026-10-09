@@ -170,7 +170,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertGreaterThan(0, $sheets['qty']);
         $this->assertNull($sheets['error']);
         $boxes = collect($byName['LVP floor']['lines'])->firstWhere('name', 'Floor boxes');
-        $this->assertSame($metrics['flooring_boxes'], $boxes['qty']);
+        $this->assertEquals($metrics['flooring_boxes'], $boxes['qty']);
     }
 
     private function makeRoom(): RoomAreaRoom

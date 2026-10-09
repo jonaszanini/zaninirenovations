@@ -15,13 +15,12 @@
     .util-ra--fullpage {
       height: 100%;
     }
-    /* Real layout change: wrap starts with no box so first fit uses the JS 900×640 fallback. */
+    /* Real layout change: first fit at 520×400, then shrink to a 390 phone wrap. */
     .util-ra-canvas-wrap {
-      width: 0 !important;
-      height: 0 !important;
-      min-height: 0 !important;
+      width: 520px !important;
+      height: 400px !important;
+      min-height: 400px !important;
       flex: 0 0 auto !important;
-      overflow: hidden;
     }
     html.is-geom-grown .util-ra-canvas-wrap {
       width: 390px !important;

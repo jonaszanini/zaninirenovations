@@ -1453,7 +1453,8 @@ html.admin-dark .util-ra-kits,
 html.admin-dark .util-ra-kit,
 html.admin-dark .util-ra-kit-line,
 html.admin-dark .util-ra-kit-quote,
-html.admin-dark .util-ra-kit-quote__kit {
+html.admin-dark .util-ra-kit-quote__kit,
+html.admin-dark .util-ra-kits__quote {
   background: var(--admin-surface);
   color: var(--admin-text);
   border-color: var(--admin-border);

@@ -3,7 +3,7 @@
 namespace Tests\Unit\Services;
 
 use App\Services\RoomAreaFormulaParser;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class RoomAreaFormulaParserTest extends TestCase
 {
