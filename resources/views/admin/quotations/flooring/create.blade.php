@@ -188,6 +188,11 @@
     'draftId' => 'fl-btn-draft',
     'draftHotkey' => true,
   ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
   @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
     <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">

@@ -3505,3 +3505,6 @@ html.admin-dark .qh-price-gear:focus-visible {
 html.admin-dark .qh-price-gear {
   color: var(--admin-muted);
 }
+html.admin-dark .qh-more {
+  color: var(--admin-text);
+}

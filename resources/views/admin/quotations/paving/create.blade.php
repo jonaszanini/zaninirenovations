@@ -323,6 +323,13 @@
     'draftId' => 'pq-btn-draft',
     'draftHotkey' => true,
   ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.paving.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+  ])
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
       <i class="fa fa-link"></i>

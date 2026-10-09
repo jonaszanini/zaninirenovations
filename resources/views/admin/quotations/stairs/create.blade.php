@@ -200,6 +200,11 @@
     'draftId' => 'sq-btn-draft',
     'draftHotkey' => true,
   ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
 
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">

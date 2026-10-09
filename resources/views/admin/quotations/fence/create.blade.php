@@ -466,6 +466,13 @@
     'saveHotkey' => true,
     'showDraft' => false,
   ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.fence.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+  ])
 
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">

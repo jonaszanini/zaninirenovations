@@ -4952,6 +4952,16 @@ body.asp-open {
 .qh-actions__save {
   box-shadow: 0 0 0 2px var(--admin-primary-ring);
 }
+.qh-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.qh-more .admin-btn {
+  min-height: var(--admin-control-height);
+}
 .qh-wizard__status,
 .qh .br-step-nav__status {
   min-width: 4.5rem;

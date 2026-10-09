@@ -143,6 +143,13 @@
     'saveHotkey' => true,
     'showDraft' => false,
   ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.standard.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+  ])
   <div class="br-toolbar-grand" id="sq-toolbar-grand" title="Live grand total (incl. HST)">
     <span class="br-toolbar-grand__label">Grand total</span>
     <strong class="br-toolbar-grand__amount" id="sq-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>

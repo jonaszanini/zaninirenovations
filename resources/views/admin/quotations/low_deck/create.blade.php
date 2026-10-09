@@ -178,6 +178,13 @@
     'saveHotkey' => true,
     'showDraft' => false,
   ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.low-deck.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print shopping list',
+  ])
 
   @if ($isEdit && $quotation->project)
     <div class="ld-linked-banner">
