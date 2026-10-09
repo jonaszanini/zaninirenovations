@@ -43,7 +43,10 @@
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
-        <label for="sh-length">@include('admin.partials.info_tip', ['text' => 'Outside length of the floor. Max without a permit: '.ShedQuotationCalculator::permitExemptMaxLabel().'.']) Length (ft)</label>
+        <span class="admin-label-with-tip">
+        <label for="sh-length">Length (ft)</label>
+        @include('admin.partials.info_tip', ['text' => 'Outside length of the floor. Max without a permit: '.ShedQuotationCalculator::permitExemptMaxLabel().'.', 'tipLabel' => 'Length (ft)'])
+      </span>
         <input type="number" min="0" step="0.1" class="admin-input sh-preview" id="sh-length" name="length_ft"
                value="{{ $shVal('length_ft') }}">
       </div>
@@ -53,12 +56,18 @@
                value="{{ $shVal('width_ft') }}">
       </div>
       <div class="admin-form-group">
-        <label for="sh-height">@include('admin.partials.info_tip', ['text' => 'Eave wall height. Default 8 ft.']) Wall height (ft)</label>
+        <span class="admin-label-with-tip">
+        <label for="sh-height">Wall height (ft)</label>
+        @include('admin.partials.info_tip', ['text' => 'Eave wall height. Default 8 ft.', 'tipLabel' => 'Wall height (ft)'])
+      </span>
         <input type="number" min="4" max="16" step="0.25" class="admin-input sh-preview" id="sh-height" name="wall_height_ft"
                value="{{ $shVal('wall_height_ft', 8) }}">
       </div>
       <div class="admin-form-group">
-        <label for="sh-pitch">@include('admin.partials.info_tip', ['text' => 'Rise per 12 inches of run. Steeper roofs use more shingles and rafters.']) Pitch</label>
+        <span class="admin-label-with-tip">
+        <label for="sh-pitch">Pitch</label>
+        @include('admin.partials.info_tip', ['text' => 'Rise per 12 inches of run. Steeper roofs use more shingles and rafters.', 'tipLabel' => 'Pitch'])
+      </span>
         <select class="admin-input sh-preview" id="sh-pitch" name="roof_pitch">
           @foreach ([4, 5, 6, 8, 10, 12] as $p)
             <option value="{{ $p }}" @selected((int) $shVal('roof_pitch', 6) === $p)>{{ $p }}/12</option>
@@ -66,7 +75,10 @@
         </select>
       </div>
       <div class="admin-form-group">
-        <label for="sh-overhang">@include('admin.partials.info_tip', ['text' => 'Eave overhang on all sides. Adds fascia, drip edge, and roof area.']) Overhang (in)</label>
+        <span class="admin-label-with-tip">
+        <label for="sh-overhang">Overhang (in)</label>
+        @include('admin.partials.info_tip', ['text' => 'Eave overhang on all sides. Adds fascia, drip edge, and roof area.', 'tipLabel' => 'Overhang (in)'])
+      </span>
         <input type="number" min="0" max="24" step="1" class="admin-input sh-preview" id="sh-overhang" name="overhang_in"
                value="{{ $shVal('overhang_in', 12) }}">
       </div>
@@ -110,17 +122,26 @@
       </div>
     </div>
     <div class="admin-form-group" id="sh-found-piles" hidden>
-      <label for="sh-piles">@include('admin.partials.info_tip', ['text' => 'Leave blank to auto-count from size (~8 ft grid, min 4).']) Helical piles</label>
+      <span class="admin-label-with-tip">
+        <label for="sh-piles">Helical piles</label>
+        @include('admin.partials.info_tip', ['text' => 'Leave blank to auto-count from size (~8 ft grid, min 4).', 'tipLabel' => 'Helical piles'])
+      </span>
       <input type="number" min="0" step="1" class="admin-input sh-preview" id="sh-piles" name="pile_qty"
              placeholder="Auto" value="{{ $shVal('pile_qty') }}">
     </div>
     <div class="admin-form-group" id="sh-found-skids" hidden>
-      <label for="sh-skids">@include('admin.partials.info_tip', ['text' => 'Leave blank to auto-count from width.']) PT skids</label>
+      <span class="admin-label-with-tip">
+        <label for="sh-skids">PT skids</label>
+        @include('admin.partials.info_tip', ['text' => 'Leave blank to auto-count from width.', 'tipLabel' => 'PT skids'])
+      </span>
       <input type="number" min="0" step="1" class="admin-input sh-preview" id="sh-skids" name="skid_qty"
              placeholder="Auto" value="{{ $shVal('skid_qty') }}">
     </div>
     <div class="admin-form-group" id="sh-found-blocks" hidden>
-      <label for="sh-blocks">@include('admin.partials.info_tip', ['text' => 'Blocks sit in excavated holes on a 3/4" gravel bed for drainage. Leave blank to auto-count from size (~4 ft grid). Labor includes digging each hole and setting the block. Materials include one 3/4" gravel bag under each block.']) Deck blocks</label>
+      <span class="admin-label-with-tip">
+        <label for="sh-blocks">Deck blocks</label>
+        @include('admin.partials.info_tip', ['text' => 'Blocks sit in excavated holes on a 3/4" gravel bed for drainage. Leave blank to auto-count from size (~4 ft grid). Labor includes digging each hole and setting the block. Materials include one 3/4" gravel bag under each block.', 'tipLabel' => 'Deck blocks'])
+      </span>
       <input type="number" min="0" step="1" class="admin-input sh-preview" id="sh-blocks" name="block_qty"
              placeholder="Auto" value="{{ $shVal('block_qty') }}">
     </div>

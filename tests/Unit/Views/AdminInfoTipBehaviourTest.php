@@ -96,7 +96,11 @@ class AdminInfoTipBehaviourTest extends TestCase
     {
         $js = file_get_contents(public_path('js/admin-info-tip.js'));
 
-        $this->assertStringContainsString("document.addEventListener('scroll', repositionOpenTips, { capture: true, passive: true })", $js);
+        $this->assertStringContainsString("document.addEventListener('scroll', onScroll, { capture: true, passive: true })", $js);
+        $this->assertStringContainsString('requestAnimationFrame', $js);
+        $this->assertStringContainsString('isIconVisibleInClip', $js);
+        $this->assertStringContainsString('idsAlreadyInDocument', $js);
+        $this->assertStringContainsString("e.target.closest('summary')", $js);
         $this->assertStringContainsString('function refreshIds(scope)', $js);
         $this->assertStringContainsString('refreshIds: refreshIds', $js);
         $this->assertStringContainsString('btn.focus()', $js);
@@ -110,7 +114,7 @@ class AdminInfoTipBehaviourTest extends TestCase
         $lumber = file_get_contents(public_path('js/admin-utilities-lumber-board.js'));
 
         $this->assertStringContainsString('AdminInfoTip.refreshIds', $standard);
-        $this->assertStringContainsString('AdminInfoTip.refreshIds', $millwork);
+        $this->assertGreaterThanOrEqual(3, substr_count($millwork, 'AdminInfoTip.refreshIds'));
         $this->assertStringContainsString("AdminInfoTip.html(", $lumber);
         $this->assertStringContainsString("'Calculation mode'", $lumber);
         $this->assertStringNotContainsString('class="util-tip"', $lumber);
@@ -128,6 +132,8 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('HST (13%) is added to the manual invoice subtotal once', $invoice);
         $this->assertStringContainsString('No payment plan yet.', $invoice);
         $this->assertStringContainsString('This will mark <strong id="cp-mark-paid-invoice-label">the invoice</strong>', $invoice);
+        $this->assertStringContainsString('PDFs use this legal name/address', $invoice);
+        $this->assertStringNotContainsString('admin-form-help cp-invoice-bill-to__help', $invoice);
 
         $this->assertDoesNotMatchRegularExpression(
             '/<p class="admin-form-help"[^>]*>\s*(<i class="fa fa-info-circle"><\/i>\s*)?This project is billed by the hour/',
@@ -142,6 +148,23 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('0.125 = 1/8″. Reserved between every saw cut on the cut plan.', $millwork);
         $this->assertStringNotContainsString('<p class="admin-form-help">Imported Materials DB items', $millwork);
         $this->assertStringNotContainsString('<p class="admin-form-help">0.125 = 1/8', $millwork);
+
+        $piece = file_get_contents(resource_path('views/admin/quotations/millwork/_piece_card.blade.php'));
+        $this->assertStringContainsString('Size sets — add groups if you have mixed sizes.', $piece);
+        $this->assertStringContainsString('Open-back box: top, bottom, front, and ends.', $piece);
+        $this->assertStringNotContainsString('<p class="admin-form-help mw-piece__hint">Size sets', $piece);
+        $this->assertStringContainsString('label="Openings"', $piece);
+
+        $show = file_get_contents(resource_path('views/admin/client_projects/show.blade.php'));
+        $this->assertStringContainsString('Status saves on change. Optional note is for this status only.', $show);
+        $this->assertStringNotContainsString('class="cp-hint"', $show);
+        $this->assertStringNotContainsString('class="cp-status-form-help"', $show);
+
+        $financials = file_get_contents(resource_path('views/admin/client_projects/_financials.blade.php'));
+        $this->assertStringContainsString('Use this if you updated accepted quotations', $financials);
+        $this->assertStringContainsString('Choose how the client will pay.', $financials);
+        $this->assertStringContainsString('Money returned from suppliers or credits.', $financials);
+        $this->assertStringNotContainsString('class="cp-hint" title="', $financials);
     }
 
     public function test_serpapi_off_copy_is_inline_on_fence_and_low_deck_config(): void
@@ -153,11 +176,13 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('Online sync requires SerpApi', $fence);
         $this->assertStringContainsString('MATERIALS_SCRAPER_SERPAPI_KEY', $fence);
         $this->assertStringContainsString('admin.materials.config', $fence);
+        $this->assertStringContainsString('serpapi.com/dashboard', $fence);
 
         $this->assertStringContainsString('@unless ($usesSerpApi)', $low);
         $this->assertStringContainsString('Online sync requires SerpApi', $low);
         $this->assertStringContainsString('php artisan materials:sync-prices', $low);
         $this->assertStringContainsString('admin.materials.config', $low);
+        $this->assertStringContainsString('serpapi.com/dashboard', $low);
     }
 
     public function test_component_without_label_still_renders_more_info_fallback(): void

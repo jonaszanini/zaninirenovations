@@ -250,6 +250,12 @@ function createEnv() {
     innerWidth: 390,
     innerHeight: 700,
     document,
+    requestAnimationFrame(fn) {
+      return fn();
+    },
+    getComputedStyle() {
+      return { overflow: 'visible', overflowX: 'visible', overflowY: 'visible' };
+    },
     addEventListener(type, fn, opts) {
       (listeners.window[type] ||= []).push({ fn, opts });
     },
@@ -317,6 +323,10 @@ function fire(list, type, event) {
   scroll.fn();
   assert.equal(bubble.style.position, 'fixed');
   assert.notEqual(bubble.style.top, firstTop);
+
+  btn._rect = { top: -80, bottom: -36, left: 40, right: 84, width: 44, height: 44 };
+  scroll.fn();
+  assert.equal(wrap.classList.contains('is-open'), false);
   AdminInfoTip.closeAll();
 }
 
@@ -358,6 +368,21 @@ function fire(list, type, event) {
   assert.notEqual(cloneIdAfter, firstId);
   assert.equal(cloneBtn.getAttribute('aria-controls'), cloneIdAfter);
   assert.equal(cloneBtn.getAttribute('aria-describedby'), cloneIdAfter);
+  assert.equal(wrap.querySelector('.admin-info-tip__bubble').id, firstId);
+}
+
+// --- document-wide dedupe when a cloned subtree repeats an existing id ---
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const { wrap } = makeTip(document, 'admin-info-tip-shared', 'Materials');
+  body.appendChild(wrap);
+  const added = wrap.cloneNode(true);
+  body.appendChild(added);
+  const firstId = wrap.querySelector('.admin-info-tip__bubble').id;
+  assert.equal(added.querySelector('.admin-info-tip__bubble').id, firstId);
+  AdminInfoTip.refreshIds(added);
+  const addedId = added.querySelector('.admin-info-tip__bubble').id;
+  assert.notEqual(addedId, firstId);
   assert.equal(wrap.querySelector('.admin-info-tip__bubble').id, firstId);
 }
 

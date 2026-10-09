@@ -667,6 +667,9 @@
           wrap.innerHTML = tpl.innerHTML.replace(/__P__/g, String(pIndex)).replace(/__S__/g, String(sIndex)).trim();
           var row = wrap.firstElementChild;
           list.appendChild(row);
+          if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshIds === 'function') {
+            window.AdminInfoTip.refreshIds(row);
+          }
           row.querySelectorAll('.mw-preview').forEach(bindPreview);
           bindSetRemove(row);
           schedulePreview();
@@ -699,6 +702,9 @@
         wrap.innerHTML = pieceTpl.innerHTML.replace(/__P__/g, String(i)).trim();
         var piece = wrap.firstElementChild;
         pieceList.appendChild(piece);
+        if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshIds === 'function') {
+          window.AdminInfoTip.refreshIds(piece);
+        }
         initPiece(piece);
         reindexPieces();
         if (window.cpMoneyMask) window.cpMoneyMask.wire(piece.querySelectorAll('.cp-money-input'));

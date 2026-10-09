@@ -50,6 +50,8 @@
           </button>
           <x-admin.info-tip label="Sync low deck prices">
             <strong>Sync low deck prices</strong> updates linked catalog materials via SerpApi — Home Depot (product URL) or Amazon Canada (ASIN in SKU) ({{ number_format($linkedSyncCount) }} syncable).
+            See <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
+            and the <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>.
           </x-admin.info-tip>
         @endif
         <button type="submit" class="admin-btn admin-btn--primary">

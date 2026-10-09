@@ -49,10 +49,13 @@
           <strong>Sync fence prices</strong> refreshes every linked catalog material listed below
           @if ($usesSerpApi)
             via SerpApi — Home Depot (product URL) or Amazon Canada (ASIN in SKU)
+            ({{ number_format($linkedSyncCount) }} syncable).
+            See <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
+            and the <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>.
           @else
             via the store price API
+            ({{ number_format($linkedSyncCount) }} syncable).
           @endif
-          ({{ number_format($linkedSyncCount) }} syncable).
         </x-admin.info-tip>
         <button type="submit" class="admin-btn admin-btn--primary">
           <i class="fa fa-save"></i> Save links

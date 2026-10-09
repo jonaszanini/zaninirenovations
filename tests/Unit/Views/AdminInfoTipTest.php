@@ -58,7 +58,7 @@ class AdminInfoTipTest extends TestCase
     {
         $html = view('admin.partials.info_tip', [
             'text' => 'First gate is included in the per-foot rate.',
-            'label' => 'Labour rate',
+            'tipLabel' => 'Labour rate',
         ])->render();
 
         $this->assertStringContainsString('aria-label="About Labour rate"', $html);

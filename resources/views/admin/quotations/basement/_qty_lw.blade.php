@@ -36,13 +36,18 @@
   <div class="br-lw__fields">
     <div class="br-lw__primary">
       <div class="br-lw__head">
-        <label for="{{ $id }}" @if(! empty($labelId)) id="{{ $labelId }}" @endif>
-          @include('admin.partials.info_tip', ['text' => collect([$info ?? null, $help ?? null])->filter()->implode(' ')])
-          @if (! empty($clientFilled))
-            @include('admin.quotations.basement._client_filled', ['force' => true])
-          @endif
-          {{ $label }}
-        </label>
+        <span class="admin-label-with-tip">
+          <label for="{{ $id }}" @if(! empty($labelId)) id="{{ $labelId }}" @endif>
+            @if (! empty($clientFilled))
+              @include('admin.quotations.basement._client_filled', ['force' => true])
+            @endif
+            {{ $label }}
+          </label>
+          @include('admin.partials.info_tip', [
+            'text' => collect([$info ?? null, $help ?? null])->filter()->implode(' '),
+            'tipLabel' => $label,
+          ])
+        </span>
         <div class="br-lw-segment" role="radiogroup" aria-label="{{ $label }} entry">
           <label class="br-lw-segment__item">
             <input type="radio" class="br-preview" name="{{ $modeName }}" value="sqft"

@@ -88,7 +88,8 @@
       @if (! empty($labelHint))
         @php
           $ssHint = is_array($labelHint) ? $labelHint : ['text' => $labelHint];
-          $ssHint['label'] = $ssHint['label'] ?? $label;
+          $ssHint['tipLabel'] = $ssHint['tipLabel'] ?? $ssHint['label'] ?? $label;
+          unset($ssHint['id'], $ssHint['label']);
         @endphp
         @include('admin.client_projects._cp_field_hint', $ssHint)
       @endif

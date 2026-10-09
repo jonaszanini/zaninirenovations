@@ -24,7 +24,10 @@
 
   <div class="mw-piece__row mw-piece__row--id">
     <div class="admin-form-group mw-field--type">
-      <label>@include('admin.partials.info_tip', ['text' => 'Pick the millwork type. Fields below change to match.']) Type</label>
+      <span class="admin-label-with-tip">
+        <label>Type</label>
+        <x-admin.info-tip label="Type">Pick the millwork type. Fields below change to match.</x-admin.info-tip>
+      </span>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][type]" data-mw-type-input>
         @foreach (MillworkPartBuilder::TYPE_GROUPS as $group => $keys)
           <optgroup label="{{ $group }}">
@@ -90,7 +93,10 @@
 
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="kallax closet">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Sections across. Vertical partitions = columns − 1.']) Columns</label>
+      <span class="admin-label-with-tip">
+        <label>Columns</label>
+        <x-admin.info-tip label="Columns">Sections across. Vertical partitions = columns − 1.</x-admin.info-tip>
+      </span>
       <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][columns]" value="{{ $piece['columns'] ?? 2 }}">
     </div>
     <div class="admin-form-group" data-mw-show="kallax">
@@ -204,7 +210,10 @@
       </select>
     </div>
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Each opening adds 2 × height + width of casing (defaults 80" × 32").']) Openings</label>
+      <span class="admin-label-with-tip">
+        <label>Openings</label>
+        <x-admin.info-tip label="Openings">Each opening adds 2 × height + width of casing (defaults 80" × 32").</x-admin.info-tip>
+      </span>
       <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][openings]" value="{{ $piece['openings'] ?? 0 }}">
     </div>
     <div class="admin-form-group">
@@ -236,8 +245,12 @@
   </div>
 
   <div data-mw-show="shelf floating_shelf cabinet_door">
-    <p class="admin-form-help mw-piece__hint">Size sets — add groups if you have mixed sizes.</p>
-    <p class="admin-form-help mw-piece__hint" data-mw-show="floating_shelf">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</p>
+    <span class="mw-piece__hint">
+      <x-admin.info-tip label="Size sets">Size sets — add groups if you have mixed sizes.</x-admin.info-tip>
+    </span>
+    <span class="mw-piece__hint" data-mw-show="floating_shelf">
+      <x-admin.info-tip label="Open-back box">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</x-admin.info-tip>
+    </span>
     <div data-mw-set-list>
       @foreach ($sets as $si => $set)
         @include('admin.quotations.millwork._set_row', ['pi' => $pi, 'si' => $si, 'set' => is_array($set) ? $set : [], 'unit' => $unit])

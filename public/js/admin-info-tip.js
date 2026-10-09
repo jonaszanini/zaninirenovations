@@ -175,8 +175,21 @@
     return wrapsIn(scope).length;
   }
 
-  function refreshDuplicateIds(scope) {
+  function idsAlreadyInDocument(exceptScope) {
     var seen = Object.create(null);
+    if (!document.querySelectorAll) return seen;
+    document.querySelectorAll('.admin-info-tip__bubble[id]').forEach(function (bubble) {
+      if (!bubble.id) return;
+      if (exceptScope && exceptScope.nodeType === 1 && exceptScope.contains(bubble)) {
+        return;
+      }
+      seen[bubble.id] = true;
+    });
+    return seen;
+  }
+
+  function refreshDuplicateIds(scope) {
+    var seen = idsAlreadyInDocument(scope);
     wrapsIn(scope).forEach(function (wrap) {
       var btn = buttonOf(wrap);
       var bubble = bubbleOf(wrap);
@@ -191,6 +204,49 @@
         return;
       }
       seen[id] = true;
+    });
+  }
+
+  function isIconVisibleInClip(btn) {
+    if (!btn || typeof btn.getBoundingClientRect !== 'function') return false;
+    var rect = btn.getBoundingClientRect();
+    var vw = window.innerWidth || 0;
+    var vh = window.innerHeight || 0;
+    if (rect.bottom < 0 || rect.top > vh || rect.right < 0 || rect.left > vw) {
+      return false;
+    }
+    var el = btn.parentElement;
+    var view = window;
+    while (el && el !== document.body && el !== document.documentElement) {
+      var style = view.getComputedStyle ? view.getComputedStyle(el) : null;
+      if (style) {
+        var overflow = String(style.overflow + ' ' + style.overflowX + ' ' + style.overflowY);
+        if (/(auto|scroll|hidden)/.test(overflow)) {
+          var crect = el.getBoundingClientRect();
+          if (rect.bottom < crect.top || rect.top > crect.bottom || rect.right < crect.left || rect.left > crect.right) {
+            return false;
+          }
+        }
+      }
+      el = el.parentElement;
+    }
+    return true;
+  }
+
+  var scrollRaf = 0;
+  function onScroll() {
+    if (scrollRaf) return;
+    var raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); };
+    scrollRaf = raf(function () {
+      scrollRaf = 0;
+      document.querySelectorAll('.admin-info-tip-wrap.' + OPEN).forEach(function (root) {
+        var btn = buttonOf(root);
+        if (!isIconVisibleInClip(btn)) {
+          closeTip(root);
+          return;
+        }
+        positionBubble(btn, bubbleOf(root));
+      });
     });
   }
 
@@ -227,7 +283,7 @@
   }
 
   document.addEventListener('mousedown', function (e) {
-    if (e.target.closest && e.target.closest('.admin-info-tip')) {
+    if (e.target.closest && e.target.closest('.admin-info-tip-wrap')) {
       e.preventDefault();
     }
   }, true);
@@ -238,10 +294,15 @@
       closeTips(null);
       return;
     }
+    var inSummary = !!(e.target.closest && e.target.closest('summary'));
     if (e.target.closest('.admin-info-tip__bubble')) {
+      if (inSummary) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       return;
     }
-    if (!e.target.closest('.admin-info-tip')) {
+    if (!e.target.closest('.admin-info-tip') && !e.target.closest('.admin-info-tip-wrap')) {
       return;
     }
     e.preventDefault();
@@ -264,7 +325,7 @@
 
   window.addEventListener('resize', repositionOpenTips);
 
-  document.addEventListener('scroll', repositionOpenTips, { capture: true, passive: true });
+  document.addEventListener('scroll', onScroll, { capture: true, passive: true });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { hoistFromLabels(document); });
