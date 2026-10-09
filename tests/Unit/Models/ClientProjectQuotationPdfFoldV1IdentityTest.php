@@ -91,7 +91,7 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
         $quote = new ClientProjectQuotation([
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
             'source_id' => $sq->id,
-            'items' => $fx['items'],
+            'items' => $sq->summaryPdfLineItems(),
             'pdf_fold_version' => 2,
         ]);
         $this->assertTrue($quote->usesCurrentPdfFold());

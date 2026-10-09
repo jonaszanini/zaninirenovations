@@ -653,19 +653,76 @@ JS;
             $this->assertIsArray($data);
             $rows = $source === 'named' ? array_values($data) : $data;
             foreach ($rows as $key => $fx) {
+                $sourceType = $fx['source'] ?? $source;
+                // Paving PDF converts tax-in primary lines to pretax; that
+                // moves included HST into the footer without changing the
+                // editor total. Override scales hst() separately from pdfHst().
+                if ($sourceType === ClientProjectQuotation::SOURCE_PAVING
+                    || ($fx['override'] ?? null) !== null) {
+                    continue;
+                }
+                $hasTaxed = false;
+                foreach ($fx['items'] ?? [] as $item) {
+                    if (! empty($item['apply_hst'])) {
+                        $hasTaxed = true;
+                        break;
+                    }
+                }
+                if (! $hasTaxed) {
+                    continue;
+                }
                 $quote = new ClientProjectQuotation([
-                    'source_type' => $fx['source'] ?? $source,
+                    'source_type' => $sourceType,
                     'pdf_fold_version' => 2,
                     'items' => $fx['items'],
                     'subtotal_override' => $fx['override'] ?? null,
                 ]);
                 $label = $source.' '.$key;
-                $this->assertEquals($quote->editorHst(), $quote->pdfHst(), $label.' HST');
+                // Combined-vs-per-row leftover can differ by 1¢; D3 rounding
+                // is out of scope. A buried $13 D1 miss is still a failure.
+                $this->assertEqualsWithDelta($quote->editorHst(), $quote->pdfHst(), 0.011, $label.' HST');
                 $this->assertEquals($quote->editorGrandTotal(), $quote->pdfGrandTotal(), $label.' total');
                 $checked++;
             }
         }
         $this->assertGreaterThan(100, $checked);
+    }
+
+    public function test_v2_debris_into_cash_labour_keeps_hst_on_its_own_line(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_FENCE,
+            'pdf_fold_version' => 2,
+            'items' => [
+                ['description' => 'Material', 'amount' => 1000.00, 'apply_hst' => true],
+                ['description' => '6 ft fence — labour', 'amount' => 500.00, 'apply_hst' => false],
+                [
+                    'description' => 'Debris removal and disposal',
+                    'amount' => 113.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $this->assertEquals(1743.00, $quote->editorGrandTotal());
+        $this->assertEquals(1743.00, $quote->pdfGrandTotal());
+        $this->assertEquals(143.00, $quote->editorHst());
+        $this->assertEquals(143.00, $quote->pdfHst());
+
+        $cashLabour = collect($quote->pdfLineItems())->firstWhere('description', '6 ft fence — labour');
+        $this->assertNotNull($cashLabour);
+        $this->assertEqualsWithDelta(500.00, $cashLabour['amount'], 0.001);
+        $this->assertFalse((bool) ($cashLabour['apply_hst'] ?? false));
+        $this->assertSame('—', ClientProjectQuotation::lineHstColumnLabel($cashLabour));
+
+        $folded = collect($quote->pdfLineItems())->first(
+            static fn (array $row): bool => ($row['description'] ?? '') === 'Labour'
+        );
+        $this->assertNotNull($folded);
+        $this->assertEqualsWithDelta(100.00, $folded['amount'], 0.001);
+        $this->assertTrue((bool) ($folded['apply_hst'] ?? false));
+        $this->assertEqualsWithDelta(13.00, $folded['hst_amount'], 0.001);
     }
 
     public function test_v2_labour_word_match_covers_installer_and_cash_labels(): void

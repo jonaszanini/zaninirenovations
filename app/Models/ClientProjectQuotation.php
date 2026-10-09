@@ -826,12 +826,28 @@ class ClientProjectQuotation extends Model
         }
 
         // Taxed labour: add pre-tax so the footer 13% covers the extra.
-        // Cash / tax-in labour: add the gross so 13% is not stripped away.
+        // Cash / tax-in labour: add the gross so 13% is not stripped away
+        // — unless the quote already charges HST, in which case v2 puts
+        // the leftover on its own taxed Labour row (same as materials D1).
         $leftoverHst = 0.0;
         if ($taxed !== []) {
             $total = self::preTaxFromHstIncluded($hiddenGross);
             $leftoverHst = round($hiddenGross - $total, 2);
             $targets = $taxed;
+        } elseif (! $this->usesLegacyPdfNonMaterialFold() && $this->itemsHaveTaxedAmount($items)) {
+            $hiddenPreTax = self::preTaxFromHstIncluded($hiddenGross);
+            $ownLeftover = round($hiddenGross - $hiddenPreTax, 2);
+            if ($hiddenPreTax <= 0 && $ownLeftover <= 0) {
+                return $items;
+            }
+            $items[] = [
+                'description' => 'Labour',
+                'amount' => $hiddenPreTax,
+                'apply_hst' => true,
+                'hst_amount' => $ownLeftover,
+            ];
+
+            return array_values($items);
         } else {
             $total = round($hiddenGross, 2);
             $targets = $untaxed;
@@ -1611,18 +1627,33 @@ class ClientProjectQuotation extends Model
         }
 
         $sum = 0.0;
+        $materialsHiddenGross = 0.0;
+        $labourHiddenGross = 0.0;
         foreach ($this->cleanItems() as $row) {
             if (! empty($row['is_heading'])) {
                 continue;
             }
-            if (! empty($row['apply_hst'])) {
-                $sum += self::lineHstAmount($row);
+            $desc = (string) ($row['description'] ?? '');
+            $hiddenMaterials = self::isMaterialsHiddenInternalExpenseLineDescription($desc);
+            $hiddenLabour = DebrisRemovalExpenseService::isLineDescription($desc)
+                || self::isLabourHiddenInternalExpenseLineDescription($desc);
+            if ($hiddenMaterials && ! empty($row['hst_included']) && empty($row['apply_hst'])) {
+                $materialsHiddenGross += (float) ($row['amount'] ?? 0);
                 continue;
             }
-            if (! empty($row['hst_included'])) {
-                $gross = (float) ($row['amount'] ?? 0);
-                $sum += round($gross - self::preTaxFromHstIncluded($gross), 2);
+            if ($hiddenLabour && ! empty($row['hst_included']) && empty($row['apply_hst'])) {
+                $labourHiddenGross += (float) ($row['amount'] ?? 0);
+                continue;
             }
+            if (! empty($row['apply_hst'])) {
+                $sum += self::lineHstAmount($row);
+            }
+        }
+        if ($materialsHiddenGross > 0) {
+            $sum += round($materialsHiddenGross - self::preTaxFromHstIncluded($materialsHiddenGross), 2);
+        }
+        if ($labourHiddenGross > 0) {
+            $sum += round($labourHiddenGross - self::preTaxFromHstIncluded($labourHiddenGross), 2);
         }
 
         return round($sum, 2);
