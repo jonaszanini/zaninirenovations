@@ -77,11 +77,18 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertStringContainsString('data-cp-money-allow-negative', $invoiceEdit);
         $this->assertStringContainsString('$allowNegativeAmount', $invoiceEdit);
         $this->assertStringContainsString('syncRowMoneySign', $invoiceEdit);
+        $this->assertStringContainsString('cpMoneyMask.refresh', $invoiceEdit);
+        $this->assertStringContainsString('function refresh', $js);
         $this->assertStringContainsString('moneyAllowsNegative', $js);
         $this->assertStringContainsString('function roundToPlaces', $js);
         $calculator = file_get_contents(app_path('Services/Invoice/InvoiceTotalsCalculator.php'));
         $this->assertIsString($calculator);
         $this->assertStringContainsString('Materials and gas amounts cannot be negative.', $calculator);
+        $controller = file_get_contents(app_path('Http/Controllers/Admin/ClientProjectInvoiceController.php'));
+        $this->assertIsString($controller);
+        $this->assertStringContainsString('Invoice total cannot be negative.', $controller);
+        $this->assertStringContainsString('DB::transaction', $controller);
+        $this->assertDoesNotMatchRegularExpression('/total\s*<\s*0\.01/', $controller);
         $this->assertDoesNotMatchRegularExpression(
             '/LINE_KIND_GAS\)\s*&&\s*\$amount\s*<\s*0\)\s*\{\s*continue;/',
             $calculator
@@ -271,6 +278,9 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertFalse((bool) ($report['hourlyMaterialsNegative']['allowNegative'] ?? true));
         $this->assertTrue((bool) ($report['hourlyMaterialsNegative']['invalid'] ?? false));
         $this->assertFalse((bool) ($report['hourlyMaterialsNegative']['submitAllowed'] ?? true));
+        $this->assertTrue((bool) ($report['hourlyMaterialsNegative']['afterKindChange']['allowNegative'] ?? false));
+        $this->assertFalse((bool) ($report['hourlyMaterialsNegative']['afterKindChange']['invalid'] ?? true));
+        $this->assertStringContainsString('-', (string) ($report['hourlyMaterialsNegative']['afterKindChange']['value'] ?? ''));
         $negStandard->refresh();
         $negHourly->refresh();
         $this->assertNegativeLineTotals($negStandard, $negHourly);

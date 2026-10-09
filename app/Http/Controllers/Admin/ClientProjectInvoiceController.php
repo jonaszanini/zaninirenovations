@@ -18,12 +18,14 @@ use App\Services\Invoice\MarkInvoicePaidService;
 use App\Services\MoceanSmsService;
 use App\Support\SignedPublicLink;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Manages invoices attached to a ClientProject.
@@ -224,7 +226,6 @@ class ClientProjectInvoiceController extends Controller
                 ? 0.0
                 : round($labour * ClientProjectInvoice::HST_RATE, 2);
             $invoice->total = round($labour + $invoice->hst + $materials, 2);
-            $this->totals->syncHourlyExpenseLinks($client_project, $invoice, $items);
         } else {
             $invoice->items = $items;
             $gross = round((float) array_sum(array_column($items, 'amount')), 2);
@@ -267,19 +268,23 @@ class ClientProjectInvoiceController extends Controller
             }
         }
 
-        if ($invoice->total < 0.01) {
-            return back()
-                ->withErrors([
-                    'items' => 'Invoice total must be at least CA$0.01. Reduce the credit or add more billable lines.',
-                ])
-                ->withInput();
-        }
+        DB::transaction(function () use ($client_project, $invoice, $items, $isHourlyManual, $data) {
+            if ($invoice->total < 0) {
+                throw ValidationException::withMessages([
+                    'items' => 'Invoice total cannot be negative. Reduce the credit or add more billable lines.',
+                ]);
+            }
 
-        if (! empty($data['due_on'])) {
-            $invoice->due_on = $data['due_on'];
-        }
+            if ($isHourlyManual) {
+                $this->totals->syncHourlyExpenseLinks($client_project, $invoice, $items);
+            }
 
-        $invoice->save();
+            if (! empty($data['due_on'])) {
+                $invoice->due_on = $data['due_on'];
+            }
+
+            $invoice->save();
+        });
 
         $intent = $data['intent'] ?? 'draft';
 

@@ -164,6 +164,78 @@ class InvoiceNegativeLineResaveTest extends IntegrationTestCase
         $this->assertSame(-30.49, round(-234.50 * ClientProjectInvoice::HST_RATE, 2));
     }
 
+    public function test_standard_zero_total_draft_is_accepted(): void
+    {
+        $this->actingAsAdmin();
+        [$project, $invoice] = $this->makeStandardInvoiceWithDepositCredit();
+
+        $this->put(
+            route('admin.client-projects.invoices.update', [$project, $invoice]),
+            [
+                'intent' => 'draft',
+                'hst_exempt' => '0',
+                'manual_description' => 'Manual invoice',
+                'manual_total' => '0.00',
+                'items' => [
+                    ['description' => '', 'amount' => ''],
+                ],
+            ]
+        )->assertRedirect(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->assertSessionHasNoErrors();
+
+        $invoice->refresh();
+        $this->assertEqualsWithDelta(0.0, (float) $invoice->total, 0.0001);
+    }
+
+    public function test_installment_full_discount_zero_total_is_accepted(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Full discount invoice',
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'payment_plan' => 1,
+            'total_amount' => 1000,
+        ]);
+        $project->installments()->create([
+            'sort_order' => 0,
+            'label' => 'On signing',
+            'percentage' => 100,
+            'amount' => 1000,
+            'is_paid' => false,
+        ]);
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->create([
+            'installment_number' => 1,
+            'installment_description' => 'On signing',
+            'items' => [
+                ['description' => 'Deposit', 'amount' => 1000.00],
+            ],
+            'subtotal' => 1000.00,
+            'hst' => 130.00,
+            'total' => 1130.00,
+            'hst_exempt' => false,
+            'status' => ClientProjectInvoice::STATUS_DRAFT,
+        ]);
+
+        $this->put(
+            route('admin.client-projects.invoices.update', [$project, $invoice]),
+            [
+                'intent' => 'draft',
+                'hst_exempt' => '0',
+                'discount_percent' => '100',
+                'items' => [
+                    ['description' => 'Deposit', 'amount' => '1000.00'],
+                ],
+            ]
+        )->assertRedirect(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->assertSessionHasNoErrors();
+
+        $invoice->refresh();
+        $this->assertEqualsWithDelta(0.0, (float) $invoice->subtotal, 0.0001);
+        $this->assertEqualsWithDelta(0.0, (float) $invoice->total, 0.0001);
+    }
+
     /**
      * @return array{0: ClientProject, 1: ClientProjectInvoice}
      */

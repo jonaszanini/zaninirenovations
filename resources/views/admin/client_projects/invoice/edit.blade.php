@@ -612,7 +612,9 @@
         } else {
           input.removeAttribute('data-cp-money-allow-negative');
         }
-        if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
+        if (window.cpMoneyMask && typeof window.cpMoneyMask.refresh === 'function') {
+          window.cpMoneyMask.refresh(input);
+        } else if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
           window.cpMoneyMask.wire(input);
         }
       }

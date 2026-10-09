@@ -363,12 +363,23 @@ function parseMoney(value) {
       amt.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
       const form = document.getElementById('cp-invoice-form');
       const submitted = form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-      return {
+      const materials = {
         allowNegative: amt.hasAttribute('data-cp-money-allow-negative'),
         value: amt.value,
         invalid: amt.classList.contains('is-invalid') || amt.validity.customError,
         message: String(amt.validationMessage || ''),
         submitAllowed: submitted,
+      };
+      kind.value = 'labour';
+      kind.dispatchEvent(new Event('change', { bubbles: true }));
+      return {
+        ...materials,
+        afterKindChange: {
+          allowNegative: amt.hasAttribute('data-cp-money-allow-negative'),
+          value: amt.value,
+          invalid: amt.classList.contains('is-invalid') || amt.validity.customError,
+          message: String(amt.validationMessage || ''),
+        },
       };
     });
     report.hourlyMaterialsNegative = hourlyMaterialsNegative;
@@ -532,6 +543,10 @@ function parseMoney(value) {
     const mats = report.hourlyMaterialsNegative || {};
     if (mats.allowNegative || !mats.invalid || mats.submitAllowed || String(mats.value || '').indexOf('-') === -1) {
       throw new Error('Hourly materials -50 must stay visible, error, and block submit: ' + JSON.stringify(mats));
+    }
+    const afterKind = mats.afterKindChange || {};
+    if (!afterKind.allowNegative || afterKind.invalid || String(afterKind.value || '').indexOf('-') === -1) {
+      throw new Error('Changing materials to labour must clear the stale minus error: ' + JSON.stringify(afterKind));
     }
     await browser.close();
     process.exit(0);

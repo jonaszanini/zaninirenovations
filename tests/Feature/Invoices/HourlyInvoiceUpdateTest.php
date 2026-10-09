@@ -70,6 +70,69 @@ class HourlyInvoiceUpdateTest extends IntegrationTestCase
         $this->assertContains(ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT, $kinds);
     }
 
+    public function test_rejected_negative_total_does_not_unlink_hourly_expense(): void
+    {
+        $this->actingAsAdmin();
+
+        [$project, $invoice, $expense] = $this->makeHourlyInvoiceDraft();
+        $expense->update(['client_project_invoice_id' => $invoice->id]);
+
+        $this->from(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->put(
+                route('admin.client-projects.invoices.update', [$project, $invoice]),
+                [
+                    'intent' => 'draft',
+                    'hst_exempt' => '0',
+                    'manual_description' => 'Hourly work',
+                    'items' => [
+                        [
+                            'description' => 'Hours',
+                            'amount' => '10.00',
+                            'line_kind' => 'labour',
+                        ],
+                        [
+                            'description' => 'Credit',
+                            'amount' => '100.00',
+                            'line_kind' => 'labour_credit',
+                        ],
+                    ],
+                ]
+            )
+            ->assertRedirect(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->assertSessionHasErrors('items');
+
+        $invoice->refresh();
+        $this->assertEqualsWithDelta(232.75, (float) $invoice->total, 0.0001);
+        $this->assertCount(2, $invoice->cleanItems());
+        $this->assertSame($invoice->id, $expense->fresh()->client_project_invoice_id);
+    }
+
+    public function test_hourly_zero_total_credit_is_accepted(): void
+    {
+        $this->actingAsAdmin();
+
+        [$project, $invoice] = $this->makeHourlyInvoiceDraft();
+
+        $this->put(
+            route('admin.client-projects.invoices.update', [$project, $invoice]),
+            [
+                'intent' => 'draft',
+                'hst_exempt' => '0',
+                'manual_description' => 'Hourly work',
+                'items' => [
+                    ['description' => 'Hours', 'amount' => '200.00', 'line_kind' => 'labour'],
+                    ['description' => 'Prepaid', 'amount' => '200.00', 'line_kind' => 'labour_credit'],
+                ],
+            ]
+        )->assertRedirect(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->assertSessionHasNoErrors();
+
+        $invoice->refresh();
+        $this->assertEqualsWithDelta(0.0, (float) $invoice->subtotal, 0.0001);
+        $this->assertEqualsWithDelta(0.0, (float) $invoice->hst, 0.0001);
+        $this->assertEqualsWithDelta(0.0, (float) $invoice->total, 0.0001);
+    }
+
     public function test_project_show_renders_invoice_row_actions_for_sent_hourly_invoice(): void
     {
         $this->actingAsAdmin();

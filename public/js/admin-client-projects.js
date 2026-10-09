@@ -373,7 +373,13 @@
       return roundToPlaces(num, places);
     },
     /** Strip thousands separators on `.cp-money-input` before a programmatic submit. */
-    stripFormCommas: stripMoneyCommasOnForm
+    stripFormCommas: stripMoneyCommasOnForm,
+    /** Re-read allow-negative / places and clear or reset the visible error. */
+    refresh: function (input) {
+      if (!input) return;
+      clearMoneyFieldError(input);
+      wireMoneyInput(input);
+    }
   };
 
   // --- Time-entry form: start/end → hours -----------------------------
