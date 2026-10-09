@@ -240,8 +240,8 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $quote->refresh();
         $materials = $quote->flattenedMaterials();
         $this->assertCount(2, $materials);
-        $layouts = collect($materials)->pluck('assembly_layout_id')->sort()->values()->all();
-        $this->assertSame(['room:'.$bathroom->id, 'room:'.$kitchen->id], $layouts);
+        $layouts = collect($materials)->pluck('assembly_layout_id')->all();
+        $this->assertEqualsCanonicalizing(['room:'.$kitchen->id, 'room:'.$bathroom->id], $layouts);
 
         $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
             'layout' => 'room:'.$kitchen->id,

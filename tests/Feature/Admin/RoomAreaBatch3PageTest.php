@@ -128,6 +128,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
                 'room_area_project_id' => $project->id,
                 'name' => $name,
                 'scale_pixels_per_foot' => 12,
+                'area_sqft' => 25,
                 'wall_height_ft' => 8,
                 'vertices' => $vertices,
             ]);
