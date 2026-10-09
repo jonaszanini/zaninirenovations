@@ -111,7 +111,7 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
 
         $fence = file_get_contents(resource_path('views/admin/quotations/fence/create.blade.php'));
         $this->assertIsString($fence);
-        $this->assertStringNotContainsString('document.activeElement !== gatesInput', $fence);
+        $this->assertStringContainsString('document.activeElement !== gatesInput', $fence);
         $this->assertStringContainsString('lastClearedGateTicks', $fence);
         $this->assertStringContainsString('Gate goes here', $fence);
 

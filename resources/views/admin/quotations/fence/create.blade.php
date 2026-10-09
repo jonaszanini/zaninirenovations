@@ -1162,7 +1162,9 @@
     var gateCount = parseInt(gatesInput.value, 10) || 0;
     if (gateSides > gateCount) {
       gateCount = gateSides;
-      gatesInput.value = String(gateCount);
+      if (typeof document === 'undefined' || document.activeElement !== gatesInput) {
+        gatesInput.value = String(gateCount);
+      }
     }
     var payload = {
       sides: sides,
