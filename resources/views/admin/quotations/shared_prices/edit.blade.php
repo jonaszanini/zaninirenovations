@@ -1319,6 +1319,14 @@
     }
     window.addEventListener('resize', repositionSpOpenTips);
     window.addEventListener('scroll', repositionSpOpenTips, true);
+    document.addEventListener('click', function() {
+      setTimeout(repositionSpOpenTips, 0);
+    }, true);
+    if (window.MutationObserver) {
+      new MutationObserver(function() {
+        repositionSpOpenTips();
+      }).observe(document.body, { attributes: true, attributeFilter: ['aria-expanded'], subtree: true });
+    }
 
     function updateSpEffective() {
       var lib = window.SharedPricesEffective;

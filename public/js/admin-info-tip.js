@@ -79,7 +79,7 @@
 
   function positionBubble(btn, bubble) {
     if (!btn || !bubble) return;
-    var maxW = Math.min(MAX_W, Math.max(120, window.innerWidth - PAD * 2));
+    var maxW = Math.min(MAX_W, Math.max(120, Math.min(window.innerWidth - PAD * 2, window.innerWidth * 0.7)));
     bubble.style.position = 'fixed';
     bubble.style.maxWidth = maxW + 'px';
     bubble.style.maxHeight = '';
