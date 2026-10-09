@@ -23,6 +23,7 @@ use App\Services\QuotationPaymentSchedule;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,7 +58,7 @@ class MillworkQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
 
         $quote = MillworkQuotation::create(array_merge($calc, [
@@ -88,7 +89,7 @@ class MillworkQuotationController extends Controller
 
     public function update(Request $request, MillworkQuotation $millwork_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $millwork_quotation);
 
         $millwork_quotation->fill(array_merge($calc, [

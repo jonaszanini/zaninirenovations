@@ -19,6 +19,7 @@ use App\Services\StandardQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use App\Support\StandardQuotationValidationMessages;
 use Illuminate\Http\Request;
@@ -81,11 +82,16 @@ class StandardQuotationController extends Controller
 
         $linkedNow = $newlyLinked && $hubProjectRequested;
 
+        $intent = QuotationSaveIntent::fromRequest($request);
         $resp = redirect()
             ->route('admin.quotations.standard.edit', $quote)
-            ->with('success', $linkedNow
-                ? 'Standard quotation '.$quote->quote_number.' saved and linked to this project.'
-                : 'Standard quotation '.$quote->quote_number.' saved.')
+            ->with('success', $intent === QuotationSaveIntent::DRAFT
+                ? ($linkedNow
+                    ? 'Standard quotation saved as draft and linked.'
+                    : 'Standard quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Standard quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Standard quotation '.$quote->quote_number.' saved.'))
             ->with('standard_flash', $linkedNow ? 'linked' : 'saved');
 
         if ($warnings !== []) {
@@ -362,7 +368,7 @@ class StandardQuotationController extends Controller
      */
     protected function autoLinkStandardIfRequested(StandardQuotation $sq, Request $request, array &$warnings): bool
     {
-        if ($sq->isLinked()) {
+        if ($sq->isLinked() || ($sq->is_draft ?? false)) {
             return false;
         }
 
@@ -427,6 +433,7 @@ class StandardQuotationController extends Controller
         ];
 
         $data = $request->validate(array_merge([
+            'save_intent' => ['nullable', 'in:draft,publish'],
             'client_name' => ['required', 'string', 'max:160'],
             'display_title' => ['required', 'string', 'max:255'],
             'document_type' => ['required', Rule::in([
@@ -640,6 +647,7 @@ class StandardQuotationController extends Controller
         $persistence = [
             'persistence' => [
                 'client_name' => trim($data['client_name']),
+                'is_draft' => QuotationSaveIntent::isDraft($request),
                 'display_title' => \Illuminate\Support\Str::limit($data['display_title'], 255, ''),
                 'document_type' => $data['document_type'],
                 'includes_material' => $includesMaterial,

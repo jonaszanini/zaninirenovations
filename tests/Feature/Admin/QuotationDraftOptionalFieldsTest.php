@@ -39,6 +39,7 @@ class QuotationDraftOptionalFieldsTest extends IntegrationTestCase
     public function draftCapableTypes(): array
     {
         return [
+            'standard' => ['standard', StandardQuotation::class],
             'basement' => ['basement', BasementQuotation::class],
             'millwork' => ['millwork', MillworkQuotation::class],
             'flooring' => ['flooring', FlooringQuotation::class],
@@ -46,8 +47,10 @@ class QuotationDraftOptionalFieldsTest extends IntegrationTestCase
             'painting' => ['painting', PaintingQuotation::class],
             'shed' => ['shed', ShedQuotation::class],
             'tile' => ['tile', TileQuotation::class],
+            'fence' => ['fence', FenceQuotation::class],
             'paving' => ['paving', PavingQuotation::class],
             'stairs' => ['stairs', StairsQuotation::class],
+            'low_deck' => ['low-deck', LowDeckQuotation::class],
         ];
     }
 
@@ -144,19 +147,90 @@ class QuotationDraftOptionalFieldsTest extends IntegrationTestCase
     }
 
     /**
+     * @return array<string, array{0: string, 1: array<string, string>}>
+     */
+    public function craftedFlagCombos(): array
+    {
+        $out = [];
+        foreach ($this->allQuoteTypes() as $key => [$type]) {
+            $out[$key.' publish+is_draft=1'] = [$type, ['save_intent' => 'publish', 'is_draft' => '1']];
+            $out[$key.' draft+is_draft=0'] = [$type, ['save_intent' => 'draft', 'is_draft' => '0']];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @dataProvider craftedFlagCombos
+     *
+     * @param  array<string, string>  $flags
+     */
+    public function test_crafted_save_flags_cannot_publish_without_required_fields(string $type, array $flags): void
+    {
+        $this->actingAsAdmin();
+
+        $draftIntent = ($flags['save_intent'] ?? '') === 'draft';
+        $clientName = 'Crafted '.$type.' '.($draftIntent ? 'draft' : 'publish');
+        $payload = array_merge($this->minimalPayload($type, $draftIntent, $clientName), $flags);
+
+        foreach (self::PUBLISH_ONLY as $field) {
+            unset($payload[$field]);
+            $this->assertArrayNotHasKey($field, $payload);
+        }
+
+        $from = route('admin.quotations.'.$type.'.create');
+        $response = $this->from($from)->post(route('admin.quotations.'.$type.'.store'), $payload);
+
+        $quote = $this->modelClassForType($type)::query()->where('client_name', $clientName)->first();
+
+        if ($draftIntent) {
+            $response->assertSessionDoesntHaveErrors(self::PUBLISH_ONLY)->assertRedirect();
+            $this->assertNotNull($quote, "{$type} crafted draft flags should persist as a draft");
+            $this->assertTrue((bool) $quote->is_draft, "{$type} crafted draft flags must not publish");
+        } else {
+            $response->assertRedirect($from)->assertSessionHasErrors(self::PUBLISH_ONLY);
+            $this->assertNull($quote, "{$type} crafted publish flags must not persist without required fields");
+        }
+    }
+
+    public function test_linking_a_draft_without_publish_only_fields_does_not_publish(): void
+    {
+        $this->actingAsAdmin();
+
+        $quote = BasementQuotation::query()->create([
+            'quote_number' => 'BR-LINK-DRAFT-1',
+            'client_name' => 'Link Draft Client',
+            'is_draft' => true,
+            'inputs' => [],
+            'calculation' => [],
+            'final_quote_total' => 1500,
+            'payment_installments' => null,
+            'include_debris_removal' => null,
+            'ask_reply_to_accept' => null,
+        ]);
+        $project = \App\Models\ClientProject::factory()->create();
+
+        $this->from(route('admin.quotations.basement.edit', $quote))
+            ->post(route('admin.quotations.basement.link', $quote), [
+                'client_project_id' => $project->id,
+            ])
+            ->assertSessionHas('error');
+
+        $quote->refresh();
+        $this->assertTrue((bool) $quote->is_draft);
+        $this->assertNull($quote->getRawOriginal('payment_installments'));
+        $this->assertNull($quote->getRawOriginal('include_debris_removal'));
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function minimalPayload(string $type, bool $draft, string $clientName): array
     {
         $base = ['client_name' => $clientName];
+        $base['save_intent'] = $draft ? 'draft' : 'publish';
         if ($type === 'tile') {
-            if ($draft) {
-                $base['is_draft'] = '1';
-            }
-        } elseif ($draft) {
-            $base['save_intent'] = 'draft';
-        } else {
-            $base['save_intent'] = 'publish';
+            $base['is_draft'] = $draft ? '1' : '0';
         }
 
         $withCommute = $type !== 'flooring';
@@ -166,6 +240,7 @@ class QuotationDraftOptionalFieldsTest extends IntegrationTestCase
                 'display_title' => 'Kitchen work',
                 'document_type' => 'quotation',
                 'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+                'includes_labour' => '1',
                 'works' => [['title' => 'Labour', 'labour_use_fixed' => '1', 'labour_fixed_amount' => '100']],
             ],
             'basement' => [

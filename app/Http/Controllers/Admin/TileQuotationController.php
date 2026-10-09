@@ -21,6 +21,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TileQuotationCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 
@@ -97,6 +98,7 @@ class TileQuotationController extends Controller
             'edge_lf' => ['nullable', 'numeric', 'min:0'],
 
             'is_draft' => ['nullable', 'string'],
+            'save_intent' => ['nullable', 'in:draft,publish'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
             CommuteExpenseService::commuteValidationMessages(),
@@ -114,7 +116,7 @@ class TileQuotationController extends Controller
         $quotation->client_project_id = empty($data['client_project_id']) ? null : (int) $data['client_project_id'];
         $quotation->quote_number = TileQuotation::generateNumber();
         $quotation->client_name = $data['client_name'] ?? null;
-        $quotation->is_draft = $request->input('is_draft') === '1';
+        $quotation->is_draft = QuotationSaveIntent::isDraft($request);
         $quotation->work_description = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null);
         $schedule = $this->paymentScheduleFromRequest($request);
         $quotation->payment_installments = $schedule['payment_installments'];
@@ -225,6 +227,7 @@ class TileQuotationController extends Controller
             'tile_edge_id' => ['nullable', 'integer', 'exists:tile_edges,id'],
             'edge_lf' => ['nullable', 'numeric', 'min:0'],
             'is_draft' => ['nullable', 'string'],
+            'save_intent' => ['nullable', 'in:draft,publish'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
             CommuteExpenseService::commuteValidationMessages(),
@@ -241,7 +244,7 @@ class TileQuotationController extends Controller
         if (! $quotation->isLinked()) {
             $quotation->client_name = $data['client_name'] ?? null;
         }
-        $quotation->is_draft = $request->input('is_draft') === '1';
+        $quotation->is_draft = QuotationSaveIntent::isDraft($request);
         $quotation->work_description = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null);
         $schedule = $this->paymentScheduleFromRequest($request);
         $quotation->payment_installments = $schedule['payment_installments'];

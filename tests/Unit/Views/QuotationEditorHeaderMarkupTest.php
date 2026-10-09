@@ -23,6 +23,9 @@ class QuotationEditorHeaderMarkupTest extends TestCase
             'basement' => 'br-btn-draft',
             'millwork' => 'mw-btn-draft',
             'shed' => 'sh-btn-draft',
+            'fence' => 'fq-btn-draft',
+            'standard' => 'st-btn-draft',
+            'low_deck' => 'ld-btn-draft',
         ];
         foreach ($creates as $type => $draftId) {
             $blade = file_get_contents(resource_path('views/admin/quotations/'.$type.'/create.blade.php'));
@@ -53,5 +56,16 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('.qh-wizard[hidden]', file_get_contents(public_path('css/admin.css')));
         $this->assertStringContainsString('This step is missing required information', $mw);
         $this->assertStringContainsString('This step is missing required information', $sh);
+        $this->assertStringContainsString('function restorePublishOnlyRequired', $leave);
+        $this->assertStringContainsString('window.allowUnload = true', $leave);
+        $this->assertStringContainsString('Quotation not saved yet', $leave);
+        $canAutosave = preg_match('/function canAutosave\(form\) \{([\s\S]*?)\n  function /', $leave, $m)
+            ? ($m[1] ?? '')
+            : '';
+        $this->assertStringNotContainsString('relaxPublishOnlyRequired', $canAutosave);
+        $tile = file_get_contents(resource_path('views/admin/quotations/tile/create.blade.php'));
+        $this->assertStringContainsString("saveIntentInput.value = draft ? 'draft' : 'publish'", $tile);
+        $this->assertStringContainsString("isDraftInput.value = draft ? '1' : '0'", $tile);
+        $this->assertStringContainsString("name=\"save_intent\"", $tile);
     }
 }

@@ -164,7 +164,11 @@ trait ResolvesQuotationProjectLink
 
         if (($quotation->is_draft ?? false)) {
             $clientName = $updates['client_name'] ?? trim((string) ($quotation->client_name ?? ''));
-            if ($clientName !== '' && $this->quotationLinkGrandTotal($quotation) > 0) {
+            if (
+                $clientName !== ''
+                && $this->quotationLinkGrandTotal($quotation) > 0
+                && $this->quotationHasPublishOnlyChoices($quotation)
+            ) {
                 $updates['is_draft'] = false;
             }
         }
@@ -182,6 +186,26 @@ trait ResolvesQuotationProjectLink
         }
         $quotation->save();
         $quotation->refresh();
+    }
+
+    protected function quotationHasPublishOnlyChoices(object $quotation): bool
+    {
+        $payment = $quotation->getRawOriginal('payment_installments');
+        if ($payment === null || $payment === '') {
+            return false;
+        }
+
+        $debris = $quotation->getRawOriginal('include_debris_removal');
+        if ($debris === null || $debris === '') {
+            return false;
+        }
+
+        $accept = $quotation->getRawOriginal(\App\Support\QuotationReplyToAccept::FIELD);
+        if ($accept === null || $accept === '') {
+            return false;
+        }
+
+        return true;
     }
 
     protected function quotationLinkGrandTotal(object $quotation): float

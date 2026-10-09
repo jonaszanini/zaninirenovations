@@ -13,6 +13,30 @@
     });
   }
 
+  function restorePublishOnlyRequired(form) {
+    if (!form || !form.querySelectorAll) {
+      return;
+    }
+    form.querySelectorAll('[data-qh-publish-required]').forEach(function (el) {
+      el.required = true;
+      el.removeAttribute('data-qh-publish-required');
+    });
+  }
+
+  function setCanonicalIntent(form, draft) {
+    if (!form) {
+      return;
+    }
+    var intent = form.querySelector('input[name="save_intent"]');
+    if (intent) {
+      intent.value = draft ? 'draft' : 'publish';
+    }
+    var isDraft = form.querySelector('input[name="is_draft"]');
+    if (isDraft) {
+      isDraft.value = draft ? '1' : '0';
+    }
+  }
+
   function isDraftSubmit(form) {
     var intent = form.querySelector('input[name="save_intent"]');
     if (intent && intent.value === 'draft') {
@@ -24,19 +48,35 @@
 
   window.AdminQuoteDraftValidation = {
     relax: relaxPublishOnlyRequired,
+    restore: restorePublishOnlyRequired,
     isDraftSubmit: isDraftSubmit,
+    setCanonicalIntent: setCanonicalIntent,
   };
 
   document.addEventListener('click', function (e) {
-    var btn = e.target.closest && e.target.closest('.qh-actions__draft, [id$="-btn-draft"]');
-    if (!btn) {
+    var saveBtn = e.target.closest && e.target.closest('.qh-actions__save, [id$="-btn-publish"], [id$="-btn-save"]');
+    var draftBtn = e.target.closest && e.target.closest('.qh-actions__draft, [id$="-btn-draft"]');
+    var form = (saveBtn || draftBtn)
+      ? ((saveBtn || draftBtn).form
+        || ((saveBtn || draftBtn).getAttribute('form')
+          ? document.getElementById((saveBtn || draftBtn).getAttribute('form'))
+          : null)
+        || editorForm())
+      : null;
+    if (saveBtn && form) {
+      setCanonicalIntent(form, false);
+      restorePublishOnlyRequired(form);
       return;
     }
-    var form = btn.form
-      || (btn.getAttribute('form') ? document.getElementById(btn.getAttribute('form')) : null)
-      || editorForm();
+    if (!draftBtn) {
+      return;
+    }
     if (form) {
+      setCanonicalIntent(form, true);
       relaxPublishOnlyRequired(form);
+      setTimeout(function () {
+        restorePublishOnlyRequired(form);
+      }, 0);
     }
   }, true);
 
@@ -183,7 +223,6 @@
 
   function canAutosave(form) {
     if (typeof form.checkValidity === 'function') {
-      relaxPublishOnlyRequired(form);
       if (!form.checkValidity()) {
         return false;
       }
@@ -338,7 +377,19 @@
     return !!(form && form.getAttribute('data-quotation-user-edited') === '1');
   }
 
+  function suppressBeforeUnload() {
+    window.AdminQuoteAllowUnload = true;
+    window.allowUnload = true;
+    window.onbeforeunload = null;
+  }
+
   function leaveWithoutSaving(dest) {
+    suppressBeforeUnload();
+    var form = editorForm();
+    if (form) {
+      form.removeAttribute('data-quotation-user-edited');
+      form.setAttribute('data-quotation-allow-unload', '1');
+    }
     window.location.assign(dest.href);
   }
 

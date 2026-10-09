@@ -20,6 +20,7 @@ use App\Services\QuotationPaymentSchedule;
 use App\Services\ShedQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -53,7 +54,7 @@ class ShedQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
 
         $quote = ShedQuotation::create(array_merge($calc, [
@@ -84,7 +85,7 @@ class ShedQuotationController extends Controller
 
     public function update(Request $request, ShedQuotation $shed_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $shed_quotation);
 
         $shed_quotation->fill(array_merge($calc, [

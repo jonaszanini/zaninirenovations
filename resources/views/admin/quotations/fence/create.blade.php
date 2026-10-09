@@ -467,7 +467,7 @@
     'saveId' => 'fq-btn-save',
     'saveLabel' => $isEdit ? 'Save quotation' : 'Save quotation',
     'saveHotkey' => true,
-    'showDraft' => false,
+    'draftId' => 'fq-btn-draft',
     'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
   ])
   @include('admin.partials.quotation_editor_more_actions', [
@@ -518,9 +518,11 @@
   <div class="fq-calc-layout">
     {{-- ====================== LEFT: FORM =========================== --}}
     <div class="fq-left-stack">
-      <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor>
+      <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor
+            data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
         @csrf
         @if ($isEdit) @method('PUT') @endif
+        <input type="hidden" name="save_intent" id="fq-save-intent" value="publish">
         @if ($linkProject)
           <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
         @endif
@@ -802,6 +804,16 @@
   'use strict';
 
   var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var fqIntent = document.getElementById('fq-save-intent');
+  var fqDraftBtn = document.getElementById('fq-btn-draft');
+  var fqForm = document.getElementById('fq-form');
+  if (fqDraftBtn && fqIntent && fqForm) {
+    fqDraftBtn.addEventListener('click', function () {
+      fqIntent.value = 'draft';
+      if (typeof fqForm.requestSubmit === 'function') fqForm.requestSubmit();
+      else fqForm.submit();
+    });
+  }
 
   var previewUrl = @json(route('admin.quotations.fence.preview'));
   var initialSides = @json($initialSides);

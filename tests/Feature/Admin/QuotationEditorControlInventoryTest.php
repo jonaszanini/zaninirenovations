@@ -55,6 +55,8 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
 
         if ($type === 'standard') {
             $this->assertStringContainsString(route('admin.quotations.index'), $html);
+            $this->assertStringContainsString('id="sq-toolbar-grand"', $html);
+            $this->assertStringContainsString('br-toolbar-grand', $html);
         }
         if ($type === 'low-deck') {
             $this->assertStringNotContainsString('Print Layout Diagrams', $html);
@@ -80,6 +82,8 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('Email quotation to client', false)
             ->assertSee('data-qh-email', false)
+            ->assertSee('View PDF', false)
+            ->assertSee('data-qh-view-pdf', false)
             ->assertSee('id="br-step-nav"', false)
             ->assertSee('id="br-sticky-total"', false);
 
@@ -94,7 +98,10 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
             ->assertSee('Email quotation to client', false)
             ->assertSee('SMS quotation link to client', false)
             ->assertSee('Print material list', false)
-            ->assertSee('Grand total', false);
+            ->assertSee('View PDF', false)
+            ->assertSee('data-qh-view-pdf', false)
+            ->assertSee('id="sq-toolbar-grand"', false)
+            ->assertSee('br-toolbar-grand', false);
 
         $fence = FenceQuotation::query()->create([
             'quote_number' => 'FQ-INV-1',
@@ -105,6 +112,8 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
         $fenceHtml = $this->get(route('admin.quotations.fence.edit', $fence))
             ->assertOk()
             ->assertSee('Print material list', false)
+            ->assertSee('View PDF', false)
+            ->assertSee('data-qh-view-pdf', false)
             ->getContent();
         $this->assertStringNotContainsString('Save &amp; create project', $fenceHtml);
 
@@ -119,6 +128,7 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('Print Layout Diagrams', false)
             ->assertSee('data-qh-layout-diagrams', false)
+            ->assertSee('View PDF', false)
             ->assertSee(route('admin.quotations.low-deck.layout-diagrams', $deck), false);
 
         $millwork = MillworkQuotation::query()->create([
@@ -164,7 +174,10 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
             $head = file_get_contents(resource_path('views/admin/quotations/'.$file))."\n".$more;
             $main = (string) shell_exec('git show origin/main:resources/views/admin/quotations/'.$file.' 2>/dev/null');
             if ($main === '') {
-                $this->markTestSkipped('origin/main is not available for the toolbar inventory diff');
+                $main = (string) shell_exec('git show main:resources/views/admin/quotations/'.$file.' 2>/dev/null');
+            }
+            if ($main === '') {
+                $this->fail('origin/main (or main) is required for the toolbar inventory diff; CI must fetch it');
             }
             foreach ($needles as $needle) {
                 $this->assertStringContainsString($needle, $main, "main {$file} no longer has {$needle}");
@@ -177,6 +190,12 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
     {
         $more = file_get_contents(resource_path('views/admin/partials/quotation_editor_more_actions.blade.php'));
         $this->assertNotFalse($more);
+        $pdf = file_get_contents(resource_path('views/admin/partials/quotation_view_pdf.blade.php'));
+        $this->assertNotFalse($pdf);
+        $this->assertStringContainsString('View PDF', $pdf);
+        $this->assertStringContainsString('data-qh-view-pdf', $pdf);
+        $this->assertStringContainsString('quotation_view_pdf', $more);
+
         foreach ([
             'Email quotation to client',
             'SMS quotation link to client',
@@ -192,9 +211,9 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
 
         $creates = [
             'basement/create.blade.php' => ["'email'", 'br-email-quote-form'],
-            'standard/create.blade.php' => ['showHubLink', "'sms'", "'email'"],
-            'fence/create.blade.php' => ['showCreateProject', 'createProjectFormId'],
-            'low_deck/create.blade.php' => ['layoutDiagramsUrl'],
+            'standard/create.blade.php' => ['showHubLink', "'sms'", "'email'", 'st-btn-draft'],
+            'fence/create.blade.php' => ['showCreateProject', 'createProjectFormId', 'fq-btn-draft'],
+            'low_deck/create.blade.php' => ['layoutDiagramsUrl', 'ld-btn-draft'],
             'millwork/create.blade.php' => ['cutListUrl', 'mw-btn-draft'],
         ];
         foreach ($creates as $file => $needles) {

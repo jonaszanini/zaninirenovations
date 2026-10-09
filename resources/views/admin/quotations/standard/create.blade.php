@@ -141,7 +141,7 @@
     'formId' => 'sq-standard-form',
     'saveId' => 'sq-btn-save',
     'saveHotkey' => true,
-    'showDraft' => false,
+    'draftId' => 'st-btn-draft',
   ])
   @include('admin.partials.quotation_editor_more_actions', [
     'isEdit' => $isEdit,
@@ -201,12 +201,14 @@
   @endif
 
   <form action="{{ $formAction }}" method="post" id="sq-standard-form" data-quotation-editor
+        data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
         data-quote-id="{{ $isEdit ? $quotation->id : 'new' }}"
         data-electrical-desc="{{ \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION }}">
     @csrf
     @if ($isEdit)
       @method('PUT')
     @endif
+    <input type="hidden" name="save_intent" id="st-save-intent" value="publish">
     @if ($linkProject)
       <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
     @endif
@@ -541,4 +543,17 @@
 
 @push('scripts')
 <script src="{{ asset('js/admin-standard-quotation.js') }}?v={{ @filemtime(public_path('js/admin-standard-quotation.js')) ?: time() }}"></script>
+<script>
+(function () {
+  var form = document.getElementById('sq-standard-form');
+  var intent = document.getElementById('st-save-intent');
+  var draftBtn = document.getElementById('st-btn-draft');
+  if (!form || !intent || !draftBtn) return;
+  draftBtn.addEventListener('click', function () {
+    intent.value = 'draft';
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else form.submit();
+  });
+})();
+</script>
 @endpush

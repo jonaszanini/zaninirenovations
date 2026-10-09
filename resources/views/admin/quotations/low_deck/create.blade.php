@@ -179,7 +179,7 @@
     'formId' => 'ld-form',
     'saveId' => 'ld-btn-save',
     'saveHotkey' => true,
-    'showDraft' => false,
+    'draftId' => 'ld-btn-draft',
     'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
   ])
   @include('admin.partials.quotation_editor_more_actions', [
@@ -229,9 +229,11 @@
   <div class="ld-calc-layout">
     {{-- ====================== LEFT: FORM =========================== --}}
     <div class="ld-left-stack">
-      <form id="ld-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor>
+      <form id="ld-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor
+            data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
         @csrf
         @if ($isEdit) @method('PUT') @endif
+        <input type="hidden" name="save_intent" id="ld-save-intent" value="publish">
         @if ($linkProject)
           <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
         @endif
@@ -503,6 +505,16 @@
   'use strict';
 
   var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var ldIntent = document.getElementById('ld-save-intent');
+  var ldDraftBtn = document.getElementById('ld-btn-draft');
+  var ldForm = document.getElementById('ld-form');
+  if (ldDraftBtn && ldIntent && ldForm) {
+    ldDraftBtn.addEventListener('click', function () {
+      ldIntent.value = 'draft';
+      if (typeof ldForm.requestSubmit === 'function') ldForm.requestSubmit();
+      else ldForm.submit();
+    });
+  }
   var previewUrl = @json(route('admin.quotations.low-deck.preview'));
   var initialCalc = @json($initialCalc);
 

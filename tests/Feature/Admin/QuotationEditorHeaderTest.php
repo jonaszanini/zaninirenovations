@@ -27,7 +27,7 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
     public function quotationTypes(): array
     {
         return [
-            'standard' => ['standard', 'admin.quotations.standard.create', 'Standard', false, 'sq-btn-save'],
+            'standard' => ['standard', 'admin.quotations.standard.create', 'Standard', true, 'sq-btn-save'],
             'basement' => ['basement', 'admin.quotations.basement.create', 'Basement', true, 'br-btn-draft'],
             'millwork' => ['millwork', 'admin.quotations.millwork.create', 'Millwork', true, 'mw-btn-draft'],
             'flooring' => ['flooring', 'admin.quotations.flooring.create', 'Flooring', true, 'fl-btn-draft'],
@@ -35,10 +35,10 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
             'painting' => ['painting', 'admin.quotations.painting.create', 'Painting', true, 'pt-btn-draft'],
             'shed' => ['shed', 'admin.quotations.shed.create', 'Shed', true, 'sh-btn-draft'],
             'tile' => ['tile', 'admin.quotations.tile.create', 'Tile', true, 'tl-btn-draft'],
-            'fence' => ['fence', 'admin.quotations.fence.create', 'Fence', false, 'fq-btn-save'],
+            'fence' => ['fence', 'admin.quotations.fence.create', 'Fence', true, 'fq-btn-save'],
             'paving' => ['paving', 'admin.quotations.paving.create', 'Paving', true, 'pq-btn-draft'],
             'stairs' => ['stairs', 'admin.quotations.stairs.create', 'Stairs', true, 'sq-btn-draft'],
-            'low_deck' => ['low-deck', 'admin.quotations.low-deck.create', 'Low deck', false, 'ld-btn-save'],
+            'low_deck' => ['low-deck', 'admin.quotations.low-deck.create', 'Low deck', true, 'ld-btn-save'],
         ];
     }
 

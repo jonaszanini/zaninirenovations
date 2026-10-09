@@ -173,7 +173,8 @@
   <form action="{{ $formAction }}" method="POST" id="tl-form" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
     @csrf
     @if ($isEdit) @method('PUT') @endif
-    <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ old('is_draft', $isEdit && $quotation->is_draft ? '1' : '0') }}">
+    <input type="hidden" name="save_intent" id="tl-save-intent" value="publish">
+    <input type="hidden" name="is_draft" id="tl-is-draft" value="0">
     
     <div class="fq-form-toolbar">
       <div class="fq-form-toolbar-right">
@@ -451,7 +452,9 @@
 document.addEventListener('DOMContentLoaded', function () {
     var form = document.getElementById('tl-form');
     var isDraftInput = document.getElementById('tl-is-draft');
+    var saveIntentInput = document.getElementById('tl-save-intent');
     var btnDraft = document.getElementById('tl-btn-draft');
+    var btnPublish = document.getElementById('tl-btn-publish');
     var liveEmpty = document.getElementById('tl-live-empty');
     var liveBody = document.getElementById('tl-live-body');
     var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -597,10 +600,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function setTileIntent(draft) {
+        if (saveIntentInput) {
+            saveIntentInput.value = draft ? 'draft' : 'publish';
+        }
+        if (isDraftInput) {
+            isDraftInput.value = draft ? '1' : '0';
+        }
+    }
     if (btnDraft) {
         btnDraft.addEventListener('click', function () {
-            isDraftInput.value = '1';
-            form.submit();
+            setTileIntent(true);
+            if (typeof form.requestSubmit === 'function') form.requestSubmit();
+            else form.submit();
+        });
+    }
+    if (btnPublish) {
+        btnPublish.addEventListener('click', function () {
+            setTileIntent(false);
         });
     }
 

@@ -28,7 +28,7 @@ return new class extends Migration
             if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'include_debris_removal')) {
                 continue;
             }
-            DB::statement("ALTER TABLE `{$table}` MODIFY `include_debris_removal` TINYINT(1) NULL");
+            DB::statement("ALTER TABLE `{$table}` MODIFY `include_debris_removal` TINYINT(1) NULL DEFAULT 0");
         }
     }
 
