@@ -3896,6 +3896,7 @@ a.ic-model-card:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
+  max-width: 100%;
   overflow: visible;
 }
 

@@ -48,17 +48,16 @@
     @enderror
 
     <div class="cp-client-email-card__actions">
-      <div class="admin-ai-action-group">
-        @include('admin.partials.ai_instruction_edit_link', [
-          'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_CLIENT_EMAIL_MESSAGE,
-          'instructionLabel' => 'Edit client email message prompt',
-        ])
+      @component('admin.partials.ai_action_group', [
+        'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_CLIENT_EMAIL_MESSAGE,
+        'instructionLabel' => 'Edit client email message prompt',
+        'showHistory' => true,
+      ])
         <button type="button" class="admin-btn admin-btn--primary" data-client-email-ai>
           <i class="fa fa-magic" aria-hidden="true"></i>
           <span>Improve with AI</span>
         </button>
-        <span class="admin-ai-text-history-mount" data-history-mount></span>
-      </div>
+      @endcomponent
       <span class="nb2-loading cp-client-email-card__loading" data-client-email-loading hidden aria-live="polite">
         <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
         <span>Refining…</span>

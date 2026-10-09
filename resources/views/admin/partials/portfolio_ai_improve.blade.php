@@ -10,16 +10,15 @@
   </div>
 
   <div class="nb2-generate-row">
-    <div class="admin-ai-action-group">
-      @include('admin.partials.ai_instruction_edit_link', [
-        'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT,
-        'instructionLabel' => 'Edit portfolio photo prompt',
-      ])
+    @component('admin.partials.ai_action_group', [
+      'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT,
+      'instructionLabel' => 'Edit portfolio photo prompt',
+    ])
       <button type="button" id="portfolio-ai-apply-btn" class="admin-btn admin-btn--primary">
         <i class="fa fa-magic" aria-hidden="true"></i>
         <span>Apply AI improvements</span>
       </button>
-    </div>
+    @endcomponent
     <div id="portfolio-ai-loading" class="nb2-loading" hidden aria-live="polite">
       <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
       <span id="portfolio-ai-loading-text">Editing with Gemini…</span>

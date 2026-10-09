@@ -151,39 +151,37 @@
           Prompt is editable under <a href="{{ route('admin.ai-instructions.edit', \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME) }}" class="admin-text-link">Tools → AI Instructions</a>.
         </p>
         <div class="mat-ai-short-names__actions">
-          <div class="admin-ai-action-group">
-          @include('admin.partials.ai_instruction_edit_link', [
+          @component('admin.partials.ai_action_group', [
             'instructionKey' => \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME,
             'instructionLabel' => 'Edit material short name prompt',
           ])
-          <button type="button"
-                  class="admin-btn admin-btn--primary"
-                  id="mat-ai-short-names-missing-btn"
-                  data-start-url="{{ route('admin.materials.config.ai-short-names.start') }}"
-                  data-step-url="{{ route('admin.materials.config.ai-short-names.step') }}"
-                  data-mode="missing"
-                  @disabled($missingShortNameCount === 0)>
-            <i class="fa fa-magic" aria-hidden="true"></i>
-            <span>Generate missing short names</span>
-          </button>
-          </div>
-          <div class="admin-ai-action-group">
-          @include('admin.partials.ai_instruction_edit_link', [
+            <button type="button"
+                    class="admin-btn admin-btn--primary"
+                    id="mat-ai-short-names-missing-btn"
+                    data-start-url="{{ route('admin.materials.config.ai-short-names.start') }}"
+                    data-step-url="{{ route('admin.materials.config.ai-short-names.step') }}"
+                    data-mode="missing"
+                    @disabled($missingShortNameCount === 0)>
+              <i class="fa fa-magic" aria-hidden="true"></i>
+              <span>Generate missing short names</span>
+            </button>
+          @endcomponent
+          @component('admin.partials.ai_action_group', [
             'instructionKey' => \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME,
             'instructionLabel' => 'Edit material short name prompt',
           ])
-          <button type="button"
-                  class="admin-btn admin-btn--primary"
-                  id="mat-ai-short-names-all-btn"
-                  data-start-url="{{ route('admin.materials.config.ai-short-names.start') }}"
-                  data-step-url="{{ route('admin.materials.config.ai-short-names.step') }}"
-                  data-mode="all"
-                  data-confirm="Overwrite short names for all {{ number_format($totalMaterials) }} material{{ $totalMaterials === 1 ? '' : 's' }}?"
-                  @disabled($totalMaterials === 0)>
-            <i class="fa fa-magic" aria-hidden="true"></i>
-            <span>Regenerate all short names</span>
-          </button>
-          </div>
+            <button type="button"
+                    class="admin-btn admin-btn--primary"
+                    id="mat-ai-short-names-all-btn"
+                    data-start-url="{{ route('admin.materials.config.ai-short-names.start') }}"
+                    data-step-url="{{ route('admin.materials.config.ai-short-names.step') }}"
+                    data-mode="all"
+                    data-confirm="Overwrite short names for all {{ number_format($totalMaterials) }} material{{ $totalMaterials === 1 ? '' : 's' }}?"
+                    @disabled($totalMaterials === 0)>
+              <i class="fa fa-magic" aria-hidden="true"></i>
+              <span>Regenerate all short names</span>
+            </button>
+          @endcomponent
         </div>
         <div id="mat-ai-short-names-progress" class="mat-bulk-progress" hidden aria-live="polite">
           <div class="mat-bulk-progress__head">

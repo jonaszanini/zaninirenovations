@@ -38,17 +38,16 @@
         <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
         <span>Apply changes</span>
       </button>
-      <div class="admin-ai-action-group">
-        @include('admin.partials.ai_instruction_edit_link', [
-          'instructionKey' => \App\Models\AiInstruction::KEY_IMAGE_MODIFY_PROMPT,
-          'instructionLabel' => 'Edit image modify prompt improvement',
-        ])
+      @component('admin.partials.ai_action_group', [
+        'instructionKey' => \App\Models\AiInstruction::KEY_IMAGE_MODIFY_PROMPT,
+        'instructionLabel' => 'Edit image modify prompt improvement',
+        'showHistory' => true,
+      ])
         <button type="button" id="aim-improve-btn" class="admin-btn admin-btn--primary admin-btn--lg">
           <i class="fa fa-magic" aria-hidden="true"></i>
           <span>Improve prompt</span>
         </button>
-        <span class="admin-ai-text-history-mount" data-history-mount></span>
-      </div>
+      @endcomponent
       <div id="aim-loading" class="nb2-loading" hidden aria-live="polite">
         <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
         <span id="aim-loading-text">Editing with Gemini…</span>
