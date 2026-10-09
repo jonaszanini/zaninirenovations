@@ -27,7 +27,7 @@ class SharedPricesLayoutTest extends IntegrationTestCase
             ?? SharedWork::query()->whereNotIn('unit', ['lf', 'sf'])->first();
         $this->assertNotNull($work, 'A non-area shared work must exist');
 
-        $work->rate = 24.8235;
+        $work->rate = 99999.9900;
         $work->flat_rate = 99999.9999;
         $work->material_unit = 'opening';
         $work->material_unit_price = 99999.9999;
@@ -42,7 +42,7 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $wideSell = SharedWork::query()->where('key', 'window_stool_apron')->first()
             ?? SharedWork::query()->where('id', '!=', $work->id)->whereNotIn('unit', ['lf', 'sf'])->first();
         if ($wideSell) {
-            $wideSell->rate = 12.9000;
+            $wideSell->rate = 1234.5678;
             $wideSell->flat_rate = 1234.5678;
             $wideSell->save();
         }
@@ -74,8 +74,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
             ->assertSee('cp-money-input', false)
             ->getContent();
 
-        $this->assertStringContainsString('24.8235', $html);
-        $this->assertStringContainsString('12.9000', $html);
+        $this->assertStringContainsString('99999.9900', $html);
+        $this->assertStringContainsString('1234.5678', $html);
         $this->assertStringContainsString('99999.9999', $html);
         $this->assertStringContainsString('opening', $html);
         $this->assertStringContainsString('custom_very_long_unknown_consumer_key', $html);
@@ -84,8 +84,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('Used when Sell rate is empty', $html);
         $this->assertStringContainsString('crew rates', $html);
         $this->assertStringContainsString('effective sell', $html);
-        $this->assertMatchesRegularExpression('/aria-label="[^"]*crew rates[^"]*"/', $html);
-        $this->assertMatchesRegularExpression('/aria-label="[^"]*effective sell[^"]*"/', $html);
+        $this->assertMatchesRegularExpression('/aria-label="[^"]*crew rates[^"]*"/i', $html);
+        $this->assertMatchesRegularExpression('/aria-label="[^"]*effective sell[^"]*"/i', $html);
         $this->assertStringContainsString('aria-controls="sp-more-'.$work->id.'"', $html);
         $this->assertStringContainsString('aria-describedby="sp-more-'.$work->id.'"', $html);
         $this->assertStringContainsString('aria-label="+2 more:', $html);
@@ -133,8 +133,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
 
         $columns = $this->desktopGridColumns($css);
         $this->assertCount(8, $columns);
-        $this->assertGreaterThanOrEqual(7.5, $this->cssMinRem($columns[0]), 'Work item must show ~18–20 characters at 1024');
-        $this->assertGreaterThanOrEqual(4.5, $this->cssMinRem($columns[1]), 'Rate must still fit 24.8235');
+        $this->assertGreaterThanOrEqual(7.5, $this->cssMinRem($columns[0]), 'Work item must show ~18–20 characters at 1100');
+        $this->assertGreaterThanOrEqual(6.6, $this->cssMinRem($columns[1]), 'Rate must fit 99,999.9900 and 1,234.5678');
         $this->assertGreaterThanOrEqual(6.6, $this->cssMinRem($columns[2]), 'Sell must fit 99,999.9999 without a per-row ⓘ');
         $this->assertTrue(
             str_contains($columns[3], '7ch') || $this->cssMinRem($columns[3]) >= 4.6,
@@ -147,15 +147,18 @@ class SharedPricesLayoutTest extends IntegrationTestCase
 
         $this->assertStringContainsString('title="{{ $work->label }}"', $blade);
         $this->assertStringContainsString('grid-area: search', $css);
-        $this->assertStringContainsString('@media (min-width: 1024px)', $css);
-        $this->assertStringContainsString('@media (max-width: 1023px)', $css);
+        $this->assertStringContainsString('@media (min-width: 1100px)', $css);
+        $this->assertStringContainsString('@media (max-width: 1099px)', $css);
         $this->assertDoesNotMatchRegularExpression('/\.sp-col-sell:has\(\.admin-info-tip\)\s+\.sp-input\s*\{[^}]*padding-right:\s*1\.85rem/', $css);
         $this->assertMatchesRegularExpression('/\.sp-table\s+\.sp-work\s*\{[^}]*padding:\s*0/', $css);
         $this->assertDoesNotMatchRegularExpression('/\.sp-group \.admin-table-scroll\s*\{[^}]*overflow-x:\s*hidden/', $css);
-        $this->assertMatchesRegularExpression('/overflow:\s*(visible|clip)/', $css);
+        $this->assertDoesNotMatchRegularExpression('/\.sp-group \.admin-table-scroll\s*\{[^}]*overflow:\s*clip/', $css);
+        $this->assertMatchesRegularExpression('/\.sp-group \.admin-table-scroll\s*\{[^}]*overflow:\s*visible/', $css);
         $this->assertStringContainsString('.sp-effective', $css);
         $this->assertStringContainsString('updateSpEffective', $blade);
         $this->assertStringContainsString("document.addEventListener('keydown'", $blade);
+        $this->assertStringContainsString('MutationObserver', $blade);
+        $this->assertMatchesRegularExpression("/addEventListener\('click'[\s\S]*,\s*true\)/", $blade);
 
         $this->assertBrowserGeometry($user->email);
     }
@@ -183,8 +186,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
      */
     private function desktopGridColumns(string $css): array
     {
-        $this->assertMatchesRegularExpression('/@media \(min-width: 1024px\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css);
-        preg_match('/@media \(min-width: 1024px\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css, $match);
+        $this->assertMatchesRegularExpression('/@media \(min-width: 1100px\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css);
+        preg_match('/@media \(min-width: 1100px\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css, $match);
         $raw = trim(preg_replace('/\s+/', ' ', $match[1]));
         preg_match_all('/minmax\([^)]+\)|[^\s]+/', $raw, $parts);
 
@@ -257,19 +260,39 @@ const base = process.env.SP_GEO_BASE;
     await page.evaluate(() => document.querySelectorAll('.sp-group').forEach((g) => { g.open = true; }));
   }
   await login();
-  const widths = [320, 390, 768, 901, 960, 1024, 1280];
+  const widths = [320, 390, 768, 901, 960, 1001, 1024, 1040, 1060, 1100, 1280];
   const out = {};
   for (const w of widths) {
     await page.setViewport({ width: w, height: 900 });
     await openPage();
     out[String(w)] = await page.evaluate((width) => {
       const card = document.querySelector('details.sp-group.admin-card');
+      const scroller = document.querySelector('.sp-group .admin-table-scroll');
       const table = document.querySelector('.sp-table');
       const thead = document.querySelector('.sp-table thead');
       const row = document.querySelector('.sp-table tbody tr');
       const rowStyle = row ? getComputedStyle(row) : null;
       const stacked = !rowStyle || rowStyle.gridTemplateColumns.split(' ').filter(Boolean).length <= 2
         || (thead && getComputedStyle(thead).display === 'none');
+      const cardBox = card ? card.getBoundingClientRect() : null;
+      const scrollerBox = scroller ? scroller.getBoundingClientRect() : null;
+      const allChips = [...document.querySelectorAll('.sp-chip')];
+      const chipVsCard = allChips.filter((c) => {
+        const r = c.getBoundingClientRect();
+        if (r.width < 2) return false;
+        const cardRight = cardBox ? cardBox.right : window.innerWidth;
+        const scrollRight = scrollerBox ? scrollerBox.right : window.innerWidth;
+        return r.right > cardRight + 0.5 || r.right > scrollRight + 0.5;
+      }).map((c) => (c.textContent || '').trim());
+      const chipSpare = allChips.reduce((min, c) => {
+        const r = c.getBoundingClientRect();
+        if (r.width < 2) return min;
+        const edge = Math.min(
+          cardBox ? cardBox.right : window.innerWidth,
+          scrollerBox ? scrollerBox.right : window.innerWidth
+        );
+        return Math.min(min, edge - r.right);
+      }, 999);
       const chips = [...document.querySelectorAll('.sp-chip:not(.sp-chip--more)')];
       const clippedShort = chips.filter((c) => {
         const label = c.querySelector('.sp-chip__label') || c;
@@ -297,6 +320,21 @@ const base = process.env.SP_GEO_BASE;
         client: el.clientWidth,
         clipped: el.scrollWidth > el.clientWidth + 1,
       }));
+      const rateInputs = [...document.querySelectorAll('.sp-col-rate input')].map((el) => ({
+        value: el.value,
+        scroll: el.scrollWidth,
+        client: el.clientWidth,
+        clipped: el.scrollWidth > el.clientWidth + 1,
+      }));
+      const effectiveEls = [...document.querySelectorAll('.sp-effective')].map((el) => {
+        const s = getComputedStyle(el);
+        return {
+          text: (el.textContent || '').trim(),
+          overflow: s.overflow,
+          textOverflow: s.textOverflow,
+          clipped: (s.textOverflow === 'ellipsis' || s.overflow === 'hidden') && el.scrollWidth > el.clientWidth + 1,
+        };
+      });
       const work = document.querySelector('.sp-col-label');
       const name = document.querySelector('.sp-col-name');
       const chipStyle = chips[0] ? getComputedStyle(chips[0]) : null;
@@ -321,20 +359,38 @@ const base = process.env.SP_GEO_BASE;
         stacked,
         colCount: rowStyle ? rowStyle.gridTemplateColumns.split(' ').filter(Boolean).length : 0,
         clippedShort,
+        chipVsCard,
+        chipSpare: chipSpare === 999 ? 0 : Math.round(chipSpare * 10) / 10,
+        tableScrollW: table ? table.scrollWidth : 0,
+        tableClientW: table ? table.clientWidth : 0,
+        scrollerW: scrollerBox ? Math.round(scrollerBox.width) : 0,
         offCenter,
         chipJustify: chipStyle ? chipStyle.justifyContent : '',
-        moreVisible: !!(moreBox && moreBox.width > 8 && moreBox.right <= window.innerWidth + 1 && moreBox.bottom > 0),
+        moreVisible: !!(moreBox && moreBox.width > 8 && moreBox.right <= window.innerWidth + 1 && moreBox.bottom > 0
+          && moreBox.right <= ((cardBox && cardBox.right) || window.innerWidth) + 0.5
+          && moreBox.right <= ((scrollerBox && scrollerBox.right) || window.innerWidth) + 0.5),
         moreHit: more ? Math.max(
           moreBox ? Math.round(Math.min(moreBox.width, moreBox.height)) : 0,
           parseInt(getComputedStyle(more, '::after').width, 10) || 0
         ) : 0,
-        sellClipped: sellInputs.filter((s) => /99999\.9999|1234\.5678/.test(s.value) && s.clipped),
+        sellClipped: sellInputs.filter((s) => /99999\.9999|1234\.5678/.test(s.value.replace(/,/g, '')) && s.clipped),
+        rateClipped: rateInputs.filter((s) => /99999\.9900|1234\.5678/.test(s.value.replace(/,/g, '')) && s.clipped),
+        effectiveClipped: effectiveEls.filter((e) => e.clipped || /ellipsis/.test(e.textOverflow)),
         sellMin: sellInputs.length ? Math.min(...sellInputs.map((s) => s.client)) : 0,
         catalogHit: (() => {
           const btn = document.querySelector('.sp-catalog-btn');
           if (!btn) return 0;
           const box = btn.getBoundingClientRect();
-          return Math.round(Math.min(box.width, box.height));
+          const after = parseInt(getComputedStyle(btn, '::after').width, 10) || 0;
+          return Math.round(Math.max(Math.min(box.width, box.height), after));
+        })(),
+        catalogOverflow: (() => {
+          const btn = document.querySelector('.sp-catalog-btn');
+          const tr = btn && btn.closest('tr');
+          if (!btn || !tr) return true;
+          const b = btn.getBoundingClientRect();
+          const t = tr.getBoundingClientRect();
+          return b.top < t.top - 1 || b.bottom > t.bottom + 1;
         })(),
         workW: work ? Math.round(work.getBoundingClientRect().width) : 0,
         nameW: name ? Math.round(name.getBoundingClientRect().width) : 0,
@@ -360,9 +416,48 @@ const base = process.env.SP_GEO_BASE;
       });
       await page.keyboard.press('Escape');
       out[String(w)].escClosed = await page.evaluate(() => !document.querySelector('.sp-chip--more[aria-expanded="true"]'));
+
+      const measureInfoTip = async (selector) => {
+        await page.evaluate((sel) => {
+          document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+          const btn = document.querySelector(sel);
+          if (btn) btn.click();
+        }, selector);
+        await new Promise((r) => setTimeout(r, 80));
+        return page.evaluate((sel) => {
+          const btn = document.querySelector(sel + '[aria-expanded="true"]') || document.querySelector(sel);
+          const bubble = btn && (
+            btn.querySelector('.admin-info-tip__bubble')
+            || (btn.parentElement && btn.parentElement.querySelector('.admin-info-tip__bubble'))
+          );
+          if (!bubble || getComputedStyle(bubble).display === 'none') {
+            return { open: false, off: true };
+          }
+          const r = bubble.getBoundingClientRect();
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+          const off = r.left < -1 || r.top < -1 || r.right > vw + 1 || r.bottom > vh + 1;
+          return {
+            open: true,
+            left: Math.round(r.left),
+            right: Math.round(r.right),
+            top: Math.round(r.top),
+            bottom: Math.round(r.bottom),
+            vw,
+            docW: document.documentElement.scrollWidth,
+            off,
+            pageScroll: document.documentElement.scrollWidth > vw + 1,
+          };
+        }, selector);
+      };
+      out[String(w)].crewTip = await measureInfoTip('.sp-heading .admin-info-tip');
+      out[String(w)].sellTip = await measureInfoTip('.sp-sell-phone-label .admin-info-tip, .sp-th-sell .admin-info-tip');
+      await page.evaluate(() => {
+        document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+      });
     }
 
-    if (w === 1024) {
+    if (w === 1024 || w === 1100) {
       out[String(w)].liveSell = await page.evaluate(() => {
         const owner = document.getElementById('owner_hourly_rate');
         const row = document.querySelector('tr.sp-row[data-sp-area="0"]');
@@ -454,7 +549,7 @@ JS
         $json = json_decode(implode("\n", $output), true);
         $this->assertIsArray($json, "Geometry JSON missing:\n".implode("\n", $output));
 
-        foreach ([320, 390, 768, 901, 960, 1024, 1280] as $w) {
+        foreach ([320, 390, 768, 901, 960, 1001, 1024, 1040, 1060, 1100, 1280] as $w) {
             $row = $json[(string) $w] ?? null;
             $this->assertIsArray($row, "Missing geometry for {$w}");
             $this->assertTrue($row['hasTable'] ?? false, "Shared prices table missing at {$w} ({$row['url']})");
@@ -468,10 +563,13 @@ JS
             $this->assertSame('flex-start', $row['chipJustify'] ?? '', "Chip justify-content at {$w}");
             $this->assertTrue($row['moreVisible'] ?? false, "+N must stay on-screen at {$w}");
             $this->assertSame([], $row['sellClipped'] ?? ['fail'], "Sell input clipped at {$w}");
+            $this->assertSame([], $row['rateClipped'] ?? ['fail'], "Rate input clipped at {$w}: ".json_encode($row['rateClipped'] ?? []));
+            $this->assertSame([], $row['effectiveClipped'] ?? ['fail'], "Effective sell must show in full at {$w}: ".json_encode($row['effectiveClipped'] ?? []));
             $this->assertTrue($row['longChipOk'] ?? false, "Long consumer chip must ellipsize with a title at {$w}");
             $this->assertFalse($row['zLow'] ?? true, "Open +N row must not stay at z-index 1 at {$w}");
+            $this->assertFalse($row['catalogOverflow'] ?? true, "Catalog button must stay inside its row at {$w}");
 
-            if ($w <= 1023) {
+            if ($w <= 1099) {
                 $this->assertTrue($row['stacked'] ?? false, "Must use stacked cards at {$w}");
             } else {
                 $this->assertFalse($row['stacked'] ?? true, "Must use the 8-column grid at {$w}");
@@ -482,13 +580,35 @@ JS
             }
         }
 
+        foreach ([1001, 1024, 1040, 1060, 1100, 1280] as $w) {
+            $row = $json[(string) $w];
+            $this->assertSame(
+                [],
+                $row['chipVsCard'] ?? ['fail'],
+                "Chip right edge must stay inside the scroller and card at {$w}: ".json_encode($row['chipVsCard'] ?? [])
+            );
+        }
+
+        $this->assertGreaterThanOrEqual(
+            12,
+            (float) ($json['1100']['chipSpare'] ?? 0),
+            'Need ≥12px spare between chips and the card/scroller at the 1100 switch: '.json_encode($json['1100'] ?? [])
+        );
+
         $this->assertTrue($json['1024']['liveSell']['ok'] ?? false, 'Effective sell must update live when Rate or Sell changes: '.json_encode($json['1024']['liveSell'] ?? []));
+        $this->assertTrue($json['1100']['liveSell']['ok'] ?? false, 'Effective sell must update live on the desktop grid: '.json_encode($json['1100']['liveSell'] ?? []));
 
         foreach (['320', '390'] as $w) {
             $this->assertFalse($json[$w]['tip']['off'] ?? true, "+N tooltip must stay in the viewport at {$w}");
             $this->assertTrue($json[$w]['escClosed'] ?? false, 'Escape must close +N from document level');
             $this->assertTrue($json[$w]['search']['present'] ?? false, "Catalog list must open at {$w}: ".json_encode($json[$w]['search'] ?? []));
             $this->assertFalse($json[$w]['search']['off'] ?? true, "Catalog list must stay on-screen at {$w}: ".json_encode($json[$w]['search'] ?? []));
+            $this->assertTrue($json[$w]['crewTip']['open'] ?? false, "Crew rates ⓘ must open at {$w}: ".json_encode($json[$w]['crewTip'] ?? []));
+            $this->assertFalse($json[$w]['crewTip']['off'] ?? true, "Crew rates ⓘ must stay fully on-screen at {$w}: ".json_encode($json[$w]['crewTip'] ?? []));
+            $this->assertFalse($json[$w]['crewTip']['pageScroll'] ?? true, "Crew rates ⓘ must not widen the page at {$w}: ".json_encode($json[$w]['crewTip'] ?? []));
+            $this->assertTrue($json[$w]['sellTip']['open'] ?? false, "Sell ⓘ must open at {$w}: ".json_encode($json[$w]['sellTip'] ?? []));
+            $this->assertFalse($json[$w]['sellTip']['off'] ?? true, "Sell ⓘ must stay fully on-screen at {$w}: ".json_encode($json[$w]['sellTip'] ?? []));
+            $this->assertFalse($json[$w]['sellTip']['pageScroll'] ?? true, "Sell ⓘ must not widen the page at {$w}: ".json_encode($json[$w]['sellTip'] ?? []));
         }
     }
 

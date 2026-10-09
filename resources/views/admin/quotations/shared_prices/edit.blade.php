@@ -38,22 +38,17 @@
   font-size: 1.1rem;
 }
 .sp-group { margin-bottom: 1rem; }
-/* Desktop grid only from 1024px — 901–1023 with the sidebar open is too
-   narrow (~603–753px) and must stay on stacked cards. */
-@media (min-width: 1024px) and (max-width: 1200px) {
+/* Desktop grid only from 1100px — 901–1099 with the sidebar open is too
+   narrow and must stay on stacked cards. Never clip the table silently. */
+@media (min-width: 1100px) and (max-width: 1200px) {
   .admin-content:has(.sp-table) {
     padding-left: 0.65rem;
     padding-right: 0.65rem;
   }
 }
-@media (min-width: 1024px) {
+@media (min-width: 1100px) {
   details.sp-group.admin-card { padding: 1rem 0.2rem; }
-  .sp-group .admin-table-scroll { overflow: clip; }
-  .sp-group .admin-table-scroll:has(.sp-search-wrap--hidden:focus-within),
-  .sp-group .admin-table-scroll:has(.sp-chip--more[aria-expanded="true"]),
-  .sp-group .admin-table-scroll:has(.admin-info-tip[aria-expanded="true"]) {
-    overflow: visible;
-  }
+  .sp-group .admin-table-scroll { overflow: visible; }
 }
 .sp-group__summary {
   font-weight: 600;
@@ -74,9 +69,9 @@
 
 /*
  * Desktop rows are CSS grid (not table-layout:fixed) so leftover width
- * goes to the wrapping work-item column, Rate is a fixed 5rem, Sell and
- * Mat. price fit 12.9000 / 99,999.9999, Mat. name is 7.5–8rem, and
- * catalog search / Used-by sit in separate fixed-width columns.
+ * goes to the wrapping work-item column, Rate is a fixed 6.6rem so
+ * 99,999.9900 / 1,234.5678 fit, Sell and Mat. price fit 99,999.9999,
+ * Mat. name is 7.5–8rem, and catalog / Used-by sit in separate columns.
  */
 .sp-table {
   width: 100%;
@@ -90,13 +85,13 @@
   display: block;
   width: 100%;
 }
-@media (min-width: 1024px) {
+@media (min-width: 1100px) {
   .sp-table thead tr,
   .sp-table tbody tr {
     display: grid;
     grid-template-columns:
       minmax(7.5rem, 1.4fr)
-      4.6rem
+      6.6rem
       minmax(6.6rem, 7.1rem)
       minmax(4.6rem, 4.85rem)
       minmax(5.5rem, 5.6rem)
@@ -106,6 +101,7 @@
     column-gap: 0.08rem;
     align-items: stretch;
     width: 100%;
+    min-height: 44px;
   }
   /* Beat `.sp-table td { display:block }` so the search button and chips
      flex-center on the same midline as the inputs. */
@@ -116,6 +112,11 @@
     justify-content: center;
     align-self: stretch;
     vertical-align: middle;
+    min-height: 44px;
+    overflow: hidden;
+  }
+  .sp-table td.sp-col-catalog:focus-within {
+    overflow: visible;
   }
   .sp-table th.sp-col-consumers,
   .sp-table td.sp-col-consumers {
@@ -209,7 +210,7 @@
   overflow: visible;
   z-index: 14;
 }
-@media (min-width: 1024px) {
+@media (min-width: 1100px) {
   .sp-mat-name-input:focus {
     position: absolute;
     left: 0;
@@ -341,9 +342,11 @@
   font-size: 0.68rem;
   line-height: 1.2;
   color: var(--admin-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .sp-col-catalog {
@@ -365,11 +368,12 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
   width: 28px;
   height: 28px;
-  padding: 8px;
-  margin: -8px;
-  box-sizing: content-box;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
   border: 1px solid var(--admin-border);
   border-radius: 5px;
   background: var(--admin-input-bg);
@@ -377,6 +381,15 @@
   cursor: pointer;
   font-size: 12px;
   transition: border-color 0.15s, background 0.15s;
+}
+.sp-catalog-btn::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 .sp-catalog-btn:hover {
   border-color: var(--admin-primary);
@@ -400,7 +413,7 @@
   pointer-events: none;
   transition: opacity 0.1s;
 }
-@media (min-width: 1024px) {
+@media (min-width: 1100px) {
   .sp-search-wrap.sp-search-wrap--hidden {
     left: auto;
     right: 0;
@@ -548,8 +561,8 @@
   font-size: 0.8rem;
 }
 
-/* Stacked cards through 1023px (sidebar-open 901–1023 included). */
-@media (max-width: 1023px) {
+/* Stacked cards through 1099px (sidebar-open 901–1099 included). */
+@media (max-width: 1099px) {
   .sp-group .admin-table-scroll {
     overflow: visible;
   }
@@ -723,18 +736,6 @@
     ];
     $spSellTipText = 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Rate.';
     $spSellTipLabel = 'effective sell';
-    $formatSharedRate = static function ($value): string {
-      if ($value === null || $value === '') {
-        return '';
-      }
-      $formatted = rtrim(rtrim(number_format((float) $value, 4, '.', ''), '0'), '.');
-      if (! str_contains($formatted, '.')) {
-        return $formatted.'.00';
-      }
-      $frac = substr($formatted, strpos($formatted, '.') + 1);
-
-      return strlen($frac) < 2 ? $formatted.'0' : $formatted;
-    };
   @endphp
 
   <div class="admin-toolbar fq-list-toolbar">
@@ -862,7 +863,7 @@
                       <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                              class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
                              name="works[{{ $work->id }}][rate]"
-                             value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? $formatSharedRate($work->rate) : '') }}"
+                             value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '') }}"
                              placeholder="0.00">
                     @endif
                   </td>
@@ -995,11 +996,18 @@
       var pad = 8;
       var vw = window.innerWidth || document.documentElement.clientWidth || 0;
       var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+      var maxW = Math.max(120, vw - pad * 2);
       el.style.position = 'fixed';
       el.style.right = 'auto';
-      el.style.maxWidth = Math.max(120, vw - pad * 2) + 'px';
-      var ar = anchor.getBoundingClientRect();
+      el.style.left = pad + 'px';
+      el.style.top = pad + 'px';
+      el.style.maxWidth = maxW + 'px';
+      el.style.width = 'auto';
       var r = el.getBoundingClientRect();
+      var width = Math.min(r.width || maxW, maxW);
+      el.style.width = Math.round(width) + 'px';
+      var ar = anchor.getBoundingClientRect();
+      r = el.getBoundingClientRect();
       var left = ar.left;
       if (left + r.width > vw - pad) left = vw - pad - r.width;
       if (left < pad) left = pad;
@@ -1057,7 +1065,12 @@
     });
     document.addEventListener('click', function() {
       setTimeout(positionSpInfoTips, 0);
-    });
+    }, true);
+    if (window.MutationObserver) {
+      new MutationObserver(function() {
+        positionSpInfoTips();
+      }).observe(document.body, { attributes: true, attributeFilter: ['aria-expanded'], subtree: true });
+    }
 
     function parseSpMoney(value) {
       var n = parseFloat(String(value || '').replace(/,/g, ''));
