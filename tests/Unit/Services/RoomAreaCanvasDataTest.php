@@ -634,6 +634,29 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertEqualsWithDelta(232.0, $metrics['net_wall_area_sqft'], 0.01);
     }
 
+    public function test_legacy_opening_placeholder_migrates_on_read(): void
+    {
+        $canvas = $this->rectangleCanvas(true);
+        $canvas['objects'][2]['height'] = 48;
+        unset($canvas['objects'][2]['casing_sides']);
+
+        $normalized = $this->service->normalize($canvas);
+        $opening = collect($normalized['objects'])->firstWhere('type', 'opening');
+        $this->assertNotNull($opening);
+        $this->assertSame(48.0, $opening['height']);
+        $this->assertSame(0, $opening['casing_sides']);
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
+        $openingWall = collect($metrics['walls'])->firstWhere('id', 'wall_p1_2_3');
+        $this->assertNotNull($openingWall);
+        $this->assertEqualsWithDelta((36 / 12) * 8.0, $openingWall['opening_area_sqft'], 0.01);
+        $this->assertNotEquals(12.0, $openingWall['opening_area_sqft']);
+        $this->assertEqualsWithDelta(0.0, $metrics['casing_lf'] - (
+            app(\App\Services\RoomAreaFinishMath::class)->casingLf(36, 80, 2, 'door')
+            + app(\App\Services\RoomAreaFinishMath::class)->casingLf(48, 36, 4, 'window')
+        ), 0.01);
+    }
+
     public function test_wall_metrics_use_object_height_when_present(): void
     {
         $canvas = $this->rectangleCanvas(true);

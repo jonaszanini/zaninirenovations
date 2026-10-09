@@ -443,9 +443,11 @@ class RoomAreaCanvasData
         }
 
         if ($type === 'opening') {
+            $legacyPlaceholder = isset($item['height']) && is_numeric($item['height'])
+                && abs((float) $item['height'] - RoomAreaFinishMath::LEGACY_OPENING_HEIGHT_IN) < 0.001;
             $sides = array_key_exists('casing_sides', $item) && is_numeric($item['casing_sides'])
                 ? (int) $item['casing_sides']
-                : 2;
+                : ($legacyPlaceholder ? 0 : 2);
             $object['casing_sides'] = max(0, min(2, $sides));
         }
 
@@ -1045,15 +1047,7 @@ class RoomAreaCanvasData
      */
     private function objectHeightInches(array $object, string $type, float $wallHeightFt): float
     {
-        if (isset($object['height']) && is_numeric($object['height']) && (float) $object['height'] > 0) {
-            return (float) $object['height'];
-        }
-
-        return match ($type) {
-            'window' => self::DEFAULT_WINDOW_HEIGHT_IN,
-            'opening' => $wallHeightFt * 12.0,
-            default => self::DEFAULT_DOOR_HEIGHT_IN,
-        };
+        return app(RoomAreaFinishMath::class)->objectHeightInches($object, $type, $wallHeightFt);
     }
 
     /**

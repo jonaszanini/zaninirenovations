@@ -23,6 +23,8 @@ class RoomAreaFinishMath
 
     public const MAX_WASTE_PERCENT = 100.0;
 
+    public const LEGACY_OPENING_HEIGHT_IN = 48.0;
+
     public const DOOR_FACE_INTERIOR = 'interior';
 
     public const DOOR_FACE_EXTERIOR = 'exterior';
@@ -62,7 +64,7 @@ class RoomAreaFinishMath
         $raw = str_replace(["\u{00A0}", ' '], '', $raw);
         $raw = str_replace('%', '', $raw);
         $raw = str_replace(',', '.', $raw);
-        if ($raw === '' || ! is_numeric($raw)) {
+        if ($raw === '' || preg_match('/[eE]/', $raw) || ! is_numeric($raw)) {
             return ['ok' => false, 'value' => self::DEFAULT_WASTE_PERCENT, 'error' => 'Enter waste as a percent, like 10 or 15%.'];
         }
 
@@ -117,9 +119,41 @@ class RoomAreaFinishMath
      *
      * @param  list<array<string, mixed>>  $objects
      */
-    public function unionOpeningAreaSqFt(array $objects, float $ceilingHeightFt): float
+    public function unionOpeningAreaSqFt(array $objects, float $ceilingHeightFt, float $wallLengthIn = 0.0): float
     {
-        return round($this->unionRectAreaInches($this->openingRects($objects, $ceilingHeightFt)) / 144.0, 2);
+        return round($this->unionRectAreaInches($this->openingRects($objects, $ceilingHeightFt, $wallLengthIn)) / 144.0, 2);
+    }
+
+    /**
+     * @return array{0: float, 1: float}
+     */
+    public function clampOpeningOnWall(float $offset, float $width, float $wallLengthIn): array
+    {
+        if ($wallLengthIn <= 0) {
+            return [max(0.0, $offset), max(0.0, $width)];
+        }
+        $width = min(max(0.0, $width), $wallLengthIn);
+        $offset = max(0.0, min(max(0.0, $wallLengthIn - $width), $offset));
+
+        return [$offset, $width];
+    }
+
+    /**
+     * @param  array<string, mixed>  $object
+     */
+    public function isLegacyOpeningPlaceholder(array $object, ?string $type = null): bool
+    {
+        $type = $type ?? (isset($object['type']) && is_string($object['type'])
+            ? strtolower(trim($object['type']))
+            : '');
+        if ($type !== 'opening') {
+            return false;
+        }
+        if (! isset($object['height']) || ! is_numeric($object['height'])) {
+            return false;
+        }
+
+        return abs((float) $object['height'] - self::LEGACY_OPENING_HEIGHT_IN) < 0.001;
     }
 
     /**
@@ -134,7 +168,12 @@ class RoomAreaFinishMath
         }
         $needed = $area * (1.0 + ($this->normalizeWastePercent($wastePercent) / 100.0));
 
-        return (int) ceil($needed / $box);
+        return (int) ceil($this->roundTo($needed / $box, 9));
+    }
+
+    public function roundTo(float $value, int $digits): float
+    {
+        return round($value, $digits, PHP_ROUND_HALF_UP);
     }
 
     public function flooringWithWasteSqFt(float $floorAreaSqFt, mixed $wastePercent): float
@@ -207,6 +246,10 @@ class RoomAreaFinishMath
             ? $object['door_face']
             : null;
         if (! array_key_exists('casing_sides', $object) || $object['casing_sides'] === null || $object['casing_sides'] === '') {
+            if ($this->isLegacyOpeningPlaceholder($object, $type)) {
+                return 0;
+            }
+
             return $this->defaultCasingSides($type, $doorFace);
         }
         if (! is_numeric($object['casing_sides'])) {
@@ -292,12 +335,23 @@ class RoomAreaFinishMath
                 }
                 $verts = $polygon['vertices'] ?? [];
                 $count = is_array($verts) ? count($verts) : 0;
-                if ($count < 3) {
-                    continue;
+                $closed = ! array_key_exists('closed', $polygon) || $polygon['closed'] === null
+                    ? true
+                    : (bool) $polygon['closed'];
+                if ($closed) {
+                    if ($count < 3 || ! $this->polygons()->isSimplePolygon($verts)) {
+                        continue;
+                    }
+                    $edgeCount = $count;
+                } else {
+                    if ($count < 2) {
+                        continue;
+                    }
+                    $edgeCount = $count - 1;
                 }
                 $polyId = isset($polygon['id']) && is_string($polygon['id']) ? $polygon['id'] : 'p';
-                for ($i = 0; $i < $count; $i++) {
-                    $j = ($i + 1) % $count;
+                for ($i = 0; $i < $edgeCount; $i++) {
+                    $j = $closed ? ($i + 1) % $count : $i + 1;
                     $a = $verts[$i] ?? null;
                     $b = $verts[$j] ?? null;
                     if (! is_array($a) || ! is_array($b) || ! isset($a['x'], $a['y'], $b['x'], $b['y'])) {
@@ -305,7 +359,7 @@ class RoomAreaFinishMath
                     }
                     $wallId = $this->canvas()->wallId($polyId, $i, $j);
                     $lengthFt = hypot((float) $b['x'] - (float) $a['x'], (float) $b['y'] - (float) $a['y']) / $pixelsPerFoot;
-                    $deduct = $this->unionOpeningAreaSqFt($objectsByWall[$wallId] ?? [], $ceilingHeightFt);
+                    $deduct = $this->unionOpeningAreaSqFt($objectsByWall[$wallId] ?? [], $ceilingHeightFt, $lengthFt * 12.0);
                     $index++;
                     $walls[] = [
                         'id' => $wallId,
@@ -380,7 +434,9 @@ class RoomAreaFinishMath
         $type = strtolower(trim($type));
         $ceilingIn = max(0.0, $wallHeightFt) * 12.0;
         $height = 0.0;
-        if (isset($object['height']) && is_numeric($object['height']) && (float) $object['height'] > 0) {
+        $hasStoredHeight = isset($object['height']) && is_numeric($object['height']) && (float) $object['height'] > 0
+            && ! $this->isLegacyOpeningPlaceholder($object, $type);
+        if ($hasStoredHeight) {
             $height = (float) $object['height'];
         } else {
             $height = match ($type) {
@@ -412,7 +468,7 @@ class RoomAreaFinishMath
      * @param  list<array<string, mixed>>  $objects
      * @return list<array{x0: float, x1: float, y0: float, y1: float}>
      */
-    private function openingRects(array $objects, float $ceilingHeightFt): array
+    private function openingRects(array $objects, float $ceilingHeightFt, float $wallLengthIn = 0.0): array
     {
         $ceilingIn = max(0.0, $ceilingHeightFt) * 12.0;
         $rects = [];
@@ -435,6 +491,10 @@ class RoomAreaFinishMath
                 continue;
             }
             $offset = isset($object['offset']) ? max(0.0, (float) $object['offset']) : 0.0;
+            [$offset, $widthIn] = $this->clampOpeningOnWall($offset, $widthIn, $wallLengthIn);
+            if ($widthIn <= 0) {
+                continue;
+            }
             $sill = 0.0;
             if ($type === 'window' && isset($object['sill_height']) && is_numeric($object['sill_height'])) {
                 $sill = max(0.0, (float) $object['sill_height']);
@@ -515,5 +575,10 @@ class RoomAreaFinishMath
     private function canvas(): RoomAreaCanvasData
     {
         return app(RoomAreaCanvasData::class);
+    }
+
+    private function polygons(): PolygonAreaService
+    {
+        return app(PolygonAreaService::class);
     }
 }

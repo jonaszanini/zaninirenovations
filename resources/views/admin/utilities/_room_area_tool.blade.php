@@ -1110,7 +1110,7 @@
               </div>
               <div class="util-ra-live-metrics__item">
                 <span class="util-ra-live-area__label" data-ra-wall-area-label>Net wall area</span>
-                <strong><span data-ra-live-wall-area>—</span></strong>
+                <strong><span data-ra-live-wall-area>—</span> <span data-ra-area-unit>sq ft</span></strong>
               </div>
               <div class="util-ra-live-metrics__item">
                 <span class="util-ra-live-area__label">Ceiling</span>

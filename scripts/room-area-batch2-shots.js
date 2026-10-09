@@ -289,12 +289,16 @@ async function main() {
     const root = document.querySelector('[data-room-area]');
     if (root) {
       root.classList.add('is-sheet-expanded');
-      root.style.setProperty('--ra-sheet-h', '420px');
+      root.style.setProperty('--ra-sheet-h', 'min(52vh, 360px)');
     }
+    window.dispatchEvent(new Event('resize'));
+  });
+  await delay(450);
+  await phone.evaluate(() => {
     const finish = document.querySelector('[data-ra-finish]');
     if (finish) finish.scrollIntoView({ block: 'nearest' });
   });
-  await delay(350);
+  await delay(200);
   await shot(phone, 'ra-b2-390-sheet-light');
 
   await phone.evaluate(() => {
@@ -318,12 +322,16 @@ async function main() {
     const root = document.querySelector('[data-room-area]');
     if (root) {
       root.classList.add('is-sheet-expanded');
-      root.style.setProperty('--ra-sheet-h', '420px');
+      root.style.setProperty('--ra-sheet-h', 'min(52vh, 360px)');
     }
+    window.dispatchEvent(new Event('resize'));
+  });
+  await delay(450);
+  await phone.evaluate(() => {
     const finish = document.querySelector('[data-ra-finish]');
     if (finish) finish.scrollIntoView({ block: 'nearest' });
   });
-  await delay(350);
+  await delay(200);
   await shot(phone, 'ra-b2-390-sheet-dark');
   await phone.close();
 

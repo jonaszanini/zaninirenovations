@@ -27,6 +27,7 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
             ->assertSee('data-ra-live-ceiling-area', false)
             ->assertSee('data-ra-live-boxes', false)
             ->assertSee('data-ra-live-casing', false)
+            ->assertSee('data-ra-live-wall-area', false)
             ->assertSee('data-ra-object-casing', false)
             ->assertSee('data-ra-object-door-face', false)
             ->assertSee('Both sides')
@@ -36,6 +37,8 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertStringContainsString('data-ra-help-pop="finish"', $html);
         $this->assertStringContainsString('data-ra-help-pop-panel="finish"', $html);
         $this->assertStringContainsString('util-ra--fullpage', $html);
+        $this->assertStringContainsString('data-ra-live-wall-area', $html);
+        $this->assertMatchesRegularExpression('/data-ra-live-wall-area[^<]*<\\/span>\\s*<span data-ra-area-unit>/', $html);
         $this->assertStringNotContainsString('admin-toolbar-lede', $html);
     }
 
@@ -55,20 +58,35 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertStringContainsString('RA.totalCasingLf(', $js);
         $this->assertStringContainsString('RA.friendlyPlanUploadError(e)', $js);
         $this->assertStringContainsString('RA.planUploadErrorAfterRoomSaved(err)', $js);
+        $this->assertStringContainsString('commitCeilingFromInput', $js);
+        $this->assertStringContainsString("setCeilingHeight(null, true)", $js);
+        $this->assertStringContainsString('Math.abs((state.flooringWastePercent || 0) - parsed.value)', $js);
+        $this->assertMatchesRegularExpression('/resizeStage\(\);\s*redrawLabels\(\);/', $js);
         $this->assertStringNotContainsString("friendlyNetworkError(err, 'Could not upload the floor plan. Check your connection and try again.')", $js);
         $this->assertStringNotContainsString("friendlyNetworkError(e, 'Could not upload the floor plan. Check your connection and try again.')", $js);
 
         $lib = file_get_contents(public_path('js/room-area-lib.js'));
         $this->assertNotFalse($lib);
         $this->assertStringContainsString('function flooringBoxes(', $lib);
+        $this->assertStringContainsString('Math.ceil(roundTo(needed / box, 9))', $lib);
         $this->assertStringContainsString('function casingLf(', $lib);
         $this->assertStringContainsString('function netWallAreaSqFt(', $lib);
+        $this->assertStringContainsString('LEGACY_OPENING_HEIGHT_IN', $lib);
+        $this->assertStringContainsString('function isSimplePolygon(', $lib);
+        $this->assertStringContainsString('function clampOpeningOnWall(', $lib);
+        $this->assertStringContainsString('function isTooLargeError(', $lib);
         $this->assertStringContainsString('function planUploadReason(', $lib);
         $this->assertStringContainsString('Wrong file type.', $lib);
         $this->assertStringContainsString('function parseWastePercent(', $lib);
         $this->assertStringContainsString('function perWallNetAreas(', $lib);
         $this->assertStringContainsString('function isWrongFileTypeError(', $lib);
         $this->assertStringContainsString('The server had a problem.', $lib);
+
+        $php = file_get_contents(app_path('Services/RoomAreaFinishMath.php'));
+        $this->assertNotFalse($php);
+        $this->assertStringContainsString('ceil($this->roundTo($needed / $box, 9))', $php);
+        $this->assertStringContainsString("preg_match('/[eE]/', \$raw)", $php);
+        $this->assertStringContainsString('LEGACY_OPENING_HEIGHT_IN', $php);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
         $this->assertNotFalse($css);

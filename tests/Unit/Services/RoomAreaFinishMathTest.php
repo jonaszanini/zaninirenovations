@@ -43,6 +43,10 @@ class RoomAreaFinishMathTest extends TestCase
         $this->assertFalse($this->math->parseWastePercent('abc')['ok']);
         $this->assertSame('Enter waste as a percent, like 10 or 15%.', $this->math->parseWastePercent('abc')['error']);
         $this->assertFalse($this->math->parseWastePercent(-5)['ok']);
+        $this->assertFalse($this->math->parseWastePercent('1e3')['ok']);
+        $this->assertFalse($this->math->parseWastePercent('1E3')['ok']);
+        $this->assertSame(75.0, $this->math->parseWastePercent(75)['value']);
+        $this->assertSame(100.0, $this->math->parseWastePercent(150)['value']);
     }
 
     public function test_box_below_minimum_is_zero_not_snapped(): void
@@ -132,7 +136,7 @@ class RoomAreaFinishMathTest extends TestCase
         ], 8.0));
     }
 
-    public function test_flooring_boxes_round_up_without_nudge(): void
+    public function test_flooring_boxes_round_exact_multiples_without_overcount(): void
     {
         $this->assertSame(6, $this->math->flooringBoxes(100, 10, 20));
         $this->assertSame(6, $this->math->flooringBoxes(100, 10, 19));
@@ -142,6 +146,12 @@ class RoomAreaFinishMathTest extends TestCase
         $this->assertSame(0, $this->math->flooringBoxes(0, 10, 20));
         $this->assertSame(3, $this->math->flooringBoxes(40, 5, 14));
         $this->assertSame(110.0, $this->math->flooringWithWasteSqFt(100, 10));
+        $this->assertSame(5, $this->math->flooringBoxes(100, 10, 22));
+        $this->assertSame(10, $this->math->flooringBoxes(100, 10, 11));
+        $this->assertSame(10, $this->math->flooringBoxes(50, 10, 5.5));
+        $this->assertSame(1, $this->math->flooringBoxes(12.5, 12, 14));
+        $this->assertSame(2.0, $this->math->roundTo(1.5, 0));
+        $this->assertSame(3.0, $this->math->roundTo(2.5, 0));
     }
 
     public function test_window_casing_is_four_sides_by_default(): void
@@ -168,6 +178,80 @@ class RoomAreaFinishMathTest extends TestCase
         $this->assertSame(1, $this->math->casingSidesForObject(['type' => 'door', 'casing_sides' => 1]));
         $this->assertSame(2, $this->math->casingSidesForObject(['type' => 'opening']));
         $this->assertSame(0, $this->math->casingSidesForObject(['type' => 'opening', 'casing_sides' => 0]));
+        $this->assertSame(0, $this->math->casingSidesForObject(['type' => 'opening', 'height' => 48]));
+        $this->assertSame(2, $this->math->casingSidesForObject(['type' => 'opening', 'height' => 48, 'casing_sides' => 2]));
+    }
+
+    public function test_legacy_opening_placeholder_uses_type_default_height(): void
+    {
+        $this->assertTrue($this->math->isLegacyOpeningPlaceholder(['type' => 'opening', 'height' => 48], 'opening'));
+        $this->assertSame(96.0, $this->math->objectHeightInches(['type' => 'opening', 'height' => 48], 'opening', 8.0));
+        $this->assertSame(108.0, $this->math->objectHeightInches(['type' => 'opening', 'height' => 48], 'opening', 9.0));
+        $this->assertSame(60.0, $this->math->objectHeightInches(['type' => 'opening', 'height' => 60], 'opening', 8.0));
+        $this->assertSame(24.0, $this->math->unionOpeningAreaSqFt([
+            ['type' => 'opening', 'width' => 36, 'height' => 48, 'offset' => 12],
+        ], 8.0));
+        $this->assertSame(0, $this->math->casingSidesForObject(['type' => 'opening', 'height' => 48]));
+    }
+
+    public function test_window_sill_is_used_in_union(): void
+    {
+        $union = $this->math->unionOpeningAreaSqFt([
+            ['type' => 'window', 'width' => 36, 'height' => 24, 'offset' => 0, 'sill_height' => 0],
+            ['type' => 'window', 'width' => 36, 'height' => 24, 'offset' => 0, 'sill_height' => 36],
+        ], 8.0);
+        $this->assertEqualsWithDelta(12.0, $union, 0.01);
+        $this->assertNotEquals(6.0, $union);
+    }
+
+    public function test_opening_offset_is_clamped_to_wall_end(): void
+    {
+        [$offset, $width] = $this->math->clampOpeningOnWall(200, 36, 120);
+        $this->assertSame(84.0, $offset);
+        $this->assertSame(36.0, $width);
+        $wide = $this->math->unionOpeningAreaSqFt([
+            ['type' => 'door', 'width' => 200, 'offset' => 0, 'height' => 80],
+        ], 8.0, 120.0);
+        $this->assertEqualsWithDelta($this->math->openingAreaSqFt(120, 80), $wide, 0.01);
+        $this->assertNotEquals($this->math->openingAreaSqFt(200, 80), $wide);
+    }
+
+    public function test_open_and_non_simple_polygons_count_only_real_walls(): void
+    {
+        $open = [
+            'groups' => [[
+                'polygons' => [[
+                    'id' => 'open1',
+                    'closed' => false,
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 144, 'y' => 0],
+                        ['x' => 144, 'y' => 120],
+                    ],
+                ]],
+            ]],
+            'objects' => [],
+        ];
+        $openWalls = $this->math->perWallNetAreas($open, 12.0, 8.0);
+        $this->assertCount(2, $openWalls);
+        $this->assertEqualsWithDelta(12.0, $openWalls[0]['length_lf'], 0.01);
+        $this->assertEqualsWithDelta(10.0, $openWalls[1]['length_lf'], 0.01);
+
+        $bowtie = [
+            'groups' => [[
+                'polygons' => [[
+                    'id' => 'bow',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 120, 'y' => 120],
+                        ['x' => 120, 'y' => 0],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+            'objects' => [],
+        ];
+        $this->assertCount(0, $this->math->perWallNetAreas($bowtie, 12.0, 8.0));
     }
 
     public function test_total_casing_uses_defaults_and_includes_openings(): void
@@ -208,6 +292,14 @@ class RoomAreaFinishMathTest extends TestCase
         $this->assertCount(4, $metrics['walls']);
         $this->assertSame(337.0, $metrics['net_wall_area_sqft']);
         $this->assertGreaterThan(0, $metrics['casing_lf']);
+
+        $atWall = $this->math->finishMetrics($canvas, 12.0, 8.0, 120.0, [
+            'ceiling_height_ft' => 8,
+        ]);
+        $openingAtCeiling = $this->math->casingLf(36, 108, 2, 'opening');
+        $openingAtWall = $this->math->casingLf(36, 96, 2, 'opening');
+        $this->assertEqualsWithDelta($openingAtCeiling - $openingAtWall, $metrics['casing_lf'] - $atWall['casing_lf'], 0.01);
+        $this->assertNotEquals($atWall['casing_lf'], $metrics['casing_lf']);
     }
 
     /**

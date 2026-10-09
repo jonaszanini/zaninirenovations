@@ -1202,7 +1202,9 @@
       syncFinishInputs(true);
       return false;
     }
-    if (recordUndo) pushUndoSnapshot();
+    if (recordUndo && Math.abs((state.flooringWastePercent || 0) - parsed.value) > 0.0001) {
+      pushUndoSnapshot();
+    }
     state.flooringWastePercent = parsed.value;
     syncFinishInputs(true);
     return true;
@@ -4818,7 +4820,7 @@
     if (!state.stage || !els.canvasWrap) return;
     var vp = getViewportDimensions();
     if (vp.w === state.viewportW && vp.h === state.viewportH) {
-      if (viewportContentBounds().hasContent) fitViewport();
+      redrawLabels();
       return;
     }
 
@@ -4828,18 +4830,12 @@
       state.stage.height(state.viewportH);
       drawGrid();
       redrawAll();
-      if (viewportContentBounds().hasContent) {
-        fitViewport();
-      } else {
-        applyViewport();
-      }
+      applyViewport();
       return;
     }
 
     var oldContentW = state.viewportW;
     var oldContentH = state.viewportH;
-    var oldWorldW = state.canvasW;
-    var oldWorldH = state.canvasH;
 
     syncDrawableDimensions();
 
@@ -4870,11 +4866,7 @@
     }
     drawGrid();
     redrawAll();
-    if (viewportContentBounds().hasContent) {
-      fitViewport();
-    } else if (oldWorldW !== state.canvasW || oldWorldH !== state.canvasH) {
-      applyViewport();
-    }
+    applyViewport();
   }
 
   function scheduleStageResize() {
@@ -11067,25 +11059,26 @@
       });
     }
     if (els.ceilingHeight) {
-      els.ceilingHeight.addEventListener('change', function () {
-        var next = wallHeightFtFromValue(els.ceilingHeight.value);
+      function commitCeilingFromInput() {
+        var raw = els.ceilingHeight.value;
+        if (raw == null || String(raw).trim() === '') {
+          setCeilingHeight(null, true);
+          updateLiveArea();
+          return;
+        }
+        var next = wallHeightFtFromValue(raw);
         if (next == null) {
           syncCeilingHeightInput(true);
           return;
         }
         setCeilingHeight(next, true);
         updateLiveArea();
-      });
+      }
+      els.ceilingHeight.addEventListener('change', commitCeilingFromInput);
       els.ceilingHeight.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter') return;
         e.preventDefault();
-        var next = wallHeightFtFromValue(els.ceilingHeight.value);
-        if (next == null) {
-          syncCeilingHeightInput(true);
-          return;
-        }
-        setCeilingHeight(next, true);
-        updateLiveArea();
+        commitCeilingFromInput();
       });
     }
     if (els.floorWaste) {
@@ -11333,7 +11326,6 @@
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           resizeStage();
-          if (viewportContentBounds().hasContent) fitViewport();
           redrawLabels();
         });
       });

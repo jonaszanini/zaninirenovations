@@ -22,6 +22,7 @@
   var DEFAULT_WALL_HEIGHT_FT = 8;
   var DEFAULT_DOOR_HEIGHT_IN = 80;
   var DEFAULT_WINDOW_HEIGHT_IN = 36;
+  var LEGACY_OPENING_HEIGHT_IN = 48;
   var DEFAULT_WASTE_PERCENT = 10;
   var DEFAULT_BOX_SQFT = 20;
   var MIN_BOX_SQFT = 0.25;
@@ -530,10 +531,21 @@
     return false;
   }
 
+  function isTooLargeError(err) {
+    var raw = err && err.message ? String(err.message) : '';
+    var status = Number(err && err.status);
+    if (status === 413) return true;
+    return /too large|payload too large|10240|10 ?mb|kilobytes/i.test(raw);
+  }
+
   function planUploadErrorAfterRoomSaved(err) {
     var reason = planUploadReason(err);
+    if (isTooLargeError(err)) {
+      return reason || 'That file is too large.';
+    }
+    var saved = 'Floor plan upload failed. The room itself was saved.';
     if (isWrongFileTypeError(err)) {
-      return reason || 'Wrong file type. Use a JPEG, PNG, or WebP image.';
+      return reason ? saved + ' ' + reason : saved;
     }
     var base = 'Floor plan upload failed. The room itself was saved. Save again to retry.';
     return reason ? base + ' ' + reason : base;
@@ -641,7 +653,22 @@
     var length = Number(lengthFt) || 0;
     var height = Number(heightFt) || 0;
     var deduct = Number(openingArea) || 0;
-    return Math.round(Math.max(0, length * height - Math.max(0, deduct)) * 100) / 100;
+    return roundTo(Math.max(0, length * height - Math.max(0, deduct)), 2);
+  }
+
+  function roundTo(value, digits) {
+    var n = Number(value);
+    var places = parseInt(digits, 10);
+    if (!isFinite(n)) return 0;
+    if (!isFinite(places) || places < 0) places = 0;
+    var factor = Math.pow(10, places);
+    var shifted = n * factor;
+    var sign = shifted < 0 ? -1 : 1;
+    var abs = Math.abs(shifted);
+    var whole = Math.floor(abs);
+    var frac = abs - whole;
+    var rounded = frac >= 0.5 ? whole + 1 : whole;
+    return sign * rounded / factor;
   }
 
   function flooringBoxes(floorArea, wastePercent, boxSqFt) {
@@ -649,7 +676,7 @@
     var box = normalizeBoxSqFt(boxSqFt);
     if (area <= 0 || box < MIN_BOX_SQFT) return 0;
     var needed = area * (1 + (normalizeWastePercent(wastePercent) / 100));
-    return Math.ceil(needed / box);
+    return Math.ceil(roundTo(needed / box, 9));
   }
 
   function objectType(obj) {
@@ -685,10 +712,17 @@
     return 0;
   }
 
+  function isLegacyOpeningPlaceholder(obj) {
+    if (objectType(obj) !== 'opening') return false;
+    if (!obj || obj.height == null || !isFinite(Number(obj.height))) return false;
+    return Math.abs(Number(obj.height) - LEGACY_OPENING_HEIGHT_IN) < 0.001;
+  }
+
   function casingSidesForObject(obj) {
     var type = objectType(obj);
     var raw = obj && obj.casing_sides;
     if (raw == null || String(raw).trim() === '' || !isFinite(Number(raw))) {
+      if (isLegacyOpeningPlaceholder(obj)) return 0;
       return defaultCasingSides(type, obj && obj.door_face);
     }
     var n = parseInt(raw, 10);
@@ -701,7 +735,7 @@
     var type = objectType(obj);
     var ceilingIn = clampWallHeightFt(wallHeightFt) * INCHES_PER_FOOT;
     var height;
-    if (obj && obj.height != null && isFinite(obj.height) && obj.height > 0) {
+    if (obj && obj.height != null && isFinite(obj.height) && obj.height > 0 && !isLegacyOpeningPlaceholder(obj)) {
       height = Number(obj.height);
     } else if (type === 'window') {
       height = DEFAULT_WINDOW_HEIGHT_IN;
@@ -714,12 +748,26 @@
     return Math.max(0, height);
   }
 
-  function openingRect(obj, ceilingHeightFt) {
+  function clampOpeningOnWall(offset, width, wallLengthIn) {
+    var off = Number(offset) || 0;
+    var w = Number(width) || 0;
+    var wall = Number(wallLengthIn) || 0;
+    if (wall <= 0) return { offset: Math.max(0, off), width: Math.max(0, w) };
+    w = Math.min(Math.max(0, w), wall);
+    off = Math.max(0, Math.min(Math.max(0, wall - w), off));
+    return { offset: off, width: w };
+  }
+
+  function openingRect(obj, ceilingHeightFt, wallLengthIn) {
     var type = objectType(obj);
     var width = Number(obj && obj.width) || 0;
     var height = objectHeightInches(obj, ceilingHeightFt);
     if (width <= 0 || height <= 0) return null;
     var offset = Math.max(0, Number(obj && obj.offset) || 0);
+    var clamped = clampOpeningOnWall(offset, width, wallLengthIn);
+    offset = clamped.offset;
+    width = clamped.width;
+    if (width <= 0) return null;
     var sill = 0;
     if (type === 'window' && obj && obj.sill_height != null && isFinite(obj.sill_height)) {
       sill = Math.max(0, Number(obj.sill_height));
@@ -772,15 +820,56 @@
     return area;
   }
 
-  function unionOpeningAreaSqFt(objects, ceilingHeightFt) {
+  function unionOpeningAreaSqFt(objects, ceilingHeightFt, wallLengthIn) {
     var rects = [];
     (objects || []).forEach(function (obj) {
       var type = objectType(obj);
       if (type !== 'door' && type !== 'window' && type !== 'opening') return;
-      var rect = openingRect(obj, ceilingHeightFt);
+      var rect = openingRect(obj, ceilingHeightFt, wallLengthIn);
       if (rect) rects.push(rect);
     });
     return Math.round(unionRectAreaInches(rects) / 144 * 100) / 100;
+  }
+
+  function direction(p1, p2, p3) {
+    var cross = (p3.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (p3.y - p1.y);
+    if (Math.abs(cross) < 1e-9) return 0;
+    return cross > 0 ? 1 : -1;
+  }
+
+  function onSegment(p1, p2, p3) {
+    return Math.min(p1.x, p2.x) <= p3.x && p3.x <= Math.max(p1.x, p2.x)
+      && Math.min(p1.y, p2.y) <= p3.y && p3.y <= Math.max(p1.y, p2.y);
+  }
+
+  function segmentsIntersect(p1, p2, p3, p4) {
+    var d1 = direction(p3, p4, p1);
+    var d2 = direction(p3, p4, p2);
+    var d3 = direction(p1, p2, p3);
+    var d4 = direction(p1, p2, p4);
+    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+    if (d1 === 0 && onSegment(p3, p4, p1)) return true;
+    if (d2 === 0 && onSegment(p3, p4, p2)) return true;
+    if (d3 === 0 && onSegment(p1, p2, p3)) return true;
+    if (d4 === 0 && onSegment(p1, p2, p4)) return true;
+    return false;
+  }
+
+  function isSimplePolygon(vertices) {
+    var n = (vertices || []).length;
+    if (n < 3) return false;
+    for (var i = 0; i < n; i++) {
+      var a1 = vertices[i];
+      var a2 = vertices[(i + 1) % n];
+      for (var j = i + 1; j < n; j++) {
+        if (j === i + 1) continue;
+        if (i === 0 && j === n - 1) continue;
+        var b1 = vertices[j];
+        var b2 = vertices[(j + 1) % n];
+        if (segmentsIntersect(a1, a2, b1, b2)) return false;
+      }
+    }
+    return true;
   }
 
   function wallId(polyId, start, end) {
@@ -808,16 +897,22 @@
       (group.polygons || []).forEach(function (polygon) {
         if (!polygon) return;
         var verts = polygon.vertices || [];
-        if (verts.length < 3) return;
+        var closed = polygon.closed == null ? true : !!polygon.closed;
+        if (closed) {
+          if (verts.length < 3 || !isSimplePolygon(verts)) return;
+        } else if (verts.length < 2) {
+          return;
+        }
+        var edgeCount = closed ? verts.length : verts.length - 1;
         var polyId = polygon.id || 'p';
-        for (var i = 0; i < verts.length; i++) {
-          var j = (i + 1) % verts.length;
+        for (var i = 0; i < edgeCount; i++) {
+          var j = closed ? (i + 1) % verts.length : i + 1;
           var a = verts[i];
           var b = verts[j];
           if (!a || !b || a.x == null || b.x == null) continue;
           var id = wallId(polyId, i, j);
           var lengthFt = Math.hypot(b.x - a.x, b.y - a.y) / ppf;
-          var deduct = unionOpeningAreaSqFt(objectsByWall[id] || [], height);
+          var deduct = unionOpeningAreaSqFt(objectsByWall[id] || [], height, lengthFt * INCHES_PER_FOOT);
           index += 1;
           walls.push({
             id: id,
@@ -971,8 +1066,14 @@
     flooringWithWasteSqFt: function (area, waste) {
       var n = Math.max(0, Number(area) || 0);
       if (n <= 0) return 0;
-      return Math.round(n * (1 + (normalizeWastePercent(waste) / 100)) * 100) / 100;
+      return roundTo(n * (1 + (normalizeWastePercent(waste) / 100)), 2);
     },
+    roundTo: roundTo,
+    clampOpeningOnWall: clampOpeningOnWall,
+    isLegacyOpeningPlaceholder: isLegacyOpeningPlaceholder,
+    isSimplePolygon: isSimplePolygon,
+    isTooLargeError: isTooLargeError,
+    LEGACY_OPENING_HEIGHT_IN: LEGACY_OPENING_HEIGHT_IN,
     casingLf: casingLf,
     defaultCasingSides: defaultCasingSides,
     casingSidesForObject: casingSidesForObject,

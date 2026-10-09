@@ -140,8 +140,12 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.friendlyNetworkError({ message: 'Unexpected token < in JSON' }, 'Could not upload photos. Check your connection and try again.'), 'Could not upload photos. Check your connection and try again.');
   assert.strictEqual(lib.friendlyNetworkError({ status: 413, message: 'Payload Too Large' }, 'x'), 'That file is too large to upload.');
   var saved = 'Floor plan upload failed. The room itself was saved. Save again to retry.';
-  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 413, message: 'Payload Too Large' }), saved + ' That file is too large.');
-  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 422, message: 'The background must be an image.' }), 'The background must be an image.');
+  var savedOnly = 'Floor plan upload failed. The room itself was saved.';
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 413, message: 'Payload Too Large' }), 'That file is too large.');
+  assert.ok(lib.planUploadErrorAfterRoomSaved({ status: 413, message: 'Payload Too Large' }).indexOf('Save again to retry') === -1);
+  assert.ok(lib.planUploadErrorAfterRoomSaved({ status: 422, message: 'The background must not be greater than 10240 kilobytes.' }).indexOf('Save again to retry') === -1);
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 422, message: 'The background must be an image.' }), savedOnly + ' The background must be an image.');
+  assert.ok(lib.planUploadErrorAfterRoomSaved({ status: 422, message: 'The background must be an image.' }).indexOf('room itself was saved') !== -1);
   assert.ok(lib.planUploadErrorAfterRoomSaved({ status: 422, message: 'The background must be an image.' }).indexOf('Save again to retry') === -1);
   assert.strictEqual(lib.planUploadReason({ status: 422, message: 'Unlock layers to change the floor plan.' }), 'Unlock layers to change the floor plan.');
   assert.strictEqual(lib.planUploadReason({ status: 422, message: 'The background must not be greater than 10240 kilobytes.' }), 'The background must not be greater than 10240 kilobytes.');
@@ -161,12 +165,21 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.parseWastePercent(75).value, 75);
   assert.strictEqual(lib.parseWastePercent(150).value, 100);
   assert.strictEqual(lib.parseWastePercent('abc').ok, false);
+  assert.strictEqual(lib.parseWastePercent('1e3').ok, false);
+  assert.strictEqual(lib.parseWastePercent('1E3').ok, false);
+  assert.strictEqual(lib.netWallAreaSqFt(3, 8, 40), 0);
   assert.strictEqual(lib.normalizeBoxSqFt(0.1), 0);
   assert.strictEqual(lib.flooringBoxes(100, 10, 0.1), 0);
   assert.strictEqual(lib.flooringBoxes(100, 10, 20), 6);
   assert.strictEqual(lib.flooringBoxes(100, 10, 19), 6);
   assert.strictEqual(lib.flooringBoxes(20, 0, 20), 1);
   assert.strictEqual(lib.flooringBoxes(20.01, 0, 20), 2);
+  assert.strictEqual(lib.flooringBoxes(100, 10, 22), 5);
+  assert.strictEqual(lib.flooringBoxes(100, 10, 11), 10);
+  assert.strictEqual(lib.flooringBoxes(50, 10, 5.5), 10);
+  assert.strictEqual(lib.flooringBoxes(12.5, 12, 14), 1);
+  assert.strictEqual(lib.roundTo(1.5, 0), 2);
+  assert.strictEqual(lib.roundTo(2.5, 0), 3);
   assert.strictEqual(lib.casingLf(36, 80, 2), 32.67);
   assert.strictEqual(lib.casingLf(36, 36, 4, 'window'), 12);
   assert.strictEqual(lib.casingLf(36, 36, 3, 'window'), 9);
@@ -179,7 +192,13 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.casingSidesForObject({ type: 'WINDOW' }), 4);
   assert.strictEqual(lib.casingSidesForObject({ type: 'window', casing_sides: '' }), 4);
   assert.strictEqual(lib.casingSidesForObject({ type: 'opening' }), 2);
+  assert.strictEqual(lib.casingSidesForObject({ type: 'opening', height: 48 }), 0);
+  assert.strictEqual(lib.casingSidesForObject({ type: 'opening', height: 48, casing_sides: 2 }), 2);
   assert.strictEqual(lib.objectHeightInches({ type: 'opening', height: 120 }, 8), 96);
+  assert.strictEqual(lib.objectHeightInches({ type: 'opening', height: 48 }, 8), 96);
+  assert.strictEqual(lib.objectHeightInches({ type: 'opening', height: 48 }, 9), 108);
+  assert.strictEqual(lib.objectHeightInches({ type: 'opening', height: 60 }, 8), 60);
+  assert.strictEqual(lib.totalCasingLf([{ type: 'opening', width: 36 }], 9) !== lib.totalCasingLf([{ type: 'opening', width: 36 }], 8), true);
   assert.strictEqual(lib.objectType({ type: 'DOOR' }), 'door');
   var perWallCanvas = {
     groups: [{ polygons: [{ id: 'p1', vertices: [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }] }] }],
@@ -204,6 +223,27 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   ], 8);
   assert.ok(Math.abs(overlap - 33.33) < 0.02);
   assert.notStrictEqual(overlap, 40);
+  var sillUnion = lib.unionOpeningAreaSqFt([
+    { type: 'window', width: 36, height: 24, offset: 0, sill_height: 0 },
+    { type: 'window', width: 36, height: 24, offset: 0, sill_height: 36 }
+  ], 8);
+  assert.ok(Math.abs(sillUnion - 12) < 0.02);
+  assert.notStrictEqual(sillUnion, 6);
+  var clamped = lib.clampOpeningOnWall(200, 36, 120);
+  assert.strictEqual(clamped.offset, 84);
+  assert.strictEqual(clamped.width, 36);
+  var wide = lib.unionOpeningAreaSqFt([{ type: 'door', width: 200, offset: 0, height: 80 }], 8, 120);
+  assert.ok(Math.abs(wide - lib.openingAreaSqFt(120, 80)) < 0.02);
+  var openWalls = lib.perWallNetAreas({
+    groups: [{ polygons: [{ id: 'open1', closed: false, vertices: [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }] }] }],
+    objects: []
+  }, 12, 8);
+  assert.strictEqual(openWalls.length, 2);
+  var bowtie = lib.perWallNetAreas({
+    groups: [{ polygons: [{ id: 'bow', vertices: [{ x: 0, y: 0 }, { x: 120, y: 120 }, { x: 120, y: 0 }, { x: 0, y: 120 }] }] }],
+    objects: []
+  }, 12, 8);
+  assert.strictEqual(bowtie.length, 0);
   console.log('room-area-lib tests: ' + process.uptime().toFixed(3) + 's ok');
 }).catch(function (err) {
   console.error(err);
