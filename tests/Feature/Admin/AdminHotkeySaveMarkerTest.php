@@ -79,7 +79,7 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
         $invoice = ClientProjectInvoice::factory()->create();
-        $html = $this->get(route('admin.client-projects.invoices.edit', [$invoice->clientProject, $invoice]))
+        $html = $this->get(route('admin.client-projects.invoices.edit', [$invoice->project, $invoice]))
             ->assertOk()
             ->getContent();
 
