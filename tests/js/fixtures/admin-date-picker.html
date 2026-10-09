@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin date picker fixture</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-dark.css">
+</head>
+<body class="admin-body">
+  <main class="admin-content" style="max-width: 420px; padding: 16px;">
+    <div class="admin-form-group">
+      <label for="due-date">Due date</label>
+      <input class="admin-input" type="date" id="due-date" name="due_on">
+    </div>
+    <div class="admin-form-group">
+      <label for="visit-time">Visit time</label>
+      <input class="admin-input" type="time" id="visit-time" name="visit_time">
+    </div>
+    <div class="admin-form-group">
+      <label for="published-at">Published at</label>
+      <input class="admin-input" type="datetime-local" id="published-at" name="published_at">
+    </div>
+    <div class="admin-form-group">
+      <label for="locked-date">Locked date</label>
+      <input class="admin-input" type="date" id="locked-date" name="locked_on" readonly>
+    </div>
+    <div class="admin-form-group">
+      <label for="notes">Notes</label>
+      <input class="admin-input" type="text" id="notes" name="notes">
+    </div>
+  </main>
+  <script src="/js/admin-date-picker.js"></script>
+</body>
+</html>

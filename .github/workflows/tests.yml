@@ -66,6 +66,7 @@ jobs:
           node tests/js/room-area-lib.test.js
           node tests/js/room-area-phone-geometry.test.js
           node tests/js/shared-prices-effective.test.js
+          node tests/js/admin-date-picker-browser.test.js
 
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
@@ -76,6 +77,7 @@ jobs:
       - name: Admin dark-theme CSS coverage (no database)
         run: |
           php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php
+          php artisan test tests/Unit/Views/AdminDatePickerThemeTest.php
           php artisan test tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
           php artisan test tests/Unit/Views/QuotationExpensePairLayoutTest.php
 
