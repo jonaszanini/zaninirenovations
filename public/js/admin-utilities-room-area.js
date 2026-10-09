@@ -2203,7 +2203,7 @@
   }
 
   function fmt(n, d) {
-    return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d).replace(/\.?0+$/, '');
+    return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d);
   }
 
   function reduceFraction(num, den) {
