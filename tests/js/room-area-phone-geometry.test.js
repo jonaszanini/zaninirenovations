@@ -1172,10 +1172,20 @@ async function measureViewports() {
   }
 }
 
+function liveGeometryEnabled() {
+  return process.env.RA_LIVE === '1' || process.env.GEOMETRY_LIVE === '1';
+}
+
+function liveOnly() {
+  return process.env.RA_LIVE_ONLY === '1';
+}
+
 async function measureLiveEditor() {
-  const base = process.env.RA_LIVE_URL || 'http://127.0.0.1:8000';
+  const base = process.env.RA_LIVE_URL || process.env.APP_URL || 'http://127.0.0.1:8000';
   const email = process.env.ADMIN_EMAIL || 'admin@zanini.ca';
   const password = process.env.ADMIN_PASSWORD || 'password';
+  const projectId = process.env.RA_PROJECT_ID || '1';
+  const roomId = process.env.RA_ROOM_ID || '1';
   let probe;
   try {
     probe = await fetch(base + '/admin/login');
@@ -1197,7 +1207,7 @@ async function measureLiveEditor() {
     await page.evaluate(() => {
       try { localStorage.setItem('zr-room-area-guide-tip-v1', '1'); } catch (e) {}
     });
-    await page.goto(base + '/admin/utilities/room-area?ra_project=1&ra_room=1', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.goto(base + '/admin/utilities/room-area?ra_project=' + projectId + '&ra_room=' + roomId, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForSelector('.util-ra--fullpage', { timeout: 20000 });
     await page.waitForSelector('.util-ra-canvas-wrap', { timeout: 20000 });
     await page.waitForFunction(() => typeof window.Konva !== 'undefined', { timeout: 20000 }).catch(function () {});
@@ -1354,9 +1364,13 @@ assertCssGeometry();
 const watchdog = setTimeout(function () {
   console.error('room-area phone geometry tests: timed out');
   process.exit(1);
-}, TEST_TIMEOUT_MS);
-measureViewports().then(function () {
-  return measureLiveEditor();
+}, liveGeometryEnabled() ? 180000 : TEST_TIMEOUT_MS);
+const start = liveOnly() ? Promise.resolve() : measureViewports();
+start.then(function () {
+  if (liveGeometryEnabled()) {
+    return measureLiveEditor();
+  }
+  console.log('room-area phone geometry tests: skipped live page (set RA_LIVE=1)');
 }).then(function () {
   console.log('room-area phone geometry tests: ok');
   clearTimeout(watchdog);

@@ -217,6 +217,32 @@ jobs:
           php artisan test tests/Feature/Admin/RoomAreaKitSeedRaceTest.php
           php artisan test tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
 
+      - name: Room Area live layout geometry
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: zanini_ra_geometry
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          APP_URL: http://127.0.0.1:8001
+          RA_LIVE: '1'
+          RA_LIVE_ONLY: '1'
+          RA_LIVE_URL: http://127.0.0.1:8001
+        run: |
+          php -r "(new PDO('mysql:host=127.0.0.1', 'root', 'root'))->exec('CREATE DATABASE IF NOT EXISTS zanini_ra_geometry');"
+          php artisan migrate --force
+          php artisan db:seed --class=RoomAreaGeometrySeeder --force
+          php artisan serve --host=127.0.0.1 --port=8001 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8001/admin/login >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8001/admin/login >/dev/null
+          node tests/js/room-area-phone-geometry.test.js
+
       - name: Blog posts live layout geometry
         env:
           DB_CONNECTION: mysql
