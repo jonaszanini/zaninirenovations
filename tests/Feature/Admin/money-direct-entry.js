@@ -295,7 +295,24 @@ function parseMoney(value) {
     await page.keyboard.press('Tab');
     const allowMinus = await readKeypressField('cp-kp-allow-neg');
 
-    return { typedMinus, gasComma, halfUp, allowMinus };
+    await mountKeypressField('cp-kp-mixed', 2);
+    await page.click('#cp-kp-mixed');
+    await page.keyboard.type('1.234,56', { delay: 20 });
+    const mixedTyped = await readKeypressField('cp-kp-mixed');
+    await page.keyboard.press('Tab');
+    const mixedBlur = await readKeypressField('cp-kp-mixed');
+    const mixedSubmit = await page.evaluate(() => {
+      const el = document.getElementById('cp-kp-mixed');
+      return !!(el && el.form && el.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    });
+
+    await mountKeypressField('cp-kp-us', 2);
+    await page.click('#cp-kp-us');
+    await page.keyboard.type('1,234.56', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const usThousands = await readKeypressField('cp-kp-us');
+
+    return { typedMinus, gasComma, halfUp, allowMinus, mixedTyped, mixedBlur, mixedSubmit, usThousands };
   }
 
   async function resaveInvoiceUntouched(url) {
@@ -524,6 +541,18 @@ function parseMoney(value) {
     }
     if (!kp.halfUp || Math.abs(parseFloat(String(kp.halfUp.value || '').replace(/,/g, '')) - 1.01) > 0.0001) {
       throw new Error('Keypress 1.005 did not round to 1.01: ' + JSON.stringify(kp.halfUp));
+    }
+    if (!kp.mixedTyped || String(kp.mixedTyped.value) !== '1.234,56') {
+      throw new Error('Keypress 1.234,56 dropped the comma: ' + JSON.stringify(kp.mixedTyped));
+    }
+    if (!kp.mixedBlur || !kp.mixedBlur.invalid || String(kp.mixedBlur.value) !== '1.234,56' || String(kp.mixedBlur.value) === '1.23') {
+      throw new Error('Typed 1.234,56 was rewritten on blur: ' + JSON.stringify(kp.mixedBlur));
+    }
+    if (kp.mixedSubmit) {
+      throw new Error('Typed 1.234,56 was submittable');
+    }
+    if (!kp.usThousands || kp.usThousands.invalid || Math.abs(parseFloat(String(kp.usThousands.value || '').replace(/,/g, '')) - 1234.56) > 0.0001) {
+      throw new Error('Keypress 1,234.56 failed: ' + JSON.stringify(kp.usThousands));
     }
     const neg = report.negativeResave || {};
     ['standard', 'hourly'].forEach((kind) => {

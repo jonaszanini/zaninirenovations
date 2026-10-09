@@ -315,8 +315,10 @@
           return;
         }
         if (places > 0 && (ev.key === '.' || ev.key === ',')) {
-          var cur = input.value.replace(/,/g, '');
-          if (cur.indexOf('.') !== -1) {
+          var start = input.selectionStart == null ? input.value.length : input.selectionStart;
+          var end = input.selectionEnd == null ? start : input.selectionEnd;
+          var remaining = input.value.slice(0, start) + input.value.slice(end);
+          if (remaining.indexOf(ev.key) !== -1) {
             ev.preventDefault();
           }
           return;

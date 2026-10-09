@@ -97,6 +97,8 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             '/parsed\.negative[\s\S]{0,160}input\.value\s*=\s*[\'"][\'"]/',
             $js
         );
+        $this->assertStringNotContainsString("var cur = input.value.replace(/,/g, '');", $js);
+        $this->assertStringContainsString('remaining.indexOf(ev.key)', $js);
     }
 
     public function test_flooring_add_type_saves_4_75_and_keeps_existing(): void
@@ -266,6 +268,13 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertTrue((bool) ($report['keypress']['gasComma']['invalid'] ?? false));
         $this->assertNotSame('1459.000', $report['keypress']['gasComma']['value'] ?? '');
         $this->assertEqualsWithDelta(1.01, $this->parseMoney($report['keypress']['halfUp']['value'] ?? ''), 0.0001);
+        $this->assertSame('1.234,56', $report['keypress']['mixedTyped']['value'] ?? '');
+        $this->assertSame('1.234,56', $report['keypress']['mixedBlur']['value'] ?? '');
+        $this->assertNotSame('1.23', $report['keypress']['mixedBlur']['value'] ?? '');
+        $this->assertTrue((bool) ($report['keypress']['mixedBlur']['invalid'] ?? false));
+        $this->assertFalse((bool) ($report['keypress']['mixedSubmit'] ?? true));
+        $this->assertFalse((bool) ($report['keypress']['usThousands']['invalid'] ?? true));
+        $this->assertEqualsWithDelta(1234.56, $this->parseMoney($report['keypress']['usThousands']['value'] ?? ''), 0.0001);
 
         $this->assertIsArray($report['negativeResave'] ?? null);
         foreach (['standard', 'hourly'] as $kind) {
