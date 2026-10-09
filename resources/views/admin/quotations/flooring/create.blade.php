@@ -371,7 +371,7 @@
               <label for="fl-material-cost">Material cost per sq ft (CAD$)</label>
               <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                      class="admin-input cp-money-input fl-preview-trigger fl-material-calc" id="fl-material-cost" name="material_cost_per_sqft"
-                     value="{{ old('material_cost_per_sqft', number_format((float) ($inputs['material_cost_per_sqft'] ?? 0), 4, '.', '')) }}">
+                     value="{{ old('material_cost_per_sqft', number_format((float) ($inputs['material_cost_per_sqft'] ?? 0), 4, '.', '')) }}" data-cp-money-entry="direct">
             </div>
             <div class="admin-form-group">
               <label for="fl-material-waste">Waste (%)</label>
@@ -382,7 +382,7 @@
               <label for="fl-material-delivery">Delivery (CAD$)</label>
               <input type="text" inputmode="decimal" autocomplete="off"
                      class="admin-input cp-money-input fl-preview-trigger fl-material-calc" id="fl-material-delivery" name="material_delivery_fee"
-                     placeholder="0.00" value="{{ old('material_delivery_fee', number_format((float) ($inputs['material_delivery_fee'] ?? 60), 2, '.', '')) }}">
+                     placeholder="0.00" value="{{ old('material_delivery_fee', number_format((float) ($inputs['material_delivery_fee'] ?? 60), 2, '.', '')) }}" data-cp-money-entry="direct">
             </div>
             <div class="admin-form-group">
               <label for="fl-material-name">Material name / brand</label>

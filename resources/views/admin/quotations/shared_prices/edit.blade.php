@@ -931,13 +931,13 @@
           <label for="owner_hourly_rate">Owner hourly (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
-                 value="{{ old('owner_hourly_rate', number_format((float) $crew->owner_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('owner_hourly_rate', number_format((float) $crew->owner_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="sp-crew-field">
           <label for="helper_hourly_rate">Helper hourly (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
-                 value="{{ old('helper_hourly_rate', number_format((float) $crew->helper_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('helper_hourly_rate', number_format((float) $crew->helper_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="sp-crew-field">
           <label for="hours_per_day">Hours / day</label>
@@ -995,6 +995,7 @@
                   $selected = $catalogId > 0 ? ($catalogById->get($catalogId) ?? null) : null;
                   $isArea = $work->isPricedPerArea();
                   $effective = \App\Services\SharedWorkCatalog::displayUnitPrice($work);
+                  $isCustom = $work->isCustom();
                   $consumers = is_array($work->consumers) ? $work->consumers : [];
                   $consumerLabels = [];
                   foreach ($consumers as $consumer) {
@@ -1006,13 +1007,19 @@
                   $sellPlaceholder = $effective !== null
                       ? number_format((float) $effective, 4, '.', '')
                       : '0.0000';
+                  $blankSell = null;
+                  if (! $isCustom && ($def = \App\Services\SharedWorkCatalog::definition($work->key))) {
+                      if (isset($def['flat_rate']) && (float) $def['flat_rate'] > 0) {
+                          $blankSell = (float) $def['flat_rate'];
+                      }
+                  }
                   $workMeta = $work->costUnitLabel();
-                  $isCustom = $work->isCustom();
                 @endphp
                 <tr id="work-{{ $work->key }}" class="sp-row"
                     data-sp-kind="{{ $work->labor_kind }}"
                     data-sp-unit="{{ $work->unit }}"
                     data-sp-area="{{ $isArea ? '1' : '0' }}"
+                    data-sp-blank-sell="{{ $blankSell !== null ? number_format($blankSell, 4, '.', '') : '' }}"
                     data-sp-default-sell="{{ $effective !== null ? number_format((float) $effective, 4, '.', '') : '' }}"
                     data-sp-initial-rate="{{ $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '' }}">
                   <td class="sp-col-label" data-label="Work item">
@@ -1039,7 +1046,7 @@
                            class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
                            name="works[{{ $work->id }}][rate]"
                            value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '') }}"
-                           placeholder="0.00">
+                           placeholder="0.00" data-cp-money-entry="direct">
                   </td>
                   <td class="sp-col-sell" data-label="">
                     <span class="sp-sell-phone-label">Sell rate</span>
@@ -1048,7 +1055,7 @@
                              class="sp-input sp-input--sm cp-money-input" id="sp-flat-{{ $work->id }}"
                              name="works[{{ $work->id }}][flat_rate]"
                              value="{{ $savedSell }}"
-                             placeholder="{{ $sellPlaceholder }}">
+                             placeholder="{{ $sellPlaceholder }}" data-cp-money-entry="direct">
                     </div>
                     <small class="sp-effective" data-sp-effective @if ($effective === null) hidden @endif>{{ $effective !== null ? \App\Models\ClientProject::formatMoney($effective)."\u{200B}/".$work->unit : '' }}</small>
                   </td>
@@ -1063,7 +1070,7 @@
                            class="sp-input sp-input--sm cp-money-input" id="sp-mat-price-{{ $work->id }}"
                            name="works[{{ $work->id }}][material_unit_price]"
                            value="{{ old('works.'.$work->id.'.material_unit_price', $work->material_unit_price !== null ? number_format((float) $work->material_unit_price, 4, '.', '') : '') }}"
-                           placeholder="0.00">
+                           placeholder="0.00" data-cp-money-entry="direct">
                   </td>
                   <td class="sp-col-name" data-label="Mat. name">
                     @php $matNameVal = old('works.'.$work->id.'.material_name', $work->material_name); @endphp
@@ -1194,6 +1201,7 @@
     @endforeach
   </form>
 
+  <script src="{{ asset('js/shared-prices-effective.js') }}?v={{ @filemtime(public_path('js/shared-prices-effective.js')) ?: time() }}"></script>
   <script>
     (function() {
       var form = document.getElementById('sp-lib-form');
@@ -1337,15 +1345,10 @@
       }).observe(document.body, { attributes: true, attributeFilter: ['aria-expanded'], subtree: true });
     }
 
-    function parseSpMoney(value) {
-      var n = parseFloat(String(value || '').replace(/,/g, ''));
-      return isFinite(n) ? n : 0;
-    }
-    function formatSpMoney(n) {
-      return 'CA$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    }
     function updateSpEffective() {
-      var owner = parseSpMoney((document.getElementById('owner_hourly_rate') || {}).value);
+      var lib = window.SharedPricesEffective;
+      if (!lib) return;
+      var owner = lib.parseSpMoney((document.getElementById('owner_hourly_rate') || {}).value);
       document.querySelectorAll('tr.sp-row').forEach(function(row) {
         var out = row.querySelector('[data-sp-effective]');
         if (!out) return;
@@ -1353,35 +1356,22 @@
         var sellInput = row.querySelector('.sp-col-sell input');
         var priceInput = row.querySelector('.sp-col-price input');
         var unitInput = row.querySelector('.sp-col-unit input');
-        var rate = rateInput ? parseSpMoney(rateInput.value) : 0;
-        var sell = sellInput ? parseSpMoney(sellInput.value) : 0;
-        var price = priceInput ? parseSpMoney(priceInput.value) : 0;
-        var matUnit = unitInput ? String(unitInput.value || '') : '';
-        var kind = row.getAttribute('data-sp-kind') || '';
+        var effective = lib.effectiveUnitPrice({
+          sell: sellInput ? sellInput.value : '',
+          rate: rateInput ? rateInput.value : '',
+          owner: owner,
+          price: priceInput ? priceInput.value : '',
+          matUnit: unitInput ? unitInput.value : '',
+          kind: row.getAttribute('data-sp-kind') || '',
+          blankSell: row.getAttribute('data-sp-blank-sell') || '',
+        });
         var unit = row.getAttribute('data-sp-unit') || '';
-        var defaultSell = parseSpMoney(row.getAttribute('data-sp-default-sell'));
-        var initialRate = parseSpMoney(row.getAttribute('data-sp-initial-rate'));
-        var labor = 0;
-        if (sell > 0) {
-          labor = sell;
-          price = 0;
-        } else if (rate > 0 && owner > 0 && rate !== initialRate) {
-          labor = kind === 'hours_each' ? rate * owner : owner / rate;
-        } else if (defaultSell > 0) {
-          labor = defaultSell;
-          price = 0;
-        } else if (rate > 0 && owner > 0) {
-          labor = kind === 'hours_each' ? rate * owner : owner / rate;
-        } else {
+        if (effective == null) {
           out.hidden = true;
           out.textContent = '';
           return;
         }
-        if (price > 0 && (matUnit === 'stick_8ft' || matUnit === 'stick')) {
-          price = price / 8;
-        }
-        var effective = Math.round((labor + (price > 0 ? price : 0)) * 100) / 100;
-        out.textContent = formatSpMoney(effective) + '\u200B/' + unit;
+        out.textContent = lib.formatEffectiveHint(effective, unit);
         out.hidden = false;
       });
     }

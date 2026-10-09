@@ -50,6 +50,7 @@ jobs:
           php artisan test tests/Unit/BasementQuotationWizardViewTest.php
           php artisan test tests/Unit/Models/BasementQuotationScopePdfTest.php
           php artisan test tests/Unit/Support/AdminListFiltersTest.php
+          php artisan test tests/Unit/Support/CadMoneyTest.php
           php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
@@ -64,6 +65,7 @@ jobs:
           npm ci --no-fund
           node tests/js/room-area-lib.test.js
           node tests/js/room-area-phone-geometry.test.js
+          node tests/js/shared-prices-effective.test.js
 
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
@@ -220,6 +222,7 @@ jobs:
           php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
           php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
           php artisan test tests/Feature/SharedPricesLayoutTest.php
+          php artisan test tests/Feature/AdminMoneyDirectEntryTest.php
           php artisan test tests/Feature/SharedPricesTest.php
           php artisan test tests/Feature/SharedPricesAddRenameTest.php
           php artisan test tests/Feature/SharedWorksNormalizedLabelMigrationTest.php

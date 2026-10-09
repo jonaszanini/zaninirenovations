@@ -260,7 +260,7 @@
             <div class="admin-form-group">
                 <label class="admin-form-label">Labor Rate per sqft ($) <span class="admin-text-danger">*</span></label>
                 <input type="text" inputmode="decimal" autocomplete="off" name="labor_rate"
-                       class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $labor_rate }}" required>
+                       class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $labor_rate }}" required data-cp-money-entry="direct">
             </div>
         </div>
       </div>
@@ -288,7 +288,7 @@
             <div class="admin-form-group" id="tl-custom-demo-rate-group" style="{{ $demolition_complexity === 'custom' ? '' : 'display:none;' }}">
               <label class="admin-form-label">Custom Rate ($ / sq ft)</label>
               <input type="text" inputmode="decimal" autocomplete="off" name="custom_demolition_rate" id="tl-custom-demo-rate"
-                     class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $custom_demolition_rate }}">
+                     class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $custom_demolition_rate }}" data-cp-money-entry="direct">
             </div>
           </div>
           

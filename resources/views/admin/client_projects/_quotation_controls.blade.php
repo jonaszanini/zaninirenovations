@@ -36,7 +36,7 @@
                    autocomplete="off"
                   
                    placeholder="0.00"
-                   value="{{ old('subtotal_override', $quotation->hasSubtotalOverrideActive() ? number_format((float) $quotation->subtotal_override, 2, '.', '') : '') }}">
+                   value="{{ old('subtotal_override', $quotation->hasSubtotalOverrideActive() ? number_format((float) $quotation->subtotal_override, 2, '.', '') : '') }}" data-cp-money-entry="direct">
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm cp-quotation-control__submit">
               <i class="fa fa-save"></i> Save
             </button>

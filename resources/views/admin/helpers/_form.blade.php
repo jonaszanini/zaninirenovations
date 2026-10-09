@@ -31,7 +31,7 @@
            autocomplete="off"
            placeholder="0.00"
            required
-           value="{{ old('hourly_rate', $helper && $helper->hourly_rate !== null ? number_format((float) $helper->hourly_rate, 2, '.', '') : '') }}">
+           value="{{ old('hourly_rate', $helper && $helper->hourly_rate !== null ? number_format((float) $helper->hourly_rate, 2, '.', '') : '') }}" data-cp-money-entry="direct">
     @error('hourly_rate') <div class="admin-form-error">{{ $message }}</div> @enderror
   </div>
 </div>
