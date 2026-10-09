@@ -66,9 +66,7 @@
               </form>
             @endif
 
-            @if (in_array($status, [QuoteAcceptanceService::STATUS_INCOMPLETE, QuoteAcceptanceService::STATUS_INVALID_STATE], true))
-              @include('site.partials.business_contact')
-            @endif
+            @include('site.partials.business_contact')
           </div>
         </div>
       </div>

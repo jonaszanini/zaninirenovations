@@ -8,3 +8,7 @@
 (lines, materials, sheets, SVG/legend). Live legacy (`cut_plan_version` null/1)
 must stay byte-equal to those files. Main never wrote `species` on sheet data
 and labelled SVG sizes as placed (`a × b`), not longest-first.
+
+Coverage includes closet edits plus vanity (default depth), kallax, floating
+shelf, markup rounding, delivery rounding, paint/stain finishes, and a custom
+catalogue sheet.

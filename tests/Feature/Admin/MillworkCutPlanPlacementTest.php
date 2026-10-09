@@ -543,12 +543,12 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             ->assertDontSee('do not fit on any sheet');
     }
 
-    public function test_available_accept_page_hides_business_contact(): void
+    public function test_available_accept_page_shows_business_contact(): void
     {
         \App\Models\CompanySetting::current()->update([
             'contact_phone' => '(555) 010-8888',
             'contact_phone_tel' => '+15550108888',
-            'contact_email' => 'hidden@example.test',
+            'contact_email' => 'shown@example.test',
         ]);
 
         $calc = (new MillworkQuotationCalculator)->calculate([
@@ -591,8 +591,8 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
         $this->get($accept)
             ->assertOk()
             ->assertSee('Accept this quote')
-            ->assertDontSee('(555) 010-8888')
-            ->assertDontSee('hidden@example.test');
+            ->assertSee('(555) 010-8888')
+            ->assertSee('shown@example.test');
     }
 
     public function test_vehicles_business_contact_help_is_behind_info_tip(): void
@@ -602,11 +602,11 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('Business contact')
             ->assertSee('admin-info-tip', false)
-            ->assertSee('Shown to clients on quote pages when a download or accept link is not available.')
+            ->assertSee('Shown to clients on quote accept pages.')
             ->getContent();
 
         $this->assertStringNotContainsString(
-            '<p class="admin-form-help">Shown to clients on quote pages when a download or accept link is not available.</p>',
+            '<p class="admin-form-help">Shown to clients on quote accept pages.</p>',
             $html
         );
     }

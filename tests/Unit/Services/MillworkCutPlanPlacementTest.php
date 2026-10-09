@@ -682,9 +682,18 @@ class MillworkCutPlanPlacementTest extends TestCase
             'closet_plus_inch' => 1672.54,
             'tall_edited' => 1912.93,
             'doors' => 620.24,
+            'vanity_default_depth' => 1444.00,
+            'kallax' => 697.13,
+            'floating_shelf' => 606.61,
+            'markup' => 1871.89,
+            'delivery' => 1762.85,
+            'finishes' => 2322.50,
+            'custom_catalogue' => 1663.90,
         ];
-        foreach ($this->legacyEditedCases() as $name => $inputs) {
-            $viaGate = (new MillworkQuotationCalculator)->calculate($inputs, $this->settings(), 1);
+        foreach ($this->legacyEditedCases() as $name => $case) {
+            $inputs = $case['inputs'];
+            $settings = $case['settings'] ?? $this->settings();
+            $viaGate = (new MillworkQuotationCalculator)->calculate($inputs, $settings, 1);
             $this->assertArrayNotHasKey('unplaced', $viaGate['cut_plan'] ?? []);
             $this->assertSame(1, (int) ($viaGate['cut_plan']['version'] ?? 0));
             $this->assertArrayNotHasKey('species', $viaGate['sheet'] ?? []);
@@ -744,7 +753,7 @@ class MillworkCutPlanPlacementTest extends TestCase
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<string, array{inputs: array<string, mixed>, settings?: MillworkSettings}>
      */
     private function legacyEditedCases(): array
     {
@@ -752,79 +761,155 @@ class MillworkCutPlanPlacementTest extends TestCase
         $closetPlus = $closet;
         $closetPlus['width'] = (float) $closet['width'] + 1;
 
-        $tall = [
-            'type' => 'cabinet',
-            'qty' => 1,
-            'width' => 25,
-            'height' => 84,
-            'depth' => 24,
-            'unit' => 'in',
-            'include_doors' => true,
-            'door_count' => 2,
-            'include_toe_kick' => true,
-            'include_back' => false,
-            'shelf_count' => 1,
+        $vanity = MillworkQuotationCalculator::defaultPiece('vanity');
+        unset($vanity['depth']);
+
+        $paintedCloset = $closet;
+        $paintedCloset['finish'] = 'paint';
+        $stainedShelf = [
+            'type' => 'shelf',
             'edge_banding' => true,
-        ];
-        $doors = [
-            'type' => 'cabinet_door',
-            'edge_banding' => true,
-            'sets' => [['qty' => 2, 'width' => 18, 'height' => 80, 'unit' => 'in']],
+            'finish' => 'stain',
+            'sets' => [['qty' => 2, 'length' => 30, 'depth' => 12, 'unit' => 'in']],
         ];
 
-        $override = [
-            'pieces' => [$closet],
-            'include_install' => true,
-            'include_helper' => false,
-            'owner_hourly_rate' => 85,
-            'helper_hourly_rate' => 45,
-            'labor_override' => ['cut' => ['hours' => 5]],
+        $customSettings = $this->settings();
+        $catalog = MillworkSettings::defaultCatalog();
+        $catalog[MillworkSettings::SLOT_WOOD_SHEETS][] = [
+            'id' => 'ws_custom_maple_48x96',
+            'catalog_material_id' => null,
+            'name' => 'Custom hard maple 4×8',
+            'unit' => 'sheet',
+            'unit_price' => 187.65,
+            'thickness_in' => 0.75,
+            'width_in' => 48,
+            'length_in' => 96,
+            'material_kind' => 'plywood',
+            'grade' => 'cabinet',
         ];
-        $helper = [
-            'pieces' => [$closet],
-            'include_install' => true,
-            'include_helper' => true,
-            'owner_hourly_rate' => 85,
-            'helper_hourly_rate' => 45,
-        ];
-        $plusInch = [
-            'pieces' => [$closetPlus],
-            'include_install' => true,
-            'owner_hourly_rate' => 85,
-        ];
-        $tallEdit = [
-            'pieces' => [$tall],
-            'include_install' => true,
-            'owner_hourly_rate' => 85,
-        ];
-        $doorEdit = [
-            'pieces' => [$doors],
-            'include_install' => true,
-            'owner_hourly_rate' => 85,
-        ];
-        $extra = [
-            'pieces' => [$closet],
-            'include_install' => true,
-            'include_building' => true,
-            'building_labor_percent' => 10,
-            'spare_sheets' => 1,
-            'waste_pct' => 15,
-            'owner_hourly_rate' => 85,
-            'extra_materials' => [[
-                'name' => 'Cleats',
-                'quantity' => 1,
-                'unit' => 'each',
-                'unit_price' => 25,
-            ]],
-        ];
+        $customSettings->catalog = $catalog;
 
         return [
-            'closet_labor_override' => $override,
-            'closet_helper' => $helper,
-            'closet_plus_inch' => $plusInch,
-            'tall_edited' => $tallEdit,
-            'doors' => $doorEdit,
-            'closet_extra_materials' => $extra,
+            'closet_labor_override' => ['inputs' => [
+                'pieces' => [$closet],
+                'include_install' => true,
+                'include_helper' => false,
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+                'labor_override' => ['cut' => ['hours' => 5]],
+            ]],
+            'closet_helper' => ['inputs' => [
+                'pieces' => [$closet],
+                'include_install' => true,
+                'include_helper' => true,
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+            ]],
+            'closet_plus_inch' => ['inputs' => [
+                'pieces' => [$closetPlus],
+                'include_install' => true,
+                'owner_hourly_rate' => 85,
+            ]],
+            'tall_edited' => ['inputs' => [
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'qty' => 1,
+                    'width' => 25,
+                    'height' => 84,
+                    'depth' => 24,
+                    'unit' => 'in',
+                    'include_doors' => true,
+                    'door_count' => 2,
+                    'include_toe_kick' => true,
+                    'include_back' => false,
+                    'shelf_count' => 1,
+                    'edge_banding' => true,
+                ]],
+                'include_install' => true,
+                'owner_hourly_rate' => 85,
+            ]],
+            'doors' => ['inputs' => [
+                'pieces' => [[
+                    'type' => 'cabinet_door',
+                    'edge_banding' => true,
+                    'sets' => [['qty' => 2, 'width' => 18, 'height' => 80, 'unit' => 'in']],
+                ]],
+                'include_install' => true,
+                'owner_hourly_rate' => 85,
+            ]],
+            'closet_extra_materials' => ['inputs' => [
+                'pieces' => [$closet],
+                'include_install' => true,
+                'include_building' => true,
+                'building_labor_percent' => 10,
+                'spare_sheets' => 1,
+                'waste_pct' => 15,
+                'owner_hourly_rate' => 85,
+                'extra_materials' => [[
+                    'name' => 'Cleats',
+                    'quantity' => 1,
+                    'unit' => 'each',
+                    'unit_price' => 25,
+                ]],
+            ]],
+            'vanity_default_depth' => ['inputs' => [
+                'pieces' => [$vanity],
+                'include_install' => true,
+                'owner_hourly_rate' => 85,
+            ]],
+            'kallax' => ['inputs' => [
+                'pieces' => [[
+                    'type' => 'kallax',
+                    'qty' => 1,
+                    'width' => 30,
+                    'height' => 30,
+                    'depth' => 14,
+                    'unit' => 'in',
+                    'columns' => 2,
+                    'rows' => 2,
+                    'include_back' => true,
+                    'edge_banding' => true,
+                ]],
+                'include_install' => true,
+                'owner_hourly_rate' => 85,
+            ]],
+            'floating_shelf' => ['inputs' => [
+                'pieces' => [[
+                    'type' => 'floating_shelf',
+                    'edge_banding' => true,
+                    'sets' => [['qty' => 2, 'length' => 36, 'depth' => 10, 'thickness' => 3, 'unit' => 'in']],
+                ]],
+                'include_install' => true,
+                'owner_hourly_rate' => 85,
+            ]],
+            'markup' => ['inputs' => [
+                'pieces' => [$closet],
+                'include_install' => true,
+                'markup_pct' => 12.5,
+                'owner_hourly_rate' => 85,
+            ]],
+            'delivery' => ['inputs' => [
+                'pieces' => [$closet],
+                'include_install' => true,
+                'delivery_amount' => 87.555,
+                'owner_hourly_rate' => 85,
+            ]],
+            'finishes' => ['inputs' => [
+                'pieces' => [$paintedCloset, $stainedShelf],
+                'include_install' => true,
+                'paint_id' => 'pt_quart',
+                'stain_id' => 'st_237',
+                'owner_hourly_rate' => 85,
+            ]],
+            'custom_catalogue' => [
+                'inputs' => [
+                    'pieces' => [$closet],
+                    'sheet_id' => 'ws_custom_maple_48x96',
+                    'include_install' => true,
+                    'owner_hourly_rate' => 85,
+                ],
+                'settings' => $customSettings,
+            ],
         ];
     }
 
