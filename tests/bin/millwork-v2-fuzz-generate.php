@@ -24,6 +24,53 @@ $add = static function (array $inputs) use (&$cases, &$i) {
     $i++;
 };
 
+// R5-1: set-unit thickness fallbacks (form-shaped floating shelf).
+$add($mk([
+    'type' => 'floating_shelf',
+    'unit' => 'in',
+    'qty' => 1,
+    'edge_banding' => false,
+    'sets' => [['qty' => 1, 'length' => 3.9, 'depth' => 1.1, 'thickness' => '', 'unit' => 'ft']],
+]));
+$add($mk([
+    'type' => 'floating_shelf',
+    'unit' => 'ft',
+    'qty' => 1,
+    'edge_banding' => false,
+    'sets' => [['qty' => 1, 'length' => 46.8, 'depth' => 13.2, 'thickness' => '', 'unit' => 'in']],
+]));
+$add($mk([
+    'type' => 'cabinet_door',
+    'unit' => 'ft',
+    'qty' => 1,
+    'edge_banding' => false,
+    'sets' => [['qty' => 1, 'width' => 18, 'height' => 30]],
+]));
+// R5-2: PDF still lists delivery on saved v2 when client provides all.
+$add($mk([
+    'type' => 'closet',
+    'unit' => 'in',
+    'width' => 72,
+    'height' => 84,
+    'depth' => 14,
+    'qty' => 1,
+    'include_doors' => false,
+    'edge_banding' => false,
+], ['client_provides_all' => true, 'delivery_amount' => 80, 'include_install' => true]));
+// R5-3: stored qty / spare sheets above the new caps.
+$add($mk([
+    'type' => 'shelf',
+    'qty' => 1,
+    'edge_banding' => false,
+    'sets' => [['qty' => 250, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+]));
+$add($mk([
+    'type' => 'shelf',
+    'qty' => 1,
+    'edge_banding' => false,
+    'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+], ['spare_sheets' => 60]));
+
 // Targeted R4 repros first.
 $add($mk(['type' => 'wainscoting', 'unit' => 'in', 'length' => 300, 'height' => 36, 'qty' => 1, 'edge_banding' => false]));
 $add($mk(['type' => 'wainscoting', 'unit' => 'in', 'linear_ft' => 25, 'height' => 36, 'qty' => 1, 'edge_banding' => true]));
@@ -57,6 +104,10 @@ while ($i < 3000) {
     if (in_array($type, ['shelf', 'floating_shelf', 'cabinet_door'], true)) {
         $len = $over ? 300 : 36;
         $dep = 12;
+        $setUnit = $unit;
+        if ($type === 'floating_shelf' && ($i % 4 === 0)) {
+            $setUnit = $unit === 'ft' ? 'in' : 'ft';
+        }
         $piece['sets'] = [[
             'qty' => 1,
             'length' => $blank && ($i % 2 === 0) ? '' : $n($len),
@@ -64,7 +115,7 @@ while ($i < 3000) {
             'width' => $hidden ? $n(24) : '',
             'height' => $hidden ? $n(18) : '',
             'thickness' => $type === 'floating_shelf' ? ($blank ? '' : 3) : '.75',
-            'unit' => $unit,
+            'unit' => $setUnit,
         ]];
     } elseif ($type === 'trim') {
         $piece['linear_ft'] = $over ? 25 : 20;

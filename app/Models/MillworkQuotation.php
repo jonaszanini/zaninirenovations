@@ -226,11 +226,11 @@ class MillworkQuotation extends Model
         }
         $deliveryStored = (float) ($summary['delivery_amount'] ?? $inputs['delivery_amount'] ?? 0);
         $legacyQuote = $this->usesLegacyCutBuilder();
-        if ($legacyQuote) {
-            if ($deliveryStored > 0) {
+        if ($this->usesNewCalc()) {
+            if ($deliveryStored > 0 && empty($inputs['client_provides_all'])) {
                 $included[] = 'delivery';
             }
-        } elseif ($deliveryStored > 0 && empty($inputs['client_provides_all'])) {
+        } elseif ($deliveryStored > 0) {
             $included[] = 'delivery';
         }
         if (! array_key_exists('include_install', $inputs) || ! empty($inputs['include_install'])) {

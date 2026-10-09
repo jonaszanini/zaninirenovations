@@ -1221,10 +1221,27 @@ class MillworkCutPlanPlacementTest extends TestCase
         $this->assertStringContainsString('240 inches', implode(' ', $hints));
     }
 
-    public function test_v2_scope_omits_delivery_when_client_provides_all(): void
+    public function test_v2_scope_keeps_delivery_when_client_provides_all(): void
     {
         $quote = new MillworkQuotation([
             'cut_plan_version' => 2,
+            'inputs' => [
+                'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+                'client_provides_all' => true,
+                'delivery_amount' => 80,
+                'include_install' => true,
+            ],
+            'calculation' => ['summary' => ['delivery_amount' => 80]],
+        ]);
+        $text = $quote->scopeDescriptionForPdf();
+        $this->assertStringContainsString('delivery', strtolower($text));
+        $this->assertStringContainsString('Closet system', $text);
+    }
+
+    public function test_v3_scope_omits_delivery_when_client_provides_all(): void
+    {
+        $quote = new MillworkQuotation([
+            'cut_plan_version' => 3,
             'inputs' => [
                 'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
                 'client_provides_all' => true,

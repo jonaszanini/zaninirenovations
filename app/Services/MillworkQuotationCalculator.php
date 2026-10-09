@@ -8,6 +8,7 @@ use App\Services\CutOptimizer\CutOptimizerEngine;
 use App\Services\CutOptimizer\Part;
 use App\Services\CutOptimizer\StockOption;
 use App\Services\CutOptimizer\SvgVisualizer;
+use App\Services\Millwork\Frozen\V2MillworkQuotationCalculator;
 use App\Services\Millwork\LegacyMillworkQuotationCalculator;
 use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPanelSplitter;
@@ -193,6 +194,22 @@ class MillworkQuotationCalculator
     }
 
     /**
+     * True when any stored piece has been edited onto the v3 path.
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function hasEditedPiece(array $inputs): bool
+    {
+        foreach ($inputs['pieces'] ?? [] as $piece) {
+            if (is_array($piece) && MillworkPartBuilder::usesNewParsing($piece)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param  array<string, mixed>  $inputs
      */
     public static function resolveCutPlanVersion(array $inputs, ?int $explicit = null): int
@@ -213,6 +230,9 @@ class MillworkQuotationCalculator
         $cutPlanVersion = $calcVersion >= self::CUT_PLAN_VERSION ? self::CUT_PLAN_VERSION : 1;
         if ($cutPlanVersion < self::CUT_PLAN_VERSION) {
             return $this->calculateLegacy($inputs, $settings);
+        }
+        if ($calcVersion < self::CALC_VERSION && ! self::hasEditedPiece($inputs)) {
+            return $this->calculateFrozenV2($inputs, $settings);
         }
         $inputs = array_merge(self::defaultInputs(), $inputs);
         $inputs['_calc_version'] = $calcVersion;
@@ -548,6 +568,17 @@ class MillworkQuotationCalculator
     }
 
     /**
+     * Main 578b5081 v2 calculator + builder. Untouched saved v2 only.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @return array<string, mixed>
+     */
+    private function calculateFrozenV2(array $inputs, ?MillworkSettings $settings): array
+    {
+        return (new V2MillworkQuotationCalculator)->calculate($inputs, $settings, 2);
+    }
+
+    /**
      * @param  array<string, mixed>  $inputs
      * @param  array<string, mixed>  $out
      * @return array<string, mixed>
@@ -597,7 +628,13 @@ class MillworkQuotationCalculator
         }
 
         if ($calcVersion < self::CALC_VERSION) {
-            return $this->mainV2ValidationMessages($inputs, $settings, $messages);
+            $messages = $this->mainV2ValidationMessages($inputs, $settings, $messages);
+            $limitHint = $this->dimensionLimitHint($inputs);
+            if ($limitHint !== null) {
+                $messages['calculation'] = $limitHint;
+            }
+
+            return $messages;
         }
 
         $limitHint = $this->dimensionLimitHint($inputs);

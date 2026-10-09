@@ -172,6 +172,122 @@ class MillworkCalcVersionGateTest extends TestCase
         $this->assertArrayNotHasKey('calculation', $messages);
     }
 
+    public function test_v2_floating_shelf_uses_set_unit_thickness_fallback(): void
+    {
+        $inPieceFtSet = $this->total([
+            'type' => 'floating_shelf',
+            'unit' => 'in',
+            'qty' => 1,
+            'edge_banding' => false,
+            'sets' => [[
+                'qty' => 1,
+                'length' => 3.9,
+                'depth' => 1.1,
+                'thickness' => '',
+                'unit' => 'ft',
+            ]],
+        ], 2);
+        $ftPieceInSet = $this->total([
+            'type' => 'floating_shelf',
+            'unit' => 'ft',
+            'qty' => 1,
+            'edge_banding' => false,
+            'sets' => [[
+                'qty' => 1,
+                'length' => 46.8,
+                'depth' => 13.2,
+                'thickness' => '',
+                'unit' => 'in',
+            ]],
+        ], 2);
+        $this->assertEqualsWithDelta(334.65, $inPieceFtSet, 0.05);
+        $this->assertEqualsWithDelta(230.41, $ftPieceInSet, 0.05);
+        $this->assertGreaterThan($ftPieceInSet, $inPieceFtSet);
+    }
+
+    public function test_v2_pdf_keeps_delivery_wording_when_client_provides_all(): void
+    {
+        $inputs = [
+            'pieces' => [[
+                'type' => 'closet',
+                'unit' => 'in',
+                'width' => 72,
+                'height' => 84,
+                'depth' => 14,
+                'qty' => 1,
+                'include_doors' => false,
+                'edge_banding' => false,
+            ]],
+            'client_provides_all' => true,
+            'delivery_amount' => 80,
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ];
+        $calc = (new MillworkQuotationCalculator)->calculate($inputs, $this->settings(), 2);
+        $quote = new MillworkQuotation([
+            'cut_plan_version' => 2,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+        ]);
+        $this->assertStringContainsString('delivery', strtolower($quote->scopeDescriptionForPdf()));
+    }
+
+    public function test_v2_qty_and_spare_sheets_are_not_clamped_on_calculate(): void
+    {
+        $qty = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'qty' => 1,
+                'edge_banding' => false,
+                'sets' => [['qty' => 250, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 2);
+        $one = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'qty' => 1,
+                'edge_banding' => false,
+                'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 2);
+        $spare = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'qty' => 1,
+                'edge_banding' => false,
+                'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'spare_sheets' => 60,
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 2);
+        $this->assertGreaterThan((float) ($one['summary']['grand_total'] ?? 0) * 50, (float) ($qty['summary']['grand_total'] ?? 0));
+        $this->assertGreaterThan((float) ($one['summary']['grand_total'] ?? 0), (float) ($spare['summary']['grand_total'] ?? 0));
+    }
+
+    public function test_edited_v2_closet_over_240_shows_limit_message(): void
+    {
+        $messages = (new MillworkQuotationCalculator)->validationMessages([
+            'pieces' => [[
+                'type' => 'closet',
+                'unit' => 'ft',
+                'width' => 22,
+                'height' => 7,
+                'depth' => 1.2,
+                'qty' => 1,
+                'include_doors' => false,
+                '_calc_version' => 3,
+            ]],
+            '_cut_plan_version' => 2,
+        ], false, $this->settings());
+        $this->assertArrayHasKey('calculation', $messages);
+        $this->assertStringContainsString('240 inches', $messages['calculation']);
+    }
+
     public function test_v1_retyped_pdf_uses_converted_inches(): void
     {
         $calc = (new MillworkQuotationCalculator)->calculate([

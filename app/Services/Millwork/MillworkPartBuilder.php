@@ -4,6 +4,7 @@ namespace App\Services\Millwork;
 
 use App\Services\CutOptimizer\GrainDirection;
 use App\Services\CutOptimizer\Part;
+use App\Services\Millwork\Frozen\V2MillworkPartBuilder;
 
 class MillworkPartBuilder
 {
@@ -152,6 +153,9 @@ class MillworkPartBuilder
         if (! isset($piece['_calc_version']) || $piece['_calc_version'] === '' || $piece['_calc_version'] === null) {
             $piece['_calc_version'] = $this->calcVersion;
         }
+        if (! self::usesNewParsing($piece) && self::pieceCalcVersion($piece, $this->calcVersion) >= 2) {
+            return (new V2MillworkPartBuilder)->explode($piece, $sheetThickness, $edgeBandThickness, $pieceIndex);
+        }
         $type = self::normalizeType((string) ($piece['type'] ?? 'shelf'));
         $band = ! empty($piece['edge_banding']);
         $finish = self::normalizeFinish((string) ($piece['finish'] ?? 'none'));
@@ -267,6 +271,9 @@ class MillworkPartBuilder
      */
     public static function clientScopeLine(array $piece): string
     {
+        if (! self::usesNewParsing($piece)) {
+            return V2MillworkPartBuilder::clientScopeLine($piece);
+        }
         $type = self::normalizeType((string) ($piece['type'] ?? 'shelf'));
         $room = trim((string) ($piece['room'] ?? ''));
         $name = trim((string) ($piece['name'] ?? ''));

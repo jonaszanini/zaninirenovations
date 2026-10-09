@@ -300,12 +300,28 @@ window.MillworkDimensionParser = (function () {
       allowFormUnload();
       HTMLFormElement.prototype.submit.call(form);
     };
-    window.addEventListener('beforeunload', function (e) {
-      if (allowUnload || saving) return;
-      if (form.getAttribute('data-quotation-user-edited') !== '1') return;
-      e.preventDefault();
-      e.returnValue = '';
-    });
+    var beforeUnloadBound = false;
+    function bindBeforeUnload() {
+      if (beforeUnloadBound) return;
+      beforeUnloadBound = true;
+      window.addEventListener('beforeunload', function (e) {
+        if (allowUnload || saving) return;
+        if (form.getAttribute('data-quotation-user-edited') !== '1') return;
+        e.preventDefault();
+        e.returnValue = '';
+      });
+    }
+    if (form.getAttribute('data-quotation-user-edited') === '1') {
+      bindBeforeUnload();
+    } else if (window.MutationObserver) {
+      var editedObserver = new MutationObserver(function () {
+        if (form.getAttribute('data-quotation-user-edited') === '1') {
+          bindBeforeUnload();
+          editedObserver.disconnect();
+        }
+      });
+      editedObserver.observe(form, { attributes: true, attributeFilter: ['data-quotation-user-edited'] });
+    }
     window.addEventListener('pageshow', function (e) {
       if (e.persisted) {
         setSaveBusy(false);

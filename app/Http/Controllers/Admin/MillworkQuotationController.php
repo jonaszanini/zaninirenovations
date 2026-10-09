@@ -127,7 +127,7 @@ class MillworkQuotationController extends Controller
     {
         $this->prepareAdditionalCostMoneyOnRequest($request);
         $this->prepareDebrisRemovalMoneyOnRequest($request);
-        $raw = $this->gatherInputsFromRequest($request);
+        $raw = $this->gatherInputsFromRequest($request, $millwork_quotation);
         $upgrade = $request->boolean('upgrade_cut_plan');
         $cutPlanVersion = $this->resolveCalcVersion($request, $millwork_quotation);
         $raw['_cut_plan_version'] = $cutPlanVersion;
@@ -452,7 +452,7 @@ class MillworkQuotationController extends Controller
             'client_name.required' => 'Client name is required to save a published quotation.',
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), QuotationBuildingLabor::validationMessages()));
 
-        $rawInputs = $this->gatherInputsFromRequest($request);
+        $rawInputs = $this->gatherInputsFromRequest($request, $existing);
         $cutPlanVersion = $this->resolveCalcVersion($request, $existing);
         $rawInputs['_cut_plan_version'] = $cutPlanVersion;
         $rawInputs['_calc_version'] = $cutPlanVersion;
@@ -490,10 +490,11 @@ class MillworkQuotationController extends Controller
     /**
      * @return array<string, mixed>
      */
-    protected function gatherInputsFromRequest(Request $request): array
+    protected function gatherInputsFromRequest(Request $request, ?MillworkQuotation $existing = null): array
     {
         $defaults = MillworkQuotationCalculator::defaultInputs();
         $out = $defaults;
+        $clampQuote = $this->resolveCalcVersion($request, $existing) >= MillworkQuotationCalculator::CALC_VERSION;
         $out['owner_hourly_rate'] = round(max(0, (float) $request->input('owner_hourly_rate', $defaults['owner_hourly_rate'])), 4);
         $out['helper_hourly_rate'] = round(max(0, (float) $request->input('helper_hourly_rate', $defaults['helper_hourly_rate'])), 4);
         $out['include_install'] = $request->boolean('include_install');
@@ -504,7 +505,11 @@ class MillworkQuotationController extends Controller
         $out['finish_waste_pct'] = $this->boundedPct($request->input('finish_waste_pct', $defaults['finish_waste_pct']));
         $out['markup_pct'] = $this->boundedPct($request->input('markup_pct', $defaults['markup_pct']));
         $out['delivery_amount'] = round(max(0, (float) $request->input('delivery_amount', $defaults['delivery_amount'])), 2);
-        $out['spare_sheets'] = max(0, min(MillworkQuotationCalculator::MAX_SPARE_SHEETS, (int) $request->input('spare_sheets', $defaults['spare_sheets'])));
+        $out['spare_sheets'] = $this->boundedCount(
+            $request->input('spare_sheets', $defaults['spare_sheets']),
+            MillworkQuotationCalculator::MAX_SPARE_SHEETS,
+            $clampQuote
+        );
         foreach ([
             'sheet_id', 'back_sheet_id', 'edge_banding_id', 'paint_id', 'stain_id',
             'hinge_id', 'pull_id', 'screw_id', 'nail_id', 'slide_id', 'glue_id',
@@ -512,7 +517,7 @@ class MillworkQuotationController extends Controller
         ] as $key) {
             $out[$key] = trim((string) $request->input($key, $defaults[$key] ?? ''));
         }
-        $out['pieces'] = $this->piecesFromRequest($request);
+        $out['pieces'] = $this->piecesFromRequest($request, $clampQuote);
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
@@ -523,7 +528,7 @@ class MillworkQuotationController extends Controller
     /**
      * @return list<array<string, mixed>>
      */
-    private function piecesFromRequest(Request $request): array
+    private function piecesFromRequest(Request $request, bool $clampQuote = false): array
     {
         $raw = $request->input('pieces', []);
         if (! is_array($raw) || $raw === []) {
@@ -537,7 +542,11 @@ class MillworkQuotationController extends Controller
             $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
             $row = MillworkQuotationCalculator::defaultPiece($type);
             $row['type'] = $type;
-            $row['qty'] = max(0, min(MillworkQuotationCalculator::MAX_QTY, (int) ($piece['qty'] ?? 1)));
+            $clampPiece = $clampQuote || (
+                isset($piece['_calc_version']) && is_numeric($piece['_calc_version'])
+                && (int) $piece['_calc_version'] >= MillworkQuotationCalculator::CALC_VERSION
+            );
+            $row['qty'] = $this->boundedCount($piece['qty'] ?? 1, MillworkQuotationCalculator::MAX_QTY, $clampPiece);
             $row['unit'] = strtolower((string) ($piece['unit'] ?? 'in')) === 'ft' ? 'ft' : 'in';
             $row['name'] = trim((string) ($piece['name'] ?? ''));
             $row['room'] = trim((string) ($piece['room'] ?? ''));
@@ -567,15 +576,19 @@ class MillworkQuotationController extends Controller
             $style = strtolower((string) ($piece['hinge_style'] ?? 'overlay'));
             $row['hinge_style'] = in_array($style, ['overlay', 'inset', 'soft_close'], true) ? $style : 'overlay';
             foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $intKey) {
-                $row[$intKey] = max(0, min(MillworkQuotationCalculator::MAX_COUNT, (int) ($piece[$intKey] ?? ($row[$intKey] ?? 0))));
+                $row[$intKey] = $this->boundedCount(
+                    $piece[$intKey] ?? ($row[$intKey] ?? 0),
+                    MillworkQuotationCalculator::MAX_COUNT,
+                    $clampPiece
+                );
             }
             if (array_key_exists('pull_qty', $piece) && $piece['pull_qty'] !== '' && $piece['pull_qty'] !== null) {
-                $row['pull_qty'] = max(0, min(MillworkQuotationCalculator::MAX_COUNT, (int) $piece['pull_qty']));
+                $row['pull_qty'] = $this->boundedCount($piece['pull_qty'], MillworkQuotationCalculator::MAX_COUNT, $clampPiece);
             } else {
                 unset($row['pull_qty']);
             }
             if (array_key_exists('hinge_qty', $piece) && $piece['hinge_qty'] !== '' && $piece['hinge_qty'] !== null) {
-                $row['hinge_qty'] = max(0, min(MillworkQuotationCalculator::MAX_COUNT, (int) $piece['hinge_qty']));
+                $row['hinge_qty'] = $this->boundedCount($piece['hinge_qty'], MillworkQuotationCalculator::MAX_COUNT, $clampPiece);
             } else {
                 unset($row['hinge_qty']);
             }
@@ -585,7 +598,7 @@ class MillworkQuotationController extends Controller
                     continue;
                 }
                 $setRow = [
-                    'qty' => max(0, min(MillworkQuotationCalculator::MAX_QTY, (int) ($set['qty'] ?? 0))),
+                    'qty' => $this->boundedCount($set['qty'] ?? 0, MillworkQuotationCalculator::MAX_QTY, $clampPiece),
                     'length' => $this->postedDimension($set['length'] ?? ''),
                     'width' => $this->postedDimension($set['width'] ?? ''),
                     'depth' => $this->postedDimension($set['depth'] ?? ''),
@@ -680,6 +693,17 @@ class MillworkQuotationController extends Controller
         }
 
         return round(max(0, min(100, (float) $value)), 2);
+    }
+
+    /**
+     * Caps apply only to v3 / newly edited input. Stored v2 qty, counts, and
+     * spare sheets pass through so a re-save does not silently reprice.
+     */
+    private function boundedCount(mixed $value, int $max, bool $clamp): int
+    {
+        $n = max(0, (int) $value);
+
+        return $clamp ? min($max, $n) : $n;
     }
 
     /**

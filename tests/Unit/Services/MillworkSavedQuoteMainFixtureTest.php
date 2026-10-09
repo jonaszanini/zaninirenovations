@@ -76,6 +76,16 @@ class MillworkSavedQuoteMainFixtureTest extends TestCase
             $this->assertEqualsWithDelta(0.0, (float) $actual['summary']['grand_total'], 0.01);
             $this->assertStringNotContainsString('18"', implode(' ', $actual['scope_labels']));
         }
+        if ($name === 'v2_r5_floating_shelf_set_unit') {
+            $this->assertStringContainsString('36"', implode(' ', $actual['scope_labels']));
+            $this->assertStringNotContainsString('×3"', implode(' ', $actual['scope_labels']));
+        }
+        if ($name === 'v2_r5_delivery_wording') {
+            $this->assertStringContainsString('delivery', strtolower($actual['pdf_scope']));
+        }
+        if ($name === 'v2_r5_qty_spare_uncapped') {
+            $this->assertStringContainsString('250×', implode(' ', $actual['scope_labels']));
+        }
     }
 
     /**
@@ -92,6 +102,9 @@ class MillworkSavedQuoteMainFixtureTest extends TestCase
             ['v2_mantel_ft_defaults'],
             ['v2_closet_ft_defaults'],
             ['v2_wainscot_300in_run'],
+            ['v2_r5_floating_shelf_set_unit'],
+            ['v2_r5_delivery_wording'],
+            ['v2_r5_qty_spare_uncapped'],
         ];
     }
 

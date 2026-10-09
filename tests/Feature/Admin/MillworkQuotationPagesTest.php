@@ -527,6 +527,56 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
         $this->assertTrue(is_finite((float) $res->json('summary.grand_total')));
     }
 
+    public function test_v2_draft_resave_keeps_qty_and_spare_caps(): void
+    {
+        $this->actingAsAdmin();
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V2-QTY',
+            'client_name' => 'Qty cap',
+            'is_draft' => true,
+            'cut_plan_version' => 2,
+            'inputs' => [
+                'pieces' => [[
+                    'type' => 'shelf',
+                    'qty' => 250,
+                    'edge_banding' => false,
+                    'sets' => [['qty' => 250, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+                ]],
+                'spare_sheets' => 60,
+                'include_install' => false,
+                'owner_hourly_rate' => 85,
+            ],
+            'calculation' => [],
+        ]);
+
+        $this->from(route('admin.quotations.millwork.edit', $quote))
+            ->put(route('admin.quotations.millwork.update', $quote), [
+                'save_intent' => 'draft',
+                'client_name' => 'Qty cap',
+                'pieces' => [[
+                    'type' => 'shelf',
+                    'qty' => 250,
+                    'edge_banding' => 0,
+                    'sets' => [['qty' => 250, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+                ]],
+                'spare_sheets' => 60,
+                'include_install' => 0,
+                'owner_hourly_rate' => 85,
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $quote->refresh();
+        $this->assertSame(2, (int) $quote->cut_plan_version);
+        $this->assertSame(250, (int) ($quote->inputs['pieces'][0]['qty'] ?? 0));
+        $this->assertSame(250, (int) ($quote->inputs['pieces'][0]['sets'][0]['qty'] ?? 0));
+        $this->assertSame(60, (int) ($quote->inputs['spare_sheets'] ?? 0));
+    }
+
     public function test_v1_edit_hides_hinge_qty_and_keeps_in_ft_controls(): void
     {
         $this->actingAsAdmin();
@@ -565,6 +615,8 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString("addEventListener('pageshow'", $js);
         $this->assertStringContainsString('e.persisted', $js);
         $this->assertStringContainsString('setSaveBusy(false)', $js);
+        $this->assertStringContainsString('function bindBeforeUnload', $js);
+        $this->assertStringContainsString("form.getAttribute('data-quotation-user-edited') === '1'", $js);
         $this->assertStringContainsString('Preview timed out', $js);
         $this->assertStringContainsString('window.MillworkDimensionParser', $js);
         $this->assertStringContainsString('applyFieldErrors', $js);
