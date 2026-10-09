@@ -1,10 +1,12 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Client tags')
+@section('heading')
+  Client tags
+  <x-admin.info-tip label="Client tags">Segment the client directory (e.g. VIP, Repeat customer, Referral). Assign tags from each client's edit page.</x-admin.info-tip>
+@endsection
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Segment the client directory (e.g. VIP, Repeat customer, Referral). Assign tags from each client's edit page.</p>
     <div class="admin-toolbar-actions">
       <a href="{{ route('admin.clients.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> Clients

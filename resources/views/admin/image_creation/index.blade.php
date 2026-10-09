@@ -1,14 +1,11 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'AI Image')
+@section('heading')
+  AI Image
+  <x-admin.info-tip label="AI Image">Generate new images from prompts or edit existing photos with AI. Each workflow has its own history and gallery.</x-admin.info-tip>
+@endsection
 
 @section('content')
-  <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Generate new images from prompts or edit existing photos with AI. Each workflow has its own history and gallery.
-    </p>
-  </div>
-
   <div class="ic-model-grid">
     @foreach ($workflows as $workflow)
       @if ($workflow['available'])

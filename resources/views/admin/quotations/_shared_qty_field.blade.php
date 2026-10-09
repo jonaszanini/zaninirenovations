@@ -30,13 +30,13 @@
   $required = ! empty($required);
 @endphp
 <div class="sq-qty">
-  <label class="sq-qty__label" for="{{ $id }}">
-    @include('admin.partials.info_tip', ['text' => $info ?? null])
-    @if (! empty($clientFilled))
+  <span class="admin-label-with-tip">
+  <label class="sq-qty__label" for="{{ $id }}">@if (! empty($clientFilled))
       @include('admin.quotations.basement._client_filled', ['force' => true])
     @endif
-    {{ $label }}
-  </label>
+    {{ $label }}</label>
+  @include('admin.partials.info_tip', ['tipText' => $info ?? null, 'tipLabel' => $label])
+</span>
   <div class="sq-qty__row">
     <div class="sq-qty__control">
       <input type="{{ $type }}" step="{{ $step }}" min="{{ $min }}" class="{{ $inputClass }}" id="{{ $id }}" name="{{ $name }}"

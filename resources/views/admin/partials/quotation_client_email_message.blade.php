@@ -25,7 +25,10 @@
          @if ($hasValue || $errors->has('client_email_message')) open @endif>
   <summary class="admin-accordion__summary">
     <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
-    <span class="admin-accordion__title">Client Email Message</span>
+    <span class="admin-accordion__title">
+      Client Email Message
+      <x-admin.info-tip label="Client Email Message">Optional. When filled in, this opens the client email after the greeting. The usual “pleasure discussing” line is left out, and the PDF sentence follows your message. Not shown on the PDF.</x-admin.info-tip>
+    </span>
     @if ($hasValue)
       <span class="cp-client-email-card__badge" title="A message will be added to the client email">
         <i class="fa fa-envelope" aria-hidden="true"></i>
@@ -33,9 +36,6 @@
     @endif
   </summary>
   <div class="admin-accordion__panel">
-    <p class="admin-form-help cp-client-email-card__help">
-      Optional. When filled in, this opens the client email after the greeting. The usual “pleasure discussing” line is left out, and the PDF sentence follows your message. Not shown on the PDF.
-    </p>
     <textarea class="admin-input cp-client-email-card__input"
               id="{{ $fieldId }}"
               name="client_email_message"

@@ -1,12 +1,11 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'AI instructions')
+@section('heading')
+  AI instructions
+  <x-admin.info-tip label="AI instructions">System prompts sent to Gemini for each AI feature. Edit the instruction text to change how the model drafts contracts and other content.</x-admin.info-tip>
+@endsection
 
 @section('content')
-  <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">System prompts sent to Gemini for each AI feature. Edit the instruction text to change how the model drafts contracts and other content.</p>
-  </div>
-
   @if ($instructions->isEmpty())
     <div class="admin-table-wrap">
       <div class="admin-empty">

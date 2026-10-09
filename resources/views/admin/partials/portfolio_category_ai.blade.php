@@ -9,12 +9,15 @@
         <span>Auto categorize with AI</span>
       </button>
     @endcomponent
+    @include('admin.partials.info_tip', [
+      'tipText' => 'Sends the title, description, and up to 8 photos. Matching categories are checked, and any new ones are created and checked.',
+      'tipLabel' => 'Auto categorize with AI',
+    ])
     <div id="portfolio-category-ai-loading" class="nb2-loading" hidden aria-live="polite">
       <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
       <span>Categorizing with Gemini…</span>
     </div>
   </div>
-  <p class="admin-form-help portfolio-category-ai__help">Sends the title, description, and up to 8 photos. Matching categories are checked, and any new ones are created and checked.</p>
   <p id="portfolio-category-ai-status" class="nb2-status portfolio-category-ai__status" role="status"></p>
 </div>
 

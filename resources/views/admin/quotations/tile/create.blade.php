@@ -203,7 +203,10 @@
         @endif
 
         <div class="admin-form-group quotation-work-desc">
-          <label class="admin-form-label" for="tl-work-description">Work Description (Appears on PDF)</label>
+          <span class="admin-label-with-tip">
+            <label class="admin-form-label" for="tl-work-description">Work Description (Appears on PDF)</label>
+            <x-admin.info-tip label="Work Description">Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+          </span>
           <textarea id="tl-work-description" name="work_description" class="admin-input" rows="8"
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ $work_description }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
@@ -211,15 +214,14 @@
               'aiContextFormId' => 'tl-form',
               'aiQuotationType' => 'tile',
           ])
-          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 
       <div class="fl-step-card">
-        <h4>2. Measurements</h4>
-        <div class="fl-step-card__hint">
-          Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.
-        </div>
+        <h4 class="admin-label-with-tip">
+          2. Measurements
+          <x-admin.info-tip label="Measurements">Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.</x-admin.info-tip>
+        </h4>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
           <div class="admin-form-group" style="margin-bottom:0;">
             <label class="admin-form-label">Total Area (sqft)</label>
@@ -364,7 +366,10 @@
         <div id="tl-edge-details" style="display:{{ $include_edge ? 'block' : 'none' }};">
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
-              <label class="admin-form-label" for="tl-tile-edge-id">Edge product</label>
+              <span class="admin-label-with-tip">
+                <label class="admin-form-label" for="tl-tile-edge-id">Edge product</label>
+                <x-admin.info-tip label="Edge product">Sold in 8 ft pieces; LF is rounded up to whole pieces.</x-admin.info-tip>
+              </span>
               <select name="tile_edge_id" id="tl-tile-edge-id" class="admin-input tl-live-trigger">
                 <option value="">-- Select edge --</option>
                 @foreach ($edges as $edge)
@@ -373,7 +378,6 @@
                   </option>
                 @endforeach
               </select>
-              <p class="admin-form-help">Sold in 8&nbsp;ft pieces; LF is rounded up to whole pieces.</p>
             </div>
             <div class="admin-form-group">
               <label class="admin-form-label" for="tl-edge-lf">Linear feet (LF)</label>
