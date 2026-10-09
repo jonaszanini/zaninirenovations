@@ -172,6 +172,25 @@ $named = [
             $debris(113.00),
         ],
     ],
+    'paving_heading_missing_apply_hst' => [
+        'source' => ClientProjectQuotation::SOURCE_PAVING,
+        'items' => [
+            ['description' => 'Job 1 — Driveway', 'amount' => 0, 'is_heading' => true],
+            [
+                'description' => 'Paving Stones — Material',
+                'amount' => 1130.00,
+                'apply_hst' => true,
+                'hst_included' => true,
+            ],
+        ],
+    ],
+    'standard_heading_missing_apply_hst' => [
+        'source' => ClientProjectQuotation::SOURCE_STANDARD,
+        'items' => [
+            ['description' => 'Job one', 'amount' => 0, 'is_heading' => true],
+            ['description' => 'Material', 'amount' => 100.00, 'apply_hst' => true],
+        ],
+    ],
     'tile_client_selected_materials' => [
         'source' => ClientProjectQuotation::SOURCE_TILE,
         'items' => [

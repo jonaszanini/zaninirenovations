@@ -555,10 +555,13 @@ class ClientProjectQuotation extends Model
                 continue;
             }
             $isHeading = ! empty($row['is_heading']);
-            $applyHst = ! $isHeading && (
-                ! array_key_exists('apply_hst', $row)
-                || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN)
-            );
+            // v1/v2: missing apply_hst defaults true, even on headings (#60).
+            // v3: headings stay untaxed so they render as section titles.
+            $applyHst = ! array_key_exists('apply_hst', $row)
+                || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN);
+            if ($isHeading && $this->usesCurrentPdfFold()) {
+                $applyHst = false;
+            }
             $hstIncluded = filter_var($row['hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
             $cleanRow = [
@@ -566,13 +569,13 @@ class ClientProjectQuotation extends Model
                 'amount' => round($amount, 2),
                 'apply_hst' => $applyHst,
             ];
-            if ($hstIncluded && ! $isHeading) {
+            if ($hstIncluded && ! ($isHeading && $this->usesCurrentPdfFold())) {
                 $cleanRow['hst_included'] = true;
             }
             if (array_key_exists('hst_taxable_amount', $row)) {
                 $cleanRow['hst_taxable_amount'] = round((float) $row['hst_taxable_amount'], 2);
             }
-            if (array_key_exists('hst_amount', $row) && ! $isHeading) {
+            if (array_key_exists('hst_amount', $row) && ! ($isHeading && $this->usesCurrentPdfFold())) {
                 $cleanRow['hst_amount'] = round((float) $row['hst_amount'], 2);
             }
             if ($isHeading) {
@@ -1197,8 +1200,10 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Quote-level extras (commute / debris / additional costs) belong after
-     * the job sections. Without headings, keep Material before Labour.
+     * Quote-level extras sit in the last job's category (Material after
+     * that job's Material rows, Labour after its Labour). The standalone
+     * flag draws the template's section separator so they are not read as
+     * part of the last job.
      *
      * @param  list<array<string, mixed>>  $items
      * @param  array<string, mixed>  $line
@@ -1206,16 +1211,19 @@ class ClientProjectQuotation extends Model
      */
     protected function insertQuoteLevelPdfLine(array $items, array $line, string $bucket): array
     {
-        $hasHeading = false;
-        foreach ($items as $row) {
+        $line['is_standalone'] = true;
+        $start = 0;
+        foreach ($items as $i => $row) {
             if (! empty($row['is_heading'])) {
-                $hasHeading = true;
-                break;
+                $start = $i + 1;
             }
         }
-        if ($hasHeading) {
-            // After every job section, never under the last job's category.
-            return $this->insertPdfLineAtCategory($items, $line, $bucket, count($items) > 0 ? count($items) - 1 : null);
+        if ($start > 0) {
+            $suffix = array_values(array_slice($items, $start));
+            $local = $this->pdfCategoryInsertIndex($suffix, $bucket);
+            $after = $start + $local - 1;
+
+            return $this->insertPdfLineAtCategory($items, $line, $bucket, $after >= 0 ? $after : null);
         }
 
         return $this->insertPdfLineAtCategory($items, $line, $bucket);

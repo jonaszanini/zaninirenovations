@@ -311,5 +311,73 @@
         "pdf_hst": 1105,
         "total": 9605,
         "pdf_total": 9605
+    },
+    "paving_heading_missing_apply_hst": {
+        "source": "paving",
+        "items": [
+            {
+                "description": "Job 1 — Driveway",
+                "amount": 0,
+                "is_heading": true
+            },
+            {
+                "description": "Paving Stones — Material",
+                "amount": 1130,
+                "apply_hst": true,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Job 1 — Driveway",
+                "amount": 0,
+                "apply_hst": true,
+                "hst_amount": 0
+            },
+            {
+                "description": "Paving Stones — Material",
+                "amount": 1000,
+                "apply_hst": true,
+                "hst_amount": 130
+            }
+        ],
+        "hst": 130,
+        "pdf_hst": 130,
+        "total": 1130,
+        "pdf_total": 1130
+    },
+    "standard_heading_missing_apply_hst": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Job one",
+                "amount": 0,
+                "is_heading": true
+            },
+            {
+                "description": "Material",
+                "amount": 100,
+                "apply_hst": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Job one",
+                "amount": 0,
+                "apply_hst": true,
+                "is_heading": true
+            },
+            {
+                "description": "Material",
+                "amount": 100,
+                "apply_hst": true
+            }
+        ],
+        "hst": 13,
+        "pdf_hst": 13,
+        "total": 113,
+        "pdf_total": 113
     }
 }

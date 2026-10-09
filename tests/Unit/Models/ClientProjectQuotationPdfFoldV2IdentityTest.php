@@ -15,6 +15,12 @@ class ClientProjectQuotationPdfFoldV2IdentityTest extends TestCase
         $named = $this->loadFixture('named.json');
         $this->assertArrayHasKey('tile_client_selected_materials', $named);
         $this->assertSame('Materials', $named['tile_client_selected_materials']['lines'][0]['description']);
+        $this->assertArrayHasKey('paving_heading_missing_apply_hst', $named);
+        $this->assertArrayNotHasKey('is_heading', $named['paving_heading_missing_apply_hst']['lines'][0]);
+        $this->assertTrue($named['paving_heading_missing_apply_hst']['lines'][0]['apply_hst']);
+        $this->assertArrayHasKey('standard_heading_missing_apply_hst', $named);
+        $this->assertTrue((bool) ($named['standard_heading_missing_apply_hst']['lines'][0]['is_heading'] ?? false));
+        $this->assertTrue($named['standard_heading_missing_apply_hst']['lines'][0]['apply_hst']);
         foreach ($named as $key => $fx) {
             $this->assertFixtureMatches($fx, $key);
         }
@@ -155,6 +161,9 @@ class ClientProjectQuotationPdfFoldV2IdentityTest extends TestCase
                 return false;
             }
             if ((bool) ($row['hst_included'] ?? false) !== (bool) ($b[$i]['hst_included'] ?? false)) {
+                return false;
+            }
+            if ((bool) ($row['is_heading'] ?? false) !== (bool) ($b[$i]['is_heading'] ?? false)) {
                 return false;
             }
             $ha = array_key_exists('hst_amount', $row) ? (float) $row['hst_amount'] : null;

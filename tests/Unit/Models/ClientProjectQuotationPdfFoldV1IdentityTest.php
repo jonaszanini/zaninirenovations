@@ -19,6 +19,12 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
         $this->assertEquals(1243, $named['material_1000_commute_113']['total']);
         $this->assertEquals(1778.01, $named['paving_1000_labour_613_commute']['total']);
         $this->assertEquals(130, $named['cash_fence_labour_plus_debris']['hst']);
+        $this->assertArrayHasKey('paving_heading_missing_apply_hst', $named);
+        $this->assertArrayNotHasKey('is_heading', $named['paving_heading_missing_apply_hst']['lines'][0]);
+        $this->assertTrue($named['paving_heading_missing_apply_hst']['lines'][0]['apply_hst']);
+        $this->assertArrayHasKey('standard_heading_missing_apply_hst', $named);
+        $this->assertTrue((bool) ($named['standard_heading_missing_apply_hst']['lines'][0]['is_heading'] ?? false));
+        $this->assertTrue($named['standard_heading_missing_apply_hst']['lines'][0]['apply_hst']);
 
         $split = $named['labour_and_electrical_labour_split']['lines'];
         $this->assertEqualsWithDelta(550.0, $split[0]['amount'], 0.001);
@@ -305,6 +311,9 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
                 return false;
             }
             if ((bool) ($row['hst_included'] ?? false) !== (bool) ($b[$i]['hst_included'] ?? false)) {
+                return false;
+            }
+            if ((bool) ($row['is_heading'] ?? false) !== (bool) ($b[$i]['is_heading'] ?? false)) {
                 return false;
             }
             $ha = array_key_exists('hst_amount', $row) ? (float) $row['hst_amount'] : null;

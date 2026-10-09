@@ -16,6 +16,14 @@ class ClientProjectQuotationPdfFoldV2SqLinkedIdentityTest extends IntegrationTes
     {
         $rows = $this->loadFixture();
         $this->assertGreaterThanOrEqual(200, count($rows));
+        $multi = 0;
+        foreach ($rows as $fx) {
+            $works = $fx['sq']['works'] ?? [];
+            if (is_array($works) && count($works) >= 2) {
+                $multi++;
+            }
+        }
+        $this->assertGreaterThanOrEqual(20, $multi, 'Need multi-job SQ-linked v2 fixtures');
         $mismatches = 0;
         $sawHstAmount = false;
         foreach ($rows as $key => $fx) {
@@ -127,6 +135,20 @@ class ClientProjectQuotationPdfFoldV2SqLinkedIdentityTest extends IntegrationTes
                 return false;
             }
             if ((bool) ($row['apply_hst'] ?? false) !== (bool) ($b['apply_hst'] ?? false)) {
+                return false;
+            }
+            if ((bool) ($row['hst_included'] ?? false) !== (bool) ($b['hst_included'] ?? false)) {
+                return false;
+            }
+            if ((bool) ($row['is_heading'] ?? false) !== (bool) ($b['is_heading'] ?? false)) {
+                return false;
+            }
+            $ta = array_key_exists('hst_taxable_amount', $row) ? (float) $row['hst_taxable_amount'] : null;
+            $tb = array_key_exists('hst_taxable_amount', $b) ? (float) $b['hst_taxable_amount'] : null;
+            if ($ta === null xor $tb === null) {
+                return false;
+            }
+            if ($ta !== null && abs($ta - $tb) > 0.001) {
                 return false;
             }
             $ha = array_key_exists('hst_amount', $row) ? (float) $row['hst_amount'] : null;

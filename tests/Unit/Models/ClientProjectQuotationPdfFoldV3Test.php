@@ -222,6 +222,28 @@ class ClientProjectQuotationPdfFoldV3Test extends TestCase
         $this->assertTrue((bool) ($labour['apply_hst'] ?? false));
     }
 
+    public function test_v3_paving_heading_without_apply_hst_stays_a_section_heading(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_PAVING,
+            'pdf_fold_version' => 3,
+            'items' => [
+                ['description' => 'Job 1 — Driveway', 'amount' => 0, 'is_heading' => true],
+                [
+                    'description' => 'Paving Stones — Material',
+                    'amount' => 1130.00,
+                    'apply_hst' => true,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $lines = $quote->pdfLineItems();
+        $this->assertTrue((bool) ($lines[0]['is_heading'] ?? false));
+        $this->assertFalse((bool) $lines[0]['apply_hst']);
+        $this->assertSame('Job 1 — Driveway', $lines[0]['description']);
+    }
+
     public function test_heading_without_apply_hst_key_stays_untaxed_and_material_follows_jobs(): void
     {
         $quote = new ClientProjectQuotation([
@@ -245,9 +267,11 @@ class ClientProjectQuotationPdfFoldV3Test extends TestCase
         $this->assertTrue((bool) $clean[0]['is_heading']);
         $this->assertFalse((bool) $clean[0]['apply_hst']);
         $this->assertSame(
-            ['Job one', 'Labour', 'Job two', 'Labour', 'Material'],
+            ['Job one', 'Labour', 'Job two', 'Material', 'Labour'],
             array_column($quote->pdfLineItems(), 'description')
         );
+        $material = collect($quote->pdfLineItems())->firstWhere('description', 'Material');
+        $this->assertTrue((bool) ($material['is_standalone'] ?? false));
         $this->assertEquals($quote->editorHst(), $quote->pdfHst());
     }
 
@@ -459,9 +483,11 @@ class ClientProjectQuotationPdfFoldV3Test extends TestCase
         ]);
 
         $this->assertSame(
-            ['Job one', 'Material', 'Labour', 'Job two', 'Labour', 'Material'],
+            ['Job one', 'Material', 'Labour', 'Job two', 'Material', 'Labour'],
             array_column($quote->pdfLineItems(), 'description')
         );
+        $lines = $quote->pdfLineItems();
+        $this->assertTrue((bool) ($lines[4]['is_standalone'] ?? false));
         $this->assertEquals($quote->editorHst(), $quote->pdfHst());
     }
 

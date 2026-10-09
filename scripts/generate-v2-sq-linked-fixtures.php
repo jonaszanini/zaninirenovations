@@ -169,6 +169,136 @@ $named = [
         'building_labor_percent' => 30,
         'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_DETAILED,
     ]),
+    'sq_two_job_summary' => baseSq([
+        'works' => [
+            [
+                'title' => 'Kitchen',
+                'materials' => [[
+                    'short_name' => 'Plywood',
+                    'unit_price' => 80.00,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 200.00,
+            ],
+            [
+                'title' => 'Bath',
+                'materials' => [[
+                    'short_name' => 'Tile',
+                    'unit_price' => 40.00,
+                    'quantity' => 2,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 150.00,
+            ],
+        ],
+        'include_labour_hst' => true,
+        'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+    ]),
+    'sq_two_job_combined' => baseSq([
+        'works' => [
+            [
+                'title' => 'Kitchen',
+                'materials' => [[
+                    'short_name' => 'Plywood',
+                    'unit_price' => 80.00,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 200.00,
+            ],
+            [
+                'title' => 'Bath',
+                'materials' => [[
+                    'short_name' => 'Tile',
+                    'unit_price' => 40.00,
+                    'quantity' => 2,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 150.00,
+            ],
+        ],
+        'include_labour_hst' => true,
+        'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_COMBINED,
+    ]),
+    'sq_two_job_detailed_cash' => baseSq([
+        'works' => [
+            [
+                'title' => 'Kitchen',
+                'materials' => [[
+                    'short_name' => 'Plywood',
+                    'unit_price' => 120.00,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 300.00,
+            ],
+            [
+                'title' => 'Hall',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 80.00,
+            ],
+        ],
+        'include_labour_hst' => false,
+        'include_commute' => true,
+        'commute_amount' => 113,
+        'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_DETAILED,
+    ]),
+    'sq_four_job_detailed' => baseSq([
+        'works' => [
+            [
+                'title' => 'Job A',
+                'materials' => [[
+                    'short_name' => 'A',
+                    'unit_price' => 33.33,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 10.00,
+            ],
+            [
+                'title' => 'Job B',
+                'materials' => [[
+                    'short_name' => 'B',
+                    'unit_price' => 12.50,
+                    'quantity' => 2,
+                    'apply_hst' => false,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 20.00,
+            ],
+            [
+                'title' => 'Job C',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 15.00,
+            ],
+            [
+                'title' => 'Job D',
+                'materials' => [[
+                    'short_name' => 'D',
+                    'unit_price' => 5.00,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 0,
+            ],
+        ],
+        'include_labour_hst' => true,
+        'include_building' => true,
+        'building_labor_percent' => 30,
+        'contingency_enabled' => true,
+        'contingency_percent' => 10,
+        'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_DETAILED,
+    ]),
 ];
 
 $modes = [
@@ -204,6 +334,36 @@ for ($i = 0; $i < 200; $i++) {
         'building_labor_percent' => $i % 5 === 0 ? 30 : 0,
         'include_commute' => $i % 3 === 0,
         'commute_amount' => $i % 3 === 0 ? round((($i * 17) % 20000) / 100, 2) ?: 1.13 : 0,
+        'pdf_detail_mode' => $modes[$i % 3],
+    ]);
+}
+
+for ($i = 0; $i < 40; $i++) {
+    $jobs = 2 + ($i % 3);
+    $works = [];
+    for ($j = 0; $j < $jobs; $j++) {
+        $works[] = [
+            'title' => 'Job '.($j + 1),
+            'materials' => [[
+                'short_name' => 'Row '.$j,
+                'unit_price' => round(((($i * 41 + $j * 73) % 18000) + 1) / 100, 2),
+                'quantity' => 1 + ($j % 2),
+                'apply_hst' => ($i + $j) % 4 !== 0,
+            ]],
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => round((($i * 11 + $j * 7) % 4000) / 100, 2),
+        ];
+    }
+    $random[] = baseSq([
+        'works' => $works,
+        'materials' => [],
+        'include_labour_hst' => $i % 6 !== 0,
+        'contingency_enabled' => $i % 4 === 0,
+        'contingency_percent' => $i % 4 === 0 ? 10 : 0,
+        'include_building' => $i % 5 === 0,
+        'building_labor_percent' => $i % 5 === 0 ? 30 : 0,
+        'include_commute' => $i % 3 === 0,
+        'commute_amount' => $i % 3 === 0 ? 113.00 : 0,
         'pdf_detail_mode' => $modes[$i % 3],
     ]);
 }

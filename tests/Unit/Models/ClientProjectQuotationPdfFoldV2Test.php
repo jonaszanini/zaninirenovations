@@ -53,6 +53,54 @@ class ClientProjectQuotationPdfFoldV2Test extends TestCase
         $this->assertEquals(226.00, $quote->pdfGrandTotal());
     }
 
+    public function test_v1_paving_heading_without_apply_hst_stays_a_taxed_row(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_PAVING,
+            'pdf_fold_version' => 1,
+            'items' => [
+                ['description' => 'Job 1 — Driveway', 'amount' => 0, 'is_heading' => true],
+                [
+                    'description' => 'Paving Stones — Material',
+                    'amount' => 1130.00,
+                    'apply_hst' => true,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+        $quote->exists = true;
+
+        $lines = $quote->pdfLineItems();
+        $this->assertArrayNotHasKey('is_heading', $lines[0]);
+        $this->assertTrue((bool) $lines[0]['apply_hst']);
+        $this->assertSame('Job 1 — Driveway', $lines[0]['description']);
+        $this->assertEquals(0.0, $lines[0]['amount']);
+    }
+
+    public function test_v2_paving_heading_without_apply_hst_stays_a_taxed_row(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_PAVING,
+            'pdf_fold_version' => 2,
+            'items' => [
+                ['description' => 'Job 1 — Driveway', 'amount' => 0, 'is_heading' => true],
+                [
+                    'description' => 'Paving Stones — Material',
+                    'amount' => 1130.00,
+                    'apply_hst' => true,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+        $quote->exists = true;
+
+        $lines = $quote->pdfLineItems();
+        $this->assertArrayNotHasKey('is_heading', $lines[0]);
+        $this->assertTrue((bool) $lines[0]['apply_hst']);
+        $this->assertSame('Job 1 — Driveway', $lines[0]['description']);
+        $this->assertEquals(0.0, $lines[0]['amount']);
+    }
+
     public function test_zero_and_unknown_fold_versions_are_legacy(): void
     {
         foreach ([0, 9] as $version) {
@@ -694,8 +742,8 @@ JS;
                 $checked++;
             }
         }
-        $this->assertSame(12006, $checked);
-        $this->assertSame(2001, $paving);
+        $this->assertSame(12008, $checked);
+        $this->assertSame(2002, $paving);
     }
 
     public function test_v2_debris_into_cash_labour_stays_off_the_hst_footer(): void
