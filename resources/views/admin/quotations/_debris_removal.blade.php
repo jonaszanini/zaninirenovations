@@ -64,7 +64,7 @@
              placeholder="0.00"
              value="{{ $debrisAmount }}"
              data-cp-debris-amount
-             @if ($includeDebrisChoice === true) required @endif>
+             @if ($includeDebrisChoice === true) required @endif data-cp-money-entry="direct">
       @error('debris_removal_amount')
         <p class="admin-form-error">{{ $message }}</p>
       @enderror

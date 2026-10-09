@@ -106,7 +106,7 @@
     <label for="mat-price">Price (CAD)</label>
     <input @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('price_cad')]) type="text" id="mat-price" name="price_cad"
            value="{{ old('price_cad', (isset($m) && (float) $m->price_cad > 0) ? number_format((float) $m->price_cad, 2, '.', '') : '') }}"
-           inputmode="decimal" autocomplete="off" placeholder="0.00">
+           inputmode="decimal" autocomplete="off" placeholder="0.00" data-cp-money-entry="direct">
     @error('price_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
@@ -116,7 +116,7 @@
         </span>
         <input @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('delivery_cad')]) type="text" id="mat-delivery" name="delivery_cad"
            value="{{ old('delivery_cad', (isset($m) && (float) $m->delivery_cad > 0) ? number_format((float) $m->delivery_cad, 2, '.', '') : '') }}"
-           inputmode="decimal" autocomplete="off" placeholder="0.00">
+           inputmode="decimal" autocomplete="off" placeholder="0.00" data-cp-money-entry="direct">
     @error('delivery_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">

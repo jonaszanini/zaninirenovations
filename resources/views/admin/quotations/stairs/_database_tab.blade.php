@@ -17,17 +17,17 @@
       <div class="admin-form-group">
         <label for="sq-db-carpet">Carpet removal ($/step)</label>
         <input type="text" id="sq-db-carpet" name="carpet_removal_per_step" class="admin-input cp-money-input" inputmode="decimal" required
-               value="{{ old('carpet_removal_per_step', number_format((float) $settings->carpet_removal_per_step, 2, '.', '')) }}">
+               value="{{ old('carpet_removal_per_step', number_format((float) $settings->carpet_removal_per_step, 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         <label for="sq-db-stain">Requires stain ($/step)</label>
         <input type="text" id="sq-db-stain" name="stain_per_step" class="admin-input cp-money-input" inputmode="decimal" required
-               value="{{ old('stain_per_step', number_format((float) $settings->stain_per_step, 2, '.', '')) }}">
+               value="{{ old('stain_per_step', number_format((float) $settings->stain_per_step, 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         <label for="sq-db-clear">Clear coat protection ($/step)</label>
         <input type="text" id="sq-db-clear" name="clear_coat_per_step" class="admin-input cp-money-input" inputmode="decimal" required
-               value="{{ old('clear_coat_per_step', number_format((float) $settings->clear_coat_per_step, 2, '.', '')) }}">
+               value="{{ old('clear_coat_per_step', number_format((float) $settings->clear_coat_per_step, 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
     </div>
 
@@ -112,7 +112,7 @@
               <div class="admin-form-group">
                 <span class="sq-db-rate-label">{{ $lbl }}</span>
                 <input class="admin-input cp-money-input" type="text" name="materials[{{ $mat->id }}][no_open_{{ $st }}]" inputmode="decimal" autocomplete="off"
-                       value="{{ old('materials.'.$mat->id.'.no_open_'.$st, number_format((float) ($p['no_open'][$st] ?? 0), 2, '.', '')) }}">
+                       value="{{ old('materials.'.$mat->id.'.no_open_'.$st, number_format((float) ($p['no_open'][$st] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
               </div>
             @endforeach
           </div>
@@ -126,7 +126,7 @@
               <div class="admin-form-group">
                 <span class="sq-db-rate-label">{{ $lbl }}</span>
                 <input class="admin-input cp-money-input" type="text" name="materials[{{ $mat->id }}][one_open_{{ $st }}]" inputmode="decimal" autocomplete="off"
-                       value="{{ old('materials.'.$mat->id.'.one_open_'.$st, number_format((float) ($p['one_open'][$st] ?? 0), 2, '.', '')) }}">
+                       value="{{ old('materials.'.$mat->id.'.one_open_'.$st, number_format((float) ($p['one_open'][$st] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
               </div>
             @endforeach
           </div>
@@ -138,7 +138,7 @@
             <div class="admin-form-group">
               <span class="sq-db-rate-label">Standard stairs only</span>
               <input class="admin-input cp-money-input" type="text" name="materials[{{ $mat->id }}][two_open_standard]" inputmode="decimal" autocomplete="off"
-                     value="{{ old('materials.'.$mat->id.'.two_open_standard', number_format((float) ($p['two_open']['standard'] ?? 0), 2, '.', '')) }}">
+                     value="{{ old('materials.'.$mat->id.'.two_open_standard', number_format((float) ($p['two_open']['standard'] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
             </div>
           </div>
         </div>
@@ -152,7 +152,7 @@
               <div class="admin-form-group">
                 <span class="sq-db-rate-label">{{ $nLabel }}</span>
                 <input class="admin-input cp-money-input" type="text" name="materials[{{ $mat->id }}][nosing_{{ $nk }}]" inputmode="decimal" autocomplete="off"
-                       value="{{ old('materials.'.$mat->id.'.nosing_'.$nk, number_format((float) ($p['nosing_prices'][$nk] ?? 0), 2, '.', '')) }}">
+                       value="{{ old('materials.'.$mat->id.'.nosing_'.$nk, number_format((float) ($p['nosing_prices'][$nk] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
               </div>
             @endforeach
           </div>

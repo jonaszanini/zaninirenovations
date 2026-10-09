@@ -111,7 +111,7 @@
         </div>
         <div class="admin-form-group admin-form-group--amount">
           <label for="gf-expense-amount">Amount <span class="cp-required">*</span></label>
-          <input type="text" id="gf-expense-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+          <input type="text" id="gf-expense-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00" required data-cp-money-entry="direct">
           @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group admin-form-group--submit">

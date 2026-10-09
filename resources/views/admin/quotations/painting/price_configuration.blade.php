@@ -48,7 +48,7 @@
       <div class="admin-form-group">
         <label for="paint_per_gallon">Paint price per gallon (CAD$)</label>
         <input type="text" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" id="paint_per_gallon" name="paint_per_gallon"
-               placeholder="0.00" value="{{ old('paint_per_gallon', number_format((float) $settings->paint_per_gallon, 2, '.', '')) }}" required>
+               placeholder="0.00" value="{{ old('paint_per_gallon', number_format((float) $settings->paint_per_gallon, 2, '.', '')) }}" required data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
@@ -56,7 +56,7 @@
           <x-admin.info-tip label="Material add-on fixed fee">Brushes, sleeves, masking, etc.</x-admin.info-tip>
         </span>
         <input type="text" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" id="material_addon_fee" name="material_addon_fee"
-               placeholder="0.00" value="{{ old('material_addon_fee', number_format((float) $settings->material_addon_fee, 2, '.', '')) }}" required>
+               placeholder="0.00" value="{{ old('material_addon_fee', number_format((float) $settings->material_addon_fee, 2, '.', '')) }}" required data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         <label for="sqf_per_gallon">Sq ft floor coverage per gallon (2 top coats)</label>

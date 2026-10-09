@@ -644,7 +644,7 @@
                      autocomplete="off"
                     
                      placeholder="0.00"
-                     required>
+                     required data-cp-money-entry="direct">
             </div>
           </div>
           <div class="admin-form-group cp-mark-paid-method">

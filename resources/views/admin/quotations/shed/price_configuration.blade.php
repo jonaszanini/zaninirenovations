@@ -63,13 +63,13 @@
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
-                 value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="admin-form-group">
           <label for="helper_hourly_rate">Helper hourly rate (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
-                 value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="admin-form-group">
           <span class="admin-label-with-tip">
@@ -204,7 +204,7 @@
                            name="materials[{{ $key }}][unit_price]"
                            data-fallback-price="{{ $fallbackPrice }}"
                            value="{{ $displayPrice }}"
-                           @if ($derivedPlate) readonly aria-readonly="true" @endif>
+                           @if ($derivedPlate) readonly aria-readonly="true" @endif data-cp-money-entry="direct">
                     @if ($derivedPlate)
                       <i class="fa fa-lock br-config-price-lock" aria-hidden="true"></i>
                     @endif

@@ -632,7 +632,7 @@
         '</div>' +
       '</td>' +
       '<td>' +
-        '<input type="text" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="Optional" data-lb-stock-price value="' + (data && data.price != null ? escapeAttr(data.price) : '') + '">' +
+        '<input type="text" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="Optional" data-lb-stock-price value="' + (data && data.price != null ? escapeAttr(data.price) : '') + '" data-cp-money-entry="direct">' +
       '</td>' +
       '<td class="util-lb-col-action">' +
         '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm util-lb-row-remove" data-lb-remove-stock title="Remove" aria-label="Remove board length"><i class="fa fa-times"></i></button>' +

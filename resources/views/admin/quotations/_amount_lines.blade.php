@@ -274,7 +274,7 @@
                 
                  placeholder="0.00"
                  value="{{ $row['amount'] }}"
-                 data-ac-amount>
+                 data-ac-amount data-cp-money-entry="direct">
         </div>
         @if ($showCategory)
           <div class="admin-form-group q-ac-row__category">

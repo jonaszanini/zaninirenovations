@@ -82,7 +82,7 @@
                  autocomplete="off"
                 
                  placeholder="0.00"
-                 value="{{ $hourlyRateConfigured> 0 ? number_format($hourlyRateConfigured, 2, '.', '') : '' }}">
+                 value="{{ $hourlyRateConfigured> 0 ? number_format($hourlyRateConfigured, 2, '.', '') : '' }}" data-cp-money-entry="direct">
           @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group">
@@ -393,7 +393,7 @@
                autocomplete="off"
               
                placeholder="0.00"
-               value="{{ old('amount') }}">
+               value="{{ old('amount') }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group cp-finance-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add expense</button>
@@ -495,7 +495,7 @@
                                inputmode="decimal"
                                autocomplete="off"
                               
-                               value="{{ old('amount', number_format((float) $expense->amount, 2, '.', '')) }}">
+                               value="{{ old('amount', number_format((float) $expense->amount, 2, '.', '')) }}" data-cp-money-entry="direct">
                       </div>
                     </div>
                   @endif
@@ -598,7 +598,7 @@
                inputmode="decimal"
                autocomplete="off"
               
-               placeholder="0.00">
+               placeholder="0.00" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group cp-finance-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add return</button>

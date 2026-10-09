@@ -341,7 +341,7 @@
         <input id="ld-labour-rate" type="text" name="labour_rate_per_sqft"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00"
               
-               value="{{ old('labour_rate_per_sqft', number_format((float) $settings->labour_rate_per_sqft, 2, '.', '')) }}">
+               value="{{ old('labour_rate_per_sqft', number_format((float) $settings->labour_rate_per_sqft, 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
 
       <div class="admin-form-group">
@@ -349,7 +349,7 @@
         <input id="ld-waste-fee" type="text" name="waste_dump_fee_cad"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00"
               
-               value="{{ old('waste_dump_fee_cad', number_format((float) $settings->waste_dump_fee_cad, 2, '.', '')) }}">
+               value="{{ old('waste_dump_fee_cad', number_format((float) $settings->waste_dump_fee_cad, 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
     </div>
   </form>

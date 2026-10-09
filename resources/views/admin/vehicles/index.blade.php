@@ -120,7 +120,7 @@
                    data-cp-money-places="3"
                    data-cp-gas-price
                    placeholder="1.450"
-                   required>
+                   required data-cp-money-entry="direct">
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save gas price</button>
           </div>
           @error('gas_price_per_liter') <p class="admin-form-error">{{ $message }}</p> @enderror
