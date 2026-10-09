@@ -23,7 +23,7 @@ class MaterialHomeDepotPickerImportTest extends IntegrationTestCase
     {
         $this->postJson(route('admin.materials.import-from-home-depot'), [
             'query' => '1001898921',
-        ])->assertRedirect(route('login'));
+        ])->assertUnauthorized();
     }
 
     public function test_rejects_invalid_sku_format(): void
