@@ -38,7 +38,14 @@
   font-size: 1.1rem;
 }
 .sp-group { margin-bottom: 1rem; }
-/* Tighter card padding so Rate / work-item / trailing all fit at 1024. */
+/* Tighter page + card padding at 901–1200 so Mat. name can be 7.5–8rem
+   without shrinking Work item or Used-by. */
+@media (min-width: 901px) and (max-width: 1200px) {
+  .admin-content:has(.sp-table) {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+}
 @media (min-width: 901px) {
   details.sp-group.admin-card { padding: 1rem 0.2rem; }
   .sp-group .admin-table-scroll { overflow: clip; }
@@ -88,13 +95,13 @@
   .sp-table tbody tr {
     display: grid;
     grid-template-columns:
-      minmax(7.5rem, 1.55fr)
-      5rem
+      minmax(7.5rem, 1.4fr)
+      4.6rem
       minmax(6rem, 6.15rem)
       minmax(4.6rem, 4.85rem)
-      minmax(5.5rem, 5.75rem)
-      minmax(4rem, 4.75rem)
-      2.5rem
+      minmax(5.5rem, 5.6rem)
+      minmax(7.5rem, 8rem)
+      2.25rem
       6.75rem;
     column-gap: 0.08rem;
     align-items: stretch;
@@ -158,9 +165,22 @@
 .sp-col-consumers {
   overflow: visible;
 }
+.sp-table,
+.sp-table thead,
+.sp-table tbody,
+.sp-table th,
+.sp-table td {
+  background: transparent;
+  background-color: transparent;
+}
 .sp-table thead tr,
 .sp-table tbody tr {
+  background: transparent;
   box-shadow: inset 0 -1px 0 var(--admin-border);
+}
+.sp-table tr:hover > td,
+.sp-table tr:hover > th {
+  background: transparent;
 }
 .sp-table tbody tr:last-child { box-shadow: none; }
 .sp-table th {
@@ -382,15 +402,18 @@
   width: 100%;
 }
 .sp-chip {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
   box-sizing: border-box;
   flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
-  padding: 0.2rem 0.4rem;
+  min-height: 32px;
+  padding: 0 0.4rem;
   font-size: 0.65rem;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1;
   text-align: left;
   background: var(--admin-primary-soft);
   color: var(--admin-primary);
@@ -398,7 +421,15 @@
   border-radius: 3px;
   white-space: nowrap;
   overflow: hidden;
+}
+.sp-chip__label {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 .sp-chip--more {
   display: inline-flex;
@@ -479,6 +510,12 @@
   .sp-table { display: block; }
   .sp-table thead { display: none; }
   .sp-table tbody { display: block; }
+  .sp-table,
+  .sp-table tbody,
+  .sp-table tr,
+  .sp-table td {
+    background: var(--admin-surface);
+  }
   .sp-table tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -492,6 +529,7 @@
     gap: 0.5rem 0.75rem;
     padding: 0.85rem 0;
     border-bottom: 1px solid var(--admin-border);
+    box-shadow: none;
     align-items: center;
   }
   .sp-table tr:last-child { border-bottom: none; }
@@ -564,6 +602,9 @@
   .sp-sell-wrap .admin-info-tip {
     width: 44px;
     height: 44px;
+  }
+  .sp-chip {
+    min-height: 44px;
   }
   .sp-chip--more {
     min-width: 44px;
@@ -802,7 +843,7 @@
                   <td class="sp-col-consumers" data-label="Used by">
                     <div class="sp-consumers">
                       @if ($firstConsumer)
-                        <span class="sp-chip" title="{{ $firstConsumer }}">{{ $firstConsumer }}</span>
+                        <span class="sp-chip" title="{{ $firstConsumer }}"><span class="sp-chip__label">{{ $firstConsumer }}</span></span>
                       @endif
                       @if ($extraConsumerCount > 0)
                         @php $moreTipId = 'sp-more-'.$work->id; @endphp

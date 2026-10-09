@@ -75,10 +75,15 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertDoesNotMatchRegularExpression('/align-items:\s*flex-start/', $consumers);
 
         $chip = $this->cssBlock($css, '.sp-chip');
-        $this->assertMatchesRegularExpression('/display:\s*block/', $chip);
-        $this->assertMatchesRegularExpression('/text-overflow:\s*ellipsis/', $chip);
-        $this->assertDoesNotMatchRegularExpression('/display:\s*inline-flex/', $chip);
+        $this->assertMatchesRegularExpression('/display:\s*inline-flex/', $chip);
+        $this->assertMatchesRegularExpression('/align-items:\s*center/', $chip);
+        $this->assertMatchesRegularExpression('/justify-content:\s*flex-start/', $chip);
+        $this->assertDoesNotMatchRegularExpression('/justify-content:\s*center/', $chip);
         $this->assertGreaterThanOrEqual(0.65, $this->cssFontRem($chip));
+
+        $chipLabel = $this->cssBlock($css, '.sp-chip__label');
+        $this->assertMatchesRegularExpression('/text-overflow:\s*ellipsis/', $chipLabel);
+        $this->assertStringContainsString('sp-chip__label', $html);
 
         $more = $this->cssBlock($css, '.sp-chip--more');
         $this->assertDoesNotMatchRegularExpression('/\.sp-chip--more:focus\s+\.sp-chip-more__tip/', $css);
@@ -88,14 +93,16 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $columns = $this->desktopGridColumns($css);
         $this->assertCount(8, $columns);
         $this->assertGreaterThanOrEqual(7.5, $this->cssMinRem($columns[0]), 'Work item must show ~18–20 characters at 1024');
+        $this->assertGreaterThanOrEqual(4.5, $this->cssMinRem($columns[1]), 'Rate must still fit 24.8235');
+        $this->assertLessThanOrEqual(4.75, $this->cssMinRem($columns[1]), 'Rate gives width to Mat. name');
         $this->assertGreaterThanOrEqual(6.0, $this->cssMinRem($columns[2]), 'Sell must fit 12.9000 and 99,999.9999');
         $this->assertTrue(
             str_contains($columns[3], '7ch') || $this->cssMinRem($columns[3]) >= 4.6,
             'Unit must be ~7ch so opening does not clip'
         );
         $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
-        $this->assertGreaterThanOrEqual(4.0, $this->cssMinRem($columns[5]));
-        $this->assertLessThanOrEqual(5.0, $this->cssMinRem($columns[5]), 'Mat. name gives surplus to Work item');
+        $this->assertGreaterThanOrEqual(7.5, $this->cssMinRem($columns[5]), 'Mat. name must be ~7.5–8rem');
+        $this->assertLessThanOrEqual(8.25, $this->cssMinRem($columns[5]), 'Mat. name stays ~7.5–8rem');
         $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
 
         $this->assertStringContainsString('title="{{ $work->label }}"', file_get_contents(resource_path('views/admin/quotations/shared_prices/edit.blade.php')));
@@ -181,14 +188,25 @@ const puppeteer = require('puppeteer');
   await page.goto('http://127.0.0.1:8000/admin/quotations/shared-prices', { waitUntil: 'networkidle0' });
   const result = await page.evaluate(() => {
     const chips = [...document.querySelectorAll('.sp-chip:not(.sp-chip--more)')];
-    const clipped = chips.filter((c) => c.scrollWidth > c.clientWidth + 1).map((c) => ({
-      text: (c.textContent || '').trim(),
-      scroll: c.scrollWidth,
-      client: c.clientWidth,
-    }));
+    const clipped = chips.filter((c) => {
+      const label = c.querySelector('.sp-chip__label') || c;
+      return label.scrollWidth > label.clientWidth + 1;
+    }).map((c) => {
+      const label = c.querySelector('.sp-chip__label') || c;
+      return { text: (label.textContent || '').trim(), scroll: label.scrollWidth, client: label.clientWidth };
+    });
+    const offCenter = chips.map((c) => {
+      const label = c.querySelector('.sp-chip__label') || c;
+      const cBox = c.getBoundingClientRect();
+      const lBox = label.getBoundingClientRect();
+      const dy = Math.abs((cBox.top + cBox.height / 2) - (lBox.top + lBox.height / 2));
+      return { text: (label.textContent || '').trim(), dy, chipH: cBox.height, labelH: lBox.height };
+    }).filter((x) => x.dy > 1);
     const labels = [...document.querySelectorAll('.sp-work-label')];
     const workW = labels.length ? Math.round(labels[0].closest('.sp-col-label').getBoundingClientRect().width) : 0;
-    return { clipped, workW, chipCount: chips.length };
+    const nameCol = document.querySelector('.sp-col-name');
+    const nameW = nameCol ? Math.round(nameCol.getBoundingClientRect().width) : 0;
+    return { clipped, offCenter, workW, nameW, chipCount: chips.length };
   });
   await browser.close();
   process.stdout.write(JSON.stringify(result));
@@ -209,7 +227,9 @@ JS
         }
 
         $this->assertSame([], $json['clipped'] ?? ['failed'], 'Chip labels must not clip (scrollWidth <= clientWidth)');
+        $this->assertSame([], $json['offCenter'] ?? ['failed'], 'Chip label vertical centre must be within 1px of the chip box centre');
         $this->assertGreaterThanOrEqual(115, (int) ($json['workW'] ?? 0), 'Work item column must be ≥18ch (~115px) at 1024');
+        $this->assertGreaterThanOrEqual(115, (int) ($json['nameW'] ?? 0), 'Mat. name column must be ≥7.5rem (~120px) at 1024');
     }
 
     private function cssFontRem(string $block): float
