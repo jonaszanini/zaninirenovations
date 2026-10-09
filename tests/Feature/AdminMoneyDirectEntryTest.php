@@ -78,7 +78,7 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertStringContainsString('$allowNegativeAmount', $invoiceEdit);
         $this->assertStringContainsString('syncRowMoneySign', $invoiceEdit);
         $this->assertStringContainsString('cpMoneyMask.refresh', $invoiceEdit);
-        $this->assertStringContainsString('function refresh', $js);
+        $this->assertStringContainsString('refresh: function', $js);
         $this->assertStringContainsString('moneyAllowsNegative', $js);
         $this->assertStringContainsString('function roundToPlaces', $js);
         $calculator = file_get_contents(app_path('Services/Invoice/InvoiceTotalsCalculator.php'));
