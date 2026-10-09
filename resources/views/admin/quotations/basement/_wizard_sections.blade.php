@@ -1118,6 +1118,7 @@
               'hiddenFallback' => true,
               'checked' => $brOn('include_bath_spot'),
               'label' => 'Spot light',
+              'info' => $brInfo['include_bath_spot'],
               'inputClass' => 'admin-checkbox__input br-preview',
               'attrs' => ['data-br-reveal' => 'br-bath-spot-qty-wrap', 'data-br-bath-light' => 'spot'],
               'clientFilled' => $brFilled('include_bath_spot'),

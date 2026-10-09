@@ -634,6 +634,7 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringNotContainsString("'tipLabel' => 'New outlets'", $elec);
         $this->assertStringNotContainsString("'tipLabel' => 'Switches'", $elec);
         $this->assertStringContainsString("'tipLabel' => 'Ceiling lights'", $elec);
+        $this->assertStringContainsString("\$brInfo['outlet_qty']", $elec);
         $this->assertStringContainsString('Bathroom spots', $drywall);
         $this->assertStringContainsString("'tipLabel' => 'Basement ceiling lighting'", $elec);
         $this->assertStringContainsString("'tipLabel' => 'Smoke / CO'", $elec);
