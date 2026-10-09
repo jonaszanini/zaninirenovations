@@ -1736,7 +1736,7 @@
     if (els.groupChipTotal) {
       var sqft = groupAreaSqFt(group);
       var count = (group.polygons || []).filter(function (p) { return p.closed && p.vertices.length >= 3; }).length;
-      els.groupChipTotal.textContent = fmt(sqft, 2) + ' sq ft' + (count > 1 ? ' (' + count + ' areas)' : '');
+      els.groupChipTotal.textContent = fmtAreaFromSqFt(sqft) + (count > 1 ? ' (' + count + ' areas)' : '');
     }
   }
 
@@ -6582,7 +6582,7 @@
       var lines = [];
       if (name) lines.push(name);
       else if (roomFallback) lines.push(roomFallback);
-      if (sqft != null) lines.push(fmt(sqft, 1) + ' sq ft');
+      if (sqft != null) lines.push(fmtAreaFromSqFt(sqft));
       if (!lines.length) return;
       var center = polygonCentroid(poly.vertices);
       if (!center) return;
