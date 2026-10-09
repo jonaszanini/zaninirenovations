@@ -6521,7 +6521,7 @@ body:has(.util-ra-guide) {
   }
 }
 
-/* Phone chrome: one 48px toolbar + 56px header + 64px sheet. Desktop unchanged. */
+/* Phone chrome: one 48px toolbar + 56px header + handle/strip sheet. Desktop unchanged. */
 .util-ra-phone-bar {
   display: none;
 }
@@ -7022,13 +7022,17 @@ body:has(.util-ra-guide) {
     max-width: 100%;
   }
 
-  .util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side,
-  .util-ra--fullpage.is-side-collapsed .util-ra-side {
+  .util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side {
     display: flex;
     flex-direction: column;
     height: auto;
     min-height: 0;
     max-height: none;
+  }
+
+  .util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side__tabs,
+  .util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side__body {
+    display: none;
   }
 
   .util-ra--fullpage .util-ra-sheet-strip {

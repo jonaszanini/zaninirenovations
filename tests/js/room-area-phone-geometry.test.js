@@ -76,13 +76,24 @@ async function measureViewports() {
     const page = await browser.newPage();
     for (const width of [320, 390, 414]) {
       await page.setViewport({ width, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-      await page.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'domcontentloaded' });
+      await page.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+      await page.waitForFunction(() => {
+        const tabs = document.querySelector('[data-ra-side-tabs]');
+        const close = document.querySelector('[data-ra-more-close]');
+        const side = document.querySelector('[data-ra-side]');
+        return !!(tabs && getComputedStyle(tabs).display === 'none'
+          && close && close.getBoundingClientRect().width > 8
+          && side && side.getBoundingClientRect().height > 64
+          && side.getBoundingClientRect().height < 160);
+      });
       const geom = await page.evaluate(() => {
         const close = document.querySelector('[data-ra-more-close]');
         const objects = document.querySelector('[data-ra-palette-toggle]');
         const walls = document.querySelector('[data-ra-walls-toggle]');
         const area = document.querySelector('[data-ra-sheet-total]');
         const side = document.querySelector('[data-ra-side]');
+        const tabs = document.querySelector('[data-ra-side-tabs]');
+        const body = document.querySelector('.util-ra-side__body');
         const box = (el) => {
           if (!el) return null;
           const r = el.getBoundingClientRect();
@@ -105,6 +116,8 @@ async function measureViewports() {
           walls: box(walls),
           area: box(area),
           side: box(side),
+          tabs: box(tabs),
+          body: box(body),
         };
       });
       assert.ok(geom.close, 'Close exists at ' + width);
@@ -118,7 +131,9 @@ async function measureViewports() {
         assert.ok(box.bottom <= geom.innerHeight + 0.5, key + ' bottom visible at ' + width + ': ' + box.bottom + ' vs ' + geom.innerHeight);
         assert.ok(box.left >= -0.5 && box.right <= geom.innerWidth + 0.5, key + ' horizontally visible at ' + width);
       });
-      assert.ok(geom.side && geom.side.height > 64, 'collapsed sheet sizes to content instead of the old 64px clip at ' + width + ': ' + (geom.side && geom.side.height));
+      assert.ok(geom.side && geom.side.height > 64 && geom.side.height < 160, 'collapsed sheet is handle+strip only at ' + width + ': ' + (geom.side && geom.side.height));
+      assert.ok(!geom.tabs || geom.tabs.height < 2, 'collapsed sheet hides tabs at ' + width);
+      assert.ok(!geom.body || geom.body.height < 2, 'collapsed sheet hides panel body at ' + width);
     }
   } finally {
     await browser.close();
