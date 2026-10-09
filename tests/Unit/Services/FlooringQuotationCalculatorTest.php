@@ -72,6 +72,7 @@ class FlooringQuotationCalculatorTest extends TestCase
         if (! $work) {
             $this->markTestSkipped('shoe_install is not seeded.');
         }
+        $originalShoeFlat = $work->flat_rate;
         $work->flat_rate = 5.00;
         $work->save();
         \App\Services\SharedWorkCatalog::forgetCache();
@@ -101,6 +102,8 @@ class FlooringQuotationCalculatorTest extends TestCase
         $this->assertNotNull($shoe);
         $this->assertEqualsWithDelta(200.0, (float) $shoe['amount'], 0.01);
 
+        $work->flat_rate = $originalShoeFlat ?? 3.90;
+        $work->save();
         \App\Services\SharedWorkCatalog::forgetCache();
     }
 
@@ -184,8 +187,11 @@ class FlooringQuotationCalculatorTest extends TestCase
         $fourLine = collect($four['breakdown'])->firstWhere('key', 'baseboard');
         $this->assertEqualsWithDelta(507.80, (float) $fourLine['amount'], 0.01);
 
-        $baseboard->flat_rate = $originalFlat;
+        $baseboard->flat_rate = 4.75;
         $baseboard->save();
+        $shoe = \App\Models\SharedWork::query()->where('key', 'shoe_install')->firstOrFail();
+        $shoe->flat_rate = 3.90;
+        $shoe->save();
         \App\Services\SharedWorkCatalog::forgetCache();
 
         $golden = $calc->calculate($this->hardwoodGoldenInputs($type->id), $settings, collect([$type]));

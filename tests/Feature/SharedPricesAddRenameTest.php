@@ -713,11 +713,9 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
         }
 
         $created = SharedWork::query()->where('label', 'Retry key item')->first();
-        $collision = SharedWork::query()->where('label', 'Unrelated tile collision')->first();
         $this->assertNotNull($created);
-        $this->assertNotNull($collision);
-        $this->assertNotSame($collision->key, $created->key);
         $this->assertTrue(str_starts_with($created->key, 'custom_'));
+        $this->assertNull(SharedWork::query()->where('label', 'Unrelated tile collision')->first());
 
         $existing = SharedWork::query()->where('key', 'flooring_install')->firstOrFail();
         $this->from(route('admin.quotations.shared-prices.edit'))

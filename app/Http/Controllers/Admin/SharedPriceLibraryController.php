@@ -276,8 +276,8 @@ class SharedPriceLibraryController extends Controller
         $attempts = 0;
         while (true) {
             try {
-                DB::transaction(function () use ($data) {
-                    $this->persistLibrary($data);
+                DB::transaction(function () use ($data, $attempts) {
+                    $this->persistLibrary($data, $attempts);
                 });
 
                 return;
@@ -287,8 +287,9 @@ class SharedPriceLibraryController extends Controller
                         'new_works' => 'That name is already used in this group.',
                     ]);
                 }
-                if ($this->isKeyUniqueFailure($e) && $attempts < 4) {
+                if ($this->isKeyUniqueFailure($e) && $attempts < 7) {
                     $attempts++;
+                    usleep(random_int(5000, 40000));
 
                     continue;
                 }
@@ -305,7 +306,7 @@ class SharedPriceLibraryController extends Controller
     /**
      * @param  array<string, mixed>  $data
      */
-    protected function persistLibrary(array $data): void
+    protected function persistLibrary(array $data, int $keyJitter = 0): void
     {
         $crew = SharedCrewRate::current();
         $crew->fill([
@@ -363,13 +364,13 @@ class SharedPriceLibraryController extends Controller
             $work->save();
         }
 
-        $this->createNewWorks($data);
+        $this->createNewWorks($data, $keyJitter);
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    protected function createNewWorks(array $data): void
+    protected function createNewWorks(array $data, int $keyJitter = 0): void
     {
         $owner = (float) ($data['owner_hourly_rate'] ?? SharedWorkCatalog::ownerHourlyRate());
         $maxSort = (int) SharedWork::query()->max('sort_order');
@@ -425,7 +426,7 @@ class SharedPriceLibraryController extends Controller
                     'material_unit' => $unit,
                     'consumers' => $consumers,
                     'sort_order' => $maxSort,
-                ]);
+                ], $keyJitter);
             }
         }
     }
@@ -433,9 +434,9 @@ class SharedPriceLibraryController extends Controller
     /**
      * @param  array<string, mixed>  $attrs
      */
-    protected function createWorkWithUniqueKey(array $attrs): SharedWork
+    protected function createWorkWithUniqueKey(array $attrs, int $jitter = 0): SharedWork
     {
-        $attrs['key'] = SharedWork::allocateUniqueKey((string) $attrs['label']);
+        $attrs['key'] = SharedWork::allocateUniqueKey((string) $attrs['label'], $jitter);
 
         return SharedWork::query()->create($attrs);
     }

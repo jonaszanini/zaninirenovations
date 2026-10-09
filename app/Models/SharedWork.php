@@ -107,12 +107,15 @@ class SharedWork extends Model
      * Stable lookup key from a display name. Never reused; rename must not change it.
      * Custom rows are prefixed with custom_ so they cannot collide with built-in keys.
      */
-    public static function allocateUniqueKey(string $label): string
+    public static function allocateUniqueKey(string $label, int $jitter = 0): string
     {
         $base = self::slugFromLabel($label);
         $base = (string) preg_replace('/^custom_+/', '', $base);
         if ($base === '') {
             $base = 'item';
+        }
+        if ($jitter > 0) {
+            $base = substr($base, 0, 36).'_'.$jitter.'_'.bin2hex(random_bytes(2));
         }
         $base = substr($base, 0, 50);
         $key = 'custom_'.$base;
