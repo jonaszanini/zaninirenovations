@@ -110,6 +110,56 @@ class AiActionGroupTest extends TestCase
         $this->assertStringContainsString('fq-generate-work-description', $html);
     }
 
+    public function test_blog_form_call_site_renders_suggest_then_config_then_extra_then_undo(): void
+    {
+        $form = (string) file_get_contents(resource_path('views/admin/blog/posts/form.blade.php'));
+        $this->assertSame(1, preg_match(
+            '/@component\(\s*[\'"]admin\.partials\.ai_action_group[\'"][\s\S]*?@endcomponent/',
+            $form,
+            $match
+        ), 'Blog form must call admin.partials.ai_action_group.');
+
+        $html = \Illuminate\Support\Facades\Blade::render($match[0], [
+            'post' => (object) ['id' => 12],
+        ]);
+
+        $suggestPos = strpos($html, 'bp-ai-suggest-btn');
+        $configPos = strpos($html, 'admin-ai-instruction-edit-link');
+        $imagePos = strpos($html, 'bp-ai-image-btn');
+        $checkPos = strpos($html, 'bp-check-btn');
+        $historyPos = strpos($html, 'data-history-mount');
+
+        $this->assertNotFalse($suggestPos);
+        $this->assertNotFalse($configPos);
+        $this->assertNotFalse($imagePos);
+        $this->assertNotFalse($checkPos);
+        $this->assertNotFalse($historyPos);
+        $this->assertLessThan($configPos, $suggestPos, 'Suggest metadata must come before its config icon.');
+        $this->assertLessThan($imagePos, $configPos);
+        $this->assertLessThan($checkPos, $imagePos);
+        $this->assertLessThan($historyPos, $checkPos, 'Undo must come after Check content, not beside it in markup.');
+        $this->assertStringContainsString('data-history-key="blog-post-12"', $html);
+    }
+
+    public function test_portfolio_description_call_site_renders_button_then_config_then_undo(): void
+    {
+        $html = view('admin.partials.portfolio_description_ai')->render();
+
+        $buttonPos = strpos($html, 'portfolio-desc-ai-btn');
+        $configPos = strpos($html, 'admin-ai-instruction-edit-link');
+        $historyPos = strpos($html, 'data-history-mount');
+
+        $this->assertNotFalse($buttonPos);
+        $this->assertNotFalse($configPos);
+        $this->assertNotFalse($historyPos);
+        $this->assertLessThan($configPos, $buttonPos, 'Portfolio AI button must come before its config icon.');
+        $this->assertLessThan($historyPos, $configPos, 'Undo must come after the config icon.');
+        $this->assertStringContainsString(
+            route('admin.ai-instructions.edit', AiInstruction::KEY_PORTFOLIO_DESCRIPTION),
+            $html
+        );
+    }
+
     public function test_pair_css_keeps_button_and_config_on_one_shrinking_row(): void
     {
         $css = file_get_contents(public_path('css/admin.css'));
@@ -150,11 +200,22 @@ class AiActionGroupTest extends TestCase
             '/#admin-photo-edit-modal \.admin-ai-action-group\s*>\s*\.admin-ai-action-pair\s*\{[^}]*flex:\s*0 0 auto/s',
             $css
         );
+        $this->assertMatchesRegularExpression(
+            '/@media\s*\(\s*max-width:\s*380px\s*\)\s*\{[^}]*#admin-photo-edit-modal \.admin-modal-actions\s*\{[^}]*flex-wrap:\s*wrap/s',
+            $css,
+            'Photo-edit modal actions must wrap below ~380px so Save stays inside the padded panel.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media\s*\(\s*max-width:\s*700px\s*\)\s*\{[^}]*\.blog-admin-ai-metadata-wrap\s*>\s*\.admin-ai-action-group/s',
+            $css,
+            'Blog AI group needs a definite width at ≤700px so the extra pair and undo wrap like fence.'
+        );
     }
 
     public function test_each_inline_ai_group_uses_the_shared_action_group(): void
     {
         $offenders = [];
+        $sites = 0;
 
         foreach ($this->adminBladeFiles() as $file) {
             $relative = $this->relativeViewPath($file);
@@ -163,27 +224,18 @@ class AiActionGroupTest extends TestCase
             }
 
             $contents = (string) file_get_contents($file);
-            if (preg_match_all('/<div\s+class="([^"]*)"/', $contents, $matches, PREG_OFFSET_CAPTURE) < 1) {
-                continue;
-            }
+            $sites += count($this->componentAiGroupBlocks($contents));
 
-            foreach ($matches[1] as $match) {
-                $class = $match[0];
-                if (! str_contains($class, 'admin-ai-action-group')) {
-                    continue;
-                }
-                if (str_contains($class, 'admin-ai-action-group--trailing')) {
-                    continue;
-                }
-
-                $offset = $match[1];
-                $following = substr($contents, $offset, 900);
-                if (str_contains($following, 'ai_instruction_edit_link')) {
-                    $offenders[] = $relative.' (inline group still includes ai_instruction_edit_link)';
-                }
+            foreach ($this->rawAiActionGroupOffenders($contents, $relative) as $offender) {
+                $offenders[] = $offender;
             }
         }
 
+        $this->assertGreaterThanOrEqual(
+            8,
+            $sites,
+            'Per-group scan must visit real @component call sites, not only leftover raw markup.'
+        );
         $this->assertSame(
             [],
             $offenders,
@@ -194,35 +246,38 @@ class AiActionGroupTest extends TestCase
     public function test_config_icon_is_not_emitted_before_the_ai_button(): void
     {
         $offenders = [];
-        $aiButtonMarker = 'fa-magic|Improve |Generate |Auto categorize|Suggest metadata|Apply AI|Improve prompt|Create automatically';
+        $checkedGroups = 0;
 
         foreach ($this->adminBladeFiles() as $file) {
             $relative = $this->relativeViewPath($file);
             $contents = (string) file_get_contents($file);
-            if (! str_contains($contents, 'ai_instruction_edit_link')) {
-                continue;
+
+            foreach ($this->rawAiActionGroupOffenders($contents, $relative) as $offender) {
+                $offenders[] = $offender;
             }
 
-            if (preg_match_all(
-                '/ai_instruction_edit_link[\s\S]{0,800}<button[\s\S]*?<\/button>/',
-                $contents,
-                $matches
-            ) === 0) {
-                continue;
-            }
-
-            foreach ($matches[0] as $chunk) {
-                if (preg_match('/'.$aiButtonMarker.'/', $chunk) === 1) {
-                    $offenders[] = $relative;
-                    break;
+            foreach ($this->componentAiGroupBlocks($contents) as $block) {
+                $checkedGroups++;
+                if ($this->componentGroupHasConfigBeforeButton($block)) {
+                    $offenders[] = $relative.' (config include before an AI button in the component call site)';
                 }
+            }
+
+            foreach ($this->configBeforeAiButtonChunks($contents) as $unused) {
+                $offenders[] = $relative.' (config include before an AI <button>…</button>)';
+                break;
             }
         }
 
+        $this->assertGreaterThanOrEqual(
+            8,
+            $checkedGroups,
+            'Config-before-button must inspect each @component group, not skip converted files.'
+        );
         $this->assertSame(
             [],
             array_values(array_unique($offenders)),
-            "Config icon must not appear before the AI button (checked through </button>):\n".implode("\n", $offenders)
+            "Config icon must not appear before the AI button:\n".implode("\n", $offenders)
         );
     }
 
@@ -235,12 +290,113 @@ class AiActionGroupTest extends TestCase
             </button>
         BLADE;
 
-        $this->assertSame(1, preg_match(
+        $this->assertNotEmpty($this->configBeforeAiButtonChunks($old));
+    }
+
+    public function test_raw_group_is_detected_regardless_of_attribute_order(): void
+    {
+        $mixed = <<<'BLADE'
+            <div id="bp-ai" data-role="cluster" class="admin-card admin-ai-action-group" hidden>
+              @include('admin.partials.ai_instruction_edit_link', ['instructionKey' => 'blog_post'])
+              <button type="button">Suggest metadata</button>
+            </div>
+        BLADE;
+
+        $this->assertNotEmpty($this->rawAiActionGroupOffenders($mixed, 'fixture.blade.php'));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function rawAiActionGroupOffenders(string $contents, string $relative): array
+    {
+        $offenders = [];
+        if (preg_match_all(
+            '/<div\b(?=[^>]*\bclass\s*=\s*([\'"])([^\'"]*)\1)[^>]*>/i',
+            $contents,
+            $matches,
+            PREG_OFFSET_CAPTURE
+        ) < 1) {
+            return [];
+        }
+
+        foreach ($matches[2] as $match) {
+            $class = $match[0];
+            if (! str_contains($class, 'admin-ai-action-group')) {
+                continue;
+            }
+            if (str_contains($class, 'admin-ai-action-group--trailing')) {
+                continue;
+            }
+
+            $following = substr($contents, $match[1], 900);
+            if (str_contains($following, 'ai_instruction_edit_link')) {
+                $offenders[] = $relative.' (inline group still includes ai_instruction_edit_link)';
+            }
+        }
+
+        return $offenders;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function componentAiGroupBlocks(string $contents): array
+    {
+        if (preg_match_all(
+            '/@component\(\s*[\'"]admin\.partials\.ai_action_group[\'"][\s\S]*?@endcomponent/',
+            $contents,
+            $matches
+        ) < 1) {
+            return [];
+        }
+
+        return $matches[0];
+    }
+
+    private function componentGroupHasConfigBeforeButton(string $block): bool
+    {
+        $parts = preg_split('/@slot\(\s*[\'"]extra[\'"]\s*\)/', $block, 2);
+        $regions = $parts === false ? [$block] : $parts;
+
+        foreach ($regions as $region) {
+            $includePos = strpos($region, 'ai_instruction_edit_link');
+            if ($includePos === false) {
+                continue;
+            }
+            if (! preg_match('/<button\b[\s\S]*?<\/button>/i', $region, $buttonMatch, PREG_OFFSET_CAPTURE)) {
+                return true;
+            }
+            if ($includePos < $buttonMatch[0][1]) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function configBeforeAiButtonChunks(string $contents): array
+    {
+        $aiButtonMarker = 'fa-magic|Improve |Generate |Auto categorize|Suggest metadata|Apply AI|Improve prompt|Create automatically';
+        if (preg_match_all(
             '/ai_instruction_edit_link[\s\S]{0,800}<button[\s\S]*?<\/button>/',
-            $old
-        ));
-        preg_match('/ai_instruction_edit_link[\s\S]{0,800}<button[\s\S]*?<\/button>/', $old, $match);
-        $this->assertMatchesRegularExpression('/fa-magic|Suggest metadata/', $match[0]);
+            $contents,
+            $matches
+        ) < 1) {
+            return [];
+        }
+
+        $chunks = [];
+        foreach ($matches[0] as $chunk) {
+            if (preg_match('/'.$aiButtonMarker.'/', $chunk) === 1) {
+                $chunks[] = $chunk;
+            }
+        }
+
+        return $chunks;
     }
 
     /**

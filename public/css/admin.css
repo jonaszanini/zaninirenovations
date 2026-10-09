@@ -2780,6 +2780,17 @@ details[open] > summary.admin-chevron-summary::after {
   }
 }
 
+/* ~360px: the nowrap tools + Cancel/Save row is wider than the padded panel. */
+@media (max-width: 380px) {
+  #admin-photo-edit-modal .admin-modal-actions {
+    flex-wrap: wrap;
+  }
+
+  #admin-photo-edit-modal .admin-photo-edit-actions-end {
+    margin-left: auto;
+  }
+}
+
 html.admin-photo-edit-modal-open {
   overflow: hidden;
 }
@@ -3935,17 +3946,31 @@ a.ic-model-card:hover {
   white-space: nowrap;
 }
 
+.admin-ai-action-pair > .admin-btn ~ .admin-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .admin-ai-action-pair > .admin-ai-instruction-edit-link,
 .admin-ai-action-group > .admin-ai-text-history-mount {
   flex-shrink: 0;
 }
 
 @media (max-width: 700px) {
+  .blog-admin-ai-metadata-wrap > .admin-ai-action-group,
+  .nb2-generate-row > .admin-ai-action-group:not(.admin-ai-action-group--trailing) {
+    width: 100%;
+  }
+
   .admin-ai-action-group:not(.admin-ai-action-group--trailing) > .admin-ai-action-pair {
     flex: 1 1 14rem;
   }
 
   .admin-ai-action-group:not(.admin-ai-action-group--trailing) > .admin-ai-action-pair ~ .admin-ai-action-pair {
+    flex: 1 1 100%;
+  }
+
+  .admin-ai-action-group:not(.admin-ai-action-group--trailing) > .admin-ai-text-history-mount {
     flex: 1 1 100%;
   }
 }
