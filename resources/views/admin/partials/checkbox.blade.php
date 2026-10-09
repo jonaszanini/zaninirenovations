@@ -44,6 +44,6 @@
   @endif
 </label>
 @if (! empty($info))
-  @include('admin.partials.info_tip', ['tipText' => $info, 'tipLabel' => trim(strip_tags($label ?? 'this field'))])
+  @include('admin.partials.info_tip', ['tipText' => $info, 'tipLabel' => trim(strip_tags($label ?? 'this field')), 'tipHtml' => null, 'tipId' => null])
 </span>
 @endif

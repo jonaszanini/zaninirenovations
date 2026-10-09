@@ -44,7 +44,24 @@
     bubble.style.right = '';
     bubble.style.bottom = '';
     bubble.style.maxWidth = '';
+    bubble.style.maxHeight = '';
     bubble.style.width = '';
+    bubble.style.overflow = '';
+    bubble.style.overflowY = '';
+  }
+
+  function bottomReserve() {
+    var reserve = PAD;
+    if (!document.querySelectorAll) return reserve;
+    document.querySelectorAll('.br-sticky-total, .br-sticky-bar, .admin-sticky-footer').forEach(function (el) {
+      if (!el.getBoundingClientRect) return;
+      var r = el.getBoundingClientRect();
+      if (!r || r.height <= 0) return;
+      if (r.bottom >= (window.innerHeight || 0) - 4) {
+        reserve = Math.max(reserve, (window.innerHeight || 0) - r.top + PAD);
+      }
+    });
+    return reserve;
   }
 
   function positionBubble(btn, bubble) {
@@ -52,6 +69,8 @@
     var maxW = Math.min(MAX_W, Math.max(120, window.innerWidth - PAD * 2));
     bubble.style.position = 'fixed';
     bubble.style.maxWidth = maxW + 'px';
+    bubble.style.maxHeight = '';
+    bubble.style.overflowY = '';
     bubble.style.width = 'max-content';
     bubble.style.right = 'auto';
     bubble.style.bottom = 'auto';
@@ -60,8 +79,13 @@
 
     var btnRect = btn.getBoundingClientRect();
     var popRect = bubble.getBoundingClientRect();
-    var top = btnRect.bottom - 4;
+    var floor = (window.innerHeight || 0) - bottomReserve();
+    var preferBelow = btnRect.bottom - 4;
+    var top = preferBelow;
     var left = btnRect.left;
+    var need = popRect.height;
+    var spaceBelow = floor - preferBelow;
+    var spaceAbove = btnRect.top - PAD;
 
     if (left + popRect.width > window.innerWidth - PAD) {
       left = window.innerWidth - PAD - popRect.width;
@@ -70,15 +94,18 @@
       left = PAD;
     }
 
-    var spaceBelow = window.innerHeight - PAD - top;
-    var spaceAbove = btnRect.top - PAD;
-    var need = popRect.height;
-    var minBelow = Math.max(48, need * 0.35);
-    if (spaceBelow < need) {
-      if (spaceBelow < minBelow && spaceAbove >= need) {
-        top = btnRect.top - need + 4;
-      }
-      // else stay below the icon so the bubble stays attached (may overlap the footer)
+    if (spaceBelow >= need) {
+      top = preferBelow;
+    } else if (spaceAbove >= need) {
+      top = btnRect.top - need + 4;
+    } else {
+      var useAbove = spaceAbove > spaceBelow;
+      var avail = Math.max(80, useAbove ? spaceAbove : spaceBelow);
+      bubble.style.maxHeight = Math.floor(avail) + 'px';
+      bubble.style.overflowY = 'auto';
+      need = Math.min(need, avail);
+      top = useAbove ? (btnRect.top - need + 4) : preferBelow;
+      top = Math.max(PAD, Math.min(top, floor - need));
     }
 
     bubble.style.top = Math.round(top) + 'px';
@@ -334,27 +361,19 @@
       closeTips(null);
       return;
     }
-    var inSummary = !!(e.target.closest && e.target.closest('summary'));
     if (e.target.closest('.admin-info-tip__bubble')) {
-      if (inSummary && !isLinkTarget(e.target)) {
-        e.stopPropagation();
+      if (e.target.closest('summary')) {
         e.preventDefault();
       }
       return;
     }
-    if (!e.target.closest('.admin-info-tip') && !e.target.closest('.admin-info-tip-wrap')) {
+    if (!e.target.closest('.admin-info-tip')) {
       return;
     }
     e.preventDefault();
     e.stopPropagation();
     toggleTip(root);
   }, true);
-
-  document.addEventListener('click', function (e) {
-    if (!e.target.closest || !e.target.closest('.admin-info-tip__bubble')) return;
-    if (!e.target.closest('summary')) return;
-    e.stopPropagation();
-  }, false);
 
   document.addEventListener('focusout', function (e) {
     var root = rootOf(e.target);

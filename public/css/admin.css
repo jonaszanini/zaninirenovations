@@ -1666,7 +1666,7 @@ a.admin-client-link:focus-visible {
   margin-bottom: 0;
   white-space: normal;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 .admin-label-with-tip > .admin-info-tip-wrap,
 .br-acc__summary > .admin-info-tip-wrap {

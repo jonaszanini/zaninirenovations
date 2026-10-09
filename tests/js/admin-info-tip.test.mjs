@@ -508,8 +508,38 @@ function fire(list, type, event) {
     preventDefault() { linkPrevented = true; },
     stopPropagation() { linkStopped = true; },
   });
-  assert.equal(linkPrevented, false, 'links inside a summary bubble stay clickable');
+  assert.equal(linkPrevented, true, 'summary default toggle is prevented; the link handler still runs');
   assert.equal(linkStopped, false, 'capture does not stop a bubble link so its own handler can fire');
+
+  const innerBtn = document.createElement('button');
+  bubble.appendChild(innerBtn);
+  let innerBtnFired = false;
+  let innerStopped = false;
+  innerBtn.addEventListener('click', function () { innerBtnFired = true; });
+  click.fn({
+    target: {
+      closest(sel) {
+        if (sel === '.admin-info-tip__bubble') return bubble;
+        if (sel === '.admin-info-tip-wrap') return wrap;
+        if (sel === 'summary') return summary;
+        if (sel === '.admin-info-tip') return null;
+        if (sel === 'a') return null;
+        if (sel === 'button') return innerBtn;
+        return null;
+      },
+    },
+    preventDefault() {},
+    stopPropagation() { innerStopped = true; },
+  });
+  if (!innerStopped) {
+    innerBtn.dispatchEvent('click', {
+      target: innerBtn,
+      preventDefault() {},
+      stopPropagation() {},
+    });
+  }
+  assert.equal(innerStopped, false, 'capture does not stop a button inside a summary tip');
+  assert.equal(innerBtnFired, true, 'a <button> inside a summary tip still receives click');
 
   let linkHandlerFired = false;
   link.addEventListener('click', function () { linkHandlerFired = true; });
@@ -521,23 +551,6 @@ function fire(list, type, event) {
     });
   }
   assert.equal(linkHandlerFired, true, 'the link\'s own click handler fires (e.g. data-cp-jump-tab)');
-
-  const bubblePhase = listeners.document.click.find((l) => !l.opts || l.opts === false || (typeof l.opts === 'object' && !l.opts.capture));
-  assert.ok(bubblePhase, 'bubble-phase click listener keeps summary from toggling after the link handler');
-  let bubbleStopped = false;
-  bubblePhase.fn({
-    target: {
-      closest(sel) {
-        if (sel === '.admin-info-tip__bubble') return bubble;
-        if (sel === 'summary') return summary;
-        if (sel === 'a') return link;
-        return null;
-      },
-    },
-    preventDefault() {},
-    stopPropagation() { bubbleStopped = true; },
-  });
-  assert.equal(bubbleStopped, true, 'bubble-phase stop keeps <summary> from toggling');
 
   const down = listeners.document.mousedown.find((l) => l.opts === true || (l.opts && l.opts.capture));
   assert.ok(down, 'capture-phase mousedown listener');
@@ -571,19 +584,40 @@ function fire(list, type, event) {
   assert.equal(btn.getAttribute('aria-label'), 'About Owner rate (CAD$)');
 }
 
-// --- prefer opening downward so the bubble stays attached to its icon ---
+// --- flip up when the full bubble does not fit below ---
 {
   const { document, body, listeners } = createEnv();
-  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-down', 'Owner rate');
-  bubble._rect = { top: 0, bottom: 200, left: 0, right: 200, width: 200, height: 200 };
-  btn._rect = { top: 500, bottom: 544, left: 40, right: 84, width: 44, height: 44 };
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-flip', 'Owner rate');
+  bubble._rect = { top: 0, bottom: 230, left: 0, right: 200, width: 200, height: 230 };
+  btn._rect = { top: 600, bottom: 644, left: 40, right: 84, width: 44, height: 44 };
   body.appendChild(wrap);
   wrap.classList.add('is-open');
   btn.setAttribute('aria-expanded', 'true');
-  const resize = listeners.window.resize[0];
-  resize.fn();
+  listeners.window.resize[0].fn();
   const top = parseInt(bubble.style.top, 10);
-  assert.ok(top >= 536 && top <= 548, 'stays below the icon instead of flipping under the previous field, got ' + top);
+  assert.ok(top <= 600 - 230 + 8, 'flips above when it cannot fully fit below, got ' + top);
+  assert.notEqual(bubble.style.overflowY, 'auto');
+}
+
+// --- clamp with max-height when it fits neither above nor below ---
+{
+  const { document, body, listeners, window } = createEnv();
+  window.innerHeight = 400;
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-clamp', 'Notes');
+  bubble._rect = { top: 0, bottom: 280, left: 0, right: 200, width: 200, height: 280 };
+  btn._rect = { top: 160, bottom: 204, left: 40, right: 84, width: 44, height: 44 };
+  const bar = document.createElement('div');
+  bar.className = 'br-sticky-total';
+  bar._rect = { top: 348, bottom: 400, left: 0, right: 390, width: 390, height: 52 };
+  body.appendChild(bar);
+  body.appendChild(wrap);
+  wrap.classList.add('is-open');
+  btn.setAttribute('aria-expanded', 'true');
+  listeners.window.resize[0].fn();
+  assert.equal(bubble.style.overflowY, 'auto');
+  assert.ok(parseInt(bubble.style.maxHeight, 10) > 0, 'clamps with a viewport max-height');
+  const top = parseInt(bubble.style.top, 10);
+  assert.ok(top >= 12, 'stays on-screen, got ' + top);
 }
 
 console.log('admin-info-tip.test.mjs: ok');

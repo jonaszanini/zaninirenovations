@@ -104,8 +104,10 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('isIconVisibleInClip', $js);
         $this->assertStringContainsString('idsAlreadyInDocument', $js);
         $this->assertStringContainsString("e.target.closest('summary')", $js);
-        $this->assertStringContainsString('spaceBelow < minBelow && spaceAbove >= need', $js);
-        $this->assertStringContainsString("document.addEventListener('click', function (e) {\n    if (!e.target.closest || !e.target.closest('.admin-info-tip__bubble')) return;\n    if (!e.target.closest('summary')) return;\n    e.stopPropagation();\n  }, false)", $js);
+        $this->assertStringContainsString('function bottomReserve', $js);
+        $this->assertStringContainsString('spaceAbove >= need', $js);
+        $this->assertStringContainsString("bubble.style.overflowY = 'auto'", $js);
+        $this->assertStringContainsString("e.target.closest('.admin-info-tip')", $js);
         $this->assertStringContainsString('function refreshIds(scope)', $js);
         $this->assertStringContainsString('refreshIds: refreshIds', $js);
         $this->assertStringContainsString('btn.focus()', $js);
@@ -118,6 +120,14 @@ class AdminInfoTipBehaviourTest extends TestCase
         );
         $this->assertMatchesRegularExpression(
             '/\.admin-label-with-tip\s*>\s*label[^}]*white-space:\s*normal/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip\s*>\s*label[^}]*flex:\s*0 1 auto/',
+            $css
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.admin-label-with-tip\s*>\s*label[^}]*flex:\s*1 1 auto/',
             $css
         );
         $this->assertMatchesRegularExpression(
@@ -274,5 +284,12 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('label="Receipt (new expense)"', $financials);
         $this->assertStringContainsString(":label=\"'Receipt '.\$expense->expense_ref", $financials);
         $this->assertStringNotContainsString('<x-admin.info-tip label="Receipt">', $financials);
+
+        $create = file_get_contents(resource_path('views/admin/image_creation/create.blade.php'));
+        $this->assertSame(1, substr_count($create, 'label="Create image"'));
+        $modify = file_get_contents(resource_path('views/admin/image_creation/modify.blade.php'));
+        $this->assertSame(1, substr_count($modify, 'label="Modify image"'));
+        $nb2 = file_get_contents(resource_path('views/admin/image_creation/nano_banana_2.blade.php'));
+        $this->assertSame(1, substr_count($nb2, 'label="Nano Banana 2"'));
     }
 }

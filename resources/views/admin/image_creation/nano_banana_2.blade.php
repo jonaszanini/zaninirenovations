@@ -13,10 +13,7 @@
   </div>
 
   <div class="admin-card nb2-prompt-card">
-    <h2 class="nb2-card-title">
-      Nano Banana 2
-      <x-admin.info-tip label="Nano Banana 2">Describe the image you want. The API returns a full-resolution original; a compressed WebP copy is saved for fast gallery preview ({{ (int) config('webp.quality', 75) }}% quality, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB).</x-admin.info-tip>
-    </h2>
+    <h2 class="nb2-card-title">Nano Banana 2</h2>
 
     <div class="admin-form-group">
       <label for="nb2-prompt">Image prompt</label>

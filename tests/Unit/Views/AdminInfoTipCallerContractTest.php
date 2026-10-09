@@ -61,37 +61,33 @@ class AdminInfoTipCallerContractTest extends TestCase
         $this->assertStringContainsString('aria-label="About Client from directory"', $html);
     }
 
-    public function test_label_with_tip_does_not_inherit_parent_scope_keys(): void
+    public function test_dead_label_with_tip_partial_is_gone(): void
     {
-        $leaked = view('admin.partials.label_with_tip', [
-            'for' => 'leaked-for',
-            'labelHtml' => '<em>Leaked label</em>',
-            'labelId' => 'leaked-label-id',
-            'tipText' => 'Leaked tip text',
-            'tipHtml' => '<strong>Leaked tip html</strong>',
-            'tipLabel' => 'Leaked tip label',
-            'lwLabelText' => 'Isolated label',
-        ])->render();
+        $this->assertFileDoesNotExist(resource_path('views/admin/partials/label_with_tip.blade.php'));
+    }
 
-        $this->assertStringContainsString('Isolated label', $leaked);
-        $this->assertStringNotContainsString('leaked-for', $leaked);
-        $this->assertStringNotContainsString('Leaked label', $leaked);
-        $this->assertStringNotContainsString('leaked-label-id', $leaked);
-        $this->assertStringNotContainsString('Leaked tip text', $leaked);
-        $this->assertStringNotContainsString('Leaked tip html', $leaked);
-        $this->assertStringNotContainsString('About Leaked tip label', $leaked);
+    public function test_scanner_covers_include_if_when_each_and_variable_arrays(): void
+    {
+        $includeIf = $this->legacyTipKeyHits("@includeIf('admin.partials.info_tip', ['text' => 'legacy'])");
+        $this->assertNotEmpty($includeIf);
 
-        $explicit = view('admin.partials.label_with_tip', [
-            'lwFor' => 'br-owner-rate',
-            'lwLabelText' => 'Owner rate (CAD$)',
-            'lwTipText' => 'Your hourly rate for this quote.',
-            'lwTipLabel' => 'Owner rate (CAD$)',
-        ])->render();
+        $includeWhen = $this->legacyTipKeyHits("@includeWhen(\$ok, 'admin.client_projects._cp_field_hint', ['html' => '<b>x</b>'])");
+        $this->assertNotEmpty($includeWhen);
 
-        $this->assertStringContainsString('for="br-owner-rate"', $explicit);
-        $this->assertStringContainsString('Owner rate (CAD$)', $explicit);
-        $this->assertStringContainsString('Your hourly rate for this quote.', $explicit);
-        $this->assertStringContainsString('aria-label="About Owner rate (CAD$)"', $explicit);
+        $viaVar = $this->legacyTipKeyHits(
+            "\$hint = ['text' => 'via variable'];\n@include('admin.partials.info_tip', \$hint)"
+        );
+        $this->assertNotEmpty($viaVar);
+
+        $labelHintVar = $this->legacyTipKeyHits(
+            "\$hint = ['html' => '<em>x</em>'];\n'labelHint' => \$hint"
+        );
+        $this->assertNotEmpty($labelHintVar);
+
+        $cleanVar = $this->legacyTipKeyHits(
+            "\$ssHint = ['tipText' => 'ok']; unset(\$ssHint['text'], \$ssHint['html']);\n@include('admin.client_projects._cp_field_hint', \$ssHint)"
+        );
+        $this->assertSame([], $cleanVar);
     }
 
     /**
@@ -101,8 +97,11 @@ class AdminInfoTipCallerContractTest extends TestCase
     {
         $hits = [];
         $needles = [
-            "/@include\(\s*['\"]admin\.partials\.info_tip['\"]/",
-            "/@include\(\s*['\"]admin\.client_projects\._cp_field_hint['\"]/",
+            "/@include(?:If)?\(\s*['\"]admin\.partials\.info_tip['\"]/",
+            "/@include(?:If)?\(\s*['\"]admin\.client_projects\._cp_field_hint['\"]/",
+            "/@includeWhen\(\s*[^,]+,\s*['\"]admin\.partials\.info_tip['\"]/",
+            "/@includeWhen\(\s*[^,]+,\s*['\"]admin\.client_projects\._cp_field_hint['\"]/",
+            "/@each\(\s*['\"]admin\.(?:partials\.info_tip|client_projects\._cp_field_hint)['\"]/",
             "/['\"]labelHint['\"]\s*=>/",
         ];
 
@@ -110,14 +109,19 @@ class AdminInfoTipCallerContractTest extends TestCase
             if (preg_match_all($re, $src, $matches, PREG_OFFSET_CAPTURE) < 1) {
                 continue;
             }
-            $isInclude = str_contains($re, '@include');
+            $isInclude = str_contains($re, '@include') || str_contains($re, '@each');
             foreach ($matches[0] as $match) {
                 $array = $this->extractBalancedArray($src, $match[1], $isInclude);
-                if ($array === null) {
+                if ($array !== null && preg_match("/['\"](?:text|html)['\"]\s*=>/", $array) === 1) {
+                    $hits[] = preg_replace('/\s+/', ' ', substr($array, 0, 160));
                     continue;
                 }
-                if (preg_match("/['\"](?:text|html)['\"]\s*=>/", $array) === 1) {
-                    $hits[] = preg_replace('/\s+/', ' ', substr($array, 0, 160));
+                if (preg_match('/,\s*(\$[A-Za-z_][A-Za-z0-9_]*)/', substr($src, $match[1], 180), $varMatch)
+                    || preg_match('/[\'\"]labelHint[\'\"]\s*=>\s*(\$[A-Za-z_][A-Za-z0-9_]*)/', substr($src, $match[1], 80), $varMatch)) {
+                    $varHits = $this->legacyKeysOnVariable($src, $match[1], $varMatch[1]);
+                    foreach ($varHits as $varHit) {
+                        $hits[] = $varHit;
+                    }
                 }
             }
         }
@@ -155,5 +159,26 @@ class AdminInfoTipCallerContractTest extends TestCase
         }
 
         return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function legacyKeysOnVariable(string $src, int $at, string $var): array
+    {
+        $before = substr($src, max(0, $at - 900), min(900, $at));
+        $quoted = preg_quote($var, '/');
+        if (preg_match('/'.$quoted.'\s*=\s*(\[[\s\S]{0,400}\])/', $before, $assign) !== 1) {
+            return [];
+        }
+        if (preg_match("/['\"](?:text|html)['\"]\s*=>/", $assign[1]) !== 1) {
+            return [];
+        }
+        if (str_contains($before, 'tipText') || str_contains($before, 'tipHtml')
+            || str_contains($before, "unset({$var}['text']") || str_contains($before, "unset(\$ssHint['text']")) {
+            return [];
+        }
+
+        return [$var.' still passes text/html'];
     }
 }
