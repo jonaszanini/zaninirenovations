@@ -60,6 +60,13 @@
           is_array($quotation->calculation) ? $quotation->calculation : null
       );
   }
+  $priceDeltaAmountLabel = '';
+  if (is_array($priceDelta) && abs((float) ($priceDelta['delta'] ?? 0)) >= 0.01) {
+      $priceDeltaAmountLabel = ' (unit prices '
+          .(((float) ($priceDelta['delta'] ?? 0)) >= 0 ? '+' : '')
+          .\App\Models\ClientProject::formatMoney((float) ($priceDelta['delta'] ?? 0))
+          .')';
+  }
   $frozenUnitPrices = $isEdit
       ? \App\Services\FenceQuotationCalculator::frozenUnitPricesFromCalculation(
           is_array($quotation->calculation) ? $quotation->calculation : null
@@ -707,10 +714,7 @@
       </p>
       @if ($isEdit && ! empty($priceDelta['changed']) && ! $initialReprice)
         <div class="fq-price-banner" id="fq-price-banner">
-          Catalogue unit prices have changed since this quote was saved
-          @if (abs((float) ($priceDelta['delta'] ?? 0)) >= 0.01)
-            (unit prices {{ ($priceDelta['delta'] ?? 0) >= 0 ? '+' : '' }}{{ \App\Models\ClientProject::formatMoney((float) ($priceDelta['delta'] ?? 0)) }})
-          @endif.
+          Catalogue unit prices have changed since this quote was saved{{ $priceDeltaAmountLabel }}.
           @include('admin.partials.info_tip', [
             'text' => 'Save keeps the unit prices from the last save. Quantities still follow the current runs. Re-price updates unit prices from the catalogue.',
           ])

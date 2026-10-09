@@ -15,6 +15,8 @@ class FenceQuotationFormRestoreTest extends TestCase
         $this->assertStringContainsString("value === '1'", $blade);
         $this->assertStringContainsString('FenceSideFlags::normaliseSides', $blade);
         $this->assertStringContainsString('Must match App\\Support\\FenceSideFlags::connectedToPrevious', $blade);
+        $this->assertStringContainsString('$priceDeltaAmountLabel', $blade);
+        $this->assertStringNotContainsString('@endif.', $blade);
 
         $this->assertStringContainsString('flagOn(side.already_have_post_left)', $blade);
         $this->assertStringContainsString('flagOn(side.already_have_post_right)', $blade);
