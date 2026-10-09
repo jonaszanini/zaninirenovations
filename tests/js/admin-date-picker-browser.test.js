@@ -78,58 +78,85 @@ async function colorSchemes(page) {
   }, DATE_TYPES);
 }
 
-async function indicatorVisibility(page) {
+/**
+ * Chrome does not report ::-webkit-calendar-picker-indicator via
+ * getComputedStyle(), so read the declared filter from the dark stylesheet.
+ * Restoring invert(0.85) must fail this check.
+ */
+async function darkIndicatorFilters(page) {
   return page.evaluate(() => {
-    const el = document.querySelector('input[type="date"]');
-    if (!el) return null;
-    const styles = getComputedStyle(el, '::-webkit-calendar-picker-indicator');
-    return {
-      opacity: styles.opacity,
-      filter: styles.filter,
-      cursor: styles.cursor,
-    };
+    const out = [];
+    for (let s = 0; s < document.styleSheets.length; s++) {
+      let rules;
+      try {
+        rules = document.styleSheets[s].cssRules;
+      } catch (err) {
+        continue;
+      }
+      for (let i = 0; i < rules.length; i++) {
+        const rule = rules[i];
+        const sel = rule.selectorText || '';
+        if (sel.indexOf('html.admin-dark') === -1) continue;
+        if (sel.indexOf('calendar-picker-indicator') === -1) continue;
+        out.push({
+          selector: sel,
+          filter: (rule.style && rule.style.filter) || '',
+        });
+      }
+    }
+    return out;
   });
 }
 
-async function clickCallsShowPicker(page, selector) {
-  return page.evaluate((sel) => {
+async function activate(page, selector, pointerType) {
+  return page.evaluate((sel, type) => {
     const el = document.querySelector(sel);
     if (!el) return { exists: false };
     let calls = 0;
+    let threw = false;
     const original = el.showPicker;
     el.showPicker = function () {
       calls += 1;
     };
-    el.click();
+    const opts = { bubbles: true, cancelable: true, pointerType: type, pointerId: 1 };
+    el.dispatchEvent(new PointerEvent('pointerdown', opts));
+    el.dispatchEvent(new PointerEvent('pointerup', opts));
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     if (original) el.showPicker = original;
     else delete el.showPicker;
     return {
       exists: true,
       calls: calls,
+      threw: threw,
       readOnly: !!el.readOnly,
       disabled: !!el.disabled,
     };
-  }, selector);
+  }, selector, pointerType);
 }
 
-async function typingStillWorks(page) {
-  return page.evaluate(() => {
-    const date = document.querySelector('#due-date');
-    const notes = document.querySelector('#notes');
-    const keydown = new KeyboardEvent('keydown', { key: '1', bubbles: true, cancelable: true });
-    date.dispatchEvent(keydown);
-    notes.focus();
-    notes.value = '';
-    const input = new InputEvent('input', { bubbles: true, cancelable: true, data: 'ok' });
-    notes.value = 'typed-ok';
-    notes.dispatchEvent(input);
-    return {
-      dateKeyBlocked: keydown.defaultPrevented,
-      dateReadOnly: !!date.readOnly,
-      dateDisabled: !!date.disabled,
-      notesValue: notes.value,
+async function activateShowPickerThrows(page, selector, pointerType) {
+  return page.evaluate((sel, type) => {
+    const el = document.querySelector(sel);
+    let threwToCaller = false;
+    let calls = 0;
+    el.showPicker = function () {
+      calls += 1;
+      throw new Error('showPicker failed');
     };
-  });
+    try {
+      const opts = { bubbles: true, cancelable: true, pointerType: type, pointerId: 1 };
+      el.dispatchEvent(new PointerEvent('pointerdown', opts));
+      el.dispatchEvent(new PointerEvent('pointerup', opts));
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    } catch (err) {
+      threwToCaller = true;
+    }
+    return {
+      threwToCaller: threwToCaller,
+      calls: calls,
+      notesStillThere: !!document.getElementById('notes'),
+    };
+  }, selector, pointerType);
 }
 
 (async function main() {
@@ -140,6 +167,16 @@ async function typingStillWorks(page) {
     const page = await browser.newPage();
     await page.goto(base, { waitUntil: 'load' });
     await page.waitForFunction(() => !!(window.AdminDatePicker && window.AdminDatePicker.bind));
+
+    const filters = await darkIndicatorFilters(page);
+    assert.ok(filters.length > 0, 'dark stylesheet declares calendar-picker-indicator rules');
+    filters.forEach((rule) => {
+      assert.ok(!/invert/i.test(rule.filter), 'dark indicator filter must not invert: ' + rule.selector + ' => ' + rule.filter);
+    });
+    assert.ok(
+      filters.some((rule) => String(rule.filter).toLowerCase() === 'none'),
+      'dark indicator must declare filter: none so invert(0.85) cannot sneak back'
+    );
 
     for (const viewport of VIEWPORTS) {
       await page.setViewport({
@@ -162,32 +199,75 @@ async function typingStillWorks(page) {
           }
         });
 
-        const icon = await indicatorVisibility(page);
-        assert.ok(icon, label + ' has a date indicator');
-        assert.ok(parseFloat(icon.opacity) >= 0.99, label + ' calendar icon opacity is ' + icon.opacity);
-        if (dark) {
-          assert.ok(!/invert/i.test(icon.filter || ''), label + ' dark icon must not use invert, got ' + icon.filter);
-        }
-
         for (const type of DATE_TYPES) {
-          const result = await clickCallsShowPicker(page, 'input[type="' + type + '"]:not([readonly])');
-          assert.strictEqual(result.calls, 1, label + ' click on ' + type + ' calls showPicker');
+          const sel = 'input[type="' + type + '"]:not([readonly])';
+          const touch = await activate(page, sel, 'touch');
+          assert.strictEqual(touch.calls, 1, label + ' touch tap on ' + type + ' opens the picker');
+          const pen = await activate(page, sel, 'pen');
+          assert.strictEqual(pen.calls, 1, label + ' pen tap on ' + type + ' opens the picker');
+          const mouse = await activate(page, sel, 'mouse');
+          assert.strictEqual(mouse.calls, 0, label + ' mouse click on ' + type + ' does not open the picker');
         }
 
-        const locked = await clickCallsShowPicker(page, '#locked-date');
-        assert.strictEqual(locked.calls, 0, label + ' readonly date does not call showPicker');
-
-        const typing = await typingStillWorks(page);
-        assert.strictEqual(typing.dateKeyBlocked, false, label + ' date keydown is not prevented');
-        assert.strictEqual(typing.dateReadOnly, false, label + ' date stays editable');
-        assert.strictEqual(typing.notesValue, 'typed-ok', label + ' typing into a nearby field still works');
+        const lockedTouch = await activate(page, '#locked-date', 'touch');
+        assert.strictEqual(lockedTouch.calls, 0, label + ' readonly date does not open the picker');
       }
     }
 
-    await page.focus('#notes');
-    await page.keyboard.type(' hello');
-    const notesAfterType = await page.$eval('#notes', (el) => el.value);
-    assert.ok(notesAfterType.indexOf('hello') !== -1, 'real keyboard typing reaches a text field');
+    await setTheme(page, false);
+    await page.setViewport({ width: 1280, height: 800, isMobile: false, hasTouch: false });
+
+    const mouseThenType = await page.evaluate(() => {
+      const el = document.querySelector('#due-date');
+      let calls = 0;
+      el.showPicker = function () { calls += 1; };
+      const opts = { bubbles: true, cancelable: true, pointerType: 'mouse', pointerId: 1 };
+      el.value = '';
+      el.dispatchEvent(new PointerEvent('pointerdown', opts));
+      el.dispatchEvent(new PointerEvent('pointerup', opts));
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      el.focus();
+      return { calls: calls };
+    });
+    assert.strictEqual(mouseThenType.calls, 0, 'mouse click does not call showPicker');
+    await page.focus('#due-date');
+    await page.keyboard.type('10152026');
+    const typedDate = await page.$eval('#due-date', (el) => el.value);
+    assert.strictEqual(typedDate, '2026-10-15', 'mouse click then typing saves the date value, got ' + typedDate);
+
+    const tabResult = await page.evaluate(() => {
+      const date = document.querySelector('#due-date');
+      let calls = 0;
+      date.showPicker = function () { calls += 1; };
+      document.getElementById('client-name').focus();
+      return { start: document.activeElement && document.activeElement.id };
+    });
+    assert.strictEqual(tabResult.start, 'client-name');
+    await page.keyboard.press('Tab');
+    const afterTab = await page.evaluate(() => {
+      const date = document.querySelector('#due-date');
+      return {
+        active: document.activeElement && document.activeElement.id,
+        // Re-read calls from a fresh spy around Tab:
+      };
+    });
+    assert.strictEqual(afterTab.active, 'due-date', 'Tab moves focus to the date field');
+
+    const tabDidNotOpen = await page.evaluate(() => {
+      const date = document.querySelector('#due-date');
+      let calls = 0;
+      date.showPicker = function () { calls += 1; };
+      document.getElementById('client-name').focus();
+      date.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+      date.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+      return calls;
+    });
+    assert.strictEqual(tabDidNotOpen, 0, 'Tab / focus does not open the picker');
+
+    const boom = await activateShowPickerThrows(page, '#due-date', 'touch');
+    assert.strictEqual(boom.calls, 1, 'throwing showPicker was still invoked on touch');
+    assert.strictEqual(boom.threwToCaller, false, 'a throwing showPicker does not break the page');
+    assert.strictEqual(boom.notesStillThere, true, 'DOM remains usable after showPicker throws');
   } finally {
     await browser.close();
     server.close();

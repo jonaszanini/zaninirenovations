@@ -44,6 +44,8 @@ class AdminDatePickerThemeTest extends TestCase
 
         $js = file_get_contents(public_path('js/admin-date-picker.js'));
         $this->assertStringContainsString('showPicker', $js);
-        $this->assertStringContainsString('try {', $js);
+        $this->assertStringContainsString("pointerType", $js);
+        $this->assertStringContainsString("'touch'", $js);
+        $this->assertStringContainsString("'pen'", $js);
     }
 }
