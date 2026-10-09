@@ -52,4 +52,21 @@ class FenceSideFlagsTest extends TestCase
         $this->assertFalse($sides[1]['gate_goes_here']);
         $this->assertTrue($sides[1]['connected_to_previous']);
     }
+
+    public function test_null_connected_matches_missing_and_defaults_on_after_run_zero(): void
+    {
+        $this->assertFalse(FenceSideFlags::connectedToPrevious(null, 0));
+        $this->assertTrue(FenceSideFlags::connectedToPrevious(null, 1));
+        $this->assertTrue(FenceSideFlags::connectedToPrevious(null, 2));
+        $this->assertFalse(FenceSideFlags::connectedToPrevious('0', 1));
+        $this->assertFalse(FenceSideFlags::connectedToPrevious(false, 1));
+        $this->assertTrue(FenceSideFlags::connectedToPrevious('1', 1));
+
+        $sides = FenceSideFlags::normaliseSides([
+            ['length_ft' => 20, 'connected_to_previous' => null],
+            ['length_ft' => 16, 'connected_to_previous' => null],
+        ]);
+        $this->assertTrue($sides[0]['connected_to_previous']);
+        $this->assertTrue($sides[1]['connected_to_previous']);
+    }
 }

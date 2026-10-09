@@ -826,13 +826,7 @@ class ClientProjectQuotation extends Model
             }
         }
 
-        if ($indexes !== []) {
-            return $indexes;
-        }
-
-        $one = $this->commuteMergeTargetIndex($items);
-
-        return $one !== null ? [$one] : [];
+        return $indexes;
     }
 
     /**

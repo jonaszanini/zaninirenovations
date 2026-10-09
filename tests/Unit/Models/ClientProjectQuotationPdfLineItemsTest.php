@@ -325,6 +325,37 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
         $this->assertEqualsWithDelta(153.00, $quote->pdfGrandTotal(), 0.01);
     }
 
+    public function test_pdf_creates_labour_line_when_materials_are_taxed_and_there_is_no_labour(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'items' => [
+                [
+                    'description' => 'Material',
+                    'amount' => 100.00,
+                    'apply_hst' => true,
+                ],
+                [
+                    'description' => 'Commute expense',
+                    'amount' => 113.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $lines = $quote->pdfLineItems();
+        $descriptions = array_column($lines, 'description');
+        $byDesc = collect($lines)->keyBy('description');
+
+        $this->assertFalse((bool) preg_grep('/Commute/i', $descriptions));
+        $this->assertEqualsWithDelta(100.00, $byDesc['Material']['amount'], 0.01);
+        $this->assertTrue($byDesc['Material']['apply_hst']);
+        $this->assertEqualsWithDelta(113.00, $byDesc['Labour']['amount'], 0.01);
+        $this->assertFalse($byDesc['Labour']['apply_hst']);
+        $this->assertEqualsWithDelta(226.00, $quote->pdfGrandTotal(), 0.01);
+    }
+
     public function test_pdf_creates_labour_line_for_debris_when_there_is_no_labour(): void
     {
         $quote = new ClientProjectQuotation([

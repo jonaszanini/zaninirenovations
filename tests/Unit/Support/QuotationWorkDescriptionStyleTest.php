@@ -29,6 +29,15 @@ class QuotationWorkDescriptionStyleTest extends TestCase
         $this->assertStringNotContainsStringIgnoringCase('industry best practices', $out);
         $this->assertStringNotContainsStringIgnoringCase('high value investment', $out);
         $this->assertStringNotContainsStringIgnoringCase('enhances both', $out);
+        $this->assertStringNotContainsStringIgnoringCase('that both', $out);
+        $this->assertStringNotContainsStringIgnoringCase('to deliver a', $out);
+        $this->assertStringNotContainsStringIgnoringCase('tailored', $out);
+        $this->assertStringNotContainsStringIgnoringCase('robust', $out);
+        $this->assertStringNotContainsStringIgnoringCase('premium', $out);
+        $this->assertDoesNotMatchRegularExpression('/\s{2,}/', $out);
+        $this->assertDoesNotMatchRegularExpression('/\s[.,]/', $out);
+        $this->assertStringContainsString('will be installed.', $out);
+        $this->assertMatchesRegularExpression('/^[A-Z]/', $out);
     }
 
     public function test_keeps_fully_insured_and_strips_banned_claims(): void
@@ -49,5 +58,23 @@ class QuotationWorkDescriptionStyleTest extends TestCase
         $plain = 'This quote is for installing about 58 linear feet of 6 ft high board-style fence. The fence has 3 sections. Posts are 4x4, set in concrete.';
 
         $this->assertSame($plain, QuotationWorkDescriptionStyle::apply($plain));
+    }
+
+    public function test_strip_cleans_leftover_sales_fragments_and_empty_input(): void
+    {
+        $this->assertSame('', QuotationWorkDescriptionStyle::strip('   '));
+        $this->assertSame('', QuotationWorkDescriptionStyle::strip('```'));
+        $this->assertSame(
+            'Posts are 4x4, set in concrete.',
+            QuotationWorkDescriptionStyle::strip('Posts are 4x4, set in concrete.')
+        );
+        $this->assertSame(
+            'The backyard will get a new fence.',
+            QuotationWorkDescriptionStyle::apply('Elevate the backyard will get a new fence.')
+        );
+        $this->assertStringContainsString(
+            'Behr Premium Plus',
+            QuotationWorkDescriptionStyle::apply('Paint is Behr Premium Plus on the walls.')
+        );
     }
 }

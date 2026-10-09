@@ -21,6 +21,23 @@ final class FenceSideFlags
     }
 
     /**
+     * Run 0 has no "connected" checkbox. Later runs default to connected
+     * when the flag is missing or null (same as the JS preview).
+     */
+    public static function connectedToPrevious(mixed $value, int $index): bool
+    {
+        if ($index <= 0) {
+            return false;
+        }
+
+        if ($value === null) {
+            return true;
+        }
+
+        return self::isOn($value);
+    }
+
+    /**
      * @param  array<int|string, mixed>  $sides
      * @return list<array<string, mixed>>
      */
@@ -47,6 +64,7 @@ final class FenceSideFlags
         $side['already_have_post_right'] = self::isOn($side['already_have_post_right'] ?? false);
         $side['gate_goes_here'] = self::isOn($side['gate_goes_here'] ?? false);
         $side['connected_to_previous'] = array_key_exists('connected_to_previous', $side)
+            && $side['connected_to_previous'] !== null
             ? self::isOn($side['connected_to_previous'])
             : true;
 

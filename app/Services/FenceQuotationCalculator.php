@@ -76,7 +76,9 @@ class FenceQuotationCalculator
     }
 
     /**
-     * Compare live catalogue prices to a saved snapshot (same quantities).
+     * Compare live catalogue unit prices to a saved snapshot.
+     * The dollar delta is unit-price change × saved quantity only — quantity
+     * or formula changes are not part of the banner amount.
      *
      * @param  array<string, mixed>  $live
      * @param  array<string, mixed>|null  $saved
@@ -86,30 +88,37 @@ class FenceQuotationCalculator
     {
         $liveMat = (float) ($live['totals']['materials_subtotal'] ?? 0);
         $savedMat = (float) ($saved['totals']['materials_subtotal'] ?? 0);
-        $delta = round($liveMat - $savedMat, 2);
 
-        $livePrices = [];
+        $liveByKey = [];
         foreach ($live['materials'] ?? [] as $row) {
             if (is_array($row) && ($row['key'] ?? '') !== '') {
-                $livePrices[(string) $row['key']] = round((float) ($row['unit_price'] ?? 0), 2);
+                $liveByKey[(string) $row['key']] = $row;
             }
         }
+
         $changed = false;
+        $delta = 0.0;
         foreach ($saved['materials'] ?? [] as $row) {
             if (! is_array($row) || ($row['key'] ?? '') === '') {
                 continue;
             }
             $key = (string) $row['key'];
-            $savedPrice = round((float) ($row['unit_price'] ?? 0), 2);
-            if (array_key_exists($key, $livePrices) && abs($livePrices[$key] - $savedPrice) > 0.009) {
-                $changed = true;
-                break;
+            if (! array_key_exists($key, $liveByKey)) {
+                continue;
             }
+            $savedPrice = round((float) ($row['unit_price'] ?? 0), 2);
+            $livePrice = round((float) ($liveByKey[$key]['unit_price'] ?? 0), 2);
+            if (abs($livePrice - $savedPrice) <= 0.009) {
+                continue;
+            }
+            $changed = true;
+            $savedQty = (float) ($row['quantity'] ?? 0);
+            $delta += ($livePrice - $savedPrice) * $savedQty;
         }
 
         return [
             'changed' => $changed,
-            'delta' => $delta,
+            'delta' => round($delta, 2),
             'saved_materials' => $savedMat,
             'live_materials' => $liveMat,
         ];
@@ -153,11 +162,10 @@ class FenceQuotationCalculator
                 continue;
             }
             $gateSpec = FenceGateSpec::fromSide($side);
-            $connected = $index === 0
-                ? false
-                : (array_key_exists('connected_to_previous', $side)
-                    ? FenceSideFlags::isOn($side['connected_to_previous'])
-                    : true);
+            $connected = FenceSideFlags::connectedToPrevious(
+                $side['connected_to_previous'] ?? null,
+                $index
+            );
             $sides[] = [
                 'length_ft' => round($len, 2),
                 'already_have_post_left' => FenceSideFlags::isOn($side['already_have_post_left'] ?? false),
@@ -238,9 +246,10 @@ class FenceQuotationCalculator
 
             $existingLeft = (bool) ($side['already_have_post_left'] ?? false);
             $existingRight = (bool) ($side['already_have_post_right'] ?? false);
-            $connectedToPrevious = $idx === 0
-                ? false
-                : (bool) ($side['connected_to_previous'] ?? true);
+            $connectedToPrevious = FenceSideFlags::connectedToPrevious(
+                $side['connected_to_previous'] ?? null,
+                $idx
+            );
 
             // Gate-side layout: gate consumes its opening at the end of the run.
             //   [existing left?] — fence run (length − opening) — hinge — opening — far post
@@ -301,7 +310,10 @@ class FenceQuotationCalculator
 
         $structuralPosts = array_sum($postsPerSide);
         for ($i = 1; $i < $sideCount; $i++) {
-            $connected = (bool) ($in['sides'][$i]['connected_to_previous'] ?? true);
+            $connected = FenceSideFlags::connectedToPrevious(
+                $in['sides'][$i]['connected_to_previous'] ?? null,
+                $i
+            );
             if (! $connected) {
                 continue;
             }

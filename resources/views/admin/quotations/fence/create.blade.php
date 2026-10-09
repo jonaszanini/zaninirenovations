@@ -708,9 +708,12 @@
       @if ($isEdit && ! empty($priceDelta['changed']) && ! $initialReprice)
         <div class="fq-price-banner" id="fq-price-banner">
           Catalogue unit prices have changed since this quote was saved
-          (materials {{ ($priceDelta['delta'] ?? 0) >= 0 ? '+' : '' }}{{ \App\Models\ClientProject::formatMoney((float) ($priceDelta['delta'] ?? 0)) }}).
-          Save keeps last-save unit prices; quantities still follow the current runs.
-          Re-price updates unit prices from the catalogue.
+          @if (abs((float) ($priceDelta['delta'] ?? 0)) >= 0.01)
+            (unit prices {{ ($priceDelta['delta'] ?? 0) >= 0 ? '+' : '' }}{{ \App\Models\ClientProject::formatMoney((float) ($priceDelta['delta'] ?? 0)) }})
+          @endif.
+          @include('admin.partials.info_tip', [
+            'text' => 'Save keeps the unit prices from the last save. Quantities still follow the current runs. Re-price updates unit prices from the catalogue.',
+          ])
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-reprice-btn">
             Re-price from catalogue
           </button>
@@ -863,15 +866,20 @@
     return value === true || value === 1 || value === '1';
   }
 
+  // Must match App\Support\FenceSideFlags::connectedToPrevious.
+  function connectedOn(value, index) {
+    if (index <= 0) return false;
+    if (value === undefined || value === null) return true;
+    return flagOn(value);
+  }
+
   function renderSides(sides) {
     sidesEl.innerHTML = '';
     sides.forEach(function (side, i) {
       var leftChecked = !!(side && flagOn(side.already_have_post_left));
       var rightChecked = !!(side && flagOn(side.already_have_post_right));
       var gateChecked = !!(side && flagOn(side.gate_goes_here));
-      var connectedChecked = !side || side.connected_to_previous === undefined || side.connected_to_previous === null
-        ? true
-        : flagOn(side.connected_to_previous);
+      var connectedChecked = connectedOn(side ? side.connected_to_previous : null, i);
       var preset = (side && side.gate_preset) ? side.gate_preset : '4_single';
       var card = document.createElement('div');
       card.className = 'fq-side-card';

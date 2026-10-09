@@ -116,14 +116,49 @@ TXT;
 
         // Drop leftover sales-close clauses without touching earlier facts.
         $text = preg_replace('/\bthat enhances?\b[^.]*\.?/iu', '', $text) ?? $text;
+        $text = preg_replace('/\bthat both\b[^.]*\.?/iu', '', $text) ?? $text;
         $text = preg_replace('/\bto deliver a\s*(?:job\s*)?\.?/iu', '.', $text) ?? $text;
-        $text = preg_replace('/\bpremium\s+(?=fence|materials|components)/iu', '', $text) ?? $text;
+        $text = preg_replace('/\bpremium\s+(?=fence|materials|components|pickets|boards)/iu', '', $text) ?? $text;
 
+        return self::strip($text);
+    }
+
+    /**
+     * Grammar / leftover cleanup after phrase replacements. Safe on already
+     * plain contractor wording (no-op besides whitespace).
+     */
+    public static function strip(string $text): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $text = preg_replace('/^```[a-zA-Z0-9_-]*\s*/u', '', $text) ?? $text;
+        $text = preg_replace('/\s*```$/u', '', $text) ?? $text;
+
+        $text = preg_replace('/\b(a|an|the)\s+\1\b/iu', '$1', $text) ?? $text;
         $text = preg_replace('/[ \t]+/u', ' ', $text) ?? $text;
         $text = preg_replace('/\s+,/u', ',', $text) ?? $text;
+        $text = preg_replace('/\s+;/u', ';', $text) ?? $text;
+        $text = preg_replace('/,\s*,/u', ',', $text) ?? $text;
         $text = preg_replace('/\s+\./u', '.', $text) ?? $text;
         $text = preg_replace('/\.\s*\./u', '.', $text) ?? $text;
+        $text = preg_replace('/(?:^|\s)\.(?:\s|$)/u', ' ', $text) ?? $text;
         $text = preg_replace('/\s{2,}/u', ' ', $text) ?? $text;
+
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $text = preg_replace_callback(
+            '/(?:^|[.!?]\s+)(\p{Ll})/u',
+            static function (array $m): string {
+                return substr($m[0], 0, -strlen($m[1])).mb_strtoupper($m[1]);
+            },
+            $text
+        ) ?? $text;
 
         return trim($text);
     }

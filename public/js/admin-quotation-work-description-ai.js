@@ -436,11 +436,16 @@
   }
 
   function collectLowDeckContext(form) {
+    var spacing = formSelectValue(form, 'joist_spacing_in') || formValue(form, 'joist_spacing_in');
+    var geom = document.getElementById('ld-geometry');
+    if (!spacing && geom && geom.getAttribute('data-joist-spacing-in')) {
+      spacing = geom.getAttribute('data-joist-spacing-in');
+    }
     return {
       client_name: formValue(form, 'client_name'),
       width_ft: formValue(form, 'width_ft'),
       length_ft: formValue(form, 'length_ft'),
-      joist_spacing_in: formValue(form, 'joist_spacing_in'),
+      joist_spacing_in: spacing,
       materials_summary: collectMaterialNames('#ld-materials', '.ld-breakdown-note').join('\n'),
     };
   }

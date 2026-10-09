@@ -118,6 +118,78 @@ class FenceQuotationOct8FixesTest extends TestCase
         $this->assertSame(8.0, $result['geometry']['gates'][0]['width_ft']);
     }
 
+    public function test_second_run_connected_string_zero_does_not_share_a_corner(): void
+    {
+        $connected = $this->calculator()->calculate([
+            'sides' => [
+                ['length_ft' => 16],
+                ['length_ft' => 16, 'connected_to_previous' => true],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+        $stringZero = $this->calculator()->calculate([
+            'sides' => [
+                ['length_ft' => 16],
+                ['length_ft' => 16, 'connected_to_previous' => '0'],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+        $nullConnected = $this->calculator()->calculate([
+            'sides' => [
+                ['length_ft' => 16],
+                ['length_ft' => 16, 'connected_to_previous' => null],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+
+        $this->assertFalse($stringZero['geometry']['sides_breakdown'][1]['connected_to_previous']);
+        $this->assertTrue($nullConnected['geometry']['sides_breakdown'][1]['connected_to_previous']);
+        $this->assertSame(
+            $connected['geometry']['structural_posts'] + 1,
+            $stringZero['geometry']['structural_posts']
+        );
+        $this->assertSame(
+            $connected['geometry']['structural_posts'],
+            $nullConnected['geometry']['structural_posts']
+        );
+    }
+
+    public function test_catalogue_price_delta_ignores_quantity_only_changes(): void
+    {
+        $saved = [
+            'materials' => [
+                ['key' => FenceMaterial::KEY_BOARD_6, 'unit_price' => 8.0, 'quantity' => 10],
+            ],
+            'totals' => ['materials_subtotal' => 80.0],
+        ];
+        $liveQtyChanged = [
+            'materials' => [
+                ['key' => FenceMaterial::KEY_BOARD_6, 'unit_price' => 8.0, 'quantity' => 20],
+            ],
+            'totals' => ['materials_subtotal' => 160.0],
+        ];
+        $livePriceChanged = [
+            'materials' => [
+                ['key' => FenceMaterial::KEY_BOARD_6, 'unit_price' => 10.0, 'quantity' => 20],
+            ],
+            'totals' => ['materials_subtotal' => 200.0],
+        ];
+
+        $qtyOnly = FenceQuotationCalculator::cataloguePriceDelta($liveQtyChanged, $saved);
+        $priceAndQty = FenceQuotationCalculator::cataloguePriceDelta($livePriceChanged, $saved);
+
+        $this->assertFalse($qtyOnly['changed']);
+        $this->assertEqualsWithDelta(0.0, $qtyOnly['delta'], 0.01);
+        $this->assertTrue($priceAndQty['changed']);
+        $this->assertEqualsWithDelta(20.0, $priceAndQty['delta'], 0.01);
+    }
+
     public function test_disconnected_runs_do_not_share_a_corner_post(): void
     {
         $connected = $this->calculator()->calculate([

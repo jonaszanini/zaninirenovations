@@ -188,9 +188,7 @@ class QuotationWorkDescriptionContextBuilder
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
         $this->appendLine($lines, 'Width', isset($c['width_ft']) && $c['width_ft'] !== '' ? $c['width_ft'].' ft' : null);
         $this->appendLine($lines, 'Length', isset($c['length_ft']) && $c['length_ft'] !== '' ? $c['length_ft'].' ft' : null);
-        if (isset($c['joist_spacing_in']) && $c['joist_spacing_in'] !== '' && is_numeric($c['joist_spacing_in'])) {
-            $this->appendLine($lines, 'Joist spacing', $c['joist_spacing_in'].' in');
-        }
+        $this->appendLine($lines, 'Joist spacing', $this->formatInchMeasure($c['joist_spacing_in'] ?? null));
 
         $materials = $this->clientFacingMaterialNames($c);
         $this->appendBlock($lines, 'Materials list', $materials !== '' ? $materials : null);
@@ -506,7 +504,7 @@ class QuotationWorkDescriptionContextBuilder
             $this->appendLine($lines, 'Foundation', ShedQuotationCalculator::foundationLabel($foundation));
         }
         $this->appendLine($lines, 'Joist size', $c['joist_size'] ?? null);
-        $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) && $c['joist_spacing_in'] !== '' ? $c['joist_spacing_in'].' in' : null);
+        $this->appendLine($lines, 'Joist spacing', $this->formatInchMeasure($c['joist_spacing_in'] ?? null));
         $this->appendLine($lines, 'Stud size', $c['stud_size'] ?? null);
         $this->appendLine($lines, 'Stud spacing', isset($c['stud_spacing_in']) && $c['stud_spacing_in'] !== '' ? $c['stud_spacing_in'].' in' : null);
 
@@ -1192,6 +1190,42 @@ class QuotationWorkDescriptionContextBuilder
     /**
      * @param  list<string>  $lines
      */
+    /**
+     * Plain "16 in" from a number, "16", "16-inch", or "16 in (auto, max 15 in.)".
+     * Formula notes are dropped. Empty / non-numeric values are omitted.
+     */
+    private function formatInchMeasure(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_numeric($value)) {
+            $n = (float) $value;
+            if ($n <= 0) {
+                return null;
+            }
+
+            return $this->plainNumber($n).' in';
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+        if (! preg_match('/^\s*(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|"|″)?\b/i', $raw, $m)) {
+            return null;
+        }
+
+        return $this->plainNumber((float) $m[1]).' in';
+    }
+
+    private function plainNumber(float $n): string
+    {
+        $formatted = rtrim(rtrim(number_format($n, 2, '.', ''), '0'), '.');
+
+        return $formatted === '' ? '0' : $formatted;
+    }
+
     private function appendLine(array &$lines, string $label, mixed $value): void
     {
         $text = is_scalar($value) ? trim((string) $value) : '';
