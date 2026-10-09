@@ -33,6 +33,7 @@ class MillworkQuotation extends Model
         'commute_round_trip_cost',
         'commute_amount',
         'version',
+        'cut_plan_version',
         'linked_at',
     ];
 
@@ -52,6 +53,7 @@ class MillworkQuotation extends Model
         'commute_round_trip_cost' => 'decimal:2',
         'commute_amount' => 'decimal:2',
         'version' => 'integer',
+        'cut_plan_version' => 'integer',
         'linked_at' => 'datetime',
     ];
 
@@ -98,30 +100,21 @@ class MillworkQuotation extends Model
 
     public function cutPlanVersion(): int
     {
-        $calc = is_array($this->calculation) ? $this->calculation : [];
-        $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
+        if ($this->cut_plan_version !== null && $this->cut_plan_version !== '') {
+            return ((int) $this->cut_plan_version) >= 2 ? 2 : 1;
+        }
 
-        return (int) ($cut['version'] ?? 1);
+        return 1;
     }
 
     public function builderVersion(): int
     {
-        $inputs = is_array($this->inputs) ? $this->inputs : [];
-        if (isset($inputs['_builder_version']) && is_numeric($inputs['_builder_version'])) {
-            return ((int) $inputs['_builder_version']) >= 2 ? 2 : 1;
-        }
-        $calc = is_array($this->calculation) ? $this->calculation : [];
-        $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
-        if (isset($cut['builder_version']) && is_numeric($cut['builder_version'])) {
-            return ((int) $cut['builder_version']) >= 2 ? 2 : 1;
-        }
-
-        return $this->cutPlanVersion() >= 2 ? 2 : 1;
+        return $this->cutPlanVersion();
     }
 
     public function usesLegacyCutBuilder(): bool
     {
-        return $this->builderVersion() < \App\Services\Millwork\MillworkPartBuilder::BUILDER_VERSION;
+        return $this->cutPlanVersion() < \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
     }
 
     public function displayTitle(): string

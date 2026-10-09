@@ -167,18 +167,23 @@
       debounceTimer = setTimeout(runPreview, 280);
     }
 
-    function runPreview() {
-      if (!previewUrl) return;
+    function fetchPreview() {
+      if (!previewUrl) return Promise.resolve(null);
       var body = new FormData(form);
       body.delete('_method');
-      fetch(previewUrl, {
+      return fetch(previewUrl, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         body: body,
         credentials: 'same-origin'
-      }).then(function (res) { return res.json(); }).then(function (data) {
-        renderPreview(data);
-      }).catch(function () { /* ignore */ });
+      }).then(function (res) { return res.json(); });
+    }
+
+    function runPreview() {
+      return fetchPreview().then(function (data) {
+        if (data) renderPreview(data);
+        return data;
+      }).catch(function () { return null; });
     }
 
     function renderPreview(data) {
@@ -894,15 +899,66 @@
     syncTotalsBarSpace();
 
     var upgradeBtn = document.getElementById('mw-upgrade-cut-plan-btn');
+    var undoBtn = document.getElementById('mw-undo-cut-plan-btn');
+    var undoBannerBtn = document.getElementById('mw-undo-cut-plan-banner-btn');
+    var legacyVersion = String(cfg.cutPlanVersion || 1);
+
+    function setUpgradeFlags(on) {
+      var flag = document.getElementById('mw-upgrade-cut-plan');
+      var ver = document.getElementById('mw-cut-plan-version');
+      if (flag) flag.value = on ? '1' : '0';
+      if (ver) ver.value = on ? '2' : legacyVersion;
+    }
+
+    function setUpgradeUi(on) {
+      if (upgradeBtn) upgradeBtn.hidden = !!on;
+      if (undoBtn) undoBtn.hidden = !on;
+      if (undoBannerBtn) undoBannerBtn.hidden = !on;
+    }
+
+    function confirmRecalc(message) {
+      if (window.AdminDialog && typeof window.AdminDialog.confirm === 'function') {
+        return window.AdminDialog.confirm(message, {
+          title: 'Recalculate with new cut plan',
+          confirmLabel: 'Recalculate',
+          cancelLabel: 'Cancel'
+        });
+      }
+      return Promise.resolve(window.confirm(message));
+    }
+
+    function revertToLegacy() {
+      setUpgradeFlags(false);
+      setUpgradeUi(false);
+      runPreview();
+    }
+
     if (upgradeBtn) {
       upgradeBtn.addEventListener('click', function () {
-        var flag = document.getElementById('mw-upgrade-cut-plan');
-        var ver = document.getElementById('mw-builder-version');
-        if (flag) flag.value = '1';
-        if (ver) ver.value = '2';
-        runPreview();
-        upgradeBtn.hidden = true;
+        setUpgradeFlags(true);
+        fetchPreview().then(function (data) {
+          var notice = data && data.recalc_notice;
+          var wasLabel = (notice && notice.was_label) || fmt(cfg.storedTotal || 0);
+          var nowLabel = (notice && notice.now_label) || (data && data.summary ? fmt(data.summary.grand_total) : '');
+          var msg = 'Was ' + wasLabel + ', now ' + nowLabel + '. Recalculate this quote with the new cut plan? You can undo before saving.';
+          return confirmRecalc(msg).then(function (ok) {
+            if (ok) {
+              if (data) renderPreview(data);
+              setUpgradeUi(true);
+            } else {
+              setUpgradeFlags(false);
+            }
+          });
+        }).catch(function () {
+          setUpgradeFlags(false);
+        });
       });
+    }
+    if (undoBtn) {
+      undoBtn.addEventListener('click', revertToLegacy);
+    }
+    if (undoBannerBtn) {
+      undoBannerBtn.addEventListener('click', revertToLegacy);
     }
 
     if (cfg.initialPreview) renderPreview(cfg.initialPreview);

@@ -540,6 +540,48 @@ class MillworkSettings extends Model
         $id = strtolower((string) ($row['id'] ?? ''));
         $name = strtolower((string) ($row['name'] ?? ''));
 
+        if ($catalogId > 0) {
+            return 'material:'.$catalogId;
+        }
+        if ($sku !== '') {
+            return 'sku:'.$sku;
+        }
+
+        if (self::isDefaultCatalogueSheetId($id)) {
+            return self::defaultCatalogueSpecies($id, $name, $row);
+        }
+
+        if ($id !== '') {
+            return 'id:'.$id;
+        }
+        if ($name !== '') {
+            return 'name:'.$name;
+        }
+
+        return 'unknown';
+    }
+
+    private static function isDefaultCatalogueSheetId(string $id): bool
+    {
+        if ($id === '') {
+            return false;
+        }
+
+        return str_starts_with($id, 'ws_ply_34_cab_')
+            || str_starts_with($id, 'ws_ply_34_util_')
+            || str_starts_with($id, 'ws_ply_14_')
+            || str_starts_with($id, 'ws_mdf_')
+            || str_starts_with($id, 'ws_bb_bb_')
+            || str_starts_with($id, 'ws_b_bb_')
+            || $id === 'ws_birch_5x5'
+            || str_contains($id, 'birch_5x5');
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private static function defaultCatalogueSpecies(string $id, string $name, array $row): string
+    {
         if (str_starts_with($id, 'ws_bb_bb_') || str_contains($name, 'bb/bb')) {
             return 'baltic_bb_bb';
         }
@@ -549,10 +591,10 @@ class MillworkSettings extends Model
         if (str_contains($id, 'birch_5x5') || str_contains($name, '5×5') || str_contains($name, '5x5')) {
             return 'baltic_5x5';
         }
-        if (($row['material_kind'] ?? '') === 'mdf' || str_contains($name, 'mdf')) {
+        if (($row['material_kind'] ?? '') === 'mdf' || str_starts_with($id, 'ws_mdf_') || str_contains($name, 'mdf')) {
             return 'mdf';
         }
-        if (str_contains($name, 'utility')) {
+        if (str_starts_with($id, 'ws_ply_34_util_') || str_contains($name, 'utility')) {
             return 'utility_ply';
         }
         if (str_contains($name, 'baltic')) {
@@ -562,21 +604,11 @@ class MillworkSettings extends Model
             || (str_contains($name, 'cabinet-grade') && str_contains($name, 'plywood'))) {
             return 'cabinet_ply';
         }
-
-        if ($catalogId > 0) {
-            return 'material:'.$catalogId;
-        }
-        if ($sku !== '') {
-            return 'sku:'.$sku;
-        }
         if ($id !== '') {
             return 'id:'.$id;
         }
-        if ($name !== '') {
-            return 'name:'.$name;
-        }
 
-        return 'unknown';
+        return $name !== '' ? 'name:'.$name : 'unknown';
     }
 
     /**

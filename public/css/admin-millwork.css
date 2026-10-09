@@ -126,6 +126,14 @@
 .mw-totals-bar [hidden] {
   display: none !important;
 }
+#mw-upgrade-cut-plan-btn[hidden],
+#mw-undo-cut-plan-btn[hidden],
+#mw-undo-cut-plan-banner-btn[hidden] {
+  display: none !important;
+}
+.mw-recalc-banner .admin-btn {
+  margin-top: 8px;
+}
 .mw-totals-bar span {
   display: flex;
   flex: 0 0 auto;

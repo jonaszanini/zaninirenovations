@@ -415,6 +415,10 @@ class MillworkCutPlanPlacementTest extends TestCase
         $this->assertSame(2, (int) $qtyTwo['cut_plan']['unplaced'][0]['qty']);
         $this->assertStringContainsString('2×', (string) $qtyTwo['cut_plan']['unplaced'][0]['label']);
         $this->assertStringContainsString('100"×12"', (string) $qtyTwo['cut_plan']['unplaced'][0]['label']);
+        $this->assertSame(
+            1,
+            substr_count((string) $qtyTwo['cut_plan']['unplaced'][0]['label'], '100"×12"')
+        );
     }
 
     public function test_legacy_quotes_without_stored_unplaced_are_never_blocked(): void
@@ -493,6 +497,53 @@ class MillworkCutPlanPlacementTest extends TestCase
                 'grade' => 'cabinet',
             ])
         );
+        $this->assertSame(
+            'material:9991',
+            MillworkSettings::sheetSpecies([
+                'id' => 'ws_custom_maple',
+                'name' => 'Cabinet-grade maple plywood',
+                'catalog_material_id' => 9991,
+                'material_kind' => 'plywood',
+                'grade' => 'cabinet',
+            ])
+        );
+        $this->assertSame(
+            'sku:wo-cab-ply',
+            MillworkSettings::sheetSpecies([
+                'id' => 'ws_custom_oak',
+                'sku' => 'WO-CAB-PLY',
+                'name' => 'White oak plywood (cabinet-grade)',
+                'material_kind' => 'plywood',
+                'grade' => 'cabinet',
+            ])
+        );
+        $this->assertNotSame(
+            'cabinet_ply',
+            MillworkSettings::sheetSpecies([
+                'id' => 'ws_custom_maple_name',
+                'name' => 'Cabinet-grade maple plywood',
+                'material_kind' => 'plywood',
+                'grade' => 'cabinet',
+            ])
+        );
+        $this->assertNotSame(
+            'cabinet_ply',
+            MillworkSettings::sheetSpecies([
+                'id' => 'ws_custom_oak_name',
+                'name' => 'White oak plywood (cabinet-grade)',
+                'material_kind' => 'plywood',
+                'grade' => 'cabinet',
+            ])
+        );
+        $this->assertSame(
+            'cabinet_ply',
+            MillworkSettings::sheetSpecies([
+                'id' => 'ws_ply_34_cab_48x96',
+                'name' => '3/4" cabinet-grade plywood 4×8',
+                'material_kind' => 'plywood',
+                'grade' => 'cabinet',
+            ])
+        );
 
         $calc = (new MillworkQuotationCalculator)->calculate([
             'pieces' => [[
@@ -555,6 +606,193 @@ class MillworkCutPlanPlacementTest extends TestCase
             (float) $mixed['summary']['paint_sf'],
             0.05
         );
+    }
+
+    public function test_unplaced_shelf_does_not_reprice_placed_closet_or_cube(): void
+    {
+        $closet = MillworkQuotationCalculator::defaultPiece('closet');
+        $closet['edge_banding'] = true;
+        $cube = [
+            'type' => 'kallax',
+            'qty' => 1,
+            'width' => 15,
+            'height' => 15,
+            'depth' => 14,
+            'unit' => 'in',
+            'columns' => 1,
+            'rows' => 1,
+            'include_back' => true,
+            'edge_banding' => false,
+        ];
+        $unplaced = [
+            'type' => 'shelf',
+            'edge_banding' => false,
+            'sets' => [['qty' => 1, 'length' => 100, 'depth' => 12, 'unit' => 'in']],
+        ];
+
+        $closetOnly = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [$closet],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+        $closetMixed = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [$closet, $unplaced],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+        $this->assertNotEmpty($closetMixed['cut_plan']['unplaced']);
+        $this->assertEqualsWithDelta(
+            $this->laborAmount($closetOnly, 'edge'),
+            $this->laborAmount($closetMixed, 'edge'),
+            0.05
+        );
+        $this->assertEqualsWithDelta(136.0, $this->laborAmount($closetOnly, 'edge'), 0.05);
+        $this->assertEqualsWithDelta(
+            $this->laborAmount($closetOnly, 'install'),
+            $this->laborAmount($closetMixed, 'install'),
+            0.05
+        );
+
+        $cubeOnly = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [$cube],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+        $cubeMixed = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [$cube, $unplaced],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings());
+        $this->assertNotEmpty($cubeMixed['cut_plan']['unplaced']);
+        $this->assertEqualsWithDelta(
+            $this->laborAmount($cubeOnly, 'kallax'),
+            $this->laborAmount($cubeMixed, 'kallax'),
+            0.05
+        );
+        $this->assertEqualsWithDelta(72.25, $this->laborAmount($cubeOnly, 'kallax'), 0.05);
+    }
+
+    public function test_legacy_calculator_matches_main_for_edited_presets(): void
+    {
+        $expected = [
+            'closet_labor_override' => 2057.70,
+            'closet_helper' => 2424.61,
+            'closet_plus_inch' => 1672.54,
+            'tall_edited' => 1912.93,
+            'doors' => 620.24,
+        ];
+        foreach ($this->legacyEditedCases() as $name => $inputs) {
+            $viaGate = (new MillworkQuotationCalculator)->calculate($inputs, $this->settings(), 1);
+            $viaLegacy = (new \App\Services\Millwork\LegacyMillworkQuotationCalculator)
+                ->calculate($inputs, $this->settings());
+            $this->assertEqualsWithDelta(
+                (float) ($viaLegacy['summary']['grand_total'] ?? 0),
+                (float) ($viaGate['summary']['grand_total'] ?? 0),
+                0.001,
+                $name
+            );
+            $this->assertArrayNotHasKey('unplaced', $viaGate['cut_plan'] ?? []);
+            $this->assertSame(1, (int) ($viaGate['cut_plan']['version'] ?? 0));
+            if (isset($expected[$name])) {
+                $this->assertEqualsWithDelta($expected[$name], (float) ($viaGate['summary']['grand_total'] ?? 0), 0.01, $name.' dollars');
+            }
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function legacyEditedCases(): array
+    {
+        $closet = MillworkQuotationCalculator::defaultPiece('closet');
+        $closetPlus = $closet;
+        $closetPlus['width'] = (float) $closet['width'] + 1;
+
+        $tall = [
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => 25,
+            'height' => 84,
+            'depth' => 24,
+            'unit' => 'in',
+            'include_doors' => true,
+            'door_count' => 2,
+            'include_toe_kick' => true,
+            'include_back' => false,
+            'shelf_count' => 1,
+            'edge_banding' => true,
+        ];
+        $doors = [
+            'type' => 'cabinet_door',
+            'edge_banding' => true,
+            'sets' => [['qty' => 2, 'width' => 18, 'height' => 80, 'unit' => 'in']],
+        ];
+
+        $override = [
+            'pieces' => [$closet],
+            'include_install' => true,
+            'include_helper' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            'labor_override' => ['cut' => ['hours' => 5]],
+        ];
+        $helper = [
+            'pieces' => [$closet],
+            'include_install' => true,
+            'include_helper' => true,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+        ];
+        $plusInch = [
+            'pieces' => [$closetPlus],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ];
+        $tallEdit = [
+            'pieces' => [$tall],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ];
+        $doorEdit = [
+            'pieces' => [$doors],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ];
+        $extra = [
+            'pieces' => [$closet],
+            'include_install' => true,
+            'include_building' => true,
+            'building_labor_percent' => 10,
+            'spare_sheets' => 1,
+            'waste_pct' => 15,
+            'owner_hourly_rate' => 85,
+            'extra_materials' => [[
+                'name' => 'Cleats',
+                'quantity' => 1,
+                'unit' => 'each',
+                'unit_price' => 25,
+            ]],
+        ];
+
+        return [
+            'closet_labor_override' => $override,
+            'closet_helper' => $helper,
+            'closet_plus_inch' => $plusInch,
+            'tall_edited' => $tallEdit,
+            'doors' => $doorEdit,
+            'closet_extra_materials' => $extra,
+        ];
+    }
+
+    private function laborAmount(array $calc, string $key): float
+    {
+        foreach ($calc['labor'] ?? [] as $row) {
+            if (($row['key'] ?? '') === $key) {
+                return (float) ($row['amount'] ?? 0);
+            }
+        }
+
+        return 0.0;
     }
 
     public function test_builder_version_gate_keeps_v1_side_orientation(): void

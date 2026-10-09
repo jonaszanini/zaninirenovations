@@ -66,7 +66,7 @@
     @csrf
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="mw-save-intent" value="publish">
-    <input type="hidden" name="_builder_version" id="mw-builder-version" value="{{ (int) ($builderVersion ?? ($isEdit && $quotation ? $quotation->builderVersion() : 2)) }}">
+    <input type="hidden" name="_cut_plan_version" id="mw-cut-plan-version" value="{{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->cutPlanVersion() : 2)) }}">
     <input type="hidden" name="upgrade_cut_plan" id="mw-upgrade-cut-plan" value="0">
 
     <div class="br-toolbar" aria-label="Quotation actions">
@@ -155,6 +155,9 @@
                   <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-upgrade-cut-plan-btn">
                     Recalculate with new cut plan
                   </button>
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-undo-cut-plan-btn" hidden>
+                    Undo recalculate
+                  </button>
                 @endif
                 <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-print-cut-list" @disabled($cutLayouts === [])>
                   <i class="fa fa-print"></i> Print cut list
@@ -177,6 +180,11 @@
                   Review the cut plan before you save.
                 @endif
               </p>
+              @if ($isEdit && $quotation && $quotation->usesLegacyCutBuilder())
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-undo-cut-plan-banner-btn">
+                  Undo
+                </button>
+              @endif
             </div>
             <div id="mw-unplaced-banner" class="admin-flash admin-flash--error mw-unplaced-banner" role="alert" @if ($unplacedParts === []) hidden @endif>
               <strong>Parts do not fit on any sheet</strong>
@@ -374,6 +382,8 @@
       ),
       initialPreview: @json($initialPreview ?? null),
       isEdit: @json($isEdit),
+      cutPlanVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->cutPlanVersion() : 2)) }},
+      storedTotal: {{ $isEdit && $quotation ? json_encode((float) $quotation->final_quote_total) : '0' }},
       sectionKeys: @json(array_keys($sectionList)),
       quoteNumber: @json($isEdit && $quotation ? ($quotation->quote_number ?? '') : ''),
       printCssUrl: @json(asset('css/millwork-cut-list-print.css').'?v='.(@filemtime(public_path('css/millwork-cut-list-print.css')) ?: time())),

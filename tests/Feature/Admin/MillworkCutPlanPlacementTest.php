@@ -56,6 +56,7 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             'quote_number' => 'MW-UNPLACED-1',
             'client_name' => 'Oversized Shelf',
             'is_draft' => true,
+            'cut_plan_version' => 2,
             'inputs' => [
                 'pieces' => [[
                     'type' => 'shelf',
@@ -101,6 +102,7 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             'quote_number' => 'MW-UNPLACED-PDF',
             'client_name' => 'Oversized PDF',
             'client_project_id' => $project->id,
+            'cut_plan_version' => 2,
             'is_draft' => false,
             'inputs' => [
                 'pieces' => [[
@@ -352,16 +354,168 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
         $fresh = $quote->fresh();
         $this->assertEqualsWithDelta($total, (float) $fresh->final_quote_total, 0.001);
         $this->assertTrue($fresh->usesLegacyCutBuilder());
+        $this->assertSame(1, $fresh->cutPlanVersion());
         $this->assertSame(1, $fresh->builderVersion());
+        $this->assertArrayNotHasKey('unplaced', $fresh->calculation['cut_plan'] ?? []);
+    }
+
+    public function test_editing_legacy_quotes_matches_main_calculator_totals(): void
+    {
+        $this->actingAsAdmin();
+        $cases = [
+            'closet_labor_override' => [
+                'expect' => 2057.70,
+                'inputs' => [
+                    'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+                    'include_install' => true,
+                    'owner_hourly_rate' => 85,
+                    'helper_hourly_rate' => 45,
+                    'labor_override' => ['cut' => ['hours' => 5]],
+                ],
+            ],
+            'closet_helper' => [
+                'expect' => 2424.61,
+                'inputs' => [
+                    'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+                    'include_install' => true,
+                    'include_helper' => true,
+                    'owner_hourly_rate' => 85,
+                    'helper_hourly_rate' => 45,
+                ],
+            ],
+            'closet_plus_inch' => [
+                'expect' => 1672.54,
+                'inputs' => [
+                    'pieces' => (static function () {
+                        $p = MillworkQuotationCalculator::defaultPiece('closet');
+                        $p['width'] = (float) $p['width'] + 1;
+
+                        return [$p];
+                    })(),
+                    'include_install' => true,
+                    'owner_hourly_rate' => 85,
+                ],
+            ],
+            'tall_edited' => [
+                'expect' => 1912.93,
+                'inputs' => [
+                    'pieces' => [[
+                        'type' => 'cabinet',
+                        'qty' => 1,
+                        'width' => 25,
+                        'height' => 84,
+                        'depth' => 24,
+                        'unit' => 'in',
+                        'include_doors' => true,
+                        'door_count' => 2,
+                        'include_toe_kick' => true,
+                        'include_back' => false,
+                        'shelf_count' => 1,
+                        'edge_banding' => true,
+                    ]],
+                    'include_install' => true,
+                    'owner_hourly_rate' => 85,
+                ],
+            ],
+            'closet_extra_materials' => [
+                'expect' => null,
+                'inputs' => [
+                    'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+                    'include_install' => true,
+                    'owner_hourly_rate' => 85,
+                    'extra_materials' => [[
+                        'name' => 'Cleats',
+                        'quantity' => 1,
+                        'unit' => 'each',
+                        'unit_price' => 25,
+                    ]],
+                    'spare_sheets' => 1,
+                    'waste_pct' => 15,
+                    'include_building' => true,
+                    'building_labor_percent' => 10,
+                ],
+            ],
+            'doors' => [
+                'expect' => 620.24,
+                'inputs' => [
+                    'pieces' => [[
+                        'type' => 'cabinet_door',
+                        'edge_banding' => true,
+                        'sets' => [['qty' => 2, 'width' => 18, 'height' => 80, 'unit' => 'in']],
+                    ]],
+                    'include_install' => true,
+                    'owner_hourly_rate' => 85,
+                ],
+            ],
+        ];
+
+        foreach ($cases as $name => $case) {
+            $inputs = $case['inputs'];
+            $expected = (float) ((new MillworkQuotationCalculator)->calculate($inputs, null, 1)['summary']['grand_total'] ?? 0);
+            if ($case['expect'] !== null) {
+                $this->assertEqualsWithDelta($case['expect'], $expected, 0.01, $name.' calculator');
+            }
+
+            $quote = MillworkQuotation::query()->create([
+                'quote_number' => 'MW-LEGACY-'.strtoupper($name),
+                'client_name' => 'Legacy '.$name,
+                'is_draft' => false,
+                'inputs' => [
+                    'pieces' => $inputs['pieces'],
+                    'include_install' => true,
+                    'owner_hourly_rate' => 85,
+                ],
+                'calculation' => [
+                    'cut_plan' => ['sheet_count' => 2, 'layouts' => []],
+                    'summary' => ['grand_total' => 100.00],
+                ],
+                'final_quote_total' => 100.00,
+            ]);
+
+            $payload = [
+                'save_intent' => 'publish',
+                'client_name' => 'Legacy '.$name,
+                'pieces' => $inputs['pieces'],
+                'owner_hourly_rate' => $inputs['owner_hourly_rate'] ?? 85,
+                'helper_hourly_rate' => $inputs['helper_hourly_rate'] ?? 45,
+                'include_install' => ! empty($inputs['include_install']) ? 1 : 0,
+                'include_helper' => ! empty($inputs['include_helper']) ? 1 : 0,
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ];
+            if (! empty($inputs['labor_override'])) {
+                $payload['labor_override'] = $inputs['labor_override'];
+            }
+            if (! empty($inputs['extra_materials'])) {
+                $payload['extra_materials'] = $inputs['extra_materials'];
+            }
+            if (isset($inputs['spare_sheets'])) {
+                $payload['spare_sheets'] = $inputs['spare_sheets'];
+            }
+            if (isset($inputs['waste_pct'])) {
+                $payload['waste_pct'] = $inputs['waste_pct'];
+            }
+            if (! empty($inputs['include_building'])) {
+                $payload['include_building'] = 1;
+                $payload['building_labor_percent'] = $inputs['building_labor_percent'] ?? 10;
+            }
+
+            $this->put(route('admin.quotations.millwork.update', $quote), $payload)->assertRedirect();
+            $fresh = $quote->fresh();
+            $this->assertEqualsWithDelta($expected, (float) $fresh->final_quote_total, 0.01, $name.' saved');
+            $this->assertSame(1, $fresh->cutPlanVersion());
+            $this->assertArrayNotHasKey('unplaced', $fresh->calculation['cut_plan'] ?? []);
+        }
     }
 
     public function test_client_unplaced_page_uses_plain_wording_and_configured_contact(): void
     {
-        config([
-            'blog.phone_display' => '(555) 010-9999',
-            'blog.phone_tel' => '+15550109999',
-            'mail.from.address' => 'shop@example.test',
-            'mail.from.name' => 'Example Shop',
+        \App\Models\CompanySetting::current()->update([
+            'contact_phone' => '(555) 010-9999',
+            'contact_phone_tel' => '+15550109999',
+            'contact_email' => 'shop@example.test',
         ]);
 
         [$project, $mw, $quotation] = $this->linkedUnplacedQuote();
@@ -445,6 +599,7 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             'quote_number' => 'MW-BLOCK-1',
             'client_name' => 'Unplaced Blocks',
             'client_project_id' => $project->id,
+            'cut_plan_version' => 2,
             'is_draft' => false,
             'inputs' => [
                 'pieces' => [[

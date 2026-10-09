@@ -385,6 +385,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('vehicles.settings.home-address');
     Route::put('vehicles/settings/gas-price', [\App\Http\Controllers\Admin\VehicleController::class, 'updateGasPrice'])
         ->name('vehicles.settings.gas-price');
+    Route::put('vehicles/settings/business-contact', [\App\Http\Controllers\Admin\VehicleController::class, 'updateBusinessContact'])
+        ->name('vehicles.settings.business-contact');
 
     // Global Financials — cross-project invoices and expenses lists.
     Route::get('financials/invoices', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'invoices'])

@@ -604,6 +604,11 @@ body.admin-body {
   flex-shrink: 0;
 }
 
+.admin-btn[hidden],
+button.admin-btn[hidden] {
+  display: none !important;
+}
+
 .admin-btn--primary {
   background: var(--admin-primary);
   color: #fff;
