@@ -1,0 +1,1110 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Http\Controllers\Admin\SharedPriceLibraryController;
+use App\Models\FlooringQuotation;
+use App\Models\FlooringSettings;
+use App\Models\FlooringType;
+use App\Models\SharedCrewRate;
+use App\Models\SharedWork;
+use App\Models\User;
+use App\Services\FlooringQuotationCalculator;
+use App\Services\SharedWorkCatalog;
+use Illuminate\Support\Facades\Hash;
+use Tests\IntegrationTestCase;
+use Tests\Support\ActsAsAdmin;
+
+class SharedPricesAddRenameTest extends IntegrationTestCase
+{
+    use ActsAsAdmin;
+
+    public function test_edit_page_shows_rename_and_add_controls(): void
+    {
+        $this->actingAsAdmin();
+
+        $html = $this->get(route('admin.quotations.shared-prices.edit'))
+            ->assertOk()
+            ->assertSee('name="works[', false)
+            ->assertSee('sp-work-label-input', false)
+            ->assertSee('Add item', false)
+            ->assertSee('new_works[flooring][0][label]', false)
+            ->assertSee('new_works[flooring][0][unit]', false)
+            ->assertSee('new_works[flooring][0][rate]', false)
+            ->assertSee('new_works[flooring][0][flat_rate]', false)
+            ->assertSee('Show as reference on', false)
+            ->assertSee('data-cp-money-entry="direct"', false)
+            ->assertSee('hrs per each', false)
+            ->getContent();
+
+        $blade = file_get_contents(resource_path('views/admin/quotations/shared_prices/edit.blade.php'));
+        $this->assertStringContainsString('<x-admin.info-tip', $blade);
+        $this->assertStringNotContainsString('.sp-add label {', $blade);
+        $this->assertStringContainsString('fieldset class="sp-add__consumers"', $blade);
+        $this->assertStringContainsString('data-submitting', $blade);
+        $this->assertStringContainsString("getAttribute('data-submitting') === '1'", $blade);
+        $this->assertStringContainsString("setAttribute('data-submitting', '1')", $blade);
+        $this->assertStringContainsString('e.preventDefault()', $blade);
+        $this->assertStringNotContainsString('class="sp-work-key"', $blade);
+        $this->assertStringNotContainsString('label="item key"', $blade);
+        $this->assertSame(1, substr_count($blade, 'label="work item name"'));
+        $this->assertStringContainsString('reference-only', $html);
+        $this->assertStringContainsString('shoe_install', $html);
+        $this->assertStringContainsString('.sp-add__checks .admin-checkbox', $blade);
+        $this->assertMatchesRegularExpression('/\.sp-add__checks \.admin-checkbox\s*\{[^}]*min-height:\s*44px/', $blade);
+        $adminCss = file_get_contents(public_path('css/admin.css'));
+        $this->assertMatchesRegularExpression('/\.admin-checkbox__mark\s*\{[^}]*width:\s*24px/', $adminCss);
+        $this->assertMatchesRegularExpression('/\.admin-checkbox__mark\s*\{[^}]*height:\s*24px/', $adminCss);
+        $this->assertStringContainsString('class="admin-checkbox__mark"', $blade);
+        $ottawa = file_get_contents(database_path('migrations/2026_09_27_173000_apply_ottawa_trim_pricing_and_new_works.php'));
+        $this->assertStringContainsString("unset(\$payload['label'])", $ottawa);
+    }
+
+    public function test_can_add_item_to_a_group_with_stable_custom_key(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'flooring' => [
+                    [
+                        'label' => 'Custom stair return',
+                        'unit' => 'each',
+                        'rate' => '1.2500',
+                        'flat_rate' => '45.0000',
+                        'consumers' => ['flooring', 'basement'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHas('success')
+            ->assertSessionDoesntHaveErrors();
+
+        $created = SharedWork::query()->where('label', 'Custom stair return')->first();
+        $this->assertNotNull($created);
+        $this->assertSame('flooring', $created->group_key);
+        $this->assertSame('custom_stair_return', $created->key);
+        $this->assertSame('each', $created->unit);
+        $this->assertEqualsWithDelta(1.25, (float) $created->rate, 0.0001);
+        $this->assertEqualsWithDelta(45.0, (float) $created->flat_rate, 0.0001);
+        $this->assertEqualsCanonicalizing(['flooring', 'basement'], $created->consumers);
+        $this->assertTrue($created->isCustom());
+
+        SharedWorkCatalog::forgetCache();
+        $this->assertContains($created->key, SharedWorkCatalog::worksForConsumer('flooring'));
+
+        $html = $this->get(route('admin.quotations.shared-prices.edit'))
+            ->assertOk()
+            ->assertSee('Custom stair return', false)
+            ->assertSee('Reference', false)
+            ->getContent();
+        $this->assertStringContainsString('sp-ref-badge', $html);
+        $this->assertStringContainsString('Reference only', $html);
+        $this->assertStringNotContainsString('class="sp-work-key"', $html);
+        $this->assertStringNotContainsString('label="item key"', file_get_contents(resource_path('views/admin/quotations/shared_prices/edit.blade.php')));
+
+        $this->get(route('admin.quotations.flooring.price-configuration'))
+            ->assertOk()
+            ->assertSee('Custom stair return', false)
+            ->assertSee('sp-ref-badge', false);
+    }
+
+    public function test_editor_hint_and_config_banner_show_the_same_sell_price(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'flooring' => [
+                    [
+                        'label' => 'Stair nose each',
+                        'unit' => 'each',
+                        'rate' => '1.2500',
+                        'flat_rate' => '45.0000',
+                        'consumers' => ['flooring'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionDoesntHaveErrors();
+
+        $created = SharedWork::query()->where('label', 'Stair nose each')->first();
+        $this->assertNotNull($created);
+        SharedWorkCatalog::forgetCache();
+
+        $display = SharedWorkCatalog::displayUnitPrice($created);
+        $this->assertEqualsWithDelta(45.0, $display, 0.001);
+        $this->assertSame('$45.00 / each', SharedWorkCatalog::rateLine($created->key));
+        $this->assertNotEquals(1.25 * SharedWorkCatalog::ownerHourlyRate(), $display);
+        $this->assertEqualsWithDelta(45.0, SharedWorkCatalog::sellRate($created->key), 0.0001);
+
+        $editor = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
+        $this->assertStringContainsString('CA$45.00', $editor);
+        $this->assertStringNotContainsString('106.25', $editor);
+
+        $banner = $this->get(route('admin.quotations.flooring.price-configuration'))->assertOk()->getContent();
+        $this->assertStringContainsString('$45.00 / each', $banner);
+        $this->assertStringContainsString('sp-ref-badge', $banner);
+        $this->assertStringNotContainsString('106.25', $banner);
+        $this->assertStringContainsString('Stair nose each', $banner);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'flooring' => [
+                    [
+                        'label' => 'Cost only nose',
+                        'unit' => 'each',
+                        'rate' => '1.2500',
+                        'flat_rate' => '',
+                        'consumers' => ['flooring'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $costOnly = SharedWork::query()->where('label', 'Cost only nose')->first();
+        $this->assertNotNull($costOnly);
+        SharedWorkCatalog::forgetCache();
+        $derived = SharedWorkCatalog::displayUnitPrice($costOnly);
+        $this->assertEqualsWithDelta(1.25 * SharedWorkCatalog::ownerHourlyRate(), $derived, 0.02);
+        $this->assertSame('$'.number_format((float) $derived, 2).' / each', SharedWorkCatalog::rateLine($costOnly->key));
+        $hint = \App\Models\ClientProject::formatMoney($derived);
+        $editorCost = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
+        $bannerCost = $this->get(route('admin.quotations.flooring.price-configuration'))->assertOk()->getContent();
+        $this->assertStringContainsString($hint, $editorCost);
+        $this->assertStringContainsString('$'.number_format((float) $derived, 2).' / each', $bannerCost);
+    }
+
+    public function test_typing_4_75_saves_4_75_and_keeps_cost_when_sell_is_filled(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'trim' => [
+                    [
+                        'label' => 'Extra return',
+                        'unit' => 'lf',
+                        'rate' => '4.75',
+                        'flat_rate' => '6.50',
+                        'consumers' => ['trimming'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionDoesntHaveErrors();
+
+        $created = SharedWork::query()->where('label', 'Extra return')->first();
+        $this->assertNotNull($created);
+        $this->assertEqualsWithDelta(4.75, (float) $created->rate, 0.0001);
+        $this->assertEqualsWithDelta(6.50, (float) $created->flat_rate, 0.0001);
+        $this->assertNotEquals(4.75 / 100, (float) $created->rate);
+
+        $html = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
+        $this->assertStringContainsString('id="sp-rate-'.$created->id.'"', $html);
+        $this->assertStringContainsString('4.7500', $html);
+        $this->assertStringContainsString('CA$6.50', $html);
+        $this->assertStringNotContainsString('class="sp-rate-empty"', $html);
+    }
+
+    public function test_new_item_key_stays_unique_when_slug_exists(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'trim' => [
+                    [
+                        'label' => 'Shoe install',
+                        'unit' => 'lf',
+                        'rate' => '',
+                        'flat_rate' => '4.1000',
+                        'consumers' => ['trimming'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $created = SharedWork::query()->where('label', 'Shoe install')->first();
+        $this->assertNotNull($created);
+        $this->assertSame('custom_shoe_install', $created->key);
+        $this->assertNotSame('shoe_install', $created->key);
+        $this->assertTrue(SharedWork::query()->where('key', 'shoe_install')->exists());
+    }
+
+    public function test_normalizes_names_and_transliterates_keys(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'doors' => [
+                    [
+                        'label' => '  Café door.  ',
+                        'unit' => 'each',
+                        'rate' => '1.00',
+                        'flat_rate' => '',
+                        'consumers' => ['trimming'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $created = SharedWork::query()->where('label_normalized', 'café door')->first()
+            ?? SharedWork::query()->where('label_normalized', 'cafe door')->first();
+        $this->assertNotNull($created);
+        $this->assertSame('Café door', $created->label);
+        $this->assertTrue(str_starts_with($created->key, 'custom_'));
+        $this->assertStringContainsString('cafe', $created->key);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'tile' => [
+                    [
+                        'label' => '安装地板',
+                        'unit' => 'sf',
+                        'rate' => '',
+                        'flat_rate' => '8.00',
+                        'consumers' => ['tile'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $cjk = SharedWork::query()->where('label', '安装地板')->first();
+        $this->assertNotNull($cjk);
+        $this->assertTrue(str_starts_with($cjk->key, 'custom_'));
+        $this->assertTrue($cjk->isCustom());
+    }
+
+    public function test_rejects_duplicate_name_in_same_group(): void
+    {
+        $this->actingAsAdmin();
+
+        $existing = SharedWork::query()->where('key', 'flooring_install')->firstOrFail();
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'new_works' => [
+                    'flooring' => [
+                        [
+                            'label' => '  INSTALL FLOORING  ',
+                            'unit' => 'sf',
+                            'rate' => '',
+                            'flat_rate' => '9.00',
+                            'consumers' => ['flooring'],
+                        ],
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['new_works.flooring.0.label']);
+
+        $this->assertSame(0, SharedWork::query()->where('label', '  INSTALL FLOORING  ')->count());
+
+        $other = SharedWork::query()
+            ->where('group_key', 'flooring')
+            ->where('id', '!=', $existing->id)
+            ->firstOrFail();
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'works' => [
+                    $other->id => [
+                        'id' => $other->id,
+                        'label' => $existing->label,
+                        'rate' => $other->rate,
+                        'flat_rate' => $other->flat_rate,
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['works.'.$other->id.'.label']);
+
+        $other->refresh();
+        $this->assertNotSame($existing->label, $other->label);
+    }
+
+    public function test_double_submit_of_the_same_new_name_is_rejected(): void
+    {
+        $this->actingAsAdmin();
+        $payload = $this->basePayload([
+            'new_works' => [
+                'painting' => [
+                    [
+                        'label' => 'Accent wall glaze',
+                        'unit' => 'sf',
+                        'rate' => '2.00',
+                        'flat_rate' => '3.00',
+                        'consumers' => ['painting'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $payload)
+            ->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionDoesntHaveErrors();
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $payload)
+            ->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors();
+
+        $this->assertSame(1, SharedWork::query()->where('label_normalized', 'accent wall glaze')->count());
+    }
+
+    public function test_same_name_is_allowed_in_a_different_group(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'tile' => [
+                    [
+                        'label' => 'Install flooring',
+                        'unit' => 'sf',
+                        'rate' => '',
+                        'flat_rate' => '11.00',
+                        'consumers' => ['tile'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionDoesntHaveErrors();
+
+        $created = SharedWork::query()
+            ->where('group_key', 'tile')
+            ->where('label', 'Install flooring')
+            ->first();
+        $this->assertNotNull($created);
+        $this->assertSame('custom_install_flooring', $created->key);
+    }
+
+    public function test_rejects_empty_name_when_prices_are_typed_or_rename_is_cleared(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'new_works' => [
+                    'flooring' => [
+                        [
+                            'label' => '   ',
+                            'unit' => 'each',
+                            'rate' => '2.00',
+                            'flat_rate' => '9.00',
+                            'consumers' => ['flooring'],
+                        ],
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['new_works.flooring.0.label']);
+
+        $work = SharedWork::query()->where('key', 'transition')->firstOrFail();
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'works' => [
+                    $work->id => [
+                        'id' => $work->id,
+                        'label' => '',
+                        'rate' => $work->rate,
+                        'flat_rate' => $work->flat_rate,
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['works.'.$work->id.'.label']);
+
+        $work->refresh();
+        $this->assertNotSame('', trim((string) $work->label));
+    }
+
+    public function test_rejects_prices_at_or_above_one_million(): void
+    {
+        $this->actingAsAdmin();
+        $work = SharedWork::query()->where('key', 'transition')->firstOrFail();
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'works' => [
+                    $work->id => [
+                        'id' => $work->id,
+                        'label' => $work->label,
+                        'rate' => '1000000',
+                        'flat_rate' => $work->flat_rate,
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['works.'.$work->id.'.rate']);
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'new_works' => [
+                    'flooring' => [
+                        [
+                            'label' => 'Huge number',
+                            'unit' => 'each',
+                            'rate' => '1',
+                            'flat_rate' => '1000000.00',
+                            'consumers' => ['flooring'],
+                        ],
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['new_works.flooring.0.flat_rate']);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'flooring' => [
+                    [
+                        'label' => 'Max allowed',
+                        'unit' => 'each',
+                        'rate' => '999999.99',
+                        'flat_rate' => '1.00',
+                        'consumers' => ['flooring'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertNotNull(SharedWork::query()->where('label', 'Max allowed')->first());
+    }
+
+    public function test_friendly_max_length_message_and_escapes_names(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'new_works' => [
+                    'flooring' => [
+                        [
+                            'label' => str_repeat('a', 161),
+                            'unit' => 'each',
+                            'rate' => '1',
+                            'flat_rate' => '',
+                            'consumers' => ['flooring'],
+                        ],
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['new_works.flooring.0.label']);
+
+        $this->assertStringContainsString(
+            'The name may not be longer than 160 characters.',
+            (string) session('errors')->first('new_works.flooring.0.label')
+        );
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'flooring' => [
+                    [
+                        'label' => '<script>alert(1)</script>',
+                        'unit' => 'each',
+                        'rate' => '1.00',
+                        'flat_rate' => '',
+                        'consumers' => ['flooring'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $html = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
+    }
+
+    public function test_rename_keeps_stable_key(): void
+    {
+        $this->actingAsAdmin();
+
+        $work = SharedWork::query()->where('key', 'shoe_install')->firstOrFail();
+        $originalKey = $work->key;
+        $originalRate = $work->flat_rate;
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $work->id => [
+                    'id' => $work->id,
+                    'label' => 'Install primed shoe',
+                    'rate' => $work->rate,
+                    'flat_rate' => $work->flat_rate,
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHas('success')
+            ->assertSessionDoesntHaveErrors();
+
+        $work->refresh();
+        $this->assertSame($originalKey, $work->key);
+        $this->assertSame('Install primed shoe', $work->label);
+        $this->assertEquals($originalRate, $work->flat_rate);
+
+        SharedWorkCatalog::forgetCache();
+        $this->assertSame('Install primed shoe', SharedWorkCatalog::work('shoe_install')?->label);
+        $this->assertContains('shoe_install', SharedWorkCatalog::worksForConsumer('flooring'));
+    }
+
+    public function test_rename_does_not_change_saved_quote_price_even_with_a_decoy_name(): void
+    {
+        $this->actingAsAdmin();
+
+        $shoe = SharedWork::query()->where('key', 'shoe_install')->firstOrFail();
+        $oldLabel = $shoe->label;
+        $shoe->flat_rate = 5.25;
+        $shoe->save();
+        SharedWorkCatalog::forgetCache();
+
+        $type = FlooringType::query()->where('key', 'lvp_click')->firstOrFail();
+        $settings = FlooringSettings::current();
+        $inputs = [
+            'flooring_type_id' => $type->id,
+            'square_footage' => 120,
+            'remove_carpet' => false,
+            'rescrew_subfloor' => false,
+            'install_shoe_moulding' => true,
+            'shoe_moulding_linear_ft' => 40,
+            'caulk_paint_shoe_moulding' => false,
+            'install_baseboard' => false,
+            'baseboard_linear_ft' => 0,
+            'caulk_paint_baseboard' => false,
+            'closet_doors' => false,
+            'closet_door_qty' => 0,
+            'include_material_details' => false,
+        ];
+
+        $calculator = new FlooringQuotationCalculator;
+        $before = $calculator->calculate($inputs, $settings, collect([$type]));
+        $this->assertEqualsWithDelta(5.25, $settings->shoeInstallRate(), 0.0001);
+
+        $quote = FlooringQuotation::query()->create([
+            'quote_number' => FlooringQuotation::generateNumber(),
+            'client_name' => 'Rename lock test',
+            'is_draft' => false,
+            'inputs' => $inputs,
+            'calculation' => $before,
+            'final_quote_total' => $before['summary']['grand_total'],
+        ]);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $shoe->id => [
+                    'id' => $shoe->id,
+                    'label' => 'Install decorative shoe profile',
+                    'rate' => $shoe->rate,
+                    'flat_rate' => '5.2500',
+                ],
+            ],
+            'new_works' => [
+                'trim' => [
+                    [
+                        'label' => $oldLabel,
+                        'unit' => 'lf',
+                        'rate' => '',
+                        'flat_rate' => '99.0000',
+                        'consumers' => ['flooring', 'trimming'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $shoe->refresh();
+        $this->assertSame('shoe_install', $shoe->key);
+        $this->assertSame('Install decorative shoe profile', $shoe->label);
+        $this->assertEqualsWithDelta(5.25, (float) $shoe->flat_rate, 0.0001);
+
+        $decoy = SharedWork::query()->where('label', $oldLabel)->where('key', '!=', 'shoe_install')->first();
+        $this->assertNotNull($decoy, 'Decoy row with the old name must exist so a label lookup would fail');
+        $this->assertEqualsWithDelta(99.0, (float) $decoy->flat_rate, 0.0001);
+
+        SharedWorkCatalog::forgetCache();
+        $quote->refresh();
+        $after = $calculator->calculate($quote->inputs, FlooringSettings::current(), collect([$type]));
+
+        $this->assertSame($before['summary']['grand_total'], $after['summary']['grand_total']);
+        $beforeShoe = collect($before['breakdown'])->firstWhere('key', 'shoe_moulding');
+        $afterShoe = collect($after['breakdown'])->firstWhere('key', 'shoe_moulding');
+        $this->assertNotNull($beforeShoe);
+        $this->assertNotNull($afterShoe);
+        $this->assertEqualsWithDelta(210.0, (float) $afterShoe['amount'], 0.01);
+        $this->assertNotEquals(40 * 99.0, (float) $afterShoe['amount']);
+        $this->assertEqualsWithDelta(5.25, SharedWorkCatalog::flatRate('shoe_install'), 0.0001);
+        $this->assertEqualsWithDelta((float) $quote->final_quote_total, (float) $after['summary']['grand_total'], 0.01);
+    }
+
+    public function test_staff_can_still_add_and_rename_matching_existing_price_edits(): void
+    {
+        $staff = User::factory()->create([
+            'role' => User::ROLE_STAFF,
+            'password' => Hash::make('password'),
+        ]);
+        $this->actingAs($staff);
+
+        $work = SharedWork::query()->where('key', 'paint_walls')->firstOrFail();
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $work->id => [
+                    'id' => $work->id,
+                    'label' => 'Paint wall surfaces',
+                    'rate' => $work->rate,
+                    'flat_rate' => $work->flat_rate,
+                ],
+            ],
+            'new_works' => [
+                'painting' => [
+                    [
+                        'label' => 'Staff reference glaze',
+                        'unit' => 'sf',
+                        'rate' => '1.10',
+                        'flat_rate' => '2.20',
+                        'consumers' => ['painting'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHas('success');
+
+        $work->refresh();
+        $this->assertSame('Paint wall surfaces', $work->label);
+        $this->assertNotNull(SharedWork::query()->where('label', 'Staff reference glaze')->first());
+    }
+
+    public function test_duplicate_key_is_retried_and_name_clash_stays_already_used(): void
+    {
+        $this->actingAsAdmin();
+
+        $once = (object) ['done' => false];
+        SharedWork::creating(function (SharedWork $work) use ($once) {
+            if ($once->done || $work->label !== 'Retry key item' || SharedWork::query()->where('key', $work->key)->exists()) {
+                return;
+            }
+            $once->done = true;
+            SharedWork::withoutEvents(function () use ($work) {
+                SharedWork::query()->create([
+                    'key' => $work->key,
+                    'group_key' => 'tile',
+                    'label' => 'Unrelated tile collision',
+                    'unit' => 'sf',
+                    'labor_kind' => SharedWork::KIND_FLAT,
+                    'rate' => 1,
+                    'flat_rate' => 1,
+                    'consumers' => ['tile'],
+                    'sort_order' => 9800,
+                ]);
+            });
+        });
+
+        try {
+            $this->from(route('admin.quotations.shared-prices.edit'))
+                ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                    'new_works' => [
+                        'flooring' => [
+                            [
+                                'label' => 'Retry key item',
+                                'unit' => 'each',
+                                'rate' => '1.00',
+                                'flat_rate' => '2.00',
+                                'consumers' => ['flooring'],
+                            ],
+                        ],
+                    ],
+                ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+                ->assertSessionDoesntHaveErrors();
+        } finally {
+            $once->done = true;
+        }
+
+        $created = SharedWork::query()->where('label', 'Retry key item')->first();
+        $this->assertNotNull($created);
+        $this->assertTrue(str_starts_with($created->key, 'custom_'));
+        $this->assertNull(SharedWork::query()->where('label', 'Unrelated tile collision')->first());
+
+        $existing = SharedWork::query()->where('key', 'flooring_install')->firstOrFail();
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'new_works' => [
+                    'flooring' => [
+                        [
+                            'label' => $existing->label,
+                            'unit' => 'sf',
+                            'rate' => '',
+                            'flat_rate' => '9.00',
+                            'consumers' => ['flooring'],
+                        ],
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors();
+
+        $this->assertStringContainsString(
+            'already used',
+            strtolower((string) session('errors')->first('new_works.flooring.0.label') ?: session('errors')->first('new_works'))
+        );
+    }
+
+    public function test_nbsp_name_collapses_to_the_same_normalized_name(): void
+    {
+        $this->actingAsAdmin();
+        $existing = SharedWork::query()->where('key', 'flooring_install')->firstOrFail();
+        $nbspName = str_replace(' ', "\u{00A0}", $existing->label);
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'new_works' => [
+                    'flooring' => [
+                        [
+                            'label' => $nbspName,
+                            'unit' => 'sf',
+                            'rate' => '',
+                            'flat_rate' => '8.00',
+                            'consumers' => ['flooring'],
+                        ],
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['new_works.flooring.0.label']);
+
+        $this->assertSame(SharedWork::normalizeLabel($existing->label), SharedWork::normalizeLabel($nbspName));
+        $this->assertSame(
+            1,
+            SharedWork::query()
+                ->where('group_key', 'flooring')
+                ->where('label_normalized', SharedWork::normalizeLabel($existing->label))
+                ->count()
+        );
+        $this->assertNull(
+            SharedWork::query()
+                ->where('label_normalized', SharedWork::normalizeLabel($existing->label))
+                ->where('key', 'like', 'custom_%')
+                ->first()
+        );
+    }
+
+    public function test_friendly_message_for_negative_prices_and_over_limit(): void
+    {
+        $this->actingAsAdmin();
+        $work = SharedWork::query()->where('key', 'transition')->firstOrFail();
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'works' => [
+                    $work->id => [
+                        'id' => $work->id,
+                        'label' => $work->label,
+                        'rate' => '-1',
+                        'flat_rate' => $work->flat_rate,
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['works.'.$work->id.'.rate']);
+
+        $this->assertStringContainsString(
+            'Prices cannot be negative.',
+            (string) session('errors')->first('works.'.$work->id.'.rate')
+        );
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'new_works' => [
+                    'flooring' => [
+                        [
+                            'label' => 'Too big',
+                            'unit' => 'each',
+                            'rate' => '1',
+                            'flat_rate' => '1000000',
+                            'consumers' => ['flooring'],
+                        ],
+                    ],
+                ],
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['new_works.flooring.0.flat_rate']);
+
+        $this->assertStringContainsString(
+            'Enter a price of 999,999.99 or less.',
+            (string) session('errors')->first('new_works.flooring.0.flat_rate')
+        );
+
+        $this->from(route('admin.quotations.shared-prices.edit'))
+            ->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'hours_per_day' => '-1',
+            ]))->assertRedirect(route('admin.quotations.shared-prices.edit'))
+            ->assertSessionHasErrors(['hours_per_day']);
+
+        $this->assertStringContainsString(
+            'Hours/day must be at least 0.5.',
+            (string) session('errors')->first('hours_per_day')
+        );
+    }
+
+    public function test_save_is_all_or_nothing_when_a_later_row_fails(): void
+    {
+        $this->actingAsAdmin();
+        $crew = SharedCrewRate::current();
+        $originalOwner = (float) $crew->owner_hourly_rate;
+        $beforeCount = SharedWork::query()->count();
+        $state = (object) ['count' => 0, 'armed' => true];
+        SharedWork::created(function () use ($state) {
+            if (! $state->armed) {
+                return;
+            }
+            $state->count++;
+            if ($state->count === 2) {
+                $state->armed = false;
+                throw new \RuntimeException('shared-prices-txn-mutant');
+            }
+        });
+
+        try {
+            $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+                'owner_hourly_rate' => '99.00',
+                'new_works' => [
+                    'flooring' => [
+                        [
+                            'label' => 'Txn first row',
+                            'unit' => 'each',
+                            'rate' => '1.00',
+                            'flat_rate' => '2.00',
+                            'consumers' => ['flooring'],
+                        ],
+                    ],
+                    'trim' => [
+                        [
+                            'label' => 'Txn second row',
+                            'unit' => 'lf',
+                            'rate' => '3.00',
+                            'flat_rate' => '4.00',
+                            'consumers' => ['trimming'],
+                        ],
+                    ],
+                ],
+            ]))->assertStatus(500);
+        } finally {
+            $state->armed = false;
+        }
+
+        $this->assertSame($beforeCount, SharedWork::query()->count());
+        $this->assertNull(SharedWork::query()->where('label', 'Txn first row')->first());
+        $this->assertNull(SharedWork::query()->where('label', 'Txn second row')->first());
+        $this->assertEqualsWithDelta($originalOwner, (float) SharedCrewRate::current()->owner_hourly_rate, 0.001);
+    }
+
+    public function test_display_matches_the_charge_for_every_built_in(): void
+    {
+        $this->actingAsAdmin();
+        $checked = 0;
+        foreach (array_keys(SharedWorkCatalog::definitions()) as $key) {
+            $work = SharedWork::query()->where('key', $key)->first();
+            if (! $work) {
+                continue;
+            }
+            $originalFlat = $work->flat_rate;
+            $work->flat_rate = null;
+            $work->save();
+            SharedWorkCatalog::forgetCache();
+            $work->refresh();
+
+            $charge = SharedWorkCatalog::sellRate($key);
+            $display = SharedWorkCatalog::displayUnitPrice($work);
+            $this->assertNotNull($display, $key.' display');
+            $this->assertEqualsWithDelta($charge, (float) $display, 0.0001, $key.' display must equal sellRate');
+            $this->assertSame(
+                '$'.number_format($charge, 2).' / '.$work->unit,
+                SharedWorkCatalog::rateLine($key),
+                $key.' rateLine must format sellRate'
+            );
+
+            $work->flat_rate = $originalFlat;
+            $work->save();
+            $checked++;
+        }
+        SharedWorkCatalog::forgetCache();
+        $this->assertGreaterThanOrEqual(23, $checked);
+    }
+
+    public function test_empty_area_sell_stays_empty_and_cost_changes_effective(): void
+    {
+        $this->actingAsAdmin();
+        $baseboard = SharedWork::query()->where('key', 'baseboard')->firstOrFail();
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $baseboard->id => [
+                    'id' => $baseboard->id,
+                    'label' => $baseboard->label,
+                    'rate' => number_format((float) $baseboard->rate, 4, '.', ''),
+                    'flat_rate' => '',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $baseboard->refresh();
+        SharedWorkCatalog::forgetCache();
+        $this->assertNull($baseboard->flat_rate);
+        $charge = SharedWorkCatalog::sellRate('baseboard');
+        $this->assertEqualsWithDelta(4.75, $charge, 0.0001);
+        $this->assertEqualsWithDelta($charge, (float) SharedWorkCatalog::displayUnitPrice($baseboard), 0.0001);
+        $this->assertSame('$4.75 / lf', SharedWorkCatalog::rateLine('baseboard'));
+
+        $html = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/id="sp-flat-'.$baseboard->id.'"[^>]*value=""/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="sp-flat-'.$baseboard->id.'"[^>]*value="4\./',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="sp-flat-'.$baseboard->id.'"[^>]*placeholder="4\.7500"/',
+            $html
+        );
+        $this->assertStringContainsString('CA$4.75', $html);
+        $this->assertStringNotContainsString('CA$21.05', $html);
+
+        $banner = $this->get(route('admin.quotations.flooring.price-configuration'))->assertOk()->getContent();
+        $this->assertStringContainsString('$4.75 / lf', $banner);
+        $this->assertStringNotContainsString('$21.05 / lf', $banner);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $baseboard->id => [
+                    'id' => $baseboard->id,
+                    'label' => $baseboard->label,
+                    'rate' => number_format((float) $baseboard->rate, 4, '.', ''),
+                    'flat_rate' => '',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+        $baseboard->refresh();
+        $this->assertNull($baseboard->flat_rate, 'Untouched save must not store a Sell value');
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'flooring' => [
+                    [
+                        'label' => 'Cost driven lf',
+                        'unit' => 'lf',
+                        'rate' => '10.0000',
+                        'flat_rate' => '',
+                        'consumers' => ['flooring'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $custom = SharedWork::query()->where('label', 'Cost driven lf')->firstOrFail();
+        SharedWorkCatalog::forgetCache();
+        $this->assertNull($custom->flat_rate);
+        $first = SharedWorkCatalog::displayUnitPrice($custom);
+        $this->assertEqualsWithDelta(SharedWorkCatalog::sellRate($custom->key), (float) $first, 0.0001);
+        $this->assertEqualsWithDelta(SharedWorkCatalog::ownerHourlyRate() / 10, (float) $first, 0.02);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $custom->id => [
+                    'id' => $custom->id,
+                    'label' => $custom->label,
+                    'rate' => '5.0000',
+                    'flat_rate' => '',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $custom->refresh();
+        SharedWorkCatalog::forgetCache();
+        $this->assertNull($custom->flat_rate);
+        $this->assertEqualsWithDelta(5.0, (float) $custom->rate, 0.0001);
+        $second = SharedWorkCatalog::displayUnitPrice($custom);
+        $this->assertEqualsWithDelta(SharedWorkCatalog::ownerHourlyRate() / 5, (float) $second, 0.02);
+        $this->assertNotEquals($first, $second);
+    }
+
+    public function test_retry_jitter_embeds_attempt_and_random_hex(): void
+    {
+        $this->actingAsAdmin();
+        $key = SharedWork::allocateUniqueKey('Jitter probe', 3);
+        $this->assertMatchesRegularExpression('/^custom_.+_3_[0-9a-f]{4}/', $key);
+
+        $controller = app(SharedPriceLibraryController::class);
+        $method = new \ReflectionMethod($controller, 'createWorkWithUniqueKey');
+        $method->setAccessible(true);
+        $work = $method->invoke($controller, [
+            'group_key' => 'flooring',
+            'label' => 'Jitter created',
+            'unit' => 'each',
+            'labor_kind' => SharedWork::KIND_HOURS_EACH,
+            'rate' => 1,
+            'flat_rate' => 1,
+            'consumers' => ['flooring'],
+            'sort_order' => 9800,
+        ], 4);
+        $this->assertMatchesRegularExpression('/_4_[0-9a-f]{4}/', $work->key);
+    }
+
+    public function test_flooring_quote_uses_saved_sell_not_display_price(): void
+    {
+        $this->actingAsAdmin();
+        $baseboard = SharedWork::query()->where('key', 'baseboard')->firstOrFail();
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $baseboard->id => [
+                    'id' => $baseboard->id,
+                    'label' => $baseboard->label,
+                    'rate' => $baseboard->rate,
+                    'flat_rate' => '',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $baseboard->refresh();
+        SharedWorkCatalog::forgetCache();
+        $this->assertNull($baseboard->flat_rate);
+        $this->assertEqualsWithDelta(4.75, SharedWorkCatalog::sellRate('baseboard', 6.35), 0.0001);
+
+        $type = FlooringType::query()->where('key', 'hardwood')->firstOrFail();
+        $calc = new FlooringQuotationCalculator;
+        $empty = $calc->calculate([
+            'flooring_type_id' => $type->id,
+            'square_footage' => 100,
+            'install_baseboard' => true,
+            'baseboard_linear_ft' => 80,
+            'include_material_details' => false,
+        ], FlooringSettings::current(), collect([$type]));
+        $this->assertEqualsWithDelta(380.0, (float) collect($empty['breakdown'])->firstWhere('key', 'baseboard')['amount'], 0.01);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $baseboard->id => [
+                    'id' => $baseboard->id,
+                    'label' => $baseboard->label,
+                    'rate' => $baseboard->rate,
+                    'flat_rate' => '6.3475',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        SharedWorkCatalog::forgetCache();
+        $this->assertEqualsWithDelta(6.3475, SharedWorkCatalog::sellRate('baseboard', 6.35), 0.00001);
+        $four = $calc->calculate([
+            'flooring_type_id' => $type->id,
+            'square_footage' => 100,
+            'install_baseboard' => true,
+            'baseboard_linear_ft' => 80,
+            'include_material_details' => false,
+        ], FlooringSettings::current(), collect([$type]));
+        $this->assertEqualsWithDelta(507.80, (float) collect($four['breakdown'])->firstWhere('key', 'baseboard')['amount'], 0.01);
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private function basePayload(array $extra = []): array
+    {
+        $crew = SharedCrewRate::current();
+
+        return array_merge([
+            'owner_hourly_rate' => number_format((float) $crew->owner_hourly_rate, 2, '.', ''),
+            'helper_hourly_rate' => number_format((float) $crew->helper_hourly_rate, 2, '.', ''),
+            'hours_per_day' => (string) $crew->hours_per_day,
+        ], $extra);
+    }
+}

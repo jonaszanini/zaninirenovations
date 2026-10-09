@@ -863,7 +863,8 @@ class SharedWorkCatalog
     }
 
     /**
-     * Sell $/unit: library flat rate, else effective hours × crew + material, else fallback.
+     * Quote-math sell $/unit. Saved Sell (flat_rate), then the built-in
+     * definition default. Never rounds and never uses displayUnitPrice().
      */
     public static function sellRate(string $key, ?float $fallback = null): float
     {
@@ -883,7 +884,22 @@ class SharedWorkCatalog
     }
 
     /**
+     * Format sellRate() for the library editor hint and quote-type banners.
+     * Same number the quote charges: saved Sell, else the built-in default.
+     */
+    public static function displayUnitPrice(SharedWork $work, ?float $ownerHourly = null): ?float
+    {
+        $price = self::sellRate($work->key);
+        if ($price <= 0) {
+            return null;
+        }
+
+        return $price;
+    }
+
+    /**
      * Effective sell $/unit at the shared crew owner rate (hours × owner + material).
+     * Quote-math helper used only when there is no saved Sell and no definition default.
      */
     public static function effectiveSellRate(SharedWork $work): ?float
     {
@@ -923,22 +939,10 @@ class SharedWorkCatalog
             return '';
         }
 
-        $unit = $work->unit ?? $def['unit'];
-        $flat = $work && $work->flat_rate !== null
-            ? (float) $work->flat_rate
-            : (float) ($def['flat_rate'] ?? 0);
-        if ($flat <= 0 && $work && in_array($unit, ['lf', 'sf'], true)) {
-            $flat = self::unitDisplayRate($work);
-        }
-        if ($flat > 0) {
-            return '$'.number_format($flat, 2).' / '.$unit;
-        }
-
-        if ($work) {
-            $effective = self::effectiveSellRate($work);
-            if ($effective !== null) {
-                return '$'.number_format($effective, 2).' / '.$unit.' effective';
-            }
+        $unit = $work ? ($work->unit ?? '') : (string) ($def['unit'] ?? '');
+        $price = self::sellRate($key);
+        if ($price > 0) {
+            return '$'.number_format($price, 2).' / '.$unit;
         }
 
         $rate = $work ? (float) $work->rate : (float) $def['rate'];
@@ -1022,8 +1026,40 @@ class SharedWorkCatalog
                 $keys[] = $key;
             }
         }
+        foreach (self::allWorks() as $work) {
+            $consumers = is_array($work->consumers) ? $work->consumers : [];
+            if (in_array($consumer, $consumers, true) && ! in_array($work->key, $keys, true)) {
+                $keys[] = $work->key;
+            }
+        }
 
         return $keys;
+    }
+
+    /**
+     * Built-in calculator keys. Custom library rows use a generated key and
+     * are not rewritten here — quote math looks up by key, not label.
+     */
+    public static function isCanonicalKey(string $key): bool
+    {
+        return array_key_exists($key, self::definitions());
+    }
+
+    /**
+     * Default quote types a new item in this group should appear on.
+     *
+     * @return list<string>
+     */
+    public static function defaultConsumersForGroup(string $groupKey): array
+    {
+        return match ($groupKey) {
+            'flooring' => ['flooring'],
+            'trim', 'doors' => ['trimming'],
+            'demolition', 'drywall', 'insulation' => ['basement'],
+            'painting' => ['painting'],
+            'tile' => ['tile'],
+            default => [],
+        };
     }
 
     public static function sharedPricesUrl(?string $workKey = null): string

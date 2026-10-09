@@ -50,7 +50,7 @@ class SharedPricesTest extends IntegrationTestCase
 
         $response = $this->put(route('admin.quotations.shared-prices.update'), $payload);
         $response->assertRedirect(route('admin.quotations.shared-prices.edit'));
-        $response->assertSessionHas('status');
+        $response->assertSessionHas('success');
 
         $crew->refresh();
         $this->assertEquals(1234.56, $crew->owner_hourly_rate, 'Owner hourly rate should be stripped of commas and saved');

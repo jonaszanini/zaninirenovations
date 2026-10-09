@@ -283,6 +283,47 @@
   word-break: break-word;
   white-space: normal;
 }
+.sp-work-label-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  color: var(--admin-heading);
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  padding: 0.3rem 0.4rem;
+  height: 28px;
+  box-sizing: border-box;
+}
+.sp-work-label-input:focus {
+  outline: none;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}
+.sp-work-extra {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 20px;
+}
+.sp-ref-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 0.35rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 3px;
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
 .sp-work-meta {
   display: block;
   font-weight: 400;
@@ -329,10 +370,21 @@
   color: var(--admin-muted);
   margin-bottom: 2px;
 }
+.sp-th-sell .admin-info-tip-wrap,
+.sp-sell-phone-label .admin-info-tip-wrap,
+.sp-group__sell-tip .admin-info-tip-wrap,
+.sp-heading .admin-info-tip-wrap,
+.sp-work-extra .admin-info-tip-wrap,
+.sp-add > summary .admin-info-tip-wrap {
+  position: relative;
+  display: inline-flex;
+}
 .sp-th-sell .admin-info-tip,
 .sp-sell-phone-label .admin-info-tip,
 .sp-group__sell-tip .admin-info-tip,
-.sp-heading .admin-info-tip {
+.sp-heading .admin-info-tip,
+.sp-work-extra .admin-info-tip,
+.sp-add > summary .admin-info-tip {
   position: relative;
   width: 28px;
   height: 28px;
@@ -344,7 +396,9 @@
 .sp-th-sell .admin-info-tip__bubble,
 .sp-sell-phone-label .admin-info-tip__bubble,
 .sp-group__sell-tip .admin-info-tip__bubble,
-.sp-heading .admin-info-tip__bubble {
+.sp-heading .admin-info-tip__bubble,
+.sp-work-extra .admin-info-tip__bubble,
+.sp-add > summary .admin-info-tip__bubble {
   z-index: 80;
 }
 .sp-table tbody tr {
@@ -702,7 +756,9 @@
   .sp-th-sell .admin-info-tip,
   .sp-sell-phone-label .admin-info-tip,
   .sp-group__sell-tip .admin-info-tip,
-  .sp-heading .admin-info-tip {
+  .sp-heading .admin-info-tip,
+  .sp-work-extra .admin-info-tip,
+  .sp-add > summary .admin-info-tip {
     width: 28px;
     height: 28px;
     padding: 8px;
@@ -745,6 +801,90 @@
     max-width: 100%;
     box-sizing: border-box;
   }
+  .sp-work-label-input {
+    min-height: 44px;
+    height: 44px;
+  }
+}
+
+.sp-add {
+  margin-top: 0.75rem;
+  padding-top: 0.15rem;
+  border-top: 1px solid var(--admin-border);
+}
+.sp-add > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--admin-primary);
+}
+.sp-add > summary::-webkit-details-marker { display: none; }
+.sp-add__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem 0.75rem;
+  padding: 0.25rem 0 0.5rem;
+}
+.sp-add__name { grid-column: 1 / -1; }
+.sp-add__consumers { grid-column: 1 / -1; }
+.sp-add__field > label {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-muted);
+  margin-bottom: 2px;
+}
+.sp-add__consumers {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.sp-add__consumers > legend {
+  display: block;
+  padding: 0;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-muted);
+  margin-bottom: 2px;
+}
+.sp-add .sp-input,
+.sp-add .admin-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.sp-add__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+.sp-add__checks .admin-checkbox {
+  min-height: 44px;
+}
+.sp-add__cost-hint {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--admin-muted);
+}
+@media (min-width: 68.75em) {
+  .sp-add__grid {
+    grid-template-columns: minmax(8rem, 1.5fr) 6.6rem 6.6rem 6.6rem;
+  }
+  .sp-add__name { grid-column: auto; }
+  .sp-add .sp-input,
+  .sp-add .admin-input { height: 28px; min-height: 28px; }
+  .sp-add__checks .admin-checkbox { min-height: 32px; }
 }
 </style>
 @endpush
@@ -758,7 +898,7 @@
       \App\Models\SharedWork::KIND_HOURS_EACH => 'Hrs each',
       \App\Models\SharedWork::KIND_FLAT => 'Flat',
     ];
-    $spSellTipText = 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Rate.';
+    $spSellTipText = 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Cost.';
     $spSellTipLabel = 'effective sell';
   @endphp
 
@@ -784,10 +924,7 @@
     <div class="admin-card sp-crew">
       <h3 class="sp-heading">
         Crew rates
-        @include('admin.partials.info_tip', [
-          'tipText' => 'Used by Basement, Trimming, Shed, and Millwork when a quote does not override them.',
-          'tipLabel' => 'crew rates',
-        ])
+        <x-admin.info-tip text="Used by Basement, Trimming, Shed, and Millwork when a quote does not override them." label="crew rates" />
       </h3>
       <div class="sp-crew-grid">
         <div class="sp-crew-field">
@@ -819,25 +956,29 @@
         <summary class="sp-group__summary">
           <span class="sp-group__title">{{ $groupLabel }} ({{ $groupWorks->count() }})</span>
           <span class="sp-group__sell-tip" onclick="event.preventDefault(); event.stopPropagation();">
-            @include('admin.partials.info_tip', [
-              'tipText' => $spSellTipText,
-              'tipLabel' => $spSellTipLabel,
-            ])
+            <x-admin.info-tip :text="$spSellTipText" :label="$spSellTipLabel" />
           </span>
         </summary>
         <div class="admin-table-scroll">
           <table class="sp-table">
             <thead>
               <tr>
-                <th class="sp-col-label">Work item</th>
-                <th class="sp-col-rate">Rate</th>
+                <th class="sp-col-label">
+                  <span class="sp-th-sell">
+                    Work item
+                    <x-admin.info-tip text="Rename here — saved quotes keep using a hidden key, not this name. Names must be unique inside this group. Custom items are reference-only." label="work item name" />
+                  </span>
+                </th>
+                <th class="sp-col-rate">
+                  <span class="sp-th-sell">
+                    Cost
+                    <x-admin.info-tip text="The old Rate field: hours per piece, or sf/lf per hour. Sell is the client price. Filling Sell does not clear Cost." label="cost field" />
+                  </span>
+                </th>
                 <th class="sp-col-sell">
                   <span class="sp-th-sell">
                     Sell rate
-                    @include('admin.partials.info_tip', [
-                      'tipText' => $spSellTipText,
-                      'tipLabel' => $spSellTipLabel,
-                    ])
+                    <x-admin.info-tip :text="$spSellTipText" :label="$spSellTipLabel" />
                   </span>
                 </th>
                 <th class="sp-col-unit">Unit</th>
@@ -853,7 +994,7 @@
                   $catalogId = (int) old('works.'.$work->id.'.catalog_material_id', $work->catalog_material_id ?? 0);
                   $selected = $catalogId > 0 ? ($catalogById->get($catalogId) ?? null) : null;
                   $isArea = $work->isPricedPerArea();
-                  $effective = $isArea ? null : \App\Services\SharedWorkCatalog::effectiveSellRate($work);
+                  $effective = \App\Services\SharedWorkCatalog::displayUnitPrice($work);
                   $consumers = is_array($work->consumers) ? $work->consumers : [];
                   $consumerLabels = [];
                   foreach ($consumers as $consumer) {
@@ -861,43 +1002,44 @@
                   }
                   $firstConsumer = $consumerLabels[0] ?? null;
                   $extraConsumerCount = max(count($consumerLabels) - 1, 0);
-                  $areaPrice = old('works.'.$work->id.'.flat_rate');
-                  if ($areaPrice === null) {
-                      $derivedArea = \App\Services\SharedWorkCatalog::unitDisplayRate($work);
-                      $areaPrice = $derivedArea > 0
-                          ? number_format($derivedArea, 4, '.', '')
-                          : '';
-                  }
-                  $workMeta = null;
-                  if (! $isArea && isset($kindLabels[$work->labor_kind])) {
-                      $workMeta = $kindLabels[$work->labor_kind];
-                  } elseif ($isArea) {
-                      $workMeta = $work->isSquareFoot() ? '/sqft' : '/linft';
-                  }
+                  $savedSell = old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '');
+                  $sellPlaceholder = $effective !== null
+                      ? number_format((float) $effective, 4, '.', '')
+                      : '0.0000';
+                  $workMeta = $work->costUnitLabel();
+                  $isCustom = $work->isCustom();
                 @endphp
                 <tr id="work-{{ $work->key }}" class="sp-row"
                     data-sp-kind="{{ $work->labor_kind }}"
                     data-sp-unit="{{ $work->unit }}"
-                    data-sp-area="{{ $isArea ? '1' : '0' }}">
+                    data-sp-area="{{ $isArea ? '1' : '0' }}"
+                    data-sp-default-sell="{{ $effective !== null ? number_format((float) $effective, 4, '.', '') : '' }}"
+                    data-sp-initial-rate="{{ $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '' }}">
                   <td class="sp-col-label" data-label="Work item">
                     <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
                     <span class="sp-work">
-                      <span class="sp-work-label" title="{{ $work->label }}">{{ $work->label }}</span>
-                      @if ($workMeta)
-                        <small class="sp-work-meta">{{ $workMeta }}</small>
-                      @endif
+                      <input type="text" class="sp-input sp-work-label-input{{ $errors->has('works.'.$work->id.'.label') ? ' is-invalid' : '' }}" id="sp-label-{{ $work->id }}"
+                             name="works[{{ $work->id }}][label]"
+                             value="{{ old('works.'.$work->id.'.label', $work->label) }}"
+                             title="{{ $work->label }}"
+                             maxlength="160"
+                             required
+                             aria-label="Name for {{ $work->label }}">
+                      <span class="sp-work-extra">
+                        @if ($isCustom)
+                          <span class="sp-ref-badge" title="Reference only — quote calculators do not use this item.">Reference</span>
+                        @else
+                          <small class="sp-work-meta">{{ $workMeta }}</small>
+                        @endif
+                      </span>
                     </span>
                   </td>
-                  <td class="sp-col-rate" data-label="Rate">
-                    @if ($isArea)
-                      <span class="sp-rate-empty">—</span>
-                    @else
-                      <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
-                             class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
-                             name="works[{{ $work->id }}][rate]"
-                             value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '') }}"
-                             placeholder="0.00">
-                    @endif
+                  <td class="sp-col-rate" data-label="{{ $work->costUnitLabel() }}">
+                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                           class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
+                           name="works[{{ $work->id }}][rate]"
+                           value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '') }}"
+                           placeholder="0.00">
                   </td>
                   <td class="sp-col-sell" data-label="">
                     <span class="sp-sell-phone-label">Sell rate</span>
@@ -905,8 +1047,8 @@
                       <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                              class="sp-input sp-input--sm cp-money-input" id="sp-flat-{{ $work->id }}"
                              name="works[{{ $work->id }}][flat_rate]"
-                             value="{{ $isArea ? $areaPrice : old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}"
-                             placeholder="0.0000">
+                             value="{{ $savedSell }}"
+                             placeholder="{{ $sellPlaceholder }}">
                     </div>
                     <small class="sp-effective" data-sp-effective @if ($effective === null) hidden @endif>{{ $effective !== null ? \App\Models\ClientProject::formatMoney($effective)."\u{200B}/".$work->unit : '' }}</small>
                   </td>
@@ -984,12 +1126,106 @@
             </tbody>
           </table>
         </div>
+        @php
+          $addHasInput = filled(old('new_works.'.$groupKey.'.0.label'));
+          $addHasError = $errors->has('new_works.'.$groupKey.'.0.label');
+        @endphp
+        <details class="sp-add" id="sp-add-{{ $groupKey }}" @if ($addHasInput || $addHasError) open @endif>
+          <summary>
+            <i class="fa fa-plus" aria-hidden="true"></i> Add item
+            <span onclick="event.preventDefault(); event.stopPropagation();">
+              <x-admin.info-tip text="New items are reference-only. They appear on Shared lists for the types you tick so you can look up the price. Built-in quote calculators do not use them." label="add shared item" />
+            </span>
+          </summary>
+          <div class="sp-add__grid">
+            <div class="sp-add__field sp-add__name">
+              <label for="sp-new-{{ $groupKey }}-label">Name</label>
+              <input type="text" class="sp-input{{ $addHasError ? ' is-invalid' : '' }}" id="sp-new-{{ $groupKey }}-label"
+                     name="new_works[{{ $groupKey }}][0][label]" maxlength="160"
+                     value="{{ old('new_works.'.$groupKey.'.0.label') }}"
+                     placeholder="e.g. Extra return">
+            </div>
+            <div class="sp-add__field">
+              <label for="sp-new-{{ $groupKey }}-unit">Unit</label>
+              <select class="admin-input sp-input" id="sp-new-{{ $groupKey }}-unit"
+                      name="new_works[{{ $groupKey }}][0][unit]" data-sp-new-unit>
+                @php $newUnit = old('new_works.'.$groupKey.'.0.unit', 'each'); @endphp
+                @foreach (['each' => 'each', 'lf' => 'lf', 'sf' => 'sf', 'opening' => 'opening'] as $unitVal => $unitLabel)
+                  <option value="{{ $unitVal }}" @selected($newUnit === $unitVal)>{{ $unitLabel }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div class="sp-add__field">
+              <label for="sp-new-{{ $groupKey }}-cost">Cost <span class="sp-add__cost-hint" data-sp-cost-hint>{{ \App\Models\SharedWork::costUnitLabelFor($newUnit) }}</span></label>
+              <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                     data-cp-money-entry="direct"
+                     class="sp-input cp-money-input" id="sp-new-{{ $groupKey }}-cost"
+                     name="new_works[{{ $groupKey }}][0][rate]"
+                     value="{{ old('new_works.'.$groupKey.'.0.rate') }}"
+                     placeholder="0.00">
+            </div>
+            <div class="sp-add__field">
+              <label for="sp-new-{{ $groupKey }}-sell">Sell</label>
+              <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                     data-cp-money-entry="direct"
+                     class="sp-input cp-money-input" id="sp-new-{{ $groupKey }}-sell"
+                     name="new_works[{{ $groupKey }}][0][flat_rate]"
+                     value="{{ old('new_works.'.$groupKey.'.0.flat_rate') }}"
+                     placeholder="0.00">
+            </div>
+            <fieldset class="sp-add__consumers">
+              <legend>Show as reference on</legend>
+              <div class="sp-add__checks">
+                @php $defaultNewConsumers = old('new_works.'.$groupKey.'.0.consumers', \App\Services\SharedWorkCatalog::defaultConsumersForGroup($groupKey)); @endphp
+                @foreach (\App\Services\SharedWorkCatalog::CONSUMER_LABELS as $consumerKey => $consumerLabel)
+                  <label class="admin-checkbox">
+                    <input type="checkbox" class="admin-checkbox__input"
+                           name="new_works[{{ $groupKey }}][0][consumers][]" value="{{ $consumerKey }}"
+                           @checked(in_array($consumerKey, $defaultNewConsumers, true))>
+                    <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                    <span class="admin-checkbox__text">{{ $consumerLabel }}</span>
+                  </label>
+                @endforeach
+              </div>
+            </fieldset>
+          </div>
+        </details>
       </details>
     @endforeach
   </form>
 
   <script>
-    document.querySelectorAll('.sp-mat-name-input').forEach(function(input) {
+    (function() {
+      var form = document.getElementById('sp-lib-form');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          if (form.getAttribute('data-submitting') === '1') {
+            e.preventDefault();
+            return;
+          }
+          form.setAttribute('data-submitting', '1');
+          document.querySelectorAll('button[type="submit"][form="sp-lib-form"], #sp-lib-form button[type="submit"]').forEach(function(btn) {
+            btn.disabled = true;
+          });
+        });
+      }
+      function costHintFor(unit) {
+        unit = String(unit || 'each').toLowerCase();
+        if (unit === 'each') return 'hrs per each';
+        if (unit === 'opening') return 'hrs per opening';
+        if (unit === 'lf' || unit === 'sf') return unit + ' per hour';
+        return 'hrs per ' + unit;
+      }
+      document.querySelectorAll('[data-sp-new-unit]').forEach(function(select) {
+        var hint = select.closest('.sp-add__grid') && select.closest('.sp-add__grid').querySelector('[data-sp-cost-hint]');
+        if (!hint) return;
+        select.addEventListener('change', function() {
+          hint.textContent = costHintFor(select.value);
+        });
+      });
+    })();
+
+    document.querySelectorAll('.sp-mat-name-input, .sp-work-label-input').forEach(function(input) {
       input.addEventListener('input', function() {
         this.title = this.value;
       });
@@ -1113,10 +1349,6 @@
       document.querySelectorAll('tr.sp-row').forEach(function(row) {
         var out = row.querySelector('[data-sp-effective]');
         if (!out) return;
-        if (row.getAttribute('data-sp-area') === '1') {
-          out.hidden = true;
-          return;
-        }
         var rateInput = row.querySelector('.sp-col-rate input');
         var sellInput = row.querySelector('.sp-col-sell input');
         var priceInput = row.querySelector('.sp-col-price input');
@@ -1127,12 +1359,19 @@
         var matUnit = unitInput ? String(unitInput.value || '') : '';
         var kind = row.getAttribute('data-sp-kind') || '';
         var unit = row.getAttribute('data-sp-unit') || '';
+        var defaultSell = parseSpMoney(row.getAttribute('data-sp-default-sell'));
+        var initialRate = parseSpMoney(row.getAttribute('data-sp-initial-rate'));
         var labor = 0;
-        if (rate > 0 && owner > 0) {
-          labor = kind === 'hours_each' ? rate * owner : owner / rate;
-        } else if (sell > 0) {
+        if (sell > 0) {
           labor = sell;
           price = 0;
+        } else if (rate > 0 && owner > 0 && rate !== initialRate) {
+          labor = kind === 'hours_each' ? rate * owner : owner / rate;
+        } else if (defaultSell > 0) {
+          labor = defaultSell;
+          price = 0;
+        } else if (rate > 0 && owner > 0) {
+          labor = kind === 'hours_each' ? rate * owner : owner / rate;
         } else {
           out.hidden = true;
           out.textContent = '';

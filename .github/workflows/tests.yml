@@ -31,7 +31,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: dom, mbstring, pdo_mysql, fileinfo
+          extensions: dom, mbstring, pdo_mysql, fileinfo, intl
           coverage: none
 
       - name: Install Composer dependencies
@@ -213,6 +213,12 @@ jobs:
           php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
           php artisan test tests/Feature/SharedPricesLayoutTest.php
           php artisan test tests/Feature/SharedPricesTest.php
+          php artisan test tests/Feature/SharedPricesAddRenameTest.php
+          php artisan test tests/Feature/SharedWorksNormalizedLabelMigrationTest.php
+          php artisan test tests/Feature/SharedPricesParallelSaveTest.php
+          php artisan test tests/Unit/Models/SharedWorkLabelTest.php
+          php artisan test tests/Unit/Services/SharedWorkCatalogTest.php
+          php artisan test tests/Unit/Services/FlooringQuotationCalculatorTest.php
 
       - name: Upload Shared prices geometry
         if: always()
