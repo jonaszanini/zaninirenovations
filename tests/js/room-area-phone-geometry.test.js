@@ -29,8 +29,8 @@ function assertCssGeometry() {
   assert.ok(/height:\s*auto/.test(collapsed.slice(0, 220)), 'collapsed sheet height is auto');
   const phoneFeedback = CSS.slice(CSS.lastIndexOf('.util-ra--fullpage .util-ra-feedback {'));
   const phoneFeedbackHead = phoneFeedback.slice(0, 420);
-  assert.ok(/position:\s*absolute/.test(phoneFeedbackHead), '390 feedback overlays the canvas edge');
-  assert.ok(/bottom:/.test(phoneFeedbackHead), '390 feedback sits on the canvas bottom edge');
+  assert.ok(/position:\s*static/.test(phoneFeedbackHead), '390 feedback stays in flow, not over the drawing');
+  assert.ok(/white-space:\s*nowrap/.test(phoneFeedbackHead), '390 feedback is one line so the canvas keeps height');
   assert.ok(!/color:\s*var\(--admin-text\)/.test(phoneFeedbackHead), '390 feedback must not override status colours');
   assert.ok(
     CSS.includes('.util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }'),
@@ -40,7 +40,6 @@ function assertCssGeometry() {
     CSS.includes('.util-ra--fullpage .util-ra-feedback.is-ok { color: var(--admin-success, #2e7d32); }'),
     'phone CSS keeps success status green'
   );
-  assert.ok(CSS.includes('--ra-feedback-gutter: 22px'), '390 reserves a one-line status gutter');
 }
 
 function resolveKonvaFile() {
@@ -626,8 +625,7 @@ async function measureViewports() {
         const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
         if (!root || !root.classList.contains('is-sheet-expanded') || !wrap || !stage) return false;
         const wrapH = wrap.getBoundingClientRect().height;
-        const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ra-feedback-gutter')) || 22;
-        return Math.abs(wrapH - prevH) > 8 && Math.abs(stage.height() - (wrapH - gutter)) < 3;
+        return Math.abs(wrapH - prevH) > 8 && Math.abs(stage.height() - wrapH) < 2;
       }, { timeout: 8000 }, phoneZoomed.wrapH);
     } catch (err) {
       const dump = await page.evaluate(() => {

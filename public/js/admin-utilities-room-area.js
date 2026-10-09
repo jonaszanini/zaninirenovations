@@ -2007,7 +2007,7 @@
       var wrapH = Math.floor(wrap.getBoundingClientRect().height || wrap.clientHeight);
       return {
         w: Math.max(MIN_CANVAS_W, wrapW),
-        h: Math.max(1, (wrapH || 240) - phoneFeedbackGutter())
+        h: Math.max(1, wrapH || 240)
       };
     }
     var w = wrapW;
@@ -2036,16 +2036,6 @@
     }
     var hDesk = Math.max(MIN_CANVAS_H, Math.min(maxH, Math.round(w * CANVAS_HEIGHT_RATIO)));
     return { w: w, h: hDesk };
-  }
-
-  function phoneFeedbackGutter() {
-    if (!isFullPage() || typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 900px)').matches) {
-      return 0;
-    }
-    var host = root || document.documentElement;
-    var raw = window.getComputedStyle(host).getPropertyValue('--ra-feedback-gutter');
-    var n = parseFloat(raw);
-    return isFinite(n) && n > 0 ? Math.round(n) : 22;
   }
 
   function syncDrawableDimensions() {
@@ -4858,7 +4848,7 @@
       vp.w = isFullPage() ? Math.max(MIN_CANVAS_W, Math.floor(wrapRect.width)) : Math.floor(wrapRect.width);
     }
     if (isFullPage() && wrapRect.height > 1) {
-      vp.h = Math.max(1, Math.floor(wrapRect.height) - phoneFeedbackGutter());
+      vp.h = Math.max(1, Math.floor(wrapRect.height));
     }
     if (vp.w === state.viewportW && vp.h === state.viewportH
       && state.stage.width() === vp.w && state.stage.height() === vp.h) {

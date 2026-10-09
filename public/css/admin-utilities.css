@@ -6056,10 +6056,6 @@ body:has(.util-ra--fullpage) {
 }
 
 @media (max-width: 900px) {
-  .util-ra--fullpage {
-    --ra-feedback-gutter: 22px;
-  }
-
   .util-ra--fullpage .util-ra-stage {
     flex-direction: column;
   }
@@ -6232,21 +6228,15 @@ body:has(.util-ra--fullpage) {
   }
 
   .util-ra--fullpage .util-ra-feedback {
-    position: absolute;
-    left: 0.45rem;
-    right: 0.45rem;
-    bottom: 0.2rem;
-    z-index: 3;
-    margin: 0;
-    padding: 0.08rem 0.4rem;
-    max-height: 1.4em;
+    order: 5;
+    flex: 0 0 auto;
+    margin: 0.1rem 0.45rem 0.12rem;
+    padding: 0 0.15rem;
+    max-height: 1.25em;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    pointer-events: none;
-    background: color-mix(in srgb, var(--admin-surface) 88%, transparent);
-    border-radius: 6px;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     line-height: 1.25;
   }
 
@@ -6924,7 +6914,6 @@ body:has(.util-ra-guide) {
 @media (max-width: 900px) {
   .util-ra--fullpage {
     --ra-sheet-h: auto;
-    --ra-feedback-gutter: 22px;
   }
 
   .util-ra--fullpage .util-ra-full-header {
@@ -7366,22 +7355,22 @@ body:has(.util-ra-guide) {
   }
 
   .util-ra--fullpage .util-ra-feedback {
-    position: absolute;
-    left: 0.45rem;
-    right: 0.45rem;
-    bottom: 0.2rem;
-    z-index: 3;
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    z-index: auto;
     flex: 0 0 auto;
-    margin: 0;
-    padding: 0.08rem 0.4rem;
-    max-height: 1.4em;
+    order: 5;
+    margin: 0.1rem 0.45rem 0.12rem;
+    padding: 0 0.15rem;
+    max-height: 1.25em;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     pointer-events: none;
-    background: color-mix(in srgb, var(--admin-surface) 88%, transparent);
-    border-radius: 6px;
-    font-size: 0.78rem;
+    background: transparent;
+    font-size: 0.75rem;
     line-height: 1.25;
   }
 
