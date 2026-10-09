@@ -402,11 +402,25 @@
       hdAbortCtrl = null;
     }
 
+    function markHdLoading(sku) {
+      var action = list.querySelector('[data-hd-import-action]');
+      if (!action) {
+        render(rows, lastQuery || sku);
+        return;
+      }
+      action.classList.add('is-loading');
+      action.setAttribute('aria-disabled', 'true');
+      var nameEl = action.querySelector('.admin-search-select__option-name');
+      var metaEl = action.querySelector('.admin-search-select__option-meta');
+      if (nameEl) nameEl.textContent = 'Pulling SKU ' + sku + ' from Home Depot…';
+      if (metaEl) metaEl.textContent = 'Creating catalog material';
+    }
+
     function pullFromHomeDepot(sku) {
       if (!hdImportUrl || !sku || hdPulling) return;
       hdPulling = true;
       hdError = null;
-      render(rows, lastQuery || sku);
+      markHdLoading(sku);
 
       if (hdAbortCtrl && typeof hdAbortCtrl.abort === 'function') hdAbortCtrl.abort();
       hdAbortCtrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -599,6 +613,7 @@
     }
 
     function onDocClick(e) {
+      if (hdPulling) return;
       if (root.contains(e.target) || list.contains(e.target)) return;
       closeList();
     }
