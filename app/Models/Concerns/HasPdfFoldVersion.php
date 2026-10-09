@@ -70,9 +70,18 @@ trait HasPdfFoldVersion
         return $this->resolvedPdfFoldVersion() === self::PDF_FOLD_VERSION_V2;
     }
 
+    /**
+     * v2 and v3 share leftover hst_amount emission. 0 / unknown versions
+     * follow #60 and stay on legacy.
+     */
+    public function usesNonLegacyPdfFold(): bool
+    {
+        return $this->usesPdfFoldV2() || $this->usesCurrentPdfFold();
+    }
+
     public function usesLegacyPdfFold(): bool
     {
-        return $this->resolvedPdfFoldVersion() === self::PDF_FOLD_VERSION_LEGACY;
+        return ! $this->usesNonLegacyPdfFold();
     }
 
     protected function sourcePdfFoldVersion(): ?int

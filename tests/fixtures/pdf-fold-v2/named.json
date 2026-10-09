@@ -232,6 +232,41 @@
         "total": 1743,
         "pdf_total": 1743
     },
+    "tile_client_selected_materials": {
+        "source": "tile",
+        "items": [
+            {
+                "description": "Client-selected tile & materials",
+                "amount": 800,
+                "apply_hst": true
+            },
+            {
+                "description": "Commute expense",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Materials",
+                "amount": 800,
+                "apply_hst": true
+            },
+            {
+                "description": "Labour",
+                "amount": 100,
+                "apply_hst": true,
+                "hst_taxable_amount": 100,
+                "hst_amount": 13
+            }
+        ],
+        "hst": 117,
+        "pdf_hst": 117,
+        "total": 1017,
+        "pdf_total": 1017
+    },
     "custom_millwork_labour_plus_commute": {
         "source": "millwork",
         "items": [

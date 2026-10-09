@@ -53,6 +53,28 @@ class ClientProjectQuotationPdfFoldV2Test extends TestCase
         $this->assertEquals(226.00, $quote->pdfGrandTotal());
     }
 
+    public function test_zero_and_unknown_fold_versions_are_legacy(): void
+    {
+        foreach ([0, 9] as $version) {
+            $quote = new ClientProjectQuotation([
+                'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+                'pdf_fold_version' => $version,
+                'items' => [
+                    ['description' => 'Material', 'amount' => 100.00, 'apply_hst' => true],
+                    [
+                        'description' => 'Commute expense',
+                        'amount' => 1.00,
+                        'apply_hst' => false,
+                        'hst_included' => true,
+                    ],
+                ],
+            ]);
+            $quote->exists = true;
+            $this->assertTrue($quote->usesLegacyPdfFold());
+            $this->assertSame(['Material'], array_column($quote->pdfLineItems(), 'description'));
+        }
+    }
+
     public function test_persisted_null_fold_version_is_v1(): void
     {
         $quote = new ClientProjectQuotation([

@@ -559,6 +559,7 @@ class StandardQuotationController extends Controller
             $includeLabourHst,
             $building['include_building'],
             $building['building_labor_percent'],
+            // Remainder-to-labour-jobs is v3-only; saved v2 keeps last-job leftover.
             $existing ? $existing->usesCurrentPdfFold() : true
         );
 

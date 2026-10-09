@@ -172,6 +172,17 @@ $named = [
             $debris(113.00),
         ],
     ],
+    'tile_client_selected_materials' => [
+        'source' => ClientProjectQuotation::SOURCE_TILE,
+        'items' => [
+            [
+                'description' => 'Client-selected tile & materials',
+                'amount' => 800.00,
+                'apply_hst' => true,
+            ],
+            $commute(113.00),
+        ],
+    ],
     'custom_millwork_labour_plus_commute' => [
         'source' => ClientProjectQuotation::SOURCE_MILLWORK,
         'items' => [

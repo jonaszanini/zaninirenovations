@@ -100,7 +100,7 @@ class RoomAreaQuoteLineInserter
                 (bool) ($quote->include_labour_hst ?? true),
                 (bool) ($quote->include_building ?? false),
                 (float) ($quote->building_labor_percent ?? 0),
-                $quote->usesCurrentPdfFold()
+                $quote->usesCurrentPdfFold() // v3-only surcharge remainder
             );
 
             $worksForStorage = [];

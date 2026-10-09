@@ -184,6 +184,7 @@ jobs:
           php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV2Test.php
           php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV3Test.php
           php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV2IdentityTest.php
+          php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV2SqLinkedIdentityTest.php
           php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV1IdentityTest.php
           php artisan test tests/Feature/Quotations/PdfFoldVersionLinkTest.php
           php artisan test tests/Unit/Models/StandardQuotationPdfLineItemsTest.php

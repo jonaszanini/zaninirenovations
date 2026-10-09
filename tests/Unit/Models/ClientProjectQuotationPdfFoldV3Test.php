@@ -174,6 +174,126 @@ class ClientProjectQuotationPdfFoldV3Test extends TestCase
         ];
     }
 
+    public function test_unknown_fold_versions_use_legacy_v1(): void
+    {
+        foreach ([0, 4, 99] as $version) {
+            $quote = new ClientProjectQuotation([
+                'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+                'pdf_fold_version' => $version,
+                'items' => [
+                    ['description' => 'Material', 'amount' => 100.00, 'apply_hst' => true],
+                    [
+                        'description' => 'Commute expense',
+                        'amount' => 1.00,
+                        'apply_hst' => false,
+                        'hst_included' => true,
+                    ],
+                ],
+            ]);
+            $quote->exists = true;
+            $this->assertTrue($quote->usesLegacyPdfFold(), (string) $version);
+            $this->assertFalse($quote->usesCurrentPdfFold(), (string) $version);
+            $this->assertFalse($quote->usesPdfFoldV2(), (string) $version);
+            $this->assertSame(['Material'], array_column($quote->pdfLineItems(), 'description'), (string) $version);
+            $this->assertEquals(113.99, $quote->pdfGrandTotal(), (string) $version);
+        }
+    }
+
+    public function test_sq_without_saved_labour_hst_setting_defaults_on(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'pdf_fold_version' => 3,
+            'items' => [
+                ['description' => 'Material', 'amount' => 1000.00, 'apply_hst' => true],
+                [
+                    'description' => 'Commute expense',
+                    'amount' => 113.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $this->assertEquals(143.00, $quote->editorHst());
+        $this->assertEquals(143.00, $quote->pdfHst());
+        $labour = collect($quote->pdfLineItems())->firstWhere('description', 'Labour');
+        $this->assertNotNull($labour);
+        $this->assertTrue((bool) ($labour['apply_hst'] ?? false));
+    }
+
+    public function test_heading_without_apply_hst_key_stays_untaxed_and_material_follows_jobs(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'pdf_fold_version' => 3,
+            'items' => [
+                ['description' => 'Job one', 'amount' => 0, 'is_heading' => true],
+                ['description' => 'Labour', 'amount' => 500.00, 'apply_hst' => true],
+                ['description' => 'Job two', 'amount' => 0, 'is_heading' => true],
+                ['description' => 'Labour', 'amount' => 200.00, 'apply_hst' => true],
+                [
+                    'description' => 'Additional cost — Dumpster',
+                    'amount' => 113.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $clean = $quote->cleanItems();
+        $this->assertTrue((bool) $clean[0]['is_heading']);
+        $this->assertFalse((bool) $clean[0]['apply_hst']);
+        $this->assertSame(
+            ['Job one', 'Labour', 'Job two', 'Labour', 'Material'],
+            array_column($quote->pdfLineItems(), 'description')
+        );
+        $this->assertEquals($quote->editorHst(), $quote->pdfHst());
+    }
+
+    public function test_v1_cpq_linked_to_v3_sq_one_cent_is_from_live_v3_remainder(): void
+    {
+        // A v1 client PDF reads live SQ lines. v3 computeWorks puts the
+        // building-surcharge remainder on a job that has labour; v1/v2 leave
+        // it on the last job (can be −$0.01). LegacyPdfFoldV1 is frozen and
+        // cannot ask the SQ to recompute as v1, so a v1 CPQ re-linked to a
+        // v3 SQ can move 1¢. Stored v1 items are unchanged until that re-link.
+        $works = [
+            [
+                'title' => 'Job one',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 1.15,
+            ],
+            [
+                'title' => 'Job two',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 1.15,
+            ],
+            [
+                'title' => 'Materials only',
+                'materials' => [[
+                    'short_name' => 'Tile',
+                    'unit_price' => 10,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 0,
+            ],
+        ];
+        $calc = new \App\Services\StandardQuotationCalculator();
+        $v1 = $calc->computeWorks($works, false, 0, true, true, 30, false);
+        $v3 = $calc->computeWorks($works, false, 0, true, true, 30, true);
+        $this->assertEqualsWithDelta(-0.01, $v1['works'][2]['labour_total'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $v3['works'][2]['labour_total'], 0.001);
+        $this->assertNotEquals(
+            round((float) $v1['works'][2]['labour_total'], 2),
+            round((float) $v3['works'][2]['labour_total'], 2)
+        );
+    }
+
     public function test_sq_labour_hst_off_is_read_from_the_calculator_flag(): void
     {
         $quote = new ClientProjectQuotation([

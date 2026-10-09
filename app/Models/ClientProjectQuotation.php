@@ -554,8 +554,11 @@ class ClientProjectQuotation extends Model
             if ($description === '' && $amount == 0.0) {
                 continue;
             }
-            $applyHst = !array_key_exists('apply_hst', $row)
-                || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN);
+            $isHeading = ! empty($row['is_heading']);
+            $applyHst = ! $isHeading && (
+                ! array_key_exists('apply_hst', $row)
+                || filter_var($row['apply_hst'], FILTER_VALIDATE_BOOLEAN)
+            );
             $hstIncluded = filter_var($row['hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
             $cleanRow = [
@@ -563,16 +566,16 @@ class ClientProjectQuotation extends Model
                 'amount' => round($amount, 2),
                 'apply_hst' => $applyHst,
             ];
-            if ($hstIncluded) {
+            if ($hstIncluded && ! $isHeading) {
                 $cleanRow['hst_included'] = true;
             }
             if (array_key_exists('hst_taxable_amount', $row)) {
                 $cleanRow['hst_taxable_amount'] = round((float) $row['hst_taxable_amount'], 2);
             }
-            if (array_key_exists('hst_amount', $row)) {
+            if (array_key_exists('hst_amount', $row) && ! $isHeading) {
                 $cleanRow['hst_amount'] = round((float) $row['hst_amount'], 2);
             }
-            if (! empty($row['is_heading'])) {
+            if ($isHeading) {
                 $cleanRow['is_heading'] = true;
             }
             $clean[] = $cleanRow;
@@ -1016,22 +1019,32 @@ class ClientProjectQuotation extends Model
             return $fromSource;
         }
 
+        $sawLabour = false;
         foreach ($items as $row) {
             if (! empty($row['is_heading'])) {
+                continue;
+            }
+            $desc = (string) ($row['description'] ?? '');
+            if (self::isHiddenInternalExpenseLineDescription($desc)
+                || DebrisRemovalExpenseService::isLineDescription($desc)) {
                 continue;
             }
             if (! self::isPdfLabourLine($row) && ! self::isPdfCombinedSummaryLine($row)) {
                 continue;
             }
+            $sawLabour = true;
             if (! empty($row['apply_hst'])) {
                 return true;
             }
         }
 
-        // Calculators without an include_labour_hst toggle (millwork,
-        // basement, paving, …) always charge labour HST. Do not infer
-        // "off" just because a labour line was excluded by name.
-        return ! $this->sourceTypeHasLabourHstToggle();
+        // No saved flag: default ON (HST $143 with commute, matching types
+        // without a toggle). Toggle types with only cash labour stay off.
+        if ($sawLabour && $this->sourceTypeHasLabourHstToggle()) {
+            return false;
+        }
+
+        return true;
     }
 
     protected function sourceChargesLabourHst(): ?bool
@@ -1168,16 +1181,19 @@ class ClientProjectQuotation extends Model
      */
     protected function materialsCategoryFallbackIndex(array $items): int
     {
+        $afterHeading = 0;
         foreach ($items as $i => $row) {
             if (! empty($row['is_heading'])) {
+                $afterHeading = $i + 1;
+
                 continue;
             }
             if (self::isPdfLabourLine($row) || self::isPdfCombinedSummaryLine($row)) {
-                return $i;
+                return max($i, $afterHeading);
             }
         }
 
-        return count($items);
+        return max($afterHeading, count($items));
     }
 
     /**
@@ -1198,6 +1214,7 @@ class ClientProjectQuotation extends Model
             }
         }
         if ($hasHeading) {
+            // After every job section, never under the last job's category.
             return $this->insertPdfLineAtCategory($items, $line, $bucket, count($items) > 0 ? count($items) - 1 : null);
         }
 
@@ -1907,7 +1924,7 @@ class ClientProjectQuotation extends Model
         }
 
         $sum = 0.0;
-        $paving = $this->usesCurrentPdfFold() && $this->source_type === self::SOURCE_PAVING;
+        $paving = $this->usesCurrentPdfFold() && $this->source_type === self::SOURCE_PAVING; // v3 editor total only
         foreach ($this->cleanItems() as $row) {
             if (! empty($row['is_heading'])) {
                 continue;

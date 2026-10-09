@@ -96,12 +96,14 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
         ]);
         $this->assertTrue($quote->usesPdfFoldV2());
         $this->assertFalse($quote->usesCurrentPdfFold());
-        $this->assertEquals(8.67, $quote->editorHst());
-        $this->assertEquals(8.67, $quote->pdfHst());
-        $this->assertEquals(8.67, $quote->hst());
-        $this->assertEquals(75.33, $quote->editorGrandTotal());
-        $this->assertEquals(75.33, $quote->pdfGrandTotal());
-        $this->assertEquals(75.33, $quote->grandTotal());
+        // v2 SQ leftover hst_amount: 2 × round(33.33 × 0.13, 2) = 8.66
+        $this->assertEquals(8.66, $quote->editorHst());
+        $this->assertEquals(8.66, $quote->pdfHst());
+        $this->assertEquals(8.66, $quote->hst());
+        $this->assertEquals(75.32, $quote->editorGrandTotal());
+        $this->assertEquals(75.32, $quote->pdfGrandTotal());
+        $this->assertEquals(75.32, $quote->grandTotal());
+        $this->assertArrayHasKey('hst_amount', $sq->summaryPdfLineItems()[0]);
     }
 
     public function test_v3_sq_2x_33_33_linked_path_matches_editor(): void

@@ -13,6 +13,8 @@ class ClientProjectQuotationPdfFoldV2IdentityTest extends TestCase
     public function test_named_main_v2_regressions_match_committed_fixtures(): void
     {
         $named = $this->loadFixture('named.json');
+        $this->assertArrayHasKey('tile_client_selected_materials', $named);
+        $this->assertSame('Materials', $named['tile_client_selected_materials']['lines'][0]['description']);
         foreach ($named as $key => $fx) {
             $this->assertFixtureMatches($fx, $key);
         }
