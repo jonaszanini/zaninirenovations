@@ -1629,38 +1629,268 @@ a.admin-client-link:focus-visible {
 .admin-info-tip__bubble {
   display: none;
   position: absolute;
-  z-index: 40;
+  z-index: 150;
   left: 0;
   top: calc(100% - 4px);
-  width: min(280px, 70vw);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(273px, calc(100vw - 24px));
+  min-width: 10rem;
   padding: 0.7rem 0.85rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: var(--admin-elevated, #fff);
+  background: var(--admin-elevated);
   color: var(--admin-text);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
-  line-height: 1.4;
+  line-height: 1.45;
   text-align: left;
   box-shadow: var(--admin-shadow-md);
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 .admin-info-tip[aria-expanded="true"] .admin-info-tip__bubble,
 .admin-info-tip[aria-expanded="true"] + .admin-info-tip__bubble,
 .admin-info-tip-wrap.is-open > .admin-info-tip__bubble {
   display: block;
 }
-.admin-form-group > label:has(.admin-info-tip),
-.admin-form-group-label:has(.admin-info-tip),
-.br-lw__head > label:has(.admin-info-tip),
+.admin-info-tip,
+.admin-info-tip-wrap,
+.admin-info-tip__bubble {
+  pointer-events: auto;
+}
 .admin-card > h3:has(.admin-info-tip) {
   display: flex;
   align-items: center;
   gap: 0.15rem;
 }
-.admin-checkbox .admin-info-tip {
+.admin-card > h3.sp-heading:has(.admin-info-tip) {
+  display: block;
+}
+.admin-label-with-tip {
+  display: inline;
+  max-width: 100%;
+}
+.admin-form-group > .admin-label-with-tip {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+.br-lw__head > .admin-label-with-tip {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+.admin-form-group .admin-label-with-tip > label:not(.admin-checkbox),
+.admin-form-group .admin-label-with-tip > .admin-form-group-label,
+.admin-label-with-tip > label:not(.admin-checkbox),
+.admin-label-with-tip > .admin-form-group-label {
+  display: inline;
+  margin-bottom: 0;
+  white-space: normal;
+}
+.admin-label-with-tip > label.admin-checkbox,
+.admin-label-with-tip > label.admin-checkbox--block,
+.br-toggle-qty .admin-label-with-tip > label.admin-checkbox,
+.br-check-stack .admin-label-with-tip > label.admin-checkbox {
+  display: inline-flex;
+}
+/* Fix C: hanging indent so the ⓘ stays with the last word inside
+   .admin-form-group, where `label.admin-checkbox { display:flex }` would
+   otherwise park the tip on the next line at 320/390. */
+.admin-label-with-tip:has(> label.admin-checkbox),
+.admin-checkbox-row {
+  display: block;
+  padding-left: 34px;
+  text-indent: -34px;
+  min-height: 44px;
+  color: var(--admin-text);
+  font-weight: 500;
+  font-size: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.admin-checkbox-row.sq-checkbox-label,
+.admin-label-with-tip.admin-checkbox-row.sq-checkbox-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 0;
+}
+.admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox,
+.admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox--block,
+.admin-checkbox-row > label.admin-checkbox {
+  display: inline;
+  align-items: unset;
+  margin-bottom: 0;
+  text-indent: 0;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+.admin-label-with-tip:has(> label.admin-checkbox) .admin-checkbox__mark {
+  display: inline-block;
+  vertical-align: -6px;
+  margin-right: 10px;
+  text-indent: 0;
+  flex-shrink: 0;
+}
+.admin-label-with-tip:has(> label.admin-checkbox) .admin-checkbox__text,
+.admin-checkbox-row .admin-checkbox__text {
+  display: inline;
+  flex: none;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+.admin-label-with-tip:has(> label.admin-checkbox) > .admin-label-with-tip__end {
+  white-space: nowrap;
+  text-indent: 0;
+}
+.admin-checkbox__tail,
+.admin-form-group label.admin-checkbox__tail {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-indent: 0;
+  white-space: nowrap;
+}
+.admin-label-with-tip:has(> label.admin-checkbox):has(.br-client-filled) {
+  padding-left: 64px;
+  text-indent: -64px;
+}
+.sp-heading {
+  display: block;
+}
+.admin-heading-copy {
+  display: inline;
+  min-width: 0;
+  white-space: normal;
+  word-spacing: normal;
+}
+.sq-intro-option-title > .admin-heading-copy,
+.br-acc__summary > .admin-heading-copy,
+.admin-accordion__summary > .admin-heading-copy,
+.admin-accordion__title.admin-heading-copy,
+h1 > .admin-heading-copy,
+h2 > .admin-heading-copy,
+h3 > .admin-heading-copy,
+h4 > .admin-heading-copy,
+h5 > .admin-heading-copy,
+legend > .admin-heading-copy,
+summary > .admin-heading-copy {
+  display: inline;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.admin-label-with-tip__end {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.admin-label-with-tip__end > span {
+  display: inline;
+  flex: none;
+  margin: 0;
+  white-space: nowrap;
+}
+.admin-label-with-tip__end > .admin-info-tip-wrap {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.admin-label-with-tip .admin-label-with-tip__end > .admin-info-tip-wrap .admin-info-tip,
+.admin-label-with-tip__end > .admin-info-tip-wrap > .admin-info-tip,
+.sq-intro-option-title .admin-label-with-tip__end .admin-info-tip,
+.admin-heading-copy .admin-label-with-tip__end .admin-info-tip {
+  margin: -10px -8px;
+}
+.admin-label-with-tip__end > label,
+.admin-label-with-tip__end > span:not(.admin-info-tip-wrap) {
+  position: relative;
+  z-index: 1;
+}
+.admin-label-with-tip__end > label,
+.admin-form-group .admin-label-with-tip__end > label,
+.admin-label-with-tip__end > label.admin-label-with-tip__tail,
+.admin-form-group .admin-label-with-tip__end > label.admin-label-with-tip__tail {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-form-group label.cp-required,
+.admin-label-with-tip__end > .cp-required,
+.admin-label-with-tip__end > label.cp-required,
+.admin-form-group .admin-label-with-tip__end > label.cp-required,
+.admin-form-group .admin-label-with-tip__end > .cp-required {
+  color: var(--admin-danger);
+}
+.admin-label-with-tip__end > .admin-form-group-label,
+.admin-label-with-tip__end > .admin-accordion__title,
+.admin-heading-copy .admin-label-with-tip__end > .admin-accordion__title,
+.admin-label-with-tip__end > .admin-filters-accordion__title {
+  display: inline;
+  flex: none;
+  min-width: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+.admin-form-grid-2 > .admin-form-group > .admin-label-with-tip,
+.br-qty-grid > .admin-form-group:not(.br-lw) > .admin-label-with-tip,
+.br-framing-fields .admin-form-group > .admin-label-with-tip {
+  display: block;
+  min-height: 2.6em;
+}
+.admin-label-with-tip > .admin-info-tip-wrap,
+.br-acc__summary > .admin-info-tip-wrap,
+h2 > .admin-info-tip-wrap,
+h3 > .admin-info-tip-wrap,
+h4 > .admin-info-tip-wrap,
+h5 > .admin-info-tip-wrap,
+legend > .admin-info-tip-wrap,
+.cp-heading-sm > .admin-info-tip-wrap,
+.cp-heading-md > .admin-info-tip-wrap,
+.admin-accordion__title > .admin-info-tip-wrap,
+.admin-filters-accordion__title > .admin-info-tip-wrap,
+.q-additional-costs-card__title > .admin-info-tip-wrap {
+  display: inline-flex;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+}
+/* Keep the page-title ⓘ next to the last word — flex on h1 stretches
+   the text item and parks the tip at the far right on 390px. */
+.admin-topbar h1:has(.admin-info-tip),
+.admin-topbar h1:has(.admin-info-tip-wrap) {
+  display: block;
+}
+.admin-topbar h1 .admin-info-tip-wrap {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.admin-checkbox .admin-info-tip,
+.admin-label-with-tip > .admin-info-tip-wrap .admin-info-tip {
   margin: -10px -6px;
 }
 
@@ -1772,11 +2002,14 @@ details[open] > summary.admin-chevron-summary::after {
   }
 }
 .admin-accordion__title {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--admin-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: normal;
 }
 .admin-accordion__panel {
   padding: 1rem 1.5rem 1.5rem;
@@ -1830,10 +2063,13 @@ details[open] > summary.admin-chevron-summary::after {
   color: var(--admin-primary);
 }
 .admin-filters-accordion__title {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--admin-heading);
   letter-spacing: 0.01em;
+  white-space: normal;
 }
 .admin-filters-accordion__badge {
   display: inline-flex;
@@ -4316,6 +4552,7 @@ body.admin-ai-text-history-open {
 
 /* Shared Price Library */
 .sp-heading {
+  display: block;
   margin: 0 0 0.5rem;
   color: var(--admin-heading);
   font-size: 1.05rem;

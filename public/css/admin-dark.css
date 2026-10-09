@@ -66,6 +66,14 @@ html.admin-dark .admin-toolbar-lede {
   color: var(--admin-muted);
 }
 
+html.admin-dark .admin-checkbox-row {
+  color: var(--admin-text);
+}
+html.admin-dark .admin-checkbox-row label,
+html.admin-dark .admin-checkbox-row .admin-checkbox__text {
+  color: inherit;
+}
+
 html.admin-dark .admin-sidebar-brand {
   background: #024768;
 }
@@ -1101,8 +1109,11 @@ html.admin-dark .tox-tinymce {
   border-color: var(--admin-border) !important;
 }
 
-html.admin-dark .tox .tox-edit-area__iframe {
-  background: var(--admin-input-bg);
+html.admin-dark .tox .tox-edit-area,
+html.admin-dark .tox .tox-edit-area__iframe,
+html.admin-dark .quotation-work-desc .tox-tinymce,
+html.admin-dark .sq-intro-work-desc .tox-tinymce {
+  background: var(--admin-input-bg) !important;
 }
 
 html.admin-dark .tox .tox-menubar,
@@ -2993,7 +3004,13 @@ html.admin-dark .cp-recalc-preview tr.is-paid td {
 
 html.admin-dark .cp-required,
 html.admin-dark .admin-required,
-html.admin-dark .admin-form-error {
+html.admin-dark label.cp-required,
+html.admin-dark .admin-form-error,
+html.admin-dark .admin-form-group label.cp-required,
+html.admin-dark .admin-label-with-tip__end > .cp-required,
+html.admin-dark .admin-label-with-tip__end > label.cp-required,
+html.admin-dark .admin-form-group .admin-label-with-tip__end > .cp-required,
+html.admin-dark .admin-form-group .admin-label-with-tip__end > label.cp-required {
   color: #fca5a5;
 }
 

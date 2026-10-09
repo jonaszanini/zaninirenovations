@@ -1,12 +1,14 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Tasks & reminders')
+@section('heading')
+  Tasks &amp; reminders
+  <x-admin.info-tip label="Tasks & reminders">Your own follow-up list — not visible to clients.</x-admin.info-tip>
+@endsection
 
 @section('content')
   <div class="admin-toolbar">
     <p class="admin-toolbar-lede">
       {{ $openCount }} open{{ $overdueCount > 0 ? ', ' . $overdueCount . ' overdue' : '' }}.
-      Your own follow-up list — not visible to clients.
     </p>
     <div class="admin-toolbar-actions" role="tablist" aria-label="Filter tasks">
       <a href="{{ route('admin.tasks.index', ['filter' => 'open']) }}" class="admin-btn admin-btn--sm {{ $filter === 'open' ? 'admin-btn--primary' : 'admin-btn--ghost' }}">Open</a>

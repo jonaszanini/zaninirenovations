@@ -18,12 +18,14 @@
 @endphp
 
 <div class="admin-form-group cp-project-photos-upload">
-  <label for="{{ $inputId }}">
-    Photos &amp; files <span class="admin-form-help cp-inline-help">(optional)</span>
+  <span class="admin-label-with-tip">
+    <label for="{{ $inputId }}">
+      Photos &amp; files <span class="admin-form-help cp-inline-help">(optional)</span>
+    </label>
     @if ($canAdd > 0)
-      @include('admin.partials.info_tip', ['text' => $photosHelp])
+      @include('admin.partials.info_tip', ['tipText' => $photosHelp, 'tipLabel' => 'Photos & files'])
     @endif
-  </label>
+  </span>
   @if ($canAdd> 0)
     <input class="admin-input" type="file"
            id="{{ $inputId }}"

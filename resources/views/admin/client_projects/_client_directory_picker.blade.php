@@ -10,7 +10,8 @@
   'value' => $initialClientId > 0 ? $initialClientId : '',
   'label' => 'Client from directory',
   'labelHint' => [
-    'text' => 'Type a name, email, or phone, then tap a match. That fills the fields below. If you skip this, a new directory entry is created from the name you enter.',
+    'tipText' => 'Type a name, email, or phone, then tap a match. That fills the fields below. If you skip this, a new directory entry is created from the name you enter.',
+    'tipLabel' => 'Client from directory',
   ],
   'placeholder' => 'Search name, email, or phone',
   'ariaLabel' => 'Search clients in the directory',

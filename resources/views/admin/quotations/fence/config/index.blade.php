@@ -28,11 +28,19 @@
     @include('admin.partials.quotation_return_quote_hidden')
     <div class="fq-config-header">
       <div>
-        <h3 class="cp-form-help-flush">Materials catalogue</h3>
-        <p class="admin-form-help" style="margin:4px 0 0;">
-          Link each fence line item to a row in the <a href="{{ route('admin.materials.index') }}" class="admin-text-link">materials catalog</a>.
-          Prices and product details are read live from the linked material.
-        </p>
+        <h3 class="cp-form-help-flush">
+          Materials catalogue
+          <x-admin.info-tip label="Materials catalogue">
+            Link each fence line item to a row in the <a href="{{ route('admin.materials.index') }}" class="admin-text-link">materials catalog</a>.
+            Prices and product details are read live from the linked material.
+            @unless ($usesSerpApi)
+              Online sync requires SerpApi on the server. On production, set
+              <code>MATERIALS_SCRAPER_SERPAPI_KEY</code>.
+              Update linked materials from your PC — see
+              <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>.
+            @endunless
+          </x-admin.info-tip>
+        </h3>
       </div>
       <div class="fq-config-header__actions">
         <button type="button"
@@ -43,28 +51,23 @@
                 @disabled($linkedSyncCount === 0)>
           <i class="fa fa-refresh"></i> Sync fence prices
         </button>
+        <x-admin.info-tip label="Sync fence prices">
+          <strong>Sync fence prices</strong> refreshes every linked catalog material listed below
+          @if ($usesSerpApi)
+            via SerpApi — Home Depot (product URL) or Amazon Canada (ASIN in SKU)
+            ({{ number_format($linkedSyncCount) }} syncable).
+            See <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
+            and the <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>.
+          @else
+            via the store price API
+            ({{ number_format($linkedSyncCount) }} syncable).
+          @endif
+        </x-admin.info-tip>
         <button type="submit" class="admin-btn admin-btn--primary">
           <i class="fa fa-save"></i> Save links
         </button>
       </div>
     </div>
-
-    <p class="admin-form-help fq-sync-hint">
-      <strong>Sync fence prices</strong> refreshes every linked catalog material listed below
-      @if ($usesSerpApi)
-        via SerpApi — Home Depot (product URL) or Amazon Canada (ASIN in SKU)
-      @else
-        via the store price API
-      @endif
-      ({{ number_format($linkedSyncCount) }} syncable).
-      <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
-      @if ($usesSerpApi)
-        · <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>
-      @else
-        · On production, set <code>MATERIALS_SCRAPER_SERPAPI_KEY</code> for online sync.
-      @endif
-    </p>
-
     <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <div class="admin-table-scroll">
       <table class="admin-table fq-materials-table">
@@ -223,10 +226,10 @@
     @method('PUT')
     <div class="fq-config-header">
       <div>
-        <h3 class="cp-form-help-flush">Formula parameters</h3>
-        <p class="admin-form-help" style="margin:4px 0 0;">
-          Structural assumptions used by the calculator. Labour rates below are defaults for new fence quotations (editable per quote).
-        </p>
+        <h3 class="cp-form-help-flush">
+          Formula parameters
+          <x-admin.info-tip label="Formula parameters">Structural assumptions used by the calculator. Labour rates below are defaults for new fence quotations (editable per quote).</x-admin.info-tip>
+        </h3>
       </div>
       <button type="submit" class="admin-btn admin-btn--primary">
         <i class="fa fa-save"></i> Save formula
@@ -239,7 +242,6 @@
         <input id="fq-labour-6" type="text" name="labour_rate_per_ft"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
                value="{{ old('labour_rate_per_ft', number_format((float) $settings->labour_rate_per_ft, 2, '.', '')) }}" data-cp-money-entry="direct">
-        <p class="admin-form-help">Default start price for new 6′ fence quotations.</p>
       </div>
 
       <div class="admin-form-group">
@@ -247,23 +249,26 @@
         <input id="fq-labour-8" type="text" name="labour_rate_8ft_per_ft"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
                value="{{ old('labour_rate_8ft_per_ft', number_format((float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft), 2, '.', '')) }}" data-cp-money-entry="direct">
-        <p class="admin-form-help">Default start price for new 8′ fence quotations.</p>
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-labour-additional-gate">Labour per additional gate (CAD$)</label>
+        <span class="admin-label-with-tip">
+          <label for="fq-labour-additional-gate">Labour per additional gate (CAD$)</label>
+          <x-admin.info-tip label="Labour per additional gate">Added to labour for gate #2 and each gate after that.</x-admin.info-tip>
+        </span>
         <input id="fq-labour-additional-gate" type="text" name="labour_per_additional_gate"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
                value="{{ old('labour_per_additional_gate', number_format((float) ($settings->labour_per_additional_gate ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
-        <p class="admin-form-help">Added to labour for gate #2 and each gate after that.</p>
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-gate-rails">Extra rails per gate (2x4x8')</label>
+        <span class="admin-label-with-tip">
+          <label for="fq-gate-rails">Extra rails per gate (2x4x8')</label>
+          <x-admin.info-tip label="Extra rails per gate">Frame + diagonal brace (typically 5).</x-admin.info-tip>
+        </span>
         <input id="fq-gate-rails" type="number" min="0" step="1" name="gate_rails"
                class="admin-input"
                value="{{ old('gate_rails', $settings->gate_rails) }}">
-        <p class="admin-form-help">Frame + diagonal brace (typically 5).</p>
       </div>
 
       <div class="admin-form-group">
@@ -281,11 +286,13 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-concrete-6x6-6">Concrete bags / post — 6' 6×6</label>
+        <span class="admin-label-with-tip">
+          <label for="fq-concrete-6x6-6">Concrete bags / post — 6' 6×6</label>
+          <x-admin.info-tip label="Concrete bags / post — 6' 6×6">Larger hole than 4×4. Default 2.5 bags (assumption: ~12–14″ hole).</x-admin.info-tip>
+        </span>
         <input id="fq-concrete-6x6-6" type="number" min="0" step="0.01" name="concrete_per_post_6x6_6ft"
                class="admin-input"
                value="{{ old('concrete_per_post_6x6_6ft', (float) ($settings->concrete_per_post_6x6_6ft ?? 2.5)) }}">
-        <p class="admin-form-help">Larger hole than 4×4. Default 2.5 bags (assumption: ~12–14″ hole).</p>
       </div>
 
       <div class="admin-form-group">
@@ -317,11 +324,13 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-spacing">Max clear span between posts (ft)</label>
+        <span class="admin-label-with-tip">
+          <label for="fq-spacing">Max clear span between posts (ft)</label>
+          <x-admin.info-tip label="Max clear span between posts">Clear span, not on-centre. Posts sit outside this span. An 8 ft top board covers the clear span and may not reach post centres at near-max spacing.</x-admin.info-tip>
+        </span>
         <input id="fq-spacing" type="number" min="1" step="0.01" name="max_post_spacing_ft"
                class="admin-input"
                value="{{ old('max_post_spacing_ft', (float) $settings->max_post_spacing_ft) }}">
-        <p class="admin-form-help">Clear span, not on-centre. Posts sit outside this span. An 8 ft top board covers the clear span and may not reach post centres at near-max spacing.</p>
       </div>
 
       <div class="admin-form-group">
@@ -362,30 +371,36 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-width">Board width (inches, actual)</label>
+        <span class="admin-label-with-tip">
+          <label for="fq-width">Board width (inches, actual)</label>
+          <x-admin.info-tip label="Board width">Nominal 1x6 lumber is typically 5.5" actual.</x-admin.info-tip>
+        </span>
         <input id="fq-width" type="number" min="1" step="0.001" name="board_width_in"
                class="admin-input"
                value="{{ old('board_width_in', (float) $settings->board_width_in) }}">
-        <p class="admin-form-help">Nominal 1x6 lumber is typically 5.5" actual.</p>
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-overlap">Overlapping (inches)</label>
+        <span class="admin-label-with-tip">
+          <label for="fq-overlap">Overlapping (inches)</label>
+          <x-admin.info-tip label="Overlapping">Only used in "overlapping" board style.</x-admin.info-tip>
+        </span>
         <input id="fq-overlap" type="number" min="0" step="0.001" name="overlapping_in"
                class="admin-input"
                value="{{ old('overlapping_in', (float) $settings->overlapping_in) }}">
-        <p class="admin-form-help">Only used in "overlapping" board style.</p>
       </div>
 
       <div class="admin-form-group" style="grid-column: 1 / -1;">
-        <label for="fq-work-description-template">Work description template</label>
+        <span class="admin-label-with-tip">
+          <label for="fq-work-description-template">Work description template</label>
+          <x-admin.info-tip label="Work description template">
+            Placeholders: <code>@{{linear_ft}}</code> <code>@{{height}}</code> <code>@{{style}}</code>
+            <code>@{{runs}}</code> <code>@{{post_size}}</code> <code>@{{gates}}</code> <code>@{{posts}}</code>.
+            Leave blank to use the built-in contractor template.
+          </x-admin.info-tip>
+        </span>
         <textarea id="fq-work-description-template" name="work_description_template" rows="5" maxlength="10000"
                   class="admin-input">{{ old('work_description_template', $settings->work_description_template ?? '') }}</textarea>
-        <p class="admin-form-help">
-          Placeholders: <code>@{{linear_ft}}</code> <code>@{{height}}</code> <code>@{{style}}</code>
-          <code>@{{runs}}</code> <code>@{{post_size}}</code> <code>@{{gates}}</code> <code>@{{posts}}</code>.
-          Leave blank to use the built-in contractor template.
-        </p>
       </div>
     </div>
   </form>

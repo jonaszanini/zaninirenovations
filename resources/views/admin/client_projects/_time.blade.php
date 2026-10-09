@@ -50,8 +50,12 @@
   </form>
 
   @if ($project->timeEntries->isNotEmpty())
-    <h4 class="cp-time-saved-heading">Saved entries</h4>
-    <p class="admin-form-help cp-time-saved-help">Newest at the top. Tap a row to expand; use Edit to change times.</p>
+    <h4 class="cp-time-saved-heading">Saved entries
+      @include('admin.partials.info_tip', [
+        'tipText' => 'Newest at the top. Tap a row to expand; use Edit to change times.',
+        'tipLabel' => 'Saved entries',
+      ])
+    </h4>
     <div class="cp-time-entries">
       @foreach ($project->timeEntries as $entry)
         @php

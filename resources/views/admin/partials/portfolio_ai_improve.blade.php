@@ -1,12 +1,23 @@
 @php
   /** @var string $fileInputId @var int $maxTotal */
   $portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
+  $portfolioAiTip = (! empty($allowExisting)
+      ? 'Select saved photos above, or pick and check Google Photos (or choose local files), then click Apply. '
+      : 'Pick and check Google Photos below (or choose local files), then click Apply. ')
+    .'Gemini uses the <strong>Latest projects photo prompt improvement</strong> instruction from Tools → AI Instructions. Results are converted to WebP at '
+    .e((string) $portfolioWebp['quality']).'% quality, max '.e((string) $portfolioWebp['max_edge_px']).'px, about '
+    .((int) round($portfolioWebp['max_bytes'] / 1024)).'&nbsp;KB each.'
+    .(! empty($allowExisting) ? ' Improved saved photos replace the original file immediately.' : '')
+    .' '.e(! empty($stashDraftHint) ? $stashDraftHint : 'New uploads are added to the Photos field above; Google picks are cleared so they are not imported twice.');
 @endphp
 
 <div class="admin-portfolio-ai-improve" id="portfolio-ai-improve" data-remaining-slots="{{ (int) $maxTotal }}">
   <div class="admin-form-group aim-prompt-group">
-    <span class="admin-form-group-label">AI photo enhancement</span>
-    <p class="admin-form-help">@if (!empty($allowExisting))Select saved photos above, or pick and check Google Photos (or choose local files), then click Apply.@else Pick and check Google Photos below (or choose local files), then click Apply.@endif Gemini uses the <strong>Latest projects photo prompt improvement</strong> instruction from Tools → AI Instructions. Results are converted to WebP at {{ $portfolioWebp['quality'] }}% quality, max {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each.@if (!empty($allowExisting)) Improved saved photos replace the original file immediately.@endif @if (!empty($stashDraftHint)) {{ $stashDraftHint }}@else New uploads are added to the Photos field above; Google picks are cleared so they are not imported twice.@endif</p>
+    @include('admin.partials.tipped_label', [
+      'label' => 'AI photo enhancement',
+      'tipHtml' => $portfolioAiTip,
+      'tipLabel' => 'AI photo enhancement',
+    ])
   </div>
 
   <div class="nb2-generate-row">
