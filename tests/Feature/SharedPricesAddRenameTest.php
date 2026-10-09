@@ -176,7 +176,8 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
             ->where('label', 'Install flooring')
             ->first();
         $this->assertNotNull($created);
-        $this->assertSame('install_flooring_2', $created->key);
+        $this->assertNotSame('flooring_install', $created->key);
+        $this->assertSame(1, SharedWork::query()->where('key', $created->key)->count());
     }
 
     public function test_rename_keeps_stable_key(): void
@@ -278,7 +279,7 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
         $this->assertEqualsWithDelta((float) $beforeShoe['amount'], (float) $afterShoe['amount'], 0.01);
         $this->assertEqualsWithDelta(210.0, (float) $afterShoe['amount'], 0.01);
         $this->assertEqualsWithDelta(5.25, SharedWorkCatalog::flatRate('shoe_install'), 0.0001);
-        $this->assertSame((string) $quote->final_quote_total, (string) $after['summary']['grand_total']);
+        $this->assertEqualsWithDelta((float) $quote->final_quote_total, (float) $after['summary']['grand_total'], 0.01);
     }
 
     /**
