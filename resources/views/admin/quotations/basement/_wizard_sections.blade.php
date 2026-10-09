@@ -478,7 +478,9 @@
 @php $step++; @endphp
 <details class="br-acc admin-card" data-br-step="electrical" @if($bathNestTrades || ! in_array('electrical', $enabledNow, true)) hidden @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Electrical
-    @include('admin.partials.info_tip', ['tipText' => $brInfo['electrical_scope'], 'tipLabel' => 'Electrical scope'])
+    @unless($bathNestTrades)
+      @include('admin.partials.info_tip', ['tipText' => $brInfo['electrical_scope'], 'tipLabel' => 'Electrical scope'])
+    @endunless
   </summary>
   <div class="br-acc__body">
     <div id="br-electrical-slot-step">
@@ -493,7 +495,9 @@
 @php $step++; @endphp
 <details class="br-acc admin-card" data-br-step="plumbing" @if($bathNestTrades || ! in_array('plumbing', $enabledNow, true)) hidden @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Plumbing
-    @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
+    @unless($bathNestTrades)
+      @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
+    @endunless
   </summary>
   <div class="br-acc__body">
     <div id="br-plumbing-slot-step">
@@ -1077,7 +1081,9 @@
         <div class="br-tile-areas__head">
           <span class="br-tile-areas__title admin-label-with-tip">
             <span>Plumbing</span>
-            @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
+            @if($bathNestTrades)
+              @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
+            @endif
           </span>
         </div>
         @if($bathNestTrades)
@@ -1088,7 +1094,9 @@
         <div class="br-tile-areas__head">
           <span class="br-tile-areas__title admin-label-with-tip">
             <span>Electrical</span>
-            @include('admin.partials.info_tip', ['tipText' => $brInfo['electrical_scope'], 'tipLabel' => 'Electrical scope'])
+            @if($bathNestTrades)
+              @include('admin.partials.info_tip', ['tipText' => $brInfo['electrical_scope'], 'tipLabel' => 'Electrical scope'])
+            @endif
           </span>
         </div>
         @if($bathNestTrades)
@@ -1116,10 +1124,7 @@
               'clientFilled' => $brFilled('include_bath_fixture'),
             ])
             <div class="admin-form-group" id="br-bath-fixture-qty-wrap" @unless($brOn('include_bath_fixture')) hidden @endunless>
-              <span class="admin-label-with-tip">
-  <label for="br-bath-fixture-qty">@include('admin.quotations.basement._client_filled', ['key' => 'bath_fixture_qty', 'filledKeys' => $filledKeys]) How many</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_fixture_qty'], 'tipLabel' => 'How many fixtures'])
-</span>
+              <label for="br-bath-fixture-qty">@include('admin.quotations.basement._client_filled', ['key' => 'bath_fixture_qty', 'filledKeys' => $filledKeys]) How many</label>
               <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-fixture-qty" name="bath_fixture_qty"
                      value="{{ $brVal('bath_fixture_qty', 1) }}">
             </div>
@@ -1137,10 +1142,7 @@
               'clientFilled' => $brFilled('include_bath_spot'),
             ])
             <div class="admin-form-group" id="br-bath-spot-qty-wrap" @unless($brOn('include_bath_spot')) hidden @endunless>
-              <span class="admin-label-with-tip">
-  <label for="br-bath-spot-qty">@include('admin.quotations.basement._client_filled', ['key' => 'bath_spot_qty', 'filledKeys' => $filledKeys]) How many</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_spot_qty'], 'tipLabel' => 'How many pot lights'])
-</span>
+              <label for="br-bath-spot-qty">@include('admin.quotations.basement._client_filled', ['key' => 'bath_spot_qty', 'filledKeys' => $filledKeys]) How many</label>
               <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-spot-qty" name="bath_spot_qty"
                      value="{{ $brVal('bath_spot_qty', 0) }}">
             </div>
@@ -1170,10 +1172,10 @@
       @endphp
       <div class="br-tile-areas">
         <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title">
-            @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_tile_sf'], 'tipLabel' => 'Tile / vinyl'])
+          <span class="br-tile-areas__title admin-label-with-tip">
             @include('admin.quotations.basement._client_filled', ['key' => 'bath_tile_areas', 'filledKeys' => $filledKeys])
             Tile / vinyl
+            @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_tile_sf'], 'tipLabel' => 'Tile / vinyl'])
           </span>
           <span class="admin-form-help" data-br-tile-total>Combined: {{ $tileTotal > 0 ? rtrim(rtrim(number_format($tileTotal, 2, '.', ''), '0'), '.').' sq ft' : '0 sq ft' }}</span>
         </div>

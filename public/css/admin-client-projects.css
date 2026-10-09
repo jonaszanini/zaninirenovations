@@ -7847,6 +7847,8 @@ body.cp-modal-open {
 .br-main {
   min-width: 0;
   max-width: 100%;
+  container-type: inline-size;
+  container-name: br-main;
 }
 .br-layout .admin-table-scroll {
   min-width: 0;
@@ -8538,9 +8540,12 @@ body.cp-modal-open {
     align-items: start;
   }
 }
-@media (min-width: 1100px) {
+/* Side-by-side lighting + 4-col tiles follow .br-main's own width, not
+   the viewport. At 1100–1170 with the 270px sidebar and 200px rail,
+   .br-main is ~546px — too narrow for those tracks. */
+@container br-main (min-width: 640px) {
   .br-bath-light-row {
-    grid-template-columns: minmax(0, 1fr) minmax(96px, 140px);
+    grid-template-columns: minmax(max-content, 1fr) minmax(96px, 140px);
     align-items: start;
   }
   .br-tile-row__main {

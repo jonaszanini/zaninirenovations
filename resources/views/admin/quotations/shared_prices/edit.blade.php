@@ -1280,16 +1280,6 @@
       clampBox(btn.querySelector('.sp-chip-more__tip'), btn);
     }
 
-    function positionSpInfoTips() {
-      document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach(function(btn) {
-        var bubble = btn.querySelector('.admin-info-tip__bubble');
-        if (!bubble && btn.parentElement) {
-          bubble = btn.parentElement.querySelector('.admin-info-tip__bubble');
-        }
-        clampBox(bubble, btn);
-      });
-    }
-
     document.querySelectorAll('.sp-chip--more').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.preventDefault();
@@ -1318,18 +1308,9 @@
     });
     function repositionSpOpenTips() {
       document.querySelectorAll('.sp-chip--more[aria-expanded="true"]').forEach(positionSpMoreTip);
-      positionSpInfoTips();
     }
     window.addEventListener('resize', repositionSpOpenTips);
     window.addEventListener('scroll', repositionSpOpenTips, true);
-    document.addEventListener('click', function() {
-      setTimeout(positionSpInfoTips, 0);
-    }, true);
-    if (window.MutationObserver) {
-      new MutationObserver(function() {
-        positionSpInfoTips();
-      }).observe(document.body, { attributes: true, attributeFilter: ['aria-expanded'], subtree: true });
-    }
 
     function parseSpMoney(value) {
       var n = parseFloat(String(value || '').replace(/,/g, ''));

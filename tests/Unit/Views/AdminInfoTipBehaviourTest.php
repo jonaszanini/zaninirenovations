@@ -503,8 +503,8 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringNotContainsString('<p class="admin-form-help">Sheet size defaults to 4×8', $millwork);
 
         $basement = file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php'));
-        $this->assertStringContainsString("'tipLabel' => 'How many fixtures'", $basement);
-        $this->assertStringContainsString("'tipLabel' => 'How many pot lights'", $basement);
+        $this->assertStringNotContainsString("'tipLabel' => 'How many fixtures'", $basement);
+        $this->assertStringNotContainsString("'tipLabel' => 'How many pot lights'", $basement);
         $this->assertStringNotContainsString("'tipLabel' => 'How many'", $basement);
 
         $financials = file_get_contents(resource_path('views/admin/client_projects/_financials.blade.php'));
@@ -643,6 +643,19 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString("'info' => \$brInfo['include_bath_spot']", $drywall);
         $this->assertStringContainsString("'tipLabel' => 'Electrical scope'", $drywall);
         $this->assertStringContainsString("'tipLabel' => 'Plumbing scope'", $drywall);
+        $this->assertStringNotContainsString("'tipLabel' => 'How many fixtures'", $drywall);
+        $this->assertMatchesRegularExpression(
+            '#Tile / vinyl\s+@include\(\'admin\.partials\.info_tip\'[\s\S]{0,160}tipLabel\' => \'Tile / vinyl\'#',
+            $drywall
+        );
+        $this->assertMatchesRegularExpression(
+            '#@if\(\$bathNestTrades\)\s+@include\(\'admin\.partials\.info_tip\'[\s\S]{0,80}Electrical scope#',
+            $drywall
+        );
+        $this->assertMatchesRegularExpression(
+            '#@unless\(\$bathNestTrades\)\s+@include\(\'admin\.partials\.info_tip\'[\s\S]{0,80}Electrical scope#',
+            $drywall
+        );
         $this->assertStringNotContainsString('label="Electrical scope"', $elec);
         $plumb = file_get_contents(resource_path('views/admin/quotations/basement/_plumbing_fields.blade.php'));
         $this->assertStringNotContainsString('label="Plumbing scope"', $plumb);

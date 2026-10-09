@@ -38,8 +38,10 @@ assert.match(darkCss, /html\.admin-dark \.admin-form-group \.admin-label-with-ti
 assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S]{0,160}pointer-events:\s*auto/);
 assert.match(cpCss, /\.tm-chip-row\s*>\s*\.admin-checkbox-row/);
 assert.match(cpCss, /\.br-bath-light-row\s*\{[^}]*grid-template-columns:\s*1fr/);
-assert.match(cpCss, /@media \(min-width:\s*1100px\)[\s\S]*\.br-bath-light-row[\s\S]*minmax\(0,\s*1fr\)\s+minmax\(96px,\s*140px\)/);
-assert.match(cpCss, /@media \(min-width:\s*1100px\)[\s\S]*\.br-tile-row__main[\s\S]*max-content minmax\(8\.5rem/);
+assert.match(cpCss, /\.br-main\s*\{[^}]*container-type:\s*inline-size/);
+assert.match(cpCss, /@container br-main \(min-width:\s*640px\)[\s\S]*\.br-bath-light-row[\s\S]*minmax\(max-content,\s*1fr\)\s+minmax\(96px,\s*140px\)/);
+assert.match(cpCss, /@container br-main \(min-width:\s*640px\)[\s\S]*\.br-tile-row__main[\s\S]*max-content minmax\(8\.5rem/);
+assert.doesNotMatch(cpCss, /@media \(min-width:\s*1100px\)[\s\S]{0,200}\.br-bath-light-row/);
 assert.match(cpCss, /@media \(min-width:\s*700px\)\s*\{\s*\.br-bath-light-grid[\s\S]{0,80}1fr 1fr/);
 assert.match(source, /function glueLastTextNode/);
 assert.match(source, /function wrapHeadingCopy/);
@@ -1458,11 +1460,11 @@ async function puppeteerClick() {
         const chrome = document.getElementById('step-rail-chrome');
         const sidebar = document.getElementById('step-rail-sidebar');
         chrome.style.display = 'grid';
-        chrome.style.gridTemplateColumns = '240px minmax(0, 1fr)';
+        chrome.style.gridTemplateColumns = '270px minmax(0, 1fr)';
         chrome.style.width = '100%';
         sidebar.hidden = false;
         sidebar.style.display = 'block';
-        sidebar.style.width = '240px';
+        sidebar.style.width = '270px';
         const shell = document.getElementById('step-rail-shell');
         window.scrollTo(0, shell.getBoundingClientRect().top + window.scrollY - 8);
         function overlap(a, b) {
@@ -1490,7 +1492,15 @@ async function puppeteerClick() {
         const main = shell.querySelector('.br-main');
         const tileBox = tile.getBoundingClientRect();
         const mainBox = main.getBoundingClientRect();
-        const overflow = Math.max(tile.scrollWidth - main.clientWidth, tileBox.right - mainBox.right);
+        const remove = tile.querySelector('.br-tile-row__remove');
+        const removeBox = remove ? remove.getBoundingClientRect() : { right: mainBox.right };
+        const overflow = Math.max(
+          tile.scrollWidth - main.clientWidth,
+          tileBox.right - mainBox.right,
+          removeBox.right - mainBox.right,
+          main.scrollWidth - main.clientWidth,
+          document.documentElement.scrollWidth - window.innerWidth
+        );
         const outTop = document.getElementById('qty-outlets-row').getBoundingClientRect().top;
         const swTop = document.getElementById('qty-switches-row').getBoundingClientRect().top;
         return {
@@ -1499,16 +1509,17 @@ async function puppeteerClick() {
           labelDelta: Math.abs(outTop - swTop),
           rowCols: getComputedStyle(document.getElementById('spot-rail-row')).gridTemplateColumns,
           rowTracks: getComputedStyle(document.getElementById('spot-rail-row')).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length,
+          mainWidth: Math.round(mainBox.width),
         };
       });
     }
 
-    for (const width of [1024, 1280]) {
+    for (const width of [1024, 1100, 1120, 1150, 1170, 1280]) {
       const rail = await measureRailGeometry(width);
-      assert.deepEqual(rail.hits, [], `D1: ⓘ must not overlap an input at ${width}px with the step rail: ${rail.hits.join(' | ')}`);
-      assert.ok(rail.overflow <= 1, `D2: tile row overflow ${rail.overflow}px at ${width}px with the step rail`);
-      if (width === 1024) {
-        assert.equal(rail.rowTracks, 1, `D1: lighting row stacks at 1024 with the rail (tracks=${rail.rowCols})`);
+      assert.deepEqual(rail.hits, [], `D7: ⓘ must not overlap an input at ${width}px with the step rail (main=${rail.mainWidth}px): ${rail.hits.join(' | ')}`);
+      assert.ok(rail.overflow <= 1, `D8: tile/page overflow ${rail.overflow}px at ${width}px with the step rail (main=${rail.mainWidth}px)`);
+      if (width <= 1170) {
+        assert.equal(rail.rowTracks, 1, `D7: lighting row stacks at ${width} with the rail (tracks=${rail.rowCols}, main=${rail.mainWidth}px)`);
       }
       if (width === 1280) {
         assert.ok(rail.labelDelta <= 3, `D3: New outlets / Switches label tops differ ${rail.labelDelta}px at 1280`);
