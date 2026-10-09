@@ -24,10 +24,16 @@
           $work = \App\Services\SharedWorkCatalog::work($key);
           $def = \App\Services\SharedWorkCatalog::definition($key);
           $label = $work->label ?? ($def['label'] ?? $key);
+          $isCustom = $work && $work->isCustom();
         @endphp
         <li>
-          <a href="{{ \App\Services\SharedWorkCatalog::sharedPricesUrl($key) }}">{{ $label }}</a>
-          <span>{{ \App\Services\SharedWorkCatalog::rateLine($key) }}</span>
+          <span class="sp-shared-item">
+            <a href="{{ \App\Services\SharedWorkCatalog::sharedPricesUrl($key) }}">{{ $label }}</a>
+            @if ($isCustom)
+              <span class="sp-ref-badge" title="Reference only — quote calculators do not use this item.">Reference</span>
+            @endif
+          </span>
+          <span class="sp-shared-rate">{{ \App\Services\SharedWorkCatalog::rateLine($key) }}</span>
         </li>
       @endforeach
     </ul>

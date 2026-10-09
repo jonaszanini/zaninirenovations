@@ -1651,8 +1651,9 @@ a.admin-client-link:focus-visible {
   white-space: normal;
   overflow-wrap: anywhere;
 }
-.admin-info-tip-wrap.is-open > .admin-info-tip__bubble,
-.admin-info-tip[aria-expanded="true"] + .admin-info-tip__bubble {
+.admin-info-tip[aria-expanded="true"] .admin-info-tip__bubble,
+.admin-info-tip[aria-expanded="true"] + .admin-info-tip__bubble,
+.admin-info-tip-wrap.is-open > .admin-info-tip__bubble {
   display: block;
 }
 .admin-info-tip,
@@ -4670,7 +4671,31 @@ body.admin-ai-text-history-open {
   font-weight: 600;
 }
 
-.sp-shared-list span {
+.sp-shared-item {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.sp-ref-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 0.35rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 3px;
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.sp-shared-list .sp-shared-rate,
+.sp-shared-list span.sp-shared-rate {
   color: var(--admin-muted);
   font-size: 0.85rem;
 }
