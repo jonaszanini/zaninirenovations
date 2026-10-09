@@ -276,7 +276,7 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
 
-        $created = $this->postJson(route('calendar.personal-events.store'), [
+        $created = $this->postJson(route('admin.calendar.personal-events.store'), [
             'title' => 'Holiday',
             'description' => 'Off',
             'start_date' => '2026-12-24',
@@ -289,7 +289,7 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
         $event = AdminCalendarEvent::query()->first();
         $this->assertNotNull($event);
 
-        $updated = $this->putJson(route('calendar.personal-events.update', $event), [
+        $updated = $this->putJson(route('admin.calendar.personal-events.update', $event), [
             'title' => 'Holiday week',
             'start_date' => '2026-12-24',
             'end_date' => '2026-12-31',
