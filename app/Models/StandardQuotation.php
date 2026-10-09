@@ -293,6 +293,8 @@ class StandardQuotation extends Model
             $this->chargesLabourHst(),
             (bool) ($this->include_building ?? false),
             (float) ($this->building_labor_percent ?? \App\Support\QuotationBuildingLabor::DEFAULT_PERCENT),
+            // v3-only: leftover surcharge on a job that has labour.
+            $this->usesCurrentPdfFold(),
         );
     }
 
@@ -763,7 +765,7 @@ class StandardQuotation extends Model
      */
     protected function withPdfHstAmount(array $line, float $hstAmount): array
     {
-        if (! $this->usesCurrentPdfFold() || empty($line['apply_hst'])) {
+        if (! $this->usesNonLegacyPdfFold() || empty($line['apply_hst'])) {
             return $line;
         }
 
@@ -779,7 +781,7 @@ class StandardQuotation extends Model
      */
     protected function addHstAmountToLastPdfLine(array &$lines, string $description, float $hstAmount): void
     {
-        if (! $this->usesCurrentPdfFold() || $hstAmount == 0.0) {
+        if (! $this->usesNonLegacyPdfFold() || $hstAmount == 0.0) {
             return;
         }
 
