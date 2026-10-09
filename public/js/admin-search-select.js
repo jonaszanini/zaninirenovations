@@ -232,11 +232,22 @@
     function placeList() {
       if (listParent !== 'body') return;
       var rect = input.getBoundingClientRect();
+      var pad = 8;
+      var vw = window.innerWidth || document.documentElement.clientWidth || 0;
+      var width = Math.min(Math.max(rect.width, 280), Math.max(rect.width, vw - pad * 2));
+      var left = rect.left;
+      if (left + width > vw - pad) {
+        left = vw - pad - width;
+      }
+      if (left < pad) {
+        left = pad;
+      }
       list.style.position = 'fixed';
-      list.style.left = rect.left + 'px';
+      list.style.left = Math.round(left) + 'px';
       list.style.right = 'auto';
       list.style.top = (rect.bottom + 4) + 'px';
-      list.style.width = Math.max(rect.width, 280) + 'px';
+      list.style.width = Math.round(width) + 'px';
+      list.style.maxWidth = (vw - pad * 2) + 'px';
       list.style.zIndex = '200';
     }
 

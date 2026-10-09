@@ -38,15 +38,15 @@
   font-size: 1.1rem;
 }
 .sp-group { margin-bottom: 1rem; }
-/* Tighter page + card padding at 901–1200 so Mat. name can be 7.5–8rem
-   without shrinking Work item or Used-by. */
-@media (min-width: 901px) and (max-width: 1200px) {
+/* Desktop grid only from 1024px — 901–1023 with the sidebar open is too
+   narrow (~603–753px) and must stay on stacked cards. */
+@media (min-width: 1024px) and (max-width: 1200px) {
   .admin-content:has(.sp-table) {
     padding-left: 0.65rem;
     padding-right: 0.65rem;
   }
 }
-@media (min-width: 901px) {
+@media (min-width: 1024px) {
   details.sp-group.admin-card { padding: 1rem 0.2rem; }
   .sp-group .admin-table-scroll { overflow: clip; }
   .sp-group .admin-table-scroll:has(.sp-search-wrap--hidden:focus-within),
@@ -90,18 +90,18 @@
   display: block;
   width: 100%;
 }
-@media (min-width: 901px) {
+@media (min-width: 1024px) {
   .sp-table thead tr,
   .sp-table tbody tr {
     display: grid;
     grid-template-columns:
       minmax(7.5rem, 1.4fr)
       4.6rem
-      minmax(6rem, 6.15rem)
+      minmax(6.6rem, 7.1rem)
       minmax(4.6rem, 4.85rem)
       minmax(5.5rem, 5.6rem)
-      minmax(7.5rem, 8rem)
-      2.25rem
+      minmax(6.5rem, 8rem)
+      2.75rem
       6.75rem;
     column-gap: 0.08rem;
     align-items: stretch;
@@ -209,14 +209,16 @@
   overflow: visible;
   z-index: 14;
 }
-.sp-mat-name-input:focus {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: max(100%, 16rem);
-  max-width: min(20rem, calc(100vw - 2rem));
-  z-index: 15;
+@media (min-width: 1024px) {
+  .sp-mat-name-input:focus {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: max(100%, 16rem);
+    max-width: min(20rem, 24rem);
+    z-index: 15;
+  }
 }
 .sp-col-rate .sp-input,
 .sp-col-sell .sp-input,
@@ -295,21 +297,34 @@
 .sp-col-sell .sp-input {
   padding-right: 0.25rem;
 }
-.sp-col-sell:has(.admin-info-tip) .sp-input {
-  padding-right: 1.85rem;
+.sp-th-sell,
+.sp-sell-phone-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
 }
-.sp-sell-wrap .admin-info-tip {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
+.sp-sell-phone-label {
+  display: none;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+  margin-bottom: 2px;
+}
+.sp-th-sell .admin-info-tip,
+.sp-sell-phone-label .admin-info-tip,
+.sp-heading .admin-info-tip {
+  position: relative;
   width: 28px;
   height: 28px;
-  margin: 0;
-  font-size: 13px;
-  z-index: 6;
+  padding: 8px;
+  margin: -8px;
+  box-sizing: content-box;
+  flex-shrink: 0;
 }
-.sp-col-sell .admin-info-tip__bubble {
+.sp-th-sell .admin-info-tip__bubble,
+.sp-sell-phone-label .admin-info-tip__bubble,
+.sp-heading .admin-info-tip__bubble {
   z-index: 80;
 }
 .sp-table tbody tr {
@@ -343,16 +358,18 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: 3px;
+  gap: 8px;
 }
 .sp-catalog-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 34px;
+  width: 28px;
   height: 28px;
-  padding: 0;
+  padding: 8px;
+  margin: -8px;
+  box-sizing: content-box;
   border: 1px solid var(--admin-border);
   border-radius: 5px;
   background: var(--admin-input-bg);
@@ -383,7 +400,7 @@
   pointer-events: none;
   transition: opacity 0.1s;
 }
-@media (min-width: 901px) {
+@media (min-width: 1024px) {
   .sp-search-wrap.sp-search-wrap--hidden {
     left: auto;
     right: 0;
@@ -400,6 +417,23 @@
 .sp-consumers {
   min-width: 0;
   width: 100%;
+}
+.sp-consumers:has(.sp-chip--more) .sp-chip:not(.sp-chip--more) {
+  max-width: calc(100% - 40px);
+}
+@media (max-width: 414px) {
+  .sp-col-consumers {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .sp-consumers {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .sp-consumers:has(.sp-chip--more) .sp-chip:not(.sp-chip--more) {
+    max-width: min(140px, calc(100% - 52px));
+  }
 }
 .sp-chip {
   display: inline-flex;
@@ -442,8 +476,20 @@
   max-width: none;
   min-width: 32px;
   min-height: 32px;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
   cursor: pointer;
   font-family: inherit;
+}
+.sp-chip--more::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 .sp-chip-more__tip {
   display: none;
@@ -502,8 +548,8 @@
   font-size: 0.8rem;
 }
 
-/* Mobile: compact stacked cards, no horizontal page overflow */
-@media (max-width: 900px) {
+/* Stacked cards through 1023px (sidebar-open 901–1023 included). */
+@media (max-width: 1023px) {
   .sp-group .admin-table-scroll {
     overflow: visible;
   }
@@ -595,13 +641,22 @@
   .sp-catalog-btn {
     width: 44px;
     height: 44px;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
   }
   .sp-col-catalog,
   .sp-col-consumers { min-height: 44px; }
-  .sp-col-sell .admin-info-tip,
-  .sp-sell-wrap .admin-info-tip {
-    width: 44px;
-    height: 44px;
+  .sp-sell-phone-label { display: inline-flex; }
+  .sp-col-sell::before { display: none !important; }
+  .sp-th-sell .admin-info-tip,
+  .sp-sell-phone-label .admin-info-tip,
+  .sp-heading .admin-info-tip {
+    width: 28px;
+    height: 28px;
+    padding: 8px;
+    margin: -8px 0 -8px -4px;
+    box-sizing: content-box;
   }
   .sp-chip {
     min-height: 44px;
@@ -609,6 +664,9 @@
   .sp-chip--more {
     min-width: 44px;
     min-height: 44px;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
   }
   .sp-chip-more__tip {
     right: auto;
@@ -639,6 +697,8 @@
       \App\Models\SharedWork::KIND_HOURS_EACH => 'Hrs each',
       \App\Models\SharedWork::KIND_FLAT => 'Flat',
     ];
+    $spSellTipText = 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Rate.';
+    $spSellTipLabel = 'effective sell';
     $formatSharedRate = static function ($value): string {
       if ($value === null || $value === '') {
         return '';
@@ -714,7 +774,15 @@
               <tr>
                 <th class="sp-col-label">Work item</th>
                 <th class="sp-col-rate">Rate</th>
-                <th class="sp-col-sell">Sell rate</th>
+                <th class="sp-col-sell">
+                  <span class="sp-th-sell">
+                    Sell rate
+                    @include('admin.partials.info_tip', [
+                      'tipText' => $spSellTipText,
+                      'tipLabel' => $spSellTipLabel,
+                    ])
+                  </span>
+                </th>
                 <th class="sp-col-unit">Unit</th>
                 <th class="sp-col-price">Mat. price</th>
                 <th class="sp-col-name">Mat. name</th>
@@ -750,7 +818,10 @@
                       $workMeta = $work->isSquareFoot() ? '/sqft' : '/linft';
                   }
                 @endphp
-                <tr id="work-{{ $work->key }}" class="sp-row">
+                <tr id="work-{{ $work->key }}" class="sp-row"
+                    data-sp-kind="{{ $work->labor_kind }}"
+                    data-sp-unit="{{ $work->unit }}"
+                    data-sp-area="{{ $isArea ? '1' : '0' }}">
                   <td class="sp-col-label" data-label="Work item">
                     <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
                     <span class="sp-work">
@@ -771,23 +842,22 @@
                              placeholder="0.00">
                     @endif
                   </td>
-                  <td class="sp-col-sell" data-label="Sell rate">
+                  <td class="sp-col-sell" data-label="">
+                    <span class="sp-sell-phone-label">
+                      Sell rate
+                      @include('admin.partials.info_tip', [
+                        'tipText' => $spSellTipText,
+                        'tipLabel' => $spSellTipLabel,
+                      ])
+                    </span>
                     <div class="sp-sell-wrap">
                       <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                              class="sp-input sp-input--sm cp-money-input" id="sp-flat-{{ $work->id }}"
                              name="works[{{ $work->id }}][flat_rate]"
                              value="{{ $isArea ? $areaPrice : old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}"
                              placeholder="0.0000">
-                      @if ($effective !== null)
-                        @include('admin.partials.info_tip', [
-                          'tipText' => 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Rate.',
-                          'tipLabel' => 'effective sell',
-                        ])
-                      @endif
                     </div>
-                    @if ($effective !== null)
-                      <small class="sp-effective">{{ \App\Models\ClientProject::formatMoney($effective) }}/{{ $work->unit }}</small>
-                    @endif
+                    <small class="sp-effective" data-sp-effective @if ($effective === null) hidden @endif>{{ $effective !== null ? \App\Models\ClientProject::formatMoney($effective).'/'.$work->unit : '' }}</small>
                   </td>
                   <td class="sp-col-unit" data-label="Unit">
                     <input type="text" class="sp-input sp-input--sm" id="sp-mat-unit-{{ $work->id }}"
@@ -876,11 +946,61 @@
         this.title = this.value;
       });
     });
+
     function closeSpMoreTips(except) {
       document.querySelectorAll('.sp-chip--more').forEach(function(btn) {
-        if (btn !== except) btn.setAttribute('aria-expanded', 'false');
+        if (btn !== except) {
+          btn.setAttribute('aria-expanded', 'false');
+          resetSpMoreTip(btn);
+        }
       });
     }
+
+    function resetSpMoreTip(btn) {
+      var tip = btn.querySelector('.sp-chip-more__tip');
+      if (!tip) return;
+      tip.style.position = '';
+      tip.style.top = '';
+      tip.style.left = '';
+      tip.style.right = '';
+      tip.style.maxWidth = '';
+    }
+
+    function clampBox(el, anchor) {
+      if (!el) return;
+      var pad = 8;
+      var vw = window.innerWidth || document.documentElement.clientWidth || 0;
+      var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+      el.style.position = 'fixed';
+      el.style.right = 'auto';
+      el.style.maxWidth = Math.max(120, vw - pad * 2) + 'px';
+      var ar = anchor.getBoundingClientRect();
+      var r = el.getBoundingClientRect();
+      var left = ar.left;
+      if (left + r.width > vw - pad) left = vw - pad - r.width;
+      if (left < pad) left = pad;
+      var top = ar.bottom + 4;
+      if (top + r.height > vh - pad) {
+        top = Math.max(pad, ar.top - r.height - 4);
+      }
+      el.style.left = Math.round(left) + 'px';
+      el.style.top = Math.round(top) + 'px';
+    }
+
+    function positionSpMoreTip(btn) {
+      clampBox(btn.querySelector('.sp-chip-more__tip'), btn);
+    }
+
+    function positionSpInfoTips() {
+      document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach(function(btn) {
+        var bubble = btn.querySelector('.admin-info-tip__bubble');
+        if (!bubble && btn.parentElement) {
+          bubble = btn.parentElement.querySelector('.admin-info-tip__bubble');
+        }
+        clampBox(bubble, btn);
+      });
+    }
+
     document.querySelectorAll('.sp-chip--more').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.preventDefault();
@@ -888,20 +1008,83 @@
         var open = this.getAttribute('aria-expanded') === 'true';
         closeSpMoreTips();
         this.setAttribute('aria-expanded', open ? 'false' : 'true');
+        if (!open) positionSpMoreTip(this);
         this.focus();
       });
-      btn.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-          this.setAttribute('aria-expanded', 'false');
-          e.preventDefault();
-        }
-      });
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape') return;
+      var open = document.querySelector('.sp-chip--more[aria-expanded="true"]');
+      if (!open) return;
+      open.setAttribute('aria-expanded', 'false');
+      resetSpMoreTip(open);
+      open.focus();
+      e.preventDefault();
     });
     document.addEventListener('click', function(e) {
       if (e.target.closest && e.target.closest('.sp-chip--more')) {
         return;
       }
       closeSpMoreTips();
+    });
+    window.addEventListener('resize', function() {
+      document.querySelectorAll('.sp-chip--more[aria-expanded="true"]').forEach(positionSpMoreTip);
+      positionSpInfoTips();
+    });
+    document.addEventListener('click', function() {
+      setTimeout(positionSpInfoTips, 0);
+    });
+
+    function parseSpMoney(value) {
+      var n = parseFloat(String(value || '').replace(/,/g, ''));
+      return isFinite(n) ? n : 0;
+    }
+    function formatSpMoney(n) {
+      return 'CA$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    function updateSpEffective() {
+      var owner = parseSpMoney((document.getElementById('owner_hourly_rate') || {}).value);
+      document.querySelectorAll('tr.sp-row').forEach(function(row) {
+        var out = row.querySelector('[data-sp-effective]');
+        if (!out) return;
+        if (row.getAttribute('data-sp-area') === '1') {
+          out.hidden = true;
+          return;
+        }
+        var rateInput = row.querySelector('.sp-col-rate input');
+        var sellInput = row.querySelector('.sp-col-sell input');
+        var priceInput = row.querySelector('.sp-col-price input');
+        var unitInput = row.querySelector('.sp-col-unit input');
+        var rate = rateInput ? parseSpMoney(rateInput.value) : 0;
+        var sell = sellInput ? parseSpMoney(sellInput.value) : 0;
+        var price = priceInput ? parseSpMoney(priceInput.value) : 0;
+        var matUnit = unitInput ? String(unitInput.value || '') : '';
+        var kind = row.getAttribute('data-sp-kind') || '';
+        var unit = row.getAttribute('data-sp-unit') || '';
+        var labor = 0;
+        if (rate > 0 && owner > 0) {
+          labor = kind === 'hours_each' ? rate * owner : owner / rate;
+        } else if (sell > 0) {
+          labor = sell;
+          price = 0;
+        } else {
+          out.hidden = true;
+          out.textContent = '';
+          return;
+        }
+        if (price > 0 && (matUnit === 'stick_8ft' || matUnit === 'stick')) {
+          price = price / 8;
+        }
+        var effective = Math.round((labor + (price > 0 ? price : 0)) * 100) / 100;
+        out.textContent = formatSpMoney(effective) + '/' + unit;
+        out.hidden = false;
+      });
+    }
+    document.getElementById('sp-lib-form').addEventListener('input', function(e) {
+      if (!e.target) return;
+      if (e.target.id === 'owner_hourly_rate' || e.target.closest('.sp-col-rate') || e.target.closest('.sp-col-sell') || e.target.closest('.sp-col-price') || e.target.closest('.sp-col-unit')) {
+        updateSpEffective();
+      }
     });
   </script>
 @endsection
