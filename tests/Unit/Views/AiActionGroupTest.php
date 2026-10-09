@@ -205,10 +205,40 @@ class AiActionGroupTest extends TestCase
             $css,
             'Photo-edit modal actions must wrap below ~380px so Save stays inside the padded panel.'
         );
-        $this->assertMatchesRegularExpression(
-            '/@media\s*\(\s*max-width:\s*700px\s*\)\s*\{[^}]*\.blog-admin-ai-metadata-wrap\s*>\s*\.admin-ai-action-group/s',
+        $this->assertDoesNotMatchRegularExpression(
+            '/@media\s*\(\s*max-width:\s*380px\s*\)\s*\{[^}]*margin-left:\s*auto/s',
             $css,
-            'Blog AI group needs a definite width at ≤700px so the extra pair and undo wrap like fence.'
+            'The ≤380 modal wrap must not restate margin-left:auto on actions-end.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.blog-admin-ai-metadata-wrap\s*>\s*\.admin-ai-action-group\s*\{[^}]*width:\s*100%/s',
+            $css,
+            'Blog AI group must set width:100% so extra-pair and undo wrap resolve.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.nb2-generate-row\s*>\s*\.admin-ai-action-group[^{]*\{[^}]*width:\s*100%/s',
+            $css,
+            'Do not force width:100% on quotation/image-modify generate-row groups.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.blog-admin-ai-metadata-wrap\s*>\s*\.admin-ai-action-group\s*>\s*\.admin-ai-text-history-mount\s*\{[^}]*flex:\s*1 1 100%/s',
+            $css,
+            'Undo-on-its-own-row must be scoped to the blog metadata wrap.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.admin-ai-action-group:not\(\.admin-ai-action-group--trailing\)\s*>\s*\.admin-ai-text-history-mount\s*\{[^}]*flex:\s*1 1 100%/s',
+            $css,
+            'Do not put every group\'s undo on its own row at ≤700px.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.blog-admin-ai-metadata-wrap\s*>\s*\.admin-ai-action-group\s*>\s*\.admin-ai-action-pair\s*~\s*\.admin-ai-action-pair\s*\{[^}]*flex-wrap:\s*wrap/s',
+            $css,
+            'Blog extra pair must wrap as a unit so Generate image can stay on one line.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.blog-admin-ai-metadata-wrap\s*>\s*\.admin-ai-action-group\s*>\s*\.admin-ai-action-pair\s*~\s*\.admin-ai-action-pair\s*>\s*\.admin-btn\s*\{[^}]*white-space:\s*nowrap/s',
+            $css,
+            'Blog extra buttons must be nowrap (not only the second .admin-btn ~ .admin-btn).'
         );
     }
 
@@ -232,9 +262,9 @@ class AiActionGroupTest extends TestCase
         }
 
         $this->assertGreaterThanOrEqual(
-            8,
+            11,
             $sites,
-            'Per-group scan must visit real @component call sites, not only leftover raw markup.'
+            'Per-group scan must visit every @component call site, not only leftover raw markup.'
         );
         $this->assertSame(
             [],
@@ -251,9 +281,12 @@ class AiActionGroupTest extends TestCase
         foreach ($this->adminBladeFiles() as $file) {
             $relative = $this->relativeViewPath($file);
             $contents = (string) file_get_contents($file);
+            $isSharedGroup = str_ends_with($relative, 'partials/ai_action_group.blade.php');
 
-            foreach ($this->rawAiActionGroupOffenders($contents, $relative) as $offender) {
-                $offenders[] = $offender;
+            if (! $isSharedGroup) {
+                foreach ($this->rawAiActionGroupOffenders($contents, $relative) as $offender) {
+                    $offenders[] = $offender;
+                }
             }
 
             foreach ($this->componentAiGroupBlocks($contents) as $block) {
@@ -270,7 +303,7 @@ class AiActionGroupTest extends TestCase
         }
 
         $this->assertGreaterThanOrEqual(
-            8,
+            11,
             $checkedGroups,
             'Config-before-button must inspect each @component group, not skip converted files.'
         );
@@ -296,7 +329,7 @@ class AiActionGroupTest extends TestCase
     public function test_raw_group_is_detected_regardless_of_attribute_order(): void
     {
         $mixed = <<<'BLADE'
-            <div id="bp-ai" data-role="cluster" class="admin-card admin-ai-action-group" hidden>
+            <div data-src="{{ $photo->url }}" title='Quote "{{ $photo->alt }}"' @if($open) hidden @endif class="admin-card admin-ai-action-group">
               @include('admin.partials.ai_instruction_edit_link', ['instructionKey' => 'blog_post'])
               <button type="button">Suggest metadata</button>
             </div>
@@ -311,31 +344,111 @@ class AiActionGroupTest extends TestCase
     private function rawAiActionGroupOffenders(string $contents, string $relative): array
     {
         $offenders = [];
-        if (preg_match_all(
-            '/<div\b(?=[^>]*\bclass\s*=\s*([\'"])([^\'"]*)\1)[^>]*>/i',
-            $contents,
-            $matches,
-            PREG_OFFSET_CAPTURE
-        ) < 1) {
-            return [];
-        }
 
-        foreach ($matches[2] as $match) {
-            $class = $match[0];
-            if (! str_contains($class, 'admin-ai-action-group')) {
+        foreach ($this->divOpenTags($contents) as $div) {
+            $class = $this->htmlClassAttribute($div['tag']);
+            if ($class === null || ! str_contains($class, 'admin-ai-action-group')) {
                 continue;
             }
             if (str_contains($class, 'admin-ai-action-group--trailing')) {
                 continue;
             }
 
-            $following = substr($contents, $match[1], 900);
+            $following = substr($contents, $div['offset'], 900);
             if (str_contains($following, 'ai_instruction_edit_link')) {
                 $offenders[] = $relative.' (inline group still includes ai_instruction_edit_link)';
             }
         }
 
         return $offenders;
+    }
+
+    /**
+     * @return list<array{tag: string, offset: int}>
+     */
+    private function divOpenTags(string $contents): array
+    {
+        $tags = [];
+        $offset = 0;
+        $length = strlen($contents);
+
+        while (($start = stripos($contents, '<div', $offset)) !== false) {
+            $end = $this->endOfHtmlTag($contents, $start, $length);
+            if ($end === null) {
+                break;
+            }
+            $tags[] = [
+                'tag' => substr($contents, $start, $end - $start + 1),
+                'offset' => $start,
+            ];
+            $offset = $end + 1;
+        }
+
+        return $tags;
+    }
+
+    private function endOfHtmlTag(string $contents, int $start, int $length): ?int
+    {
+        $i = $start + 4;
+        $quote = null;
+        $blade = 0;
+
+        while ($i < $length) {
+            $ch = $contents[$i];
+            $next = $contents[$i + 1] ?? '';
+
+            if ($blade > 0) {
+                if ($ch === '}' && $next === '}') {
+                    $blade--;
+                    $i += 2;
+                    continue;
+                }
+                $i++;
+                continue;
+            }
+
+            if ($quote !== null) {
+                if ($ch === '{' && $next === '{') {
+                    $blade++;
+                    $i += 2;
+                    continue;
+                }
+                if ($ch === $quote) {
+                    $quote = null;
+                }
+                $i++;
+                continue;
+            }
+
+            if ($ch === '"' || $ch === "'") {
+                $quote = $ch;
+                $i++;
+                continue;
+            }
+
+            if ($ch === '{' && $next === '{') {
+                $blade++;
+                $i += 2;
+                continue;
+            }
+
+            if ($ch === '>') {
+                return $i;
+            }
+
+            $i++;
+        }
+
+        return null;
+    }
+
+    private function htmlClassAttribute(string $tag): ?string
+    {
+        if (preg_match('/\bclass\s*=\s*(["\'])(.*?)\1/s', $tag, $match) !== 1) {
+            return null;
+        }
+
+        return $match[2];
     }
 
     /**

@@ -2785,10 +2785,6 @@ details[open] > summary.admin-chevron-summary::after {
   #admin-photo-edit-modal .admin-modal-actions {
     flex-wrap: wrap;
   }
-
-  #admin-photo-edit-modal .admin-photo-edit-actions-end {
-    margin-left: auto;
-  }
 }
 
 html.admin-photo-edit-modal-open {
@@ -3946,19 +3942,22 @@ a.ic-model-card:hover {
   white-space: nowrap;
 }
 
-.admin-ai-action-pair > .admin-btn ~ .admin-btn {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
 .admin-ai-action-pair > .admin-ai-instruction-edit-link,
 .admin-ai-action-group > .admin-ai-text-history-mount {
   flex-shrink: 0;
 }
 
+.blog-admin-ai-metadata-wrap > .admin-ai-action-group > .admin-ai-action-pair ~ .admin-ai-action-pair {
+  flex-wrap: wrap;
+}
+
+.blog-admin-ai-metadata-wrap > .admin-ai-action-group > .admin-ai-action-pair ~ .admin-ai-action-pair > .admin-btn {
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+
 @media (max-width: 700px) {
-  .blog-admin-ai-metadata-wrap > .admin-ai-action-group,
-  .nb2-generate-row > .admin-ai-action-group:not(.admin-ai-action-group--trailing) {
+  .blog-admin-ai-metadata-wrap > .admin-ai-action-group {
     width: 100%;
   }
 
@@ -3970,7 +3969,7 @@ a.ic-model-card:hover {
     flex: 1 1 100%;
   }
 
-  .admin-ai-action-group:not(.admin-ai-action-group--trailing) > .admin-ai-text-history-mount {
+  .blog-admin-ai-metadata-wrap > .admin-ai-action-group > .admin-ai-text-history-mount {
     flex: 1 1 100%;
   }
 }
