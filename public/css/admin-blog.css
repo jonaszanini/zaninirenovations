@@ -673,6 +673,7 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
     content: "";
     position: absolute;
     inset: -7px;
+    pointer-events: auto;
   }
 }
 

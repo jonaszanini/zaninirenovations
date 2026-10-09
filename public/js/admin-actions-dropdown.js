@@ -191,6 +191,7 @@
     }
 
     if (e.key === 'Tab') {
+      e.preventDefault();
       var tabToggle = toggleOf(open);
       restoreMenu(open, false);
       if (tabToggle) tabToggle.focus();

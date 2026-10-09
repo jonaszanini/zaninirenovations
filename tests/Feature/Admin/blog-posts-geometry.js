@@ -31,6 +31,14 @@ function loadCss() {
   }).join('\n');
 }
 
+function loadDropdownJs() {
+  const abs = path.join(ROOT, 'public/js/admin-actions-dropdown.js');
+  if (!fs.existsSync(abs)) {
+    throw new Error('Missing admin-actions-dropdown.js');
+  }
+  return fs.readFileSync(abs, 'utf8');
+}
+
 function fixtureRow(opts) {
   const title = opts.title;
   const chips = opts.chips.map((c) => `<span class="bp-seo-badge bp-seo-badge--warn">${c}</span>`).join('');
@@ -76,13 +84,20 @@ function fixtureRow(opts) {
                       <div class="bp-list-actions">
                         <a class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn" href="#"></a>
                         <a class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn" href="#"></a>
-                        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn admin-actions-dropdown__toggle"></button>
+                        <div class="admin-actions-dropdown">
+                          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn admin-actions-dropdown__toggle" aria-label="More actions" aria-expanded="false" aria-haspopup="menu"></button>
+                          <div class="admin-actions-dropdown__menu" role="menu">
+                            <button type="button" class="admin-actions-dropdown__item" role="menuitem" data-k="dup">Duplicate</button>
+                            <button type="button" class="admin-actions-dropdown__item" role="menuitem" data-k="edit">Edit</button>
+                            <button type="button" class="admin-actions-dropdown__item admin-actions-dropdown__item--danger" role="menuitem" data-k="del">Delete</button>
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </tr>`;
 }
 
-function fixtureHtml(css, dark) {
+function fixtureHtml(css, dark, js) {
   const rows = [
     fixtureRow({
       title: 'The Ultimate Decking Showdown For Ottawa Backyards And Long Titles',
@@ -128,6 +143,7 @@ function fixtureHtml(css, dark) {
       </div>
     </div>
   </div>
+  ${js ? `<script>${js}</script>` : ''}
 </body>
 </html>`;
 }
@@ -233,6 +249,16 @@ function measureInPage(vp) {
       }
     });
 
+    const titleEl = row.querySelector('.bp-list-post__title');
+    if (titleEl && getComputedStyle(titleEl).display !== 'none') {
+      const titleFs = parseFloat(getComputedStyle(titleEl).fontSize);
+      if (!Number.isNaN(titleFs) && titleFs > 14) {
+        overflowing.push({
+          vp, row: i, sel: 'title-font', extra: titleFs - 13, fontSize: titleFs,
+        });
+      }
+    }
+
     const actions = row.querySelector('.bp-list-actions');
     if (actions && vp >= 768) {
       const gap = parseFloat(getComputedStyle(actions).columnGap || getComputedStyle(actions).gap);
@@ -252,6 +278,33 @@ function measureInPage(vp) {
             w: h.size.w, h: h.size.h, after: h.size.after, btn: idx,
           });
         }
+        const after = getComputedStyle(h.el, '::after');
+        const pe = (after.pointerEvents || '').toLowerCase();
+        const pos = (after.position || '').toLowerCase();
+        if (pe === 'none' || pos === 'static' || pos === '' || pos === 'relative') {
+          overflowing.push({
+            vp, row: i, sel: 'hit-after-inert', extra: 1, pointerEvents: pe, position: pos, btn: idx,
+          });
+        }
+        const cx = h.r.left + h.r.width / 2;
+        const cy = h.r.top + h.r.height / 2;
+        const inset = 2;
+        const half = 22;
+        const corners = [
+          [cx - half + inset, cy - half + inset],
+          [cx + half - inset, cy - half + inset],
+          [cx - half + inset, cy + half - inset],
+          [cx + half - inset, cy + half - inset],
+        ];
+        corners.forEach(([x, y], cidx) => {
+          const topEl = document.elementFromPoint(x, y);
+          if (!topEl || (topEl !== h.el && !h.el.contains(topEl))) {
+            overflowing.push({
+              vp, row: i, sel: 'hit-miss-corner', extra: 1, btn: idx, corner: cidx,
+              x, y, got: topEl ? (topEl.tagName + '.' + (topEl.className || '').toString().slice(0, 40)) : 'null',
+            });
+          }
+        });
       });
       for (let a = 0; a < hits.length - 1; a += 1) {
         const left = hits[a].r.left + hits[a].r.width / 2 - hits[a].size.w / 2;
@@ -356,6 +409,74 @@ async function measureLive(page, width, dark) {
   return page.evaluate(measureInPage, width);
 }
 
+async function testMenuKeyboard(page, html) {
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await page.setContent(html, { waitUntil: 'load' });
+  await page.waitForSelector('.admin-actions-dropdown__toggle');
+  const toggle = await page.$('.admin-actions-dropdown__toggle');
+  await toggle.click();
+  await page.waitForFunction(() => document.querySelector('.admin-actions-dropdown.is-open'));
+  await page.waitForFunction(() => document.activeElement && document.activeElement.getAttribute('data-k') === 'dup');
+
+  const activeKey = () => page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-k'));
+
+  await page.keyboard.press('ArrowDown');
+  if (await activeKey() !== 'edit') {
+    throw new Error('ArrowDown did not move to the second menuitem');
+  }
+  await page.keyboard.press('ArrowDown');
+  if (await activeKey() !== 'del') {
+    throw new Error('ArrowDown did not move to the third menuitem');
+  }
+  await page.keyboard.press('ArrowDown');
+  if (await activeKey() !== 'dup') {
+    throw new Error('ArrowDown did not wrap to the first menuitem');
+  }
+  await page.keyboard.press('ArrowUp');
+  if (await activeKey() !== 'del') {
+    throw new Error('ArrowUp did not wrap to the last menuitem');
+  }
+  await page.keyboard.press('Home');
+  if (await activeKey() !== 'dup') {
+    throw new Error('Home did not move to the first menuitem');
+  }
+  await page.keyboard.press('End');
+  if (await activeKey() !== 'del') {
+    throw new Error('End did not move to the last menuitem');
+  }
+
+  const prevented = await page.evaluate(() => {
+    const ev = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
+    document.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  });
+  if (!prevented) {
+    throw new Error('ArrowDown did not call preventDefault');
+  }
+
+  await page.keyboard.press('Escape');
+  const afterEsc = await page.evaluate(() => ({
+    open: !!document.querySelector('.admin-actions-dropdown.is-open'),
+    isToggle: !!(document.activeElement && document.activeElement.classList.contains('admin-actions-dropdown__toggle')),
+  }));
+  if (afterEsc.open || !afterEsc.isToggle) {
+    throw new Error('Escape did not close the menu and return focus to the toggle');
+  }
+
+  await toggle.click();
+  await page.waitForFunction(() => document.querySelector('.admin-actions-dropdown.is-open'));
+  await page.keyboard.press('Tab');
+  const afterTab = await page.evaluate(() => ({
+    open: !!document.querySelector('.admin-actions-dropdown.is-open'),
+    isToggle: !!(document.activeElement && document.activeElement.classList.contains('admin-actions-dropdown__toggle')),
+  }));
+  if (afterTab.open || !afterTab.isToggle) {
+    throw new Error('Tab did not close the menu and return focus to the toggle');
+  }
+
+  return { mode: 'keyboard', overflowing: [], ok: true };
+}
+
 function assertReports(label, reports) {
   const overflowing = reports.flatMap((r) => r.overflowing);
   const tableOverflow = reports.filter((r) => r.overflow > 2);
@@ -371,9 +492,10 @@ function assertReports(label, reports) {
   const browser = await launchBrowser();
   const page = await browser.newPage();
   const css = loadCss();
+  const dropdownJs = loadDropdownJs();
   const fixtureReports = [];
   for (const dark of [false, true]) {
-    const html = fixtureHtml(css, dark);
+    const html = fixtureHtml(css, dark, dropdownJs);
     for (const width of WIDTHS) {
       fixtureReports.push(await measureFixture(page, width, html));
     }
@@ -384,6 +506,9 @@ function assertReports(label, reports) {
     overflowing: fixtureReports.flatMap((r) => r.overflowing),
   }));
   assertReports('fixture', fixtureReports);
+
+  const keyboard = await testMenuKeyboard(page, fixtureHtml(css, false, dropdownJs));
+  console.log(JSON.stringify(keyboard));
 
   if (process.env.GEOMETRY_LIVE === '1') {
     try {

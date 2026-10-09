@@ -228,6 +228,10 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
             $css
         );
         $this->assertMatchesRegularExpression(
+            '/\.bp-list-post__title\s*\{[^}]*font-size:\s*13px/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
             '/\.bp-list-table \.bp-list-col--views\s*\{[^}]*width:\s*4\.75rem/s',
             $css
         );
