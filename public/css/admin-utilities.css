@@ -2774,6 +2774,16 @@
   font-size: 0.88rem;
 }
 
+.util-ra-feedback[hidden],
+.util-ra-feedback:empty {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
 .util-ra-feedback.is-ok { color: var(--admin-success, #2e7d32); }
 .util-ra-feedback.is-error { color: var(--admin-danger); }
 
@@ -5530,8 +5540,18 @@ body:has(.util-ra--fullpage) {
   z-index: 2;
 }
 
-.util-ra-first-tip[hidden] {
+.util-ra-first-tip[hidden],
+.util-ra-first-tip:empty {
   display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  flex: 0 0 0 !important;
+  gap: 0 !important;
 }
 
 .util-ra-first-tip__text {

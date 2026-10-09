@@ -66,6 +66,16 @@ function assertCssGeometry() {
     'expanded phone sheet is capped so the drawing area stays usable'
   );
   assert.ok(!/height:\s*70vh/.test(collapsed.slice(0, 220)), 'collapsed sheet must not use 70vh');
+  assert.ok(
+    CSS.includes('.util-ra-first-tip[hidden]') && CSS.includes('.util-ra-first-tip:empty'),
+    'first-tip collapses when hidden or empty'
+  );
+  const firstTipCollapse = CSS.slice(CSS.indexOf('.util-ra-first-tip[hidden]'));
+  assert.ok(/height:\s*0/.test(firstTipCollapse.slice(0, 280)), 'hidden first-tip height is 0');
+  assert.ok(
+    /\.util-ra-first-tip\s*\{[^}]*flex:\s*0 0 auto/.test(CSS.replace(/\s+/g, ' ')),
+    'first-tip must not grow with flex: 1 0 100%'
+  );
 }
 
 function resolveKonvaFile() {
@@ -82,6 +92,7 @@ function startStaticServer(konvaFile) {
   const savedRoomFixture = path.join(fixturesDir, 'room-area-saved-room-fit.html');
   const layoutChangeFixture = path.join(fixturesDir, 'room-area-layout-change-fit.html');
   const zoomPanFixture = path.join(fixturesDir, 'room-area-zoom-pan-embedded.html');
+  const chromeFixture = path.join(fixturesDir, 'room-area-chrome-geometry.html');
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
@@ -94,6 +105,8 @@ function startStaticServer(konvaFile) {
         file = layoutChangeFixture;
       } else if (urlPath === '/zoom-pan' || urlPath === '/zoom-pan.html') {
         file = zoomPanFixture;
+      } else if (urlPath === '/chrome' || urlPath === '/chrome.html') {
+        file = chromeFixture;
       } else if (urlPath === '/vendor-test/konva.min.js') {
         file = konvaFile;
       } else {
@@ -103,6 +116,7 @@ function startStaticServer(konvaFile) {
         || file === savedRoomFixture
         || file === layoutChangeFixture
         || file === zoomPanFixture
+        || file === chromeFixture
         || file === konvaFile
         || file.startsWith(publicDir + path.sep);
       if (!allowed) {
@@ -1039,6 +1053,63 @@ async function measureViewports() {
     const phoneAfterSheet = await page.evaluate(readCameraScript());
     assertCameraHeld(phoneZoomed, phoneAfterSheet, '390 bottom sheet');
     await assertExtremePanClamped(page, '390 extreme pan');
+
+    const chromePage = await browser.newPage();
+    try {
+      for (const width of [1024, 1280]) {
+        await chromePage.setViewport({ width, height: 800, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+        await chromePage.goto('http://127.0.0.1:' + port + '/chrome', { waitUntil: 'load' });
+        const strip = await chromePage.evaluate(() => {
+          const tools = document.querySelector('.util-ra-full-header__row--tools');
+          const bar = document.querySelector('.util-ra-project-bar');
+          const tip = document.querySelector('[data-ra-first-tip]');
+          const feedback = document.querySelector('[data-ra-feedback]');
+          if (!tools || !bar) return { missing: true };
+          const t = tools.getBoundingClientRect();
+          const b = bar.getBoundingClientRect();
+          const empties = [];
+          document.querySelectorAll('.util-ra *').forEach((el) => {
+            if (el === tools || tools.contains(el) || el === bar || bar.contains(el)) return;
+            if (el.classList && el.classList.contains('util-ra-full-header')) return;
+            const r = el.getBoundingClientRect();
+            if (r.height <= 4 || r.width < 40) return;
+            if (r.bottom <= t.bottom + 0.5 || r.top >= b.top - 0.5) return;
+            const cs = getComputedStyle(el);
+            const text = (el.innerText || '').trim();
+            const empty = el.hasAttribute('hidden') || cs.display === 'none' || !text;
+            if (empty) {
+              empties.push({
+                className: String(el.className || el.tagName),
+                height: Math.round(r.height * 10) / 10,
+                display: cs.display,
+              });
+            }
+          });
+          const tipBox = tip ? tip.getBoundingClientRect() : { height: 0 };
+          const tipCs = tip ? getComputedStyle(tip) : { display: 'none' };
+          const feedbackBox = feedback ? feedback.getBoundingClientRect() : { height: 0 };
+          return {
+            empties,
+            tipHeight: tipBox.height,
+            tipDisplay: tipCs.display,
+            tipHidden: !!(tip && tip.hasAttribute('hidden')),
+            feedbackHeight: feedbackBox.height,
+            gap: Math.round((b.top - t.bottom) * 10) / 10,
+          };
+        });
+        assert.ok(!strip.missing, 'chrome fixture rendered at ' + width);
+        assert.ok(strip.tipHidden, 'first-tip stays hidden when no status is shown at ' + width);
+        assert.ok(strip.tipDisplay === 'none' && strip.tipHeight < 0.5, 'hidden first-tip takes no space at ' + width + ': ' + JSON.stringify(strip));
+        assert.ok(strip.feedbackHeight < 0.5, 'hidden status line takes no space at ' + width + ': ' + strip.feedbackHeight);
+        assert.strictEqual(
+          strip.empties.length,
+          0,
+          'no empty block taller than 4px between toolbar and Project at ' + width + ': ' + JSON.stringify(strip)
+        );
+      }
+    } finally {
+      await chromePage.close();
+    }
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));

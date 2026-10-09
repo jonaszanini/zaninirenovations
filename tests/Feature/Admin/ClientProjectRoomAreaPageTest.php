@@ -212,6 +212,8 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('.admin-app:has(.util-ra-guide) .admin-sidebar', $css);
         $this->assertStringContainsString('.util-ra-help-pop', $css);
         $this->assertStringContainsString('.util-ra-first-tip', $css);
+        $this->assertStringContainsString('.util-ra-first-tip[hidden]', $css);
+        $this->assertStringContainsString('.util-ra-first-tip:empty', $css);
         $this->assertStringContainsString('.util-ra-tip[data-tooltip]::after', $css);
         $this->assertStringContainsString('(hover: hover) and (pointer: fine)', $css);
         $this->assertStringContainsString('.util-ra-tool-group--measure', $css);
