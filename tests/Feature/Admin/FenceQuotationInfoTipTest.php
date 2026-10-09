@@ -34,7 +34,8 @@ class FenceQuotationInfoTipTest extends IntegrationTestCase
         $response->assertSee('Clear span between posts is at most the max spacing', false);
         $response->assertSee('Tick “Gate goes here” on a run', false);
         $response->assertSee('First gate is included in the per-foot rate', false);
-        $response->assertDontSee('Preview updates as you type', false);
+        $response->assertSee('Preview updates as you type', false);
+        $response->assertSee('aria-label="About Live breakdown"', false);
         $response->assertDontSee('<p class="admin-form-help">Clear span between posts', false);
         $response->assertDontSee('<p class="admin-form-help">Tick “Gate goes here”', false);
         $response->assertDontSee('<p class="admin-form-help">Length in feet', false);

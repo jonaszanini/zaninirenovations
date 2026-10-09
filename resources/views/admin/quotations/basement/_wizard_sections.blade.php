@@ -477,11 +477,7 @@
 {{-- 4. Electrical --}}
 @php $step++; @endphp
 <details class="br-acc admin-card" data-br-step="electrical" @if($bathNestTrades || ! in_array('electrical', $enabledNow, true)) hidden @endif>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Electrical
-    @unless($bathNestTrades)
-      @include('admin.partials.info_tip', ['tipText' => $brInfo['electrical_scope'], 'tipLabel' => 'Electrical scope'])
-    @endunless
-  </summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Electrical</summary>
   <div class="br-acc__body">
     <div id="br-electrical-slot-step">
       @unless($bathNestTrades)
@@ -494,11 +490,7 @@
 {{-- 5. Plumbing --}}
 @php $step++; @endphp
 <details class="br-acc admin-card" data-br-step="plumbing" @if($bathNestTrades || ! in_array('plumbing', $enabledNow, true)) hidden @endif>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Plumbing
-    @unless($bathNestTrades)
-      @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
-    @endunless
-  </summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Plumbing</summary>
   <div class="br-acc__body">
     <div id="br-plumbing-slot-step">
       @unless($bathNestTrades)
@@ -1079,11 +1071,8 @@
       </div>
       <div class="br-nested-trade" id="br-plumbing-slot-bath" @unless($bathNestTrades) hidden @endunless>
         <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title admin-label-with-tip">
+          <span class="br-tile-areas__title">
             <span>Plumbing</span>
-            @if($bathNestTrades)
-              @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
-            @endif
           </span>
         </div>
         @if($bathNestTrades)
@@ -1092,11 +1081,8 @@
       </div>
       <div class="br-nested-trade" id="br-electrical-slot-bath" @unless($bathNestTrades) hidden @endunless>
         <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title admin-label-with-tip">
+          <span class="br-tile-areas__title">
             <span>Electrical</span>
-            @if($bathNestTrades)
-              @include('admin.partials.info_tip', ['tipText' => $brInfo['electrical_scope'], 'tipLabel' => 'Electrical scope'])
-            @endif
           </span>
         </div>
         @if($bathNestTrades)

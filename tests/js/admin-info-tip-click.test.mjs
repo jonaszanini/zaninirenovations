@@ -41,9 +41,16 @@ assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S
 assert.match(cpCss, /\.tm-chip-row\s*>\s*\.admin-checkbox-row/);
 assert.match(cpCss, /\.br-bath-light-row\s*\{[^}]*grid-template-columns:\s*1fr/);
 assert.match(cpCss, /\.br-main\s*\{[^}]*container-type:\s*inline-size/);
-assert.match(cpCss, /@container br-main \(min-width:\s*720px\)[\s\S]*\.br-bath-light-row[\s\S]*minmax\(max-content,\s*1fr\)\s+minmax\(96px,\s*140px\)/);
-assert.match(cpCss, /@container br-main \(min-width:\s*720px\)[\s\S]*\.br-tile-row__main[\s\S]*max-content minmax\(8\.5rem/);
+const brMainCqAt = cpCss.indexOf('@container br-main (min-width: 48rem)');
+assert.ok(brMainCqAt >= 0, 'lighting/tile/check-grid must use @container br-main (min-width: 48rem)');
+const brMainContainer = cpCss.slice(brMainCqAt, brMainCqAt + 1600);
+assert.match(brMainContainer, /\.br-bath-light-row[\s\S]*minmax\(max-content,\s*1fr\)\s+minmax\(96px,\s*140px\)/);
+assert.doesNotMatch(brMainContainer, /\.br-bath-light-row[\s\S]{0,180}minmax\(0,\s*1fr\)/);
+assert.match(brMainContainer, /\.br-tile-row__main[\s\S]*max-content minmax\(8\.5rem/);
+assert.match(brMainContainer, /\.br-check-grid[\s\S]*repeat\(3,\s*minmax\(max-content,\s*1fr\)\)/);
 assert.doesNotMatch(cpCss, /@media \(min-width:\s*1100px\)[\s\S]{0,200}\.br-bath-light-row/);
+assert.doesNotMatch(cpCss, /@media \(min-width:\s*900px\)[\s\S]{0,220}\.br-check-grid[\s\S]{0,80}repeat\(3/);
+assert.doesNotMatch(cpCss, /@container br-main \(min-width:\s*720px\)/);
 assert.match(cpCss, /@media \(min-width:\s*700px\)\s*\{\s*\.br-bath-light-grid[\s\S]{0,80}1fr 1fr/);
 assert.match(source, /function glueLastTextNode/);
 assert.match(source, /function wrapHeadingCopy/);
@@ -473,6 +480,7 @@ function fixtureHtml() {
     </span>
     <div id="step-rail-chrome">
       <aside id="step-rail-sidebar" hidden></aside>
+      <div class="admin-content">
       <div class="br-shell" id="step-rail-shell">
         <nav class="br-progress" aria-hidden="true">
           <span class="br-progress__item">1 Bathroom</span>
@@ -544,6 +552,35 @@ function fixtureHtml() {
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm br-tile-row__remove" aria-label="Remove tile area">×</button>
             </div>
           </div>
+          <div class="br-check-grid" id="sink-rail-row">
+            <span class="admin-label-with-tip admin-checkbox-row">
+              <label class="admin-checkbox" for="br-include-vanity-rail">
+                <input type="checkbox" class="admin-checkbox__input" id="br-include-vanity-rail" checked>
+                <span class="admin-checkbox__mark"></span><span class="admin-checkbox__text">Vanity + faucet</span>
+              </label>
+              <span class="admin-info-tip-wrap">
+                <button type="button" class="admin-info-tip" aria-label="About Vanity + faucet" aria-expanded="false" aria-controls="t-van-rail">i</button>
+                <span id="t-van-rail" class="admin-info-tip__bubble" role="tooltip">Vanity cabinet and faucet.</span>
+              </span>
+            </span>
+            <span class="admin-label-with-tip admin-checkbox-row" id="pedestal-rail-check">
+              <label class="admin-checkbox" for="br-include-pedestal-rail">
+                <input type="checkbox" class="admin-checkbox__input" id="br-include-pedestal-rail" checked>
+                <span class="admin-checkbox__mark"></span><span class="admin-checkbox__text">Pedestal sink + faucet</span>
+              </label>
+              <span class="admin-info-tip-wrap">
+                <button type="button" class="admin-info-tip" aria-label="About Pedestal sink + faucet" aria-expanded="false" aria-controls="t-ped-rail">i</button>
+                <span id="t-ped-rail" class="admin-info-tip__bubble" role="tooltip">Pedestal sink instead of a vanity.</span>
+              </span>
+            </span>
+            <div class="admin-form-group" id="br-bath-sink-qty">
+              <label for="br-bath-sink-qty-select">How many sinks?</label>
+              <select class="admin-input" id="br-bath-sink-qty-select">
+                <option value="1" selected>1</option>
+                <option value="2">2</option>
+              </select>
+            </div>
+          </div>
           <div class="br-qty-grid" id="qty-align-row">
             <div class="admin-form-group" id="qty-outlets-group">
               <span class="admin-label-with-tip" id="qty-outlets-row">
@@ -568,7 +605,46 @@ function fixtureHtml() {
           </div>
         </div>
       </div>
+      </div>
     </div>
+    <form id="br-scope-form">
+      <label><input type="radio" name="scope_preset" data-br-scope-preset value="full" checked> Full</label>
+      <label><input type="radio" name="scope_preset" data-br-scope-preset value="bathroom"> Bathroom</label>
+      <details class="br-acc" data-br-step="electrical" open>
+        <summary class="br-acc__summary">Electrical</summary>
+        <div id="br-electrical-slot-step">
+          <div id="br-electrical-fields" class="br-electrical-fields">
+            <span class="br-tile-areas__title admin-label-with-tip">
+              <span>Electrical scope</span>
+              <span class="admin-info-tip-wrap">
+                <button type="button" class="admin-info-tip" aria-label="About Electrical scope" aria-expanded="false" aria-controls="t-el-scope">i</button>
+                <span id="t-el-scope" class="admin-info-tip__bubble" role="tooltip">Scope for the electrician.</span>
+              </span>
+            </span>
+          </div>
+        </div>
+      </details>
+      <div class="br-nested-trade" id="br-electrical-slot-bath" hidden>
+        <span class="br-tile-areas__title">Electrical</span>
+      </div>
+      <details class="br-acc" data-br-step="plumbing" open>
+        <summary class="br-acc__summary">Plumbing</summary>
+        <div id="br-plumbing-slot-step">
+          <div id="br-plumbing-fields" class="br-plumbing-fields">
+            <span class="br-tile-areas__title admin-label-with-tip">
+              <span>Plumbing scope</span>
+              <span class="admin-info-tip-wrap">
+                <button type="button" class="admin-info-tip" aria-label="About Plumbing scope" aria-expanded="false" aria-controls="t-pl-scope">i</button>
+                <span id="t-pl-scope" class="admin-info-tip__bubble" role="tooltip">Scope for the plumber.</span>
+              </span>
+            </span>
+          </div>
+        </div>
+      </details>
+      <div class="br-nested-trade" id="br-plumbing-slot-bath" hidden>
+        <span class="br-tile-areas__title">Plumbing</span>
+      </div>
+    </form>
     <div class="tm-chip-row" id="tm-chip-row">
       <span class="admin-label-with-tip admin-checkbox-row" id="tm-client-all-row">
         <label class="admin-checkbox" for="tm-client-all">
@@ -1495,7 +1571,7 @@ async function puppeteerClick() {
           return a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
         }
         const hits = [];
-        shell.querySelectorAll('.br-bath-light-row').forEach((row) => {
+        shell.querySelectorAll('.br-bath-light-row, #sink-rail-row').forEach((row) => {
           const tips = Array.from(row.querySelectorAll('.admin-info-tip'));
           const fields = Array.from(row.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select, textarea')).filter((el) => {
             if (el.closest('.admin-info-tip-wrap, .admin-info-tip__bubble')) return false;
@@ -1506,7 +1582,9 @@ async function puppeteerClick() {
           tips.forEach((btn) => {
             const br = btn.getBoundingClientRect();
             if (br.width <= 0) return;
+            const ownGroup = btn.closest('.admin-form-group');
             fields.forEach((el) => {
+              if (ownGroup && ownGroup.contains(el)) return;
               const fr = el.getBoundingClientRect();
               if (overlap(br, fr)) hits.push((btn.getAttribute('aria-label') || '') + ' × #' + (el.id || el.name || '?'));
             });
@@ -1527,23 +1605,30 @@ async function puppeteerClick() {
         );
         const outTop = document.getElementById('qty-outlets-row').getBoundingClientRect().top;
         const swTop = document.getElementById('qty-switches-row').getBoundingClientRect().top;
+        const sinkGrid = document.getElementById('sink-rail-row');
+        const sinkCols = sinkGrid ? getComputedStyle(sinkGrid).gridTemplateColumns : '';
         return {
           hits,
           overflow,
           labelDelta: Math.abs(outTop - swTop),
           rowCols: getComputedStyle(document.getElementById('spot-rail-row')).gridTemplateColumns,
           rowTracks: getComputedStyle(document.getElementById('spot-rail-row')).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length,
+          sinkTracks: sinkCols.trim().split(/\s+/).filter(Boolean).length,
+          sinkCols,
           mainWidth: Math.round(mainBox.width),
         };
       });
     }
 
-    for (const width of [1024, 1100, 1120, 1150, 1170, 1280]) {
+    for (const width of [910, 940, 960, 1024, 1100, 1120, 1150, 1170, 1280]) {
       const rail = await measureRailGeometry(width);
-      assert.deepEqual(rail.hits, [], `D7: ⓘ must not overlap an input at ${width}px with the step rail (main=${rail.mainWidth}px): ${rail.hits.join(' | ')}`);
+      assert.deepEqual(rail.hits, [], `D7/R19-2: ⓘ must not overlap an input at ${width}px with the step rail (main=${rail.mainWidth}px): ${rail.hits.join(' | ')}`);
       assert.ok(rail.overflow <= 1, `D8: tile/page overflow ${rail.overflow}px at ${width}px with the step rail (main=${rail.mainWidth}px)`);
-      if (width <= 1170) {
+      if (width <= 1280) {
         assert.equal(rail.rowTracks, 1, `D7: lighting row stacks at ${width} with the rail (tracks=${rail.rowCols}, main=${rail.mainWidth}px)`);
+      }
+      if (width <= 960) {
+        assert.ok(rail.sinkTracks < 3, `R19-2: sink check-grid must not be 3-col at ${width} with the rail (tracks=${rail.sinkCols}, main=${rail.mainWidth}px)`);
       }
       if (width === 1280) {
         assert.ok(rail.labelDelta <= 3, `D3: New outlets / Switches label tops differ ${rail.labelDelta}px at 1280`);
@@ -1560,6 +1645,50 @@ async function puppeteerClick() {
       sidebar.style.width = '';
     });
     await page.setViewport({ width: 1280, height: 800 });
+
+    const scopeTips = await page.evaluate(() => {
+      function relocate(nest) {
+        [
+          ['br-electrical-fields', 'br-electrical-slot-step', 'br-electrical-slot-bath'],
+          ['br-plumbing-fields', 'br-plumbing-slot-step', 'br-plumbing-slot-bath'],
+        ].forEach((ids) => {
+          const fields = document.getElementById(ids[0]);
+          const stepSlot = document.getElementById(ids[1]);
+          const bathSlot = document.getElementById(ids[2]);
+          if (!fields || !stepSlot || !bathSlot) return;
+          (nest ? bathSlot : stepSlot).appendChild(fields);
+          bathSlot.hidden = !nest;
+        });
+        ['electrical', 'plumbing'].forEach((k) => {
+          const step = document.querySelector('[data-br-step="' + k + '"]');
+          if (nest && step) step.hidden = true;
+          else if (step) step.hidden = false;
+        });
+      }
+      function visibleScope(label) {
+        return Array.from(document.querySelectorAll('.admin-info-tip')).filter((btn) => {
+          if ((btn.getAttribute('aria-label') || '') !== label) return false;
+          if (btn.closest('[hidden]')) return false;
+          const r = btn.getBoundingClientRect();
+          return r.width > 0 && r.height > 0;
+        }).length;
+      }
+      relocate(true);
+      const bathroom = {
+        electrical: visibleScope('About Electrical scope'),
+        plumbing: visibleScope('About Plumbing scope'),
+      };
+      relocate(false);
+      const full = {
+        electrical: visibleScope('About Electrical scope'),
+        plumbing: visibleScope('About Plumbing scope'),
+      };
+      return { bathroom, full };
+    });
+    assert.equal(scopeTips.bathroom.electrical, 1, 'R19-1: Electrical scope ⓘ stays visible after full → bathroom relocate');
+    assert.equal(scopeTips.bathroom.plumbing, 1, 'R19-1: Plumbing scope ⓘ stays visible after full → bathroom relocate');
+    assert.equal(scopeTips.full.electrical, 1, 'R19-1: Electrical scope ⓘ stays visible after bathroom → full relocate');
+    assert.equal(scopeTips.full.plumbing, 1, 'R19-1: Plumbing scope ⓘ stays visible after bathroom → full relocate');
 
     const r14WrapCss = `
       .admin-label-with-tip__end { max-width: 100%; }

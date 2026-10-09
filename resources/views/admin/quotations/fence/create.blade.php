@@ -713,6 +713,7 @@
 
       <h3 class="cp-heading-md">
         Live breakdown
+        <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
       </h3>
       <p class="cp-breakdown-intro">
         <span class="fq-badge" id="fq-status-badge">Calculating…</span>

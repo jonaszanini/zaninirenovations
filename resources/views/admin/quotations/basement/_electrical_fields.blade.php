@@ -1,4 +1,10 @@
 <div id="br-electrical-fields" class="br-electrical-fields">
+  <div class="br-tile-areas__head br-trade-scope-head">
+    <span class="br-tile-areas__title admin-label-with-tip">
+      <span>Electrical scope</span>
+      @include('admin.partials.info_tip', ['tipText' => $brInfo['electrical_scope'], 'tipLabel' => 'Electrical scope'])
+    </span>
+  </div>
   <div class="br-qty-grid">
     <div class="admin-form-group">
       <span class="admin-label-with-tip">

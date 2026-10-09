@@ -1,4 +1,10 @@
 <div id="br-plumbing-fields" class="br-plumbing-fields">
+  <div class="br-tile-areas__head br-trade-scope-head">
+    <span class="br-tile-areas__title admin-label-with-tip">
+      <span>Plumbing scope</span>
+      @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
+    </span>
+  </div>
   @include('admin.partials.checkbox', [
     'name' => 'include_plumbing',
     'hiddenFallback' => true,

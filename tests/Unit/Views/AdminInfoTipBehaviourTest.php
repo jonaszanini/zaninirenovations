@@ -483,8 +483,8 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('label="Live breakdown"', $low);
         $fenceCreate = file_get_contents(resource_path('views/admin/quotations/fence/create.blade.php'));
         $this->assertStringContainsString('Live breakdown', $fenceCreate);
-        $this->assertStringNotContainsString('Preview updates as you type', $fenceCreate);
-        $this->assertStringNotContainsString('label="Live breakdown"', $fenceCreate);
+        $this->assertStringContainsString('Preview updates as you type', $fenceCreate);
+        $this->assertStringContainsString('label="Live breakdown"', $fenceCreate);
         $this->assertStringContainsString('label="Layout diagrams"', $low);
         $this->assertStringNotContainsString('admin-form-help cp-breakdown-intro', $low);
         $this->assertStringNotContainsString('Enter dimensions to generate the foundations, framing, and decking layouts.</p>', $low);
@@ -647,23 +647,19 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString("'tipLabel' => 'Smoke / CO'", $elec);
         $this->assertStringContainsString("'info' => \$brInfo['include_bath_fixture']", $drywall);
         $this->assertStringContainsString("'info' => \$brInfo['include_bath_spot']", $drywall);
-        $this->assertStringContainsString("'tipLabel' => 'Electrical scope'", $drywall);
-        $this->assertStringContainsString("'tipLabel' => 'Plumbing scope'", $drywall);
+        $this->assertStringNotContainsString("'tipLabel' => 'Electrical scope'", $drywall);
+        $this->assertStringNotContainsString("'tipLabel' => 'Plumbing scope'", $drywall);
         $this->assertStringNotContainsString("'tipLabel' => 'How many fixtures'", $drywall);
         $this->assertMatchesRegularExpression(
             '#Tile / vinyl\s+@include\(\'admin\.partials\.info_tip\'[\s\S]{0,160}tipLabel\' => \'Tile / vinyl\'#',
             $drywall
         );
-        $this->assertMatchesRegularExpression(
-            '#@if\(\$bathNestTrades\)\s+@include\(\'admin\.partials\.info_tip\'[\s\S]{0,80}Electrical scope#',
-            $drywall
-        );
-        $this->assertMatchesRegularExpression(
-            '#@unless\(\$bathNestTrades\)\s+@include\(\'admin\.partials\.info_tip\'[\s\S]{0,80}Electrical scope#',
-            $drywall
-        );
+        $this->assertStringContainsString("'tipLabel' => 'Electrical scope'", $elec);
+        $this->assertStringContainsString("id=\"br-electrical-fields\"", $elec);
         $this->assertStringNotContainsString('label="Electrical scope"', $elec);
         $plumb = file_get_contents(resource_path('views/admin/quotations/basement/_plumbing_fields.blade.php'));
+        $this->assertStringContainsString("'tipLabel' => 'Plumbing scope'", $plumb);
+        $this->assertStringContainsString("id=\"br-plumbing-fields\"", $plumb);
         $this->assertStringNotContainsString('label="Plumbing scope"', $plumb);
 
         $shed = file_get_contents(resource_path('views/admin/quotations/shed/_wizard_sections.blade.php'));
