@@ -30,11 +30,17 @@
   font-size: 0.85rem;
   height: 34px;
 }
-.sp-heading { margin: 0 0 0.5rem; font-size: 1.1rem; }
+.sp-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
 .sp-group { margin-bottom: 1rem; }
-/* Tighter card padding on desktop so Rate/Sell/Mat. price and Mat. name all fit. */
+/* Tighter card padding so Rate / work-item / trailing all fit at 1024. */
 @media (min-width: 901px) {
-  details.sp-group.admin-card { padding: 1.25rem 1.15rem; }
+  details.sp-group.admin-card { padding: 1rem 0.65rem; }
 }
 .sp-group__summary {
   font-weight: 600;
@@ -53,13 +59,54 @@
 }
 .sp-group[open] > .sp-group__summary::before { transform: rotate(90deg); }
 
-/* Desktop table: fixed layout so leftover width goes to Mat. name */
+/*
+ * Desktop rows are CSS grid (not table-layout:fixed) so leftover width
+ * goes to the work-item column, the name column stays narrower, and the
+ * trailing search+tag column stays a consistent fixed width.
+ */
 .sp-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
   font-size: 0.85rem;
 }
+.sp-table thead,
+.sp-table tbody {
+  display: block;
+  width: 100%;
+}
+.sp-table thead tr,
+.sp-table tbody tr {
+  display: grid;
+  grid-template-columns:
+    minmax(9rem, 1.4fr)
+    minmax(6.5rem, 6.75rem)
+    minmax(5.25rem, 5.5rem)
+    minmax(3.25rem, 3.75rem)
+    minmax(5.25rem, 5.5rem)
+    minmax(5.75rem, 0.65fr)
+    6.75rem;
+  column-gap: 0.3rem;
+  align-items: center;
+  width: 100%;
+}
+.sp-table th,
+.sp-table td {
+  display: block;
+  min-width: 0;
+  padding: 0.4rem 0.15rem;
+  border: none;
+}
+.sp-col-label,
+.sp-col-name {
+  overflow: hidden;
+}
+.sp-table thead tr {
+  border-bottom: 1px solid var(--admin-border);
+}
+.sp-table tbody tr {
+  border-bottom: 1px solid var(--admin-border);
+}
+.sp-table tbody tr:last-child { border-bottom: none; }
 .sp-table th {
   text-align: left;
   font-size: 0.65rem;
@@ -67,29 +114,17 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--admin-muted);
-  padding: 0.4rem 0.3rem;
-  border-bottom: 1px solid var(--admin-border);
   white-space: nowrap;
 }
-.sp-table td {
-  padding: 0.35rem 0.3rem;
-  border-bottom: 1px solid var(--admin-border);
-  vertical-align: middle;
+.sp-col-label,
+.sp-col-rate,
+.sp-col-sell,
+.sp-col-unit,
+.sp-col-price,
+.sp-col-name,
+.sp-col-trailing {
+  min-width: 0;
 }
-.sp-table tr:last-child td { border-bottom: none; }
-.sp-table .sp-col-label { width: 128px; }
-/* 5.75rem fits 9,999.0000 (~77px glyphs + input padding/border + cell padding). */
-.sp-table .sp-col-rate,
-.sp-table .sp-col-sell,
-.sp-table .sp-col-price {
-  width: 5.75rem;
-  padding-left: 0.2rem;
-  padding-right: 0.2rem;
-}
-.sp-table .sp-col-unit { width: 4.75rem; }
-.sp-table .sp-col-name { width: auto; }
-.sp-table .sp-col-catalog { width: 44px; text-align: center; padding-left: 0.2rem; padding-right: 0.2rem; overflow: hidden; }
-.sp-table .sp-col-consumers { width: 110px; white-space: normal; }
 .sp-col-name .sp-input,
 .sp-mat-name-input { width: 100%; max-width: none; box-sizing: border-box; }
 .sp-col-rate .sp-input,
@@ -104,18 +139,91 @@
 }
 .sp-col-unit .sp-input {
   width: 100%;
-  min-width: 7ch;
+  min-width: 0;
   padding-left: 0.25rem;
   padding-right: 0.25rem;
   box-sizing: border-box;
 }
-.sp-work-label { font-weight: 500; color: var(--admin-heading); font-size: 0.8rem; line-height: 1.25; white-space: nowrap; }
-.sp-work-label small { display: block; font-weight: 400; font-size: 0.7rem; color: var(--admin-muted); white-space: nowrap; }
-/* Compact catalog search button */
+
+.sp-work {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.sp-work-label {
+  font-weight: 500;
+  color: var(--admin-heading);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+.sp-work-meta {
+  display: block;
+  font-weight: 400;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: var(--admin-muted);
+  white-space: nowrap;
+}
+
+.sp-rate-empty {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+}
+
+.sp-col-sell {
+  position: relative;
+}
+.sp-col-sell .sp-input {
+  padding-right: 1.35rem;
+}
+.sp-col-sell .admin-info-tip {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Trailing column: search button + category tag, vertically centred. */
+.sp-col-trailing {
+  position: relative;
+}
+.sp-trailing {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  min-height: 28px;
+  min-width: 0;
+}
+.sp-consumers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+}
 .sp-catalog-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 34px;
   height: 28px;
   padding: 0;
@@ -139,7 +247,7 @@
 .sp-search-wrap--hidden {
   position: absolute;
   width: 200px;
-  left: 0;
+  right: 0;
   top: 100%;
   z-index: 100;
   opacity: 0;
@@ -150,27 +258,19 @@
   opacity: 1;
   pointer-events: auto;
 }
-.sp-col-catalog {
-  position: relative;
-}
 
-/* Used-by badges: small, horizontal with wrap */
 .sp-chip {
-  display: inline-block;
-  padding: 1px 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.4rem;
   font-size: 0.55rem;
   font-weight: 600;
+  line-height: 1;
   background: var(--admin-primary-soft);
   color: var(--admin-primary);
   border-radius: 3px;
-  margin: 1px 2px 1px 0;
   white-space: nowrap;
-  vertical-align: baseline;
-  line-height: 1.2;
-}
-td.sp-col-consumers {
-  line-height: 1.4;
-  vertical-align: middle;
 }
 
 /* Compact inputs */
@@ -191,7 +291,6 @@ td.sp-col-consumers {
   box-shadow: 0 0 0 2px var(--admin-primary-ring);
 }
 .sp-input--sm { max-width: 100%; }
-.sp-effective { font-size: 0.65rem; color: var(--admin-muted); margin-top: 2px; }
 
 /* Catalog search: match input height */
 .sp-search-wrap { position: relative; }
@@ -203,31 +302,33 @@ td.sp-col-consumers {
   font-size: 0.8rem;
 }
 
-/* Mobile: compact card layout */
+/* Mobile: compact stacked cards, no horizontal page overflow */
 @media (max-width: 900px) {
+  .sp-group .admin-table-scroll {
+    overflow-x: hidden;
+  }
   .sp-table { display: block; }
   .sp-table thead { display: none; }
   .sp-table tbody { display: block; }
   .sp-table tr {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
-      "label label"
+      "label trailing"
       "rate sell"
       "unit price"
-      "name name"
-      "catalog catalog"
-      "consumers consumers";
-    gap: 0.4rem 0.75rem;
-    padding: 0.75rem 0;
+      "name name";
+    gap: 0.5rem 0.75rem;
+    padding: 0.85rem 0;
     border-bottom: 1px solid var(--admin-border);
-    align-items: start;
+    align-items: center;
   }
   .sp-table tr:last-child { border-bottom: none; }
   .sp-table td {
     display: block;
     padding: 0;
     border: none;
+    overflow: visible;
   }
   .sp-table td::before {
     content: attr(data-label);
@@ -239,35 +340,37 @@ td.sp-col-consumers {
     margin-bottom: 2px;
   }
 
-  /* Grid areas */
   .sp-col-label { grid-area: label; }
   .sp-col-rate { grid-area: rate; }
   .sp-col-sell { grid-area: sell; }
   .sp-col-unit { grid-area: unit; }
   .sp-col-price { grid-area: price; }
   .sp-col-name { grid-area: name; }
-  .sp-col-catalog { grid-area: catalog; }
-  .sp-col-consumers { grid-area: consumers; }
+  .sp-col-trailing { grid-area: trailing; justify-self: end; }
 
-  /* Label row styling */
   .sp-col-label {
     font-weight: 600;
     font-size: 0.9rem;
     color: var(--admin-heading);
-    margin-bottom: 0.25rem;
   }
   .sp-col-label::before { display: none !important; }
-  .sp-work-label { font-size: 0.9rem; }
-  .sp-work-label small { display: inline; margin-left: 6px; font-size: 0.75rem; }
+  .sp-col-trailing::before { display: none !important; }
+  .sp-work-label { font-size: 0.9rem; -webkit-line-clamp: 3; }
+  .sp-work-meta { font-size: 0.75rem; }
 
-  /* Full width inputs */
-  .sp-input { width: 100%; max-width: none; height: 34px; }
+  .sp-input { width: 100%; max-width: none; height: 44px; }
   .sp-input--sm { max-width: 100%; }
+  .sp-rate-empty { min-height: 44px; }
+  .sp-catalog-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .sp-trailing { min-height: 44px; }
+  .sp-col-sell .admin-info-tip {
+    width: 44px;
+    height: 44px;
+  }
 
-  /* Consumers inline */
-  .sp-col-consumers::before { display: none; }
-
-  /* Crew rates: stack on mobile */
   .sp-crew .sp-crew-grid {
     flex-direction: column;
     gap: 0.75rem;
@@ -308,8 +411,10 @@ td.sp-col-consumers {
     @method('PUT')
 
     <div class="admin-card sp-crew">
-      <h3 class="sp-heading">Crew rates</h3>
-      <p class="admin-form-help">Used by Basement, Trimming, Shed, and Millwork when a quote does not override them.</p>
+      <h3 class="sp-heading">
+        Crew rates
+        @include('admin.partials.info_tip', ['text' => 'Used by Basement, Trimming, Shed, and Millwork when a quote does not override them.'])
+      </h3>
       <div class="sp-crew-grid">
         <div class="sp-crew-field">
           <label for="owner_hourly_rate">Owner hourly (CAD$)</label>
@@ -348,8 +453,7 @@ td.sp-col-consumers {
                 <th class="sp-col-unit">Unit</th>
                 <th class="sp-col-price">Mat. price</th>
                 <th class="sp-col-name">Mat. name</th>
-                <th class="sp-col-catalog" title="Catalog"><i class="fa fa-search" aria-hidden="true"></i></th>
-                <th class="sp-col-consumers">Used by</th>
+                <th class="sp-col-trailing">Used by</th>
               </tr>
             </thead>
             <tbody>
@@ -367,22 +471,26 @@ td.sp-col-consumers {
                           ? number_format($derivedArea, 4, '.', '')
                           : '';
                   }
+                  $workMeta = null;
+                  if (! $isArea && isset($kindLabels[$work->labor_kind])) {
+                      $workMeta = $kindLabels[$work->labor_kind];
+                  } elseif ($isArea) {
+                      $workMeta = $work->isSquareFoot() ? '/sqft' : '/linft';
+                  }
                 @endphp
                 <tr id="work-{{ $work->key }}" class="sp-row">
-                  <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
                   <td class="sp-col-label" data-label="Work item">
-                    <span class="sp-work-label">
-                      {{ $work->label }}
-                      @if (!$isArea && isset($kindLabels[$work->labor_kind]))
-                        <small>{{ $kindLabels[$work->labor_kind] }}</small>
-                      @elseif ($isArea)
-                        <small>{{ $work->isSquareFoot() ? '/sqft' : '/linft' }}</small>
+                    <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
+                    <span class="sp-work">
+                      <span class="sp-work-label">{{ $work->label }}</span>
+                      @if ($workMeta)
+                        <small class="sp-work-meta">{{ $workMeta }}</small>
                       @endif
                     </span>
                   </td>
                   <td class="sp-col-rate" data-label="Rate">
                     @if ($isArea)
-                      <span class="admin-form-help">—</span>
+                      <span class="sp-rate-empty">—</span>
                     @else
                       <input type="text" inputmode="decimal" autocomplete="off"
                              class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
@@ -398,7 +506,9 @@ td.sp-col-consumers {
                            value="{{ $isArea ? $areaPrice : old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}"
                            placeholder="0.0000">
                     @if ($effective !== null)
-                      <div class="sp-effective">{{ \App\Models\ClientProject::formatMoney($effective) }}/{{ $work->unit }}</div>
+                      @include('admin.partials.info_tip', [
+                        'text' => 'Effective sell '.\App\Models\ClientProject::formatMoney($effective).'/'.$work->unit,
+                      ])
                     @endif
                   </td>
                   <td class="sp-col-unit" data-label="Unit">
@@ -422,39 +532,42 @@ td.sp-col-consumers {
                            title="{{ $matNameVal }}"
                            placeholder="—">
                   </td>
-                  <td class="sp-col-catalog" data-label="Catalog">
-                    <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
-                            title="Search catalog materials"
-                            onclick="this.nextElementSibling.querySelector('.admin-search-select__input').focus();">
-                      <i class="fa fa-search" aria-hidden="true"></i>
-                    </button>
-                    <div class="sp-search-wrap sp-search-wrap--hidden">
-                      @include('admin.partials.search_select', [
-                        'id' => 'sp-mat-'.$work->id,
-                        'name' => 'works['.$work->id.'][catalog_material_id]',
-                        'value' => $catalogId > 0 ? $catalogId : '',
-                        'hideLabel' => true,
-                        'placeholder' => 'Type to search...',
-                        'ariaLabel' => 'Catalog material for '.$work->label,
-                        'wrapperClass' => 'sp-search-wrap--hidden-input',
-                        'optionsSource' => 'admin-ss-catalog-options',
-                        'selectedOption' => $selected,
-                        'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
-                        'metaKeys' => ['sku', 'price_label'],
-                        'emptyMessage' => 'No match',
-                        'maxOptions' => 50,
-                        'listParent' => 'body',
-                        'fill' => [
-                          'name' => 'sp-mat-name-'.$work->id,
-                          'price' => 'sp-mat-price-'.$work->id,
-                        ],
-                      ])
+                  <td class="sp-col-trailing" data-label="Used by">
+                    <div class="sp-trailing">
+                      <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
+                              title="Search catalog materials"
+                              aria-label="Search catalog materials for {{ $work->label }}"
+                              onclick="this.nextElementSibling.querySelector('.admin-search-select__input').focus();">
+                        <i class="fa fa-search" aria-hidden="true"></i>
+                      </button>
+                      <div class="sp-search-wrap sp-search-wrap--hidden">
+                        @include('admin.partials.search_select', [
+                          'id' => 'sp-mat-'.$work->id,
+                          'name' => 'works['.$work->id.'][catalog_material_id]',
+                          'value' => $catalogId > 0 ? $catalogId : '',
+                          'hideLabel' => true,
+                          'placeholder' => 'Type to search...',
+                          'ariaLabel' => 'Catalog material for '.$work->label,
+                          'wrapperClass' => 'sp-search-wrap--hidden-input',
+                          'optionsSource' => 'admin-ss-catalog-options',
+                          'selectedOption' => $selected,
+                          'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
+                          'metaKeys' => ['sku', 'price_label'],
+                          'emptyMessage' => 'No match',
+                          'maxOptions' => 50,
+                          'listParent' => 'body',
+                          'fill' => [
+                            'name' => 'sp-mat-name-'.$work->id,
+                            'price' => 'sp-mat-price-'.$work->id,
+                          ],
+                        ])
+                      </div>
+                      <div class="sp-consumers">
+                        @foreach ($consumers as $consumer)
+                          <span class="sp-chip">{{ \App\Services\SharedWorkCatalog::CONSUMER_LABELS[$consumer] ?? $consumer }}</span>
+                        @endforeach
+                      </div>
                     </div>
-                  </td>
-                  <td class="sp-col-consumers" data-label="Used by">
-                    @foreach ($consumers as $consumer)
-                      <span class="sp-chip">{{ \App\Services\SharedWorkCatalog::CONSUMER_LABELS[$consumer] ?? $consumer }}</span>
-                    @endforeach
                   </td>
                 </tr>
               @endforeach
