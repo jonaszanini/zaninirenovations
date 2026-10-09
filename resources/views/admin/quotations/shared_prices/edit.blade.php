@@ -62,8 +62,9 @@
 
 /*
  * Desktop rows are CSS grid (not table-layout:fixed) so leftover width
- * goes to the work-item column, the name column stays narrower, and the
- * catalog search and Used-by chips sit in separate fixed-width columns.
+ * goes to the work-item column (~150px at 1024, two-line wrap), Rate is
+ * a fixed 5rem (~80px) so 12.9000 still fits, and catalog search / Used-by
+ * sit in separate fixed-width columns.
  */
 .sp-table {
   width: 100%;
@@ -82,17 +83,46 @@
   .sp-table tbody tr {
     display: grid;
     grid-template-columns:
-      minmax(0, 1.1fr)
-      minmax(6.5rem, 6.75rem)
-      minmax(4.6rem, 4.85rem)
-      minmax(2.85rem, 3.1rem)
-      minmax(4.85rem, 5.1rem)
-      minmax(6.75rem, 1.15fr)
+      minmax(9.375rem, 1.45fr)
+      5rem
+      minmax(4.4rem, 4.55rem)
+      minmax(2.85rem, 3rem)
+      minmax(4.75rem, 4.9rem)
+      minmax(4.75rem, 1fr)
       2.5rem
       7rem;
-    column-gap: 0.2rem;
-    align-items: center;
+    column-gap: 0.15rem;
+    align-items: stretch;
     width: 100%;
+  }
+  /* Beat `.sp-table td { display:block }` so the search button and chips
+     flex-center on the same midline as the inputs. */
+  .sp-table th.sp-col-catalog,
+  .sp-table td.sp-col-catalog {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    vertical-align: middle;
+  }
+  .sp-table th.sp-col-consumers,
+  .sp-table td.sp-col-consumers {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    align-self: stretch;
+    vertical-align: middle;
+  }
+  .sp-table td.sp-col-label,
+  .sp-table td.sp-col-rate,
+  .sp-table td.sp-col-sell,
+  .sp-table td.sp-col-unit,
+  .sp-table td.sp-col-price,
+  .sp-table td.sp-col-name {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    vertical-align: middle;
   }
 }
 .sp-table th,
@@ -103,6 +133,7 @@
   border: 0;
   box-shadow: none;
   background-image: none;
+  vertical-align: middle;
 }
 .sp-col-label,
 .sp-col-name {
@@ -175,7 +206,7 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   word-break: break-word;
   white-space: normal;
 }
@@ -215,13 +246,9 @@
 
 .sp-col-catalog {
   position: relative;
-  display: flex;
-  align-items: center;
   justify-content: center;
 }
 .sp-col-consumers {
-  display: flex;
-  align-items: center;
   justify-content: flex-start;
 }
 .sp-consumers {
@@ -256,7 +283,7 @@
   border-color: var(--admin-primary);
   color: var(--admin-primary);
 }
-.sp-search-wrap--hidden {
+.sp-search-wrap.sp-search-wrap--hidden {
   position: absolute;
   width: 200px;
   right: 0;

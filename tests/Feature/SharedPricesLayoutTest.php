@@ -47,13 +47,21 @@ class SharedPricesLayoutTest extends IntegrationTestCase
 
         $this->assertStringContainsString('.sp-col-catalog', $html);
         $this->assertStringContainsString('.sp-col-consumers', $html);
+        $this->assertStringContainsString('.sp-table td.sp-col-catalog', $html);
         $this->assertStringContainsString('align-items: center', $html);
+        $this->assertStringContainsString('align-items: stretch', $html);
+        $this->assertStringContainsString('vertical-align: middle', $html);
         $this->assertStringContainsString('justify-content: flex-start', $html);
-        $this->assertStringContainsString('minmax(6.5rem, 6.75rem)', $html);
-        $this->assertStringContainsString('minmax(6.75rem, 1.15fr)', $html);
+        $this->assertStringContainsString('minmax(9.375rem, 1.45fr)', $html);
+        $this->assertStringContainsString("\n      5rem", $html);
+        $this->assertStringContainsString('minmax(4.75rem, 1fr)', $html);
         $this->assertStringContainsString('2.5rem', $html);
         $this->assertStringContainsString("\n      7rem;", $html);
+        $this->assertStringContainsString('-webkit-line-clamp: 2', $html);
         $this->assertStringContainsString('sp-chip-more__tip', $html);
         $this->assertStringContainsString('+2', $html);
+
+        $this->assertStringNotContainsString('minmax(6.5rem, 6.75rem)', $html);
+        $this->assertStringNotContainsString('minmax(0, 1.1fr)', $html);
     }
 }
