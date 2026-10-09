@@ -63,7 +63,7 @@
 /*
  * Desktop rows are CSS grid (not table-layout:fixed) so leftover width
  * goes to the work-item column, the name column stays narrower, and the
- * trailing search+tag column stays a consistent fixed width.
+ * catalog search and Used-by chips sit in separate fixed-width columns.
  */
 .sp-table {
   width: 100%;
@@ -87,8 +87,9 @@
       minmax(4.6rem, 4.85rem)
       minmax(2.85rem, 3.1rem)
       minmax(4.85rem, 5.1rem)
-      minmax(7.5rem, 1.2fr)
-      7.75rem;
+      minmax(6.75rem, 1.15fr)
+      2.5rem
+      7rem;
     column-gap: 0.2rem;
     align-items: center;
     width: 100%;
@@ -107,7 +108,8 @@
 .sp-col-name {
   overflow: hidden;
 }
-.sp-col-trailing {
+.sp-col-catalog,
+.sp-col-consumers {
   overflow: visible;
 }
 .sp-table thead tr,
@@ -130,7 +132,8 @@
 .sp-col-unit,
 .sp-col-price,
 .sp-col-name,
-.sp-col-trailing {
+.sp-col-catalog,
+.sp-col-consumers {
   min-width: 0;
 }
 .sp-col-name .sp-input,
@@ -210,25 +213,23 @@
   font-size: 13px;
 }
 
-/* Trailing column: search button + category tag, vertically centred. */
-.sp-col-trailing {
+.sp-col-catalog {
   position: relative;
-}
-.sp-trailing {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.3rem;
-  min-height: 28px;
-  min-width: 0;
+  justify-content: center;
+}
+.sp-col-consumers {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 .sp-consumers {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 3px;
-  flex-shrink: 0;
 }
 .sp-catalog-btn {
   display: inline-flex;
@@ -358,7 +359,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "label label"
-      "trailing trailing"
+      "catalog consumers"
       "rate sell"
       "unit price"
       "name name";
@@ -390,12 +391,8 @@
   .sp-col-unit { grid-area: unit; }
   .sp-col-price { grid-area: price; }
   .sp-col-name { grid-area: name; }
-  .sp-col-trailing { grid-area: trailing; justify-self: stretch; }
-  .sp-trailing {
-    justify-content: flex-start;
-    flex-wrap: nowrap;
-  }
-  .sp-consumers { flex: 0 0 auto; }
+  .sp-col-catalog { grid-area: catalog; justify-self: start; }
+  .sp-col-consumers { grid-area: consumers; justify-self: start; }
 
   .sp-col-label {
     font-weight: 600;
@@ -403,7 +400,7 @@
     color: var(--admin-heading);
   }
   .sp-col-label::before { display: none !important; }
-  .sp-col-trailing::before { display: none !important; }
+  .sp-col-catalog::before { display: none !important; }
   .sp-work-label { font-size: 0.9rem; -webkit-line-clamp: 3; }
   .sp-work-meta { font-size: 0.75rem; }
 
@@ -414,7 +411,8 @@
     width: 44px;
     height: 44px;
   }
-  .sp-trailing { min-height: 44px; }
+  .sp-col-catalog,
+  .sp-col-consumers { min-height: 44px; }
   .sp-col-sell .admin-info-tip {
     width: 44px;
     height: 44px;
@@ -502,7 +500,8 @@
                 <th class="sp-col-unit">Unit</th>
                 <th class="sp-col-price">Mat. price</th>
                 <th class="sp-col-name">Mat. name</th>
-                <th class="sp-col-trailing">Used by</th>
+                <th class="sp-col-catalog" title="Catalog"><i class="fa fa-search" aria-hidden="true"></i></th>
+                <th class="sp-col-consumers">Used by</th>
               </tr>
             </thead>
             <tbody>
@@ -587,50 +586,50 @@
                            title="{{ $matNameVal }}"
                            placeholder="—">
                   </td>
-                  <td class="sp-col-trailing" data-label="Used by">
-                    <div class="sp-trailing">
-                      <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
-                              title="Search catalog materials"
-                              aria-label="Search catalog materials for {{ $work->label }}"
-                              onclick="this.nextElementSibling.querySelector('.admin-search-select__input').focus();">
-                        <i class="fa fa-search" aria-hidden="true"></i>
-                      </button>
-                      <div class="sp-search-wrap sp-search-wrap--hidden">
-                        @include('admin.partials.search_select', [
-                          'id' => 'sp-mat-'.$work->id,
-                          'name' => 'works['.$work->id.'][catalog_material_id]',
-                          'value' => $catalogId > 0 ? $catalogId : '',
-                          'hideLabel' => true,
-                          'placeholder' => 'Type to search...',
-                          'ariaLabel' => 'Catalog material for '.$work->label,
-                          'wrapperClass' => 'sp-search-wrap--hidden-input',
-                          'optionsSource' => 'admin-ss-catalog-options',
-                          'selectedOption' => $selected,
-                          'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
-                          'metaKeys' => ['sku', 'price_label'],
-                          'emptyMessage' => 'No match',
-                          'maxOptions' => 50,
-                          'listParent' => 'body',
-                          'fill' => [
-                            'name' => 'sp-mat-name-'.$work->id,
-                            'price' => 'sp-mat-price-'.$work->id,
-                          ],
-                        ])
-                      </div>
-                      <div class="sp-consumers">
-                        @if ($firstConsumer)
-                          <span class="sp-chip">{{ $firstConsumer }}</span>
-                        @endif
-                        @if ($extraConsumerCount > 0)
-                          <button type="button" class="sp-chip sp-chip--more"
-                                  aria-expanded="false"
-                                  title="{{ implode(', ', $consumerLabels) }}"
-                                  aria-label="Also used by {{ implode(', ', array_slice($consumerLabels, 1)) }}">
-                            +{{ $extraConsumerCount }}
-                            <span class="sp-chip-more__tip" role="tooltip">{{ implode(', ', $consumerLabels) }}</span>
-                          </button>
-                        @endif
-                      </div>
+                  <td class="sp-col-catalog" data-label="Catalog">
+                    <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
+                            title="Search catalog materials"
+                            aria-label="Search catalog materials for {{ $work->label }}"
+                            onclick="this.nextElementSibling.querySelector('.admin-search-select__input').focus();">
+                      <i class="fa fa-search" aria-hidden="true"></i>
+                    </button>
+                    <div class="sp-search-wrap sp-search-wrap--hidden">
+                      @include('admin.partials.search_select', [
+                        'id' => 'sp-mat-'.$work->id,
+                        'name' => 'works['.$work->id.'][catalog_material_id]',
+                        'value' => $catalogId > 0 ? $catalogId : '',
+                        'hideLabel' => true,
+                        'placeholder' => 'Type to search...',
+                        'ariaLabel' => 'Catalog material for '.$work->label,
+                        'wrapperClass' => 'sp-search-wrap--hidden-input',
+                        'optionsSource' => 'admin-ss-catalog-options',
+                        'selectedOption' => $selected,
+                        'searchFields' => ['label', 'name', 'sku', 'model', 'vendor', 'store_name'],
+                        'metaKeys' => ['sku', 'price_label'],
+                        'emptyMessage' => 'No match',
+                        'maxOptions' => 50,
+                        'listParent' => 'body',
+                        'fill' => [
+                          'name' => 'sp-mat-name-'.$work->id,
+                          'price' => 'sp-mat-price-'.$work->id,
+                        ],
+                      ])
+                    </div>
+                  </td>
+                  <td class="sp-col-consumers" data-label="Used by">
+                    <div class="sp-consumers">
+                      @if ($firstConsumer)
+                        <span class="sp-chip">{{ $firstConsumer }}</span>
+                      @endif
+                      @if ($extraConsumerCount > 0)
+                        <button type="button" class="sp-chip sp-chip--more"
+                                aria-expanded="false"
+                                title="{{ implode(', ', $consumerLabels) }}"
+                                aria-label="Also used by {{ implode(', ', array_slice($consumerLabels, 1)) }}">
+                          +{{ $extraConsumerCount }}
+                          <span class="sp-chip-more__tip" role="tooltip">{{ implode(', ', $consumerLabels) }}</span>
+                        </button>
+                      @endif
                     </div>
                   </td>
                 </tr>
