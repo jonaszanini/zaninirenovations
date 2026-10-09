@@ -1,0 +1,128 @@
+{
+    "scope": {
+        "piece_count": 1,
+        "piece_summary": "2× door 18\"×80\"",
+        "sheet_count": 0,
+        "finish_label": "Unfinished",
+        "labels": [
+            "2× door 18\"×80\""
+        ]
+    },
+    "sheet": {
+        "id": "ws_ply_34_cab_48x96",
+        "catalog_material_id": null,
+        "name": "3/4\" cabinet-grade plywood 4×8",
+        "unit": "sheet",
+        "unit_price": 72,
+        "thickness_in": 0.75,
+        "width_in": 48,
+        "length_in": 96,
+        "material_kind": "plywood",
+        "grade": "cabinet"
+    },
+    "back_sheet": null,
+    "labor": [
+        {
+            "key": "doors",
+            "label": "Shop — doors / fronts",
+            "hours": 2,
+            "amount": 170
+        },
+        {
+            "key": "edge",
+            "label": "Shop — edge banding",
+            "hours": 1.2,
+            "amount": 102
+        },
+        {
+            "key": "install",
+            "label": "On-site install",
+            "hours": 2.5,
+            "amount": 212.5
+        }
+    ],
+    "materials": [
+        {
+            "key": "edge",
+            "label": "Iron-on edge banding (50 ft roll)",
+            "qty": 1,
+            "unit": "roll",
+            "unit_price": 12.48,
+            "amount": 12.48,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "hinge",
+            "label": "Concealed overlay hinge (each)",
+            "qty": 8,
+            "unit": "each",
+            "unit_price": 3.8,
+            "amount": 30.4,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "pull",
+            "label": "Bar pull / handle (each)",
+            "qty": 2,
+            "unit": "each",
+            "unit_price": 6.5,
+            "amount": 13,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "fastener",
+            "label": "1-1/4\" cabinet screws (box of 100)",
+            "qty": 1,
+            "unit": "box",
+            "unit_price": 8.5,
+            "amount": 8.5,
+            "client_provided": false,
+            "catalog_material_id": null
+        }
+    ],
+    "extra_materials": [],
+    "summary": {
+        "total_hours": 5.7,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45,
+        "include_helper": false,
+        "include_building": false,
+        "building_labor_percent": 30,
+        "building_labor_surcharge": 0,
+        "labor_pre_hst": 484.5,
+        "labor_hst": 62.99,
+        "labor_after_hst": 547.49,
+        "materials_goods_pre_hst": 64.38,
+        "materials_pre_hst": 64.38,
+        "materials_hst": 8.37,
+        "materials_after_hst": 72.75,
+        "subtotal_pre_hst": 548.88,
+        "hst": 71.36,
+        "grand_total": 620.24,
+        "final_quote_total": 620.24,
+        "client_provides_all": false,
+        "paint_sf": 0,
+        "stain_sf": 0,
+        "edge_band_lf": 35.94,
+        "edge_band_coverage_lf": 50,
+        "fastener_count": 16,
+        "waste_pct": 10,
+        "edge_waste_pct": 10,
+        "finish_waste_pct": 10,
+        "markup_pct": 0,
+        "markup_amount": 0,
+        "delivery_amount": 0,
+        "spare_sheets": 0,
+        "trim_lf": 0,
+        "wainscot_lf": 0
+    },
+    "cut_plan": {
+        "sheet_count": 0,
+        "yield_pct": 0,
+        "stock_used": [],
+        "layouts": []
+    }
+}

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClientProject;
 use App\Models\CompanySetting;
 use App\Models\Vehicle;
 use App\Services\GoogleMapsService;
@@ -145,6 +146,31 @@ class VehicleController extends Controller
         return redirect()
             ->route('admin.vehicles.index')
             ->with('success', 'Gas price updated.');
+    }
+
+    public function updateBusinessContact(Request $request)
+    {
+        $settings = CompanySetting::current();
+
+        $data = $request->validate([
+            'contact_phone' => ['nullable', 'string', 'max:40'],
+            'contact_email' => ['nullable', 'email', 'max:160'],
+        ]);
+
+        $phone = trim((string) ($data['contact_phone'] ?? ''));
+        $email = trim((string) ($data['contact_email'] ?? ''));
+        $digits = ClientProject::phoneDigitsForSms($phone) ?? preg_replace('/\D/', '', $phone);
+        $tel = $digits !== '' && $digits !== null ? '+'.$digits : null;
+
+        $settings->update([
+            'contact_phone' => $phone !== '' ? $phone : null,
+            'contact_phone_tel' => $tel,
+            'contact_email' => $email !== '' ? $email : null,
+        ]);
+
+        return redirect()
+            ->route('admin.vehicles.index')
+            ->with('success', 'Business contact updated.');
     }
 
     /** @return array<string, mixed> */

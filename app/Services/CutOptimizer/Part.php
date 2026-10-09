@@ -20,7 +20,8 @@ class Part
         public float $edgeBandLeft = 0.0,
         public float $edgeBandRight = 0.0,
         public string $materialKey = 'default',
-        public ?string $groupLabel = null
+        public ?string $groupLabel = null,
+        public ?int $sourcePieceIndex = null,
     ) {
         $this->cuttingWidth = max(0.01, $this->width - ($this->edgeBandLeft + $this->edgeBandRight));
         $this->cuttingLength = max(0.01, $this->length - ($this->edgeBandTop + $this->edgeBandBottom));

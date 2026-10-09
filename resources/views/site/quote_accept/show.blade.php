@@ -29,7 +29,7 @@
                 Quote accepted
               @elseif ($status === QuoteAcceptanceService::STATUS_ALREADY_ACCEPTED)
                 Already accepted
-              @elseif ($status === QuoteAcceptanceService::STATUS_INVALID_STATE)
+              @elseif ($status === QuoteAcceptanceService::STATUS_INVALID_STATE || $status === QuoteAcceptanceService::STATUS_INCOMPLETE)
                 This quote cannot be accepted
               @else
                 Accept this quote
@@ -55,6 +55,8 @@
               <p class="qa-message">Thank you. This quote is now accepted. We will be in touch with next steps.</p>
             @elseif ($status === QuoteAcceptanceService::STATUS_ALREADY_ACCEPTED)
               <p class="qa-message">This quote is already accepted. No further action is needed.</p>
+            @elseif ($status === QuoteAcceptanceService::STATUS_INCOMPLETE)
+              <p class="qa-message">This quote is being updated and cannot be accepted yet. Please contact us if you have questions.</p>
             @elseif ($status === QuoteAcceptanceService::STATUS_INVALID_STATE)
               <p class="qa-message">This quote is no longer available to accept. Please contact us if you have questions.</p>
             @else
@@ -64,7 +66,7 @@
               </form>
             @endif
 
-            <p class="qa-contact">{{ config('mail.from.name', 'Zanini Renovations') }} · (647) 834-7570</p>
+            @include('site.partials.business_contact')
           </div>
         </div>
       </div>

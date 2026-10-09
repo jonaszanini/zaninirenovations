@@ -232,12 +232,31 @@
     function placeList() {
       if (listParent !== 'body') return;
       var rect = input.getBoundingClientRect();
+      var pad = 8;
+      var vw = window.innerWidth || document.documentElement.clientWidth || 0;
+      var maxW = Math.max(80, vw - pad * 2);
+      var width = Math.min(Math.max(rect.width, Math.min(280, maxW)), maxW);
+      var left = rect.left;
+      if (left + width > vw - pad) {
+        left = vw - pad - width;
+      }
+      if (left < pad) {
+        left = pad;
+      }
       list.style.position = 'fixed';
-      list.style.left = rect.left + 'px';
+      list.style.boxSizing = 'border-box';
+      list.style.minWidth = '0';
+      list.style.left = Math.round(left) + 'px';
       list.style.right = 'auto';
       list.style.top = (rect.bottom + 4) + 'px';
-      list.style.width = Math.max(rect.width, 280) + 'px';
+      list.style.width = Math.round(width) + 'px';
+      list.style.maxWidth = maxW + 'px';
       list.style.zIndex = '200';
+      var placed = list.getBoundingClientRect();
+      if (placed.right > vw - pad || placed.left < pad) {
+        list.style.left = pad + 'px';
+        list.style.width = maxW + 'px';
+      }
     }
 
     function restoreList() {
@@ -248,6 +267,9 @@
       list.style.right = '';
       list.style.top = '';
       list.style.width = '';
+      list.style.maxWidth = '';
+      list.style.minWidth = '';
+      list.style.boxSizing = '';
       list.style.zIndex = '';
     }
 

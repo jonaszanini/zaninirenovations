@@ -167,18 +167,23 @@
       debounceTimer = setTimeout(runPreview, 280);
     }
 
-    function runPreview() {
-      if (!previewUrl) return;
+    function fetchPreview() {
+      if (!previewUrl) return Promise.resolve(null);
       var body = new FormData(form);
       body.delete('_method');
-      fetch(previewUrl, {
+      return fetch(previewUrl, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         body: body,
         credentials: 'same-origin'
-      }).then(function (res) { return res.json(); }).then(function (data) {
-        renderPreview(data);
-      }).catch(function () { /* ignore */ });
+      }).then(function (res) { return res.json(); });
+    }
+
+    function runPreview() {
+      return fetchPreview().then(function (data) {
+        if (data) renderPreview(data);
+        return data;
+      }).catch(function () { return null; });
     }
 
     function renderPreview(data) {
@@ -192,6 +197,7 @@
         return !String(r.key || '').startsWith('extra_');
       }));
       renderCutPlan(data.cut_plan || {});
+      renderUnplacedBanner(data.cut_plan || {}, data);
       var liveGrand = Number(summary.grand_total || 0) > 0
         ? Number(summary.grand_total) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount
         : 0;
@@ -252,6 +258,57 @@
       var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
       html += '<div class="pq-row pq-row--hl"><span>Total</span><span>' + fmt(grand) + '</span></div>';
       body.innerHTML = html;
+    }
+
+    function seamTipHtml(original) {
+      var text = 'Finished sizes still add up to ' + original + '.';
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.html === 'function') {
+        return ' ' + window.AdminInfoTip.html(text, 'Finished size');
+      }
+      return ' <button type="button" class="admin-info-tip" aria-expanded="false" aria-label="Finished size">'
+        + '<i class="fa fa-info-circle" aria-hidden="true"></i>'
+        + '<span class="admin-info-tip__bubble" role="tooltip">' + escapeHtml(text) + '</span></button>';
+    }
+
+    function renderUnplacedBanner(plan, data) {
+      var banner = document.getElementById('mw-unplaced-banner');
+      var list = document.getElementById('mw-unplaced-list');
+      var seamsRoot = document.getElementById('mw-cut-seams');
+      var recalc = document.getElementById('mw-recalc-banner');
+      var recalcText = document.getElementById('mw-recalc-text');
+      var unplaced = plan.unplaced || [];
+      var seams = plan.seams || [];
+      var notice = (data && data.recalc_notice) || (plan && plan.recalc_notice) || null;
+      if (banner) {
+        banner.hidden = unplaced.length === 0;
+      }
+      if (list) {
+        list.innerHTML = unplaced.map(function (row) {
+          return '<li>' + escapeHtml(row.label || 'Part') + '</li>';
+        }).join('');
+      }
+      if (recalc) {
+        recalc.hidden = !notice;
+      }
+      if (recalcText && notice) {
+        var wasLabel = notice.was_label || fmt(notice.was);
+        var nowLabel = notice.now_label || fmt(notice.now);
+        recalcText.textContent = 'was ' + wasLabel
+          + ', now ' + nowLabel
+          + '. Review the cut plan before you save.';
+      }
+      if (seamsRoot) {
+        seamsRoot.hidden = seams.length === 0;
+        seamsRoot.innerHTML = seams.map(function (seam) {
+          var panels = (seam.panels || []).join(' + ');
+          var note = seam.note || '';
+          var original = seam.original || '';
+          var tip = original ? seamTipHtml(original) : '';
+          return '<p>' + escapeHtml(seam.label || 'Back') + ': ' + escapeHtml(note)
+            + (panels ? ' (' + escapeHtml(panels) + ')' : '')
+            + tip + '</p>';
+        }).join('');
+      }
     }
 
     function renderCutPlan(plan) {
@@ -840,6 +897,71 @@
       syncTotalsBarSpace();
     });
     syncTotalsBarSpace();
+
+    var upgradeBtn = document.getElementById('mw-upgrade-cut-plan-btn');
+    var undoBtn = document.getElementById('mw-undo-cut-plan-btn');
+    var undoBannerBtn = document.getElementById('mw-undo-cut-plan-banner-btn');
+    var legacyVersion = String(cfg.cutPlanVersion || 1);
+
+    function setUpgradeFlags(on) {
+      var flag = document.getElementById('mw-upgrade-cut-plan');
+      var ver = document.getElementById('mw-cut-plan-version');
+      if (flag) flag.value = on ? '1' : '0';
+      if (ver) ver.value = on ? '2' : legacyVersion;
+    }
+
+    function setUpgradeUi(on) {
+      if (upgradeBtn) upgradeBtn.hidden = !!on;
+      if (undoBtn) undoBtn.hidden = !on;
+      if (undoBannerBtn) undoBannerBtn.hidden = !on;
+    }
+
+    function confirmRecalc(message) {
+      if (window.AdminDialog && typeof window.AdminDialog.confirm === 'function') {
+        return window.AdminDialog.confirm(message, {
+          title: 'Recalculate with new cut plan',
+          confirmLabel: 'Recalculate',
+          cancelLabel: 'Cancel'
+        });
+      }
+      return Promise.resolve(window.confirm(message));
+    }
+
+    function revertToLegacy() {
+      setUpgradeFlags(false);
+      setUpgradeUi(false);
+      runPreview();
+    }
+
+    if (upgradeBtn) {
+      upgradeBtn.addEventListener('click', function () {
+        setUpgradeFlags(true);
+        fetchPreview().then(function (data) {
+          var notice = data && data.recalc_notice;
+          var wasLabel = notice && notice.was_label ? String(notice.was_label) : '';
+          var nowLabel = notice && notice.now_label ? String(notice.now_label) : '';
+          var msg = (wasLabel && nowLabel)
+            ? ('Was ' + wasLabel + ', now ' + nowLabel + '. Recalculate this quote with the new cut plan? You can undo before saving.')
+            : 'Recalculate this quote with the new cut plan? You can undo before saving.';
+          return confirmRecalc(msg).then(function (ok) {
+            if (ok) {
+              if (data) renderPreview(data);
+              setUpgradeUi(true);
+            } else {
+              setUpgradeFlags(false);
+            }
+          });
+        }).catch(function () {
+          setUpgradeFlags(false);
+        });
+      });
+    }
+    if (undoBtn) {
+      undoBtn.addEventListener('click', revertToLegacy);
+    }
+    if (undoBannerBtn) {
+      undoBannerBtn.addEventListener('click', revertToLegacy);
+    }
 
     if (cfg.initialPreview) renderPreview(cfg.initialPreview);
     schedulePreview();

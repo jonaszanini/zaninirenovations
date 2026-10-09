@@ -456,6 +456,7 @@ class MillworkSettings extends Model
             $item['material_kind'] = in_array($kind, ['plywood', 'mdf'], true) ? $kind : 'plywood';
             $grade = strtolower(trim((string) ($row['grade'] ?? 'cabinet')));
             $item['grade'] = in_array($grade, ['cabinet', 'utility'], true) ? $grade : 'cabinet';
+            $item['species'] = self::sheetSpecies(array_merge($row, $item));
         }
         if ($slot === self::SLOT_PAINTS || $slot === self::SLOT_STAINS) {
             $item['size'] = trim((string) ($row['size'] ?? ''));
@@ -520,5 +521,111 @@ class MillworkSettings extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Exact material/species key for sheet swaps. Grade "cabinet" is too
+     * broad (cabinet ply, Baltic 5×5, and 18mm Baltic all share it).
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function sheetSpecies(array $row): string
+    {
+        $explicit = strtolower(trim((string) ($row['species'] ?? '')));
+        if ($explicit !== '') {
+            return $explicit;
+        }
+        $catalogId = (int) ($row['catalog_material_id'] ?? 0);
+        $sku = strtolower(trim((string) ($row['sku'] ?? '')));
+        $id = strtolower((string) ($row['id'] ?? ''));
+        $name = strtolower((string) ($row['name'] ?? ''));
+
+        if ($catalogId > 0) {
+            return 'material:'.$catalogId;
+        }
+        if ($sku !== '') {
+            return 'sku:'.$sku;
+        }
+
+        if (self::isDefaultCatalogueSheetId($id)) {
+            return self::defaultCatalogueSpecies($id, $name, $row);
+        }
+
+        if ($id !== '') {
+            return 'id:'.$id;
+        }
+        if ($name !== '') {
+            return 'name:'.$name;
+        }
+
+        return 'unknown';
+    }
+
+    private static function isDefaultCatalogueSheetId(string $id): bool
+    {
+        if ($id === '') {
+            return false;
+        }
+
+        return str_starts_with($id, 'ws_ply_34_cab_')
+            || str_starts_with($id, 'ws_ply_34_util_')
+            || str_starts_with($id, 'ws_ply_14_')
+            || str_starts_with($id, 'ws_mdf_')
+            || str_starts_with($id, 'ws_bb_bb_')
+            || str_starts_with($id, 'ws_b_bb_')
+            || $id === 'ws_birch_5x5'
+            || str_contains($id, 'birch_5x5');
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private static function defaultCatalogueSpecies(string $id, string $name, array $row): string
+    {
+        if (str_starts_with($id, 'ws_bb_bb_') || str_contains($name, 'bb/bb')) {
+            return 'baltic_bb_bb';
+        }
+        if (str_starts_with($id, 'ws_b_bb_') || str_contains($name, 'b/bb')) {
+            return 'baltic_b_bb';
+        }
+        if (str_contains($id, 'birch_5x5') || str_contains($name, '5×5') || str_contains($name, '5x5')) {
+            return 'baltic_5x5';
+        }
+        if (($row['material_kind'] ?? '') === 'mdf' || str_starts_with($id, 'ws_mdf_') || str_contains($name, 'mdf')) {
+            return 'mdf';
+        }
+        if (str_starts_with($id, 'ws_ply_34_util_') || str_contains($name, 'utility')) {
+            return 'utility_ply';
+        }
+        if (str_contains($name, 'baltic')) {
+            return 'baltic_birch';
+        }
+        if (str_starts_with($id, 'ws_ply_34_cab_')
+            || (str_contains($name, 'cabinet-grade') && str_contains($name, 'plywood'))) {
+            return 'cabinet_ply';
+        }
+        if ($id !== '') {
+            return 'id:'.$id;
+        }
+
+        return $name !== '' ? 'name:'.$name : 'unknown';
+    }
+
+    /**
+     * Synthetic 4×4 / 2×4 leftovers are only for known stocked families.
+     */
+    public static function allowsSyntheticSheetSwap(array $row): bool
+    {
+        $key = self::sheetSpecies($row);
+
+        return in_array($key, [
+            'cabinet_ply',
+            'utility_ply',
+            'mdf',
+            'baltic_birch',
+            'baltic_bb_bb',
+            'baltic_b_bb',
+            'baltic_5x5',
+        ], true);
     }
 }
