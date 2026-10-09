@@ -289,12 +289,24 @@ async function main() {
     const root = document.querySelector('[data-room-area]');
     if (root) {
       root.classList.add('is-sheet-expanded');
-      root.style.setProperty('--ra-sheet-h', '320px');
+      root.style.setProperty('--ra-sheet-h', '420px');
     }
+    const finish = document.querySelector('[data-ra-finish]');
+    if (finish) finish.scrollIntoView({ block: 'nearest' });
   });
   await delay(350);
   await shot(phone, 'ra-b2-390-sheet-light');
 
+  await phone.evaluate(() => {
+    const root = document.querySelector('[data-room-area]');
+    if (root) {
+      root.classList.remove('is-sheet-expanded');
+      root.style.setProperty('--ra-sheet-h', 'auto');
+    }
+    const measure = document.querySelector('[data-ra-side-tab="measure"]');
+    if (measure) measure.click();
+  });
+  await delay(200);
   await closeMore(phone);
   await setTheme(phone, 'dark');
   await delay(150);
@@ -306,8 +318,10 @@ async function main() {
     const root = document.querySelector('[data-room-area]');
     if (root) {
       root.classList.add('is-sheet-expanded');
-      root.style.setProperty('--ra-sheet-h', '320px');
+      root.style.setProperty('--ra-sheet-h', '420px');
     }
+    const finish = document.querySelector('[data-ra-finish]');
+    if (finish) finish.scrollIntoView({ block: 'nearest' });
   });
   await delay(350);
   await shot(phone, 'ra-b2-390-sheet-dark');

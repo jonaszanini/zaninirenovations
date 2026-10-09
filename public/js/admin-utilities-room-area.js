@@ -5246,8 +5246,8 @@
     var rad = deg * Math.PI / 180;
     var nx = -Math.sin(rad);
     var ny = Math.cos(rad);
-    var stroke = isAdminDark() ? 'rgba(125, 211, 252, 0.45)' : 'rgba(2, 71, 104, 0.28)';
-    var step = Math.max(10, (pixelsPerFoot() || 12) * 0.75);
+    var stroke = isAdminDark() ? 'rgba(125, 211, 252, 0.62)' : 'rgba(2, 71, 104, 0.42)';
+    var step = Math.max(14, (pixelsPerFoot() || 12) * 0.9);
     allClosedPolygons().forEach(function (entry) {
       var verts = entry.polygon.vertices || [];
       if (verts.length < 3) return;
