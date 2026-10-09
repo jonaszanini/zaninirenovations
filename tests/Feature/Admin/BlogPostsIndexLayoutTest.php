@@ -45,8 +45,9 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         $html = $response->getContent();
 
         $this->assertStringContainsString('bp-list-table', $html);
-        $this->assertStringContainsString('admin-table--fixed', $html);
         $this->assertStringContainsString('admin-table--stack', $html);
+        $this->assertStringContainsString('bp-list-seo--card', $html);
+        $this->assertStringNotContainsString('bp-list-thumb--empty', $html);
 
         foreach ([
             'bp-list-col--post',

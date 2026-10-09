@@ -2,29 +2,24 @@
 
 .bp-list-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin: 0 0 10px;
+  min-width: 0;
 }
 
 .bp-list-tabs {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 6px;
   margin: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
   flex: 1 1 auto;
   min-width: 0;
 }
 
 .bp-list-new {
   flex: 0 0 auto;
-}
-
-.bp-list-tabs::-webkit-scrollbar {
-  display: none;
 }
 
 .bp-list-tab {
@@ -108,6 +103,7 @@
 .bp-list-table.admin-table {
   width: 100%;
   min-width: 0;
+  table-layout: auto;
 }
 
 .bp-list-table.admin-table th,
@@ -116,7 +112,7 @@
 }
 
 .bp-list-table .bp-list-col--post {
-  width: auto;
+  width: 38%;
   min-width: 0;
 }
 
@@ -125,57 +121,68 @@
 }
 
 .bp-list-table .bp-list-col--cat {
-  width: 18%;
-  min-width: 0;
-  overflow: hidden;
+  width: 22%;
+  min-width: 10.5rem;
+  overflow: visible;
 }
 
 .bp-list-table .bp-list-col--status {
-  width: 5.75rem;
+  width: 1%;
   white-space: nowrap;
+  overflow: visible;
 }
 
 .bp-list-table .bp-list-col--date {
-  width: 5.5rem;
+  width: 1%;
+  min-width: 7.5rem;
   white-space: nowrap;
+  overflow: visible;
 }
 
 .bp-list-table .bp-list-col--views {
-  width: 3.5rem;
+  width: 1%;
   white-space: nowrap;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  overflow: visible;
 }
 
 .bp-list-table th.bp-list-col--actions,
 .bp-list-table td.bp-list-col--actions,
 .bp-list-table td.admin-table__actions {
-  width: 10.25rem;
+  width: 1%;
   white-space: nowrap;
   overflow: visible;
 }
 
 .bp-list-post {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 10px;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
 }
 
 .bp-list-cat {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
 }
 
 .bp-list-cat__name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .bp-list-cat__more {
@@ -291,9 +298,9 @@
 }
 
 .bp-list-seo--card {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
 }
 
 .bp-seo-badge {
@@ -620,23 +627,9 @@
   }
 }
 
-/* Sidebar is still open at 1024, so drop the thumb and SEO chips
-   and give the title/category columns the leftover width. */
-@media (min-width: 641px) and (max-width: 1100px) {
-  .bp-list-table .bp-list-thumb {
-    display: none;
-  }
-  .bp-list-table .bp-list-seo--card {
-    display: none;
-  }
-  .bp-list-table .bp-list-col--cat {
-    width: 16%;
-  }
-}
-
-@media (min-width: 1024px) {
+@media (min-width: 641px) {
   .bp-list .admin-table-scroll {
-    overflow-x: hidden;
+    overflow-x: auto;
   }
 }
 
@@ -714,6 +707,11 @@
 }
 
 @media (max-width: 640px) {
+  .bp-list {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   .bp-list .admin-table-scroll {
     overflow-x: hidden;
   }

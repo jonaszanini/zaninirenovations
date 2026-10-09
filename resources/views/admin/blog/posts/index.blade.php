@@ -71,7 +71,7 @@
 
     <div class="admin-card">
       <div class="admin-table-scroll">
-        <table class="admin-table admin-table--compact admin-table--stack admin-table--fixed bp-list-table">
+        <table class="admin-table admin-table--compact admin-table--stack bp-list-table">
           <thead>
             <tr>
               <th class="bp-list-col bp-list-col--post" scope="col">Post</th>
@@ -109,10 +109,6 @@
                     @if ($post->featuredImageUrl())
                       <span class="bp-list-thumb">
                         <img src="{{ $post->featuredImageUrl() }}" alt="">
-                      </span>
-                    @else
-                      <span class="bp-list-thumb bp-list-thumb--empty" aria-hidden="true">
-                        <i class="fa fa-image"></i>
                       </span>
                     @endif
                     <span class="bp-list-post__text">

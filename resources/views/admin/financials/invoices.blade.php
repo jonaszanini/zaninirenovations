@@ -32,29 +32,27 @@
 }
 .gf-total-tile__value--success { color: #16a34a; }
 .gf-total-tile__value--warning { color: #d97706; }
-/* Table column widths — clip instead of spilling into neighbours */
+/* Table column widths — shrink-to-fit money/date, wrap long text */
 .gf-invoices-table { width: 100%; min-width: 0; }
 @media (min-width: 641px) {
-  .gf-invoices-table th,
-  .gf-invoices-table td { overflow: hidden; text-overflow: ellipsis; }
   .gf-invoices-table th:nth-child(1),
-  .gf-invoices-table td:nth-child(1) { white-space: nowrap; width: 7.5rem; } /* Invoice # */
+  .gf-invoices-table td:nth-child(1) { white-space: nowrap; width: 1%; overflow: visible; } /* Invoice # */
   .gf-invoices-table th:nth-child(2),
-  .gf-invoices-table td:nth-child(2) { white-space: nowrap; } /* Project */
+  .gf-invoices-table td:nth-child(2),
   .gf-invoices-table th:nth-child(3),
-  .gf-invoices-table td:nth-child(3) { white-space: nowrap; } /* Client */
+  .gf-invoices-table td:nth-child(3) { overflow-wrap: anywhere; } /* Project / Client */
   .gf-invoices-table th:nth-child(4),
-  .gf-invoices-table td:nth-child(4) { overflow-wrap: anywhere; text-overflow: unset; } /* Description */
+  .gf-invoices-table td:nth-child(4) { overflow-wrap: anywhere; } /* Description */
   .gf-invoices-table th:nth-child(5),
   .gf-invoices-table td:nth-child(5),
   .gf-invoices-table th:nth-child(6),
-  .gf-invoices-table td:nth-child(6) { white-space: nowrap; text-align: right; width: 6.5rem; } /* Money */
+  .gf-invoices-table td:nth-child(6) { white-space: nowrap; text-align: right; width: 1%; overflow: visible; } /* Money */
   .gf-invoices-table th:nth-child(7),
-  .gf-invoices-table td:nth-child(7) { white-space: nowrap; width: 6rem; } /* Status */
+  .gf-invoices-table td:nth-child(7) { white-space: nowrap; width: 1%; overflow: visible; } /* Status */
   .gf-invoices-table th:nth-child(8),
-  .gf-invoices-table td:nth-child(8) { white-space: nowrap; width: 6.5rem; } /* Date */
+  .gf-invoices-table td:nth-child(8) { white-space: nowrap; width: 1%; min-width: 7.5rem; overflow: visible; } /* Date */
   .gf-invoices-table th:nth-child(9),
-  .gf-invoices-table td:nth-child(9) { width: 3.5rem; overflow: visible; } /* Actions */
+  .gf-invoices-table td:nth-child(9) { width: 1%; overflow: visible; } /* Actions */
 }
 </style>
 @endpush

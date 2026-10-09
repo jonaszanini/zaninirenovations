@@ -355,9 +355,11 @@ a.cp-table-street .fa {
   font-weight: 600;
   color: var(--admin-heading);
   line-height: 1.35;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   max-width: 100%;
 }
 .cp-table th:nth-child(2),
@@ -365,9 +367,18 @@ a.cp-table-street .fa {
   min-width: 0;
   overflow: hidden;
 }
+.cp-table th:nth-child(4),
+.cp-table td:nth-child(4),
+.cp-table th:nth-child(7),
+.cp-table td:nth-child(7),
+.cp-table th:nth-child(8),
+.cp-table td:nth-child(8),
+.cp-table th.cp-col-amount,
+.cp-table td.cp-col-amount {
+  overflow: visible;
+}
 .cp-table th:nth-child(7),
 .cp-table td:nth-child(7) {
-  white-space: nowrap;
   font-size: 12px;
 }
 .cp-contact-line .cp-contact-line-sep {
