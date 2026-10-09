@@ -937,10 +937,12 @@ class FenceQuotationCalculator
 
         $linearLabour = (float) $geom['total_linear_ft'] * $labourRatePerFt;
         $additionalGateLabour = $additionalGates * $labourPerAdditionalGate;
+        $grossLabour = $linearLabour + $additionalGateLabour;
         $creditPerPost = (float) ($in['existing_post_labour_credit'] ?? $this->settings->existingPostLabourCredit());
         $creditCount = $this->countPostsRemovedByExistingTicks($in, $geom);
-        $creditAmount = round($creditCount * $creditPerPost, 2);
-        $labour = round(max(0, $linearLabour + $additionalGateLabour - $creditAmount), 2);
+        $rawCredit = round($creditCount * $creditPerPost, 2);
+        $creditAmount = round(min($rawCredit, max(0, $grossLabour)), 2);
+        $labour = round(max(0, $grossLabour - $creditAmount), 2);
         $includeLabourHst = (bool) ($in['include_labour_hst'] ?? true);
         $labourHst = $includeLabourHst ? round($labour * FenceQuotation::HST_RATE, 2) : 0.0;
         $total = round($materialsSubtotal + $hst + $labour, 2);
@@ -959,6 +961,7 @@ class FenceQuotationCalculator
             'labour_rate_8ft_per_ft' => round($rate8, 2),
             'labour_per_additional_gate' => round($labourPerAdditionalGate, 2),
             'additional_gates_count' => $additionalGates,
+            'labour_before_credit' => round($grossLabour, 2),
             'existing_post_credit' => [
                 'count' => $creditCount,
                 'amount' => $creditAmount,

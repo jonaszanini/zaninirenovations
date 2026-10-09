@@ -96,6 +96,7 @@ class FenceQuotationController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateFenceInputs($request);
+        $data['existing_post_labour_credit'] = $this->resolveExistingPostLabourCredit($data);
 
         $calc = (new FenceQuotationCalculator())->calculate($data);
         $persistence = $this->fencePersistenceFromCalc($request, $calc, $data);
@@ -177,11 +178,11 @@ class FenceQuotationController extends Controller
             : FenceQuotationCalculator::frozenUnitPricesFromCalculation(
                 is_array($fence_quotation->calculation) ? $fence_quotation->calculation : null
             );
-        if ($request->boolean('reprice')) {
-            $data['existing_post_labour_credit'] = FenceFormulaSetting::current()->existingPostLabourCredit();
-        } elseif (! array_key_exists('existing_post_labour_credit', $data) || $data['existing_post_labour_credit'] === null) {
-            $data['existing_post_labour_credit'] = (float) ($fence_quotation->existing_post_labour_credit ?? 0);
-        }
+        $data['existing_post_labour_credit'] = $this->resolveExistingPostLabourCredit(
+            $data,
+            $fence_quotation,
+            $request->boolean('reprice')
+        );
         $calc = (new FenceQuotationCalculator())->calculate($data, $frozen ?: null);
         $persistence = $this->fencePersistenceFromCalc($request, $calc, $data, $fence_quotation);
 
@@ -232,6 +233,18 @@ class FenceQuotationController extends Controller
                 }
             }
         }
+
+        $quote = null;
+        $quoteId = $data['fence_quotation_id'] ?? $request->input('fence_quotation_id');
+        if (is_numeric($quoteId) && (int) $quoteId > 0) {
+            $quote = FenceQuotation::query()->find((int) $quoteId);
+        }
+        unset($data['fence_quotation_id']);
+        $data['existing_post_labour_credit'] = $this->resolveExistingPostLabourCredit(
+            $data,
+            $quote,
+            $request->boolean('reprice')
+        );
 
         $calc = (new FenceQuotationCalculator())->calculate($data, $frozen ?: null);
         $calc['suggested_work_description'] = FenceWorkDescriptionGenerator::generate($calc);
@@ -662,10 +675,40 @@ class FenceQuotationController extends Controller
      */
     protected function validateFencePreviewInputs(Request $request): array
     {
-        $data = $request->validate($this->fenceGeometryRules(requiredClient: false));
+        $data = $request->validate(array_merge($this->fenceGeometryRules(requiredClient: false), [
+            'fence_quotation_id' => ['nullable', 'integer', 'exists:fence_quotations,id'],
+            'reprice' => ['nullable', 'boolean'],
+        ]));
         $data['sides'] = $this->dropBlankFenceRuns($data['sides'] ?? []);
 
         return $data;
+    }
+
+    /**
+     * Posted credit (including the string "0") wins. If the field is missing,
+     * reuse the stored quote value; new quotes fall back to formula config.
+     * Re-price always takes the current config.
+     */
+    protected function resolveExistingPostLabourCredit(
+        array $data,
+        ?FenceQuotation $quote = null,
+        bool $reprice = false
+    ): float {
+        if ($reprice) {
+            return FenceFormulaSetting::current()->existingPostLabourCredit();
+        }
+
+        if (array_key_exists('existing_post_labour_credit', $data)
+            && $data['existing_post_labour_credit'] !== null
+            && $data['existing_post_labour_credit'] !== '') {
+            return round(max(0, (float) $data['existing_post_labour_credit']), 2);
+        }
+
+        if ($quote !== null && $quote->existing_post_labour_credit !== null) {
+            return round(max(0, (float) $quote->existing_post_labour_credit), 2);
+        }
+
+        return FenceFormulaSetting::current()->existingPostLabourCredit();
     }
 
     /**

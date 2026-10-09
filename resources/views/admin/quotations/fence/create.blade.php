@@ -449,10 +449,13 @@
       border-top: 1px dashed #e0e4ea;
     }
     .fq-quote-labour-grid {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
-    @media (max-width: 640px) {
-      .fq-quote-labour-grid { grid-template-columns: 1fr; }
+    .fq-quote-labour-section .cp-heading-sm {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.15rem;
     }
   </style>
 @endpush
@@ -537,8 +540,6 @@
         @endif
 
         <input type="hidden" name="reprice" id="fq-reprice" value="{{ $initialReprice ? '1' : '0' }}">
-        <input type="hidden" name="existing_post_labour_credit" id="fq-existing-post-credit"
-               value="{{ number_format((float) $initialExistingPostCredit, 2, '.', '') }}">
 
         {{-- 1. Client ------------------------------------------------ --}}
         <div class="admin-form-group">
@@ -632,13 +633,15 @@
 
         {{-- 4. Labour (rate for the chosen height) ------------------- --}}
         <div class="admin-form-section fq-quote-labour-section">
-          <h4 class="cp-heading-sm">Labour rate for this quotation</h4>
-          <p class="admin-form-help cp-form-help-spaced">
-            Stored with this quote{{ $isEdit ? '' : ' (prefilled from formula defaults)' }}.
-            Labour is run length × this rate, plus extra-gate labour if any.
-            First gate is included in the per-foot rate.
-            An existing-post tick that actually removes a post also subtracts the configured labour credit (internal only — the client PDF stays a single labour line).
-          </p>
+          <h4 class="cp-heading-sm">
+            Labour rate for this quotation
+            <x-admin.info-tip :text="($isEdit
+                ? 'Stored with this quote. '
+                : 'Stored with this quote (prefilled from formula defaults). ')
+                .'Labour is run length × this rate, plus extra-gate labour if any. '
+                .'First gate is included in the per-foot rate. '
+                .'An existing-post tick that actually removes a post also subtracts the configured labour credit (internal only — the client PDF stays a single labour line).'" />
+          </h4>
           <div class="fq-formula-grid fq-quote-labour-grid">
             <div class="admin-form-group" id="fq-labour-6-wrap">
               <label for="fq-labour-rate-6">Labour rate 6&prime; fence (CAD$ / linear ft)</label>
@@ -655,6 +658,14 @@
                      inputmode="decimal" autocomplete="off" required
                      value="{{ number_format((float) $initialLabour8, 2, '.', '') }}">
               @error('labour_rate_8ft_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
+            <div class="admin-form-group" id="fq-labour-credit-wrap">
+              <label for="fq-existing-post-credit">Labour credit per existing post</label>
+              <input id="fq-existing-post-credit" type="text" name="existing_post_labour_credit"
+                     @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('existing_post_labour_credit')])
+                     inputmode="decimal" autocomplete="off"
+                     value="{{ number_format((float) $initialExistingPostCredit, 2, '.', '') }}">
+              @error('existing_post_labour_credit') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
           </div>
         </div>
@@ -768,8 +779,12 @@
           <span id="fq-t-labour">CA$0.00</span>
         </div>
         <div class="fq-totals-row fq-totals-row--credit is-hidden" id="fq-t-existing-post-credit-row">
-          <span id="fq-t-existing-post-credit-label">Existing post credit</span>
-          <span id="fq-t-existing-post-credit">CA$0.00</span>
+          <span id="fq-t-existing-post-credit-label">−$0 × 0 existing post credit</span>
+          <span id="fq-t-existing-post-credit">−CA$0.00</span>
+        </div>
+        <div class="fq-totals-row is-hidden" id="fq-t-labour-net-row">
+          <span>Net labour</span>
+          <span id="fq-t-labour-net">CA$0.00</span>
         </div>
         <div class="fq-totals-row fq-totals-row--total">
           <span>Total</span>
@@ -844,8 +859,11 @@
   var tExistingPostCreditRow = document.getElementById('fq-t-existing-post-credit-row');
   var tExistingPostCreditLabel = document.getElementById('fq-t-existing-post-credit-label');
   var tExistingPostCredit = document.getElementById('fq-t-existing-post-credit');
+  var tLabourNetRow = document.getElementById('fq-t-labour-net-row');
+  var tLabourNet = document.getElementById('fq-t-labour-net');
   var existingPostCreditInput = document.getElementById('fq-existing-post-credit');
   var configExistingPostCredit = {{ json_encode($defaultExistingPostCredit) }};
+  var fenceQuotationId = @json($isEdit ? (int) $quotation->id : null);
   var tTotal = document.getElementById('fq-t-total');
   var tLabourHst = document.getElementById('fq-t-labour-hst');
   var tLabourHstRow = document.getElementById('fq-t-labour-hst-row');
@@ -1173,6 +1191,12 @@
       existing_post_labour_credit: parseLabourRate(existingPostCreditInput),
       include_labour_hst: includeLabourHstInput ? !!includeLabourHstInput.checked : true
     };
+    if (fenceQuotationId) {
+      payload.fence_quotation_id = fenceQuotationId;
+    }
+    if (repriceInput && repriceInput.value === '1') {
+      payload.reprice = true;
+    }
     if (useFrozenPrices && frozenUnitPrices && Object.keys(frozenUnitPrices).length) {
       payload.use_frozen_prices = true;
       payload.frozen_unit_prices = frozenUnitPrices;
@@ -1368,7 +1392,14 @@
     }).join('');
     materialsBody.innerHTML = rows || '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
 
-    tLabour.textContent = money(Number(t.labour_subtotal || 0) + lastAdditionalLaborPreTax);
+    var credit = t.existing_post_credit || {};
+    var creditCount = Number(credit.count || 0);
+    var creditAmount = Number(credit.amount || 0);
+    var creditRate = Number(credit.rate != null ? credit.rate : 0);
+    var showCredit = creditCount > 0 && creditAmount > 0;
+    var grossLabour = Number(t.labour_before_credit != null ? t.labour_before_credit : (t.labour_subtotal || 0));
+    var netLabour = Number(t.labour_subtotal || 0);
+    tLabour.textContent = money(showCredit ? grossLabour : (netLabour + lastAdditionalLaborPreTax));
     tLabourHst.textContent = money(Number(t.labour_hst || 0) + lastAdditionalLaborHst);
     if (tLabourHstRow) {
       tLabourHstRow.classList.toggle(
@@ -1390,21 +1421,23 @@
     if (t.labour_rate_per_ft) {
       tLabourRate.textContent = '(' + money(t.labour_rate_per_ft) + '/ft)';
     }
-    var credit = t.existing_post_credit || {};
-    var creditCount = Number(credit.count || 0);
-    var creditAmount = Number(credit.amount || 0);
-    var creditRate = Number(credit.rate != null ? credit.rate : (creditCount > 0 ? creditAmount / creditCount : 0));
     if (tExistingPostCreditRow) {
-      tExistingPostCreditRow.classList.toggle('is-hidden', !(creditCount > 0 && creditAmount > 0));
+      tExistingPostCreditRow.classList.toggle('is-hidden', !showCredit);
     }
-    if (tExistingPostCreditLabel && creditCount > 0) {
+    if (tLabourNetRow) {
+      tLabourNetRow.classList.toggle('is-hidden', !showCredit);
+    }
+    if (showCredit && tExistingPostCreditLabel) {
       var rateLabel = Math.abs(creditRate - Math.round(creditRate)) < 1e-6
         ? String(Math.round(creditRate))
         : creditRate.toFixed(2);
-      tExistingPostCreditLabel.textContent = 'Existing post credit: -$' + rateLabel + ' x ' + creditCount;
+      tExistingPostCreditLabel.textContent = '−$' + rateLabel + ' × ' + creditCount + ' existing post credit';
     }
     if (tExistingPostCredit) {
-      tExistingPostCredit.textContent = creditAmount > 0 ? ('−' + money(creditAmount)) : money(0);
+      tExistingPostCredit.textContent = showCredit ? ('−' + money(creditAmount)) : money(0);
+    }
+    if (tLabourNet) {
+      tLabourNet.textContent = money(netLabour + lastAdditionalLaborPreTax);
     }
   }
 

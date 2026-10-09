@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\ClientProjectQuotation;
 use App\Models\FenceFormulaSetting;
 use App\Models\FenceQuotation;
+use App\Services\CommuteExpenseService;
+use App\Services\DebrisRemovalExpenseService;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -131,6 +134,207 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
         $old->refresh();
         $this->assertEqualsWithDelta(30.0, (float) $old->existing_post_labour_credit, 0.001);
         $this->assertEqualsWithDelta(24 * 55 - 30, (float) $old->labour_total, 0.02);
+    }
+
+    public function test_editor_exposes_visible_existing_post_credit_money_field(): void
+    {
+        $this->actingAsAdmin();
+
+        $html = $this->get(route('admin.quotations.fence.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Labour credit per existing post', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input[^>]*type="hidden"[^>]*name="existing_post_labour_credit"/',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="fq-existing-post-credit"[^>]*class="[^"]*cp-money-input/',
+            $html
+        );
+        $this->assertStringNotContainsString('data-cp-money-entry="direct"', $html);
+        $this->assertStringContainsString('admin-info-tip', $html);
+    }
+
+    public function test_preview_zero_string_means_no_credit(): void
+    {
+        $this->actingAsAdmin();
+        FenceFormulaSetting::current()->update(['existing_post_labour_credit' => 30]);
+
+        $json = $this->postJson(route('admin.quotations.fence.preview'), $this->previewPayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => 1]],
+            'existing_post_labour_credit' => '0',
+        ]))->assertOk()->json();
+
+        $this->assertEqualsWithDelta(0.0, (float) $json['inputs']['existing_post_labour_credit'], 0.001);
+        $this->assertSame(1, $json['totals']['existing_post_credit']['count']);
+        $this->assertEqualsWithDelta(0.0, $json['totals']['existing_post_credit']['amount'], 0.001);
+        $this->assertEqualsWithDelta(24 * 55, $json['totals']['labour_subtotal'], 0.02);
+    }
+
+    public function test_preview_and_update_use_stored_credit_when_field_omitted(): void
+    {
+        $this->actingAsAdmin();
+        FenceFormulaSetting::current()->update(['existing_post_labour_credit' => 30]);
+
+        $old = FenceQuotation::create([
+            'quote_number' => 'FQ-TEST-FALLBACK',
+            'client_name' => 'Stored credit',
+            'fence_height_ft' => 6,
+            'board_style' => FenceQuotation::BOARD_STYLE_STANDARD,
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'labour_rate_8ft_per_ft' => 60,
+            'existing_post_labour_credit' => 0,
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'calculation' => ['totals' => ['labour_subtotal' => 1320]],
+            'materials_subtotal' => 0,
+            'hst' => 0,
+            'labour_total' => 1320,
+            'grand_total' => 1320,
+            'include_labour_hst' => true,
+        ]);
+
+        $omitted = $this->previewPayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => 1]],
+            'fence_quotation_id' => $old->id,
+        ]);
+        unset($omitted['existing_post_labour_credit']);
+
+        $preview = $this->postJson(route('admin.quotations.fence.preview'), $omitted)
+            ->assertOk()
+            ->json();
+        $this->assertEqualsWithDelta(0.0, (float) $preview['inputs']['existing_post_labour_credit'], 0.001);
+        $this->assertEqualsWithDelta(24 * 55, $preview['totals']['labour_subtotal'], 0.02);
+
+        $newOmitted = $this->previewPayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => 1]],
+        ]);
+        unset($newOmitted['existing_post_labour_credit']);
+        $newPreview = $this->postJson(route('admin.quotations.fence.preview'), $newOmitted)
+            ->assertOk()
+            ->json();
+        $this->assertEqualsWithDelta(30.0, (float) $newPreview['inputs']['existing_post_labour_credit'], 0.001);
+        $this->assertEqualsWithDelta(24 * 55 - 30, $newPreview['totals']['labour_subtotal'], 0.02);
+
+        $update = $this->storePayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => '1']],
+        ]);
+        unset($update['existing_post_labour_credit']);
+        $this->put(route('admin.quotations.fence.update', $old), $update)->assertRedirect();
+        $old->refresh();
+        $this->assertEqualsWithDelta(0.0, (float) $old->existing_post_labour_credit, 0.001);
+        $this->assertEqualsWithDelta(24 * 55, (float) $old->labour_total, 0.02);
+    }
+
+    public function test_editor_restores_credit_after_validation_error(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->from(route('admin.quotations.fence.create'))
+            ->post(route('admin.quotations.fence.store'), $this->storePayload([
+                'client_name' => '',
+                'existing_post_labour_credit' => '45.50',
+            ]));
+
+        $response->assertRedirect(route('admin.quotations.fence.create'));
+        $response->assertSessionHasErrors('client_name');
+        $this->assertSame('45.50', session()->getOldInput('existing_post_labour_credit'));
+
+        $html = $this->get(route('admin.quotations.fence.create'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/id="fq-existing-post-credit"[^>]*value="45.50"/',
+            $html
+        );
+    }
+
+    public function test_editor_rejects_negative_or_non_numeric_credit(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.fence.create'))
+            ->post(route('admin.quotations.fence.store'), $this->storePayload([
+                'existing_post_labour_credit' => -5,
+            ]))
+            ->assertRedirect(route('admin.quotations.fence.create'))
+            ->assertSessionHasErrors('existing_post_labour_credit');
+
+        $this->from(route('admin.quotations.fence.create'))
+            ->post(route('admin.quotations.fence.store'), $this->storePayload([
+                'existing_post_labour_credit' => 'abc',
+            ]))
+            ->assertRedirect(route('admin.quotations.fence.create'))
+            ->assertSessionHasErrors('existing_post_labour_credit');
+
+        $this->assertSame(0, FenceQuotation::query()->count());
+    }
+
+    public function test_preview_clamped_credit_amount_is_the_actual_deduction(): void
+    {
+        $this->actingAsAdmin();
+
+        $json = $this->postJson(route('admin.quotations.fence.preview'), $this->previewPayload([
+            'sides' => [[
+                'length_ft' => 8,
+                'already_have_post_left' => 1,
+                'already_have_post_right' => 1,
+            ]],
+            'labour_rate_per_ft' => 10,
+            'existing_post_labour_credit' => 999,
+        ]))->assertOk()->json();
+
+        $this->assertSame(2, $json['totals']['existing_post_credit']['count']);
+        $this->assertEqualsWithDelta(80.0, $json['totals']['labour_before_credit'], 0.001);
+        $this->assertEqualsWithDelta(80.0, $json['totals']['existing_post_credit']['amount'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $json['totals']['labour_subtotal'], 0.001);
+    }
+
+    public function test_editor_total_matches_pdf_total_with_commute_debris_and_credit(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->post(route('admin.quotations.fence.store'), $this->storePayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => '1']],
+            'existing_post_labour_credit' => 30,
+            'include_commute' => '1',
+            'commute_round_trip_cost' => 40,
+            'commute_trip_percent' => 100,
+            'commute_estimated_trips' => 1,
+            'include_debris_removal' => '1',
+            'debris_removal_amount' => 50,
+        ]))->assertRedirect();
+
+        $quote = FenceQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $this->assertEqualsWithDelta(30.0, $quote->calculation['totals']['existing_post_credit']['amount'], 0.02);
+        $this->assertEqualsWithDelta(40.0, (float) $quote->commute_amount, 0.02);
+        $this->assertEqualsWithDelta(50.0, (float) $quote->debris_removal_amount, 0.02);
+
+        $editorTotal = round(
+            (float) $quote->calculation['totals']['grand_total']
+            + (float) $quote->commute_amount
+            + (float) $quote->debris_removal_amount,
+            2
+        );
+        $this->assertEqualsWithDelta($editorTotal, (float) $quote->grand_total, 0.02);
+
+        $items = $quote->projectQuotationLineItems();
+        $commuteLine = CommuteExpenseService::projectLineItem(
+            (float) $quote->commute_amount,
+            (int) $quote->commute_estimated_trips
+        );
+        $debrisLine = DebrisRemovalExpenseService::projectLineItem((float) $quote->debris_removal_amount);
+        if ($commuteLine) {
+            $items[] = $commuteLine;
+        }
+        if ($debrisLine) {
+            $items[] = $debrisLine;
+        }
+
+        $pdf = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_FENCE,
+            'items' => $items,
+        ]);
+        $this->assertEqualsWithDelta($editorTotal, $pdf->pdfGrandTotal(), 0.02);
     }
 
     /**

@@ -29,11 +29,25 @@ class FenceQuotationFormRestoreTest extends TestCase
     {
         $blade = (string) file_get_contents(resource_path('views/admin/quotations/fence/create.blade.php'));
 
+        $this->assertStringContainsString('Labour credit per existing post', $blade);
+        $this->assertStringContainsString('id="fq-existing-post-credit"', $blade);
+        $this->assertMatchesRegularExpression(
+            '/id="fq-existing-post-credit"[\s\S]*?cp-money-input/',
+            $blade
+        );
+        $this->assertStringNotContainsString(
+            'type="hidden" name="existing_post_labour_credit"',
+            $blade
+        );
         $this->assertStringContainsString('existing-post tick that actually removes a post', $blade);
-        $this->assertStringContainsString('Existing post credit: -$', $blade);
-        $this->assertStringContainsString('existing_post_labour_credit', $blade);
+        $this->assertStringContainsString('x-admin.info-tip', $blade);
+        $this->assertStringContainsString('−$\' + rateLabel + \' × \'', $blade);
+        $this->assertStringContainsString('existing post credit', $blade);
         $this->assertStringContainsString('fq-t-existing-post-credit-row', $blade);
+        $this->assertStringContainsString('fq-t-labour-net-row', $blade);
+        $this->assertStringContainsString('existing_post_labour_credit', $blade);
         $this->assertStringNotContainsString('data-cp-money-entry="direct"', $blade);
+        $this->assertStringNotContainsString('Existing post credit: -$', $blade);
     }
 
     public function test_config_page_uses_calculator_style_money_input_for_existing_post_credit(): void
@@ -45,6 +59,12 @@ class FenceQuotationFormRestoreTest extends TestCase
         $this->assertStringContainsString('id="fq-existing-post-credit"', $blade);
         $this->assertMatchesRegularExpression(
             '/id="fq-existing-post-credit"[^>]*class="[^"]*cp-money-input/',
+            $blade
+        );
+        $this->assertStringContainsString('x-admin.info-tip', $blade);
+        $this->assertStringContainsString('Subtracted from labour when', $blade);
+        $this->assertStringNotContainsString(
+            'admin-form-help">Subtracted from labour when',
             $blade
         );
         $this->assertStringNotContainsString('data-cp-money-entry="direct"', $blade);
