@@ -380,10 +380,10 @@ class StandardQuotationCalculatorTest extends TestCase
         );
     }
 
-    public function test_v2_standard_quote_gates_surcharge_remainder_onto_labour(): void
+    public function test_v3_standard_quote_gates_surcharge_remainder_onto_labour(): void
     {
         $sq = new \App\Models\StandardQuotation([
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'include_building' => true,
             'building_labor_percent' => 30,
             'include_labour_hst' => true,

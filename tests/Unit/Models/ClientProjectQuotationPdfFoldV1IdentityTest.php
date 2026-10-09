@@ -94,13 +94,48 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
             'items' => $sq->summaryPdfLineItems(),
             'pdf_fold_version' => 2,
         ]);
+        $this->assertTrue($quote->usesPdfFoldV2());
+        $this->assertFalse($quote->usesCurrentPdfFold());
+        $this->assertEquals(8.67, $quote->editorHst());
+        $this->assertEquals(8.67, $quote->pdfHst());
+        $this->assertEquals(8.67, $quote->hst());
+        $this->assertEquals(75.33, $quote->editorGrandTotal());
+        $this->assertEquals(75.33, $quote->pdfGrandTotal());
+        $this->assertEquals(75.33, $quote->grandTotal());
+    }
+
+    public function test_v3_sq_2x_33_33_linked_path_matches_editor(): void
+    {
+        $named = $this->loadFixture('named.json');
+        $fx = $named['sq_2x_33_33'];
+        $this->assertNotEmpty($fx['sq_materials'] ?? []);
+
+        $sq = StandardQuotation::query()->create([
+            'quote_number' => 'SQ-V3-'.uniqid(),
+            'client_name' => 'Identity v3',
+            'materials' => $fx['sq_materials'],
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'labour_use_fixed' => false,
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+            'pdf_fold_version' => 3,
+        ]);
+
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'source_id' => $sq->id,
+            'items' => $sq->summaryPdfLineItems(),
+            'pdf_fold_version' => 3,
+        ]);
         $this->assertTrue($quote->usesCurrentPdfFold());
-        $this->assertEquals(8.66, $quote->editorHst());
-        $this->assertEquals(8.66, $quote->pdfHst());
-        $this->assertEquals(8.66, $quote->hst());
-        $this->assertEquals(75.32, $quote->editorGrandTotal());
-        $this->assertEquals(75.32, $quote->pdfGrandTotal());
-        $this->assertEquals(75.32, $quote->grandTotal());
+        $this->assertEquals($quote->editorHst(), $quote->pdfHst());
+        $this->assertEquals($quote->editorGrandTotal(), $quote->pdfGrandTotal());
+        $this->assertEquals($quote->editorHst(), $quote->hst());
+        $this->assertEquals($quote->editorGrandTotal(), $quote->grandTotal());
     }
 
     public function test_same_lines_detects_hst_included_and_hst_amount_flips(): void

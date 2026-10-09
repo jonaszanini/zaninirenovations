@@ -537,7 +537,7 @@ class StandardQuotationPdfLineItemsTest extends TestCase
 
             $cpq = new \App\Models\ClientProjectQuotation([
                 'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'items' => $items,
             ]);
 
@@ -684,7 +684,7 @@ JS;
                 ];
             }
             $sq = new StandardQuotation([
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'materials' => $materials,
                 'labour_hourly_rate' => 0,
                 'labour_mode' => 'hours',
@@ -701,7 +701,7 @@ JS;
             }
             $cpq = new \App\Models\ClientProjectQuotation([
                 'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'items' => $sqLines,
             ]);
 
@@ -871,7 +871,7 @@ JS;
         foreach ($cases as $i => $case) {
             $jobs = $case['jobs'] ?? null;
             $attrs = [
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'include_labour_hst' => true,
                 'include_building' => ((float) ($case['buildingPct'] ?? 0)) > 0,
                 'building_labor_percent' => $case['buildingPct'] ?? 0,
@@ -921,7 +921,7 @@ JS;
             }
             $cpq = new \App\Models\ClientProjectQuotation([
                 'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'items' => $items,
             ]);
             $this->assertEquals($jsOut[$i]['grand'], $cpq->pdfGrandTotal(), 'grand case '.$i);
@@ -1006,10 +1006,10 @@ JS;
         $this->assertTrue($mutantLabourFired, 'Need an HST-included labour mutant that drifts');
     }
 
-    public function test_v2_multi_job_assigns_hst_remainder_when_last_job_has_no_labour(): void
+    public function test_v3_multi_job_assigns_hst_remainder_when_last_job_has_no_labour(): void
     {
         $sq = new StandardQuotation([
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'works' => [
                 [
                     'title' => 'Job one',
@@ -1086,7 +1086,7 @@ JS;
 
         $cpq = new \App\Models\ClientProjectQuotation([
             'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'items' => $lines,
         ]);
         $this->assertEquals($cpq->editorGrandTotal(), $cpq->pdfGrandTotal());

@@ -267,7 +267,7 @@ class ClientProjectQuotationPdfFoldV2Test extends TestCase
     {
         $quote = new ClientProjectQuotation([
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'subtotal_override' => 50.00,
             'items' => [
                 ['description' => 'Material', 'amount' => 100.00, 'apply_hst' => true],
@@ -656,7 +656,7 @@ JS;
                 $sourceType = $fx['source'] ?? $source;
                 $quote = new ClientProjectQuotation([
                     'source_type' => $sourceType,
-                    'pdf_fold_version' => 2,
+                    'pdf_fold_version' => 3,
                     'items' => $fx['items'],
                     'subtotal_override' => $fx['override'] ?? null,
                 ]);
@@ -680,7 +680,7 @@ JS;
     {
         $quote = new ClientProjectQuotation([
             'source_type' => ClientProjectQuotation::SOURCE_FENCE,
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'items' => [
                 ['description' => 'Material', 'amount' => 1000.00, 'apply_hst' => true],
                 ['description' => '6 ft fence — labour', 'amount' => 500.00, 'apply_hst' => false],
@@ -710,7 +710,7 @@ JS;
     {
         $quote = new ClientProjectQuotation([
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'source_snapshot' => ['include_labour_hst' => false],
             'items' => [
                 ['description' => 'Material', 'amount' => 1000.00, 'apply_hst' => true],
@@ -747,7 +747,7 @@ JS;
     {
         $quote = new ClientProjectQuotation([
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'items' => [
                 ['description' => 'Job one', 'amount' => 0, 'apply_hst' => false, 'is_heading' => true],
                 ['description' => 'Material', 'amount' => 1000.00, 'apply_hst' => false],
@@ -764,17 +764,18 @@ JS;
         ]);
 
         $this->assertSame(
-            ['Job one', 'Material', 'Material', 'Labour', 'Job two', 'Material'],
+            ['Job one', 'Material', 'Labour', 'Job two', 'Material'],
             array_column($quote->pdfLineItems(), 'description')
         );
         $materials = array_values(array_filter(
             $quote->pdfLineItems(),
             static fn (array $row): bool => ($row['description'] ?? '') === 'Material'
         ));
+        $this->assertCount(2, $materials);
         $this->assertEqualsWithDelta(1000.00, $materials[0]['amount'], 0.001);
-        $this->assertEqualsWithDelta(100.00, $materials[1]['amount'], 0.001);
+        $this->assertFalse((bool) ($materials[0]['apply_hst'] ?? false));
+        $this->assertEqualsWithDelta(140.00, $materials[1]['amount'], 0.001);
         $this->assertTrue((bool) ($materials[1]['apply_hst'] ?? false));
-        $this->assertEqualsWithDelta(40.00, $materials[2]['amount'], 0.001);
         $this->assertEquals(83.20, $quote->pdfHst());
         $this->assertEquals($quote->editorHst(), $quote->pdfHst());
     }
@@ -783,7 +784,7 @@ JS;
     {
         $quote = new ClientProjectQuotation([
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'items' => [
                 ['description' => 'Labour', 'amount' => 46.63, 'apply_hst' => true, 'hst_amount' => 6.07],
                 [
@@ -875,7 +876,7 @@ JS;
         }
     }
 
-    public function test_unsaved_new_quote_previews_as_v2(): void
+    public function test_unsaved_new_quote_previews_as_v3(): void
     {
         $quote = new ClientProjectQuotation([
             'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
@@ -891,8 +892,10 @@ JS;
         ]);
         $this->assertFalse($quote->exists);
         $this->assertNull($quote->pdf_fold_version);
+        $this->assertSame(3, $quote->resolvedPdfFoldVersion());
         $this->assertTrue($quote->usesCurrentPdfFold());
         $this->assertFalse($quote->usesLegacyPdfFold());
+        $this->assertFalse($quote->usesPdfFoldV2());
         $this->assertEquals($quote->editorGrandTotal(), $quote->pdfGrandTotal());
         $this->assertEquals(114.00, $quote->pdfGrandTotal());
     }
