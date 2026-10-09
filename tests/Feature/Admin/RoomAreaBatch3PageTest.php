@@ -227,6 +227,8 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('usesCurrentPdfFold()', $inserter);
         $calc = file_get_contents(app_path('Services/StandardQuotationCalculator.php'));
         $this->assertStringContainsString('$assignSurchargeRemainderToLabourJobs', $calc);
+        $this->assertStringContainsString('bool $assignSurchargeRemainderToLabourJobs = false', $calc);
+        $this->assertStringNotContainsString('?bool $assignSurchargeRemainderToLabourJobs', $calc);
         $this->assertStringNotContainsString('$useCurrentPdfFold', $calc);
         $this->assertMatchesRegularExpression(
             '/function deleteCurrentKit\([\s\S]*payload\.ok === false[\s\S]*Kit deleted/',
@@ -250,7 +252,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('.util-ra-kit__line', $css);
         $this->assertStringContainsString('.util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }', $css);
         $this->assertStringContainsString('position: absolute', $css);
-        $this->assertStringContainsString('min-height: 240px', $css);
+        $this->assertStringContainsString('min-height: 300px', $css);
         $this->assertDoesNotMatchRegularExpression(
             '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,900}?max-height:\s*calc\(\(var\(--admin-control-height\) \* 2\)/',
             $css
@@ -263,7 +265,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
             '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,1200}?\.util-ra-help \{\s*display:\s*none/',
             $css
         );
-        $this->assertStringContainsString('max-height: min(40vh, 280px)', $css);
+        $this->assertStringContainsString('max-height: min(40vh, 280px, calc(100dvh - 160px - 12.5rem))', $css);
         $this->assertStringContainsString('min-height: 12.5rem', $css);
         $this->assertStringContainsString('padding-top: 2.4em', $css);
 

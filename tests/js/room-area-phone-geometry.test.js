@@ -62,8 +62,16 @@ function assertCssGeometry() {
     '1024 toolbar keeps the ⓘ help buttons'
   );
   assert.ok(
-    CSS.includes('max-height: min(40vh, 280px)'),
-    'expanded phone sheet is capped so the drawing area stays usable'
+    CSS.includes('max-height: min(40vh, 280px, calc(100dvh - 160px - 12.5rem))'),
+    'expanded phone sheet is capped so at least 160px of canvas stays visible'
+  );
+  assert.ok(
+    /@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,2400}?min-height:\s*300px/.test(CSS),
+    '901–1024 canvas keeps a 300px floor'
+  );
+  assert.ok(
+    /@media \(max-width: 1100px\)[\s\S]{0,800}?\.util-ra--fullpage \.util-ra-project-bar__row/.test(CSS),
+    'project/client row collapses to one compact line below 1100px'
   );
   assert.ok(!/height:\s*70vh/.test(collapsed.slice(0, 220)), 'collapsed sheet must not use 70vh');
   assert.ok(
@@ -1149,12 +1157,164 @@ async function measureViewports() {
   }
 }
 
+async function measureLiveEditor() {
+  const base = process.env.RA_LIVE_URL || 'http://127.0.0.1:8000';
+  const email = process.env.ADMIN_EMAIL || 'admin@zanini.ca';
+  const password = process.env.ADMIN_PASSWORD || 'password';
+  let probe;
+  try {
+    probe = await fetch(base + '/admin/login');
+  } catch (err) {
+    throw new Error('live Room Area page is required: ' + base + ' (' + err.message + ')');
+  }
+  if (!probe.ok) throw new Error('live login page returned ' + probe.status);
+
+  const browser = await require('puppeteer').launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  const page = await browser.newPage();
+  try {
+    await page.goto(base + '/admin/login', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.type('input[name="email"]', email);
+    await page.type('input[name="password"]', password);
+    await Promise.all([
+      page.click('button[type="submit"]'),
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 45000 }),
+    ]);
+    await page.evaluate(() => {
+      try { localStorage.setItem('zr-room-area-guide-tip-v1', '1'); } catch (e) {}
+    });
+    await page.goto(base + '/admin/utilities/room-area?ra_project=1&ra_room=1', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForSelector('.util-ra--fullpage', { timeout: 20000 });
+    await page.waitForSelector('.util-ra-canvas-wrap', { timeout: 20000 });
+
+    for (const vp of [
+      { width: 901, height: 768, mobile: false },
+      { width: 960, height: 768, mobile: false },
+      { width: 960, height: 600, mobile: false },
+      { width: 1000, height: 768, mobile: false },
+      { width: 1024, height: 768, mobile: false },
+    ]) {
+      await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: 1, isMobile: vp.mobile, hasTouch: vp.mobile });
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const geo = await page.evaluate(() => {
+        const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
+        const tools = document.querySelector('.util-ra-canvas-toolbar, .util-ra-full-header__row--tools');
+        const help = document.querySelector('.util-ra-canvas-toolbar .util-ra-help, .util-ra-help-q');
+        const unit = document.querySelector('[data-ra-unit-system="imperial"], [data-ra-unit-system]');
+        const w = wrap ? wrap.getBoundingClientRect() : null;
+        const t = tools ? tools.getBoundingClientRect() : null;
+        const h = help ? help.getBoundingClientRect() : null;
+        const u = unit ? unit.getBoundingClientRect() : null;
+        const hitHelp = h ? document.elementFromPoint(h.left + h.width / 2, h.top + h.height / 2) : null;
+        const hitUnit = u ? document.elementFromPoint(u.left + u.width / 2, u.top + u.height / 2) : null;
+        return {
+          wrapH: w && w.height,
+          wrapTop: w && w.top,
+          wrapBottom: w && w.bottom,
+          toolsH: t && t.height,
+          helpH: h && h.height,
+          helpDisplay: help ? getComputedStyle(help).display : 'missing',
+          helpSelf: !!(help && hitHelp && (hitHelp === help || help.contains(hitHelp))),
+          unitSelf: !!(unit && hitUnit && (hitUnit === unit || unit.contains(hitUnit))),
+          innerH: window.innerHeight,
+        };
+      });
+      const scroll = await page.evaluate(() => {
+        const root = document.querySelector('.util-ra--fullpage');
+        const main = document.querySelector('.admin-main') || document.scrollingElement;
+        return {
+          rootH: root ? root.scrollHeight : 0,
+          mainH: main ? main.scrollHeight : 0,
+          innerH: window.innerHeight,
+        };
+      });
+      const canScroll = scroll.rootH > scroll.innerH + 4 || scroll.mainH > scroll.innerH + 4;
+      assert.ok(geo.wrapH >= 300, 'live canvas is at least 300px at ' + vp.width + 'x' + vp.height + ': ' + JSON.stringify(geo));
+      assert.ok(
+        (geo.wrapTop >= 0 && geo.wrapBottom <= geo.innerH + 8) || canScroll,
+        'live canvas stays on screen or the page scrolls at ' + vp.width + 'x' + vp.height + ': ' + JSON.stringify({ geo, scroll, canScroll })
+      );
+      if (vp.width === 1024) {
+        assert.ok(geo.helpH > 8 && geo.helpDisplay !== 'none', 'live ⓘ stays visible at 1024: ' + JSON.stringify(geo));
+        assert.ok(geo.helpSelf, 'live ⓘ elementFromPoint hits the control itself at 1024');
+      }
+      if (geo.unitSelf === false && vp.width >= 901) {
+        assert.ok(false, 'invisible overlay over unit buttons at ' + vp.width + ': ' + JSON.stringify(geo));
+      }
+      if (geo.unitSelf) {
+        const unitBox = await page.evaluate(() => {
+          const el = document.querySelector('[data-ra-unit-system="imperial"], [data-ra-unit-system]');
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        });
+        if (unitBox) await page.mouse.click(unitBox.x, unitBox.y);
+      }
+    }
+
+    for (const phone of [
+      { width: 320, height: 568 },
+      { width: 360, height: 640 },
+      { width: 414, height: 736 },
+    ]) {
+      await page.setViewport({ width: phone.width, height: phone.height, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const phoneGeo = await page.evaluate(() => {
+        const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
+        const sheet = document.querySelector('[data-ra-side], .util-ra-side');
+        const handle = document.querySelector('[data-ra-sheet-handle]');
+        const status = document.querySelector('[data-ra-feedback], .util-ra-feedback');
+        const palette = document.querySelector('.util-ra-palette__toggle, [data-ra-palette-toggle]');
+        const w = wrap ? wrap.getBoundingClientRect() : null;
+        const s = sheet ? sheet.getBoundingClientRect() : null;
+        const st = status && !status.hasAttribute('hidden') ? status.getBoundingClientRect() : null;
+        const p = palette ? palette.getBoundingClientRect() : null;
+        if (handle) handle.click();
+        return {
+          wrapH: w && w.height,
+          wrapBottom: w && w.bottom,
+          sheetTop: s && s.top,
+          statusBottom: st && st.bottom,
+          paletteTop: p && p.top,
+          innerH: window.innerHeight,
+        };
+      });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const afterSheet = await page.evaluate(() => {
+        const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
+        const sheet = document.querySelector('[data-ra-side], .util-ra-side');
+        const w = wrap ? wrap.getBoundingClientRect() : null;
+        const s = sheet ? sheet.getBoundingClientRect() : null;
+        return {
+          wrapH: w && w.height,
+          wrapBottom: w && w.bottom,
+          sheetH: s && s.height,
+          sheetTop: s && s.top,
+          innerH: window.innerHeight,
+          expanded: !!(document.querySelector('[data-room-area]') && document.querySelector('[data-room-area]').classList.contains('is-sheet-expanded')),
+        };
+      });
+      assert.ok(phoneGeo.wrapH >= 120, 'live ' + phone.width + ' canvas is visible: ' + JSON.stringify(phoneGeo));
+      if (phone.width === 320 && phoneGeo.statusBottom && phoneGeo.paletteTop) {
+        assert.ok(phoneGeo.statusBottom <= phoneGeo.paletteTop + 2 || phoneGeo.paletteTop + 2 < phoneGeo.statusBottom - 40, '320 palette toggle does not cover status: ' + JSON.stringify(phoneGeo));
+      }
+      if (afterSheet.expanded) {
+        assert.ok(afterSheet.wrapH >= 160, 'live ' + phone.width + ' keeps 160px canvas with sheet open: ' + JSON.stringify(afterSheet));
+        assert.ok(afterSheet.sheetH <= 280 + 1, 'live ' + phone.width + ' sheet is capped: ' + JSON.stringify(afterSheet));
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+}
+
 assertCssGeometry();
 const watchdog = setTimeout(function () {
   console.error('room-area phone geometry tests: timed out');
   process.exit(1);
 }, TEST_TIMEOUT_MS);
 measureViewports().then(function () {
+  return measureLiveEditor();
+}).then(function () {
   console.log('room-area phone geometry tests: ok');
   clearTimeout(watchdog);
   process.exit(0);

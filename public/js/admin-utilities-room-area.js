@@ -9437,16 +9437,36 @@
     card.insertBefore(dock, edit || wrap || null);
   }
 
+  function phoneSheetExpandedHeight() {
+    var header = root.querySelector('.util-ra-full-header');
+    var phoneBar = root.querySelector('.util-ra-phone-bar');
+    var projectBar = root.querySelector('.util-ra-project-bar');
+    var handle = root.querySelector('[data-ra-sheet-handle]');
+    var chrome = 0;
+    [header, phoneBar, projectBar, handle].forEach(function (el) {
+      if (!el || getComputedStyle(el).display === 'none') return;
+      chrome += el.getBoundingClientRect().height;
+    });
+    var maxForCanvas = Math.max(80, Math.round(window.innerHeight - chrome - 160));
+    return Math.min(280, Math.round(window.innerHeight * 0.4), maxForCanvas);
+  }
+
+  function resetDesktopSheetState() {
+    if (isPhoneChrome()) return;
+    root.classList.remove('is-sheet-expanded', 'is-dock-open');
+    root.style.removeProperty('--ra-sheet-h');
+  }
+
   function syncPhoneSheetForDock() {
     if (!isPhoneChrome()) {
-      root.classList.remove('is-dock-open');
+      resetDesktopSheetState();
       return;
     }
     var open = (els.palette && els.palette.classList.contains('is-open'))
       || (els.wallsPanel && els.wallsPanel.classList.contains('is-open'));
     root.classList.toggle('is-dock-open', !!open);
     if (open) {
-      root.style.setProperty('--ra-sheet-h', 'min(40vh, 280px)');
+      root.style.setProperty('--ra-sheet-h', phoneSheetExpandedHeight() + 'px');
       return;
     }
     if (root.classList.contains('is-sheet-expanded')) return;
@@ -11763,7 +11783,7 @@
     function clampSheet(height) {
       var minH = isPhoneChrome() ? collapsedSheetMin() : Math.round(Math.min(window.innerHeight * 0.22, 168));
       var maxH = isPhoneChrome()
-        ? Math.min(280, Math.round(window.innerHeight * 0.4))
+        ? phoneSheetExpandedHeight()
         : Math.round(window.innerHeight * 0.55);
       return Math.max(minH, Math.min(maxH, Math.round(height)));
     }
@@ -11789,7 +11809,7 @@
       if (!isPhoneChrome()) return;
       var expanded = root.classList.toggle('is-sheet-expanded');
       handle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-      root.style.setProperty('--ra-sheet-h', expanded ? 'min(40vh, 280px)' : 'auto');
+      root.style.setProperty('--ra-sheet-h', expanded ? phoneSheetExpandedHeight() + 'px' : 'auto');
       afterSheetLayoutChange();
     }
 
