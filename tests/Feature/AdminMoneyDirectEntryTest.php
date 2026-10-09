@@ -106,6 +106,10 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             "/cp-kp-mixed[\s\S]{0,240}input\.value\s*=\s*['\"]1\.234,56['\"]/",
             $harness
         );
+
+        $paving = file_get_contents(resource_path('views/admin/quotations/paving/create.blade.php'));
+        $this->assertIsString($paving);
+        $this->assertStringNotContainsString('normalizeLabourRateField', $paving);
     }
 
     public function test_flooring_add_type_saves_4_75_and_keeps_existing(): void
