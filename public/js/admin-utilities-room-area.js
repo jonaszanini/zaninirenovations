@@ -411,6 +411,7 @@
     stage: null,
     worldGroup: null,
     viewport: { scale: 1, x: 0, y: 0, zoomPercent: 100 },
+    userAdjustedViewport: false,
     panning: false,
     didPan: false,
     lastPanScreen: null,
@@ -4352,7 +4353,12 @@
     return scaleFromZoomPercent(clampZoomPercent(zoomPercentFromScale(scale)));
   }
 
+  function markUserViewport() {
+    state.userAdjustedViewport = true;
+  }
+
   function setWorldScale(scale, screenX, screenY) {
+    markUserViewport();
     var nextScale = clampWorldScale(scale);
     if (screenX != null && screenY != null && state.viewport.scale > 0) {
       var oldScale = state.viewport.scale;
@@ -4448,6 +4454,7 @@
   }
 
   function clampViewportPan() {
+    if (state.userAdjustedViewport) return;
     var s = state.viewport.scale;
     var view = stageViewSize();
     var vw = view.w;
@@ -4529,6 +4536,7 @@
   }
 
   function resetViewport() {
+    markUserViewport();
     state.viewport.zoomPercent = 100;
     state.viewport.scale = naturalWorldScale();
     state.viewport.x = 0;
@@ -4604,7 +4612,7 @@
 
     if (typeof ResizeObserver !== 'undefined') {
       new ResizeObserver(function () {
-        refitCanvasToLayout();
+        resizeStage();
       }).observe(els.canvasWrap);
     }
 
@@ -4615,6 +4623,7 @@
       var x = e.clientX - rect.left;
       var y = e.clientY - rect.top;
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.4 && !e.ctrlKey && !e.metaKey) {
+        markUserViewport();
         state.viewport.x -= e.deltaX;
         state.viewport.y -= e.deltaY;
         applyViewport();
@@ -4826,60 +4835,52 @@
   function refitCanvasToLayout() {
     if (!state.stage || !els.canvasWrap) return;
     resizeStage();
-    if (viewportContentBounds().hasContent) fitViewport();
   }
 
   function resizeStage() {
     if (!state.stage || !els.canvasWrap) return;
+    var prevW = state.viewportW || state.stage.width();
+    var prevH = state.viewportH || state.stage.height();
+    var prevScale = state.viewport.scale;
+    var worldCx = prevScale > 0 ? (prevW / 2 - state.viewport.x) / prevScale : 0;
+    var worldCy = prevScale > 0 ? (prevH / 2 - state.viewport.y) / prevScale : 0;
+
     var vp = getViewportDimensions();
-    if (vp.w === state.viewportW && vp.h === state.viewportH) {
+    var wrapRect = els.canvasWrap.getBoundingClientRect();
+    if (wrapRect.width > 1) {
+      vp.w = isFullPage() ? Math.max(MIN_CANVAS_W, Math.floor(wrapRect.width)) : Math.floor(wrapRect.width);
+    }
+    if (isFullPage() && wrapRect.height > 1) {
+      vp.h = Math.max(1, Math.floor(wrapRect.height));
+    }
+    if (vp.w === state.viewportW && vp.h === state.viewportH
+      && state.stage.width() === vp.w && state.stage.height() === vp.h) {
       redrawLabels();
       return;
     }
 
-    if (isFullPage()) {
-      syncDrawableDimensions();
-      state.stage.width(state.viewportW);
-      state.stage.height(state.viewportH);
-      drawGrid();
-      redrawAll();
+    state.viewportW = vp.w;
+    state.viewportH = vp.h;
+    state.canvasW = Math.round(vp.w * DRAW_AREA_FACTOR);
+    state.canvasH = Math.round(vp.h * DRAW_AREA_FACTOR);
+    syncCanvasWrapSize(vp.w, vp.h);
+    state.stage.width(state.viewportW);
+    state.stage.height(state.viewportH);
+    if (state.bgImage) applyBackgroundLayoutToKonva();
+    drawGrid();
+    redrawAll();
+
+    if (state.userAdjustedViewport && prevScale > 0) {
+      state.viewport.scale = prevScale;
+      state.viewport.zoomPercent = zoomPercentFromScale(prevScale);
+      state.viewport.x = state.viewportW / 2 - worldCx * prevScale;
+      state.viewport.y = state.viewportH / 2 - worldCy * prevScale;
       applyViewport();
       return;
     }
 
-    var oldContentW = state.viewportW;
-    var oldContentH = state.viewportH;
-
-    syncDrawableDimensions();
-
-    if (oldContentW > 0 && oldContentH > 0) {
-      var factor = canvasScaleFactor(oldContentW, oldContentH, contentW(), contentH());
-      if (state.groups.length && allPolygons().some(function (e) { return e.polygon.vertices.length; })) {
-        scaleAllCanvasPoints(oldContentW, oldContentH, contentW(), contentH());
-        clearUndoStack();
-      }
-      if (state.calibPoints.length) {
-        state.calibPoints = scalePoints(state.calibPoints, oldContentW, oldContentH, contentW(), contentH());
-      }
-      scaleProjectRulers(oldContentW, oldContentH, contentW(), contentH());
-      scaleBgLayoutState(oldContentW, oldContentH, contentW(), contentH());
-      if (Math.abs(factor - 1) > 0.0005) {
-        scaleActivePixelsPerFoot(factor);
-      }
-    }
-
-    state.stage.width(state.viewportW);
-    state.stage.height(state.viewportH);
-    if (state.bgImage) {
-      if (oldContentW > 0 && oldContentH > 0) {
-        applyBackgroundLayoutToKonva();
-      } else {
-        layoutBackgroundImage(true);
-      }
-    }
-    drawGrid();
-    redrawAll();
-    applyViewport();
+    if (viewportContentBounds().hasContent) fitViewport();
+    else applyViewport();
   }
 
   function scheduleStageResize() {
@@ -4982,7 +4983,10 @@
       if (!pos) return;
       var dx = pos.x - state.lastPanScreen.x;
       var dy = pos.y - state.lastPanScreen.y;
-      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) state.didPan = true;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        state.didPan = true;
+        markUserViewport();
+      }
       state.viewport.x += dx;
       state.viewport.y += dy;
       state.lastPanScreen = pos;
@@ -8094,6 +8098,7 @@
         return;
       }
 
+      state.userAdjustedViewport = false;
       resizeStage();
       loadBackground(currentRoom.background_url || null);
 
@@ -11121,7 +11126,13 @@
     raAll('[data-ra-zoom-in]').forEach(function (btn) { btn.addEventListener('click', zoomIn); });
     raAll('[data-ra-zoom-out]').forEach(function (btn) { btn.addEventListener('click', zoomOut); });
     raAll('[data-ra-zoom-100]').forEach(function (btn) { btn.addEventListener('click', resetViewport); });
-    raAll('[data-ra-zoom-reset]').forEach(function (btn) { btn.addEventListener('click', fitViewport); });
+    raAll('[data-ra-zoom-reset]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.userAdjustedViewport = false;
+        fitViewport();
+        markUserViewport();
+      });
+    });
     bindSidePanel();
     bindHelpPops();
     bindKits();
@@ -11264,10 +11275,12 @@
     unit = String(unit || '');
     if (!unit) return '';
     if (Math.abs(Number(qty)) === 1) return unit;
-    if (/pail/i.test(unit)) return unit.replace(/pail/i, 'pails');
     if (/box$/i.test(unit)) return unit.replace(/box$/i, 'boxes');
+    if (/\bpails\b/i.test(unit) || /\bboxes\b/i.test(unit) || /\bsticks\b/i.test(unit)) return unit;
+    if (/\bpail\b/i.test(unit)) return unit.replace(/\bpail\b/i, 'pails');
     if (/stick$/i.test(unit)) return unit.replace(/stick$/i, 'sticks');
-    if (/(?:s|x)$/i.test(unit)) return unit;
+    if (/s$/i.test(unit)) return unit;
+    if (/x$/i.test(unit)) return unit;
     if (/^(ea|lf|sf|gal|qt|in|ft|mm|cm|m|sq)$/i.test(unit)) return unit;
     return unit + 's';
   }

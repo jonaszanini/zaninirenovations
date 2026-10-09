@@ -24,7 +24,7 @@ class RoomAreaAssemblyDefaults
                     ['name' => 'Screws', 'formula' => 'ceil(net_wall_sf * 1.12 / 32) * 32', 'unit' => 'ea', 'whole_units' => true],
                     ['name' => 'Tape (500 sf)', 'formula' => 'net_wall_sf * 1.12 / 500', 'unit' => 'roll', 'whole_units' => true],
                     ['name' => 'Joint compound', 'formula' => 'net_wall_sf * 1.12 / 450', 'unit' => 'pail (4.5 gal)', 'whole_units' => true],
-                    ['name' => 'Corner bead', 'formula' => 'outside_corners * wall_height / 8', 'unit' => 'stick', 'whole_units' => true],
+                    ['name' => 'Corner bead', 'formula' => 'outside_corners * ceil(wall_height / 8)', 'unit' => 'stick', 'whole_units' => true],
                 ],
             ],
             [
@@ -54,34 +54,49 @@ class RoomAreaAssemblyDefaults
             return;
         }
 
-        DB::transaction(function () {
+        $lockName = 'room_area_kit_seed_'.self::SEED_KEY;
+        $got = DB::selectOne('SELECT GET_LOCK(?, 10) AS got', [$lockName]);
+        if ((int) ($got->got ?? 0) !== 1) {
+            return;
+        }
+
+        try {
             if ($this->hasSeedFlag()) {
                 return;
             }
 
-            foreach (self::definitions() as $index => $def) {
-                $assembly = RoomAreaAssembly::query()->firstOrCreate(
-                    ['name' => $def['name']],
-                    [
+            DB::transaction(function () {
+                if ($this->hasSeedFlag()) {
+                    return;
+                }
+
+                foreach (self::definitions() as $index => $def) {
+                    DB::table('room_area_assemblies')->insertOrIgnore([
+                        'name' => $def['name'],
                         'notes' => $def['notes'],
                         'sort_order' => $index,
-                    ]
-                );
-                if ($assembly->wasRecentlyCreated) {
-                    foreach ($def['lines'] as $lineIndex => $line) {
-                        $assembly->lines()->create([
-                            'name' => $line['name'],
-                            'formula' => $line['formula'],
-                            'unit' => $line['unit'],
-                            'whole_units' => $line['whole_units'],
-                            'sort_order' => $lineIndex,
-                        ]);
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $assembly = RoomAreaAssembly::query()->where('name', $def['name'])->first();
+                    if ($assembly && $assembly->lines()->doesntExist()) {
+                        foreach ($def['lines'] as $lineIndex => $line) {
+                            $assembly->lines()->create([
+                                'name' => $line['name'],
+                                'formula' => $line['formula'],
+                                'unit' => $line['unit'],
+                                'whole_units' => $line['whole_units'],
+                                'sort_order' => $lineIndex,
+                            ]);
+                        }
                     }
                 }
-            }
 
-            $this->writeSeedFlag();
-        });
+                $this->writeSeedFlag();
+            });
+        } finally {
+            DB::select('SELECT RELEASE_LOCK(?)', [$lockName]);
+        }
     }
 
     public function hasSeedFlag(): bool
@@ -100,6 +115,7 @@ class RoomAreaAssemblyDefaults
         }
 
         DB::table('room_area_kit_seeds')->insertOrIgnore([
+            'owner' => 'app',
             'key' => self::SEED_KEY,
             'seeded_at' => now(),
         ]);

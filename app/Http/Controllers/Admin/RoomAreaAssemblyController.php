@@ -172,9 +172,11 @@ class RoomAreaAssemblyController extends Controller
             ]))
             : route('admin.utilities.room-area', $resolved['project'] ? ['ra_project' => $resolved['project']->id] : []);
 
+        $this->pruneQuoteTokens();
         $token = (string) Str::uuid();
         DB::table('room_area_quote_tokens')->insert([
             'token' => $token,
+            'expires_at' => now()->addDay(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -226,7 +228,7 @@ class RoomAreaAssemblyController extends Controller
                 ->where('token', $token)
                 ->lockForUpdate()
                 ->first();
-            if ($token === '' || ! $tokenRow) {
+            if ($token === '' || ! $tokenRow || $this->quoteTokenExpired($tokenRow)) {
                 throw ValidationException::withMessages([
                     'idempotency_token' => 'Reload the page and add the kits again.',
                 ]);
@@ -285,6 +287,13 @@ class RoomAreaAssemblyController extends Controller
                 }
             }
             $alreadyOnQuote = $this->assemblyKeysOnQuote($existing);
+            if ($existing && $this->layoutOverlapsQuote($existing, $layoutId, $resolved['project'] ?? null)) {
+                $this->consumeQuoteToken($token, $existing->id);
+
+                return redirect()
+                    ->route('admin.quotations.standard.edit', $existing)
+                    ->with('success', 'Those kit lines are already on '.$existing->quote_number.'.');
+            }
 
             $built = [];
             foreach ($qtyLines as $qtyLine) {
@@ -478,6 +487,28 @@ class RoomAreaAssemblyController extends Controller
         return $resolved;
     }
 
+    private function pruneQuoteTokens(): void
+    {
+        DB::table('room_area_quote_tokens')
+            ->where(function ($query) {
+                $query->where(function ($inner) {
+                    $inner->whereNotNull('expires_at')->where('expires_at', '<', now());
+                })->orWhere(function ($inner) {
+                    $inner->whereNull('expires_at')->where('created_at', '<', now()->subDay());
+                });
+            })
+            ->delete();
+    }
+
+    private function quoteTokenExpired(object $tokenRow): bool
+    {
+        if (! empty($tokenRow->expires_at)) {
+            return \Carbon\Carbon::parse($tokenRow->expires_at)->lt(now());
+        }
+
+        return ! empty($tokenRow->created_at) && \Carbon\Carbon::parse($tokenRow->created_at)->lt(now()->subDay());
+    }
+
     private function consumeQuoteToken(string $token, ?int $quoteId): void
     {
         DB::table('room_area_quote_tokens')->where('token', $token)->update([
@@ -536,5 +567,36 @@ class RoomAreaAssemblyController extends Controller
         }
 
         return $keys;
+    }
+
+    private function layoutOverlapsQuote(?StandardQuotation $quote, string $layoutId, $project): bool
+    {
+        if (! $quote) {
+            return false;
+        }
+        $onQuote = [];
+        foreach ($quote->resolvedWorks() as $work) {
+            foreach (($work['materials'] ?? []) as $row) {
+                $lid = trim((string) ($row['assembly_layout_id'] ?? ''));
+                if ($lid !== '') {
+                    $onQuote[$lid] = true;
+                }
+            }
+        }
+        if ($onQuote === []) {
+            return false;
+        }
+        if (str_starts_with($layoutId, 'project:') && $project) {
+            foreach ($project->rooms as $room) {
+                if (isset($onQuote['room:'.$room->id])) {
+                    return true;
+                }
+            }
+        }
+        if (str_starts_with($layoutId, 'room:') && $project && isset($onQuote['project:'.$project->id])) {
+            return true;
+        }
+
+        return false;
     }
 }

@@ -34,6 +34,7 @@
     { "formula": "ceil(net_wall_sf * 1.12 / 500)", "value": 1 },
     { "formula": "ceil(net_wall_sf * 1.12 / 450)", "value": 1 },
     { "formula": "ceil(outside_corners * wall_height / 8)", "value": 1 },
+    { "formula": "outside_corners * ceil(wall_height / 8)", "value": 1 },
     { "formula": "ceil(floor_sf * 1.05 / 100)", "value": 2 },
     { "formula": "door_count + opening_count", "value": 1 },
     { "formula": "baseboard_lf * 1.10", "value": 45.65 },
@@ -65,7 +66,8 @@
   ],
   "overrides": [
     { "formula": "ceil(net_wall_sf * 1.1 / 32)", "variables": { "net_wall_area_sqft": 1600 }, "value": 55 },
-    { "formula": "wall_height", "variables": { "wall_height_ft": 0 }, "value": 0 }
+    { "formula": "wall_height", "variables": { "wall_height_ft": 0 }, "value": 0 },
+    { "formula": "outside_corners * ceil(wall_height / 8)", "variables": { "outside_corners": 2, "wall_height_ft": 9 }, "value": 4 }
   ],
   "round": [
     { "value": 2.1, "whole": true, "qty": 3 },

@@ -23,16 +23,22 @@
       if ($unit === '' || $n === null || abs((float) $n) === 1.0) {
           return $unit;
       }
-      if (preg_match('/pail/i', $unit)) {
-          return preg_replace('/pail/i', 'pails', $unit) ?: $unit;
-      }
       if (preg_match('/box$/i', $unit)) {
           return preg_replace('/box$/i', 'boxes', $unit) ?: $unit;
+      }
+      if (preg_match('/\bpails\b/i', $unit) || preg_match('/\bboxes\b/i', $unit) || preg_match('/\bsticks\b/i', $unit)) {
+          return $unit;
+      }
+      if (preg_match('/\bpail\b/i', $unit)) {
+          return preg_replace('/\bpail\b/i', 'pails', $unit) ?: $unit;
       }
       if (preg_match('/stick$/i', $unit)) {
           return preg_replace('/stick$/i', 'sticks', $unit) ?: $unit;
       }
-      if (preg_match('/(?:s|x)$/i', $unit)) {
+      if (preg_match('/s$/i', $unit)) {
+          return $unit;
+      }
+      if (preg_match('/x$/i', $unit)) {
           return $unit;
       }
       if (preg_match('/^(ea|lf|sf|gal|qt|in|ft|mm|cm|m|sq)$/i', $unit)) {

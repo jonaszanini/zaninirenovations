@@ -255,9 +255,150 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertCount(2, $quote->fresh()->flattenedMaterials());
     }
 
+    public function test_project_kits_then_room_kits_do_not_double_count(): void
+    {
+        $this->actingAsAdmin();
+        $project = RoomAreaProject::create([
+            'name' => 'Project kits quote',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $kitchen = $this->makeRoom(null, 'Kitchen', $project);
+        $bath = $this->makeRoom(null, 'Bathroom', $project);
+        $assembly = RoomAreaAssembly::create([
+            'name' => 'Shared kit',
+            'notes' => null,
+            'sort_order' => 0,
+        ]);
+        $assembly->lines()->create([
+            'name' => 'Sheets',
+            'formula' => '2',
+            'unit' => 'sheet',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+        $kitchen->assemblies()->sync([$assembly->id]);
+        $bath->assemblies()->sync([$assembly->id]);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'project:'.$project->id,
+            'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
+            'assembly_ids' => [$assembly->id],
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Project kits',
+        ])->assertRedirect();
+
+        $quote = StandardQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $countAfterProject = count($quote->flattenedMaterials());
+        $this->assertGreaterThan(0, $countAfterProject);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'room:'.$kitchen->id,
+            'idempotency_token' => $this->quoteToken($kitchen),
+            'assembly_ids' => [$assembly->id],
+            'quotation_id' => $quote->id,
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Project kits',
+        ])->assertRedirect(route('admin.quotations.standard.edit', $quote));
+
+        $this->assertCount($countAfterProject, $quote->fresh()->flattenedMaterials());
+    }
+
+    public function test_room_kits_then_project_kits_do_not_double_count(): void
+    {
+        $this->actingAsAdmin();
+        $project = RoomAreaProject::create([
+            'name' => 'Room then project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $kitchen = $this->makeRoom(null, 'Kitchen', $project);
+        $bath = $this->makeRoom(null, 'Bathroom', $project);
+        $assembly = RoomAreaAssembly::create([
+            'name' => 'Shared kit two',
+            'notes' => null,
+            'sort_order' => 0,
+        ]);
+        $assembly->lines()->create([
+            'name' => 'Sheets',
+            'formula' => '2',
+            'unit' => 'sheet',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+        $kitchen->assemblies()->sync([$assembly->id]);
+        $bath->assemblies()->sync([$assembly->id]);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'room:'.$kitchen->id,
+            'idempotency_token' => $this->quoteToken($kitchen),
+            'assembly_ids' => [$assembly->id],
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Kitchen first',
+        ])->assertRedirect();
+
+        $quote = StandardQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $countAfterRoom = count($quote->flattenedMaterials());
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'project:'.$project->id,
+            'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
+            'assembly_ids' => [$assembly->id],
+            'quotation_id' => $quote->id,
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Kitchen first',
+        ])->assertRedirect(route('admin.quotations.standard.edit', $quote));
+
+        $this->assertCount($countAfterRoom, $quote->fresh()->flattenedMaterials());
+    }
+
+    public function test_expired_quote_token_is_rejected_and_pruned(): void
+    {
+        $this->actingAsAdmin();
+        $room = $this->makeRoom();
+        $assembly = RoomAreaAssembly::create([
+            'name' => 'Expire kit',
+            'notes' => null,
+            'sort_order' => 0,
+        ]);
+        $assembly->lines()->create([
+            'name' => 'Sheets',
+            'formula' => '2',
+            'unit' => 'sheet',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+        $room->assemblies()->sync([$assembly->id]);
+
+        $token = $this->quoteToken($room);
+        \Illuminate\Support\Facades\DB::table('room_area_quote_tokens')->where('token', $token)->update([
+            'expires_at' => now()->subHour(),
+        ]);
+
+        $this->from(route('admin.utilities.room-area.assemblies.quote', ['layout' => 'room:'.$room->id]))
+            ->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+                'layout' => 'room:'.$room->id,
+                'idempotency_token' => $token,
+                'assembly_ids' => [$assembly->id],
+                'client_name' => 'Pat Owner',
+                'display_title' => 'Expired',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('idempotency_token');
+
+        $this->get(route('admin.utilities.room-area.assemblies.quote', ['layout' => 'room:'.$room->id]))
+            ->assertOk();
+        $this->assertDatabaseMissing('room_area_quote_tokens', ['token' => $token]);
+    }
+
     private function quoteToken(RoomAreaRoom $room): string
     {
-        $html = $this->get(route('admin.utilities.room-area.assemblies.quote', ['layout' => 'room:'.$room->id]))
+        return $this->quoteTokenForLayout('room:'.$room->id);
+    }
+
+    private function quoteTokenForLayout(string $layout): string
+    {
+        $html = $this->get(route('admin.utilities.room-area.assemblies.quote', ['layout' => $layout]))
             ->assertOk()
             ->getContent();
         preg_match('/name="idempotency_token" value="([^"]+)"/', $html, $match);

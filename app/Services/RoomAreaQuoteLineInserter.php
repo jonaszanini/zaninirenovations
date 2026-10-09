@@ -194,7 +194,7 @@ class RoomAreaQuoteLineInserter
             $desc = trim((string) ($line['label'] ?? 'Room Area'));
         }
 
-        return [
+        $row = [
             'short_name' => $short,
             'description' => $desc,
             'unit_price' => round(max(0.0, (float) ($line['unit_price'] ?? 0)), 2),
@@ -209,13 +209,16 @@ class RoomAreaQuoteLineInserter
             'line_kind' => StandardQuotation::LINE_KIND_MATERIAL,
             'url' => $line['url'] ?? null,
             'image_url' => $line['image_url'] ?? null,
-            'assembly_line_id' => isset($line['assembly_line_id']) && (int) $line['assembly_line_id'] > 0
-                ? (int) $line['assembly_line_id']
-                : null,
-            'assembly_layout_id' => ($layoutId = trim((string) ($line['assembly_layout_id'] ?? ''))) !== ''
-                ? mb_substr($layoutId, 0, 40)
-                : null,
         ];
+        if (isset($line['assembly_line_id']) && (int) $line['assembly_line_id'] > 0) {
+            $row['assembly_line_id'] = (int) $line['assembly_line_id'];
+        }
+        $layoutId = trim((string) ($line['assembly_layout_id'] ?? ''));
+        if ($layoutId !== '') {
+            $row['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+        }
+
+        return $row;
     }
 
     /**
@@ -254,7 +257,7 @@ class RoomAreaQuoteLineInserter
             ? (int) $m['catalog_material_id']
             : null;
 
-        return [
+        $row = [
             'short_name' => (string) ($m['short_name'] ?? ''),
             'description' => (string) ($m['description'] ?? ''),
             'url' => $m['url'] ?? null,
@@ -269,13 +272,16 @@ class RoomAreaQuoteLineInserter
             'delivery_cad' => round(max(0.0, (float) ($m['delivery_cad'] ?? 0)), 2),
             'line_kind' => StandardQuotation::LINE_KIND_MATERIAL,
             'entry_mode' => $catalogId ? 'catalog' : 'manual',
-            'assembly_line_id' => isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0
-                ? (int) $m['assembly_line_id']
-                : null,
-            'assembly_layout_id' => ($layoutId = trim((string) ($m['assembly_layout_id'] ?? ''))) !== ''
-                ? mb_substr($layoutId, 0, 40)
-                : null,
         ];
+        if (isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0) {
+            $row['assembly_line_id'] = (int) $m['assembly_line_id'];
+        }
+        $layoutId = trim((string) ($m['assembly_layout_id'] ?? ''));
+        if ($layoutId !== '') {
+            $row['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+        }
+
+        return $row;
     }
 
     private function projectAllowsLink(ClientProject $project): bool

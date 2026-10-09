@@ -8,7 +8,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '../..');
 const CSS = fs.readFileSync(path.join(ROOT, 'public/css/admin-utilities.css'), 'utf8');
 const KONVA_FILE = path.join(ROOT, 'node_modules/konva/konva.min.js');
-const TEST_TIMEOUT_MS = 90000;
+const TEST_TIMEOUT_MS = 120000;
 
 function assertCssGeometry() {
   assert.ok(
@@ -42,6 +42,7 @@ function startStaticServer(konvaFile) {
   const fixture = path.join(fixturesDir, 'room-area-phone-geometry.html');
   const savedRoomFixture = path.join(fixturesDir, 'room-area-saved-room-fit.html');
   const layoutChangeFixture = path.join(fixturesDir, 'room-area-layout-change-fit.html');
+  const zoomPanFixture = path.join(fixturesDir, 'room-area-zoom-pan-embedded.html');
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
@@ -52,6 +53,8 @@ function startStaticServer(konvaFile) {
         file = savedRoomFixture;
       } else if (urlPath === '/layout-change' || urlPath === '/layout-change.html') {
         file = layoutChangeFixture;
+      } else if (urlPath === '/zoom-pan' || urlPath === '/zoom-pan.html') {
+        file = zoomPanFixture;
       } else if (urlPath === '/vendor-test/konva.min.js') {
         file = konvaFile;
       } else {
@@ -60,6 +63,7 @@ function startStaticServer(konvaFile) {
       const allowed = file === fixture
         || file === savedRoomFixture
         || file === layoutChangeFixture
+        || file === zoomPanFixture
         || file === konvaFile
         || file.startsWith(publicDir + path.sep);
       if (!allowed) {
@@ -84,6 +88,89 @@ function startStaticServer(konvaFile) {
     });
     server.on('error', reject);
   });
+}
+
+function readCameraScript() {
+  return () => {
+    const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
+    const wrap = wrapEl.getBoundingClientRect();
+    const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
+    const world = stage && stage.getLayers()[0] && stage.getLayers()[0].getChildren()[0];
+    if (!wrapEl || !stage || !world) return null;
+    const scale = world.scaleX();
+    const pos = world.position();
+    return {
+      scale,
+      zoomPercent: Math.round(scale * 100),
+      x: pos.x,
+      y: pos.y,
+      worldCx: (wrap.width / 2 - pos.x) / scale,
+      worldCy: (wrap.height / 2 - pos.y) / scale,
+      wrapW: wrap.width,
+      wrapH: wrap.height,
+      stageW: stage.width(),
+      stageH: stage.height(),
+    };
+  };
+}
+
+async function waitForEditingRoom(page) {
+  await page.waitForFunction(() => {
+    const wrap = document.querySelector('[data-ra-canvas-wrap]');
+    const world = window.Konva && window.Konva.stages && window.Konva.stages[0]
+      && window.Konva.stages[0].getLayers()[0]
+      && window.Konva.stages[0].getLayers()[0].getChildren()[0];
+    const feedback = document.querySelector('[data-ra-feedback]');
+    return !!(wrap && wrap.getBoundingClientRect().width > 80 && world && world.scaleX() > 0
+      && feedback && /Editing/.test(feedback.textContent || ''));
+  }, { timeout: 15000 });
+}
+
+async function zoomAndPan(page) {
+  const start = await page.evaluate(readCameraScript());
+  assert.ok(start, 'camera exists before zoom');
+  for (let i = 0; i < 8; i += 1) {
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-ra-zoom-out]');
+      if (btn) btn.click();
+    });
+  }
+  await page.waitForFunction((prev) => {
+    const world = window.Konva.stages[0].getLayers()[0].getChildren()[0];
+    return world && world.scaleX() < prev * 0.75;
+  }, { timeout: 8000 }, start.scale);
+  await page.evaluate(() => {
+    const wrap = document.querySelector('[data-ra-canvas-wrap]');
+    wrap.dispatchEvent(new WheelEvent('wheel', {
+      deltaX: 90,
+      deltaY: 0,
+      bubbles: true,
+      cancelable: true,
+    }));
+  });
+  const after = await page.evaluate(readCameraScript());
+  assert.ok(after && after.scale < start.scale * 0.75, 'zoom out lowered scale: ' + (after && after.scale) + ' from ' + start.scale);
+  assert.ok(
+    Math.abs(after.worldCx - start.worldCx) > 1 || Math.abs(after.worldCy - start.worldCy) > 1,
+    'pan moved the centre: ' + JSON.stringify({ start, after })
+  );
+  return after;
+}
+
+function assertCameraHeld(before, after, label) {
+  assert.ok(after, label + ' camera exists');
+  assert.ok(
+    Math.abs(after.scale - before.scale) <= before.scale * 0.03,
+    label + ' keeps zoom: before=' + before.scale + ' after=' + after.scale
+  );
+  assert.ok(
+    Math.abs(after.zoomPercent - before.zoomPercent) <= 4,
+    label + ' keeps zoom percent: before=' + before.zoomPercent + ' after=' + after.zoomPercent
+  );
+  assert.ok(
+    Math.abs(after.worldCx - before.worldCx) <= 6 && Math.abs(after.worldCy - before.worldCy) <= 6,
+    label + ' keeps centre: ' + JSON.stringify({ before, after })
+  );
 }
 
 async function waitForStableCanvasFit(page, options) {
@@ -396,6 +483,109 @@ async function measureViewports() {
       Math.abs(layoutRoomCx - layoutCx) <= 28,
       'layout-change room is centred: roomCx=' + layoutRoomCx + ' wrapCx=' + layoutCx
     );
+
+    const embedHtml = fs.readFileSync(path.join(__dirname, 'fixtures/room-area-zoom-pan-embedded.html'), 'utf8');
+    assert.ok(!/data-ra-fullpage/.test(embedHtml), 'embedded fixture must not be full-page');
+    assert.ok(!/util-ra--fullpage/.test(embedHtml), 'embedded fixture must not use the full-page class');
+
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+    await page.goto('http://127.0.0.1:' + port + '/zoom-pan', { waitUntil: 'load' });
+    await waitForEditingRoom(page);
+    const embedZoomed = await zoomAndPan(page);
+    await page.evaluate(() => document.documentElement.classList.add('is-embed-rail'));
+    try {
+      await page.waitForFunction((prevW) => {
+        const wrap = document.querySelector('[data-ra-canvas-wrap]');
+        const stage = window.Konva.stages[0];
+        if (!wrap || !stage) return false;
+        const wrapW = wrap.getBoundingClientRect().width;
+        return wrapW < prevW - 40 && Math.abs(stage.width() - wrapW) < 2;
+      }, { timeout: 8000 }, embedZoomed.wrapW);
+    } catch (err) {
+      const dump = await page.evaluate(readCameraScript());
+      throw new Error('embedded rail wait failed: ' + JSON.stringify({ before: embedZoomed, after: dump }) + ' — ' + err.message);
+    }
+    const embedAfterRail = await page.evaluate(readCameraScript());
+    assertCameraHeld(embedZoomed, embedAfterRail, 'embedded rail resize');
+    assert.ok(embedAfterRail.stageW < embedZoomed.stageW - 20, 'embedded observer resized the stage');
+
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+    await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
+    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 1600, firstFitGone: true, editing: true });
+    const deskZoomed = await zoomAndPan(page);
+    await page.setViewport({ width: 1240, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+    await page.waitForFunction((prevStageW) => {
+      const wrap = document.querySelector('[data-ra-canvas-wrap]');
+      const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
+      if (window.innerWidth !== 1240 || !wrap || !stage) return false;
+      const wrapW = wrap.getBoundingClientRect().width;
+      return Math.abs(stage.width() - prevStageW) > 1 && Math.abs(stage.width() - wrapW) < 2;
+    }, { timeout: 8000 }, deskZoomed.stageW);
+    const deskAfterResize = await page.evaluate(readCameraScript());
+    assertCameraHeld(deskZoomed, deskAfterResize, '1280 window resize');
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-ra-side-toggle]');
+      if (btn) btn.click();
+    });
+    try {
+      await page.waitForFunction((prevW) => {
+        const wrap = document.querySelector('[data-ra-canvas-wrap]');
+        const root = document.querySelector('[data-room-area]');
+        const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
+        if (!root || !root.classList.contains('is-side-collapsed') || !wrap || !stage) return false;
+        const wrapW = wrap.getBoundingClientRect().width;
+        return Math.abs(wrapW - prevW) > 8 && Math.abs(stage.width() - wrapW) < 2;
+      }, { timeout: 8000 }, deskAfterResize.wrapW);
+    } catch (err) {
+      const dump = await page.evaluate(readCameraScript());
+      const flags = await page.evaluate(() => {
+        const root = document.querySelector('[data-room-area]');
+        return {
+          collapsed: !!(root && root.classList.contains('is-side-collapsed')),
+          hasToggle: !!document.querySelector('[data-ra-side-toggle]'),
+        };
+      });
+      throw new Error('1280 panel wait failed: ' + JSON.stringify({ before: deskAfterResize, after: dump, flags }) + ' — ' + err.message);
+    }
+    const deskAfterPanel = await page.evaluate(readCameraScript());
+    assertCameraHeld(deskZoomed, deskAfterPanel, '1280 panel toggle');
+
+    await page.setViewport({ width: 390, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
+    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true, editing: true });
+    const phoneZoomed = await zoomAndPan(page);
+    await page.evaluate(() => {
+      const handle = document.querySelector('[data-ra-sheet-handle]');
+      if (handle) handle.click();
+    });
+    try {
+      await page.waitForFunction((prevH) => {
+        const root = document.querySelector('[data-room-area]');
+        const wrap = document.querySelector('[data-ra-canvas-wrap]');
+        const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
+        if (!root || !root.classList.contains('is-sheet-expanded') || !wrap || !stage) return false;
+        const wrapH = wrap.getBoundingClientRect().height;
+        return Math.abs(wrapH - prevH) > 8 && Math.abs(stage.height() - wrapH) < 2;
+      }, { timeout: 8000 }, phoneZoomed.wrapH);
+    } catch (err) {
+      const dump = await page.evaluate(() => {
+        const root = document.querySelector('[data-room-area]');
+        const cam = (function () {
+          const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
+          const wrap = wrapEl ? wrapEl.getBoundingClientRect() : null;
+          const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
+          return {
+            expanded: !!(root && root.classList.contains('is-sheet-expanded')),
+            wrapH: wrap && wrap.height,
+            stageH: stage && stage.height(),
+          };
+        })();
+        return cam;
+      });
+      throw new Error('390 sheet wait failed: ' + JSON.stringify(dump) + ' — ' + err.message);
+    }
+    const phoneAfterSheet = await page.evaluate(readCameraScript());
+    assertCameraHeld(phoneZoomed, phoneAfterSheet, '390 bottom sheet');
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));

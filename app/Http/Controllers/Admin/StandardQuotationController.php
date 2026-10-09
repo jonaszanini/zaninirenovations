@@ -594,7 +594,7 @@ class StandardQuotationController extends Controller
                 $qty = 1.0;
             }
 
-            return [
+            $mapped = [
                 'short_name' => $isElectrical ? '' : ($m['short_name'] ?? ''),
                 'description' => $description,
                 'url' => $url === '' ? null : $url,
@@ -607,13 +607,16 @@ class StandardQuotationController extends Controller
                 'delivery_cad' => $isElectrical ? 0.0 : round(max(0.0, (float) ($m['delivery_cad'] ?? 0)), 2),
                 'line_kind' => $lineKind,
                 'entry_mode' => $entryMode,
-                'assembly_line_id' => isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0
-                    ? (int) $m['assembly_line_id']
-                    : null,
-                'assembly_layout_id' => ($layoutId = trim((string) ($m['assembly_layout_id'] ?? ''))) !== ''
-                    ? mb_substr($layoutId, 0, 40)
-                    : null,
             ];
+            if (isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0) {
+                $mapped['assembly_line_id'] = (int) $m['assembly_line_id'];
+            }
+            $layoutId = trim((string) ($m['assembly_layout_id'] ?? ''));
+            if ($layoutId !== '') {
+                $mapped['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+            }
+
+            return $mapped;
         };
 
         $worksForStorage = [];

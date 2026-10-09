@@ -208,8 +208,11 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('RA.evaluateAssemblyLine(', $js);
         $this->assertStringContainsString('function bindKits(', $js);
         $this->assertStringContainsString('typeof ResizeObserver', $js);
-        $this->assertStringContainsString('refitCanvasToLayout()', $js);
+        $this->assertMatchesRegularExpression('/ResizeObserver\(function \(\) \{\s*resizeStage\(\);/', $js);
         $this->assertStringNotContainsString('isFullPage() && typeof ResizeObserver', $js);
+        $this->assertStringContainsString('userAdjustedViewport', $js);
+        $this->assertStringContainsString("if (/s$/i.test(unit)) return unit;", $js);
+        $this->assertStringContainsString("if (/\\bpails\\b/i.test(unit)", $js);
         $this->assertStringContainsString("addEventListener('pageshow'", $js);
         $this->assertDoesNotMatchRegularExpression('/\beval\s*\(/', $js);
 
@@ -321,6 +324,55 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertNull($sheets['error']);
         $boxes = collect($byName['LVP floor']['lines'])->firstWhere('name', 'Floor boxes');
         $this->assertEquals($metrics['flooring_boxes'], $boxes['qty']);
+        $bead = collect($byName['Drywall wall']['lines'])->firstWhere('name', 'Corner bead');
+        $this->assertSame('outside_corners * ceil(wall_height / 8)', $bead['formula']);
+    }
+
+    public function test_corner_bead_at_nine_feet_is_four_sticks_for_two_corners(): void
+    {
+        app(RoomAreaAssemblyDefaults::class)->ensure();
+        $assembly = RoomAreaAssembly::query()->where('name', 'Drywall wall')->firstOrFail();
+        $evaluated = app(RoomAreaAssemblyEvaluator::class)->evaluateAssembly($assembly, [
+            'area_sqft' => 100,
+            'net_wall_area_sqft' => 200,
+            'wall_height_ft' => 9,
+            'outside_corners' => 2,
+            'inside_corners' => 2,
+            'flooring_boxes' => 6,
+            'flooring_waste_percent' => 10,
+        ]);
+        $bead = collect($evaluated['lines'])->firstWhere('name', 'Corner bead');
+        $this->assertEquals(4.0, $bead['qty']);
+    }
+
+    public function test_two_concurrent_first_loads_create_three_kits(): void
+    {
+        RoomAreaAssembly::query()->delete();
+        \Illuminate\Support\Facades\DB::table('room_area_kit_seeds')->delete();
+        $this->assertSame(0, RoomAreaAssembly::query()->count());
+
+        $env = array_merge(getenv(), [
+            'APP_ENV' => 'testing',
+            'DB_CONNECTION' => 'mysql',
+            'DB_HOST' => '127.0.0.1',
+            'DB_PORT' => '3306',
+            'DB_DATABASE' => 'zanini_renovations_test',
+            'DB_USERNAME' => 'root',
+            'DB_PASSWORD' => '',
+            'CACHE_DRIVER' => 'array',
+        ]);
+        $cmd = [PHP_BINARY, base_path('tests/Support/ensure_room_area_kits.php')];
+        $one = new \Symfony\Component\Process\Process($cmd, base_path(), $env);
+        $two = new \Symfony\Component\Process\Process($cmd, base_path(), $env);
+        $one->setTimeout(30);
+        $two->setTimeout(30);
+        $one->start();
+        $two->start();
+        $one->wait();
+        $two->wait();
+        $this->assertSame(0, $one->getExitCode(), $one->getErrorOutput().$one->getOutput());
+        $this->assertSame(0, $two->getExitCode(), $two->getErrorOutput().$two->getOutput());
+        $this->assertSame(3, RoomAreaAssembly::query()->count());
     }
 
     private function makeRoom(): RoomAreaRoom
