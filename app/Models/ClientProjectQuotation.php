@@ -389,6 +389,10 @@ class ClientProjectQuotation extends Model
      */
     public function workDescriptionForPdf(): string
     {
+        if ($this->isSourceDraft()) {
+            return trim((string) ($this->work_description ?? ''));
+        }
+
         if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
             $sq = StandardQuotation::query()->find($this->source_id);
             if ($sq) {
@@ -512,6 +516,16 @@ class ClientProjectQuotation extends Model
         return (bool) ($source->is_draft ?? false);
     }
 
+    /** Live calculator row only when it is published — drafts must not drive the client PDF. */
+    public function publishedSourceQuotationModel(): ?Model
+    {
+        if ($this->isSourceDraft()) {
+            return null;
+        }
+
+        return $this->sourceQuotationModel();
+    }
+
     /** Admin-written note for the client email (HTML), from the linked source quotation. */
     public function clientEmailMessageHtml(): ?string
     {
@@ -620,7 +634,7 @@ class ClientProjectQuotation extends Model
             return (new PdfFoldV2($this))->pdfLineItems();
         }
 
-        if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
+        if ($this->source_type === self::SOURCE_STANDARD && $this->source_id && ! $this->isSourceDraft()) {
             $sq = StandardQuotation::query()->find($this->source_id);
             if ($sq) {
                 if ($sq->usesDetailedPdf()) {

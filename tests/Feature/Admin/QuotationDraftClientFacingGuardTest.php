@@ -246,6 +246,7 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
         $this->assertSame($itemsBefore, $cpq->items, "{$type} draft must not rewrite client quotation items");
         $this->assertEqualsWithDelta($cpqTotalBefore, $cpq->grandTotal(), 0.001, "{$type} draft must not change the project PDF total");
         $this->assertSame($snapshotBefore, $cpq->source_snapshot, "{$type} draft must not replace the client quotation snapshot");
+        $this->assertEqualsWithDelta($cpqTotalBefore, $cpq->pdfGrandTotal(), 0.001, "{$type} draft must not change the public signed PDF total");
     }
 
     /**
