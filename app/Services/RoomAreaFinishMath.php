@@ -101,7 +101,7 @@ class RoomAreaFinishMath
 
     public function netWallAreaSqFt(float $lengthFt, float $heightFt, float $openingAreaSqFt = 0.0): float
     {
-        return round(max(0.0, $lengthFt * $heightFt - max(0.0, $openingAreaSqFt)), 2);
+        return $this->roundTo(max(0.0, $lengthFt * $heightFt - max(0.0, $openingAreaSqFt)), 2);
     }
 
     public function openingAreaSqFt(float $widthIn, float $heightIn): float
@@ -173,7 +173,12 @@ class RoomAreaFinishMath
 
     public function roundTo(float $value, int $digits): float
     {
-        return round($value, $digits, PHP_ROUND_HALF_UP);
+        $places = max(0, $digits);
+        $factor = 10 ** $places;
+        $shifted = $value * $factor;
+        $sign = $shifted < 0.0 ? -1.0 : 1.0;
+
+        return $sign * round(abs($shifted) + 1e-9, 0, PHP_ROUND_HALF_UP) / $factor;
     }
 
     public function flooringWithWasteSqFt(float $floorAreaSqFt, mixed $wastePercent): float
@@ -245,17 +250,21 @@ class RoomAreaFinishMath
         $doorFace = isset($object['door_face']) && is_string($object['door_face'])
             ? $object['door_face']
             : null;
-        if (! array_key_exists('casing_sides', $object) || $object['casing_sides'] === null || $object['casing_sides'] === '') {
+        $rawSides = array_key_exists('casing_sides', $object) ? $object['casing_sides'] : null;
+        if (is_string($rawSides)) {
+            $rawSides = trim($rawSides);
+        }
+        if (! array_key_exists('casing_sides', $object) || $rawSides === null || $rawSides === '') {
             if ($this->isLegacyOpeningPlaceholder($object, $type)) {
                 return 0;
             }
 
             return $this->defaultCasingSides($type, $doorFace);
         }
-        if (! is_numeric($object['casing_sides'])) {
+        if (! is_numeric($rawSides)) {
             return $this->defaultCasingSides($type, $doorFace);
         }
-        $sides = (int) $object['casing_sides'];
+        $sides = (int) $rawSides;
         $max = $type === 'window' ? 4 : 2;
 
         return max(0, min($max, $sides));

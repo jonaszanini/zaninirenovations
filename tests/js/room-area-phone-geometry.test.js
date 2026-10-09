@@ -7,6 +7,8 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../..');
 const CSS = fs.readFileSync(path.join(ROOT, 'public/css/admin-utilities.css'), 'utf8');
+const KONVA_URL = 'https://unpkg.com/konva@9/konva.min.js';
+const KONVA_CACHE = path.join('/tmp', 'room-area-konva.min.js');
 
 function assertCssGeometry() {
   assert.ok(
@@ -27,16 +29,64 @@ function assertCssGeometry() {
   assert.ok(/height:\s*auto/.test(collapsed.slice(0, 220)), 'collapsed sheet height is auto');
 }
 
+function downloadFile(url, destPath) {
+  return new Promise((resolve, reject) => {
+    const dest = fs.createWriteStream(destPath);
+    const client = url.startsWith('https') ? require('https') : http;
+    client.get(url, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        dest.close();
+        fs.unlink(destPath, () => {});
+        const next = new URL(res.headers.location, url).toString();
+        downloadFile(next, destPath).then(resolve, reject);
+        return;
+      }
+      if (res.statusCode !== 200) {
+        dest.close();
+        fs.unlink(destPath, () => {});
+        reject(new Error('Could not download ' + url + ': HTTP ' + res.statusCode));
+        return;
+      }
+      res.pipe(dest);
+      dest.on('finish', () => dest.close(resolve));
+    }).on('error', (err) => {
+      dest.close();
+      fs.unlink(destPath, () => {});
+      reject(err);
+    });
+  });
+}
+
+function ensureKonva() {
+  if (fs.existsSync(KONVA_CACHE) && fs.statSync(KONVA_CACHE).size > 1000) {
+    return Promise.resolve();
+  }
+  return downloadFile(KONVA_URL, KONVA_CACHE);
+}
+
 function startStaticServer() {
   const publicDir = path.join(ROOT, 'public');
-  const fixture = path.join(__dirname, 'fixtures/room-area-phone-geometry.html');
+  const fixturesDir = path.join(__dirname, 'fixtures');
+  const fixture = path.join(fixturesDir, 'room-area-phone-geometry.html');
+  const savedRoomFixture = path.join(fixturesDir, 'room-area-saved-room-fit.html');
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-      let file = urlPath === '/'
-        ? fixture
-        : path.join(publicDir, urlPath.replace(/^\//, ''));
-      if (!file.startsWith(publicDir) && file !== fixture) {
+      let file;
+      if (urlPath === '/') {
+        file = fixture;
+      } else if (urlPath === '/saved-room' || urlPath === '/saved-room.html') {
+        file = savedRoomFixture;
+      } else if (urlPath === '/vendor-test/konva.min.js') {
+        file = KONVA_CACHE;
+      } else {
+        file = path.join(publicDir, urlPath.replace(/^\//, ''));
+      }
+      const allowed = file === fixture
+        || file === savedRoomFixture
+        || file === KONVA_CACHE
+        || file.startsWith(publicDir + path.sep);
+      if (!allowed) {
         res.writeHead(403);
         res.end();
         return;
@@ -67,6 +117,7 @@ async function measureViewports() {
   } catch (err) {
     throw new Error('puppeteer is required for room-area phone geometry measurements');
   }
+  await ensureKonva();
   const { server, port } = await startStaticServer();
   const browser = await puppeteer.launch({
     headless: true,
@@ -192,6 +243,65 @@ async function measureViewports() {
         assert.ok(!field.overflow, 'finish control ' + i + ' stays on screen at ' + width);
       });
     }
+
+    await page.setViewport({ width: 390, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
+    await page.waitForFunction(() => {
+      const wrap = document.querySelector('[data-ra-canvas-wrap]');
+      const canvas = wrap && wrap.querySelector('canvas');
+      const feedback = document.querySelector('[data-ra-feedback]');
+      return !!(window.Konva && window.Konva.stages && window.Konva.stages[0]
+        && wrap && wrap.getBoundingClientRect().width > 40
+        && canvas && canvas.width > 10
+        && feedback && /Editing/.test(feedback.textContent || ''));
+    }, { timeout: 15000 });
+    await page.evaluate(() => new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }));
+    const fitted = await page.evaluate(() => {
+      const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
+      const wrap = wrapEl.getBoundingClientRect();
+      const stage = window.Konva.stages[0];
+      const world = stage.getLayers()[0].getChildren()[0];
+      const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
+      const scale = world ? world.scaleX() : stage.scaleX();
+      const pos = world ? world.position() : stage.position();
+      const screen = verts.map((v) => ({
+        x: wrap.left + pos.x + v.x * scale,
+        y: wrap.top + pos.y + v.y * scale,
+      }));
+      const minX = Math.min.apply(null, screen.map((p) => p.x));
+      const maxX = Math.max.apply(null, screen.map((p) => p.x));
+      const minY = Math.min.apply(null, screen.map((p) => p.y));
+      const maxY = Math.max.apply(null, screen.map((p) => p.y));
+      return {
+        wrap: { left: wrap.left, right: wrap.right, top: wrap.top, bottom: wrap.bottom, width: wrap.width, height: wrap.height },
+        room: { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY },
+        scale,
+        pos,
+        feedback: (document.querySelector('[data-ra-feedback]') || {}).textContent || '',
+      };
+    });
+    assert.ok(fitted.wrap.width >= 200, 'canvas wrap is usable at 390: ' + fitted.wrap.width);
+    assert.ok(fitted.scale > 1.2, 'saved room is zoomed to fit at 390, scale=' + fitted.scale);
+    assert.ok(
+      fitted.room.minX >= fitted.wrap.left - 2 && fitted.room.maxX <= fitted.wrap.right + 2,
+      'saved room stays inside wrap horizontally at 390: ' + JSON.stringify(fitted)
+    );
+    assert.ok(
+      fitted.room.minY >= fitted.wrap.top - 2 && fitted.room.maxY <= fitted.wrap.bottom + 2,
+      'saved room stays inside wrap vertically at 390: ' + JSON.stringify(fitted)
+    );
+    const wrapCx = (fitted.wrap.left + fitted.wrap.right) / 2;
+    const roomCx = (fitted.room.minX + fitted.room.maxX) / 2;
+    assert.ok(
+      Math.abs(roomCx - wrapCx) <= 28,
+      'saved room is centred at 390: roomCx=' + roomCx + ' wrapCx=' + wrapCx
+    );
+    assert.ok(
+      fitted.room.width >= fitted.wrap.width * 0.72,
+      'saved room fills most of the wrap width at 390: ' + fitted.room.width + ' vs ' + fitted.wrap.width
+    );
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));

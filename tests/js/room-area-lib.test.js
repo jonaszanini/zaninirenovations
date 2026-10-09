@@ -165,6 +165,8 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.netWallAreaSqFt(12, 8, lib.openingAreaSqFt(36, 80) + lib.openingAreaSqFt(36, 36) + lib.openingAreaSqFt(36, 84)), 46);
   assert.strictEqual(lib.netWallAreaSqFt(10.1, 7.75, 0), 78.28);
   assert.strictEqual(lib.roundTo(10.1 * 7.75, 2), 78.28);
+  assert.strictEqual(lib.netWallAreaSqFt(4.3, 7.75, 30.1), 3.23);
+  assert.strictEqual(lib.netWallAreaSqFt(2.04, 9, 18.03), 0.33);
   assert.strictEqual(lib.parseWastePercent('').value, 10);
   assert.strictEqual(lib.parseWastePercent('15%').value, 15);
   assert.strictEqual(lib.parseWastePercent('7,5').value, 7.5);
@@ -200,6 +202,9 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.casingSidesForObject({ type: 'door', casing_sides: 1 }), 1);
   assert.strictEqual(lib.casingSidesForObject({ type: 'WINDOW' }), 4);
   assert.strictEqual(lib.casingSidesForObject({ type: 'window', casing_sides: '' }), 4);
+  assert.strictEqual(lib.casingSidesForObject({ type: 'window', casing_sides: ' ' }), 4);
+  assert.strictEqual(lib.casingSidesForObject({ type: 'door', casing_sides: ' ' }), 2);
+  assert.strictEqual(lib.casingSidesForObject({ type: 'opening', height: 48, casing_sides: ' ' }), 0);
   assert.strictEqual(lib.casingSidesForObject({ type: 'opening' }), 2);
   assert.strictEqual(lib.casingSidesForObject({ type: 'opening', height: 48 }), 0);
   assert.strictEqual(lib.casingSidesForObject({ type: 'opening', height: 48, casing_sides: 2 }), 2);

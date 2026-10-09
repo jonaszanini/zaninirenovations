@@ -71,6 +71,8 @@ class RoomAreaFinishMathTest extends TestCase
         $this->assertSame(0.0, $this->math->netWallAreaSqFt(3, 8, 40));
         $this->assertSame(78.28, $this->math->netWallAreaSqFt(10.1, 7.75, 0));
         $this->assertSame(78.28, $this->math->roundTo(10.1 * 7.75, 2));
+        $this->assertSame(3.23, $this->math->netWallAreaSqFt(4.3, 7.75, 30.1));
+        $this->assertSame(0.33, $this->math->netWallAreaSqFt(2.04, 9, 18.03));
     }
 
     public function test_per_wall_net_areas_use_ceiling_height_exactly(): void
@@ -167,6 +169,7 @@ class RoomAreaFinishMathTest extends TestCase
         $this->assertSame(4, $this->math->casingSidesForObject(['type' => 'WINDOW']));
         $this->assertSame(3, $this->math->casingSidesForObject(['type' => 'window', 'casing_sides' => 3]));
         $this->assertSame(4, $this->math->casingSidesForObject(['type' => 'window', 'casing_sides' => '']));
+        $this->assertSame(4, $this->math->casingSidesForObject(['type' => 'window', 'casing_sides' => ' ']));
     }
 
     public function test_door_interior_exterior_and_cased_openings(): void
@@ -187,6 +190,8 @@ class RoomAreaFinishMathTest extends TestCase
         $this->assertSame(2, $this->math->casingSidesForObject(['type' => 'opening', 'casing_sides' => 'nope']));
         $this->assertSame(2, $this->math->casingSidesForObject(['type' => 'opening', 'height' => 48, 'casing_sides' => 'nope']));
         $this->assertSame(2, $this->math->casingSidesForObject(['type' => 'door', 'casing_sides' => 'abc']));
+        $this->assertSame(2, $this->math->casingSidesForObject(['type' => 'door', 'casing_sides' => ' ']));
+        $this->assertSame(0, $this->math->casingSidesForObject(['type' => 'opening', 'height' => 48, 'casing_sides' => ' ']));
     }
 
     public function test_legacy_opening_placeholder_uses_type_default_height(): void

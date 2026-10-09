@@ -4810,6 +4810,12 @@
     els.canvasWrap.addEventListener('touchcancel', onTouchEnd, { passive: false, capture: true });
   }
 
+  function refitCanvasToLayout() {
+    if (!state.stage || !els.canvasWrap) return;
+    resizeStage();
+    if (viewportContentBounds().hasContent) fitViewport();
+  }
+
   function resizeStage() {
     if (!state.stage || !els.canvasWrap) return;
     var vp = getViewportDimensions();
@@ -5398,6 +5404,7 @@
     renderPhotos();
     refreshViewportAfterContentChange();
     redrawAll();
+    requestAnimationFrame(refitCanvasToLayout);
   }
 
   function addAreaSameGroup() {
@@ -8091,6 +8098,7 @@
       renderPhotos();
       redrawAll();
       fitViewport();
+      requestAnimationFrame(refitCanvasToLayout);
       captureSavedSnapshot();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
     });

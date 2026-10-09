@@ -62,7 +62,15 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertStringContainsString("setCeilingHeight(null, true)", $js);
         $this->assertStringContainsString('Math.abs((state.flooringWastePercent || 0) - parsed.value)', $js);
         $this->assertMatchesRegularExpression('/resizeStage\(\);\s*redrawLabels\(\);/', $js);
-        $this->assertStringNotContainsString('refitCanvasToLayout', $js);
+        $this->assertStringContainsString('function refitCanvasToLayout()', $js);
+        $this->assertSame(2, substr_count($js, 'requestAnimationFrame(refitCanvasToLayout)'));
+        $this->assertMatchesRegularExpression(
+            '/function resizeStage\(\) \{[\s\S]*?\n  function /',
+            $js
+        );
+        preg_match('/function resizeStage\(\) \{([\s\S]*?)\n  function /', $js, $resizeStage);
+        $this->assertArrayHasKey(1, $resizeStage);
+        $this->assertStringNotContainsString('fitViewport', $resizeStage[1]);
         $this->assertStringNotContainsString("friendlyNetworkError(err, 'Could not upload the floor plan. Check your connection and try again.')", $js);
         $this->assertStringNotContainsString("friendlyNetworkError(e, 'Could not upload the floor plan. Check your connection and try again.')", $js);
 
@@ -89,6 +97,8 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $php = file_get_contents(app_path('Services/RoomAreaFinishMath.php'));
         $this->assertNotFalse($php);
         $this->assertStringContainsString('ceil($this->roundTo($needed / $box, 9))', $php);
+        $this->assertStringContainsString('abs($shifted) + 1e-9', $php);
+        $this->assertStringContainsString('is_string($rawSides)', $php);
         $this->assertStringContainsString("preg_match('/[eE]/', \$raw)", $php);
         $this->assertStringContainsString('LEGACY_OPENING_HEIGHT_IN', $php);
 
