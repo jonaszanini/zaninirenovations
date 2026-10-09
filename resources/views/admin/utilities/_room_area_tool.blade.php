@@ -102,11 +102,6 @@
           <div class="util-ra-tool-group util-ra-tool-group--view">
             <div class="util-ra-tool-group__head">
               <span class="util-ra-tool-group__label">View</span>
-              @include('admin.utilities._room_area_help_pop', [
-                'tipId' => 'view',
-                'label' => 'About view tools',
-                'text' => 'Undo and redo last edits. Zoom with +/−, Fit to see the whole room, Panel to show Measure, Math, Photos, and Rooms. Pinch or scroll to zoom around the cursor. Two fingers, empty-canvas drag, or Space+drag to pan. Type wall lengths in the panel if corners are fiddly.',
-              ])
             </div>
             <div class="util-ra-tool-group__actions util-ra-full-header__view-actions">
               <span class="util-ra-tip" data-tooltip="Undo the last drawing or object change.">
@@ -406,13 +401,6 @@
             <div class="util-ra-tool-group util-ra-tool-group--draw">
               <div class="util-ra-tool-group__head">
                 <span class="util-ra-tool-group__label">{{ $fullPage ? 'Draw / Edit' : 'Draw' }}</span>
-                @if ($fullPage)
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'draw',
-                  'label' => 'About draw and edit',
-                  'text' => 'Close the outline when the last wall meets the first. Add another area in this color group, or start a new color group for a different finish. Name the active area. Draw a ruler to measure any distance. Clear all areas from this room.',
-                ])
-                @endif
               </div>
               <div class="util-ra-tool-group__actions">
                 @unless($fullPage)
@@ -606,13 +594,6 @@
             <div class="util-ra-tool-group util-ra-tool-group--plan">
               <div class="util-ra-tool-group__head">
                 <span class="util-ra-tool-group__label">Plan</span>
-                @if ($fullPage)
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'plan',
-                  'label' => 'About the floor plan',
-                  'text' => 'Show or hide the floor-plan photo, reposition it, or remove it from the drawing.',
-                ])
-                @endif
               </div>
               <div class="util-ra-tool-group__actions">
                 <div class="util-ra-more-block util-ra-more-block--plan">
@@ -643,11 +624,6 @@
             <div class="util-ra-tool-group util-ra-tool-group--room-tools">
               <div class="util-ra-tool-group__head">
                 <span class="util-ra-tool-group__label">Room tools</span>
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'room-tools',
-                  'label' => 'About room tools',
-                  'text' => 'Dimension labels: all walls, main size only, area only, or off. When snap is on, walls snap to 45° / 90° if they are within about 10°. Turn snap off to trace 30° or 80° walls. On a keyboard, hold Alt to bypass. Templates start a rectangle, L, U, or T. Uses Rect W×L when filled, otherwise 12×10. L is 16×12 with a 6×4 return (152 sq ft). T uses the typed length as overall height. Alcove cuts a bump into the selected wall. Lock wall corners so doors, windows, and notes stay editable. Unlock to move walls, undo, delete an area, or recalibrate.',
-                ])
               </div>
               <div class="util-ra-tool-group__actions">
                 <div class="util-ra-more-block util-ra-more-block--dims">
@@ -713,11 +689,6 @@
                     <option value="feet_decimal">Decimal ft</option>
                     <option value="inch">Inches</option>
                   </select>
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'units-format',
-                    'label' => 'About number format',
-                    'text' => 'Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win.',
-                  ])
                 </span>
               </div>
             </div>
@@ -790,11 +761,6 @@
         <div class="util-ra-object-dock">
           <div class="util-ra-object-dock__head">
             <span class="util-ra-tool-group__label">Objects / Walls</span>
-            @include('admin.utilities._room_area_help_pop', [
-              'tipId' => 'objects',
-              'label' => 'About objects and walls',
-              'text' => 'Objects: drop doors and windows on walls; stairs, cabinets, and fixtures on the floor. Walls: optional thickness. Quotes always use the inside. Select a wall, corner, object, or ruler to edit it here.',
-            ])
           </div>
           <section class="util-ra-palette" data-ra-palette aria-label="Object library">
             <span class="util-ra-tip util-ra-tip--block" data-tooltip="Open doors, windows, stairs, and fixtures.">
@@ -845,11 +811,6 @@
             <div class="util-ra-palette__body" id="ra-walls-body" data-ra-walls-body>
               <div class="util-ra-palette__head">
                 <h3 class="util-ra-palette__title">Wall thickness</h3>
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'thick-walls',
-                  'label' => 'About wall thickness',
-                  'text' => 'Off keeps drawings as-is. On draws thick walls and shows inside vs footprint. Quotes use inside.',
-                ])
               </div>
               <div class="util-ra-thickness-chips" role="group" aria-label="Wall thickness">
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-thickness-chip is-active" data-ra-thickness="0">Off</button>
@@ -869,11 +830,6 @@
 
         <div class="util-ra-edit-dock" data-ra-edit-dock>
           <div class="util-ra-edit-dock__idle">
-            @include('admin.utilities._room_area_help_pop', [
-              'tipId' => 'edit-idle',
-              'label' => 'About editing',
-              'text' => 'Select a wall, corner, object, or ruler to edit it here.',
-            ])
           </div>
           <div class="util-ra-edit-dock__panels">
             <div class="util-ra-wall-edit util-ra-ruler-edit" data-ra-ruler-edit hidden>
@@ -980,11 +936,6 @@
                   <input type="checkbox" data-ra-wall-scale-project>
                   <span>Scale entire project</span>
                 </label>
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'scale-project',
-                  'label' => 'About scaling the project',
-                  'text' => 'Recalibrate scale so this wall matches the value you enter; all other wall lengths and areas update proportionally. The drawing shape stays the same.',
-                ])
                 <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-split-wall>
                   <i class="fa fa-plus-circle"></i> Split wall
@@ -1113,11 +1064,6 @@
         <div class="util-ra-side__pane" data-ra-side-pane="math">
         <div class="util-ra-canvas-footer">
           <div class="util-ra-hint util-ra-hint--inline">
-            @include('admin.utilities._room_area_help_pop', [
-              'tipId' => 'math-draw',
-              'label' => 'About drawing',
-              'text' => 'Click corners to draw. Drag doors onto walls; drop stairs, cabinets, and fixtures on the floor. Pinch or +/− to zoom; two fingers or empty-canvas drag to pan. Press ? for shortcuts. Calibrate scale before saving.',
-            ])
           </div>
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <div class="util-ra-live-area__row util-ra-live-area__row--active">
@@ -1332,11 +1278,6 @@
         <div class="util-ra-rooms-head">
           <div class="util-ra-rooms-head__intro">
             <h3 class="util-ra-card-title">Saved rooms
-              @include('admin.utilities._room_area_help_pop', [
-                'tipId' => 'saved-rooms',
-                'label' => 'About saved rooms',
-                'text' => 'Each room has its own floor plan and outline. Draw, save, then start another room.',
-              ])
             </h3>
           </div>
           <div class="util-ra-rooms-head__actions">

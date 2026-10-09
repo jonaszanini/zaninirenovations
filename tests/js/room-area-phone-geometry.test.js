@@ -101,6 +101,12 @@ function assertCssGeometry() {
   assert.ok(/if \(!isPhoneChrome\(\)\) return;[\s\S]{0,160}is-sheet-expanded/.test(js), 'sheet expand is ignored on desktop');
   assert.ok(CSS.includes('.util-ra-project-bar__menu-btn'), 'phone project picker has a menu button');
   assert.ok(js.includes('function bindProjectMenu('), 'phone project menu is wired');
+  assert.ok(
+    /@media \(min-width: 901px\) and \(max-height: 800px\)[\s\S]{0,1600}?overflow-y:\s*auto/.test(CSS),
+    'short desktop windows unlock page scroll so the 300px canvas is not clipped'
+  );
+  assert.ok(js.includes("addEventListener('pointerdown'"), 'phone project menu closes on canvas pointerdown');
+  assert.ok(js.includes("e.key === 'Escape'"), 'phone project menu closes on Esc');
 }
 
 function resolveKonvaFile() {
@@ -1180,6 +1186,208 @@ function liveOnly() {
   return process.env.RA_LIVE_ONLY === '1';
 }
 
+function liveSnapshotScript() {
+  return function () {
+    function box(el) {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
+    function visibleStyle(el) {
+      if (!el) return 'missing';
+      if (el.closest('[hidden]')) return 'hidden';
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return 'hidden';
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) return 'zero';
+      return cs.display;
+    }
+    function parentHit(el, hit) {
+      return !!(hit && el && hit !== el && hit.contains(el) && !el.contains(hit));
+    }
+    function selfHit(el) {
+      const b = box(el);
+      if (!b) return { self: false, parent: false, hit: null, ok: false };
+      const hit = document.elementFromPoint(b.x, b.y);
+      const overlay = document.getElementById('ra-mutant-overlay') || document.getElementById('ra-mutant-strip');
+      const covered = !!(overlay && hit && (hit === overlay || overlay.contains(hit)));
+      const self = !!(hit && (hit === el || el.contains(hit)));
+      const parent = parentHit(el, hit);
+      const disabled = !!(el.disabled || el.getAttribute('disabled') !== null);
+      return {
+        self: self,
+        parent: parent,
+        ok: !covered && (self || (disabled && parent)),
+        hit: hit && (hit.className || hit.tagName),
+        box: b,
+      };
+    }
+    function overlaps(a, b) {
+      if (!a || !b) return false;
+      return a.left < b.right - 2 && a.right > b.left + 2 && a.top < b.bottom - 2 && a.bottom > b.top + 2;
+    }
+    const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
+    const stage = document.querySelector('.util-ra-konva, #ra-konva-container');
+    const status = document.querySelector('[data-ra-feedback], .util-ra-feedback');
+    const palette = document.querySelector('.util-ra-palette__toggle, [data-ra-palette-toggle]');
+    const handle = document.querySelector('[data-ra-sheet-handle]');
+    const undo = document.querySelector('[data-ra-undo-vertex]');
+    const unit = document.querySelector('[data-ra-unit-system="imperial"], .util-ra-unit-system__btn');
+    const sheet = document.querySelector('[data-ra-side], .util-ra-side');
+    const menuBtn = document.querySelector('[data-ra-project-menu-toggle]');
+    const bar = document.querySelector('.util-ra-project-bar');
+    const project = document.querySelector('[data-ra-project-select]');
+    const helps = Array.from(document.querySelectorAll('.util-ra-help-q')).map(function (el) {
+      const hit = selfHit(el);
+      return {
+        id: el.getAttribute('data-ra-help-pop'),
+        display: visibleStyle(el),
+        h: hit.box && hit.box.height,
+        self: hit.self,
+        parent: hit.parent,
+        box: hit.box,
+      };
+    });
+    const visibleHelps = helps.filter(function (h) { return h.display !== 'hidden' && h.display !== 'zero' && h.display !== 'missing'; });
+    const w = box(wrap);
+    const st = status && visibleStyle(status) !== 'hidden' && visibleStyle(status) !== 'missing' ? box(status) : null;
+    const stageBox = box(stage);
+    const handleHit = selfHit(handle);
+    const undoHit = selfHit(undo);
+    const unitHit = selfHit(unit);
+    const bottomX = w ? w.x : (window.innerWidth / 2);
+    const bottomY = Math.min(window.innerHeight - 12, w ? Math.max(w.top + 8, w.bottom - 8) : window.innerHeight - 12);
+    const lowY = window.innerHeight * 0.85;
+    const bottomHit = document.elementFromPoint(bottomX, bottomY);
+    const lowHit = document.elementFromPoint(window.innerWidth / 2, lowY);
+    function isStrip(hit) {
+      return !!(hit && (hit.id === 'ra-mutant-strip' || (hit.className && String(hit.className).indexOf('ra-mutant-strip') !== -1)));
+    }
+    const root = document.querySelector('.util-ra--fullpage');
+    const main = document.querySelector('.admin-main') || document.scrollingElement;
+    return {
+      wrapH: w && w.height,
+      wrapTop: w && w.top,
+      wrapBottom: w && w.bottom,
+      wrapBox: w,
+      innerH: window.innerHeight,
+      rootH: root ? root.scrollHeight : 0,
+      mainH: main ? main.scrollHeight : 0,
+      docH: document.scrollingElement ? document.scrollingElement.scrollHeight : 0,
+      help: visibleHelps[0] || null,
+      helps: helps,
+      visibleHelps: visibleHelps,
+      unitSelf: unitHit.self,
+      unitParent: unitHit.parent,
+      unitBox: unitHit.box,
+      undoSelf: undoHit.self,
+      undoParent: undoHit.parent,
+      undoOk: undoHit.ok,
+      undoBox: undoHit.box,
+      handleDisplay: handle ? visibleStyle(handle) : 'missing',
+      handleH: handleHit.box && handleHit.box.height,
+      handleSelf: handleHit.self,
+      handleParent: handleHit.parent,
+      handleBox: handleHit.box,
+      sheetTop: sheet ? box(sheet).top : null,
+      sheetH: sheet ? box(sheet).height : null,
+      statusBox: st,
+      statusCoversStage: !!(st && stageBox && overlaps(st, stageBox)),
+      paletteBox: box(palette),
+      barH: bar ? bar.getBoundingClientRect().height : 0,
+      menuBtn: menuBtn ? getComputedStyle(menuBtn).display : 'missing',
+      bottomHit: bottomHit && ((bottomHit.id || '') + ' ' + (bottomHit.className || bottomHit.tagName)),
+      bottomIsHandle: !!(handle && ((bottomHit && (bottomHit === handle || handle.contains(bottomHit))) || (lowHit && (lowHit === handle || handle.contains(lowHit))))),
+      bottomIsStrip: isStrip(bottomHit) || isStrip(lowHit),
+      projectValue: project ? project.value : '',
+      hasKitchen: document.body.innerText.indexOf('Kitchen') !== -1,
+    };
+  };
+}
+
+function assertDesktopLive(geo, vp) {
+  assert.ok(geo.projectValue, 'seeded Room Area project did not load at ' + vp.width + 'x' + vp.height);
+  assert.ok(geo.wrapH >= 300, 'live canvas is at least 300px at ' + vp.width + 'x' + vp.height + ': ' + JSON.stringify(geo));
+  const visible = Math.max(0, Math.min(geo.wrapBottom, geo.innerH) - Math.max(geo.wrapTop, 0));
+  const canScroll = geo.rootH > geo.innerH + 4 || geo.mainH > geo.innerH + 4 || geo.docH > geo.innerH + 4;
+  assert.ok(
+    visible >= 300 || (canScroll && geo.wrapTop < geo.innerH),
+    'canvas off-screen at ' + vp.width + 'x' + vp.height + ': ' + JSON.stringify({ visible, canScroll, wrapTop: geo.wrapTop, innerH: geo.innerH })
+  );
+  assert.ok(geo.undoOk, 'overlay over Undo at ' + vp.width + ': ' + JSON.stringify(geo));
+  assert.ok(geo.unitSelf && !geo.unitParent, 'overlay over the unit buttons at ' + vp.width + ': ' + JSON.stringify(geo));
+  assert.ok(geo.handleDisplay === 'hidden' || geo.handleDisplay === 'zero', 'desktop drag strip / handle must stay hidden at ' + vp.width + ': ' + JSON.stringify(geo));
+  assert.ok(!geo.bottomIsHandle && !geo.bottomIsStrip, 'invisible desktop drag strip at the canvas bottom: ' + JSON.stringify(geo));
+  const visibleHelps = geo.visibleHelps || [];
+  if (vp.width >= 1024) {
+    assert.ok(visibleHelps.length >= 2, 'desktop must keep more than one ⓘ visible: ' + JSON.stringify(visibleHelps));
+    visibleHelps.forEach(function (help) {
+      assert.ok(help.h > 8 && help.display !== 'hidden', 'ⓘ hidden after the first: ' + JSON.stringify(help));
+      assert.ok(help.self && !help.parent, 'ⓘ elementFromPoint must hit the control itself: ' + JSON.stringify(help));
+    });
+  }
+}
+
+function assertPhoneLive(geo, phone) {
+  assert.ok(geo.menuBtn !== 'none' && geo.menuBtn !== 'missing', 'phone project picker menu is visible at ' + phone.width + ': ' + JSON.stringify(geo));
+  assert.ok(geo.barH <= 72, 'phone project/client block is a single compact line at ' + phone.width + ': ' + geo.barH);
+  assert.ok(geo.wrapH >= 160 && geo.wrapTop >= 0 && geo.wrapBottom <= geo.innerH + 1, 'live ' + phone.width + ' canvas is fully visible: ' + JSON.stringify(geo));
+  assert.ok(geo.wrapBottom <= geo.sheetTop + 1, '320 canvas under the bottom bar at ' + phone.width + ': ' + JSON.stringify(geo));
+  assert.ok(!geo.statusCoversStage, 'phone status covering the canvas at ' + phone.width + ': ' + JSON.stringify(geo));
+  assert.ok(geo.handleDisplay !== 'hidden' && geo.handleDisplay !== 'missing' && geo.handleH > 8, 'phone sheet handle hidden at ' + phone.width + ': ' + JSON.stringify(geo));
+  assert.ok(geo.handleSelf && !geo.handleParent, 'phone sheet handle overlaid at ' + phone.width + ': ' + JSON.stringify(geo));
+  if (phone.width === 320 && geo.statusBox && geo.paletteBox && geo.paletteBox.height > 0) {
+    const covers = geo.paletteBox.top < geo.statusBox.bottom - 2 && geo.paletteBox.bottom > geo.statusBox.top + 2;
+    assert.ok(!covers, '320 palette toggle must not cover the status: ' + JSON.stringify(geo));
+  }
+}
+
+async function clearMutants(page) {
+  await page.evaluate(function () {
+    const style = document.getElementById('ra-mutant-style');
+    if (style) style.remove();
+    const dom = document.getElementById('ra-mutant-dom');
+    if (dom) dom.remove();
+  });
+}
+
+async function injectCss(page, css) {
+  await page.evaluate(function (text) {
+    let style = document.getElementById('ra-mutant-style');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'ra-mutant-style';
+      document.head.appendChild(style);
+    }
+    style.textContent = text;
+  }, css);
+}
+
+async function injectDom(page, html) {
+  await page.evaluate(function (markup) {
+    let wrap = document.getElementById('ra-mutant-dom');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'ra-mutant-dom';
+      document.body.appendChild(wrap);
+    }
+    wrap.innerHTML = markup;
+  }, html);
+}
+
+async function assertInjectedFaultDies(page, name, setup, check) {
+  await setup();
+  await new Promise(function (resolve) { setTimeout(resolve, 80); });
+  let killed = false;
+  try {
+    await check();
+  } catch (err) {
+    killed = true;
+  }
+  await clearMutants(page);
+  assert.ok(killed, 'injected fault survived: ' + name);
+}
+
 async function measureLiveEditor() {
   const base = process.env.RA_LIVE_URL || process.env.APP_URL || 'http://127.0.0.1:8000';
   const email = process.env.ADMIN_EMAIL || 'admin@zanini.ca';
@@ -1211,6 +1419,7 @@ async function measureLiveEditor() {
     await page.waitForSelector('.util-ra--fullpage', { timeout: 20000 });
     await page.waitForSelector('.util-ra-canvas-wrap', { timeout: 20000 });
     await page.waitForFunction(() => typeof window.Konva !== 'undefined', { timeout: 20000 }).catch(function () {});
+    const snap = liveSnapshotScript();
 
     for (const vp of [
       { width: 901, height: 768, mobile: false },
@@ -1218,62 +1427,65 @@ async function measureLiveEditor() {
       { width: 960, height: 600, mobile: false },
       { width: 1000, height: 768, mobile: false },
       { width: 1024, height: 768, mobile: false },
+      { width: 1025, height: 600, mobile: false },
+      { width: 1366, height: 657, mobile: false },
     ]) {
       await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
       await new Promise((resolve) => setTimeout(resolve, 280));
-      const geo = await page.evaluate(() => {
-        const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
-        const help = document.querySelector('.util-ra-canvas-toolbar .util-ra-help-q, .util-ra-help-q');
-        const unit = document.querySelector('[data-ra-unit-system="imperial"], .util-ra-unit-system__btn, [data-ra-unit-system]');
-        const w = wrap ? wrap.getBoundingClientRect() : null;
-        const h = help ? help.getBoundingClientRect() : null;
-        const u = unit ? unit.getBoundingClientRect() : null;
-        const hitHelp = h ? document.elementFromPoint(h.left + h.width / 2, h.top + h.height / 2) : null;
-        const hitUnit = u ? document.elementFromPoint(u.left + u.width / 2, u.top + u.height / 2) : null;
-        const parentHit = function (el, hit) {
-          return !!(hit && el && hit !== el && hit.contains(el) && !el.contains(hit));
-        };
-        return {
-          wrapH: w && w.height,
-          wrapTop: w && w.top,
-          wrapBottom: w && w.bottom,
-          helpH: h && h.height,
-          helpDisplay: help ? getComputedStyle(help).display : 'missing',
-          helpSelf: !!(help && hitHelp && (hitHelp === help || help.contains(hitHelp))),
-          helpParent: parentHit(help, hitHelp),
-          helpHit: hitHelp && (hitHelp.className || hitHelp.tagName),
-          unitSelf: !!(unit && hitUnit && (hitUnit === unit || unit.contains(hitUnit))),
-          unitParent: parentHit(unit, hitUnit),
-          unitHit: hitUnit && (hitUnit.className || hitUnit.tagName),
-          unitBox: u ? { x: u.left + u.width / 2, y: u.top + u.height / 2 } : null,
-          helpBox: h ? { x: h.left + h.width / 2, y: h.top + h.height / 2 } : null,
-          innerH: window.innerHeight,
-        };
-      });
-      const scroll = await page.evaluate(() => {
-        const root = document.querySelector('.util-ra--fullpage');
-        const main = document.querySelector('.admin-main') || document.scrollingElement;
-        return {
-          rootH: root ? root.scrollHeight : 0,
-          mainH: main ? main.scrollHeight : 0,
-          innerH: window.innerHeight,
-        };
-      });
-      const canScroll = scroll.rootH > scroll.innerH + 4 || scroll.mainH > scroll.innerH + 4;
-      const visible = Math.max(0, Math.min(geo.wrapBottom, geo.innerH) - Math.max(geo.wrapTop, 0));
-      assert.ok(geo.wrapH >= 300, 'live canvas is at least 300px at ' + vp.width + 'x' + vp.height + ': ' + JSON.stringify(geo));
-      assert.ok(
-        visible >= 300 || canScroll,
-        'mutant canvas off-screen at ' + vp.width + 'x' + vp.height + ': ' + JSON.stringify({ geo, scroll, canScroll, visible })
-      );
-      if (vp.width === 1024) {
-        assert.ok(geo.helpH > 8 && geo.helpDisplay !== 'none', 'mutant ⓘ hidden at 1024: ' + JSON.stringify(geo));
-        assert.ok(geo.helpSelf && !geo.helpParent, 'live ⓘ elementFromPoint must hit the control itself, not a parent: ' + JSON.stringify(geo));
-        if (geo.helpBox) await page.mouse.click(geo.helpBox.x, geo.helpBox.y);
-      }
-      assert.ok(geo.unitSelf && !geo.unitParent, 'mutant invisible overlay over the unit buttons at ' + vp.width + ': ' + JSON.stringify(geo));
+      const geo = await page.evaluate(snap);
+      assertDesktopLive(geo, vp);
       if (geo.unitBox) await page.mouse.click(geo.unitBox.x, geo.unitBox.y);
+      if (vp.width === 1024 && geo.visibleHelps[0] && geo.visibleHelps[0].box) {
+        await page.mouse.click(geo.visibleHelps[0].box.x, geo.visibleHelps[0].box.y);
+      }
     }
+
+    await page.setViewport({ width: 1024, height: 768, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const desktopVp = { width: 1024, height: 768 };
+    await assertInjectedFaultDies(page, 'canvas wrap capped at 200px', function () {
+      return injectCss(page, '.util-ra-canvas-wrap,[data-ra-canvas-wrap]{min-height:200px !important;height:200px !important;max-height:200px !important;}');
+    }, async function () {
+      assertDesktopLive(await page.evaluate(snap), desktopVp);
+    });
+    await assertInjectedFaultDies(page, 'overlay over Undo', async function () {
+      await page.evaluate(function () {
+        const undo = document.querySelector('[data-ra-undo-vertex]');
+        if (!undo) return;
+        const r = undo.getBoundingClientRect();
+        let wrap = document.getElementById('ra-mutant-dom');
+        if (!wrap) {
+          wrap = document.createElement('div');
+          wrap.id = 'ra-mutant-dom';
+          document.body.appendChild(wrap);
+        }
+        wrap.innerHTML = '<div id="ra-mutant-overlay" style="position:fixed;left:' + r.left + 'px;top:' + r.top + 'px;width:' + Math.max(r.width, 24) + 'px;height:' + Math.max(r.height, 24) + 'px;z-index:9999;"></div>';
+      });
+    }, async function () {
+      assertDesktopLive(await page.evaluate(snap), desktopVp);
+    });
+    await assertInjectedFaultDies(page, 'canvas pushed 1500px down', function () {
+      return injectCss(page, '.util-ra-canvas-wrap,[data-ra-canvas-wrap]{margin-top:1500px !important;}');
+    }, async function () {
+      assertDesktopLive(await page.evaluate(snap), desktopVp);
+    });
+    await assertInjectedFaultDies(page, 'desktop drag strip', async function () {
+      await injectDom(page, '<div id="ra-mutant-strip" class="ra-mutant-strip" style="position:fixed;left:0;right:0;bottom:0;height:40%;background:transparent;z-index:9999;"></div>');
+    }, async function () {
+      assertDesktopLive(await page.evaluate(snap), desktopVp);
+    });
+    await assertInjectedFaultDies(page, 'ⓘ hidden after the first', function () {
+      return page.evaluate(function () {
+        document.querySelectorAll('.util-ra-help-q').forEach(function (el, i) {
+          if (i > 0) el.style.display = 'none';
+        });
+      });
+    }, async function () {
+      assertDesktopLive(await page.evaluate(snap), desktopVp);
+    });
+    await page.evaluate(function () {
+      document.querySelectorAll('.util-ra-help-q').forEach(function (el) { el.style.display = ''; });
+    });
 
     for (const phone of [
       { width: 320, height: 568 },
@@ -1282,79 +1494,78 @@ async function measureLiveEditor() {
     ]) {
       await page.setViewport({ width: phone.width, height: phone.height, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
       await new Promise((resolve) => setTimeout(resolve, 350));
-      const phoneGeo = await page.evaluate(() => {
-        const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
-        const sheet = document.querySelector('[data-ra-side], .util-ra-side');
-        const status = document.querySelector('[data-ra-feedback], .util-ra-feedback');
-        const palette = document.querySelector('.util-ra-palette__toggle, [data-ra-palette-toggle]');
-        const menuBtn = document.querySelector('[data-ra-project-menu-toggle]');
-        const w = wrap ? wrap.getBoundingClientRect() : null;
-        const s = sheet ? sheet.getBoundingClientRect() : null;
-        const st = status && getComputedStyle(status).display !== 'none' ? status.getBoundingClientRect() : null;
-        const p = palette ? palette.getBoundingClientRect() : null;
-        const bar = document.querySelector('.util-ra-project-bar');
-        return {
-          wrapH: w && w.height,
-          wrapTop: w && w.top,
-          wrapBottom: w && w.bottom,
-          sheetTop: s && s.top,
-          sheetH: s && s.height,
-          statusBottom: st && st.bottom,
-          statusTop: st && st.top,
-          paletteTop: p && p.top,
-          paletteH: p && p.height,
-          barH: bar ? bar.getBoundingClientRect().height : 0,
-          menuBtn: menuBtn ? getComputedStyle(menuBtn).display : 'missing',
-          handleBox: (function () {
-            const handle = document.querySelector('[data-ra-sheet-handle]');
-            if (!handle) return null;
-            const r = handle.getBoundingClientRect();
-            return { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height, display: getComputedStyle(handle).display };
-          })(),
-          innerH: window.innerHeight,
-        };
+      const phoneGeo = await page.evaluate(snap);
+      assertPhoneLive(phoneGeo, phone);
+      assert.ok(phoneGeo.handleBox, 'live ' + phone.width + ' sheet handle has a box');
+      await page.evaluate(function () {
+        const root = document.querySelector('[data-room-area]');
+        if (root) {
+          root.classList.remove('is-sheet-expanded');
+          root.style.setProperty('--ra-sheet-h', 'auto');
+        }
+        const handle = document.querySelector('[data-ra-sheet-handle]');
+        if (handle) handle.setAttribute('aria-expanded', 'false');
       });
-      assert.ok(phoneGeo.menuBtn !== 'none' && phoneGeo.menuBtn !== 'missing', 'phone project picker menu is visible at ' + phone.width + ': ' + JSON.stringify(phoneGeo));
-      assert.ok(phoneGeo.barH <= 72, 'phone project/client block is a single compact line at ' + phone.width + ': ' + phoneGeo.barH);
-      assert.ok(phoneGeo.wrapH >= 160 && phoneGeo.wrapTop >= 0 && phoneGeo.wrapBottom <= phoneGeo.innerH + 1, 'live ' + phone.width + ' canvas is fully visible: ' + JSON.stringify(phoneGeo));
-      assert.ok(phoneGeo.wrapBottom <= phoneGeo.sheetTop + 1, 'mutant 320 canvas under the bottom bar at ' + phone.width + ': ' + JSON.stringify(phoneGeo));
-      if (phone.width === 320 && phoneGeo.statusBottom && phoneGeo.paletteH > 0) {
-        const covers = phoneGeo.paletteTop < phoneGeo.statusBottom - 2 && (phoneGeo.paletteTop + phoneGeo.paletteH) > phoneGeo.statusTop + 2;
-        assert.ok(!covers, '320 palette toggle must not cover the status: ' + JSON.stringify(phoneGeo));
-      }
-      if (phoneGeo.handleBox && phoneGeo.handleBox.display !== 'none') {
-        await page.mouse.click(phoneGeo.handleBox.x, phoneGeo.handleBox.y);
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        const opened = await page.evaluate(() => {
-          const root = document.querySelector('[data-room-area]');
-          if (root && root.classList.contains('is-sheet-expanded')) return true;
-          const handle = document.querySelector('[data-ra-sheet-handle]');
-          if (handle) handle.click();
-          return !!(root && root.classList.contains('is-sheet-expanded'));
-        });
-        assert.ok(opened, 'live ' + phone.width + ' sheet handle is clickable');
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        const afterSheet = await page.evaluate(() => {
-          const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
-          const sheet = document.querySelector('[data-ra-side], .util-ra-side');
-          const w = wrap ? wrap.getBoundingClientRect() : null;
-          const s = sheet ? sheet.getBoundingClientRect() : null;
-          return {
-            wrapH: w && w.height,
-            wrapBottom: w && w.bottom,
-            sheetH: s && s.height,
-            sheetTop: s && s.top,
-            innerH: window.innerHeight,
-            expanded: !!(document.querySelector('[data-room-area]') && document.querySelector('[data-room-area]').classList.contains('is-sheet-expanded')),
-          };
-        });
-        assert.ok(afterSheet.expanded, 'live ' + phone.width + ' sheet opens from the handle: ' + JSON.stringify(afterSheet));
-        assert.ok(afterSheet.wrapH >= 160, 'live ' + phone.width + ' keeps 160px canvas with sheet open: ' + JSON.stringify(afterSheet));
-        assert.ok(afterSheet.sheetH <= 280 + 1, 'mutant taller sheet at ' + phone.width + ': ' + JSON.stringify(afterSheet));
-        assert.ok(afterSheet.wrapBottom <= afterSheet.sheetTop + 1, 'open sheet must stay below the canvas at ' + phone.width + ': ' + JSON.stringify(afterSheet));
-        await page.mouse.click(phoneGeo.handleBox.x, phoneGeo.handleBox.y);
-      }
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      const handleBox = await page.evaluate(snap);
+      assert.ok(handleBox.handleBox, 'live ' + phone.width + ' sheet handle box after reset');
+      await page.touchscreen.tap(handleBox.handleBox.x, handleBox.handleBox.y);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const opened = await page.evaluate(function () {
+        const root = document.querySelector('[data-room-area]');
+        return !!(root && root.classList.contains('is-sheet-expanded'));
+      });
+      assert.ok(opened, 'live ' + phone.width + ' sheet handle is clickable via CDP');
+      const afterSheet = await page.evaluate(snap);
+      assert.ok(afterSheet.wrapH >= 160, 'live ' + phone.width + ' keeps 160px canvas with sheet open: ' + JSON.stringify(afterSheet));
+      assert.ok(afterSheet.sheetH <= 280 + 1, 'taller sheet at ' + phone.width + ': ' + JSON.stringify(afterSheet));
+      assert.ok(afterSheet.wrapBottom <= afterSheet.sheetTop + 1, 'open sheet must stay below the canvas at ' + phone.width + ': ' + JSON.stringify(afterSheet));
+      await page.mouse.click(phoneGeo.handleBox.x, phoneGeo.handleBox.y);
     }
+
+    await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const phoneVp = { width: 320, height: 568 };
+    await assertInjectedFaultDies(page, 'phone status covering the canvas', function () {
+      return injectCss(page, '[data-ra-feedback],.util-ra-feedback{display:block !important;position:absolute !important;top:40px !important;left:0;right:0;height:90px !important;background:#000 !important;opacity:1 !important;z-index:20;}');
+    }, async function () {
+      await page.evaluate(function () {
+        const status = document.querySelector('[data-ra-feedback], .util-ra-feedback');
+        if (status) {
+          status.hidden = false;
+          status.textContent = 'Saved';
+        }
+      });
+      assertPhoneLive(await page.evaluate(snap), phoneVp);
+    });
+    await page.evaluate(function () {
+      const status = document.querySelector('[data-ra-feedback], .util-ra-feedback');
+      if (status) {
+        status.hidden = true;
+        status.textContent = '';
+      }
+    });
+    await assertInjectedFaultDies(page, 'phone sheet handle hidden', function () {
+      return injectCss(page, '[data-ra-sheet-handle]{display:none !important;}');
+    }, async function () {
+      assertPhoneLive(await page.evaluate(snap), phoneVp);
+    });
+    await assertInjectedFaultDies(page, 'overlay over the phone handle', async function () {
+      await page.evaluate(function () {
+        const handle = document.querySelector('[data-ra-sheet-handle]');
+        if (!handle) return;
+        const r = handle.getBoundingClientRect();
+        let wrap = document.getElementById('ra-mutant-dom');
+        if (!wrap) {
+          wrap = document.createElement('div');
+          wrap.id = 'ra-mutant-dom';
+          document.body.appendChild(wrap);
+        }
+        wrap.innerHTML = '<div id="ra-mutant-overlay" style="position:fixed;left:' + r.left + 'px;top:' + r.top + 'px;width:' + Math.max(r.width, 24) + 'px;height:' + Math.max(r.height, 24) + 'px;z-index:9999;"></div>';
+      });
+    }, async function () {
+      assertPhoneLive(await page.evaluate(snap), phoneVp);
+    });
   } finally {
     await browser.close();
   }

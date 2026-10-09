@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Material;
 use App\Models\RoomAreaAssembly;
-use App\Models\RoomAreaAssemblyLine;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Models\StandardQuotation;
@@ -447,7 +446,6 @@ class RoomAreaAssemblyController extends Controller
                 $displayTitle,
                 $roomLabel
             );
-            $this->relabelKitLinesForMultipleProjects($quote);
             $this->consumeQuoteToken($token, $quote->id);
 
             $message = $this->quoteSuccessMessage($quote, (bool) $existing, $addedBits, $skippedBits);
@@ -823,15 +821,26 @@ class RoomAreaAssemblyController extends Controller
         if (mb_strlen($label) <= 60) {
             return $label;
         }
-        $budget = 60 - mb_strlen($line.' ()');
-        if ($budget >= 1 && $cover !== '') {
-            return $line.' ('.$this->truncateAssemblyLabel($cover, $budget).')';
-        }
-        $keep = max(1, 60 - ($cover !== '' ? mb_strlen(' (…)') : 0));
 
-        return $cover !== ''
-            ? $this->truncateAssemblyLabel($line, $keep).' (…)'
-            : $this->truncateAssemblyLabel($line, 60);
+        $prefix = '';
+        $rooms = $cover;
+        $dot = ' · ';
+        if ($cover !== '' && str_contains($cover, $dot)) {
+            [$project, $rooms] = explode($dot, $cover, 2);
+            $prefix = $project.$dot;
+        }
+
+        $head = $line.' ('.$prefix;
+        $roomBudget = 60 - mb_strlen($head.')');
+        if ($roomBudget >= 1) {
+            return $head.$this->truncateAssemblyLabel($rooms, $roomBudget).')';
+        }
+
+        $coverKeep = $prefix !== '' ? rtrim($prefix) : '';
+        $suffix = $coverKeep !== '' ? ' ('.$coverKeep.')' : ($cover !== '' ? ' (…)' : '');
+        $keep = max(1, 60 - mb_strlen($suffix));
+
+        return $this->truncateAssemblyLabel($line, $keep).$suffix;
     }
 
     private function truncateAssemblyLabel(string $text, int $max): string
@@ -972,68 +981,6 @@ class RoomAreaAssemblyController extends Controller
         }
 
         return 'Skipped '.$count.': '.$list.'. Existing lines were left alone.';
-    }
-
-    private function relabelKitLinesForMultipleProjects(StandardQuotation $quote): void
-    {
-        $works = $quote->resolvedWorks();
-        $projectIds = [];
-        $rowMeta = [];
-        foreach ($works as $workIdx => $work) {
-            foreach (($work['materials'] ?? []) as $matIdx => $row) {
-                if (! $this->isKitCoverageLine($row)) {
-                    continue;
-                }
-                $ids = [];
-                foreach (array_keys($this->parseCoveredLayouts($row)) as $layout) {
-                    if (preg_match('/^room:(\d+)$/', (string) $layout, $match)) {
-                        $ids[] = (int) $match[1];
-                    }
-                }
-                if ($ids === []) {
-                    continue;
-                }
-                $pid = (int) (RoomAreaRoom::query()->whereIn('id', $ids)->value('room_area_project_id') ?? 0);
-                if ($pid > 0) {
-                    $projectIds[$pid] = true;
-                    $rowMeta[] = [$workIdx, $matIdx, $ids, $pid, (int) ($row['assembly_line_id'] ?? 0)];
-                }
-            }
-        }
-        if (count($projectIds) < 2 || $rowMeta === []) {
-            return;
-        }
-
-        $projects = RoomAreaProject::query()->whereIn('id', array_keys($projectIds))->get()->keyBy('id');
-        $lineNames = RoomAreaAssemblyLine::query()
-            ->whereIn('id', array_values(array_unique(array_map(static fn ($meta) => $meta[4], $rowMeta))))
-            ->pluck('name', 'id');
-        $changed = false;
-        foreach ($rowMeta as [$workIdx, $matIdx, $ids, $pid, $lineId]) {
-            $project = $projects->get($pid);
-            $map = [];
-            foreach ($ids as $id) {
-                $map['room:'.$id] = true;
-            }
-            $lineName = trim((string) ($lineNames[$lineId] ?? $works[$workIdx]['materials'][$matIdx]['short_name'] ?? 'Line'));
-            if (str_contains($lineName, ' (')) {
-                $lineName = trim(explode(' (', $lineName, 2)[0]);
-            }
-            $cover = $this->coverLabelForLayouts($map, $project, '', true);
-            $short = $this->formatAssemblyShortName($lineName !== '' ? $lineName : 'Line', $cover);
-            if (($works[$workIdx]['materials'][$matIdx]['short_name'] ?? '') !== $short) {
-                $works[$workIdx]['materials'][$matIdx]['short_name'] = $short;
-                $changed = true;
-            }
-        }
-        if (! $changed) {
-            return;
-        }
-        $quote->works = $works;
-        if (isset($works[0]['materials'])) {
-            $quote->materials = $works[0]['materials'];
-        }
-        $quote->save();
     }
 
     /**

@@ -6304,6 +6304,7 @@ body:has(.util-ra--fullpage) {
     background: transparent;
     cursor: ns-resize;
     touch-action: none;
+    pointer-events: auto;
     flex-shrink: 0;
   }
 
@@ -6962,6 +6963,29 @@ body:has(.util-ra--fullpage) {
 }
 
 @media (min-width: 901px) and (max-height: 800px) {
+  html:has(.admin-app):has(.util-ra--fullpage),
+  body:has(.admin-app):has(.util-ra--fullpage) {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .admin-app:has(.util-ra--fullpage),
+  .admin-app:has(.util-ra--fullpage) .admin-main,
+  .admin-app:has(.util-ra--fullpage) .admin-content {
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .admin-app:has(.util-ra--fullpage) .util-ra--fullpage {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
   .util-ra-full-header {
     padding: 0.15rem 0.5rem;
   }
@@ -7784,6 +7808,7 @@ body:has(.util-ra-guide) {
     min-height: 44px;
     height: 44px;
     cursor: pointer;
+    pointer-events: auto;
   }
 }
 

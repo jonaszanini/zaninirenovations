@@ -878,12 +878,124 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertEquals(29.0, (float) $materials[0]['quantity']);
         $this->assertEquals(20.0, (float) $materials[1]['quantity']);
         $this->assertEqualsWithDelta(49.0, (float) $materials[0]['quantity'] + (float) $materials[1]['quantity'], 0.01);
-        $this->assertSame('Sheets (House A · Kitchen, Bathroom +2)', $materials[0]['short_name'] ?? null);
+        $this->assertSame('Sheets (Kitchen, Bathroom +2)', $materials[0]['short_name'] ?? null);
         $this->assertSame('Sheets (House B · Kitchen, Bathroom)', $materials[1]['short_name'] ?? null);
         $this->assertLessThanOrEqual(60, mb_strlen((string) ($materials[0]['short_name'] ?? '')));
         $this->assertLessThanOrEqual(60, mb_strlen((string) ($materials[1]['short_name'] ?? '')));
-        $this->assertStringContainsString('House A', (string) ($materials[0]['short_name'] ?? ''));
+        $this->assertStringNotContainsString('House A', (string) ($materials[0]['short_name'] ?? ''));
         $this->assertStringContainsString('House B', (string) ($materials[1]['short_name'] ?? ''));
+    }
+
+    public function test_hand_typed_name_and_suffix_survive_second_project_add(): void
+    {
+        $this->actingAsAdmin();
+        $projectA = RoomAreaProject::create([
+            'name' => 'House A',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $projectB = RoomAreaProject::create([
+            'name' => 'House B',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $assembly = RoomAreaAssembly::create([
+            'name' => 'Drywall wall',
+            'notes' => null,
+            'sort_order' => 0,
+        ]);
+        $assembly->lines()->create([
+            'name' => 'Sheets',
+            'formula' => 'area_sqft * 0.096',
+            'unit' => 'sheet',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+        $assembly->lines()->create([
+            'name' => 'Tape (500 sf)',
+            'formula' => '1',
+            'unit' => 'roll',
+            'whole_units' => true,
+            'sort_order' => 1,
+        ]);
+        foreach ([$this->makeRoom(null, 'Kitchen', $projectA, 144, 120), $this->makeRoom(null, 'Bathroom', $projectA, 120, 96)] as $room) {
+            $room->assemblies()->sync([$assembly->id]);
+        }
+        foreach ([$this->makeRoom(null, 'Kitchen', $projectB, 144, 120), $this->makeRoom(null, 'Bathroom', $projectB, 120, 96)] as $room) {
+            $room->assemblies()->sync([$assembly->id]);
+        }
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'project:'.$projectA->id,
+            'idempotency_token' => $this->quoteTokenForLayout('project:'.$projectA->id),
+            'assembly_ids' => [$assembly->id],
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Two houses',
+        ])->assertRedirect();
+
+        $quote = StandardQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $this->assertCount(2, $quote->flattenedMaterials());
+
+        $payload = $this->quoteUpdatePayload($quote);
+        $payload['works'][0]['materials'][0]['short_name'] = 'Drywall 1/2in Jonas custom';
+        $payload['works'][0]['materials'][0]['quantity'] = 22;
+        $payload['works'][0]['materials'][0]['unit_price'] = 15.50;
+        $payload['works'][] = [
+            'title' => 'Job 2',
+            'labour_use_fixed' => 1,
+            'labour_fixed_amount' => 0,
+            'materials' => [[
+                'short_name' => 'Job 2 extra',
+                'description' => 'Second job row',
+                'unit_price' => 1,
+                'quantity' => 1,
+                'apply_hst' => 1,
+                'entry_mode' => 'manual',
+            ]],
+        ];
+        $this->put(route('admin.quotations.standard.update', $quote), $payload)
+            ->assertRedirect(route('admin.quotations.standard.edit', $quote));
+
+        $quote->refresh();
+        $this->assertCount(2, $quote->resolvedWorks());
+        $this->assertSame('Drywall 1/2in Jonas custom', $quote->flattenedMaterials()[0]['short_name'] ?? null);
+        $this->assertStringContainsString('(500 sf)', (string) ($quote->flattenedMaterials()[1]['short_name'] ?? ''));
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'project:'.$projectB->id,
+            'idempotency_token' => $this->quoteTokenForLayout('project:'.$projectB->id),
+            'assembly_ids' => [$assembly->id],
+            'quotation_id' => $quote->id,
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Two houses',
+        ])->assertRedirect(route('admin.quotations.standard.edit', $quote));
+
+        $quote->refresh();
+        $flat = $quote->flattenedMaterials();
+        $column = is_array($quote->materials) ? $quote->materials : [];
+        $this->assertSame('Drywall 1/2in Jonas custom', $flat[0]['short_name'] ?? null);
+        $this->assertEquals(22.0, (float) ($flat[0]['quantity'] ?? 0));
+        $this->assertEquals(15.50, (float) ($flat[0]['unit_price'] ?? 0));
+        $this->assertStringContainsString('(500 sf)', (string) ($flat[1]['short_name'] ?? ''));
+        $this->assertTrue(collect($flat)->contains(fn ($row) => ($row['short_name'] ?? '') === 'Job 2 extra'));
+        $this->assertGreaterThanOrEqual(5, count($flat));
+        $this->assertCount(count($flat), $column);
+        $this->assertSame(
+            collect($flat)->pluck('short_name')->all(),
+            collect($column)->pluck('short_name')->all()
+        );
+        $this->assertTrue(collect($flat)->contains(fn ($row) => str_contains((string) ($row['short_name'] ?? ''), 'House B')));
+    }
+
+    public function test_long_label_keeps_house_prefix_and_truncates_rooms(): void
+    {
+        $controller = app(\App\Http\Controllers\Admin\RoomAreaAssemblyController::class);
+        $method = new \ReflectionMethod($controller, 'formatAssemblyShortName');
+        $method->setAccessible(true);
+        $line = 'Drywall sheets Drywall sheets Drywall sheets Drywall sheets';
+        $short = $method->invoke($controller, $line, 'House A · Kitchen, Bathroom');
+        $this->assertLessThanOrEqual(60, mb_strlen($short));
+        $this->assertStringContainsString('House A ·', $short);
+        $this->assertStringNotContainsString('(…)', $short);
     }
 
     public function test_hand_edited_line_qty_is_left_untouched_when_adding_rooms(): void

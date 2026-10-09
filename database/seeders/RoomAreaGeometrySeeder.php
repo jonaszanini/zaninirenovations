@@ -16,6 +16,10 @@ class RoomAreaGeometrySeeder extends Seeder
 
     public function run(): void
     {
+        if (app()->isProduction()) {
+            throw new \RuntimeException('RoomAreaGeometrySeeder cannot run in production.');
+        }
+
         User::query()->firstOrCreate(
             ['email' => self::ADMIN_EMAIL],
             [

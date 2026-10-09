@@ -424,6 +424,14 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertEquals(4.0, $bead['qty']);
     }
 
+    public function test_geometry_seeder_refuses_to_run_in_production(): void
+    {
+        $this->app['env'] = 'production';
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('cannot run in production');
+        (new \Database\Seeders\RoomAreaGeometrySeeder())->run();
+    }
+
     private function makeRoom(): RoomAreaRoom
     {
         $project = RoomAreaProject::create([

@@ -10828,10 +10828,15 @@
       e.stopPropagation();
       setOpen(!menu.classList.contains('is-open'));
     });
-    document.addEventListener('click', function (e) {
+    document.addEventListener('pointerdown', function (e) {
       if (!menu.classList.contains('is-open')) return;
       if (menu.contains(e.target) || btn.contains(e.target)) return;
       setOpen(false);
+    }, true);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && menu.classList.contains('is-open')) {
+        setOpen(false);
+      }
     });
     window.addEventListener('resize', function () {
       if (!isPhoneChrome()) setOpen(false);

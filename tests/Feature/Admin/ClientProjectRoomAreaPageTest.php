@@ -236,9 +236,14 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('data-ra-help-guide', $html);
         $this->assertStringContainsString('util-ra-full-header__help', $html);
         $this->assertStringContainsString('Guide', $html);
-        $this->assertStringContainsString('data-ra-help-pop="view"', $html);
         $this->assertStringContainsString('data-ra-help-pop="measure"', $html);
-        $this->assertStringContainsString('data-ra-help-pop="objects"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="type-walls"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="finish"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="kits"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="first-tip"', $html);
+        $this->assertStringNotContainsString('data-ra-help-pop="view"', $html);
+        $this->assertStringNotContainsString('data-ra-help-pop="objects"', $html);
+        $this->assertLessThanOrEqual(6, substr_count($html, 'class="util-ra-help-q"'));
         $this->assertStringContainsString('data-ra-first-tip-dismiss', $html);
         $this->assertStringContainsString('util-ra-first-tip__guide', $html);
         $this->assertStringContainsString('New here', $html);
