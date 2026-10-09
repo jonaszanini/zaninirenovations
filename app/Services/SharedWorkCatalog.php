@@ -867,37 +867,35 @@ class SharedWorkCatalog
      */
     public static function sellRate(string $key, ?float $fallback = null): float
     {
+        $work = self::work($key);
+        if ($work) {
+            $display = self::displayUnitPrice($work);
+            if ($display !== null && $display > 0) {
+                return $display;
+            }
+        }
         $flat = self::flatRate($key, null);
         if ($flat > 0) {
             return $flat;
-        }
-        $work = self::work($key);
-        if ($work) {
-            $effective = self::effectiveSellRate($work);
-            if ($effective !== null && $effective > 0) {
-                return $effective;
-            }
         }
 
         return $fallback ?? 0.0;
     }
 
     /**
-     * Effective sell $/unit at the shared crew owner rate (hours × owner + material).
+     * Shared display $/unit for the library editor hint and quote-type banners.
+     * Sell (flat_rate) wins when set; otherwise Cost × owner rate (+ material).
      */
-    public static function effectiveSellRate(SharedWork $work): ?float
+    public static function displayUnitPrice(SharedWork $work, ?float $ownerHourly = null): ?float
     {
-        if ($work->isPricedPerArea() || $work->labor_kind === SharedWork::KIND_FLAT) {
-            if ($work->flat_rate !== null && (float) $work->flat_rate > 0) {
-                return (float) $work->flat_rate;
-            }
+        if ($work->flat_rate !== null && (float) $work->flat_rate > 0) {
+            return round((float) $work->flat_rate, 2);
         }
 
-        $crew = SharedCrewRate::current();
-        $owner = (float) $crew->owner_hourly_rate;
+        $owner = $ownerHourly ?? self::ownerHourlyRate();
         $rate = (float) $work->rate;
-        if ($rate <= 0) {
-            return $work->flat_rate !== null ? (float) $work->flat_rate : null;
+        if ($rate <= 0 || $owner <= 0) {
+            return null;
         }
 
         $labor = $work->labor_kind === SharedWork::KIND_HOURS_EACH
@@ -915,6 +913,14 @@ class SharedWorkCatalog
         return round($labor + $material, 2);
     }
 
+    /**
+     * Effective sell $/unit — same helper as the editor hint and config banners.
+     */
+    public static function effectiveSellRate(SharedWork $work): ?float
+    {
+        return self::displayUnitPrice($work);
+    }
+
     public static function rateLine(string $key): string
     {
         $work = self::work($key);
@@ -924,20 +930,15 @@ class SharedWorkCatalog
         }
 
         $unit = $work->unit ?? $def['unit'];
-        $flat = $work && $work->flat_rate !== null
-            ? (float) $work->flat_rate
-            : (float) ($def['flat_rate'] ?? 0);
-        if ($flat <= 0 && $work && in_array($unit, ['lf', 'sf'], true)) {
-            $flat = self::unitDisplayRate($work);
-        }
-        if ($flat > 0) {
-            return '$'.number_format($flat, 2).' / '.$unit;
-        }
-
         if ($work) {
-            $effective = self::effectiveSellRate($work);
-            if ($effective !== null) {
-                return '$'.number_format($effective, 2).' / '.$unit.' effective';
+            $price = self::displayUnitPrice($work);
+            if ($price !== null && $price > 0) {
+                return '$'.number_format($price, 2).' / '.$unit;
+            }
+        } else {
+            $flat = (float) ($def['flat_rate'] ?? 0);
+            if ($flat > 0) {
+                return '$'.number_format($flat, 2).' / '.$unit;
             }
         }
 

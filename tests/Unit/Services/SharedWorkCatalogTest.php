@@ -79,6 +79,10 @@ class SharedWorkCatalogTest extends TestCase
         SharedWorkCatalog::forgetCache();
         $this->assertEqualsWithDelta(4.25, SharedWorkCatalog::flatRate('shoe_install', 3.50), 0.01);
         $this->assertSame('$4.25 / lf', SharedWorkCatalog::rateLine('shoe_install'));
+        $this->assertSame(
+            SharedWorkCatalog::displayUnitPrice($shoe),
+            SharedWorkCatalog::effectiveSellRate($shoe)
+        );
 
         $work->rate = $originalRate;
         $work->flat_rate = $originalFlat;

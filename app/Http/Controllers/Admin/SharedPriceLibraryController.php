@@ -124,7 +124,7 @@ class SharedPriceLibraryController extends Controller
                 $this->createNewWorks($data);
             });
         } catch (QueryException $e) {
-            if ($this->isUniqueConstraintFailure($e)) {
+            if ($this->isLabelUniqueFailure($e)) {
                 throw ValidationException::withMessages([
                     'new_works' => 'That name is already used in this group.',
                 ]);
@@ -146,17 +146,25 @@ class SharedPriceLibraryController extends Controller
     {
         $nameMax = 'The name may not be longer than '.SharedWork::LABEL_MAX.' characters.';
         $priceMax = 'Enter a price of 999,999.99 or less.';
+        $priceMin = 'Prices cannot be negative.';
 
         return [
             'works.*.label.max' => $nameMax,
             'new_works.*.*.label.max' => $nameMax,
             'owner_hourly_rate.max' => $priceMax,
             'helper_hourly_rate.max' => $priceMax,
+            'owner_hourly_rate.min' => $priceMin,
+            'helper_hourly_rate.min' => $priceMin,
             'works.*.rate.max' => $priceMax,
             'works.*.flat_rate.max' => $priceMax,
             'works.*.material_unit_price.max' => $priceMax,
+            'works.*.rate.min' => $priceMin,
+            'works.*.flat_rate.min' => $priceMin,
+            'works.*.material_unit_price.min' => $priceMin,
             'new_works.*.*.rate.max' => $priceMax,
             'new_works.*.*.flat_rate.max' => $priceMax,
+            'new_works.*.*.rate.min' => $priceMin,
+            'new_works.*.*.flat_rate.min' => $priceMin,
         ];
     }
 
@@ -371,8 +379,7 @@ class SharedPriceLibraryController extends Controller
                 }
                 $consumers = array_values(array_unique($consumers));
                 $maxSort++;
-                SharedWork::query()->create([
-                    'key' => SharedWork::allocateUniqueKey($label),
+                $this->createWorkWithUniqueKey([
                     'group_key' => $groupKey,
                     'label' => $label,
                     'unit' => $unit,
@@ -387,11 +394,57 @@ class SharedPriceLibraryController extends Controller
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $attrs
+     */
+    protected function createWorkWithUniqueKey(array $attrs): SharedWork
+    {
+        $label = (string) $attrs['label'];
+        $attempt = 0;
+        while ($attempt < 8) {
+            $attrs['key'] = SharedWork::allocateUniqueKey($label);
+            try {
+                return SharedWork::query()->create($attrs);
+            } catch (QueryException $e) {
+                if ($this->isLabelUniqueFailure($e) || ! $this->isKeyUniqueFailure($e)) {
+                    throw $e;
+                }
+                $attempt++;
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'new_works' => 'Could not allocate a unique item key. Try a different name.',
+        ]);
+    }
+
     protected function isUniqueConstraintFailure(QueryException $e): bool
     {
         $sqlState = (string) ($e->errorInfo[0] ?? '');
         $driverCode = (int) ($e->errorInfo[1] ?? 0);
 
         return $sqlState === '23000' || $driverCode === 1062;
+    }
+
+    protected function isLabelUniqueFailure(QueryException $e): bool
+    {
+        if (! $this->isUniqueConstraintFailure($e)) {
+            return false;
+        }
+        $haystack = strtolower($e->getMessage().' '.implode(' ', array_map('strval', $e->errorInfo ?? [])));
+
+        return str_contains($haystack, 'shared_works_group_label_unique')
+            || str_contains($haystack, 'label_normalized');
+    }
+
+    protected function isKeyUniqueFailure(QueryException $e): bool
+    {
+        if (! $this->isUniqueConstraintFailure($e)) {
+            return false;
+        }
+        $haystack = strtolower($e->getMessage().' '.implode(' ', array_map('strval', $e->errorInfo ?? [])));
+
+        return str_contains($haystack, 'shared_works_key_unique')
+            || str_contains($haystack, 'shared_works.key');
     }
 }

@@ -214,6 +214,8 @@ jobs:
           php artisan test tests/Feature/SharedPricesLayoutTest.php
           php artisan test tests/Feature/SharedPricesTest.php
           php artisan test tests/Feature/SharedPricesAddRenameTest.php
+          php artisan test tests/Unit/Models/SharedWorkLabelTest.php
+          php artisan test tests/Unit/Services/SharedWorkCatalogTest.php
 
       - name: Upload Shared prices geometry
         if: always()

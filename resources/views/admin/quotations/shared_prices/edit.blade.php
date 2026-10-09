@@ -370,6 +370,15 @@
   color: var(--admin-muted);
   margin-bottom: 2px;
 }
+.sp-th-sell .admin-info-tip-wrap,
+.sp-sell-phone-label .admin-info-tip-wrap,
+.sp-group__sell-tip .admin-info-tip-wrap,
+.sp-heading .admin-info-tip-wrap,
+.sp-work-extra .admin-info-tip-wrap,
+.sp-add > summary .admin-info-tip-wrap {
+  position: relative;
+  display: inline-flex;
+}
 .sp-th-sell .admin-info-tip,
 .sp-sell-phone-label .admin-info-tip,
 .sp-group__sell-tip .admin-info-tip,
@@ -957,7 +966,7 @@
                 <th class="sp-col-label">
                   <span class="sp-th-sell">
                     Work item
-                    <x-admin.info-tip text="Rename here — saved quotes keep using a hidden key, not this name. Names must be unique inside this group." label="work item name" />
+                    <x-admin.info-tip text="Rename here — saved quotes keep using a hidden key, not this name. Names must be unique inside this group. Custom items are reference-only." label="work item name" />
                   </span>
                 </th>
                 <th class="sp-col-rate">
@@ -985,7 +994,7 @@
                   $catalogId = (int) old('works.'.$work->id.'.catalog_material_id', $work->catalog_material_id ?? 0);
                   $selected = $catalogId > 0 ? ($catalogById->get($catalogId) ?? null) : null;
                   $isArea = $work->isPricedPerArea();
-                  $effective = $isArea ? null : \App\Services\SharedWorkCatalog::effectiveSellRate($work);
+                  $effective = $isArea ? null : \App\Services\SharedWorkCatalog::displayUnitPrice($work);
                   $consumers = is_array($work->consumers) ? $work->consumers : [];
                   $consumerLabels = [];
                   foreach ($consumers as $consumer) {
@@ -1019,11 +1028,9 @@
                              aria-label="Name for {{ $work->label }}">
                       <span class="sp-work-extra">
                         @if ($isCustom)
-                          <span class="sp-ref-badge">Reference</span>
-                          <x-admin.info-tip :text="'Reference only — quote calculators do not use this item. Lookup key: '.$work->key.'.'" label="reference item" />
+                          <span class="sp-ref-badge" title="Reference only — quote calculators do not use this item.">Reference</span>
                         @else
                           <small class="sp-work-meta">{{ $workMeta }}</small>
-                          <x-admin.info-tip :text="'Quotes look this item up as '.$work->key.'. Renaming does not change that.'" label="item key" />
                         @endif
                       </span>
                     </span>
@@ -1362,11 +1369,11 @@
         var kind = row.getAttribute('data-sp-kind') || '';
         var unit = row.getAttribute('data-sp-unit') || '';
         var labor = 0;
-        if (rate > 0 && owner > 0) {
-          labor = kind === 'hours_each' ? rate * owner : owner / rate;
-        } else if (sell > 0) {
+        if (sell > 0) {
           labor = sell;
           price = 0;
+        } else if (rate > 0 && owner > 0) {
+          labor = kind === 'hours_each' ? rate * owner : owner / rate;
         } else {
           out.hidden = true;
           out.textContent = '';
