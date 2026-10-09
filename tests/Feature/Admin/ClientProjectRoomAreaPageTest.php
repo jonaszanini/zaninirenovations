@@ -240,6 +240,15 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('data-ra-help-pop="measure"', $html);
         $this->assertStringContainsString('data-ra-help-pop="objects"', $html);
         $this->assertStringContainsString('data-ra-first-tip-dismiss', $html);
+        $this->assertStringContainsString('util-ra-first-tip__guide', $html);
+        $this->assertStringContainsString('New here', $html);
+        $toolsAt = strpos($html, 'util-ra-full-header__row--tools');
+        $tipAt = strpos($html, 'data-ra-first-tip');
+        $projectAt = strpos($html, 'util-ra-project-bar');
+        $this->assertNotFalse($toolsAt);
+        $this->assertNotFalse($tipAt);
+        $this->assertNotFalse($projectAt);
+        $this->assertTrue($toolsAt < $tipAt && $tipAt < $projectAt, 'first-tip sits in the View toolbar, not as a strip above Project');
         $guideUrl = route('admin.client-projects.utilities.room-area.guide', [
             'client_project' => $project,
             'room_area_room' => $room,
