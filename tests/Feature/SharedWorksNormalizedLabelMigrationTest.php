@@ -82,17 +82,28 @@ class SharedWorksNormalizedLabelMigrationTest extends IntegrationTestCase
         $this->assertNotSame($long, $longB->label);
 
         $this->assertTrue($this->indexExists('shared_works_group_label_unique'));
+        $this->assertTrue(Schema::hasTable('shared_works_label_suffix_backup'));
+
+        $suffixed = $cafe->label === 'Café door' ? $plain : $cafe;
+        $kept = $cafe->label === 'Café door' ? $cafe : $plain;
+        $migratedLabel = $suffixed->label;
+        $suffixed->label = 'Renamed after migration';
+        $suffixed->saveQuietly();
 
         $migration->down();
         $cafe->refresh();
         $plain->refresh();
         $longA->refresh();
         $longB->refresh();
-        $this->assertSame('Café door', $cafe->label);
-        $this->assertSame('Cafe door', $plain->label);
+        $suffixed->refresh();
+        $kept->refresh();
+        $this->assertSame('Renamed after migration', $suffixed->label);
+        $this->assertContains($kept->label, ['Café door', 'Cafe door']);
+        $this->assertNotSame($migratedLabel, $suffixed->label);
         $this->assertSame($long, $longA->label);
         $this->assertSame($long, $longB->label);
         $this->assertFalse($this->indexExists('shared_works_group_label_unique'));
+        $this->assertFalse(Schema::hasTable('shared_works_label_suffix_backup'));
 
         $migration->up();
         $this->assertTrue($this->indexExists('shared_works_group_label_unique'));

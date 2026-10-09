@@ -274,6 +274,7 @@ class SharedPriceLibraryController extends Controller
     protected function saveLibraryWithKeyRetry(array $data): void
     {
         $attempts = 0;
+        $maxAttempts = 5;
         while (true) {
             try {
                 DB::transaction(function () use ($data, $attempts) {
@@ -287,7 +288,7 @@ class SharedPriceLibraryController extends Controller
                         'new_works' => 'That name is already used in this group.',
                     ]);
                 }
-                if ($this->isKeyUniqueFailure($e) && $attempts < 7) {
+                if ($this->isKeyUniqueFailure($e) && ($attempts + 1) < $maxAttempts) {
                     $attempts++;
                     usleep(random_int(5000, 40000));
 

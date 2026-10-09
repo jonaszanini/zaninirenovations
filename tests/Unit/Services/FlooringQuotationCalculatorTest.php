@@ -152,9 +152,10 @@ class FlooringQuotationCalculatorTest extends TestCase
         \App\Services\SharedWorkCatalog::forgetCache();
 
         $this->assertEqualsWithDelta(4.75, \App\Services\SharedWorkCatalog::sellRate('baseboard', 6.35), 0.0001);
-        $this->assertNotEquals(
-            \App\Services\SharedWorkCatalog::displayUnitPrice($baseboard),
-            \App\Services\SharedWorkCatalog::sellRate('baseboard', 6.35)
+        $this->assertEqualsWithDelta(
+            \App\Services\SharedWorkCatalog::sellRate('baseboard', 6.35),
+            (float) \App\Services\SharedWorkCatalog::displayUnitPrice($baseboard),
+            0.0001
         );
 
         $type = FlooringType::query()->where('key', 'hardwood')->firstOrFail();

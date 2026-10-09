@@ -41,7 +41,7 @@ return new class extends Migration
             $candidate = SharedWork::uniquifyDisplayLabel($original, function (string $newNorm) use ($work) {
                 return $this->normalizedNameTaken((string) $work->group_key, $newNorm, (int) $work->id);
             });
-            $this->rememberOriginal((int) $work->id, $original);
+            $this->rememberOriginal((int) $work->id, $original, $candidate);
             $work->label = $candidate;
             $work->label_normalized = SharedWork::normalizeLabel($candidate);
             $work->saveQuietly();
@@ -68,9 +68,15 @@ return new class extends Migration
 
         if (Schema::hasTable(self::BACKUP_TABLE)) {
             foreach (DB::table(self::BACKUP_TABLE)->get() as $row) {
-                SharedWork::query()->where('id', $row->shared_work_id)->update([
-                    'label' => $row->original_label,
-                ]);
+                $work = SharedWork::query()->find($row->shared_work_id);
+                if (! $work) {
+                    continue;
+                }
+                $migrated = (string) ($row->migrated_label ?? '');
+                if ($migrated !== '' && (string) $work->label === $migrated) {
+                    $work->label = $row->original_label;
+                    $work->saveQuietly();
+                }
             }
             Schema::dropIfExists(self::BACKUP_TABLE);
         }
@@ -119,23 +125,38 @@ return new class extends Migration
 
     private function ensureBackupTable(): void
     {
-        if (Schema::hasTable(self::BACKUP_TABLE)) {
+        if (! Schema::hasTable(self::BACKUP_TABLE)) {
+            Schema::create(self::BACKUP_TABLE, function (Blueprint $table) {
+                $table->unsignedBigInteger('shared_work_id')->primary();
+                $table->string('original_label', 160);
+                $table->string('migrated_label', 160);
+            });
+
             return;
         }
-        Schema::create(self::BACKUP_TABLE, function (Blueprint $table) {
-            $table->unsignedBigInteger('shared_work_id')->primary();
-            $table->string('original_label', 160);
-        });
+        if (! Schema::hasColumn(self::BACKUP_TABLE, 'migrated_label')) {
+            Schema::table(self::BACKUP_TABLE, function (Blueprint $table) {
+                $table->string('migrated_label', 160)->nullable();
+            });
+        }
     }
 
-    private function rememberOriginal(int $id, string $original): void
+    private function rememberOriginal(int $id, string $original, string $migrated): void
     {
-        if (DB::table(self::BACKUP_TABLE)->where('shared_work_id', $id)->exists()) {
+        $existing = DB::table(self::BACKUP_TABLE)->where('shared_work_id', $id)->first();
+        if ($existing) {
+            if (($existing->migrated_label ?? '') === '') {
+                DB::table(self::BACKUP_TABLE)->where('shared_work_id', $id)->update([
+                    'migrated_label' => $migrated,
+                ]);
+            }
+
             return;
         }
         DB::table(self::BACKUP_TABLE)->insert([
             'shared_work_id' => $id,
             'original_label' => $original,
+            'migrated_label' => $migrated,
         ]);
     }
 

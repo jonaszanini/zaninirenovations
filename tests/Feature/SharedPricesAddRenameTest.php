@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Admin\SharedPriceLibraryController;
 use App\Models\FlooringQuotation;
 use App\Models\FlooringSettings;
 use App\Models\FlooringType;
@@ -884,6 +885,158 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
         $this->assertNull(SharedWork::query()->where('label', 'Txn first row')->first());
         $this->assertNull(SharedWork::query()->where('label', 'Txn second row')->first());
         $this->assertEqualsWithDelta($originalOwner, (float) SharedCrewRate::current()->owner_hourly_rate, 0.001);
+    }
+
+    public function test_display_matches_the_charge_for_every_built_in(): void
+    {
+        $this->actingAsAdmin();
+        $checked = 0;
+        foreach (array_keys(SharedWorkCatalog::definitions()) as $key) {
+            $work = SharedWork::query()->where('key', $key)->first();
+            if (! $work) {
+                continue;
+            }
+            $originalFlat = $work->flat_rate;
+            $work->flat_rate = null;
+            $work->save();
+            SharedWorkCatalog::forgetCache();
+            $work->refresh();
+
+            $charge = SharedWorkCatalog::sellRate($key);
+            $display = SharedWorkCatalog::displayUnitPrice($work);
+            $this->assertNotNull($display, $key.' display');
+            $this->assertEqualsWithDelta($charge, (float) $display, 0.0001, $key.' display must equal sellRate');
+            $this->assertSame(
+                '$'.number_format($charge, 2).' / '.$work->unit,
+                SharedWorkCatalog::rateLine($key),
+                $key.' rateLine must format sellRate'
+            );
+
+            $work->flat_rate = $originalFlat;
+            $work->save();
+            $checked++;
+        }
+        SharedWorkCatalog::forgetCache();
+        $this->assertGreaterThanOrEqual(23, $checked);
+    }
+
+    public function test_empty_area_sell_stays_empty_and_cost_changes_effective(): void
+    {
+        $this->actingAsAdmin();
+        $baseboard = SharedWork::query()->where('key', 'baseboard')->firstOrFail();
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $baseboard->id => [
+                    'id' => $baseboard->id,
+                    'label' => $baseboard->label,
+                    'rate' => number_format((float) $baseboard->rate, 4, '.', ''),
+                    'flat_rate' => '',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $baseboard->refresh();
+        SharedWorkCatalog::forgetCache();
+        $this->assertNull($baseboard->flat_rate);
+        $charge = SharedWorkCatalog::sellRate('baseboard');
+        $this->assertEqualsWithDelta(4.75, $charge, 0.0001);
+        $this->assertEqualsWithDelta($charge, (float) SharedWorkCatalog::displayUnitPrice($baseboard), 0.0001);
+        $this->assertSame('$4.75 / lf', SharedWorkCatalog::rateLine('baseboard'));
+
+        $html = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/id="sp-flat-'.$baseboard->id.'"[^>]*value=""/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="sp-flat-'.$baseboard->id.'"[^>]*value="4\./',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="sp-flat-'.$baseboard->id.'"[^>]*placeholder="4\.7500"/',
+            $html
+        );
+        $this->assertStringContainsString('CA$4.75', $html);
+        $this->assertStringNotContainsString('CA$21.05', $html);
+
+        $banner = $this->get(route('admin.quotations.flooring.price-configuration'))->assertOk()->getContent();
+        $this->assertStringContainsString('$4.75 / lf', $banner);
+        $this->assertStringNotContainsString('$21.05 / lf', $banner);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $baseboard->id => [
+                    'id' => $baseboard->id,
+                    'label' => $baseboard->label,
+                    'rate' => number_format((float) $baseboard->rate, 4, '.', ''),
+                    'flat_rate' => '',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+        $baseboard->refresh();
+        $this->assertNull($baseboard->flat_rate, 'Untouched save must not store a Sell value');
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'new_works' => [
+                'flooring' => [
+                    [
+                        'label' => 'Cost driven lf',
+                        'unit' => 'lf',
+                        'rate' => '10.0000',
+                        'flat_rate' => '',
+                        'consumers' => ['flooring'],
+                    ],
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $custom = SharedWork::query()->where('label', 'Cost driven lf')->firstOrFail();
+        SharedWorkCatalog::forgetCache();
+        $this->assertNull($custom->flat_rate);
+        $first = SharedWorkCatalog::displayUnitPrice($custom);
+        $this->assertEqualsWithDelta(SharedWorkCatalog::sellRate($custom->key), (float) $first, 0.0001);
+        $this->assertEqualsWithDelta(SharedWorkCatalog::ownerHourlyRate() / 10, (float) $first, 0.02);
+
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $custom->id => [
+                    'id' => $custom->id,
+                    'label' => $custom->label,
+                    'rate' => '5.0000',
+                    'flat_rate' => '',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $custom->refresh();
+        SharedWorkCatalog::forgetCache();
+        $this->assertNull($custom->flat_rate);
+        $this->assertEqualsWithDelta(5.0, (float) $custom->rate, 0.0001);
+        $second = SharedWorkCatalog::displayUnitPrice($custom);
+        $this->assertEqualsWithDelta(SharedWorkCatalog::ownerHourlyRate() / 5, (float) $second, 0.02);
+        $this->assertNotEquals($first, $second);
+    }
+
+    public function test_retry_jitter_embeds_attempt_and_random_hex(): void
+    {
+        $this->actingAsAdmin();
+        $key = SharedWork::allocateUniqueKey('Jitter probe', 3);
+        $this->assertMatchesRegularExpression('/^custom_.+_3_[0-9a-f]{4}/', $key);
+
+        $controller = app(SharedPriceLibraryController::class);
+        $method = new \ReflectionMethod($controller, 'createWorkWithUniqueKey');
+        $method->setAccessible(true);
+        $work = $method->invoke($controller, [
+            'group_key' => 'flooring',
+            'label' => 'Jitter created',
+            'unit' => 'each',
+            'labor_kind' => SharedWork::KIND_HOURS_EACH,
+            'rate' => 1,
+            'flat_rate' => 1,
+            'consumers' => ['flooring'],
+            'sort_order' => 9800,
+        ], 4);
+        $this->assertMatchesRegularExpression('/_4_[0-9a-f]{4}/', $work->key);
     }
 
     public function test_flooring_quote_uses_saved_sell_not_display_price(): void

@@ -884,35 +884,17 @@ class SharedWorkCatalog
     }
 
     /**
-     * Display-only $/unit for the library editor hint and quote-type banners.
-     * Sell wins when set; otherwise Cost × owner rate (+ material). Must not
-     * feed quotation math — use sellRate() / flatRate() for that.
+     * Format sellRate() for the library editor hint and quote-type banners.
+     * Same number the quote charges: saved Sell, else the built-in default.
      */
     public static function displayUnitPrice(SharedWork $work, ?float $ownerHourly = null): ?float
     {
-        if ($work->flat_rate !== null && (float) $work->flat_rate > 0) {
-            return round((float) $work->flat_rate, 2);
-        }
-
-        $owner = $ownerHourly ?? self::ownerHourlyRate();
-        $rate = (float) $work->rate;
-        if ($rate <= 0 || $owner <= 0) {
+        $price = self::sellRate($work->key);
+        if ($price <= 0) {
             return null;
         }
 
-        $labor = $work->labor_kind === SharedWork::KIND_HOURS_EACH
-            ? $rate * $owner
-            : ($owner / $rate);
-
-        $material = 0.0;
-        if ($work->material_unit_price !== null && (float) $work->material_unit_price > 0) {
-            $material = (float) $work->material_unit_price;
-            if ($work->material_unit === 'stick_8ft' || $work->material_unit === 'stick') {
-                $material = $material / 8;
-            }
-        }
-
-        return round($labor + $material, 2);
+        return $price;
     }
 
     /**
@@ -957,17 +939,10 @@ class SharedWorkCatalog
             return '';
         }
 
-        $unit = $work->unit ?? $def['unit'];
-        if ($work) {
-            $price = self::displayUnitPrice($work);
-            if ($price !== null && $price > 0) {
-                return '$'.number_format($price, 2).' / '.$unit;
-            }
-        } else {
-            $flat = (float) ($def['flat_rate'] ?? 0);
-            if ($flat > 0) {
-                return '$'.number_format($flat, 2).' / '.$unit;
-            }
+        $unit = $work ? ($work->unit ?? '') : (string) ($def['unit'] ?? '');
+        $price = self::sellRate($key);
+        if ($price > 0) {
+            return '$'.number_format($price, 2).' / '.$unit;
         }
 
         $rate = $work ? (float) $work->rate : (float) $def['rate'];

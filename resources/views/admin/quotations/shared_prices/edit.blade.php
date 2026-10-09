@@ -1002,20 +1002,19 @@
                   }
                   $firstConsumer = $consumerLabels[0] ?? null;
                   $extraConsumerCount = max(count($consumerLabels) - 1, 0);
-                  $areaPrice = old('works.'.$work->id.'.flat_rate');
-                  if ($areaPrice === null) {
-                      $derivedArea = \App\Services\SharedWorkCatalog::unitDisplayRate($work);
-                      $areaPrice = $derivedArea > 0
-                          ? number_format($derivedArea, 4, '.', '')
-                          : '';
-                  }
+                  $savedSell = old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '');
+                  $sellPlaceholder = $effective !== null
+                      ? number_format((float) $effective, 4, '.', '')
+                      : '0.0000';
                   $workMeta = $work->costUnitLabel();
                   $isCustom = $work->isCustom();
                 @endphp
                 <tr id="work-{{ $work->key }}" class="sp-row"
                     data-sp-kind="{{ $work->labor_kind }}"
                     data-sp-unit="{{ $work->unit }}"
-                    data-sp-area="{{ $isArea ? '1' : '0' }}">
+                    data-sp-area="{{ $isArea ? '1' : '0' }}"
+                    data-sp-default-sell="{{ $effective !== null ? number_format((float) $effective, 4, '.', '') : '' }}"
+                    data-sp-initial-rate="{{ $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '' }}">
                   <td class="sp-col-label" data-label="Work item">
                     <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
                     <span class="sp-work">
@@ -1048,8 +1047,8 @@
                       <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                              class="sp-input sp-input--sm cp-money-input" id="sp-flat-{{ $work->id }}"
                              name="works[{{ $work->id }}][flat_rate]"
-                             value="{{ $isArea ? $areaPrice : old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}"
-                             placeholder="0.0000">
+                             value="{{ $savedSell }}"
+                             placeholder="{{ $sellPlaceholder }}">
                     </div>
                     <small class="sp-effective" data-sp-effective @if ($effective === null) hidden @endif>{{ $effective !== null ? \App\Models\ClientProject::formatMoney($effective)."\u{200B}/".$work->unit : '' }}</small>
                   </td>
@@ -1360,9 +1359,16 @@
         var matUnit = unitInput ? String(unitInput.value || '') : '';
         var kind = row.getAttribute('data-sp-kind') || '';
         var unit = row.getAttribute('data-sp-unit') || '';
+        var defaultSell = parseSpMoney(row.getAttribute('data-sp-default-sell'));
+        var initialRate = parseSpMoney(row.getAttribute('data-sp-initial-rate'));
         var labor = 0;
         if (sell > 0) {
           labor = sell;
+          price = 0;
+        } else if (rate > 0 && owner > 0 && rate !== initialRate) {
+          labor = kind === 'hours_each' ? rate * owner : owner / rate;
+        } else if (defaultSell > 0) {
+          labor = defaultSell;
           price = 0;
         } else if (rate > 0 && owner > 0) {
           labor = kind === 'hours_each' ? rate * owner : owner / rate;
