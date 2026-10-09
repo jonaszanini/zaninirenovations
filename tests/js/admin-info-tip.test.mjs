@@ -521,6 +521,100 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   const row = document.createElement('span');
   row.className = 'admin-label-with-tip';
   const label = document.createElement('label');
+  label.setAttribute('for', 'named-input');
+  label.textContent = 'Owner rate (CAD$)';
+  const { wrap } = makeTip(document, 'admin-info-tip-named', 'Owner rate');
+  const input = document.createElement('input');
+  input.id = 'named-input';
+  input.setAttribute('aria-labelledby', 'named-hint');
+  const hint = document.createElement('span');
+  hint.id = 'named-hint';
+  hint.textContent = 'Existing hint';
+  row.appendChild(label);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  body.appendChild(input);
+  body.appendChild(hint);
+  AdminInfoTip.hoist(document);
+  const ids = String(input.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+  assert.ok(ids.includes('named-hint'), 'N6: keep an existing aria-labelledby id');
+  assert.equal(document.getElementById('named-hint').textContent, 'Existing hint');
+  assert.ok(ids.length >= 3, 'N6: split labels add ids in front of the existing hint');
+  const name = ids.map((id) => {
+    const el = document.getElementById(id);
+    return String(el ? el.textContent : '').replace(/\s+/g, ' ').trim();
+  }).filter(Boolean).join(' ');
+  assert.match(name, /Owner rate/);
+  assert.match(name, /Existing hint/);
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
+  row.className = 'admin-label-with-tip';
+  const label = document.createElement('label');
+  label.setAttribute('for', 'star-split');
+  label.textContent = 'Amount *';
+  const { wrap } = makeTip(document, 'admin-info-tip-star', 'Amount');
+  const input = document.createElement('input');
+  input.id = 'star-split';
+  row.appendChild(label);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  body.appendChild(input);
+  AdminInfoTip.hoist(document);
+  const tail = row.querySelector('.admin-label-with-tip__end label, .admin-label-with-tip__end .cp-required');
+  assert.ok(tail, 'D5: Amount * splits the asterisk into the glued end');
+  assert.equal(String(tail.textContent || '').trim(), '*');
+  assert.match(String(tail.className || ''), /cp-required/, 'D5: extracted * keeps cp-required');
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  function labelledRow(index) {
+    const row = document.createElement('div');
+    const lead = document.createElement('label');
+    lead.id = 'admin-tip-lab-aaa1';
+    lead.setAttribute('for', 'rate-0');
+    lead.textContent = 'Owner';
+    const tail = document.createElement('label');
+    tail.id = 'admin-tip-lab-aaa2';
+    tail.className = 'admin-label-with-tip__tail';
+    tail.setAttribute('for', 'rate-0');
+    tail.textContent = 'rate';
+    const input = document.createElement('input');
+    input.id = 'rate-0';
+    input.setAttribute('name', 'rates[' + index + '][rate]');
+    input.setAttribute('aria-labelledby', 'admin-tip-lab-aaa1 admin-tip-lab-aaa2 named-hint');
+    row.appendChild(lead);
+    row.appendChild(tail);
+    row.appendChild(input);
+    return { row, lead, tail, input };
+  }
+  const a = labelledRow(0);
+  const b = labelledRow(1);
+  body.appendChild(a.row);
+  body.appendChild(b.row);
+  assert.equal(a.lead.id, b.lead.id);
+  AdminInfoTip.refreshControlIds(b.row);
+  assert.notEqual(b.lead.id, a.lead.id, 'D3: refreshControlIds rewrites clashing admin-tip-lab-* ids');
+  assert.notEqual(b.tail.id, a.tail.id);
+  assert.match(b.lead.id, /^admin-tip-lab-/);
+  assert.match(b.tail.id, /^admin-tip-lab-/);
+  const by = String(b.input.getAttribute('aria-labelledby') || '');
+  assert.ok(by.includes(b.lead.id), 'D3: labelledby follows the rewritten lead id');
+  assert.ok(by.includes(b.tail.id), 'D3: labelledby follows the rewritten tail id');
+  assert.ok(by.split(/\s+/).includes('named-hint'), 'D3/N6: labelledby keeps tokens that are not remapped');
+  assert.ok(!by.includes('admin-tip-lab-aaa1'), 'D3: old tip label id is gone from the clone');
+  assert.equal(a.lead.id, 'admin-tip-lab-aaa1');
+  assert.equal(a.input.getAttribute('aria-labelledby'), 'admin-tip-lab-aaa1 admin-tip-lab-aaa2 named-hint');
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
+  row.className = 'admin-label-with-tip';
+  const label = document.createElement('label');
   label.setAttribute('for', 'br-lights');
   const span = document.createElement('span');
   span.id = 'br-lights-label';

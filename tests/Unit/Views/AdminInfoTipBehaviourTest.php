@@ -210,6 +210,9 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('function aboutLabel', $js);
         $this->assertStringContainsString('function refreshControlIds', $js);
         $this->assertStringContainsString('refreshControlIds: refreshControlIds', $js);
+        $this->assertStringContainsString('function uniquifyTipLabelIds', $js);
+        $this->assertStringContainsString('uniquifyTipLabelIds(scope)', $js);
+        $this->assertStringContainsString('id^="admin-tip-lab-"', $js);
         $this->assertStringContainsString('function idFromControlName', $js);
         $this->assertStringContainsString("idFromControlName(input.getAttribute && input.getAttribute('name'))", $js);
         $this->assertStringContainsString("btn.setAttribute('aria-label', aboutLabel(aria))", $js);
@@ -306,6 +309,18 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertStringContainsString('admin-label-with-tip__tail', $css);
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip__end\s*>\s*\.admin-info-tip-wrap[\s\S]{0,80}display:\s*inline-flex/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,160}z-index:\s*1/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip__end\s*>\s*\.cp-required[\s\S]{0,160}color:\s*var\(--admin-danger\)/',
+            $css
+        );
         $this->assertDoesNotMatchRegularExpression(
             '/\.admin-form-group\s*>\s*label:has\(\.admin-info-tip\)[\s\S]{0,400}align-items:\s*center/',
             $css

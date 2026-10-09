@@ -25,15 +25,12 @@ const darkCss = readFileSync(darkCssPath, 'utf8');
 assert.match(adminCss, /\.admin-info-tip[\s\S]{0,80}pointer-events:\s*auto/);
 assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label:not\(\.admin-checkbox\)/);
 assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label\.admin-checkbox[\s\S]{0,80}display:\s*inline-flex/);
-assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,220}text-indent:\s*-34px/);
 assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,220}display:\s*block/);
-assert.match(adminCss, /\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}text-transform:\s*inherit/);
-assert.match(adminCss, /\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}font-weight:\s*inherit/);
-assert.match(adminCss, /\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}color:\s*inherit/);
 assert.match(adminCss, /\.admin-checkbox-row/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,220}display:\s*inline/);
 assert.match(adminCss, /admin-label-with-tip__tail/);
+assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*\.admin-info-tip-wrap[\s\S]{0,80}display:\s*inline-flex/);
 assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S]{0,160}pointer-events:\s*auto/);
 assert.match(cpCss, /\.tm-chip-row\s*>\s*\.admin-checkbox-row/);
 assert.match(source, /function glueLastTextNode/);
@@ -41,7 +38,9 @@ assert.match(source, /function wrapHeadingCopy/);
 assert.match(source, /function wrapElementAndTip/);
 assert.match(source, /function makeWordEl/);
 assert.match(source, /function linkSplitLabels/);
+assert.match(source, /function uniquifyTipLabelIds/);
 assert.match(source, /admin-label-with-tip__tail/);
+assert.match(source, /admin-tip-lab-/);
 assert.doesNotMatch(source, /function moveTrailingSkipped/);
 assert.doesNotMatch(source, /admin-heading-tip/);
 
@@ -352,6 +351,37 @@ function fixtureHtml() {
       </span>
       <input class="admin-input" id="br-outlets" value="0">
     </div>
+    <div class="admin-form-group" id="waste-group">
+      <span class="admin-label-with-tip" id="waste-row">
+        <label for="waste-pct">Waste %</label>
+        <span class="admin-info-tip-wrap">
+          <button type="button" class="admin-info-tip" aria-label="About Waste %" aria-expanded="false" aria-controls="t-waste">i</button>
+          <span id="t-waste" class="admin-info-tip__bubble" role="tooltip">Sheet waste.</span>
+        </span>
+      </span>
+      <input class="admin-input" id="waste-pct" value="10">
+    </div>
+    <div class="admin-form-group" id="star-split-group">
+      <span class="admin-label-with-tip" id="star-split-row">
+        <label for="star-split">Amount *</label>
+        <span class="admin-info-tip-wrap">
+          <button type="button" class="admin-info-tip" aria-label="About Amount" aria-expanded="false" aria-controls="t-star">i</button>
+          <span id="t-star" class="admin-info-tip__bubble" role="tooltip">Required amount.</span>
+        </span>
+      </span>
+      <input class="admin-input" id="star-split" value="">
+    </div>
+    <div class="admin-form-group" id="named-group">
+      <span class="admin-label-with-tip" id="named-row">
+        <label for="named-input">Owner rate (CAD$)</label>
+        <span class="admin-info-tip-wrap">
+          <button type="button" class="admin-info-tip" aria-label="About Owner rate" aria-expanded="false" aria-controls="t-named">i</button>
+          <span id="t-named" class="admin-info-tip__bubble" role="tooltip">Hourly.</span>
+        </span>
+      </span>
+      <input class="admin-input" id="named-input" aria-labelledby="named-hint" value="">
+      <span id="named-hint">Existing hint</span>
+    </div>
     <span class="admin-label-with-tip" id="improve-row">
       <span class="admin-form-group-label">Improve description</span>
       <span class="admin-info-tip-wrap">
@@ -647,17 +677,72 @@ async function puppeteerClick() {
         uniqueBubbles: new Set(bubbles).size,
       };
     });
+    await page.evaluate(() => {
+      const piece = document.querySelector('#mw-piece-list [data-mw-piece]');
+      const lab = piece && piece.querySelector('label');
+      const input = piece && piece.querySelector('input, select');
+      if (lab) lab.id = 'admin-tip-lab-shared';
+      if (input) {
+        const keep = String(input.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+        if (keep.indexOf('admin-tip-lab-shared') === -1) keep.unshift('admin-tip-lab-shared');
+        if (keep.indexOf('keep-hint') === -1) keep.push('keep-hint');
+        input.setAttribute('aria-labelledby', keep.join(' '));
+      }
+    });
     await page.click('#mw-piece-list [data-mw-piece] [data-mw-duplicate-piece]');
     const millworkDup = await page.evaluate(() => {
       const list = document.getElementById('mw-piece-list');
       const afterDup = Array.from(list.querySelectorAll('.admin-info-tip__bubble[id]')).map((el) => el.id);
       const dupBoxes = Array.from(list.querySelectorAll('input[name$="[edge_banding]"][type="checkbox"]'));
+      const pieces = Array.from(list.querySelectorAll('[data-mw-piece]'));
+      const orig = pieces[0];
+      const clone = pieces[1];
+      const origLab = orig && orig.querySelector('#admin-tip-lab-shared, [id^="admin-tip-lab-"]');
+      const cloneLab = clone && Array.from(clone.querySelectorAll('[id^="admin-tip-lab-"]')).find((el) => el.id);
+      const origInput = orig && orig.querySelector('[aria-labelledby]');
+      const cloneInput = clone && clone.querySelector('[aria-labelledby]');
+      const tipLabs = Array.from(document.querySelectorAll('[id^="admin-tip-lab-"]')).map((el) => el.id);
+      const missingBy = [];
+      const foreignBy = [];
+      document.querySelectorAll('[aria-labelledby]').forEach((el) => {
+        String(el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean).forEach((id) => {
+          const target = document.getElementById(id);
+          if (!target && id !== 'keep-hint') missingBy.push(id);
+          const piece = el.closest && el.closest('[data-mw-piece]');
+          if (piece && target && id.indexOf('admin-tip-lab-') === 0 && !piece.contains(target)) {
+            foreignBy.push(id);
+          }
+        });
+      });
+      const namedRow = document.getElementById('named-row');
+      const namedInput = document.getElementById('named-input');
+      const holder = document.createElement('div');
+      holder.id = 'named-dup-holder';
+      const rowClone = namedRow.cloneNode(true);
+      const inputClone = namedInput.cloneNode(true);
+      holder.appendChild(rowClone);
+      holder.appendChild(inputClone);
+      document.body.appendChild(holder);
+      const origNamedIds = Array.from(namedRow.querySelectorAll('[id^="admin-tip-lab-"]')).map((el) => el.id);
+      window.AdminInfoTip.refreshControlIds(holder);
+      const cloneNamedIds = Array.from(rowClone.querySelectorAll('[id^="admin-tip-lab-"]')).map((el) => el.id);
+      const cloneNamedBy = String(inputClone.getAttribute('aria-labelledby') || '');
       return {
         dupRefreshed: window.__tipRefreshCalls[window.__tipRefreshCalls.length - 1] || 0,
         afterDupUnique: new Set(afterDup).size,
         afterDupCount: afterDup.length,
         dupBoxUnique: new Set(dupBoxes.map((el) => el.id)).size,
         dupBoxCount: dupBoxes.length,
+        origSharedKept: !!(orig && orig.querySelector('#admin-tip-lab-shared')),
+        cloneLabId: cloneLab ? cloneLab.id : '',
+        cloneBy: cloneInput ? cloneInput.getAttribute('aria-labelledby') : '',
+        origBy: origInput ? origInput.getAttribute('aria-labelledby') : '',
+        tipLabUnique: new Set(tipLabs).size,
+        tipLabCount: tipLabs.length,
+        missingBy,
+        foreignBy,
+        namedCloneRemapped: origNamedIds.length > 0 && cloneNamedIds.every((id) => origNamedIds.indexOf(id) === -1),
+        namedCloneKeepsHint: cloneNamedBy.split(/\s+/).includes('named-hint'),
       };
     });
     Object.assign(millwork, millworkDup);
@@ -674,6 +759,18 @@ async function puppeteerClick() {
     assert.ok(millwork.bubbles.length >= 3, 'real template has tip bubbles to uniquify');
     assert.equal(millwork.afterDupUnique, millwork.afterDupCount, 'duplicate cloneNode path uniquifies bubbles');
     assert.equal(millwork.dupBoxUnique, millwork.dupBoxCount, 'duplicate cloneNode path uniquifies checkbox ids');
+    assert.ok(millwork.origSharedKept, 'D3: original piece keeps admin-tip-lab-shared');
+    assert.ok(millwork.cloneLabId, 'D3: duplicated piece still has an admin-tip-lab-* id');
+    assert.notEqual(millwork.cloneLabId, 'admin-tip-lab-shared', 'D3: Duplicate rewrites clashing admin-tip-lab-* ids');
+    assert.ok(String(millwork.cloneBy || '').includes(millwork.cloneLabId), 'D3: clone aria-labelledby points at the rewritten id');
+    assert.ok(String(millwork.cloneBy || '').includes('keep-hint'), 'D3: clone keeps non-tip labelledby tokens');
+    assert.ok(!String(millwork.cloneBy || '').includes('admin-tip-lab-shared'), 'D3: clone labelledby drops the old id');
+    assert.ok(String(millwork.origBy || '').includes('admin-tip-lab-shared'), 'D3: original labelledby is unchanged');
+    assert.equal(millwork.tipLabUnique, millwork.tipLabCount, 'D3: every admin-tip-lab-* id is unique after Duplicate');
+    assert.deepEqual(millwork.missingBy, [], 'D3: aria-labelledby targets must exist: ' + millwork.missingBy.join(','));
+    assert.deepEqual(millwork.foreignBy, [], 'D3: piece labelledby must stay in-piece: ' + millwork.foreignBy.join(','));
+    assert.ok(millwork.namedCloneRemapped, 'D3: refreshControlIds remaps cloned named-row tip label ids');
+    assert.ok(millwork.namedCloneKeepsHint, 'N6/D3: cloned labelledby still includes named-hint');
 
     async function tailMetrics(theme) {
       return page.evaluate((mode) => {
@@ -688,10 +785,12 @@ async function puppeteerClick() {
             weight: cs.fontWeight,
             color: cs.color,
             size: cs.fontSize,
+            spacing: cs.letterSpacing,
             textTransform: ts.textTransform,
             textWeight: ts.fontWeight,
             textColor: ts.color,
             textSize: ts.fontSize,
+            textSpacing: ts.letterSpacing,
           };
         }
         return { review: snap('#review-check'), hst: snap('#hst-check') };
@@ -700,13 +799,133 @@ async function puppeteerClick() {
     for (const theme of ['light', 'dark']) {
       const tailCss = await tailMetrics(theme);
       for (const [name, pair] of Object.entries(tailCss)) {
-        assert.equal(pair.transform, pair.textTransform, `D2 ${theme} ${name}: text-transform`);
-        assert.equal(pair.weight, pair.textWeight, `D2 ${theme} ${name}: font-weight`);
-        assert.equal(pair.color, pair.textColor, `D2 ${theme} ${name}: color`);
-        assert.equal(pair.size, pair.textSize, `D2 ${theme} ${name}: font-size`);
+        assert.equal(pair.transform, pair.textTransform, `C1 ${theme} ${name}: text-transform inherit`);
+        assert.equal(pair.weight, pair.textWeight, `C1 ${theme} ${name}: font-weight inherit`);
+        assert.equal(pair.color, pair.textColor, `C1 ${theme} ${name}: color inherit`);
+        assert.equal(pair.size, pair.textSize, `C1 ${theme} ${name}: font-size inherit`);
+        assert.equal(pair.spacing, pair.textSpacing, `C1 ${theme} ${name}: letter-spacing inherit`);
       }
     }
     await page.evaluate(() => document.documentElement.classList.remove('admin-dark'));
+
+    const runtimeNotes = await page.evaluate(() => {
+      function tokenColor(name) {
+        const probe = document.createElement('span');
+        probe.style.color = 'var(' + name + ')';
+        document.body.appendChild(probe);
+        const color = getComputedStyle(probe).color;
+        probe.remove();
+        return color;
+      }
+      function glyphBox(wrap) {
+        const btn = wrap && wrap.querySelector && wrap.querySelector('.admin-info-tip');
+        if (!btn) return null;
+        const icon = btn.querySelector('i, .fa');
+        if (icon) {
+          const r = icon.getBoundingClientRect();
+          if (r.width >= 8 && r.height >= 8) return r;
+        }
+        const node = Array.from(btn.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
+        if (node) {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          const r = range.getBoundingClientRect();
+          if (r.width >= 1) return r;
+        }
+        return null;
+      }
+      function endGap(end) {
+        const wrap = end.querySelector('.admin-info-tip-wrap');
+        const word = Array.from(end.children).find((c) => c !== wrap);
+        const wr = word && word.getBoundingClientRect();
+        const ir = glyphBox(wrap);
+        if (!wr || !ir || wr.width < 1 || ir.width < 1) return null;
+        return {
+          gap: ir.left - wr.right,
+          vOff: Math.abs(((wr.top + wr.bottom) / 2) - ((ir.top + ir.bottom) / 2)),
+          aria: String((wrap.querySelector('.admin-info-tip') || {}).getAttribute && wrap.querySelector('.admin-info-tip').getAttribute('aria-label') || '').slice(0, 60),
+        };
+      }
+      const review = document.getElementById('review-check');
+      const reviewCs = getComputedStyle(review);
+      const lead = document.querySelector('#review-check > label.admin-checkbox');
+      const named = document.getElementById('named-input');
+      const namedBy = String(named.getAttribute('aria-labelledby') || '');
+      const star = document.querySelector('#star-split-row .admin-label-with-tip__end > label, #star-split-row .admin-label-with-tip__end > .cp-required');
+      const starCs = star ? getComputedStyle(star) : null;
+      document.documentElement.classList.remove('admin-dark');
+      const lightRow = getComputedStyle(review).color;
+      const lightTail = getComputedStyle(review.querySelector('.admin-checkbox__tail')).color;
+      document.documentElement.classList.add('admin-dark');
+      const darkRow = getComputedStyle(review).color;
+      const darkTail = getComputedStyle(review.querySelector('.admin-checkbox__tail')).color;
+      const darkText = getComputedStyle(review.querySelector('.admin-checkbox__text')).color;
+      const darkAdmin = tokenColor('--admin-text');
+      const darkMuted = tokenColor('--admin-muted');
+      document.documentElement.classList.remove('admin-dark');
+      const gaps = Array.from(document.querySelectorAll('.admin-label-with-tip__end')).map(endGap).filter(Boolean);
+      return {
+        indent: reviewCs.textIndent,
+        pad: reviewCs.paddingLeft,
+        leadText: String(lead.textContent || '').replace(/\s+/g, ' ').trim(),
+        leadHasEnd: !!(lead.querySelector && lead.querySelector('.admin-label-with-tip__end')),
+        leadHasTail: !!(lead.querySelector && lead.querySelector('.admin-label-with-tip__tail')),
+        namedBy,
+        namedHasHint: namedBy.split(/\s+/).includes('named-hint'),
+        namedHintLive: !!document.getElementById('named-hint'),
+        lightRow,
+        darkRow,
+        darkTail,
+        darkText,
+        darkAdmin,
+        darkMuted,
+        starText: star ? String(star.textContent || '').trim() : '',
+        starClass: star ? String(star.className || '') : '',
+        starColor: starCs ? starCs.color : '',
+        danger: tokenColor('--admin-danger'),
+        gaps,
+      };
+    });
+    assert.equal(runtimeNotes.indent, '-34px', 'C3: review-check hanging indent must be -34px at runtime');
+    assert.equal(runtimeNotes.pad, '34px', 'C3: review-check padding-left must be 34px at runtime');
+    assert.match(runtimeNotes.leadText, /Client provides all materials for the entire/, 'G6: checkbox lead text must stay unsplit');
+    assert.equal(runtimeNotes.leadHasEnd, false, 'G6: hoist must not wrap the checkbox lead');
+    assert.equal(runtimeNotes.leadHasTail, false, 'G6: checkbox skip must not extract a tail from the lead');
+    assert.equal(runtimeNotes.namedHasHint, true, 'N6: existing aria-labelledby named-hint must be kept');
+    assert.equal(runtimeNotes.namedHintLive, true);
+    assert.ok(runtimeNotes.namedBy.split(/\s+/).length >= 3, 'N6: split labels add ids without dropping named-hint');
+    assert.notEqual(runtimeNotes.darkRow, runtimeNotes.lightRow, 'D1/D2: dark checkbox row color must change vs light');
+    assert.equal(runtimeNotes.darkRow, runtimeNotes.darkAdmin, 'D1/D2: dark row uses --admin-text');
+    assert.equal(runtimeNotes.darkTail, runtimeNotes.darkAdmin, 'D1/D2: dark tail inherits --admin-text, not muted');
+    assert.equal(runtimeNotes.darkText, runtimeNotes.darkAdmin, 'D1/D2: dark checkbox text inherits --admin-text');
+    assert.notEqual(runtimeNotes.darkTail, runtimeNotes.darkMuted, 'D1/D2: dark tail must not fall through to muted');
+    assert.ok(runtimeNotes.gaps.length >= 4, 'D1: need measurable word/icon pairs');
+    runtimeNotes.gaps.forEach((hit) => {
+      assert.ok(hit.gap > 0, `D1: ${hit.aria} gap ${hit.gap}px must stay after the word`);
+      assert.ok(hit.gap <= 8, `D1: ${hit.aria} gap ${hit.gap}px must be ≤8px (inline-flex wrap)`);
+      assert.ok(hit.vOff <= 6, `D1: ${hit.aria} icon v-offset ${hit.vOff}px must be vertically centred`);
+    });
+    assert.equal(runtimeNotes.starText, '*', 'D5: split last word is *');
+    assert.match(runtimeNotes.starClass, /cp-required/, 'D5: split * keeps cp-required');
+    assert.equal(runtimeNotes.starColor, runtimeNotes.danger, 'D5: split * stays danger red');
+
+    await page.evaluate(() => window.AdminInfoTip && window.AdminInfoTip.closeAll && window.AdminInfoTip.closeAll());
+    await page.click('#waste-row .admin-label-with-tip__end > label');
+    const wasteClick = await page.evaluate(() => ({
+      id: document.activeElement && document.activeElement.id,
+      open: !!(document.querySelector('#waste-row .admin-info-tip-wrap.is-open')),
+    }));
+    assert.equal(wasteClick.id, 'waste-pct', 'D4: clicking % focuses the input');
+    assert.equal(wasteClick.open, false, 'D4: clicking % must not open the tip');
+
+    await page.evaluate(() => window.AdminInfoTip && window.AdminInfoTip.closeAll && window.AdminInfoTip.closeAll());
+    await page.click('#star-split-row .admin-label-with-tip__end > label');
+    const starClick = await page.evaluate(() => ({
+      id: document.activeElement && document.activeElement.id,
+      open: !!(document.querySelector('#star-split-row .admin-info-tip-wrap.is-open')),
+    }));
+    assert.equal(starClick.id, 'star-split', 'D4: clicking * focuses the input');
+    assert.equal(starClick.open, false, 'D4: clicking * must not open the tip');
 
     const visual = await page.evaluate(() => {
       function order(el) {
@@ -862,6 +1081,36 @@ async function puppeteerClick() {
             const rects = Array.from(range.getClientRects()).filter((r) => r.width > 1);
             if (rects.length >= 2) clientFilledOffset = Math.abs(rects[0].left - rects[1].left);
           }
+          function glyphBox(wrap) {
+            const btn = wrap && wrap.querySelector && wrap.querySelector('.admin-info-tip');
+            if (!btn) return null;
+            const icon = btn.querySelector('i, .fa');
+            if (icon) {
+              const r = icon.getBoundingClientRect();
+              if (r.width >= 8 && r.height >= 8) return r;
+            }
+            const node = Array.from(btn.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
+            if (node) {
+              const range = document.createRange();
+              range.selectNodeContents(node);
+              const r = range.getBoundingClientRect();
+              if (r.width >= 1) return r;
+            }
+            return null;
+          }
+          const gaps = [];
+          document.querySelectorAll('.admin-label-with-tip__end').forEach((end) => {
+            const wrap = end.querySelector('.admin-info-tip-wrap');
+            const word = Array.from(end.children).find((c) => c !== wrap);
+            const wr = word && word.getBoundingClientRect();
+            const ir = glyphBox(wrap);
+            if (!wr || !ir || wr.width < 1 || ir.width < 1) return;
+            gaps.push({
+              gap: ir.left - wr.right,
+              vOff: Math.abs(((wr.top + wr.bottom) / 2) - ((ir.top + ir.bottom) / 2)),
+              aria: String((wrap.querySelector('.admin-info-tip') || {}).getAttribute && wrap.querySelector('.admin-info-tip').getAttribute('aria-label') || '').slice(0, 60),
+            });
+          });
           return {
             checks,
             reviewLine,
@@ -875,6 +1124,7 @@ async function puppeteerClick() {
             headingIssues,
             clientFilledOffset,
             tmLine,
+            gaps,
           };
         });
         aligned.checks.forEach((row, i) => {
@@ -891,6 +1141,11 @@ async function puppeteerClick() {
           assert.ok(aligned.clientFilledOffset <= 1, `${theme}: client-filled wrapped line offset ${aligned.clientFilledOffset}px at ${width}px`);
           assert.ok(aligned.tmLine.sameLine, `${theme}: Client supplies materials ⓘ stays with the last word at ${width}px`);
         }
+        assert.ok(aligned.gaps.length >= 4, `${theme}: D1 measurable gaps at ${width}px`);
+        aligned.gaps.forEach((hit) => {
+          assert.ok(hit.gap > 0 && hit.gap <= 8, `${theme}: D1 ${hit.aria} gap ${hit.gap}px at ${width}px`);
+          assert.ok(hit.vOff <= 6, `${theme}: D1 ${hit.aria} v-offset ${hit.vOff}px at ${width}px`);
+        });
         if (theme === 'light') {
           geometryByWidth[width] = { orphans: aligned.orphanCount, headings: aligned.headingCount };
         }

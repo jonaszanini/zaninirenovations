@@ -303,6 +303,50 @@
     }
   }
 
+  function uniquifyTipLabelIds(scope) {
+    var seen = Object.create(null);
+    if (document.querySelectorAll) {
+      document.querySelectorAll('[id^="admin-tip-lab-"]').forEach(function (el) {
+        if (!el.id) return;
+        if (scope && scope.nodeType === 1 && scope.contains && scope.contains(el)) {
+          return;
+        }
+        seen[el.id] = true;
+      });
+    }
+    var map = Object.create(null);
+    collectScoped(scope, '[id^="admin-tip-lab-"]').forEach(function (el) {
+      var oldId = el.id || '';
+      if (!oldId) return;
+      var clash = seen[oldId] || (document.getElementById && document.getElementById(oldId) && document.getElementById(oldId) !== el);
+      if (!clash) {
+        seen[oldId] = true;
+        return;
+      }
+      var next = 'admin-tip-lab-' + Math.random().toString(36).slice(2, 10);
+      while (seen[next] || (document.getElementById && document.getElementById(next) && document.getElementById(next) !== el)) {
+        next = 'admin-tip-lab-' + Math.random().toString(36).slice(2, 10);
+      }
+      map[oldId] = next;
+      el.id = next;
+      if (el.setAttribute) el.setAttribute('id', next);
+      seen[next] = true;
+    });
+    collectScoped(scope, '[aria-labelledby]').forEach(function (el) {
+      var raw = el.getAttribute('aria-labelledby') || '';
+      if (!raw) return;
+      var changed = false;
+      var next = raw.split(/\s+/).map(function (id) {
+        if (map[id]) {
+          changed = true;
+          return map[id];
+        }
+        return id;
+      }).filter(Boolean).join(' ');
+      if (changed) el.setAttribute('aria-labelledby', next);
+    });
+  }
+
   function uniquifyControlIds(scope) {
     var seen = Object.create(null);
     if (document.querySelectorAll) {
@@ -340,6 +384,7 @@
   function refreshControlIds(scope) {
     refreshIds(scope);
     uniquifyControlIds(scope);
+    uniquifyTipLabelIds(scope);
     return wrapsIn(scope).length;
   }
 
@@ -657,6 +702,12 @@
       copyVisibleClasses(el, src);
     }
     el.textContent = last;
+    if (String(last).trim() === '*' || (src && src.classList && src.classList.contains('cp-required'))) {
+      var cls = String(el.className || '');
+      if (cls.indexOf('cp-required') === -1) {
+        el.className = (cls + ' cp-required').trim();
+      }
+    }
     return el;
   }
 
