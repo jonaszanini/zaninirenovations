@@ -10,6 +10,7 @@
   <div class="admin-card">
     <form action="{{ route('admin.vehicles.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       @include('admin.vehicles._form')
       <div class="admin-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Add vehicle</button>

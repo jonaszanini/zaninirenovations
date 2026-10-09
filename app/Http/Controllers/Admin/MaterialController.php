@@ -109,6 +109,11 @@ class MaterialController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
+
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $material = Material::create($data);
 
         return redirect()

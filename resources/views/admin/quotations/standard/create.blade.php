@@ -246,6 +246,7 @@
         data-quote-id="{{ $isEdit ? $quotation->id : 'new' }}"
         data-electrical-desc="{{ \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit)
       @method('PUT')
     @endif

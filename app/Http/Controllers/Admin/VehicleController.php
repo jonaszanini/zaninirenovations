@@ -35,6 +35,10 @@ class VehicleController extends Controller
     {
         $data = $this->validateVehicle($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         DB::transaction(function () use ($data) {
             $shouldActivate = (bool) ($data['is_active'] ?? false);
             unset($data['is_active']);

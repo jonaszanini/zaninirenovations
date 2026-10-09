@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form method="post" action="{{ $category->exists ? route('admin.blog.categories.update', $category) : route('admin.blog.categories.store') }}">
       @csrf
+      @include('admin.partials.once_submit')
       @if ($category->exists) @method('PUT') @endif
       <div class="admin-form-group">
         <label for="bc-name">Name</label>

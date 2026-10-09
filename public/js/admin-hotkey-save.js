@@ -11,10 +11,10 @@
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
   var DEBOUNCE_MS = 700;
   var WATCH_MS = 12000;
-  var FORM_UNLOCK_MS = 30000;
   var EXPECT_KEY = 'admin-save-expect';
   var HOTKEY_FIELD = '_hotkey_save';
   var EMAIL_PRIOR_FIELD = '_hotkey_email_prior';
+  var SUBMIT_ONCE_FIELD = '_submit_once';
   var EMAIL_FIELDS = [
     'send_client_email',
     'send_schedule_email',
@@ -454,6 +454,42 @@
     try { store.removeItem(EXPECT_KEY); } catch (err) { /* ignore */ }
   }
 
+  function randomSubmitToken() {
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      var bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return Array.prototype.map.call(bytes, function (b) {
+        return ('0' + b.toString(16)).slice(-2);
+      }).join('');
+    }
+    return String(Date.now()) + String(Math.random()).slice(2);
+  }
+
+  /**
+   * Stable per-form token. Must survive pageshow / hotkey cleanup so a
+   * repeat POST after the lock lifts still fails server-side.
+   */
+  function ensureSubmitOnce(form, env) {
+    env = defaultEnv(env);
+    if (!form || !form.querySelector) return null;
+    var el = form.querySelector('input[name="' + SUBMIT_ONCE_FIELD + '"]');
+    if (el && el.value) return el;
+    var doc = (form.ownerDocument)
+      || env.document
+      || (typeof document !== 'undefined' ? document : null);
+    if (!el) {
+      if (!doc || !doc.createElement) return null;
+      el = doc.createElement('input');
+      el.type = 'hidden';
+      el.setAttribute('type', 'hidden');
+      el.name = SUBMIT_ONCE_FIELD;
+      el.setAttribute('name', SUBMIT_ONCE_FIELD);
+      form.appendChild(el);
+    }
+    if (!el.value) el.value = randomSubmitToken();
+    return el;
+  }
+
   function ensureHidden(form, name, value, env) {
     if (!form || !form.querySelector) return null;
     var el = form.querySelector('input[name="' + name + '"][data-admin-hotkey-field]');
@@ -821,16 +857,8 @@
       }, WATCH_MS);
       if (timer && typeof timer.unref === 'function') timer.unref();
 
-      var formTimer = timeoutFn(function () {
-        if (session && session.inflight && session.mode === 'form') {
-          releaseFormLock();
-        }
-      }, FORM_UNLOCK_MS);
-      if (formTimer && typeof formTimer.unref === 'function') formTimer.unref();
-
       unwrap = function () {
         clearFn(timer);
-        clearFn(formTimer);
         if (typeof origFetch === 'function') win.fetch = origFetch;
         if (proto && origOpen) proto.open = origOpen;
         if (proto && origSend) proto.send = origSend;
@@ -874,6 +902,7 @@
       if (fromHotkey && form) {
         rememberEmailUndo(form, neutralizeEmail(form, env));
       }
+      if (form) ensureSubmitOnce(form, env);
       session = {
         inflight: true,
         btn: btn,
@@ -1098,6 +1127,10 @@
         env.window.addEventListener('pageshow', onPageShow);
       }
       annotateAll();
+      var marked = doc.querySelectorAll('[data-hotkey-save]');
+      for (var i = 0; i < marked.length; i++) {
+        ensureSubmitOnce(buttonForm(marked[i], env), env);
+      }
       bindTiny();
       var flashEl = doc.getElementById('admin-toast-flash');
       if (flashEl) {
@@ -1116,10 +1149,10 @@
     return {
       DEBOUNCE_MS: DEBOUNCE_MS,
       WATCH_MS: WATCH_MS,
-      FORM_UNLOCK_MS: FORM_UNLOCK_MS,
       EXPECT_KEY: EXPECT_KEY,
       HOTKEY_FIELD: HOTKEY_FIELD,
       EMAIL_PRIOR_FIELD: EMAIL_PRIOR_FIELD,
+      SUBMIT_ONCE_FIELD: SUBMIT_ONCE_FIELD,
       isSaveChord: isSaveChord,
       shouldTriggerSave: shouldTriggerSave,
       shortcutLabel: function () { return shortcutLabel(env.window); },
@@ -1175,8 +1208,8 @@
   return {
     DEBOUNCE_MS: DEBOUNCE_MS,
     WATCH_MS: WATCH_MS,
-    FORM_UNLOCK_MS: FORM_UNLOCK_MS,
     EXPECT_KEY: EXPECT_KEY,
+    SUBMIT_ONCE_FIELD: SUBMIT_ONCE_FIELD,
     create: create,
     isSaveChord: isSaveChord,
     shouldTriggerSave: shouldTriggerSave,

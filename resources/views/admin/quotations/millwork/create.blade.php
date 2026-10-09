@@ -64,6 +64,7 @@
         data-quotation-editor
         data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="mw-save-intent" value="publish">
     <input type="hidden" name="_cut_plan_version" id="mw-cut-plan-version" value="{{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->cutPlanVersion() : 2)) }}">

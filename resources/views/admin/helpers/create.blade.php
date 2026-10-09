@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form action="{{ route('admin.helpers.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       @if ($returnProjectId)
         <input type="hidden" name="return_project" value="{{ $returnProjectId }}">
       @endif

@@ -524,6 +524,7 @@
     <div class="fq-left-stack">
       <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor>
         @csrf
+        @include('admin.partials.once_submit')
         @if ($isEdit) @method('PUT') @endif
         @if ($linkProject)
           <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">

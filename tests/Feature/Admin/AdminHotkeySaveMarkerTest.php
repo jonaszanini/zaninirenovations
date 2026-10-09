@@ -359,6 +359,77 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
         $updated->assertJsonPath('event.title', 'Holiday week');
     }
 
+    public function test_create_project_form_includes_a_one_time_submit_token(): void
+    {
+        $this->actingAsAdmin();
+
+        $html = $this->get(route('admin.client-projects.create'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]*name="_submit_once"[^>]*value="[0-9a-f]{32}"/i',
+            $html
+        );
+    }
+
+    public function test_second_hotkey_save_during_pending_submit_creates_one_project(): void
+    {
+        $this->actingAsAdmin();
+
+        $token = bin2hex(random_bytes(16));
+        $payload = [
+            'name' => 'Slow pending project',
+            'contacted_via' => 'email',
+            'client_name' => 'Pat Client',
+            'billing_type' => 'fixed',
+            'send_client_email' => '0',
+            'confirm_duplicate_project' => '1',
+            '_hotkey_save' => '1',
+            '_submit_once' => $token,
+        ];
+
+        $first = $this->post(route('admin.client-projects.store'), $payload);
+        $first->assertRedirect()->assertSessionHas('success');
+
+        $second = $this->from(route('admin.client-projects.create'))
+            ->post(route('admin.client-projects.store'), $payload);
+        $second->assertRedirect(route('admin.client-projects.create'));
+        $second->assertSessionHas('warning');
+        $this->assertStringContainsString('already submitted', (string) session('warning'));
+
+        $this->assertSame(1, ClientProject::query()->where('name', 'Slow pending project')->count());
+    }
+
+    public function test_validation_bounce_does_not_consume_the_submit_token(): void
+    {
+        $this->actingAsAdmin();
+
+        $token = bin2hex(random_bytes(16));
+
+        $this->from(route('admin.client-projects.create'))
+            ->post(route('admin.client-projects.store'), [
+                'name' => '',
+                'contacted_via' => 'email',
+                'client_name' => 'Pat Client',
+                'billing_type' => 'fixed',
+                '_hotkey_save' => '1',
+                '_submit_once' => $token,
+            ])
+            ->assertRedirect(route('admin.client-projects.create'))
+            ->assertSessionHasErrors();
+
+        $this->post(route('admin.client-projects.store'), [
+            'name' => 'After validation bounce',
+            'contacted_via' => 'email',
+            'client_name' => 'Pat Client',
+            'billing_type' => 'fixed',
+            'send_client_email' => '0',
+            '_hotkey_save' => '1',
+            '_submit_once' => $token,
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame(1, ClientProject::query()->where('name', 'After validation bounce')->count());
+    }
+
     private function scheduledPaidProject(): ClientProject
     {
         $project = ClientProject::factory()->create([

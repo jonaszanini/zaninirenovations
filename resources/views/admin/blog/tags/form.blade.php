@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form method="post" action="{{ $tag->exists ? route('admin.blog.tags.update', $tag) : route('admin.blog.tags.store') }}">
       @csrf
+      @include('admin.partials.once_submit')
       @if ($tag->exists) @method('PUT') @endif
       <div class="admin-form-group">
         <label for="bt-name">Name</label>

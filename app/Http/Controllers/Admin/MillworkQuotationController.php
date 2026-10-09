@@ -60,6 +60,10 @@ class MillworkQuotationController extends Controller
         $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
         $calc = $this->validatedCalculation($request, $intent, null);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $quote = MillworkQuotation::create(array_merge($calc, [
             'quote_number' => MillworkQuotation::generateNumber(),
             'version' => 1,

@@ -13,6 +13,7 @@
     <div class="admin-card admin-card--narrow cp-edit-project-form-card">
     <form id="portfolio-create-form" action="{{ route('admin.portfolio.store') }}" method="post" enctype="multipart/form-data">
       @csrf
+      @include('admin.partials.once_submit')
       <input type="hidden" name="portfolio_ai_history_key" value="{{ $portfolioAiHistoryKey }}">
       <div class="admin-form-group">
         <label for="title">Title</label>

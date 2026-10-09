@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form action="{{ route('admin.categories.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       <div class="admin-form-group">
         <label for="name">Name</label>
         <input class="admin-input" type="text" id="name" name="name" value="{{ old('name') }}" required maxlength="120" placeholder="e.g. Kitchen renovation">

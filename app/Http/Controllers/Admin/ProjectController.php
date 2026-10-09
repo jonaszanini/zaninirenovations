@@ -338,6 +338,10 @@ class ProjectController extends Controller
                 ->withInput();
         }
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $converter = new ProjectPhotoWebpStorage;
         $savedPaths = [];
 

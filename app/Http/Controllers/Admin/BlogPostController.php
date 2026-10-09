@@ -106,6 +106,13 @@ class BlogPostController extends Controller
     public function store(Request $request, BlogHtmlContentProcessor $htmlProcessor, BlogImageStorage $images): RedirectResponse|JsonResponse
     {
         $data = $this->validatedPost($request);
+
+        if (! $request->boolean('autosave')) {
+            if ($replay = $this->rejectReplaySubmit($request)) {
+                return $replay;
+            }
+        }
+
         $post = $this->persistPost($request, new BlogPost, $data, $htmlProcessor, $images);
 
         if ($request->expectsJson() || $request->boolean('autosave')) {

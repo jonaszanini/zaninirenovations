@@ -71,6 +71,10 @@ class ClientController extends Controller
             }
         }
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $tagIds = $data['tags'] ?? [];
         unset($data['tags']);
 

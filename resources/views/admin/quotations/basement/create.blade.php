@@ -102,6 +102,7 @@
         data-quotation-editor
         data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="br-save-intent" value="publish">
 

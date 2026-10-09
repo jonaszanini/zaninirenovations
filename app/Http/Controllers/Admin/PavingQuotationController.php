@@ -60,6 +60,10 @@ class PavingQuotationController extends Controller
         $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
         $calc = $this->validatedCalculation($request, $intent, null);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $quote = PavingQuotation::create(array_merge($calc, [
             'quote_number' => PavingQuotation::generateNumber(),
             'version' => 1,

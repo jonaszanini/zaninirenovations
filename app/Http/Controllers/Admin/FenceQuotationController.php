@@ -97,6 +97,10 @@ class FenceQuotationController extends Controller
     {
         $data = $this->validateFenceInputs($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $calc = (new FenceQuotationCalculator())->calculate($data);
         $persistence = $this->fencePersistenceFromCalc($request, $calc, $data);
 

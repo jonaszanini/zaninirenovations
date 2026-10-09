@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form method="post" action="{{ $supplierSite->exists ? route('admin.supplier-sites.update', $supplierSite) : route('admin.supplier-sites.store') }}">
       @csrf
+      @include('admin.partials.once_submit')
       @if ($supplierSite->exists) @method('PUT') @endif
 
       <div class="admin-form-grid-2">

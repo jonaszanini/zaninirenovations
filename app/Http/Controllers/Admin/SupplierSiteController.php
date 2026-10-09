@@ -66,6 +66,10 @@ class SupplierSiteController extends Controller
         $this->normalisePhoneOnRequest($request);
         $data = $this->validateSupplierSite($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $site = SupplierSite::create($data);
         $site->tags()->sync(SupplierTag::syncFromNames(
             SupplierTag::parseNamesFromInput($request->input('tags_input'))

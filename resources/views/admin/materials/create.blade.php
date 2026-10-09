@@ -10,6 +10,7 @@
   <div class="admin-card mat-form-card">
     <form action="{{ route('admin.materials.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       @include('admin.materials._form')
       <div class="mat-edit-footer">
         <div class="admin-form-actions mat-edit-actions">

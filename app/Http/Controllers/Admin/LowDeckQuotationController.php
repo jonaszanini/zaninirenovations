@@ -64,6 +64,10 @@ class LowDeckQuotationController extends Controller
     {
         $data = $this->validateLowDeckInputs($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $calc = (new LowDeckQuotationCalculator())->calculate($data);
         $persistence = $this->lowDeckPersistenceFromCalc($request, $calc, $data);
 

@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form action="{{ route('admin.client-tags.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
           <label for="name">Name</label>

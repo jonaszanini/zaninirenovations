@@ -31,6 +31,10 @@ class HelperController extends Controller
     {
         $data = $this->validateHelper($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         Helper::create($data);
 
         return $this->redirectAfterSave($request, 'Helper added.');

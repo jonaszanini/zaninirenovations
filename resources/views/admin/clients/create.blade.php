@@ -26,6 +26,7 @@
   <div class="admin-card">
     <form action="{{ route('admin.clients.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       @if (session('duplicate_candidates'))
         <input type="hidden" name="confirm_duplicate" value="1">
       @endif

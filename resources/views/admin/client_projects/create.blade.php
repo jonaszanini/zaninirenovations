@@ -48,6 +48,7 @@
       <form id="cp-create-project-form" action="{{ route('admin.client-projects.store') }}" method="post" enctype="multipart/form-data"
             data-cp-duplicate-check="{{ $duplicateCheckUrl ?? route('admin.client-projects.duplicate-check') }}">
         @csrf
+        @include('admin.partials.once_submit')
         @if ($hasDuplicateProjects)
           <input type="hidden" name="confirm_duplicate_project" value="1">
         @endif

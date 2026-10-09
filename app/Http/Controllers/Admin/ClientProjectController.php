@@ -248,6 +248,10 @@ class ClientProjectController extends Controller
             }
         }
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         // Pulled out before array_merge below because it isn't a column
         // on the projects table — it controls the onCreated side-effect.
         // An explicit send_client_email=1 always wins (e.g. leftover

@@ -40,6 +40,7 @@
         data-upload-url="{{ route('admin.blog.posts.upload-image') }}"
         data-site-host="zaninirenovations.ca">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="intent" id="bp-intent" value="save">
 

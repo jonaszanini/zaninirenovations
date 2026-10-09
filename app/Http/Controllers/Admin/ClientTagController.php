@@ -31,6 +31,10 @@ class ClientTagController extends Controller
             'color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         ClientTag::create($data);
 
         return redirect()

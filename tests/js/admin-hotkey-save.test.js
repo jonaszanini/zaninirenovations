@@ -60,9 +60,10 @@ function matches(el, sel) {
     const id = sel.slice('label[for="'.length, -2);
     return el.tagName === 'LABEL' && el.getAttribute('for') === id;
   }
-  if (sel.indexOf('[name="') === 0 && sel.indexOf('[data-') === -1) {
-    const name = sel.slice('[name="'.length, -2);
-    return el.getAttribute('name') === name;
+  const named = sel.match(/^([a-z0-9-]+)?\[name="([^"]+)"\]$/i);
+  if (named && sel.indexOf('[data-') === -1) {
+    if (named[1] && el.tagName !== named[1].toUpperCase()) return false;
+    return el.getAttribute('name') === named[2];
   }
   if (sel.indexOf('[data-admin-hotkey-field]') !== -1) {
     if (!el.hasAttribute('data-admin-hotkey-field')) return false;
@@ -1017,10 +1018,12 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   inst.reset();
 })();
 
-(function formUnlockTimeoutReleasesWithoutRetick() {
+(function formUnlockTimeoutDoesNotReleaseNativeSubmit() {
   const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
   checkbox.checked = true;
   const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  let clicks = 0;
+  btn.click = function () { clicks += 1; };
   const form = makeEl('form', { id: 'cp-create' }, [checkbox, btn]);
   const doc = makeDoc([form]);
   const timers = [];
@@ -1039,12 +1042,60 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   inst.onFormSubmit({ target: form, defaultPrevented: false });
   timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
   assert.ok(inst.isInflight(), 'native submit stays locked');
-  assert.ok(timers.some((t) => t.ms === 30000 || t.ms === inst.FORM_UNLOCK_MS), 'form-mode schedules a late unlock');
-  timers.filter((t) => t.ms === 30000 || t.ms === inst.FORM_UNLOCK_MS).forEach((t) => t.fn());
-  assert.strictEqual(inst.isInflight(), false, 'native-submit timeout releases the lock');
-  assert.strictEqual(checkbox.checked, false, 'native-submit timeout never re-ticks the email box');
-  assert.ok(!form.children.some((c) => c.name === '_hotkey_save' || (c.getAttribute && c.getAttribute('name') === '_hotkey_save')),
-    'native-submit timeout drops leftover _hotkey_save');
+  assert.ok(!timers.some((t) => t.ms === 30000), 'native submit must not schedule a 30s unlock');
+  timers.filter((t) => t.ms >= 1000).forEach((t) => t.fn());
+  assert.ok(inst.isInflight(), 'no timer releases a native-submit lock');
+  const beforeSecond = clicks;
+  inst.handleKeydown(chord());
+  assert.strictEqual(clicks, beforeSecond, 'second Ctrl+S during a pending native submit does not click Save again');
+  assert.ok(inst.isInflight(), 'second Ctrl+S leaves the pending lock in place');
+  inst.reset();
+})();
+
+(function mouseSubmitThenLateHotkeyStaysLocked() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  let clicks = 0;
+  btn.click = function () { clicks += 1; };
+  const form = makeEl('form', { id: 'cp-create' }, [btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const inst = hotkey.create({
+    document: doc,
+    window: {
+      navigator: { platform: 'Linux' },
+      setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+      clearTimeout() {},
+    },
+    now() { return 15000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.onMarkedClick({ target: btn, preventDefault() {}, stopImmediatePropagation() {} });
+  inst.onFormSubmit({ target: form, defaultPrevented: false });
+  timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
+  timers.filter((t) => t.ms >= 1000).forEach((t) => t.fn());
+  assert.ok(inst.isInflight(), 'mouse native submit stays locked after late timers');
+  inst.handleKeydown(chord());
+  assert.strictEqual(clicks, 0, 'Ctrl+S after a pending mouse submit does not fire a second POST');
+  inst.reset();
+})();
+
+(function submitOnceTokenStaysOnTheForm() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [btn]);
+  const doc = makeDoc([form]);
+  const inst = apiFor(doc);
+  inst.handleKeydown(chord());
+  const first = form.children.find((c) => c.name === '_submit_once' || (c.getAttribute && c.getAttribute('name') === '_submit_once'));
+  assert.ok(first && first.value, 'Ctrl+S stamps a one-time submit token');
+  const token = first.value;
+  inst.onPageShow({ persisted: false });
+  const afterShow = form.children.find((c) => c.name === '_submit_once' || (c.getAttribute && c.getAttribute('name') === '_submit_once'));
+  assert.ok(afterShow, 'pageshow must not remove the submit token');
+  assert.strictEqual(afterShow.value, token, 'pageshow must not rotate the submit token');
+  inst.handleKeydown(chord());
+  const again = form.children.find((c) => c.name === '_submit_once' || (c.getAttribute && c.getAttribute('name') === '_submit_once'));
+  assert.strictEqual(again.value, token, 'a later Ctrl+S reuses the same submit token');
   inst.reset();
 })();
 
