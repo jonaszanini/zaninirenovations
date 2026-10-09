@@ -43,6 +43,9 @@ assert.match(cpCss, /\.br-bath-light-row\s*\{[^}]*grid-template-columns:\s*1fr/)
 assert.match(cpCss, /\.br-main\s*\{[^}]*container-type:\s*inline-size/);
 const brMainCqAt = cpCss.indexOf('@container br-main (min-width: 48rem)');
 assert.ok(brMainCqAt >= 0, 'lighting/tile/check-grid must use @container br-main (min-width: 48rem)');
+const checkGrid2ColMediaAt = cpCss.search(/@media \(min-width:\s*700px\)\s*\{[\s\S]{0,80}\.br-check-grid[\s\S]{0,80}repeat\(2/);
+assert.ok(checkGrid2ColMediaAt >= 0, '700px 2-col .br-check-grid media rule must remain');
+assert.ok(brMainCqAt > checkGrid2ColMediaAt, 'R20-1: @container 3-col must follow the 700px 2-col .br-check-grid rule');
 const brMainContainer = cpCss.slice(brMainCqAt, brMainCqAt + 1600);
 assert.match(brMainContainer, /\.br-bath-light-row[\s\S]*minmax\(max-content,\s*1fr\)\s+minmax\(96px,\s*140px\)/);
 assert.doesNotMatch(brMainContainer, /\.br-bath-light-row[\s\S]{0,180}minmax\(0,\s*1fr\)/);
@@ -624,9 +627,7 @@ function fixtureHtml() {
           </div>
         </div>
       </details>
-      <div class="br-nested-trade" id="br-electrical-slot-bath" hidden>
-        <span class="br-tile-areas__title">Electrical</span>
-      </div>
+      <div class="br-nested-trade" id="br-electrical-slot-bath" hidden></div>
       <details class="br-acc" data-br-step="plumbing" open>
         <summary class="br-acc__summary">Plumbing</summary>
         <div id="br-plumbing-slot-step">
@@ -641,9 +642,7 @@ function fixtureHtml() {
           </div>
         </div>
       </details>
-      <div class="br-nested-trade" id="br-plumbing-slot-bath" hidden>
-        <span class="br-tile-areas__title">Plumbing</span>
-      </div>
+      <div class="br-nested-trade" id="br-plumbing-slot-bath" hidden></div>
     </form>
     <div class="tm-chip-row" id="tm-chip-row">
       <span class="admin-label-with-tip admin-checkbox-row" id="tm-client-all-row">
@@ -1596,20 +1595,25 @@ async function puppeteerClick() {
         const mainBox = main.getBoundingClientRect();
         const remove = tile.querySelector('.br-tile-row__remove');
         const removeBox = remove ? remove.getBoundingClientRect() : { right: mainBox.right };
-        const overflow = Math.max(
+        const contentOverflow = Math.max(
           tile.scrollWidth - main.clientWidth,
           tileBox.right - mainBox.right,
           removeBox.right - mainBox.right,
-          main.scrollWidth - main.clientWidth,
           document.documentElement.scrollWidth - window.innerWidth
         );
+        let tapOverflow = 0;
+        main.querySelectorAll('.admin-info-tip').forEach((btn) => {
+          const r = btn.getBoundingClientRect();
+          tapOverflow = Math.max(tapOverflow, r.right - mainBox.right, mainBox.left - r.left);
+        });
         const outTop = document.getElementById('qty-outlets-row').getBoundingClientRect().top;
         const swTop = document.getElementById('qty-switches-row').getBoundingClientRect().top;
         const sinkGrid = document.getElementById('sink-rail-row');
         const sinkCols = sinkGrid ? getComputedStyle(sinkGrid).gridTemplateColumns : '';
         return {
           hits,
-          overflow,
+          overflow: contentOverflow,
+          tapOverflow,
           labelDelta: Math.abs(outTop - swTop),
           rowCols: getComputedStyle(document.getElementById('spot-rail-row')).gridTemplateColumns,
           rowTracks: getComputedStyle(document.getElementById('spot-rail-row')).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length,
@@ -1620,10 +1624,15 @@ async function puppeteerClick() {
       });
     }
 
+    // Checkbox ⓘ uses margin: -10px -6px on a 44px tap box. That hang is
+    // CSS, not font metrics — allow it, but keep tile/page overflow tight.
+    const TAP_OVERHANG_PX = 6;
+
     for (const width of [910, 940, 960, 1024, 1100, 1120, 1150, 1170, 1280]) {
       const rail = await measureRailGeometry(width);
       assert.deepEqual(rail.hits, [], `D7/R19-2: ⓘ must not overlap an input at ${width}px with the step rail (main=${rail.mainWidth}px): ${rail.hits.join(' | ')}`);
       assert.ok(rail.overflow <= 1, `D8: tile/page overflow ${rail.overflow}px at ${width}px with the step rail (main=${rail.mainWidth}px)`);
+      assert.ok(rail.tapOverflow <= TAP_OVERHANG_PX, `T2: tap-area overflow ${rail.tapOverflow}px at ${width}px with the step rail (main=${rail.mainWidth}px)`);
       if (width <= 1280) {
         assert.equal(rail.rowTracks, 1, `D7: lighting row stacks at ${width} with the rail (tracks=${rail.rowCols}, main=${rail.mainWidth}px)`);
       }
@@ -1634,15 +1643,112 @@ async function puppeteerClick() {
         assert.ok(rail.labelDelta <= 3, `D3: New outlets / Switches label tops differ ${rail.labelDelta}px at 1280`);
       }
     }
+
+    async function measureCollapsedGeometry(width) {
+      await page.setViewport({ width, height: 900 });
+      return page.evaluate(() => {
+        const chrome = document.getElementById('step-rail-chrome');
+        const sidebar = document.getElementById('step-rail-sidebar');
+        chrome.style.display = 'grid';
+        chrome.style.gridTemplateColumns = 'minmax(0, 1fr)';
+        chrome.style.width = '100%';
+        sidebar.hidden = true;
+        sidebar.style.display = 'none';
+        sidebar.style.width = '';
+        const shell = document.getElementById('step-rail-shell');
+        shell.style.gridTemplateColumns = 'minmax(0, 1fr)';
+        const progress = shell.querySelector('.br-progress');
+        if (progress) progress.style.display = 'none';
+        const main = shell.querySelector('.br-main');
+        const sinkGrid = document.getElementById('sink-rail-row');
+        const sinkCols = sinkGrid ? getComputedStyle(sinkGrid).gridTemplateColumns : '';
+        const spot = document.getElementById('spot-rail-row');
+        return {
+          mainWidth: Math.round(main.getBoundingClientRect().width),
+          sinkTracks: sinkCols.trim().split(/\s+/).filter(Boolean).length,
+          sinkCols,
+          rowCols: getComputedStyle(spot).gridTemplateColumns,
+          rowTracks: getComputedStyle(spot).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length,
+        };
+      });
+    }
+
+    const collapsed = await measureCollapsedGeometry(1280);
+    assert.ok(collapsed.mainWidth >= 768, `R20-1: collapsed 1280 .br-main must be ≥ 48rem (got ${collapsed.mainWidth}px)`);
+    assert.equal(collapsed.sinkTracks, 3, `R20-1: sink check-grid is 3-col when .br-main ≥ 48rem (tracks=${collapsed.sinkCols}, main=${collapsed.mainWidth}px)`);
+    assert.equal(collapsed.rowTracks, 2, `T3: lighting row is 2-col when .br-main ≥ 48rem (tracks=${collapsed.rowCols}, main=${collapsed.mainWidth}px)`);
+
+    async function lightingNarrowOverlaps(injectMinmax0) {
+      return page.evaluate((useMutant) => {
+        let style = document.getElementById('lighting-minmax-mutant');
+        if (useMutant) {
+          if (!style) {
+            style = document.createElement('style');
+            style.id = 'lighting-minmax-mutant';
+            document.head.appendChild(style);
+          }
+          style.textContent = '@container br-main (min-width: 48rem) { .br-bath-light-row { grid-template-columns: minmax(0, 1fr) minmax(96px, 140px) !important; } }';
+        } else if (style) {
+          style.remove();
+        }
+        const row = document.getElementById('spot-rail-row');
+        const grid = row.closest('.br-bath-light-grid');
+        grid.style.gridTemplateColumns = '260px';
+        grid.style.width = '260px';
+        row.style.width = '260px';
+        row.style.maxWidth = '260px';
+        function overlap(a, b) {
+          return a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
+        }
+        const tip = row.querySelector('.admin-info-tip');
+        const field = document.getElementById('br-bath-spot-qty-rail');
+        const tipBox = tip.getBoundingClientRect();
+        const fieldBox = field.getBoundingClientRect();
+        const cols = getComputedStyle(row).gridTemplateColumns;
+        const firstTrack = parseFloat(cols) || 0;
+        const check = document.getElementById('spot-rail-check');
+        const checkWidth = check.getBoundingClientRect().width;
+        return {
+          overlap: overlap(tipBox, fieldBox),
+          cols,
+          firstTrack,
+          checkWidth,
+        };
+      }, injectMinmax0);
+    }
+
+    const lightingOk = await lightingNarrowOverlaps(false);
+    assert.equal(lightingOk.overlap, false, `T3: max-content lighting track must not overlap the qty at 260px (cols=${lightingOk.cols})`);
+    assert.ok(lightingOk.firstTrack + 0.5 >= lightingOk.checkWidth, `T3: first lighting track ${lightingOk.firstTrack}px must cover the checkbox+tip ${lightingOk.checkWidth}px`);
+    const lightingMutant = await lightingNarrowOverlaps(true);
+    assert.equal(lightingMutant.overlap, true, `T3: minmax(0,1fr) mutant must overlap the qty at 260px (cols=${lightingMutant.cols})`);
+    await page.evaluate(() => {
+      const style = document.getElementById('lighting-minmax-mutant');
+      if (style) style.remove();
+      const row = document.getElementById('spot-rail-row');
+      const grid = row && row.closest('.br-bath-light-grid');
+      if (grid) {
+        grid.style.gridTemplateColumns = '';
+        grid.style.width = '';
+      }
+      if (row) {
+        row.style.width = '';
+        row.style.maxWidth = '';
+      }
+    });
     await page.evaluate(() => {
       const chrome = document.getElementById('step-rail-chrome');
       const sidebar = document.getElementById('step-rail-sidebar');
+      const shell = document.getElementById('step-rail-shell');
+      const progress = shell && shell.querySelector('.br-progress');
       chrome.style.display = '';
       chrome.style.gridTemplateColumns = '';
       chrome.style.width = '';
       sidebar.hidden = true;
       sidebar.style.display = '';
       sidebar.style.width = '';
+      if (shell) shell.style.gridTemplateColumns = '';
+      if (progress) progress.style.display = '';
     });
     await page.setViewport({ width: 1280, height: 800 });
 

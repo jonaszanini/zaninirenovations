@@ -1070,21 +1070,11 @@
         </div>
       </div>
       <div class="br-nested-trade" id="br-plumbing-slot-bath" @unless($bathNestTrades) hidden @endunless>
-        <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title">
-            <span>Plumbing</span>
-          </span>
-        </div>
         @if($bathNestTrades)
           @include('admin.quotations.basement._plumbing_fields')
         @endif
       </div>
       <div class="br-nested-trade" id="br-electrical-slot-bath" @unless($bathNestTrades) hidden @endunless>
-        <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title">
-            <span>Electrical</span>
-          </span>
-        </div>
         @if($bathNestTrades)
           @include('admin.quotations.basement._electrical_fields')
         @endif

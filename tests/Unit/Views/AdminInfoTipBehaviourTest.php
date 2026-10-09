@@ -649,6 +649,14 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString("'info' => \$brInfo['include_bath_spot']", $drywall);
         $this->assertStringNotContainsString("'tipLabel' => 'Electrical scope'", $drywall);
         $this->assertStringNotContainsString("'tipLabel' => 'Plumbing scope'", $drywall);
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="br-plumbing-slot-bath"[\s\S]{0,280}<span>Plumbing<\/span>/',
+            $drywall
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="br-electrical-slot-bath"[\s\S]{0,280}<span>Electrical<\/span>/',
+            $drywall
+        );
         $this->assertStringNotContainsString("'tipLabel' => 'How many fixtures'", $drywall);
         $this->assertMatchesRegularExpression(
             '#Tile / vinyl\s+@include\(\'admin\.partials\.info_tip\'[\s\S]{0,160}tipLabel\' => \'Tile / vinyl\'#',
