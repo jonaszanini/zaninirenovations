@@ -630,8 +630,8 @@ class RoomAreaCanvasDataTest extends TestCase
         // 36" door + 36" opening = 6 lf; 48" window does not reduce baseboard.
         $this->assertSame(30.0, $metrics['baseboard_lf']);
         // Net wall area: ceiling-height walls minus door, window, and opening.
-        $this->assertEqualsWithDelta(232.0, $metrics['wall_area_sqft'], 0.01);
-        $this->assertEqualsWithDelta(232.0, $metrics['net_wall_area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(235.0, $metrics['wall_area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(235.0, $metrics['net_wall_area_sqft'], 0.01);
     }
 
     public function test_legacy_opening_placeholder_migrates_on_read(): void
@@ -649,8 +649,9 @@ class RoomAreaCanvasDataTest extends TestCase
         $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
         $openingWall = collect($metrics['walls'])->firstWhere('id', 'wall_p1_2_3');
         $this->assertNotNull($openingWall);
-        $this->assertEqualsWithDelta((36 / 12) * 8.0, $openingWall['opening_area_sqft'], 0.01);
+        $this->assertEqualsWithDelta((36 / 12) * (84 / 12), $openingWall['opening_area_sqft'], 0.01);
         $this->assertNotEquals(12.0, $openingWall['opening_area_sqft']);
+        $this->assertNotEquals(24.0, $openingWall['opening_area_sqft']);
         $this->assertEqualsWithDelta(0.0, $metrics['casing_lf'] - (
             app(\App\Services\RoomAreaFinishMath::class)->casingLf(36, 80, 2, 'door')
             + app(\App\Services\RoomAreaFinishMath::class)->casingLf(48, 36, 4, 'window')
@@ -667,7 +668,7 @@ class RoomAreaCanvasDataTest extends TestCase
 
         $doorArea = (36 / 12) * (84 / 12);
         $windowArea = (48 / 12) * (24 / 12);
-        $openingArea = (36 / 12) * (9.0);
+        $openingArea = (36 / 12) * (84 / 12);
         $this->assertEqualsWithDelta(36.0 * 9.0 - $doorArea - $windowArea - $openingArea, $metrics['wall_area_sqft'], 0.01);
         $this->assertSame($metrics['net_wall_area_sqft'], $metrics['wall_area_sqft']);
         $this->assertSame(9.0, $metrics['wall_height_ft']);

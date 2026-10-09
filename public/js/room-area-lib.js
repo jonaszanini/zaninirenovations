@@ -22,6 +22,7 @@
   var DEFAULT_WALL_HEIGHT_FT = 8;
   var DEFAULT_DOOR_HEIGHT_IN = 80;
   var DEFAULT_WINDOW_HEIGHT_IN = 36;
+  var DEFAULT_OPENING_HEIGHT_IN = 84;
   var LEGACY_OPENING_HEIGHT_IN = 48;
   var DEFAULT_WASTE_PERCENT = 10;
   var DEFAULT_BOX_SQFT = 20;
@@ -538,13 +539,20 @@
     return /too large|payload too large|10240|10 ?mb|kilobytes/i.test(raw);
   }
 
+  function isUnlockLayersError(err) {
+    var raw = err && err.message ? String(err.message) : '';
+    return /unlock layers/i.test(raw);
+  }
+
   function planUploadErrorAfterRoomSaved(err) {
     var reason = planUploadReason(err);
-    if (isTooLargeError(err)) {
-      return reason || 'That file is too large.';
+    if (isUnlockLayersError(err)) {
+      return reason && /unlock layers/i.test(reason)
+        ? reason
+        : 'Unlock layers to change the floor plan.';
     }
     var saved = 'Floor plan upload failed. The room itself was saved.';
-    if (isWrongFileTypeError(err)) {
+    if (isTooLargeError(err) || isWrongFileTypeError(err)) {
       return reason ? saved + ' ' + reason : saved;
     }
     var base = 'Floor plan upload failed. The room itself was saved. Save again to retry.';
@@ -606,10 +614,7 @@
       if (!isFinite(percent)) {
         return { ok: false, value: DEFAULT_WASTE_PERCENT, error: 'Enter waste as a percent, like 10 or 15%.' };
       }
-      if (percent < 0) {
-        return { ok: false, value: DEFAULT_WASTE_PERCENT, error: 'Waste must be between 0 and 100%.' };
-      }
-      return { ok: true, value: Math.round(Math.min(100, percent) * 100) / 100, error: null };
+      return clampWasteResult(percent);
     }
     var raw = String(percent).trim();
     if (!raw) return { ok: true, value: DEFAULT_WASTE_PERCENT, error: null };
@@ -618,10 +623,17 @@
       return { ok: false, value: DEFAULT_WASTE_PERCENT, error: 'Enter waste as a percent, like 10 or 15%.' };
     }
     var n = Number(raw);
-    if (!isFinite(n) || n < 0) {
+    if (!isFinite(n)) {
+      return { ok: false, value: DEFAULT_WASTE_PERCENT, error: 'Enter waste as a percent, like 10 or 15%.' };
+    }
+    return clampWasteResult(n);
+  }
+
+  function clampWasteResult(value) {
+    if (value < 0 || value > 100) {
       return { ok: false, value: DEFAULT_WASTE_PERCENT, error: 'Waste must be between 0 and 100%.' };
     }
-    return { ok: true, value: Math.round(Math.min(100, n) * 100) / 100, error: null };
+    return { ok: true, value: roundTo(value, 2), error: null };
   }
 
   function normalizeWastePercent(percent) {
@@ -664,11 +676,7 @@
     var factor = Math.pow(10, places);
     var shifted = n * factor;
     var sign = shifted < 0 ? -1 : 1;
-    var abs = Math.abs(shifted);
-    var whole = Math.floor(abs);
-    var frac = abs - whole;
-    var rounded = frac >= 0.5 ? whole + 1 : whole;
-    return sign * rounded / factor;
+    return sign * Math.round(Math.abs(shifted) + 1e-9) / factor;
   }
 
   function flooringBoxes(floorArea, wastePercent, boxSqFt) {
@@ -695,13 +703,13 @@
     if (!isFinite(n)) n = defaultCasingSides(kind);
     if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0) return 0;
     if (kind === 'window') {
-      if (n >= 4) return Math.round((2 * w + 2 * h) / INCHES_PER_FOOT * 100) / 100;
-      if (n === 3) return Math.round((w + (2 * h)) / INCHES_PER_FOOT * 100) / 100;
+      if (n >= 4) return roundTo((2 * w + 2 * h) / INCHES_PER_FOOT, 2);
+      if (n === 3) return roundTo((w + (2 * h)) / INCHES_PER_FOOT, 2);
       return 0;
     }
     n = Math.max(0, Math.min(2, n));
     if (n <= 0) return 0;
-    return Math.round(n * (w + (2 * h)) / INCHES_PER_FOOT * 100) / 100;
+    return roundTo(n * (w + (2 * h)) / INCHES_PER_FOOT, 2);
   }
 
   function defaultCasingSides(type, doorFace) {
@@ -718,11 +726,20 @@
     return Math.abs(Number(obj.height) - LEGACY_OPENING_HEIGHT_IN) < 0.001;
   }
 
+  function isNumericCasingSides(raw) {
+    if (typeof raw === 'number') return isFinite(raw);
+    var s = String(raw).trim();
+    return /^[+-]?\d+(\.\d+)?$/.test(s);
+  }
+
   function casingSidesForObject(obj) {
     var type = objectType(obj);
     var raw = obj && obj.casing_sides;
-    if (raw == null || String(raw).trim() === '' || !isFinite(Number(raw))) {
+    if (raw == null || String(raw).trim() === '') {
       if (isLegacyOpeningPlaceholder(obj)) return 0;
+      return defaultCasingSides(type, obj && obj.door_face);
+    }
+    if (!isNumericCasingSides(raw)) {
       return defaultCasingSides(type, obj && obj.door_face);
     }
     var n = parseInt(raw, 10);
@@ -740,7 +757,7 @@
     } else if (type === 'window') {
       height = DEFAULT_WINDOW_HEIGHT_IN;
     } else if (type === 'opening') {
-      height = ceilingIn;
+      height = DEFAULT_OPENING_HEIGHT_IN;
     } else {
       height = DEFAULT_DOOR_HEIGHT_IN;
     }
@@ -828,7 +845,7 @@
       var rect = openingRect(obj, ceilingHeightFt, wallLengthIn);
       if (rect) rects.push(rect);
     });
-    return Math.round(unionRectAreaInches(rects) / 144 * 100) / 100;
+    return roundTo(unionRectAreaInches(rects) / 144, 2);
   }
 
   function direction(p1, p2, p3) {
@@ -1052,6 +1069,7 @@
     planUploadReason: planUploadReason,
     planUploadErrorAfterRoomSaved: planUploadErrorAfterRoomSaved,
     isWrongFileTypeError: isWrongFileTypeError,
+    isUnlockLayersError: isUnlockLayersError,
     ceilingHeightFt: ceilingHeightFt,
     ceilingAreaSqFt: ceilingAreaSqFt,
     parseWastePercent: parseWastePercent,
@@ -1074,6 +1092,7 @@
     isSimplePolygon: isSimplePolygon,
     isTooLargeError: isTooLargeError,
     LEGACY_OPENING_HEIGHT_IN: LEGACY_OPENING_HEIGHT_IN,
+    DEFAULT_OPENING_HEIGHT_IN: DEFAULT_OPENING_HEIGHT_IN,
     casingLf: casingLf,
     defaultCasingSides: defaultCasingSides,
     casingSidesForObject: casingSidesForObject,

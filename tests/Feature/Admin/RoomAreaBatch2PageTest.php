@@ -62,6 +62,7 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertStringContainsString("setCeilingHeight(null, true)", $js);
         $this->assertStringContainsString('Math.abs((state.flooringWastePercent || 0) - parsed.value)', $js);
         $this->assertMatchesRegularExpression('/resizeStage\(\);\s*redrawLabels\(\);/', $js);
+        $this->assertStringNotContainsString('refitCanvasToLayout', $js);
         $this->assertStringNotContainsString("friendlyNetworkError(err, 'Could not upload the floor plan. Check your connection and try again.')", $js);
         $this->assertStringNotContainsString("friendlyNetworkError(e, 'Could not upload the floor plan. Check your connection and try again.')", $js);
 
@@ -72,6 +73,9 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertStringContainsString('function casingLf(', $lib);
         $this->assertStringContainsString('function netWallAreaSqFt(', $lib);
         $this->assertStringContainsString('LEGACY_OPENING_HEIGHT_IN', $lib);
+        $this->assertStringContainsString('DEFAULT_OPENING_HEIGHT_IN', $lib);
+        $this->assertStringContainsString('Math.abs(shifted) + 1e-9', $lib);
+        $this->assertStringContainsString('function isUnlockLayersError(', $lib);
         $this->assertStringContainsString('function isSimplePolygon(', $lib);
         $this->assertStringContainsString('function clampOpeningOnWall(', $lib);
         $this->assertStringContainsString('function isTooLargeError(', $lib);

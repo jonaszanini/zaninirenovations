@@ -4564,12 +4564,6 @@
     redrawLabels();
   }
 
-  function refitCanvasToLayout() {
-    if (!state.stage || !els.canvasWrap) return;
-    resizeStage();
-    if (viewportContentBounds().hasContent) fitViewport();
-  }
-
   function updateZoomUI() {
     raAll('[data-ra-zoom-label]').forEach(function (el) {
       el.textContent = state.viewport.zoomPercent + '%';
@@ -5404,7 +5398,6 @@
     renderPhotos();
     refreshViewportAfterContentChange();
     redrawAll();
-    requestAnimationFrame(refitCanvasToLayout);
   }
 
   function addAreaSameGroup() {
@@ -8098,7 +8091,6 @@
       renderPhotos();
       redrawAll();
       fitViewport();
-      requestAnimationFrame(refitCanvasToLayout);
       captureSavedSnapshot();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
     });

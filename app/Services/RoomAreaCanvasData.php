@@ -60,6 +60,8 @@ class RoomAreaCanvasData
 
     public const DEFAULT_WINDOW_HEIGHT_IN = 36.0;
 
+    public const DEFAULT_OPENING_HEIGHT_IN = 84.0;
+
     public const STAIR_TREAD_IN = 10.0;
 
     public const MAX_WALL_THICKNESS_IN = 12.0;

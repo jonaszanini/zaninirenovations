@@ -441,7 +441,7 @@ class RoomAreaFinishMath
         } else {
             $height = match ($type) {
                 'window' => RoomAreaCanvasData::DEFAULT_WINDOW_HEIGHT_IN,
-                'opening' => $ceilingIn > 0 ? $ceilingIn : RoomAreaCanvasData::DEFAULT_DOOR_HEIGHT_IN,
+                'opening' => RoomAreaCanvasData::DEFAULT_OPENING_HEIGHT_IN,
                 default => RoomAreaCanvasData::DEFAULT_DOOR_HEIGHT_IN,
             };
         }
@@ -457,11 +457,11 @@ class RoomAreaFinishMath
      */
     private function clampWasteResult(float $value): array
     {
-        if ($value < 0) {
+        if ($value < 0 || $value > self::MAX_WASTE_PERCENT) {
             return ['ok' => false, 'value' => self::DEFAULT_WASTE_PERCENT, 'error' => 'Waste must be between 0 and 100%.'];
         }
 
-        return ['ok' => true, 'value' => round(min(self::MAX_WASTE_PERCENT, $value), 2), 'error' => null];
+        return ['ok' => true, 'value' => round($value, 2), 'error' => null];
     }
 
     /**
