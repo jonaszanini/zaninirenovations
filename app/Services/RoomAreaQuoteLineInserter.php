@@ -99,7 +99,8 @@ class RoomAreaQuoteLineInserter
                 (float) ($quote->contingency_percent ?? 0),
                 (bool) ($quote->include_labour_hst ?? true),
                 (bool) ($quote->include_building ?? false),
-                (float) ($quote->building_labor_percent ?? 0)
+                (float) ($quote->building_labor_percent ?? 0),
+                $quote->usesCurrentPdfFold()
             );
 
             $worksForStorage = [];

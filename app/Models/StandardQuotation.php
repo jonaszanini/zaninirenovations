@@ -293,6 +293,7 @@ class StandardQuotation extends Model
             $this->chargesLabourHst(),
             (bool) ($this->include_building ?? false),
             (float) ($this->building_labor_percent ?? \App\Support\QuotationBuildingLabor::DEFAULT_PERCENT),
+            $this->usesCurrentPdfFold(),
         );
     }
 

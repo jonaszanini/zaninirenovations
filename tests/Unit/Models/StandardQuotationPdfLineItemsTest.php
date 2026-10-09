@@ -547,7 +547,14 @@ class StandardQuotationPdfLineItemsTest extends TestCase
 
             $this->assertEqualsWithDelta($editorGrand, $cpq->pdfGrandTotal(), 0.01, $mode);
             $this->assertEqualsWithDelta(1678.00 + 50.00, $editorGrand, 0.01, $mode);
+            $this->assertEquals(65.00, $cpq->pdfHst(), $mode);
+            $this->assertEquals($cpq->editorHst(), $cpq->pdfHst(), $mode);
             $this->assertFalse((bool) preg_grep('/Commute|Debris/i', $descriptions), $mode);
+            foreach ($cpq->pdfLineItems() as $row) {
+                if (($row['description'] ?? '') === 'Labour') {
+                    $this->assertFalse((bool) ($row['apply_hst'] ?? false), $mode);
+                }
+            }
         }
     }
 

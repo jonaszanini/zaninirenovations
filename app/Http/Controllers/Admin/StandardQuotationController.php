@@ -558,7 +558,8 @@ class StandardQuotationController extends Controller
             (float) $contingencyPercent,
             $includeLabourHst,
             $building['include_building'],
-            $building['building_labor_percent']
+            $building['building_labor_percent'],
+            $existing ? $existing->usesCurrentPdfFold() : true
         );
 
         $materialMapper = static function (array $m): array {
