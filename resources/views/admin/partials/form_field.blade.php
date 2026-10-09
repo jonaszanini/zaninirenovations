@@ -7,7 +7,7 @@
   @param string|null  $id         Defaults to admin-field-{name}
   @param bool         $required   Show required asterisk and HTML required attribute
   @param string|null  $value      Field value (old() handled by caller when null)
-  @param string|null  $help       Helper text below the field
+  @param string|null  $help       Help text shown on the info-tip next to the label
   @param string       $inputClass Extra classes on the control (e.g. cp-money-input)
   @param array        $attrs      Extra HTML attributes on input/textarea/select
   @param slot         options     For type=select: <option> elements
@@ -24,6 +24,9 @@
   <label for="{{ $id }}">
     {{ $label }}
     @if ($required)<span class="cp-required">*</span>@endif
+    @if (! empty($help))
+      @include('admin.partials.info_tip', ['text' => $help])
+    @endif
   </label>
 
   @if ($type === 'textarea')
@@ -49,8 +52,4 @@
   @error($name)
     <p class="admin-form-error">{{ $message }}</p>
   @enderror
-
-  @if (! empty($help))
-    <p class="admin-form-help">{{ $help }}</p>
-  @endif
 </div>

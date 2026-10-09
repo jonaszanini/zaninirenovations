@@ -1,2 +1,2 @@
-{{-- Accessible ! tooltip — pass full help sentence as $text --}}
-<span class="cp-hint" title="{{ $text }}" tabindex="0" role="note" aria-label="{{ $text }}">!</span>
+{{-- Legacy hint include — now the shared info-tip. Pass $text or $html. --}}
+@include('admin.partials.info_tip', ['text' => $text ?? null, 'html' => $html ?? null, 'id' => $id ?? null])

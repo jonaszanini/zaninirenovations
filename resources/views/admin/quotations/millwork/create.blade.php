@@ -242,7 +242,7 @@
             </template>
 
             <div class="admin-form-group quotation-work-desc">
-              <label for="mw-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary on the client PDF. Improve with AI after you fill the wizard.']) Description</label>
+              <label for="mw-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary on the client PDF. Improve with AI after you fill the wizard. Formatting (bold, lists, headings) is preserved on the client PDF.']) Description</label>
               <textarea class="admin-input" id="mw-work-description" name="work_description" rows="5"
                         placeholder="Describe the millwork to be built and installed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
               @include('admin.partials.quotation_work_description_ai', [
@@ -250,7 +250,6 @@
                   'aiContextFormId' => 'mw-main-form',
                   'aiQuotationType' => 'millwork',
               ])
-              <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
             </div>
 
             @include('admin.quotations._payment_schedule', ['quotation' => $quotation])

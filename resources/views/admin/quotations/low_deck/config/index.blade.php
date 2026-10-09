@@ -28,11 +28,13 @@
     @include('admin.partials.quotation_return_quote_hidden')
     <div class="fq-config-header">
       <div>
-        <h3 class="cp-form-help-flush">Materials catalogue</h3>
-        <p class="admin-form-help" style="margin:4px 0 0;">
-          Link each low deck line item to a row in the <a href="{{ route('admin.materials.index') }}" class="admin-text-link">materials catalog</a>.
-          Prices and product details are read live from the linked material.
-        </p>
+        <h3 class="cp-form-help-flush">
+          Materials catalogue
+          <x-admin.info-tip>
+            Link each low deck line item to a row in the <a href="{{ route('admin.materials.index') }}" class="admin-text-link">materials catalog</a>.
+            Prices and product details are read live from the linked material.
+          </x-admin.info-tip>
+        </h3>
       </div>
       <div class="fq-config-header__actions">
         @if ($usesSerpApi)
@@ -42,25 +44,22 @@
                   @disabled($linkedSyncCount === 0)>
             <i class="fa fa-refresh"></i> Sync low deck prices
           </button>
+          <x-admin.info-tip>
+            <strong>Sync low deck prices</strong> updates linked catalog materials via SerpApi — Home Depot (product URL) or Amazon Canada (ASIN in SKU) ({{ number_format($linkedSyncCount) }} syncable).
+            <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
+            · <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>
+          </x-admin.info-tip>
+        @else
+          <x-admin.info-tip>
+            Online sync requires SerpApi on the server. Update linked materials from your PC with
+            <code>php artisan materials:sync-prices</code> (see <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>).
+          </x-admin.info-tip>
         @endif
         <button type="submit" class="admin-btn admin-btn--primary">
           <i class="fa fa-save"></i> Save links
         </button>
       </div>
     </div>
-
-    @if ($usesSerpApi)
-      <p class="admin-form-help fq-sync-hint">
-        <strong>Sync low deck prices</strong> updates linked catalog materials via SerpApi — Home Depot (product URL) or Amazon Canada (ASIN in SKU) ({{ number_format($linkedSyncCount) }} syncable).
-        <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>
-        · <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>
-      </p>
-    @else
-      <p class="admin-form-help fq-sync-hint">
-        Online sync requires SerpApi on the server. Update linked materials from your PC with
-        <code>php artisan materials:sync-prices</code> (see <a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a>).
-      </p>
-    @endif
 
     <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <div class="admin-table-scroll">
@@ -195,10 +194,10 @@
     @method('PUT')
     <div class="fq-config-header">
       <div>
-        <h3 class="cp-form-help-flush">Formula parameters</h3>
-        <p class="admin-form-help" style="margin:4px 0 0;">
-          Structural and retail assumptions used by the calculator. The labour rate and dump fee are prefilled onto each quotation.
-        </p>
+        <h3 class="cp-form-help-flush">
+          Formula parameters
+          <x-admin.info-tip>Structural and retail assumptions used by the calculator. The labour rate and dump fee are prefilled onto each quotation.</x-admin.info-tip>
+        </h3>
       </div>
       <button type="submit" class="admin-btn admin-btn--primary">
         <i class="fa fa-save"></i> Save formula
@@ -207,10 +206,12 @@
 
     <div class="fq-formula-grid">
       <div class="admin-form-group">
-        <label for="ld-max-area">Maximum area (sq ft)</label>
+        <label for="ld-max-area">
+          Maximum area (sq ft)
+          <x-admin.info-tip>OBC floating deck guardrail (592 sq ft = 55 m²).</x-admin.info-tip>
+        </label>
         <input id="ld-max-area" type="number" min="50" step="1" name="max_area_sq_ft"
                class="admin-input" value="{{ old('max_area_sq_ft', (float) $settings->max_area_sq_ft) }}">
-        <p class="admin-form-help">OBC floating deck guardrail (592 sq ft = 55 m²).</p>
       </div>
 
       <div class="admin-form-group">
@@ -220,15 +221,19 @@
       </div>
 
       <div class="admin-form-group">
-        <label>Field joist spacing</label>
-        <p class="admin-form-help">Calculated automatically from deck width/length (uniform bays, max 15 in.). Edge joists are fixed 2¼ in. inside the perimeter rim.</p>
+        <label>
+          Field joist spacing
+          <x-admin.info-tip>Calculated automatically from deck width/length (uniform bays, max 15 in.). Edge joists are fixed 2¼ in. inside the perimeter rim.</x-admin.info-tip>
+        </label>
       </div>
 
       <div class="admin-form-group">
-        <label for="ld-max-span">Max joist span (in.)</label>
+        <label for="ld-max-span">
+          Max joist span (in.)
+          <x-admin.info-tip>112 in = 9' 4" for 2x6 at 12" O.C.</x-admin.info-tip>
+        </label>
         <input id="ld-max-span" type="number" min="24" step="1" name="max_joist_span_in"
                class="admin-input" value="{{ old('max_joist_span_in', (float) $settings->max_joist_span_in) }}">
-        <p class="admin-form-help">112 in = 9' 4" for 2x6 at 12" O.C.</p>
       </div>
 
       <div class="admin-form-group">
@@ -268,11 +273,13 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="ld-under-deck-gravel-coverage">Under-deck gravel coverage (sq ft / bag)</label>
+        <label for="ld-under-deck-gravel-coverage">
+          Under-deck gravel coverage (sq ft / bag)
+          <x-admin.info-tip>Deck area covered by one under-deck gravel bag when “Gravel under the deck” is enabled.</x-admin.info-tip>
+        </label>
         <input id="ld-under-deck-gravel-coverage" type="number" min="0.5" step="0.1"
                name="under_deck_gravel_sq_ft_per_bag" class="admin-input"
                value="{{ old('under_deck_gravel_sq_ft_per_bag', (float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8)) }}">
-        <p class="admin-form-help">Deck area covered by one under-deck gravel bag when “Gravel under the deck” is enabled.</p>
       </div>
 
       <div class="admin-form-group">
@@ -288,10 +295,12 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="ld-board-screws">2-1/2" deck screws / inch of board</label>
+        <label for="ld-board-screws">
+          2-1/2" deck screws / inch of board
+          <x-admin.info-tip>0.2 = 2 screws per 10 in of board length.</x-admin.info-tip>
+        </label>
         <input id="ld-board-screws" type="number" min="0" step="0.0001" name="board_screws_per_inch"
                class="admin-input" value="{{ old('board_screws_per_inch', (float) $settings->board_screws_per_inch) }}">
-        <p class="admin-form-help">0.2 = 2 screws per 10 in of board length.</p>
       </div>
 
       <div class="admin-form-group">

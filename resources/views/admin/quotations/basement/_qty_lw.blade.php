@@ -37,7 +37,7 @@
     <div class="br-lw__primary">
       <div class="br-lw__head">
         <label for="{{ $id }}" @if(! empty($labelId)) id="{{ $labelId }}" @endif>
-          @include('admin.partials.info_tip', ['text' => $info ?? null])
+          @include('admin.partials.info_tip', ['text' => collect([$info ?? null, $help ?? null])->filter()->implode(' ')])
           @if (! empty($clientFilled))
             @include('admin.quotations.basement._client_filled', ['force' => true])
           @endif
@@ -96,9 +96,6 @@
   </div>
 
   <p class="admin-form-help br-lw__computed" data-br-lw-computed @if($mode !== 'dimensions') hidden @endif>{{ $computed }}</p>
-  @if (! empty($help))
-    <p class="admin-form-help br-lw__help">{{ $help }}</p>
-  @endif
   @if (filled($rate ?? null))
     <p class="sq-qty__rate">{{ $rate }}</p>
   @endif

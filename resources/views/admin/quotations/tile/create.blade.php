@@ -203,7 +203,10 @@
         @endif
 
         <div class="admin-form-group quotation-work-desc">
-          <label class="admin-form-label" for="tl-work-description">Work Description (Appears on PDF)</label>
+          <label class="admin-form-label" for="tl-work-description">
+            Work Description (Appears on PDF)
+            <x-admin.info-tip>Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+          </label>
           <textarea id="tl-work-description" name="work_description" class="admin-input" rows="8"
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ $work_description }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
@@ -211,7 +214,6 @@
               'aiContextFormId' => 'tl-form',
               'aiQuotationType' => 'tile',
           ])
-          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 
@@ -364,7 +366,10 @@
         <div id="tl-edge-details" style="display:{{ $include_edge ? 'block' : 'none' }};">
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
-              <label class="admin-form-label" for="tl-tile-edge-id">Edge product</label>
+              <label class="admin-form-label" for="tl-tile-edge-id">
+                Edge product
+                <x-admin.info-tip>Sold in 8 ft pieces; LF is rounded up to whole pieces.</x-admin.info-tip>
+              </label>
               <select name="tile_edge_id" id="tl-tile-edge-id" class="admin-input tl-live-trigger">
                 <option value="">-- Select edge --</option>
                 @foreach ($edges as $edge)
@@ -373,7 +378,6 @@
                   </option>
                 @endforeach
               </select>
-              <p class="admin-form-help">Sold in 8&nbsp;ft pieces; LF is rounded up to whole pieces.</p>
             </div>
             <div class="admin-form-group">
               <label class="admin-form-label" for="tl-edge-lf">Linear feet (LF)</label>

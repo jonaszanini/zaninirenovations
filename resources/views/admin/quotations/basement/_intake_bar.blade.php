@@ -7,7 +7,10 @@
   @endphp
   <div class="admin-card br-intake-bar">
     <div class="br-intake-bar__head">
-      <strong>Client questionnaire</strong>
+      <strong>
+        Client questionnaire
+        <x-admin.info-tip>Send this link so the client can fill fixtures, sizes, and who supplies materials. You can still edit every field after they submit.</x-admin.info-tip>
+      </strong>
       @if ($intakeSubmitted)
         <span class="br-intake-bar__chip br-intake-bar__chip--done">Submitted {{ $quotation->client_intake_submitted_at->timezone(config('app.timezone', 'America/Toronto'))->format('M j, Y g:ia') }}</span>
       @elseif ($intakeSent)
@@ -16,7 +19,6 @@
         <span class="br-intake-bar__chip">Link ready</span>
       @endif
     </div>
-    <p class="admin-form-help">Send this link so the client can fill fixtures, sizes, and who supplies materials. You can still edit every field after they submit.</p>
     <div class="br-intake-bar__actions">
       <input type="text" class="admin-input" id="br-intake-url" readonly value="{{ $intakeUrl }}" aria-label="Client form link">
       <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-intake-copy">

@@ -1591,6 +1591,13 @@ a.admin-client-link:focus-visible {
   min-width: 0;
 }
 
+.admin-info-tip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
 .admin-info-tip {
   position: relative;
   display: inline-flex;
@@ -1617,30 +1624,45 @@ a.admin-client-link:focus-visible {
 .admin-info-tip__bubble {
   display: none;
   position: absolute;
-  z-index: 40;
+  z-index: 80;
   left: 0;
   top: calc(100% - 4px);
-  width: min(280px, 70vw);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  min-width: 10rem;
   padding: 0.7rem 0.85rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: var(--admin-elevated, #fff);
+  background: var(--admin-elevated);
   color: var(--admin-text);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
-  line-height: 1.4;
+  line-height: 1.45;
   text-align: left;
   box-shadow: var(--admin-shadow-md);
   white-space: normal;
+  overflow-wrap: anywhere;
 }
-.admin-info-tip[aria-expanded="true"] .admin-info-tip__bubble {
+.admin-info-tip-wrap.is-open > .admin-info-tip__bubble,
+.admin-info-tip[aria-expanded="true"] + .admin-info-tip__bubble {
   display: block;
 }
 .admin-form-group > label:has(.admin-info-tip),
+.admin-form-group > label:has(.admin-info-tip-wrap),
 .admin-form-group-label:has(.admin-info-tip),
-.br-lw__head > label:has(.admin-info-tip) {
+.admin-form-group-label:has(.admin-info-tip-wrap),
+.br-lw__head > label:has(.admin-info-tip),
+.br-lw__head > label:has(.admin-info-tip-wrap),
+h3:has(.admin-info-tip-wrap),
+h4:has(.admin-info-tip-wrap),
+h5:has(.admin-info-tip-wrap),
+legend:has(.admin-info-tip-wrap),
+.cp-heading-sm:has(.admin-info-tip-wrap),
+.cp-heading-md:has(.admin-info-tip-wrap),
+.q-additional-costs-card__title:has(.admin-info-tip-wrap) {
   display: flex;
   align-items: center;
   gap: 0.15rem;

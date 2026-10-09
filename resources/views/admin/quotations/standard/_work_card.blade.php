@@ -65,13 +65,15 @@
     <div class="sq-layout">
       <div class="sq-panel sq-panel--nested">
         <div class="sq-panel-head">
-          <h3 class="cp-form-help-flush">Materials</h3>
+          <h3 class="cp-form-help-flush">
+            Materials
+            <x-admin.info-tip>
+              Each row: <strong>Type manually</strong>, <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>),
+              or <strong>Electrical work</strong> (its own line on the client PDF).
+              Unit price is before tax unless you check <strong>Price incl. HST</strong>.
+            </x-admin.info-tip>
+          </h3>
         </div>
-        <p class="admin-form-help sq-materials-intro">
-          Each row: <strong>Type manually</strong>, <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>),
-          or <strong>Electrical work</strong> (its own line on the client PDF).
-          Unit price is before tax unless you check <strong>Price incl. HST</strong>.
-        </p>
 
         <div class="sq-materials-list">
           @foreach ($matRows as $i => $row)

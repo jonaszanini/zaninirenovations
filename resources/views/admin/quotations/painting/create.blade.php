@@ -271,7 +271,10 @@
             <textarea class="admin-input" id="surface_prep_description" name="surface_prep_description" rows="4" maxlength="5000">{{ old('surface_prep_description', $inputs['surface_prep_description'] ?? PaintingQuotationCalculator::defaultSurfacePrepDescription()) }}</textarea>
           </div>
           <div class="admin-form-group quotation-work-desc">
-            <label for="work-description">Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
+            <label for="work-description">
+              Project description <span class="admin-form-help">(optional — appears on client PDF)</span>
+              <x-admin.info-tip>Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+            </label>
             <textarea class="admin-input" id="work-description" name="work_description" rows="8"
                       placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
             @include('admin.partials.quotation_work_description_ai', [
@@ -279,7 +282,6 @@
                 'aiContextFormId' => 'pt-main-form',
                 'aiQuotationType' => 'painting',
             ])
-            <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
           </div>
         </div>
 

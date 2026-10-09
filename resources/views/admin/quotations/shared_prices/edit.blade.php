@@ -308,8 +308,10 @@ td.sp-col-consumers {
     @method('PUT')
 
     <div class="admin-card sp-crew">
-      <h3 class="sp-heading">Crew rates</h3>
-      <p class="admin-form-help">Used by Basement, Trimming, Shed, and Millwork when a quote does not override them.</p>
+      <h3 class="sp-heading">
+        Crew rates
+        <x-admin.info-tip>Used by Basement, Trimming, Shed, and Millwork when a quote does not override them.</x-admin.info-tip>
+      </h3>
       <div class="sp-crew-grid">
         <div class="sp-crew-field">
           <label for="owner_hourly_rate">Owner hourly (CAD$)</label>

@@ -118,7 +118,10 @@
           </div>
         </div>
         <div class="admin-form-group quotation-work-desc">
-          <label for="tm-work-description">Work description</label>
+          <label for="tm-work-description">
+            Work description
+            <x-admin.info-tip>Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+          </label>
           <textarea class="admin-input" id="tm-work-description" name="work_description" rows="8"
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
@@ -126,7 +129,6 @@
               'aiContextFormId' => 'tm-main-form',
               'aiQuotationType' => 'trimming',
           ])
-          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 

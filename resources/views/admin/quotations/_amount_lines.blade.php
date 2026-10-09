@@ -237,10 +237,14 @@
   @if($cardTitle !== '' || $intro !== '')
     <div class="q-additional-costs-card__head">
       @if($cardTitle !== '')
-        <h3 class="q-additional-costs-card__title">{{ $cardTitle }}</h3>
-      @endif
-      @if($intro !== '')
-        <p class="admin-form-help q-additional-costs-card__intro">{!! $intro !!}</p>
+        <h3 class="q-additional-costs-card__title">
+          {{ $cardTitle }}
+          @if($intro !== '')
+            <x-admin.info-tip>{!! $intro !!}</x-admin.info-tip>
+          @endif
+        </h3>
+      @elseif($intro !== '')
+        <x-admin.info-tip>{!! $intro !!}</x-admin.info-tip>
       @endif
     </div>
   @endif

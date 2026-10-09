@@ -47,7 +47,10 @@
 
   <div class="q-debris-card__body" data-cp-debris-body @if ($includeDebrisChoice !== true) hidden @endif>
     <div class="admin-form-group q-debris-amount-group">
-      <label for="q-debris-amount">Amount to charge <span class="cp-required">*</span></label>
+      <label for="q-debris-amount">
+        Amount to charge <span class="cp-required">*</span>
+        <x-admin.info-tip>Incl. HST — folded into Labour on the client PDF (not shown as its own line).</x-admin.info-tip>
+      </label>
       <input type="text"
              id="q-debris-amount"
              name="debris_removal_amount"
@@ -59,7 +62,6 @@
              value="{{ $debrisAmount }}"
              data-cp-debris-amount
              @if ($includeDebrisChoice === true) required @endif>
-      <p class="admin-form-help">Incl. HST — folded into Labour on the client PDF (not shown as its own line).</p>
       @error('debris_removal_amount')
         <p class="admin-form-error">{{ $message }}</p>
       @enderror

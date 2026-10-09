@@ -226,10 +226,11 @@
         ])
 
         <details class="br-acc admin-card" data-br-step="review" @if ($isEdit) open @endif>
-          <summary class="br-acc__summary">Review, materials &amp; live edits</summary>
+          <summary class="br-acc__summary">
+            Review, materials &amp; live edits
+            <x-admin.info-tip>Edit hours, quantities, or unit prices below. Totals recalculate as you type. Enter 0 on an auto-filled quantity in a previous section to skip that trade.</x-admin.info-tip>
+          </summary>
           <div class="br-acc__body">
-            <p class="admin-form-help">Edit hours, quantities, or unit prices below. Totals recalculate as you type. Enter 0 on an auto-filled quantity in a previous section to skip that trade.</p>
-
             @include('admin.partials.checkbox', [
               'name' => 'client_provides_all',
               'hiddenFallback' => true,
@@ -303,8 +304,10 @@
               </table>
             </div>
 
-            <h4 class="br-review-heading">Materials</h4>
-            <p class="admin-form-help">Waste % is on Overview (default 10%). Bulk quantities below already include it.</p>
+            <h4 class="br-review-heading">
+              Materials
+              <x-admin.info-tip>Waste % is on Overview (default 10%). Bulk quantities below already include it.</x-admin.info-tip>
+            </h4>
             <div class="admin-table-scroll">
               <table class="admin-table br-review-table">
                 <thead>
@@ -333,8 +336,10 @@
               </table>
             </div>
 
-            <h4 class="br-review-heading">Extra materials</h4>
-            <p class="admin-form-help">Add items from the Materials DB or type them manually. Catalog rows are marked in blue; typed rows stay gray.</p>
+            <h4 class="br-review-heading">
+              Extra materials
+              <x-admin.info-tip>Add items from the Materials DB or type them manually. Catalog rows are marked in blue; typed rows stay gray.</x-admin.info-tip>
+            </h4>
             <div id="br-extra-list">
               @foreach ($extraRows as $ei => $erow)
                 @include('admin.quotations.basement._extra_material_row', ['i' => $ei, 'row' => is_array($erow) ? $erow : []])

@@ -365,7 +365,10 @@
         </section>
 
         <section class="sq-field-box">
-          <h4 class="sq-field-box-title">Description of the work</h4>
+          <h4 class="sq-field-box-title">
+            Description of the work
+            <x-admin.info-tip>Shown on the client PDF beneath the priced line items. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+          </h4>
           <div class="admin-form-group sq-intro-work-desc quotation-work-desc">
             <label for="sq-work-description" class="visually-hidden">Description of the work</label>
             <textarea id="sq-work-description" name="work_description" rows="8"
@@ -376,7 +379,6 @@
                 'aiContextFormId' => 'sq-standard-form',
                 'aiQuotationType' => 'standard',
             ])
-            <p class="admin-form-help sq-intro-option-help">Shown on the client PDF beneath the priced line items. Formatting (bold, lists, headings) is preserved.</p>
             @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </section>

@@ -544,10 +544,10 @@
         <div class="admin-form-group cp-form-group-spaced">
           <div class="fq-sides-header">
             <div>
-              <label class="cp-label-flush">Runs (up to {{ \App\Models\FenceQuotation::MAX_RUNS }})</label>
-              <p class="admin-form-help cp-form-help-tight-top">
-                Length in feet (quarter-foot is fine, e.g. 20.25). Blank extra runs are ignored.
-              </p>
+              <label class="cp-label-flush">
+                Runs (up to {{ \App\Models\FenceQuotation::MAX_RUNS }})
+                <x-admin.info-tip>Length in feet (quarter-foot is fine, e.g. 20.25). Blank extra runs are ignored.</x-admin.info-tip>
+              </label>
               <p class="fq-total-lf" id="fq-total-lf">Total LF: 0</p>
             </div>
             <div class="fq-sides-actions">
@@ -586,7 +586,10 @@
           </div>
 
           <div class="admin-form-group">
-            <label for="fq-style">Board style</label>
+            <label for="fq-style">
+              Board style
+              <x-admin.info-tip>Clear span between posts is at most the max spacing. An 8 ft top board covers that clear span; it may not reach post centres at near-max spacing.</x-admin.info-tip>
+            </label>
             <select name="board_style" id="fq-style" class="admin-input">
               <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_STANDARD }}"
                       @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_STANDARD)>
@@ -597,19 +600,23 @@
                 Overlapping
               </option>
             </select>
-            <p class="admin-form-help">Clear span between posts is at most the max spacing. An 8 ft top board covers that clear span; it may not reach post centres at near-max spacing.</p>
           </div>
 
           <div class="admin-form-group">
-            <label for="fq-gates">Gates</label>
+            <label for="fq-gates">
+              Gates
+              <x-admin.info-tip>Tick “Gate goes here” on a run. Extra gates (count higher than ticked runs) use Extra gate size.</x-admin.info-tip>
+            </label>
             <input id="fq-gates" type="number" min="0" max="16" step="1"
                    name="gate_count" class="admin-input"
                    value="{{ $initialGates }}">
-            <p class="admin-form-help">Tick “Gate goes here” on a run. Extra gates (count higher than ticked runs) use Extra gate size.</p>
           </div>
 
           <div class="admin-form-group{{ $initialGates > $initialTickedGates ? '' : ' is-hidden' }}" id="fq-extra-gate-wrap">
-            <label for="fq-extra-gate-preset">Extra gate size</label>
+            <label for="fq-extra-gate-preset">
+              Extra gate size
+              <x-admin.info-tip>Size for gates not ticked on a run.</x-admin.info-tip>
+            </label>
             <select name="extra_gate_preset" id="fq-extra-gate-preset" class="admin-input">
               @foreach ($gatePresets as $preset)
                 <option value="{{ $preset['key'] }}" @selected($initialExtraGatePreset === $preset['key'])>
@@ -617,17 +624,15 @@
                 </option>
               @endforeach
             </select>
-            <p class="admin-form-help">Size for gates not ticked on a run.</p>
           </div>
         </div>
 
         {{-- 4. Labour (rate for the chosen height) ------------------- --}}
         <div class="admin-form-section fq-quote-labour-section">
-          <h4 class="cp-heading-sm">Labour rate for this quotation</h4>
-          <p class="admin-form-help cp-form-help-spaced">
-            Stored with this quote{{ $isEdit ? '' : ' (prefilled from formula defaults)' }}.
-            First gate is included in the per-foot rate; extra gates add the configured extra-gate labour if any.
-          </p>
+          <h4 class="cp-heading-sm">
+            Labour rate for this quotation
+            <x-admin.info-tip>Stored with this quote{{ $isEdit ? '' : ' (prefilled from formula defaults)' }}. First gate is included in the per-foot rate; extra gates add the configured extra-gate labour if any.</x-admin.info-tip>
+          </h4>
           <div class="fq-formula-grid fq-quote-labour-grid">
             <div class="admin-form-group" id="fq-labour-6-wrap">
               <label for="fq-labour-rate-6">Labour rate 6&prime; fence (CAD$ / linear ft)</label>
@@ -654,7 +659,10 @@
 
         {{-- 6. Description (needs runs first for auto-fill) ---------- --}}
         <div class="admin-form-group quotation-work-desc">
-          <label for="fq-work-description">Description of the work</label>
+          <label for="fq-work-description">
+            Description of the work
+            <x-admin.info-tip>Shown on the client PDF beneath the priced line item. Use Fill from template for a count-accurate draft, then polish with AI if you want.</x-admin.info-tip>
+          </label>
           <textarea id="fq-work-description" name="work_description" rows="8"
                     @class(['admin-input', 'is-invalid' => $errors->has('work_description')])
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
@@ -664,7 +672,6 @@
               'aiQuotationType' => 'fence',
               'trailingActionPartial' => 'admin.quotations.fence._work_description_trailing_actions',
           ])
-          <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Use Fill from template for a count-accurate draft, then polish with AI if you want.</p>
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 

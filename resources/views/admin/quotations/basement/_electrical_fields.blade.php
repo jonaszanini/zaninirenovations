@@ -1,7 +1,5 @@
 <div id="br-electrical-fields" class="br-electrical-fields">
-  <p class="admin-form-help br-trade-scope-hint">
-    These answers are scope for a qualified electrician — they are not Zanini labour or materials. Type their quote as priced lines below.
-  </p>
+  <x-admin.info-tip>These answers are scope for a qualified electrician — they are not Zanini labour or materials. Type their quote as priced lines below.</x-admin.info-tip>
   <div class="br-qty-grid">
     <div class="admin-form-group">
       <label for="br-outlets">@include('admin.partials.info_tip', ['text' => $brInfo['outlet_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'outlet_qty', 'filledKeys' => $filledKeys ?? []]) New outlets</label>

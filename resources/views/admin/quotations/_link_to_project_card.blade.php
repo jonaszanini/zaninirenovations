@@ -61,14 +61,21 @@
 @endphp
 
 <div class="{{ $cardClasses }}"@if (! empty($cardStyle)) style="{{ $cardStyle }}"@endif>
-  <h4 style="margin:0 0 8px;">{{ $title }}</h4>
-  @if (! empty($helpText))
-    <p class="admin-form-help cp-form-help-flush" style="margin:0 0 12px;">{!! $helpText !!}</p>
-  @endif
+  <h4 style="margin:0 0 8px;">
+    {{ $title }}
+    @if (! empty($helpText))
+      <x-admin.info-tip>{!! $helpText !!}</x-admin.info-tip>
+    @endif
+  </h4>
 
   @if (! empty($sharedLineDescription))
     <div class="admin-form-group fq-link-shared-line-desc">
-      <label for="{{ $sharedLineDescription['id'] }}">{{ $sharedLineDescription['label'] ?? 'Line description (optional)' }}</label>
+      <label for="{{ $sharedLineDescription['id'] }}">
+        {{ $sharedLineDescription['label'] ?? 'Line description (optional)' }}
+        @if (! empty($sharedLineDescription['help']))
+          <x-admin.info-tip>{{ $sharedLineDescription['help'] }}</x-admin.info-tip>
+        @endif
+      </label>
       <input type="text"
              id="{{ $sharedLineDescription['id'] }}"
              name="link_line_description"
@@ -77,9 +84,6 @@
              @if (! empty($sharedLineDescription['form'])) form="{{ $sharedLineDescription['form'] }}" @endif
              value="{{ $sharedLineDescription['value'] ?? '' }}"
              placeholder="{{ $sharedLineDescription['placeholder'] ?? $lineDescriptionPlaceholder }}">
-      @if (! empty($sharedLineDescription['help']))
-        <p class="admin-form-help">{{ $sharedLineDescription['help'] }}</p>
-      @endif
     </div>
   @endif
 
