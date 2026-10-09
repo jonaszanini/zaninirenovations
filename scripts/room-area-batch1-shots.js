@@ -105,10 +105,12 @@ async function setTheme(page, mode) {
 async function closeMore(page) {
   await page.evaluate(() => {
     const root = document.querySelector('[data-room-area]');
+    const toggle = document.querySelector('[data-ra-more-toggle]');
+    if (root && root.classList.contains('is-more-open') && toggle) toggle.click();
     if (root) root.classList.remove('is-more-open');
     const sheet = document.querySelector('[data-ra-more-sheet]');
     if (sheet) {
-      sheet.style.setProperty('display', 'none', 'important');
+      sheet.style.removeProperty('display');
       sheet.scrollTop = 0;
     }
     const feedback = document.querySelector('[data-ra-feedback]');
@@ -121,34 +123,26 @@ async function closeMore(page) {
 }
 
 async function openMore(page) {
-  await page.evaluate(() => {
-    const root = document.querySelector('[data-room-area]');
-    const sheet = document.querySelector('[data-ra-more-sheet]');
-    if (root) root.classList.add('is-more-open');
-    if (!sheet) return;
-    sheet.style.removeProperty('display');
-  });
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-  await page.evaluate(() => {
-    const sheet = document.querySelector('[data-ra-more-sheet]');
-    if (sheet) sheet.scrollTop = 0;
-  });
+  await closeMore(page);
+  await tap(page, '[data-ra-more-toggle]');
+  await page.waitForFunction(() => {
+    const view = document.querySelector('.util-ra-more-block--view');
+    if (!view) return false;
+    const r = view.getBoundingClientRect();
+    return r.height > 20 && r.top < window.innerHeight && r.bottom > 80;
+  }, { timeout: 8000 });
   await delay(150);
 }
 
 async function openTemplates(page) {
-  await page.evaluate(() => {
-    const root = document.querySelector('[data-room-area]');
-    const sheet = document.querySelector('[data-ra-more-sheet]');
-    if (root) root.classList.add('is-more-open');
-    if (sheet) sheet.style.removeProperty('display');
-  });
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-  await page.evaluate(() => {
-    const sheet = document.querySelector('[data-ra-more-sheet]');
-    const sec = document.querySelector('[data-ra-more-templates]');
-    if (sheet && sec) sheet.scrollTop = sec.offsetTop;
-  });
+  await closeMore(page);
+  await tap(page, '[data-ra-phone-bar] [data-ra-templates-toggle]');
+  await page.waitForFunction(() => {
+    const grid = document.querySelector('[data-ra-more-templates] .util-ra-templates-pop__grid');
+    if (!grid) return false;
+    const r = grid.getBoundingClientRect();
+    return r.width > 40 && r.height > 40 && r.top < window.innerHeight && r.bottom > 80;
+  }, { timeout: 8000 });
   await delay(150);
 }
 

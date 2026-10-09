@@ -95,6 +95,8 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('applyEditorPrefs(defaultEditorPrefs(), true)', $js);
         $this->assertStringNotContainsString('room-area-layers-locked', $js);
         $this->assertStringContainsString("els.templatesPopover.style.position = 'fixed'", $js);
+        $this->assertStringContainsString('if (isPhoneChrome()) return;', $js);
+        $this->assertStringContainsString('els.moreSheet.scrollTop += (secBox.top - sheetBox.top) - 8;', $js);
         $this->assertStringContainsString('function serializeEditorPrefs()', $js);
         $this->assertStringContainsString('function applyEditorPrefs(', $js);
         $this->assertStringNotContainsString('window.__roomAreaQA', $js);

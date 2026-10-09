@@ -8989,6 +8989,7 @@
   }
 
   function templatesPopoverOpen() {
+    if (isPhoneChrome()) return root.classList.contains('is-more-open');
     return !!(els.templatesPopover && !els.templatesPopover.hasAttribute('hidden'));
   }
 
@@ -9036,18 +9037,16 @@
     var sec = root.querySelector('[data-ra-more-templates]');
     if (!sec || !els.moreSheet) return;
     requestAnimationFrame(function () {
-      var top = sec.offsetTop - 8;
-      els.moreSheet.scrollTop = top > 0 ? top : 0;
-      sec.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      var sheetBox = els.moreSheet.getBoundingClientRect();
+      var secBox = sec.getBoundingClientRect();
+      els.moreSheet.scrollTop += (secBox.top - sheetBox.top) - 8;
     });
   }
 
   function setTemplatesPopover(open) {
     if (isPhoneChrome()) {
-      if (open) {
-        setMoreOpen(true);
-        scrollMoreToTemplates();
-      }
+      setMoreOpen(!!open);
+      if (open) scrollMoreToTemplates();
       raAll('[data-ra-templates-toggle]').forEach(function (btn) {
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         btn.classList.toggle('is-active', !!open);
@@ -9074,6 +9073,7 @@
   function bindTemplatesPopoverFollow() {
     if (!els.templatesPopover || !els.templatesToggle) return;
     var reposition = function () {
+      if (isPhoneChrome()) return;
       if (templatesPopoverOpen()) setTemplatesPopover(true);
     };
     window.addEventListener('scroll', reposition, true);
