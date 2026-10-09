@@ -188,7 +188,7 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
                 'file' => 'low_deck/create.blade.php',
                 'main' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
                 'rendered' => fn () => $this->renderedLowDeckEdit(),
-                'needles' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
+                'needles' => ['Print Layout Diagrams', 'data-qh-layout-diagrams'],
             ],
             'millwork' => [
                 'file' => 'millwork/create.blade.php',
@@ -258,7 +258,14 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
             'calculation' => [],
         ]);
 
-        return $this->get(route('admin.quotations.low-deck.edit', $quote))->assertOk()->getContent();
+        $html = $this->get(route('admin.quotations.low-deck.edit', $quote))->assertOk()->getContent();
+        $this->assertStringContainsString(
+            route('admin.quotations.low-deck.layout-diagrams', $quote),
+            $html,
+            'Rendered low deck edit must keep the layout-diagrams URL'
+        );
+
+        return $html;
     }
 
     private function renderedMillworkEdit(): string
