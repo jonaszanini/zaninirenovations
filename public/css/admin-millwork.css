@@ -432,6 +432,13 @@
 }
 
 [data-mw-show] { display: none; }
+.mw-piece label [data-mw-show] { display: none; }
+.mw-piece[data-mw-type="cabinet"] label [data-mw-show~="cabinet"],
+.mw-piece[data-mw-type="vanity"] label [data-mw-show~="vanity"],
+.mw-piece[data-mw-type="closet"] label [data-mw-show~="closet"],
+.mw-piece[data-mw-type="cabinet_door"] label [data-mw-show~="cabinet_door"] {
+  display: inline;
+}
 [data-mw-mat][hidden],
 [data-mw-hw][hidden] {
   display: none !important;

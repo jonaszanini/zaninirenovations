@@ -183,8 +183,10 @@
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="cabinet cabinet_door vanity closet bench-drawers">
     @unless ($isLegacyQuote)
     <div class="admin-form-group" data-mw-show="cabinet cabinet_door vanity closet">
-      <label data-mw-show="cabinet vanity closet">Hinges (per unit)</label>
-      <label data-mw-show="cabinet_door">Hinges (total)</label>
+      <label>
+        <span data-mw-show="cabinet vanity closet">Hinges (per unit)</span>
+        <span data-mw-show="cabinet_door">Hinges (total)</span>
+      </label>
       <input type="number" min="0" max="100" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][hinge_qty]"
              placeholder="Auto" value="{{ $piece['hinge_qty'] ?? '' }}">
     </div>
