@@ -311,7 +311,7 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             'status' => ClientProject::STATUS_IN_PROGRESS,
             'billing_type' => $hourly ? ClientProject::BILLING_HOURLY : ClientProject::BILLING_FIXED,
             'hourly_rate' => $hourly ? 50 : null,
-            'payment_plan' => $hourly ? null : 1,
+            'payment_plan' => 1,
             'total_amount' => $hourly ? null : 1000,
         ]);
         $items = $hourly
