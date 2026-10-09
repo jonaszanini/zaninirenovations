@@ -537,6 +537,7 @@ class StandardQuotationPdfLineItemsTest extends TestCase
 
             $cpq = new \App\Models\ClientProjectQuotation([
                 'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
+                'pdf_fold_version' => 2,
                 'items' => $items,
             ]);
 
@@ -676,6 +677,7 @@ JS;
                 ];
             }
             $sq = new StandardQuotation([
+                'pdf_fold_version' => 2,
                 'materials' => $materials,
                 'labour_hourly_rate' => 0,
                 'labour_mode' => 'hours',
@@ -715,6 +717,286 @@ JS;
 
         $this->assertSame(0, $mismatches);
         $this->assertGreaterThan(80, count($cases));
+    }
+
+    public function test_v2_labour_building_and_contingency_match_real_editor_js(): void
+    {
+        $js = (string) file_get_contents(public_path('js/admin-standard-quotation.js'));
+        $this->assertTrue((bool) preg_match(
+            '/var lineGross = Math\.round\(\(unit \* qty \+ delivery\) \* 100\) \/ 100;.*?lineTot = lineSub;\n      \}/s',
+            $js,
+            $matRow
+        ), 'Must extract the real material-row math');
+        $this->assertTrue((bool) preg_match(
+            '/lab = Math\.round\(fa \/ \(1 \+ HST\) \* 100\) \/ 100;.*?labHst = Math\.round\(\(fa - lab\) \* 100\) \/ 100;/s',
+            $js,
+            $labInc
+        ), 'Must extract HST-included labour math');
+        $this->assertTrue((bool) preg_match(
+            '/lab = Math\.round\(fa \* 100\) \/ 100;.*?labWithHst = Math\.round\(\(lab \+ labHst\) \* 100\) \/ 100;/s',
+            $js,
+            $labEx
+        ), 'Must extract pre-tax labour math');
+        $this->assertTrue((bool) preg_match(
+            '/buildingSurcharge = Math\.round\(lab \* \(buildingPct \/ 100\) \* 100\) \/ 100;/',
+            $js,
+            $buildingAmt
+        ), 'Must extract building surcharge amount math');
+        $this->assertTrue((bool) preg_match(
+            '/buildingHst = Math\.round\(buildingSurcharge \* HST \* 100\) \/ 100;/',
+            $js,
+            $buildingHst
+        ), 'Must extract building HST math');
+        $this->assertTrue((bool) preg_match(
+            '/contAmt = Math\.round\(contBase \* \(contPct \/ 100\) \* 100\) \/ 100;.*?contHst = Math\.round\(contAmt \* effRate \* 100\) \/ 100;/s',
+            $js,
+            $cont
+        ), 'Must extract contingency math');
+
+        $script = <<<JS
+var HST = 0.13;
+function labourHstEnabled() { return true; }
+function lineMath(unit, qty, delivery, inclusive, chargePreTax) {
+  {$matRow[0]}
+  return {lineSub: lineSub, lineHst: lineHst, lineTot: lineTot};
+}
+function includedLabour(fa) {
+  var lab, labHst;
+  {$labInc[0]}
+  return {lab: lab, labHst: labHst};
+}
+function pretaxLabour(fa) {
+  var lab, labHst, labWithHst;
+  {$labEx[0]}
+  return {lab: lab, labHst: labHst};
+}
+function building(lab, buildingPct) {
+  var buildingSurcharge = 0, buildingHst = 0;
+  if (buildingPct > 0) {
+    {$buildingAmt[0]}
+    {$buildingHst[0]}
+  }
+  return {buildingSurcharge: buildingSurcharge, buildingHst: buildingHst};
+}
+function contingency(contBase, contBaseHst, contPct) {
+  var contAmt, contHst, effRate;
+  effRate = contBase > 0 ? (contBaseHst / contBase) : 0;
+  {$cont[0]}
+  return {contAmt: contAmt, contHst: contHst};
+}
+var cases = JSON.parse(process.argv[2]);
+var out = cases.map(function (c) {
+  var jobs = c.jobs || [{mat: c.mat, fa: c.fa, inclusiveLab: c.inclusiveLab !== false, inclusiveMat: !!c.inclusiveMat}];
+  var contBase = 0, contBaseHst = 0, lab = 0, labHst = 0, matSub = 0, matHst = 0;
+  jobs.forEach(function (job) {
+    var m = lineMath(job.mat, 1, 0, !!job.inclusiveMat, true);
+    matSub += m.lineSub;
+    matHst += m.lineHst;
+    contBase += m.lineSub;
+    contBaseHst += m.lineHst;
+    var l = job.inclusiveLab === false ? pretaxLabour(job.fa) : includedLabour(job.fa);
+    lab += l.lab;
+    labHst += l.labHst;
+  });
+  matSub = Math.round(matSub * 100) / 100;
+  matHst = Math.round(matHst * 100) / 100;
+  lab = Math.round(lab * 100) / 100;
+  labHst = Math.round(labHst * 100) / 100;
+  var b = c.buildingPct ? building(lab, c.buildingPct) : {buildingSurcharge: 0, buildingHst: 0};
+  var labourAmt = Math.round((lab + b.buildingSurcharge) * 100) / 100;
+  var labourHst = Math.round((labHst + b.buildingHst) * 100) / 100;
+  var cont = c.contPct ? contingency(contBase, contBaseHst, c.contPct) : {contAmt: 0, contHst: 0};
+  var extra = 0;
+  (c.additional || []).forEach(function (a) {
+    extra += a;
+  });
+  extra = Math.round(extra * 100) / 100;
+  return {
+    labourAmt: labourAmt,
+    labourHst: labourHst,
+    contHst: cont.contHst,
+    matHst: matHst,
+    grand: Math.round((matSub + matHst + cont.contAmt + cont.contHst + labourAmt + labourHst + extra) * 100) / 100
+  };
+});
+process.stdout.write(JSON.stringify(out));
+JS;
+
+        $cases = [
+            ['fa' => 113.00, 'mat' => 100.00, 'buildingPct' => 30, 'contPct' => 10, 'inclusiveLab' => true],
+            ['fa' => 566.00, 'mat' => 33.33, 'buildingPct' => 30, 'contPct' => 20, 'inclusiveLab' => true],
+            ['fa' => 99.99, 'mat' => 250.00, 'buildingPct' => 15, 'contPct' => 10, 'inclusiveLab' => true],
+            ['fa' => 100.00, 'mat' => 40.00, 'buildingPct' => 0, 'contPct' => 0, 'inclusiveLab' => true],
+            ['fa' => 200.00, 'mat' => 80.00, 'buildingPct' => 0, 'contPct' => 0, 'inclusiveLab' => false],
+            ['fa' => 200.00, 'mat' => 33.33, 'buildingPct' => 0, 'contPct' => 0, 'inclusiveLab' => false, 'inclusiveMat' => true],
+            [
+                'jobs' => [
+                    ['mat' => 33.33, 'fa' => 113.00, 'inclusiveLab' => true],
+                    ['mat' => 66.67, 'fa' => 226.00, 'inclusiveLab' => true],
+                ],
+                'buildingPct' => 30,
+                'contPct' => 10,
+            ],
+            [
+                'fa' => 300.00,
+                'mat' => 150.00,
+                'buildingPct' => 0,
+                'contPct' => 0,
+                'inclusiveLab' => false,
+                'additional' => [113.00],
+            ],
+        ];
+        $tmp = tempnam(sys_get_temp_dir(), 'sq-lab-');
+        file_put_contents($tmp, $script);
+        $output = [];
+        $code = 0;
+        exec('node '.escapeshellarg($tmp).' '.escapeshellarg(json_encode($cases)).' 2>&1', $output, $code);
+        @unlink($tmp);
+        $this->assertSame(0, $code, implode("\n", $output));
+        $jsOut = json_decode(implode('', $output), true);
+        $this->assertIsArray($jsOut);
+        $this->assertCount(count($cases), $jsOut);
+
+        $mutantLineHstFired = false;
+        $mutantContFired = false;
+        $mutantLabourFired = false;
+
+        foreach ($cases as $i => $case) {
+            $jobs = $case['jobs'] ?? null;
+            $attrs = [
+                'pdf_fold_version' => 2,
+                'include_labour_hst' => true,
+                'include_building' => ((float) ($case['buildingPct'] ?? 0)) > 0,
+                'building_labor_percent' => $case['buildingPct'] ?? 0,
+                'contingency_enabled' => ((float) ($case['contPct'] ?? 0)) > 0,
+                'contingency_percent' => $case['contPct'] ?? 0,
+                'include_commute' => false,
+                'include_debris_removal' => false,
+            ];
+            if ($jobs !== null) {
+                $attrs['works'] = array_map(static function (array $job, int $idx): array {
+                    return [
+                        'title' => 'Job '.($idx + 1),
+                        'materials' => [[
+                            'short_name' => 'Row '.$idx,
+                            'unit_price' => $job['mat'],
+                            'quantity' => 1,
+                            'apply_hst' => true,
+                            'hst_includes_unit' => ! empty($job['inclusiveMat']),
+                        ]],
+                        'labour_use_fixed' => true,
+                        'labour_fixed_amount' => $job['fa'],
+                        'labour_fixed_hst_included' => $job['inclusiveLab'] !== false,
+                    ];
+                }, $jobs, array_keys($jobs));
+            } else {
+                $attrs['materials'] = [[
+                    'short_name' => 'Plywood',
+                    'unit_price' => $case['mat'],
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                    'hst_includes_unit' => ! empty($case['inclusiveMat']),
+                ]];
+                $attrs['labour_use_fixed'] = true;
+                $attrs['labour_fixed_amount'] = $case['fa'];
+                $attrs['labour_fixed_hst_included'] = ($case['inclusiveLab'] ?? true) !== false;
+            }
+
+            $sq = new StandardQuotation($attrs);
+            $items = $sq->summaryPdfLineItems();
+            foreach ($case['additional'] ?? [] as $gross) {
+                $items[] = [
+                    'description' => 'Additional cost — Dumpster',
+                    'amount' => $gross,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ];
+            }
+            $cpq = new \App\Models\ClientProjectQuotation([
+                'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
+                'pdf_fold_version' => 2,
+                'items' => $items,
+            ]);
+            $this->assertEquals($jsOut[$i]['grand'], $cpq->pdfGrandTotal(), 'grand case '.$i);
+            $this->assertEquals($jsOut[$i]['grand'], $cpq->editorGrandTotal(), 'editor case '.$i);
+
+            $labour = collect($sq->summaryPdfLineItems())->firstWhere('description', 'Labour');
+            if ($labour && ($jsOut[$i]['labourHst'] ?? 0) > 0) {
+                $this->assertEquals(
+                    $jsOut[$i]['labourHst'],
+                    \App\Models\ClientProjectQuotation::lineHstAmount($labour),
+                    'labour HST '.$i
+                );
+            }
+
+            if (! empty($case['inclusiveMat']) || (($case['jobs'][0]['inclusiveMat'] ?? false))) {
+                $mutantIgnoreLineHst = $sq->summaryPdfLineItems();
+                foreach ($mutantIgnoreLineHst as &$row) {
+                    if (($row['description'] ?? '') === 'Material') {
+                        unset($row['hst_amount']);
+                    }
+                }
+                unset($row);
+                $mutantMatHst = 0.0;
+                foreach ($mutantIgnoreLineHst as $row) {
+                    $mutantMatHst += \App\Models\ClientProjectQuotation::lineHstAmount($row);
+                }
+                if (abs(round($mutantMatHst, 2) - $cpq->pdfHst()) > 0.001) {
+                    $mutantLineHstFired = true;
+                }
+                $this->assertNotEquals(
+                    round($mutantMatHst, 2),
+                    $cpq->pdfHst(),
+                    'mutant that ignores line_hst on tax-included rows must fail case '.$i
+                );
+            }
+
+            if (((float) ($case['contPct'] ?? 0)) > 0 && (float) $jsOut[$i]['contHst'] > 0) {
+                $mutantDropCont = $sq->summaryPdfLineItems();
+                foreach ($mutantDropCont as &$row) {
+                    if (($row['description'] ?? '') === 'Material' && isset($row['hst_amount'])) {
+                        $row['hst_amount'] = round((float) $row['hst_amount'] - (float) $jsOut[$i]['contHst'], 2);
+                    }
+                }
+                unset($row);
+                $mutantContHst = 0.0;
+                foreach ($mutantDropCont as $row) {
+                    $mutantContHst += \App\Models\ClientProjectQuotation::lineHstAmount($row);
+                }
+                $this->assertNotEquals(
+                    round($mutantContHst, 2),
+                    $cpq->pdfHst(),
+                    'mutant that drops contingency HST must fail case '.$i
+                );
+                $mutantContFired = true;
+            }
+
+            if (($case['inclusiveLab'] ?? true) !== false && ($jsOut[$i]['labourHst'] ?? 0) > 0) {
+                $mutantIgnoreIncluded = $sq->summaryPdfLineItems();
+                foreach ($mutantIgnoreIncluded as &$row) {
+                    if (($row['description'] ?? '') === 'Labour') {
+                        unset($row['hst_amount']);
+                    }
+                }
+                unset($row);
+                $mutantHst = 0.0;
+                foreach ($mutantIgnoreIncluded as $row) {
+                    $mutantHst += \App\Models\ClientProjectQuotation::lineHstAmount($row);
+                }
+                if (abs(round($mutantHst, 2) - $cpq->pdfHst()) > 0.001) {
+                    $mutantLabourFired = true;
+                    $this->assertNotEquals(
+                        round($mutantHst, 2),
+                        $cpq->pdfHst(),
+                        'mutant that drops labour hst_amount must fail case '.$i
+                    );
+                }
+            }
+        }
+
+        $this->assertTrue($mutantLineHstFired, 'Need a tax-included material where ignoring line_hst drifts');
+        $this->assertTrue($mutantContFired, 'Need a contingency mutant that drops HST');
+        $this->assertTrue($mutantLabourFired, 'Need an HST-included labour mutant that drifts');
     }
 
     /**
