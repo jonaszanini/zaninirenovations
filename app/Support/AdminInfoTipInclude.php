@@ -151,7 +151,7 @@ class AdminInfoTipInclude
         }
 
         return [
-            'lead' => mb_substr($label, 0, $pos),
+            'lead' => mb_substr($label, 0, $pos).' ',
             'last' => mb_substr($label, $pos + 1),
         ];
     }
@@ -244,7 +244,7 @@ class AdminInfoTipInclude
             $reopenLast .= '<'.$tag.'>';
         }
 
-        $lead = rtrim(implode('', $leadTokens)).$closeLead;
+        $lead = rtrim(implode('', $leadTokens)).$closeLead.' ';
         $last = $reopenLast.$lastWord.implode('', $after);
 
         return [

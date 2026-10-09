@@ -150,11 +150,11 @@ class AdminInfoTipTest extends TestCase
     public function test_split_label_keeps_the_last_word_for_nowrap(): void
     {
         $this->assertSame(
-            ['lead' => 'Finished', 'last' => 'rooms'],
+            ['lead' => 'Finished ', 'last' => 'rooms'],
             \App\Support\AdminInfoTipInclude::splitLabel('Finished rooms')
         );
         $this->assertSame(
-            ['lead' => 'Owner rate', 'last' => '(CAD$)'],
+            ['lead' => 'Owner rate ', 'last' => '(CAD$)'],
             \App\Support\AdminInfoTipInclude::splitLabel('Owner rate (CAD$)')
         );
         $this->assertSame(
@@ -166,7 +166,7 @@ class AdminInfoTipTest extends TestCase
     public function test_split_label_html_balances_strong_tags(): void
     {
         $split = \App\Support\AdminInfoTipInclude::splitLabelHtml('<strong>Client provides all materials</strong>');
-        $this->assertSame('<strong>Client provides all</strong>', $split['lead']);
+        $this->assertSame('<strong>Client provides all</strong> ', $split['lead']);
         $this->assertSame('<strong>materials</strong>', $split['last']);
         $this->assertTrue($split['lastIsHtml']);
         $this->assertSame(substr_count($split['lead'], '<strong>'), substr_count($split['lead'], '</strong>'));
