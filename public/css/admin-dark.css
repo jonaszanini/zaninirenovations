@@ -2200,8 +2200,14 @@ html.admin-dark .admin-content a.cp-clients-toolbar-clear:not(.admin-btn):not([c
 html.admin-dark .sp-table th {
   color: var(--admin-muted);
   border-bottom-color: var(--admin-border);
+  background: transparent;
 }
-html.admin-dark .sp-table td {
+html.admin-dark .sp-table td,
+html.admin-dark .admin-content .sp-table td,
+html.admin-dark .admin-content .sp-table th,
+html.admin-dark .admin-content .sp-table tr:hover > td,
+html.admin-dark .admin-content .sp-table tr:hover > th {
+  background: transparent;
   border-bottom-color: var(--admin-border);
 }
 html.admin-dark .sp-work-label {
