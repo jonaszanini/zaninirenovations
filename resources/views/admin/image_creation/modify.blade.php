@@ -2,7 +2,7 @@
 
 @section('heading')
   Modify image
-  <x-admin.info-tip label="Modify image">Upload one or more photos (from your PC or Google Photos) and describe what to change. The same prompt is applied to every selected photo. Results are saved at full resolution (no WebP).</x-admin.info-tip>
+  <x-admin.info-tip label="Modify image">Upload one or more photos (from your PC or Google Photos) and describe what to change. The same prompt is applied to every selected photo. JPEG, PNG, WebP, or AVIF up to {{ (int) round($inlineMaxMb * 4) }}&nbsp;MB each. Files up to {{ $inlineMaxMb }}&nbsp;MB are sent inline to Gemini; larger uploads use the File API automatically. Results are saved at full resolution (no WebP).</x-admin.info-tip>
 @endsection
 
 @section('content')

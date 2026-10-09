@@ -35,6 +35,7 @@
       }
   }
   $jobNumber = is_numeric($workIndex) ? ((int) $workIndex + 1) : 1;
+  $jobTipLabel = filled($title) ? $title : ('job '.$jobNumber);
   $idBase = 'sq-w'.$workIndex;
   $includeContingency = (bool) ($includeContingency ?? false);
   $contingencyEnabled = (bool) ($contingencyEnabled ?? true);
@@ -67,7 +68,7 @@
         <div class="sq-panel-head">
           <h3 class="cp-form-help-flush">
             Materials
-            <x-admin.info-tip label="Materials">
+            <x-admin.info-tip :label="'Materials — '.$jobTipLabel">
               Each row: <strong>Type manually</strong>, <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>),
               or <strong>Electrical work</strong> (its own line on the client PDF).
               Unit price is before tax unless you check <strong>Price incl. HST</strong>.
@@ -135,7 +136,7 @@
             Labour
             @include('admin.partials.info_tip', [
               'tipText' => 'Labour includes HST (13%) unless you turn it off in Totals. A flat fee is one dollar amount. Otherwise use hourly rate × hours or days (8 h = 1 day).',
-              'tipLabel' => 'Labour',
+              'tipLabel' => 'Labour — '.$jobTipLabel,
             ])
           </h3>
           <input type="hidden" name="works[{{ $workIndex }}][labour_use_fixed]" value="0">
@@ -163,7 +164,7 @@
               </label>
               @include('admin.partials.info_tip', [
                 'tipText' => 'When checked, the amount is the total with tax. Before-tax labour is calculated the same way as a material with an HST-included price.',
-                'tipLabel' => 'HST included',
+                'tipLabel' => 'HST included — '.$jobTipLabel,
               ])
             </span>
           </div>

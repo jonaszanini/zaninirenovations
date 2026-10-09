@@ -8822,6 +8822,11 @@ body.cp-modal-open {
 .br-layout--create .br-acc__summary {
   pointer-events: none;
 }
+.br-layout--create .br-acc__summary .admin-info-tip,
+.br-layout--create .br-acc__summary .admin-info-tip-wrap,
+.br-layout--create .br-acc__summary .admin-info-tip__bubble {
+  pointer-events: auto;
+}
 .br-client-card {
   padding: 12px 14px;
 }

@@ -8,6 +8,9 @@
   $style = MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
   $profile = MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
   $unitSuffix = $unit === 'ft' ? 'ft' : 'in';
+  $pieceN = is_numeric($pi) ? ((int) $pi + 1) : 1;
+  $pieceTipName = trim((string) ($piece['name'] ?? ''));
+  $pieceTipLabel = $pieceTipName !== '' ? $pieceTipName : ('piece '.$pieceN);
 @endphp
 <article class="mw-piece admin-card" data-mw-piece data-mw-type="{{ $type }}" data-mw-below="{{ (($piece['below'] ?? 'divisions') === 'drawers') ? 'drawers' : 'divisions' }}">
   <div class="mw-piece__head">
@@ -26,7 +29,7 @@
     <div class="admin-form-group mw-field--type">
       <span class="admin-label-with-tip">
         <label>Type</label>
-        <x-admin.info-tip label="Type">Pick the millwork type. Fields below change to match.</x-admin.info-tip>
+        <x-admin.info-tip :label="'Type — '.$pieceTipLabel">Pick the millwork type. Fields below change to match.</x-admin.info-tip>
       </span>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][type]" data-mw-type-input>
         @foreach (MillworkPartBuilder::TYPE_GROUPS as $group => $keys)
@@ -95,7 +98,7 @@
     <div class="admin-form-group">
       <span class="admin-label-with-tip">
         <label>Columns</label>
-        <x-admin.info-tip label="Columns">Sections across. Vertical partitions = columns − 1.</x-admin.info-tip>
+        <x-admin.info-tip :label="'Columns — '.$pieceTipLabel">Sections across. Vertical partitions = columns − 1.</x-admin.info-tip>
       </span>
       <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][columns]" value="{{ $piece['columns'] ?? 2 }}">
     </div>
@@ -212,7 +215,7 @@
     <div class="admin-form-group">
       <span class="admin-label-with-tip">
         <label>Openings</label>
-        <x-admin.info-tip label="Openings">Each opening adds 2 × height + width of casing (defaults 80" × 32").</x-admin.info-tip>
+        <x-admin.info-tip :label="'Openings — '.$pieceTipLabel">Each opening adds 2 × height + width of casing (defaults 80" × 32").</x-admin.info-tip>
       </span>
       <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][openings]" value="{{ $piece['openings'] ?? 0 }}">
     </div>
@@ -248,11 +251,11 @@
     <div class="mw-piece__sets-head">
       <span class="admin-label-with-tip">
         <span class="mw-piece__sets-title">Size sets</span>
-        <x-admin.info-tip label="Size sets">Size sets — add groups if you have mixed sizes.</x-admin.info-tip>
+        <x-admin.info-tip :label="'Size sets — '.$pieceTipLabel">Size sets — add groups if you have mixed sizes.</x-admin.info-tip>
       </span>
       <span class="admin-label-with-tip" data-mw-show="floating_shelf">
         <span class="mw-piece__sets-title">Open-back box</span>
-        <x-admin.info-tip label="Open-back box">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</x-admin.info-tip>
+        <x-admin.info-tip :label="'Open-back box — '.$pieceTipLabel">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</x-admin.info-tip>
       </span>
     </div>
     <div data-mw-set-list>

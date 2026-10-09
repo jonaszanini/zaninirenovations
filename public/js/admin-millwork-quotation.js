@@ -541,6 +541,9 @@
       form.querySelectorAll('[data-mw-piece]').forEach(function (piece, i) {
         var n = piece.querySelector('[data-mw-piece-n]');
         if (n) n.textContent = String(i + 1);
+        if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshRepeatLabels === 'function') {
+          window.AdminInfoTip.refreshRepeatLabels(piece);
+        }
         piece.querySelectorAll('[name]').forEach(function (input) {
           input.name = input.name.replace(/pieces\[\d+\]/, 'pieces[' + i + ']');
           if (input.id) input.id = input.id.replace(/pieces-\d+/, 'pieces-' + i);

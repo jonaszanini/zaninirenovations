@@ -1101,8 +1101,11 @@ html.admin-dark .tox-tinymce {
   border-color: var(--admin-border) !important;
 }
 
-html.admin-dark .tox .tox-edit-area__iframe {
-  background: var(--admin-input-bg);
+html.admin-dark .tox .tox-edit-area,
+html.admin-dark .tox .tox-edit-area__iframe,
+html.admin-dark .quotation-work-desc .tox-tinymce,
+html.admin-dark .sq-intro-work-desc .tox-tinymce {
+  background: var(--admin-input-bg) !important;
 }
 
 html.admin-dark .tox .tox-menubar,

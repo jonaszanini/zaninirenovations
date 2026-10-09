@@ -341,6 +341,52 @@
       row.appendChild(wrap);
     });
     deriveMissingLabels(root);
+    bindSummaryGuard(root);
+    refreshRepeatLabels(root);
+  }
+
+  function bindSummaryGuard(scope) {
+    wrapsIn(scope).forEach(function (wrap) {
+      if (wrap.getAttribute('data-tip-summary-bound') === '1') return;
+      wrap.setAttribute('data-tip-summary-bound', '1');
+      wrap.addEventListener('click', function (e) {
+        if (!wrap.closest || !wrap.closest('summary')) return;
+        if (!e.target.closest || !e.target.closest('.admin-info-tip__bubble')) return;
+        e.stopPropagation();
+        if (!isLinkTarget(e.target)) {
+          e.preventDefault();
+        }
+      });
+    });
+  }
+
+  function refreshRepeatLabels(scope) {
+    wrapsIn(scope).forEach(function (wrap) {
+      var btn = buttonOf(wrap);
+      if (!btn) return;
+      var current = btn.getAttribute('aria-label') || '';
+      if (current.indexOf('About ') !== 0) return;
+      var piece = wrap.closest ? wrap.closest('[data-mw-piece]') : null;
+      if (piece) {
+        var nEl = piece.querySelector('[data-mw-piece-n]');
+        var nameInput = piece.querySelector('input[name$="[name]"]');
+        var name = nameInput && String(nameInput.value || '').trim();
+        var suffix = name || ('piece ' + ((nEl && nEl.textContent) || '1'));
+        var base = current.slice(6).replace(/\s+[—-]\s+.*$/, '');
+        btn.setAttribute('aria-label', 'About ' + base + ' — ' + suffix);
+        return;
+      }
+      var card = wrap.closest ? wrap.closest('.sq-work-card') : null;
+      if (card) {
+        var num = card.querySelector('.sq-work-number-val');
+        var title = card.querySelector('.sq-work-title');
+        var suffix = (title && String(title.value || '').trim()) || ('job ' + ((num && num.textContent) || '1'));
+        var base = current.slice(6).replace(/\s+[—-]\s+.*$/, '');
+        if (/^(Materials|Labour|HST included)\b/.test(base)) {
+          btn.setAttribute('aria-label', 'About ' + base.replace(/\s+[—-]\s+.*$/, '') + ' — ' + suffix);
+        }
+      }
+    });
   }
 
   function prepareAddedNode(node) {
@@ -348,6 +394,8 @@
     hoistFromLabels(node);
     refreshDuplicateIds(node);
     deriveMissingLabels(node);
+    bindSummaryGuard(node);
+    refreshRepeatLabels(node);
   }
 
   function isLinkTarget(el) {
@@ -367,9 +415,6 @@
       return;
     }
     if (e.target.closest('.admin-info-tip__bubble')) {
-      if (e.target.closest('summary')) {
-        e.preventDefault();
-      }
       return;
     }
     if (!e.target.closest('.admin-info-tip')) {
@@ -433,6 +478,7 @@
     html: html,
     hoist: hoistFromLabels,
     refreshIds: refreshIds,
+    refreshRepeatLabels: refreshRepeatLabels,
     closeAll: function () { closeTips(null); },
     positionOpen: repositionOpenTips,
   };

@@ -74,16 +74,16 @@ class AdminInfoTipTest extends TestCase
         $this->assertSame('', trim($html));
     }
 
-    public function test_include_wrapper_ignores_inherited_text_and_html(): void
+    public function test_include_wrapper_throws_when_passed_legacy_text_or_html_keys(): void
     {
-        $html = view('admin.partials.info_tip', [
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("no longer accepts 'text' or 'html'");
+
+        view('admin.partials.info_tip', [
             'text' => 'Inherited parent text must not render.',
             'html' => '<em>Inherited parent html</em>',
-            'id' => 'br-area',
-            'label' => 'Last loop item',
+            'tipText' => 'should not render once the guard fires',
         ])->render();
-
-        $this->assertSame('', trim($html));
     }
 
     public function test_text_attribute_matches_slot_api(): void

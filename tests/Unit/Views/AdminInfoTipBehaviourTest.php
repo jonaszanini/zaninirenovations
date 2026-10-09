@@ -103,19 +103,21 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('requestAnimationFrame', $js);
         $this->assertStringContainsString('isIconVisibleInClip', $js);
         $this->assertStringContainsString('idsAlreadyInDocument', $js);
-        $this->assertStringContainsString("e.target.closest('summary')", $js);
+        $this->assertStringContainsString("wrap.closest('summary')", $js);
         $this->assertStringContainsString('function bottomReserve', $js);
         $this->assertStringContainsString('spaceAbove >= need', $js);
         $this->assertStringContainsString('aboveEdge', $js);
         $this->assertStringContainsString('floor - need', $js);
         $this->assertStringContainsString("bubble.style.overflowY = 'auto'", $js);
+        $this->assertStringContainsString('function bindSummaryGuard', $js);
+        $this->assertStringContainsString('function refreshRepeatLabels', $js);
         $this->assertStringContainsString("e.target.closest('.admin-info-tip')", $js);
         $this->assertStringContainsString('function refreshIds(scope)', $js);
         $this->assertStringContainsString('refreshIds: refreshIds', $js);
         $this->assertStringContainsString('btn.focus()', $js);
         $this->assertStringContainsString("e.key !== 'Escape'", $js);
         $css = file_get_contents(public_path('css/admin.css'));
-        $this->assertStringContainsString('flex-wrap: nowrap', $css);
+        $this->assertStringContainsString('pointer-events: auto', $css);
         $this->assertDoesNotMatchRegularExpression(
             '/\.admin-label-with-tip\s*\{[^}]*white-space:\s*nowrap/',
             $css
@@ -125,17 +127,20 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-label-with-tip\s*>\s*label[^}]*flex:\s*0 1 auto/',
+            '/\.admin-label-with-tip\s*>\s*label[^}]*display:\s*inline/',
             $css
         );
         $this->assertDoesNotMatchRegularExpression(
-            '/\.admin-label-with-tip\s*>\s*label[^}]*flex:\s*1 1 auto/',
+            '/\.admin-form-group\s*>\s*label:has\(\.admin-info-tip\)[\s\S]{0,400}align-items:\s*center/',
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-label-with-tip\s*>\s*\.admin-info-tip-wrap[^}]*flex-shrink:\s*0/',
+            '/\.admin-label-with-tip\s*>\s*\.admin-info-tip-wrap[^}]*display:\s*inline-flex/',
             $css
         );
+        $cpCss = file_get_contents(public_path('css/admin-client-projects.css'));
+        $this->assertStringContainsString('.br-layout--create .br-acc__summary .admin-info-tip', $cpCss);
+        $this->assertStringContainsString('pointer-events: auto', $cpCss);
     }
 
     public function test_clone_sites_refresh_tip_ids(): void
@@ -145,7 +150,9 @@ class AdminInfoTipBehaviourTest extends TestCase
         $lumber = file_get_contents(public_path('js/admin-utilities-lumber-board.js'));
 
         $this->assertStringContainsString('AdminInfoTip.refreshIds', $standard);
+        $this->assertStringContainsString('AdminInfoTip.refreshRepeatLabels', $standard);
         $this->assertGreaterThanOrEqual(3, substr_count($millwork, 'AdminInfoTip.refreshIds'));
+        $this->assertStringContainsString('AdminInfoTip.refreshRepeatLabels', $millwork);
         $this->assertStringContainsString("AdminInfoTip.html(", $lumber);
         $this->assertStringContainsString("'Calculation mode'", $lumber);
         $this->assertStringNotContainsString('class="util-tip"', $lumber);
@@ -188,7 +195,8 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('mw-piece__sets-title', $piece);
         $this->assertStringNotContainsString('<p class="admin-form-help mw-piece__hint">Size sets', $piece);
         $this->assertStringNotContainsString('class="mw-piece__hint"', $piece);
-        $this->assertStringContainsString('label="Openings"', $piece);
+        $this->assertStringContainsString("'Openings — '", $piece);
+        $this->assertStringContainsString("'Type — '", $piece);
 
         $show = file_get_contents(resource_path('views/admin/client_projects/show.blade.php'));
         $this->assertStringContainsString('Status saves on change. Optional note is for this status only.', $show);
@@ -257,6 +265,10 @@ class AdminInfoTipBehaviourTest extends TestCase
 
         $low = file_get_contents(resource_path('views/admin/quotations/low_deck/create.blade.php'));
         $this->assertStringContainsString('label="Live breakdown"', $low);
+        $fenceCreate = file_get_contents(resource_path('views/admin/quotations/fence/create.blade.php'));
+        $this->assertStringContainsString('Live breakdown', $fenceCreate);
+        $this->assertStringNotContainsString('Preview updates as you type', $fenceCreate);
+        $this->assertStringNotContainsString('label="Live breakdown"', $fenceCreate);
         $this->assertStringContainsString('label="Layout diagrams"', $low);
         $this->assertStringNotContainsString('admin-form-help cp-breakdown-intro', $low);
         $this->assertStringNotContainsString('Enter dimensions to generate the foundations, framing, and decking layouts.</p>', $low);
@@ -291,6 +303,8 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertSame(1, substr_count($create, 'label="Create image"'));
         $modify = file_get_contents(resource_path('views/admin/image_creation/modify.blade.php'));
         $this->assertSame(1, substr_count($modify, 'label="Modify image"'));
+        $this->assertStringContainsString('JPEG, PNG, WebP, or AVIF up to', $modify);
+        $this->assertStringContainsString('larger uploads use the File API', $modify);
         $nb2 = file_get_contents(resource_path('views/admin/image_creation/nano_banana_2.blade.php'));
         $this->assertSame(1, substr_count($nb2, 'label="Nano Banana 2"'));
     }

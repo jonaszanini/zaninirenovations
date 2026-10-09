@@ -635,6 +635,9 @@
       });
       var num = card.querySelector('.sq-work-number-val');
       if (num) num.textContent = String(w + 1);
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshRepeatLabels === 'function') {
+        window.AdminInfoTip.refreshRepeatLabels(card);
+      }
       reindexMaterialNames(card, w);
       syncFixedLabourUI(card);
     });

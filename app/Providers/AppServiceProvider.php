@@ -7,6 +7,8 @@ use App\Models\EtransferNotice;
 use App\Models\Task;
 use App\Support\Logging\RequestContext;
 use App\Support\ProductionDatabaseGuard;
+use App\View\IsolatingFactory;
+use Illuminate\View\Factory as ViewFactory;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Support\Facades\Event;
@@ -24,7 +26,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->extend('view', function ($factory) {
+            if (! $factory instanceof ViewFactory) {
+                return $factory;
+            }
+
+            return IsolatingFactory::decorate($factory);
+        });
     }
 
     /**

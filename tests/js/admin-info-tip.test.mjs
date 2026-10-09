@@ -3,315 +3,8 @@
  * Covers scroll reposition, server-side (sibling) placement hoist fallback,
  * and fresh ids after clone.
  */
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
-
-const require = createRequire(import.meta.url);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const jsPath = path.resolve(__dirname, '../../public/js/admin-info-tip.js');
-const source = readFileSync(jsPath, 'utf8');
-
-class ClassList {
-  constructor(el) {
-    this.el = el;
-  }
-  get _set() {
-    return new Set((this.el.className || '').split(/\s+/).filter(Boolean));
-  }
-  _write(set) {
-    this.el.className = [...set].join(' ');
-  }
-  add(name) {
-    const set = this._set;
-    set.add(name);
-    this._write(set);
-  }
-  remove(name) {
-    const set = this._set;
-    set.delete(name);
-    this._write(set);
-  }
-  contains(name) {
-    return this._set.has(name);
-  }
-}
-
-function parseSelector(sel) {
-  if (sel.startsWith(':scope > ')) {
-    return { child: true, raw: sel.slice(':scope > '.length) };
-  }
-  return { child: false, raw: sel };
-}
-
-function matchSimple(el, raw) {
-  if (raw === '*') return true;
-  const tag = (raw.match(/^[a-z][\w-]*/i) || [''])[0].toLowerCase();
-  const id = (raw.match(/#([\w-]+)/) || [])[1];
-  const cls = [...raw.matchAll(/\.([\w-]+)/g)].map((m) => m[1]);
-  if (tag && el.tagName.toLowerCase() !== tag) return false;
-  if (id && el.id !== id) return false;
-  for (const c of cls) {
-    if (!el.classList.contains(c)) return false;
-  }
-  return true;
-}
-
-class FakeEl {
-  constructor(tag, owner) {
-    this.tagName = String(tag).toUpperCase();
-    this.ownerDocument = owner;
-    this.children = [];
-    this.parentNode = null;
-    this.attributes = Object.create(null);
-    this.className = '';
-    this.classList = new ClassList(this);
-    this.style = {};
-    this.id = '';
-    this.textContent = '';
-    this.nodeType = 1;
-    this._rect = { top: 80, bottom: 124, left: 200, right: 244, width: 44, height: 44 };
-    this._listeners = Object.create(null);
-    this.control = null;
-    this.htmlFor = '';
-  }
-
-  get className() {
-    return this._className || '';
-  }
-  set className(v) {
-    this._className = String(v || '');
-  }
-
-  matches(sel) {
-    const { raw } = parseSelector(sel);
-    return matchSimple(this, raw);
-  }
-
-  closest(sel) {
-    let n = this;
-    while (n && n.nodeType === 1) {
-      if (n.matches(sel)) return n;
-      n = n.parentNode;
-    }
-    return null;
-  }
-
-  querySelector(sel) {
-    return this.querySelectorAll(sel)[0] || null;
-  }
-
-  querySelectorAll(sel) {
-    if (sel.includes(',')) {
-      const seen = new Set();
-      const out = [];
-      sel.split(',').forEach((part) => {
-        this.querySelectorAll(part.trim()).forEach((el) => {
-          if (!seen.has(el)) {
-            seen.add(el);
-            out.push(el);
-          }
-        });
-      });
-      return out;
-    }
-    const { child, raw } = parseSelector(sel);
-    if (!child && raw.includes(' ')) {
-      const parts = raw.split(/\s+/);
-      const last = parts.pop();
-      const out = [];
-      const walk = (node) => {
-        for (const c of node.children) {
-          if (matchSimple(c, last)) {
-            let anc = c.parentNode;
-            let ok = true;
-            for (let i = parts.length - 1; i >= 0 && ok; i--) {
-              while (anc && anc.nodeType === 1 && !matchSimple(anc, parts[i])) {
-                anc = anc.parentNode;
-              }
-              ok = !!(anc && anc.nodeType === 1);
-              anc = anc ? anc.parentNode : null;
-            }
-            if (ok) out.push(c);
-          }
-          walk(c);
-        }
-      };
-      walk(this);
-      return out;
-    }
-    const out = [];
-    const walk = (node, depth) => {
-      for (const c of node.children) {
-        if (matchSimple(c, raw) && (!child || depth === 0)) out.push(c);
-        if (!child) walk(c, depth + 1);
-      }
-    };
-    walk(this, 0);
-    return out;
-  }
-
-  getAttribute(name) {
-    if (name === 'id') return this.id || null;
-    if (name === 'class') return this.className || null;
-    return this.attributes[name] ?? null;
-  }
-
-  setAttribute(name, value) {
-    const v = String(value);
-    if (name === 'id') this.id = v;
-    else if (name === 'class') this.className = v;
-    else if (name === 'for') this.htmlFor = v;
-    this.attributes[name] = v;
-  }
-
-  getBoundingClientRect() {
-    return { ...this._rect };
-  }
-
-  contains(el) {
-    let n = el;
-    while (n) {
-      if (n === this) return true;
-      n = n.parentNode;
-    }
-    return false;
-  }
-
-  get previousElementSibling() {
-    if (!this.parentNode || !Array.isArray(this.parentNode.children)) return null;
-    const i = this.parentNode.children.indexOf(this);
-    return i > 0 ? this.parentNode.children[i - 1] : null;
-  }
-
-  appendChild(el) {
-    if (el.parentNode) {
-      el.parentNode.children = el.parentNode.children.filter((c) => c !== el);
-    }
-    el.parentNode = this;
-    this.children.push(el);
-    return el;
-  }
-
-  insertBefore(el, ref) {
-    if (el.parentNode) {
-      el.parentNode.children = el.parentNode.children.filter((c) => c !== el);
-    }
-    el.parentNode = this;
-    const i = ref ? this.children.indexOf(ref) : -1;
-    if (i === -1) this.children.push(el);
-    else this.children.splice(i, 0, el);
-    return el;
-  }
-
-  addEventListener(type, fn) {
-    (this._listeners[type] ||= []).push(fn);
-  }
-
-  dispatchEvent(type, event) {
-    (this._listeners[type] || []).forEach((fn) => fn(event));
-  }
-
-  focus() {
-    this.ownerDocument.activeElement = this;
-  }
-
-  cloneNode() {
-    const clone = this.ownerDocument.createElement(this.tagName.toLowerCase());
-    clone.className = this.className;
-    clone.id = this.id;
-    clone.textContent = this.textContent;
-    Object.assign(clone.attributes, this.attributes);
-    clone.htmlFor = this.htmlFor;
-    for (const child of this.children) {
-      clone.appendChild(child.cloneNode());
-    }
-    return clone;
-  }
-}
-
-function createEnv() {
-  const listeners = { document: {}, window: {} };
-
-  const document = {
-    readyState: 'complete',
-    documentElement: null,
-    body: null,
-    activeElement: null,
-    _els: [],
-    createElement(tag) {
-      const el = new FakeEl(tag, document);
-      document._els.push(el);
-      return el;
-    },
-    getElementById(id) {
-      return document._els.find((el) => el.id === id) || null;
-    },
-    querySelector(sel) {
-      return document.querySelectorAll(sel)[0] || null;
-    },
-    querySelectorAll(sel) {
-      return document.body ? document.body.querySelectorAll(sel) : [];
-    },
-    addEventListener(type, fn, opts) {
-      (listeners.document[type] ||= []).push({ fn, opts });
-    },
-  };
-
-  const body = document.createElement('body');
-  document.body = body;
-  document.documentElement = document.createElement('html');
-  document.documentElement.appendChild(body);
-
-  const window = {
-    innerWidth: 390,
-    innerHeight: 700,
-    document,
-    requestAnimationFrame(fn) {
-      return fn();
-    },
-    getComputedStyle() {
-      return { overflow: 'visible', overflowX: 'visible', overflowY: 'visible' };
-    },
-    addEventListener(type, fn, opts) {
-      (listeners.window[type] ||= []).push({ fn, opts });
-    },
-    MutationObserver: function MutationObserver() {
-      this.observe = function () {};
-    },
-  };
-
-  document.defaultView = window;
-
-  const fn = new Function('window', 'document', source + '\nreturn window.AdminInfoTip;');
-  const AdminInfoTip = fn(window, document);
-
-  return { window, document, body, listeners, AdminInfoTip };
-}
-
-function makeTip(document, id, label) {
-  const wrap = document.createElement('span');
-  wrap.className = 'admin-info-tip-wrap';
-  const btn = document.createElement('button');
-  btn.className = 'admin-info-tip';
-  btn.setAttribute('aria-label', 'About ' + label);
-  btn.setAttribute('aria-expanded', 'false');
-  btn.setAttribute('aria-controls', id);
-  btn.setAttribute('aria-describedby', id);
-  const bubble = document.createElement('span');
-  bubble.className = 'admin-info-tip__bubble';
-  bubble.id = id;
-  bubble._rect = { top: 0, bottom: 80, left: 0, right: 200, width: 200, height: 80 };
-  wrap.appendChild(btn);
-  wrap.appendChild(bubble);
-  return { wrap, btn, bubble };
-}
-
-function fire(list, type, event) {
-  (list[type] || []).forEach(({ fn }) => fn(event || {}));
-}
+import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
 
 // --- scroll repositions an open tip ---
 {
@@ -471,7 +164,7 @@ function fire(list, type, event) {
 
 // --- tip inside <summary> does not toggle details; bubble links stay clickable ---
 {
-  const { document, body, listeners } = createEnv();
+  const { document, body, listeners, AdminInfoTip } = createEnv();
   const details = document.createElement('details');
   const summary = document.createElement('summary');
   const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-summary', 'Filters');
@@ -505,6 +198,8 @@ function fire(list, type, event) {
   assert.equal(iconPrevented, true);
   assert.equal(iconStopped, true);
 
+  AdminInfoTip.hoist(document);
+
   let linkPrevented = false;
   let linkStopped = false;
   click.fn({
@@ -521,8 +216,27 @@ function fire(list, type, event) {
     preventDefault() { linkPrevented = true; },
     stopPropagation() { linkStopped = true; },
   });
-  assert.equal(linkPrevented, true, 'summary default toggle is prevented; the link handler still runs');
-  assert.equal(linkStopped, false, 'capture does not stop a bubble link so its own handler can fire');
+  assert.equal(linkPrevented, false, 'capture does not preventDefault on a bubble link');
+  assert.equal(linkStopped, false, 'capture does not stop a bubble link');
+
+  let wrapPrevented = false;
+  let wrapStopped = false;
+  wrap.dispatchEvent('click', {
+    target: {
+      closest(sel) {
+        if (sel === '.admin-info-tip__bubble') return bubble;
+        if (sel === '.admin-info-tip-wrap') return wrap;
+        if (sel === 'summary') return summary;
+        if (sel === 'a') return link;
+        return null;
+      },
+    },
+    preventDefault() { wrapPrevented = true; },
+    stopPropagation() { wrapStopped = true; },
+  });
+  assert.equal(wrapStopped, true, 'wrap stops the click so <details> does not toggle');
+  assert.equal(wrapPrevented, false, 'wrap does not cancel the link default (navigation)');
+  assert.equal(details.open || false, false, 'details stays closed');
 
   const innerBtn = document.createElement('button');
   bubble.appendChild(innerBtn);
@@ -556,14 +270,12 @@ function fire(list, type, event) {
 
   let linkHandlerFired = false;
   link.addEventListener('click', function () { linkHandlerFired = true; });
-  if (!linkStopped) {
-    link.dispatchEvent('click', {
-      target: link,
-      preventDefault() {},
-      stopPropagation() {},
-    });
-  }
-  assert.equal(linkHandlerFired, true, 'the link\'s own click handler fires (e.g. data-cp-jump-tab)');
+  link.dispatchEvent('click', {
+    target: link,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+  assert.equal(linkHandlerFired, true, 'the link navigates / its own click handler fires');
 
   const down = listeners.document.mousedown.find((l) => l.opts === true || (l.opts && l.opts.capture));
   assert.ok(down, 'capture-phase mousedown listener');
@@ -652,6 +364,92 @@ function fire(list, type, event) {
   const floor = 844 - (844 - 780 + 12);
   assert.ok(top + 120 <= floor + 1, 'bubble stays above the sticky bar, top=' + top + ' floor=' + floor);
   assert.ok(top >= 12, 'stays on-screen, got ' + top);
+}
+
+// --- left/right clamp and viewport width ---
+{
+  const { document, body, listeners, window } = createEnv();
+  window.innerWidth = 390;
+  window.innerHeight = 844;
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-clamp-x', 'Labour rate');
+  bubble._rect = { top: 0, bottom: 80, left: 0, right: 273, width: 273, height: 80 };
+  btn._rect = { top: 80, bottom: 124, left: -40, right: 4, width: 44, height: 44 };
+  body.appendChild(wrap);
+  wrap.classList.add('is-open');
+  btn.setAttribute('aria-expanded', 'true');
+  listeners.window.resize[0].fn();
+  const left = parseInt(bubble.style.left, 10);
+  assert.ok(left >= 12, 'left clamp keeps the bubble on-screen, got ' + left);
+  assert.notEqual(bubble.style.left, '', 'left is set (removing the left clamp fails this)');
+  assert.notEqual(left, -40, 'removing the left clamp leaves left at the button (−40)');
+  const maxW = parseInt(bubble.style.maxWidth, 10);
+  assert.ok(maxW <= 390 - 24, 'maxWidth respects viewport width, got ' + maxW);
+
+  btn._rect = { top: 80, bottom: 124, left: 360, right: 404, width: 44, height: 44 };
+  listeners.window.resize[0].fn();
+  const rightLeft = parseInt(bubble.style.left, 10);
+  assert.ok(rightLeft + 273 <= 390 - 12 + 1, 'right clamp keeps the bubble on-screen, got ' + rightLeft);
+  assert.notEqual(String(rightLeft), '360', 'removing the right clamp leaves left at the button (360)');
+
+  window.innerWidth = 200;
+  btn._rect = { top: 80, bottom: 124, left: 40, right: 84, width: 44, height: 44 };
+  listeners.window.resize[0].fn();
+  const narrowMax = parseInt(bubble.style.maxWidth, 10);
+  assert.ok(narrowMax <= 200 - 24, 'maxWidth uses viewport width (not a fixed 273), got ' + narrowMax);
+  assert.ok(narrowMax < 273, 'ignoring the viewport width would keep maxWidth at 273');
+}
+
+// --- flip offset is relative to the button, not a huge negative ---
+{
+  const { document, body, listeners, window } = createEnv();
+  window.innerHeight = 700;
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-flip-offset', 'Owner rate');
+  bubble._rect = { top: 0, bottom: 230, left: 0, right: 200, width: 200, height: 230 };
+  btn._rect = { top: 600, bottom: 644, left: 40, right: 84, width: 44, height: 44 };
+  body.appendChild(wrap);
+  wrap.classList.add('is-open');
+  btn.setAttribute('aria-expanded', 'true');
+  listeners.window.resize[0].fn();
+  const top = parseInt(bubble.style.top, 10);
+  assert.ok(top > 200, 'flip offset is not wildly negative (e.g. −300px), got ' + top);
+  assert.ok(top !== -300, 'a wrong flip offset of −300px must fail');
+  assert.ok(top <= 600 - 230 + 8, 'flips above the button, got ' + top);
+}
+
+// --- repeated millwork / standard cards get unique About labels ---
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const piece = document.createElement('article');
+  piece.setAttribute('data-mw-piece', '');
+  const n = document.createElement('span');
+  n.setAttribute('data-mw-piece-n', '');
+  n.textContent = '2';
+  const name = document.createElement('input');
+  name.setAttribute('name', 'pieces[1][name]');
+  name.value = 'Pantry';
+  const { wrap, btn } = makeTip(document, 'admin-info-tip-piece', 'Type');
+  piece.appendChild(n);
+  piece.appendChild(name);
+  piece.appendChild(wrap);
+  body.appendChild(piece);
+  AdminInfoTip.refreshRepeatLabels(piece);
+  assert.equal(btn.getAttribute('aria-label'), 'About Type — Pantry');
+
+  const card = document.createElement('article');
+  card.className = 'sq-work-card';
+  const num = document.createElement('span');
+  num.className = 'sq-work-number-val';
+  num.textContent = '3';
+  const title = document.createElement('input');
+  title.className = 'sq-work-title';
+  title.value = '';
+  const { wrap: w2, btn: b2 } = makeTip(document, 'admin-info-tip-job', 'Materials');
+  card.appendChild(num);
+  card.appendChild(title);
+  card.appendChild(w2);
+  body.appendChild(card);
+  AdminInfoTip.refreshRepeatLabels(card);
+  assert.equal(b2.getAttribute('aria-label'), 'About Materials — job 3');
 }
 
 console.log('admin-info-tip.test.mjs: ok');

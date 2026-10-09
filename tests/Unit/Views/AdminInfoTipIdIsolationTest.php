@@ -55,6 +55,26 @@ class AdminInfoTipIdIsolationTest extends TestCase
         $this->assertInputIdResolvesToControl($html, ['br-area']);
     }
 
+    public function test_info_tip_include_does_not_inherit_parent_tip_keys(): void
+    {
+        $html = Blade::render(
+            '@php $tipHtml = "<em>LEAKED HTML</em>"; $tipLabel = "Leaked"; $tipId = "br-area"; $tipText = "LEAKED TEXT"; @endphp'
+            . '@include("admin.partials.info_tip", ["tipText" => "Room area help"])'
+            . '<input id="br-area" type="number">'
+        );
+
+        $this->assertStringContainsString('Room area help', $html);
+        $this->assertStringContainsString('aria-label="More info"', $html);
+        $this->assertStringNotContainsString('LEAKED TEXT', $html);
+        $this->assertStringNotContainsString('LEAKED HTML', $html);
+        $this->assertStringNotContainsString('About Leaked', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="br-area"[^>]*admin-info-tip__bubble|admin-info-tip__bubble[^>]*id="br-area"/',
+            $html
+        );
+        $this->assertInputIdResolvesToControl($html, ['br-area']);
+    }
+
     public function test_basement_wizard_qty_lw_ids_resolve_to_inputs(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();

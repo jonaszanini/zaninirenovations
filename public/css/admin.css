@@ -1650,48 +1650,47 @@ a.admin-client-link:focus-visible {
 .admin-info-tip[aria-expanded="true"] + .admin-info-tip__bubble {
   display: block;
 }
+.admin-info-tip,
+.admin-info-tip-wrap,
+.admin-info-tip__bubble {
+  pointer-events: auto;
+}
 .admin-label-with-tip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
-  flex-wrap: nowrap;
+  display: inline;
   max-width: 100%;
 }
 .admin-form-group > .admin-label-with-tip {
-  display: flex;
+  display: block;
   margin-bottom: 0.4rem;
 }
+.br-lw__head > .admin-label-with-tip {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+.admin-form-group .admin-label-with-tip > label,
+.admin-form-group .admin-label-with-tip > .admin-form-group-label,
 .admin-label-with-tip > label,
 .admin-label-with-tip > .admin-form-group-label {
+  display: inline;
   margin-bottom: 0;
   white-space: normal;
-  min-width: 0;
-  flex: 0 1 auto;
 }
 .admin-label-with-tip > .admin-info-tip-wrap,
-.br-acc__summary > .admin-info-tip-wrap {
+.br-acc__summary > .admin-info-tip-wrap,
+h2 > .admin-info-tip-wrap,
+h3 > .admin-info-tip-wrap,
+h4 > .admin-info-tip-wrap,
+h5 > .admin-info-tip-wrap,
+legend > .admin-info-tip-wrap,
+.cp-heading-sm > .admin-info-tip-wrap,
+.cp-heading-md > .admin-info-tip-wrap,
+.admin-accordion__title > .admin-info-tip-wrap,
+.admin-filters-accordion__title > .admin-info-tip-wrap,
+.q-additional-costs-card__title > .admin-info-tip-wrap {
+  display: inline-flex;
+  vertical-align: -0.15em;
   flex-shrink: 0;
-}
-.admin-form-group > label:has(.admin-info-tip),
-.admin-form-group > label:has(.admin-info-tip-wrap),
-.admin-form-group-label:has(.admin-info-tip),
-.admin-form-group-label:has(.admin-info-tip-wrap),
-.br-lw__head > label:has(.admin-info-tip),
-.br-lw__head > label:has(.admin-info-tip-wrap),
-h2:has(.admin-info-tip-wrap),
-h3:has(.admin-info-tip-wrap),
-h4:has(.admin-info-tip-wrap),
-h5:has(.admin-info-tip-wrap),
-legend:has(.admin-info-tip-wrap),
-.cp-heading-sm:has(.admin-info-tip),
-.cp-heading-sm:has(.admin-info-tip-wrap),
-.cp-heading-md:has(.admin-info-tip-wrap),
-.admin-accordion__title:has(.admin-info-tip-wrap),
-.admin-filters-accordion__title:has(.admin-info-tip-wrap),
-.q-additional-costs-card__title:has(.admin-info-tip-wrap) {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
 }
 /* Keep the page-title ⓘ next to the last word — flex on h1 stretches
    the text item and parks the tip at the far right on 390px. */
