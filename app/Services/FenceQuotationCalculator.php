@@ -26,7 +26,7 @@ use App\Support\FenceSideFlags;
  *     inputs:      echo of the normalised inputs,
  *     geometry:    { total_linear_ft, sections_total, sides_breakdown },
  *     materials:   [ { key, name, long_name, model, store_sku, quantity, unit, unit_price, subtotal, notes, url } ],
- *     totals:      { materials_subtotal, hst, labour_subtotal, total, labour_hst, grand_total }
+     *     totals:      { materials_subtotal, hst, labour_subtotal, total, labour_hst, grand_total, existing_post_credit }
  *   }
  *
  * The output is JSON-serialisable so it can be stored on
@@ -203,7 +203,18 @@ class FenceQuotationCalculator
             'include_labour_hst' => array_key_exists('include_labour_hst', $inputs)
                 ? filter_var($inputs['include_labour_hst'], FILTER_VALIDATE_BOOLEAN)
                 : true,
+            'existing_post_labour_credit' => $this->normaliseExistingPostLabourCredit($inputs),
         ];
+    }
+
+    private function normaliseExistingPostLabourCredit(array $inputs): float
+    {
+        $default = $this->settings->existingPostLabourCredit();
+        if (! array_key_exists('existing_post_labour_credit', $inputs) || $inputs['existing_post_labour_credit'] === null || $inputs['existing_post_labour_credit'] === '') {
+            return round(max(0, $default), 2);
+        }
+
+        return round(max(0, (float) $inputs['existing_post_labour_credit']), 2);
     }
 
     /** ================================================================
@@ -926,7 +937,10 @@ class FenceQuotationCalculator
 
         $linearLabour = (float) $geom['total_linear_ft'] * $labourRatePerFt;
         $additionalGateLabour = $additionalGates * $labourPerAdditionalGate;
-        $labour = round($linearLabour + $additionalGateLabour, 2);
+        $creditPerPost = (float) ($in['existing_post_labour_credit'] ?? $this->settings->existingPostLabourCredit());
+        $creditCount = $this->countPostsRemovedByExistingTicks($in, $geom);
+        $creditAmount = round($creditCount * $creditPerPost, 2);
+        $labour = round(max(0, $linearLabour + $additionalGateLabour - $creditAmount), 2);
         $includeLabourHst = (bool) ($in['include_labour_hst'] ?? true);
         $labourHst = $includeLabourHst ? round($labour * FenceQuotation::HST_RATE, 2) : 0.0;
         $total = round($materialsSubtotal + $hst + $labour, 2);
@@ -945,6 +959,41 @@ class FenceQuotationCalculator
             'labour_rate_8ft_per_ft' => round($rate8, 2),
             'labour_per_additional_gate' => round($labourPerAdditionalGate, 2),
             'additional_gates_count' => $additionalGates,
+            'existing_post_credit' => [
+                'count' => $creditCount,
+                'amount' => $creditAmount,
+                'rate' => round($creditPerPost, 2),
+            ],
         ];
+    }
+
+    /**
+     * How many posts the left/right existing-post ticks actually removed.
+     * Shared connected-run corners credit once — only when a tick removes a post.
+     */
+    private function countPostsRemovedByExistingTicks(array $in, array $geom): int
+    {
+        $hasTick = false;
+        foreach ($in['sides'] ?? [] as $side) {
+            if (! empty($side['already_have_post_left']) || ! empty($side['already_have_post_right'])) {
+                $hasTick = true;
+                break;
+            }
+        }
+        if (! $hasTick) {
+            return 0;
+        }
+
+        $cleared = $in;
+        $cleared['sides'] = array_map(static function (array $side): array {
+            $side['already_have_post_left'] = false;
+            $side['already_have_post_right'] = false;
+
+            return $side;
+        }, $in['sides']);
+
+        $without = $this->computeGeometry($cleared);
+
+        return max(0, (int) $without['structural_posts'] - (int) $geom['structural_posts']);
     }
 }

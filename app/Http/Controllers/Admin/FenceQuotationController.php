@@ -177,6 +177,11 @@ class FenceQuotationController extends Controller
             : FenceQuotationCalculator::frozenUnitPricesFromCalculation(
                 is_array($fence_quotation->calculation) ? $fence_quotation->calculation : null
             );
+        if ($request->boolean('reprice')) {
+            $data['existing_post_labour_credit'] = FenceFormulaSetting::current()->existingPostLabourCredit();
+        } elseif (! array_key_exists('existing_post_labour_credit', $data) || $data['existing_post_labour_credit'] === null) {
+            $data['existing_post_labour_credit'] = (float) ($fence_quotation->existing_post_labour_credit ?? 0);
+        }
         $calc = (new FenceQuotationCalculator())->calculate($data, $frozen ?: null);
         $persistence = $this->fencePersistenceFromCalc($request, $calc, $data, $fence_quotation);
 
@@ -387,6 +392,7 @@ class FenceQuotationController extends Controller
             'gate_count',
             'labour_rate_per_ft',
             'labour_rate_8ft_per_ft',
+            'existing_post_labour_credit',
             'sides',
             'calculation',
             'materials_subtotal',
@@ -692,6 +698,7 @@ class FenceQuotationController extends Controller
             'extra_gate_preset' => ['nullable', Rule::in($gateKeys)],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'existing_post_labour_credit' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
             'include_labour_hst' => ['nullable', 'boolean'],
         ];
 
@@ -746,6 +753,7 @@ class FenceQuotationController extends Controller
             'gate_count' => $calc['inputs']['gate_count'],
             'labour_rate_per_ft' => $data['labour_rate_per_ft'],
             'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],
+            'existing_post_labour_credit' => $calc['inputs']['existing_post_labour_credit'],
             'sides' => $calc['inputs']['sides'],
             'calculation' => $calc,
             'materials_subtotal' => $calc['totals']['materials_subtotal'],

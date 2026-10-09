@@ -52,6 +52,7 @@
           'gate_count' => $quotation->gate_count,
           'labour_rate_per_ft' => $quotation->labour_rate_per_ft,
           'labour_rate_8ft_per_ft' => $quotation->labour_rate_8ft_per_ft,
+          'existing_post_labour_credit' => $quotation->existing_post_labour_credit,
           'include_labour_hst' => $quotation->include_labour_hst,
           'extra_gate_preset' => $initialExtraGatePreset,
       ]);
@@ -68,6 +69,7 @@
 
   $defaultLabour6 = (float) $settings->labour_rate_per_ft;
   $defaultLabour8 = (float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft);
+  $defaultExistingPostCredit = (float) ($settings->existing_post_labour_credit ?? 30);
   $initialLabour6 = old(
       'labour_rate_per_ft',
       $isEdit ? (float) ($quotation->labour_rate_per_ft ?? $defaultLabour6) : $defaultLabour6
@@ -75,6 +77,10 @@
   $initialLabour8 = old(
       'labour_rate_8ft_per_ft',
       $isEdit ? (float) ($quotation->labour_rate_8ft_per_ft ?? $defaultLabour8) : $defaultLabour8
+  );
+  $initialExistingPostCredit = old(
+      'existing_post_labour_credit',
+      $isEdit ? (float) ($quotation->existing_post_labour_credit ?? 0) : $defaultExistingPostCredit
   );
   $initialIncludeLabourHst = old('include_labour_hst') !== null
       ? filter_var(old('include_labour_hst'), FILTER_VALIDATE_BOOLEAN)
@@ -312,6 +318,10 @@
       text-decoration: line-through;
       color: #9ca3af;
     }
+    .fq-totals-row--credit {
+      color: var(--admin-muted);
+      font-size: 12px;
+    }
     .fq-materials-preview {
       width: 100%;
       border-collapse: collapse;
@@ -527,6 +537,8 @@
         @endif
 
         <input type="hidden" name="reprice" id="fq-reprice" value="{{ $initialReprice ? '1' : '0' }}">
+        <input type="hidden" name="existing_post_labour_credit" id="fq-existing-post-credit"
+               value="{{ number_format((float) $initialExistingPostCredit, 2, '.', '') }}">
 
         {{-- 1. Client ------------------------------------------------ --}}
         <div class="admin-form-group">
@@ -623,7 +635,9 @@
           <h4 class="cp-heading-sm">Labour rate for this quotation</h4>
           <p class="admin-form-help cp-form-help-spaced">
             Stored with this quote{{ $isEdit ? '' : ' (prefilled from formula defaults)' }}.
-            First gate is included in the per-foot rate; extra gates add the configured extra-gate labour if any.
+            Labour is run length × this rate, plus extra-gate labour if any.
+            First gate is included in the per-foot rate.
+            An existing-post tick that actually removes a post also subtracts the configured labour credit (internal only — the client PDF stays a single labour line).
           </p>
           <div class="fq-formula-grid fq-quote-labour-grid">
             <div class="admin-form-group" id="fq-labour-6-wrap">
@@ -753,6 +767,10 @@
           <span>Labour <span class="admin-form-help" id="fq-t-labour-rate"></span></span>
           <span id="fq-t-labour">CA$0.00</span>
         </div>
+        <div class="fq-totals-row fq-totals-row--credit is-hidden" id="fq-t-existing-post-credit-row">
+          <span id="fq-t-existing-post-credit-label">Existing post credit</span>
+          <span id="fq-t-existing-post-credit">CA$0.00</span>
+        </div>
         <div class="fq-totals-row fq-totals-row--total">
           <span>Total</span>
           <span id="fq-t-total">CA$0.00</span>
@@ -823,6 +841,11 @@
   var tHst = document.getElementById('fq-t-hst');
   var tLabour = document.getElementById('fq-t-labour');
   var tLabourRate = document.getElementById('fq-t-labour-rate');
+  var tExistingPostCreditRow = document.getElementById('fq-t-existing-post-credit-row');
+  var tExistingPostCreditLabel = document.getElementById('fq-t-existing-post-credit-label');
+  var tExistingPostCredit = document.getElementById('fq-t-existing-post-credit');
+  var existingPostCreditInput = document.getElementById('fq-existing-post-credit');
+  var configExistingPostCredit = {{ json_encode($defaultExistingPostCredit) }};
   var tTotal = document.getElementById('fq-t-total');
   var tLabourHst = document.getElementById('fq-t-labour-hst');
   var tLabourHstRow = document.getElementById('fq-t-labour-hst-row');
@@ -1147,6 +1170,7 @@
       extra_gate_preset: extraGatePresetInput ? extraGatePresetInput.value : '4_single',
       labour_rate_per_ft: parseLabourRate(labourRate6Input),
       labour_rate_8ft_per_ft: parseLabourRate(labourRate8Input),
+      existing_post_labour_credit: parseLabourRate(existingPostCreditInput),
       include_labour_hst: includeLabourHstInput ? !!includeLabourHstInput.checked : true
     };
     if (useFrozenPrices && frozenUnitPrices && Object.keys(frozenUnitPrices).length) {
@@ -1226,6 +1250,8 @@
     tMaterials.textContent = 'CA$0.00';
     tHst.textContent = 'CA$0.00';
     tLabour.textContent = 'CA$0.00';
+    if (tExistingPostCreditRow) tExistingPostCreditRow.classList.add('is-hidden');
+    if (tExistingPostCredit) tExistingPostCredit.textContent = 'CA$0.00';
     tGrand.textContent = 'CA$0.00';
     window.__quoteGrandTotal = 0;
     document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: 0 } }));
@@ -1364,6 +1390,22 @@
     if (t.labour_rate_per_ft) {
       tLabourRate.textContent = '(' + money(t.labour_rate_per_ft) + '/ft)';
     }
+    var credit = t.existing_post_credit || {};
+    var creditCount = Number(credit.count || 0);
+    var creditAmount = Number(credit.amount || 0);
+    var creditRate = Number(credit.rate != null ? credit.rate : (creditCount > 0 ? creditAmount / creditCount : 0));
+    if (tExistingPostCreditRow) {
+      tExistingPostCreditRow.classList.toggle('is-hidden', !(creditCount > 0 && creditAmount > 0));
+    }
+    if (tExistingPostCreditLabel && creditCount > 0) {
+      var rateLabel = Math.abs(creditRate - Math.round(creditRate)) < 1e-6
+        ? String(Math.round(creditRate))
+        : creditRate.toFixed(2);
+      tExistingPostCreditLabel.textContent = 'Existing post credit: -$' + rateLabel + ' x ' + creditCount;
+    }
+    if (tExistingPostCredit) {
+      tExistingPostCredit.textContent = creditAmount > 0 ? ('−' + money(creditAmount)) : money(0);
+    }
   }
 
   function formatQty(q) {
@@ -1396,6 +1438,9 @@
     repriceBtn.addEventListener('click', function () {
       useFrozenPrices = false;
       repriceInput.value = '1';
+      if (existingPostCreditInput) {
+        existingPostCreditInput.value = Number(configExistingPostCredit).toFixed(2);
+      }
       var banner = document.getElementById('fq-price-banner');
       if (banner) banner.classList.add('is-hidden');
       schedulePreview();
