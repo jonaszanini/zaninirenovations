@@ -807,9 +807,12 @@
     }
     var prev = document.getElementById('br-prev');
     var next = document.getElementById('br-next');
-    if (prev) prev.disabled = currentIndex === 0;
+    if (prev) {
+      prev.disabled = currentIndex === 0;
+      prev.textContent = '← Back';
+    }
     if (next) {
-      next.textContent = key === 'review' ? 'Save' : 'Next';
+      next.textContent = key === 'review' ? 'Save' : '→ Next';
       next.disabled = false;
     }
     if (scroll) {

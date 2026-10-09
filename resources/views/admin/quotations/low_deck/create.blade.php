@@ -165,36 +165,19 @@
 @endpush
 
 @section('content')
-  <div class="ld-form-toolbar">
-    <a href="{{ route('admin.quotations.low-deck.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to low deck quotations
-    </a>
-    <div class="ld-form-toolbar-right">
-      <a href="{{ route('admin.quotations.low-deck.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-cog"></i> Price configuration
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-      <a href="{{ route('admin.quotations.low-deck.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-      @if ($isEdit)
-        <a href="{{ route('admin.quotations.low-deck.purchase-list', $quotation) }}"
-           target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm"
-           data-purchase-list-choice
-           data-purchase-list-title="Print shopping list">
-          <i class="fa fa-print"></i> Print Shopping List
-        </a>
-        <a href="{{ route('admin.quotations.low-deck.layout-diagrams', $quotation) }}"
-           target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-print"></i> Print Layout Diagrams
-        </a>
-        @include('admin.partials.quotation_view_pdf')
-      @endif
-      <button type="submit" form="ld-form" class="admin-btn admin-btn--primary admin-btn--sm">
-        <i class="fa fa-save"></i> {{ $isEdit ? 'Save changes' : 'Save quotation' }}
-      </button>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Low deck',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
+    'listUrl' => route('admin.quotations.low-deck.index'),
+    'cancelUrl' => route('admin.quotations.low-deck.index'),
+    'priceConfigUrl' => route('admin.quotations.low-deck.config'),
+    'formId' => 'ld-form',
+    'saveId' => 'ld-btn-save',
+    'saveHotkey' => true,
+    'showDraft' => false,
+  ])
 
   @if ($isEdit && $quotation->project)
     <div class="ld-linked-banner">
@@ -381,7 +364,12 @@
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
 
-      <h3 class="cp-heading-md">Live breakdown</h3>
+      <div class="qh-priced-head">
+        <h3 class="cp-heading-md">Live breakdown</h3>
+        @include('admin.partials.quotation_price_config_gear', [
+          'url' => route('admin.quotations.low-deck.config'),
+        ])
+      </div>
       <p class="admin-form-help cp-breakdown-intro">
         Preview updates as you type. <span class="ld-badge" id="ld-status-badge">Calculating…</span>
       </p>

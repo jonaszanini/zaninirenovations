@@ -310,6 +310,19 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Paving',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'pq-main-form',
+    'saveId' => 'pq-btn-publish',
+    'draftId' => 'pq-btn-draft',
+    'draftHotkey' => true,
+  ])
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
       <i class="fa fa-link"></i>
@@ -482,35 +495,16 @@
       </div>
 
       <aside class="pq-sticky">
-        <div class="pq-sidebar-actions">
-          <button type="submit" form="pq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="pq-btn-publish">
-            <i class="fa fa-save"></i> Save quotation
-          </button>
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft">Save as draft</button>
-          <a href="{{ route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-            <i class="fa fa-cog"></i> Price configuration
-          </a>
-          @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-          <a href="{{ route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-            <i class="fa fa-arrow-left"></i> Back to list
-          </a>
-          @if ($isEdit)
-            <a href="{{ route('admin.quotations.paving.purchase-list', $quotation) }}"
-               target="_blank" rel="noopener noreferrer"
-               class="admin-btn admin-btn--ghost admin-btn--sm"
-               data-purchase-list-choice
-               data-purchase-list-title="Print material list">
-              <i class="fa fa-print"></i> Print Material List
-            </a>
-            @include('admin.partials.quotation_view_pdf')
-          @endif
-          <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        </div>
         @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
         @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'pq-main-form'])
         @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'pq-main-form'])
         <div class="pq-summary-card">
-          <h4 class="cp-form-help-spaced">Live summary</h4>
+          <div class="qh-priced-head">
+            <h4>Live summary</h4>
+            @include('admin.partials.quotation_price_config_gear', [
+              'url' => route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+            ])
+          </div>
           <div id="pq-live-root">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>
           </div>

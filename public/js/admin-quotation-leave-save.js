@@ -302,6 +302,18 @@
       return;
     }
 
+    var cancelBtn = e.target.closest('[data-qh-cancel]');
+    if (cancelBtn) {
+      var cancelHref = cancelBtn.getAttribute('data-qh-cancel');
+      var cancelDest = destination(cancelHref);
+      if (!cancelDest) {
+        return;
+      }
+      e.preventDefault();
+      submitLeave(form, cancelDest, false);
+      return;
+    }
+
     var btn = e.target.closest('button, input[type="submit"]');
     if (btn) {
       var btnForm = btn.form || (btn.getAttribute('form') ? document.getElementById(btn.getAttribute('form')) : btn.closest('form'));

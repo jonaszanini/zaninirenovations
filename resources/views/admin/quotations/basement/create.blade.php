@@ -125,50 +125,26 @@
                       ? "Add the client's email address to email this quotation."
                       : 'Cannot send email yet.')));
     @endphp
-    <div class="br-toolbar" aria-label="Quotation actions">
-      <div class="admin-toolbar-group">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-btn-draft">Save as draft</button>
-        <a href="{{ route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </a>
-        <a href="{{ route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-      </div>
-      <div class="pq-sidebar-actions br-toolbar-actions">
-        @if ($isEdit)
-          @include('admin.partials.quotation_view_pdf', ['iconOnly' => true])
-          @if ($canSendEmail)
-            <button type="submit"
-                    form="br-email-quote-form"
-                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                    title="Email quotation to client"
-                    aria-label="Email quotation to client"
-                    onclick='return confirm(@json($sendEmailConfirm));'>
-              <i class="fa fa-paper-plane" aria-hidden="true"></i>
-            </button>
-          @else
-            <span class="br-toolbar-disabled-tip" title="{{ $sendEmailDisabledTitle }}">
-              <button type="button"
-                      class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                      disabled
-                      aria-label="Email quotation to client. {{ $sendEmailDisabledTitle }}">
-                <i class="fa fa-paper-plane" aria-hidden="true"></i>
-              </button>
-            </span>
-          @endif
-        @endif
-        <button type="submit"
-                class="admin-btn admin-btn--primary admin-btn--sm admin-btn--icon"
-                id="br-btn-publish"
-                title="Save quotation"
-                aria-label="Save quotation">
-          <i class="fa fa-save" aria-hidden="true"></i>
-        </button>
-      </div>
-    </div>
+    @include('admin.partials.quotation_editor_header', [
+      'title' => $title,
+      'typeLabel' => 'Basement',
+      'project' => $projectForReturn,
+      'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+      'listUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
+      'cancelUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
+      'priceConfigUrl' => route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+      'formId' => 'br-main-form',
+      'saveId' => 'br-btn-publish',
+      'draftId' => 'br-btn-draft',
+      'draftHotkey' => true,
+      'wizard' => [
+        'navId' => 'br-step-nav',
+        'prevId' => 'br-prev',
+        'nextId' => 'br-next',
+        'statusId' => 'br-step-status',
+        'count' => $enabledCount,
+      ],
+    ])
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">
         @php $n = 0; @endphp
@@ -368,7 +344,12 @@
 
     <aside class="br-aside">
       <div class="pq-summary-card">
-        <h4 style="margin:0 0 10px;">Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
+        </div>
         <div id="br-live-root">
           <p class="admin-form-help" id="br-live-empty">Enter the basement area to see totals.</p>
           <div id="br-live-body" hidden></div>
@@ -378,12 +359,7 @@
 
     <div class="br-sticky-spacer" aria-hidden="true"></div>
 
-    <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
-      <div class="br-step-nav" id="br-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
-      </div>
+    <div class="br-sticky-total" id="br-sticky-total" aria-label="Running total">
       <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
         <span class="br-toolbar-grand__label">Grand total</span>
         <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>

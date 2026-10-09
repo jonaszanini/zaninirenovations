@@ -187,23 +187,19 @@
 
 @section('content')
   @include('admin.partials.room_area_prefill_banner')
-  <div class="fq-form-toolbar">
-    <a href="{{ route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to list
-    </a>
-    <div class="fq-form-toolbar-right">
-      <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        Price configuration
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-      <a href="{{ route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-      @include('admin.partials.quotation_view_pdf')
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sq-btn-draft">Save as draft</button>
-      <button type="submit" form="sq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="sq-btn-publish">
-        <i class="fa fa-save"></i> Save quotation
-      </button>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Stairs',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'sq-main-form',
+    'saveId' => 'sq-btn-publish',
+    'draftId' => 'sq-btn-draft',
+    'draftHotkey' => true,
+  ])
 
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
@@ -363,7 +359,12 @@
         @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'sq-main-form'])
         
         <div class="pq-summary-card">
-          <h4 class="cp-form-help-spaced">Live summary</h4>
+          <div class="qh-priced-head">
+            <h4>Live summary</h4>
+            @include('admin.partials.quotation_price_config_gear', [
+              'url' => route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+            ])
+          </div>
           <div id="sq-live-root">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>
           </div>

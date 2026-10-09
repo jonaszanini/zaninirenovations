@@ -71,10 +71,13 @@
       if (status) status.textContent = (idx + 1) + ' of ' + wizardKeys.length;
       var prevBtn = document.getElementById('mw-prev');
       var nextBtn = document.getElementById('mw-next');
-      if (prevBtn) prevBtn.disabled = idx === 0;
+      if (prevBtn) {
+        prevBtn.disabled = idx === 0;
+        prevBtn.textContent = '← Back';
+      }
       if (nextBtn) {
         nextBtn.disabled = false;
-        nextBtn.textContent = idx === wizardKeys.length - 1 ? 'Review' : 'Next';
+        nextBtn.textContent = idx === wizardKeys.length - 1 ? 'Review' : '→ Next';
       }
       if (scroll) {
         var el = sectionEl(wizardKeys[idx]);
@@ -129,12 +132,37 @@
       submitWizard('publish');
     });
 
+    function validateCurrentStep() {
+      var scopes = [];
+      var step = sectionEl(wizardKeys[currentIndex]);
+      if (step) scopes.push(step);
+      var clientCard = form.querySelector('.mw-client-card');
+      if (clientCard && scopes.indexOf(clientCard) === -1) scopes.push(clientCard);
+      for (var s = 0; s < scopes.length; s++) {
+        var fields = scopes[s].querySelectorAll('input, select, textarea');
+        for (var i = 0; i < fields.length; i++) {
+          var el = fields[i];
+          if (el.disabled || el.readOnly) continue;
+          if (el.closest && el.closest('[hidden]')) continue;
+          if (typeof el.checkValidity === 'function' && !el.checkValidity()) {
+            try { el.focus(); } catch (err) { /* ignore */ }
+            if (typeof el.reportValidity === 'function') el.reportValidity();
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
     if (!isEdit) {
       setWizardStep(0, false);
       var prevBtn = document.getElementById('mw-prev');
       var nextBtn = document.getElementById('mw-next');
       if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
-      if (nextBtn) nextBtn.addEventListener('click', function () { setWizardStep(currentIndex + 1, true); });
+      if (nextBtn) nextBtn.addEventListener('click', function () {
+        if (!validateCurrentStep()) return;
+        setWizardStep(currentIndex + 1, true);
+      });
     } else {
       var nav = document.getElementById('mw-step-nav');
       if (nav) nav.hidden = true;

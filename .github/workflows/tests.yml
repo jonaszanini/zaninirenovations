@@ -76,6 +76,7 @@ jobs:
           php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php
           php artisan test tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
           php artisan test tests/Unit/Views/QuotationExpensePairLayoutTest.php
+          php artisan test tests/Unit/Views/QuotationEditorHeaderMarkupTest.php
 
       - name: Public CSS light-only (no database)
         run: |
@@ -146,6 +147,7 @@ jobs:
           php artisan test tests/Feature/Admin/BasementRoomAreaImportTest.php
           php artisan test tests/Feature/Admin/BasementQuotationMathRoundTripTest.php
           php artisan test tests/Feature/Admin/BasementQuotationPagesTest.php
+          php artisan test tests/Feature/Admin/QuotationEditorHeaderTest.php
           php artisan test tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php
           php artisan test tests/Feature/Admin/RoomAreaQuoteLinesTest.php
           php artisan test tests/Unit/Services/RoomAreaQuotePrefillTest.php

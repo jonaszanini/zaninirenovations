@@ -3486,3 +3486,22 @@ html.admin-dark .util-oc-card {
 html.admin-dark .util-lb-min-offcut > label {
   color: var(--admin-muted);
 }
+
+html.admin-dark .qh {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .qh-title,
+html.admin-dark .qh-crumb__current,
+html.admin-dark .qh-wizard__status,
+html.admin-dark .qh .br-step-nav__status {
+  color: var(--admin-heading);
+}
+html.admin-dark .qh-crumb__link,
+html.admin-dark .qh-price-gear:hover,
+html.admin-dark .qh-price-gear:focus-visible {
+  color: var(--admin-primary);
+}
+html.admin-dark .qh-price-gear {
+  color: var(--admin-muted);
+}

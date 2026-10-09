@@ -193,14 +193,40 @@
       }
       var prev = document.getElementById('sh-prev');
       var next = document.getElementById('sh-next');
-      if (prev) prev.disabled = currentIndex === 0;
-      if (next) next.textContent = key === 'review' ? 'Review' : (currentIndex === sectionKeys.length - 1 ? 'Review' : 'Next');
-      if (next && key === 'review') next.disabled = true;
-      else if (next) next.disabled = false;
+      if (prev) {
+        prev.disabled = currentIndex === 0;
+        prev.textContent = '← Back';
+      }
+      if (next) {
+        next.textContent = key === 'review' ? 'Review' : (currentIndex === sectionKeys.length - 1 ? 'Review' : '→ Next');
+        next.disabled = key === 'review';
+      }
       if (scroll && !isEdit) {
         var el = sectionEl(key);
         if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+    }
+
+    function validateCurrentStep() {
+      var scopes = [];
+      var step = sectionEl(wizardKeys[currentIndex]);
+      if (step) scopes.push(step);
+      var clientCard = form.querySelector('.fl-step-card, .sh-client-card');
+      if (clientCard && scopes.indexOf(clientCard) === -1) scopes.push(clientCard);
+      for (var s = 0; s < scopes.length; s++) {
+        var fields = scopes[s].querySelectorAll('input, select, textarea');
+        for (var i = 0; i < fields.length; i++) {
+          var el = fields[i];
+          if (el.disabled || el.readOnly) continue;
+          if (el.closest && el.closest('[hidden]')) continue;
+          if (typeof el.checkValidity === 'function' && !el.checkValidity()) {
+            try { el.focus(); } catch (err) { /* ignore */ }
+            if (typeof el.reportValidity === 'function') el.reportValidity();
+            return false;
+          }
+        }
+      }
+      return true;
     }
 
     if (!isEdit) {
@@ -208,7 +234,10 @@
       var prevBtn = document.getElementById('sh-prev');
       var nextBtn = document.getElementById('sh-next');
       if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
-      if (nextBtn) nextBtn.addEventListener('click', function () { setWizardStep(currentIndex + 1, true); });
+      if (nextBtn) nextBtn.addEventListener('click', function () {
+        if (!validateCurrentStep()) return;
+        setWizardStep(currentIndex + 1, true);
+      });
     } else {
       var nav = document.getElementById('sh-step-nav');
       if (nav) nav.hidden = true;
