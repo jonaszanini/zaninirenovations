@@ -482,6 +482,18 @@ html.admin-dark .admin-search-select__clear:focus-visible {
   background: var(--admin-surface-hover);
 }
 
+html.admin-dark .admin-search-select__option--action {
+  border-top-color: var(--admin-border);
+}
+
+html.admin-dark .admin-search-select__option--action .admin-search-select__option-name {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .admin-search-select__error {
+  color: var(--admin-danger);
+}
+
 html.admin-dark .admin-places-autocomplete-wrap {
   --gmp-mat-color-surface: var(--admin-elevated);
   --gmp-mat-color-on-surface: var(--admin-heading);

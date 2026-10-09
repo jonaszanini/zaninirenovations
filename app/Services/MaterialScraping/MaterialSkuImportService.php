@@ -68,6 +68,24 @@ class MaterialSkuImportService
         ];
     }
 
+    public function findBySku(string $sku): ?Material
+    {
+        $sku = trim($sku);
+        if (! HomeDepotCaUrls::isValidSku($sku)) {
+            return null;
+        }
+
+        return Material::query()
+            ->where(function ($query) use ($sku) {
+                $query->where('store_sku', $sku)
+                    ->orWhere('product_url', 'like', '%/'.$sku)
+                    ->orWhere('product_url', 'like', '%/'.$sku.'/%')
+                    ->orWhere('product_url', 'like', '%/'.$sku.'?%');
+            })
+            ->orderByRaw('case when store_sku = ? then 0 else 1 end', [$sku])
+            ->first();
+    }
+
     /**
      * @return array{
      *     action: string,
@@ -91,7 +109,7 @@ class MaterialSkuImportService
             $attributes['category_id'] = $categoryId;
         }
 
-        $existing = Material::query()->where('store_sku', $sku)->first();
+        $existing = $this->findBySku($sku);
 
         if ($existing === null) {
             $attributes['name'] = 'HD '.$sku;
@@ -106,6 +124,7 @@ class MaterialSkuImportService
             ];
         }
 
+        $attributes['store_sku'] = $sku;
         $existing->fill($attributes);
         $existing->save();
 

@@ -56,5 +56,9 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('etransfer-api', function (Request $request) {
             return Limit::perMinute(30)->by($request->ip());
         });
+
+        RateLimiter::for('home-depot-import', function (Request $request) {
+            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        });
     }
 }

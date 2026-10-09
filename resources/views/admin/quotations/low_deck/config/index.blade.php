@@ -431,6 +431,8 @@
         var initial = window.AdminSearchSelect ? AdminSearchSelect.getValue(root) : '';
         updatePreview(root, initial && initial !== '0' ? initial : '', optionMap);
         root.addEventListener('admin-search-select:change', function (e) {
+          var opt = e.detail && e.detail.option;
+          if (opt && opt.id != null) optionMap[String(opt.id)] = opt;
           updatePreview(root, (e.detail && e.detail.id) || '', optionMap);
         });
       });

@@ -253,6 +253,9 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('materials.config.categories.destroy');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])
         ->name('materials.bulk-destroy');
+    Route::post('materials/import-from-home-depot', [MaterialController::class, 'importFromHomeDepot'])
+        ->name('materials.import-from-home-depot')
+        ->middleware('throttle:home-depot-import');
     Route::post('materials/bulk-import/start', [MaterialController::class, 'bulkImportStart'])
         ->name('materials.bulk-import.start');
     Route::post('materials/bulk-import/step', [MaterialController::class, 'bulkImportStep'])
