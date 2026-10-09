@@ -61,6 +61,9 @@
           is_array($quotation->calculation) ? $quotation->calculation : null
       );
   }
+  $priceDeltaAmountLabel = is_array($priceDelta)
+      ? \App\Services\FenceQuotationCalculator::formatCatalogueDeltaLabel((float) ($priceDelta['delta'] ?? 0))
+      : '';
   $frozenUnitPrices = $isEdit
       ? \App\Services\FenceQuotationCalculator::frozenUnitPricesFromCalculation(
           is_array($quotation->calculation) ? $quotation->calculation : null
@@ -557,10 +560,10 @@
         <div class="admin-form-group cp-form-group-spaced">
           <div class="fq-sides-header">
             <div>
-              <label class="cp-label-flush">Runs (up to {{ \App\Models\FenceQuotation::MAX_RUNS }})</label>
-              <p class="admin-form-help cp-form-help-tight-top">
-                Length in feet (quarter-foot is fine, e.g. 20.25). Blank extra runs are ignored.
-              </p>
+              <span class="admin-label-with-tip">
+                <span class="admin-form-group-label cp-label-flush">Runs (up to {{ \App\Models\FenceQuotation::MAX_RUNS }})</span>
+                <x-admin.info-tip label="Runs">Length in feet (quarter-foot is fine, e.g. 20.25). Blank extra runs are ignored.</x-admin.info-tip>
+              </span>
               <p class="fq-total-lf" id="fq-total-lf">Total LF: 0</p>
             </div>
             <div class="fq-sides-actions">
@@ -599,7 +602,10 @@
           </div>
 
           <div class="admin-form-group">
-            <label for="fq-style">Board style</label>
+            <span class="admin-label-with-tip">
+              <label for="fq-style">Board style</label>
+              <x-admin.info-tip label="Board style">Clear span between posts is at most the max spacing. An 8 ft top board covers that clear span; it may not reach post centres at near-max spacing.</x-admin.info-tip>
+            </span>
             <select name="board_style" id="fq-style" class="admin-input">
               <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_STANDARD }}"
                       @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_STANDARD)>
@@ -610,19 +616,23 @@
                 Overlapping
               </option>
             </select>
-            <p class="admin-form-help">Clear span between posts is at most the max spacing. An 8 ft top board covers that clear span; it may not reach post centres at near-max spacing.</p>
           </div>
 
           <div class="admin-form-group">
-            <label for="fq-gates">Gates</label>
+            <span class="admin-label-with-tip">
+              <label for="fq-gates">Gates</label>
+              <x-admin.info-tip label="Gates">Tick “Gate goes here” on a run. Extra gates (count higher than ticked runs) use Extra gate size.</x-admin.info-tip>
+            </span>
             <input id="fq-gates" type="number" min="0" max="16" step="1"
                    name="gate_count" class="admin-input"
                    value="{{ $initialGates }}">
-            <p class="admin-form-help">Tick “Gate goes here” on a run. Extra gates (count higher than ticked runs) use Extra gate size.</p>
           </div>
 
           <div class="admin-form-group{{ $initialGates > $initialTickedGates ? '' : ' is-hidden' }}" id="fq-extra-gate-wrap">
-            <label for="fq-extra-gate-preset">Extra gate size</label>
+            <span class="admin-label-with-tip">
+              <label for="fq-extra-gate-preset">Extra gate size</label>
+              <x-admin.info-tip label="Extra gate size">Size for gates not ticked on a run.</x-admin.info-tip>
+            </span>
             <select name="extra_gate_preset" id="fq-extra-gate-preset" class="admin-input">
               @foreach ($gatePresets as $preset)
                 <option value="{{ $preset['key'] }}" @selected($initialExtraGatePreset === $preset['key'])>
@@ -630,7 +640,6 @@
                 </option>
               @endforeach
             </select>
-            <p class="admin-form-help">Size for gates not ticked on a run.</p>
           </div>
         </div>
 
@@ -638,14 +647,7 @@
         <div class="admin-form-section fq-quote-labour-section">
           <h4 class="cp-heading-sm">
             Labour rate for this quotation
-            <x-admin.info-tip
-              label="About labour rates"
-              :text="($isEdit
-                ? 'Stored with this quote. '
-                : 'Stored with this quote (prefilled from formula defaults). ')
-                .'Labour is run length × this rate, plus extra-gate labour if any. '
-                .'First gate is included in the per-foot rate. '
-                .'An existing-post tick that actually removes a post also subtracts the configured labour credit (internal only — the client PDF stays a single labour line).'" />
+            <x-admin.info-tip label="Labour rate">Stored with this quote{{ $isEdit ? '' : ' (prefilled from formula defaults)' }}. First gate is included in the per-foot rate; extra gates add the configured extra-gate labour if any. An existing-post tick that actually removes a post also subtracts the labour credit (internal only — the client PDF stays a single labour line).</x-admin.info-tip>
           </h4>
           <div class="fq-formula-grid fq-quote-labour-grid">
             <div class="admin-form-group" id="fq-labour-6-wrap">
@@ -653,7 +655,7 @@
               <input id="fq-labour-rate-6" type="text" name="labour_rate_per_ft"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_per_ft')])
                      inputmode="decimal" autocomplete="off" required
-                     value="{{ number_format((float) $initialLabour6, 2, '.', '') }}">
+                     value="{{ number_format((float) $initialLabour6, 2, '.', '') }}" data-cp-money-entry="direct">
               @error('labour_rate_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group" id="fq-labour-8-wrap">
@@ -661,16 +663,14 @@
               <input id="fq-labour-rate-8" type="text" name="labour_rate_8ft_per_ft"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_8ft_per_ft')])
                      inputmode="decimal" autocomplete="off" required
-                     value="{{ number_format((float) $initialLabour8, 2, '.', '') }}">
+                     value="{{ number_format((float) $initialLabour8, 2, '.', '') }}" data-cp-money-entry="direct">
               @error('labour_rate_8ft_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group" id="fq-labour-credit-wrap">
-              <div class="admin-label-with-tip">
+              <span class="admin-label-with-tip">
                 <label for="fq-existing-post-credit">Labour credit per existing post</label>
-                <x-admin.info-tip
-                  label="About labour credit"
-                  text="Subtracted from labour when a left/right tick actually removes a post." />
-              </div>
+                <x-admin.info-tip label="Labour credit">Subtracted from labour when a left/right tick actually removes a post.</x-admin.info-tip>
+              </span>
               <input id="fq-existing-post-credit" type="text" name="existing_post_labour_credit"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('existing_post_labour_credit')])
                      inputmode="decimal" autocomplete="off" required
@@ -686,7 +686,10 @@
 
         {{-- 6. Description (needs runs first for auto-fill) ---------- --}}
         <div class="admin-form-group quotation-work-desc">
-          <label for="fq-work-description">Description of the work</label>
+          <span class="admin-label-with-tip">
+            <label for="fq-work-description">Description of the work</label>
+            <x-admin.info-tip label="Description of the work">Shown on the client PDF beneath the priced line item. Use Fill from template for a count-accurate draft, then polish with AI if you want.</x-admin.info-tip>
+          </span>
           <textarea id="fq-work-description" name="work_description" rows="8"
                     @class(['admin-input', 'is-invalid' => $errors->has('work_description')])
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
@@ -696,7 +699,6 @@
               'aiQuotationType' => 'fence',
               'trailingActionPartial' => 'admin.quotations.fence._work_description_trailing_actions',
           ])
-          <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Use Fill from template for a count-accurate draft, then polish with AI if you want.</p>
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
@@ -736,16 +738,20 @@
     <aside class="admin-card fq-breakdown-card">
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
 
-      <h3 class="cp-heading-md">Live breakdown</h3>
-      <p class="admin-form-help cp-breakdown-intro">
-        Preview updates as you type. <span class="fq-badge" id="fq-status-badge">Calculating…</span>
+      <h3 class="cp-heading-md">
+        Live breakdown
+        <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
+      </h3>
+      <p class="cp-breakdown-intro">
+        <span class="fq-badge" id="fq-status-badge">Calculating…</span>
       </p>
       @if ($isEdit && ! empty($priceDelta['changed']) && ! $initialReprice)
         <div class="fq-price-banner" id="fq-price-banner">
-          Catalogue unit prices have changed since this quote was saved
-          (materials {{ ($priceDelta['delta'] ?? 0) >= 0 ? '+' : '' }}{{ \App\Models\ClientProject::formatMoney((float) ($priceDelta['delta'] ?? 0)) }}).
-          Save keeps last-save unit prices; quantities still follow the current runs.
-          Re-price updates unit prices from the catalogue.
+          Catalogue unit prices have changed since this quote was saved{{ $priceDeltaAmountLabel }}.
+          @include('admin.partials.info_tip', [
+            'tipText' => 'Save keeps the unit prices from the last save. Quantities still follow the current runs. Re-price updates unit prices from the catalogue.',
+            'tipLabel' => 'saved unit prices',
+          ])
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-reprice-btn">
             Re-price from catalogue
           </button>
@@ -914,15 +920,21 @@
     return value === true || value === 1 || value === '1';
   }
 
+  // Saved null is off. Missing/undefined (pre-#50) is on. Matches PHP array_key_exists.
+  function connectedOn(value, index) {
+    if (index <= 0) return false;
+    if (value === undefined) return true;
+    if (value === null) return false;
+    return flagOn(value);
+  }
+
   function renderSides(sides) {
     sidesEl.innerHTML = '';
     sides.forEach(function (side, i) {
       var leftChecked = !!(side && flagOn(side.already_have_post_left));
       var rightChecked = !!(side && flagOn(side.already_have_post_right));
       var gateChecked = !!(side && flagOn(side.gate_goes_here));
-      var connectedChecked = !side || side.connected_to_previous === undefined || side.connected_to_previous === null
-        ? true
-        : flagOn(side.connected_to_previous);
+      var connectedChecked = connectedOn(side ? side.connected_to_previous : null, i);
       var preset = (side && side.gate_preset) ? side.gate_preset : '4_single';
       var card = document.createElement('div');
       card.className = 'fq-side-card';
@@ -934,7 +946,10 @@
         '  </button>',
         '</div>',
         '<div class="admin-form-group cp-form-group-flush">',
-        '  <label for="fq-side-' + i + '">Length (feet)</label>',
+        '  <span class="admin-label-with-tip">',
+        '    <label for="fq-side-' + i + '">Length (feet)</label>',
+        (window.AdminInfoTip ? AdminInfoTip.html('Length in feet (quarter-foot is fine, e.g. 20.25). Blank extra runs are ignored.', 'Length (feet)') : ''),
+        '  </span>',
         '  <input id="fq-side-' + i + '" type="number" min="0.25" step="0.01"',
         '         name="sides[' + i + '][length_ft]"',
         '         class="admin-input fq-side-length"',

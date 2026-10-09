@@ -342,7 +342,7 @@ a.cp-table-street .fa {
 }
 .cp-table-project-name {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--admin-heading);
   line-height: 1.35;
   white-space: nowrap;
 }
@@ -6389,9 +6389,7 @@ body.cp-modal-open {
   margin-bottom: 8px;
 }
 .sq-intro-option-title {
-  display: flex;
-  align-items: center;
-  gap: 0;
+  display: block;
   margin: 0 0 6px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--admin-border, #dbe3ea);
@@ -7849,6 +7847,8 @@ body.cp-modal-open {
 .br-main {
   min-width: 0;
   max-width: 100%;
+  container-type: inline-size;
+  container-name: br-main;
 }
 .br-layout .admin-table-scroll {
   min-width: 0;
@@ -8422,10 +8422,9 @@ body.cp-modal-open {
 }
 .br-bath-light-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(72px, 110px);
-  align-items: end;
+  grid-template-columns: 1fr;
+  align-items: start;
   gap: 4px 12px;
-  align-items: stretch;
   margin-bottom: 0;
 }
 .br-bath-light-row .admin-form-group {
@@ -8435,6 +8434,9 @@ body.cp-modal-open {
   display: none !important;
 }
 .br-bath-light-row .admin-checkbox {
+  min-height: 0;
+}
+.br-bath-light-row .admin-checkbox-row {
   min-height: 44px;
 }
 .br-tile-areas__head {
@@ -8457,7 +8459,9 @@ body.cp-modal-open {
 }
 .br-tile-row {
   padding: 8px 0;
-  border-top: 1px dashed #e8edf2;
+  border-top: 1px dashed var(--admin-border, #e8edf2);
+  min-width: 0;
+  max-width: 100%;
 }
 .br-tile-row:first-child {
   border-top: 0;
@@ -8468,6 +8472,8 @@ body.cp-modal-open {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
   gap: 8px 10px;
   align-items: end;
+  min-width: 0;
+  max-width: 100%;
 }
 .br-tile-row__sqft {
   grid-column: 1 / -1;
@@ -8529,17 +8535,9 @@ body.cp-modal-open {
   margin-top: 4px;
 }
 @media (min-width: 700px) {
-  .br-tile-row__main {
-    grid-template-columns: max-content minmax(8.5rem, 12rem) minmax(7rem, 9.5rem) 44px;
-  }
-  .br-tile-row__sqft,
-  .br-tile-row__finish,
-  .br-tile-row__name,
-  .br-tile-row__remove {
-    grid-column: auto;
-  }
-  .br-tile-row__sqft-controls {
-    flex-wrap: nowrap;
+  .br-bath-light-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
   }
 }
 .br-edit-table .admin-input {
@@ -8822,6 +8820,11 @@ body.cp-modal-open {
 .br-layout--create .br-acc__summary {
   pointer-events: none;
 }
+.br-layout--create .br-acc__summary .admin-info-tip,
+.br-layout--create .br-acc__summary .admin-info-tip-wrap,
+.br-layout--create .br-acc__summary .admin-info-tip__bubble {
+  pointer-events: auto;
+}
 .br-client-card {
   padding: 12px 14px;
 }
@@ -8994,14 +8997,6 @@ body.cp-modal-open {
   .br-scope-presets__grid {
     grid-template-columns: 1fr 1fr;
   }
-  .br-bath-light-grid {
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
-  }
-  .br-bath-light-row {
-    grid-template-columns: minmax(0, 1fr) minmax(96px, 140px);
-    align-items: end;
-  }
   .br-provide-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -9117,9 +9112,6 @@ body.cp-modal-open {
   .br-framing-fields > .br-field--phone-wide {
     grid-column: auto;
   }
-  .br-check-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .br-qty-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -9157,6 +9149,31 @@ body.cp-modal-open {
   }
   .br-progress__label {
     white-space: normal;
+  }
+}
+
+/* After the 700/900 viewport grids: same specificity, so later @container
+   3-col wins when .br-main is ≥ 48rem. Lighting and 4-col tiles use rem
+   so a 20px root font stays safe. */
+@container br-main (min-width: 48rem) {
+  .br-bath-light-row {
+    grid-template-columns: minmax(max-content, 1fr) minmax(96px, 140px);
+    align-items: start;
+  }
+  .br-tile-row__main {
+    grid-template-columns: max-content minmax(8.5rem, 12rem) minmax(7rem, 9.5rem) 44px;
+  }
+  .br-tile-row__sqft,
+  .br-tile-row__finish,
+  .br-tile-row__name,
+  .br-tile-row__remove {
+    grid-column: auto;
+  }
+  .br-tile-row__sqft-controls {
+    flex-wrap: nowrap;
+  }
+  .br-check-grid {
+    grid-template-columns: repeat(3, minmax(max-content, 1fr));
   }
 }
 
@@ -9415,6 +9432,16 @@ body.cp-modal-open {
 .tm-chip-row .admin-checkbox {
   min-height: 44px;
   align-items: center;
+}
+.tm-chip-row > .admin-label-with-tip,
+.tm-chip-row > .admin-checkbox-row {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 700px) {
+  .tm-chip-row > .admin-checkbox-row {
+    flex: 1 1 100%;
+  }
 }
 .tm-wainscot-grid {
   margin-top: 10px;

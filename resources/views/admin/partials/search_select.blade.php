@@ -8,7 +8,7 @@
     $name            Hidden input name (omit if the value should not post)
     $value           Selected id
     $label           Visible field label (omit or empty to hide)
-    $labelHint       Optional hint array/text for _cp_field_hint
+    $labelHint       Optional hint (string or [tipText|tipHtml, tipLabel]) for _cp_field_hint
     $placeholder
     $ariaLabel
     $required        bool
@@ -83,12 +83,23 @@
      @endforeach
   >
   @unless ($hideLabel)
-    <label for="{{ $id }}-input" class="{{ ! empty($labelHint) ? 'cp-label-with-hint' : '' }}">
-      {{ $label }}
+    <span class="admin-label-with-tip{{ ! empty($labelHint) ? ' cp-label-with-hint' : '' }}">
+      <label for="{{ $id }}-input">{{ $label }}</label>
       @if (! empty($labelHint))
-        @include('admin.client_projects._cp_field_hint', is_array($labelHint) ? $labelHint : ['text' => $labelHint])
+        @php
+          $ssHint = is_array($labelHint) ? $labelHint : ['tipText' => $labelHint];
+          if (isset($ssHint['text']) && empty($ssHint['tipText'])) {
+              $ssHint['tipText'] = $ssHint['text'];
+          }
+          if (isset($ssHint['html']) && empty($ssHint['tipHtml'])) {
+              $ssHint['tipHtml'] = $ssHint['html'];
+          }
+          $ssHint['tipLabel'] = $ssHint['tipLabel'] ?? $label;
+          unset($ssHint['id'], $ssHint['label'], $ssHint['text'], $ssHint['html']);
+        @endphp
+        @include('admin.client_projects._cp_field_hint', $ssHint)
       @endif
-    </label>
+    </span>
   @endunless
 
   <input type="hidden"

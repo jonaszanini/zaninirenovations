@@ -63,16 +63,19 @@
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
-                 value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="admin-form-group">
           <label for="helper_hourly_rate">Helper hourly rate (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
-                 value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="admin-form-group">
-          <label for="hours_per_day">@include('admin.partials.info_tip', ['text' => 'Used for calendar-day estimates (1 / 2 / 3 people).']) Hours per working day</label>
+          <span class="admin-label-with-tip">
+  <label for="hours_per_day">Hours per working day</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Used for calendar-day estimates (1 / 2 / 3 people).', 'tipLabel' => 'Hours per working day'])
+</span>
           <input type="number" step="0.25" min="0.5" max="16" class="admin-input" id="hours_per_day" name="hours_per_day"
                  value="{{ old('hours_per_day', $settings->hours_per_day) }}" required>
         </div>
@@ -137,7 +140,7 @@
                 <td data-label="Line item">
                   <div class="br-config-line-wrap">
                     <strong class="br-config-line">
-                      @include('admin.partials.info_tip', ['text' => $infoTip])
+                      @include('admin.partials.info_tip', ['tipText' => $infoTip, 'tipLabel' => $lineLabel])
                       <span>{{ $lineLabel }}</span>
                     </strong>
                     @if ($derivedPlate)
@@ -201,7 +204,7 @@
                            name="materials[{{ $key }}][unit_price]"
                            data-fallback-price="{{ $fallbackPrice }}"
                            value="{{ $displayPrice }}"
-                           @if ($derivedPlate) readonly aria-readonly="true" @endif>
+                           @if ($derivedPlate) readonly aria-readonly="true" @endif data-cp-money-entry="direct">
                     @if ($derivedPlate)
                       <i class="fa fa-lock br-config-price-lock" aria-hidden="true"></i>
                     @endif

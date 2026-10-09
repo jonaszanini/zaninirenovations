@@ -238,7 +238,7 @@ class StandardQuotationCalculator
                     $labourHst = round($fixedGross - $labourTotal, 2);
                 } else {
                     $labourTotal = $fixedGross;
-                    $labourHst = $includeLabourHst ? round($labourTotal * self::HST_RATE, 2) : 0.0;
+                    $labourHst = $this->labourHstAmount($labourTotal, $includeLabourHst);
                 }
             } else {
                 $labourTotal = 0.0;
@@ -250,16 +250,20 @@ class StandardQuotationCalculator
                 : round($qty, 2);
 
             $labourTotal = round(max(0.0, $hourlyRate) * $labourHours, 2);
-
-            // Labour is HST-taxable at 13% when priced from rate × time.
-            $labourHst = round($labourTotal * self::HST_RATE, 2);
+            $labourHst = $this->labourHstAmount($labourTotal, $includeLabourHst);
         }
 
         // Pre-HST splits used by the linking flow to push one or two line
         // items into the project quotation: a taxable line (apply_hst=true)
         // and, if needed, a separate exempt line (apply_hst=false).
-        $preHstTaxable = round($subTaxable + $contingencyAmountTaxable + $labourTotal, 2);
-        $preHstExempt = round($subExempt + $contingencyAmountExempt, 2);
+        // Cash labour stays off the taxable line so HST is not added later.
+        if ($includeLabourHst) {
+            $preHstTaxable = round($subTaxable + $contingencyAmountTaxable + $labourTotal, 2);
+            $preHstExempt = round($subExempt + $contingencyAmountExempt, 2);
+        } else {
+            $preHstTaxable = round($subTaxable + $contingencyAmountTaxable, 2);
+            $preHstExempt = round($subExempt + $contingencyAmountExempt + $labourTotal, 2);
+        }
 
         $totalHst = round($hstSumWithCont + $labourHst, 2);
         $grand = round($withHstWithCont + $labourTotal + $labourHst, 2);
@@ -300,7 +304,8 @@ class StandardQuotationCalculator
         float $contingencyPercent = 10.0,
         bool $includeLabourHst = true,
         bool $includeBuilding = false,
-        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT
+        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT,
+        bool $assignSurchargeRemainderToLabourJobs = false
     ): array {
         if ($works === []) {
             $works = [[
@@ -369,13 +374,25 @@ class StandardQuotationCalculator
         $buildingSurcharge = QuotationBuildingLabor::surchargeAmount($labourTotal, $buildingInputs);
         if ($buildingSurcharge > 0) {
             $baseLabour = $labourTotal;
+            $labourJobIndexes = [];
+            foreach ($jobResults as $idx => $jobRow) {
+                if ((float) ($jobRow['labour_total'] ?? 0) > 0) {
+                    $labourJobIndexes[] = $idx;
+                }
+            }
+            $remainderIdx = $assignSurchargeRemainderToLabourJobs && $labourJobIndexes !== []
+                ? (int) end($labourJobIndexes)
+                : array_key_last($jobResults);
             $allocated = 0.0;
-            $lastIdx = array_key_last($jobResults);
             foreach ($jobResults as $idx => &$jobRow) {
                 $jobLab = (float) ($jobRow['labour_total'] ?? 0);
-                $share = $idx === $lastIdx
+                if ($assignSurchargeRemainderToLabourJobs && $jobLab <= 0 && $idx !== $remainderIdx) {
+                    $jobRow['building_labor_surcharge'] = 0.0;
+                    continue;
+                }
+                $share = $idx === $remainderIdx
                     ? round($buildingSurcharge - $allocated, 2)
-                    : round($buildingSurcharge * ($jobLab / $baseLabour), 2);
+                    : ($baseLabour > 0 ? round($buildingSurcharge * ($jobLab / $baseLabour), 2) : 0.0);
                 $allocated += $share;
                 $jobRow['building_labor_surcharge'] = $share;
                 $jobRow['labour_total'] = round($jobLab + $share, 2);
@@ -439,6 +456,20 @@ class StandardQuotationCalculator
             'total_hst' => $totalHst,
             'grand_total' => $grand,
         ];
+    }
+
+    /**
+     * Labour HST is either 13% of the labour total or zero. Callers must
+     * pass the quote's cash/HST flag — compute() no longer accrues tax and
+     * leaves a later method to zero it.
+     */
+    private function labourHstAmount(float $labourTotal, bool $includeLabourHst): float
+    {
+        if (! $includeLabourHst || $labourTotal <= 0) {
+            return 0.0;
+        }
+
+        return round($labourTotal * self::HST_RATE, 2);
     }
 
     /**

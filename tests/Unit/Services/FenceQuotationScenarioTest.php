@@ -155,7 +155,7 @@ class FenceQuotationScenarioTest extends TestCase
         $result = $calculator->calculate([
             'sides' => [
                 ['length_ft' => 16],
-                ['length_ft' => 16],
+                ['length_ft' => 16, 'connected_to_previous' => true],
             ],
             'fence_height_ft' => 6,
             'board_style' => 'standard',

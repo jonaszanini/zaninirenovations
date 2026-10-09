@@ -1,7 +1,9 @@
 <div id="pq-db-panel-marbles" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-marbles"@if($activeDbTab !== 'marbles') hidden @endif>
   <div class="admin-card">
-    <h4 class="cp-form-help-spaced">Marble types</h4>
-    <p class="admin-form-help">Bagged decorative marble for shallow beds. Enter <strong>sq ft per bag</strong> at the <strong>reference depth</strong> (usually 2 in.). The calculator scales bag quantity when the quotation depth differs.</p>
+    <h4 class="cp-form-help-spaced">
+      Marble types
+      <x-admin.info-tip label="Marble types">Bagged decorative marble for shallow beds. Enter <strong>sq ft per bag</strong> at the <strong>reference depth</strong> (usually 2 in.). The calculator scales bag quantity when the quotation depth differs.</x-admin.info-tip>
+    </h4>
     <div class="admin-table-scroll">
       <div class="pq-db-stone-list" style="margin-top:12px;">
         @foreach ($marbleTypes as $mt)
@@ -56,7 +58,7 @@
                   <span class="pq-db-field-label">$/bag (CAD)</span>
                   <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off"
                          value="{{ number_format((float) $mt->price_per_bag, 2, '.', '') }}"
-                         class="admin-input cp-money-input" required aria-label="Price per bag CAD">
+                         class="admin-input cp-money-input" required aria-label="Price per bag CAD" data-cp-money-entry="direct">
                 </div>
                 <div class="pq-db-field-group">
                   <span class="pq-db-field-label">Bulk min bags</span>
@@ -77,13 +79,13 @@
                   <span class="pq-db-field-label">Delivery cost (CAD)</span>
                   <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off"
                          value="{{ $mt->delivery_cost !== null ? number_format((float) $mt->delivery_cost, 2, '.', '') : '' }}"
-                         class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost">
+                         class="admin-input cp-money-input" placeholder="0.00" aria-label="Delivery cost" data-cp-money-entry="direct">
                 </div>
                 <div class="pq-db-field-group">
                   <span class="pq-db-field-label">Additional cost (CAD)</span>
                   <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off"
                          value="{{ $mt->additional_cost !== null ? number_format((float) $mt->additional_cost, 2, '.', '') : '' }}"
-                         class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost">
+                         class="admin-input cp-money-input" placeholder="0.00" aria-label="Additional cost" data-cp-money-entry="direct">
                 </div>
                 <div class="pq-db-field-group">
                   <span class="pq-db-field-label">Additional cost description</span>
@@ -149,7 +151,7 @@
           <span class="pq-db-field-label">$/bag (CAD)</span>
           <input type="text" name="price_per_bag" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" required placeholder="9.98"
-                 value="{{ old('add_marble') === '1' ? old('price_per_bag') : '' }}">
+                 value="{{ old('add_marble') === '1' ? old('price_per_bag') : '' }}" data-cp-money-entry="direct">
         </div>
         <div class="pq-db-field-group">
           <span class="pq-db-field-label">Bulk min bags</span>
@@ -167,12 +169,12 @@
         <div class="pq-db-field-group">
           <span class="pq-db-field-label">Delivery cost (CAD)</span>
           <input type="text" name="delivery_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00"
-                 value="{{ old('add_marble') === '1' ? old('delivery_cost') : '' }}">
+                 value="{{ old('add_marble') === '1' ? old('delivery_cost') : '' }}" data-cp-money-entry="direct">
         </div>
         <div class="pq-db-field-group">
           <span class="pq-db-field-label">Additional cost (CAD)</span>
           <input type="text" name="additional_cost" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" placeholder="0.00"
-                 value="{{ old('add_marble') === '1' ? old('additional_cost') : '' }}">
+                 value="{{ old('add_marble') === '1' ? old('additional_cost') : '' }}" data-cp-money-entry="direct">
         </div>
         <div class="pq-db-field-group">
           <span class="pq-db-field-label">Additional cost description</span>

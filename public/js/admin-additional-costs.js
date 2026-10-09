@@ -225,7 +225,7 @@
       +     '<label for="' + prefix + '-amt-' + idx + '">Amount</label>'
       +     '<input type="text" id="' + prefix + '-amt-' + idx + '" name="' + field + '[' + idx + '][amount]"'
       +            ' class="admin-input cp-money-input' + extraCls + '" inputmode="decimal" autocomplete="off"'
-      +            ' placeholder="0.00" value="' + escapeAttr(amount) + '" data-ac-amount>'
+      +            ' placeholder="0.00" value="' + escapeAttr(amount) + '" data-ac-amount data-cp-money-entry="direct">'
       +   '</div>';
     if (showCategory) {
       html += ''

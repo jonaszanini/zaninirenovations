@@ -97,11 +97,16 @@ class MillworkQuotationController extends Controller
 
         $warnings = [];
         if ($millwork_quotation->isLinked() && $millwork_quotation->client_project_id) {
-            $project = ClientProject::query()->find($millwork_quotation->client_project_id);
-            if ($project) {
-                DB::transaction(function () use ($project, $millwork_quotation) {
-                    $this->syncLineToProjectQuotation($project, $millwork_quotation->fresh());
-                });
+            $fresh = $millwork_quotation->fresh();
+            if ($fresh && $fresh->hasUnplacedCutParts()) {
+                $warnings[] = MillworkQuotation::unplacedAdminMessage().' The project price was not updated.';
+            } else {
+                $project = ClientProject::query()->find($millwork_quotation->client_project_id);
+                if ($project && $fresh) {
+                    DB::transaction(function () use ($project, $fresh) {
+                        $this->syncLineToProjectQuotation($project, $fresh);
+                    });
+                }
             }
         }
 
@@ -120,8 +125,20 @@ class MillworkQuotationController extends Controller
 
     public function preview(Request $request, ?MillworkQuotation $millwork_quotation = null)
     {
+        $this->prepareAdditionalCostMoneyOnRequest($request);
+        $this->prepareDebrisRemovalMoneyOnRequest($request);
         $raw = $this->gatherInputsFromRequest($request);
-        $calc = (new MillworkQuotationCalculator)->calculate($raw);
+        $upgrade = $request->boolean('upgrade_cut_plan');
+        $cutPlanVersion = $this->resolveCutPlanVersion($request, $millwork_quotation);
+        $raw['_cut_plan_version'] = $cutPlanVersion;
+
+        $calc = (new MillworkQuotationCalculator)->calculate($raw, null, $cutPlanVersion);
+        if ($upgrade && $millwork_quotation && $millwork_quotation->usesLegacyCutBuilder()) {
+            $notice = $this->recalcNoticePayload($millwork_quotation, $calc, $request);
+            if ($notice !== null) {
+                $calc['recalc_notice'] = $notice;
+            }
+        }
 
         return response()->json($calc);
     }
@@ -218,6 +235,9 @@ class MillworkQuotationController extends Controller
         if ((float) $millwork_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before linking.');
         }
+        if ($millwork_quotation->hasUnplacedCutParts()) {
+            return back()->with('error', MillworkQuotation::unplacedAdminMessage());
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -244,6 +264,9 @@ class MillworkQuotationController extends Controller
         }
         if ((float) $millwork_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before creating a project.');
+        }
+        if ($millwork_quotation->hasUnplacedCutParts()) {
+            return back()->with('error', MillworkQuotation::unplacedAdminMessage());
         }
 
         $this->normalisePhoneOnRequest($request);
@@ -365,7 +388,15 @@ class MillworkQuotationController extends Controller
                 $previewInputs[$key] = $value;
             }
         }
-        $initialPreview = (new MillworkQuotationCalculator)->calculate($previewInputs, $settings);
+        $cutPlanVersion = $quotation
+            ? $quotation->cutPlanVersion()
+            : MillworkQuotationCalculator::CUT_PLAN_VERSION;
+        $previewInputs['_cut_plan_version'] = $cutPlanVersion;
+        $initialPreview = (new MillworkQuotationCalculator)->calculate(
+            $previewInputs,
+            $settings,
+            $cutPlanVersion
+        );
 
         return view('admin.quotations.millwork.create', [
             'quotation' => $quotation,
@@ -375,6 +406,8 @@ class MillworkQuotationController extends Controller
             'linkProject' => $linkProject,
             'linkedCpq' => $linkedCpq,
             'initialPreview' => $initialPreview,
+            'cutPlanVersion' => $cutPlanVersion,
+            'builderVersion' => $cutPlanVersion,
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
             'catalog' => $settings->resolvedCatalog(),
             'roomAreaImport' => $quotation ? null : $roomAreaImport,
@@ -403,6 +436,9 @@ class MillworkQuotationController extends Controller
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), QuotationBuildingLabor::validationMessages()));
 
         $rawInputs = $this->gatherInputsFromRequest($request);
+        $cutPlanVersion = $this->resolveCutPlanVersion($request, $existing);
+        $rawInputs['_cut_plan_version'] = $cutPlanVersion;
+
         if (! $draft) {
             $hints = (new MillworkQuotationCalculator)->validationHints($rawInputs, false);
             if ($hints !== []) {
@@ -412,7 +448,7 @@ class MillworkQuotationController extends Controller
             }
         }
 
-        $calc = (new MillworkQuotationCalculator)->calculate($rawInputs);
+        $calc = (new MillworkQuotationCalculator)->calculate($rawInputs, null, $cutPlanVersion);
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
         $workDescription = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage(
             $request->input('work_description')
@@ -425,6 +461,7 @@ class MillworkQuotationController extends Controller
             'inputs' => $rawInputs,
             'calculation' => $calc,
             'final_quote_total' => round($final, 2),
+            'cut_plan_version' => $cutPlanVersion,
         ], $this->paymentScheduleFromRequest($request));
 
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'millwork_quotations');
@@ -632,6 +669,11 @@ class MillworkQuotationController extends Controller
 
             return false;
         }
+        if ($quote->hasUnplacedCutParts()) {
+            $warnings[] = MillworkQuotation::unplacedAdminMessage();
+
+            return false;
+        }
 
         try {
             DB::transaction(function () use ($project, $quote) {
@@ -718,5 +760,50 @@ class MillworkQuotationController extends Controller
             'client_project_id' => $project->id,
             'linked_at' => now(),
         ], $this->quotationLinkClientNameAttributes($project)));
+    }
+
+    protected function resolveCutPlanVersion(Request $request, ?MillworkQuotation $existing): int
+    {
+        if ($request->boolean('upgrade_cut_plan')) {
+            return MillworkQuotationCalculator::CUT_PLAN_VERSION;
+        }
+        if ($existing) {
+            return $existing->cutPlanVersion();
+        }
+
+        return MillworkQuotationCalculator::CUT_PLAN_VERSION;
+    }
+
+    /**
+     * @param  array<string, mixed>  $calc
+     * @return array{was: float, now: float, was_label: string, now_label: string}|null
+     */
+    protected function recalcNoticePayload(MillworkQuotation $quote, array $calc, Request $request): ?array
+    {
+        $was = round((float) ($quote->final_quote_total ?? 0), 2);
+        $now = $this->previewTotalWithExtras((float) ($calc['summary']['grand_total'] ?? 0), $request, $quote);
+        if (abs($was - $now) < 0.01) {
+            return null;
+        }
+
+        return [
+            'was' => $was,
+            'now' => $now,
+            'was_label' => ClientProject::formatMoney($was),
+            'now_label' => ClientProject::formatMoney($now),
+        ];
+    }
+
+    protected function previewTotalWithExtras(float $grand, Request $request, ?MillworkQuotation $existing): float
+    {
+        $base = ['final_quote_total' => round($grand, 2)];
+        $commute = $this->commutePersistenceFromRequest($request, $existing, 'millwork_quotations');
+        $merged = $this->mergeCommuteIntoPersistence($base, $commute, 'final_quote_total');
+        $debris = $this->debrisRemovalPersistenceFromRequest($request, $existing, 'millwork_quotations');
+        $merged = $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
+        $additional = $this->additionalCostsPersistenceFromRequest($request, $existing, 'millwork_quotations');
+        $merged = $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
+
+        return round((float) ($merged['final_quote_total'] ?? $grand), 2);
     }
 }

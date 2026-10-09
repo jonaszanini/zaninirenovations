@@ -62,6 +62,18 @@
 .mw-piece__hint {
   margin: 2px 0 6px;
 }
+.mw-piece__sets-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  margin: 2px 0 6px;
+}
+.mw-piece__sets-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-heading);
+}
 .mw-piece__more {
   margin-top: 4px;
 }
@@ -125,6 +137,14 @@
 }
 .mw-totals-bar [hidden] {
   display: none !important;
+}
+#mw-upgrade-cut-plan-btn[hidden],
+#mw-undo-cut-plan-btn[hidden],
+#mw-undo-cut-plan-banner-btn[hidden] {
+  display: none !important;
+}
+.mw-recalc-banner .admin-btn {
+  margin-top: 8px;
 }
 .mw-totals-bar span {
   display: flex;
@@ -222,6 +242,57 @@
 .mw-cut-plan-head .admin-btn {
   flex-shrink: 0;
   align-self: flex-end;
+}
+.mw-cut-plan-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.mw-recalc-banner,
+.mw-unplaced-banner {
+  margin: 0 0 12px;
+}
+.mw-recalc-banner p {
+  margin: 6px 0 0;
+  font-weight: 400;
+}
+.mw-unplaced-banner p {
+  margin: 6px 0 8px;
+  font-weight: 400;
+}
+.mw-unplaced-banner ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.mw-unplaced-banner li {
+  margin: 2px 0;
+  font-weight: 400;
+}
+.mw-cut-seams {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  overflow: visible;
+}
+.mw-cut-seams p {
+  position: relative;
+  margin: 0 0 6px;
+  font-size: 13px;
+  overflow: visible;
+}
+.mw-cut-seams .admin-info-tip {
+  vertical-align: middle;
+}
+.mw-cut-seams .admin-info-tip__bubble {
+  z-index: 80;
+}
+.mw-cut-seams p:last-child {
+  margin-bottom: 0;
 }
 
 .mw-cut-plan {

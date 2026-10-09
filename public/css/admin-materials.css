@@ -67,7 +67,25 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  flex: 0 0 auto;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .mat-config-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mat-config-toolbar__actions {
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  .mat-config-toolbar__actions form,
+  .mat-config-toolbar__actions .admin-btn {
+    width: 100%;
+  }
 }
 
 .mat-serpapi-hint {

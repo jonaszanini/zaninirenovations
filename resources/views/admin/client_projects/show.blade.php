@@ -486,9 +486,13 @@
       <form action="{{ route('admin.client-projects.status.update', $project) }}" method="post" class="cp-status-form" id="cp-status-form" data-current-status="{{ $project->status }}">
         @csrf
         <div class="cp-status-form-head">
-          <label for="cp-status-select" class="cp-status-form-label">Change status</label>
-          <span class="cp-hint" title="Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Cancelled is final; rejected projects can be reopened. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.">?</span>
-          <span class="cp-status-form-help">Status saves on change. Optional note is for this status only.</span>
+          <span class="admin-label-with-tip">
+            <label for="cp-status-select" class="cp-status-form-label">Change status</label>
+            <x-admin.info-tip label="Change status">
+              Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Cancelled is final; rejected projects can be reopened. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.
+              Status saves on change. Optional note is for this status only.
+            </x-admin.info-tip>
+          </span>
         </div>
         <div class="cp-status-controls">
           <select id="cp-status-select" name="status" class="admin-input cp-status-select">
@@ -675,8 +679,10 @@
           <form action="{{ route('admin.client-projects.reopen', $project) }}" method="post" class="cp-reopen-form" id="cp-reopen-form">
             @csrf
             <div class="cp-reopen-form-head">
-              <label for="cp-reopen-status" class="cp-reopen-form-label">Reopen project</label>
-              <span class="cp-reopen-form-help">Restore workflow by setting a new status.</span>
+              <span class="admin-label-with-tip">
+                <label for="cp-reopen-status" class="cp-reopen-form-label">Reopen project</label>
+                <x-admin.info-tip label="Reopen project">Restore workflow by setting a new status.</x-admin.info-tip>
+              </span>
             </div>
             <div class="cp-reopen-controls">
               <select id="cp-reopen-status" name="status" class="admin-input cp-reopen-select" required>
@@ -883,8 +889,10 @@
       </div>
 
       <div class="admin-card">
-        <h3>Start &amp; End dates</h3>
-        <p class="admin-form-help">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link. Picking dates on the calendar saves them immediately.</p>
+        <h3 class="cp-form-help-flush">
+          Start &amp; End dates
+          <x-admin.info-tip label="Start and End dates">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link. Picking dates on the calendar saves them immediately.</x-admin.info-tip>
+        </h3>
         <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning admin-flash--js-hidden" role="alert"></div>
 
         @include('admin.partials.schedule_date_picker', [
@@ -902,10 +910,12 @@
             @error('start_date') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
-            <label for="cp-end">End date</label>
+            <span class="admin-label-with-tip">
+              <label for="cp-end">End date</label>
+              <x-admin.info-tip label="End date">Same-day start &amp; end is allowed.</x-admin.info-tip>
+            </span>
             <input class="admin-input" type="date" id="cp-end" name="end_date" value="{{ old('end_date', optional($project->end_date)->toDateString()) }}">
             @error('end_date') <p class="admin-form-error">{{ $message }}</p> @enderror
-            <p class="admin-form-help">Same-day start &amp; end is allowed.</p>
           </div>
         </div>
 
@@ -988,13 +998,15 @@
          the dates are locked in. --}}
     @if ($project->billing_type === \App\Models\ClientProject::BILLING_HOURLY && !$isClosed)
       <div class="admin-card cp-service-confirmation-card">
-        <h3>Service confirmation</h3>
-        <p class="admin-form-help">
-          Hourly-billing projects skip the quotation flow because the rate was agreed verbally.
-          Once the dates are saved above, send the client a confirmation email with the scheduled
-          {{ $project->start_date && $project->end_date && \Illuminate\Support\Carbon::parse($project->start_date)->isSameDay(\Illuminate\Support\Carbon::parse($project->end_date)) ? 'date' : 'dates' }},
-          hourly rate, materials policy, and payment instructions.
-        </p>
+        <h3 class="cp-form-help-flush">
+          Service confirmation
+          <x-admin.info-tip label="Service confirmation">
+            Hourly-billing projects skip the quotation flow because the rate was agreed verbally.
+            Once the dates are saved above, send the client a confirmation email with the scheduled
+            {{ $project->start_date && $project->end_date && \Illuminate\Support\Carbon::parse($project->start_date)->isSameDay(\Illuminate\Support\Carbon::parse($project->end_date)) ? 'date' : 'dates' }},
+            hourly rate, materials policy, and payment instructions.
+          </x-admin.info-tip>
+        </h3>
 
         @php
           $datesSet = $project->start_date && $project->end_date;

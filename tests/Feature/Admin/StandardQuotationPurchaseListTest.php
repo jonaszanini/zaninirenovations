@@ -165,7 +165,8 @@ class StandardQuotationPurchaseListTest extends IntegrationTestCase
 
         $response->assertOk();
         $response->assertSee('Black aluminium spindle', false);
-        $response->assertDontSee('CA$0.00', false);
+        $this->assertSame(1, preg_match_all('/class="item-name"/', $response->getContent()));
+        $this->assertStringNotContainsString('>CA$0.00<', $response->getContent());
     }
 
     private function makeQuote(): StandardQuotation

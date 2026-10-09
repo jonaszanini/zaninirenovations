@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StandardQuotation extends Model
 {
     use \App\Models\Concerns\HasClientEmailMessage;
+    use \App\Models\Concerns\HasPdfFoldVersion;
     use \App\Models\Concerns\HasReplyToAcceptChoice;
 
     public const HST_RATE = 0.13;
@@ -292,6 +293,8 @@ class StandardQuotation extends Model
             $this->chargesLabourHst(),
             (bool) ($this->include_building ?? false),
             (float) ($this->building_labor_percent ?? \App\Support\QuotationBuildingLabor::DEFAULT_PERCENT),
+            // v3-only: leftover surcharge on a job that has labour.
+            $this->usesCurrentPdfFold(),
         );
     }
 
@@ -381,6 +384,7 @@ class StandardQuotation extends Model
         $lines = [];
 
         $taxable = 0.0;
+        $taxableHst = 0.0;
         $exempt = 0.0;
         $electricalLines = [];
 
@@ -396,16 +400,17 @@ class StandardQuotation extends Model
 
             if (self::isElectricalMaterialRow($row)) {
                 $desc = trim((string) ($row['description'] ?? ''));
-                $electricalLines[] = [
+                $electricalLines[] = $this->withPdfHstAmount([
                     'description' => $desc !== '' ? $desc : self::ELECTRICAL_LINE_DESCRIPTION,
                     'amount' => $amount,
                     'apply_hst' => (bool) ($row['apply_hst'] ?? true),
-                ];
+                ], $this->materialRowHst($row));
                 continue;
             }
 
             if (filter_var($row['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
                 $taxable += $amount;
+                $taxableHst += $this->materialRowHst($row);
             } else {
                 $exempt += $amount;
             }
@@ -413,6 +418,7 @@ class StandardQuotation extends Model
 
         if (! empty($computed['contingency_enabled']) && (float) ($computed['contingency_amount'] ?? 0) > 0) {
             $taxable += round((float) ($computed['contingency_amount_taxable'] ?? 0), 2);
+            $taxableHst += $this->contingencyHstLikeEditor($computed);
             $exempt += round((float) ($computed['contingency_amount_exempt'] ?? 0), 2);
         }
 
@@ -420,11 +426,11 @@ class StandardQuotation extends Model
         $exempt = round($exempt, 2);
 
         if ($taxable > 0) {
-            $lines[] = [
+            $lines[] = $this->withPdfHstAmount([
                 'description' => 'Material',
                 'amount' => $taxable,
                 'apply_hst' => true,
-            ];
+            ], round($taxableHst, 2));
         }
         if ($exempt > 0) {
             $lines[] = [
@@ -439,11 +445,18 @@ class StandardQuotation extends Model
         }
 
         if ((float) $computed['labour_total'] > 0) {
-            $lines[] = [
+            $labourLine = [
                 'description' => 'Labour',
                 'amount' => round((float) $computed['labour_total'], 2),
                 'apply_hst' => $this->chargesLabourHst(),
             ];
+            if ($this->chargesLabourHst()) {
+                $labourLine = $this->withPdfHstAmount(
+                    $labourLine,
+                    round((float) ($computed['labour_hst'] ?? 0), 2)
+                );
+            }
+            $lines[] = $labourLine;
         }
 
         $this->appendCommuteAndDebrisPdfLines($lines);
@@ -481,6 +494,7 @@ class StandardQuotation extends Model
             }
 
             $taxableCombined = 0.0;
+            $taxableCombinedHst = 0.0;
             $exemptMaterial = 0.0;
             $mergedTaxableLabour = false;
             $passthrough = [];
@@ -497,11 +511,13 @@ class StandardQuotation extends Model
                 }
                 if ($curDesc === 'Material' && ! empty($cur['apply_hst'])) {
                     $taxableCombined += (float) ($cur['amount'] ?? 0);
+                    $taxableCombinedHst += ClientProjectQuotation::lineHstAmount($cur);
                 } elseif (str_starts_with($curDesc, 'Material')) {
                     $exemptMaterial += (float) ($cur['amount'] ?? 0);
                 } elseif ($curDesc === 'Labour') {
                     if (! empty($cur['apply_hst'])) {
                         $taxableCombined += (float) ($cur['amount'] ?? 0);
+                        $taxableCombinedHst += ClientProjectQuotation::lineHstAmount($cur);
                         $mergedTaxableLabour = true;
                     } else {
                         $passthrough[] = $cur;
@@ -520,11 +536,11 @@ class StandardQuotation extends Model
                 if (! $mergedTaxableLabour && ($label === 'Labour and material' || $label === 'Labour')) {
                     $lineLabel = 'Material';
                 }
-                $out[] = [
+                $out[] = $this->withPdfHstAmount([
                     'description' => $lineLabel,
                     'amount' => $taxableCombined,
                     'apply_hst' => true,
-                ];
+                ], round($taxableCombinedHst, 2));
             }
             if ($exemptMaterial > 0) {
                 $out[] = [
@@ -598,6 +614,10 @@ class StandardQuotation extends Model
         $contTaxable = $contAmt > 0 ? (float) ($computed['contingency_amount_taxable'] ?? 0) : 0.0;
         $allocatedCont = 0.0;
         $allocatedContTax = 0.0;
+        $allocatedContHst = 0.0;
+        $allocatedLabHst = 0.0;
+        $quoteContHst = $this->contingencyHstLikeEditor($computed);
+        $quoteLabHst = $this->chargesLabourHst() ? round((float) ($computed['labour_hst'] ?? 0), 2) : 0.0;
         $jobCount = count($jobs);
 
         foreach ($jobs as $idx => $job) {
@@ -637,6 +657,7 @@ class StandardQuotation extends Model
             $jobContExempt = round($jobCont - $jobContTax, 2);
 
             $taxable = 0.0;
+            $taxableHst = 0.0;
             $exempt = 0.0;
             $electricalLines = [];
 
@@ -652,30 +673,44 @@ class StandardQuotation extends Model
 
                 if (self::isElectricalMaterialRow($row)) {
                     $desc = trim((string) ($row['description'] ?? ''));
-                    $electricalLines[] = [
+                    $electricalLines[] = $this->withPdfHstAmount([
                         'description' => $desc !== '' ? $desc : self::ELECTRICAL_LINE_DESCRIPTION,
                         'amount' => $amount,
                         'apply_hst' => (bool) ($row['apply_hst'] ?? true),
-                    ];
+                    ], $this->materialRowHst($row));
                     continue;
                 }
 
                 if (filter_var($row['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
                     $taxable += $amount;
+                    $taxableHst += $this->materialRowHst($row);
                 } else {
                     $exempt += $amount;
                 }
             }
 
+            $jobContHst = 0.0;
+            if ($contAmt > 0 && $quoteContHst > 0) {
+                if ($isLast) {
+                    $jobContHst = round($quoteContHst - $allocatedContHst, 2);
+                } else {
+                    $jobContHst = round($quoteContHst * ($jobMatPre / max($totalMatPre, 0.00001)), 2);
+                    $allocatedContHst += $jobContHst;
+                }
+            }
+
             $taxable = round($taxable + $jobContTax, 2);
+            $taxableHst = round($taxableHst + $jobContHst, 2);
             $exempt = round($exempt + $jobContExempt, 2);
 
             if ($taxable > 0) {
-                $lines[] = [
+                $lines[] = $this->withPdfHstAmount([
                     'description' => 'Material',
                     'amount' => $taxable,
                     'apply_hst' => true,
-                ];
+                ], $taxableHst);
+            } elseif ($isLast && $jobContHst != 0.0) {
+                $this->addHstAmountToLastPdfLine($lines, 'Material', $jobContHst);
             }
             if ($exempt > 0) {
                 $lines[] = [
@@ -689,18 +724,130 @@ class StandardQuotation extends Model
                 $lines[] = $electricalLine;
             }
 
+            $jobLabHst = 0.0;
+            if ($this->chargesLabourHst()) {
+                $jobLabHst = (float) ($job['labour_hst'] ?? 0);
+                $surcharge = (float) ($job['building_labor_surcharge'] ?? 0);
+                if ($surcharge > 0) {
+                    $jobLabHst += round($surcharge * ClientProjectQuotation::HST_RATE, 2);
+                }
+                if ($isLast) {
+                    $jobLabHst = round($quoteLabHst - $allocatedLabHst, 2);
+                } else {
+                    $jobLabHst = round($jobLabHst, 2);
+                    $allocatedLabHst += $jobLabHst;
+                }
+            }
+
             if ((float) ($job['labour_total'] ?? 0) > 0) {
-                $lines[] = [
+                $labourLine = [
                     'description' => 'Labour',
                     'amount' => round((float) $job['labour_total'], 2),
                     'apply_hst' => $this->chargesLabourHst(),
                 ];
+                if ($this->chargesLabourHst()) {
+                    $labourLine = $this->withPdfHstAmount($labourLine, $jobLabHst);
+                }
+                $lines[] = $labourLine;
+            } elseif ($isLast && $jobLabHst != 0.0) {
+                $this->addHstAmountToLastPdfLine($lines, 'Labour', $jobLabHst);
             }
         }
 
         $this->appendCommuteAndDebrisPdfLines($lines);
 
         return $lines;
+    }
+
+    /**
+     * @param  array<string, mixed>  $line
+     * @return array<string, mixed>
+     */
+    protected function withPdfHstAmount(array $line, float $hstAmount): array
+    {
+        if (! $this->usesNonLegacyPdfFold() || empty($line['apply_hst'])) {
+            return $line;
+        }
+
+        $line['hst_amount'] = round($hstAmount, 2);
+
+        return $line;
+    }
+
+    /**
+     * Last-job leftover HST when that job has no Material / Labour line.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     */
+    protected function addHstAmountToLastPdfLine(array &$lines, string $description, float $hstAmount): void
+    {
+        if (! $this->usesNonLegacyPdfFold() || $hstAmount == 0.0) {
+            return;
+        }
+
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            if (! empty($lines[$i]['is_heading'])) {
+                continue;
+            }
+            if (($lines[$i]['description'] ?? '') !== $description) {
+                continue;
+            }
+            if (empty($lines[$i]['apply_hst'])) {
+                continue;
+            }
+            $current = (float) ($lines[$i]['hst_amount'] ?? ClientProjectQuotation::lineHstAmount($lines[$i]));
+            $lines[$i] = $this->withPdfHstAmount($lines[$i], round($current + $hstAmount, 2));
+
+            return;
+        }
+    }
+
+    /**
+     * Editor JS: contHst = round(contAmt * (contBaseHst / contBase), 2).
+     *
+     * @param  array<string, mixed>  $computed
+     */
+    protected function contingencyHstLikeEditor(array $computed): float
+    {
+        $contAmt = round((float) ($computed['contingency_amount'] ?? 0), 2);
+        if ($contAmt <= 0) {
+            return 0.0;
+        }
+
+        $contBase = 0.0;
+        $contBaseHst = 0.0;
+        foreach ($computed['materials'] ?? [] as $row) {
+            if (! is_array($row) || self::isElectricalMaterialRow($row)) {
+                continue;
+            }
+            $contBase += (float) ($row['line_subtotal'] ?? 0);
+            $contBaseHst += $this->materialRowHst($row);
+        }
+        $contBase = round($contBase, 2);
+        $contBaseHst = round($contBaseHst, 2);
+        if ($contBase <= 0) {
+            return 0.0;
+        }
+
+        return round($contAmt * ($contBaseHst / $contBase), 2);
+    }
+
+    /**
+     * Per-row HST as the editor JS computes it (round each line, then sum).
+     *
+     * @param  array<string, mixed>  $row
+     */
+    protected function materialRowHst(array $row): float
+    {
+        if (array_key_exists('line_hst', $row)) {
+            return round((float) $row['line_hst'], 2);
+        }
+
+        if (! filter_var($row['apply_hst'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
+            return 0.0;
+        }
+
+        return round((float) ($row['line_subtotal'] ?? 0) * ClientProjectQuotation::HST_RATE, 2);
     }
 
     /**

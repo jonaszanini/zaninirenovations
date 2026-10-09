@@ -4,9 +4,11 @@
 @endphp
 <div class="pq-db-wrap admin-card">
   @unless ($hideDatabaseHeading ?? false)
-  <h3 class="cp-form-help-spaced">Stairs price database</h3>
+  <h3 class="cp-form-help-spaced">
+    Stairs price database
+    <x-admin.info-tip label="Stairs price database">Set per-step rates (before HST). Carpet removal, stain, and clear coat are global — one price for all materials. Other fields are per material type.</x-admin.info-tip>
+  </h3>
   @endunless
-  <p class="admin-form-help">Set per-step rates (before HST). Carpet removal, stain, and clear coat are global — one price for all materials. Other fields are per material type.</p>
 
   <form method="post" action="{{ route('admin.quotations.stairs.database.update') }}" enctype="multipart/form-data" class="sq-db-form">
     @csrf
@@ -15,23 +17,25 @@
       <div class="admin-form-group">
         <label for="sq-db-carpet">Carpet removal ($/step)</label>
         <input type="text" id="sq-db-carpet" name="carpet_removal_per_step" class="admin-input cp-money-input" inputmode="decimal" required
-               value="{{ old('carpet_removal_per_step', number_format((float) $settings->carpet_removal_per_step, 2, '.', '')) }}">
+               value="{{ old('carpet_removal_per_step', number_format((float) $settings->carpet_removal_per_step, 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         <label for="sq-db-stain">Requires stain ($/step)</label>
         <input type="text" id="sq-db-stain" name="stain_per_step" class="admin-input cp-money-input" inputmode="decimal" required
-               value="{{ old('stain_per_step', number_format((float) $settings->stain_per_step, 2, '.', '')) }}">
+               value="{{ old('stain_per_step', number_format((float) $settings->stain_per_step, 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         <label for="sq-db-clear">Clear coat protection ($/step)</label>
         <input type="text" id="sq-db-clear" name="clear_coat_per_step" class="admin-input cp-money-input" inputmode="decimal" required
-               value="{{ old('clear_coat_per_step', number_format((float) $settings->clear_coat_per_step, 2, '.', '')) }}">
+               value="{{ old('clear_coat_per_step', number_format((float) $settings->clear_coat_per_step, 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
     </div>
 
     <div class="admin-card sq-db-nosing-photos" style="margin-bottom:20px;background:#f1f5f9;border:1px solid #e2e8f0;">
-      <h4 style="margin:0 0 8px;font-size:14px;">Nosing option photos (quotation picker)</h4>
-      <p class="admin-form-help" style="margin:0 0 14px;">These images appear when quoting <strong>Vinyl without nosing</strong> (materials where nosing is an add-on). Same image format as material photos.</p>
+      <h4 style="margin:0 0 8px;font-size:14px;">
+        Nosing option photos (quotation picker)
+        <x-admin.info-tip label="Nosing option photos (quotation picker)">These images appear when quoting <strong>Vinyl without nosing</strong> (materials where nosing is an add-on). Same image format as material photos.</x-admin.info-tip>
+      </h4>
       <div class="pq-form-grid">
         @foreach (\App\Models\StairsMaterialType::nosingChoiceLabels() as $nk => $nLabel)
           <div class="admin-form-group cp-label-flush">
@@ -108,7 +112,7 @@
               <div class="admin-form-group">
                 <span class="sq-db-rate-label">{{ $lbl }}</span>
                 <input class="admin-input cp-money-input" type="text" name="materials[{{ $mat->id }}][no_open_{{ $st }}]" inputmode="decimal" autocomplete="off"
-                       value="{{ old('materials.'.$mat->id.'.no_open_'.$st, number_format((float) ($p['no_open'][$st] ?? 0), 2, '.', '')) }}">
+                       value="{{ old('materials.'.$mat->id.'.no_open_'.$st, number_format((float) ($p['no_open'][$st] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
               </div>
             @endforeach
           </div>
@@ -122,7 +126,7 @@
               <div class="admin-form-group">
                 <span class="sq-db-rate-label">{{ $lbl }}</span>
                 <input class="admin-input cp-money-input" type="text" name="materials[{{ $mat->id }}][one_open_{{ $st }}]" inputmode="decimal" autocomplete="off"
-                       value="{{ old('materials.'.$mat->id.'.one_open_'.$st, number_format((float) ($p['one_open'][$st] ?? 0), 2, '.', '')) }}">
+                       value="{{ old('materials.'.$mat->id.'.one_open_'.$st, number_format((float) ($p['one_open'][$st] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
               </div>
             @endforeach
           </div>
@@ -134,7 +138,7 @@
             <div class="admin-form-group">
               <span class="sq-db-rate-label">Standard stairs only</span>
               <input class="admin-input cp-money-input" type="text" name="materials[{{ $mat->id }}][two_open_standard]" inputmode="decimal" autocomplete="off"
-                     value="{{ old('materials.'.$mat->id.'.two_open_standard', number_format((float) ($p['two_open']['standard'] ?? 0), 2, '.', '')) }}">
+                     value="{{ old('materials.'.$mat->id.'.two_open_standard', number_format((float) ($p['two_open']['standard'] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
             </div>
           </div>
         </div>
@@ -148,7 +152,7 @@
               <div class="admin-form-group">
                 <span class="sq-db-rate-label">{{ $nLabel }}</span>
                 <input class="admin-input cp-money-input" type="text" name="materials[{{ $mat->id }}][nosing_{{ $nk }}]" inputmode="decimal" autocomplete="off"
-                       value="{{ old('materials.'.$mat->id.'.nosing_'.$nk, number_format((float) ($p['nosing_prices'][$nk] ?? 0), 2, '.', '')) }}">
+                       value="{{ old('materials.'.$mat->id.'.nosing_'.$nk, number_format((float) ($p['nosing_prices'][$nk] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
               </div>
             @endforeach
           </div>

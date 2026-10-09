@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 
-@section('heading', $editing ? 'Edit offcut' : 'Offcut inventory')
+@section('heading')
+  {{ $editing ? 'Edit offcut' : 'Offcut inventory' }}
+  <x-admin.info-tip label="{{ $editing ? 'Edit offcut' : 'Offcut inventory' }}">Leftover lumber and sheet goods from cut lists. Millwork leftovers show here as sheets and in the lumber calculator as usable lengths.</x-admin.info-tip>
+@endsection
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-utilities.css') }}?v={{ @filemtime(public_path('css/admin-utilities.css')) ?: time() }}">
@@ -15,9 +18,6 @@
   @endphp
 
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Leftover lumber and sheet goods from cut lists. Millwork leftovers show here as sheets and in the lumber calculator as usable lengths.
-    </p>
     <div class="admin-toolbar-actions">
       <a href="{{ route('admin.utilities.lumber-board') }}" class="admin-btn admin-btn--ghost">
         <i class="fa fa-th-large"></i> Lumber calculator

@@ -1,37 +1,37 @@
 {{--
-  Compact ⓘ click-to-open help. Bubble is a sibling of the button so it
-  stays selectable and does not sit in the control's accessible name.
-  Pass $text (escaped) or a slot (trusted Blade HTML).
+  Shared admin ⓘ help popover. Canonical API (keep this path for merges):
+
+    <x-admin.info-tip label="Board style">Help text stays in the DOM.</x-admin.info-tip>
+
+  $label becomes aria-label="About {label}". Slot is trusted Blade HTML
+  (links, <code>, <strong>). Plain $text is escaped.
+
+  Place the tip as a sibling of <label for="…"> — never inside it — so the
+  ⓘ does not pollute the input's accessible name. Headings may wrap the tip.
 --}}
-@props([
-    'text' => '',
-    'id' => null,
-    'label' => 'More information',
-])
+@props(['text' => null, 'id' => null, 'label' => null])
+
 @php
-    $hasSlot = isset($slot) && trim((string) $slot) !== '';
+    $body = '';
+    if (isset($slot) && is_object($slot) && method_exists($slot, 'isNotEmpty') && $slot->isNotEmpty()) {
+        $body = trim((string) $slot);
+    } elseif (filled($text)) {
+        $body = e($text);
+    }
+    $tipId = $id ?: ('admin-info-tip-'.str_replace('.', '', uniqid('', true)));
+    $plain = filled($label) ? preg_replace('/^\s*About\s+/i', '', (string) $label) : '';
+    $ariaLabel = filled($plain) ? ('About '.$plain) : 'More info';
 @endphp
-@if ($hasSlot || filled($text))
-  @php
-    $tipId = $id ?: 'admin-info-tip-'.str_replace('.', '', uniqid('', true));
-  @endphp
-  <span {{ $attributes->except(['text', 'id', 'label'])->class('admin-info-tip-wrap') }}>
-    <button
-      type="button"
-      class="admin-info-tip"
-      aria-expanded="false"
-      aria-controls="{{ $tipId }}"
-      aria-describedby="{{ $tipId }}"
-      aria-label="{{ $label }}"
-    >
-      <i class="fa fa-info-circle" aria-hidden="true"></i>
-    </button>
-    <span id="{{ $tipId }}" class="admin-info-tip__bubble" role="tooltip">
-      @if ($hasSlot)
-        {!! $slot !!}
-      @else
-        {{ $text }}
-      @endif
-    </span>
-  </span>
+@if (filled($body))
+<span {{ $attributes->class('admin-info-tip-wrap') }}>
+  <button type="button"
+          class="admin-info-tip"
+          aria-label="{{ $ariaLabel }}"
+          aria-expanded="false"
+          aria-controls="{{ $tipId }}"
+          aria-describedby="{{ $tipId }}">
+    <i class="fa fa-info-circle" aria-hidden="true"></i>
+  </button>
+  <span id="{{ $tipId }}" class="admin-info-tip__bubble" role="tooltip">{!! $body !!}</span>
+</span>
 @endif

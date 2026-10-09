@@ -141,13 +141,18 @@
         </div>
 
         <div class="admin-form-group">
-          <label for="cp-invoice-due">Due date <span class="cp-required">*</span></label>
+          <span class="admin-label-with-tip">
+            <label for="cp-invoice-due">Due date</label>
+            <span class="admin-label-with-tip__end">
+              <span class="cp-required">*</span>
+              <x-admin.info-tip label="Due date">Required before the invoice can be sent to the client.</x-admin.info-tip>
+            </span>
+          </span>
           <input type="date"
                  id="cp-invoice-due"
                  name="due_on"
                  class="admin-input"
                  value="{{ $dueOn }}">
-          <p class="admin-form-help admin-form-help--tight">Required before the invoice can be sent to the client.</p>
         </div>
       </div>
 
@@ -179,7 +184,7 @@
                      inputmode="decimal"
                      autocomplete="off"
                      placeholder="0.00"
-                     value="{{ $manualTotal }}">
+                     value="{{ $manualTotal }}" data-cp-money-entry="direct">
               <p class="admin-form-help admin-form-help--tight">
                 If you itemise the work below, the sum of the line items will be used instead.
               </p>
@@ -287,7 +292,7 @@
                          name="items[{{ $i }}][amount]"
                          value="{{ $row['amount'] !== '' ? number_format((float) $row['amount'], 2, '.', '') : '' }}"
                          class="admin-input cp-money-input cp-quotation-row-amount"
-                         placeholder="0.00">
+                         placeholder="0.00" data-cp-money-entry="direct">
                 </td>
                 <td class="col-actions">
                   <button type="button"
@@ -373,7 +378,6 @@
                          id="cp-invoice-discount-amt"
                          class="admin-input cp-money-input cp-input-amount"
                          data-cp-money-entry="direct"
-                         data-cp-money-hybrid="1"
                          value="{{ $discountAmount }}"
                          placeholder="0.00"
                          autocomplete="off">
@@ -474,7 +478,7 @@
                  autocomplete="off"
                  name="items[__INDEX__][amount]"
                  class="admin-input cp-money-input cp-quotation-row-amount"
-                 placeholder="0.00">
+                 placeholder="0.00" data-cp-money-entry="direct">
         </td>
         <td class="col-actions">
           <button type="button"
@@ -508,7 +512,7 @@
                  autocomplete="off"
                  name="items[__INDEX__][amount]"
                  class="admin-input cp-money-input cp-quotation-row-amount"
-                 placeholder="0.00">
+                 placeholder="0.00" data-cp-money-entry="direct">
         </td>
         <td class="col-actions">
           <button type="button"
@@ -656,14 +660,7 @@
           var pctInput = document.getElementById('cp-invoice-discount-pct');
           var amtInput = document.getElementById('cp-invoice-discount-amt');
           var pct = pctInput ? parsePlainDecimal(pctInput) : 0;
-          var amtRaw = 0;
-          if (amtInput) {
-            if (window.cpMoneyMask && typeof window.cpMoneyMask.parseHybridCadMoney === 'function') {
-              amtRaw = window.cpMoneyMask.parseHybridCadMoney(amtInput.value, 2);
-            } else {
-              amtRaw = parseAmount(amtInput);
-            }
-          }
+          var amtRaw = amtInput ? parseAmount(amtInput) : 0;
           var discount = 0;
           if (pct> 0.00001) {
             discount = Math.round(Math.min(gross * pct / 100, gross) * 100) / 100;

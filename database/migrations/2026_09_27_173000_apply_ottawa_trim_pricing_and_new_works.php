@@ -29,6 +29,7 @@ return new class extends Migration
 
             $work = SharedWork::query()->where('key', $key)->first();
             if ($work) {
+                unset($payload['label']);
                 $work->fill($payload);
                 $work->save();
                 continue;

@@ -14,27 +14,28 @@
      @if ($aiContextFormId) data-context-form="{{ $aiContextFormId }}" @endif
      @if ($aiQuotationType) data-quotation-type="{{ $aiQuotationType }}" @endif>
   <div class="nb2-generate-row quotation-work-description-ai__actions">
-    <div class="admin-ai-action-group">
-      @include('admin.partials.ai_instruction_edit_link', [
-        'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_WORK_DESCRIPTION,
-        'instructionLabel' => 'Edit quotation work description prompt',
-      ])
+    @component('admin.partials.ai_action_group', [
+      'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_WORK_DESCRIPTION,
+      'instructionLabel' => 'Edit quotation work description prompt',
+      'showHistory' => true,
+    ])
       <button type="button" class="admin-btn admin-btn--primary quotation-work-description-ai__btn">
         <i class="fa fa-magic" aria-hidden="true"></i>
         <span>Improve description with AI</span>
       </button>
-      @if ($showCreateFromQuote)
-        @include('admin.partials.ai_instruction_edit_link', [
-          'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_WORK_DESCRIPTION_FROM_QUOTE,
-          'instructionLabel' => 'Edit create-from-quotation prompt',
-        ])
-        <button type="button" class="admin-btn admin-btn--primary quotation-work-description-ai__from-quote">
-          <i class="fa fa-list-alt" aria-hidden="true"></i>
-          <span>Create automatically from quotation</span>
-        </button>
-      @endif
-      <span class="admin-ai-text-history-mount" data-history-mount></span>
-    </div>
+      @slot('extra')
+        @if ($showCreateFromQuote)
+          <button type="button" class="admin-btn admin-btn--primary quotation-work-description-ai__from-quote">
+            <i class="fa fa-list-alt" aria-hidden="true"></i>
+            <span>Create automatically from quotation</span>
+          </button>
+          @include('admin.partials.ai_instruction_edit_link', [
+            'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_WORK_DESCRIPTION_FROM_QUOTE,
+            'instructionLabel' => 'Edit create-from-quotation prompt',
+          ])
+        @endif
+      @endslot
+    @endcomponent
     @if (!empty($trailingActionPartial))
       <div class="admin-ai-action-group admin-ai-action-group--trailing">
         @include($trailingActionPartial)

@@ -103,8 +103,12 @@ class QuotationWorkDescriptionFenceContextTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/per section\s*\(\s*'.$spanCount.'\s*\)/i', $text);
         $this->assertDoesNotMatchRegularExpression('/\(\s*\d+\s*\/\s*section\s*\)/i', $text);
         $this->assertDoesNotMatchRegularExpression('/\+\s*\d+\s+per section/i', $text);
+        $this->assertDoesNotMatchRegularExpression('/per panel\s*\(\s*'.$spanCount.'\s*\)/i', $text);
+        $this->assertDoesNotMatchRegularExpression('/\(\s*\d+\s*\/\s*panel\s*\)/i', $text);
+        $this->assertDoesNotMatchRegularExpression('/\+\s*\d+\s+per panel/i', $text);
         $this->assertStringNotContainsStringIgnoringCase('pre-waste', $text);
         $this->assertStringNotContainsStringIgnoringCase('+1 waste', $text);
+        $this->assertDoesNotMatchRegularExpression('/\beight\b/i', $text);
     }
 
     private function calculator(): FenceQuotationCalculator

@@ -18,10 +18,10 @@
     @csrf
     @method('PUT')
 
-    <h3 class="cp-form-help-flush" style="margin:0 0 8px;">Work description template</h3>
-    <p class="admin-form-help" style="margin:0 0 16px;">
-      Used by <strong>Generate description</strong> on the low deck quotation form. Plain text — line breaks are preserved on the client PDF.
-    </p>
+    <h3 class="cp-form-help-flush" style="margin:0 0 8px;">
+      Work description template
+      <x-admin.info-tip label="Work description template">Used by <strong>Generate description</strong> on the low deck quotation form. Plain text — line breaks are preserved on the client PDF.</x-admin.info-tip>
+    </h3>
 
     <div class="admin-form-group">
       <label for="ld-work-description-template">Template</label>

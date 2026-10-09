@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MillworkQuotation extends Model
 {
     use \App\Models\Concerns\HasClientEmailMessage;
+    use \App\Models\Concerns\HasPdfFoldVersion;
     use \App\Models\Concerns\HasReplyToAcceptChoice;
 
     public const HST_RATE = 0.13;
@@ -32,6 +33,7 @@ class MillworkQuotation extends Model
         'commute_round_trip_cost',
         'commute_amount',
         'version',
+        'cut_plan_version',
         'linked_at',
     ];
 
@@ -51,6 +53,7 @@ class MillworkQuotation extends Model
         'commute_round_trip_cost' => 'decimal:2',
         'commute_amount' => 'decimal:2',
         'version' => 'integer',
+        'cut_plan_version' => 'integer',
         'linked_at' => 'datetime',
     ];
 
@@ -70,6 +73,48 @@ class MillworkQuotation extends Model
         $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
 
         return max(0, (int) ($cut['sheet_count'] ?? 0));
+    }
+
+    public static function unplacedAdminMessage(): string
+    {
+        return 'This quotation has parts that do not fit on any sheet. Change the size or pick a larger sheet before sending, downloading, or accepting.';
+    }
+
+    public static function unplacedClientMessage(): string
+    {
+        return 'This quote is being updated and is not available to download or accept yet. Please contact us if you have questions.';
+    }
+
+    /**
+     * Only the stored unplaced list written by the new builder may block a
+     * client PDF or accept page. Legacy snapshots without that key stay open.
+     */
+    public function hasUnplacedCutParts(): bool
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
+        $unplaced = $cut['unplaced'] ?? null;
+
+        return is_array($unplaced) && $unplaced !== [];
+    }
+
+    public function cutPlanVersion(): int
+    {
+        if ($this->cut_plan_version !== null && $this->cut_plan_version !== '') {
+            return ((int) $this->cut_plan_version) >= 2 ? 2 : 1;
+        }
+
+        return 1;
+    }
+
+    public function builderVersion(): int
+    {
+        return $this->cutPlanVersion();
+    }
+
+    public function usesLegacyCutBuilder(): bool
+    {
+        return $this->cutPlanVersion() < \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
     }
 
     public function displayTitle(): string

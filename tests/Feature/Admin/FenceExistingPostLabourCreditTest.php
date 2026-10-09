@@ -26,11 +26,15 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
         $response->assertSee('name="existing_post_labour_credit"', false);
         $response->assertSee('cp-money-input', false);
         $html = $response->getContent();
-        $this->assertStringNotContainsString('data-cp-money-entry="direct"', $html);
         $this->assertMatchesRegularExpression(
             '/id="fq-existing-post-credit"[^>]*class="[^"]*cp-money-input/',
             $html
         );
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="fq-existing-post-credit"[^>]*data-cp-money-entry="direct"/',
+            $html
+        );
+        $this->assertStringContainsString('aria-label="About Labour credit"', $html);
     }
 
     public function test_formula_update_rejects_negative_existing_post_credit(): void
@@ -159,8 +163,12 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
             $creditInput
         ));
         $this->assertMatchesRegularExpression('/\brequired\b/', $creditInput[0]);
-        $this->assertStringNotContainsString('data-cp-money-entry="direct"', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="fq-existing-post-credit"[^>]*data-cp-money-entry="direct"/',
+            $html
+        );
         $this->assertStringContainsString('admin-info-tip', $html);
+        $this->assertStringContainsString('aria-label="About Labour credit"', $html);
     }
 
     public function test_preview_zero_string_means_no_credit(): void

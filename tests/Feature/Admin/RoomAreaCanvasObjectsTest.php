@@ -158,7 +158,7 @@ class RoomAreaCanvasObjectsTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('data-ra-palette', false)
             ->assertSee('data-ra-object-edit', false)
-            ->assertSee('data-ra-dimensions-toggle', false)
+            ->assertSee('data-ra-dimensions-mode', false)
             ->assertViewHas('projectsJson', function ($projects) {
                 $canvas = $projects[0]['rooms'][0]['canvas'] ?? null;
 

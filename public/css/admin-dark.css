@@ -66,6 +66,14 @@ html.admin-dark .admin-toolbar-lede {
   color: var(--admin-muted);
 }
 
+html.admin-dark .admin-checkbox-row {
+  color: var(--admin-text);
+}
+html.admin-dark .admin-checkbox-row label,
+html.admin-dark .admin-checkbox-row .admin-checkbox__text {
+  color: inherit;
+}
+
 html.admin-dark .admin-sidebar-brand {
   background: #024768;
 }
@@ -1101,8 +1109,11 @@ html.admin-dark .tox-tinymce {
   border-color: var(--admin-border) !important;
 }
 
-html.admin-dark .tox .tox-edit-area__iframe {
-  background: var(--admin-input-bg);
+html.admin-dark .tox .tox-edit-area,
+html.admin-dark .tox .tox-edit-area__iframe,
+html.admin-dark .quotation-work-desc .tox-tinymce,
+html.admin-dark .sq-intro-work-desc .tox-tinymce {
+  background: var(--admin-input-bg) !important;
 }
 
 html.admin-dark .tox .tox-menubar,
@@ -1338,8 +1349,58 @@ html.admin-dark .util-ra-thickness-chip:focus-visible {
 
 html.admin-dark .util-ra-thickness-chip.is-active {
   background: var(--admin-primary);
-  color: #fff;
+  color: #0f172a;
   border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-group-chip__swatch {
+  border-color: #f8fafc;
+  box-shadow: 0 0 0 1px #f8fafc;
+  opacity: 1;
+}
+
+html.admin-dark .util-ra-phone-bar {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra--fullpage .util-ra-phone-bar.is-overflowing::after {
+  background: linear-gradient(to right, transparent, var(--admin-surface));
+}
+
+html.admin-dark .util-ra-more-sheet {
+  background: var(--admin-elevated, var(--admin-surface));
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-more-sheet__title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-more-block__title {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-more-help {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-more-help__summary,
+html.admin-dark .util-ra-more-btn-label {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-sheet-strip {
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-sheet-strip .util-ra-palette__body,
+html.admin-dark .util-ra-sheet-strip .util-ra-walls-panel .util-ra-palette__body {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
 }
 
 html.admin-dark .util-ra-thickness-custom label {
@@ -1376,6 +1437,27 @@ html.admin-dark .util-ra-live-area strong {
 
 html.admin-dark .util-ra-live-area__height-unit {
   color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-finish {
+  border-top-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-finish__title,
+html.admin-dark .util-ra-finish__walls strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-finish__dir-label,
+html.admin-dark .util-ra-finish__walls li,
+html.admin-dark .util-ra-wall-edit__net {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-finish__dir .admin-btn.is-active {
+  background: var(--admin-primary);
+  color: #fff;
+  border-color: var(--admin-primary);
 }
 
 html.admin-dark .util-ra-live-area__exports .admin-btn--ghost {
@@ -1502,6 +1584,43 @@ html.admin-dark .util-ra-help-pop {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
+html.admin-dark .util-ra-unit-system {
+  border-color: var(--admin-border);
+  background: var(--admin-input-bg);
+}
+
+html.admin-dark .util-ra-unit-system__btn {
+  color: var(--admin-text);
+  background: transparent;
+}
+
+html.admin-dark .util-ra-unit-system__btn + .util-ra-unit-system__btn {
+  border-left-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-unit-system__btn.is-active {
+  background: var(--admin-primary);
+  color: #0f172a;
+}
+
+html.admin-dark .util-ra-templates-pop {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-templates-pop__hint {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-icon-btn.is-active[data-ra-snap-toggle],
+html.admin-dark .util-ra-icon-toggle:has([data-ra-lock-layers]:checked) {
+  background: var(--admin-primary);
+  color: #0f172a;
+  border-color: var(--admin-primary);
+}
+
 html.admin-dark .util-ra-first-tip {
   border-top-color: var(--admin-border);
 }
@@ -1571,7 +1690,7 @@ html.admin-dark .util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-e
 html.admin-dark .util-ra-side__tab.is-active {
   background: var(--admin-primary);
   border-color: var(--admin-primary);
-  color: #fff;
+  color: #0f172a;
 }
 
 html.admin-dark .util-ra--fullpage .util-ra-canvas-card,
@@ -1909,6 +2028,30 @@ html.admin-dark .bp-seo-badge--warn {
   color: #fbbf24;
   border-color: #854d0e;
 }
+html.admin-dark .bp-list-cat__more {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .bp-status-badge {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+}
+html.admin-dark .bp-status-badge.blog-post-status--published {
+  color: #4ade80;
+  background: rgba(22, 163, 74, 0.18);
+  border-color: #166534;
+}
+html.admin-dark .bp-status-badge.blog-post-status--draft {
+  color: #fbbf24;
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+}
+html.admin-dark .bp-status-badge.blog-post-status--scheduled {
+  color: #60a5fa;
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
+}
 html.admin-dark .bp-list-thumb,
 html.admin-dark .blog-admin-featured-preview,
 html.admin-dark .bp-snippet,
@@ -1920,7 +2063,11 @@ html.admin-dark .bp-list-thumb--empty {
   background: transparent;
   color: var(--admin-muted);
 }
-html.admin-dark .bp-list-post__title {
+html.admin-dark .bp-list-post__title,
+html.admin-dark .bp-list-post__title-link,
+html.admin-dark .admin-content a.bp-list-post__title-link,
+html.admin-dark .admin-table a.bp-list-post__title-link,
+html.admin-dark .admin-table a.bp-list-post__title-link:visited {
   color: var(--admin-heading);
 }
 html.admin-dark .bp-list-post__meta {
@@ -2038,10 +2185,10 @@ html.admin-dark .cp-recalc-banner__title {
 }
 
 /* Links in admin tables and content */
-html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]) {
+html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"]) {
   color: var(--admin-primary);
 }
-html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]):visited {
+html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"]):visited {
   color: var(--admin-primary);
 }
 html.admin-dark .admin-table a {
@@ -2064,14 +2211,43 @@ html.admin-dark .admin-content a.cp-clients-toolbar-clear:not(.admin-btn):not([c
 html.admin-dark .sp-table th {
   color: var(--admin-muted);
   border-bottom-color: var(--admin-border);
+  background: transparent;
 }
-html.admin-dark .sp-table td {
+html.admin-dark .sp-table td,
+html.admin-dark .admin-content .sp-table td,
+html.admin-dark .admin-content .sp-table th,
+html.admin-dark .admin-content .sp-table tr:hover > td,
+html.admin-dark .admin-content .sp-table tr:hover > th {
+  background: transparent;
   border-bottom-color: var(--admin-border);
 }
-html.admin-dark .sp-work-label {
+html.admin-dark .sp-work-label,
+html.admin-dark .sp-work-label-input {
   color: var(--admin-heading);
 }
-html.admin-dark .sp-work-label small {
+html.admin-dark .sp-work-label small,
+html.admin-dark .sp-work-key,
+html.admin-dark .sp-work-meta {
+  color: var(--admin-muted);
+}
+html.admin-dark .sp-work-label-input {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+html.admin-dark .sp-add {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .sp-add > summary {
+  color: var(--admin-primary);
+}
+html.admin-dark .sp-ref-badge {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .sp-add__consumers > legend,
+html.admin-dark .sp-add__field > label,
+html.admin-dark .sp-add__cost-hint {
   color: var(--admin-muted);
 }
 html.admin-dark .sp-input {
@@ -2828,7 +3004,13 @@ html.admin-dark .cp-recalc-preview tr.is-paid td {
 
 html.admin-dark .cp-required,
 html.admin-dark .admin-required,
-html.admin-dark .admin-form-error {
+html.admin-dark label.cp-required,
+html.admin-dark .admin-form-error,
+html.admin-dark .admin-form-group label.cp-required,
+html.admin-dark .admin-label-with-tip__end > .cp-required,
+html.admin-dark .admin-label-with-tip__end > label.cp-required,
+html.admin-dark .admin-form-group .admin-label-with-tip__end > .cp-required,
+html.admin-dark .admin-form-group .admin-label-with-tip__end > label.cp-required {
   color: #fca5a5;
 }
 
@@ -3093,19 +3275,33 @@ html.admin-dark [style*="background:#f5f7f9"] {
   background-color: var(--admin-surface) !important;
 }
 
+html.admin-dark input[type="date"],
+html.admin-dark input[type="time"],
+html.admin-dark input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
 html.admin-dark input[type="date"]::-webkit-datetime-edit,
 html.admin-dark input[type="date"]::-webkit-datetime-edit-fields-wrapper,
 html.admin-dark input[type="date"]::-webkit-datetime-edit-text,
 html.admin-dark input[type="date"]::-webkit-datetime-edit-month-field,
 html.admin-dark input[type="date"]::-webkit-datetime-edit-day-field,
 html.admin-dark input[type="date"]::-webkit-datetime-edit-year-field,
+html.admin-dark input[type="time"]::-webkit-datetime-edit,
+html.admin-dark input[type="time"]::-webkit-datetime-edit-fields-wrapper,
 html.admin-dark input[type="datetime-local"]::-webkit-datetime-edit,
 html.admin-dark input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
   color: var(--admin-text);
 }
+
 html.admin-dark input[type="date"]::-webkit-calendar-picker-indicator,
+html.admin-dark input[type="time"]::-webkit-calendar-picker-indicator,
 html.admin-dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.85);
+  cursor: pointer;
+  opacity: 1;
+  filter: none;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 html.admin-dark .fc .fc-day-today .fc-daygrid-day-number,
