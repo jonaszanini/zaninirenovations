@@ -121,7 +121,7 @@
 }
 
 .bp-list-table .bp-list-col--cat {
-  width: 24%;
+  width: 26%;
   min-width: 0;
   overflow: visible;
 }
@@ -182,6 +182,8 @@
   overflow-wrap: anywhere;
   min-width: 0;
   flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .bp-list-cat__more {
