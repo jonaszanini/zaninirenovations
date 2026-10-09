@@ -1353,6 +1353,10 @@ html.admin-dark .util-ra-phone-bar {
   border-color: var(--admin-border);
 }
 
+html.admin-dark .util-ra--fullpage .util-ra-phone-bar::after {
+  background: linear-gradient(to right, transparent, var(--admin-surface));
+}
+
 html.admin-dark .util-ra-more-sheet {
   background: var(--admin-elevated, var(--admin-surface));
   color: var(--admin-text);
@@ -1364,13 +1368,28 @@ html.admin-dark .util-ra-more-sheet__title {
   color: var(--admin-heading);
 }
 
+html.admin-dark .util-ra-more-block__title {
+  color: var(--admin-muted);
+}
+
 html.admin-dark .util-ra-more-help {
   background: var(--admin-bg);
   border-color: var(--admin-border);
 }
 
+html.admin-dark .util-ra-more-help__summary,
+html.admin-dark .util-ra-more-btn-label {
+  color: var(--admin-heading);
+}
+
 html.admin-dark .util-ra-sheet-strip {
   color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-sheet-strip .util-ra-palette__body,
+html.admin-dark .util-ra-sheet-strip .util-ra-walls-panel .util-ra-palette__body {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
 }
 
 html.admin-dark .util-ra-thickness-custom label {

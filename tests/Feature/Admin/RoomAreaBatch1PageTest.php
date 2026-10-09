@@ -128,6 +128,11 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('data-ra-more-toggle', $html);
         $this->assertStringContainsString('data-ra-more-sheet', $html);
         $this->assertStringContainsString('data-ra-sheet-total', $html);
+        $this->assertStringContainsString('data-ra-more-templates', $html);
+        $this->assertStringContainsString('data-ra-sheet-dock', $html);
+        $this->assertStringContainsString('util-ra-more-btn-label', $html);
+        $this->assertStringContainsString('Apply length', $html);
+        $this->assertStringContainsString('util-ra-more-block--units', $html);
         $this->assertStringContainsString('state.editingRoomId = savedRoom.id', $js);
         $this->assertStringNotContainsString('title="Recalibrate scale so this wall matches', $html);
         $help = file_get_contents(resource_path('views/admin/utilities/_room_area_help_pop.blade.php'));

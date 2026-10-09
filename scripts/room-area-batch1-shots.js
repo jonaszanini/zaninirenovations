@@ -120,9 +120,8 @@ async function resetEditor(page) {
 async function applyLTemplate(page) {
   const phone = page.viewport() && page.viewport().width <= 500;
   if (phone) {
-    const moreOpen = await page.evaluate(() => document.querySelector('[data-room-area]')?.classList.contains('is-more-open'));
-    if (!moreOpen) await tap(page, '[data-ra-more-toggle]');
-    await delay(200);
+    await tap(page, '[data-ra-phone-bar] [data-ra-templates-toggle]');
+    await delay(250);
   } else {
     const open = await page.evaluate(() => {
       const pop = document.querySelector('[data-ra-templates-popover]');
@@ -229,9 +228,33 @@ async function main() {
   const phoneDark = await shot(phone, 'ra-b1-390-dark');
 
   await tap(phone, '[data-ra-more-toggle]');
-  await delay(250);
+  await delay(350);
   await shot(phone, 'ra-b1-390-more');
+
+  await tap(phone, '[data-ra-phone-bar] [data-ra-templates-toggle]');
+  await delay(400);
+  await phone.waitForFunction(() => {
+    const grid = document.querySelector('[data-ra-more-templates] .util-ra-templates-pop__grid');
+    if (!grid) return false;
+    const r = grid.getBoundingClientRect();
+    return r.width > 40 && r.height > 40 && r.top < window.innerHeight && r.bottom > 80;
+  }, { timeout: 8000 });
   await shot(phone, 'ra-b1-390-templates');
+
+  await setTheme(phone, 'dark');
+  await delay(150);
+  await tap(phone, '[data-ra-more-toggle]');
+  await delay(200);
+  if (!(await phone.evaluate(() => document.querySelector('[data-room-area]')?.classList.contains('is-more-open')))) {
+    await tap(phone, '[data-ra-more-toggle]');
+    await delay(250);
+  }
+  await phone.evaluate(() => {
+    const sheet = document.querySelector('[data-ra-more-sheet]');
+    if (sheet) sheet.scrollTop = 0;
+  });
+  await delay(150);
+  await shot(phone, 'ra-b1-390-more-dark');
 
   await phone.evaluate(() => {
     const root = document.querySelector('[data-room-area]');
