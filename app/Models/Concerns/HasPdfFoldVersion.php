@@ -37,12 +37,18 @@ trait HasPdfFoldVersion
     }
 
     /**
-     * Only an explicit version 2 uses the new fold. Null, 1, and any other
-     * value run main's LegacyPdfFoldV1 path.
+     * Version 2 uses the new fold. A new unsaved row with a null version
+     * also previews as v2 so the on-screen total matches what save() stores.
+     * Persisted null, 1, and any other value stay on LegacyPdfFoldV1.
      */
     public function usesCurrentPdfFold(): bool
     {
-        return (int) $this->getAttribute('pdf_fold_version') === self::PDF_FOLD_VERSION_CURRENT;
+        $version = $this->getAttribute('pdf_fold_version');
+        if ((int) $version === self::PDF_FOLD_VERSION_CURRENT) {
+            return true;
+        }
+
+        return $version === null && ! $this->exists;
     }
 
     public function usesLegacyPdfFold(): bool

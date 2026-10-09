@@ -90,6 +90,10 @@ class PdfFoldVersionLinkTest extends IntegrationTestCase
             ],
             'version' => 1,
         ]);
+        $this->assertFalse($quote->exists);
+        $this->assertNull($quote->pdf_fold_version);
+        $this->assertTrue($quote->usesCurrentPdfFold());
+        $this->assertEquals(114.00, $quote->pdfGrandTotal());
         $quote->save();
 
         $quote->refresh();

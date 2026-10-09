@@ -600,6 +600,115 @@ JS;
         }
     }
 
+    public function test_v2_hst_included_additional_cost_keeps_hst_on_untaxed_material(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'pdf_fold_version' => 2,
+            'items' => [
+                ['description' => 'Material', 'amount' => 1000.00, 'apply_hst' => false],
+                ['description' => 'Labour', 'amount' => 500.00, 'apply_hst' => true],
+                [
+                    'description' => 'Additional cost — Dumpster',
+                    'amount' => 113.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+
+        $this->assertEquals(1678.00, $quote->editorGrandTotal());
+        $this->assertEquals(1678.00, $quote->pdfGrandTotal());
+        $this->assertNotEquals(1665.00, $quote->pdfGrandTotal());
+        $material = collect($quote->pdfLineItems())->firstWhere('description', 'Material');
+        $this->assertEqualsWithDelta(1113.00, $material['amount'], 0.001);
+    }
+
+    public function test_v2_labour_word_match_covers_installer_and_cash_labels(): void
+    {
+        $mustMatch = [
+            'Flooring installation (labor)',
+            'Tile installation (labor)',
+            'Basement renovation (labour)',
+            'Labour – x',
+            'Labour - x',
+            'Labour — x',
+            'Labour (cash)',
+            'General labour',
+            'Labour & material',
+        ];
+        foreach ($mustMatch as $desc) {
+            $quote = new ClientProjectQuotation([
+                'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+                'pdf_fold_version' => 2,
+                'items' => [
+                    ['description' => $desc, 'amount' => 200.00, 'apply_hst' => true],
+                    [
+                        'description' => 'Commute expense',
+                        'amount' => 113.00,
+                        'apply_hst' => false,
+                        'hst_included' => true,
+                    ],
+                ],
+            ]);
+            $descriptions = array_column($quote->pdfLineItems(), 'description');
+            $this->assertSame([$desc], $descriptions, $desc);
+            $this->assertEquals($quote->editorGrandTotal(), $quote->pdfGrandTotal(), $desc);
+        }
+
+        $mustExclude = [
+            'Electrical labour',
+            'Plumbing labour',
+            'Demolition labour',
+            'Building permit labour',
+            'Kitchen cabinets supply',
+            'Custom labour',
+            'Labourer supplies',
+        ];
+        foreach ($mustExclude as $desc) {
+            $quote = new ClientProjectQuotation([
+                'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+                'pdf_fold_version' => 2,
+                'items' => [
+                    ['description' => $desc, 'amount' => 200.00, 'apply_hst' => true],
+                    [
+                        'description' => 'Commute expense',
+                        'amount' => 113.00,
+                        'apply_hst' => false,
+                        'hst_included' => true,
+                    ],
+                ],
+            ]);
+            $descriptions = array_column($quote->pdfLineItems(), 'description');
+            $this->assertContains($desc, $descriptions, $desc);
+            $this->assertContains('Labour', $descriptions, $desc);
+            $byDesc = collect($quote->pdfLineItems())->keyBy('description');
+            $this->assertEqualsWithDelta(200.00, $byDesc[$desc]['amount'], 0.001, $desc);
+        }
+    }
+
+    public function test_unsaved_new_quote_previews_as_v2(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'items' => [
+                ['description' => 'Material', 'amount' => 100.00, 'apply_hst' => true],
+                [
+                    'description' => 'Commute expense',
+                    'amount' => 1.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+        $this->assertFalse($quote->exists);
+        $this->assertNull($quote->pdf_fold_version);
+        $this->assertTrue($quote->usesCurrentPdfFold());
+        $this->assertFalse($quote->usesLegacyPdfFold());
+        $this->assertEquals($quote->editorGrandTotal(), $quote->pdfGrandTotal());
+        $this->assertEquals(114.00, $quote->pdfGrandTotal());
+    }
+
     public function test_migration_fails_loudly_on_a_missing_table(): void
     {
         $src = (string) file_get_contents(

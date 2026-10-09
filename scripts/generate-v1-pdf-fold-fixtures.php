@@ -123,6 +123,10 @@ $extraLab = static fn (float $amt): array => [
 $named = [
     'sq_2x_33_33' => [
         'source' => ClientProjectQuotation::SOURCE_STANDARD,
+        'sq_materials' => [
+            ['short_name' => 'A', 'unit_price' => 33.33, 'quantity' => 1, 'apply_hst' => true],
+            ['short_name' => 'B', 'unit_price' => 33.33, 'quantity' => 1, 'apply_hst' => true],
+        ],
         'items' => [
             ['description' => 'Material', 'amount' => 66.66, 'apply_hst' => true],
         ],
@@ -175,6 +179,9 @@ foreach ($named as $key => $case) {
         'items' => $case['items'],
         'override' => null,
     ] + snapshot($quote);
+    if (isset($case['sq_materials'])) {
+        $namedOut[$key]['sq_materials'] = $case['sq_materials'];
+    }
 }
 
 file_put_contents($outDir.'/named.json', json_encode($namedOut, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)."\n");
@@ -214,17 +221,18 @@ $descPool = [
     'Labour and material',
 ];
 
-mt_srand(20261009);
 $perSource = 2000;
 
-foreach ($sources as $source) {
+foreach ($sources as $sourceIdx => $source) {
+    // Distinct stream per source so the six files are not byte-identical.
+    mt_srand(20261009 + ($sourceIdx + 1) * 10007);
     $rows = [];
     for ($i = 0; $i < $perSource; $i++) {
         $items = [];
-        $n = 1 + ($i % 3);
+        $n = 1 + (($i + $sourceIdx) % 3);
         for ($r = 0; $r < $n; $r++) {
-            $desc = $descPool[($i + $r * 7) % count($descPool)];
-            $amount = round(((($i * 37 + $r * 91) % 25000) + 1) / 100, 2);
+            $desc = $descPool[($i + $r * 7 + $sourceIdx * 3) % count($descPool)];
+            $amount = round(((($i * 37 + $r * 91 + $sourceIdx * 1009) % 25000) + 1) / 100, 2);
             $apply = ! str_contains(strtolower($desc), 'exempt') && ! str_contains(strtolower($desc), 'cash');
             $row = [
                 'description' => $desc,
@@ -238,6 +246,13 @@ foreach ($sources as $source) {
             if ($source === ClientProjectQuotation::SOURCE_PAVING && str_contains($desc, '— Labour')) {
                 $row['apply_hst'] = true;
                 $row['hst_taxable_amount'] = round($amount * 0.8, 2);
+            }
+            if (($i + $r + $sourceIdx) % 4 === 0 && empty($row['hst_included'])) {
+                $row['hst_included'] = ($i + $sourceIdx) % 8 === 0;
+            }
+            if (($i + $r + $sourceIdx) % 6 === 0) {
+                // v1 must ignore this; main never honours hst_amount.
+                $row['hst_amount'] = round($amount * 0.13 + 0.01, 2);
             }
             $items[] = $row;
         }

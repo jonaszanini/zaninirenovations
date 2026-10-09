@@ -999,6 +999,92 @@ JS;
         $this->assertTrue($mutantLabourFired, 'Need an HST-included labour mutant that drifts');
     }
 
+    public function test_v2_multi_job_assigns_hst_remainder_when_last_job_has_no_labour(): void
+    {
+        $sq = new StandardQuotation([
+            'pdf_fold_version' => 2,
+            'works' => [
+                [
+                    'title' => 'Job one',
+                    'materials' => [[
+                        'short_name' => 'A',
+                        'unit_price' => 33.33,
+                        'quantity' => 1,
+                        'apply_hst' => true,
+                    ]],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 33.33,
+                    'labour_fixed_hst_included' => false,
+                ],
+                [
+                    'title' => 'Job two',
+                    'materials' => [[
+                        'short_name' => 'B',
+                        'unit_price' => 33.34,
+                        'quantity' => 1,
+                        'apply_hst' => true,
+                    ]],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 33.34,
+                    'labour_fixed_hst_included' => false,
+                ],
+                [
+                    'title' => 'Job three no labour',
+                    'materials' => [[
+                        'short_name' => 'C',
+                        'unit_price' => 10.00,
+                        'quantity' => 1,
+                        'apply_hst' => true,
+                    ]],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 0,
+                    'labour_fixed_hst_included' => false,
+                ],
+            ],
+            'include_labour_hst' => true,
+            'contingency_enabled' => true,
+            'contingency_percent' => 10,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $computed = $sq->computedTotals();
+        $lines = $sq->detailedPdfLineItems();
+        $labourHst = 0.0;
+        $materialHst = 0.0;
+        foreach ($lines as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
+            $hst = \App\Models\ClientProjectQuotation::lineHstAmount($row);
+            if (($row['description'] ?? '') === 'Labour') {
+                $labourHst += $hst;
+            }
+            if (($row['description'] ?? '') === 'Material') {
+                $materialHst += $hst;
+            }
+        }
+
+        $this->assertEquals(
+            round((float) $computed['labour_hst'], 2),
+            round($labourHst, 2),
+            'labour HST remainder must land on an earlier Labour line'
+        );
+        $expectedMatHst = round((float) $computed['materials_hst'], 2);
+        $this->assertEquals(
+            $expectedMatHst,
+            round($materialHst, 2),
+            'contingency HST remainder must land on a Material line'
+        );
+
+        $cpq = new \App\Models\ClientProjectQuotation([
+            'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
+            'pdf_fold_version' => 2,
+            'items' => $lines,
+        ]);
+        $this->assertEquals($cpq->editorGrandTotal(), $cpq->pdfGrandTotal());
+    }
+
     /**
      * Materials $500 + HST $65, cash labour $1,000, commute $113, debris $50.
      */

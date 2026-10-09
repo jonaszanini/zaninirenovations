@@ -938,9 +938,8 @@ class ClientProjectQuotation extends Model
      * @param  array<string, mixed>  $row
      */
     /**
-     * Allow-list: the general Labour line only. Exclusions (electrical,
-     * plumbing, demolition, permits, supply, custom) are checked first so
-     * "Electrical labour" never becomes a fold target.
+     * Main's word match `\blabou?r\b`, minus trade / permit / supply / custom
+     * / labourer-supplies lines so those never become fold targets.
      *
      * @param  array<string, mixed>  $row
      */
@@ -958,12 +957,7 @@ class ClientProjectQuotation extends Model
             return false;
         }
 
-        $normalized = self::normalizePdfLineLabel($desc);
-
-        return $normalized === 'labour'
-            || $normalized === 'labor'
-            || str_ends_with($normalized, ' - labour')
-            || str_ends_with($normalized, ' - labor');
+        return (bool) preg_match('/\blabou?r\b/i', $desc);
     }
 
     protected static function normalizePdfLineLabel(string $desc): string
@@ -1032,7 +1026,10 @@ class ClientProjectQuotation extends Model
     {
         $desc = (string) ($row['description'] ?? '');
 
-        return (bool) preg_match('/\b(permits?|electrical|plumbing|demolition|demo|supply|custom)\b/i', $desc);
+        return (bool) preg_match(
+            '/\b(permits?|electrical|plumbing|demolition|demo|supply|custom|labourer)\b/i',
+            $desc
+        );
     }
 
     /**
@@ -1102,8 +1099,11 @@ class ClientProjectQuotation extends Model
 
         $row = &$items[$targetIdx];
 
-        // Tax-included material buckets (e.g. paving) absorb the gross amount.
-        if (! empty($row['hst_included']) && empty($row['apply_hst'])) {
+        // Untaxed targets (cash / HST-off material, or tax-included paving)
+        // keep the extra's included HST in the face amount. Adding only the
+        // pre-tax slice here drops leftover HST (Material $1000 HST-off +
+        // Dumpster $113 → 1665 instead of 1678).
+        if (empty($row['apply_hst'])) {
             $row['amount'] = round((float) ($row['amount'] ?? 0) + $hiddenGross, 2);
             unset($row);
 

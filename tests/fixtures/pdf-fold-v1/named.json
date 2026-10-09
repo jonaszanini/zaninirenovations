@@ -19,7 +19,21 @@
         "hst": 8.67,
         "pdf_hst": 8.67,
         "total": 75.33,
-        "pdf_total": 75.33
+        "pdf_total": 75.33,
+        "sq_materials": [
+            {
+                "short_name": "A",
+                "unit_price": 33.33,
+                "quantity": 1,
+                "apply_hst": true
+            },
+            {
+                "short_name": "B",
+                "unit_price": 33.33,
+                "quantity": 1,
+                "apply_hst": true
+            }
+        ]
     },
     "material_1000_debris_565": {
         "source": "standard",

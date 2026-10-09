@@ -707,6 +707,8 @@ class StandardQuotation extends Model
                     'amount' => $taxable,
                     'apply_hst' => true,
                 ], $taxableHst);
+            } elseif ($isLast && $jobContHst != 0.0) {
+                $this->addHstAmountToLastPdfLine($lines, 'Material', $jobContHst);
             }
             if ($exempt > 0) {
                 $lines[] = [
@@ -720,6 +722,21 @@ class StandardQuotation extends Model
                 $lines[] = $electricalLine;
             }
 
+            $jobLabHst = 0.0;
+            if ($this->chargesLabourHst()) {
+                $jobLabHst = (float) ($job['labour_hst'] ?? 0);
+                $surcharge = (float) ($job['building_labor_surcharge'] ?? 0);
+                if ($surcharge > 0) {
+                    $jobLabHst += round($surcharge * ClientProjectQuotation::HST_RATE, 2);
+                }
+                if ($isLast) {
+                    $jobLabHst = round($quoteLabHst - $allocatedLabHst, 2);
+                } else {
+                    $jobLabHst = round($jobLabHst, 2);
+                    $allocatedLabHst += $jobLabHst;
+                }
+            }
+
             if ((float) ($job['labour_total'] ?? 0) > 0) {
                 $labourLine = [
                     'description' => 'Labour',
@@ -727,20 +744,11 @@ class StandardQuotation extends Model
                     'apply_hst' => $this->chargesLabourHst(),
                 ];
                 if ($this->chargesLabourHst()) {
-                    $jobLabHst = (float) ($job['labour_hst'] ?? 0);
-                    $surcharge = (float) ($job['building_labor_surcharge'] ?? 0);
-                    if ($surcharge > 0) {
-                        $jobLabHst += round($surcharge * ClientProjectQuotation::HST_RATE, 2);
-                    }
-                    if ($isLast) {
-                        $jobLabHst = round($quoteLabHst - $allocatedLabHst, 2);
-                    } else {
-                        $jobLabHst = round($jobLabHst, 2);
-                        $allocatedLabHst += $jobLabHst;
-                    }
                     $labourLine = $this->withPdfHstAmount($labourLine, $jobLabHst);
                 }
                 $lines[] = $labourLine;
+            } elseif ($isLast && $jobLabHst != 0.0) {
+                $this->addHstAmountToLastPdfLine($lines, 'Labour', $jobLabHst);
             }
         }
 
@@ -762,6 +770,34 @@ class StandardQuotation extends Model
         $line['hst_amount'] = round($hstAmount, 2);
 
         return $line;
+    }
+
+    /**
+     * Last-job leftover HST when that job has no Material / Labour line.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     */
+    protected function addHstAmountToLastPdfLine(array &$lines, string $description, float $hstAmount): void
+    {
+        if (! $this->usesCurrentPdfFold() || $hstAmount == 0.0) {
+            return;
+        }
+
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            if (! empty($lines[$i]['is_heading'])) {
+                continue;
+            }
+            if (($lines[$i]['description'] ?? '') !== $description) {
+                continue;
+            }
+            if (empty($lines[$i]['apply_hst'])) {
+                continue;
+            }
+            $current = (float) ($lines[$i]['hst_amount'] ?? ClientProjectQuotation::lineHstAmount($lines[$i]));
+            $lines[$i] = $this->withPdfHstAmount($lines[$i], round($current + $hstAmount, 2));
+
+            return;
+        }
     }
 
     /**

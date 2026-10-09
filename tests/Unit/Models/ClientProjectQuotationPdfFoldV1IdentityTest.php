@@ -3,12 +3,13 @@
 namespace Tests\Unit\Models;
 
 use App\Models\ClientProjectQuotation;
-use Tests\TestCase;
+use App\Models\StandardQuotation;
+use Tests\IntegrationTestCase;
 
 /**
  * v1 output must match fixtures generated from main bc380f47.
  */
-class ClientProjectQuotationPdfFoldV1IdentityTest extends TestCase
+class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
 {
     public function test_named_main_regressions_match_committed_fixtures(): void
     {
@@ -24,7 +25,45 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends TestCase
         $this->assertEqualsWithDelta(350.0, $split[1]['amount'], 0.001);
 
         foreach ($named as $key => $fx) {
-            $this->assertFixtureMatches($fx, $key);
+            foreach ([1, null] as $version) {
+                $this->assertFixtureMatches($fx, $key, $version);
+            }
+        }
+    }
+
+    public function test_sq_2x_33_33_goes_through_the_real_sq_linked_path(): void
+    {
+        $named = $this->loadFixture('named.json');
+        $fx = $named['sq_2x_33_33'];
+        $this->assertNotEmpty($fx['sq_materials'] ?? []);
+
+        $sq = StandardQuotation::query()->create([
+            'quote_number' => 'SQ-V1-'.uniqid(),
+            'client_name' => 'Identity',
+            'materials' => $fx['sq_materials'],
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'labour_use_fixed' => false,
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+            'pdf_fold_version' => 1,
+        ]);
+
+        foreach ([1, null] as $version) {
+            $quote = new ClientProjectQuotation([
+                'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+                'source_id' => $sq->id,
+                'items' => $fx['items'],
+                'pdf_fold_version' => $version,
+            ]);
+            $quote->exists = true;
+            $this->assertTrue($quote->usesLegacyPdfFold());
+            $this->assertEquals(75.33, $quote->grandTotal(), 'SQ-linked total version '.json_encode($version));
+            $this->assertEquals(8.67, $quote->hst(), 'SQ-linked HST version '.json_encode($version));
+            $this->assertTrue($this->sameSnapshot($quote, $fx), 'SQ-linked snapshot version '.json_encode($version));
         }
     }
 
@@ -35,14 +74,40 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends TestCase
     {
         $rows = $this->loadFixture($source.'.json');
         $this->assertCount(2000, $rows, $source);
+        $sawIncluded = false;
+        $sawHstAmount = false;
+        $sawNullVersion = false;
         $mismatches = 0;
         foreach ($rows as $fx) {
+            foreach ($fx['items'] as $item) {
+                if (! empty($item['hst_included'])) {
+                    $sawIncluded = true;
+                }
+                if (array_key_exists('hst_amount', $item)) {
+                    $sawHstAmount = true;
+                }
+            }
             $quote = $this->quoteFromFixture($fx, $source);
+            if ($quote->pdf_fold_version === null) {
+                $sawNullVersion = true;
+            }
             if (! $this->sameSnapshot($quote, $fx)) {
                 $mismatches++;
             }
         }
         $this->assertSame(0, $mismatches, $source.' v1 drifted from main fixtures');
+        $this->assertTrue($sawIncluded, $source.' fixtures must vary hst_included');
+        $this->assertTrue($sawHstAmount, $source.' fixtures must plant hst_amount for v1 to ignore');
+        $this->assertTrue($sawNullVersion, $source.' must cover persisted null pdf_fold_version');
+    }
+
+    public function test_source_fixture_files_are_not_byte_identical(): void
+    {
+        $hashes = [];
+        foreach (array_keys($this->sourceFixtureFiles()) as $source) {
+            $hashes[$source] = hash_file('sha256', base_path('tests/fixtures/pdf-fold-v1/'.$source.'.json'));
+        }
+        $this->assertCount(count($hashes), array_unique($hashes), 'Each source needs its own seed');
     }
 
     /**
@@ -63,10 +128,10 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends TestCase
     /**
      * @param  array<string, mixed>  $fx
      */
-    private function assertFixtureMatches(array $fx, string $key): void
+    private function assertFixtureMatches(array $fx, string $key, ?int $version = 1): void
     {
-        $quote = $this->quoteFromFixture($fx, (string) $fx['source']);
-        $this->assertTrue($this->sameSnapshot($quote, $fx), $key.' must match main');
+        $quote = $this->quoteFromFixture($fx, (string) $fx['source'], $version);
+        $this->assertTrue($this->sameSnapshot($quote, $fx), $key.' must match main (version '.json_encode($version).')');
         $this->assertEquals($fx['total'], $quote->grandTotal(), $key.' total');
         $this->assertEquals($fx['hst'], $quote->hst(), $key.' hst');
     }
@@ -74,14 +139,24 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends TestCase
     /**
      * @param  array<string, mixed>  $fx
      */
-    private function quoteFromFixture(array $fx, string $source): ClientProjectQuotation
+    private function quoteFromFixture(array $fx, string $source, mixed $version = 'auto'): ClientProjectQuotation
     {
-        $quote = new ClientProjectQuotation([
+        if ($version === 'auto') {
+            $version = array_key_exists('i', $fx)
+                ? (((int) $fx['i'] % 2 === 0) ? null : 1)
+                : 1;
+        }
+
+        $attrs = [
             'source_type' => $source,
             'items' => $fx['items'],
             'subtotal_override' => $fx['override'] ?? null,
-            'pdf_fold_version' => 1,
-        ]);
+        ];
+        if ($version !== null) {
+            $attrs['pdf_fold_version'] = $version;
+        }
+
+        $quote = new ClientProjectQuotation($attrs);
         $quote->exists = true;
         $this->assertTrue($quote->usesLegacyPdfFold());
 
