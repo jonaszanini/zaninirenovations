@@ -24,6 +24,8 @@ class AiActionGroupTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('class="admin-ai-action-group"', $html);
+        $this->assertStringContainsString('class="admin-ai-action-pair"', $html);
+        $this->assertStringContainsString('class="admin-ai-action-tail"', $html);
         $this->assertStringContainsString('id="test-ai-btn"', $html);
         $this->assertStringContainsString('admin-ai-instruction-edit-link', $html);
         $this->assertStringContainsString('data-history-mount', $html);
@@ -74,6 +76,29 @@ class AiActionGroupTest extends TestCase
         $this->assertLessThan($fromQuotePos, $primaryConfigPos);
         $this->assertLessThan($extraConfigPos, $fromQuotePos);
         $this->assertLessThan($historyPos, $extraConfigPos);
+    }
+
+    public function test_pair_css_keeps_button_and_config_on_one_shrinking_row(): void
+    {
+        $css = file_get_contents(public_path('css/admin.css'));
+        $this->assertNotFalse($css);
+
+        $this->assertMatchesRegularExpression(
+            '/\.admin-ai-action-pair,\s*\n\s*\.admin-ai-action-tail\s*\{[^}]*flex-wrap:\s*nowrap/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-ai-action-pair\s*>\s*\.admin-btn\s*\{[^}]*min-width:\s*0/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-ai-action-pair\s*>\s*\.admin-btn\s*\{[^}]*white-space:\s*normal/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-ai-action-pair\s*>\s*\.admin-btn\s*\{[^}]*flex-shrink:\s*1/s',
+            $css
+        );
     }
 
     public function test_admin_ai_generate_groups_use_the_shared_action_group(): void

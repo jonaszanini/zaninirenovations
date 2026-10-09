@@ -93,12 +93,14 @@
               <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-ai-suggest-btn">
                 <i class="fa fa-magic" aria-hidden="true"></i> Suggest metadata
               </button>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-ai-image-btn">
-                <i class="fa fa-picture-o" aria-hidden="true"></i> Generate image
-              </button>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-check-btn">
-                Check content
-              </button>
+              @slot('extra')
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-ai-image-btn">
+                  <i class="fa fa-picture-o" aria-hidden="true"></i> Generate image
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-check-btn">
+                  Check content
+                </button>
+              @endslot
             @endcomponent
             <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>
           </div>
