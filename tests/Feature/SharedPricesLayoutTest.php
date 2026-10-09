@@ -361,6 +361,14 @@ const base = process.env.SP_GEO_BASE;
         clippedShort,
         chipVsCard,
         chipSpare: chipSpare === 999 ? 0 : Math.round(chipSpare * 10) / 10,
+        tableSpare: (() => {
+          if (!table || !scroller) return 0;
+          const prev = table.style.width;
+          table.style.width = 'min-content';
+          const minW = table.getBoundingClientRect().width;
+          table.style.width = prev;
+          return Math.round((scroller.getBoundingClientRect().width - minW) * 10) / 10;
+        })(),
         tableScrollW: table ? table.scrollWidth : 0,
         tableClientW: table ? table.clientWidth : 0,
         scrollerW: scrollerBox ? Math.round(scrollerBox.width) : 0,
@@ -591,8 +599,8 @@ JS
 
         $this->assertGreaterThanOrEqual(
             12,
-            (float) ($json['1100']['chipSpare'] ?? 0),
-            'Need ≥12px spare between chips and the card/scroller at the 1100 switch: '.json_encode($json['1100'] ?? [])
+            (float) ($json['1100']['tableSpare'] ?? 0),
+            'Need ≥12px spare between the table min-content and the scroller at 1100: '.json_encode($json['1100'] ?? [])
         );
 
         $this->assertTrue($json['1024']['liveSell']['ok'] ?? false, 'Effective sell must update live when Rate or Sell changes: '.json_encode($json['1024']['liveSell'] ?? []));
