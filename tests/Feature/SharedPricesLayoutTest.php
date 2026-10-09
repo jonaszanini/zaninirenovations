@@ -88,12 +88,13 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertCount(8, $columns);
         $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[2]), 'Sell must fit 12.9000 and 99,999.9999');
         $this->assertTrue(
-            str_contains($columns[3], '7ch') || $this->cssMinRem($columns[3]) >= 4.2,
+            str_contains($columns[3], '7ch') || $this->cssMinRem($columns[3]) >= 4.6,
             'Unit must be ~7ch so opening does not clip'
         );
         $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
         $this->assertGreaterThanOrEqual(7.5, $this->cssMinRem($columns[5]), 'Mat. name should show ~16–18 characters');
         $this->assertLessThanOrEqual(5.5, $this->cssMinRem($columns[7]), 'Used-by shrinks to ~5.5rem with +N');
+        $this->assertGreaterThanOrEqual(5.0, $this->cssMinRem($columns[7]));
 
         $this->assertMatchesRegularExpression('/\.sp-col-sell:has\(\.admin-info-tip\)\s+\.sp-input\s*\{[^}]*padding-right:\s*1\.85rem/', $css);
         $this->assertMatchesRegularExpression('/\.sp-table\s+\.sp-work\s*\{[^}]*padding:\s*0/', $css);

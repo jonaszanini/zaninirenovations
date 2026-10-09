@@ -40,8 +40,13 @@
 .sp-group { margin-bottom: 1rem; }
 /* Tighter card padding so Rate / work-item / trailing all fit at 1024. */
 @media (min-width: 901px) {
-  details.sp-group.admin-card { padding: 1rem 0.5rem; }
-  .sp-group .admin-table-scroll { overflow: visible; }
+  details.sp-group.admin-card { padding: 1rem 0.35rem; }
+  .sp-group .admin-table-scroll { overflow: clip; }
+  .sp-group .admin-table-scroll:has(.sp-search-wrap--hidden:focus-within),
+  .sp-group .admin-table-scroll:has(.sp-chip--more[aria-expanded="true"]),
+  .sp-group .admin-table-scroll:has(.admin-info-tip[aria-expanded="true"]) {
+    overflow: visible;
+  }
 }
 .sp-group__summary {
   font-weight: 600;
@@ -83,15 +88,15 @@
   .sp-table tbody tr {
     display: grid;
     grid-template-columns:
-      minmax(5rem, 1.15fr)
+      minmax(4rem, 1.1fr)
       5rem
       minmax(6.5rem, 6.75rem)
-      minmax(7ch, 8ch)
+      minmax(4.6rem, 5rem)
       minmax(6.5rem, 6.75rem)
       minmax(7.5rem, 8rem)
       2.5rem
-      5.5rem;
-    column-gap: 0.1rem;
+      5.25rem;
+    column-gap: 0.08rem;
     align-items: stretch;
     width: 100%;
   }
@@ -146,7 +151,10 @@
 .sp-col-name {
   overflow: hidden;
 }
-.sp-col-catalog,
+.sp-col-catalog {
+  overflow: hidden;
+}
+.sp-col-catalog:focus-within,
 .sp-col-consumers {
   overflow: visible;
 }
@@ -347,7 +355,9 @@
   width: 200px;
   left: 0;
   right: auto;
-  top: 100%;
+  top: 0;
+  height: 0;
+  overflow: hidden;
   z-index: 100;
   opacity: 0;
   pointer-events: none;
@@ -360,6 +370,9 @@
   }
 }
 .sp-search-wrap--hidden:focus-within {
+  top: 100%;
+  height: auto;
+  overflow: visible;
   opacity: 1;
   pointer-events: auto;
 }
