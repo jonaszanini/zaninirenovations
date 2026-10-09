@@ -6832,18 +6832,21 @@ body:has(.util-ra-guide) {
   }
 
   .util-ra--fullpage.is-more-open .util-ra-more-block--measure .util-ra-more-block__title,
-  .util-ra--fullpage.is-more-open .util-ra-more-block--measure .util-ra-tip:has([data-ra-calibrate-toggle]) {
+  .util-ra--fullpage.is-more-open .util-ra-more-block--measure [data-ra-calibrate-toggle] {
     grid-column: 1 / -1;
   }
 
   .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-more-block--measure .util-ra-scale-input {
     width: auto;
     min-width: 0;
+    grid-column: 1;
   }
 
   .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-more-block--measure [data-ra-apply-scale] {
     width: auto;
     padding-inline: 0.7rem;
+    grid-column: 2;
+    white-space: nowrap;
   }
 
   .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-templates-pop {
