@@ -1661,9 +1661,6 @@ a.admin-client-link:focus-visible {
 .admin-info-tip__bubble {
   pointer-events: auto;
 }
-.admin-form-group > label:has(.admin-info-tip),
-.admin-form-group-label:has(.admin-info-tip),
-.br-lw__head > label:has(.admin-info-tip),
 .admin-card > h3:has(.admin-info-tip) {
   display: flex;
   align-items: center;

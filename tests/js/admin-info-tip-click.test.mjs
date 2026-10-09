@@ -41,8 +41,8 @@ assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S
 assert.match(cpCss, /\.tm-chip-row\s*>\s*\.admin-checkbox-row/);
 assert.match(cpCss, /\.br-bath-light-row\s*\{[^}]*grid-template-columns:\s*1fr/);
 assert.match(cpCss, /\.br-main\s*\{[^}]*container-type:\s*inline-size/);
-assert.match(cpCss, /@container br-main \(min-width:\s*640px\)[\s\S]*\.br-bath-light-row[\s\S]*minmax\(max-content,\s*1fr\)\s+minmax\(96px,\s*140px\)/);
-assert.match(cpCss, /@container br-main \(min-width:\s*640px\)[\s\S]*\.br-tile-row__main[\s\S]*max-content minmax\(8\.5rem/);
+assert.match(cpCss, /@container br-main \(min-width:\s*720px\)[\s\S]*\.br-bath-light-row[\s\S]*minmax\(max-content,\s*1fr\)\s+minmax\(96px,\s*140px\)/);
+assert.match(cpCss, /@container br-main \(min-width:\s*720px\)[\s\S]*\.br-tile-row__main[\s\S]*max-content minmax\(8\.5rem/);
 assert.doesNotMatch(cpCss, /@media \(min-width:\s*1100px\)[\s\S]{0,200}\.br-bath-light-row/);
 assert.match(cpCss, /@media \(min-width:\s*700px\)\s*\{\s*\.br-bath-light-grid[\s\S]{0,80}1fr 1fr/);
 assert.match(source, /function glueLastTextNode/);
