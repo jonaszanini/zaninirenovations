@@ -8,8 +8,6 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '../..');
 const CSS = fs.readFileSync(path.join(ROOT, 'public/css/admin-utilities.css'), 'utf8');
 const KONVA_FILE = path.join(ROOT, 'node_modules/konva/konva.min.js');
-const KONVA_URL = 'https://unpkg.com/konva@9.3.22/konva.min.js';
-const KONVA_CACHE = path.join('/tmp', 'room-area-konva.min.js');
 const TEST_TIMEOUT_MS = 90000;
 
 function assertCssGeometry() {
@@ -31,45 +29,11 @@ function assertCssGeometry() {
   assert.ok(/height:\s*auto/.test(collapsed.slice(0, 220)), 'collapsed sheet height is auto');
 }
 
-function downloadFile(url, destPath) {
-  return new Promise((resolve, reject) => {
-    const dest = fs.createWriteStream(destPath);
-    const client = url.startsWith('https') ? require('https') : http;
-    const req = client.get(url, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        res.resume();
-        dest.close();
-        fs.unlink(destPath, () => {});
-        const next = new URL(res.headers.location, url).toString();
-        downloadFile(next, destPath).then(resolve, reject);
-        return;
-      }
-      if (res.statusCode !== 200) {
-        res.resume();
-        dest.close();
-        fs.unlink(destPath, () => {});
-        reject(new Error('Could not download ' + url + ': HTTP ' + res.statusCode));
-        return;
-      }
-      res.pipe(dest);
-      dest.on('finish', () => dest.close(resolve));
-    });
-    req.on('error', (err) => {
-      dest.close();
-      fs.unlink(destPath, () => {});
-      reject(err);
-    });
-  });
-}
-
 function resolveKonvaFile() {
   if (fs.existsSync(KONVA_FILE) && fs.statSync(KONVA_FILE).size > 1000) {
     return Promise.resolve(KONVA_FILE);
   }
-  if (fs.existsSync(KONVA_CACHE) && fs.statSync(KONVA_CACHE).size > 1000) {
-    return Promise.resolve(KONVA_CACHE);
-  }
-  return downloadFile(KONVA_URL, KONVA_CACHE).then(() => KONVA_CACHE);
+  return Promise.reject(new Error('Konva must be installed as a local devDependency (node_modules/konva). Tests do not download from a CDN.'));
 }
 
 function startStaticServer(konvaFile) {
@@ -77,6 +41,7 @@ function startStaticServer(konvaFile) {
   const fixturesDir = path.join(__dirname, 'fixtures');
   const fixture = path.join(fixturesDir, 'room-area-phone-geometry.html');
   const savedRoomFixture = path.join(fixturesDir, 'room-area-saved-room-fit.html');
+  const layoutChangeFixture = path.join(fixturesDir, 'room-area-layout-change-fit.html');
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
@@ -85,6 +50,8 @@ function startStaticServer(konvaFile) {
         file = fixture;
       } else if (urlPath === '/saved-room' || urlPath === '/saved-room.html') {
         file = savedRoomFixture;
+      } else if (urlPath === '/layout-change' || urlPath === '/layout-change.html') {
+        file = layoutChangeFixture;
       } else if (urlPath === '/vendor-test/konva.min.js') {
         file = konvaFile;
       } else {
@@ -92,6 +59,7 @@ function startStaticServer(konvaFile) {
       }
       const allowed = file === fixture
         || file === savedRoomFixture
+        || file === layoutChangeFixture
         || file === konvaFile
         || file.startsWith(publicDir + path.sep);
       if (!allowed) {
@@ -315,6 +283,64 @@ async function measureViewports() {
     assert.ok(
       fitted.room.width >= fitted.wrap.width * 0.72,
       'saved room fills most of the wrap width at 390: ' + fitted.room.width + ' vs ' + fitted.wrap.width
+    );
+
+    const layoutChangeHtml = fs.readFileSync(path.join(__dirname, 'fixtures/room-area-layout-change-fit.html'), 'utf8');
+    assert.ok(!/width:\s*900px/.test(layoutChangeHtml), 'layout-change fixture must not force 900px');
+    assert.ok(!/height:\s*640px/.test(layoutChangeHtml), 'layout-change fixture must not force 640px');
+
+    await page.setViewport({ width: 390, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await page.goto('http://127.0.0.1:' + port + '/layout-change', { waitUntil: 'load' });
+    await page.waitForFunction(() => {
+      const wrap = document.querySelector('[data-ra-canvas-wrap]');
+      const canvas = wrap && wrap.querySelector('canvas');
+      const world = window.Konva && window.Konva.stages && window.Konva.stages[0]
+        && window.Konva.stages[0].getLayers()[0]
+        && window.Konva.stages[0].getLayers()[0].getChildren()[0];
+      return !!(document.documentElement.classList.contains('is-geom-grown')
+        && wrap && wrap.getBoundingClientRect().width > 300
+        && wrap.getBoundingClientRect().width < 450
+        && canvas && canvas.width > 10
+        && world);
+    }, { timeout: 15000 });
+    await page.evaluate(() => new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }));
+    const relayout = await page.evaluate(() => {
+      const wrapEl = document.querySelector('[data-ra-canvas-wrap]');
+      const wrap = wrapEl.getBoundingClientRect();
+      const stage = window.Konva.stages[0];
+      const world = stage.getLayers()[0].getChildren()[0];
+      const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
+      const scale = world ? world.scaleX() : stage.scaleX();
+      const pos = world ? world.position() : stage.position();
+      const screen = verts.map((v) => ({
+        x: wrap.left + pos.x + v.x * scale,
+        y: wrap.top + pos.y + v.y * scale,
+      }));
+      const minX = Math.min.apply(null, screen.map((p) => p.x));
+      const maxX = Math.max.apply(null, screen.map((p) => p.x));
+      const minY = Math.min.apply(null, screen.map((p) => p.y));
+      const maxY = Math.max.apply(null, screen.map((p) => p.y));
+      return {
+        wrap: { left: wrap.left, right: wrap.right, top: wrap.top, bottom: wrap.bottom, width: wrap.width, height: wrap.height },
+        room: { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY },
+        scale,
+        grown: document.documentElement.classList.contains('is-geom-grown'),
+      };
+    });
+    assert.ok(relayout.grown, 'layout-change wrap must grow after the first fallback fit');
+    assert.ok(relayout.wrap.width >= 360 && relayout.wrap.width <= 420, 'layout-change wrap is a real 390 box: ' + relayout.wrap.width);
+    assert.ok(relayout.scale > 1.2 && relayout.scale < 2.85, 'layout-change refit after wrap grew, scale=' + relayout.scale);
+    assert.ok(
+      relayout.room.minX >= relayout.wrap.left - 2 && relayout.room.maxX <= relayout.wrap.right + 2,
+      'layout-change room stays inside wrap: ' + JSON.stringify(relayout)
+    );
+    const layoutCx = (relayout.wrap.left + relayout.wrap.right) / 2;
+    const layoutRoomCx = (relayout.room.minX + relayout.room.maxX) / 2;
+    assert.ok(
+      Math.abs(layoutRoomCx - layoutCx) <= 28,
+      'layout-change room is centred: roomCx=' + layoutRoomCx + ' wrapCx=' + layoutCx
     );
   } finally {
     await browser.close();

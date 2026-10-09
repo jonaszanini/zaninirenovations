@@ -63,6 +63,7 @@ jobs:
         run: |
           npm ci --no-fund
           node tests/js/room-area-lib.test.js
+          node tests/js/room-area-formula.test.js
           node tests/js/room-area-phone-geometry.test.js
 
       - name: Cut optimizer unit tests (no database)
@@ -208,6 +209,9 @@ jobs:
           php artisan test tests/Feature/Admin/BlogPostsIndexLayoutTest.php
           php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
           php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
+          php artisan test tests/Unit/Services/RoomAreaFormulaParserTest.php
+          php artisan test tests/Feature/Admin/RoomAreaBatch3PageTest.php
+          php artisan test tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
 
       - name: Blog posts live layout geometry
         env:

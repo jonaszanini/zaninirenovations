@@ -1029,6 +1029,229 @@
     return dedupeClose(out);
   }
 
+  var FORMULA_MAX_LENGTH = 200;
+  var FORMULA_MAX_DEPTH = 24;
+  var FORMULA_NAMES = {
+    floor_sf: true, floor: true, area_sqft: true, inside_area_sqft: true,
+    net_wall_sf: true, net_wall: true, net_wall_area_sqft: true, wall_sf: true, wall_area_sqft: true,
+    ceiling_sf: true, ceiling: true, ceiling_area_sqft: true,
+    perimeter_lf: true, perimeter: true,
+    baseboard_lf: true, baseboard: true,
+    casing_lf: true, casing: true,
+    door_count: true, doors: true,
+    window_count: true, windows: true,
+    opening_count: true, openings: true,
+    wall_height_ft: true, wall_height: true, height: true,
+    flooring_boxes: true, boxes: true,
+    flooring_waste_percent: true, waste: true
+  };
+
+  function formulaVariablesFromMetrics(metrics) {
+    metrics = metrics || {};
+    var floor = Number(metrics.area_sqft != null ? metrics.area_sqft : (metrics.inside_area_sqft != null ? metrics.inside_area_sqft : metrics.floor_sf)) || 0;
+    var inside = Number(metrics.inside_area_sqft != null ? metrics.inside_area_sqft : floor) || 0;
+    var netWall = Number(metrics.net_wall_area_sqft != null ? metrics.net_wall_area_sqft : (metrics.wall_area_sqft != null ? metrics.wall_area_sqft : metrics.net_wall_sf)) || 0;
+    var ceiling = Number(metrics.ceiling_area_sqft != null ? metrics.ceiling_area_sqft : (metrics.ceiling_sf != null ? metrics.ceiling_sf : floor)) || 0;
+    var perimeter = Number(metrics.perimeter_lf != null ? metrics.perimeter_lf : metrics.perimeter) || 0;
+    var baseboard = Number(metrics.baseboard_lf != null ? metrics.baseboard_lf : (metrics.baseboard != null ? metrics.baseboard : perimeter)) || 0;
+    var casing = Number(metrics.casing_lf != null ? metrics.casing_lf : metrics.casing) || 0;
+    var doors = Number(metrics.door_count != null ? metrics.door_count : metrics.doors) || 0;
+    var windows = Number(metrics.window_count != null ? metrics.window_count : metrics.windows) || 0;
+    var openings = Number(metrics.opening_count != null ? metrics.opening_count : metrics.openings) || 0;
+    var height = Number(metrics.wall_height_ft != null ? metrics.wall_height_ft : (metrics.wall_height != null ? metrics.wall_height : metrics.height));
+    if (!isFinite(height) || height <= 0) height = 8;
+    var boxes = Number(metrics.flooring_boxes != null ? metrics.flooring_boxes : metrics.boxes) || 0;
+    var waste = Number(metrics.flooring_waste_percent != null ? metrics.flooring_waste_percent : metrics.waste);
+    if (!isFinite(waste)) waste = 10;
+    return {
+      floor_sf: floor, floor: floor, area_sqft: floor, inside_area_sqft: inside,
+      net_wall_sf: netWall, net_wall: netWall, net_wall_area_sqft: netWall, wall_sf: netWall, wall_area_sqft: netWall,
+      ceiling_sf: ceiling, ceiling: ceiling, ceiling_area_sqft: ceiling,
+      perimeter_lf: perimeter, perimeter: perimeter,
+      baseboard_lf: baseboard, baseboard: baseboard,
+      casing_lf: casing, casing: casing,
+      door_count: doors, doors: doors,
+      window_count: windows, windows: windows,
+      opening_count: openings, openings: openings,
+      wall_height_ft: height, wall_height: height, height: height,
+      flooring_boxes: boxes, boxes: boxes,
+      flooring_waste_percent: waste, waste: waste
+    };
+  }
+
+  function tokenizeFormula(raw) {
+    var tokens = [];
+    var i = 0;
+    var len = raw.length;
+    while (i < len) {
+      var ch = raw.charAt(i);
+      if (/\s/.test(ch)) {
+        i += 1;
+        continue;
+      }
+      if ('+-*/(),'.indexOf(ch) !== -1) {
+        tokens.push({ type: ch, value: ch });
+        i += 1;
+        continue;
+      }
+      if (/[0-9]/.test(ch) || (ch === '.' && i + 1 < len && /[0-9]/.test(raw.charAt(i + 1)))) {
+        var start = i;
+        if (ch === '.') i += 1;
+        while (i < len && /[0-9]/.test(raw.charAt(i))) i += 1;
+        if (i < len && raw.charAt(i) === '.') {
+          i += 1;
+          if (i >= len || !/[0-9]/.test(raw.charAt(i))) {
+            throw new Error('Enter a number after the decimal point.');
+          }
+          while (i < len && /[0-9]/.test(raw.charAt(i))) i += 1;
+        }
+        if (i < len && (raw.charAt(i) === 'e' || raw.charAt(i) === 'E')) {
+          throw new Error('Scientific notation is not allowed. Write the full number.');
+        }
+        tokens.push({ type: 'number', value: raw.slice(start, i) });
+        continue;
+      }
+      if (/[A-Za-z_]/.test(ch)) {
+        var nameStart = i;
+        i += 1;
+        while (i < len && /[A-Za-z0-9_]/.test(raw.charAt(i))) i += 1;
+        tokens.push({ type: 'name', value: raw.slice(nameStart, i).toLowerCase() });
+        continue;
+      }
+      throw new Error('Unexpected “' + ch + '”. Use + − × ÷, brackets, and names like floor_sf.');
+    }
+    return tokens;
+  }
+
+  function formulaCall(name, args) {
+    if (name === 'ceil' || name === 'floor' || name === 'abs') {
+      if (args.length !== 1) throw new Error(name + ' needs one number inside the brackets.');
+      if (name === 'ceil') return Math.ceil(args[0]);
+      if (name === 'floor') return Math.floor(args[0]);
+      return Math.abs(args[0]);
+    }
+    if (name === 'round') {
+      if (args.length < 1 || args.length > 2) {
+        throw new Error('round needs one number, or a number and the digits to keep.');
+      }
+      var digits = args.length === 2 ? Math.round(args[1]) : 0;
+      if (digits < 0 || digits > 9) throw new Error('round digits must be between 0 and 9.');
+      return roundTo(args[0], digits);
+    }
+    if (name === 'min' || name === 'max') {
+      if (args.length < 2) throw new Error(name + ' needs at least two numbers.');
+      return name === 'min' ? Math.min.apply(null, args) : Math.max.apply(null, args);
+    }
+    throw new Error('Unknown function: ' + name + '. Use ceil, floor, round, min, max, or abs.');
+  }
+
+  function evaluateFormula(formula, variables) {
+    var raw = String(formula || '').trim();
+    if (!raw) return { ok: false, value: null, error: 'Enter a formula.' };
+    if (raw.length > FORMULA_MAX_LENGTH) return { ok: false, value: null, error: 'Formula is too long.' };
+    try {
+      var tokens = tokenizeFormula(raw);
+      var i = 0;
+      function done() { return i >= tokens.length; }
+      function is(type) { return !done() && tokens[i].type === type; }
+      function take() {
+        if (done()) throw new Error('The formula ended early. Check for a missing number.');
+        var tok = tokens[i];
+        i += 1;
+        return tok;
+      }
+      function parseExpr(depth) {
+        var value = parseTerm(depth);
+        while (is('+') || is('-')) {
+          var op = take().type;
+          var right = parseTerm(depth);
+          value = op === '+' ? value + right : value - right;
+        }
+        return value;
+      }
+      function parseTerm(depth) {
+        var value = parseUnary(depth);
+        while (is('*') || is('/')) {
+          var op = take().type;
+          var right = parseUnary(depth);
+          if (op === '/') {
+            if (Math.abs(right) < 1e-15) throw new Error('Division by zero.');
+            value = value / right;
+          } else {
+            value = value * right;
+          }
+        }
+        return value;
+      }
+      function parseUnary(depth) {
+        if (is('+')) { take(); return parseUnary(depth); }
+        if (is('-')) { take(); return -parseUnary(depth); }
+        return parsePrimary(depth);
+      }
+      function parsePrimary(depth) {
+        if (depth > FORMULA_MAX_DEPTH) throw new Error('Formula is too nested.');
+        if (is('number')) return Number(take().value);
+        if (is('(')) {
+          take();
+          var inner = parseExpr(depth + 1);
+          if (!is(')')) throw new Error('Missing ).');
+          take();
+          return inner;
+        }
+        if (is('name')) {
+          var name = take().value;
+          if (is('(')) {
+            take();
+            var args = [];
+            if (!is(')')) {
+              args.push(parseExpr(depth + 1));
+              while (is(',')) {
+                take();
+                args.push(parseExpr(depth + 1));
+              }
+            }
+            if (!is(')')) throw new Error('Missing ).');
+            take();
+            return formulaCall(name, args);
+          }
+          if (!Object.prototype.hasOwnProperty.call(variables, name)) {
+            throw new Error('Unknown name: ' + name + '. Use floor_sf, net_wall_sf, ceiling_sf, perimeter_lf, casing_lf, door_count, window_count, wall_height, or waste.');
+          }
+          return Number(variables[name]) || 0;
+        }
+        if (done()) throw new Error('The formula ended early. Check for a missing number.');
+        throw new Error('Use + − × ÷, brackets, and names like floor_sf.');
+      }
+      var value = parseExpr(0);
+      if (!done()) throw new Error('Unexpected text after the formula.');
+      if (!isFinite(value)) throw new Error('The formula did not produce a number.');
+      return { ok: true, value: value, error: null };
+    } catch (err) {
+      return { ok: false, value: null, error: err && err.message ? err.message : 'Could not read that formula.' };
+    }
+  }
+
+  function applyFormulaRounding(value, wholeUnits) {
+    var n = Number(value);
+    if (!isFinite(n)) return 0;
+    if (wholeUnits) return Math.max(0, Math.ceil(n - 1e-12));
+    return Math.max(0, roundTo(n, 2));
+  }
+
+  function evaluateAssemblyLine(line, metrics) {
+    var vars = formulaVariablesFromMetrics(metrics);
+    var result = evaluateFormula(line && line.formula, vars);
+    if (!result.ok) {
+      return { ok: false, qty: null, error: result.error, raw: null };
+    }
+    return {
+      ok: true,
+      qty: applyFormulaRounding(result.value, !!(line && line.whole_units)),
+      error: null,
+      raw: result.value
+    };
+  }
+
   return {
     INCHES_PER_FOOT: INCHES_PER_FOOT,
     FEET_TO_METERS: FEET_TO_METERS,
@@ -1104,6 +1327,11 @@
     objectHeightInches: objectHeightInches,
     objectType: objectType,
     normalizeDoorFace: normalizeDoorFace,
-    totalCasingLf: totalCasingLf
+    totalCasingLf: totalCasingLf,
+    evaluateFormula: evaluateFormula,
+    applyFormulaRounding: applyFormulaRounding,
+    formulaVariablesFromMetrics: formulaVariablesFromMetrics,
+    evaluateAssemblyLine: evaluateAssemblyLine,
+    FORMULA_NAMES: FORMULA_NAMES
   };
 }));

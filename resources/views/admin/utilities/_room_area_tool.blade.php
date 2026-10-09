@@ -41,7 +41,16 @@
     data-room-photo-update-template="{{ route('admin.utilities.room-area.rooms.photos.update', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
     data-room-photo-destroy-template="{{ route('admin.utilities.room-area.rooms.photos.destroy', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
     data-quote-room-template="{{ route('admin.utilities.room-area.quote') }}?layout=room:__ID__"
-    data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__">
+    data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__"
+    data-assemblies="{{ json_encode($assembliesJson ?? []) }}"
+    data-assemblies-url="{{ route('admin.utilities.room-area.assemblies.index') }}"
+    data-assembly-store-url="{{ route('admin.utilities.room-area.assemblies.store') }}"
+    data-assembly-update-template="{{ route('admin.utilities.room-area.assemblies.update', ['room_area_assembly' => '__ID__']) }}"
+    data-assembly-destroy-template="{{ route('admin.utilities.room-area.assemblies.destroy', ['room_area_assembly' => '__ID__']) }}"
+    data-room-assemblies-template="{{ route('admin.utilities.room-area.rooms.assemblies.sync', ['room_area_room' => '__ID__']) }}"
+    data-assembly-quote-room-template="{{ route('admin.utilities.room-area.assemblies.quote') }}?layout=room:__ID__"
+    data-assembly-quote-project-template="{{ route('admin.utilities.room-area.assemblies.quote') }}?layout=project:__ID__">
+    <script type="application/json" id="ra-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
 
     @if ($fullPage)
@@ -1001,6 +1010,9 @@
           <span class="util-ra-tip util-ra-tip--block" data-tooltip="Add site photos for this room.">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab" data-ra-side-tab="photos" role="tab" aria-selected="false" aria-label="Photos tab">Photos</button>
           </span>
+          <span class="util-ra-tip util-ra-tip--block" data-tooltip="Reusable kits and live quantities.">
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab" data-ra-side-tab="kits" role="tab" aria-selected="false" aria-label="Kits tab">Kits</button>
+          </span>
           <span class="util-ra-tip util-ra-tip--block" data-tooltip="Saved rooms, Quote, and Quote all.">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab" data-ra-side-tab="rooms" role="tab" aria-selected="false" aria-label="Rooms tab">Rooms</button>
           </span>
@@ -1216,6 +1228,85 @@
           <ul class="util-ra-photos__strip" data-ra-photos-strip hidden></ul>
         </section>
         </div>{{-- pane photos --}}
+
+        <div class="util-ra-side__pane" data-ra-side-pane="kits">
+        <section class="util-ra-kits" data-ra-kits aria-label="Kits">
+          <div class="util-ra-kits__head">
+            <h3 class="util-ra-kits__title">Kits</h3>
+            @include('admin.utilities._room_area_help_pop', [
+              'tipId' => 'kits',
+              'label' => 'About kits',
+              'text' => 'A kit is a reusable takeoff: Drywall wall, LVP floor, Baseboard. Formulas use this room’s numbers (floor sf, net wall sf, ceiling sf, perimeter, casing, door and window counts, wall height). Whole units round up. Link a catalogue item for price. Add to a quote only when you click Add kits to quote.',
+            ])
+            <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" data-ra-kit-new>New kit</button>
+          </div>
+          <p class="util-ra-kits__empty" data-ra-kit-empty hidden>No kits yet. Add Drywall wall, LVP floor, or Baseboard.</p>
+          <ul class="util-ra-kits__list" data-ra-kit-list></ul>
+          <div class="util-ra-kits__project" data-ra-kit-project hidden>
+            <p class="util-ra-kits__project-title">All rooms</p>
+            <ul class="util-ra-kits__project-list" data-ra-kit-project-list></ul>
+          </div>
+          <div class="util-ra-kits__quote">
+            <a class="admin-btn admin-btn--primary" data-ra-kit-quote hidden href="#">Add kits to quote</a>
+          </div>
+          <form class="util-ra-kit-editor" data-ra-kit-editor hidden>
+            <div class="util-ra-kit-editor__head">
+              <p class="util-ra-kit-editor__title" data-ra-kit-editor-title>New kit</p>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-kit-editor-cancel>Close</button>
+            </div>
+            <div class="admin-form-group">
+              <label for="ra-kit-name">Name</label>
+              <input class="admin-input" type="text" id="ra-kit-name" maxlength="120" data-ra-kit-name placeholder="Drywall wall">
+            </div>
+            <div class="admin-form-group">
+              <label for="ra-kit-notes">Notes</label>
+              <input class="admin-input" type="text" id="ra-kit-notes" maxlength="255" data-ra-kit-notes placeholder="Optional">
+            </div>
+            <ul class="util-ra-kit-editor__lines" data-ra-kit-lines></ul>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-kit-add-line>Add line</button>
+            <p class="util-ra-kit-editor__error" data-ra-kit-editor-error hidden></p>
+            <div class="util-ra-kit-editor__actions">
+              <button type="submit" class="admin-btn admin-btn--primary" data-ra-kit-save>Save kit</button>
+              <button type="button" class="admin-btn admin-btn--ghost" data-ra-kit-delete hidden>Delete</button>
+            </div>
+          </form>
+          <template id="ra-kit-line-template">
+            <li class="util-ra-kit-line" data-ra-kit-line>
+              <div class="util-ra-kit-line__row">
+                <div class="admin-form-group">
+                  <label>Item</label>
+                  <input class="admin-input" type="text" data-ra-kit-line-name placeholder="Drywall sheets">
+                </div>
+                <div class="admin-form-group util-ra-kit-line__unit">
+                  <label>Unit</label>
+                  <input class="admin-input" type="text" data-ra-kit-line-unit placeholder="sheet">
+                </div>
+              </div>
+              <div class="admin-form-group">
+                <label>Formula</label>
+                <input class="admin-input" type="text" data-ra-kit-line-formula placeholder="ceil(net_wall_sf * 1.1 / 32)" spellcheck="false">
+              </div>
+              <div class="util-ra-kit-line__row util-ra-kit-line__row--meta">
+                <label class="util-ra-kit-line__whole">
+                  <input type="checkbox" data-ra-kit-line-whole checked>
+                  Round up
+                </label>
+                <div class="admin-search-select util-ra-kit-line__mat" data-admin-search-select data-options-source="ra-catalog-options" data-search-fields='["label","name","sku","model","vendor","store_name"]' data-meta-keys='["sku","price_label"]' data-list-parent="body">
+                  <input type="hidden" class="admin-search-select__value" data-ra-kit-line-material value="">
+                  <div class="admin-search-select__row">
+                    <div class="admin-search-select__control">
+                      <input type="text" class="admin-input admin-search-select__input" placeholder="Catalogue item" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="Catalogue item">
+                      <button type="button" class="admin-search-select__clear" hidden aria-label="Clear selection"><span aria-hidden="true">&times;</span></button>
+                      <ul class="admin-search-select__list" role="listbox" hidden></ul>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-kit-line-remove aria-label="Remove line">Remove</button>
+              </div>
+            </li>
+          </template>
+        </section>
+        </div>{{-- pane kits --}}
 
         <div class="util-ra-side__pane" data-ra-side-pane="rooms">
       {{-- Saved rooms --}}

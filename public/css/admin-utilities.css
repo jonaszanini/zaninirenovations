@@ -3943,6 +3943,226 @@
   white-space: nowrap;
 }
 
+.util-ra-kits {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.util-ra-kits__head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.util-ra-kits__title,
+.util-ra-kits__project-title,
+.util-ra-kit-editor__title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--admin-heading);
+}
+
+.util-ra-kits__head .admin-btn {
+  margin-left: auto;
+}
+
+.util-ra-kits__empty,
+.util-ra-kits__project-title {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--admin-muted);
+}
+
+.util-ra-kits__list,
+.util-ra-kits__project-list,
+.util-ra-kit-editor__lines,
+.util-ra-kit-quote__lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.util-ra-kit {
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  border-radius: 8px;
+  padding: 0.45rem 0.5rem;
+  min-width: 0;
+}
+
+.util-ra-kit__head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.util-ra-kit__name {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--admin-heading);
+}
+
+.util-ra-kit__use {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: var(--admin-control-height);
+  font-size: 0.8rem;
+  color: var(--admin-text);
+}
+
+.util-ra-kit__use input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.util-ra-kit__lines {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.util-ra-kit__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--admin-text);
+}
+
+.util-ra-kit__line strong,
+.util-ra-kit-quote__lines strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-heading);
+}
+
+.util-ra-kit__line-err,
+.util-ra-kit-editor__error,
+.util-ra-kit-quote__err {
+  color: #b42318;
+  font-size: 0.78rem;
+}
+
+.util-ra-kit__mat {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--admin-muted);
+}
+
+.util-ra-kits__quote {
+  display: flex;
+}
+
+.util-ra-kit-editor {
+  border-top: 1px solid var(--admin-border);
+  padding-top: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.util-ra-kit-editor__head,
+.util-ra-kit-editor__actions,
+.util-ra-kit-line__row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.util-ra-kit-editor__head .admin-btn,
+.util-ra-kit-editor__actions .admin-btn {
+  min-height: var(--admin-control-height);
+}
+
+.util-ra-kit-line {
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 0.4rem;
+  background: var(--admin-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.util-ra-kit-line__row .admin-form-group {
+  flex: 1 1 7rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.util-ra-kit-line__unit {
+  flex: 0 0 4.5rem;
+}
+
+.util-ra-kit-line__whole {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: var(--admin-control-height);
+  font-size: 0.8rem;
+  color: var(--admin-text);
+}
+
+.util-ra-kit-line__mat {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.util-ra-kit-quote__kit {
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.5rem;
+  background: var(--admin-surface);
+}
+
+.util-ra-kit-quote__pick {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: var(--admin-control-height);
+}
+
+.util-ra-kit-quote__lines li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 0.6rem;
+  font-size: 0.86rem;
+  color: var(--admin-text);
+}
+
+.util-ra-kit-quote__mat {
+  flex: 1 1 100%;
+  font-size: 0.75rem;
+  color: var(--admin-muted);
+}
+
+.util-rq-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.util-rq-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
 .util-ra-live-area__exports {
   display: inline-flex;
   flex-wrap: wrap;
@@ -5669,14 +5889,14 @@ body:has(.util-ra--fullpage) {
 
 .util-ra-side__tabs .util-ra-tip {
   flex: 1 1 0;
-  min-width: 4.5rem;
+  min-width: 3.6rem;
 }
 
 .util-ra-side__tab {
   flex: 1 1 0;
-  min-width: 4.5rem;
-  padding-left: 0.4rem;
-  padding-right: 0.4rem;
+  min-width: 3.6rem;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
 }
 
 .util-ra-side__tab.is-active {

@@ -469,7 +469,8 @@
     typedHeading: 0,
     typedStart: null,
     typedWalls: [],
-    lightboxPhotoId: null
+    lightboxPhotoId: null,
+    assemblies: []
   };
 
   var resizeTimer = null;
@@ -7737,6 +7738,7 @@
     updateGroupChip();
     setSaveDisabled(!pixelsPerFoot());
     redrawFlooringDirection();
+    renderKits();
   }
 
   function renderWallNetList(walls) {
@@ -8100,6 +8102,7 @@
       fitViewport();
       requestAnimationFrame(refitCanvasToLayout);
       captureSavedSnapshot();
+      renderKits();
       setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
     });
   }
@@ -11109,6 +11112,7 @@
     raAll('[data-ra-zoom-reset]').forEach(function (btn) { btn.addEventListener('click', fitViewport); });
     bindSidePanel();
     bindHelpPops();
+    bindKits();
     bindFirstTip();
     if (els.roomName) {
       els.roomName.addEventListener('input', updateFullpageTitle);
@@ -11232,6 +11236,364 @@
     raAll('[data-ra-help-pop]').forEach(function (btn) {
       btn.setAttribute('aria-expanded', 'false');
     });
+  }
+
+  function kitQuoteRoomUrl(roomId) {
+    var tpl = root.getAttribute('data-assembly-quote-room-template') || '';
+    return tpl ? urlFromTemplate(tpl, roomId) : '';
+  }
+
+  function kitQuoteProjectUrl(projectId) {
+    var tpl = root.getAttribute('data-assembly-quote-project-template') || '';
+    return tpl ? urlFromTemplate(tpl, projectId) : '';
+  }
+
+  function formatKitQty(qty, unit, whole) {
+    if (qty == null || !isFinite(qty)) return '—';
+    var n = whole || Math.abs(qty - Math.round(qty)) < 0.001
+      ? String(Math.round(qty))
+      : fmt(qty, 2);
+    return unit ? n + ' ' + unit : n;
+  }
+
+  function evaluateKit(assembly, metrics) {
+    return (assembly.lines || []).map(function (line) {
+      var result = RA.evaluateAssemblyLine(line, metrics);
+      return {
+        id: line.id,
+        name: line.name,
+        unit: line.unit,
+        whole_units: !!line.whole_units,
+        qty: result.qty,
+        error: result.error,
+        material_name: line.material_name || ''
+      };
+    });
+  }
+
+  function renderKits() {
+    var list = root.querySelector('[data-ra-kit-list]');
+    if (!list) return;
+    var empty = root.querySelector('[data-ra-kit-empty]');
+    var quoteBtn = root.querySelector('[data-ra-kit-quote]');
+    var projectWrap = root.querySelector('[data-ra-kit-project]');
+    var projectList = root.querySelector('[data-ra-kit-project-list]');
+    var room = activeRoom();
+    var project = activeProject();
+    var attached = (room && room.assembly_ids) ? room.assembly_ids.map(Number) : [];
+    var metrics = hasAnyClosedPolygon() ? computeWallMetrics() : (room && room.metrics) || {};
+    list.innerHTML = '';
+    if (!state.assemblies.length) {
+      show(empty, true);
+      show(quoteBtn, false);
+      show(projectWrap, false);
+      return;
+    }
+    show(empty, false);
+    state.assemblies.forEach(function (kit) {
+      var li = document.createElement('li');
+      li.className = 'util-ra-kit';
+      li.setAttribute('data-ra-kit-id', String(kit.id));
+      var on = attached.indexOf(Number(kit.id)) !== -1;
+      var lines = evaluateKit(kit, metrics);
+      var linesHtml = lines.map(function (line) {
+        if (line.error) {
+          return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><span class="util-ra-kit__line-err">' + esc(line.error) + '</span></li>';
+        }
+        var extra = line.material_name ? '<span class="util-ra-kit__mat">' + esc(line.material_name) + '</span>' : '';
+        return '<li class="util-ra-kit__line"><span>' + esc(line.name) + extra + '</span><strong>' + esc(formatKitQty(line.qty, line.unit, line.whole_units)) + '</strong></li>';
+      }).join('');
+      li.innerHTML =
+        '<div class="util-ra-kit__head">' +
+          '<p class="util-ra-kit__name">' + esc(kit.name) + '</p>' +
+          '<label class="util-ra-kit__use">' +
+            '<input type="checkbox" data-ra-kit-use value="' + esc(String(kit.id)) + '"' + (on ? ' checked' : '') + (room ? '' : ' disabled') + '>' +
+            'Use on this room' +
+          '</label>' +
+          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-kit-edit="' + esc(String(kit.id)) + '">Edit</button>' +
+        '</div>' +
+        '<ul class="util-ra-kit__lines">' + linesHtml + '</ul>';
+      list.appendChild(li);
+    });
+
+    var canQuote = !!(room && room.id && attached.length);
+    if (quoteBtn) {
+      if (canQuote) {
+        quoteBtn.href = kitQuoteRoomUrl(room.id);
+        show(quoteBtn, true);
+      } else if (project && project.rooms && project.rooms.length >= 2 && project.rooms.some(function (r) { return (r.assembly_ids || []).length; })) {
+        quoteBtn.href = kitQuoteProjectUrl(project.id);
+        show(quoteBtn, true);
+      } else {
+        show(quoteBtn, false);
+      }
+    }
+
+    if (projectWrap && projectList && project && project.rooms && project.rooms.length >= 2) {
+      projectList.innerHTML = '';
+      var totals = {};
+      project.rooms.forEach(function (r) {
+        var ids = (r.assembly_ids || []).map(Number);
+        var roomMetrics = (state.editingRoomId === r.id && hasAnyClosedPolygon()) ? metrics : (r.metrics || {});
+        state.assemblies.forEach(function (kit) {
+          if (ids.indexOf(Number(kit.id)) === -1) return;
+          if (!totals[kit.id]) totals[kit.id] = { name: kit.name, lines: {} };
+          evaluateKit(kit, roomMetrics).forEach(function (line) {
+            var key = String(line.id || line.name);
+            if (!totals[kit.id].lines[key]) {
+              totals[kit.id].lines[key] = { name: line.name, unit: line.unit, whole: line.whole_units, qty: 0, error: null };
+            }
+            if (line.error) totals[kit.id].lines[key].error = line.error;
+            else if (line.qty != null) totals[kit.id].lines[key].qty += line.qty;
+          });
+        });
+      });
+      var keys = Object.keys(totals);
+      if (keys.length) {
+        keys.forEach(function (id) {
+          var kit = totals[id];
+          var item = document.createElement('li');
+          item.className = 'util-ra-kit';
+          item.innerHTML = '<p class="util-ra-kit__name">' + esc(kit.name) + '</p><ul class="util-ra-kit__lines">' +
+            Object.keys(kit.lines).map(function (key) {
+              var line = kit.lines[key];
+              if (line.error) return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><span class="util-ra-kit__line-err">' + esc(line.error) + '</span></li>';
+              return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><strong>' + esc(formatKitQty(line.qty, line.unit, line.whole)) + '</strong></li>';
+            }).join('') + '</ul>';
+          projectList.appendChild(item);
+        });
+        show(projectWrap, true);
+      } else {
+        show(projectWrap, false);
+      }
+    } else {
+      show(projectWrap, false);
+    }
+  }
+
+  function kitEditorLineMarkup(line) {
+    var tpl = document.getElementById('ra-kit-line-template');
+    if (!tpl) return null;
+    var node = tpl.content.firstElementChild.cloneNode(true);
+    if (line && line.id) node.setAttribute('data-line-id', String(line.id));
+    var name = node.querySelector('[data-ra-kit-line-name]');
+    var unit = node.querySelector('[data-ra-kit-line-unit]');
+    var formula = node.querySelector('[data-ra-kit-line-formula]');
+    var whole = node.querySelector('[data-ra-kit-line-whole]');
+    var mat = node.querySelector('[data-ra-kit-line-material]');
+    var search = node.querySelector('[data-admin-search-select]');
+    if (name) name.value = (line && line.name) || '';
+    if (unit) unit.value = (line && line.unit) || '';
+    if (formula) formula.value = (line && line.formula) || '';
+    if (whole) whole.checked = !line || line.whole_units !== false;
+    if (mat) mat.value = (line && line.material_id) ? String(line.material_id) : '';
+    if (search && line && line.material_name) {
+      var input = search.querySelector('.admin-search-select__input');
+      if (input) input.value = line.material_name;
+    }
+    if (search && window.AdminSearchSelect) {
+      window.AdminSearchSelect.init(search);
+    }
+    return node;
+  }
+
+  function collectKitEditorLines() {
+    var rows = [];
+    root.querySelectorAll('[data-ra-kit-lines] [data-ra-kit-line]').forEach(function (row) {
+      var name = ((row.querySelector('[data-ra-kit-line-name]') || {}).value || '').trim();
+      var formula = ((row.querySelector('[data-ra-kit-line-formula]') || {}).value || '').trim();
+      if (!name && !formula) return;
+      var materialEl = row.querySelector('[data-ra-kit-line-material]');
+      var materialId = materialEl && materialEl.value ? parseInt(materialEl.value, 10) : null;
+      rows.push({
+        id: row.getAttribute('data-line-id') ? parseInt(row.getAttribute('data-line-id'), 10) : null,
+        name: name,
+        formula: formula,
+        unit: ((row.querySelector('[data-ra-kit-line-unit]') || {}).value || 'ea').trim() || 'ea',
+        whole_units: !!(row.querySelector('[data-ra-kit-line-whole]') || {}).checked,
+        material_id: materialId > 0 ? materialId : null
+      });
+    });
+    return rows;
+  }
+
+  function openKitEditor(kit) {
+    var form = root.querySelector('[data-ra-kit-editor]');
+    if (!form) return;
+    form.setAttribute('data-kit-id', kit && kit.id ? String(kit.id) : '');
+    var title = root.querySelector('[data-ra-kit-editor-title]');
+    if (title) title.textContent = kit && kit.id ? 'Edit kit' : 'New kit';
+    var name = root.querySelector('[data-ra-kit-name]');
+    var notes = root.querySelector('[data-ra-kit-notes]');
+    if (name) name.value = (kit && kit.name) || '';
+    if (notes) notes.value = (kit && kit.notes) || '';
+    var lines = root.querySelector('[data-ra-kit-lines]');
+    if (lines) {
+      lines.innerHTML = '';
+      var source = (kit && kit.lines && kit.lines.length) ? kit.lines : [{ name: '', formula: '', unit: '', whole_units: true }];
+      source.forEach(function (line) {
+        var node = kitEditorLineMarkup(line);
+        if (node) lines.appendChild(node);
+      });
+    }
+    var del = root.querySelector('[data-ra-kit-delete]');
+    show(del, !!(kit && kit.id));
+    var err = root.querySelector('[data-ra-kit-editor-error]');
+    show(err, false);
+    show(form, true);
+    if (name) name.focus();
+  }
+
+  function closeKitEditor() {
+    var form = root.querySelector('[data-ra-kit-editor]');
+    show(form, false);
+  }
+
+  function setKitEditorError(message) {
+    var err = root.querySelector('[data-ra-kit-editor-error]');
+    if (!err) return;
+    err.textContent = message || '';
+    show(err, !!message);
+  }
+
+  function applyAssembliesPayload(assemblies) {
+    state.assemblies = assemblies || [];
+    renderKits();
+  }
+
+  function saveKitEditor(e) {
+    if (e) e.preventDefault();
+    var form = root.querySelector('[data-ra-kit-editor]');
+    var name = ((root.querySelector('[data-ra-kit-name]') || {}).value || '').trim();
+    var notes = ((root.querySelector('[data-ra-kit-notes]') || {}).value || '').trim();
+    var lines = collectKitEditorLines();
+    if (!name) {
+      setKitEditorError('Enter a kit name.');
+      return;
+    }
+    if (!lines.length) {
+      setKitEditorError('Add at least one material line.');
+      return;
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var check = RA.evaluateFormula(lines[i].formula, RA.formulaVariablesFromMetrics({
+        area_sqft: 100, net_wall_area_sqft: 320, ceiling_area_sqft: 100,
+        perimeter_lf: 40, door_count: 1, window_count: 1, wall_height_ft: 8,
+        flooring_boxes: 6, flooring_waste_percent: 10
+      }));
+      if (!check.ok) {
+        setKitEditorError(lines[i].name + ': ' + check.error);
+        return;
+      }
+    }
+    var id = form && form.getAttribute('data-kit-id');
+    var url = id
+      ? urlFromTemplate(root.getAttribute('data-assembly-update-template') || '', id)
+      : (root.getAttribute('data-assembly-store-url') || '');
+    fetch(url, {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+      body: JSON.stringify({ name: name, notes: notes || null, lines: lines })
+    }).then(function (res) { return RA.readFetchJson(res, 'Could not save that kit.'); })
+      .then(function (data) {
+        if (data.assemblies) applyAssembliesPayload(data.assemblies);
+        closeKitEditor();
+        setFeedback('Kit saved.', false);
+      })
+      .catch(function (err) {
+        setKitEditorError(err.message || 'Could not save that kit.');
+      });
+  }
+
+  function deleteCurrentKit() {
+    var form = root.querySelector('[data-ra-kit-editor]');
+    var id = form && form.getAttribute('data-kit-id');
+    if (!id) return;
+    if (!window.confirm('Delete this kit? Rooms that use it will drop it.')) return;
+    fetch(urlFromTemplate(root.getAttribute('data-assembly-destroy-template') || '', id), {
+      method: 'DELETE',
+      headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() }
+    }).then(function (res) { return RA.readFetchJson(res, 'Could not delete that kit.'); })
+      .then(function (data) {
+        if (data.assemblies) applyAssembliesPayload(data.assemblies);
+        closeKitEditor();
+        setFeedback('Kit deleted.', false);
+      })
+      .catch(function (err) {
+        setKitEditorError(err.message || 'Could not delete that kit.');
+      });
+  }
+
+  function syncRoomKits(ids) {
+    var room = activeRoom();
+    if (!room) return;
+    fetch(urlFromTemplate(root.getAttribute('data-room-assemblies-template') || '', room.id), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+      body: JSON.stringify({ assembly_ids: ids })
+    }).then(function (res) { return RA.readFetchJson(res, 'Could not update kits for this room.'); })
+      .then(function (data) {
+        room.assembly_ids = data.assembly_ids || ids;
+        var project = activeProject();
+        if (project) {
+          var idx = project.rooms.findIndex(function (r) { return r.id === room.id; });
+          if (idx >= 0) project.rooms[idx].assembly_ids = room.assembly_ids;
+        }
+        renderKits();
+      })
+      .catch(function (err) {
+        setFeedback(err.message || 'Could not update kits for this room.', true);
+        renderKits();
+      });
+  }
+
+  function bindKits() {
+    state.assemblies = parseJson('data-assemblies', []);
+    renderKits();
+    var list = root.querySelector('[data-ra-kit-list]');
+    if (list) {
+      list.addEventListener('change', function (e) {
+        var box = e.target.closest('[data-ra-kit-use]');
+        if (!box) return;
+        var ids = [];
+        list.querySelectorAll('[data-ra-kit-use]:checked').forEach(function (el) {
+          ids.push(parseInt(el.value, 10));
+        });
+        syncRoomKits(ids);
+      });
+      list.addEventListener('click', function (e) {
+        var edit = e.target.closest('[data-ra-kit-edit]');
+        if (!edit) return;
+        var id = parseInt(edit.getAttribute('data-ra-kit-edit'), 10);
+        var kit = state.assemblies.find(function (row) { return Number(row.id) === id; });
+        if (kit) openKitEditor(kit);
+      });
+    }
+    var neu = root.querySelector('[data-ra-kit-new]');
+    if (neu) neu.addEventListener('click', function () { openKitEditor(null); });
+    var cancel = root.querySelector('[data-ra-kit-editor-cancel]');
+    if (cancel) cancel.addEventListener('click', closeKitEditor);
+    var form = root.querySelector('[data-ra-kit-editor]');
+    if (form) form.addEventListener('submit', saveKitEditor);
+    var addLine = root.querySelector('[data-ra-kit-add-line]');
+    if (addLine) {
+      addLine.addEventListener('click', function () {
+        var lines = root.querySelector('[data-ra-kit-lines]');
+        var node = kitEditorLineMarkup(null);
+        if (lines && node) lines.appendChild(node);
+      });
+    }
+    var lines = root.querySelector('[data-ra-kit-lines]');
+    if (lines) {
+      lines.addEventListener('click', function (e) {
+        var remove = e.target.closest('[data-ra-kit-line-remove]');
+        if (!remove) return;
+        var row = remove.closest('[data-ra-kit-line]');
+        if (row && lines.querySelectorAll('[data-ra-kit-line]').length > 1) row.remove();
+      });
+    }
+    var del = root.querySelector('[data-ra-kit-delete]');
+    if (del) del.addEventListener('click', deleteCurrentKit);
   }
 
   function bindHelpPops() {

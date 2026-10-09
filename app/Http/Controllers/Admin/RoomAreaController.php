@@ -7,10 +7,12 @@ use App\Models\ClientProject;
 use App\Models\RoomAreaPhoto;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
+use App\Services\RoomAreaAssemblyDefaults;
 use App\Services\RoomAreaCanvasData;
 use App\Services\RoomAreaFinishMath;
 use App\Services\RoomAreaLayoutQuoteService;
 use App\Services\RoomAreaPhotoStorage;
+use App\Support\MaterialCatalogPickerOptions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -24,6 +26,7 @@ class RoomAreaController extends Controller
         $projects = RoomAreaProject::query()
             ->with([
                 'rooms.photos',
+                'rooms.assemblies',
                 'clientProject:id,name',
             ])
             ->orderBy('name')
@@ -35,11 +38,11 @@ class RoomAreaController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'client_name']);
 
-        return view('admin.utilities.room_area', [
+        return view('admin.utilities.room_area', array_merge([
             'projects' => $projects,
             'clientProjects' => $clientProjects,
             'projectsJson' => $projects->map(fn (RoomAreaProject $project) => $this->projectPayload($project))->values(),
-        ]);
+        ], $this->assemblyPageData()));
     }
 
     public function clientProject(ClientProject $client_project, ?RoomAreaRoom $room_area_room = null)
@@ -55,6 +58,7 @@ class RoomAreaController extends Controller
             ->where('client_project_id', $client_project->id)
             ->with([
                 'rooms.photos',
+                'rooms.assemblies',
                 'clientProject:id,name',
             ])
             ->orderBy('name')
@@ -75,7 +79,7 @@ class RoomAreaController extends Controller
 
         $pageTitle = $room_area_room?->name ?: 'Room Area';
 
-        return view('admin.client_projects.room_area', [
+        return view('admin.client_projects.room_area', array_merge([
             'clientProject' => $client_project,
             'projects' => $projects,
             'clientProjects' => $clientProjects,
@@ -83,7 +87,7 @@ class RoomAreaController extends Controller
             'pageTitle' => $pageTitle,
             'backUrl' => route('admin.client-projects.show', $client_project).'#utilities',
             'initialRoomId' => $room_area_room?->id,
-        ]);
+        ], $this->assemblyPageData()));
     }
 
     public function guide(Request $request)
@@ -285,7 +289,7 @@ class RoomAreaController extends Controller
         return response()->json([
             'ok' => true,
             'room' => $this->roomPayload($room, $canvasData),
-            'project' => $this->projectPayload($room_area_project->fresh(['clientProject', 'rooms.photos'])),
+            'project' => $this->projectPayload($room_area_project->fresh(['clientProject', 'rooms.photos', 'rooms.assemblies'])),
         ]);
     }
 
@@ -393,7 +397,7 @@ class RoomAreaController extends Controller
         return response()->json([
             'ok' => true,
             'room' => $this->roomPayload($room_area_room->fresh(), $canvasData),
-            'project' => $this->projectPayload($room_area_room->project->fresh(['clientProject', 'rooms.photos'])),
+            'project' => $this->projectPayload($room_area_room->project->fresh(['clientProject', 'rooms.photos', 'rooms.assemblies'])),
         ]);
     }
 
@@ -777,6 +781,29 @@ class RoomAreaController extends Controller
             'photos' => $room->relationLoaded('photos')
                 ? $room->photos->map(fn (RoomAreaPhoto $photo) => $this->photoPayload($photo))->values()->all()
                 : [],
+            'assembly_ids' => $room->relationLoaded('assemblies')
+                ? $room->assemblies->pluck('id')->values()->all()
+                : $room->assemblies()->pluck('room_area_assemblies.id')->all(),
+        ];
+    }
+
+    /**
+     * @return array{assembliesJson: list<array<string, mixed>>, catalogPickerOptions: list<array<string, mixed>>}
+     */
+    private function assemblyPageData(): array
+    {
+        app(RoomAreaAssemblyDefaults::class)->ensure();
+
+        return [
+            'assembliesJson' => \App\Models\RoomAreaAssembly::query()
+                ->with('lines.material')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (\App\Models\RoomAreaAssembly $assembly) => $assembly->toEditorArray())
+                ->values()
+                ->all(),
+            'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
         ];
     }
 

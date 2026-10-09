@@ -6,6 +6,7 @@ use App\Services\RoomAreaCanvasData;
 use App\Services\RoomAreaFinishMath;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RoomAreaRoom extends Model
@@ -111,5 +112,11 @@ class RoomAreaRoom extends Model
     public function photos(): HasMany
     {
         return $this->hasMany(RoomAreaPhoto::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function assemblies(): BelongsToMany
+    {
+        return $this->belongsToMany(RoomAreaAssembly::class, 'room_area_room_assemblies')
+            ->withTimestamps();
     }
 }

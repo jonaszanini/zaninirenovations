@@ -1449,6 +1449,41 @@ html.admin-dark .util-ra-finish__dir .admin-btn.is-active {
   border-color: var(--admin-primary);
 }
 
+html.admin-dark .util-ra-kits,
+html.admin-dark .util-ra-kit,
+html.admin-dark .util-ra-kit-line,
+html.admin-dark .util-ra-kit-quote,
+html.admin-dark .util-ra-kit-quote__kit {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-kit__name,
+html.admin-dark .util-ra-kits__title,
+html.admin-dark .util-ra-kit-editor__title,
+html.admin-dark .util-ra-kit__line strong,
+html.admin-dark .util-ra-kit-quote__lines strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-kits__empty,
+html.admin-dark .util-ra-kit__mat,
+html.admin-dark .util-ra-kit-quote__mat,
+html.admin-dark .util-ra-kits__project-title {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-kit-line {
+  background: var(--admin-elevated);
+}
+
+html.admin-dark .util-ra-kit__line-err,
+html.admin-dark .util-ra-kit-editor__error,
+html.admin-dark .util-ra-kit-quote__err {
+  color: #fca5a5;
+}
+
 html.admin-dark .util-ra-live-area__exports .admin-btn--ghost {
   background: var(--admin-surface);
   color: var(--admin-heading);
