@@ -99,10 +99,17 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             $js
         );
         $this->assertStringNotContainsString("var cur = input.value.replace(/,/g, '');", $js);
-        $this->assertStringContainsString('remaining.indexOf(ev.key)', $js);
+        $this->assertStringContainsString("if (remaining.indexOf('.') !== -1)", $js);
+        $this->assertDoesNotMatchRegularExpression(
+            "/ev\.key === '\.' \|\| ev\.key === ','/",
+            $js
+        );
         $harness = file_get_contents(base_path('tests/Feature/Admin/money-direct-entry.js'));
         $this->assertIsString($harness);
         $this->assertStringContainsString("keyboard.type('1.234,56'", $harness);
+        $this->assertStringContainsString("keyboard.type('1,234,567.89'", $harness);
+        $this->assertStringContainsString("keyboard.type('12,345,678'", $harness);
+        $this->assertStringContainsString("keyboard.type('1,2,3'", $harness);
         $this->assertDoesNotMatchRegularExpression(
             "/cp-kp-mixed[\s\S]{0,240}input\.value\s*=\s*['\"]1\.234,56['\"]/",
             $harness
@@ -319,6 +326,15 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertFalse((bool) ($report['keypress']['mixedSubmit'] ?? true));
         $this->assertFalse((bool) ($report['keypress']['usThousands']['invalid'] ?? true));
         $this->assertEqualsWithDelta(1234.56, $this->parseMoney($report['keypress']['usThousands']['value'] ?? ''), 0.0001);
+        $this->assertFalse((bool) ($report['keypress']['usMillions']['invalid'] ?? true));
+        $this->assertEqualsWithDelta(1234567.89, $this->parseMoney($report['keypress']['usMillions']['value'] ?? ''), 0.0001);
+        $this->assertFalse((bool) ($report['keypress']['usInteger']['invalid'] ?? true));
+        $this->assertEqualsWithDelta(12345678.0, $this->parseMoney($report['keypress']['usInteger']['value'] ?? ''), 0.0001);
+        $this->assertSame('1,2,3', $report['keypress']['ambigCommasTyped']['value'] ?? '');
+        $this->assertSame('1,2,3', $report['keypress']['ambigCommasBlur']['value'] ?? '');
+        $this->assertNotSame('1.23', $report['keypress']['ambigCommasBlur']['value'] ?? '');
+        $this->assertTrue((bool) ($report['keypress']['ambigCommasBlur']['invalid'] ?? false));
+        $this->assertFalse((bool) ($report['keypress']['ambigCommasSubmit'] ?? true));
 
         $this->assertIsArray($report['labourRateKeypress'] ?? null);
         $this->assertSame(0, (int) ($report['labourRateKeypress']['failed'] ?? 1));

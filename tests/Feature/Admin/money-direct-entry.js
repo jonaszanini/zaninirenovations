@@ -317,7 +317,33 @@ function sleep(ms) {
     await page.keyboard.press('Tab');
     const usThousands = await readKeypressField('cp-kp-us');
 
-    return { typedMinus, gasComma, halfUp, allowMinus, mixedTyped, mixedBlur, mixedSubmit, usThousands };
+    await mountKeypressField('cp-kp-us-long', 2);
+    await page.click('#cp-kp-us-long');
+    await page.keyboard.type('1,234,567.89', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const usMillions = await readKeypressField('cp-kp-us-long');
+
+    await mountKeypressField('cp-kp-us-int', 2);
+    await page.click('#cp-kp-us-int');
+    await page.keyboard.type('12,345,678', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const usInteger = await readKeypressField('cp-kp-us-int');
+
+    await mountKeypressField('cp-kp-ambig-commas', 2);
+    await page.click('#cp-kp-ambig-commas');
+    await page.keyboard.type('1,2,3', { delay: 20 });
+    const ambigCommasTyped = await readKeypressField('cp-kp-ambig-commas');
+    await page.keyboard.press('Tab');
+    const ambigCommasBlur = await readKeypressField('cp-kp-ambig-commas');
+    const ambigCommasSubmit = await page.evaluate(() => {
+      const el = document.getElementById('cp-kp-ambig-commas');
+      return !!(el && el.form && el.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    });
+
+    return {
+      typedMinus, gasComma, halfUp, allowMinus, mixedTyped, mixedBlur, mixedSubmit, usThousands,
+      usMillions, usInteger, ambigCommasTyped, ambigCommasBlur, ambigCommasSubmit,
+    };
   }
 
   async function resaveInvoiceUntouched(url) {
@@ -725,6 +751,21 @@ function sleep(ms) {
     }
     if (!kp.usThousands || kp.usThousands.invalid || Math.abs(parseFloat(String(kp.usThousands.value || '').replace(/,/g, '')) - 1234.56) > 0.0001) {
       throw new Error('Keypress 1,234.56 failed: ' + JSON.stringify(kp.usThousands));
+    }
+    if (!kp.usMillions || kp.usMillions.invalid || Math.abs(parseFloat(String(kp.usMillions.value || '').replace(/,/g, '')) - 1234567.89) > 0.0001) {
+      throw new Error('Keypress 1,234,567.89 failed: ' + JSON.stringify(kp.usMillions));
+    }
+    if (!kp.usInteger || kp.usInteger.invalid || Math.abs(parseFloat(String(kp.usInteger.value || '').replace(/,/g, '')) - 12345678) > 0.0001) {
+      throw new Error('Keypress 12,345,678 failed: ' + JSON.stringify(kp.usInteger));
+    }
+    if (!kp.ambigCommasTyped || String(kp.ambigCommasTyped.value) !== '1,2,3') {
+      throw new Error('Keypress 1,2,3 dropped a comma: ' + JSON.stringify(kp.ambigCommasTyped));
+    }
+    if (!kp.ambigCommasBlur || !kp.ambigCommasBlur.invalid || String(kp.ambigCommasBlur.value) !== '1,2,3' || String(kp.ambigCommasBlur.value) === '1.23') {
+      throw new Error('Typed 1,2,3 was rewritten or silently saved: ' + JSON.stringify(kp.ambigCommasBlur));
+    }
+    if (kp.ambigCommasSubmit) {
+      throw new Error('Typed 1,2,3 was submittable');
     }
     const labour = report.labourRateKeypress || {};
     if ((labour.failed || 0) > 0) {
