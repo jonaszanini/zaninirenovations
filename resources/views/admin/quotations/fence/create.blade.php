@@ -62,9 +62,10 @@
   }
   $priceDeltaAmountLabel = '';
   if (is_array($priceDelta) && abs((float) ($priceDelta['delta'] ?? 0)) >= 0.01) {
+      $delta = (float) ($priceDelta['delta'] ?? 0);
       $priceDeltaAmountLabel = ' (unit prices '
-          .(((float) ($priceDelta['delta'] ?? 0)) >= 0 ? '+' : '')
-          .\App\Models\ClientProject::formatMoney((float) ($priceDelta['delta'] ?? 0))
+          .($delta < 0 ? '-' : '+')
+          .\App\Models\ClientProject::formatMoney(abs($delta))
           .')';
   }
   $frozenUnitPrices = $isEdit
@@ -870,10 +871,11 @@
     return value === true || value === 1 || value === '1';
   }
 
-  // Must match App\Support\FenceSideFlags::connectedToPrevious.
+  // Saved null is off (legacy PHP). Missing/undefined on a new run is on.
   function connectedOn(value, index) {
     if (index <= 0) return false;
-    if (value === undefined || value === null) return true;
+    if (value === undefined) return true;
+    if (value === null) return false;
     return flagOn(value);
   }
 

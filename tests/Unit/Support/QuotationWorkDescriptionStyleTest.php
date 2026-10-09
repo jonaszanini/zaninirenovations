@@ -76,5 +76,17 @@ class QuotationWorkDescriptionStyleTest extends TestCase
             'Behr Premium Plus',
             QuotationWorkDescriptionStyle::apply('Paint is Behr Premium Plus on the walls.')
         );
+        $this->assertSame(
+            'The fence has two gates that both swing inward. Posts are 6x6, set in concrete.',
+            QuotationWorkDescriptionStyle::apply('The fence has two gates that both swing inward. Posts are 6x6, set in concrete.')
+        );
+        $this->assertSame(
+            'About 120 sq. ft. with 16 in. on centre, e.g. around the island.',
+            QuotationWorkDescriptionStyle::apply('About 120 sq. ft. with 16 in. on centre, e.g. around the island.')
+        );
+        $this->assertSame(
+            'Build a A-frame shed. Approx. 8 ft. high.',
+            QuotationWorkDescriptionStyle::apply('Build a A-frame shed. approx. 8 ft. high.')
+        );
     }
 }

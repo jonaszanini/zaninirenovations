@@ -14,8 +14,10 @@ class FenceQuotationFormRestoreTest extends TestCase
         $this->assertStringContainsString('function connectedOn(', $blade);
         $this->assertStringContainsString("value === '1'", $blade);
         $this->assertStringContainsString('FenceSideFlags::normaliseSides', $blade);
-        $this->assertStringContainsString('Must match App\\Support\\FenceSideFlags::connectedToPrevious', $blade);
+        $this->assertStringContainsString('Saved null is off (legacy PHP)', $blade);
         $this->assertStringContainsString('$priceDeltaAmountLabel', $blade);
+        $this->assertStringContainsString("formatMoney(abs(\$delta))", $blade);
+        $this->assertStringContainsString("\$delta < 0 ? '-' : '+'", $blade);
         $this->assertStringNotContainsString('@endif.', $blade);
 
         $this->assertStringContainsString('flagOn(side.already_have_post_left)', $blade);
@@ -46,7 +48,7 @@ const cases = [
   [flagOn(null), false],
   [connectedOn(null, 0), false],
   [connectedOn(undefined, 0), false],
-  [connectedOn(null, 1), true],
+  [connectedOn(null, 1), false],
   [connectedOn(undefined, 1), true],
   [connectedOn('0', 1), false],
   [connectedOn(0, 1), false],

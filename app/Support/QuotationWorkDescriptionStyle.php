@@ -116,7 +116,6 @@ TXT;
 
         // Drop leftover sales-close clauses without touching earlier facts.
         $text = preg_replace('/\bthat enhances?\b[^.]*\.?/iu', '', $text) ?? $text;
-        $text = preg_replace('/\bthat both\b[^.]*\.?/iu', '', $text) ?? $text;
         $text = preg_replace('/\bto deliver a\s*(?:job\s*)?\.?/iu', '.', $text) ?? $text;
         $text = preg_replace('/\bpremium\s+(?=fence|materials|components|pickets|boards)/iu', '', $text) ?? $text;
 
@@ -137,7 +136,7 @@ TXT;
         $text = preg_replace('/^```[a-zA-Z0-9_-]*\s*/u', '', $text) ?? $text;
         $text = preg_replace('/\s*```$/u', '', $text) ?? $text;
 
-        $text = preg_replace('/\b(a|an|the)\s+\1\b/iu', '$1', $text) ?? $text;
+        $text = preg_replace('/\b(a|an|the)\s+\1\b/u', '$1', $text) ?? $text;
         $text = preg_replace('/[ \t]+/u', ' ', $text) ?? $text;
         $text = preg_replace('/\s+,/u', ',', $text) ?? $text;
         $text = preg_replace('/\s+;/u', ';', $text) ?? $text;
@@ -152,14 +151,31 @@ TXT;
             return '';
         }
 
-        $text = preg_replace_callback(
-            '/(?:^|[.!?]\s+)(\p{Ll})/u',
-            static function (array $m): string {
-                return substr($m[0], 0, -strlen($m[1])).mb_strtoupper($m[1]);
-            },
-            $text
-        ) ?? $text;
+        $text = self::recapitalizeSentenceStarts($text);
 
         return trim($text);
+    }
+
+    /**
+     * Capitalize the start of a sentence. Periods that belong to known
+     * abbreviations (sq., ft., in., e.g., i.e., …) are not sentence ends.
+     */
+    private static function recapitalizeSentenceStarts(string $text): string
+    {
+        if (! preg_match_all('/(?:^|[.!?]\s+)(\p{Ll})/u', $text, $matches, PREG_OFFSET_CAPTURE | PREG_SET_ORDER)) {
+            return $text;
+        }
+
+        for ($i = count($matches) - 1; $i >= 0; $i--) {
+            $letter = $matches[$i][1][0];
+            $letterPos = (int) $matches[$i][1][1];
+            $before = substr($text, 0, $letterPos);
+            if (preg_match('/(?:sq|ft|in|approx|etc|no|vs|e\.g|i\.e)\.\s*$/iu', $before)) {
+                continue;
+            }
+            $text = substr($text, 0, $letterPos).mb_strtoupper($letter).substr($text, $letterPos + strlen($letter));
+        }
+
+        return $text;
     }
 }

@@ -26,6 +26,13 @@ class ClientProjectQuotation extends Model
 
     public const HST_RATE = 0.13;
 
+    /**
+     * Quotes created at/after this get a taxed Labour line when commute or
+     * debris has no labour row. Earlier saved quotes keep the old fold
+     * (non-material amounts land on the first taxed line, often Material).
+     */
+    public const TAXED_LABOUR_FOLD_FROM = '2026-10-09 03:00:00';
+
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_SENT = 'sent';
@@ -771,8 +778,8 @@ class ClientProjectQuotation extends Model
             $items[] = [
                 'description' => 'Labour',
                 'amount' => 0.0,
-                'apply_hst' => false,
-                'hst_included' => true,
+                'apply_hst' => true,
+                'hst_included' => false,
             ];
             $indexes = $this->commuteLabourLineIndexes($items);
             if ($indexes === []) {
@@ -826,7 +833,31 @@ class ClientProjectQuotation extends Model
             }
         }
 
+        if ($indexes === [] && $this->usesLegacyPdfNonMaterialFold()) {
+            $fallback = $this->commuteMergeTargetIndex($items);
+            if ($fallback !== null) {
+                return [$fallback];
+            }
+        }
+
         return $indexes;
+    }
+
+    /**
+     * Saved quotes from before {@see TAXED_LABOUR_FOLD_FROM} keep the old
+     * no-labour fold so their PDF lines and cents stay identical.
+     */
+    protected function usesLegacyPdfNonMaterialFold(): bool
+    {
+        if (! $this->exists) {
+            return false;
+        }
+
+        $created = $this->created_at
+            ? $this->asDateTime($this->created_at)
+            : $this->asDateTime('2000-01-01 00:00:00');
+
+        return $created->lt($this->asDateTime(self::TAXED_LABOUR_FOLD_FROM));
     }
 
     /**

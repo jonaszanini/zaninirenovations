@@ -57,7 +57,7 @@ class FenceQuotationOct8FixesTest extends TestCase
         $rightOnly = $this->calculator()->calculate([
             'sides' => [
                 ['length_ft' => 20, 'already_have_post_right' => true],
-                ['length_ft' => 20],
+                ['length_ft' => 20, 'connected_to_previous' => true],
             ],
             'fence_height_ft' => 6,
             'board_style' => 'standard',
@@ -66,7 +66,7 @@ class FenceQuotationOct8FixesTest extends TestCase
         $leftOnly = $this->calculator()->calculate([
             'sides' => [
                 ['length_ft' => 20],
-                ['length_ft' => 20, 'already_have_post_left' => true],
+                ['length_ft' => 20, 'already_have_post_left' => true, 'connected_to_previous' => true],
             ],
             'fence_height_ft' => 6,
             'board_style' => 'standard',
@@ -149,15 +149,35 @@ class FenceQuotationOct8FixesTest extends TestCase
         ]);
 
         $this->assertFalse($stringZero['geometry']['sides_breakdown'][1]['connected_to_previous']);
-        $this->assertTrue($nullConnected['geometry']['sides_breakdown'][1]['connected_to_previous']);
+        $this->assertFalse($nullConnected['geometry']['sides_breakdown'][1]['connected_to_previous']);
         $this->assertSame(
             $connected['geometry']['structural_posts'] + 1,
             $stringZero['geometry']['structural_posts']
         );
         $this->assertSame(
-            $connected['geometry']['structural_posts'],
+            $stringZero['geometry']['structural_posts'],
             $nullConnected['geometry']['structural_posts']
         );
+    }
+
+    public function test_catalogue_price_delta_negative_stays_signed(): void
+    {
+        $saved = [
+            'materials' => [
+                ['key' => FenceMaterial::KEY_BOARD_6, 'unit_price' => 10.0, 'quantity' => 5],
+            ],
+            'totals' => ['materials_subtotal' => 50.0],
+        ];
+        $live = [
+            'materials' => [
+                ['key' => FenceMaterial::KEY_BOARD_6, 'unit_price' => 9.0, 'quantity' => 5],
+            ],
+            'totals' => ['materials_subtotal' => 45.0],
+        ];
+
+        $delta = FenceQuotationCalculator::cataloguePriceDelta($live, $saved);
+        $this->assertTrue($delta['changed']);
+        $this->assertEqualsWithDelta(-5.0, $delta['delta'], 0.01);
     }
 
     public function test_catalogue_price_delta_ignores_quantity_only_changes(): void

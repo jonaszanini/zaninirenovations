@@ -50,23 +50,29 @@ class FenceSideFlagsTest extends TestCase
         $this->assertTrue($sides[1]['already_have_post_left']);
         $this->assertFalse($sides[1]['already_have_post_right']);
         $this->assertFalse($sides[1]['gate_goes_here']);
-        $this->assertTrue($sides[1]['connected_to_previous']);
+        $this->assertFalse($sides[1]['connected_to_previous']);
     }
 
-    public function test_null_connected_matches_missing_and_defaults_on_after_run_zero(): void
+    public function test_saved_null_connected_is_off_new_runs_default_on(): void
     {
         $this->assertFalse(FenceSideFlags::connectedToPrevious(null, 0));
-        $this->assertTrue(FenceSideFlags::connectedToPrevious(null, 1));
-        $this->assertTrue(FenceSideFlags::connectedToPrevious(null, 2));
+        $this->assertFalse(FenceSideFlags::connectedToPrevious(null, 1));
+        $this->assertFalse(FenceSideFlags::connectedToPrevious(null, 2));
         $this->assertFalse(FenceSideFlags::connectedToPrevious('0', 1));
         $this->assertFalse(FenceSideFlags::connectedToPrevious(false, 1));
         $this->assertTrue(FenceSideFlags::connectedToPrevious('1', 1));
 
-        $sides = FenceSideFlags::normaliseSides([
+        $saved = FenceSideFlags::normaliseSides([
             ['length_ft' => 20, 'connected_to_previous' => null],
             ['length_ft' => 16, 'connected_to_previous' => null],
         ]);
-        $this->assertTrue($sides[0]['connected_to_previous']);
-        $this->assertTrue($sides[1]['connected_to_previous']);
+        $this->assertFalse($saved[0]['connected_to_previous']);
+        $this->assertFalse($saved[1]['connected_to_previous']);
+
+        $newRun = FenceSideFlags::normaliseSide([
+            'length_ft' => 16,
+            'connected_to_previous' => true,
+        ]);
+        $this->assertTrue($newRun['connected_to_previous']);
     }
 }

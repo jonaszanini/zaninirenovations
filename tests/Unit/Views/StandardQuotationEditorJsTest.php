@@ -6,72 +6,111 @@ use Tests\TestCase;
 
 class StandardQuotationEditorJsTest extends TestCase
 {
-    public function test_b8_confirms_before_removing_a_job_or_material(): void
+    public function test_b8_confirm_remove_uses_admin_dialog(): void
     {
-        $js = $this->editorJs();
+        $fn = $this->extractJsFunction('confirmRemove');
+        $this->assertNotSame('', $fn);
 
-        $this->assertStringContainsString("confirmRemove('Remove ' + matName + '?'", $js);
-        $this->assertStringContainsString("confirmRemove(jobMsg, 'Remove job'", $js);
-        $this->assertStringContainsString('window.AdminDialog.confirm', $js);
-        $this->assertStringContainsString("confirmLabel: 'Remove'", $js);
-        $this->assertMatchesRegularExpression(
-            '/if \(list\.querySelectorAll\(\'\.sq-material-row\'\)\.length <= 1\) return;[\s\S]*confirmRemove/',
-            $js
-        );
-        $this->assertMatchesRegularExpression(
-            '/if \(workCards\(\)\.length <= 1\) return;[\s\S]*confirmRemove\(jobMsg/',
-            $js
-        );
+        $script = <<<JS
+const calls = [];
+const window = {
+  AdminDialog: {
+    confirm: function (message, opts) {
+      calls.push({ message: message, opts: opts });
+      return Promise.resolve(true);
+    }
+  },
+  confirm: function () { throw new Error('window.confirm should not run'); }
+};
+{$fn}
+let confirmed = false;
+confirmRemove('Remove Job 2?', 'Remove job', function () { confirmed = true; });
+if (calls.length !== 1) { console.error('expected one dialog'); process.exit(1); }
+if (calls[0].message !== 'Remove Job 2?') { console.error(calls[0]); process.exit(1); }
+if (calls[0].opts.title !== 'Remove job' || calls[0].opts.danger !== true || calls[0].opts.confirmLabel !== 'Remove') {
+  console.error(calls[0].opts);
+  process.exit(1);
+}
+JS;
+
+        $this->assertNode($script);
     }
 
-    public function test_b9_restores_every_open_job_not_only_the_last(): void
+    public function test_b9_restore_open_jobs_runs_real_js(): void
     {
         $js = $this->editorJs();
+        $this->assertTrue((bool) preg_match('/var SCROLL_MAX_AGE_MS = ([^;]+);/', $js, $age));
 
-        $this->assertStringContainsString('function restoreOpenJobs()', $js);
-        $this->assertStringContainsString('function saveOpenJobs()', $js);
-        $this->assertStringContainsString("form.addEventListener('submit', saveOpenJobs)", $js);
-        $this->assertStringContainsString('restoreOpenJobs();', $js);
-        $this->assertStringContainsString("'admin-sq-open-jobs:' + (form.getAttribute('data-quote-id') || 'new')", $js);
+        $script = <<<JS
+const SCROLL_MAX_AGE_MS = {$age[1]};
+const store = {};
+const sessionStorage = {
+  getItem: function (k) { return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null; },
+  setItem: function (k, v) { store[k] = String(v); }
+};
+const form = { getAttribute: function (name) { return name === 'data-quote-id' ? '7' : null; } };
+function makeCard(open, invalid) {
+  const classes = new Set(open ? ['is-open'] : []);
+  return {
+    classList: {
+      contains: function (c) { return classes.has(c); },
+      toggle: function (c, on) { if (on) classes.add(c); else classes.delete(c); }
+    },
+    querySelector: function (sel) {
+      if (sel === '.sq-work-toggle') return { setAttribute: function () {} };
+      if (sel === '.admin-form-error, .is-invalid') return invalid ? {} : null;
+      return null;
+    },
+    isOpen: function () { return classes.has('is-open'); }
+  };
+}
+let cards = [makeCard(false, false), makeCard(false, true), makeCard(false, false), makeCard(false, false)];
+function workCards() { return cards; }
+{$this->extractJsFunction('openJobsKey')}
+{$this->extractJsFunction('setWorkOpen')}
+{$this->extractJsFunction('saveOpenJobs')}
+{$this->extractJsFunction('restoreOpenJobs')}
+sessionStorage.setItem(openJobsKey(), JSON.stringify({ open: [0, 2], t: Date.now() }));
+restoreOpenJobs();
+const opened = cards.map(function (c, i) { return c.isOpen() ? i : null; }).filter(function (i) { return i !== null; });
+if (JSON.stringify(opened) !== JSON.stringify([0, 1, 2])) {
+  console.error('restore mismatch', opened);
+  process.exit(1);
+}
+sessionStorage.setItem(openJobsKey(), JSON.stringify({ open: [3], t: Date.now() - SCROLL_MAX_AGE_MS - 1 }));
+cards = [makeCard(false, false), makeCard(false, false), makeCard(false, false), makeCard(false, false)];
+restoreOpenJobs();
+const expired = cards.some(function (c) { return c.isOpen(); });
+if (expired) {
+  console.error('expired store should not restore');
+  process.exit(1);
+}
+JS;
 
-        $this->assertMatchesRegularExpression(
-            '/workCards\(\)\.forEach\(function \(card, i\) \{[\s\S]*stored\.open\.indexOf\(i\)/',
-            $js
-        );
-        $this->assertDoesNotMatchRegularExpression(
-            '/restoreOpenJobs[\s\S]*open\[open\.length - 1\]/',
-            $js
-        );
-
-        $indexes = $this->jobsToRestore(
-            ['open' => [0, 2], 't' => 1_000],
-            1_500,
-            4,
-            [1]
-        );
-        $this->assertSame([0, 1, 2], $indexes);
+        $this->assertNode($script);
     }
 
-    /**
-     * @param  array{open: list<int>, t?: int}  $stored
-     * @param  list<int>  $invalidIndexes
-     * @return list<int>
-     */
-    private function jobsToRestore(array $stored, int $now, int $cardCount, array $invalidIndexes): array
+    private function extractJsFunction(string $name): string
     {
-        $maxAge = 12 * 60 * 60 * 1000;
-        if (isset($stored['t']) && ($now - (int) $stored['t']) > $maxAge) {
-            return [];
-        }
-        $open = [];
-        for ($i = 0; $i < $cardCount; $i++) {
-            $shouldOpen = in_array($i, $stored['open'], true) || in_array($i, $invalidIndexes, true);
-            if ($shouldOpen) {
-                $open[] = $i;
-            }
-        }
+        $js = $this->editorJs();
+        $this->assertTrue(
+            (bool) preg_match('/function '.preg_quote($name, '/').'\([^)]*\) \{.*?\n  \}/s', $js, $m),
+            $name.' should exist in admin-standard-quotation.js'
+        );
 
-        return $open;
+        return $m[0];
+    }
+
+    private function assertNode(string $script): void
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'sq-js-');
+        file_put_contents($tmp, $script);
+        $output = [];
+        $code = 0;
+        exec('node '.escapeshellarg($tmp).' 2>&1', $output, $code);
+        @unlink($tmp);
+
+        $this->assertSame(0, $code, implode("\n", $output));
     }
 
     private function editorJs(): string

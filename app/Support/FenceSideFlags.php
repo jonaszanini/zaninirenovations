@@ -21,17 +21,13 @@ final class FenceSideFlags
     }
 
     /**
-     * Run 0 has no "connected" checkbox. Later runs default to connected
-     * when the flag is missing or null (same as the JS preview).
+     * Run 0 is never connected. Saved rows store null/missing as off
+     * (legacy). New form runs set the flag to on explicitly.
      */
     public static function connectedToPrevious(mixed $value, int $index): bool
     {
         if ($index <= 0) {
             return false;
-        }
-
-        if ($value === null) {
-            return true;
         }
 
         return self::isOn($value);
@@ -63,10 +59,8 @@ final class FenceSideFlags
         $side['already_have_post_left'] = self::isOn($side['already_have_post_left'] ?? false);
         $side['already_have_post_right'] = self::isOn($side['already_have_post_right'] ?? false);
         $side['gate_goes_here'] = self::isOn($side['gate_goes_here'] ?? false);
-        $side['connected_to_previous'] = array_key_exists('connected_to_previous', $side)
-            && $side['connected_to_previous'] !== null
-            ? self::isOn($side['connected_to_previous'])
-            : true;
+        // Missing/null on a saved row is off (legacy). New runs set the key to true.
+        $side['connected_to_previous'] = self::isOn($side['connected_to_previous'] ?? null);
 
         return $side;
     }
