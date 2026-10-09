@@ -27,8 +27,8 @@ function assertCssGeometry() {
   );
   const collapsed = CSS.slice(CSS.indexOf('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side'));
   assert.ok(/height:\s*auto/.test(collapsed.slice(0, 220)), 'collapsed sheet height is auto');
-  const phoneFeedback = CSS.slice(CSS.lastIndexOf('.util-ra--fullpage .util-ra-feedback {'));
-  const phoneFeedbackHead = phoneFeedback.slice(0, 520);
+  const phoneFeedback = CSS.slice(CSS.indexOf('.util-ra--fullpage .util-ra-canvas-wrap {\n    padding-top: 2.4em;'));
+  const phoneFeedbackHead = phoneFeedback.slice(0, 720);
   assert.ok(/position:\s*absolute/.test(phoneFeedbackHead), '390 feedback overlays the canvas');
   assert.ok(/top:\s*0\.2rem/.test(phoneFeedbackHead), '390 feedback sits on the canvas top edge');
   assert.ok(/-webkit-line-clamp:\s*2/.test(phoneFeedbackHead), '390 feedback wraps to two lines max');
@@ -40,6 +40,18 @@ function assertCssGeometry() {
   assert.ok(
     CSS.includes('.util-ra--fullpage .util-ra-feedback.is-ok { color: var(--admin-success, #2e7d32); }'),
     'phone CSS keeps success status green'
+  );
+  assert.ok(
+    CSS.includes('padding-top: 2.4em'),
+    'phone canvas leaves a gutter so status does not cover the top wall'
+  );
+  assert.ok(
+    /@media \(max-width: 320px\)[\s\S]{0,280}?bottom:\s*0\.2rem/.test(CSS),
+    '320 status sits on the canvas bottom edge'
+  );
+  assert.ok(
+    /@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,400}?flex-wrap:\s*wrap/.test(CSS),
+    '1024 toolbar wraps instead of sideways scroll'
   );
 }
 

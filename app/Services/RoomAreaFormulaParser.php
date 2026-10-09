@@ -112,10 +112,17 @@ class RoomAreaFormulaParser
             if (! self::isPlainFiniteNumber($value)) {
                 continue;
             }
-            return (float) (is_string($value) ? trim($value) : $value);
+            return (float) (is_string($value) ? self::normalizeNumericString($value) : $value);
         }
 
         return $fallback;
+    }
+
+    public static function normalizeNumericString(string $value): string
+    {
+        $value = preg_replace('/[\x{00A0}\x{1680}\x{180E}\x{2000}-\x{200B}\x{202F}\x{205F}\x{3000}\x{FEFF}\x{0085}]+/u', ' ', $value) ?? $value;
+
+        return trim($value);
     }
 
     private static function isPlainFiniteNumber(mixed $value): bool
@@ -126,7 +133,7 @@ class RoomAreaFormulaParser
         if (! is_string($value)) {
             return false;
         }
-        $trim = trim($value);
+        $trim = self::normalizeNumericString($value);
         if ($trim === '' || ! is_numeric($trim) || preg_match('/^[-+]?0[xob]/i', $trim)) {
             return false;
         }

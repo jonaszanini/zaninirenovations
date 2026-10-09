@@ -426,7 +426,7 @@ class StandardQuotationController extends Controller
             ])],
             'assembly_line_id' => ['nullable', 'integer', 'min:1'],
             'assembly_layout_id' => ['nullable', 'string', 'max:40'],
-            'assembly_covered_layouts' => ['nullable', 'string', 'max:500'],
+            'assembly_covered_layouts' => ['nullable', 'string'],
         ];
 
         $data = $request->validate(array_merge([
@@ -617,9 +617,13 @@ class StandardQuotationController extends Controller
             if ($layoutId !== '') {
                 $mapped['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
             }
-            $covered = trim((string) ($m['assembly_covered_layouts'] ?? ''));
+            $covered = $m['assembly_covered_layouts'] ?? '';
+            if (is_array($covered)) {
+                $covered = json_encode(array_values($covered), JSON_UNESCAPED_UNICODE);
+            }
+            $covered = trim((string) $covered);
             if ($covered !== '') {
-                $mapped['assembly_covered_layouts'] = mb_substr($covered, 0, 500);
+                $mapped['assembly_covered_layouts'] = $covered;
             }
 
             return $mapped;

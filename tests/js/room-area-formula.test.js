@@ -63,6 +63,11 @@ assert.strictEqual(mixed.wall_height_ft, 8);
   assert.strictEqual(heightVars.wall_height, 8, JSON.stringify(row) + ' alias should fall back to 8');
 });
 
+const nbspEight = lib.formulaVariablesFromMetrics({ wall_height_ft: '\u00A08', wall_height: '\u00A08' });
+assert.strictEqual(nbspEight.wall_height_ft, 8, 'NBSP before 8 is 8');
+const nbspNine = lib.formulaVariablesFromMetrics({ wall_height_ft: '\u00A09', wall_height: '\u00A09' });
+assert.strictEqual(nbspNine.wall_height_ft, 9, 'NBSP before 9 is 9');
+
 const drywall = lib.evaluateAssemblyLine(
   { formula: 'ceil(net_wall_sf * 1.12 / 32)', whole_units: true, unit: 'sheet' },
   cases.variables

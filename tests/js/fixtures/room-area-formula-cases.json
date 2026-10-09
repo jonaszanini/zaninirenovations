@@ -77,7 +77,9 @@
     { "formula": "wall_height", "variables": { "wall_height_ft": " ", "wall_height": " " }, "value": 8 },
     { "formula": "wall_height", "variables": { "wall_height_ft": "0x10", "wall_height": "0x10" }, "value": 8 },
     { "formula": "wall_height", "variables": { "wall_height_ft": true, "wall_height": true }, "value": 8 },
-    { "formula": "wall_height", "variables": { "wall_height_ft": [7], "wall_height": [7] }, "value": 8 }
+    { "formula": "wall_height", "variables": { "wall_height_ft": [7], "wall_height": [7] }, "value": 8 },
+    { "formula": "wall_height", "variables": { "wall_height_ft": "\u00A08", "wall_height": "\u00A08" }, "value": 8 },
+    { "formula": "wall_height", "variables": { "wall_height_ft": "\u00A09", "wall_height": "\u00A09" }, "value": 9 }
   ],
   "round": [
     { "value": 2.1, "whole": true, "qty": 3 },

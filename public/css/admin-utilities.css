@@ -6235,6 +6235,7 @@ body:has(.util-ra--fullpage) {
   .util-ra--fullpage .util-ra-canvas-wrap {
     min-height: 45vh;
     order: 3;
+    padding-top: 2.4em;
   }
 
   .util-ra--fullpage .util-ra-canvas-toolbar {
@@ -6699,22 +6700,31 @@ body:has(.util-ra--fullpage) {
 
 @media (min-width: 901px) and (max-width: 1024px) {
   .util-ra--fullpage .util-ra-canvas-toolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    overflow-x: hidden;
     overflow-y: hidden;
+    row-gap: 0.35rem;
   }
 
   .util-ra--fullpage .util-ra-toolbar__groups,
   .util-ra--fullpage .util-ra-toolbar__view,
   .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group {
-    flex-wrap: nowrap;
-    flex: 0 0 auto;
-    max-width: none;
-    min-width: max-content;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__view {
-    margin-left: auto;
+    margin-left: 0;
+    flex: 1 1 100%;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-group-chip,
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-measure-unit {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .util-ra--fullpage .util-ra-canvas-wrap {
@@ -7417,6 +7427,10 @@ body:has(.util-ra-guide) {
     display: none;
   }
 
+  .util-ra--fullpage .util-ra-canvas-wrap {
+    padding-top: 2.4em;
+  }
+
   .util-ra--fullpage .util-ra-feedback {
     position: absolute;
     top: 0.2rem;
@@ -7540,6 +7554,51 @@ body:has(.util-ra-guide) {
     min-height: 44px;
     height: 44px;
     cursor: pointer;
+  }
+}
+
+@media (max-width: 900px) and (max-height: 700px) {
+  .util-ra--fullpage .util-ra-full-header {
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
+  }
+
+  .util-ra--fullpage .util-ra-phone-bar,
+  .util-ra--fullpage .util-ra-phone-bar__scroll {
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-toolbar {
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+  }
+
+  .util-ra--fullpage .util-ra-canvas-wrap {
+    min-height: 12.5rem;
+    padding-top: 0;
+    padding-bottom: 2.4em;
+  }
+
+  .util-ra--fullpage .util-ra-feedback {
+    top: auto;
+    bottom: 0.2rem;
+  }
+}
+
+@media (max-width: 320px) {
+  .util-ra--fullpage .util-ra-canvas-wrap {
+    min-height: 12.5rem;
+    padding-top: 0;
+    padding-bottom: 2.4em;
+  }
+
+  .util-ra--fullpage .util-ra-feedback {
+    top: auto;
+    bottom: 0.2rem;
   }
 }
 

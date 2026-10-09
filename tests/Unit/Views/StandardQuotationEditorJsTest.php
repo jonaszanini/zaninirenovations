@@ -6,6 +6,35 @@ use Tests\TestCase;
 
 class StandardQuotationEditorJsTest extends TestCase
 {
+    public function test_rewrite_attr_renumbers_nested_material_indexes(): void
+    {
+        $fn = $this->extractJsFunction('rewriteAttr');
+        $this->assertNotSame('', $fn);
+        $this->assertStringContainsString('/\\[materials\\]\\[(?:\\d+|__I__)]/g', $fn);
+        $this->assertStringContainsString("'[materials][' + i + ']'", $fn);
+
+        $script = <<<JS
+{$fn}
+const el = {
+  value: 'works[0][materials][1][assembly_covered_layouts]',
+  getAttribute: function (attr) { return attr === 'name' ? this.value : null; },
+  setAttribute: function (attr, next) { if (attr === 'name') this.value = next; }
+};
+rewriteAttr(el, 'name', 0, 0);
+if (el.value !== 'works[0][materials][0][assembly_covered_layouts]') {
+  console.error(el.value);
+  process.exit(1);
+}
+rewriteAttr(el, 'name', 0, 2);
+if (el.value !== 'works[0][materials][2][assembly_covered_layouts]') {
+  console.error(el.value);
+  process.exit(1);
+}
+JS;
+
+        $this->assertNode($script);
+    }
+
     public function test_b8_confirm_remove_uses_admin_dialog(): void
     {
         $fn = $this->extractJsFunction('confirmRemove');

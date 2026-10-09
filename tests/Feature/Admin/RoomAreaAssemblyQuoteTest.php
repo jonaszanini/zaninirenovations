@@ -454,7 +454,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         ]);
         $line = $assembly->lines()->create([
             'name' => 'Sheets',
-            'formula' => 'ceil(area_sqft / 10)',
+            'formula' => 'area_sqft * 0.096',
             'unit' => 'sheet',
             'whole_units' => true,
             'sort_order' => 0,
@@ -479,9 +479,9 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertStringContainsString('room:'.$kitchen->id, (string) ($quote->flattenedMaterials()[0]['assembly_covered_layouts'] ?? ''));
         $this->assertStringContainsString('room:'.$bath->id, (string) ($quote->flattenedMaterials()[0]['assembly_covered_layouts'] ?? ''));
 
-        $hall = $this->makeRoom(null, 'Hall', $project, 120, 84);
+        $hall = $this->makeRoom(null, 'Hall', $project, 120, 96);
         $hall->assemblies()->sync([$assembly->id]);
-        $this->assertEquals(7.0, app(\App\Services\RoomAreaAssemblyEvaluator::class)->evaluateAssembly($assembly, $hall->layoutMetrics())['lines'][0]['qty']);
+        $this->assertEquals(8.0, app(\App\Services\RoomAreaAssemblyEvaluator::class)->evaluateAssembly($assembly, $hall->layoutMetrics())['lines'][0]['qty']);
 
         $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
             'layout' => 'project:'.$project->id,
@@ -498,8 +498,10 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             });
 
         $quote->refresh();
-        $this->assertEquals(27.0, collect($quote->flattenedMaterials())->sum(fn ($row) => (float) $row['quantity']));
+        $this->assertCount(1, $quote->flattenedMaterials());
+        $this->assertEquals(27.0, (float) $quote->flattenedMaterials()[0]['quantity']);
         $this->assertSame($line->id, (int) $quote->flattenedMaterials()[0]['assembly_line_id']);
+        $this->assertStringContainsString('room:'.$hall->id, (string) ($quote->flattenedMaterials()[0]['assembly_covered_layouts'] ?? ''));
 
         $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
             'layout' => 'room:'.$hall->id,
@@ -510,7 +512,8 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             'display_title' => 'Project first',
         ])->assertRedirect(route('admin.quotations.standard.edit', $quote));
 
-        $this->assertEquals(27.0, collect($quote->fresh()->flattenedMaterials())->sum(fn ($row) => (float) $row['quantity']));
+        $this->assertEquals(27.0, (float) $quote->fresh()->flattenedMaterials()[0]['quantity']);
+        $this->assertCount(1, $quote->fresh()->flattenedMaterials());
     }
 
     public function test_project_add_then_new_room_can_be_added_alone(): void
@@ -529,7 +532,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         ]);
         $assembly->lines()->create([
             'name' => 'Sheets',
-            'formula' => 'ceil(area_sqft / 10)',
+            'formula' => 'area_sqft * 0.096',
             'unit' => 'sheet',
             'whole_units' => true,
             'sort_order' => 0,
@@ -549,7 +552,7 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertNotNull($quote);
         $this->assertEquals(20.0, (float) $quote->flattenedMaterials()[0]['quantity']);
 
-        $hall = $this->makeRoom(null, 'Hall', $project, 120, 84);
+        $hall = $this->makeRoom(null, 'Hall', $project, 120, 96);
         $hall->assemblies()->sync([$assembly->id]);
 
         $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
@@ -564,7 +567,236 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
                 return is_string($message) && str_contains($message, 'Added Drywall wall — Hall Sheets');
             });
 
-        $this->assertEquals(27.0, collect($quote->fresh()->flattenedMaterials())->sum(fn ($row) => (float) $row['quantity']));
+        $quote->refresh();
+        $this->assertCount(1, $quote->flattenedMaterials());
+        $this->assertEquals(27.0, (float) $quote->flattenedMaterials()[0]['quantity']);
+    }
+
+    public function test_remove_then_add_then_save_does_not_overwrite_remaining_row(): void
+    {
+        $this->actingAsAdmin();
+        $project = RoomAreaProject::create([
+            'name' => 'Renumber quote',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $kitchen = $this->makeRoom(null, 'Kitchen', $project);
+        $bathroom = $this->makeRoom(null, 'Bathroom', $project);
+        $assembly = RoomAreaAssembly::create([
+            'name' => 'Drywall wall',
+            'notes' => null,
+            'sort_order' => 0,
+        ]);
+        $line = $assembly->lines()->create([
+            'name' => 'Sheets',
+            'formula' => '2',
+            'unit' => 'sheet',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+        $kitchen->assemblies()->sync([$assembly->id]);
+        $bathroom->assemblies()->sync([$assembly->id]);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'room:'.$kitchen->id,
+            'idempotency_token' => $this->quoteToken($kitchen),
+            'assembly_ids' => [$assembly->id],
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Two rooms',
+        ])->assertRedirect();
+        $quote = StandardQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'room:'.$bathroom->id,
+            'idempotency_token' => $this->quoteToken($bathroom),
+            'assembly_ids' => [$assembly->id],
+            'quotation_id' => $quote->id,
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Two rooms',
+        ])->assertRedirect();
+
+        $quote->refresh();
+        $this->assertCount(2, $quote->flattenedMaterials());
+        $bathRow = collect($quote->flattenedMaterials())->first(
+            fn ($row) => str_contains((string) ($row['assembly_covered_layouts'] ?? ''), 'room:'.$bathroom->id)
+        );
+        $this->assertNotNull($bathRow);
+
+        $payload = $this->quoteUpdatePayload($quote);
+        $payload['works'][0]['materials'] = [
+            [
+                'short_name' => $bathRow['short_name'] ?? 'Sheets',
+                'description' => $bathRow['description'] ?? 'Bathroom',
+                'unit_price' => $bathRow['unit_price'] ?? 0,
+                'quantity' => $bathRow['quantity'] ?? 2,
+                'apply_hst' => 1,
+                'entry_mode' => $bathRow['entry_mode'] ?? 'manual',
+                'assembly_line_id' => $bathRow['assembly_line_id'] ?? $line->id,
+                'assembly_layout_id' => $bathRow['assembly_layout_id'] ?? ('room:'.$bathroom->id),
+                'assembly_covered_layouts' => $bathRow['assembly_covered_layouts'] ?? null,
+            ],
+            [
+                'short_name' => 'Tape',
+                'description' => 'Joint tape',
+                'unit_price' => 4,
+                'quantity' => 3,
+                'apply_hst' => 1,
+                'entry_mode' => 'manual',
+            ],
+        ];
+
+        $this->put(route('admin.quotations.standard.update', $quote), $payload)
+            ->assertRedirect(route('admin.quotations.standard.edit', $quote));
+
+        $quote->refresh();
+        $materials = $quote->flattenedMaterials();
+        $this->assertCount(2, $materials);
+        $this->assertStringContainsString('room:'.$bathroom->id, (string) ($materials[0]['assembly_covered_layouts'] ?? ''));
+        $this->assertSame($line->id, (int) ($materials[0]['assembly_line_id'] ?? 0));
+        $this->assertStringContainsString('Tape', (string) ($materials[1]['short_name'] ?? ''));
+        $this->assertEquals(3.0, (float) $materials[1]['quantity']);
+        $this->assertStringNotContainsString('room:'.$kitchen->id, json_encode($materials));
+    }
+
+    public function test_covered_layouts_persist_for_100_rooms_without_truncation(): void
+    {
+        $this->actingAsAdmin();
+        $project = RoomAreaProject::create([
+            'name' => 'Hundred rooms',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $assembly = RoomAreaAssembly::create([
+            'name' => 'Drywall wall',
+            'notes' => null,
+            'sort_order' => 0,
+        ]);
+        $assembly->lines()->create([
+            'name' => 'Sheets',
+            'formula' => '1',
+            'unit' => 'sheet',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+        $rooms = [];
+        for ($i = 1; $i <= 100; $i++) {
+            $room = $this->makeRoom(null, 'R'.$i, $project, 24, 24);
+            $room->assemblies()->sync([$assembly->id]);
+            $rooms[] = $room;
+        }
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'project:'.$project->id,
+            'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
+            'assembly_ids' => [$assembly->id],
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Hundred',
+        ])->assertRedirect();
+
+        $quote = StandardQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $covered = (string) ($quote->flattenedMaterials()[0]['assembly_covered_layouts'] ?? '');
+        $this->assertGreaterThan(500, strlen($covered));
+        $decoded = json_decode($covered, true);
+        $this->assertIsArray($decoded);
+        $this->assertCount(100, $decoded);
+        foreach ($rooms as $room) {
+            $this->assertContains('room:'.$room->id, $decoded);
+        }
+        $this->assertEquals(100.0, (float) $quote->flattenedMaterials()[0]['quantity']);
+
+        $this->put(route('admin.quotations.standard.update', $quote), $this->quoteUpdatePayload($quote))
+            ->assertRedirect(route('admin.quotations.standard.edit', $quote));
+        $quote->refresh();
+        $saved = json_decode((string) ($quote->flattenedMaterials()[0]['assembly_covered_layouts'] ?? ''), true);
+        $this->assertIsArray($saved);
+        $this->assertCount(100, $saved);
+
+        $extra = $this->makeRoom(null, 'R101', $project, 24, 24);
+        $extra->assemblies()->sync([$assembly->id]);
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'project:'.$project->id,
+            'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
+            'assembly_ids' => [$assembly->id],
+            'quotation_id' => $quote->id,
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Hundred',
+        ])->assertRedirect(route('admin.quotations.standard.edit', $quote));
+
+        $quote->refresh();
+        $this->assertCount(1, $quote->flattenedMaterials());
+        $this->assertEquals(101.0, (float) $quote->flattenedMaterials()[0]['quantity']);
+        $after = json_decode((string) ($quote->flattenedMaterials()[0]['assembly_covered_layouts'] ?? ''), true);
+        $this->assertIsArray($after);
+        $this->assertCount(101, $after);
+        $this->assertContains('room:'.$extra->id, $after);
+    }
+
+    public function test_old_project_line_without_covered_treats_existing_rooms_as_covered(): void
+    {
+        $this->actingAsAdmin();
+        $project = RoomAreaProject::create([
+            'name' => 'Legacy covered',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $kitchen = $this->makeRoom(null, 'Kitchen', $project, 144, 120);
+        $bath = $this->makeRoom(null, 'Bathroom', $project, 120, 96);
+        $assembly = RoomAreaAssembly::create([
+            'name' => 'Drywall wall',
+            'notes' => null,
+            'sort_order' => 0,
+        ]);
+        $assembly->lines()->create([
+            'name' => 'Sheets',
+            'formula' => 'area_sqft * 0.096',
+            'unit' => 'sheet',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+        $kitchen->assemblies()->sync([$assembly->id]);
+        $bath->assemblies()->sync([$assembly->id]);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'project:'.$project->id,
+            'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
+            'assembly_ids' => [$assembly->id],
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Legacy',
+        ])->assertRedirect();
+
+        $quote = StandardQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $works = $quote->resolvedWorks();
+        unset($works[0]['materials'][0]['assembly_covered_layouts']);
+        $quote->works = $works;
+        $quote->materials = $works[0]['materials'];
+        $quote->updated_at = now();
+        $quote->save();
+
+        $this->travel(2)->seconds();
+        $hall = $this->makeRoom(null, 'Hall', $project, 120, 96);
+        $hall->assemblies()->sync([$assembly->id]);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'project:'.$project->id,
+            'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
+            'assembly_ids' => [$assembly->id],
+            'quotation_id' => $quote->id,
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Legacy',
+        ])->assertRedirect(route('admin.quotations.standard.edit', $quote))
+            ->assertSessionHas('success', function ($message) {
+                return is_string($message)
+                    && str_contains($message, 'Added Drywall wall — Hall Sheets')
+                    && ! str_contains($message, 'Those kit lines are already');
+            });
+
+        $quote->refresh();
+        $this->assertCount(1, $quote->flattenedMaterials());
+        $this->assertEquals(27.0, (float) $quote->flattenedMaterials()[0]['quantity']);
+        $covered = (string) ($quote->flattenedMaterials()[0]['assembly_covered_layouts'] ?? '');
+        $this->assertStringContainsString('room:'.$kitchen->id, $covered);
+        $this->assertStringContainsString('room:'.$bath->id, $covered);
+        $this->assertStringContainsString('room:'.$hall->id, $covered);
     }
 
     public function test_expired_quote_token_is_rejected_and_pruned(): void
@@ -649,6 +881,9 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             'pdf_detail_mode' => 'detailed',
             'includes_material' => 1,
             'payment_installments' => 1,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => 0,
             'works' => [[
                 'title' => 'Room Area',
                 'labour_use_fixed' => 1,

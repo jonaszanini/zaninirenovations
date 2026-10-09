@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Material;
 use App\Models\RoomAreaAssembly;
+use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Models\StandardQuotation;
 use App\Services\RoomAreaAssemblyDefaults;
@@ -346,6 +347,8 @@ class RoomAreaAssemblyController extends Controller
             }
 
             $built = [];
+            $patches = [];
+            $projectForRooms = $resolved['project'] ?? null;
             foreach ($qtyLines as $qtyLine) {
                 if (($qtyLine['qty'] ?? 0) <= 0) {
                     continue;
@@ -354,13 +357,39 @@ class RoomAreaAssemblyController extends Controller
                 $assemblyLayoutId = trim((string) ($qtyLine['assembly_layout_id'] ?? $layoutId));
                 $kitName = trim((string) ($qtyLine['assembly_name'] ?? ''));
                 $lineLabel = trim($kitName.' — '.$roomLabel.' '.($qtyLine['label'] ?? 'line'));
-                $coveredLayouts = trim((string) ($qtyLine['assembly_covered_layouts'] ?? ''));
-                if ($coveredLayouts === '' && str_starts_with($assemblyLayoutId, 'room:')) {
-                    $coveredLayouts = $assemblyLayoutId;
-                }
+                $coveredLayouts = $this->encodeCoveredLayouts($this->parseCoveredLayouts([
+                    'assembly_covered_layouts' => $qtyLine['assembly_covered_layouts'] ?? '',
+                    'assembly_layout_id' => $assemblyLayoutId,
+                ]));
                 if ($this->quoteLineRoomsAlreadyCovered($coveredByLine, $assemblyLineId, $coveredLayouts, $assemblyLayoutId)) {
                     $skippedBits[] = $lineLabel;
                     continue;
+                }
+                $projectLine = $this->findProjectSourcedMaterial($existing, $assemblyLineId);
+                if ($projectLine && $projectForRooms) {
+                    $existingRow = $existing->resolvedWorks()[$projectLine[0]]['materials'][$projectLine[1]] ?? [];
+                    $union = $this->parseCoveredLayouts(is_array($existingRow) ? $existingRow : [], $existing)
+                        + $this->parseCoveredLayouts([
+                            'assembly_covered_layouts' => $coveredLayouts,
+                            'assembly_layout_id' => $assemblyLayoutId,
+                        ], $existing);
+                    $requote = $this->requoteProjectLine($projectForRooms, $assemblyLineId, $union);
+                    if ($requote && ($requote['qty'] ?? 0) > 0) {
+                        $patches[] = [
+                            'work' => $projectLine[0],
+                            'material' => $projectLine[1],
+                            'qty' => $requote['qty'],
+                            'covered' => $this->encodeCoveredLayouts($union),
+                        ];
+                        if ($isProjectAdd && isset($pendingAddedByLine[$assemblyLineId])) {
+                            foreach ($pendingAddedByLine[$assemblyLineId] as $bit) {
+                                $addedBits[] = $bit;
+                            }
+                        } else {
+                            $addedBits[] = $lineLabel;
+                        }
+                        continue;
+                    }
                 }
                 $lineId = (string) ($qtyLine['assembly_line_id'] ?? $qtyLine['label']);
                 $price = array_key_exists($lineId, $data['unit_price'] ?? [])
@@ -397,9 +426,26 @@ class RoomAreaAssemblyController extends Controller
                 }
             }
 
+            if ($patches !== [] && $existing) {
+                $existing = $this->inserter->patchMaterials(
+                    $existing,
+                    $patches,
+                    (string) $existing->client_name,
+                    (string) $existing->display_title,
+                    $clientProject
+                );
+            }
+
             if ($built === []) {
-                if ($existing && $alreadyOnQuote !== []) {
+                if ($existing && ($patches !== [] || $alreadyOnQuote !== [])) {
                     $this->consumeQuoteToken($token, $existing->id);
+                    if ($patches !== []) {
+                        $message = $this->quoteSuccessMessage($existing, true, $addedBits, $skippedBits);
+
+                        return redirect()
+                            ->route('admin.quotations.standard.edit', $existing)
+                            ->with('success', $message);
+                    }
 
                     return redirect()
                         ->route('admin.quotations.standard.edit', $existing)
@@ -630,7 +676,7 @@ class RoomAreaAssemblyController extends Controller
                 if ($lineId <= 0) {
                     continue;
                 }
-                foreach (array_keys($this->parseCoveredLayouts($row)) as $layout) {
+                foreach (array_keys($this->parseCoveredLayouts($row, $quote)) as $layout) {
                     $byLine[$lineId][$layout] = true;
                 }
             }
@@ -643,21 +689,39 @@ class RoomAreaAssemblyController extends Controller
      * @param  array<string, mixed>  $row
      * @return array<string, true>
      */
-    private function parseCoveredLayouts(array $row): array
+    private function parseCoveredLayouts(array $row, ?StandardQuotation $quote = null): array
     {
         $out = [];
-        $raw = trim((string) ($row['assembly_covered_layouts'] ?? ''));
-        if ($raw !== '') {
-            foreach (preg_split('/\s*,\s*/', $raw) ?: [] as $part) {
-                $part = trim((string) $part);
-                if (str_starts_with($part, 'room:')) {
-                    $out[$part] = true;
-                }
+        $raw = $row['assembly_covered_layouts'] ?? '';
+        if (is_array($raw)) {
+            $parts = $raw;
+        } else {
+            $raw = trim((string) $raw);
+            $parts = [];
+            if ($raw !== '') {
+                $decoded = json_decode($raw, true);
+                $parts = is_array($decoded) ? $decoded : (preg_split('/\s*,\s*/', $raw) ?: []);
+            }
+        }
+        foreach ($parts as $part) {
+            $part = trim((string) $part);
+            if (str_starts_with($part, 'room:')) {
+                $out[$part] = true;
             }
         }
         $layout = trim((string) ($row['assembly_layout_id'] ?? ''));
         if (str_starts_with($layout, 'room:')) {
             $out[$layout] = true;
+        }
+        if ($out === [] && preg_match('/^project:(\d+)$/', $layout, $match)) {
+            $asOf = $quote?->updated_at ?? $quote?->created_at;
+            $rooms = RoomAreaRoom::query()->where('room_area_project_id', (int) $match[1]);
+            if ($asOf) {
+                $rooms->where('created_at', '<=', $asOf);
+            }
+            foreach ($rooms->pluck('id') as $roomId) {
+                $out['room:'.$roomId] = true;
+            }
         }
 
         return $out;
@@ -678,7 +742,50 @@ class RoomAreaAssemblyController extends Controller
         $rooms = array_values(array_unique($rooms));
         sort($rooms);
 
-        return implode(',', $rooms);
+        return json_encode($rooms, JSON_UNESCAPED_UNICODE) ?: '[]';
+    }
+
+    /**
+     * @return array{0: int, 1: int}|null
+     */
+    private function findProjectSourcedMaterial(?StandardQuotation $quote, int $assemblyLineId): ?array
+    {
+        if (! $quote || $assemblyLineId <= 0) {
+            return null;
+        }
+        foreach ($quote->resolvedWorks() as $workIndex => $work) {
+            foreach (($work['materials'] ?? []) as $materialIndex => $row) {
+                if (! is_array($row) || (int) ($row['assembly_line_id'] ?? 0) !== $assemblyLineId) {
+                    continue;
+                }
+                if (str_starts_with(trim((string) ($row['assembly_layout_id'] ?? '')), 'project:')) {
+                    return [(int) $workIndex, (int) $materialIndex];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, true>  $unionLayouts
+     * @return array{qty: float}|null
+     */
+    private function requoteProjectLine(RoomAreaProject $project, int $assemblyLineId, array $unionLayouts): ?array
+    {
+        $evaluated = $this->evaluator->evaluateProject($project, function ($room, $line) use ($assemblyLineId, $unionLayouts) {
+            return (int) ($line['id'] ?? 0) === $assemblyLineId
+                && isset($unionLayouts['room:'.$room->id]);
+        });
+        foreach ($evaluated as $kit) {
+            foreach ($kit['lines'] as $line) {
+                if ((int) ($line['id'] ?? 0) === $assemblyLineId && $line['qty'] !== null) {
+                    return ['qty' => (float) $line['qty']];
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -692,7 +799,7 @@ class RoomAreaAssemblyController extends Controller
         $wanted = $this->parseCoveredLayouts([
             'assembly_covered_layouts' => $coveredLayouts,
             'assembly_layout_id' => $layoutId,
-        ]);
+        ], null);
         if ($wanted === []) {
             return false;
         }

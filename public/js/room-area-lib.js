@@ -1077,12 +1077,16 @@
     inside_corners: true, inside_corner_count: true
   };
 
+  function normalizeNumericString(value) {
+    return String(value).replace(/[\u00A0\u1680\u180E\u2000-\u200B\u202F\u205F\u3000\uFEFF\u0085]+/g, ' ').trim();
+  }
+
   function isPlainFiniteNumber(value) {
     if (typeof value === 'boolean' || value == null) return false;
     if (Array.isArray(value) || (typeof value === 'object')) return false;
     if (typeof value === 'number') return isFinite(value);
     if (typeof value !== 'string') return false;
-    var trim = value.trim();
+    var trim = normalizeNumericString(value);
     if (trim === '' || /^[-+]?0[xob]/i.test(trim)) return false;
     var n = Number(trim);
     return isFinite(n);
@@ -1095,7 +1099,7 @@
       if (!Object.prototype.hasOwnProperty.call(metrics, keys[i])) continue;
       var value = metrics[keys[i]];
       if (!isPlainFiniteNumber(value)) continue;
-      return typeof value === 'string' ? Number(value.trim()) : Number(value);
+      return typeof value === 'string' ? Number(normalizeNumericString(value)) : Number(value);
     }
     return fallback;
   }

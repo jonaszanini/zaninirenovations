@@ -241,6 +241,16 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('.util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }', $css);
         $this->assertStringContainsString('position: absolute', $css);
         $this->assertStringContainsString('min-height: 280px', $css);
+        $this->assertMatchesRegularExpression(
+            '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,400}?flex-wrap:\s*wrap/',
+            $css
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,220}?overflow-x:\s*auto/',
+            $css
+        );
+        $this->assertStringContainsString('min-height: 12.5rem', $css);
+        $this->assertStringContainsString('padding-top: 2.4em', $css);
 
         $dark = file_get_contents(public_path('css/admin-dark.css'));
         $this->assertStringContainsString('html.admin-dark .util-ra-kits', $dark);

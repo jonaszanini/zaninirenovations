@@ -9,6 +9,8 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
+const GIT_SHA = (process.env.GIT_SHA || execSync('git rev-parse --short HEAD', { cwd: path.resolve(__dirname, '..') }).toString().trim());
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:8000';
 const EDITOR_PATH = process.env.EDITOR_PATH || '/admin/client-projects/1/utilities/room-area?ra_room=1';
@@ -117,11 +119,11 @@ async function main() {
   await waitForEditor(phone);
   await setTheme(phone, 'light');
   await showKits(phone, { showTip: false });
-  await shot(phone, 'ra-b3-390-light');
+  await shot(phone, `ra-b3-390-light-${GIT_SHA}`);
 
   await setTheme(phone, 'dark');
   await showKits(phone, { showTip: false });
-  await shot(phone, 'ra-b3-390-dark');
+  await shot(phone, `ra-b3-390-dark-${GIT_SHA}`);
   await phone.close();
 
   await browser.close();
