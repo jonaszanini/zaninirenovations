@@ -180,6 +180,122 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
         $this->assertEqualsWithDelta($inchTotal, (float) $fresh->final_quote_total, 0.05);
     }
 
+    public function test_v1_quote_resaves_untouched_at_the_same_total(): void
+    {
+        $this->actingAsAdmin();
+
+        $cases = [
+            'trim-ft' => [
+                'type' => 'trim',
+                'profile' => 'casing',
+                'unit' => 'ft',
+                'length' => 20,
+                'length_unit' => 'ft',
+                'openings' => 3,
+                'width' => 36,
+                'width_unit' => 'ft',
+                'height' => 80,
+                'height_unit' => 'ft',
+                'qty' => 1,
+                'edge_banding' => 0,
+            ],
+            'cabinet-in' => [
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => 36,
+                'width_unit' => 'in',
+                'height' => 34.5,
+                'height_unit' => 'in',
+                'depth' => 24,
+                'depth_unit' => 'in',
+                'unit' => 'in',
+                'include_doors' => 0,
+                'include_back' => 0,
+                'edge_banding' => 0,
+                'shelf_count' => 0,
+            ],
+            'cabinet-ft' => [
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => 3,
+                'width_unit' => 'ft',
+                'height' => 3,
+                'height_unit' => 'ft',
+                'depth' => 2,
+                'depth_unit' => 'ft',
+                'unit' => 'ft',
+                'include_doors' => 0,
+                'include_back' => 0,
+                'edge_banding' => 0,
+                'shelf_count' => 0,
+            ],
+            'shelf-in' => [
+                'type' => 'shelf',
+                'edge_banding' => 0,
+                'sets' => [['qty' => 2, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            ],
+        ];
+
+        foreach ($cases as $name => $piece) {
+            $inputs = [
+                'pieces' => [$piece],
+                'include_install' => false,
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+            ];
+            $calc = (new MillworkQuotationCalculator)->calculate($inputs, null, 1);
+            $total = round((float) $calc['summary']['grand_total'], 2);
+            $this->assertGreaterThan(0, $total, $name);
+
+            $quote = MillworkQuotation::query()->create([
+                'quote_number' => 'MW-V1-'.$name,
+                'client_name' => 'V1 '.$name,
+                'is_draft' => false,
+                'cut_plan_version' => 1,
+                'inputs' => $inputs,
+                'calculation' => $calc,
+                'final_quote_total' => $total,
+            ]);
+
+            $this->get(route('admin.quotations.millwork.edit', $quote))
+                ->assertOk()
+                ->assertSee($quote->quote_number);
+            $this->assertEqualsWithDelta($total, (float) $quote->fresh()->final_quote_total, 0.001, $name.' GET must not change the stored total');
+
+            $preview = $this->post(route('admin.quotations.millwork.calculate-existing', $quote), array_merge($piece, [
+                'pieces' => [$piece],
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+                'include_install' => 0,
+            ]));
+            $preview->assertOk();
+            $this->assertEqualsWithDelta(
+                $total,
+                (float) $preview->json('summary.grand_total'),
+                0.05,
+                $name.' opening the editor must keep the live total'
+            );
+
+            $this->put(route('admin.quotations.millwork.update', $quote), [
+                'save_intent' => 'publish',
+                'client_name' => 'V1 '.$name,
+                '_cut_plan_version' => 1,
+                'pieces' => [$piece],
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+                'include_install' => 0,
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()->assertSessionHasNoErrors();
+
+            $fresh = $quote->fresh();
+            $this->assertSame(1, (int) $fresh->cut_plan_version, $name);
+            $this->assertEqualsWithDelta($total, (float) $fresh->final_quote_total, 0.05, $name.' re-save');
+        }
+    }
+
     public function test_project_pdf_totals_match_calculator(): void
     {
         $this->actingAsAdmin();

@@ -52,9 +52,10 @@
 @endphp
 
 <details class="br-acc admin-card is-active" data-br-step="pieces" open>
-  <summary class="br-acc__summary"><span class="br-acc__num">1</span> Pieces</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">1</span> Pieces
+    <x-admin.info-tip label="Pieces">Add each millwork item — cabinets, closets, vanities, trim, and more. Duplicate a piece to copy its sizes.</x-admin.info-tip>
+  </summary>
   <div class="br-acc__body">
-    <p class="admin-form-help">Add each millwork item — cabinets, closets, vanities, trim, and more. Duplicate a piece to copy its sizes.</p>
     <div id="mw-piece-list">
       @foreach ($pieces as $pi => $piece)
         @include('admin.quotations.millwork._piece_card', ['pi' => $pi, 'piece' => is_array($piece) ? $piece : [], 'isLegacyQuote' => $isLegacyQuote ?? (((int) ($cutPlanVersion ?? 2)) < 2)])
@@ -73,13 +74,15 @@
 </details>
 
 <details class="br-acc admin-card" data-br-step="materials">
-  <summary class="br-acc__summary"><span class="br-acc__num">2</span> Materials &amp; finish @include('admin.partials.info_tip', [
-    'tipText' => 'Sheet size defaults to 4×8 from Price configuration. Add spare sheets if you want extras on site.',
-    'tipLabel' => 'Materials & finish',
-  ])</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">2</span> Materials &amp; finish
+    <x-admin.info-tip label="Materials & finish">Sheet size defaults to 4×8 from Price configuration. Add spare sheets if you want extras on site.</x-admin.info-tip>
+  </summary>
   <div class="br-acc__body">
     <div class="admin-form-group mw-sheet-field">
-      <label for="mw-sheet">@include('admin.partials.info_tip', ['text' => 'Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.']) Wood sheet</label>
+      <div class="admin-label-with-tip">
+        <label for="mw-sheet">Wood sheet</label>
+        <x-admin.info-tip label="Wood sheet">Sheet size defaults to 4×8 from Price configuration. Add spare sheets if you want extras on site. The cut plan picks smaller leftover sheets when they fit.</x-admin.info-tip>
+      </div>
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
         @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
           <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>

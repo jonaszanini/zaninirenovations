@@ -1603,6 +1603,18 @@ a.admin-client-link:focus-visible {
   vertical-align: middle;
   flex-shrink: 0;
 }
+.admin-label-with-tip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+}
+.admin-label-with-tip > label {
+  margin-bottom: 0;
+}
+.br-acc__summary > .admin-info-tip-wrap {
+  margin-left: 2px;
+}
 .admin-info-tip {
   position: relative;
   display: inline-flex;

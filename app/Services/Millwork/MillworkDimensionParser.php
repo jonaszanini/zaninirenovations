@@ -60,7 +60,7 @@ class MillworkDimensionParser
         }
 
         $s = self::normalizeRaw((string) $raw);
-        if ($s === '') {
+        if ($s === '' || self::isZeroLiteral($s)) {
             return self::empty();
         }
         if (str_starts_with($s, '-')) {
@@ -93,7 +93,11 @@ class MillworkDimensionParser
     }
 
     /**
-     * Rewrite a piece (and its sets) so the legacy (float) builder sees inches.
+     * Rewrite only re-typed sizes so the legacy (float) builder can read them.
+     *
+     * Stored plain numbers stay in the piece unit. Trim openings stay inches.
+     * Fractions, suffixes (2 ft, 762mm), and an explicit In/Ft that differs
+     * from the piece unit are converted into a plain number in the piece unit.
      *
      * @param  array<string, mixed>  $piece
      * @return array<string, mixed>
@@ -101,30 +105,34 @@ class MillworkDimensionParser
     public static function toLegacyInchPiece(array $piece): array
     {
         $out = $piece;
-        $out['unit'] = 'in';
+        $pieceUnit = strtolower((string) ($piece['unit'] ?? 'in')) === 'ft' ? 'ft' : 'in';
+        $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? ''));
+        $leaveUntouched = $type === 'trim' ? ['width', 'height'] : [];
+
         foreach (['width', 'height', 'depth', 'length', 'thickness'] as $key) {
-            if (! array_key_exists($key, $piece)) {
+            if (! array_key_exists($key, $piece) || in_array($key, $leaveUntouched, true)) {
                 continue;
             }
-            $unit = MillworkPartBuilder::dimUnit($piece, $key);
-            $parsed = self::inspect($piece[$key], $unit);
-            if ($parsed['status'] === self::STATUS_OK) {
-                $out[$key] = round($parsed['inches'], 4);
-                $out[$key.'_unit'] = 'in';
-            } elseif ($parsed['status'] === self::STATUS_INVALID) {
-                $out[$key] = 0;
-                $out[$key.'_unit'] = 'in';
+            if (! self::shouldRewriteLegacyDim($piece, $key, $pieceUnit)) {
+                continue;
             }
+            $fieldUnit = self::fieldUnitOf($key, $piece, $pieceUnit);
+            $parsed = self::inspect($piece[$key], $fieldUnit);
+            if ($parsed['status'] !== self::STATUS_OK) {
+                continue;
+            }
+            $out[$key] = $pieceUnit === 'ft'
+                ? round($parsed['inches'] / 12.0, 4)
+                : round($parsed['inches'], 4);
+            $out[$key.'_unit'] = $pieceUnit;
         }
         foreach (['linear_ft', 'stock_length_ft'] as $key) {
-            if (! array_key_exists($key, $piece)) {
+            if (! array_key_exists($key, $piece) || ! self::shouldRewriteLegacyDim($piece, $key, 'ft')) {
                 continue;
             }
             $parsed = self::inspect($piece[$key], 'ft');
             if ($parsed['status'] === self::STATUS_OK) {
                 $out[$key] = round($parsed['inches'] / 12.0, 4);
-            } elseif ($parsed['status'] === self::STATUS_INVALID) {
-                $out[$key] = 0;
             }
         }
         if (isset($piece['sets']) && is_array($piece['sets'])) {
@@ -135,6 +143,38 @@ class MillworkDimensionParser
         }
 
         return $out;
+    }
+
+    /**
+     * True when the user re-typed a size (fraction / suffix) or picked In/Ft
+     * that disagrees with the piece unit. Stored plain numbers stay put.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function shouldRewriteLegacyDim(array $row, string $key, string $pieceUnit): bool
+    {
+        if (! array_key_exists($key, $row)) {
+            return false;
+        }
+        $specific = $row[$key.'_unit'] ?? null;
+        if (is_string($specific) && $specific !== '') {
+            $explicit = strtolower($specific) === 'ft' ? 'ft' : 'in';
+            if ($explicit !== $pieceUnit) {
+                return true;
+            }
+        }
+
+        return ! self::isPlainStoredNumber($row[$key]);
+    }
+
+    public static function isPlainStoredNumber(mixed $raw): bool
+    {
+        if (is_int($raw) || is_float($raw)) {
+            return is_finite($raw);
+        }
+        $s = trim((string) $raw);
+
+        return $s !== '' && preg_match('/^[+]?\d+(?:\.\d+)?$/', $s) === 1;
     }
 
     public static function fieldUnitOf(string $key, array $row, ?string $fallbackUnit = null): string
@@ -304,8 +344,15 @@ class MillworkDimensionParser
         if (str_contains($s, '.')) {
             $s = str_replace(',', '', $s);
         } elseif (str_contains($s, ',')) {
+            if (substr_count($s, ',') !== 1) {
+                return null;
+            }
             $last = strrpos($s, ',');
-            $s = str_replace(',', '', substr($s, 0, $last)).'.'.substr($s, $last + 1);
+            $frac = substr($s, $last + 1);
+            if (strlen($frac) >= 3) {
+                return null;
+            }
+            $s = str_replace(',', '', substr($s, 0, $last)).'.'.$frac;
         }
         if (! preg_match('/^[+]?\d+(?:\.\d+)?$/', $s)) {
             return null;
@@ -335,5 +382,10 @@ class MillworkDimensionParser
         }
 
         return trim(preg_replace('/\s+/u', ' ', $s) ?? $s);
+    }
+
+    private static function isZeroLiteral(string $s): bool
+    {
+        return preg_match('/^[+]?(?:0+)(?:\.0+)?$/', $s) === 1;
     }
 }

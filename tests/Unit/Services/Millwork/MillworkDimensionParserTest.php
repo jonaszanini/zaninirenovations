@@ -46,6 +46,7 @@ class MillworkDimensionParserTest extends TestCase
             ['76.2cm', 'in', 76.2 / 2.54],
             ['0.762m', 'in', 0.762 / 0.0254],
             ['1,5', 'in', 1.5],
+            ['1,50', 'in', 1.5],
             ['½', 'in', 0.5],
             ['23½', 'in', 23.5],
             ['23 ½', 'in', 23.5],
@@ -82,6 +83,9 @@ class MillworkDimensionParserTest extends TestCase
             ['   '],
             [0],
             [0.0],
+            ['0'],
+            ['0.0'],
+            ['00'],
         ];
     }
 
@@ -117,6 +121,8 @@ class MillworkDimensionParserTest extends TestCase
             [NAN, 'valid size'],
             ['--24', 'greater than zero'],
             ['12foo', 'valid size'],
+            ['1,500', 'valid size'],
+            ['1,234,567', 'valid size'],
         ];
     }
 
@@ -127,11 +133,12 @@ class MillworkDimensionParserTest extends TestCase
         $this->assertEqualsWithDelta(24.0, MillworkDimensionParser::parse('2 ft'), 0.0001);
     }
 
-    public function test_typed_zero_string_is_invalid_not_empty(): void
+    public function test_typed_zero_string_is_empty_like_stored_zero(): void
     {
         $parsed = MillworkDimensionParser::inspect('0', 'in');
-        $this->assertSame(MillworkDimensionParser::STATUS_INVALID, $parsed['status']);
-        $this->assertStringContainsString('greater than zero', (string) $parsed['message']);
+        $this->assertSame(MillworkDimensionParser::STATUS_EMPTY, $parsed['status']);
+        $this->assertSame(0.0, $parsed['inches']);
+        $this->assertNull($parsed['message']);
     }
 
     public function test_per_dimension_units_fall_back_to_piece_unit(): void
@@ -168,7 +175,7 @@ class MillworkDimensionParserTest extends TestCase
         );
     }
 
-    public function test_legacy_conversion_writes_numeric_inches(): void
+    public function test_legacy_conversion_rewrites_only_retyped_sizes(): void
     {
         $legacy = MillworkDimensionParser::toLegacyInchPiece([
             'type' => 'cabinet',
@@ -186,14 +193,33 @@ class MillworkDimensionParserTest extends TestCase
             ]],
         ]);
 
-        $this->assertSame('in', $legacy['unit']);
-        $this->assertEqualsWithDelta(23.5, (float) $legacy['width'], 0.001);
-        $this->assertEqualsWithDelta(24.0, (float) $legacy['height'], 0.001);
-        $this->assertEqualsWithDelta(762 / 25.4, (float) $legacy['depth'], 0.01);
-        $this->assertSame('in', $legacy['width_unit']);
+        $this->assertSame('ft', $legacy['unit']);
+        $this->assertEqualsWithDelta(23.5 / 12.0, (float) $legacy['width'], 0.001);
+        $this->assertSame('2', $legacy['height']);
+        $this->assertEqualsWithDelta((762 / 25.4) / 12.0, (float) $legacy['depth'], 0.01);
         $this->assertEqualsWithDelta(36.0, (float) $legacy['sets'][0]['length'], 0.001);
         $this->assertEqualsWithDelta(1.5, (float) $legacy['sets'][0]['depth'], 0.001);
-        $this->assertSame(23.0, (float) '23 1/2');
-        $this->assertEqualsWithDelta(23.5, (float) $legacy['width'], 0.001);
+    }
+
+    public function test_legacy_conversion_leaves_trim_openings_and_plain_ft_length(): void
+    {
+        $legacy = MillworkDimensionParser::toLegacyInchPiece([
+            'type' => 'trim',
+            'profile' => 'casing',
+            'unit' => 'ft',
+            'length' => 20,
+            'length_unit' => 'ft',
+            'openings' => 3,
+            'width' => 36,
+            'width_unit' => 'ft',
+            'height' => 80,
+            'height_unit' => 'ft',
+        ]);
+
+        $this->assertSame('ft', $legacy['unit']);
+        $this->assertSame(20, $legacy['length']);
+        $this->assertSame(36, $legacy['width']);
+        $this->assertSame(80, $legacy['height']);
+        $this->assertSame(3, $legacy['openings']);
     }
 }

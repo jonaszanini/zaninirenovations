@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Models\MillworkQuotation;
 use App\Models\MillworkSettings;
+use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Services\MillworkQuotationCalculator;
 use Tests\TestCase;
@@ -855,7 +856,7 @@ class MillworkCutPlanPlacementTest extends TestCase
         $this->assertGreaterThan(500, (float) $fancy['summary']['grand_total']);
     }
 
-    public function test_legacy_edit_converts_fractions_and_per_dim_units(): void
+    public function test_legacy_retyped_sizes_match_inch_total(): void
     {
         $base = [
             'type' => 'cabinet',
@@ -875,14 +876,14 @@ class MillworkCutPlanPlacementTest extends TestCase
             'include_install' => false,
             'owner_hourly_rate' => 85,
         ], $this->settings(), 1);
-        $mixed = (new MillworkQuotationCalculator)->calculate([
+        $retyped = (new MillworkQuotationCalculator)->calculate([
             'pieces' => [array_merge($base, [
                 'width' => '3',
                 'width_unit' => 'ft',
                 'height' => '34 1/2',
                 'height_unit' => 'in',
-                'depth' => 2,
-                'depth_unit' => 'ft',
+                'depth' => '2 ft',
+                'depth_unit' => 'in',
                 'unit' => 'in',
             ])],
             'include_install' => false,
@@ -891,45 +892,121 @@ class MillworkCutPlanPlacementTest extends TestCase
 
         $this->assertEqualsWithDelta(
             (float) $plain['summary']['grand_total'],
-            (float) $mixed['summary']['grand_total'],
+            (float) $retyped['summary']['grand_total'],
             0.02
         );
-        $this->assertGreaterThan(0, (float) $mixed['summary']['grand_total']);
+        $this->assertGreaterThan(0, (float) $retyped['summary']['grand_total']);
     }
 
-    public function test_legacy_edit_treats_two_ft_typed_in_inch_field_as_24(): void
+    public function test_v1_stored_trim_in_feet_matches_main_total(): void
     {
-        $base = [
-            'type' => 'kallax',
-            'qty' => 1,
-            'columns' => 2,
-            'rows' => 2,
-            'include_back' => false,
-            'edge_banding' => false,
-            'unit' => 'in',
+        $inputs = [
+            'pieces' => [[
+                'type' => 'trim',
+                'profile' => 'casing',
+                'unit' => 'ft',
+                'length' => 20,
+                'openings' => 3,
+                'width' => 36,
+                'height' => 80,
+                'qty' => 1,
+                'edge_banding' => false,
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
         ];
-        $plain = (new MillworkQuotationCalculator)->calculate([
-            'pieces' => [array_merge($base, ['width' => 24, 'height' => 24, 'depth' => 12])],
+        $out = (new MillworkQuotationCalculator)->calculate($inputs, $this->settings(), 1);
+        $opened = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'trim',
+                'profile' => 'casing',
+                'unit' => 'ft',
+                'length' => 20,
+                'length_unit' => 'ft',
+                'openings' => 3,
+                'width' => 36,
+                'width_unit' => 'ft',
+                'height' => 80,
+                'height_unit' => 'ft',
+                'qty' => 1,
+                'edge_banding' => false,
+            ]],
             'include_install' => false,
             'owner_hourly_rate' => 85,
-        ], $this->settings(), 1);
-        $typedFt = (new MillworkQuotationCalculator)->calculate([
-            'pieces' => [array_merge($base, [
-                'width' => '2 ft',
-                'height' => '2 ft',
-                'depth' => 12,
-                'width_unit' => 'in',
-                'height_unit' => 'in',
-            ])],
-            'include_install' => false,
-            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
         ], $this->settings(), 1);
 
+        $this->assertEqualsWithDelta(580.44, (float) $out['summary']['grand_total'], 0.02);
         $this->assertEqualsWithDelta(
-            (float) $plain['summary']['grand_total'],
-            (float) $typedFt['summary']['grand_total'],
+            (float) $out['summary']['grand_total'],
+            (float) $opened['summary']['grand_total'],
             0.02
         );
+        $this->assertNotEquals(5792.40, round((float) $out['summary']['grand_total'], 2));
+    }
+
+    public function test_v1_fuzzed_stored_quotes_match_main_when_untouched(): void
+    {
+        mt_srand(9984);
+        $calc = new MillworkQuotationCalculator();
+        $settings = $this->settings();
+        $samples = 48;
+        for ($i = 0; $i < $samples; $i++) {
+            $inputs = $i === 0 ? $this->v1StoredTrimFeetInputs() : $this->fuzzedLegacyInputs($i);
+            foreach ($inputs['pieces'] as $pi => $piece) {
+                $this->assertSame(
+                    $this->legacySizeSnapshot($piece),
+                    $this->legacySizeSnapshot(MillworkDimensionParser::toLegacyInchPiece($piece)),
+                    'seed '.$i.' piece '.$pi.' must stay in the stored unit'
+                );
+            }
+            $out = $calc->calculate($inputs, $settings, 1);
+            $again = $calc->calculate($inputs, $settings, 1);
+            $total = round((float) ($out['summary']['grand_total'] ?? 0), 2);
+            $this->assertTrue(is_finite($total), 'seed '.$i);
+            $this->assertGreaterThan(0, $total, 'seed '.$i);
+            $this->assertEquals($total, round((float) ($again['summary']['grand_total'] ?? 0), 2), 'seed '.$i);
+            if ($i === 0) {
+                $this->assertEqualsWithDelta(580.44, $total, 0.02);
+            }
+        }
+    }
+
+    public function test_draft_validation_treats_stored_zero_as_blank(): void
+    {
+        $draft = (new MillworkQuotationCalculator)->validationMessages([
+            'pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => 0,
+                'height' => '0',
+                'depth' => 24,
+                'length' => '0.0',
+                'thickness' => 0,
+                'unit' => 'in',
+            ]],
+        ], true);
+        $this->assertArrayNotHasKey('pieces.0.width', $draft);
+        $this->assertArrayNotHasKey('pieces.0.height', $draft);
+        $this->assertArrayNotHasKey('pieces.0.length', $draft);
+        $this->assertArrayNotHasKey('pieces.0.thickness', $draft);
+    }
+
+    public function test_validation_flags_thousands_comma_as_inline_error(): void
+    {
+        $messages = (new MillworkQuotationCalculator)->validationMessages([
+            'pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => '1,500',
+                'height' => 34.5,
+                'depth' => 24,
+                'unit' => 'in',
+            ]],
+        ], true);
+        $this->assertArrayHasKey('pieces.0.width', $messages);
+        $this->assertStringContainsString('valid size', $messages['pieces.0.width']);
     }
 
     public function test_draft_validation_rejects_scientific_and_oversized_dims(): void
@@ -1413,6 +1490,115 @@ class MillworkCutPlanPlacementTest extends TestCase
     private function encodeLegacySnapshot(array $snapshot): string
     {
         return json_encode($snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n";
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function v1StoredTrimFeetInputs(): array
+    {
+        return [
+            'pieces' => [[
+                'type' => 'trim',
+                'profile' => 'casing',
+                'unit' => 'ft',
+                'length' => 20,
+                'openings' => 3,
+                'width' => 36,
+                'height' => 80,
+                'qty' => 1,
+                'edge_banding' => false,
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+        ];
+    }
+
+    /**
+     * Old quotes store plain numbers in the piece unit. Trim openings stay inches.
+     *
+     * @return array<string, mixed>
+     */
+    private function fuzzedLegacyInputs(int $seed): array
+    {
+        $types = ['cabinet', 'shelf', 'trim', 'closet', 'vanity', 'mantel', 'bench'];
+        $type = $types[$seed % count($types)];
+        $unit = ($seed % 2 === 0) ? 'in' : 'ft';
+        $piece = [
+            'type' => $type,
+            'qty' => 1,
+            'unit' => $unit,
+            'edge_banding' => false,
+            'include_doors' => false,
+            'include_back' => false,
+            'shelf_count' => 0,
+        ];
+        if ($type === 'shelf') {
+            $piece['sets'] = [[
+                'qty' => 1 + ($seed % 3),
+                'length' => 24 + ($seed % 18),
+                'depth' => 10 + ($seed % 6),
+                'unit' => $unit,
+            ]];
+        } elseif ($type === 'trim') {
+            $piece['unit'] = 'ft';
+            $piece['profile'] = 'casing';
+            $piece['length'] = 10 + ($seed % 24);
+            $piece['openings'] = $seed % 4;
+            if ($piece['openings'] > 0) {
+                $piece['width'] = 30 + ($seed % 12);
+                $piece['height'] = 72 + ($seed % 12);
+            }
+        } elseif ($type === 'mantel') {
+            $piece['length'] = $unit === 'ft' ? (4 + ($seed % 3)) : (48 + ($seed % 24));
+            $piece['depth'] = $unit === 'ft' ? 1 : (8 + ($seed % 4));
+            $piece['height'] = $unit === 'ft' ? 1 : (6 + ($seed % 4));
+        } else {
+            $piece['width'] = $unit === 'ft' ? (2 + ($seed % 4)) : (24 + ($seed % 20));
+            $piece['height'] = $unit === 'ft' ? (2 + ($seed % 3)) : (30 + ($seed % 18));
+            $piece['depth'] = $unit === 'ft' ? (1 + ($seed % 2)) : (12 + ($seed % 10));
+        }
+        if ($seed % 5 === 0) {
+            $piece['thickness'] = 0;
+            if (! in_array($type, ['mantel', 'bench', 'trim', 'shelf'], true)) {
+                $piece['length'] = 0;
+            }
+        }
+
+        return [
+            'pieces' => [$piece],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     * @return array<string, mixed>
+     */
+    private function legacySizeSnapshot(array $piece): array
+    {
+        $keys = [
+            'unit', 'width', 'height', 'depth', 'length', 'thickness',
+            'linear_ft', 'stock_length_ft', 'width_unit', 'height_unit',
+            'depth_unit', 'length_unit', 'openings',
+        ];
+        $out = [];
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $piece)) {
+                $out[$key] = $piece[$key];
+            }
+        }
+        if (isset($piece['sets']) && is_array($piece['sets'])) {
+            $out['sets'] = [];
+            foreach ($piece['sets'] as $set) {
+                $out['sets'][] = is_array($set) ? $this->legacySizeSnapshot($set) : $set;
+            }
+        }
+
+        return $out;
     }
 
     private function settings(): MillworkSettings

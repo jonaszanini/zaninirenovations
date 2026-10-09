@@ -78,6 +78,12 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('mw-totals-bar', false)
             ->assertSee('Clear coat');
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Waste %');
+        $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Pieces');
+        $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Wood sheet');
+        $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Materials & finish');
+        $create->assertSee('aria-label="About Pieces"', false);
+        $create->assertSee('aria-label="About Wood sheet"', false);
+        $create->assertDontSee('<p class="admin-help">Add each millwork item', false);
 
         $this->get(route('admin.quotations.millwork.price-configuration'))
             ->assertOk()
@@ -324,6 +330,62 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
                 'ask_reply_to_accept' => '0',
             ])->assertRedirect()
             ->assertSessionHasErrors('calculation');
+    }
+
+    public function test_draft_save_accepts_stored_zero_size_fields(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.millwork.create'))
+            ->post(route('admin.quotations.millwork.store'), [
+                'save_intent' => 'draft',
+                'client_name' => 'Zero draft',
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'qty' => 1,
+                    'width' => 0,
+                    'height' => '0',
+                    'depth' => 24,
+                    'length' => '0.0',
+                    'thickness' => 0,
+                    'unit' => 'in',
+                    'include_doors' => 0,
+                ]],
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $quote = MillworkQuotation::query()->where('client_name', 'Zero draft')->first();
+        $this->assertNotNull($quote);
+        $this->assertTrue((bool) $quote->is_draft);
+    }
+
+    public function test_save_flags_thousands_comma_as_inline_error(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.millwork.create'))
+            ->post(route('admin.quotations.millwork.store'), [
+                'save_intent' => 'draft',
+                'client_name' => 'Comma thousands',
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'qty' => 1,
+                    'width' => '1,500',
+                    'height' => 34.5,
+                    'depth' => 24,
+                    'unit' => 'in',
+                    'include_doors' => 0,
+                ]],
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasErrors('pieces.0.width');
     }
 
     public function test_draft_save_rejects_scientific_dimension_without_500(): void

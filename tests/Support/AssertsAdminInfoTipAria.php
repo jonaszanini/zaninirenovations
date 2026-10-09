@@ -6,8 +6,8 @@ trait AssertsAdminInfoTipAria
 {
     /**
      * #54's <x-admin.info-tip> always renders aria-label="About {label}".
-     * This branch still uses the pre-#54 include (aria-label="{label}").
-     * Accept both so the suite stays green now and after the #54 rebase.
+     * Accept the prefixed form and a bare label so the suite stays green
+     * if a tip is still rendered by the pre-#54 include.
      */
     protected function assertAdminInfoTipAriaLabel(string $html, string $label): void
     {

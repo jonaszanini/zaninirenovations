@@ -72,6 +72,9 @@ jobs:
       - name: Millwork cut-plan placement (no database)
         run: php artisan test tests/Unit/Services/MillworkCutPlanPlacementTest.php
 
+      - name: Millwork dimension parser (no database)
+        run: php artisan test tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
+
       - name: Admin dark-theme CSS coverage (no database)
         run: |
           php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php
