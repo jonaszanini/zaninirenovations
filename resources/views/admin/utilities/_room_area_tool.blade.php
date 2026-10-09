@@ -682,13 +682,6 @@
               </div>
             </div>
           </div>
-          @if ($fullPage)
-          <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-toolbar-overflow-btn" data-ra-toolbar-overflow hidden aria-label="More tools" aria-expanded="false" aria-controls="ra-toolbar-overflow">
-            <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
-            <span class="util-ra-more-btn-label">More</span>
-          </button>
-          <div class="util-ra-toolbar-overflow" id="ra-toolbar-overflow" data-ra-toolbar-overflow-menu hidden></div>
-          @endif
 
           @unless ($fullPage)
           <div class="util-ra-toolbar__view">

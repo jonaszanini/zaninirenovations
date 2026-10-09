@@ -50,9 +50,22 @@ function assertCssGeometry() {
     '320 status sits on the canvas bottom edge'
   );
   assert.ok(
-    /@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,900}?max-height:\s*calc\(\(var\(--admin-control-height\) \* 2\)/.test(CSS),
-    '1024 toolbar caps at two control rows'
+    !/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,900}?max-height:\s*calc\(\(var\(--admin-control-height\) \* 2\)/.test(CSS),
+    '1024 toolbar must not cap at two clipped rows'
   );
+  assert.ok(
+    /@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,400}?overflow-x:\s*visible/.test(CSS),
+    '1024 toolbar overflow stays visible so controls are not clipped'
+  );
+  assert.ok(
+    !/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,1200}?\.util-ra-help \{\s*display:\s*none/.test(CSS),
+    '1024 toolbar keeps the ⓘ help buttons'
+  );
+  assert.ok(
+    CSS.includes('max-height: min(40vh, 280px)'),
+    'expanded phone sheet is capped so the drawing area stays usable'
+  );
+  assert.ok(!/height:\s*70vh/.test(collapsed.slice(0, 220)), 'collapsed sheet must not use 70vh');
 }
 
 function resolveKonvaFile() {
@@ -321,6 +334,90 @@ function assertVisibleCanvasGeometry(geom, label) {
       assert.ok(!rectsOverlap(geom.feedbackBox, box, 1), label + ' status does not cover label ' + i + ': ' + JSON.stringify({ feedback: geom.feedbackBox, label: box }));
     });
   }
+}
+
+function readChromeLayoutScript() {
+  return () => {
+    const wrap = document.querySelector('[data-ra-canvas-wrap]');
+    const sheet = document.querySelector('[data-ra-side]');
+    const header = document.querySelector('.util-ra-full-header');
+    const phone = document.querySelector('[data-ra-phone-bar]');
+    const toolbar = document.querySelector('.util-ra-canvas-toolbar');
+    const feedback = document.querySelector('[data-ra-feedback]');
+    const box = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return {
+        top: r.top,
+        bottom: r.bottom,
+        left: r.left,
+        right: r.right,
+        width: r.width,
+        height: r.height,
+        display: cs.display,
+        visibility: cs.visibility,
+      };
+    };
+    const fb = feedback && !feedback.hasAttribute('hidden') ? box(feedback) : null;
+    return {
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      wrap: box(wrap),
+      sheet: box(sheet),
+      header: box(header),
+      phone: box(phone),
+      toolbar: box(toolbar),
+      feedback: (feedback && feedback.textContent) || '',
+      feedbackBox: fb,
+    };
+  };
+}
+
+function assertCanvasAboveSheet(layout, label) {
+  assert.ok(layout && layout.wrap && layout.sheet, label + ' has wrap and sheet');
+  assert.ok(layout.header && layout.header.height >= 40, label + ' uses the real header, not a 397px canvas fixture: ' + JSON.stringify(layout.header));
+  assert.ok(layout.phone && layout.phone.height >= 40, label + ' uses the real phone bar: ' + JSON.stringify(layout.phone));
+  assert.ok(
+    layout.wrap.bottom <= layout.sheet.top + 1,
+    label + ' canvas stays fully above the bottom bar: ' + JSON.stringify({ wrap: layout.wrap, sheet: layout.sheet })
+  );
+  assert.ok(layout.wrap.top >= 0 && layout.wrap.bottom <= layout.innerHeight + 1, label + ' canvas stays in the viewport');
+  assert.ok(/Editing/.test(layout.feedback), label + ' shows Editing status: ' + layout.feedback);
+  assert.ok(layout.feedbackBox && layout.feedbackBox.height > 2, label + ' Editing status is visible');
+  assert.ok(
+    layout.feedbackBox.top >= 0 && layout.feedbackBox.bottom <= layout.innerHeight + 1,
+    label + ' Editing status stays on screen: ' + JSON.stringify(layout.feedbackBox)
+  );
+}
+
+function visibleToolbarControls() {
+  return () => {
+    const toolbar = document.querySelector('.util-ra-canvas-toolbar');
+    if (!toolbar) return [];
+    const nodes = Array.from(toolbar.querySelectorAll('button, input:not([type="file"]):not([type="checkbox"]), select, label.admin-btn, .util-ra-help-q'))
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        return r.width > 4 && r.height > 4 && !el.hidden && !el.hasAttribute('hidden') && cs.display !== 'none' && cs.visibility !== 'hidden';
+      });
+    return nodes.map((el, i) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return {
+        i,
+        label: el.getAttribute('aria-label') || el.getAttribute('data-ra-unit-system') || el.getAttribute('data-ra-help-pop') || el.tagName + ':' + (el.textContent || '').trim().slice(0, 24),
+        width: r.width,
+        height: r.height,
+        top: r.top,
+        bottom: r.bottom,
+        left: r.left,
+        right: r.right,
+        reachable: !!(hit && (hit === el || el.contains(hit) || (hit.contains && hit.contains(el)))),
+        overflow: !!document.querySelector('[data-ra-toolbar-overflow]'),
+      };
+    });
+  };
 }
 
 function assertRoomStaysOnScreen(cam, label) {
@@ -610,29 +707,118 @@ async function measureViewports() {
       });
       const geom = await page.evaluate(readVisibleRoomGeometryScript());
       assertVisibleCanvasGeometry(geom, vp.width + '×' + vp.height);
+      if (vp.width === 320 && vp.height === 568) {
+        const chrome = await page.evaluate(readChromeLayoutScript());
+        assertCanvasAboveSheet(chrome, '320×568');
+        assert.ok(
+          chrome.header.height + chrome.phone.height + chrome.sheet.height > 140,
+          '320×568 chrome is the real header + phone bar + sheet, not a 397px canvas fixture: ' + JSON.stringify(chrome)
+        );
+      }
       if (vp.width === 1024) {
         const bar = await page.evaluate(() => {
           const toolbar = document.querySelector('.util-ra-canvas-toolbar');
           const overflow = document.querySelector('[data-ra-toolbar-overflow]');
-          const menu = document.querySelector('[data-ra-toolbar-overflow-menu]');
           const helps = Array.from(document.querySelectorAll('.util-ra-canvas-toolbar .util-ra-help')).map((el) => {
             const r = el.getBoundingClientRect();
-            return { width: r.width, height: r.height, top: r.top };
+            const cs = getComputedStyle(el);
+            return { width: r.width, height: r.height, display: cs.display };
           });
           const barBox = toolbar.getBoundingClientRect();
           return {
             height: barBox.height,
-            overflowShown: !!(overflow && !overflow.hasAttribute('hidden') && overflow.getBoundingClientRect().width > 8),
-            extrasInMenu: !!(menu && menu.querySelector('.util-ra-tool-group--room-tools')),
-            helpOnOwnRow: helps.some((h) => h.height > 8 && h.width > 8),
+            overflowShown: !!(overflow && overflow.getBoundingClientRect().width > 8),
+            helpVisible: helps.filter((h) => h.height > 8 && h.width > 8 && h.display !== 'none').length,
           };
         });
-        assert.ok(bar.height <= 108, '1024 toolbar stays within two rows: ' + bar.height);
-        assert.ok(bar.overflowShown, '1024 overflow More button is visible');
-        assert.ok(bar.extrasInMenu, '1024 extras live in the overflow menu');
-        assert.ok(!bar.helpOnOwnRow, '1024 toolbar ⓘ are not on their own row');
+        assert.ok(!bar.overflowShown, '1024 has no More overflow menu');
+        assert.ok(bar.helpVisible >= 2, '1024 keeps toolbar ⓘ visible: ' + bar.helpVisible);
       }
     }
+
+    for (const width of [901, 960, 1024]) {
+      await page.setViewport({ width, height: 768, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+      await waitForStableCanvasFit(page, {
+        minWidth: 200,
+        maxWidth: 1600,
+        firstFitGone: true,
+        editing: true,
+      });
+      const controls = await page.evaluate(visibleToolbarControls());
+      assert.ok(controls.length >= 16, width + ' toolbar exposes the wrapping controls: ' + controls.length);
+      assert.ok(controls.every((c) => !c.overflow), width + ' must not render a More menu');
+      const needed = ['Imperial', 'Metric', 'Imperial format', 'Calibrate', 'Apply known length', 'About measure'];
+      needed.forEach((label) => {
+        assert.ok(controls.some((c) => String(c.label).includes(label) || String(c.label).toLowerCase().includes(label.toLowerCase()) || (label === 'Imperial' && c.label === 'imperial') || (label === 'Metric' && c.label === 'metric')), width + ' is missing ' + label + ': ' + JSON.stringify(controls.map((c) => c.label)));
+      });
+      controls.forEach((c) => {
+        assert.ok(c.reachable, width + ' control is not under another layer: ' + JSON.stringify(c));
+        assert.ok(c.bottom <= 768 + 1 && c.top >= 0, width + ' control is on screen: ' + JSON.stringify(c));
+      });
+      for (const control of controls) {
+        const clicked = await page.evaluate((idx) => {
+          const toolbar = document.querySelector('.util-ra-canvas-toolbar');
+          const nodes = Array.from(toolbar.querySelectorAll('button, input:not([type="file"]):not([type="checkbox"]), select, label.admin-btn, .util-ra-help-q'))
+            .filter((el) => {
+              const r = el.getBoundingClientRect();
+              const cs = getComputedStyle(el);
+              return r.width > 4 && r.height > 4 && !el.hidden && !el.hasAttribute('hidden') && cs.display !== 'none' && cs.visibility !== 'hidden';
+            });
+          const el = nodes[idx];
+          if (!el) return { ok: false, reason: 'missing' };
+          const r = el.getBoundingClientRect();
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          if (!(hit && (hit === el || el.contains(hit) || (hit.contains && hit.contains(el))))) return { ok: false, reason: 'elementFromPoint', label: el.getAttribute('aria-label') };
+          if (el.matches('.util-ra-file-label') || el.querySelector('input[type="file"]')) return { ok: true };
+          el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          document.querySelectorAll('.util-ra-help-pop, [data-ra-templates-popover]').forEach((pop) => pop.setAttribute('hidden', ''));
+          document.querySelectorAll('[data-ra-help-pop]').forEach((btn) => btn.setAttribute('aria-expanded', 'false'));
+          return { ok: true };
+        }, control.i);
+        assert.ok(clicked && clicked.ok, width + ' click failed: ' + JSON.stringify({ control, clicked }));
+      }
+    }
+
+    await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await waitForStableCanvasFit(page, { minWidth: 160, maxWidth: 500, firstFitGone: true, editing: true });
+    const good320 = await page.evaluate(readChromeLayoutScript());
+    assertCanvasAboveSheet(good320, '320×568 live layout');
+    await page.addStyleTag({ content: '.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side { height: 70vh !important; max-height: 70vh !important; }' });
+    const mutantSheet = await page.evaluate(readChromeLayoutScript());
+    assert.ok(
+      mutantSheet.wrap.bottom > mutantSheet.sheet.top + 1,
+      'a 70vh collapsed-sheet mutant must push the canvas under the bar: ' + JSON.stringify(mutantSheet)
+    );
+    await page.reload({ waitUntil: 'load' });
+    await waitForStableCanvasFit(page, { minWidth: 160, maxWidth: 500, firstFitGone: true, editing: true });
+    await page.addStyleTag({ content: '.util-ra--fullpage .util-ra-canvas-wrap { margin-bottom: -120px !important; }' });
+    const mutantWrap = await page.evaluate(readChromeLayoutScript());
+    assert.ok(
+      mutantWrap.wrap.bottom > mutantWrap.sheet.top + 1,
+      'a canvas-under-bar mutant must fail the geometry check: ' + JSON.stringify(mutantWrap)
+    );
+    await page.reload({ waitUntil: 'load' });
+    await waitForStableCanvasFit(page, { minWidth: 160, maxWidth: 500, firstFitGone: true, editing: true });
+
+    await page.setViewport({ width: 414, height: 736, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true, editing: true });
+    await page.evaluate(() => {
+      const handle = document.querySelector('[data-ra-sheet-handle]');
+      if (handle) handle.click();
+    });
+    await page.waitForFunction(() => {
+      const root = document.querySelector('[data-room-area]');
+      return !!(root && root.classList.contains('is-sheet-expanded'));
+    }, { timeout: 8000 });
+    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true, editing: true });
+    const sheet414 = await page.evaluate(readChromeLayoutScript());
+    assert.ok(sheet414.sheet && sheet414.sheet.height <= 280 + 1, '414×736 open sheet is capped: ' + (sheet414.sheet && sheet414.sheet.height));
+    assert.ok(sheet414.wrap && sheet414.wrap.height >= 160, '414×736 drawing area stays usable with the sheet open: ' + (sheet414.wrap && sheet414.wrap.height));
+    assert.ok(sheet414.wrap.bottom <= sheet414.sheet.top + 1, '414×736 canvas stays above the open sheet');
+    await page.evaluate(() => {
+      const handle = document.querySelector('[data-ra-sheet-handle]');
+      if (handle) handle.click();
+    });
 
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true, editing: true });

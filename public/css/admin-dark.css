@@ -1357,8 +1357,7 @@ html.admin-dark .util-ra--fullpage .util-ra-phone-bar.is-overflowing::after {
   background: linear-gradient(to right, transparent, var(--admin-surface));
 }
 
-html.admin-dark .util-ra-more-sheet,
-html.admin-dark .util-ra-toolbar-overflow {
+html.admin-dark .util-ra-more-sheet {
   background: var(--admin-elevated, var(--admin-surface));
   color: var(--admin-text);
   border-color: var(--admin-border);

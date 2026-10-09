@@ -18,11 +18,6 @@
       && window.matchMedia('(max-width: 900px)').matches;
   }
 
-  function isCompactToolbar() {
-    return isFullPage() && typeof window.matchMedia === 'function'
-      && window.matchMedia('(min-width: 901px) and (max-width: 1024px)').matches;
-  }
-
   function raAll(sel) {
     return Array.prototype.slice.call(root.querySelectorAll(sel));
   }
@@ -307,8 +302,6 @@
     moreToggle: root.querySelector('[data-ra-more-toggle]'),
     moreClose: root.querySelector('[data-ra-more-close]'),
     moreSheet: root.querySelector('[data-ra-more-sheet]'),
-    toolbarOverflow: root.querySelector('[data-ra-toolbar-overflow]'),
-    toolbarOverflowMenu: root.querySelector('[data-ra-toolbar-overflow-menu]'),
     sheetTotal: root.querySelector('[data-ra-sheet-total]'),
     areaName: root.querySelector('[data-ra-area-name]'),
     areaNameWrap: root.querySelector('[data-ra-area-name-wrap]'),
@@ -4863,7 +4856,6 @@
   }
 
   function resizeStage() {
-    syncToolbarOverflow();
     if (!state.stage || !els.canvasWrap) return;
     var prevW = state.viewportW || state.stage.width();
     var prevH = state.viewportH || state.stage.height();
@@ -4912,7 +4904,6 @@
   function scheduleStageResize() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
-      syncToolbarOverflow();
       resizeStage();
     }, 120);
   }
@@ -9455,7 +9446,7 @@
       || (els.wallsPanel && els.wallsPanel.classList.contains('is-open'));
     root.classList.toggle('is-dock-open', !!open);
     if (open) {
-      root.style.setProperty('--ra-sheet-h', 'min(52vh, 420px)');
+      root.style.setProperty('--ra-sheet-h', 'min(40vh, 280px)');
       return;
     }
     if (root.classList.contains('is-sheet-expanded')) return;
@@ -9496,31 +9487,6 @@
       e.preventDefault();
       first.focus();
     }
-  }
-
-  function setToolbarOverflowOpen(open) {
-    if (!els.toolbarOverflow || !els.toolbarOverflowMenu) return;
-    var showMenu = !!open && isCompactToolbar();
-    els.toolbarOverflow.setAttribute('aria-expanded', showMenu ? 'true' : 'false');
-    els.toolbarOverflow.classList.toggle('is-active', showMenu);
-    if (showMenu) els.toolbarOverflowMenu.removeAttribute('hidden');
-    else els.toolbarOverflowMenu.setAttribute('hidden', '');
-  }
-
-  function syncToolbarOverflow() {
-    if (!els.toolbarOverflow || !els.toolbarOverflowMenu) return;
-    var groups = root.querySelector('.util-ra-toolbar__groups');
-    var extras = root.querySelectorAll('.util-ra-tool-group--room-tools, .util-ra-tool-group--plan');
-    var compact = isCompactToolbar();
-    show(els.toolbarOverflow, compact);
-    extras.forEach(function (el) {
-      if (compact && el.parentElement !== els.toolbarOverflowMenu) {
-        els.toolbarOverflowMenu.appendChild(el);
-      } else if (!compact && groups && el.parentElement !== groups) {
-        groups.appendChild(el);
-      }
-    });
-    if (!compact) setToolbarOverflowOpen(false);
   }
 
   function setMoreOpen(open) {
@@ -11036,15 +11002,6 @@
         toggleTemplatesPopover();
       });
     });
-    raAll('[data-ra-toolbar-overflow]').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!isCompactToolbar()) return;
-        var open = !!(els.toolbarOverflowMenu && els.toolbarOverflowMenu.hasAttribute('hidden'));
-        setToolbarOverflowOpen(open);
-      });
-    });
     raAll('[data-ra-more-toggle]').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.preventDefault();
@@ -11087,12 +11044,6 @@
       }
       if (templatesPopoverOpen() && !(els.templatesRoot && els.templatesRoot.contains(e.target))) {
         closeTemplatesPopover();
-      }
-      if (els.toolbarOverflowMenu && !els.toolbarOverflowMenu.hasAttribute('hidden')) {
-        var overflowBtn = els.toolbarOverflow;
-        if (!(els.toolbarOverflowMenu.contains(e.target) || (overflowBtn && overflowBtn.contains(e.target)))) {
-          setToolbarOverflowOpen(false);
-        }
       }
     });
 
@@ -11811,7 +11762,9 @@
 
     function clampSheet(height) {
       var minH = isPhoneChrome() ? collapsedSheetMin() : Math.round(Math.min(window.innerHeight * 0.22, 168));
-      var maxH = Math.round(window.innerHeight * (isPhoneChrome() ? 0.7 : 0.55));
+      var maxH = isPhoneChrome()
+        ? Math.min(280, Math.round(window.innerHeight * 0.4))
+        : Math.round(window.innerHeight * 0.55);
       return Math.max(minH, Math.min(maxH, Math.round(height)));
     }
 
@@ -11836,7 +11789,7 @@
       if (!isPhoneChrome()) return;
       var expanded = root.classList.toggle('is-sheet-expanded');
       handle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-      root.style.setProperty('--ra-sheet-h', expanded ? 'min(52vh, 360px)' : 'auto');
+      root.style.setProperty('--ra-sheet-h', expanded ? 'min(40vh, 280px)' : 'auto');
       afterSheetLayoutChange();
     }
 
@@ -11909,7 +11862,6 @@
     bindEvents();
     bindViewportEvents();
     bindTemplatesPopoverFollow();
-    syncToolbarOverflow();
     renderObjectPalette();
     syncUnitSystemUi();
     updateLiveUnitLabels();

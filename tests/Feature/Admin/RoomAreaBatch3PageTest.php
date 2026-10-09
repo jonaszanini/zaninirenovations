@@ -35,7 +35,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
             ->getContent();
 
         $this->assertStringContainsString('data-ra-help-pop="kits"', $html);
-        $this->assertStringContainsString('data-ra-toolbar-overflow', $html);
+        $this->assertStringNotContainsString('data-ra-toolbar-overflow', $html);
         $this->assertStringContainsString('util-ra--fullpage', $html);
         $this->assertStringContainsString('id="ra-catalog-options"', $html);
         $this->assertStringContainsString('maxlength="120"', $html);
@@ -220,10 +220,14 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('var shiftPan', $js);
         $this->assertStringContainsString('e.shiftKey', $js);
         $this->assertStringContainsString('Click Save to keep changes', $js);
-        $this->assertStringContainsString('function syncToolbarOverflow(', $js);
+        $this->assertStringNotContainsString('function syncToolbarOverflow(', $js);
+        $this->assertStringNotContainsString('data-ra-toolbar-overflow', $js);
         $this->assertStringContainsString('visibleWrapSize', $js);
         $inserter = file_get_contents(app_path('Services/RoomAreaQuoteLineInserter.php'));
         $this->assertStringContainsString('usesCurrentPdfFold()', $inserter);
+        $calc = file_get_contents(app_path('Services/StandardQuotationCalculator.php'));
+        $this->assertStringContainsString('$assignSurchargeRemainderToLabourJobs', $calc);
+        $this->assertStringNotContainsString('$useCurrentPdfFold', $calc);
         $this->assertMatchesRegularExpression(
             '/function deleteCurrentKit\([\s\S]*payload\.ok === false[\s\S]*Kit deleted/',
             $js
@@ -246,15 +250,20 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('.util-ra-kit__line', $css);
         $this->assertStringContainsString('.util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }', $css);
         $this->assertStringContainsString('position: absolute', $css);
-        $this->assertStringContainsString('min-height: 280px', $css);
-        $this->assertMatchesRegularExpression(
+        $this->assertStringContainsString('min-height: 240px', $css);
+        $this->assertDoesNotMatchRegularExpression(
             '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,900}?max-height:\s*calc\(\(var\(--admin-control-height\) \* 2\)/',
             $css
         );
-        $this->assertDoesNotMatchRegularExpression(
-            '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,220}?overflow-x:\s*auto/',
+        $this->assertMatchesRegularExpression(
+            '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,400}?overflow-x:\s*visible/',
             $css
         );
+        $this->assertDoesNotMatchRegularExpression(
+            '/@media \(min-width: 901px\) and \(max-width: 1024px\)[\s\S]{0,1200}?\.util-ra-help \{\s*display:\s*none/',
+            $css
+        );
+        $this->assertStringContainsString('max-height: min(40vh, 280px)', $css);
         $this->assertStringContainsString('min-height: 12.5rem', $css);
         $this->assertStringContainsString('padding-top: 2.4em', $css);
 

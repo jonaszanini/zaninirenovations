@@ -325,7 +325,7 @@ class StandardQuotationCalculator
         bool $includeLabourHst = true,
         bool $includeBuilding = false,
         float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT,
-        ?bool $useCurrentPdfFold = null
+        ?bool $assignSurchargeRemainderToLabourJobs = null
     ): array {
         if ($works === []) {
             $works = [[

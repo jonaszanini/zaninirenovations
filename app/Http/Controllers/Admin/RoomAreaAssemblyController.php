@@ -361,8 +361,9 @@ class RoomAreaAssemblyController extends Controller
                     'assembly_layout_id' => $assemblyLayoutId,
                 ]);
                 $coveredLayouts = $this->encodeCoveredLayouts($coveredMap);
-                $coverLabel = $this->coverLabelForLayouts($coveredMap, $projectForRooms, $roomLabel);
-                $lineLabel = trim($lineName.' ('.$coverLabel.')');
+                $ambiguous = $this->assemblyCoverIsAmbiguous($existing, $assemblyLineId, $projectForRooms);
+                $coverLabel = $this->coverLabelForLayouts($coveredMap, $projectForRooms, $roomLabel, $ambiguous);
+                $lineLabel = $this->formatAssemblyShortName($lineName, $coverLabel);
                 $kitLineLabel = trim($kitName.' — '.$lineLabel);
                 if ($this->quoteLineRoomsAlreadyCovered($coveredByLine, $assemblyLineId, $coveredLayouts, $assemblyLayoutId)) {
                     $skippedBits[] = $kitLineLabel !== '' ? $kitLineLabel : $lineLabel;
@@ -693,19 +694,16 @@ class RoomAreaAssemblyController extends Controller
      */
     private function coveredLayoutsAsOf(array $row, ?StandardQuotation $quote = null): ?\Carbon\Carbon
     {
-        foreach (['assembly_quoted_at', 'created_at'] as $key) {
-            $raw = trim((string) ($row[$key] ?? ''));
-            if ($raw === '') {
-                continue;
-            }
+        $raw = trim((string) ($row['assembly_quoted_at'] ?? ''));
+        if ($raw !== '') {
             try {
                 return \Carbon\Carbon::parse($raw);
             } catch (\Throwable $e) {
-                continue;
+                // Fall through to the quote timestamps used by older lines.
             }
         }
 
-        return $quote?->created_at;
+        return $quote?->updated_at ?? $quote?->created_at;
     }
 
     /**
@@ -723,7 +721,9 @@ class RoomAreaAssemblyController extends Controller
         $rooms = array_values(array_unique($rooms));
         sort($rooms);
         if (count($rooms) > 2000) {
-            $rooms = array_slice($rooms, 0, 2000);
+            throw ValidationException::withMessages([
+                'assembly_ids' => 'This quote cannot cover more than 2000 rooms in one line.',
+            ]);
         }
 
         return json_encode($rooms, JSON_UNESCAPED_UNICODE) ?: '[]';
@@ -732,7 +732,7 @@ class RoomAreaAssemblyController extends Controller
     /**
      * @param  array<string, true>  $coveredMap
      */
-    private function coverLabelForLayouts(array $coveredMap, ?RoomAreaProject $project, string $fallback): string
+    private function coverLabelForLayouts(array $coveredMap, ?RoomAreaProject $project, string $fallback, bool $ambiguous = false): string
     {
         $ids = [];
         foreach (array_keys($coveredMap) as $layout) {
@@ -741,28 +741,95 @@ class RoomAreaAssemblyController extends Controller
             }
         }
         $ids = array_values(array_unique($ids));
-        if ($ids === []) {
-            return $fallback;
+        $names = [];
+        if ($ids !== []) {
+            $names = RoomAreaRoom::query()
+                ->whereIn('id', $ids)
+                ->orderBy('id')
+                ->pluck('name')
+                ->map(fn ($name) => trim((string) $name) ?: 'Room')
+                ->values()
+                ->all();
         }
-        $names = RoomAreaRoom::query()
-            ->whereIn('id', $ids)
-            ->orderBy('id')
-            ->pluck('name')
-            ->map(fn ($name) => trim((string) $name) ?: 'Room')
-            ->values()
-            ->all();
         if ($names === []) {
-            return $fallback;
+            $fallbackName = trim($fallback);
+            $names = [$fallbackName !== '' ? $fallbackName : 'Room'];
         }
-        if (count($names) === 1) {
-            return $names[0];
-        }
-        if (count($names) <= 3) {
-            return implode(', ', $names);
+        $shown = count($names) <= 2 ? $names : array_slice($names, 0, 2);
+        $hidden = count($names) - count($shown);
+        $rooms = implode(', ', $shown);
+        if ($hidden > 0) {
+            $rooms .= ' +'.$hidden;
         }
         $projectName = trim((string) ($project?->name ?? ''));
+        if ($ambiguous && $projectName !== '') {
+            return $projectName.' · '.$rooms;
+        }
 
-        return $projectName !== '' ? $projectName : $fallback;
+        return $rooms;
+    }
+
+    private function formatAssemblyShortName(string $lineName, string $coverLabel): string
+    {
+        $line = trim($lineName) !== '' ? trim($lineName) : 'Line';
+        $cover = trim($coverLabel);
+        $label = $cover !== '' ? $line.' ('.$cover.')' : $line;
+        if (mb_strlen($label) <= 60) {
+            return $label;
+        }
+        $budget = 60 - mb_strlen($line.' ()');
+        if ($budget >= 1 && $cover !== '') {
+            return $line.' ('.$this->truncateAssemblyLabel($cover, $budget).')';
+        }
+        $keep = max(1, 60 - ($cover !== '' ? mb_strlen(' (…)') : 0));
+
+        return $cover !== ''
+            ? $this->truncateAssemblyLabel($line, $keep).' (…)'
+            : $this->truncateAssemblyLabel($line, 60);
+    }
+
+    private function truncateAssemblyLabel(string $text, int $max): string
+    {
+        if ($max < 1) {
+            return '';
+        }
+        if (mb_strlen($text) <= $max) {
+            return $text;
+        }
+        if ($max === 1) {
+            return mb_substr($text, 0, 1);
+        }
+
+        return rtrim(mb_substr($text, 0, $max - 1)).'…';
+    }
+
+    private function assemblyCoverIsAmbiguous(?StandardQuotation $quote, int $assemblyLineId, ?RoomAreaProject $project): bool
+    {
+        if (! $quote || ! $project || $assemblyLineId <= 0) {
+            return false;
+        }
+        $projectId = (int) $project->id;
+        foreach ($quote->resolvedWorks() as $work) {
+            foreach (($work['materials'] ?? []) as $row) {
+                if ((int) ($row['assembly_line_id'] ?? 0) !== $assemblyLineId) {
+                    continue;
+                }
+                $ids = [];
+                foreach (array_keys($this->parseCoveredLayouts($row, $quote)) as $layout) {
+                    if (preg_match('/^room:(\d+)$/', (string) $layout, $match)) {
+                        $ids[] = (int) $match[1];
+                    }
+                }
+                if ($ids === []) {
+                    continue;
+                }
+                if (RoomAreaRoom::query()->whereIn('id', $ids)->where('room_area_project_id', '!=', $projectId)->exists()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -821,9 +888,9 @@ class RoomAreaAssemblyController extends Controller
     private function quoteSuccessMessage($quote, bool $existing, array $addedBits, array $skippedBits): string
     {
         $added = $this->joinQuoteParts($addedBits);
-        $skipped = $this->joinQuoteParts($skippedBits);
+        $skipped = $this->formatSkippedParts($skippedBits);
         if ($added !== '' && $skipped !== '') {
-            return 'Added '.$added.' to '.$quote->quote_number.'. Skipped '.$skipped.' (already on that quote).';
+            return 'Added '.$added.' to '.$quote->quote_number.'. '.$skipped;
         }
         if ($added !== '' && $existing) {
             return 'Added '.$added.' to '.$quote->quote_number.'.';
@@ -836,6 +903,24 @@ class RoomAreaAssemblyController extends Controller
         }
 
         return 'Quotation '.$quote->quote_number.' created from Room Area kits.';
+    }
+
+    /**
+     * @param  list<string>  $parts
+     */
+    private function formatSkippedParts(array $parts): string
+    {
+        $parts = array_values(array_unique(array_filter(
+            array_map(static fn ($part) => trim((string) $part), $parts),
+            static fn ($part) => $part !== ''
+        )));
+        $count = count($parts);
+        if ($count === 0) {
+            return '';
+        }
+        $shown = array_slice($parts, 0, 3);
+
+        return 'Skipped '.$count.': '.implode(', ', $shown).'. Existing lines were left alone.';
     }
 
     /**
