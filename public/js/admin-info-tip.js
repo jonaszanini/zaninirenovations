@@ -53,13 +53,15 @@
   function bottomReserve() {
     var reserve = PAD;
     if (!document.querySelectorAll) return reserve;
-    document.querySelectorAll('.br-sticky-total, .br-sticky-bar, .admin-sticky-footer').forEach(function (el) {
-      if (!el.getBoundingClientRect) return;
-      var r = el.getBoundingClientRect();
-      if (!r || r.height <= 0) return;
-      if (r.bottom >= (window.innerHeight || 0) - 4) {
-        reserve = Math.max(reserve, (window.innerHeight || 0) - r.top + PAD);
-      }
+    ['.br-sticky-total', '.br-sticky-bar', '.admin-sticky-footer'].forEach(function (sel) {
+      document.querySelectorAll(sel).forEach(function (el) {
+        if (!el.getBoundingClientRect) return;
+        var r = el.getBoundingClientRect();
+        if (!r || r.height <= 0) return;
+        if (r.bottom >= (window.innerHeight || 0) - 4) {
+          reserve = Math.max(reserve, (window.innerHeight || 0) - r.top + PAD);
+        }
+      });
     });
     return reserve;
   }
@@ -85,7 +87,8 @@
     var left = btnRect.left;
     var need = popRect.height;
     var spaceBelow = floor - preferBelow;
-    var spaceAbove = btnRect.top - PAD;
+    var aboveEdge = Math.min(btnRect.top, floor);
+    var spaceAbove = aboveEdge - PAD;
 
     if (left + popRect.width > window.innerWidth - PAD) {
       left = window.innerWidth - PAD - popRect.width;
@@ -97,16 +100,18 @@
     if (spaceBelow >= need) {
       top = preferBelow;
     } else if (spaceAbove >= need) {
-      top = btnRect.top - need + 4;
+      top = aboveEdge - need + 4;
     } else {
       var useAbove = spaceAbove > spaceBelow;
-      var avail = Math.max(80, useAbove ? spaceAbove : spaceBelow);
+      var avail = Math.max(80, useAbove ? spaceAbove : Math.max(0, spaceBelow));
+      avail = Math.min(Math.max(80, floor - PAD), Math.max(avail, 80));
       bubble.style.maxHeight = Math.floor(avail) + 'px';
       bubble.style.overflowY = 'auto';
       need = Math.min(need, avail);
-      top = useAbove ? (btnRect.top - need + 4) : preferBelow;
-      top = Math.max(PAD, Math.min(top, floor - need));
+      top = useAbove ? (aboveEdge - need + 4) : preferBelow;
     }
+
+    top = Math.max(PAD, Math.min(top, floor - need));
 
     bubble.style.top = Math.round(top) + 'px';
     bubble.style.left = Math.round(left) + 'px';

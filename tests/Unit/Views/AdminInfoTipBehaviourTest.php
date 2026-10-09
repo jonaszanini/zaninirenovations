@@ -106,6 +106,8 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString("e.target.closest('summary')", $js);
         $this->assertStringContainsString('function bottomReserve', $js);
         $this->assertStringContainsString('spaceAbove >= need', $js);
+        $this->assertStringContainsString('aboveEdge', $js);
+        $this->assertStringContainsString('floor - need', $js);
         $this->assertStringContainsString("bubble.style.overflowY = 'auto'", $js);
         $this->assertStringContainsString("e.target.closest('.admin-info-tip')", $js);
         $this->assertStringContainsString('function refreshIds(scope)', $js);

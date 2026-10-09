@@ -104,6 +104,19 @@ class FakeEl {
   }
 
   querySelectorAll(sel) {
+    if (sel.includes(',')) {
+      const seen = new Set();
+      const out = [];
+      sel.split(',').forEach((part) => {
+        this.querySelectorAll(part.trim()).forEach((el) => {
+          if (!seen.has(el)) {
+            seen.add(el);
+            out.push(el);
+          }
+        });
+      });
+      return out;
+    }
     const { child, raw } = parseSelector(sel);
     if (!child && raw.includes(' ')) {
       const parts = raw.split(/\s+/);
@@ -617,6 +630,27 @@ function fire(list, type, event) {
   assert.equal(bubble.style.overflowY, 'auto');
   assert.ok(parseInt(bubble.style.maxHeight, 10) > 0, 'clamps with a viewport max-height');
   const top = parseInt(bubble.style.top, 10);
+  assert.ok(top >= 12, 'stays on-screen, got ' + top);
+}
+
+// --- flip/clamp stays above a fixed bottom bar even if the ⓘ sits on it ---
+{
+  const { document, body, listeners, window } = createEnv();
+  window.innerHeight = 844;
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-sticky-flip', 'Existing condition notes');
+  bubble._rect = { top: 0, bottom: 120, left: 0, right: 200, width: 200, height: 120 };
+  btn._rect = { top: 800, bottom: 844, left: 40, right: 84, width: 44, height: 44 };
+  const bar = document.createElement('div');
+  bar.className = 'br-sticky-total';
+  bar._rect = { top: 780, bottom: 844, left: 0, right: 390, width: 390, height: 64 };
+  body.appendChild(bar);
+  body.appendChild(wrap);
+  wrap.classList.add('is-open');
+  btn.setAttribute('aria-expanded', 'true');
+  listeners.window.resize[0].fn();
+  const top = parseInt(bubble.style.top, 10);
+  const floor = 844 - (844 - 780 + 12);
+  assert.ok(top + 120 <= floor + 1, 'bubble stays above the sticky bar, top=' + top + ' floor=' + floor);
   assert.ok(top >= 12, 'stays on-screen, got ' + top);
 }
 
