@@ -299,6 +299,8 @@ class AdminInfoTipBehaviourTest extends TestCase
             $darkCss
         );
         $this->assertStringContainsString('html.admin-dark label.cp-required', $darkCss);
+        $this->assertStringContainsString('html.admin-dark .admin-form-group .admin-label-with-tip__end > .cp-required', $darkCss);
+        $this->assertStringContainsString('html.admin-dark .admin-form-group .admin-label-with-tip__end > label.cp-required', $darkCss);
         $this->assertStringContainsString('.admin-btn[hidden]', $css);
         $dialog = file_get_contents(public_path('js/admin-dialog.js'));
         $this->assertStringContainsString('global.AdminInfoTip = global.AdminInfoTip ||', $dialog);

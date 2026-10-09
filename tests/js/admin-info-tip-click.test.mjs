@@ -33,6 +33,8 @@ assert.match(adminCss, /admin-label-with-tip__tail/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*\.admin-info-tip-wrap[\s\S]{0,80}display:\s*inline-flex/);
 assert.doesNotMatch(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,160}overflow-wrap:\s*anywhere/);
 assert.doesNotMatch(darkCss, /html\.admin-dark \.admin-form-group \.admin-checkbox-row >/);
+assert.match(darkCss, /html\.admin-dark \.admin-form-group \.admin-label-with-tip__end\s*>\s*\.cp-required/);
+assert.match(darkCss, /html\.admin-dark \.admin-form-group \.admin-label-with-tip__end\s*>\s*label\.cp-required/);
 assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S]{0,160}pointer-events:\s*auto/);
 assert.match(cpCss, /\.tm-chip-row\s*>\s*\.admin-checkbox-row/);
 assert.match(source, /function glueLastTextNode/);
@@ -262,6 +264,16 @@ function fixtureHtml() {
           </span>
         </span>
         <input class="admin-input" id="br-drywall" value="1">
+      </div>
+      <div class="admin-form-group">
+        <span class="admin-label-with-tip" id="strong-word-row">
+          <label for="br-strong"><strong>Drywall</strong></label>
+          <span class="admin-info-tip-wrap">
+            <button type="button" class="admin-info-tip" aria-label="About strong Drywall" aria-expanded="false" aria-controls="t-strong">i</button>
+            <span id="t-strong" class="admin-info-tip__bubble" role="tooltip">Same-line strong must not count as a broken word.</span>
+          </span>
+        </span>
+        <input class="admin-input" id="br-strong" value="1">
       </div>
       <div class="admin-form-group">
         <span class="admin-label-with-tip admin-checkbox-row" id="barrier-row">
@@ -1003,18 +1015,41 @@ async function puppeteerClick() {
 
     const darkStar = await page.evaluate(() => {
       document.documentElement.classList.add('admin-dark');
+      const wantSel = '.admin-form-group .admin-label-with-tip__end > .cp-required, .admin-form-group .admin-label-with-tip__end > label.cp-required';
+      const matching = Array.from(document.querySelectorAll(wantSel)).map((el) => ({
+        color: getComputedStyle(el).color,
+        tag: el.tagName,
+        text: String(el.textContent || '').trim(),
+      }));
+      const all = Array.from(document.querySelectorAll('.cp-required, label.cp-required')).map((el) => ({
+        color: getComputedStyle(el).color,
+        tag: el.tagName,
+        text: String(el.textContent || '').trim(),
+      }));
       const jsOn = document.querySelector('#star-split-row .admin-label-with-tip__end > .cp-required, #star-split-row .admin-label-with-tip__end > label.cp-required');
       const jsOff = document.querySelector('#store-name-row .cp-required');
       const out = {
         on: jsOn ? getComputedStyle(jsOn).color : '',
         off: jsOff ? getComputedStyle(jsOff).color : '',
+        matching,
+        all,
       };
       document.documentElement.classList.remove('admin-dark');
       return out;
     });
+    const darkStarRed = 'rgb(252, 165, 165)';
     assert.ok(darkStar.on, 'dark JS-on * must render');
     assert.ok(darkStar.off, 'dark JS-off * must render');
     assert.equal(darkStar.on, darkStar.off, 'dark-mode * must be the same red with JS on and off');
+    assert.equal(darkStar.on, darkStarRed, `dark JS-on * must be #fca5a5, got ${darkStar.on}`);
+    assert.equal(darkStar.off, darkStarRed, `dark JS-off * must be #fca5a5, got ${darkStar.off}`);
+    assert.ok(darkStar.matching.length >= 2, `dark __end * selectors must match JS-on and JS-off stars, got ${darkStar.matching.length}`);
+    darkStar.matching.forEach((star) => {
+      assert.equal(star.color, darkStarRed, `dark ${star.tag}.cp-required (${star.text || '*'}) must be #fca5a5, got ${star.color}`);
+    });
+    darkStar.all.forEach((star) => {
+      assert.equal(star.color, darkStarRed, `dark ${star.tag}.cp-required (${star.text || '*'}) must be #fca5a5, got ${star.color}`);
+    });
 
     await page.evaluate(() => window.AdminInfoTip && window.AdminInfoTip.closeAll && window.AdminInfoTip.closeAll());
     await page.click('#waste-row .admin-label-with-tip__end > label');
@@ -1208,6 +1243,14 @@ async function puppeteerClick() {
               height: size,
             };
           }
+          function distinctLineCount(rects) {
+            const lines = [];
+            rects.forEach((r) => {
+              const top = Math.round(r.top);
+              if (!lines.some((t) => Math.abs(t - top) <= 2)) lines.push(top);
+            });
+            return lines.length;
+          }
           const brokenWords = [];
           document.querySelectorAll('.admin-label-with-tip__end').forEach((end) => {
             const wrap = end.querySelector('.admin-info-tip-wrap');
@@ -1218,7 +1261,7 @@ async function puppeteerClick() {
             const range = document.createRange();
             range.selectNodeContents(word);
             const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0.5 && r.height > 0.5);
-            if (rects.length > 1) {
+            if (distinctLineCount(rects) > 1) {
               brokenWords.push(text.slice(0, 40));
             }
           });
@@ -1279,6 +1322,112 @@ async function puppeteerClick() {
     }
     console.log('info-tip geometry', JSON.stringify(geometryByWidth));
     await page.evaluate(() => document.documentElement.classList.remove('admin-dark'));
+
+    const r14WrapCss = `
+      .admin-label-with-tip__end { max-width: 100%; }
+      .admin-label-with-tip__end > span { flex: 0 1 auto; }
+      .admin-label-with-tip__end > label,
+      .admin-label-with-tip__end > span:not(.admin-info-tip-wrap) {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        white-space: normal !important;
+      }
+      .admin-label-with-tip__end > label,
+      .admin-form-group .admin-label-with-tip__end > label,
+      .admin-label-with-tip__end > label.admin-label-with-tip__tail,
+      .admin-form-group .admin-label-with-tip__end > label.admin-label-with-tip__tail {
+        overflow-wrap: anywhere;
+        white-space: normal !important;
+      }
+    `;
+    await page.setViewport({ width: 1280, height: 800 });
+    const strongWord = await page.evaluate(() => {
+      const end = document.querySelector('#strong-word-row .admin-label-with-tip__end');
+      const wrap = end && end.querySelector('.admin-info-tip-wrap');
+      const word = end && Array.from(end.children).find((c) => c !== wrap);
+      if (!word) return { rects: 0, lines: 0, text: '' };
+      const range = document.createRange();
+      range.selectNodeContents(word);
+      const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0.5 && r.height > 0.5);
+      const lines = [];
+      rects.forEach((r) => {
+        const top = Math.round(r.top);
+        if (!lines.some((t) => Math.abs(t - top) <= 2)) lines.push(top);
+      });
+      return { rects: rects.length, lines: lines.length, text: String(word.textContent || '').trim() };
+    });
+    assert.equal(strongWord.text, 'Drywall', 'F: strong-word fixture must glue Drywall');
+    assert.ok(strongWord.rects > 1, `F: <label><strong>Drywall</strong></label> must produce multiple boxes (got ${strongWord.rects})`);
+    assert.equal(strongWord.lines, 1, 'F: same-line strong+label must count as one line');
+
+    async function brokenInNarrowColumns(width) {
+      return page.evaluate((colWidth) => {
+        function distinctLineCount(rects) {
+          const lines = [];
+          rects.forEach((r) => {
+            const top = Math.round(r.top);
+            if (!lines.some((t) => Math.abs(t - top) <= 2)) lines.push(top);
+          });
+          return lines.length;
+        }
+        const grid = document.getElementById('short-word-grid');
+        const bath = document.getElementById('bath-light-row');
+        grid.style.width = colWidth + 'px';
+        grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+        bath.style.width = colWidth + 'px';
+        const broken = [];
+        [grid, bath].forEach((root) => {
+          root.querySelectorAll('.admin-label-with-tip__end').forEach((end) => {
+            const wrap = end.querySelector('.admin-info-tip-wrap');
+            const word = Array.from(end.children).find((c) => c !== wrap);
+            if (!word) return;
+            const text = String(word.textContent || '').replace(/\s+/g, ' ').trim();
+            if (!text || /\s/.test(text) || text.length < 2) return;
+            const range = document.createRange();
+            range.selectNodeContents(word);
+            const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0.5 && r.height > 0.5);
+            if (distinctLineCount(rects) > 1) broken.push(text.slice(0, 40));
+          });
+        });
+        return broken;
+      }, width);
+    }
+
+    for (const width of [180, 220, 300]) {
+      const broken = await brokenInNarrowColumns(width);
+      assert.deepEqual(broken, [], `D: short glued words must not break at ${width}px columns: ${broken.join(' | ')}`);
+    }
+
+    await page.evaluate((css) => {
+      let style = document.getElementById('r14-wrap-mutant');
+      if (!style) {
+        style = document.createElement('style');
+        style.id = 'r14-wrap-mutant';
+        document.head.appendChild(style);
+      }
+      style.textContent = css;
+    }, r14WrapCss);
+    const r14Broken = await brokenInNarrowColumns(180);
+    assert.ok(r14Broken.length > 0, 'D: r14 overflow-wrap:anywhere must break a short glued word at 180px columns');
+    await page.evaluate(() => {
+      const style = document.getElementById('r14-wrap-mutant');
+      if (style) style.remove();
+      const grid = document.getElementById('short-word-grid');
+      const bath = document.getElementById('bath-light-row');
+      grid.style.width = '';
+      grid.style.gridTemplateColumns = '';
+      bath.style.width = '';
+    });
+    const restored = await brokenInNarrowColumns(180);
+    assert.deepEqual(restored, [], `D: removing r14 wrap CSS must restore intact words at 180px: ${restored.join(' | ')}`);
+    await page.evaluate(() => {
+      const grid = document.getElementById('short-word-grid');
+      const bath = document.getElementById('bath-light-row');
+      grid.style.width = '';
+      grid.style.gridTemplateColumns = '';
+      bath.style.width = '';
+    });
+
     assert.deepEqual(consoleErrors, [], 'fixture page must have zero console errors: ' + consoleErrors.join(' | '));
 
     const appUrl = process.env.APP_URL || 'http://127.0.0.1:8000';

@@ -2927,7 +2927,12 @@ html.admin-dark .cp-recalc-preview tr.is-paid td {
 html.admin-dark .cp-required,
 html.admin-dark .admin-required,
 html.admin-dark label.cp-required,
-html.admin-dark .admin-form-error {
+html.admin-dark .admin-form-error,
+html.admin-dark .admin-form-group label.cp-required,
+html.admin-dark .admin-label-with-tip__end > .cp-required,
+html.admin-dark .admin-label-with-tip__end > label.cp-required,
+html.admin-dark .admin-form-group .admin-label-with-tip__end > .cp-required,
+html.admin-dark .admin-form-group .admin-label-with-tip__end > label.cp-required {
   color: #fca5a5;
 }
 
