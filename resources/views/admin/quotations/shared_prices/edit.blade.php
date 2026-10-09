@@ -102,7 +102,7 @@
       minmax(5.5rem, 5.6rem)
       minmax(6.5rem, 8rem)
       2.75rem
-      6.75rem;
+      7.25rem;
     column-gap: 0.08rem;
     align-items: stretch;
     width: 100%;
@@ -419,7 +419,7 @@
   width: 100%;
 }
 .sp-consumers:has(.sp-chip--more) .sp-chip:not(.sp-chip--more) {
-  max-width: calc(100% - 40px);
+  max-width: calc(100% - 36px);
 }
 @media (max-width: 414px) {
   .sp-col-consumers {

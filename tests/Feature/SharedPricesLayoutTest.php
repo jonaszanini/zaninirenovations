@@ -143,7 +143,7 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
         $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[5]), 'Mat. name keeps a readable min');
         $this->assertLessThanOrEqual(8.25, $this->cssMinRem($columns[5]));
-        $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
+        $this->assertGreaterThanOrEqual(7.0, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
 
         $this->assertStringContainsString('title="{{ $work->label }}"', $blade);
         $this->assertStringContainsString('grid-area: search', $css);
