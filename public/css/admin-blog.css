@@ -620,6 +620,20 @@
   }
 }
 
+/* Sidebar is still open at 1024, so drop the thumb and SEO chips
+   and give the title/category columns the leftover width. */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .bp-list-table .bp-list-thumb {
+    display: none;
+  }
+  .bp-list-table .bp-list-seo--card {
+    display: none;
+  }
+  .bp-list-table .bp-list-col--cat {
+    width: 16%;
+  }
+}
+
 @media (min-width: 1024px) {
   .bp-list .admin-table-scroll {
     overflow-x: hidden;
