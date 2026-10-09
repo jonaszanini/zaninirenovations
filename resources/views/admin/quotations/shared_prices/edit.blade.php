@@ -345,8 +345,8 @@
   white-space: normal;
   overflow: visible;
   text-overflow: unset;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .sp-col-catalog {
@@ -882,7 +882,7 @@
                              value="{{ $isArea ? $areaPrice : old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}"
                              placeholder="0.0000">
                     </div>
-                    <small class="sp-effective" data-sp-effective @if ($effective === null) hidden @endif>{{ $effective !== null ? \App\Models\ClientProject::formatMoney($effective).'/'.$work->unit : '' }}</small>
+                    <small class="sp-effective" data-sp-effective @if ($effective === null) hidden @endif>{{ $effective !== null ? \App\Models\ClientProject::formatMoney($effective)."\u{200B}/".$work->unit : '' }}</small>
                   </td>
                   <td class="sp-col-unit" data-label="Unit">
                     <input type="text" class="sp-input sp-input--sm" id="sp-mat-unit-{{ $work->id }}"
@@ -1113,7 +1113,7 @@
           price = price / 8;
         }
         var effective = Math.round((labor + (price > 0 ? price : 0)) * 100) / 100;
-        out.textContent = formatSpMoney(effective) + '/' + unit;
+        out.textContent = formatSpMoney(effective) + '\u200B/' + unit;
         out.hidden = false;
       });
     }
