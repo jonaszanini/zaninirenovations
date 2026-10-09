@@ -2,7 +2,8 @@
   Shared AI action cluster. DOM / tab order is always:
   [AI button + config] [optional extra pair] [history/undo icon].
   Each [button + config] is a nowrap pair so the sliders stay beside the
-  button when the row wraps. Use @component … @endcomponent.
+  button when the row wraps. Undo is a sibling at the end of the group.
+  Use @component … @endcomponent.
 --}}
 @php
   $instructionKey = $instructionKey ?? '';
@@ -20,17 +21,13 @@
       'instructionLabel' => $instructionLabel,
     ])
   </div>
-  @if ($extraHtml !== '' || $showHistory)
-    <div class="admin-ai-action-tail">
-      @if ($extraHtml !== '')
-        <div class="admin-ai-action-pair">
-          {{ $extra }}
-        </div>
-      @endif
-      @if ($showHistory)
-        <span class="admin-ai-text-history-mount" data-history-mount
-          @if (filled($historyKey)) data-history-key="{{ $historyKey }}" @endif></span>
-      @endif
+  @if ($extraHtml !== '')
+    <div class="admin-ai-action-pair">
+      {{ $extra }}
     </div>
+  @endif
+  @if ($showHistory)
+    <span class="admin-ai-text-history-mount" data-history-mount
+      @if (filled($historyKey)) data-history-key="{{ $historyKey }}" @endif></span>
   @endif
 </div>

@@ -2688,6 +2688,12 @@ details[open] > summary.admin-chevron-summary::after {
 
 #admin-photo-edit-modal .admin-ai-action-group {
   flex-wrap: nowrap;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+#admin-photo-edit-modal .admin-ai-action-group > .admin-ai-action-pair {
+  flex: 0 0 auto;
 }
 
 #admin-photo-edit-modal .admin-ai-instruction-edit-link {
@@ -3860,6 +3866,8 @@ a.ic-model-card:hover {
 
 .admin-ai-action-group--trailing {
   margin-left: auto;
+  flex: 0 0 auto;
+  width: auto;
 }
 
 .admin-ai-icon-btn {
@@ -3892,27 +3900,17 @@ a.ic-model-card:hover {
 }
 
 .admin-ai-action-group {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-start;
   gap: 0.35rem;
-  width: 100%;
   max-width: 100%;
   min-width: 0;
   overflow: visible;
 }
 
-.nb2-generate-row > .admin-ai-action-group,
-.cp-client-email-card__actions > .admin-ai-action-group,
-.blog-admin-ai-metadata-wrap > .admin-ai-action-group,
-.mat-ai-short-names__actions > .admin-ai-action-group,
-.cp-contract-gemini-wrap > .admin-ai-action-group {
-  flex: 1 1 auto;
-}
-
-.admin-ai-action-pair,
-.admin-ai-action-tail {
+.admin-ai-action-pair {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -3938,22 +3936,17 @@ a.ic-model-card:hover {
 }
 
 .admin-ai-action-pair > .admin-ai-instruction-edit-link,
-.admin-ai-action-tail > .admin-ai-text-history-mount {
+.admin-ai-action-group > .admin-ai-text-history-mount {
   flex-shrink: 0;
 }
 
 @media (max-width: 700px) {
-  .admin-ai-action-group > .admin-ai-action-pair {
+  .admin-ai-action-group:not(.admin-ai-action-group--trailing) > .admin-ai-action-pair {
     flex: 1 1 14rem;
   }
 
-  .admin-ai-action-tail {
-    flex: 1 1 auto;
-  }
-
-  .admin-ai-action-tail > .admin-ai-action-pair {
-    flex: 1 1 auto;
-    min-width: 0;
+  .admin-ai-action-group:not(.admin-ai-action-group--trailing) > .admin-ai-action-pair ~ .admin-ai-action-pair {
+    flex: 1 1 100%;
   }
 }
 

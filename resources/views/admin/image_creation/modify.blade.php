@@ -134,7 +134,9 @@
       var csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
       var galleryCount = {{ (int) $images->total() }};
       var maxSources = {{ (int) $maxSources }};
-      var promptHistoryMount = document.querySelector('.admin-ai-action-group [data-history-mount]');
+      var improveBtn = document.getElementById('aim-improve-btn');
+      var improveGroup = improveBtn ? improveBtn.closest('.admin-ai-action-group') : null;
+      var promptHistoryMount = improveGroup ? improveGroup.querySelector('[data-history-mount]') : null;
       var promptHistory = null;
       if (promptHistoryMount && window.AdminAiTextHistory && promptEl) {
         promptHistory = window.AdminAiTextHistory.create({
