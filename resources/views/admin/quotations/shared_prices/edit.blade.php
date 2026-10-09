@@ -303,11 +303,26 @@
   border-color: var(--admin-primary);
   box-shadow: 0 0 0 2px var(--admin-primary-ring);
 }
-.sp-work-key {
-  display: block;
-  font-size: 0.65rem;
+.sp-work-extra {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 20px;
+}
+.sp-ref-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 0.35rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 3px;
+  background: var(--admin-surface-hover);
   color: var(--admin-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
 }
 .sp-work-meta {
   display: block;
@@ -358,7 +373,9 @@
 .sp-th-sell .admin-info-tip,
 .sp-sell-phone-label .admin-info-tip,
 .sp-group__sell-tip .admin-info-tip,
-.sp-heading .admin-info-tip {
+.sp-heading .admin-info-tip,
+.sp-work-extra .admin-info-tip,
+.sp-add > summary .admin-info-tip {
   position: relative;
   width: 28px;
   height: 28px;
@@ -370,7 +387,9 @@
 .sp-th-sell .admin-info-tip__bubble,
 .sp-sell-phone-label .admin-info-tip__bubble,
 .sp-group__sell-tip .admin-info-tip__bubble,
-.sp-heading .admin-info-tip__bubble {
+.sp-heading .admin-info-tip__bubble,
+.sp-work-extra .admin-info-tip__bubble,
+.sp-add > summary .admin-info-tip__bubble {
   z-index: 80;
 }
 .sp-table tbody tr {
@@ -728,7 +747,9 @@
   .sp-th-sell .admin-info-tip,
   .sp-sell-phone-label .admin-info-tip,
   .sp-group__sell-tip .admin-info-tip,
-  .sp-heading .admin-info-tip {
+  .sp-heading .admin-info-tip,
+  .sp-work-extra .admin-info-tip,
+  .sp-add > summary .admin-info-tip {
     width: 28px;
     height: 28px;
     padding: 8px;
@@ -802,8 +823,24 @@
 }
 .sp-add__name { grid-column: 1 / -1; }
 .sp-add__consumers { grid-column: 1 / -1; }
-.sp-add label {
+.sp-add__field > label {
   display: block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-muted);
+  margin-bottom: 2px;
+}
+.sp-add__consumers {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.sp-add__consumers > legend {
+  display: block;
+  padding: 0;
   font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -824,6 +861,12 @@
 }
 .sp-add__checks .admin-checkbox {
   min-height: 44px;
+}
+.sp-add__cost-hint {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--admin-muted);
 }
 @media (min-width: 68.75em) {
   .sp-add__grid {
@@ -846,7 +889,7 @@
       \App\Models\SharedWork::KIND_HOURS_EACH => 'Hrs each',
       \App\Models\SharedWork::KIND_FLAT => 'Flat',
     ];
-    $spSellTipText = 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Rate.';
+    $spSellTipText = 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Cost.';
     $spSellTipLabel = 'effective sell';
   @endphp
 
@@ -872,10 +915,7 @@
     <div class="admin-card sp-crew">
       <h3 class="sp-heading">
         Crew rates
-        @include('admin.partials.info_tip', [
-          'tipText' => 'Used by Basement, Trimming, Shed, and Millwork when a quote does not override them.',
-          'tipLabel' => 'crew rates',
-        ])
+        <x-admin.info-tip text="Used by Basement, Trimming, Shed, and Millwork when a quote does not override them." label="crew rates" />
       </h3>
       <div class="sp-crew-grid">
         <div class="sp-crew-field">
@@ -907,10 +947,7 @@
         <summary class="sp-group__summary">
           <span class="sp-group__title">{{ $groupLabel }} ({{ $groupWorks->count() }})</span>
           <span class="sp-group__sell-tip" onclick="event.preventDefault(); event.stopPropagation();">
-            @include('admin.partials.info_tip', [
-              'tipText' => $spSellTipText,
-              'tipLabel' => $spSellTipLabel,
-            ])
+            <x-admin.info-tip :text="$spSellTipText" :label="$spSellTipLabel" />
           </span>
         </summary>
         <div class="admin-table-scroll">
@@ -920,20 +957,19 @@
                 <th class="sp-col-label">
                   <span class="sp-th-sell">
                     Work item
-                    @include('admin.partials.info_tip', [
-                      'tipText' => 'Rename here — saved quotes keep using the hidden key, not this name. Names must be unique inside this group.',
-                      'tipLabel' => 'work item name',
-                    ])
+                    <x-admin.info-tip text="Rename here — saved quotes keep using a hidden key, not this name. Names must be unique inside this group." label="work item name" />
                   </span>
                 </th>
-                <th class="sp-col-rate">Rate</th>
+                <th class="sp-col-rate">
+                  <span class="sp-th-sell">
+                    Cost
+                    <x-admin.info-tip text="The old Rate field: hours per piece, or sf/lf per hour. Sell is the client price. Filling Sell does not clear Cost." label="cost field" />
+                  </span>
+                </th>
                 <th class="sp-col-sell">
                   <span class="sp-th-sell">
                     Sell rate
-                    @include('admin.partials.info_tip', [
-                      'tipText' => $spSellTipText,
-                      'tipLabel' => $spSellTipLabel,
-                    ])
+                    <x-admin.info-tip :text="$spSellTipText" :label="$spSellTipLabel" />
                   </span>
                 </th>
                 <th class="sp-col-unit">Unit</th>
@@ -964,12 +1000,8 @@
                           ? number_format($derivedArea, 4, '.', '')
                           : '';
                   }
-                  $workMeta = null;
-                  if (! $isArea && isset($kindLabels[$work->labor_kind])) {
-                      $workMeta = $kindLabels[$work->labor_kind];
-                  } elseif ($isArea) {
-                      $workMeta = $work->isSquareFoot() ? '/sqft' : '/linft';
-                  }
+                  $workMeta = $work->costUnitLabel();
+                  $isCustom = $work->isCustom();
                 @endphp
                 <tr id="work-{{ $work->key }}" class="sp-row"
                     data-sp-kind="{{ $work->labor_kind }}"
@@ -985,10 +1017,18 @@
                              maxlength="160"
                              required
                              aria-label="Name for {{ $work->label }}">
-                      <small class="sp-work-key" title="Stable key used by quote calculators">{{ $work->key }}@if ($workMeta) · {{ $workMeta }}@endif</small>
+                      <span class="sp-work-extra">
+                        @if ($isCustom)
+                          <span class="sp-ref-badge">Reference</span>
+                          <x-admin.info-tip :text="'Reference only — quote calculators do not use this item. Lookup key: '.$work->key.'.'" label="reference item" />
+                        @else
+                          <small class="sp-work-meta">{{ $workMeta }}</small>
+                          <x-admin.info-tip :text="'Quotes look this item up as '.$work->key.'. Renaming does not change that.'" label="item key" />
+                        @endif
+                      </span>
                     </span>
                   </td>
-                  <td class="sp-col-rate" data-label="Rate">
+                  <td class="sp-col-rate" data-label="{{ $work->costUnitLabel() }}">
                     @if ($isArea)
                       <span class="sp-rate-empty">—</span>
                     @else
@@ -1092,48 +1132,47 @@
           <summary>
             <i class="fa fa-plus" aria-hidden="true"></i> Add item
             <span onclick="event.preventDefault(); event.stopPropagation();">
-              @include('admin.partials.info_tip', [
-                'tipText' => 'New items get a permanent key from the name. They show on the Shared list of the quote types you tick; built-in calculators still use their existing keys.',
-                'tipLabel' => 'add shared item',
-              ])
+              <x-admin.info-tip text="New items are reference-only. They appear on Shared lists for the types you tick so you can look up the price. Built-in quote calculators do not use them." label="add shared item" />
             </span>
           </summary>
           <div class="sp-add__grid">
-            <div class="sp-add__name">
+            <div class="sp-add__field sp-add__name">
               <label for="sp-new-{{ $groupKey }}-label">Name</label>
               <input type="text" class="sp-input{{ $addHasError ? ' is-invalid' : '' }}" id="sp-new-{{ $groupKey }}-label"
                      name="new_works[{{ $groupKey }}][0][label]" maxlength="160"
                      value="{{ old('new_works.'.$groupKey.'.0.label') }}"
                      placeholder="e.g. Extra return">
             </div>
-            <div>
+            <div class="sp-add__field">
               <label for="sp-new-{{ $groupKey }}-unit">Unit</label>
               <select class="admin-input sp-input" id="sp-new-{{ $groupKey }}-unit"
-                      name="new_works[{{ $groupKey }}][0][unit]">
+                      name="new_works[{{ $groupKey }}][0][unit]" data-sp-new-unit>
                 @php $newUnit = old('new_works.'.$groupKey.'.0.unit', 'each'); @endphp
                 @foreach (['each' => 'each', 'lf' => 'lf', 'sf' => 'sf', 'opening' => 'opening'] as $unitVal => $unitLabel)
                   <option value="{{ $unitVal }}" @selected($newUnit === $unitVal)>{{ $unitLabel }}</option>
                 @endforeach
               </select>
             </div>
-            <div>
-              <label for="sp-new-{{ $groupKey }}-cost">Cost</label>
+            <div class="sp-add__field">
+              <label for="sp-new-{{ $groupKey }}-cost">Cost <span class="sp-add__cost-hint" data-sp-cost-hint>{{ \App\Models\SharedWork::costUnitLabelFor($newUnit) }}</span></label>
               <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                     data-cp-money-entry="direct"
                      class="sp-input cp-money-input" id="sp-new-{{ $groupKey }}-cost"
                      name="new_works[{{ $groupKey }}][0][rate]"
                      value="{{ old('new_works.'.$groupKey.'.0.rate') }}"
                      placeholder="0.00">
             </div>
-            <div>
+            <div class="sp-add__field">
               <label for="sp-new-{{ $groupKey }}-sell">Sell</label>
               <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                     data-cp-money-entry="direct"
                      class="sp-input cp-money-input" id="sp-new-{{ $groupKey }}-sell"
                      name="new_works[{{ $groupKey }}][0][flat_rate]"
                      value="{{ old('new_works.'.$groupKey.'.0.flat_rate') }}"
                      placeholder="0.00">
             </div>
-            <div class="sp-add__consumers">
-              <label>Show on quote types</label>
+            <fieldset class="sp-add__consumers">
+              <legend>Show as reference on</legend>
               <div class="sp-add__checks">
                 @php $defaultNewConsumers = old('new_works.'.$groupKey.'.0.consumers', \App\Services\SharedWorkCatalog::defaultConsumersForGroup($groupKey)); @endphp
                 @foreach (\App\Services\SharedWorkCatalog::CONSUMER_LABELS as $consumerKey => $consumerLabel)
@@ -1146,7 +1185,7 @@
                   </label>
                 @endforeach
               </div>
-            </div>
+            </fieldset>
           </div>
         </details>
       </details>
@@ -1154,6 +1193,36 @@
   </form>
 
   <script>
+    (function() {
+      var form = document.getElementById('sp-lib-form');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          if (form.getAttribute('data-submitting') === '1') {
+            e.preventDefault();
+            return;
+          }
+          form.setAttribute('data-submitting', '1');
+          document.querySelectorAll('button[type="submit"][form="sp-lib-form"], #sp-lib-form button[type="submit"]').forEach(function(btn) {
+            btn.disabled = true;
+          });
+        });
+      }
+      function costHintFor(unit) {
+        unit = String(unit || 'each').toLowerCase();
+        if (unit === 'each') return 'hrs per each';
+        if (unit === 'opening') return 'hrs per opening';
+        if (unit === 'lf' || unit === 'sf') return unit + ' per hour';
+        return 'hrs per ' + unit;
+      }
+      document.querySelectorAll('[data-sp-new-unit]').forEach(function(select) {
+        var hint = select.closest('.sp-add__grid') && select.closest('.sp-add__grid').querySelector('[data-sp-cost-hint]');
+        if (!hint) return;
+        select.addEventListener('change', function() {
+          hint.textContent = costHintFor(select.value);
+        });
+      });
+    })();
+
     document.querySelectorAll('.sp-mat-name-input, .sp-work-label-input').forEach(function(input) {
       input.addEventListener('input', function() {
         this.title = this.value;

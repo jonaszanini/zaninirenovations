@@ -8,7 +8,9 @@ use App\Models\SharedWork;
 use App\Services\SharedWorkCatalog;
 use App\Support\CadMoney;
 use App\Support\MaterialCatalogPickerOptions;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -28,19 +30,22 @@ class SharedPriceLibraryController extends Controller
     {
         $this->normalizeMoneyFields($request);
 
+        $money = ['nullable', 'numeric', 'min:0', 'max:'.SharedWork::MONEY_MAX];
+        $requiredMoney = ['required', 'numeric', 'min:0', 'max:'.SharedWork::MONEY_MAX];
+
         $data = $request->validate([
-            'owner_hourly_rate' => ['required', 'numeric', 'min:0'],
-            'helper_hourly_rate' => ['required', 'numeric', 'min:0'],
+            'owner_hourly_rate' => $requiredMoney,
+            'helper_hourly_rate' => $requiredMoney,
             'hours_per_day' => ['required', 'numeric', 'min:0.5', 'max:16'],
             'works' => ['nullable', 'array'],
             'works.*.id' => ['required', 'integer', 'exists:shared_works,id'],
-            'works.*.label' => ['nullable', 'string', 'max:160'],
-            'works.*.rate' => ['nullable', 'numeric', 'min:0'],
-            'works.*.flat_rate' => ['nullable', 'numeric', 'min:0'],
+            'works.*.label' => ['nullable', 'string', 'max:'.SharedWork::LABEL_MAX],
+            'works.*.rate' => $money,
+            'works.*.flat_rate' => $money,
             'works.*.catalog_material_id' => ['nullable', 'integer', 'exists:materials,id'],
             'works.*.material_name' => ['nullable', 'string', 'max:160'],
             'works.*.material_unit' => ['nullable', 'string', 'max:40'],
-            'works.*.material_unit_price' => ['nullable', 'numeric', 'min:0'],
+            'works.*.material_unit_price' => $money,
             'works.*.labor_kind' => ['nullable', Rule::in([
                 SharedWork::KIND_PER_HOUR,
                 SharedWork::KIND_HOURS_EACH,
@@ -48,78 +53,111 @@ class SharedPriceLibraryController extends Controller
             ])],
             'new_works' => ['nullable', 'array'],
             'new_works.*' => ['nullable', 'array'],
-            'new_works.*.*.label' => ['nullable', 'string', 'max:160'],
+            'new_works.*.*.label' => ['nullable', 'string', 'max:'.SharedWork::LABEL_MAX],
             'new_works.*.*.unit' => ['nullable', 'string', 'max:20'],
-            'new_works.*.*.rate' => ['nullable', 'numeric', 'min:0'],
-            'new_works.*.*.flat_rate' => ['nullable', 'numeric', 'min:0'],
+            'new_works.*.*.rate' => $money,
+            'new_works.*.*.flat_rate' => $money,
             'new_works.*.*.consumers' => ['nullable', 'array'],
             'new_works.*.*.consumers.*' => ['nullable', 'string', Rule::in(array_keys(SharedWorkCatalog::CONSUMER_LABELS))],
-        ]);
+        ], $this->validationMessages());
 
         $this->assertUniqueLabelsInGroup($data);
 
-        $crew = SharedCrewRate::current();
-        $crew->fill([
-            'owner_hourly_rate' => round((float) $data['owner_hourly_rate'], 2),
-            'helper_hourly_rate' => round((float) $data['helper_hourly_rate'], 2),
-            'hours_per_day' => round((float) $data['hours_per_day'], 2),
-        ]);
-        $crew->save();
+        try {
+            DB::transaction(function () use ($data) {
+                $crew = SharedCrewRate::current();
+                $crew->fill([
+                    'owner_hourly_rate' => round((float) $data['owner_hourly_rate'], 2),
+                    'helper_hourly_rate' => round((float) $data['helper_hourly_rate'], 2),
+                    'hours_per_day' => round((float) $data['hours_per_day'], 2),
+                ]);
+                $crew->save();
 
-        foreach ($data['works'] ?? [] as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-            $work = SharedWork::query()->find((int) $row['id']);
-            if (! $work) {
-                continue;
-            }
-            $label = trim((string) ($row['label'] ?? ''));
-            if ($label !== '') {
-                $work->label = $label;
-            }
-            $catalogId = (int) ($row['catalog_material_id'] ?? 0);
-            $owner = (float) $crew->owner_hourly_rate;
-            $flat = isset($row['flat_rate']) && $row['flat_rate'] !== '' && $row['flat_rate'] !== null
-                ? round((float) $row['flat_rate'], 4)
-                : null;
+                foreach ($data['works'] ?? [] as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $work = SharedWork::query()->find((int) $row['id']);
+                    if (! $work) {
+                        continue;
+                    }
+                    $label = SharedWork::displayLabel((string) ($row['label'] ?? ''));
+                    if ($label !== '') {
+                        $work->label = $label;
+                    }
+                    $catalogId = (int) ($row['catalog_material_id'] ?? 0);
+                    $owner = (float) $crew->owner_hourly_rate;
+                    $ratePosted = array_key_exists('rate', $row) && $row['rate'] !== '' && $row['rate'] !== null;
+                    $flat = isset($row['flat_rate']) && $row['flat_rate'] !== '' && $row['flat_rate'] !== null
+                        ? round((float) $row['flat_rate'], 4)
+                        : null;
 
-            if ($work->isPricedPerArea()) {
-                $work->labor_kind = SharedWork::KIND_FLAT;
-                $work->flat_rate = $flat;
-                if ($flat !== null && $flat > 0 && $owner > 0) {
-                    $work->rate = round($owner / $flat, 4);
-                } elseif (isset($row['rate']) && is_numeric($row['rate'])) {
-                    $work->rate = round((float) $row['rate'], 4);
+                    if ($work->isPricedPerArea()) {
+                        $work->labor_kind = SharedWork::KIND_FLAT;
+                        $work->flat_rate = $flat;
+                        if ($ratePosted) {
+                            $work->rate = round((float) $row['rate'], 4);
+                        } elseif ($flat !== null && $flat > 0 && $owner > 0) {
+                            $work->rate = round($owner / $flat, 4);
+                        }
+                    } else {
+                        if ($ratePosted) {
+                            $work->rate = round((float) $row['rate'], 4);
+                        }
+                        $work->flat_rate = $flat !== null ? $flat : $work->flat_rate;
+                    }
+                    $work->catalog_material_id = $catalogId > 0 ? $catalogId : null;
+                    $name = trim((string) ($row['material_name'] ?? ''));
+                    if ($name !== '') {
+                        $work->material_name = $name;
+                    }
+                    $unit = trim((string) ($row['material_unit'] ?? ''));
+                    if ($unit !== '') {
+                        $work->material_unit = $unit;
+                    }
+                    if (isset($row['material_unit_price']) && is_numeric($row['material_unit_price'])) {
+                        $work->material_unit_price = round((float) $row['material_unit_price'], 4);
+                    }
+                    $work->save();
                 }
-            } else {
-                if (isset($row['rate']) && is_numeric($row['rate'])) {
-                    $work->rate = round((float) $row['rate'], 4);
-                }
-                $work->flat_rate = $flat !== null ? $flat : $work->flat_rate;
+
+                $this->createNewWorks($data);
+            });
+        } catch (QueryException $e) {
+            if ($this->isUniqueConstraintFailure($e)) {
+                throw ValidationException::withMessages([
+                    'new_works' => 'That name is already used in this group.',
+                ]);
             }
-            $work->catalog_material_id = $catalogId > 0 ? $catalogId : null;
-            $name = trim((string) ($row['material_name'] ?? ''));
-            if ($name !== '') {
-                $work->material_name = $name;
-            }
-            $unit = trim((string) ($row['material_unit'] ?? ''));
-            if ($unit !== '') {
-                $work->material_unit = $unit;
-            }
-            if (isset($row['material_unit_price']) && is_numeric($row['material_unit_price'])) {
-                $work->material_unit_price = round((float) $row['material_unit_price'], 4);
-            }
-            $work->save();
+            throw $e;
         }
-
-        $this->createNewWorks($data);
 
         SharedWorkCatalog::forgetCache();
 
         return redirect()
             ->route('admin.quotations.shared-prices.edit')
-            ->with('status', 'Shared prices saved. New quotation previews use these rates.');
+            ->with('success', 'Shared prices saved. New quotation previews use these rates.');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function validationMessages(): array
+    {
+        $nameMax = 'The name may not be longer than '.SharedWork::LABEL_MAX.' characters.';
+        $priceMax = 'Enter a price of 999,999.99 or less.';
+
+        return [
+            'works.*.label.max' => $nameMax,
+            'new_works.*.*.label.max' => $nameMax,
+            'owner_hourly_rate.max' => $priceMax,
+            'helper_hourly_rate.max' => $priceMax,
+            'works.*.rate.max' => $priceMax,
+            'works.*.flat_rate.max' => $priceMax,
+            'works.*.material_unit_price.max' => $priceMax,
+            'new_works.*.*.rate.max' => $priceMax,
+            'new_works.*.*.flat_rate.max' => $priceMax,
+        ];
     }
 
     /**
@@ -172,9 +210,6 @@ class SharedPriceLibraryController extends Controller
 
     /**
      * @param  array<string, mixed>  $data
-     */
-    /**
-     * @param  array<string, mixed>  $data
      * @return list<int>
      */
     protected function postedWorkIds(array $data): array
@@ -193,6 +228,9 @@ class SharedPriceLibraryController extends Controller
         return array_values(array_unique($ids));
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
     protected function assertUniqueLabelsInGroup(array $data): void
     {
         $seen = [];
@@ -207,7 +245,11 @@ class SharedPriceLibraryController extends Controller
             if (! $work) {
                 continue;
             }
-            $label = trim((string) ($row['label'] ?? $work->label));
+            if (! array_key_exists('label', $row)) {
+                $label = SharedWork::displayLabel((string) $work->label);
+            } else {
+                $label = SharedWork::displayLabel((string) $row['label']);
+            }
             if ($label === '') {
                 $errors['works.'.$idx.'.label'] = 'Enter a name for this item.';
 
@@ -219,7 +261,7 @@ class SharedPriceLibraryController extends Controller
                 ->where('group_key', $work->group_key)
                 ->where('id', '!=', $work->id)
                 ->when($postedIds !== [], fn ($q) => $q->whereNotIn('id', $postedIds))
-                ->whereRaw('LOWER(TRIM(label)) = ?', [$norm])
+                ->where('label_normalized', $norm)
                 ->exists();
             if (isset($seen[$bucket]) || $taken) {
                 $errors['works.'.$idx.'.label'] = 'That name is already used in this group.';
@@ -235,8 +277,13 @@ class SharedPriceLibraryController extends Controller
                 if (! is_array($row)) {
                     continue;
                 }
-                $label = trim((string) ($row['label'] ?? ''));
+                $label = SharedWork::displayLabel((string) ($row['label'] ?? ''));
+                $hasPrices = $this->rowHasPrices($row);
                 if ($label === '') {
+                    if ($hasPrices) {
+                        $errors['new_works.'.$groupKey.'.'.$i.'.label'] = 'Enter a name for this item.';
+                    }
+
                     continue;
                 }
                 $norm = SharedWork::normalizeLabel($label);
@@ -244,7 +291,7 @@ class SharedPriceLibraryController extends Controller
                 $taken = SharedWork::query()
                     ->where('group_key', $groupKey)
                     ->when($postedIds !== [], fn ($q) => $q->whereNotIn('id', $postedIds))
-                    ->whereRaw('LOWER(TRIM(label)) = ?', [$norm])
+                    ->where('label_normalized', $norm)
                     ->exists();
                 if (isset($seen[$bucket]) || $taken) {
                     $errors['new_works.'.$groupKey.'.'.$i.'.label'] = 'That name is already used in this group.';
@@ -256,6 +303,23 @@ class SharedPriceLibraryController extends Controller
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function rowHasPrices(array $row): bool
+    {
+        foreach (['rate', 'flat_rate'] as $field) {
+            if (! array_key_exists($field, $row) || $row[$field] === '' || $row[$field] === null) {
+                continue;
+            }
+            if (is_numeric($row[$field])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -274,7 +338,7 @@ class SharedPriceLibraryController extends Controller
                 if (! is_array($row)) {
                     continue;
                 }
-                $label = trim((string) ($row['label'] ?? ''));
+                $label = SharedWork::displayLabel((string) ($row['label'] ?? ''));
                 if ($label === '') {
                     continue;
                 }
@@ -282,18 +346,21 @@ class SharedPriceLibraryController extends Controller
                 if ($unit === '') {
                     $unit = 'each';
                 }
-                $rate = isset($row['rate']) && $row['rate'] !== '' && $row['rate'] !== null
-                    ? round((float) $row['rate'], 4)
-                    : 0.0;
+                $ratePosted = array_key_exists('rate', $row) && $row['rate'] !== '' && $row['rate'] !== null;
+                $rate = $ratePosted ? round((float) $row['rate'], 4) : 0.0;
                 $flat = isset($row['flat_rate']) && $row['flat_rate'] !== '' && $row['flat_rate'] !== null
                     ? round((float) $row['flat_rate'], 4)
                     : null;
                 $isArea = in_array($unit, ['lf', 'sf'], true);
-                $kind = $isArea || ($flat !== null && $flat > 0 && $rate <= 0)
-                    ? SharedWork::KIND_FLAT
-                    : SharedWork::KIND_HOURS_EACH;
-                if ($isArea && $flat !== null && $flat > 0 && $owner > 0) {
-                    $rate = round($owner / $flat, 4);
+                if ($ratePosted) {
+                    $kind = $isArea ? SharedWork::KIND_PER_HOUR : SharedWork::KIND_HOURS_EACH;
+                } elseif ($flat !== null && $flat > 0) {
+                    $kind = SharedWork::KIND_FLAT;
+                    if ($isArea && $owner > 0) {
+                        $rate = round($owner / $flat, 4);
+                    }
+                } else {
+                    $kind = $isArea ? SharedWork::KIND_FLAT : SharedWork::KIND_HOURS_EACH;
                 }
                 $consumers = [];
                 foreach ($row['consumers'] ?? SharedWorkCatalog::defaultConsumersForGroup($groupKey) as $consumer) {
@@ -318,5 +385,13 @@ class SharedPriceLibraryController extends Controller
                 ]);
             }
         }
+    }
+
+    protected function isUniqueConstraintFailure(QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? '');
+        $driverCode = (int) ($e->errorInfo[1] ?? 0);
+
+        return $sqlState === '23000' || $driverCode === 1062;
     }
 }

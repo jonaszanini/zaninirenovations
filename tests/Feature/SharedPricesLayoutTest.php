@@ -168,7 +168,7 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('MutationObserver', $blade);
         $this->assertMatchesRegularExpression("/addEventListener\('click'[\s\S]*,\s*true\)/", $blade);
         $this->assertMatchesRegularExpression("/addEventListener\('scroll'/", $blade);
-        $this->assertSame(2, substr_count($blade, "'tipLabel' => \$spSellTipLabel"), 'Sell ⓘ belongs on the thead and group header only');
+        $this->assertSame(2, substr_count($blade, ':label="$spSellTipLabel"'), 'Sell ⓘ belongs on the thead and group header only');
         preg_match_all('/aria-label="[^"]*effective sell[^"]*"/i', $html, $sellTips);
         $groupCount = substr_count($html, 'class="sp-group__summary"');
         $this->assertGreaterThan(0, $groupCount);
@@ -274,7 +274,10 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
   async function openPage() {
     await go(base + '/admin/quotations/shared-prices');
     await page.waitForSelector('.sp-table tbody tr');
-    await page.evaluate(() => document.querySelectorAll('.sp-group').forEach((g) => { g.open = true; }));
+    await page.evaluate(() => {
+      document.querySelectorAll('.sp-group').forEach((g) => { g.open = true; });
+      document.querySelectorAll('.sp-add').forEach((d) => { d.open = true; });
+    });
   }
   await login();
   const widths = [320, 390, 768, 901, 960, 1001, 1024, 1040, 1060, 1100, 1280];
@@ -441,6 +444,17 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
           const z = parseInt(getComputedStyle(tr).zIndex, 10);
           return tr.querySelector('.sp-chip--more') && z === 1;
         }),
+        addCheck: (() => {
+          const mark = document.querySelector('.sp-add__checks .admin-checkbox__mark');
+          const text = document.querySelector('.sp-add__checks .admin-checkbox__text');
+          const markBox = mark && mark.getBoundingClientRect();
+          const textBox = text && text.getBoundingClientRect();
+          return {
+            mark: markBox ? Math.round(Math.min(markBox.width, markBox.height)) : 0,
+            overlap: !!(markBox && textBox && markBox.right > textBox.left + 1 && markBox.top < textBox.bottom && markBox.bottom > textBox.top && markBox.left < textBox.right),
+            fieldset: !!document.querySelector('fieldset.sp-add__consumers legend'),
+          };
+        })(),
       };
     }, w);
 
@@ -708,6 +722,12 @@ JS
             $this->assertFalse($row['catalogOverflow'] ?? true, "Catalog button must stay inside its row at {$w}");
             $this->assertNotSame('none', $row['chipMaxWidth'] ?? 'none', "Chip max-width must be set at {$w}");
             $this->assertNotSame('', $row['chipMaxWidth'] ?? '', "Chip max-width must be set at {$w}");
+            if ($w === 390 || $w === 1280) {
+                $check = $row['addCheck'] ?? [];
+                $this->assertGreaterThanOrEqual(16, (int) ($check['mark'] ?? 0), "Add-item checkbox mark must be a real box at {$w}");
+                $this->assertFalse($check['overlap'] ?? true, "Add-item checkbox tick must not sit on the label text at {$w}");
+                $this->assertTrue($check['fieldset'] ?? false, "Add-item quote types must be a fieldset with a legend at {$w}");
+            }
 
             if ($w <= 1099) {
                 $this->assertSame(

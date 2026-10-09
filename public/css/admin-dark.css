@@ -2229,6 +2229,16 @@ html.admin-dark .sp-add {
 html.admin-dark .sp-add > summary {
   color: var(--admin-primary);
 }
+html.admin-dark .sp-ref-badge {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .sp-add__consumers > legend,
+html.admin-dark .sp-add__field > label,
+html.admin-dark .sp-add__cost-hint {
+  color: var(--admin-muted);
+}
 html.admin-dark .sp-input {
   background: var(--admin-input-bg);
   border-color: var(--admin-border);
