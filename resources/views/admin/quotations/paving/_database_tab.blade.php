@@ -19,8 +19,10 @@
 
   <div id="pq-db-panel-stones" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-stones"@if($activeDbTab !== 'stones') hidden @endif>
     <div class="admin-card">
-      <h4 class="cp-form-help-spaced">Stone types</h4>
-      <p class="admin-form-help">Used by the paving stone dropdowns. Enter length × width (in), click <strong>Fill</strong> (or tab out of width) to compute sq ft per stone, or enter sq ft manually. Provide either <strong>Price/sq ft</strong> or both <strong>Sq ft/stone</strong> and <strong>$/stone</strong>.</p>
+      <h4 class="cp-form-help-spaced">
+        Stone types
+        <x-admin.info-tip>Used by the paving stone dropdowns. Enter length × width (in), click <strong>Fill</strong> (or tab out of width) to compute sq ft per stone, or enter sq ft manually. Provide either <strong>Price/sq ft</strong> or both <strong>Sq ft/stone</strong> and <strong>$/stone</strong>.</x-admin.info-tip>
+      </h4>
       <div class="admin-table-scroll">
         <div class="pq-db-stone-list" style="margin-top:12px;">
           @foreach ($stoneTypes as $st)
@@ -222,8 +224,10 @@
 
   <div id="pq-db-panel-rates" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-rates"@if($activeDbTab !== 'rates') hidden @endif>
     <div class="admin-card">
-      <h4 style="margin:0 0 8px;">Fixed costs &amp; equipment</h4>
-      <p class="admin-form-help" style="margin:0 0 16px;">Unit prices used by the calculator. <strong>Labour</strong> rates are defaults for new quotations (you can still override them on each quote). Equipment day rates pair with rental days on the quotation form.</p>
+      <h4 style="margin:0 0 8px;">
+        Fixed costs &amp; equipment
+        <x-admin.info-tip>Unit prices used by the calculator. <strong>Labour</strong> rates are defaults for new quotations (you can still override them on each quote). Equipment day rates pair with rental days on the quotation form.</x-admin.info-tip>
+      </h4>
       <div class="pq-db-rates-groups">
         @foreach ($materialRateGroups as $category => $rates)
           <section class="pq-db-rates-group">
@@ -261,8 +265,10 @@
 
   <div id="pq-db-panel-tiers" class="pq-db-subpanel" role="tabpanel" aria-labelledby="pq-db-tab-tiers"@if($activeDbTab !== 'tiers') hidden @endif>
     <div class="admin-card pq-db-tiers">
-      <h4 class="cp-form-help-spaced">Pricing engine — $/sq ft by area</h4>
-      <p class="admin-form-help">Interpolated linearly between rows (matches Excel reference table). Keep rows sorted by area.</p>
+      <h4 class="cp-form-help-spaced">
+        Pricing engine — $/sq ft by area
+        <x-admin.info-tip>Interpolated linearly between rows (matches Excel reference table). Keep rows sorted by area.</x-admin.info-tip>
+      </h4>
       <form method="post" action="{{ route('admin.quotations.paving.database.tiers.sync') }}">
         @csrf
         <div class="admin-table-scroll">

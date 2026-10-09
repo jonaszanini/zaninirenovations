@@ -114,9 +114,7 @@
     </a>
   </div>
 
-  <p class="admin-form-help" style="margin:0 0 16px;">
-    These rates power the stairs calculator. After saving, return to the list to create or edit quotations.
-  </p>
+  <x-admin.info-tip>These rates power the stairs calculator. After saving, return to the list to create or edit quotations.</x-admin.info-tip>
 
   @if ($errors->any())
     <div class="admin-flash admin-flash--danger">

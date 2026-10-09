@@ -25,8 +25,10 @@
 
   <div class="admin-vehicles-grid">
     <div class="admin-card admin-vehicles-home-card">
-      <h3>Home / office address</h3>
-      <p class="admin-form-help">Used as the starting point for round-trip travel cost on each project.</p>
+      <h3>
+        Home / office address
+        <x-admin.info-tip>Used as the starting point for round-trip travel cost on each project.</x-admin.info-tip>
+      </h3>
       <form action="{{ route('admin.vehicles.settings.home-address') }}" method="post">
         @csrf
         @method('PUT')
@@ -64,7 +66,10 @@
         @csrf
         @method('PUT')
         <div class="admin-form-group admin-vehicles-gas-field">
-          <label for="company-gas-price">Current gas price (CAD / L)</label>
+          <label for="company-gas-price">
+            Current gas price (CAD / L)
+            <x-admin.info-tip>Company-wide — used with each vehicle’s L/100 km for fuel estimates.</x-admin.info-tip>
+          </label>
           <div class="admin-vehicles-gas-row">
             <input class="admin-input cp-money-input" type="text"
                    id="company-gas-price"
@@ -79,7 +84,6 @@
                    required>
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save gas price</button>
           </div>
-          <p class="admin-form-help">Company-wide — used with each vehicle’s L/100 km for fuel estimates.</p>
           @error('gas_price_per_liter') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
       </form>

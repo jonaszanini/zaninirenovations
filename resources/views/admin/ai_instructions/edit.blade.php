@@ -8,9 +8,11 @@
       @csrf
       @method('PUT')
       <div class="admin-form-group">
-        <label for="ai-key">Key</label>
+        <label for="ai-key">
+          Key
+          <x-admin.info-tip>Internal identifier. Cannot be changed.</x-admin.info-tip>
+        </label>
         <input class="admin-input" type="text" id="ai-key" value="{{ $instruction->key }}" class="admin-input" disabled>
-        <p class="admin-form-help">Internal identifier. Cannot be changed.</p>
       </div>
       <div class="admin-form-group">
         <label for="ai-name">Name</label>
@@ -20,9 +22,11 @@
         @enderror
       </div>
       <div class="admin-form-group">
-        <label for="ai-instruction">Instruction</label>
+        <label for="ai-instruction">
+          Instruction
+          <x-admin.info-tip>Sent as the Gemini <code>systemInstruction</code> for this feature.</x-admin.info-tip>
+        </label>
         <textarea id="ai-instruction" name="instruction" rows="28" required class="admin-input" style="font-family:Consolas,Monaco,'Courier New',monospace;font-size:12px;line-height:1.45;">{{ old('instruction', $instruction->instruction) }}</textarea>
-        <p class="admin-form-help">Sent as the Gemini <code>systemInstruction</code> for this feature.</p>
         @error('instruction')
           <div class="admin-form-error">{{ $message }}</div>
         @enderror

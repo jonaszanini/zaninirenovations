@@ -85,6 +85,6 @@
            @checked(old('is_active', $vehicle?->is_active ?? ! $isEdit))>
     <span class="cp-visit-toggle__control" aria-hidden="true"></span>
     <span class="cp-visit-toggle__label">Set as active vehicle</span>
+    <x-admin.info-tip>Only one vehicle can be active. It is used for project travel fuel estimates.</x-admin.info-tip>
   </label>
-  <p class="admin-form-help">Only one vehicle can be active. It is used for project travel fuel estimates.</p>
 </div>
