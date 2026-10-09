@@ -333,4 +333,100 @@ class StandardQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(25.0, $computed['materials'][0]['delivery_cad'], 0.01);
         $this->assertEqualsWithDelta(425.0, $computed['materials_subtotal_before_hst'], 0.01);
     }
+
+    public function test_surcharge_remainder_stays_on_last_job_unless_gated(): void
+    {
+        $works = [
+            [
+                'title' => 'Job one',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 1.15,
+                'labour_fixed_hst_included' => false,
+            ],
+            [
+                'title' => 'Job two',
+                'materials' => [],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 1.15,
+                'labour_fixed_hst_included' => false,
+            ],
+            [
+                'title' => 'Materials only',
+                'materials' => [[
+                    'short_name' => 'Tile',
+                    'unit_price' => 10,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 0,
+            ],
+        ];
+
+        $calc = new StandardQuotationCalculator();
+        $legacy = $calc->computeWorks($works, false, 0, true, true, 30, false);
+        $current = $calc->computeWorks($works, false, 0, true, true, 30, true);
+
+        $this->assertEqualsWithDelta(-0.01, $legacy['works'][2]['labour_total'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $current['works'][2]['labour_total'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $current['works'][2]['building_labor_surcharge'], 0.001);
+        $this->assertGreaterThan(0, $current['works'][0]['labour_total']);
+        $this->assertGreaterThan(0, $current['works'][1]['labour_total']);
+        $this->assertEqualsWithDelta(
+            $current['labour_total'],
+            round($current['works'][0]['labour_total'] + $current['works'][1]['labour_total'], 2),
+            0.001
+        );
+    }
+
+    public function test_v3_standard_quote_gates_surcharge_remainder_onto_labour(): void
+    {
+        $sq = new \App\Models\StandardQuotation([
+            'pdf_fold_version' => 3,
+            'include_building' => true,
+            'building_labor_percent' => 30,
+            'include_labour_hst' => true,
+            'contingency_enabled' => false,
+            'works' => [
+                [
+                    'title' => 'Job one',
+                    'materials' => [],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 1.15,
+                ],
+                [
+                    'title' => 'Job two',
+                    'materials' => [],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 1.15,
+                ],
+                [
+                    'title' => 'Materials only',
+                    'materials' => [[
+                        'short_name' => 'Tile',
+                        'unit_price' => 10,
+                        'quantity' => 1,
+                        'apply_hst' => true,
+                    ]],
+                    'labour_use_fixed' => true,
+                    'labour_fixed_amount' => 0,
+                ],
+            ],
+        ]);
+
+        $computed = $sq->computedTotals();
+        $this->assertEqualsWithDelta(0.0, $computed['works'][2]['labour_total'], 0.001);
+        $lines = $sq->detailedPdfLineItems();
+        $labourAmounts = [];
+        foreach ($lines as $row) {
+            if (($row['description'] ?? '') === 'Labour') {
+                $labourAmounts[] = (float) $row['amount'];
+            }
+        }
+        $this->assertNotContains(0.01, $labourAmounts);
+        foreach ($labourAmounts as $amount) {
+            $this->assertGreaterThan(0.01, $amount);
+        }
+    }
 }
