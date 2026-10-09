@@ -442,6 +442,22 @@
                 ])
               </div>
               <div class="util-ra-tool-group__actions">
+                <div class="util-ra-unit-system" role="group" aria-label="Imperial or metric display">
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-unit-system__btn is-active" data-ra-unit-system="imperial" aria-pressed="true">Imperial</button>
+                  <button type="button" class="admin-btn admin-btn--ghost util-ra-unit-system__btn" data-ra-unit-system="metric" aria-pressed="false">Metric</button>
+                </div>
+                <span class="util-ra-measure-unit-wrap" data-ra-measure-unit-wrap>
+                  <select class="admin-input util-ra-measure-unit" data-ra-measure-unit aria-label="Imperial format">
+                    <option value="feet_inch_frac" selected>ft-in-frac</option>
+                    <option value="feet_decimal">Decimal ft</option>
+                    <option value="inch">Inches</option>
+                  </select>
+                  @include('admin.utilities._room_area_help_pop', [
+                    'tipId' => 'units-format-fp',
+                    'label' => 'About number format',
+                    'text' => 'Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win.',
+                  ])
+                </span>
                 <span class="util-ra-tip" data-tooltip="Tap two ends of a known wall, then type that length.">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-calibrate-toggle aria-label="Calibrate scale from a known wall">
                     <i class="fa fa-arrows-h" aria-hidden="true"></i>
@@ -467,22 +483,6 @@
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-btn--danger-ghost" data-ra-bg-remove hidden aria-label="Delete floor plan image">
                     <i class="fa fa-trash" aria-hidden="true"></i>
                   </button>
-                </span>
-                <div class="util-ra-unit-system" role="group" aria-label="Imperial or metric display">
-                  <button type="button" class="admin-btn admin-btn--ghost util-ra-unit-system__btn is-active" data-ra-unit-system="imperial" aria-pressed="true">Imperial</button>
-                  <button type="button" class="admin-btn admin-btn--ghost util-ra-unit-system__btn" data-ra-unit-system="metric" aria-pressed="false">Metric</button>
-                </div>
-                <span class="util-ra-measure-unit-wrap" data-ra-measure-unit-wrap>
-                  <select class="admin-input util-ra-measure-unit" data-ra-measure-unit aria-label="Imperial format">
-                    <option value="feet_inch_frac" selected>ft-in-frac</option>
-                    <option value="feet_decimal">Decimal ft</option>
-                    <option value="inch">Inches</option>
-                  </select>
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'units-format-fp',
-                    'label' => 'About number format',
-                    'text' => 'Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win.',
-                  ])
                 </span>
                 <span class="util-ra-scale-status" data-ra-scale-status>Scale not set</span>
               </div>
