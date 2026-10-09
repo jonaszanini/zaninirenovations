@@ -380,6 +380,7 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         $joined = implode("\n", $output);
         $this->assertSame(0, $code, $joined);
         $this->assertStringNotContainsString('GEOMETRY_HARNESS_UNAVAILABLE', $joined);
+        $this->assertStringNotContainsString('KEYBOARD_HARNESS_FAILED', $joined);
 
         $payloads = [];
         foreach ($output as $line) {

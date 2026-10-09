@@ -20,6 +20,11 @@ function failHarness(message) {
   process.exit(2);
 }
 
+function failKeyboard(message) {
+  console.error('KEYBOARD_HARNESS_FAILED: ' + message);
+  process.exit(1);
+}
+
 function loadCss() {
   const files = ['public/css/admin.css', 'public/css/admin-blog.css', 'public/css/admin-dark.css'];
   return files.map((rel) => {
@@ -143,6 +148,41 @@ function fixtureHtml(css, dark, js) {
       </div>
     </div>
   </div>
+  ${js ? `<script>${js}</script>` : ''}
+</body>
+</html>`;
+}
+
+function keyboardFixtureHtml(css, js) {
+  const row = fixtureRow({
+    title: 'Keyboard harness post',
+    chips: ['Meta'],
+  });
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <style>${css}</style>
+</head>
+<body class="admin-body">
+  <input id="bp-harness-outside" type="search" class="admin-input" placeholder="Search posts">
+  <div class="bp-list">
+    <div class="admin-card">
+      <div class="admin-table-scroll">
+        <table class="admin-table admin-table--compact bp-list-table">
+          <thead>
+            <tr>
+              <th class="bp-list-col bp-list-col--post" scope="col">Post</th>
+              <th class="bp-list-col bp-list-col--actions" scope="col"></th>
+            </tr>
+          </thead>
+          <tbody>${row}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <input id="bp-harness-next" type="search" class="admin-input" placeholder="Next control">
   ${js ? `<script>${js}</script>` : ''}
 </body>
 </html>`;
@@ -409,72 +449,121 @@ async function measureLive(page, width, dark) {
   return page.evaluate(measureInPage, width);
 }
 
+async function waitForFocusInMenu(page) {
+  await page.waitForFunction(() => {
+    const open = document.querySelector('.admin-actions-dropdown.is-open');
+    const menu = open && (
+      open._portaledMenu
+      || document.querySelector('.admin-actions-dropdown__menu.is-portaled')
+      || open.querySelector('.admin-actions-dropdown__menu')
+    );
+    return !!(open && menu && menu.contains(document.activeElement)
+      && document.activeElement.getAttribute('role') === 'menuitem');
+  });
+}
+
 async function testMenuKeyboard(page, html) {
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.setContent(html, { waitUntil: 'load' });
   await page.waitForSelector('.admin-actions-dropdown__toggle');
   const toggle = await page.$('.admin-actions-dropdown__toggle');
-  await toggle.click();
-  await page.waitForFunction(() => document.querySelector('.admin-actions-dropdown.is-open'));
-  await page.waitForFunction(() => document.activeElement && document.activeElement.getAttribute('data-k') === 'dup');
 
-  const activeKey = () => page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-k'));
-
-  await page.keyboard.press('ArrowDown');
-  if (await activeKey() !== 'edit') {
-    throw new Error('ArrowDown did not move to the second menuitem');
-  }
-  await page.keyboard.press('ArrowDown');
-  if (await activeKey() !== 'del') {
-    throw new Error('ArrowDown did not move to the third menuitem');
-  }
-  await page.keyboard.press('ArrowDown');
-  if (await activeKey() !== 'dup') {
-    throw new Error('ArrowDown did not wrap to the first menuitem');
-  }
-  await page.keyboard.press('ArrowUp');
-  if (await activeKey() !== 'del') {
-    throw new Error('ArrowUp did not wrap to the last menuitem');
-  }
-  await page.keyboard.press('Home');
-  if (await activeKey() !== 'dup') {
-    throw new Error('Home did not move to the first menuitem');
-  }
-  await page.keyboard.press('End');
-  if (await activeKey() !== 'del') {
-    throw new Error('End did not move to the last menuitem');
+  async function openAndFocusMenu() {
+    await toggle.click();
+    await page.waitForFunction(() => document.querySelector('.admin-actions-dropdown.is-open'));
+    await waitForFocusInMenu(page);
   }
 
-  const prevented = await page.evaluate(() => {
-    const ev = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
-    document.dispatchEvent(ev);
-    return ev.defaultPrevented;
-  });
-  if (!prevented) {
-    throw new Error('ArrowDown did not call preventDefault');
-  }
+  try {
+    await openAndFocusMenu();
 
-  await page.keyboard.press('Escape');
-  const afterEsc = await page.evaluate(() => ({
-    open: !!document.querySelector('.admin-actions-dropdown.is-open'),
-    isToggle: !!(document.activeElement && document.activeElement.classList.contains('admin-actions-dropdown__toggle')),
-  }));
-  if (afterEsc.open || !afterEsc.isToggle) {
-    throw new Error('Escape did not close the menu and return focus to the toggle');
-  }
+    const activeKey = () => page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-k'));
 
-  await toggle.click();
-  await page.waitForFunction(() => document.querySelector('.admin-actions-dropdown.is-open'));
-  await page.keyboard.press('Tab');
-  const afterTab = await page.evaluate(() => ({
-    open: !!document.querySelector('.admin-actions-dropdown.is-open'),
-    isToggle: !!(document.activeElement && document.activeElement.classList.contains('admin-actions-dropdown__toggle')),
-  }));
-  if (afterTab.open || !afterTab.isToggle) {
-    throw new Error('Tab did not close the menu and return focus to the toggle');
-  }
+    await page.keyboard.press('ArrowDown');
+    if (await activeKey() !== 'edit') {
+      throw new Error('ArrowDown did not move to the second menuitem');
+    }
+    await page.keyboard.press('ArrowDown');
+    if (await activeKey() !== 'del') {
+      throw new Error('ArrowDown did not move to the third menuitem');
+    }
+    await page.keyboard.press('ArrowDown');
+    if (await activeKey() !== 'dup') {
+      throw new Error('ArrowDown did not wrap to the first menuitem');
+    }
+    await page.keyboard.press('ArrowUp');
+    if (await activeKey() !== 'del') {
+      throw new Error('ArrowUp did not wrap to the last menuitem');
+    }
+    await page.keyboard.press('Home');
+    if (await activeKey() !== 'dup') {
+      throw new Error('Home did not move to the first menuitem');
+    }
+    await page.keyboard.press('End');
+    if (await activeKey() !== 'del') {
+      throw new Error('End did not move to the last menuitem');
+    }
 
-  return { mode: 'keyboard', overflowing: [], ok: true };
+    const prevented = await page.evaluate(() => {
+      const ev = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
+      document.dispatchEvent(ev);
+      return ev.defaultPrevented;
+    });
+    if (!prevented) {
+      throw new Error('ArrowDown did not call preventDefault');
+    }
+
+    await page.keyboard.press('Escape');
+    const afterEsc = await page.evaluate(() => ({
+      open: !!document.querySelector('.admin-actions-dropdown.is-open'),
+      isToggle: !!(document.activeElement && document.activeElement.classList.contains('admin-actions-dropdown__toggle')),
+    }));
+    if (afterEsc.open || !afterEsc.isToggle) {
+      throw new Error('Escape did not close the menu and return focus to the toggle');
+    }
+
+    await openAndFocusMenu();
+    await page.keyboard.press('Tab');
+    const afterTab = await page.evaluate(() => ({
+      open: !!document.querySelector('.admin-actions-dropdown.is-open'),
+      id: document.activeElement && document.activeElement.id,
+      isToggle: !!(document.activeElement && document.activeElement.classList.contains('admin-actions-dropdown__toggle')),
+      role: document.activeElement && document.activeElement.getAttribute('role'),
+    }));
+    if (afterTab.open) {
+      throw new Error('Tab did not close the menu');
+    }
+    if (afterTab.isToggle) {
+      throw new Error('Tab left focus on the toggle instead of moving to the next control');
+    }
+    if (afterTab.role === 'menuitem') {
+      throw new Error('Tab left focus inside the menu');
+    }
+    if (afterTab.id !== 'bp-harness-next') {
+      throw new Error('Tab did not move to the next control after the toggle (got ' + afterTab.id + ')');
+    }
+
+    await openAndFocusMenu();
+    await page.click('#bp-harness-outside');
+    const afterOutside = await page.evaluate(() => ({
+      open: !!document.querySelector('.admin-actions-dropdown.is-open'),
+      id: document.activeElement && document.activeElement.id,
+      isToggle: !!(document.activeElement && document.activeElement.classList.contains('admin-actions-dropdown__toggle')),
+    }));
+    if (afterOutside.open) {
+      throw new Error('Outside click did not close the menu');
+    }
+    if (afterOutside.isToggle) {
+      throw new Error('Outside click stole focus back to the toggle');
+    }
+    if (afterOutside.id !== 'bp-harness-outside') {
+      throw new Error('Outside click did not leave focus on the clicked input (got ' + afterOutside.id + ')');
+    }
+
+    return { mode: 'keyboard', overflowing: [], ok: true };
+  } catch (err) {
+    failKeyboard(err && err.message ? err.message : String(err));
+  }
 }
 
 function assertReports(label, reports) {
@@ -507,7 +596,7 @@ function assertReports(label, reports) {
   }));
   assertReports('fixture', fixtureReports);
 
-  const keyboard = await testMenuKeyboard(page, fixtureHtml(css, false, dropdownJs));
+  const keyboard = await testMenuKeyboard(page, keyboardFixtureHtml(css, dropdownJs));
   console.log(JSON.stringify(keyboard));
 
   if (process.env.GEOMETRY_LIVE === '1') {
