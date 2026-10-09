@@ -32,7 +32,7 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
             ->assertSee('Create quote', false)
             ->assertSee('Add priced lines', false)
             ->assertSee('cp-money-input', false)
-            ->assertDontSee('data-cp-money-entry="direct"', false)
+            ->assertSee('data-cp-money-entry="direct"', false)
             ->assertSee('name="trades[]"', false)
             ->assertSee('value="flooring"', false)
             ->assertSee('Start a calculator', false)

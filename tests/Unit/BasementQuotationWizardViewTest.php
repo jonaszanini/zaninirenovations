@@ -193,7 +193,7 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="include_touchups"', $html);
         $this->assertStringContainsString('name="include_building_permit"', $html);
         $this->assertStringContainsString('name="building_permit_amount"', $html);
-        $this->assertStringNotContainsString('data-cp-money-entry="direct"', $html);
+        $this->assertStringContainsString('data-cp-money-entry="direct"', $html);
         $this->assertStringNotContainsString('br-finishing-grid', $html);
 
         $finish = strstr($html, 'data-br-step="finishing"');
