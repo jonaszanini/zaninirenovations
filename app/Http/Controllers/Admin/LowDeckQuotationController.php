@@ -75,6 +75,7 @@ class LowDeckQuotationController extends Controller
             'quote_number' => LowDeckQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

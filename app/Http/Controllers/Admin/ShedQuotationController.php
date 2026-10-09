@@ -64,6 +64,7 @@ class ShedQuotationController extends Controller
             'quote_number' => ShedQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

@@ -52,6 +52,7 @@ class TaskController extends Controller
         $data['created_by'] = auth()->id();
 
         Task::create($data);
+        $this->rememberSubmitSucceeded($request);
 
         return back()->with('success', 'Task added.');
     }

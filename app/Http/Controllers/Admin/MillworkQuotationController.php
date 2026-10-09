@@ -68,6 +68,7 @@ class MillworkQuotationController extends Controller
             'quote_number' => MillworkQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

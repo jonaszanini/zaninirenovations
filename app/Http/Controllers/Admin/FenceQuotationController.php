@@ -108,6 +108,7 @@ class FenceQuotationController extends Controller
             'quote_number' => FenceQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

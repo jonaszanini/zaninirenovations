@@ -78,6 +78,7 @@ class StandardQuotationController extends Controller
             'quote_number' => StandardQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

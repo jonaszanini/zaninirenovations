@@ -115,6 +115,7 @@ class MaterialController extends Controller
         }
 
         $material = Material::create($data);
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()
             ->route('admin.materials.edit', $material)

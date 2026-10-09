@@ -66,6 +66,7 @@ class BasementQuotationController extends Controller
             'quote_number' => BasementQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

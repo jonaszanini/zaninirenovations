@@ -68,6 +68,7 @@ class PavingQuotationController extends Controller
             'quote_number' => PavingQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

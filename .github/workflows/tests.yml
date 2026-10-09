@@ -236,6 +236,7 @@ jobs:
           php artisan test tests/Unit/Models/BlogPostListHelpersTest.php
           php artisan test tests/Feature/Admin/BlogPostsIndexLayoutTest.php
           php artisan test tests/Feature/Admin/AdminHotkeySaveMarkerTest.php
+          php artisan test tests/Feature/Admin/AdminOnceSubmitReplayTest.php
           php artisan test tests/Feature/Admin/AdminHotkeySaveMarkupTest.php
           php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
           php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php

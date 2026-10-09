@@ -54,6 +54,7 @@ class BlogTagController extends Controller
             'name' => $data['name'],
             'slug' => $slug,
         ]);
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()->route('admin.blog.tags.index')->with('success', 'Tag created.');
     }

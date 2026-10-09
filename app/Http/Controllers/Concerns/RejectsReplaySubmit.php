@@ -17,4 +17,9 @@ trait RejectsReplaySubmit
 
         return AdminOnceSubmitToken::replayResponse($request);
     }
+
+    protected function rememberSubmitSucceeded(Request $request): void
+    {
+        AdminOnceSubmitToken::rememberCreated($request);
+    }
 }

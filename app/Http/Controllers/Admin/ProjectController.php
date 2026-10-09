@@ -400,6 +400,7 @@ class ProjectController extends Controller
         }
 
         $draftPhotos->clear();
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()
             ->route('admin.portfolio.index')

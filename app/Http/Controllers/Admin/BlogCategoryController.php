@@ -58,6 +58,7 @@ class BlogCategoryController extends Controller
             'slug' => $slug,
             'description' => $data['description'] ?? null,
         ]);
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()->route('admin.blog.categories.index')->with('success', 'Category created.');
     }

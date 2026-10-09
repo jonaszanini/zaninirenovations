@@ -394,9 +394,24 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
             ->post(route('admin.client-projects.store'), $payload);
         $second->assertRedirect(route('admin.client-projects.create'));
         $second->assertSessionHas('warning');
-        $this->assertStringContainsString('already submitted', (string) session('warning'));
+        $this->assertSame(
+            'This form was already submitted. No second record was created.',
+            (string) session('warning')
+        );
 
         $this->assertSame(1, ClientProject::query()->where('name', 'Slow pending project')->count());
+    }
+
+    public function test_calendar_personal_event_form_includes_a_one_time_submit_token(): void
+    {
+        $this->actingAsAdmin();
+
+        $html = $this->get(route('admin.client-projects.calendar'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<form[^>]*id="cp-personal-event-form"[^>]*>[\s\S]*<input[^>]*name="_submit_once"[^>]*value="[0-9a-f]{32}"/i',
+            $html
+        );
     }
 
     public function test_validation_bounce_does_not_consume_the_submit_token(): void

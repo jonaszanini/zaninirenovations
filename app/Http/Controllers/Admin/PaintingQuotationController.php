@@ -63,6 +63,7 @@ class PaintingQuotationController extends Controller
             'quote_number' => PaintingQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

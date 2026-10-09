@@ -13,7 +13,12 @@ class AdminCalendarEventController extends Controller
     {
         $data = $this->validated($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $event = AdminCalendarEvent::create($data);
+        $this->rememberSubmitSucceeded($request);
 
         return response()->json([
             'ok' => true,

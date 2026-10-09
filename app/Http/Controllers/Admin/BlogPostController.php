@@ -114,6 +114,9 @@ class BlogPostController extends Controller
         }
 
         $post = $this->persistPost($request, new BlogPost, $data, $htmlProcessor, $images);
+        if (! $request->boolean('autosave')) {
+            $this->rememberSubmitSucceeded($request);
+        }
 
         if ($request->expectsJson() || $request->boolean('autosave')) {
             return $this->autosaveResponse($post, 'Post created.');

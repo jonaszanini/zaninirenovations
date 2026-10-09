@@ -71,6 +71,7 @@ class SupplierSiteController extends Controller
         }
 
         $site = SupplierSite::create($data);
+        $this->rememberSubmitSucceeded($request);
         $site->tags()->sync(SupplierTag::syncFromNames(
             SupplierTag::parseNamesFromInput($request->input('tags_input'))
         ));

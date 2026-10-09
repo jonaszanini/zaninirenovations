@@ -310,6 +310,7 @@ class ClientProjectController extends Controller
             return $project;
         });
 
+        $this->rememberSubmitSucceeded($request);
         $service->onCreated($project, $sendClientEmail);
 
         if ($isHourly) {

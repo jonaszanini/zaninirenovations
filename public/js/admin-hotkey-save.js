@@ -690,6 +690,12 @@
       }
     }
 
+    /**
+     * 204 / attachment unlock only when fetch or XHR observes the response.
+     * A bare native navigation that returns 204 or starts a file download
+     * does not fire pageshow, so the lock stays. Do not add a timer unlock
+     * — that is what created duplicate records.
+     */
     function isUnlockingResponse(res) {
       if (!res) return false;
       if ((res.status || 0) === 204) return true;

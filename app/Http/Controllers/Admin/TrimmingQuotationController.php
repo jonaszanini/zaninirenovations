@@ -64,6 +64,7 @@ class TrimmingQuotationController extends Controller
             'quote_number' => TrimmingQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

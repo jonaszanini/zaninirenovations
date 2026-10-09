@@ -36,6 +36,7 @@ class ClientTagController extends Controller
         }
 
         ClientTag::create($data);
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()
             ->route('admin.client-tags.index')

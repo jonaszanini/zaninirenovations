@@ -44,6 +44,7 @@ class CategoryController extends Controller
             'slug' => $slug,
             'sort_order' => $validated['sort_order'] ?? 0,
         ]);
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()
             ->route('admin.categories.index')

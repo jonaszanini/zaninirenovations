@@ -1052,6 +1052,40 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   inst.reset();
 })();
 
+(function nativeSubmitWithoutObserved204StaysLocked() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  let clicks = 0;
+  btn.click = function () { clicks += 1; };
+  const form = makeEl('form', { id: 'cp-create' }, [btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const inst = hotkey.create({
+    document: doc,
+    window: {
+      navigator: { platform: 'Linux' },
+      setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+      clearTimeout() {},
+    },
+    now() { return 16000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  inst.onFormSubmit({ target: form, defaultPrevented: false });
+  timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
+  assert.ok(inst.isInflight(), 'native navigation stays locked');
+  assert.strictEqual(
+    inst.isUnlockingResponse({ status: 204, headers: { get() { return ''; } } }),
+    true,
+    '204 is an unlocking status only when a response object is observed'
+  );
+  assert.ok(inst.isInflight(), 'a 204 that never reaches fetch/XHR cannot unlock a native submit');
+  const beforeSecond = clicks;
+  inst.handleKeydown(chord());
+  assert.strictEqual(clicks, beforeSecond, 'second Ctrl+S does not fire while the unobserved native submit stays locked');
+  inst.reset();
+})();
+
 (function mouseSubmitThenLateHotkeyStaysLocked() {
   const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
   let clicks = 0;

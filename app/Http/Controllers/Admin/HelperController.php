@@ -36,6 +36,7 @@ class HelperController extends Controller
         }
 
         Helper::create($data);
+        $this->rememberSubmitSucceeded($request);
 
         return $this->redirectAfterSave($request, 'Helper added.');
     }

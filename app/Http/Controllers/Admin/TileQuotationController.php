@@ -156,6 +156,7 @@ class TileQuotationController extends Controller
             $quotation->linked_at = now();
         }
         $quotation->save();
+        $this->rememberSubmitSucceeded($request);
 
         if ($quotation->client_project_id) {
             $this->syncProjectQuotation($quotation);
