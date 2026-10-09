@@ -606,6 +606,41 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
 }
 
 {
+  // Trailing skipped children live on the LABEL, but the glue end is a
+  // sibling on the row. insertBefore(ref) must use end.parentNode or hoist
+  // throws and glueHeadingTips never runs (flex headings stay unwrapped).
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
+  row.className = 'admin-label-with-tip';
+  const label = document.createElement('label');
+  label.setAttribute('for', 'due');
+  label.appendChild(document.createTextNode('Due date '));
+  const star = document.createElement('span');
+  star.className = 'cp-required';
+  star.textContent = '*';
+  label.appendChild(star);
+  const { wrap } = makeTip(document, 'admin-info-tip-due-star', 'Due date');
+  row.appendChild(label);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  const heading = document.createElement('h5');
+  heading.className = 'sq-intro-option-title';
+  heading.appendChild(document.createTextNode('Client PDF line items'));
+  const htip = makeTip(document, 'admin-info-tip-pdf-heading', 'Client PDF line items');
+  heading.appendChild(htip.wrap);
+  body.appendChild(heading);
+  assert.doesNotThrow(() => AdminInfoTip.hoist(document));
+  assert.ok(heading.querySelector('.admin-heading-copy'), 'N4: heading wrap still runs after a trailing-skipped label');
+  assert.match(String(heading.querySelector('.admin-heading-copy').textContent || ''), /Client PDF line items/);
+  assert.equal(star.className, 'cp-required');
+  assert.equal(star.textContent, '*');
+  const rowEnd = row.querySelector('.admin-label-with-tip__end');
+  assert.ok(rowEnd, 'due-date last word glued');
+  assert.ok(!rowEnd.contains(star), 'N5: asterisk stays outside the glue');
+  assert.ok(star.parentNode === row || star.previousSibling === rowEnd || row.contains(star));
+}
+
+{
   const { document, body, AdminInfoTip } = createEnv();
   const form = document.createElement('form');
   function pieceRow(index) {

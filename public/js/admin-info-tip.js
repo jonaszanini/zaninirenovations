@@ -551,13 +551,15 @@
   }
 
   function moveTrailingSkipped(host, end) {
-    if (!host || !end || !host.insertBefore) return;
+    if (!host || !end) return;
+    var dest = end.parentNode || host;
+    if (!dest || !dest.insertBefore) return;
     trailingSkippedChildren(host).forEach(function (el) {
       if (el === end || (end.contains && end.contains(el))) return;
-      if (end.nextSibling) {
-        host.insertBefore(el, end.nextSibling);
+      if (end.nextSibling && end.nextSibling.parentNode === dest) {
+        dest.insertBefore(el, end.nextSibling);
       } else {
-        host.appendChild(el);
+        dest.appendChild(el);
       }
     });
   }
@@ -581,11 +583,13 @@
     if (!unit || !tip) return null;
     var end = document.createElement('span');
     end.className = extraClass || 'admin-label-with-tip__end';
-    var insertHost = (tip.parentNode && tip.parentNode.insertBefore) ? tip.parentNode : host;
-    if (insertHost.insertBefore) {
+    var insertHost = (tip && tip.parentNode) ? tip.parentNode : host;
+    if (insertHost && insertHost.insertBefore && tip && tip.parentNode === insertHost) {
       insertHost.insertBefore(end, tip);
-    } else {
+    } else if (insertHost && insertHost.appendChild) {
       insertHost.appendChild(end);
+    } else if (host && host.appendChild) {
+      host.appendChild(end);
     }
     end.appendChild(unit);
     end.appendChild(tip);
@@ -684,13 +688,16 @@
       lastEl.htmlFor = htmlFor;
     }
     lastEl.textContent = last;
-    if (host.insertBefore) {
-      host.insertBefore(end, tip);
-    } else {
+    var insertHost = (tip && tip.parentNode) ? tip.parentNode : host;
+    if (insertHost && insertHost.insertBefore && tip && tip.parentNode === insertHost) {
+      insertHost.insertBefore(end, tip);
+    } else if (insertHost && insertHost.appendChild) {
+      insertHost.appendChild(end);
+    } else if (host.appendChild) {
       host.appendChild(end);
     }
     end.appendChild(lastEl);
-    end.appendChild(tip);
+    if (tip) end.appendChild(tip);
     return end;
   }
 
