@@ -527,21 +527,6 @@
       var form = document.getElementById('pq-main-form');
       var intent = document.getElementById('pq-save-intent');
 
-      function normalizeLabourRateField(id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        var raw = (el.value || '').trim().replace(/,/g, '');
-        var n = raw === '' ? 0 : (window.cpMoneyMask ? window.cpMoneyMask.parse(raw) : parseFloat(raw));
-        if (!isFinite(n) || n < 0) n = 0;
-        el.value = n.toFixed(2);
-      }
-
-      function normalizeLabourRateFields() {
-        normalizeLabourRateField('pq-helper');
-        normalizeLabourRateField('pq-owner');
-      }
-
-      form.addEventListener('submit', normalizeLabourRateFields);
       document.getElementById('pq-btn-draft').addEventListener('click', function () {
         intent.value = 'draft';
         form.querySelector('#pq-client').removeAttribute('required');
@@ -1116,7 +1101,6 @@
       }
 
       function runPreview() {
-        normalizeLabourRateFields();
         var missing = collectMissingPreviewInputs();
         if (missing.length) {
           renderMissingSummary(missing);

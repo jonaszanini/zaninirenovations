@@ -1020,6 +1020,9 @@
     return isFinite(n) && n > 0 ? n : 0;
   }
 
+  var lastClearedGateTicks = 0;
+  var lastGateLimitSeen = null;
+
   function updateGateCheckboxState() {
     var limit = gateCountLimit();
     var gateInputs = sidesEl.querySelectorAll('.fq-side-gate-here');
@@ -1029,6 +1032,7 @@
       if (input.checked) checkedCount++;
     });
 
+    var cleared = 0;
     if (checkedCount > limit) {
       var excess = checkedCount - limit;
       Array.prototype.slice.call(gateInputs).reverse().forEach(function (input) {
@@ -1036,10 +1040,15 @@
         if (input.checked) {
           input.checked = false;
           excess--;
+          cleared++;
         }
       });
       checkedCount = limit;
+      lastClearedGateTicks = cleared;
+    } else if (lastGateLimitSeen !== limit) {
+      lastClearedGateTicks = 0;
     }
+    lastGateLimitSeen = limit;
 
     // Keep every box clickable so checking another run moves the gate.
     gateInputs.forEach(function (input) {
@@ -1099,6 +1108,13 @@
     var messages = [];
     var ticked = sidesEl.querySelectorAll('.fq-side-gate-here:checked').length;
     var count = parseInt(gatesInput.value, 10) || 0;
+    if (lastClearedGateTicks > 0) {
+      messages.push(
+        'Gates was lowered to ' + count + '. ' + lastClearedGateTicks +
+        (lastClearedGateTicks === 1 ? ' “Gate goes here” tick was' : ' “Gate goes here” ticks were') +
+        ' cleared.'
+      );
+    }
     if (count > ticked) {
       messages.push('Gates (' + count + ') is higher than ticked runs (' + ticked + '). Extra gates use Extra gate size (' + extraGateLabel() + ').');
     }
@@ -1202,7 +1218,9 @@
     var gateCount = parseInt(gatesInput.value, 10) || 0;
     if (gateSides > gateCount) {
       gateCount = gateSides;
-      gatesInput.value = String(gateCount);
+      if (typeof document === 'undefined' || document.activeElement !== gatesInput) {
+        gatesInput.value = String(gateCount);
+      }
     }
     var payload = {
       sides: sides,
