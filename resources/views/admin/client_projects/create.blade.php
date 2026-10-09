@@ -144,7 +144,10 @@
           </div>
 
           <div class="admin-form-group">
-            <label for="cp-client-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(optional — CC'd on every client email)</small></label>
+            <span class="admin-label-with-tip">
+              <label for="cp-client-email-secondary">Secondary email</label>
+              <x-admin.info-tip label="Secondary email">Optional — CC'd on every client email.</x-admin.info-tip>
+            </span>
             <input type="email" id="cp-client-email-secondary" name="client_email_secondary"
                    value="{{ old('client_email_secondary') }}" maxlength="255"
                    placeholder="spouse@example.com"

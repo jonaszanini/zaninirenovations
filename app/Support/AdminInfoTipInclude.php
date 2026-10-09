@@ -119,6 +119,21 @@ class AdminInfoTipInclude
     }
 
     /**
+     * Stable control id from a form name so cloned / templated rows
+     * (`pieces[__P__][edge_banding]`) keep a rewriteable id instead of uniqid.
+     */
+    public static function controlIdFromName(?string $name): ?string
+    {
+        if ($name === null || $name === '') {
+            return null;
+        }
+        $id = preg_replace('/[^A-Za-z0-9_-]+/', '-', $name);
+        $id = trim((string) $id, '-');
+
+        return $id !== '' ? $id : null;
+    }
+
+    /**
      * Keep the last word with the ⓘ so two-column labels wrap as
      * "Finished" / "rooms ⓘ" instead of "Finished rooms" / "ⓘ".
      *
@@ -138,6 +153,104 @@ class AdminInfoTipInclude
         return [
             'lead' => mb_substr($label, 0, $pos),
             'last' => mb_substr($label, $pos + 1),
+        ];
+    }
+
+    /**
+     * Split a (possibly HTML) label on the last text word without leaving
+     * unclosed tags. `<strong>Client provides all materials</strong>` becomes
+     * lead `<strong>Client provides all</strong>` + last `<strong>materials</strong>`.
+     *
+     * @return array{lead: string, last: string, lastIsHtml: bool}
+     */
+    public static function splitLabelHtml(string $html): array
+    {
+        $html = trim($html);
+        if ($html === '') {
+            return ['lead' => '', 'last' => '', 'lastIsHtml' => false];
+        }
+        if (! preg_match('/<[^>]+>/', $html)) {
+            $parts = self::splitLabel($html);
+
+            return [
+                'lead' => $parts['lead'],
+                'last' => $parts['last'],
+                'lastIsHtml' => false,
+            ];
+        }
+
+        preg_match_all('/<[^>]+>|[^<]+/u', $html, $matches);
+        $tokens = $matches[0];
+        $lastTokenIdx = null;
+        $wordStart = 0;
+        $lastWord = '';
+        for ($i = count($tokens) - 1; $i >= 0; $i--) {
+            if (isset($tokens[$i][0]) && $tokens[$i][0] === '<') {
+                continue;
+            }
+            if (! preg_match('/\S/u', $tokens[$i])) {
+                continue;
+            }
+            $trimmed = preg_replace('/\s+$/u', '', $tokens[$i]);
+            $pos = mb_strrpos($trimmed, ' ');
+            if ($pos === false) {
+                $lastWord = $trimmed;
+                $wordStart = 0;
+            } else {
+                $lastWord = mb_substr($trimmed, $pos + 1);
+                $wordStart = $pos + 1;
+            }
+            $lastTokenIdx = $i;
+            break;
+        }
+        if ($lastTokenIdx === null || $lastWord === '') {
+            return ['lead' => $html, 'last' => '', 'lastIsHtml' => false];
+        }
+
+        $leadTokens = array_slice($tokens, 0, $lastTokenIdx);
+        $leadPiece = mb_substr($tokens[$lastTokenIdx], 0, $wordStart);
+        $leadTokens[] = rtrim($leadPiece);
+        $after = array_slice($tokens, $lastTokenIdx + 1);
+
+        $open = [];
+        $void = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
+        foreach ($leadTokens as $token) {
+            if (! preg_match('/^<(\/?)([A-Za-z][A-Za-z0-9]*)/', $token, $m)) {
+                continue;
+            }
+            $tag = strtolower($m[2]);
+            if ($m[1] === '/') {
+                for ($j = count($open) - 1; $j >= 0; $j--) {
+                    if ($open[$j] === $tag) {
+                        array_splice($open, $j, 1);
+                        break;
+                    }
+                }
+
+                continue;
+            }
+            if (in_array($tag, $void, true) || preg_match('/\/\s*>$/', $token)) {
+                continue;
+            }
+            $open[] = $tag;
+        }
+
+        $closeLead = '';
+        $reopenLast = '';
+        for ($j = count($open) - 1; $j >= 0; $j--) {
+            $closeLead .= '</'.$open[$j].'>';
+        }
+        foreach ($open as $tag) {
+            $reopenLast .= '<'.$tag.'>';
+        }
+
+        $lead = rtrim(implode('', $leadTokens)).$closeLead;
+        $last = $reopenLast.$lastWord.implode('', $after);
+
+        return [
+            'lead' => $lead,
+            'last' => $last,
+            'lastIsHtml' => $last !== strip_tags($last),
         ];
     }
 

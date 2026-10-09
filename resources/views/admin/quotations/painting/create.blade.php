@@ -276,10 +276,8 @@
           </div>
           <div class="admin-form-group quotation-work-desc">
             <span class="admin-label-with-tip">
-              <label for="work-description">
-                Project description <span class="admin-form-help">(optional — appears on client PDF)</span>
-              </label>
-              <x-admin.info-tip label="Project description">Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+              <label for="work-description">Project description</label>
+              <x-admin.info-tip label="Project description">Optional — appears on the client PDF. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
             </span>
             <textarea class="admin-input" id="work-description" name="work_description" rows="8"
                       placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>

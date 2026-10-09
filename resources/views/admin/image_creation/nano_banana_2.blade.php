@@ -47,9 +47,9 @@
         'for' => 'nb2-image-size',
         'tipText' => 'Pixel dimensions update when you change aspect ratio.',
         'tipLabel' => 'Image size',
-        'tipId' => 'nb2-size-help',
       ])
       <select id="nb2-image-size" class="admin-input"></select>
+      <p class="admin-form-help" id="nb2-size-help"></p>
     </div>
 
     <div class="nb2-generate-row">

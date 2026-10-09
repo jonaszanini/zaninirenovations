@@ -155,18 +155,15 @@
             @error('works.'.$workIndex.'.labour_fixed_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="sq-labour-hst-field">
-            <input type="hidden" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="0">
-            <span class="admin-label-with-tip">
-              <label class="admin-checkbox sq-checkbox-label">
-                <input type="checkbox" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="1" class="admin-checkbox__input sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
-                <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">HST included</span>
-              </label>
-              @include('admin.partials.info_tip', [
-                'tipText' => 'When checked, the amount is the total with tax. Before-tax labour is calculated the same way as a material with an HST-included price.',
-                'tipLabel' => 'HST included — '.$jobTipLabel,
-              ])
-            </span>
+            @include('admin.partials.checkbox', [
+              'name' => 'works['.$workIndex.'][labour_fixed_hst_included]',
+              'hiddenFallback' => true,
+              'checked' => $labourFixedHstInc,
+              'label' => 'HST included',
+              'info' => 'When checked, the amount is the total with tax. Before-tax labour is calculated the same way as a material with an HST-included price.',
+              'class' => 'sq-checkbox-label',
+              'inputClass' => 'admin-checkbox__input sq-labour-fixed-hst-inc-cb',
+            ])
           </div>
         </div>
 

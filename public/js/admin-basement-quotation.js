@@ -461,6 +461,8 @@
         wrap.innerHTML = tpl.innerHTML.replace(/__I__/g, String(i)).trim();
         var row = wrap.firstElementChild;
         list.appendChild(row);
+        var refreshTile = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+        if (refreshTile) refreshTile(row);
         initTileRow(row);
         schedulePreview();
       });
@@ -1156,6 +1158,8 @@
       wrap.innerHTML = extraTpl.innerHTML.replace(/__I__/g, String(i)).trim();
       var row = wrap.firstElementChild;
       extraList.appendChild(row);
+      var refreshExtra = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+      if (refreshExtra) refreshExtra(row);
       initExtraRow(row);
       schedulePreview();
     });

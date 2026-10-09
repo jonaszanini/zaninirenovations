@@ -296,17 +296,14 @@
             Total area: <strong id="ld-area-value">0</strong> sq ft
           </p>
           <div class="admin-form-group cp-form-group-spaced">
-            <span class="admin-label-with-tip">
-              <label class="admin-checkbox">
-                <input type="hidden" name="include_under_deck_gravel" value="0">
-                <input type="checkbox" class="admin-checkbox__input" id="ld-under-deck-gravel"
-                       name="include_under_deck_gravel" value="1"
-                       @checked($initialIncludeUnderDeckGravel)>
-                <span class="admin-checkbox__mark" aria-hidden="true"></span>
-                <span class="admin-checkbox__text">Gravel under the deck</span>
-              </label>
-              <x-admin.info-tip label="Gravel under the deck">Adds under-deck gravel bags (1 per {{ rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.') }} sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.</x-admin.info-tip>
-            </span>
+            @include('admin.partials.checkbox', [
+              'name' => 'include_under_deck_gravel',
+              'id' => 'ld-under-deck-gravel',
+              'hiddenFallback' => true,
+              'checked' => $initialIncludeUnderDeckGravel,
+              'label' => 'Gravel under the deck',
+              'info' => 'Adds under-deck gravel bags (1 per '.rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.').' sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.',
+            ])
           </div>
         </div>
 

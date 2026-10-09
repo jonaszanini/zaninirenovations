@@ -2,8 +2,8 @@
   Standard admin checkbox — checkbox on the left, label on the right, brand blue when checked.
   Use this partial (or copy the markup) for every new checkbox in the admin.
 
-  @param string       $name            Input name (required)
-  @param string|null  $id              Input id
+  @param string       $name            Input name (required unless this is a JS-only toggle)
+  @param string|null  $id              Input id (derived from $name when omitted + $info is set)
   @param string       $value           Input value (default: 1)
   @param bool         $checked
   @param string|null  $label           Label HTML (right of checkbox)
@@ -15,6 +15,7 @@
   @param array        $attrs           Extra HTML attributes on input
 --}}
 @php
+  $name = $name ?? '';
   $value = $value ?? '1';
   $checked = $checked ?? false;
   $class = trim('admin-checkbox ' . ($class ?? ''));
@@ -24,25 +25,24 @@
   $clientFilled = $clientFilled ?? false;
   $hasInfo = ! empty($info);
   if ($hasInfo && empty($id)) {
-    $id = 'admin-checkbox-'.str_replace('.', '', uniqid('', true));
+    $id = \App\Support\AdminInfoTipInclude::controlIdFromName($name)
+      ?? ('admin-checkbox-'.str_replace('.', '', uniqid('', true)));
   }
   $rawLabel = isset($label) ? (string) $label : '';
   $plainLabel = trim((string) preg_replace('/\s+/u', ' ', strip_tags($rawLabel)));
-  $parts = $hasInfo ? \App\Support\AdminInfoTipInclude::splitLabel($plainLabel) : ['lead' => '', 'last' => ''];
-  $tailWord = $hasInfo ? $parts['last'] : '';
-  $leadHtml = $rawLabel;
-  if ($hasInfo && $tailWord !== '') {
-    $leadHtml = (string) preg_replace('/(?:\s|<[^>]*>)*'.preg_quote($tailWord, '/').'(?:\s|<[^>]*>)*$/u', '', $rawLabel);
-    $leadHtml = rtrim($leadHtml);
-  }
+  $labelIsHtml = $rawLabel !== strip_tags($rawLabel);
+  $split = $hasInfo ? \App\Support\AdminInfoTipInclude::splitLabelHtml($rawLabel) : ['lead' => '', 'last' => '', 'lastIsHtml' => false];
+  $tailWord = $hasInfo ? $split['last'] : '';
+  $leadHtml = $hasInfo ? $split['lead'] : $rawLabel;
+  $tailIsHtml = $hasInfo && ! empty($split['lastIsHtml']);
 @endphp
 @if ($hasInfo)<span class="admin-label-with-tip">@endif
 <label class="{{ $class }}" @if (! empty($id)) for="{{ $id }}" @endif>
-  @if ($hiddenFallback)
+  @if ($hiddenFallback && $name !== '')
     <input type="hidden" name="{{ $name }}" value="0">
   @endif
   <input type="checkbox"
-         name="{{ $name }}"
+         @if ($name !== '') name="{{ $name }}" @endif
          value="{{ $value }}"
          @if (! empty($id)) id="{{ $id }}" @endif
          class="{{ $inputClass }}"
@@ -53,13 +53,13 @@
     @include('admin.quotations.basement._client_filled', ['force' => true])
   @endif
   @if (isset($label))
-    <span class="admin-checkbox__text">{!! $leadHtml !!}</span>
+    <span class="admin-checkbox__text">@if ($labelIsHtml){!! $leadHtml !!}@else{{ $leadHtml }}@endif</span>
   @endif
 </label>
 @if ($hasInfo)
   <span class="admin-label-with-tip__end">
     @if ($tailWord !== '')
-      <label for="{{ $id }}" class="admin-checkbox__tail">{{ $tailWord }}</label>
+      <label for="{{ $id }}" class="admin-checkbox__tail">@if ($tailIsHtml){!! $tailWord !!}@else{{ $tailWord }}@endif</label>
     @endif
     @include('admin.partials.info_tip', ['tipText' => $info, 'tipLabel' => $plainLabel !== '' ? $plainLabel : 'this field', 'tipHtml' => null, 'tipId' => null])
   </span>

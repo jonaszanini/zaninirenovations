@@ -163,6 +163,28 @@ class AdminInfoTipTest extends TestCase
         );
     }
 
+    public function test_split_label_html_balances_strong_tags(): void
+    {
+        $split = \App\Support\AdminInfoTipInclude::splitLabelHtml('<strong>Client provides all materials</strong>');
+        $this->assertSame('<strong>Client provides all</strong>', $split['lead']);
+        $this->assertSame('<strong>materials</strong>', $split['last']);
+        $this->assertTrue($split['lastIsHtml']);
+        $this->assertSame(substr_count($split['lead'], '<strong>'), substr_count($split['lead'], '</strong>'));
+        $this->assertSame(substr_count($split['last'], '<strong>'), substr_count($split['last'], '</strong>'));
+    }
+
+    public function test_control_id_from_name_is_rewriteable_for_templates(): void
+    {
+        $this->assertSame(
+            'pieces-__P__-edge_banding',
+            \App\Support\AdminInfoTipInclude::controlIdFromName('pieces[__P__][edge_banding]')
+        );
+        $this->assertSame(
+            'works-__W__-labour_fixed_hst_included',
+            \App\Support\AdminInfoTipInclude::controlIdFromName('works[__W__][labour_fixed_hst_included]')
+        );
+    }
+
     public function test_text_attribute_matches_slot_api(): void
     {
         $html = Blade::render('<x-admin.info-tip :text="$text" label="Existing post credit" />', [

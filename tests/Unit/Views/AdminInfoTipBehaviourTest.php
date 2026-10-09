@@ -59,6 +59,38 @@ class AdminInfoTipBehaviourTest extends TestCase
         );
     }
 
+    public function test_checkbox_derives_rewriteable_id_from_name_not_uniqid(): void
+    {
+        $html = view('admin.partials.checkbox', [
+            'name' => 'pieces[__P__][edge_banding]',
+            'label' => 'Edge banding',
+            'info' => 'Shrinks the raw cut so the finished size matches after banding.',
+            'errors' => new ViewErrorBag,
+        ])->render();
+
+        $this->assertStringContainsString('id="pieces-__P__-edge_banding"', $html);
+        $this->assertStringContainsString('for="pieces-__P__-edge_banding"', $html);
+        $this->assertStringNotContainsString('admin-checkbox-', $html);
+        $this->assertGreaterThanOrEqual(2, substr_count($html, 'pieces-__P__-edge_banding'));
+    }
+
+    public function test_checkbox_strong_label_does_not_leave_an_open_tag(): void
+    {
+        $html = view('admin.partials.checkbox', [
+            'name' => 'client_provides_all',
+            'id' => 'mw-client-all',
+            'label' => '<strong>Client provides all materials</strong>',
+            'info' => 'Labour only — material cost drops out of the total.',
+            'errors' => new ViewErrorBag,
+        ])->render();
+
+        $this->assertStringContainsString('<strong>Client provides all</strong>', $html);
+        $this->assertStringContainsString('<strong>materials</strong>', $html);
+        $this->assertStringNotContainsString('<strong>Client provides all</span>', $html);
+        $this->assertSame(substr_count($html, '<strong>'), substr_count($html, '</strong>'));
+        $this->assertDoesNotMatchRegularExpression('/<strong>[^<]*<\/span>/', $html);
+    }
+
     public function test_filters_accordion_hint_is_an_info_tip_not_an_inline_paragraph(): void
     {
         $html = view('admin.partials.filters_accordion', [
@@ -122,7 +154,11 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('function glueHeadingTips', $js);
         $this->assertStringContainsString('function setLabelText', $js);
         $this->assertStringContainsString('function skipGlueNode', $js);
-        $this->assertStringContainsString('if (node.id) return true', $js);
+        $this->assertStringContainsString('if (node.nodeType === 1) return true', $js);
+        $this->assertStringContainsString('function refreshControlIds', $js);
+        $this->assertStringContainsString('refreshControlIds: refreshControlIds', $js);
+        $this->assertStringContainsString('function wrapHeadingCopy', $js);
+        $this->assertStringContainsString("btn.setAttribute('aria-label', 'About ' + aria)", $js);
         $this->assertStringContainsString("label.classList.contains('admin-checkbox')) return", $js);
         $this->assertStringContainsString("'.mw-totals-bar'", $js);
         $this->assertStringContainsString('setLabelText: setLabelText', $js);
@@ -166,9 +202,27 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-checkbox__tail\s*\{[^}]*white-space:\s*nowrap/',
+            '/\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}text-transform:\s*none/',
             $css
         );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}font-weight:\s*inherit/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s*\{[^}]*font-weight:\s*500/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}letter-spacing:\s*normal/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-checkbox__tail\s*,[\s\S]{0,500}white-space:\s*nowrap/',
+            $css
+        );
+        $this->assertStringContainsString('.admin-heading-copy', $css);
+        $this->assertStringContainsString('padding-left: 60px', $css);
         $this->assertMatchesRegularExpression(
             '/\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/',
             $css
@@ -192,10 +246,12 @@ class AdminInfoTipBehaviourTest extends TestCase
         $millwork = file_get_contents(public_path('js/admin-millwork-quotation.js'));
         $lumber = file_get_contents(public_path('js/admin-utilities-lumber-board.js'));
 
-        $this->assertStringContainsString('AdminInfoTip.refreshIds', $standard);
+        $this->assertStringContainsString('AdminInfoTip.refreshControlIds', $standard);
         $this->assertStringContainsString('AdminInfoTip.refreshRepeatLabels', $standard);
-        $this->assertGreaterThanOrEqual(3, substr_count($millwork, 'AdminInfoTip.refreshIds'));
+        $this->assertGreaterThanOrEqual(3, substr_count($millwork, 'refreshControlIds'));
+        $this->assertStringContainsString("label[for]", $millwork);
         $this->assertStringContainsString('AdminInfoTip.refreshRepeatLabels', $millwork);
+        $this->assertStringContainsString("lab.setAttribute('for', next)", $millwork);
         $this->assertStringContainsString("AdminInfoTip.html(", $lumber);
         $this->assertStringContainsString("'Calculation mode'", $lumber);
         $this->assertStringNotContainsString('class="util-tip"', $lumber);
@@ -388,11 +444,13 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringNotContainsString('portfolio-category-ai__help', $cat);
 
         $create = file_get_contents(resource_path('views/admin/image_creation/create.blade.php'));
-        $this->assertStringContainsString("'tipId' => 'nb2-size-help'", $create);
-        $this->assertStringNotContainsString('<p class="admin-form-help" id="nb2-size-help">', $create);
+        $this->assertStringContainsString('id="nb2-size-help"', $create);
+        $this->assertStringNotContainsString("'tipId' => 'nb2-size-help'", $create);
+        $this->assertStringContainsString('<p class="admin-form-help" id="nb2-size-help">', $create);
         $nb2 = file_get_contents(resource_path('views/admin/image_creation/nano_banana_2.blade.php'));
-        $this->assertStringContainsString("'tipId' => 'nb2-size-help'", $nb2);
-        $this->assertStringNotContainsString('<p class="admin-form-help" id="nb2-size-help">', $nb2);
+        $this->assertStringContainsString('id="nb2-size-help"', $nb2);
+        $this->assertStringNotContainsString("'tipId' => 'nb2-size-help'", $nb2);
+        $this->assertStringContainsString('<p class="admin-form-help" id="nb2-size-help">', $nb2);
 
         $sched = file_get_contents(resource_path('views/admin/client_projects/_schedule_toggle.blade.php'));
         $this->assertStringContainsString('Same-day start & end is allowed for small projects.', $sched);
@@ -441,5 +499,53 @@ class AdminInfoTipBehaviourTest extends TestCase
         );
         $this->assertStringContainsString('id="br-lights-label"', $src);
         $this->assertStringNotContainsString('Pot lights lights', $src);
+    }
+
+    public function test_handwritten_checkboxes_and_leftover_explainers_use_tips(): void
+    {
+        $trim = file_get_contents(resource_path('views/admin/quotations/trimming/create.blade.php'));
+        $this->assertStringContainsString("'label' => 'Remove existing'", $trim);
+        $this->assertStringContainsString("'label' => 'Caulk & paint'", $trim);
+        $this->assertStringContainsString("'label' => 'Client supplies materials'", $trim);
+        $this->assertStringNotContainsString('<span class="admin-checkbox__text">Remove existing</span>', $trim);
+
+        $work = file_get_contents(resource_path('views/admin/quotations/standard/_work_card.blade.php'));
+        $this->assertStringContainsString("'label' => 'HST included'", $work);
+        $this->assertStringNotContainsString('<span class="admin-checkbox__text">HST included</span>', $work);
+
+        $wall = file_get_contents(resource_path('views/admin/quotations/basement/_wall_primary_fields.blade.php'));
+        $this->assertStringContainsString("'id' => 'br-wall-include-door'", $wall);
+        $this->assertStringContainsString("'label' => 'Include a door'", $wall);
+
+        $low = file_get_contents(resource_path('views/admin/quotations/low_deck/create.blade.php'));
+        $this->assertStringContainsString("'id' => 'ld-under-deck-gravel'", $low);
+        $this->assertStringContainsString("'label' => 'Gravel under the deck'", $low);
+
+        $sync = file_get_contents(resource_path('views/admin/client_projects/_client_directory_sync.blade.php'));
+        $this->assertStringContainsString("'label' => 'Update central client record when saving'", $sync);
+
+        $invoice = file_get_contents(resource_path('views/admin/client_projects/invoice/edit.blade.php'));
+        $this->assertStringContainsString('Required before the invoice can be sent to the client.', $invoice);
+        $this->assertStringNotContainsString('<p class="admin-form-help admin-form-help--tight">Required before the invoice', $invoice);
+
+        $cp = file_get_contents(resource_path('views/admin/client_projects/create.blade.php'));
+        $this->assertStringContainsString('Optional — CC\'d on every client email.', $cp);
+        $this->assertStringNotContainsString('cp-inline-help">(optional — CC', $cp);
+
+        $mat = file_get_contents(resource_path('views/admin/materials/config.blade.php'));
+        $this->assertStringContainsString('Fill blanks only (short names: use Short names Gemini above).', $mat);
+        $this->assertStringNotContainsString('Categories &amp; units — fill blanks only', $mat);
+
+        $paint = file_get_contents(resource_path('views/admin/quotations/painting/create.blade.php'));
+        $this->assertStringContainsString('Optional — appears on the client PDF.', $paint);
+        $this->assertStringNotContainsString('(optional — appears on client PDF)', $paint);
+
+        $floor = file_get_contents(resource_path('views/admin/quotations/flooring/create.blade.php'));
+        $this->assertStringContainsString('Optional — appears on the client PDF.', $floor);
+        $this->assertStringNotContainsString('(optional — appears on client PDF)', $floor);
+
+        $basementJs = file_get_contents(public_path('js/admin-basement-quotation.js'));
+        $this->assertStringContainsString("wall: 'Basement area (sq ft, optional)'", $basementJs);
+        $this->assertStringContainsString('AdminInfoTip.setLabelText', $basementJs);
     }
 }

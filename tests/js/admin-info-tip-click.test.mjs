@@ -23,7 +23,10 @@ assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label:not\(\.admin-checkbox
 assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label\.admin-checkbox[\s\S]{0,80}display:\s*inline-flex/);
 assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,220}text-indent:\s*-34px/);
 assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,80}display:\s*block/);
-assert.match(adminCss, /\.admin-checkbox__tail[\s\S]{0,80}display:\s*inline/);
+assert.match(adminCss, /\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}text-transform:\s*none/);
+assert.match(adminCss, /\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}font-weight:\s*inherit/);
+assert.match(adminCss, /\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}color:\s*inherit/);
+assert.match(adminCss, /\.admin-heading-copy/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/);
 assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S]{0,160}pointer-events:\s*auto/);
 
@@ -84,6 +87,24 @@ function fixtureHtml() {
         <span id="t-price" class="admin-info-tip__bubble" role="tooltip">Interpolated linearly.</span>
       </span>
     </h4>
+    <h5 class="sq-intro-option-title" id="pdf-line-heading">Client PDF line items
+      <span class="admin-info-tip-wrap" id="pdf-line-wrap">
+        <button type="button" class="admin-info-tip" aria-label="About Client PDF line items" aria-expanded="false" aria-controls="t-pdf">i</button>
+        <span id="t-pdf" class="admin-info-tip__bubble" role="tooltip">Controls how material and labour appear.</span>
+      </span>
+    </h5>
+    <summary class="br-acc__summary" id="review-summary"><span class="br-acc__num">8 of 8</span> Review, materials &amp; live edits
+      <span class="admin-info-tip-wrap" id="review-summary-wrap">
+        <button type="button" class="admin-info-tip" aria-label="About Review, materials & live edits" aria-expanded="false" aria-controls="t-rev">i</button>
+        <span id="t-rev" class="admin-info-tip__bubble" role="tooltip">Edit hours below.</span>
+      </span>
+    </summary>
+    <legend id="reply-legend">Ask client to reply I accept <span class="cp-required">*</span>
+      <span class="admin-info-tip-wrap">
+        <button type="button" class="admin-info-tip" aria-label="About Ask client to reply I accept" aria-expanded="false" aria-controls="t-leg">i</button>
+        <span id="t-leg" class="admin-info-tip__bubble" role="tooltip">Required.</span>
+      </span>
+    </legend>
     <div class="admin-form-group">
     <span class="admin-label-with-tip" id="review-check">
       <label class="admin-checkbox" for="br-client-all">
@@ -149,6 +170,29 @@ function fixtureHtml() {
         <span id="t-lights" class="admin-info-tip__bubble" role="tooltip">Count pot lights.</span>
       </span>
     </span>
+    <form id="mw-test-form">
+      <div id="mw-piece-list"></div>
+      <button type="button" id="mw-add-piece">Add piece</button>
+      <template id="mw-piece-template">
+        <article data-mw-piece>
+          <span class="admin-label-with-tip">
+            <label class="admin-checkbox" for="pieces-__P__-edge_banding">
+              <input type="hidden" name="pieces[__P__][edge_banding]" value="0">
+              <input type="checkbox" name="pieces[__P__][edge_banding]" value="1" id="pieces-__P__-edge_banding" class="admin-checkbox__input">
+              <span class="admin-checkbox__mark"></span>
+              <span class="admin-checkbox__text">Edge</span>
+            </label>
+            <span class="admin-label-with-tip__end">
+              <label for="pieces-__P__-edge_banding" class="admin-checkbox__tail">banding</label>
+              <span class="admin-info-tip-wrap">
+                <button type="button" class="admin-info-tip" aria-label="About Edge banding" aria-expanded="false" aria-controls="mw-tip-__P__">i</button>
+                <span id="mw-tip-__P__" class="admin-info-tip__bubble" role="tooltip">Shrinks the raw cut.</span>
+              </span>
+            </span>
+          </span>
+        </article>
+      </template>
+    </form>
     <script>${source}</script>
   </body></html>`;
 }
@@ -227,17 +271,48 @@ async function puppeteerClick() {
     const d1 = await page.evaluate(() => {
       const row = document.getElementById('br-area-label');
       const copy = window.AdminInfoTip.labelCopy(row);
-      const after = window.AdminInfoTip.setLabelText(row, 'Bathroom / work area (sq ft)');
-      return { before: copy, after, stillHasTip: !!row.querySelector('.admin-info-tip-wrap') };
+      const labels = {
+        full: 'Total basement area (sq ft)',
+        bathroom: 'Bathroom / work area (sq ft)',
+        wall: 'Basement area (sq ft, optional)',
+        custom: 'Work area (sq ft)',
+      };
+      function applyScope(preset) {
+        return window.AdminInfoTip.setLabelText(row, labels[preset] || labels.full);
+      }
+      const afterBath = applyScope('bathroom');
+      const afterWall = applyScope('wall');
+      const afterCustom = applyScope('custom');
+      const afterFull = applyScope('full');
+      const last = row.querySelector('.admin-label-with-tip__end label');
+      const aria = row.querySelector('.admin-info-tip').getAttribute('aria-label');
+      applyScope('wall');
+      return {
+        before: copy,
+        afterBath,
+        afterWall,
+        afterCustom,
+        afterFull,
+        wallLast: last ? last.textContent : '',
+        wallAria: row.querySelector('.admin-info-tip').getAttribute('aria-label'),
+        stillHasTip: !!row.querySelector('.admin-info-tip-wrap'),
+        fullAria: aria,
+      };
     });
     assert.equal(d1.before, 'Total basement area (sq ft)');
-    assert.equal(d1.after, 'Bathroom / work area (sq ft)', 'D1: bathroom preset is exact after setLabelText');
+    assert.equal(d1.afterBath, 'Bathroom / work area (sq ft)', 'D1: bathroom preset is exact after setLabelText');
+    assert.equal(d1.afterWall, 'Basement area (sq ft, optional)', 'N6: wall preset is exact');
+    assert.equal(d1.afterCustom, 'Work area (sq ft)');
+    assert.equal(d1.afterFull, 'Total basement area (sq ft)');
+    assert.equal(d1.wallLast, 'optional)', 'N6: last word must become optional) not stay ft)');
+    assert.equal(d1.wallAria, 'About Basement area (sq ft, optional)', 'N8: setLabelText updates aria-label');
     assert.equal(d1.stillHasTip, true);
 
     const d2 = await page.evaluate(() => {
       window.AdminInfoTip.hoist(document);
       const span = document.getElementById('br-lights-label');
       const afterHoist = span.textContent;
+      const end = document.querySelector('#lights-row .admin-label-with-tip__end');
       span.textContent = 'Fixtures';
       const fixtures = span.textContent;
       span.textContent = 'Pot lights';
@@ -245,44 +320,149 @@ async function puppeteerClick() {
         afterHoist,
         fixtures,
         back: span.textContent,
-        glued: document.querySelector('#lights-row .admin-label-with-tip__end'),
+        glued: !!end,
+        unitInEnd: !!(end && end.contains(span)),
       };
     });
     assert.equal(d2.afterHoist, 'Pot lights', 'D2: glue must not pull lights out of #br-lights-label');
     assert.equal(d2.fixtures, 'Fixtures');
     assert.equal(d2.back, 'Pot lights');
-    assert.equal(d2.glued, null);
+    assert.equal(d2.glued, true, 'N8: Pot lights + ⓘ wrap together');
+    assert.equal(d2.unitInEnd, true);
 
     const headingGlue = await page.evaluate(() => {
       const h = document.getElementById('pricing-heading');
+      const copy = h.querySelector('.admin-heading-copy');
       const end = h.querySelector('.admin-label-with-tip__end, .admin-heading-tip');
-      return { hasEnd: !!end, last: end ? end.textContent.trim() : '' };
+      const pdf = document.getElementById('pdf-line-heading');
+      const pdfCopy = pdf.querySelector('.admin-heading-copy');
+      const review = document.getElementById('review-summary');
+      const reviewCopy = review.querySelector('.admin-heading-copy');
+      const legend = document.getElementById('reply-legend');
+      const star = legend.querySelector('.cp-required');
+      const legendEnd = legend.querySelector('.admin-label-with-tip__end');
+      return {
+        hasEnd: !!end,
+        last: end ? end.textContent.trim() : '',
+        hasCopy: !!copy,
+        copyHasEnd: !!(copy && copy.contains(end)),
+        pdfText: pdfCopy ? pdfCopy.textContent.replace(/\s+/g, ' ').trim() : '',
+        reviewHasNum: !!(review.querySelector('.br-acc__num') && review.querySelector('.br-acc__num').parentNode === review),
+        reviewCopyText: reviewCopy ? reviewCopy.textContent.replace(/\s+/g, ' ').trim() : '',
+        starText: star ? star.textContent : '',
+        starInEnd: !!(legendEnd && legendEnd.contains(star)),
+      };
     });
     assert.equal(headingGlue.hasEnd, true, 'D5: heading last word is glued');
     assert.match(headingGlue.last, /area/);
+    assert.equal(headingGlue.hasCopy, true, 'N4: heading copy wrap');
+    assert.equal(headingGlue.copyHasEnd, true);
+    assert.match(headingGlue.pdfText, /Client PDF line items/);
+    assert.ok(!headingGlue.pdfText.includes('lineitems'), 'N4: spaces in flex headings must not collapse');
+    assert.equal(headingGlue.reviewHasNum, true, 'num stays outside the copy span');
+    assert.match(headingGlue.reviewCopyText, /live edits/);
+    assert.equal(headingGlue.starText, '*');
+    assert.equal(headingGlue.starInEnd, false, 'N5: required * stays outside the glue');
+
+    const millwork = await page.evaluate(() => {
+      const list = document.getElementById('mw-piece-list');
+      const tpl = document.getElementById('mw-piece-template');
+      const form = document.getElementById('mw-test-form');
+      function addPiece() {
+        const i = list.querySelectorAll('[data-mw-piece]').length;
+        const wrap = document.createElement('div');
+        wrap.innerHTML = tpl.innerHTML.replace(/__P__/g, String(i)).trim();
+        const piece = wrap.firstElementChild;
+        list.appendChild(piece);
+        if (window.AdminInfoTip.refreshControlIds) window.AdminInfoTip.refreshControlIds(piece);
+        list.querySelectorAll('[data-mw-piece]').forEach(function (p, idx) {
+          p.querySelectorAll('[name]').forEach(function (input) {
+            input.name = input.name.replace(/pieces\[\d+\]/, 'pieces[' + idx + ']');
+            if (input.id) input.id = input.id.replace(/pieces-\d+/, 'pieces-' + idx);
+          });
+          p.querySelectorAll('label[for]').forEach(function (lab) {
+            const next = (lab.getAttribute('for') || '').replace(/pieces-\d+/, 'pieces-' + idx);
+            lab.setAttribute('for', next);
+          });
+        });
+      }
+      addPiece();
+      addPiece();
+      addPiece();
+      const boxes = Array.from(list.querySelectorAll('input[type="checkbox"]'));
+      const ids = boxes.map((el) => el.id);
+      const tails = Array.from(list.querySelectorAll('.admin-checkbox__tail'));
+      tails[0].click();
+      tails[2].click();
+      const submitted = {};
+      new FormData(form).forEach((value, key) => { submitted[key] = value; });
+      const values = [0, 1, 2].map((i) => submitted['pieces[' + i + '][edge_banding]']);
+      return {
+        count: boxes.length,
+        ids,
+        unique: new Set(ids).size,
+        checked: boxes.map((el) => el.checked),
+        values,
+        fors: tails.map((el) => el.getAttribute('for')),
+      };
+    });
+    assert.equal(millwork.count, 3, 'M1: three added pieces');
+    assert.equal(millwork.unique, 3, 'M1: each piece has its own checkbox id ' + millwork.ids.join(','));
+    assert.deepEqual(millwork.checked, [true, false, true], 'M1: ticking piece 1 and 3 must not toggle piece 2');
+    assert.deepEqual(millwork.values, ['1', '0', '1']);
+    millwork.ids.forEach((id, i) => {
+      assert.equal(millwork.fors[i], id, 'M1: tail for= matches input id for piece ' + i);
+    });
+
+    const tailCss = await page.evaluate(() => {
+      const tail = document.querySelector('#review-check .admin-checkbox__tail');
+      const text = document.querySelector('#review-check .admin-checkbox__text');
+      const cs = getComputedStyle(tail);
+      const ts = getComputedStyle(text);
+      return {
+        transform: cs.textTransform,
+        weight: cs.fontWeight,
+        spacing: cs.letterSpacing,
+        color: cs.color,
+        textColor: ts.color,
+        size: cs.fontSize,
+        textSize: ts.fontSize,
+      };
+    });
+    assert.equal(tailCss.transform, 'none', 'M3: tail must not pick up .admin-form-group label uppercase');
+    assert.ok(['500', '400', 'normal'].includes(String(tailCss.weight)) || Number(tailCss.weight) <= 500, 'M3: tail weight follows checkbox text, got ' + tailCss.weight);
+    assert.ok(tailCss.spacing === 'normal' || tailCss.spacing === '0px', 'M3: tail letter-spacing inherit, got ' + tailCss.spacing);
+    assert.equal(tailCss.color, tailCss.textColor, 'M3: tail color matches checkbox text');
+    assert.equal(tailCss.size, tailCss.textSize, 'M3: tail size matches checkbox text');
 
     for (const width of [320, 390, 1280]) {
       await page.setViewport({ width, height: 800 });
       const aligned = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll('#review-check, #toggle-check, #stack-check')).map((row) => {
+        function sameLine(a, b) {
+          if (!a || !b) return false;
+          const ar = a.getBoundingClientRect();
+          const br = b.getBoundingClientRect();
+          const overlap = br.bottom > ar.top && ar.bottom > br.top;
+          const wrappedBelow = br.top > ar.bottom + 2;
+          return { sameLine: overlap && !wrappedBelow, aTop: ar.top, bTop: br.top };
+        }
+        const checks = Array.from(document.querySelectorAll('#review-check, #toggle-check, #stack-check')).map((row) => {
           const tail = row.querySelector('.admin-checkbox__tail');
           const tip = row.querySelector('.admin-info-tip');
-          const tr = tail.getBoundingClientRect();
-          const ir = tip.getBoundingClientRect();
-          const overlap = ir.bottom > tr.top && tr.bottom > ir.top;
-          const wrappedBelow = ir.top > tr.bottom + 2;
-          return {
-            sameLine: overlap && !wrappedBelow,
-            tailTop: tr.top,
-            tipTop: ir.top,
-            tailBottom: tr.bottom,
-            tipBottom: ir.bottom,
-          };
+          return sameLine(tail, tip);
         });
+        const lights = sameLine(document.getElementById('br-lights-label'), document.querySelector('#lights-row .admin-info-tip'));
+        const review = document.getElementById('review-summary');
+        const reviewLast = review.querySelector('.admin-heading-tip, .admin-label-with-tip__end');
+        const reviewTip = review.querySelector('.admin-info-tip');
+        const reviewLine = sameLine(reviewLast, reviewTip);
+        return { checks, lights, reviewLine };
       });
-      aligned.forEach((row, i) => {
-        assert.ok(row.sameLine, `D4/C3: checkbox ${i} tip stays on the last word at ${width}px (tail ${row.tailTop} tip ${row.tipTop})`);
+      aligned.checks.forEach((row, i) => {
+        assert.ok(row.sameLine, `D4/C3: checkbox ${i} tip stays on the last word at ${width}px (tail ${row.aTop} tip ${row.bTop})`);
       });
+      assert.ok(aligned.lights.sameLine, `N8: pot lights ⓘ stays with the label at ${width}px`);
+      assert.ok(aligned.reviewLine.sameLine, `N8: review summary ⓘ stays with the last word at ${width}px`);
     }
   } finally {
     await browser.close();

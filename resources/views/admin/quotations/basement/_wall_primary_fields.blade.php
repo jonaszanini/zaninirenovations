@@ -11,21 +11,16 @@
   </div>
   <div class="admin-form-group" data-br-door-field>
     <div data-br-door-toggle-ui @if(($scopePreset ?? '') !== 'wall') hidden @endif>
-      <span class="admin-label-with-tip">
-        <label class="admin-checkbox" for="br-wall-include-door">
-          <input type="checkbox"
-                 id="br-wall-include-door"
-                 class="admin-checkbox__input br-preview"
-                 data-br-wall-door="1"
-                 @checked((int) $brVal('framing_door_openings', 0) > 0 || (int) $brVal('door_qty', 0) > 0)>
-          <span class="admin-checkbox__mark" aria-hidden="true"></span>
-          @if ($brFilled('framing_door_openings') || $brFilled('door_qty'))
-            @include('admin.quotations.basement._client_filled', ['force' => true])
-          @endif
-          <span class="admin-checkbox__text">Include a door</span>
-        </label>
-        @include('admin.partials.info_tip', ['tipText' => $brInfo['wall_include_door'] ?? null, 'tipLabel' => 'Include a door'])
-      </span>
+      @include('admin.partials.checkbox', [
+        'name' => '',
+        'id' => 'br-wall-include-door',
+        'checked' => (int) $brVal('framing_door_openings', 0) > 0 || (int) $brVal('door_qty', 0) > 0,
+        'label' => 'Include a door',
+        'info' => $brInfo['wall_include_door'] ?? null,
+        'inputClass' => 'admin-checkbox__input br-preview',
+        'clientFilled' => isset($brFilled) && ($brFilled('framing_door_openings') || $brFilled('door_qty')),
+        'attrs' => ['data-br-wall-door' => '1'],
+      ])
     </div>
     <div data-br-door-count-ui @if(($scopePreset ?? '') === 'wall') hidden @endif>
       <span class="admin-label-with-tip">

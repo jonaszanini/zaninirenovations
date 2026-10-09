@@ -488,39 +488,37 @@
       <div class="admin-card tm-card">
         <h4>Prep &amp; finish</h4>
         <div class="tm-chip-row">
-          <span class="admin-label-with-tip">
-            <label class="admin-checkbox">
-              <input type="hidden" name="include_remove_existing" value="0">
-              <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_remove_existing" value="1" @checked($tmOn('include_remove_existing'))>
-              <span class="admin-checkbox__mark"></span>
-              <span class="admin-checkbox__text">Remove existing</span>
-            </label>
-            @include('admin.partials.info_tip', ['tipText' => $tips['remove'], 'tipLabel' => 'Remove existing'])
-          </span>
-          <span class="admin-label-with-tip">
-            <label class="admin-checkbox">
-              <input type="hidden" name="include_caulk_paint" value="0">
-              <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_caulk_paint" value="1" @checked($tmOn('include_caulk_paint'))>
-              <span class="admin-checkbox__mark"></span>
-              <span class="admin-checkbox__text">Caulk &amp; paint</span>
-            </label>
-            @include('admin.partials.info_tip', ['tipText' => $tips['paint'], 'tipLabel' => 'Caulk & paint'])
-          </span>
+          @include('admin.partials.checkbox', [
+            'name' => 'include_remove_existing',
+            'hiddenFallback' => true,
+            'checked' => $tmOn('include_remove_existing'),
+            'label' => 'Remove existing',
+            'info' => $tips['remove'],
+            'inputClass' => 'admin-checkbox__input tm-preview',
+          ])
+          @include('admin.partials.checkbox', [
+            'name' => 'include_caulk_paint',
+            'hiddenFallback' => true,
+            'checked' => $tmOn('include_caulk_paint'),
+            'label' => 'Caulk & paint',
+            'info' => $tips['paint'],
+            'inputClass' => 'admin-checkbox__input tm-preview',
+          ])
           <label class="admin-checkbox">
             <input type="hidden" name="include_stain" value="0">
             <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_stain" value="1" @checked($tmOn('include_stain'))>
             <span class="admin-checkbox__mark"></span>
             <span class="admin-checkbox__text">Stain &amp; clear coat</span>
           </label>
-          <span class="admin-label-with-tip">
-            <label class="admin-checkbox">
-              <input type="hidden" name="client_provides_all" value="0">
-              <input type="checkbox" class="admin-checkbox__input tm-preview" id="tm-client-all" name="client_provides_all" value="1" @checked($tmOn('client_provides_all'))>
-              <span class="admin-checkbox__mark"></span>
-              <span class="admin-checkbox__text">Client supplies materials</span>
-            </label>
-            @include('admin.partials.info_tip', ['tipText' => $tips['client_all'], 'tipLabel' => 'Client supplies materials'])
-          </span>
+          @include('admin.partials.checkbox', [
+            'name' => 'client_provides_all',
+            'id' => 'tm-client-all',
+            'hiddenFallback' => true,
+            'checked' => $tmOn('client_provides_all'),
+            'label' => 'Client supplies materials',
+            'info' => $tips['client_all'],
+            'inputClass' => 'admin-checkbox__input tm-preview',
+          ])
         </div>
         <div class="pq-form-grid tm-override-grid">
           <div class="admin-form-group" data-tm-show-when="include_remove_existing">

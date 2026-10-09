@@ -252,6 +252,92 @@
     });
   }
 
+  function cssEscapeId(id) {
+    if (global.CSS && typeof global.CSS.escape === 'function') {
+      return global.CSS.escape(id);
+    }
+    return String(id).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+  }
+
+  function idFromControlName(name) {
+    if (!name) return '';
+    return String(name).replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+
+  function collectScoped(scope, sel) {
+    var root = scope && scope.querySelectorAll ? scope : document;
+    var list = [];
+    if (root.matches && root.matches(sel)) {
+      list.push(root);
+    }
+    if (root.querySelectorAll) {
+      root.querySelectorAll(sel).forEach(function (el) {
+        list.push(el);
+      });
+    }
+    return list;
+  }
+
+  function rewriteLabelsFor(scope, oldId, nextId) {
+    if (!oldId || !nextId || oldId === nextId) return;
+    var sel = 'label[for="' + cssEscapeId(oldId) + '"]';
+    collectScoped(scope, sel).forEach(function (lab) {
+      lab.htmlFor = nextId;
+      if (lab.setAttribute) lab.setAttribute('for', nextId);
+    });
+    if (document.querySelectorAll && scope && scope.nodeType === 1) {
+      document.querySelectorAll(sel).forEach(function (lab) {
+        if (scope.contains && !scope.contains(lab) && lab.htmlFor === oldId) {
+          return;
+        }
+        if (lab.htmlFor === oldId || (lab.getAttribute && lab.getAttribute('for') === oldId)) {
+          lab.htmlFor = nextId;
+          if (lab.setAttribute) lab.setAttribute('for', nextId);
+        }
+      });
+    }
+  }
+
+  function uniquifyControlIds(scope) {
+    var seen = Object.create(null);
+    if (document.querySelectorAll) {
+      document.querySelectorAll('input[id], select[id], textarea[id]').forEach(function (el) {
+        if (!el.id) return;
+        if (scope && scope.nodeType === 1 && scope.contains && scope.contains(el)) {
+          return;
+        }
+        seen[el.id] = true;
+      });
+    }
+    collectScoped(scope, 'input[id], select[id], textarea[id]').forEach(function (input) {
+      var oldId = input.id || '';
+      if (!oldId) return;
+      var clash = seen[oldId] || (document.getElementById && document.getElementById(oldId) && document.getElementById(oldId) !== input);
+      if (!clash) {
+        seen[oldId] = true;
+        return;
+      }
+      var next = idFromControlName(input.getAttribute && input.getAttribute('name')) || (oldId + '-' + Math.random().toString(36).slice(2, 8));
+      if (!next || seen[next] || (document.getElementById && document.getElementById(next) && document.getElementById(next) !== input)) {
+        next = (next || oldId) + '-' + Math.random().toString(36).slice(2, 8);
+      }
+      input.id = next;
+      if (input.setAttribute) input.setAttribute('id', next);
+      rewriteLabelsFor(scope, oldId, next);
+      seen[next] = true;
+    });
+  }
+
+  /**
+   * After cloneNode / template insert: unique tip bubble ids AND unique
+   * input/select/textarea ids with matching label[for].
+   */
+  function refreshControlIds(scope) {
+    refreshIds(scope);
+    uniquifyControlIds(scope);
+    return wrapsIn(scope).length;
+  }
+
   function isIconVisibleInClip(btn) {
     if (!btn || typeof btn.getBoundingClientRect !== 'function') return false;
     var rect = btn.getBoundingClientRect();
@@ -403,6 +489,7 @@
     if (!node || node.nodeType !== 1) return;
     hoistFromLabels(node);
     refreshDuplicateIds(node);
+    uniquifyControlIds(node);
     deriveMissingLabels(node);
     bindSummaryGuard(node);
     refreshRepeatLabels(node);
@@ -413,12 +500,8 @@
   }
 
   function skipGlueNode(node, isRoot) {
-    if (isRoot || !node || node.nodeType !== 1) return false;
-    if (node.id) return true;
-    var cls = node.classList;
-    if (cls && (cls.contains('admin-info-tip-wrap') || cls.contains('admin-info-tip__bubble') || cls.contains('admin-label-with-tip__end'))) {
-      return true;
-    }
+    if (isRoot || !node) return false;
+    if (node.nodeType === 1) return true;
     return false;
   }
 
@@ -445,8 +528,68 @@
       return trimmed;
     }
     var last = trimmed.slice(space + 1);
-    textNode.textContent = trimmed.slice(0, space) + raw.slice(trimmed.length);
+    textNode.textContent = trimmed.slice(0, space) + ' ' + raw.slice(trimmed.length);
     return last;
+  }
+
+  function trailingSkippedChildren(host) {
+    var trail = [];
+    var kids = host.childNodes || [];
+    for (var i = kids.length - 1; i >= 0; i--) {
+      var n = kids[i];
+      if (n.nodeType === 3 && !String(n.textContent || '').trim()) continue;
+      if (n.nodeType === 1 && n.classList && (n.classList.contains('admin-info-tip-wrap') || n.classList.contains('admin-label-with-tip__end') || n.classList.contains('admin-heading-tip'))) {
+        continue;
+      }
+      if (n.nodeType === 1) {
+        trail.unshift(n);
+        continue;
+      }
+      break;
+    }
+    return trail;
+  }
+
+  function moveTrailingSkipped(host, end) {
+    if (!host || !end || !host.insertBefore) return;
+    trailingSkippedChildren(host).forEach(function (el) {
+      if (el === end || (end.contains && end.contains(el))) return;
+      if (end.nextSibling) {
+        host.insertBefore(el, end.nextSibling);
+      } else {
+        host.appendChild(el);
+      }
+    });
+  }
+
+  function lastElementUnit(host, tip) {
+    var kids = host.childNodes || [];
+    for (var i = kids.length - 1; i >= 0; i--) {
+      var n = kids[i];
+      if (n === tip) continue;
+      if (n.nodeType === 3 && !String(n.textContent || '').trim()) continue;
+      if (n.nodeType === 1 && n.classList && (n.classList.contains('admin-info-tip-wrap') || n.classList.contains('admin-label-with-tip__end'))) {
+        continue;
+      }
+      if (n.nodeType === 1) return n;
+    }
+    return null;
+  }
+
+  function wrapUnitAndTip(host, tip, extraClass) {
+    var unit = lastElementUnit(host, tip);
+    if (!unit || !tip) return null;
+    var end = document.createElement('span');
+    end.className = extraClass || 'admin-label-with-tip__end';
+    var insertHost = (tip.parentNode && tip.parentNode.insertBefore) ? tip.parentNode : host;
+    if (insertHost.insertBefore) {
+      insertHost.insertBefore(end, tip);
+    } else {
+      insertHost.appendChild(end);
+    }
+    end.appendChild(unit);
+    end.appendChild(tip);
+    return end;
   }
 
   function splitLabelText(label) {
@@ -519,15 +662,15 @@
         setElementPlainText(leadLab, '');
         lastLab.textContent = parts.last;
       }
-      return labelCopy(el);
-    }
-    if (lastLab) {
+    } else if (lastLab) {
       lastLab.textContent = text;
-      return labelCopy(el);
-    }
-    if (leadLab) {
+    } else if (leadLab) {
       setElementPlainText(leadLab, text);
-      return labelCopy(el);
+    }
+    var btn = el.querySelector ? el.querySelector('.admin-info-tip') : null;
+    if (btn) {
+      var aria = String(text || '').replace(/\s+/g, ' ').trim();
+      if (aria) btn.setAttribute('aria-label', 'About ' + aria);
     }
     return labelCopy(el);
   }
@@ -570,14 +713,44 @@
       if (!tip || !label) return;
       if (label.classList && label.classList.contains('admin-checkbox')) return;
       var last = takeLastWord(label);
-      if (!last) return;
-      var htmlFor = '';
-      if (label.tagName === 'LABEL') {
-        htmlFor = label.htmlFor || (label.getAttribute && label.getAttribute('for')) || '';
+      var end = null;
+      if (last) {
+        var htmlFor = '';
+        if (label.tagName === 'LABEL') {
+          htmlFor = label.htmlFor || (label.getAttribute && label.getAttribute('for')) || '';
+        }
+        end = wrapLastAndTip(row, tip, last, label.tagName === 'LABEL' ? 'label' : 'span', htmlFor, 'admin-label-with-tip__end');
+      } else {
+        end = wrapUnitAndTip(label, tip, 'admin-label-with-tip__end') || wrapUnitAndTip(row, tip, 'admin-label-with-tip__end');
       }
-      wrapLastAndTip(row, tip, last, label.tagName === 'LABEL' ? 'label' : 'span', htmlFor, 'admin-label-with-tip__end');
+      if (end) {
+        moveTrailingSkipped(label, end);
+        moveTrailingSkipped(row, end);
+      }
     });
     glueHeadingTips(root);
+  }
+
+  function wrapHeadingCopy(heading, tip) {
+    if (!heading || !tip) return heading;
+    var existing = heading.querySelector ? heading.querySelector(':scope > .admin-heading-copy') : null;
+    if (existing) {
+      if (tip.parentNode !== existing) existing.appendChild(tip);
+      return existing;
+    }
+    var copy = document.createElement('span');
+    copy.className = 'admin-heading-copy';
+    var nodes = [];
+    var kids = heading.childNodes || [];
+    for (var i = 0; i < kids.length; i++) {
+      nodes.push(kids[i]);
+    }
+    nodes.forEach(function (n) {
+      if (n.nodeType === 1 && n.classList && n.classList.contains('br-acc__num')) return;
+      copy.appendChild(n);
+    });
+    heading.appendChild(copy);
+    return copy;
   }
 
   function glueHeadingTips(scope) {
@@ -585,12 +758,19 @@
     if (!root.querySelectorAll) return;
     var sels = 'h1, h2, h3, h4, h5, summary, legend, .br-acc__summary, .admin-accordion__title, .admin-filters-accordion__title, .cp-heading-sm, .cp-heading-md, .q-additional-costs-card__title';
     root.querySelectorAll(sels).forEach(function (heading) {
-      if (heading.querySelector && heading.querySelector('.admin-label-with-tip__end, .admin-heading-tip')) return;
-      var tip = heading.querySelector ? heading.querySelector(':scope > .admin-info-tip-wrap') : null;
+      if (heading.querySelector && heading.querySelector('.admin-heading-tip')) return;
+      var tip = heading.querySelector ? heading.querySelector('.admin-info-tip-wrap') : null;
       if (!tip) return;
-      var last = takeLastWord(heading);
-      if (!last) return;
-      wrapLastAndTip(heading, tip, last, 'span', '', 'admin-label-with-tip__end admin-heading-tip');
+      var copy = wrapHeadingCopy(heading, tip);
+      if (copy.querySelector && copy.querySelector('.admin-heading-tip')) return;
+      var last = takeLastWord(copy);
+      var end = null;
+      if (last) {
+        end = wrapLastAndTip(copy, tip, last, 'span', '', 'admin-label-with-tip__end admin-heading-tip');
+      } else {
+        end = wrapUnitAndTip(copy, tip, 'admin-label-with-tip__end admin-heading-tip');
+      }
+      if (end) moveTrailingSkipped(copy, end);
     });
   }
 
@@ -687,6 +867,7 @@
     html: html,
     hoist: hoistFromLabels,
     refreshIds: refreshIds,
+    refreshControlIds: refreshControlIds,
     refreshRepeatLabels: refreshRepeatLabels,
     setLabelText: setLabelText,
     labelCopy: labelCopy,

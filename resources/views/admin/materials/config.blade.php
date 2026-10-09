@@ -245,7 +245,10 @@
           <li class="mat-sync-commands__row">
             <div class="mat-sync-commands__cmd-wrap">
               <code class="mat-sync-commands__cmd" id="mat-sync-cmd-meta">php artisan materials:populate-metadata</code>
-              <span class="admin-form-help mat-sync-commands__label">Categories &amp; units — fill blanks only (short names: use Short names Gemini above)</span>
+              <span class="mat-sync-commands__label">
+                Categories &amp; units
+                <x-admin.info-tip label="Categories & units">Fill blanks only (short names: use Short names Gemini above).</x-admin.info-tip>
+              </span>
             </div>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mat-sync-commands__copy" data-copy-target="mat-sync-cmd-meta">
               <i class="fa fa-copy"></i> Copy

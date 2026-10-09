@@ -681,9 +681,8 @@
     var wrap = document.createElement('div');
     wrap.innerHTML = html.trim();
     var newRow = wrap.firstElementChild;
-    if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshIds === 'function') {
-      window.AdminInfoTip.refreshIds(newRow);
-    }
+    var refreshRow = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+    if (refreshRow) refreshRow(newRow);
     list.appendChild(newRow);
     reindexMaterialNames(card, w);
     if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
@@ -698,9 +697,8 @@
     var wrap = document.createElement('div');
     wrap.innerHTML = html.trim();
     var card = wrap.querySelector('.sq-work-card') || wrap.firstElementChild;
-    if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshIds === 'function') {
-      window.AdminInfoTip.refreshIds(card);
-    }
+    var refreshCard = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+    if (refreshCard) refreshCard(card);
     worksRoot.appendChild(card);
     workCards().forEach(function (c) {
       if (c !== card) {

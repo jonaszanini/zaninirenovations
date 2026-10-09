@@ -1690,6 +1690,8 @@ a.admin-client-link:focus-visible {
   padding-left: 34px;
   text-indent: -34px;
   min-height: 44px;
+  color: var(--admin-text);
+  font-weight: 500;
 }
 .admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox,
 .admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox--block,
@@ -1717,18 +1719,45 @@ a.admin-client-link:focus-visible {
   white-space: nowrap;
   text-indent: 0;
 }
-.admin-checkbox__tail {
+.admin-checkbox__tail,
+.admin-form-group label.admin-checkbox__tail,
+.admin-label-with-tip__end > label.admin-checkbox__tail,
+.admin-form-group .admin-label-with-tip__end > label.admin-checkbox__tail {
   display: inline;
   margin: 0;
   padding: 0;
   font: inherit;
+  font-family: inherit;
+  font-size: inherit;
   font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
+  text-transform: none;
   color: inherit;
   cursor: pointer;
   text-indent: 0;
   white-space: nowrap;
-  text-transform: none;
-  letter-spacing: normal;
+}
+.admin-label-with-tip:has(> label.admin-checkbox):has(.br-client-filled) {
+  padding-left: 60px;
+  text-indent: -60px;
+}
+.admin-heading-copy {
+  display: inline;
+  min-width: 0;
+}
+.sq-intro-option-title > .admin-heading-copy,
+.br-acc__summary > .admin-heading-copy,
+h1 > .admin-heading-copy,
+h2 > .admin-heading-copy,
+h3 > .admin-heading-copy,
+h4 > .admin-heading-copy,
+h5 > .admin-heading-copy,
+legend > .admin-heading-copy,
+summary > .admin-heading-copy {
+  display: inline;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .admin-label-with-tip__end {
   white-space: nowrap;

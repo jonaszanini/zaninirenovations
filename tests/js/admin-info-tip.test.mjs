@@ -59,9 +59,10 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   body.appendChild(group);
   label.control = input;
   AdminInfoTip.hoist(document);
-  assert.equal(wrap.parentNode.className, 'admin-label-with-tip');
+  const row = wrap.closest('.admin-label-with-tip');
+  assert.ok(row, 'tip is in a hoisted row');
   assert.ok(!label.contains(wrap), 'tip is no longer inside the label');
-  assert.ok(wrap.parentNode.contains(label), 'label stays in the hoisted row');
+  assert.ok(row.contains(label), 'label stays in the hoisted row');
 }
 
 // --- cloned rows get fresh ids ---
@@ -505,7 +506,10 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   body.appendChild(row);
   AdminInfoTip.hoist(document);
   assert.equal(span.textContent, 'Pot lights', 'D2/M18: do not glue words out of #br-lights-label');
-  assert.equal(row.querySelector('.admin-label-with-tip__end'), null, 'id\'d child is not split');
+  const lightsEnd = row.querySelector('.admin-label-with-tip__end');
+  assert.ok(lightsEnd, 'N8: wrap the id\'d Pot lights unit + tip so ⓘ does not orphan');
+  assert.equal(lightsEnd.contains(span), true);
+  assert.equal(lightsEnd.contains(wrap), true);
   span.textContent = 'Fixtures';
   assert.equal(span.textContent, 'Fixtures', 'D2: JS rewrite stays exact');
   span.textContent = 'Pot lights';
@@ -538,10 +542,14 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   heading.appendChild(wrap);
   body.appendChild(heading);
   AdminInfoTip.hoist(document);
+  const copy = heading.querySelector('.admin-heading-copy');
+  assert.ok(copy, 'N4: heading text is wrapped in one inline span before gluing');
   const end = heading.querySelector('.admin-label-with-tip__end, .admin-heading-tip');
   assert.ok(end, 'D5/M19: heading last word is glued to the tip');
+  assert.equal(copy.contains(end), true, 'glue lives inside the heading-copy span');
   assert.equal(end.contains(wrap), true);
   assert.match(String(end.textContent || ''), /area/);
+  assert.match(String(copy.textContent || ''), /Pricing engine/);
 }
 
 {
@@ -570,6 +578,65 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   assert.equal(afterBath, 'Bathroom / work area (sq ft)', 'D1: bathroom preset label is exact');
   assert.equal(AdminInfoTip.labelCopy(row), 'Bathroom / work area (sq ft)');
   assert.ok(!String(afterBath).includes('ft) ft)'), 'no leftover ft) from the split lead');
+  const afterWall = AdminInfoTip.setLabelText(row, 'Basement area (sq ft, optional)');
+  assert.equal(afterWall, 'Basement area (sq ft, optional)', 'N6: wall preset last word is optional) not ft)');
+  assert.equal(last.textContent, 'optional)');
+  assert.ok(!String(last.textContent).includes('ft)'), 'N6: last word must change when the preset does');
+  assert.equal(wrap.querySelector('.admin-info-tip').getAttribute('aria-label'), 'About Basement area (sq ft, optional)');
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const legend = document.createElement('legend');
+  legend.appendChild(document.createTextNode('Store name '));
+  const star = document.createElement('span');
+  star.className = 'cp-required';
+  star.textContent = '*';
+  legend.appendChild(star);
+  const { wrap } = makeTip(document, 'admin-info-tip-required', 'Store name');
+  legend.appendChild(wrap);
+  body.appendChild(legend);
+  AdminInfoTip.hoist(document);
+  assert.equal(star.textContent, '*', 'N5: asterisk stays in span.cp-required');
+  assert.equal(star.className, 'cp-required');
+  const end = legend.querySelector('.admin-label-with-tip__end');
+  assert.ok(end, 'last word glued');
+  assert.ok(!end.contains(star), 'N5: asterisk stays outside the glue');
+  assert.match(String(end.textContent || ''), /name/);
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const form = document.createElement('form');
+  function pieceRow(index) {
+    const row = document.createElement('div');
+    row.setAttribute('data-mw-piece', '1');
+    const input = document.createElement('input');
+    input.setAttribute('type', 'checkbox');
+    input.setAttribute('name', 'pieces[' + index + '][edge_banding]');
+    input.id = 'pieces-0-edge_banding';
+    const lab = document.createElement('label');
+    lab.htmlFor = 'pieces-0-edge_banding';
+    lab.setAttribute('for', 'pieces-0-edge_banding');
+    lab.className = 'admin-checkbox__tail';
+    lab.textContent = 'banding';
+    row.appendChild(input);
+    row.appendChild(lab);
+    const { wrap } = makeTip(document, 'admin-info-tip-shared-cb', 'Edge banding');
+    row.appendChild(wrap);
+    return { row, input, lab };
+  }
+  const a = pieceRow(0);
+  const b = pieceRow(1);
+  form.appendChild(a.row);
+  body.appendChild(form);
+  body.appendChild(b.row);
+  assert.equal(a.input.id, b.input.id);
+  AdminInfoTip.refreshControlIds(b.row);
+  assert.notEqual(b.input.id, a.input.id, 'M1: cloned checkbox gets its own id');
+  assert.equal(b.lab.getAttribute('for'), b.input.id);
+  assert.equal(a.lab.getAttribute('for'), a.input.id);
+  assert.notEqual(b.row.querySelector('.admin-info-tip__bubble').id, a.row.querySelector('.admin-info-tip__bubble').id);
 }
 
 // --- M22: millwork totals bar is reserved like other sticky bars ---

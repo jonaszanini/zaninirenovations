@@ -141,13 +141,15 @@
         </div>
 
         <div class="admin-form-group">
-          <label for="cp-invoice-due">Due date <span class="cp-required">*</span></label>
+          <span class="admin-label-with-tip">
+            <label for="cp-invoice-due">Due date <span class="cp-required">*</span></label>
+            <x-admin.info-tip label="Due date">Required before the invoice can be sent to the client.</x-admin.info-tip>
+          </span>
           <input type="date"
                  id="cp-invoice-due"
                  name="due_on"
                  class="admin-input"
                  value="{{ $dueOn }}">
-          <p class="admin-form-help admin-form-help--tight">Required before the invoice can be sent to the client.</p>
         </div>
       </div>
 
