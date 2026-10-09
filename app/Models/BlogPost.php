@@ -127,9 +127,9 @@ class BlogPost extends Model
     }
 
     /**
-     * Admin list src. Keeps http(s) CDN / absolute hosts. Returns null
-     * when a local stored file is missing so the table can show a warning
-     * instead of a broken-image icon.
+     * Admin list src. HTTPS CDN / absolute hosts only (no plain http).
+     * Local files use a content hash, not mtime. Returns null when the
+     * file is missing or the remote URL would be mixed content.
      */
     public function featuredImageListSrc(): ?string
     {
@@ -138,8 +138,11 @@ class BlogPost extends Model
         }
 
         $path = (string) $this->featured_image_path;
-        if (preg_match('#^https?://#i', $path) === 1) {
+        if (preg_match('#^https://#i', $path) === 1) {
             return $path;
+        }
+        if (preg_match('#^https?://#i', $path) === 1) {
+            return null;
         }
 
         $absolute = Storage::disk('public')->path($path);
@@ -149,8 +152,9 @@ class BlogPost extends Model
 
         $url = Storage::disk('public')->url($path);
         $src = parse_url($url, PHP_URL_PATH) ?: '/storage/'.ltrim($path, '/');
+        $hash = hash_file('sha1', $absolute);
 
-        return $src.'?v='.filemtime($absolute);
+        return $src.'?v='.substr((string) $hash, 0, 12);
     }
 
     public function featuredImageIsMissing(): bool
@@ -159,24 +163,22 @@ class BlogPost extends Model
             return false;
         }
 
-        $path = (string) $this->featured_image_path;
-        if (preg_match('#^https?://#i', $path) === 1) {
-            return false;
-        }
-
-        return ! is_file(Storage::disk('public')->path($path));
+        return $this->featuredImageListSrc() === null;
     }
 
     public function formatViewsCount(): string
     {
         $n = (int) $this->views_count;
-        if ($n >= 10000) {
-            $thousands = $n / 1000;
-
-            return rtrim(rtrim(number_format($thousands, 1, '.', ''), '0'), '.').'K';
+        if ($n < 10000) {
+            return number_format($n);
         }
 
-        return number_format($n);
+        $thousands = round($n / 1000, 1);
+        if ($thousands >= 1000) {
+            return rtrim(rtrim(number_format($n / 1000000, 1, '.', ''), '0'), '.').'M';
+        }
+
+        return rtrim(rtrim(number_format($thousands, 1, '.', ''), '0'), '.').'K';
     }
 
     public function readTimeMinutes(): int

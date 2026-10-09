@@ -27,6 +27,28 @@
     });
   }
 
+  function decorateDropdown(dropdown) {
+    var toggle = toggleOf(dropdown);
+    if (toggle) {
+      if (!toggle.hasAttribute('aria-expanded')) {
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+      if (!toggle.hasAttribute('aria-haspopup')) {
+        toggle.setAttribute('aria-haspopup', 'menu');
+      }
+    }
+    var menu = menuOf(dropdown);
+    if (!menu) return;
+    menu.setAttribute('role', 'menu');
+    menu.querySelectorAll('button, a[href]').forEach(function (el) {
+      el.setAttribute('role', 'menuitem');
+    });
+  }
+
+  function decorateAll() {
+    document.querySelectorAll('.admin-actions-dropdown').forEach(decorateDropdown);
+  }
+
   function setExpanded(dropdown, open) {
     var toggle = toggleOf(dropdown);
     if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -119,6 +141,7 @@
   }
 
   function openDropdown(dropdown) {
+    decorateDropdown(dropdown);
     dropdown.classList.add('is-open');
     setExpanded(dropdown, true);
     positionMenu(dropdown);
@@ -131,14 +154,7 @@
   }
 
   function openDropdownFrom(dropdown) {
-    document.querySelectorAll('.admin-actions-dropdown__toggle').forEach(function (btn) {
-      if (!btn.hasAttribute('aria-expanded')) {
-        btn.setAttribute('aria-expanded', 'false');
-      }
-      if (!btn.hasAttribute('aria-haspopup')) {
-        btn.setAttribute('aria-haspopup', 'menu');
-      }
-    });
+    decorateAll();
     var wasOpen = dropdown.classList.contains('is-open');
     closeAll(null, false);
     if (!wasOpen) openDropdown(dropdown);
@@ -159,7 +175,7 @@
       !e.target.closest('.admin-actions-dropdown') &&
       !e.target.closest('.admin-actions-dropdown__menu')
     ) {
-      closeAll(null, false);
+      closeAll(null, true);
     }
   });
 
@@ -170,22 +186,18 @@
       return;
     }
 
-    if (e.key !== 'Tab' || !open) return;
-    var items = menuItems(menuOf(open));
-    if (!items.length) return;
-    var first = items[0];
-    var last = items[items.length - 1];
-    var active = document.activeElement;
-    if (e.shiftKey && (active === first || !menuOf(open).contains(active))) {
-      e.preventDefault();
-      last.focus();
-      return;
-    }
-    if (!e.shiftKey && (active === last || !menuOf(open).contains(active))) {
-      e.preventDefault();
-      first.focus();
+    if (e.key === 'Tab' && open) {
+      var toggle = toggleOf(open);
+      restoreMenu(open, false);
+      if (toggle) toggle.focus();
     }
   });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', decorateAll);
+  } else {
+    decorateAll();
+  }
 
   window.addEventListener('resize', function () {
     document.querySelectorAll('.admin-actions-dropdown.is-open').forEach(positionMenu);

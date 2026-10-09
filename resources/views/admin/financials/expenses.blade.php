@@ -63,6 +63,7 @@
     grid-column: 2;
   }
 }
+/* Table column widths - nowrap for key columns */
 .gf-expenses-table { width: 100%; }
 .gf-expenses-table th:nth-child(1),
 .gf-expenses-table td:nth-child(1) { white-space: nowrap; } /* # */
@@ -237,10 +238,10 @@
                 </td>
                 <td data-label="Actions" class="admin-table-actions">
                   <div class="admin-actions-dropdown">
-                    <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions">
+                    <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions" aria-expanded="false" aria-haspopup="menu">
                       <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
                     </button>
-                    <div class="admin-actions-dropdown__menu">
+                    <div class="admin-actions-dropdown__menu" role="menu">
                       @if ($project)
                         <a href="{{ route('admin.client-projects.show', $project) }}#financials" class="admin-actions-dropdown__item">
                           <i class="fa fa-folder-open"></i> Open project

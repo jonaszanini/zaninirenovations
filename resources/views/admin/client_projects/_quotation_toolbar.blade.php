@@ -176,7 +176,7 @@
     {{-- Desktop overflow dropdown: SMS, Link, Duplicate, Delete --}}
     @if (count($desktopOverflowItems) > 0)
       <div class="admin-actions-dropdown cp-quotation-toolbar__overflow">
-        <button type="button" class="admin-actions-dropdown__toggle" aria-label="More actions">
+        <button type="button" class="admin-actions-dropdown__toggle" aria-label="More actions" aria-expanded="false" aria-haspopup="menu">
           <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
         </button>
         <div class="admin-actions-dropdown__menu">
@@ -220,7 +220,7 @@
   {{-- Mobile: single ⋯ dropdown with all actions --}}
   @if (count($quotDropdownItems) > 0)
     <div class="admin-actions-dropdown cp-quotation-toolbar__mobile">
-      <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions menu">
+      <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions menu" aria-expanded="false" aria-haspopup="menu">
         <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
       </button>
       <div class="admin-actions-dropdown__menu">

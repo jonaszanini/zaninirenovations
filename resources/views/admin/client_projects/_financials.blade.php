@@ -445,7 +445,7 @@
                 </form>
               </div>
               <div class="admin-actions-dropdown cp-expense-actions--mobile">
-                <button type="button" class="admin-actions-dropdown__toggle" aria-label="Expense actions">
+                <button type="button" class="admin-actions-dropdown__toggle" aria-label="Expense actions" aria-expanded="false" aria-haspopup="menu">
                   <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
                 </button>
                 <div class="admin-actions-dropdown__menu">

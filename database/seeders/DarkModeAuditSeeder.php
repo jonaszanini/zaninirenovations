@@ -371,16 +371,31 @@ class DarkModeAuditSeeder extends Seeder
             return null;
         }
 
-        foreach ([
-            public_path('images/services/deck.webp'),
-            public_path('images/services/kitchen-remodel.webp'),
-            public_path('images/about-us/jonas.webp'),
-        ] as $src) {
-            if (is_file($src) && copy($src, $dest)) {
-                return $relative;
-            }
+        if ($this->writeNeutralBlogPlaceholder($dest)) {
+            return $relative;
         }
 
         return is_file($dest) ? $relative : null;
+    }
+
+    private function writeNeutralBlogPlaceholder(string $dest): bool
+    {
+        if (! function_exists('imagecreatetruecolor') || ! function_exists('imagewebp')) {
+            return false;
+        }
+
+        $im = imagecreatetruecolor(96, 64);
+        if ($im === false) {
+            return false;
+        }
+
+        $bg = imagecolorallocate($im, 176, 184, 192);
+        $fg = imagecolorallocate($im, 148, 156, 164);
+        imagefilledrectangle($im, 0, 0, 95, 63, $bg);
+        imagefilledrectangle($im, 28, 16, 68, 48, $fg);
+        $ok = imagewebp($im, $dest, 80);
+        imagedestroy($im);
+
+        return $ok && is_file($dest);
     }
 }

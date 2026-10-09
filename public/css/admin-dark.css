@@ -2031,7 +2031,11 @@ html.admin-dark .bp-list-thumb--empty {
   background: transparent;
   color: var(--admin-muted);
 }
-html.admin-dark .bp-list-post__title {
+html.admin-dark .bp-list-post__title,
+html.admin-dark .bp-list-post__title-link,
+html.admin-dark .admin-content a.bp-list-post__title-link,
+html.admin-dark .admin-table a.bp-list-post__title-link,
+html.admin-dark .admin-table a.bp-list-post__title-link:visited {
   color: var(--admin-heading);
 }
 html.admin-dark .bp-list-post__meta {
@@ -2149,10 +2153,10 @@ html.admin-dark .cp-recalc-banner__title {
 }
 
 /* Links in admin tables and content */
-html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not([class*="btn"]):not([class*="nav"]) {
+html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"]) {
   color: var(--admin-primary);
 }
-html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not([class*="btn"]):not([class*="nav"]):visited {
+html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"]):visited {
   color: var(--admin-primary);
 }
 html.admin-dark .admin-table a {

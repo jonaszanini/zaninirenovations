@@ -162,7 +162,7 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
 .bp-list-table th.bp-list-col--actions,
 .bp-list-table td.bp-list-col--actions,
 .bp-list-table td.admin-table__actions {
-  width: 7.25rem;
+  width: 8.25rem;
   white-space: nowrap;
   overflow: visible;
 }
@@ -287,8 +287,17 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
   display: none;
 }
 
-.bp-list-post__title {
+.bp-list-post__title-link {
+  display: block;
   position: relative;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  color: var(--admin-heading);
+  text-decoration: none;
+}
+
+.bp-list-post__title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -298,20 +307,9 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
   font-weight: 650;
   font-size: 13px;
   line-height: 1.3;
-  color: var(--admin-heading);
-  text-decoration: none;
+  color: inherit;
   overflow-wrap: break-word;
   word-break: normal;
-}
-
-.bp-list-post__title::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 44px;
-  margin-top: -22px;
 }
 
 .bp-list-seo {
@@ -326,7 +324,6 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
 
 .bp-list-seo--card {
   display: flex;
-  flex-wrap: wrap;
   flex: 0 1 auto;
   width: auto;
   max-width: 100%;
@@ -359,7 +356,7 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
 }
 
 .bp-list-icon-btn {
@@ -701,7 +698,7 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
   .bp-list-table th.bp-list-col--actions,
   .bp-list-table td.bp-list-col--actions,
   .bp-list-table td.admin-table__actions {
-    width: 7rem;
+    width: 8rem;
   }
 
   .bp-list-table .bp-list-col--cat {
@@ -720,13 +717,23 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
     width: 4.5rem;
   }
 
-  .bp-list-actions {
-    gap: 2px;
-  }
-
   .bp-list-thumb {
     flex-basis: 40px;
     width: 40px;
+  }
+}
+
+/* Table mode until 1000px: drop Category so Post / chips stay readable
+   (sidebar-open 901–1000 is ~575px; 768 with 44px action hits is similar). */
+@media (min-width: 768px) and (max-width: 900px) {
+  .bp-list-table .bp-list-col--cat {
+    display: none;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1000px) {
+  .bp-list-table .bp-list-col--cat {
+    display: none;
   }
 }
 
@@ -852,6 +859,11 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
   .bp-list-table.admin-table--stack .bp-list-post {
     width: 100%;
     align-items: flex-start;
+  }
+
+  .bp-list-table.admin-table--stack .bp-list-post__title-link {
+    min-height: 44px;
+    padding: 6px 0;
   }
 
   .bp-list-table.admin-table--stack .bp-list-post__title {

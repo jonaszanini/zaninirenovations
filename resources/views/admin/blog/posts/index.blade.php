@@ -113,7 +113,9 @@
                       </span>
                     @endif
                     <span class="bp-list-post__text">
-                      <a href="{{ route('admin.blog.posts.edit', $post) }}" class="bp-list-post__title">{{ $post->title }}</a>
+                      <a href="{{ route('admin.blog.posts.edit', $post) }}" class="bp-list-post__title-link">
+                        <span class="bp-list-post__title">{{ $post->title }}</span>
+                      </a>
                       @if ($post->pending_comments_count)
                         <span class="bp-seo-badge bp-seo-badge--warn">{{ $post->pending_comments_count }} pending</span>
                       @endif
@@ -165,7 +167,10 @@
                   <span class="bp-status-badge {{ $statusClass }}">{{ $statusLabel }}</span>
                 </td>
                 <td class="bp-list-col bp-list-col--date" data-label="Published">{{ $publishedLabel }}</td>
-                <td class="bp-list-col bp-list-col--views" data-label="Views" title="{{ $viewsExact }}">{{ $viewsLabel }}</td>
+                <td class="bp-list-col bp-list-col--views" data-label="Views" title="{{ $viewsExact }}" aria-label="{{ $viewsExact }} views">
+                  <span aria-hidden="true">{{ $viewsLabel }}</span>
+                  <span class="sr-only">{{ $viewsExact }} views</span>
+                </td>
                 <td class="admin-table__actions bp-list-col bp-list-col--actions">
                   <div class="bp-list-actions">
                     @if ($post->isPublishedNow())
@@ -184,10 +189,10 @@
                       <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn admin-actions-dropdown__toggle" aria-label="More actions" aria-expanded="false" aria-haspopup="menu">
                         <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
                       </button>
-                      <div class="admin-actions-dropdown__menu">
+                      <div class="admin-actions-dropdown__menu" role="menu">
                         <form action="{{ route('admin.blog.posts.duplicate', $post) }}" method="post" class="admin-actions-dropdown__form">
                           @csrf
-                          <button type="submit" class="admin-actions-dropdown__item">
+                          <button type="submit" class="admin-actions-dropdown__item" role="menuitem">
                             <i class="fa fa-copy" aria-hidden="true"></i> Duplicate
                           </button>
                         </form>
@@ -197,7 +202,7 @@
                               data-confirm-danger>
                           @csrf
                           @method('DELETE')
-                          <button type="submit" class="admin-actions-dropdown__item admin-actions-dropdown__item--danger">
+                          <button type="submit" class="admin-actions-dropdown__item admin-actions-dropdown__item--danger" role="menuitem">
                             <i class="fa fa-trash" aria-hidden="true"></i> Delete
                           </button>
                         </form>
