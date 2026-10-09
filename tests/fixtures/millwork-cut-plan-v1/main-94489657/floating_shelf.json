@@ -1,0 +1,225 @@
+{
+    "scope": {
+        "piece_count": 1,
+        "piece_summary": "2× floating 36\"×10\"×3\"",
+        "sheet_count": 1,
+        "finish_label": "Unfinished",
+        "labels": [
+            "2× floating 36\"×10\"×3\""
+        ]
+    },
+    "sheet": {
+        "id": "ws_ply_34_cab_48x96",
+        "catalog_material_id": null,
+        "name": "3/4\" cabinet-grade plywood 4×8",
+        "unit": "sheet",
+        "unit_price": 72,
+        "thickness_in": 0.75,
+        "width_in": 48,
+        "length_in": 96,
+        "material_kind": "plywood",
+        "grade": "cabinet"
+    },
+    "back_sheet": null,
+    "labor": [
+        {
+            "key": "cut",
+            "label": "Shop — cut / nest sheets",
+            "hours": 0.45,
+            "amount": 38.25
+        },
+        {
+            "key": "floating",
+            "label": "Shop — floating shelves",
+            "hours": 2.5,
+            "amount": 212.5
+        },
+        {
+            "key": "edge",
+            "label": "Shop — edge banding",
+            "hours": 0.98,
+            "amount": 83.3
+        },
+        {
+            "key": "install",
+            "label": "On-site install",
+            "hours": 1.54,
+            "amount": 130.9
+        }
+    ],
+    "materials": [
+        {
+            "key": "sheet_1",
+            "label": "3/4\" cabinet-grade plywood 4×4",
+            "qty": 1,
+            "unit": "sheet",
+            "unit_price": 42,
+            "amount": 42,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "edge",
+            "label": "Iron-on edge banding (50 ft roll)",
+            "qty": 1,
+            "unit": "roll",
+            "unit_price": 12.48,
+            "amount": 12.48,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "glue",
+            "label": "Wood glue, 16 oz",
+            "qty": 1,
+            "unit": "each",
+            "unit_price": 8.9,
+            "amount": 8.9,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "fastener",
+            "label": "1-1/4\" cabinet screws (box of 100)",
+            "qty": 1,
+            "unit": "box",
+            "unit_price": 8.5,
+            "amount": 8.5,
+            "client_provided": false,
+            "catalog_material_id": null
+        }
+    ],
+    "extra_materials": [],
+    "summary": {
+        "total_hours": 5.47,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45,
+        "include_helper": false,
+        "include_building": false,
+        "building_labor_percent": 30,
+        "building_labor_surcharge": 0,
+        "labor_pre_hst": 464.95,
+        "labor_hst": 60.44,
+        "labor_after_hst": 525.39,
+        "materials_goods_pre_hst": 71.88,
+        "materials_pre_hst": 71.88,
+        "materials_hst": 9.34,
+        "materials_after_hst": 81.22,
+        "subtotal_pre_hst": 536.83,
+        "hst": 69.78,
+        "grand_total": 606.61,
+        "final_quote_total": 606.61,
+        "client_provides_all": false,
+        "paint_sf": 0,
+        "stain_sf": 0,
+        "edge_band_lf": 29.34,
+        "edge_band_coverage_lf": 50,
+        "fastener_count": 32,
+        "waste_pct": 10,
+        "edge_waste_pct": 10,
+        "finish_waste_pct": 10,
+        "markup_pct": 0,
+        "markup_amount": 0,
+        "delivery_amount": 0,
+        "spare_sheets": 0,
+        "trim_lf": 0,
+        "wainscot_lf": 0
+    },
+    "cut_plan": {
+        "sheet_count": 1,
+        "yield_pct": 77,
+        "stock_used": [
+            {
+                "label": "3/4\" cabinet-grade plywood 4×4",
+                "width": 48,
+                "length": 48,
+                "qty": 1,
+                "unit_price": 42,
+                "catalog_material_id": null,
+                "name": "3/4\" cabinet-grade plywood 4×4"
+            }
+        ],
+        "layouts": [
+            {
+                "svg": "<svg class=\"mw-cut-svg\" viewBox=\"0 0 74 68\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Cut plan 3/4&quot; cabinet-grade plywood 4×4\">\n<rect class=\"mw-cut-bg\" x=\"0\" y=\"0\" width=\"74\" height=\"68\" />\n<defs>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-1\"><rect x=\"0.125\" y=\"11.893\" width=\"10\" height=\"35.982\" /></clipPath>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-2\"><rect x=\"10.25\" y=\"11.893\" width=\"10\" height=\"35.982\" /></clipPath>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-3\"><rect x=\"20.375\" y=\"11.893\" width=\"10\" height=\"35.982\" /></clipPath>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-4\"><rect x=\"30.5\" y=\"11.893\" width=\"10\" height=\"35.982\" /></clipPath>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-5\"><rect x=\"40.625\" y=\"11.893\" width=\"3\" height=\"35.982\" /></clipPath>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-6\"><rect x=\"43.75\" y=\"11.893\" width=\"3\" height=\"35.982\" /></clipPath>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-7\"><rect x=\"0.125\" y=\"1.804\" width=\"2.964\" height=\"9.964\" /></clipPath>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-8\"><rect x=\"3.214\" y=\"1.804\" width=\"2.964\" height=\"9.964\" /></clipPath>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-9\"><rect x=\"6.303\" y=\"1.804\" width=\"2.964\" height=\"9.964\" /></clipPath>\n<clipPath id=\"mw-clip-ws_ply_34_cab_48x48_1-10\"><rect x=\"9.392\" y=\"1.804\" width=\"2.964\" height=\"9.964\" /></clipPath>\n</defs>\n<g transform=\"translate(18 6)\">\n<rect class=\"mw-cut-stock\" x=\"0\" y=\"0\" width=\"48\" height=\"48\" />\n<rect class=\"mw-cut-offcut\" x=\"12.481\" y=\"1.804\" width=\"35.394\" height=\"9.964\" />\n<text class=\"mw-cut-offcut-label\" x=\"30.178\" y=\"6.786\" font-size=\"1.246\" text-anchor=\"middle\" dominant-baseline=\"middle\">35.39&quot; × 9.96&quot;</text>\n<g class=\"mw-cut-part\">\n<title>FS1 top 1 — 10&quot; × 35.98&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"0.125\" y=\"11.893\" width=\"10\" height=\"35.982\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-1)\">\n<text class=\"mw-cut-part-label\" x=\"5.125\" y=\"28.484\" font-size=\"1.746\" text-anchor=\"middle\" dominant-baseline=\"middle\">FS1 top 1</text>\n<text class=\"mw-cut-part-dim\" x=\"5.125\" y=\"31.484\" font-size=\"1.209\" text-anchor=\"middle\" dominant-baseline=\"middle\">10&quot; × 35.98&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>FS1 top 2 — 10&quot; × 35.98&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"10.25\" y=\"11.893\" width=\"10\" height=\"35.982\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-2)\">\n<text class=\"mw-cut-part-label\" x=\"15.25\" y=\"28.484\" font-size=\"1.746\" text-anchor=\"middle\" dominant-baseline=\"middle\">FS1 top 2</text>\n<text class=\"mw-cut-part-dim\" x=\"15.25\" y=\"31.484\" font-size=\"1.209\" text-anchor=\"middle\" dominant-baseline=\"middle\">10&quot; × 35.98&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>FS1 bottom 1 — 10&quot; × 35.98&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"20.375\" y=\"11.893\" width=\"10\" height=\"35.982\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-3)\">\n<text class=\"mw-cut-part-label\" x=\"25.375\" y=\"28.484\" font-size=\"1.31\" text-anchor=\"middle\" dominant-baseline=\"middle\">FS1 bottom 1</text>\n<text class=\"mw-cut-part-dim\" x=\"25.375\" y=\"31.484\" font-size=\"1.209\" text-anchor=\"middle\" dominant-baseline=\"middle\">10&quot; × 35.98&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>FS1 bottom 2 — 10&quot; × 35.98&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"30.5\" y=\"11.893\" width=\"10\" height=\"35.982\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-4)\">\n<text class=\"mw-cut-part-label\" x=\"35.5\" y=\"28.484\" font-size=\"1.31\" text-anchor=\"middle\" dominant-baseline=\"middle\">FS1 bottom 2</text>\n<text class=\"mw-cut-part-dim\" x=\"35.5\" y=\"31.484\" font-size=\"1.209\" text-anchor=\"middle\" dominant-baseline=\"middle\">10&quot; × 35.98&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>FS1 front 1 — 3&quot; × 35.98&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"40.625\" y=\"11.893\" width=\"3\" height=\"35.982\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-5)\">\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>FS1 front 2 — 3&quot; × 35.98&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"43.75\" y=\"11.893\" width=\"3\" height=\"35.982\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-6)\">\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>FS1 end 1 — 2.96&quot; × 9.96&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"0.125\" y=\"1.804\" width=\"2.964\" height=\"9.964\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-7)\">\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>FS1 end 2 — 2.96&quot; × 9.96&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"3.214\" y=\"1.804\" width=\"2.964\" height=\"9.964\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-8)\">\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>FS1 end 3 — 2.96&quot; × 9.96&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"6.303\" y=\"1.804\" width=\"2.964\" height=\"9.964\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-9)\">\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>FS1 end 4 — 2.96&quot; × 9.96&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"9.392\" y=\"1.804\" width=\"2.964\" height=\"9.964\" />\n<g clip-path=\"url(#mw-clip-ws_ply_34_cab_48x48_1-10)\">\n</g>\n</g>\n<rect class=\"mw-cut-kerf\" x=\"10.125\" y=\"11.893\" width=\"0.125\" height=\"35.982\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"0.125\" y=\"11.768\" width=\"10\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"20.25\" y=\"11.893\" width=\"0.125\" height=\"35.982\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"30.375\" y=\"11.893\" width=\"0.125\" height=\"35.982\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"40.5\" y=\"11.893\" width=\"0.125\" height=\"35.982\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"43.625\" y=\"11.893\" width=\"0.125\" height=\"35.982\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"46.75\" y=\"11.893\" width=\"0.125\" height=\"35.982\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"3.089\" y=\"1.804\" width=\"0.125\" height=\"9.964\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"0.125\" y=\"1.679\" width=\"2.964\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"6.178\" y=\"1.804\" width=\"0.125\" height=\"9.964\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"9.267\" y=\"1.804\" width=\"0.125\" height=\"9.964\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"12.356\" y=\"1.804\" width=\"0.125\" height=\"9.964\"><title>Kerf 1/8\"</title></rect>\n<line class=\"mw-cut-dim-line\" x1=\"0\" y1=\"55\" x2=\"48\" y2=\"55\" /><text class=\"mw-cut-dim\" x=\"24\" y=\"59.2\" font-size=\"2.1\" text-anchor=\"middle\" dominant-baseline=\"middle\">48&quot;</text>\n<line class=\"mw-cut-dim-line\" x1=\"-7\" y1=\"48\" x2=\"-7\" y2=\"0\" /><text class=\"mw-cut-dim\" x=\"-11.5\" y=\"24\" font-size=\"2.1\" text-anchor=\"middle\" dominant-baseline=\"middle\">48&quot;</text>\n</g>\n</svg>",
+                "legend": [
+                    {
+                        "n": 1,
+                        "label": "FS1 top 1",
+                        "size": "10\" × 35.98\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 2,
+                        "label": "FS1 top 2",
+                        "size": "10\" × 35.98\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 3,
+                        "label": "FS1 bottom 1",
+                        "size": "10\" × 35.98\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 4,
+                        "label": "FS1 bottom 2",
+                        "size": "10\" × 35.98\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 5,
+                        "label": "FS1 front 1",
+                        "size": "3\" × 35.98\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 6,
+                        "label": "FS1 front 2",
+                        "size": "3\" × 35.98\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 7,
+                        "label": "FS1 end 1",
+                        "size": "2.96\" × 9.96\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 8,
+                        "label": "FS1 end 2",
+                        "size": "2.96\" × 9.96\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 9,
+                        "label": "FS1 end 3",
+                        "size": "2.96\" × 9.96\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 10,
+                        "label": "FS1 end 4",
+                        "size": "2.96\" × 9.96\"",
+                        "rotated": false
+                    }
+                ],
+                "stats": {
+                    "id": "ws_ply_34_cab_48x48_1",
+                    "label": "3/4\" cabinet-grade plywood 4×4",
+                    "width": 48,
+                    "length": 48,
+                    "used_area": 1773.3,
+                    "sheet_area": 2304,
+                    "waste_pct": 23,
+                    "used_pct": 77,
+                    "part_count": 10,
+                    "total_cuts": 12,
+                    "total_cut_length": 268.71,
+                    "kerf_in": 0.125
+                },
+                "group": "primary"
+            }
+        ]
+    }
+}

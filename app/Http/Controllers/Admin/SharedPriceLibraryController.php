@@ -265,9 +265,10 @@ class SharedPriceLibraryController extends Controller
     }
 
     /**
-     * Persist crew + works. A duplicate item key is retried in a fresh
-     * transaction (new snapshot) up to 5 times so parallel saves do not
-     * exhaust allocateUniqueKey inside REPEATABLE READ.
+     * Persist crew + works. A duplicate item key re-runs the whole
+     * transaction on a new snapshot. There are 5 attempts total (the
+     * first try plus 4 retries). $attempts is the 0-based try index
+     * passed to allocateUniqueKey as jitter.
      *
      * @param  array<string, mixed>  $data
      */

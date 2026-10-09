@@ -21,8 +21,14 @@ class SharedWorkLabelTest extends TestCase
     public function test_slug_uses_transliteration_fallback_when_forced(): void
     {
         $this->assertSame('cafe_door', SharedWork::slugFromLabel('Café door', true));
+        $this->assertSame('cafe', SharedWork::slugFromLabel('Café', true));
+        $this->assertSame('cafe', SharedWork::slugFromLabel("Caf'e", true));
+        $this->assertSame('cafe', SharedWork::slugFromLabel('Caf`e', true));
+        $this->assertNotSame('caf_e', SharedWork::slugFromLabel('Café', true));
         $this->assertSame('nino', SharedWork::slugFromLabel('Niño', true));
         $this->assertSame('item', SharedWork::slugFromLabel('安装地板', true));
+        $nfd = "Cafe\u{0301}";
+        $this->assertSame('cafe', SharedWork::slugFromLabel($nfd, true));
     }
 
     public function test_uniquify_display_label_suffixes_near_duplicates(): void

@@ -156,14 +156,17 @@ class SharedWork extends Model
                 }
             }
         }
-        if (! $forceFallback && function_exists('iconv')) {
+        $s = strtr($s, self::asciiFoldMap());
+        if (function_exists('iconv')) {
             $converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
             if (is_string($converted) && $converted !== '') {
                 $s = $converted;
             }
         }
+        $s = str_replace(["'", '`', '^', '~', '"', "\u{00B4}", "\u{02CB}", "\u{02C6}", "\u{02DC}", "\u{00A8}"], '', $s);
+        $s = preg_replace('/\p{M}+/u', '', $s) ?? $s;
 
-        return strtr($s, self::asciiFoldMap());
+        return $s;
     }
 
     /**

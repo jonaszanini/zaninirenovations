@@ -277,7 +277,7 @@ class SvgVisualizer
 
     private function inchPair(float $a, float $b): string
     {
-        return $this->inch($a).' × '.$this->inch($b);
+        return $this->inch(max($a, $b)).' × '.$this->inch(min($a, $b));
     }
 
     private function n(float $n): string

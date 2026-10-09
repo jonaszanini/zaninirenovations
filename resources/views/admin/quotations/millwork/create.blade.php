@@ -66,6 +66,8 @@
     @csrf
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="mw-save-intent" value="publish">
+    <input type="hidden" name="_cut_plan_version" id="mw-cut-plan-version" value="{{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->cutPlanVersion() : 2)) }}">
+    <input type="hidden" name="upgrade_cut_plan" id="mw-upgrade-cut-plan" value="0">
 
     <div class="br-toolbar" aria-label="Quotation actions">
       <div class="pq-sidebar-actions">
@@ -151,9 +153,64 @@
 
             <div class="mw-cut-plan-head">
               <h4 class="br-review-heading">Cut plan</h4>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-print-cut-list" @disabled($cutLayouts === [])>
-                <i class="fa fa-print"></i> Print cut list
-              </button>
+              <div class="mw-cut-plan-head__actions">
+                @if ($isEdit && $quotation && $quotation->usesLegacyCutBuilder())
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-upgrade-cut-plan-btn">
+                    Recalculate with new cut plan
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-undo-cut-plan-btn" hidden>
+                    Undo recalculate
+                  </button>
+                @endif
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-print-cut-list" @disabled($cutLayouts === [])>
+                  <i class="fa fa-print"></i> Print cut list
+                </button>
+              </div>
+            </div>
+            @php
+              $unplacedParts = is_array($initialPreview['cut_plan']['unplaced'] ?? null) ? $initialPreview['cut_plan']['unplaced'] : [];
+              $cutSeams = is_array($initialPreview['cut_plan']['seams'] ?? null) ? $initialPreview['cut_plan']['seams'] : [];
+            @endphp
+            @php
+              $recalcNotice = is_array($initialPreview['recalc_notice'] ?? null) ? $initialPreview['recalc_notice'] : null;
+            @endphp
+            <div id="mw-recalc-banner" class="admin-flash admin-flash--warning mw-recalc-banner" role="status" @if (! $recalcNotice) hidden @endif>
+              <strong>Recalculated with the new cut plan</strong>
+              <p id="mw-recalc-text">
+                @if ($recalcNotice)
+                  was {{ \App\Models\ClientProject::formatMoney((float) $recalcNotice['was']) }},
+                  now {{ \App\Models\ClientProject::formatMoney((float) $recalcNotice['now']) }}.
+                  Review the cut plan before you save.
+                @endif
+              </p>
+              @if ($isEdit && $quotation && $quotation->usesLegacyCutBuilder())
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-undo-cut-plan-banner-btn">
+                  Undo
+                </button>
+              @endif
+            </div>
+            <div id="mw-unplaced-banner" class="admin-flash admin-flash--error mw-unplaced-banner" role="alert" @if ($unplacedParts === []) hidden @endif>
+              <strong>Parts do not fit on any sheet</strong>
+              <p>These parts are not in the cut plan and are not in the price. Change the size or pick a larger sheet. The client PDF cannot be downloaded until every part fits.</p>
+              <ul id="mw-unplaced-list">
+                @foreach ($unplacedParts as $missing)
+                  <li>{{ $missing['label'] ?? 'Part' }}</li>
+                @endforeach
+              </ul>
+            </div>
+            <div id="mw-cut-seams" class="mw-cut-seams" @if ($cutSeams === []) hidden @endif>
+              @foreach ($cutSeams as $seam)
+                <p>
+                  {{ $seam['label'] ?? 'Back' }}: {{ $seam['note'] ?? '' }}
+                  @if (! empty($seam['panels']))
+                    ({{ implode(' + ', $seam['panels']) }})
+                  @endif
+                  @include('admin.partials.info_tip', [
+                    'tipText' => 'Finished sizes still add up to '.($seam['original'] ?? '').'.',
+                    'tipLabel' => 'Finished size',
+                  ])
+                </p>
+              @endforeach
             </div>
             <p class="admin-form-help" id="mw-cut-meta">
               {{ (int) ($initialPreview['cut_plan']['sheet_count'] ?? 0) }} sheet(s)
@@ -330,6 +387,8 @@
       ),
       initialPreview: @json($initialPreview ?? null),
       isEdit: @json($isEdit),
+      cutPlanVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->cutPlanVersion() : 2)) }},
+      storedTotal: {{ $isEdit && $quotation ? json_encode((float) $quotation->final_quote_total) : '0' }},
       sectionKeys: @json(array_keys($sectionList)),
       quoteNumber: @json($isEdit && $quotation ? ($quotation->quote_number ?? '') : ''),
       printCssUrl: @json(asset('css/millwork-cut-list-print.css').'?v='.(@filemtime(public_path('css/millwork-cut-list-print.css')) ?: time())),

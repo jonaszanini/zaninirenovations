@@ -304,7 +304,13 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('.admin-btn[hidden]', $css);
         $dialog = file_get_contents(public_path('js/admin-dialog.js'));
         $this->assertStringContainsString('global.AdminInfoTip = global.AdminInfoTip ||', $dialog);
+        $this->assertStringContainsString("replace(/^\\s*About\\s+/i", $dialog);
         $this->assertStringNotContainsString("e.target.closest('.admin-info-tip')", $dialog);
+        $this->assertStringContainsString('.admin-card > h3:has(.admin-info-tip)', $css);
+        $this->assertStringContainsString('.admin-card > h3.sp-heading:has(.admin-info-tip)', $css);
+        $vehicles = file_get_contents(resource_path('views/admin/vehicles/index.blade.php'));
+        $this->assertStringContainsString('fuel costs, business contact, and your home / office address', $vehicles);
+        $this->assertStringNotContainsString('admin-toolbar-lede', $vehicles);
         $this->assertMatchesRegularExpression(
             '/\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/',
             $css

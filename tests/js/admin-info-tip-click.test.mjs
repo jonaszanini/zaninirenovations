@@ -23,6 +23,8 @@ const cpCss = readFileSync(cpCssPath, 'utf8');
 const darkCss = readFileSync(darkCssPath, 'utf8');
 
 assert.match(adminCss, /\.admin-info-tip[\s\S]{0,80}pointer-events:\s*auto/);
+assert.match(adminCss, /\.admin-card\s*>\s*h3:has\(\.admin-info-tip\)/);
+assert.match(adminCss, /\.admin-card\s*>\s*h3\.sp-heading:has\(\.admin-info-tip\)[\s\S]{0,80}display:\s*block/);
 assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label:not\(\.admin-checkbox\)/);
 assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label\.admin-checkbox[\s\S]{0,80}display:\s*inline-flex/);
 assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,220}display:\s*block/);
@@ -376,6 +378,14 @@ function fixtureHtml() {
         <span id="t-crew" class="admin-info-tip__bubble" role="tooltip">Shared crew rates.</span>
       </span>
     </h3>
+    <div class="admin-card" id="business-contact-card" style="width:100%;max-width:40rem">
+      <h3 id="business-contact-heading">Business contact
+        <span class="admin-info-tip-wrap">
+          <button type="button" class="admin-info-tip" aria-label="About business contact" aria-expanded="false" aria-controls="t-biz">i</button>
+          <span id="t-biz" class="admin-info-tip__bubble" role="tooltip">Shown to clients on quote accept pages.</span>
+        </span>
+      </h3>
+    </div>
     <h5 class="sq-intro-option-title" id="pdf-wording-heading">Includes (PDF wording)
       <span class="admin-info-tip-wrap">
         <button type="button" class="admin-info-tip" aria-label="About Includes (PDF wording)" aria-expanded="false" aria-controls="t-word">i</button>
@@ -1405,6 +1415,16 @@ async function puppeteerClick() {
               aria: String((wrap.querySelector('.admin-info-tip') || {}).getAttribute && wrap.querySelector('.admin-info-tip').getAttribute('aria-label') || '').slice(0, 60),
             });
           });
+          const biz = document.getElementById('business-contact-heading');
+          const bizWrap = biz && biz.querySelector('.admin-info-tip-wrap');
+          const bizEnd = biz && biz.querySelector('.admin-label-with-tip__end');
+          const bizWord = bizEnd && Array.from(bizEnd.children).find((c) => c !== bizWrap);
+          const bizWordBox = bizWord && bizWord.getBoundingClientRect();
+          const bizIcon = glyphBox(bizWrap);
+          const bizCard = document.getElementById('business-contact-card');
+          const bizCardBox = bizCard && bizCard.getBoundingClientRect();
+          const bizGap = (bizWordBox && bizIcon) ? (bizIcon.left - bizWordBox.right) : null;
+          const bizParked = !!(bizWordBox && bizIcon && bizCardBox && (bizCardBox.right - bizIcon.right < 24) && (bizIcon.left - bizWordBox.right > 40));
           return {
             checks,
             reviewLine,
@@ -1421,6 +1441,8 @@ async function puppeteerClick() {
             gaps,
             brokenWords,
             tipInputOverlaps,
+            bizGap,
+            bizParked,
           };
         });
         aligned.checks.forEach((row, i) => {
@@ -1433,6 +1455,8 @@ async function puppeteerClick() {
         assert.ok(aligned.bathOffset < 12, `D3 ${theme}: bath light text offset ${aligned.bathOffset}px at ${width}px`);
         assert.equal(aligned.orphanCount, 0, `${theme}: orphaned ⓘ at ${width}px: ${aligned.orphans.join(' | ')}`);
         assert.equal(aligned.headingCount, 0, `${theme}: flex heading issues at ${width}px: ${JSON.stringify(aligned.headingIssues)}`);
+        assert.equal(aligned.bizParked, false, `${theme}: Business contact ⓘ must stay next to the heading text at ${width}px (gap=${aligned.bizGap})`);
+        assert.ok(aligned.bizGap != null && aligned.bizGap > 0 && aligned.bizGap <= 8, `${theme}: Business contact ⓘ gap ${aligned.bizGap}px at ${width}px`);
         if (width <= 390) {
           assert.ok(aligned.clientFilledOffset <= 1, `${theme}: client-filled wrapped line offset ${aligned.clientFilledOffset}px at ${width}px`);
           assert.ok(aligned.tmLine.sameLine, `${theme}: Client supplies materials ⓘ stays with the last word at ${width}px`);

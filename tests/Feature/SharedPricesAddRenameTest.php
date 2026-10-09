@@ -1020,8 +1020,13 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
     public function test_retry_jitter_embeds_attempt_and_random_hex(): void
     {
         $this->actingAsAdmin();
-        $key = SharedWork::allocateUniqueKey('Jitter probe', 3);
-        $this->assertMatchesRegularExpression('/^custom_.+_3_[0-9a-f]{4}/', $key);
+        foreach ([1, 2, 3, 4] as $attempt) {
+            $key = SharedWork::allocateUniqueKey('Jitter probe '.$attempt, $attempt);
+            $this->assertSame(1, preg_match('/_(\d+)_([0-9a-f]{4})(?:_\d+)?$/', $key, $m), $key);
+            $this->assertSame((string) $attempt, $m[1], 'jitter must be the attempt number in '.$key);
+        }
+        $noJitter = SharedWork::allocateUniqueKey('Jitter probe zero', 0);
+        $this->assertDoesNotMatchRegularExpression('/_\d+_[0-9a-f]{4}/', $noJitter);
 
         $controller = app(SharedPriceLibraryController::class);
         $method = new \ReflectionMethod($controller, 'createWorkWithUniqueKey');
@@ -1036,7 +1041,42 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
             'consumers' => ['flooring'],
             'sort_order' => 9800,
         ], 4);
-        $this->assertMatchesRegularExpression('/_4_[0-9a-f]{4}/', $work->key);
+        $this->assertSame(1, preg_match('/_(\d+)_([0-9a-f]{4})(?:_\d+)?$/', $work->key, $created));
+        $this->assertSame('4', $created[1]);
+    }
+
+    public function test_area_cost_input_stays_visible_after_empty_sell_save(): void
+    {
+        $this->actingAsAdmin();
+        $baseboard = SharedWork::query()->where('key', 'baseboard')->firstOrFail();
+        $this->put(route('admin.quotations.shared-prices.update'), $this->basePayload([
+            'works' => [
+                $baseboard->id => [
+                    'id' => $baseboard->id,
+                    'label' => $baseboard->label,
+                    'rate' => number_format((float) $baseboard->rate, 4, '.', ''),
+                    'flat_rate' => '',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.quotations.shared-prices.edit'));
+
+        $html = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]*id="sp-rate-'.$baseboard->id.'"[^>]*>/',
+            $html
+        );
+        preg_match('/<input[^>]*id="sp-rate-'.$baseboard->id.'"[^>]*>/', $html, $input);
+        $this->assertNotSame('', $input[0] ?? '');
+        $this->assertStringContainsString('name="works['.$baseboard->id.'][rate]"', $input[0]);
+        $this->assertStringNotContainsString('type="hidden"', $input[0]);
+        $this->assertStringNotContainsString('hidden', $input[0]);
+        $this->assertStringNotContainsString('sp-rate-empty', $input[0]);
+        $this->assertStringNotContainsString('class="sp-rate-empty"', $html);
+        $blade = file_get_contents(resource_path('views/admin/quotations/shared_prices/edit.blade.php'));
+        $this->assertStringContainsString('name="works[{{ $work->id }}][rate]"', $blade);
+        $this->assertDoesNotMatchRegularExpression('/@if\s*\(\s*!?\s*\$isArea[\s\S]{0,120}sp-rate-/', $blade);
+        $this->assertStringContainsString('shared-prices-effective.js', $html);
+        $this->assertStringContainsString('data-sp-blank-sell="4.7500"', $html);
     }
 
     public function test_flooring_quote_uses_saved_sell_not_display_price(): void
