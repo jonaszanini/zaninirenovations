@@ -837,7 +837,7 @@
     return area;
   }
 
-  function unionOpeningAreaSqFt(objects, ceilingHeightFt, wallLengthIn) {
+  function unionOpeningAreaRawSqFt(objects, ceilingHeightFt, wallLengthIn) {
     var rects = [];
     (objects || []).forEach(function (obj) {
       var type = objectType(obj);
@@ -845,7 +845,11 @@
       var rect = openingRect(obj, ceilingHeightFt, wallLengthIn);
       if (rect) rects.push(rect);
     });
-    return roundTo(unionRectAreaInches(rects) / 144, 2);
+    return unionRectAreaInches(rects) / 144;
+  }
+
+  function unionOpeningAreaSqFt(objects, ceilingHeightFt, wallLengthIn) {
+    return roundTo(unionOpeningAreaRawSqFt(objects, ceilingHeightFt, wallLengthIn), 2);
   }
 
   function direction(p1, p2, p3) {
@@ -929,15 +933,15 @@
           if (!a || !b || a.x == null || b.x == null) continue;
           var id = wallId(polyId, i, j);
           var lengthFt = Math.hypot(b.x - a.x, b.y - a.y) / ppf;
-          var deduct = unionOpeningAreaSqFt(objectsByWall[id] || [], height, lengthFt * INCHES_PER_FOOT);
+          var deductRaw = unionOpeningAreaRawSqFt(objectsByWall[id] || [], height, lengthFt * INCHES_PER_FOOT);
           index += 1;
           walls.push({
             id: id,
             index: index,
             label: 'W' + index,
             length_lf: Math.round(lengthFt * 100) / 100,
-            opening_area_sqft: deduct,
-            net_area_sqft: netWallAreaSqFt(lengthFt, height, deduct)
+            opening_area_sqft: roundTo(deductRaw, 2),
+            net_area_sqft: netWallAreaSqFt(lengthFt, height, deductRaw)
           });
         }
       });
@@ -1077,6 +1081,7 @@
     normalizeBoxSqFt: normalizeBoxSqFt,
     normalizeDirection: normalizeDirection,
     openingAreaSqFt: openingAreaSqFt,
+    unionOpeningAreaRawSqFt: unionOpeningAreaRawSqFt,
     unionOpeningAreaSqFt: unionOpeningAreaSqFt,
     perWallNetAreas: perWallNetAreas,
     netWallAreaSqFt: netWallAreaSqFt,

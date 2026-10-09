@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="is-geom-first-fit">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,6 +14,12 @@
     }
     .util-ra--fullpage {
       height: 100%;
+    }
+    html.is-geom-first-fit .util-ra-canvas-wrap {
+      width: 900px !important;
+      height: 640px !important;
+      flex: 0 0 auto !important;
+      min-height: 640px !important;
     }
     .geom-required {
       position: absolute;
@@ -110,6 +116,23 @@
       </div>
     </div>
   </div>
+  <script>
+    (function () {
+      var orig = window.requestAnimationFrame;
+      window.requestAnimationFrame = function (cb) {
+        return orig.call(window, function (stamp) {
+          cb(stamp);
+          if (!document.documentElement.classList.contains('is-geom-first-fit')) return;
+          if (!window.Konva || !window.Konva.stages || !window.Konva.stages[0]) return;
+          var world = window.Konva.stages[0].getLayers()[0] && window.Konva.stages[0].getLayers()[0].getChildren()[0];
+          if (!world || world.scaleX() < 2.85) return;
+          document.documentElement.classList.remove('is-geom-first-fit');
+          var wrap = document.querySelector('[data-ra-canvas-wrap]');
+          if (wrap) void wrap.offsetWidth;
+        });
+      };
+    })();
+  </script>
   <script src="/vendor-test/konva.min.js"></script>
   <script src="/js/room-area-lib.js"></script>
   <script src="/js/admin-utilities-room-area.js"></script>

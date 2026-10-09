@@ -119,9 +119,14 @@ class RoomAreaFinishMath
      *
      * @param  list<array<string, mixed>>  $objects
      */
+    public function unionOpeningAreaRawSqFt(array $objects, float $ceilingHeightFt, float $wallLengthIn = 0.0): float
+    {
+        return $this->unionRectAreaInches($this->openingRects($objects, $ceilingHeightFt, $wallLengthIn)) / 144.0;
+    }
+
     public function unionOpeningAreaSqFt(array $objects, float $ceilingHeightFt, float $wallLengthIn = 0.0): float
     {
-        return round($this->unionRectAreaInches($this->openingRects($objects, $ceilingHeightFt, $wallLengthIn)) / 144.0, 2);
+        return $this->roundTo($this->unionOpeningAreaRawSqFt($objects, $ceilingHeightFt, $wallLengthIn), 2);
     }
 
     /**
@@ -368,15 +373,15 @@ class RoomAreaFinishMath
                     }
                     $wallId = $this->canvas()->wallId($polyId, $i, $j);
                     $lengthFt = hypot((float) $b['x'] - (float) $a['x'], (float) $b['y'] - (float) $a['y']) / $pixelsPerFoot;
-                    $deduct = $this->unionOpeningAreaSqFt($objectsByWall[$wallId] ?? [], $ceilingHeightFt, $lengthFt * 12.0);
+                    $deductRaw = $this->unionOpeningAreaRawSqFt($objectsByWall[$wallId] ?? [], $ceilingHeightFt, $lengthFt * 12.0);
                     $index++;
                     $walls[] = [
                         'id' => $wallId,
                         'index' => $index,
                         'label' => 'W'.$index,
                         'length_lf' => round($lengthFt, 2),
-                        'opening_area_sqft' => $deduct,
-                        'net_area_sqft' => $this->netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deduct),
+                        'opening_area_sqft' => $this->roundTo($deductRaw, 2),
+                        'net_area_sqft' => $this->netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deductRaw),
                     ];
                 }
             }

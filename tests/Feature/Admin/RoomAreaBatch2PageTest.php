@@ -80,6 +80,8 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertStringContainsString('Math.ceil(roundTo(needed / box, 9))', $lib);
         $this->assertStringContainsString('function casingLf(', $lib);
         $this->assertStringContainsString('function netWallAreaSqFt(', $lib);
+        $this->assertStringContainsString('function unionOpeningAreaRawSqFt(', $lib);
+        $this->assertStringContainsString('netWallAreaSqFt(lengthFt, height, deductRaw)', $lib);
         $this->assertStringContainsString('LEGACY_OPENING_HEIGHT_IN', $lib);
         $this->assertStringContainsString('DEFAULT_OPENING_HEIGHT_IN', $lib);
         $this->assertStringContainsString('Math.abs(shifted) + 1e-9', $lib);
@@ -98,6 +100,8 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertNotFalse($php);
         $this->assertStringContainsString('ceil($this->roundTo($needed / $box, 9))', $php);
         $this->assertStringContainsString('abs($shifted) + 1e-9', $php);
+        $this->assertStringContainsString('function unionOpeningAreaRawSqFt(', $php);
+        $this->assertStringContainsString('netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deductRaw)', $php);
         $this->assertStringContainsString('is_string($rawSides)', $php);
         $this->assertStringContainsString("preg_match('/[eE]/', \$raw)", $php);
         $this->assertStringContainsString('LEGACY_OPENING_HEIGHT_IN', $php);

@@ -73,6 +73,30 @@ class RoomAreaFinishMathTest extends TestCase
         $this->assertSame(78.28, $this->math->roundTo(10.1 * 7.75, 2));
         $this->assertSame(3.23, $this->math->netWallAreaSqFt(4.3, 7.75, 30.1));
         $this->assertSame(0.33, $this->math->netWallAreaSqFt(2.04, 9, 18.03));
+        $this->assertSame(59.94, $this->math->netWallAreaSqFt(10.1, 7.75, $this->math->openingAreaSqFt(33, 80)));
+        $this->assertNotSame(59.94, $this->math->netWallAreaSqFt(10.1, 7.75, $this->math->roundTo($this->math->openingAreaSqFt(33, 80), 2)));
+        $penny = $this->math->perWallNetAreas([
+            'groups' => [[
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 121.2, 'y' => 0],
+                        ['x' => 121.2, 'y' => 93],
+                        ['x' => 0, 'y' => 93],
+                    ],
+                ]],
+            ]],
+            'objects' => [[
+                'type' => 'door',
+                'wall_id' => 'wall_p1_0_1',
+                'width' => 33,
+                'offset' => 12,
+                'height' => 80,
+            ]],
+        ], 12.0, 7.75);
+        $this->assertSame(18.33, $penny[0]['opening_area_sqft']);
+        $this->assertSame(59.94, $penny[0]['net_area_sqft']);
     }
 
     public function test_per_wall_net_areas_use_ceiling_height_exactly(): void

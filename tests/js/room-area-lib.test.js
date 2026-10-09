@@ -167,6 +167,8 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.roundTo(10.1 * 7.75, 2), 78.28);
   assert.strictEqual(lib.netWallAreaSqFt(4.3, 7.75, 30.1), 3.23);
   assert.strictEqual(lib.netWallAreaSqFt(2.04, 9, 18.03), 0.33);
+  assert.strictEqual(lib.netWallAreaSqFt(10.1, 7.75, lib.openingAreaSqFt(33, 80)), 59.94);
+  assert.notStrictEqual(lib.netWallAreaSqFt(10.1, 7.75, lib.roundTo(lib.openingAreaSqFt(33, 80), 2)), 59.94);
   assert.strictEqual(lib.parseWastePercent('').value, 10);
   assert.strictEqual(lib.parseWastePercent('15%').value, 15);
   assert.strictEqual(lib.parseWastePercent('7,5').value, 7.5);
@@ -259,6 +261,12 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(clamped.width, 36);
   var wide = lib.unionOpeningAreaSqFt([{ type: 'door', width: 200, offset: 0, height: 80 }], 8, 120);
   assert.ok(Math.abs(wide - lib.openingAreaSqFt(120, 80)) < 0.02);
+  var pennyWall = lib.perWallNetAreas({
+    groups: [{ polygons: [{ id: 'p1', vertices: [{ x: 0, y: 0 }, { x: 121.2, y: 0 }, { x: 121.2, y: 93 }, { x: 0, y: 93 }] }] }],
+    objects: [{ type: 'door', wall_id: 'wall_p1_0_1', width: 33, offset: 12, height: 80 }]
+  }, 12, 7.75);
+  assert.strictEqual(pennyWall[0].opening_area_sqft, 18.33);
+  assert.strictEqual(pennyWall[0].net_area_sqft, 59.94);
   var openWalls = lib.perWallNetAreas({
     groups: [{ polygons: [{ id: 'open1', closed: false, vertices: [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }] }] }],
     objects: []
