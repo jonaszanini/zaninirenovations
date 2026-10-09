@@ -899,17 +899,22 @@ class ClientProjectQuotation extends Model
             return;
         }
 
-        $source = $this->sourceQuotationModel();
-        if ($source !== null && $source->getAttribute('pdf_fold_version') !== null) {
-            $this->setAttribute('pdf_fold_version', (int) $source->getAttribute('pdf_fold_version'));
+        $this->setAttribute('pdf_fold_version', $this->resolvedPdfFoldVersion());
+    }
 
-            return;
+    protected function sourcePdfFoldVersion(): ?int
+    {
+        $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];
+        if (array_key_exists('pdf_fold_version', $snap) && $snap['pdf_fold_version'] !== null && $snap['pdf_fold_version'] !== '') {
+            return (int) $snap['pdf_fold_version'];
         }
 
-        $this->setAttribute(
-            'pdf_fold_version',
-            $this->exists ? self::PDF_FOLD_VERSION_LEGACY : self::PDF_FOLD_VERSION_CURRENT
-        );
+        $source = $this->sourceQuotationModel();
+        if ($source !== null && $source->getAttribute('pdf_fold_version') !== null) {
+            return (int) $source->getAttribute('pdf_fold_version');
+        }
+
+        return null;
     }
 
     protected function usesLegacyPdfNonMaterialFold(): bool
@@ -1099,15 +1104,25 @@ class ClientProjectQuotation extends Model
 
         $row = &$items[$targetIdx];
 
-        // Untaxed targets (cash / HST-off material, or tax-included paving)
-        // keep the extra's included HST in the face amount. Adding only the
-        // pre-tax slice here drops leftover HST (Material $1000 HST-off +
-        // Dumpster $113 → 1665 instead of 1678).
+        // Untaxed targets must not swallow included HST into a "—" line
+        // (Material $1000 HST-off + Dumpster $113 would show $1,113 / no HST
+        // while $13 was collected). Keep the original line and put the extra
+        // on its own taxed Material/Labour row so the footer HST is $78.
         if (empty($row['apply_hst'])) {
-            $row['amount'] = round((float) ($row['amount'] ?? 0) + $hiddenGross, 2);
             unset($row);
+            $hiddenPreTax = self::preTaxFromHstIncluded($hiddenGross);
+            $leftoverHst = round($hiddenGross - $hiddenPreTax, 2);
+            if ($hiddenPreTax <= 0 && $leftoverHst <= 0) {
+                return $items;
+            }
+            $items[] = [
+                'description' => $bucket === 'materials' ? 'Material' : 'Labour',
+                'amount' => $hiddenPreTax,
+                'apply_hst' => true,
+                'hst_amount' => $leftoverHst,
+            ];
 
-            return $items;
+            return array_values($items);
         }
 
         $hiddenPreTax = self::preTaxFromHstIncluded($hiddenGross);
@@ -1580,6 +1595,34 @@ class ClientProjectQuotation extends Model
             }
             $sum += (float) ($row['amount'] ?? 0);
             $sum += self::lineHstAmount($row);
+        }
+
+        return round($sum, 2);
+    }
+
+    /**
+     * HST the editor charges: per-line 13% plus leftover inside HST-included
+     * extras (commute, debris, additional costs). v2 PDF footer must match.
+     */
+    public function editorHst(): float
+    {
+        if ($this->hasSubtotalOverrideActive()) {
+            return $this->hst();
+        }
+
+        $sum = 0.0;
+        foreach ($this->cleanItems() as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
+            if (! empty($row['apply_hst'])) {
+                $sum += self::lineHstAmount($row);
+                continue;
+            }
+            if (! empty($row['hst_included'])) {
+                $gross = (float) ($row['amount'] ?? 0);
+                $sum += round($gross - self::preTaxFromHstIncluded($gross), 2);
+            }
         }
 
         return round($sum, 2);

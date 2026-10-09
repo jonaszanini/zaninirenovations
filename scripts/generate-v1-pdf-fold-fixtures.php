@@ -63,6 +63,9 @@ function snapLine(array $row): array
     if (! empty($row['hst_included'])) {
         $out['hst_included'] = true;
     }
+    if (array_key_exists('hst_amount', $row)) {
+        $out['hst_amount'] = round((float) $row['hst_amount'], 2);
+    }
     if (! empty($row['is_heading'])) {
         $out['is_heading'] = true;
     }

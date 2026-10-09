@@ -135,6 +135,7 @@ jobs:
           php artisan test tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php
           php artisan test tests/Feature/Admin/RoomAreaQuoteLinesTest.php
           php artisan test tests/Unit/Services/RoomAreaQuotePrefillTest.php
+          php artisan test tests/Feature/Admin/RoomAreaQuotePrefillTest.php
           php artisan test tests/Unit/Services/RoomAreaSharedWallsTest.php
           php artisan test tests/Unit/Services/RoomAreaMeasurementParserTest.php
           php artisan test tests/Unit/Services/RoomAreaClosingErrorTest.php
@@ -185,6 +186,7 @@ jobs:
           php artisan test tests/Unit/Support/FenceWorkDescriptionGeneratorTest.php
           php artisan test tests/Unit/Support/FenceSideFlagsTest.php
           php artisan test tests/Unit/Views/FenceQuotationFormRestoreTest.php
+          php artisan test tests/Feature/Admin/FenceQuotationFormRestoreTest.php
           php artisan test tests/Unit/Views/FencePriceBannerTipTest.php
           php artisan test tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php

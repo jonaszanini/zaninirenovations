@@ -37,22 +37,37 @@ trait HasPdfFoldVersion
     }
 
     /**
-     * Version 2 uses the new fold. A new unsaved row with a null version
-     * also previews as v2 so the on-screen total matches what save() stores.
-     * Persisted null, 1, and any other value stay on LegacyPdfFoldV1.
+     * Same resolution preview and save use. An explicit version wins; otherwise
+     * a linked calculator quote's version is copied; otherwise persisted rows
+     * stay on v1 and new unsaved rows preview as v2.
      */
-    public function usesCurrentPdfFold(): bool
+    public function resolvedPdfFoldVersion(): int
     {
         $version = $this->getAttribute('pdf_fold_version');
-        if ((int) $version === self::PDF_FOLD_VERSION_CURRENT) {
-            return true;
+        if ($version !== null) {
+            return (int) $version;
         }
 
-        return $version === null && ! $this->exists;
+        $fromSource = $this->sourcePdfFoldVersion();
+        if ($fromSource !== null) {
+            return $fromSource;
+        }
+
+        return $this->exists ? self::PDF_FOLD_VERSION_LEGACY : self::PDF_FOLD_VERSION_CURRENT;
+    }
+
+    public function usesCurrentPdfFold(): bool
+    {
+        return $this->resolvedPdfFoldVersion() === self::PDF_FOLD_VERSION_CURRENT;
     }
 
     public function usesLegacyPdfFold(): bool
     {
         return ! $this->usesCurrentPdfFold();
+    }
+
+    protected function sourcePdfFoldVersion(): ?int
+    {
+        return null;
     }
 }

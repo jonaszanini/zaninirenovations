@@ -619,9 +619,53 @@ JS;
 
         $this->assertEquals(1678.00, $quote->editorGrandTotal());
         $this->assertEquals(1678.00, $quote->pdfGrandTotal());
+        $this->assertEquals(78.00, $quote->editorHst());
+        $this->assertEquals(78.00, $quote->pdfHst());
+        $this->assertNotEquals(65.00, $quote->pdfHst());
         $this->assertNotEquals(1665.00, $quote->pdfGrandTotal());
-        $material = collect($quote->pdfLineItems())->firstWhere('description', 'Material');
-        $this->assertEqualsWithDelta(1113.00, $material['amount'], 0.001);
+
+        $materials = array_values(array_filter(
+            $quote->pdfLineItems(),
+            static fn (array $row): bool => ($row['description'] ?? '') === 'Material'
+        ));
+        $this->assertCount(2, $materials);
+        $this->assertEqualsWithDelta(1000.00, $materials[0]['amount'], 0.001);
+        $this->assertFalse((bool) ($materials[0]['apply_hst'] ?? false));
+        $this->assertSame('—', ClientProjectQuotation::lineHstColumnLabel($materials[0]));
+
+        $this->assertEqualsWithDelta(100.00, $materials[1]['amount'], 0.001);
+        $this->assertTrue((bool) ($materials[1]['apply_hst'] ?? false));
+        $this->assertEqualsWithDelta(13.00, $materials[1]['hst_amount'], 0.001);
+        $this->assertSame('13%', ClientProjectQuotation::lineHstColumnLabel($materials[1]));
+
+        $labour = collect($quote->pdfLineItems())->firstWhere('description', 'Labour');
+        $this->assertNotNull($labour);
+        $this->assertEqualsWithDelta(500.00, $labour['amount'], 0.001);
+        $this->assertEqualsWithDelta(65.00, ClientProjectQuotation::lineHstAmount($labour), 0.001);
+    }
+
+    public function test_v2_pdf_hst_matches_editor_hst_across_identity_corpus(): void
+    {
+        $dir = base_path('tests/fixtures/pdf-fold-v1');
+        $checked = 0;
+        foreach (['named', 'standard', 'fence', 'low_deck', 'basement', 'flooring', 'paving'] as $source) {
+            $data = json_decode((string) file_get_contents($dir.'/'.$source.'.json'), true);
+            $this->assertIsArray($data);
+            $rows = $source === 'named' ? array_values($data) : $data;
+            foreach ($rows as $key => $fx) {
+                $quote = new ClientProjectQuotation([
+                    'source_type' => $fx['source'] ?? $source,
+                    'pdf_fold_version' => 2,
+                    'items' => $fx['items'],
+                    'subtotal_override' => $fx['override'] ?? null,
+                ]);
+                $label = $source.' '.$key;
+                $this->assertEquals($quote->editorHst(), $quote->pdfHst(), $label.' HST');
+                $this->assertEquals($quote->editorGrandTotal(), $quote->pdfGrandTotal(), $label.' total');
+                $checked++;
+            }
+        }
+        $this->assertGreaterThan(100, $checked);
     }
 
     public function test_v2_labour_word_match_covers_installer_and_cash_labels(): void
@@ -707,6 +751,30 @@ JS;
         $this->assertFalse($quote->usesLegacyPdfFold());
         $this->assertEquals($quote->editorGrandTotal(), $quote->pdfGrandTotal());
         $this->assertEquals(114.00, $quote->pdfGrandTotal());
+    }
+
+    public function test_unsaved_quote_linked_to_v1_source_previews_as_v1(): void
+    {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'source_snapshot' => ['pdf_fold_version' => 1],
+            'items' => [
+                ['description' => 'Material', 'amount' => 100.00, 'apply_hst' => true],
+                [
+                    'description' => 'Commute expense',
+                    'amount' => 1.00,
+                    'apply_hst' => false,
+                    'hst_included' => true,
+                ],
+            ],
+        ]);
+        $this->assertFalse($quote->exists);
+        $this->assertNull($quote->pdf_fold_version);
+        $this->assertSame(1, $quote->resolvedPdfFoldVersion());
+        $this->assertTrue($quote->usesLegacyPdfFold());
+        $this->assertFalse($quote->usesCurrentPdfFold());
+        $this->assertEquals(113.99, $quote->pdfGrandTotal());
+        $this->assertSame(['Material'], array_column($quote->pdfLineItems(), 'description'));
     }
 
     public function test_migration_fails_loudly_on_a_missing_table(): void

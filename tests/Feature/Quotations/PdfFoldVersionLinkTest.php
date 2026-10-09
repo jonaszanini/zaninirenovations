@@ -54,6 +54,13 @@ class PdfFoldVersionLinkTest extends IntegrationTestCase
                 ],
             ],
         ]);
+        $this->assertFalse($row->exists);
+        $this->assertNull($row->pdf_fold_version);
+        $this->assertSame(1, $row->resolvedPdfFoldVersion());
+        $this->assertTrue($row->usesLegacyPdfFold());
+        $this->assertFalse($row->usesCurrentPdfFold());
+        $this->assertEquals(113.99, $row->pdfGrandTotal());
+        $this->assertSame(['Material'], array_column($row->pdfLineItems(), 'description'));
         $row->save();
 
         $row->refresh();

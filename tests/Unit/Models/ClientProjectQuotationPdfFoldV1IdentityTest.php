@@ -67,6 +67,57 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
         }
     }
 
+    public function test_v2_sq_2x_33_33_linked_path_matches_editor(): void
+    {
+        $named = $this->loadFixture('named.json');
+        $fx = $named['sq_2x_33_33'];
+        $this->assertNotEmpty($fx['sq_materials'] ?? []);
+
+        $sq = StandardQuotation::query()->create([
+            'quote_number' => 'SQ-V2-'.uniqid(),
+            'client_name' => 'Identity v2',
+            'materials' => $fx['sq_materials'],
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'labour_use_fixed' => false,
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+            'pdf_fold_version' => 2,
+        ]);
+
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'source_id' => $sq->id,
+            'items' => $fx['items'],
+            'pdf_fold_version' => 2,
+        ]);
+        $this->assertTrue($quote->usesCurrentPdfFold());
+        $this->assertEquals(8.66, $quote->editorHst());
+        $this->assertEquals(8.66, $quote->pdfHst());
+        $this->assertEquals(8.66, $quote->hst());
+        $this->assertEquals(75.32, $quote->editorGrandTotal());
+        $this->assertEquals(75.32, $quote->pdfGrandTotal());
+        $this->assertEquals(75.32, $quote->grandTotal());
+    }
+
+    public function test_same_lines_detects_hst_included_and_hst_amount_flips(): void
+    {
+        $fx = $this->loadFixture('named.json')['sq_2x_33_33'];
+        $quote = $this->quoteFromFixture($fx, 'standard', 1);
+        $this->assertTrue($this->sameSnapshot($quote, $fx));
+
+        $flippedIncluded = $fx;
+        $flippedIncluded['lines'][0]['hst_included'] = ! ((bool) ($flippedIncluded['lines'][0]['hst_included'] ?? false));
+        $this->assertFalse($this->sameSnapshot($quote, $flippedIncluded));
+
+        $flippedAmount = $fx;
+        $flippedAmount['lines'][0]['hst_amount'] = 99.99;
+        $this->assertFalse($this->sameSnapshot($quote, $flippedAmount));
+    }
+
     /**
      * @dataProvider sourceFixtureFiles
      */
@@ -180,6 +231,9 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
             if (! empty($row['hst_included'])) {
                 $out['hst_included'] = true;
             }
+            if (array_key_exists('hst_amount', $row)) {
+                $out['hst_amount'] = round((float) $row['hst_amount'], 2);
+            }
             if (! empty($row['is_heading'])) {
                 $out['is_heading'] = true;
             }
@@ -211,6 +265,17 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
                 return false;
             }
             if ((bool) ($row['apply_hst'] ?? false) !== (bool) ($b[$i]['apply_hst'] ?? false)) {
+                return false;
+            }
+            if ((bool) ($row['hst_included'] ?? false) !== (bool) ($b[$i]['hst_included'] ?? false)) {
+                return false;
+            }
+            $ha = array_key_exists('hst_amount', $row) ? (float) $row['hst_amount'] : null;
+            $hb = array_key_exists('hst_amount', $b[$i]) ? (float) $b[$i]['hst_amount'] : null;
+            if ($ha === null xor $hb === null) {
+                return false;
+            }
+            if ($ha !== null && abs($ha - $hb) > 0.001) {
                 return false;
             }
             $ta = array_key_exists('hst_taxable_amount', $row) ? (float) $row['hst_taxable_amount'] : null;
