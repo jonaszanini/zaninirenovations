@@ -1,17 +1,25 @@
 /* Blog admin — mobile-first, compact, not sticky. */
 
-.bp-list-tabs {
+.bp-list-toolbar {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 10px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  min-width: 0;
 }
 
-.bp-list-tabs::-webkit-scrollbar {
-  display: none;
+.bp-list-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bp-list-new {
+  flex: 0 0 auto;
 }
 
 .bp-list-tab {
@@ -34,6 +42,18 @@
   background: #024768;
   border-color: #024768;
   color: #fff;
+}
+
+html.admin-dark .admin-content a.bp-list-tab,
+html.admin-dark .admin-content a.bp-list-tab:visited {
+  color: var(--admin-text);
+}
+
+html.admin-dark .admin-content a.bp-list-tab.is-active,
+html.admin-dark .admin-content a.bp-list-tab.is-active:visited,
+html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
+  color: #fff;
+  opacity: 1;
 }
 
 .bp-list-tab__count {
@@ -100,36 +120,133 @@
 
 .bp-list-table.admin-table th,
 .bp-list-table.admin-table td {
-  padding: 6px 10px;
+  padding: 6px 6px;
 }
 
-.bp-list-table .bp-list-table__post,
-.bp-list-table .bp-list-post {
+.bp-list-table .bp-list-col--post {
   width: auto;
   min-width: 0;
 }
 
-.bp-list-table th.bp-list-col,
-.bp-list-table td.bp-list-col {
-  white-space: nowrap;
+.bp-list > .admin-card {
+  padding: 12px;
 }
 
-.bp-list-table .bp-list-col--cat { width: 6.5rem; }
-.bp-list-table .bp-list-col--status { width: 6.25rem; }
-.bp-list-table .bp-list-col--date { width: 6.25rem; }
-.bp-list-table .bp-list-col--views { width: 4.25rem; }
+.bp-list-table .bp-list-col--cat {
+  width: 10.25rem;
+  overflow: visible;
+}
 
-.bp-list-table th.bp-list-table__actions,
-.bp-list-table td.admin-table__actions {
-  width: 9.5rem;
+.bp-list-table .bp-list-col--status {
+  width: 5.25rem;
   white-space: nowrap;
+  overflow: visible;
+}
+
+.bp-list-table .bp-list-col--date {
+  width: 6.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.bp-list-table .bp-list-col--views {
+  width: 4.75rem;
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.bp-list-table th.bp-list-col--actions,
+.bp-list-table td.bp-list-col--actions,
+.bp-list-table td.admin-table__actions {
+  width: 8.25rem;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .bp-list-post {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
   min-width: 0;
+  max-width: 100%;
+}
+
+.bp-list-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  max-width: 100%;
+}
+
+.bp-list-cat__name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 7.75rem;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.bp-list-cat__more {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+  background: var(--admin-stat-tile-bg);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-muted);
+}
+
+.bp-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+  white-space: nowrap;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-stat-tile-bg);
+}
+
+.bp-status-badge.blog-post-status--published {
+  color: #146c34;
+  background: var(--admin-success-soft);
+  border-color: #86efac;
+}
+
+.bp-status-badge.blog-post-status--draft {
+  color: #b45309;
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+}
+
+.bp-status-badge.blog-post-status--scheduled {
+  color: #1d4ed8;
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
 }
 
 .bp-list-thumb {
@@ -165,11 +282,21 @@
   align-items: flex-start;
   gap: 2px;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 7.5rem;
 }
 
 .bp-list-table .bp-list-col-seo {
   display: none;
+}
+
+.bp-list-post__title-link {
+  display: block;
+  position: relative;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  color: var(--admin-heading);
+  text-decoration: none;
 }
 
 .bp-list-post__title {
@@ -178,11 +305,11 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   max-width: 100%;
+  white-space: normal;
   font-weight: 650;
   font-size: 13px;
   line-height: 1.3;
-  color: var(--admin-heading);
-  text-decoration: none;
+  color: inherit;
   overflow-wrap: break-word;
   word-break: normal;
 }
@@ -198,9 +325,10 @@
 }
 
 .bp-list-seo--card {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  flex: 0 0 auto;
+  display: flex;
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
 }
 
 .bp-seo-badge {
@@ -230,10 +358,11 @@
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
 }
 
 .bp-list-icon-btn {
+  position: relative;
   width: 44px;
   min-width: 44px;
   padding: 0;
@@ -521,6 +650,152 @@
   color: var(--admin-muted);
 }
 
+@media (min-width: 768px) {
+  .bp-list > .admin-card {
+    padding: 14px 16px;
+  }
+
+  .bp-list .admin-table-scroll {
+    overflow-x: auto;
+  }
+
+  .bp-list-table .bp-list-icon-btn.admin-btn,
+  .bp-list-table .admin-actions-dropdown__toggle {
+    width: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    height: 32px;
+    padding: 0;
+  }
+
+  .bp-list-table .bp-list-icon-btn.admin-btn::after,
+  .bp-list-table .admin-actions-dropdown__toggle::after {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    pointer-events: auto;
+  }
+}
+
+/* Sidebar is open from 901px; reclaim chrome so POST can stay ~240px
+   and the actions column still sits inside the card padding. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .admin-content:has(.bp-list) {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .bp-list > .admin-card {
+    padding: 10px 12px;
+  }
+
+  .bp-list .admin-table-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .bp-list-table.admin-table {
+    max-width: 100%;
+  }
+
+  .bp-list-table.admin-table th,
+  .bp-list-table.admin-table td {
+    padding: 6px 4px;
+  }
+
+  .bp-list-table th.bp-list-col--actions,
+  .bp-list-table td.bp-list-col--actions,
+  .bp-list-table td.admin-table__actions {
+    width: 8.25rem;
+    padding: 6px;
+  }
+
+  .bp-list-table .bp-list-col--cat {
+    width: 9.75rem;
+  }
+
+  .bp-list-table .bp-list-col--status {
+    width: 5rem;
+  }
+
+  .bp-list-table .bp-list-col--date {
+    width: 6rem;
+  }
+
+  .bp-list-table .bp-list-col--views {
+    width: 4.5rem;
+  }
+
+  .bp-list-thumb {
+    flex-basis: 40px;
+    width: 40px;
+  }
+}
+
+/* Table mode until 1000px: drop Category so Post / chips stay readable
+   (sidebar-open 901–1000 is ~575px; 768 with 44px action hits is similar). */
+@media (min-width: 768px) and (max-width: 900px) {
+  .bp-list-table .bp-list-col--cat {
+    display: none;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1000px) {
+  .bp-list-table .bp-list-col--cat {
+    display: none;
+  }
+}
+
+/* Category column is gone at 768–1000; keep the name in the Post cell. */
+@media (min-width: 768px) and (max-width: 1000px) {
+  .bp-list-post__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--admin-muted);
+    max-width: 100%;
+  }
+
+  .bp-list-post__meta > :not(.bp-list-post__meta-cats) {
+    display: none;
+  }
+
+  .bp-list-post__meta-cats {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .bp-list-post__meta-cats .bp-list-cat__name {
+    max-width: 12rem;
+  }
+}
+
+/* Post is the primary column at 1001–1100; Category must not out-measure it. */
+@media (min-width: 1001px) and (max-width: 1100px) {
+  .bp-list-table .bp-list-col--post {
+    min-width: 10rem;
+  }
+
+  .bp-list-table .bp-list-col--cat {
+    width: 7rem;
+    overflow: hidden;
+  }
+
+  .bp-list-table .bp-list-col--cat .bp-list-cat__name {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-line-clamp: unset;
+    -webkit-box-orient: unset;
+  }
+}
+
 @media (min-width: 900px) {
   .bp-layout {
     display: grid;
@@ -553,6 +828,18 @@
     flex-direction: row;
   }
 
+  .bp-list-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .bp-list-toolbar .bp-list-tabs {
+    flex: 1 1 100%;
+  }
+
+  .bp-list-new {
+    margin-left: auto;
+  }
+
   .bp-list-filters {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -582,40 +869,85 @@
   }
 }
 
-@media (max-width: 640px) {
-  .bp-list-table.admin-table--stack td.bp-list-col {
+@media (max-width: 767px) {
+  .bp-list {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .bp-list .admin-table-scroll {
+    overflow-x: hidden;
+  }
+
+  .bp-list-table.admin-table--stack thead {
     display: none;
   }
 
-  .bp-list-table.admin-table--stack td.bp-list-post,
-  .bp-list-table.admin-table--stack td.bp-list-post > * {
+  .bp-list-table.admin-table--stack,
+  .bp-list-table.admin-table--stack tbody,
+  .bp-list-table.admin-table--stack tr,
+  .bp-list-table.admin-table--stack td {
+    display: block;
+    width: 100%;
+  }
+
+  .bp-list-table.admin-table--stack td.bp-list-col--cat,
+  .bp-list-table.admin-table--stack td.bp-list-col--status,
+  .bp-list-table.admin-table--stack td.bp-list-col--date,
+  .bp-list-table.admin-table--stack td.bp-list-col--views {
+    display: none;
+  }
+
+  .bp-list-table.admin-table--stack td.bp-list-col--post,
+  .bp-list-table.admin-table--stack td.bp-list-col--post > * {
     display: flex;
     overflow-wrap: break-word;
     word-break: normal;
   }
 
-  .bp-list-table.admin-table--stack td.bp-list-post {
+  .bp-list-table.admin-table--stack td.bp-list-col--post {
     align-items: flex-start;
     gap: 10px;
     padding: 0;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  .bp-list-table.admin-table--stack .bp-list-post {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .bp-list-table.admin-table--stack .bp-list-post__title-link {
+    min-height: 44px;
+    padding: 6px 0;
   }
 
   .bp-list-table.admin-table--stack .bp-list-post__title {
     overflow-wrap: break-word;
     word-break: normal;
+    display: block;
+    -webkit-line-clamp: unset;
+    -webkit-box-orient: unset;
   }
 
-  .bp-list-table.admin-table--stack td.bp-list-post::before {
+  .bp-list-table.admin-table--stack td.bp-list-col--post::before {
     display: none;
   }
 
-  .bp-list-table.admin-table--stack td.admin-table__actions {
+  .bp-list-table.admin-table--stack td.admin-table__actions,
+  .bp-list-table.admin-table--stack td.bp-list-col--actions {
     width: 100%;
-    padding: 6px 0 0;
+    padding: 8px 0 0;
+    overflow: visible;
   }
 
   .bp-list-table.admin-table--stack tr {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     padding: 10px 0;
   }
 
@@ -623,19 +955,8 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
-  }
-
-  .bp-list-seo--card {
-    flex-wrap: wrap;
-  }
-
-  .bp-list-post__meta {
-    display: block;
-    font-size: 12px;
-    line-height: 1.35;
-    color: var(--admin-muted);
-    overflow-wrap: anywhere;
+    gap: 6px;
+    width: 100%;
   }
 
   .bp-list-seo--card {
@@ -644,7 +965,24 @@
     gap: 4px;
   }
 
-  .bp-list-table.admin-table--stack td:not(.bp-list-post) {
-    white-space: normal;
+  .bp-list-cat__name {
+    max-width: none;
+  }
+
+  .bp-list-post__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--admin-muted);
+    overflow-wrap: anywhere;
+    width: 100%;
+  }
+
+  .bp-list-table.admin-table--stack .bp-list-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }

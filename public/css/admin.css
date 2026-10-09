@@ -4580,6 +4580,7 @@ body.admin-ai-text-history-open {
   align-items: center;
   gap: 10px;
   width: 100%;
+  min-height: 44px;
   padding: 10px 14px;
   border: none;
   background: none;
