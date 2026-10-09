@@ -3252,6 +3252,10 @@
   width: 5.5rem;
 }
 
+.util-ra-object-edit__field--casing {
+  width: 5.5rem;
+}
+
 .util-ra-object-edit__field .admin-input {
   width: 100%;
   min-width: 0;
@@ -3325,7 +3329,8 @@
 
   .util-ra-object-edit__field--num,
   .util-ra-object-edit__field--swing,
-  .util-ra-object-edit__field--hinge {
+  .util-ra-object-edit__field--hinge,
+  .util-ra-object-edit__field--casing {
     width: auto;
   }
 
@@ -3841,6 +3846,95 @@
 .util-ra-live-area__height-unit {
   color: var(--admin-muted);
   font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.util-ra-finish {
+  margin-top: 0.45rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--admin-border);
+}
+
+.util-ra-finish__head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+.util-ra-finish__title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--admin-heading);
+}
+
+.util-ra-finish__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.55rem;
+}
+
+.util-ra-finish__grid .util-ra-live-area__height {
+  width: 100%;
+  min-width: 0;
+}
+
+.util-ra-finish__grid .util-ra-live-area__height .admin-input {
+  width: 100%;
+  max-width: 5.5rem;
+}
+
+.util-ra-finish__dir {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.util-ra-finish__dir-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+}
+
+.util-ra-finish__dir .admin-btn {
+  min-height: var(--admin-control-height);
+}
+
+.util-ra-finish__dir .admin-btn.is-active {
+  background: var(--admin-primary);
+  color: #fff;
+  border-color: var(--admin-primary);
+}
+
+.util-ra-finish__walls {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem 0.55rem;
+}
+
+.util-ra-finish__walls li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--admin-text);
+}
+
+.util-ra-finish__walls strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-heading);
+}
+
+.util-ra-wall-edit__net {
+  font-size: 0.78rem;
+  color: var(--admin-muted);
   white-space: nowrap;
 }
 
@@ -5952,6 +6046,11 @@ body:has(.util-ra--fullpage) {
   .util-ra--fullpage .util-ra-object-edit__field--hinge {
     width: 4.25rem;
     flex: 0 0 4.25rem;
+  }
+
+  .util-ra--fullpage .util-ra-object-edit__field--casing {
+    width: 5.25rem;
+    flex: 0 0 5.25rem;
   }
 
   .util-ra--fullpage .util-ra-object-edit__actions {

@@ -908,6 +908,14 @@
                     <option value="right">Right</option>
                   </select>
                 </div>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--casing" data-ra-object-casing-wrap hidden>
+                  <label for="ra-object-casing">Casing</label>
+                  <select class="admin-input" id="ra-object-casing" data-ra-object-casing>
+                    <option value="2">2 sides</option>
+                    <option value="1">1 side</option>
+                    <option value="0">None</option>
+                  </select>
+                </div>
                 <div class="util-ra-object-edit__actions">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-object-flip aria-label="Flip">
                     <i class="fa fa-exchange"></i> <span class="util-ra-object-edit__btn-text">Flip</span>
@@ -928,6 +936,7 @@
             <div class="util-ra-wall-edit" data-ra-wall-edit hidden>
               <div class="util-ra-wall-edit__inner">
                 <span class="util-ra-wall-edit__label">Edit wall length</span>
+                <span class="util-ra-wall-edit__net" data-ra-wall-net-area hidden></span>
                 <div class="admin-form-group util-ra-wall-edit__input">
                   <label for="ra-wall-length" class="util-sr-only">Wall length in feet</label>
                   <input class="admin-input" type="text" id="ra-wall-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-wall-length>
@@ -1096,6 +1105,18 @@
                 <span class="util-ra-live-area__label" data-ra-wall-area-label>Wall SF</span>
                 <strong><span data-ra-live-wall-area>—</span></strong>
               </div>
+              <div class="util-ra-live-metrics__item">
+                <span class="util-ra-live-area__label">Ceiling</span>
+                <strong><span data-ra-live-ceiling-area>—</span> <span data-ra-area-unit>sq ft</span></strong>
+              </div>
+              <div class="util-ra-live-metrics__item">
+                <span class="util-ra-live-area__label">Boxes</span>
+                <strong><span data-ra-live-boxes>—</span></strong>
+              </div>
+              <div class="util-ra-live-metrics__item">
+                <span class="util-ra-live-area__label">Casing</span>
+                <strong><span data-ra-live-casing>—</span> <span data-ra-linear-unit>lf</span></strong>
+              </div>
               <div class="util-ra-live-metrics__item" data-ra-live-footprint-wrap hidden>
                 <span class="util-ra-live-area__label">Footprint</span>
                 <strong><span data-ra-live-footprint>—</span> <span data-ra-area-unit>sq ft</span></strong>
@@ -1113,12 +1134,45 @@
               <span data-ra-live-counts>0 doors · 0 windows · 0 openings</span>
               <span class="util-ra-live-area__secondary" data-ra-live-dual>(<span data-ra-live-sqm>—</span> m² · <span data-ra-live-sqft-alt>—</span> sq ft)</span>
             </div>
-            <div class="util-ra-live-area__toolbar">
-              <div class="admin-form-group util-ra-live-area__height">
-                <label for="ra-wall-height">Height</label>
-                <input class="admin-input" type="text" id="ra-wall-height" inputmode="decimal" value="8" data-ra-wall-height>
-                <span class="util-ra-live-area__height-unit">ft</span>
+            <div class="util-ra-finish" data-ra-finish>
+              <div class="util-ra-finish__head">
+                <p class="util-ra-finish__title">Finish</p>
+                @include('admin.utilities._room_area_help_pop', [
+                  'tipId' => 'finish',
+                  'label' => 'About finish takeoffs',
+                  'text' => 'Ceiling defaults to wall height. Net wall area is each wall minus doors, windows, and openings. Boxes = floor × (1 + waste) ÷ coverage, rounded up. Interior doors default to casing on both sides.',
+                ])
               </div>
+              <div class="util-ra-finish__grid">
+                <div class="admin-form-group util-ra-live-area__height">
+                  <label for="ra-wall-height">Wall ht</label>
+                  <input class="admin-input" type="text" id="ra-wall-height" inputmode="decimal" value="8" data-ra-wall-height>
+                  <span class="util-ra-live-area__height-unit">ft</span>
+                </div>
+                <div class="admin-form-group util-ra-live-area__height">
+                  <label for="ra-ceiling-height">Ceiling</label>
+                  <input class="admin-input" type="text" id="ra-ceiling-height" inputmode="decimal" value="8" data-ra-ceiling-height>
+                  <span class="util-ra-live-area__height-unit">ft</span>
+                </div>
+                <div class="admin-form-group util-ra-live-area__height">
+                  <label for="ra-floor-waste">Waste</label>
+                  <input class="admin-input" type="text" id="ra-floor-waste" inputmode="decimal" value="10" data-ra-floor-waste>
+                  <span class="util-ra-live-area__height-unit">%</span>
+                </div>
+                <div class="admin-form-group util-ra-live-area__height">
+                  <label for="ra-floor-box">Box</label>
+                  <input class="admin-input" type="text" id="ra-floor-box" inputmode="decimal" value="20" data-ra-floor-box>
+                  <span class="util-ra-live-area__height-unit">sf</span>
+                </div>
+              </div>
+              <div class="util-ra-finish__dir" role="group" aria-label="Flooring lay direction">
+                <span class="util-ra-finish__dir-label">Lay</span>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm is-active" data-ra-floor-dir="0" aria-pressed="true">Length</button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-floor-dir="90" aria-pressed="false">Width</button>
+              </div>
+              <ul class="util-ra-finish__walls" data-ra-wall-list hidden></ul>
+            </div>
+            <div class="util-ra-live-area__toolbar">
               <div class="util-ra-live-area__exports">
                 <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-export-png>
                   <i class="fa fa-image" aria-hidden="true"></i> PNG

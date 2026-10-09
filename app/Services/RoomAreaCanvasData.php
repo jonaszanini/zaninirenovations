@@ -426,6 +426,13 @@ class RoomAreaCanvasData
             $object['hinge'] = in_array($hinge, self::OBJECT_HINGES, true) ? $hinge : 'left';
         }
 
+        if (in_array($type, ['door', 'window'], true)) {
+            $sides = array_key_exists('casing_sides', $item) && is_numeric($item['casing_sides'])
+                ? (int) $item['casing_sides']
+                : ($type === 'door' ? 2 : 1);
+            $object['casing_sides'] = max(0, min(2, $sides));
+        }
+
         if ($type === 'window' || $type === 'opening') {
             $height = isset($item['height']) ? (float) $item['height'] : 48.0;
             $sill = isset($item['sill_height']) ? (float) $item['sill_height'] : 36.0;
@@ -788,7 +795,10 @@ class RoomAreaCanvasData
      *   stairs_quote_type: string
      * }
      */
-    public function layoutMetrics(array $canvas, float $pixelsPerFoot, float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT): array
+    /**
+     * @param  array<string, mixed>  $finish
+     */
+    public function layoutMetrics(array $canvas, float $pixelsPerFoot, float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT, array $finish = []): array
     {
         $normalized = $this->normalize($canvas);
         $area = 0.0;
@@ -834,6 +844,13 @@ class RoomAreaCanvasData
         $wallArea = max(0.0, round($grossWall - $objectMetrics['wall_deduction_sqft'], 2));
         $insideArea = round($area, 2);
         $outsideArea = $this->outsideAreaSqFt($insideArea, $perimeter, $sharedLf, $thicknessIn);
+        $finishMetrics = app(RoomAreaFinishMath::class)->finishMetrics(
+            $normalized,
+            $pixelsPerFoot,
+            $wallHeightFt,
+            $insideArea,
+            $finish
+        );
 
         return [
             'area_sqft' => $insideArea,
@@ -859,7 +876,7 @@ class RoomAreaCanvasData
             'stairs_treads' => $library['stairs_treads'],
             'stairs_run_lf' => $library['stairs_run_lf'],
             'stairs_quote_type' => $library['stairs_quote_type'],
-        ];
+        ] + $finishMetrics;
     }
 
     /**
@@ -904,7 +921,12 @@ class RoomAreaCanvasData
             'stairs_treads' => 0,
             'stairs_run_lf' => 0.0,
             'stairs_quote_type' => 'standard',
-        ];
+        ] + app(RoomAreaFinishMath::class)->finishMetrics(
+            $this->emptyCanvas(),
+            0,
+            $this->normalizeWallHeight($wallHeightFt),
+            0.0
+        );
     }
 
     public function outsideAreaSqFt(float $insideArea, float $perimeterLf, float $sharedLf, float $thicknessIn): float

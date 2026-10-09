@@ -140,10 +140,23 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.friendlyNetworkError({ message: 'Unexpected token < in JSON' }, 'Could not upload photos. Check your connection and try again.'), 'Could not upload photos. Check your connection and try again.');
   assert.strictEqual(lib.friendlyNetworkError({ status: 413, message: 'Payload Too Large' }, 'x'), 'That file is too large to upload.');
   var saved = 'Floor plan upload failed. The room itself was saved. Save again to retry.';
-  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 413, message: 'Payload Too Large' }), saved);
-  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 500, message: 'Server Error' }), saved);
-  assert.strictEqual(lib.planUploadErrorAfterRoomSaved(new Error('Failed to fetch')), saved);
-  assert.strictEqual(lib.planUploadErrorAfterRoomSaved(new Error('Could not upload the floor plan. Check your connection and try again.')), saved);
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 413, message: 'Payload Too Large' }), saved + ' That file is too large.');
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 422, message: 'The background must be an image.' }), saved + ' Wrong file type.');
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 500, message: 'Server Error' }), saved + ' The server had a problem.');
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved(new Error('Failed to fetch')), saved + ' Check your connection and try again.');
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved(new Error('Could not upload the floor plan. Check your connection and try again.')), saved + ' Check your connection and try again.');
+  assert.strictEqual(lib.friendlyPlanUploadError({ status: 500, message: 'Server Error' }), 'Could not upload the floor plan. The server had a problem. Try again.');
+  assert.ok(lib.friendlyPlanUploadError({ status: 500, message: 'Server Error' }).indexOf('Server Error') === -1);
+  assert.strictEqual(lib.ceilingHeightFt(null, 8), 8);
+  assert.strictEqual(lib.ceilingHeightFt(9, 8), 9);
+  assert.strictEqual(lib.ceilingAreaSqFt(152), 152);
+  assert.strictEqual(lib.netWallAreaSqFt(12, 8, lib.openingAreaSqFt(36, 80) + lib.openingAreaSqFt(36, 36) + lib.openingAreaSqFt(36, 96)), 43);
+  assert.strictEqual(lib.flooringBoxes(100, 10, 20), 6);
+  assert.strictEqual(lib.flooringBoxes(100, 10, 19), 6);
+  assert.strictEqual(lib.flooringBoxes(20.01, 0, 20), 2);
+  assert.strictEqual(lib.casingLf(36, 80, 2), 32.67);
+  assert.strictEqual(lib.defaultCasingSides('door'), 2);
+  assert.strictEqual(lib.casingSidesForObject({ type: 'door', casing_sides: 1 }), 1);
   console.log('room-area-lib tests: ' + process.uptime().toFixed(3) + 's ok');
 }).catch(function (err) {
   console.error(err);

@@ -206,6 +206,8 @@ jobs:
           php artisan test tests/Unit/Services/RoomAreaTemplatesTest.php
           php artisan test tests/Unit/Models/BlogPostListHelpersTest.php
           php artisan test tests/Feature/Admin/BlogPostsIndexLayoutTest.php
+          php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
+          php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
 
       - name: Blog posts live layout geometry
         env:
@@ -230,4 +232,3 @@ jobs:
           done
           curl -sf http://127.0.0.1:8000/admin/login >/dev/null
           node tests/Feature/Admin/blog-posts-geometry.js
-

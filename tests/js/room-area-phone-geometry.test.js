@@ -141,6 +141,57 @@ async function measureViewports() {
       assert.ok(!geom.tabs || geom.tabs.height < 2, 'collapsed sheet hides tabs at ' + width);
       assert.ok(!geom.body || geom.body.height < 2, 'collapsed sheet hides panel body at ' + width);
     }
+
+    for (const width of [320, 390, 1280]) {
+      await page.setViewport({
+        width,
+        height: width >= 1280 ? 900 : 720,
+        deviceScaleFactor: 1,
+        isMobile: width < 900,
+        hasTouch: width < 900,
+      });
+      await page.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
+      await page.evaluate(() => {
+        const root = document.querySelector('[data-room-area]');
+        if (root) {
+          root.classList.add('is-sheet-expanded');
+          root.classList.remove('is-more-open');
+        }
+      });
+      await page.waitForFunction(() => {
+        const finish = document.querySelector('[data-ra-finish]');
+        const grid = document.querySelector('.util-ra-finish__grid');
+        return !!(finish && grid && getComputedStyle(finish).display !== 'none' && grid.getBoundingClientRect().width > 40);
+      });
+      const finish = await page.evaluate(() => {
+        const grid = document.querySelector('.util-ra-finish__grid');
+        const fields = Array.from(document.querySelectorAll('[data-ra-finish] .admin-input, [data-ra-finish] .admin-btn'));
+        const help = document.querySelector('[data-ra-help-pop="finish"]');
+        const box = (el) => {
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          const cs = getComputedStyle(el);
+          return { width: r.width, height: r.height, left: r.left, right: r.right, columns: cs.gridTemplateColumns };
+        };
+        return {
+          innerWidth: window.innerWidth,
+          grid: box(grid),
+          help: box(help),
+          fields: fields.map((el) => {
+            const r = el.getBoundingClientRect();
+            return { height: r.height, right: r.right, overflow: r.right > window.innerWidth + 0.5 };
+          }),
+        };
+      });
+      assert.ok(finish.grid, 'finish grid exists at ' + width);
+      assert.ok(finish.grid.width > 40 && finish.grid.right <= finish.innerWidth + 0.5, 'finish grid stays in viewport at ' + width);
+      assert.ok((finish.grid.columns || '').split(' ').filter(Boolean).length >= 2, 'finish grid is two columns at ' + width + ': ' + finish.grid.columns);
+      assert.ok(finish.help && finish.help.width >= 20, 'finish help tip is present at ' + width);
+      finish.fields.forEach((field, i) => {
+        assert.ok(field.height >= 40, 'finish control ' + i + ' meets touch height at ' + width + ': ' + field.height);
+        assert.ok(!field.overflow, 'finish control ' + i + ' stays on screen at ' + width);
+      });
+    }
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));
