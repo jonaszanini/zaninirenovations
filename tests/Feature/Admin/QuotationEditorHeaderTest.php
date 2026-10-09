@@ -4,12 +4,17 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Client;
 use App\Models\ClientProject;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
 class QuotationEditorHeaderTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
+
+    /** @var list<string> */
+    protected $connectionsToTransact = [];
 
     /** @var resource|null */
     private $layoutServerProcess = null;
@@ -145,7 +150,12 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
 
     public function test_header_geometry_at_phone_tablet_and_desktop_in_both_themes(): void
     {
-        $user = $this->actingAsAdmin();
+        $user = User::factory()->create([
+            'email' => 'qh-header@zanini.ca',
+            'password' => Hash::make('password'),
+            'role' => User::ROLE_ADMIN,
+        ]);
+        $this->actingAs($user);
         $this->assertTrue(is_dir(base_path('node_modules/puppeteer')), 'Puppeteer must be installed — geometry cannot silently skip');
         $probe = [];
         $probeCode = 0;
@@ -184,6 +194,10 @@ const pages = [
   page.setDefaultTimeout(20000);
   async function go(url) {
     await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body');
+  }
+  async function openQuote(url) {
+    await go(url);
     await page.waitForSelector('[data-qh-header]');
   }
   await go(base + '/admin/login');
@@ -206,7 +220,7 @@ const pages = [
         await page.evaluate((mode) => {
           try { localStorage.setItem('zanini-admin-theme', mode === 'dark' ? 'dark' : 'light'); } catch (e) {}
         }, theme);
-        await go(base + href);
+        await openQuote(base + href);
         await page.evaluate((mode) => {
           document.documentElement.classList.toggle('admin-dark', mode === 'dark');
           if (document.body) document.body.classList.toggle('admin-dark', mode === 'dark');
