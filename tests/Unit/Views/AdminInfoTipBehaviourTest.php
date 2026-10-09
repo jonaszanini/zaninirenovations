@@ -214,6 +214,7 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('uniquifyTipLabelIds(scope)', $js);
         $this->assertStringContainsString('id^="admin-tip-lab-"', $js);
         $this->assertStringContainsString('if (!scope || scope.nodeType !== 1) return', $js);
+        $this->assertStringContainsString('AdminInfoTip.refreshControlIds requires an element scope', $js);
         $this->assertStringContainsString('function idFromControlName', $js);
         $this->assertStringContainsString("idFromControlName(input.getAttribute && input.getAttribute('name'))", $js);
         $this->assertStringContainsString("btn.setAttribute('aria-label', aboutLabel(aria))", $js);
@@ -323,8 +324,8 @@ class AdminInfoTipBehaviourTest extends TestCase
             '/\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,160}z-index:\s*1/',
             $css
         );
-        $this->assertMatchesRegularExpression(
-            '/\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,160}overflow-wrap:\s*anywhere/',
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.admin-label-with-tip__end\s*>\s*(label|span)[\s\S]{0,200}overflow-wrap:\s*anywhere/',
             $css
         );
         $this->assertStringContainsString('.admin-form-group label.cp-required', $css);

@@ -381,9 +381,16 @@
 
   /**
    * After cloneNode / template insert: unique tip bubble ids AND unique
-   * input/select/textarea ids with matching label[for].
+   * input/select/textarea ids with matching label[for]. Requires an
+   * element scope — never rewrite the live document when called bare.
    */
   function refreshControlIds(scope) {
+    if (!scope || scope.nodeType !== 1) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('AdminInfoTip.refreshControlIds requires an element scope');
+      }
+      return 0;
+    }
     refreshIds(scope);
     uniquifyControlIds(scope);
     uniquifyTipLabelIds(scope);

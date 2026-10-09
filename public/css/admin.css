@@ -1797,18 +1797,17 @@ summary > .admin-heading-copy {
   align-items: center;
   vertical-align: middle;
   white-space: nowrap;
-  max-width: 100%;
 }
 .admin-label-with-tip__end > span {
   display: inline;
-  flex: 0 1 auto;
+  flex: none;
   margin: 0;
+  white-space: nowrap;
 }
 .admin-label-with-tip__end > .admin-info-tip-wrap {
   display: inline-flex;
   align-items: center;
   vertical-align: middle;
-  flex: 0 0 auto;
   flex-shrink: 0;
 }
 .admin-label-with-tip .admin-label-with-tip__end > .admin-info-tip-wrap .admin-info-tip,
@@ -1821,9 +1820,6 @@ summary > .admin-heading-copy {
 .admin-label-with-tip__end > span:not(.admin-info-tip-wrap) {
   position: relative;
   z-index: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  white-space: normal;
 }
 .admin-label-with-tip__end > label,
 .admin-form-group .admin-label-with-tip__end > label,
@@ -1832,11 +1828,14 @@ summary > .admin-heading-copy {
   display: inline;
   margin: 0;
   padding: 0;
-  overflow-wrap: anywhere;
-  white-space: normal;
+  white-space: nowrap;
   cursor: pointer;
 }
-.admin-form-group label.cp-required {
+.admin-form-group label.cp-required,
+.admin-label-with-tip__end > .cp-required,
+.admin-label-with-tip__end > label.cp-required,
+.admin-form-group .admin-label-with-tip__end > label.cp-required,
+.admin-form-group .admin-label-with-tip__end > .cp-required {
   color: var(--admin-danger);
 }
 .admin-label-with-tip__end > .admin-form-group-label,
@@ -1844,11 +1843,10 @@ summary > .admin-heading-copy {
 .admin-heading-copy .admin-label-with-tip__end > .admin-accordion__title,
 .admin-label-with-tip__end > .admin-filters-accordion__title {
   display: inline;
-  flex: 0 1 auto;
+  flex: none;
   min-width: 0;
   margin: 0;
-  overflow-wrap: anywhere;
-  white-space: normal;
+  white-space: nowrap;
 }
 .admin-form-grid-2 > .admin-form-group > .admin-label-with-tip,
 .br-qty-grid > .admin-form-group:not(.br-lw) > .admin-label-with-tip,

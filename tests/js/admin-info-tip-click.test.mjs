@@ -31,7 +31,7 @@ assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowr
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,220}display:\s*inline/);
 assert.match(adminCss, /admin-label-with-tip__tail/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*\.admin-info-tip-wrap[\s\S]{0,80}display:\s*inline-flex/);
-assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,160}overflow-wrap:\s*anywhere/);
+assert.doesNotMatch(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,160}overflow-wrap:\s*anywhere/);
 assert.doesNotMatch(darkCss, /html\.admin-dark \.admin-form-group \.admin-checkbox-row >/);
 assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S]{0,160}pointer-events:\s*auto/);
 assert.match(cpCss, /\.tm-chip-row\s*>\s*\.admin-checkbox-row/);
@@ -42,6 +42,7 @@ assert.match(source, /function makeWordEl/);
 assert.match(source, /function linkSplitLabels/);
 assert.match(source, /function uniquifyTipLabelIds/);
 assert.match(source, /if \(!scope \|\| scope\.nodeType !== 1\) return/);
+assert.match(source, /refreshControlIds requires an element scope/);
 assert.match(source, /admin-label-with-tip__tail/);
 assert.match(source, /admin-tip-lab-/);
 assert.doesNotMatch(source, /function moveTrailingSkipped/);
@@ -220,11 +221,61 @@ function fixtureHtml() {
           <span class="admin-checkbox__mark"></span><span class="admin-checkbox__text">Light </span>
         </label><span class="admin-label-with-tip__end">
           <label for="br-bath-include-fixture" class="admin-checkbox__tail">fixture</label>
+          <span class="admin-info-tip-wrap">
+            <button type="button" class="admin-info-tip" aria-label="About Light fixture" aria-expanded="false" aria-controls="t-fix">i</button>
+            <span id="t-fix" class="admin-info-tip__bubble" role="tooltip">Bathroom ceiling fixture.</span>
+          </span>
         </span>
       </span>
       <div class="admin-form-group">
         <label for="br-bath-fixture-qty">How many</label>
         <input class="admin-input" id="br-bath-fixture-qty" value="1">
+      </div>
+    </div>
+    <div class="br-qty-grid" id="short-word-grid">
+      <div class="admin-form-group">
+        <span class="admin-label-with-tip" id="toilet-row">
+          <label for="br-toilet">Toilet</label>
+          <span class="admin-info-tip-wrap">
+            <button type="button" class="admin-info-tip" aria-label="About Toilet" aria-expanded="false" aria-controls="t-toi">i</button>
+            <span id="t-toi" class="admin-info-tip__bubble" role="tooltip">Supply and set.</span>
+          </span>
+        </span>
+        <input class="admin-input" id="br-toilet" value="1">
+      </div>
+      <div class="admin-form-group">
+        <span class="admin-label-with-tip" id="fan-row">
+          <label for="br-fan">Exhaust fan</label>
+          <span class="admin-info-tip-wrap">
+            <button type="button" class="admin-info-tip" aria-label="About Exhaust fan" aria-expanded="false" aria-controls="t-fan">i</button>
+            <span id="t-fan" class="admin-info-tip__bubble" role="tooltip">Vent the bath.</span>
+          </span>
+        </span>
+        <input class="admin-input" id="br-fan" value="1">
+      </div>
+      <div class="admin-form-group">
+        <span class="admin-label-with-tip" id="drywall-row">
+          <label for="br-drywall">Drywall</label>
+          <span class="admin-info-tip-wrap">
+            <button type="button" class="admin-info-tip" aria-label="About Drywall" aria-expanded="false" aria-controls="t-dw">i</button>
+            <span id="t-dw" class="admin-info-tip__bubble" role="tooltip">Sheets and finish.</span>
+          </span>
+        </span>
+        <input class="admin-input" id="br-drywall" value="1">
+      </div>
+      <div class="admin-form-group">
+        <span class="admin-label-with-tip admin-checkbox-row" id="barrier-row">
+          <label class="admin-checkbox" for="br-barrier">
+            <input type="checkbox" class="admin-checkbox__input" id="br-barrier" checked>
+            <span class="admin-checkbox__mark"></span><span class="admin-checkbox__text">Wall insulation + vapour </span>
+          </label><span class="admin-label-with-tip__end">
+            <label for="br-barrier" class="admin-checkbox__tail">barrier</label>
+            <span class="admin-info-tip-wrap">
+              <button type="button" class="admin-info-tip" aria-label="About vapour barrier" aria-expanded="false" aria-controls="t-bar">i</button>
+              <span id="t-bar" class="admin-info-tip__bubble" role="tooltip">Warm-side poly.</span>
+            </span>
+          </span>
+        </span>
       </div>
     </div>
     <div class="admin-form-group">
@@ -384,26 +435,6 @@ function fixtureHtml() {
       </span>
       <input class="admin-input" id="named-input" aria-labelledby="named-hint" value="">
       <span id="named-hint">Existing hint</span>
-    </div>
-    <div class="admin-form-group" id="url-group">
-      <span class="admin-label-with-tip" id="url-row">
-        <label for="url-field">Catalog https://images.homedepot.ca/productimages/super-long-hyphenated-path-name.jpg</label>
-        <span class="admin-info-tip-wrap">
-          <button type="button" class="admin-info-tip" aria-label="About Catalog URL" aria-expanded="false" aria-controls="t-url">i</button>
-          <span id="t-url" class="admin-info-tip__bubble" role="tooltip">Product link.</span>
-        </span>
-      </span>
-      <input class="admin-input" id="url-field" value="">
-    </div>
-    <div class="admin-form-group" id="hyphen-group">
-      <span class="admin-label-with-tip" id="hyphen-row">
-        <label for="hyphen-field">Coating polyurethane-acrylic-waterborne-topcoat</label>
-        <span class="admin-info-tip-wrap">
-          <button type="button" class="admin-info-tip" aria-label="About Coating" aria-expanded="false" aria-controls="t-hyphen">i</button>
-          <span id="t-hyphen" class="admin-info-tip__bubble" role="tooltip">Finish system.</span>
-        </span>
-      </span>
-      <input class="admin-input" id="hyphen-field" value="">
     </div>
     <span class="admin-label-with-tip" id="improve-row">
       <span class="admin-form-group-label">Improve description</span>
@@ -948,14 +979,27 @@ async function puppeteerClick() {
 
     const unscope = await page.evaluate(() => {
       const input = document.getElementById('named-input');
-      const before = input.getAttribute('aria-labelledby');
-      window.AdminInfoTip.refreshControlIds();
+      const before = {
+        by: input.getAttribute('aria-labelledby'),
+        bubble: document.querySelector('#named-row .admin-info-tip__bubble').id,
+      };
+      const warns = [];
+      const orig = console.warn;
+      console.warn = function (msg) { warns.push(String(msg)); };
+      const returned = window.AdminInfoTip.refreshControlIds();
+      console.warn = orig;
       return {
         before,
-        after: input.getAttribute('aria-labelledby'),
+        afterBy: input.getAttribute('aria-labelledby'),
+        afterBubble: document.querySelector('#named-row .admin-info-tip__bubble').id,
+        returned,
+        warns,
       };
     });
-    assert.equal(unscope.after, unscope.before, 'refreshControlIds() without a scope must not rewrite the original labelledby');
+    assert.equal(unscope.returned, 0, 'refreshControlIds() without a scope returns 0');
+    assert.equal(unscope.afterBy, unscope.before.by, 'refreshControlIds() without a scope must not rewrite labelledby');
+    assert.equal(unscope.afterBubble, unscope.before.bubble, 'refreshControlIds() without a scope must not rewrite bubble ids');
+    assert.ok(unscope.warns.some((w) => /scope/i.test(w)), 'refreshControlIds() without a scope logs a warning');
 
     const darkStar = await page.evaluate(() => {
       document.documentElement.classList.add('admin-dark');
@@ -1164,6 +1208,20 @@ async function puppeteerClick() {
               height: size,
             };
           }
+          const brokenWords = [];
+          document.querySelectorAll('.admin-label-with-tip__end').forEach((end) => {
+            const wrap = end.querySelector('.admin-info-tip-wrap');
+            const word = Array.from(end.children).find((c) => c !== wrap);
+            if (!word) return;
+            const text = String(word.textContent || '').replace(/\s+/g, ' ').trim();
+            if (!text || /\s/.test(text) || text.length < 2) return;
+            const range = document.createRange();
+            range.selectNodeContents(word);
+            const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0.5 && r.height > 0.5);
+            if (rects.length > 1) {
+              brokenWords.push(text.slice(0, 40));
+            }
+          });
           const gaps = [];
           document.querySelectorAll('.admin-label-with-tip__end').forEach((end) => {
             const wrap = end.querySelector('.admin-info-tip-wrap');
@@ -1191,9 +1249,7 @@ async function puppeteerClick() {
             clientFilledOffset,
             tmLine,
             gaps,
-            pageOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
-            urlRight: (document.getElementById('url-row') || {}).getBoundingClientRect ? document.getElementById('url-row').getBoundingClientRect().right : 0,
-            hyphenRight: (document.getElementById('hyphen-row') || {}).getBoundingClientRect ? document.getElementById('hyphen-row').getBoundingClientRect().right : 0,
+            brokenWords,
           };
         });
         aligned.checks.forEach((row, i) => {
@@ -1210,18 +1266,14 @@ async function puppeteerClick() {
           assert.ok(aligned.clientFilledOffset <= 1, `${theme}: client-filled wrapped line offset ${aligned.clientFilledOffset}px at ${width}px`);
           assert.ok(aligned.tmLine.sameLine, `${theme}: Client supplies materials ⓘ stays with the last word at ${width}px`);
         }
-        if (width === 320) {
-          assert.ok(aligned.pageOverflow <= 8, `${theme}: 320px page overflow ${aligned.pageOverflow}px must not be 163–193px`);
-          assert.ok(aligned.urlRight <= width + 1, `${theme}: URL row right ${aligned.urlRight}px at 320`);
-          assert.ok(aligned.hyphenRight <= width + 1, `${theme}: hyphen row right ${aligned.hyphenRight}px at 320`);
-        }
+        assert.deepEqual(aligned.brokenWords, [], `${theme}: short glued words must not break inside the word at ${width}px: ${aligned.brokenWords.join(' | ')}`);
         assert.ok(aligned.gaps.length >= 4, `${theme}: D1 measurable gaps at ${width}px`);
         aligned.gaps.forEach((hit) => {
           assert.ok(hit.gap > 0 && hit.gap <= 8, `${theme}: D1 ${hit.aria} gap ${hit.gap}px at ${width}px`);
           assert.ok(hit.vOff <= 6, `${theme}: D1 ${hit.aria} v-offset ${hit.vOff}px at ${width}px`);
         });
         if (theme === 'light') {
-          geometryByWidth[width] = { orphans: aligned.orphanCount, headings: aligned.headingCount };
+          geometryByWidth[width] = { orphans: aligned.orphanCount, headings: aligned.headingCount, brokenWords: aligned.brokenWords.length };
         }
       }
     }
