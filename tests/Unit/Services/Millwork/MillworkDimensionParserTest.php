@@ -155,15 +155,15 @@ class MillworkDimensionParserTest extends TestCase
 
         $this->assertSame('ft', MillworkPartBuilder::dimUnit($piece, 'width'));
         $this->assertSame('in', MillworkPartBuilder::dimUnit($piece, 'height'));
-        $this->assertEqualsWithDelta(24.0, MillworkPartBuilder::dimInches($piece, ['width']), 0.001);
-        $this->assertEqualsWithDelta(84.0, MillworkPartBuilder::dimInches($piece, ['height']), 0.001);
+        $this->assertEqualsWithDelta(24.0, MillworkPartBuilder::dimInches($piece, ['width'], null, 3), 0.001);
+        $this->assertEqualsWithDelta(84.0, MillworkPartBuilder::dimInches($piece, ['height'], null, 3), 0.001);
     }
 
     public function test_fraction_width_with_feet_unit(): void
     {
         $this->assertEqualsWithDelta(
             30.0,
-            MillworkPartBuilder::dimInches(['width' => '2 1/2', 'width_unit' => 'ft'], ['width']),
+            MillworkPartBuilder::dimInches(['width' => '2 1/2', 'width_unit' => 'ft'], ['width'], null, 3),
             0.001
         );
     }
@@ -172,7 +172,7 @@ class MillworkDimensionParserTest extends TestCase
     {
         $this->assertEqualsWithDelta(
             24.0,
-            MillworkPartBuilder::dimInches(['width' => '2 ft', 'width_unit' => 'in'], ['width']),
+            MillworkPartBuilder::dimInches(['width' => '2 ft', 'width_unit' => 'in'], ['width'], null, 3),
             0.001
         );
     }

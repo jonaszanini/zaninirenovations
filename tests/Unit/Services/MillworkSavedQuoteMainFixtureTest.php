@@ -57,6 +57,25 @@ class MillworkSavedQuoteMainFixtureTest extends TestCase
         $this->assertEquals($this->normalizeRows($expected['materials']), $this->normalizeRows($actual['materials']), $name.' material lines');
         $this->assertSame($expected['scope_labels'], $actual['scope_labels'], $name.' scope labels');
         $this->assertSame($expected['pdf_scope'], $actual['pdf_scope'], $name.' PDF');
+        if (array_key_exists('preview_skipped', $expected)) {
+            $this->assertSame(
+                (bool) $expected['preview_skipped'],
+                (bool) ($calc['cut_plan']['preview_skipped'] ?? false),
+                $name.' preview_skipped'
+            );
+        }
+        if ($name === 'v1_retyped_fraction_pdf') {
+            $this->assertStringContainsString('23.5" W', $actual['pdf_scope']);
+            $this->assertStringNotContainsString('23 1/2" W', $actual['pdf_scope']);
+        }
+        if ($name === 'v2_wainscot_300in_run') {
+            $this->assertFalse((bool) ($calc['cut_plan']['preview_skipped'] ?? false));
+            $this->assertGreaterThan(1000, (float) $actual['summary']['grand_total']);
+        }
+        if ($name === 'v2_bench_blank_height') {
+            $this->assertEqualsWithDelta(0.0, (float) $actual['summary']['grand_total'], 0.01);
+            $this->assertStringNotContainsString('18"', implode(' ', $actual['scope_labels']));
+        }
     }
 
     /**
@@ -66,8 +85,13 @@ class MillworkSavedQuoteMainFixtureTest extends TestCase
     {
         return [
             ['v1_saved_trim_cabinet'],
+            ['v1_retyped_fraction_pdf'],
             ['v2_saved_ft_trim_leftover'],
             ['v2_saved_shelf_dot75'],
+            ['v2_bench_blank_height'],
+            ['v2_mantel_ft_defaults'],
+            ['v2_closet_ft_defaults'],
+            ['v2_wainscot_300in_run'],
         ];
     }
 

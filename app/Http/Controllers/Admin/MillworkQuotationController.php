@@ -129,8 +129,9 @@ class MillworkQuotationController extends Controller
         $this->prepareDebrisRemovalMoneyOnRequest($request);
         $raw = $this->gatherInputsFromRequest($request);
         $upgrade = $request->boolean('upgrade_cut_plan');
-        $cutPlanVersion = $this->resolveCutPlanVersion($request, $millwork_quotation);
+        $cutPlanVersion = $this->resolveCalcVersion($request, $millwork_quotation);
         $raw['_cut_plan_version'] = $cutPlanVersion;
+        $raw['_calc_version'] = $cutPlanVersion;
 
         $calc = (new MillworkQuotationCalculator)->calculate($raw, null, $cutPlanVersion);
         $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
@@ -148,7 +149,7 @@ class MillworkQuotationController extends Controller
                 ],
             ], 422);
         }
-        if ($upgrade && $millwork_quotation && $millwork_quotation->usesLegacyCutBuilder()) {
+        if ($upgrade && $millwork_quotation && $millwork_quotation->canUpgradeCalc()) {
             $notice = $this->recalcNoticePayload($millwork_quotation, $calc, $request);
             if ($notice !== null) {
                 $calc['recalc_notice'] = $notice;
@@ -404,9 +405,10 @@ class MillworkQuotationController extends Controller
             }
         }
         $cutPlanVersion = $quotation
-            ? $quotation->cutPlanVersion()
-            : MillworkQuotationCalculator::CUT_PLAN_VERSION;
+            ? $quotation->calcVersion()
+            : MillworkQuotationCalculator::CALC_VERSION;
         $previewInputs['_cut_plan_version'] = $cutPlanVersion;
+        $previewInputs['_calc_version'] = $cutPlanVersion;
         $initialPreview = (new MillworkQuotationCalculator)->calculate(
             $previewInputs,
             $settings,
@@ -451,8 +453,9 @@ class MillworkQuotationController extends Controller
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), QuotationBuildingLabor::validationMessages()));
 
         $rawInputs = $this->gatherInputsFromRequest($request);
-        $cutPlanVersion = $this->resolveCutPlanVersion($request, $existing);
+        $cutPlanVersion = $this->resolveCalcVersion($request, $existing);
         $rawInputs['_cut_plan_version'] = $cutPlanVersion;
+        $rawInputs['_calc_version'] = $cutPlanVersion;
 
         $messages = (new MillworkQuotationCalculator)->validationMessages($rawInputs, $draft);
         if ($messages !== []) {
@@ -599,6 +602,9 @@ class MillworkQuotationController extends Controller
                 $sets[] = $setRow;
             }
             $row['sets'] = $sets !== [] ? $sets : $row['sets'];
+            if (isset($piece['_calc_version']) && is_numeric($piece['_calc_version']) && (int) $piece['_calc_version'] >= MillworkQuotationCalculator::CALC_VERSION) {
+                $row['_calc_version'] = MillworkQuotationCalculator::CALC_VERSION;
+            }
             $out[] = $row;
         }
 
@@ -819,16 +825,23 @@ class MillworkQuotationController extends Controller
         ], $this->quotationLinkClientNameAttributes($project)));
     }
 
-    protected function resolveCutPlanVersion(Request $request, ?MillworkQuotation $existing): int
+    protected function resolveCalcVersion(Request $request, ?MillworkQuotation $existing): int
     {
         if ($request->boolean('upgrade_cut_plan')) {
-            return MillworkQuotationCalculator::CUT_PLAN_VERSION;
+            return MillworkQuotationCalculator::CALC_VERSION;
         }
         if ($existing) {
-            return $existing->cutPlanVersion();
+            return $existing->calcVersion();
         }
 
-        return MillworkQuotationCalculator::CUT_PLAN_VERSION;
+        return MillworkQuotationCalculator::CALC_VERSION;
+    }
+
+    protected function resolveCutPlanVersion(Request $request, ?MillworkQuotation $existing): int
+    {
+        return $this->resolveCalcVersion($request, $existing) >= MillworkQuotationCalculator::CUT_PLAN_VERSION
+            ? MillworkQuotationCalculator::CUT_PLAN_VERSION
+            : 1;
     }
 
     /**

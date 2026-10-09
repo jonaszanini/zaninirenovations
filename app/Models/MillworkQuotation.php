@@ -98,23 +98,48 @@ class MillworkQuotation extends Model
         return is_array($unplaced) && $unplaced !== [];
     }
 
-    public function cutPlanVersion(): int
+    public function calcVersion(): int
     {
         if ($this->cut_plan_version !== null && $this->cut_plan_version !== '') {
-            return ((int) $this->cut_plan_version) >= 2 ? 2 : 1;
+            $raw = (int) $this->cut_plan_version;
+            if ($raw >= \App\Services\MillworkQuotationCalculator::CALC_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::CALC_VERSION;
+            }
+            if ($raw >= \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
+            }
+
+            return 1;
         }
 
         return 1;
     }
 
+    public function cutPlanVersion(): int
+    {
+        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION
+            ? \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION
+            : 1;
+    }
+
     public function builderVersion(): int
     {
-        return $this->cutPlanVersion();
+        return $this->calcVersion();
     }
 
     public function usesLegacyCutBuilder(): bool
     {
         return $this->cutPlanVersion() < \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
+    }
+
+    public function usesNewCalc(): bool
+    {
+        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::CALC_VERSION;
+    }
+
+    public function canUpgradeCalc(): bool
+    {
+        return $this->calcVersion() < \App\Services\MillworkQuotationCalculator::CALC_VERSION;
     }
 
     public function displayTitle(): string
@@ -217,6 +242,9 @@ class MillworkQuotation extends Model
         foreach (is_array($inputs['pieces'] ?? null) ? $inputs['pieces'] : [] as $piece) {
             if (! is_array($piece)) {
                 continue;
+            }
+            if (! isset($piece['_calc_version'])) {
+                $piece['_calc_version'] = $this->calcVersion();
             }
             $line = $legacyQuote
                 ? \App\Services\Millwork\LegacyMillworkPartBuilder::clientScopeLine(

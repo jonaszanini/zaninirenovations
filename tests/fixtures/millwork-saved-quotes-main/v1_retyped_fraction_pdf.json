@@ -1,0 +1,75 @@
+{
+    "version": 1,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "cabinet",
+                "name": "Pantry",
+                "room": "Kitchen",
+                "qty": 1,
+                "width": "23 1/2",
+                "height": 34.5,
+                "depth": 24,
+                "unit": "in",
+                "include_doors": false,
+                "include_back": false,
+                "edge_banding": false,
+                "shelf_count": 0
+            }
+        ],
+        "include_install": false,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 448.8,
+            "materials_pre_hst": 89.4,
+            "subtotal_pre_hst": 538.2,
+            "hst": 69.96,
+            "grand_total": 608.16
+        },
+        "labor": [
+            {
+                "key": "cut",
+                "label": "Shop — cut / nest sheets",
+                "hours": 0.45,
+                "amount": 38.25
+            },
+            {
+                "key": "cabinet",
+                "label": "Shop — cabinet / vanity boxes",
+                "hours": 4.83,
+                "amount": 410.55
+            }
+        ],
+        "materials": [
+            {
+                "key": "sheet_1",
+                "label": "3/4\" cabinet-grade plywood 4×8",
+                "qty": 1,
+                "unit_price": 72,
+                "amount": 72
+            },
+            {
+                "key": "glue",
+                "label": "Wood glue, 16 oz",
+                "qty": 1,
+                "unit_price": 8.9,
+                "amount": 8.9
+            },
+            {
+                "key": "fastener",
+                "label": "1-1/4\" cabinet screws (box of 100)",
+                "qty": 1,
+                "unit_price": 8.5,
+                "amount": 8.5
+            }
+        ],
+        "scope_labels": [
+            "1× Kitchen / Pantry — cabinet 23.5\"×34.5\"×24\""
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nKitchen — Pantry. Base cabinet, 23.5\" W × 34.5\" H × 24\" D. Unfinished. Includes supply, shop build, and hardware.",
+        "preview_skipped": false
+    }
+}

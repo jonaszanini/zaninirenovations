@@ -461,11 +461,32 @@ window.MillworkDimensionParser = (function () {
       err.textContent = message;
     }
 
+    function quoteUsesNewParsing() {
+      return Number(cfg.calcVersion || cfg.cutPlanVersion || 1) >= 3
+        || (document.getElementById('mw-cut-plan-version') || {}).value === '3';
+    }
+
+    function pieceUsesNewParsing(input) {
+      if (quoteUsesNewParsing()) return true;
+      var card = input.closest('[data-mw-piece]');
+      if (!card) return false;
+      var flag = card.querySelector('[data-mw-calc-version]');
+      return flag && Number(flag.value) >= 3;
+    }
+
+    function markPieceEdited(input) {
+      var card = input.closest('[data-mw-piece]');
+      if (!card) return;
+      var flag = card.querySelector('[data-mw-calc-version]');
+      if (flag) flag.value = '3';
+    }
+
     function collectClientDimErrors() {
       var errors = {};
       if (!window.MillworkDimensionParser) return errors;
       form.querySelectorAll('.mw-input--dim').forEach(function (input) {
         if (!dimFieldIsActive(input)) return;
+        if (!pieceUsesNewParsing(input)) return;
         var parsed = window.MillworkDimensionParser.inspect(input.value, dimFieldUnit(input));
         if (parsed.status === 'invalid') {
           errors[inputErrorKey(input)] = parsed.message || window.MillworkDimensionParser.INVALID_MESSAGE;
@@ -805,12 +826,14 @@ window.MillworkDimensionParser = (function () {
       el.dataset.mwBound = '1';
       el.addEventListener('input', function () {
         if (el.classList.contains('mw-input--dim') || (el.classList && el.classList.contains('mw-dim__unit'))) {
+          markPieceEdited(el);
           applyFieldErrors(collectClientDimErrors());
         }
         schedulePreview();
       });
       el.addEventListener('change', function () {
         if (el.classList.contains('mw-input--dim') || (el.classList && el.classList.contains('mw-dim__unit'))) {
+          markPieceEdited(el);
           applyFieldErrors(collectClientDimErrors());
         }
         schedulePreview();
@@ -1245,13 +1268,13 @@ window.MillworkDimensionParser = (function () {
     var upgradeBtn = document.getElementById('mw-upgrade-cut-plan-btn');
     var undoBtn = document.getElementById('mw-undo-cut-plan-btn');
     var undoBannerBtn = document.getElementById('mw-undo-cut-plan-banner-btn');
-    var legacyVersion = String(cfg.cutPlanVersion || 1);
+    var legacyVersion = String(cfg.calcVersion || cfg.cutPlanVersion || 1);
 
     function setUpgradeFlags(on) {
       var flag = document.getElementById('mw-upgrade-cut-plan');
       var ver = document.getElementById('mw-cut-plan-version');
       if (flag) flag.value = on ? '1' : '0';
-      if (ver) ver.value = on ? '2' : legacyVersion;
+      if (ver) ver.value = on ? '3' : legacyVersion;
     }
 
     function setUpgradeUi(on) {

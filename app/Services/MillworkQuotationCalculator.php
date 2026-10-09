@@ -29,6 +29,9 @@ class MillworkQuotationCalculator
     /** Stored cut plans without this key (or with a lower value) keep the v1 snapshot. */
     public const CUT_PLAN_VERSION = 2;
 
+    /** New parsing, inch defaults, and 240" used-field limits. Saved v2 stays on main. */
+    public const CALC_VERSION = 3;
+
     public const MAX_QTY = 200;
 
     public const MAX_COUNT = 100;
@@ -160,11 +163,16 @@ class MillworkQuotationCalculator
     }
 
     /**
+     * 1 = legacy cut plan, 2 = main v2 builder, 3 = new parsing / defaults / limits.
+     *
      * @param  array<string, mixed>  $inputs
      */
-    public static function resolveCutPlanVersion(array $inputs, ?int $explicit = null): int
+    public static function resolveCalcVersion(array $inputs, ?int $explicit = null): int
     {
         $raw = $explicit;
+        if ($raw === null && isset($inputs['_calc_version']) && is_numeric($inputs['_calc_version'])) {
+            $raw = (int) $inputs['_calc_version'];
+        }
         if ($raw === null && isset($inputs['_cut_plan_version']) && is_numeric($inputs['_cut_plan_version'])) {
             $raw = (int) $inputs['_cut_plan_version'];
         }
@@ -172,10 +180,26 @@ class MillworkQuotationCalculator
             $raw = (int) $inputs['_builder_version'];
         }
         if ($raw === null) {
+            return self::CALC_VERSION;
+        }
+        if ($raw >= self::CALC_VERSION) {
+            return self::CALC_VERSION;
+        }
+        if ($raw >= self::CUT_PLAN_VERSION) {
             return self::CUT_PLAN_VERSION;
         }
 
-        return $raw >= self::CUT_PLAN_VERSION ? self::CUT_PLAN_VERSION : 1;
+        return 1;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function resolveCutPlanVersion(array $inputs, ?int $explicit = null): int
+    {
+        return self::resolveCalcVersion($inputs, $explicit) >= self::CUT_PLAN_VERSION
+            ? self::CUT_PLAN_VERSION
+            : 1;
     }
 
     /**
@@ -185,11 +209,14 @@ class MillworkQuotationCalculator
     public function calculate(array $inputs, ?MillworkSettings $settings = null, ?int $cutPlanVersion = null): array
     {
         $settings = $settings ?? MillworkSettings::current();
-        $cutPlanVersion = self::resolveCutPlanVersion($inputs, $cutPlanVersion);
+        $calcVersion = self::resolveCalcVersion($inputs, $cutPlanVersion);
+        $cutPlanVersion = $calcVersion >= self::CUT_PLAN_VERSION ? self::CUT_PLAN_VERSION : 1;
         if ($cutPlanVersion < self::CUT_PLAN_VERSION) {
             return $this->calculateLegacy($inputs, $settings);
         }
         $inputs = array_merge(self::defaultInputs(), $inputs);
+        $inputs['_calc_version'] = $calcVersion;
+        $inputs['_cut_plan_version'] = $calcVersion;
         $prod = $settings->resolvedProductivity();
         $cut = $settings->resolvedCutSettings();
         $catalog = $settings->resolvedCatalog();
@@ -214,7 +241,7 @@ class MillworkQuotationCalculator
         $ebItem = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_EDGE_BANDING, (string) ($inputs['edge_banding_id'] ?? ''));
         $ebThick = (float) ($cut['edge_band_thickness_in'] ?? ($ebItem['thickness_in'] ?? 0.018));
 
-        $builder = new MillworkPartBuilder(MillworkPartBuilder::BUILDER_VERSION);
+        $builder = new MillworkPartBuilder($calcVersion);
         $primaryParts = [];
         $backParts = [];
         $explodedByPiece = [];
@@ -551,8 +578,9 @@ class MillworkQuotationCalculator
     {
         $messages = [];
         $this->collectDimensionFieldErrors($inputs, $messages);
+        $calcVersion = self::resolveCalcVersion($inputs);
 
-        if (self::resolveCutPlanVersion($inputs) < self::CUT_PLAN_VERSION) {
+        if ($calcVersion < self::CUT_PLAN_VERSION) {
             if ($draft) {
                 return $messages;
             }
@@ -566,6 +594,10 @@ class MillworkQuotationCalculator
 
         if ($draft) {
             return $messages;
+        }
+
+        if ($calcVersion < self::CALC_VERSION) {
+            return $this->mainV2ValidationMessages($inputs, $settings, $messages);
         }
 
         $limitHint = $this->dimensionLimitHint($inputs);
@@ -612,18 +644,63 @@ class MillworkQuotationCalculator
     }
 
     /**
+     * Main's publish rules for saved v2 quotes: at least one sized piece, then unplaced.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, string>  $messages
+     * @return array<string, string>
+     */
+    private function mainV2ValidationMessages(array $inputs, ?MillworkSettings $settings, array $messages): array
+    {
+        $hasPart = false;
+        foreach ($this->pieces($inputs) as $piece) {
+            if ($this->pieceIsSized($piece)) {
+                $hasPart = true;
+                break;
+            }
+        }
+        if (! $hasPart) {
+            $messages['calculation'] = 'Add at least one millwork piece with quantity and dimensions.';
+        }
+        if ($hasPart) {
+            $preview = $this->calculate($inputs, $settings);
+            $unplaced = is_array($preview['cut_plan']['unplaced'] ?? null) ? $preview['cut_plan']['unplaced'] : [];
+            if ($unplaced !== []) {
+                $labels = array_values(array_unique(array_filter(array_map(
+                    static fn ($row) => trim((string) ($row['label'] ?? '')),
+                    $unplaced
+                ))));
+                $list = $labels !== [] ? ' ('.implode(', ', $labels).')' : '';
+                $messages['calculation'] = 'These parts do not fit on any sheet we stock'.$list.'. Change the size or pick a larger sheet before publishing.';
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
      * @param  array<string, mixed>  $inputs
      * @param  array<string, string>  $messages
      */
     private function collectDimensionFieldErrors(array $inputs, array &$messages): void
     {
         foreach ($this->pieces($inputs) as $pi => $piece) {
-            $this->collectRowDimensionErrors($piece, 'pieces.'.$pi, $messages);
+            if (! MillworkPartBuilder::usesNewParsing($piece)) {
+                continue;
+            }
+            $this->collectRowDimensionErrors($piece, 'pieces.'.$pi, $messages, null, $this->usedParseKeys($piece));
             foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $si => $set) {
                 if (! is_array($set)) {
                     continue;
                 }
-                $this->collectRowDimensionErrors($set, 'pieces.'.$pi.'.sets.'.$si, $messages, (string) ($piece['unit'] ?? 'in'));
+                $set['_calc_version'] = $piece['_calc_version'] ?? $set['_calc_version'] ?? null;
+                $this->collectRowDimensionErrors(
+                    $set,
+                    'pieces.'.$pi.'.sets.'.$si,
+                    $messages,
+                    (string) ($piece['unit'] ?? 'in'),
+                    $this->usedSetLimitKeys($piece)
+                );
             }
         }
     }
@@ -632,9 +709,15 @@ class MillworkQuotationCalculator
      * @param  array<string, mixed>  $row
      * @param  array<string, string>  $messages
      */
-    private function collectRowDimensionErrors(array $row, string $prefix, array &$messages, ?string $fallbackUnit = null): void
+    /**
+     * @param  list<string>|null  $onlyKeys
+     */
+    private function collectRowDimensionErrors(array $row, string $prefix, array &$messages, ?string $fallbackUnit = null, ?array $onlyKeys = null): void
     {
         foreach (['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'] as $key) {
+            if ($onlyKeys !== null && ! in_array($key, $onlyKeys, true)) {
+                continue;
+            }
             if (! array_key_exists($key, $row)) {
                 continue;
             }
@@ -654,13 +737,17 @@ class MillworkQuotationCalculator
     private function pieceIsSized(array $piece): bool
     {
         $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+        $read = MillworkPartBuilder::usesNewParsing($piece)
+            ? static fn (array $row, array $keys): float => MillworkPartBuilder::dimInches($row, $keys)
+            : static fn (array $row, array $keys): float => MillworkPartBuilder::positiveDim($row, $keys);
         if (in_array($type, ['shelf', 'floating_shelf', 'cabinet_door'], true)) {
             foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
                 if (! is_array($set) || (int) ($set['qty'] ?? 0) <= 0) {
                     continue;
                 }
-                $len = MillworkPartBuilder::positiveDim($set, ['length', 'height']);
-                $wid = MillworkPartBuilder::positiveDim($set, ['width', 'depth']);
+                $set['_calc_version'] = $piece['_calc_version'] ?? $set['_calc_version'] ?? null;
+                $len = $read($set, ['length', 'height']);
+                $wid = $read($set, ['width', 'depth']);
                 if ($len > 0 && $wid > 0) {
                     return true;
                 }
@@ -669,17 +756,17 @@ class MillworkQuotationCalculator
             return false;
         }
         if (in_array($type, ['trim', 'wainscoting'], true)) {
-            return MillworkPartBuilder::positiveDim($piece, ['linear_ft', 'length']) > 0;
+            return $read($piece, ['linear_ft', 'length']) > 0;
         }
         if ($type === 'mantel') {
-            $len = MillworkPartBuilder::positiveDim($piece, ['length', 'width']);
-            $dep = MillworkPartBuilder::positiveDim($piece, ['depth']);
+            $len = $read($piece, ['length', 'width']);
+            $dep = $read($piece, ['depth']);
 
             return $len > 0 && $dep > 0;
         }
-        $w = MillworkPartBuilder::positiveDim($piece, ['width', 'length']);
-        $h = MillworkPartBuilder::positiveDim($piece, ['height']);
-        $d = MillworkPartBuilder::positiveDim($piece, ['depth']);
+        $w = $read($piece, ['width', 'length']);
+        $h = $read($piece, ['height']);
+        $d = $read($piece, ['depth']);
 
         return $w > 0 && ($h > 0 || $type === 'bench') && $d > 0;
     }
@@ -714,8 +801,9 @@ class MillworkQuotationCalculator
         float $trim,
         float $minOffcut
     ): array {
-        $limitHint = $this->dimensionLimitHint($inputs);
-        if ($limitHint !== null || $this->hasInvalidPostedDimension($inputs)) {
+        if ($this->shouldSkipCutPlanPreview($inputs)) {
+            $limitHint = $this->dimensionLimitHint($inputs);
+
             return [
                 'version' => self::CUT_PLAN_VERSION,
                 'sheet_count' => 0,
@@ -737,6 +825,34 @@ class MillworkQuotationCalculator
     }
 
     /**
+     * Never drop an untouched v2 cut plan. Skip only when a v3 / edited piece
+     * has an invalid typed size (not a stored over-240" used field).
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    private function shouldSkipCutPlanPreview(array $inputs): bool
+    {
+        foreach ($this->pieces($inputs) as $piece) {
+            if (! MillworkPartBuilder::usesNewParsing($piece)) {
+                continue;
+            }
+            $messages = [];
+            $this->collectRowDimensionErrors($piece, 'p', $messages, null, $this->usedParseKeys($piece));
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
+                if (is_array($set)) {
+                    $set['_calc_version'] = $piece['_calc_version'] ?? null;
+                    $this->collectRowDimensionErrors($set, 's', $messages, (string) ($piece['unit'] ?? 'in'), $this->usedSetLimitKeys($piece));
+                }
+            }
+            if ($messages !== []) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param  array<string, mixed>  $inputs
      */
     private function dimensionLimitHint(array $inputs): ?string
@@ -745,6 +861,9 @@ class MillworkQuotationCalculator
             return 'Spare sheets cannot be more than '.self::MAX_SPARE_SHEETS.'.';
         }
         foreach ($this->pieces($inputs) as $piece) {
+            if (! MillworkPartBuilder::usesNewParsing($piece)) {
+                continue;
+            }
             if ((int) ($piece['qty'] ?? 0) > self::MAX_QTY) {
                 return 'Quantity cannot be more than '.self::MAX_QTY.'.';
             }
@@ -752,7 +871,7 @@ class MillworkQuotationCalculator
             if ($linearFt > self::MAX_LINEAR_FT) {
                 return 'Linear footage cannot be more than '.self::MAX_LINEAR_FT.' ft.';
             }
-            foreach (['width', 'height', 'depth', 'length', 'thickness'] as $key) {
+            foreach ($this->usedLimitKeys($piece) as $key) {
                 if (MillworkPartBuilder::trimOpeningIsInches($piece, $key)) {
                     continue;
                 }
@@ -767,7 +886,8 @@ class MillworkQuotationCalculator
                 if ((int) ($set['qty'] ?? 0) > self::MAX_QTY) {
                     return 'Quantity cannot be more than '.self::MAX_QTY.'.';
                 }
-                foreach (['width', 'height', 'depth', 'length', 'thickness'] as $key) {
+                $set['_calc_version'] = $piece['_calc_version'] ?? null;
+                foreach ($this->usedSetLimitKeys($piece) as $key) {
                     if (MillworkPartBuilder::dimInches($set, [$key], (string) ($piece['unit'] ?? 'in')) > self::MAX_DIM_IN) {
                         return 'Each width, height, depth, and length must be 240 inches (20 ft) or less.';
                     }
@@ -776,6 +896,60 @@ class MillworkQuotationCalculator
         }
 
         return null;
+    }
+
+    /**
+     * Fields the piece type actually uses. Hidden leftover trim depth / unused
+     * wainscot width must not trip the 240" check.
+     *
+     * @param  array<string, mixed>  $piece
+     * @return list<string>
+     */
+    private function usedLimitKeys(array $piece): array
+    {
+        $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+
+        return match ($type) {
+            'shelf', 'cabinet_door', 'floating_shelf' => [],
+            'kallax', 'cabinet', 'vanity', 'closet' => ['width', 'height', 'depth'],
+            'bench' => ['length', 'width', 'depth', 'height'],
+            'mantel' => ['length', 'width', 'depth', 'height'],
+            'wainscoting' => ['height'],
+            'trim' => ((int) ($piece['openings'] ?? 0) > 0) ? ['width', 'height'] : [],
+            default => ['width', 'height', 'depth'],
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     * @return list<string>
+     */
+    private function usedParseKeys(array $piece): array
+    {
+        $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+        $keys = $this->usedLimitKeys($piece);
+        if (in_array($type, ['trim', 'wainscoting'], true)) {
+            $keys[] = 'linear_ft';
+            $keys[] = 'length';
+            $keys[] = 'stock_length_ft';
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     * @return list<string>
+     */
+    private function usedSetLimitKeys(array $piece): array
+    {
+        $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+
+        return match ($type) {
+            'floating_shelf' => ['length', 'height', 'depth', 'width', 'thickness'],
+            'shelf', 'cabinet_door' => ['length', 'height', 'depth', 'width'],
+            default => [],
+        };
     }
 
     /**
@@ -788,11 +962,21 @@ class MillworkQuotationCalculator
         if (! is_array($raw)) {
             return [];
         }
+        $quoteCalc = self::resolveCalcVersion($inputs);
         $out = [];
         foreach ($raw as $piece) {
-            if (is_array($piece)) {
-                $out[] = array_merge(self::defaultPiece((string) ($piece['type'] ?? 'shelf')), $piece);
+            if (! is_array($piece)) {
+                continue;
             }
+            $merged = array_merge(self::defaultPiece((string) ($piece['type'] ?? 'shelf')), $piece);
+            if (! isset($merged['_calc_version']) || $merged['_calc_version'] === '' || $merged['_calc_version'] === null) {
+                $merged['_calc_version'] = $quoteCalc;
+            } else {
+                $merged['_calc_version'] = (int) $merged['_calc_version'] >= self::CALC_VERSION
+                    ? self::CALC_VERSION
+                    : (int) $merged['_calc_version'];
+            }
+            $out[] = $merged;
         }
 
         return $out;

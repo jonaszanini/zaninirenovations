@@ -79,7 +79,10 @@
   </summary>
   <div class="br-acc__body">
     <div class="admin-form-group mw-sheet-field">
-      <label for="mw-sheet">Wood sheet</label>
+      <div class="admin-label-with-tip">
+        <label for="mw-sheet">Wood sheet</label>
+        <x-admin.info-tip label="Wood sheet">Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.</x-admin.info-tip>
+      </div>
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
         @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
           <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>

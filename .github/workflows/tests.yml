@@ -78,6 +78,12 @@ jobs:
       - name: Millwork saved-quote fixtures vs main (no database)
         run: php artisan test tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
 
+      - name: Millwork v3 calc-version gate (no database)
+        run: php artisan test tests/Unit/Services/MillworkCalcVersionGateTest.php
+
+      - name: Millwork v2 3k fuzz invariants (no database)
+        run: php artisan test tests/Unit/Services/MillworkV2FuzzParityTest.php
+
       - name: Admin dark-theme CSS coverage (no database)
         run: |
           php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php

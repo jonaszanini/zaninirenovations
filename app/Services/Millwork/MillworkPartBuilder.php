@@ -68,20 +68,65 @@ class MillworkPartBuilder
     /** v1 keeps the pre-PR-A L/W order so saved quotes do not silently change. */
     public const BUILDER_VERSION = 2;
 
+    public const CALC_VERSION = 3;
+
     private int $version;
+
+    private int $calcVersion;
 
     private int $pieceIndex = 0;
 
     private int $seq = 0;
 
-    public function __construct(int $version = self::BUILDER_VERSION)
+    public function __construct(int $version = self::CALC_VERSION)
     {
         $this->version = $version >= 2 ? self::BUILDER_VERSION : 1;
+        $this->calcVersion = $version >= self::CALC_VERSION
+            ? self::CALC_VERSION
+            : ($version >= 2 ? self::BUILDER_VERSION : 1);
     }
 
     public function version(): int
     {
         return $this->version;
+    }
+
+    public function calcVersion(): int
+    {
+        return $this->calcVersion;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    public static function pieceCalcVersion(array $row, ?int $fallback = null): int
+    {
+        $raw = $row['_calc_version'] ?? null;
+        if ($raw !== null && $raw !== '' && is_numeric($raw)) {
+            $v = (int) $raw;
+            if ($v >= self::CALC_VERSION) {
+                return self::CALC_VERSION;
+            }
+            if ($v >= 2) {
+                return 2;
+            }
+
+            return 1;
+        }
+
+        if ($fallback === null) {
+            return 2;
+        }
+
+        return $fallback >= self::CALC_VERSION ? self::CALC_VERSION : ($fallback >= 2 ? 2 : 1);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    public static function usesNewParsing(array $row, ?int $fallback = null): bool
+    {
+        return self::pieceCalcVersion($row, $fallback) >= self::CALC_VERSION;
     }
 
     /**
@@ -104,6 +149,9 @@ class MillworkPartBuilder
     public function explode(array $piece, float $sheetThickness, float $edgeBandThickness, int $pieceIndex = 0): array
     {
         $this->pieceIndex = max(0, $pieceIndex);
+        if (! isset($piece['_calc_version']) || $piece['_calc_version'] === '' || $piece['_calc_version'] === null) {
+            $piece['_calc_version'] = $this->calcVersion;
+        }
         $type = self::normalizeType((string) ($piece['type'] ?? 'shelf'));
         $band = ! empty($piece['edge_banding']);
         $finish = self::normalizeFinish((string) ($piece['finish'] ?? 'none'));
@@ -263,30 +311,59 @@ class MillworkPartBuilder
         };
         $kind = trim(str_replace(' cabinet cabinet', ' cabinet', $kind));
 
-        $w = self::dimInches($piece, ['width']);
-        $h = self::dimInches($piece, ['height']);
-        $d = self::dimInches($piece, ['depth']);
-        $len = self::dimInches($piece, ['length']);
-        $linearFt = self::positiveDim($piece, ['linear_ft']);
-        $bits = [];
-        if ($type === 'wainscoting' && ($linearFt > 0 || $len > 0)) {
-            $lf = $linearFt > 0 ? $linearFt : ($len / 12.0);
-            $bits[] = 'approx. '.rtrim(rtrim(number_format($lf, 1, '.', ''), '0'), '.').' lin. ft';
-            if ($h > 0) {
-                $bits[] = self::fmtStatic($h).' H';
+        if (self::usesNewParsing($piece)) {
+            $w = self::dimInches($piece, ['width']);
+            $h = self::dimInches($piece, ['height']);
+            $d = self::dimInches($piece, ['depth']);
+            $len = self::dimInches($piece, ['length']);
+            $linearFt = self::positiveDim($piece, ['linear_ft']);
+            $bits = [];
+            if ($type === 'wainscoting' && ($linearFt > 0 || $len > 0)) {
+                $lf = $linearFt > 0 ? $linearFt : ($len / 12.0);
+                $bits[] = 'approx. '.rtrim(rtrim(number_format($lf, 1, '.', ''), '0'), '.').' lin. ft';
+                if ($h > 0) {
+                    $bits[] = self::fmtStatic($h).' H';
+                }
+            } else {
+                if ($w > 0) {
+                    $bits[] = self::fmtStatic($w).' W';
+                }
+                if ($len > 0 && $w <= 0) {
+                    $bits[] = self::fmtStatic($len).' L';
+                }
+                if ($h > 0) {
+                    $bits[] = self::fmtStatic($h).' H';
+                }
+                if ($d > 0) {
+                    $bits[] = self::fmtStatic($d).' D';
+                }
             }
         } else {
-            if ($w > 0) {
-                $bits[] = self::fmtStatic($w).' W';
-            }
-            if ($len > 0 && $w <= 0) {
-                $bits[] = self::fmtStatic($len).' L';
-            }
-            if ($h > 0) {
-                $bits[] = self::fmtStatic($h).' H';
-            }
-            if ($d > 0) {
-                $bits[] = self::fmtStatic($d).' D';
+            $unit = (($piece['unit'] ?? 'in') === 'ft') ? 'ft' : 'in';
+            $w = self::positiveDim($piece, ['width']);
+            $h = self::positiveDim($piece, ['height']);
+            $d = self::positiveDim($piece, ['depth']);
+            $len = self::positiveDim($piece, ['length', 'linear_ft']);
+            $bits = [];
+            if ($type === 'wainscoting' && $len > 0) {
+                $lf = $unit === 'ft' || isset($piece['linear_ft']) ? $len : $len / 12.0;
+                $bits[] = 'approx. '.rtrim(rtrim(number_format($lf, 1, '.', ''), '0'), '.').' lin. ft';
+                if ($h > 0) {
+                    $bits[] = self::fmtStatic(self::toInches($h, $unit)).' H';
+                }
+            } else {
+                if ($w > 0) {
+                    $bits[] = self::fmtStatic(self::toInches($w, $unit)).' W';
+                }
+                if ($len > 0 && $w <= 0) {
+                    $bits[] = self::fmtStatic(self::toInches($len, $unit)).' L';
+                }
+                if ($h > 0) {
+                    $bits[] = self::fmtStatic(self::toInches($h, $unit)).' H';
+                }
+                if ($d > 0) {
+                    $bits[] = self::fmtStatic(self::toInches($d, $unit)).' D';
+                }
             }
         }
         $size = $bits === [] ? '' : ', '.implode(' × ', $bits);
@@ -302,12 +379,18 @@ class MillworkPartBuilder
         $qty = max(1, (int) ($piece['qty'] ?? 1));
         $lf = self::positiveDim($piece, ['linear_ft']);
         if ($lf <= 0) {
-            $len = self::dimInches($piece, ['length']);
-            $lf = $len > 0 ? ($len / 12.0) : 0.0;
+            if (self::usesNewParsing($piece)) {
+                $len = self::dimInches($piece, ['length']);
+                $lf = $len > 0 ? ($len / 12.0) : 0.0;
+            } else {
+                $len = self::positiveDim($piece, ['length']);
+                $unit = (($piece['unit'] ?? 'ft') === 'in') ? 'in' : 'ft';
+                $lf = $len > 0 ? (self::toInches($len, $unit) / 12.0) : 0.0;
+            }
         }
         $openings = max(0, (int) ($piece['openings'] ?? 0));
-        $openingW = (self::dimInches(array_merge($piece, ['type' => 'trim']), ['width']) ?: 32.0) / 12.0;
-        $openingH = (self::dimInches(array_merge($piece, ['type' => 'trim']), ['height']) ?: 80.0) / 12.0;
+        $openingW = (self::positiveDim($piece, ['width']) ?: 32.0) / 12.0;
+        $openingH = (self::positiveDim($piece, ['height']) ?: 80.0) / 12.0;
         $casingLf = $openings * ((2 * $openingH) + $openingW);
 
         return round(($lf + $casingLf) * $qty, 1);
@@ -383,8 +466,14 @@ class MillworkPartBuilder
      * @param  array<string, mixed>  $row
      * @param  list<string>  $keys
      */
-    public static function dimInches(array $row, array $keys, ?string $fallbackUnit = null): float
+    public static function dimInches(array $row, array $keys, ?string $fallbackUnit = null, ?int $calcVersion = null): float
     {
+        if (! self::usesNewParsing($row, $calcVersion)) {
+            $unit = (string) ($row['unit'] ?? $fallbackUnit ?? 'in');
+            $n = self::positiveDim($row, $keys);
+
+            return $n > 0 ? self::toInches($n, $unit) : 0.0;
+        }
         foreach ($keys as $key) {
             if (! array_key_exists($key, $row)) {
                 continue;
@@ -427,9 +516,8 @@ class MillworkPartBuilder
     }
 
     /**
-     * First numeric dimension that is greater than zero (in the field's own unit).
+     * First numeric dimension that is greater than zero (main's (float) reader).
      * Empty posted fields (hidden Width on a floating shelf) are skipped.
-     * Fractions such as 23 1/2 are accepted on the v2 builder only.
      *
      * @param  array<string, mixed>  $row
      * @param  list<string>  $keys
@@ -440,10 +528,13 @@ class MillworkPartBuilder
             if (! array_key_exists($key, $row)) {
                 continue;
             }
-            $unit = MillworkDimensionParser::fieldUnitOf($key, $row);
-            $parsed = MillworkDimensionParser::inspect($row[$key] ?? null, $unit);
-            if ($parsed['status'] === MillworkDimensionParser::STATUS_OK && $parsed['inches'] > 0) {
-                return $unit === 'ft' ? $parsed['inches'] / 12.0 : $parsed['inches'];
+            $raw = $row[$key];
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+            $n = (float) $raw;
+            if ($n > 0) {
+                return $n;
             }
         }
 
@@ -463,8 +554,8 @@ class MillworkPartBuilder
         $n = 0;
         foreach ($this->sets($piece) as $set) {
             $qty = max(0, (int) ($set['qty'] ?? 0));
-            $len = self::dimInches($set, ['length', 'height'], (string) ($piece['unit'] ?? 'in'));
-            $dep = self::dimInches($set, ['depth', 'width'], (string) ($piece['unit'] ?? 'in'));
+            $len = $this->setInches($piece, $set, ['length', 'height'], (string) ($piece['unit'] ?? 'in'));
+            $dep = $this->setInches($piece, $set, ['depth', 'width'], (string) ($piece['unit'] ?? 'in'));
             if ($qty <= 0 || $len <= 0 || $dep <= 0) {
                 continue;
             }
@@ -504,11 +595,11 @@ class MillworkPartBuilder
         foreach ($this->sets($piece) as $set) {
             $qty = max(0, (int) ($set['qty'] ?? 0));
             $fallback = (string) ($set['unit'] ?? $piece['unit'] ?? 'in');
-            $len = self::dimInches($set, ['length', 'height'], $fallback);
-            $dep = self::dimInches($set, ['depth', 'width'], $fallback);
-            $thk = self::dimInches($set, ['thickness'], $fallback);
+            $len = $this->setInches($piece, $set, ['length', 'height'], $fallback);
+            $dep = $this->setInches($piece, $set, ['depth', 'width'], $fallback);
+            $thk = $this->setInches($piece, $set, ['thickness'], $fallback);
             if ($thk <= 0) {
-                $thk = self::dimInches($piece, ['thickness'], $fallback) ?: self::toInches(3, $fallback);
+                $thk = self::dimInches($piece, ['thickness'], $fallback) ?: $this->defaultInches($piece, 3);
             }
             if ($qty <= 0 || $len <= 0 || $dep <= 0 || $thk <= 0) {
                 continue;
@@ -691,8 +782,8 @@ class MillworkPartBuilder
         $n = 0;
         foreach ($this->sets($piece) as $set) {
             $qty = max(0, (int) ($set['qty'] ?? 0));
-            $w = self::dimInches($set, ['width', 'depth'], (string) ($piece['unit'] ?? 'in'));
-            $h = self::dimInches($set, ['height', 'length'], (string) ($piece['unit'] ?? 'in'));
+            $w = $this->setInches($piece, $set, ['width', 'depth'], (string) ($piece['unit'] ?? 'in'));
+            $h = $this->setInches($piece, $set, ['height', 'length'], (string) ($piece['unit'] ?? 'in'));
             if ($qty <= 0 || $w <= 0 || $h <= 0) {
                 continue;
             }
@@ -727,9 +818,16 @@ class MillworkPartBuilder
     private function bench(array $piece, float $mat, float $eb, bool $band): array
     {
         $qty = max(1, (int) ($piece['qty'] ?? 1));
-        $len = self::dimInches($piece, ['length', 'width']);
-        $dep = self::dimInches($piece, ['depth']);
-        $h = self::dimInches($piece, ['height']) ?: 18.0;
+        if (self::usesNewParsing($piece, $this->calcVersion)) {
+            $len = self::dimInches($piece, ['length', 'width']);
+            $dep = self::dimInches($piece, ['depth']);
+            $h = self::dimInches($piece, ['height']) ?: 18.0;
+        } else {
+            $unit = (string) ($piece['unit'] ?? 'in');
+            $len = self::toInches((float) ($piece['length'] ?? $piece['width'] ?? 0), $unit);
+            $dep = self::toInches((float) ($piece['depth'] ?? 0), $unit);
+            $h = self::toInches((float) ($piece['height'] ?? 18), $unit);
+        }
         if ($len <= 0 || $dep <= 0 || $h <= 0) {
             return [];
         }
@@ -786,8 +884,8 @@ class MillworkPartBuilder
     {
         $qty = max(1, (int) ($piece['qty'] ?? 1));
         $w = self::dimInches($piece, ['width', 'length']);
-        $h = self::dimInches($piece, ['height']) ?: self::DEFAULT_CLOSET_HEIGHT;
-        $d = self::dimInches($piece, ['depth']) ?: self::DEFAULT_CLOSET_DEPTH;
+        $h = self::dimInches($piece, ['height']) ?: $this->defaultInches($piece, self::DEFAULT_CLOSET_HEIGHT);
+        $d = self::dimInches($piece, ['depth']) ?: $this->defaultInches($piece, self::DEFAULT_CLOSET_DEPTH);
         if ($w <= 0 || $h <= 0 || $d <= 0) {
             return [];
         }
@@ -887,7 +985,10 @@ class MillworkPartBuilder
         if ($wallIn <= 0) {
             return [];
         }
-        $heightIn = self::dimInches($piece, ['height']) ?: self::DEFAULT_WAINSCOT_HEIGHT;
+        $heightIn = self::dimInches($piece, ['height']);
+        if ($heightIn <= 0) {
+            $heightIn = self::DEFAULT_WAINSCOT_HEIGHT;
+        }
         $panelW = 24.0;
         $panels = max(1, (int) ceil($wallIn / $panelW));
         $lastW = $wallIn - (($panels - 1) * $panelW);
@@ -926,9 +1027,9 @@ class MillworkPartBuilder
     private function mantel(array $piece, float $mat, float $eb, bool $band): array
     {
         $qty = max(1, (int) ($piece['qty'] ?? 1));
-        $len = self::dimInches($piece, ['length', 'width']) ?: 60;
-        $dep = self::dimInches($piece, ['depth']) ?: 10;
-        $h = self::dimInches($piece, ['height', 'thickness']) ?: 8;
+        $len = self::dimInches($piece, ['length', 'width']) ?: $this->defaultInches($piece, 60);
+        $dep = self::dimInches($piece, ['depth']) ?: $this->defaultInches($piece, 10);
+        $h = self::dimInches($piece, ['height', 'thickness']) ?: $this->defaultInches($piece, 8);
         if ($len <= 0 || $dep <= 0 || $h <= 0) {
             return [];
         }
@@ -967,8 +1068,8 @@ class MillworkPartBuilder
             return [];
         }
         $openings = max(0, (int) ($piece['openings'] ?? 0));
-        $openingW = (self::dimInches(array_merge($piece, ['type' => 'trim']), ['width']) ?: 32) / 12.0;
-        $openingH = (self::dimInches(array_merge($piece, ['type' => 'trim']), ['height']) ?: 80) / 12.0;
+        $openingW = (self::positiveDim($piece, ['width']) ?: 32) / 12.0;
+        $openingH = (self::positiveDim($piece, ['height']) ?: 80) / 12.0;
         $casingLf = $openings * ((2 * $openingH) + $openingW);
         $totalLf = ($lf + $casingLf) * $qty;
         $profile = self::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
@@ -1057,16 +1158,52 @@ class MillworkPartBuilder
     /**
      * @param  array<string, mixed>  $piece
      */
-    private function linearFeetToInches(array $piece): float
+    /**
+     * @param  array<string, mixed>  $piece
+     * @param  array<string, mixed>  $set
+     * @param  list<string>  $keys
+     */
+    private function setInches(array $piece, array $set, array $keys, ?string $fallbackUnit = null): float
     {
-        if (array_key_exists('linear_ft', $piece)) {
-            $parsed = MillworkDimensionParser::inspect($piece['linear_ft'], 'ft');
-            if ($parsed['status'] === MillworkDimensionParser::STATUS_OK && $parsed['inches'] > 0) {
-                return $parsed['inches'];
-            }
+        $set['_calc_version'] = $piece['_calc_version'] ?? $this->calcVersion;
+
+        return self::dimInches($set, $keys, $fallbackUnit);
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     */
+    private function defaultInches(array $piece, float $inchDefault): float
+    {
+        if (self::usesNewParsing($piece, $this->calcVersion)) {
+            return $inchDefault;
         }
 
-        return self::dimInches($piece, ['length']);
+        return self::toInches($inchDefault, (string) ($piece['unit'] ?? 'in'));
+    }
+
+    private function linearFeetToInches(array $piece): float
+    {
+        if (self::usesNewParsing($piece, $this->calcVersion)) {
+            if (array_key_exists('linear_ft', $piece)) {
+                $parsed = MillworkDimensionParser::inspect($piece['linear_ft'], 'ft');
+                if ($parsed['status'] === MillworkDimensionParser::STATUS_OK && $parsed['inches'] > 0) {
+                    return $parsed['inches'];
+                }
+            }
+
+            return self::dimInches($piece, ['length']);
+        }
+        $explicit = self::positiveDim($piece, ['linear_ft']);
+        if ($explicit > 0) {
+            return $explicit * 12.0;
+        }
+        $len = self::positiveDim($piece, ['length']);
+        if ($len <= 0) {
+            return 0.0;
+        }
+
+        return self::toInches($len, (string) ($piece['unit'] ?? 'in'));
     }
 
     private function fmtLf(float $lf): string

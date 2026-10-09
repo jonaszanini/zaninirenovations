@@ -837,7 +837,7 @@ class MillworkCutPlanPlacementTest extends TestCase
             'pieces' => [array_merge($base, ['width' => 30, 'height' => 34.5, 'depth' => 24])],
             'include_install' => false,
             'owner_hourly_rate' => 85,
-        ], $this->settings(), 2);
+        ], $this->settings(), 3);
         $fancy = (new MillworkQuotationCalculator)->calculate([
             'pieces' => [array_merge($base, [
                 'width' => '2\' 6"',
@@ -846,7 +846,7 @@ class MillworkCutPlanPlacementTest extends TestCase
             ])],
             'include_install' => false,
             'owner_hourly_rate' => 85,
-        ], $this->settings(), 2);
+        ], $this->settings(), 3);
 
         $this->assertEqualsWithDelta(
             (float) $plain['summary']['grand_total'],
@@ -1069,9 +1069,9 @@ class MillworkCutPlanPlacementTest extends TestCase
         $this->assertGreaterThan(0, (float) $out['summary']['grand_total']);
     }
 
-    public function test_v2_feet_bench_blank_height_defaults_to_eighteen_inches(): void
+    public function test_v3_feet_bench_blank_height_defaults_to_eighteen_inches(): void
     {
-        $exploded = (new MillworkPartBuilder)->explode([
+        $exploded = (new MillworkPartBuilder(MillworkPartBuilder::CALC_VERSION))->explode([
             'type' => 'bench',
             'qty' => 1,
             'width' => 4,

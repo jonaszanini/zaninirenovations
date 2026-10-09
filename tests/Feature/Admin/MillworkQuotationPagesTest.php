@@ -82,8 +82,10 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Finish waste %');
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Pieces');
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Materials & finish');
+        $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Wood sheet');
         $create->assertSee('aria-label="About Pieces"', false);
-        $create->assertDontSee('aria-label="About Wood sheet"', false);
+        $create->assertSee('aria-label="About Wood sheet"', false);
+        $create->assertSee('Primary 4×8 (or catalog size).', false);
         $create->assertDontSee('<label for="mw-waste">@include', false);
         $create->assertDontSee('<p class="admin-help">Add each millwork item', false);
 

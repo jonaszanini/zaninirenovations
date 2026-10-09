@@ -10,6 +10,7 @@
   $isLegacyQuote = $isLegacyQuote ?? (((int) ($cutPlanVersion ?? $builderVersion ?? 2)) < 2);
 @endphp
 <article class="mw-piece admin-card" data-mw-piece data-mw-type="{{ $type }}" data-mw-below="{{ (($piece['below'] ?? 'divisions') === 'drawers') ? 'drawers' : 'divisions' }}">
+  <input type="hidden" name="pieces[{{ $pi }}][_calc_version]" value="{{ (int) ($piece['_calc_version'] ?? 0) }}" data-mw-calc-version>
   <div class="mw-piece__head">
     <h4 class="mw-piece__title">Piece <span data-mw-piece-n>{{ is_numeric($pi) ? ((int) $pi + 1) : '1' }}</span></h4>
     <div class="mw-piece__actions">

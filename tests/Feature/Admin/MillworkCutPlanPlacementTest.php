@@ -590,6 +590,32 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             ->assertSee('qa-contact', false);
     }
 
+    public function test_saved_v2_quote_shows_recalculate_to_v3(): void
+    {
+        $this->actingAsAdmin();
+        $inputs = [
+            'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ];
+        $calc = (new MillworkQuotationCalculator)->calculate($inputs, null, 2);
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V2-RECALC',
+            'client_name' => 'Saved V2',
+            'is_draft' => true,
+            'cut_plan_version' => 2,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => (float) ($calc['summary']['grand_total'] ?? 0),
+        ]);
+
+        $this->get(route('admin.quotations.millwork.edit', $quote))
+            ->assertOk()
+            ->assertSee('Recalculate with new cut plan')
+            ->assertSee('name="_cut_plan_version"', false)
+            ->assertSee('value="2"', false);
+    }
+
     public function test_vehicles_business_contact_help_is_behind_info_tip(): void
     {
         $this->actingAsAdmin();
