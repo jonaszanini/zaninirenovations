@@ -8,9 +8,14 @@ use App\Services\MaterialScraping\HomeDepotCaUrls;
 use App\Services\MaterialScraping\MaterialCatalogHomeDepotPullService;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use App\Services\MaterialScraping\MaterialSkuImportService;
+use App\Services\MaterialScraping\HomeDepotCaProductParser;
+use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
+use App\Services\MaterialScraping\MaterialPageFetcher;
+use App\Services\MaterialScraping\AmazonCaSerpApiProductFetcher;
+use App\Services\MaterialMetadataPopulationService;
 use App\Services\MaterialScraping\ParsedProductData;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Mockery;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
@@ -240,35 +245,140 @@ class MaterialHomeDepotPickerImportTest extends IntegrationTestCase
         $this->assertSame(1, Material::query()->where('store_sku', '1001898921')->count());
     }
 
-    public function test_store_sku_is_normalized_on_save_and_unique(): void
+    public function test_store_sku_is_normalized_on_save(): void
     {
         Material::query()->create([
             'name' => 'Cap A',
-            'store_sku' => ' 100-189-8921 ',
+            'store_sku' => 'SKU 100-189-8921',
             'price_cad' => 1.49,
             'is_active' => true,
         ]);
 
         $saved = Material::query()->where('name', 'Cap A')->first();
         $this->assertSame('1001898921', $saved?->store_sku);
+    }
 
-        $this->expectException(QueryException::class);
+    public function test_admin_rejects_duplicate_normalised_hd_sku_variants(): void
+    {
+        $this->actingAsAdmin();
+
         Material::query()->create([
-            'name' => 'Cap B',
+            'name' => 'Cap A',
             'store_sku' => '1001898921',
-            'price_cad' => 2.00,
+            'price_cad' => 1.49,
             'is_active' => true,
         ]);
+
+        $this->from(route('admin.materials.create'))
+            ->post(route('admin.materials.store'), [
+                'name' => 'Cap B',
+                'store_sku' => 'SKU 100-189-8921',
+                'price_cad' => '2.00',
+                'is_active' => '1',
+                'sort_order' => '0',
+            ])
+            ->assertRedirect(route('admin.materials.create'))
+            ->assertSessionHasErrors('store_sku');
+
+        $this->assertSame(0, Material::query()->where('name', 'Cap B')->count());
     }
 
-    public function test_unique_index_exists_on_store_sku(): void
+    public function test_admin_allows_editing_material_that_already_has_the_sku(): void
     {
-        $rows = DB::select('SHOW INDEX FROM materials WHERE Key_name = ?', ['materials_store_sku_unique']);
-        $this->assertNotEmpty($rows);
-        $this->assertTrue((bool) ($rows[0]->Non_unique === 0 || $rows[0]->Non_unique === '0'));
+        $this->actingAsAdmin();
+
+        $existing = Material::query()->create([
+            'name' => 'Cap A',
+            'store_sku' => '1001898921',
+            'price_cad' => 1.49,
+            'is_active' => true,
+        ]);
+
+        $this->put(route('admin.materials.update', $existing), [
+            'name' => 'Cap A updated',
+            'store_sku' => '100-189-8921',
+            'price_cad' => '1.49',
+            'is_active' => '1',
+            'sort_order' => '0',
+        ])->assertRedirect(route('admin.materials.edit', $existing));
+
+        $existing->refresh();
+        $this->assertSame('Cap A updated', $existing->name);
+        $this->assertSame('1001898921', $existing->store_sku);
     }
 
-    public function test_bulk_import_sku_matches_product_url_sets_store_sku_and_does_not_reactivate(): void
+    public function test_lock_timeout_returns_busy_without_500(): void
+    {
+        $this->actingAsAdmin();
+
+        $lock = Mockery::mock(\Illuminate\Contracts\Cache\Lock::class);
+        $lock->shouldReceive('block')->once()->andThrow(new LockTimeoutException);
+        Cache::shouldReceive('lock')->once()->andReturn($lock);
+
+        $this->postJson(route('admin.materials.import-from-home-depot'), [
+            'query' => '1001898921',
+        ])
+            ->assertStatus(409)
+            ->assertJsonPath('message', MaterialCatalogHomeDepotPullService::MSG_BUSY);
+
+        $this->assertNull(Material::query()->where('store_sku', '1001898921')->first());
+    }
+
+    public function test_sync_does_not_steal_another_rows_store_sku(): void
+    {
+        $homeDepotId = MaterialVendor::homeDepotId();
+        $owner = Material::query()->create([
+            'name' => 'Owner cap',
+            'store_sku' => '1001898921',
+            'price_cad' => 1.49,
+            'product_url' => 'https://www.homedepot.ca/product/1001898921',
+            'is_active' => true,
+            'vendor_id' => $homeDepotId,
+        ]);
+        $target = Material::query()->create([
+            'name' => 'Other item',
+            'store_sku' => '1000000001',
+            'price_cad' => 2.00,
+            'product_url' => 'https://www.homedepot.ca/product/1000000001',
+            'is_active' => true,
+            'vendor_id' => $homeDepotId,
+        ]);
+
+        $parsed = new ParsedProductData(
+            name: 'Hijacked title',
+            sku: '1001898921',
+            priceCad: 8.88,
+            productUrl: (string) $target->product_url,
+            source: 'serpapi-hd',
+        );
+
+        $localized = Mockery::mock(HomeDepotCaLocalizedPriceFetcher::class);
+        $localized->shouldReceive('configuredStoreId')->andReturn('7263');
+        $localized->shouldReceive('tryFetch')->andReturn($parsed);
+
+        $population = Mockery::mock(MaterialMetadataPopulationService::class);
+        $population->shouldReceive('applyToMaterial')->andReturnFalse();
+
+        $service = new MaterialPriceSyncService(
+            Mockery::mock(MaterialPageFetcher::class),
+            new HomeDepotCaProductParser($localized),
+            $localized,
+            Mockery::mock(AmazonCaSerpApiProductFetcher::class),
+            $population,
+        );
+
+        $result = $service->syncOne($target);
+        $this->assertSame(Material::SCRAPE_OK, $result['status']);
+
+        $target->refresh();
+        $owner->refresh();
+        $this->assertSame('1000000001', $target->store_sku);
+        $this->assertSame('1001898921', $owner->store_sku);
+        $this->assertEqualsWithDelta(8.88, (float) $target->price_cad, 0.001);
+        $this->assertSame('Hijacked title', $target->name);
+    }
+
+    public function test_bulk_import_skips_inactive_instead_of_updating(): void
     {
         $existing = Material::query()->create([
             'name' => 'Existing from URL',
@@ -282,13 +392,55 @@ class MaterialHomeDepotPickerImportTest extends IntegrationTestCase
         $result = app(MaterialSkuImportService::class)->importSku('1001898921');
 
         $existing->refresh();
+        $this->assertSame('skipped', $result['action']);
+        $this->assertSame('inactive', $result['reason']);
         $this->assertSame($existing->id, $result['material_id']);
-        $this->assertSame('updated', $result['action']);
-        $this->assertSame('1001898921', $existing->store_sku);
+        $this->assertNull($existing->store_sku);
         $this->assertFalse((bool) $existing->is_active);
         $this->assertSame('https://www.homedepot.ca/product/example/1001898921', $existing->product_url);
-        $this->assertSame('https://images.homedepot.ca/productimages/p_kept.jpg', $existing->image_url);
-        $this->assertSame(1, Material::query()->where('store_sku', '1001898921')->count());
+    }
+
+    public function test_bulk_import_sku_matches_product_url_and_sets_store_sku_on_active_row(): void
+    {
+        $existing = Material::query()->create([
+            'name' => 'Existing from URL',
+            'store_sku' => null,
+            'price_cad' => 4.25,
+            'product_url' => 'https://www.homedepot.ca/product/example/1001898921',
+            'is_active' => true,
+        ]);
+
+        $result = app(MaterialSkuImportService::class)->importSku('1001898921');
+
+        $existing->refresh();
+        $this->assertSame('updated', $result['action']);
+        $this->assertSame('1001898921', $existing->store_sku);
+        $this->assertTrue((bool) $existing->is_active);
+    }
+
+    public function test_pull_finds_existing_formatted_store_sku(): void
+    {
+        $this->actingAsAdmin();
+
+        $existing = Material::query()->create([
+            'name' => 'Legacy formatted SKU',
+            'short_name' => 'Legacy cap',
+            'store_sku' => '1001898921',
+            'price_cad' => 1.49,
+            'is_active' => true,
+        ]);
+        Material::query()->where('id', $existing->id)->update(['store_sku' => 'SKU 100-189-8921']);
+
+        $this->mockSyncService()->shouldNotReceive('fetchHomeDepotSku');
+
+        $response = $this->postJson(route('admin.materials.import-from-home-depot'), [
+            'query' => '1001898921',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('created', false);
+        $response->assertJsonPath('material.id', $existing->id);
+        $this->assertSame(1, Material::query()->where('id', $existing->id)->count());
     }
 
     public function test_fence_config_catalog_picker_exposes_home_depot_import(): void

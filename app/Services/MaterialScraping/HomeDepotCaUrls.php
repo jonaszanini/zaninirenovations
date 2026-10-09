@@ -112,8 +112,9 @@ class HomeDepotCaUrls
     }
 
     /**
-     * Canonical store_sku for persistence: trim; Home Depot item numbers become digits only.
-     * Values with letters (Amazon ASINs, custom codes) are trimmed but otherwise kept.
+     * Canonical store_sku for new writes: Home Depot item numbers become digits only.
+     * Strips a leading "SKU" prefix, spaces, and dashes. ASINs and other letter
+     * codes are trimmed but not rewritten.
      */
     public static function normalizeStoredSku(?string $sku): ?string
     {
@@ -121,17 +122,21 @@ class HomeDepotCaUrls
             return null;
         }
 
-        $sku = trim($sku);
+        $sku = trim(preg_replace('/\s+/', ' ', $sku) ?? $sku);
         if ($sku === '') {
             return null;
         }
 
-        if (preg_match('/[A-Za-z]/', $sku) === 1) {
-            return $sku;
+        $withoutPrefix = trim((string) preg_replace('/^sku[[:space:]\-:]*/i', '', $sku));
+        if ($withoutPrefix === '') {
+            return null;
         }
 
-        $digits = preg_replace('/\D+/', '', $sku) ?? '';
+        $separatorsRemoved = preg_replace('/[\s\-]+/', '', $withoutPrefix) ?? '';
+        if ($separatorsRemoved !== '' && preg_match('/^\d+$/', $separatorsRemoved) === 1) {
+            return self::isValidSku($separatorsRemoved) ? $separatorsRemoved : $withoutPrefix;
+        }
 
-        return self::isValidSku($digits) ? $digits : $sku;
+        return $withoutPrefix;
     }
 }

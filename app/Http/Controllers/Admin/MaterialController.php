@@ -7,6 +7,7 @@ use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialVendor;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
+use App\Services\MaterialScraping\HomeDepotCaUrls;
 use App\Services\MaterialScraping\MaterialCatalogHomeDepotPullService;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use App\Services\MaterialScraping\MaterialSkuImportService;
@@ -197,7 +198,7 @@ class MaterialController extends Controller
 
     public function update(Request $request, Material $material)
     {
-        $material->update($this->validated($request));
+        $material->update($this->validated($request, $material));
 
         return redirect()
             ->route('admin.materials.edit', $material)
@@ -578,17 +579,20 @@ class MaterialController extends Controller
             $sku = $state['skus'][$state['import_index']];
             $result = $importer->importSku($sku, $state['category_id'] ?? null, $state['vendor_id'] ?? null);
 
-            $state['material_ids'][] = $result['material_id'];
-            if ($result['action'] === 'created') {
-                $state['created']++;
-            } else {
-                $state['updated']++;
-            }
             $state['import_index']++;
 
-            $message = $result['action'] === 'created'
-                ? 'Created material for SKU '.$sku
-                : 'Updated existing material for SKU '.$sku;
+            if ($result['action'] === 'skipped') {
+                $reason = $result['reason'] ?? 'inactive';
+                $message = 'skipped: '.$reason.' (SKU '.$sku.')';
+            } elseif ($result['action'] === 'created') {
+                $state['material_ids'][] = $result['material_id'];
+                $state['created']++;
+                $message = 'Created material for SKU '.$sku;
+            } else {
+                $state['material_ids'][] = $result['material_id'];
+                $state['updated']++;
+                $message = 'Updated existing material for SKU '.$sku;
+            }
 
             $state = $this->bulkImportAppendLog($state, $message);
 
@@ -781,7 +785,7 @@ class MaterialController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validated(Request $request): array
+    private function validated(Request $request, ?Material $current = null): array
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -809,6 +813,20 @@ class MaterialController extends Controller
         foreach (['short_name', 'description', 'store_sku', 'model', 'product_url', 'image_url', 'unit'] as $nullable) {
             if (array_key_exists($nullable, $data) && ! filled($data[$nullable])) {
                 $data[$nullable] = null;
+            }
+        }
+
+        $normalizedSku = HomeDepotCaUrls::normalizeStoredSku($data['store_sku'] ?? null);
+        $data['store_sku'] = $normalizedSku;
+        if (HomeDepotCaUrls::isValidSku($normalizedSku)) {
+            $owner = Material::findByNormalizedHdSku(
+                $normalizedSku,
+                $current !== null ? (int) $current->id : null
+            );
+            if ($owner !== null) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'store_sku' => 'Another material already uses Home Depot SKU '.$normalizedSku.'.',
+                ]);
             }
         }
 

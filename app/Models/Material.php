@@ -58,6 +58,72 @@ class Material extends Model
         });
     }
 
+    /**
+     * Find a catalog row whose stored SKU or product URL matches this Home Depot item number,
+     * including legacy "SKU 100-189-8921" formatting. Does not rewrite stored values.
+     */
+    public static function findByNormalizedHdSku(string $sku, ?int $ignoreId = null, bool $forUpdate = false): ?self
+    {
+        $sku = HomeDepotCaUrls::normalizeStoredSku($sku) ?? trim($sku);
+        if (! HomeDepotCaUrls::isValidSku($sku)) {
+            return null;
+        }
+
+        $query = static::query()->where(function ($inner) use ($sku) {
+            $digitsExpr = "REPLACE(REPLACE(REPLACE(REPLACE(UPPER(TRIM(IFNULL(store_sku,''))), 'SKU ', ''), 'SKU', ''), '-', ''), ' ', '')";
+            $inner->where('store_sku', $sku)
+                ->orWhereRaw($digitsExpr.' = ?', [$sku])
+                ->orWhere('product_url', 'like', '%/'.$sku)
+                ->orWhere('product_url', 'like', '%/'.$sku.'/%')
+                ->orWhere('product_url', 'like', '%/'.$sku.'?%');
+        });
+
+        if ($ignoreId !== null) {
+            $query->where('id', '!=', $ignoreId);
+        }
+
+        if ($forUpdate) {
+            $query->lockForUpdate();
+        }
+
+        $rows = $query
+            ->orderByRaw('case when store_sku = ? then 0 else 1 end', [$sku])
+            ->get();
+
+        return $rows->first(function (self $material) use ($sku) {
+            if (HomeDepotCaUrls::normalizeStoredSku($material->store_sku) === $sku) {
+                return true;
+            }
+
+            return HomeDepotCaUrls::normalizeSku((string) $material->product_url) === $sku;
+        });
+    }
+
+    /**
+     * Set store_sku when the normalised Home Depot value is not owned by another row.
+     * Returns false when the assignment was skipped to avoid a duplicate.
+     */
+    public function assignStoreSkuIfAvailable(?string $sku): bool
+    {
+        $normalized = HomeDepotCaUrls::normalizeStoredSku($sku);
+        if ($normalized === null) {
+            $this->store_sku = null;
+
+            return true;
+        }
+
+        if (HomeDepotCaUrls::isValidSku($normalized)) {
+            $owner = static::findByNormalizedHdSku($normalized, $this->id ? (int) $this->id : null);
+            if ($owner !== null) {
+                return false;
+            }
+        }
+
+        $this->store_sku = $normalized;
+
+        return true;
+    }
+
     public function isCatalogReady(): bool
     {
         if (! $this->is_active) {

@@ -204,6 +204,16 @@ class MaterialPriceSyncService
                 ];
             }
 
+            $parsedSku = HomeDepotCaUrls::normalizeStoredSku($parsed->sku);
+            if (HomeDepotCaUrls::isValidSku($parsedSku) && $parsedSku !== $sku) {
+                return [
+                    'status' => Material::SCRAPE_FAILED,
+                    'parsed' => $parsed,
+                    'error' => 'SerpApi returned a different product than SKU '.$sku.'.',
+                    'unreachable' => false,
+                ];
+            }
+
             return [
                 'status' => Material::SCRAPE_OK,
                 'parsed' => $parsed,
@@ -226,30 +236,52 @@ class MaterialPriceSyncService
             return true;
         }
 
-        $class = $e::class;
-        if (str_contains($class, 'ConnectException') || str_contains($class, 'TransferException')) {
-            $transferMessage = strtolower($e->getMessage());
-            if (str_contains($transferMessage, 'timed out')
-                || str_contains($transferMessage, 'timeout')
-                || str_contains($transferMessage, 'curl error 28')
-                || str_contains($transferMessage, 'curl error 6')
-                || str_contains($transferMessage, 'curl error 7')
-                || str_contains($transferMessage, 'could not resolve')
-                || str_contains($transferMessage, 'failed to connect')) {
+        $status = null;
+        if (method_exists($e, 'getCode')) {
+            $code = (int) $e->getCode();
+            if ($code === 429 || $code >= 500) {
+                $status = $code;
+            }
+        }
+        if ($e instanceof \Illuminate\Http\Client\RequestException && $e->response) {
+            $status = $e->response->status();
+        }
+        if ($status === 429 || ($status !== null && $status >= 500)) {
+            return true;
+        }
+
+        $message = strtolower($e->getMessage());
+        $needles = [
+            'timed out',
+            'timeout',
+            'curl error 28',
+            'curl error 6',
+            'curl error 7',
+            'could not resolve',
+            'failed to connect',
+            'connection refused',
+            'network is unreachable',
+            'too many requests',
+            'rate limit',
+            'quota',
+            'http 429',
+            'http 500',
+            'http 502',
+            'http 503',
+            'http 504',
+            'serpapi http 429',
+            'serpapi http 5',
+            'status code 429',
+            'status code 5',
+        ];
+
+        foreach ($needles as $needle) {
+            if (str_contains($message, $needle)) {
                 return true;
             }
         }
 
-        $message = strtolower($e->getMessage());
-
-        return str_contains($message, 'timed out')
-            || str_contains($message, 'cURL error 28')
-            || str_contains($message, 'cURL error 6')
-            || str_contains($message, 'cURL error 7')
-            || str_contains($message, 'could not resolve host')
-            || str_contains($message, 'failed to connect')
-            || str_contains($message, 'connection refused')
-            || str_contains($message, 'network is unreachable');
+        return (bool) preg_match('/\bhttp(?:\s+|[^0-9]{0,12})(429|5\d\d)\b/', $message);
     }
 
     /**
@@ -369,8 +401,12 @@ class MaterialPriceSyncService
     {
         $material->name = $parsed->name ?? $material->name;
 
-        if (filled($parsed->sku)) {
-            $material->store_sku = $parsed->sku;
+        if (filled($parsed->sku) && ! $material->assignStoreSkuIfAvailable($parsed->sku)) {
+            AppLogger::warning('materials.sync.sku_owned', [
+                'material_id' => $material->id,
+                'wanted_store_sku' => $parsed->sku,
+                'kept_store_sku' => $material->store_sku,
+            ]);
         }
 
         if (filled($parsed->model)) {

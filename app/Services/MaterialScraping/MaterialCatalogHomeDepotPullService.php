@@ -5,6 +5,7 @@ namespace App\Services\MaterialScraping;
 use App\Models\Material;
 use App\Services\MaterialMetadataPopulationService;
 use App\Support\Logging\AppLogger;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -17,6 +18,12 @@ class MaterialCatalogHomeDepotPullService
     public const MSG_UNREACHABLE = "Home Depot couldn't be reached, try again";
 
     public const MSG_INACTIVE = 'This material exists but is inactive';
+
+    public const MSG_BUSY = 'Busy, try again in a moment';
+
+    public const LOCK_SECONDS = 75;
+
+    public const LOCK_WAIT_SECONDS = 10;
 
     public function __construct(
         private MaterialSkuImportService $importer,
@@ -43,9 +50,9 @@ class MaterialCatalogHomeDepotPullService
             return $this->fail(422, self::MSG_INVALID);
         }
 
-        $lock = Cache::lock('materials.store-sku.'.$sku, 20);
-
-        return $lock->block(15, function () use ($sku) {
+        try {
+            return Cache::lock('materials.store-sku.'.$sku, self::LOCK_SECONDS)
+                ->block(self::LOCK_WAIT_SECONDS, function () use ($sku) {
             $existing = $this->importer->findBySku($sku);
 
             if ($existing !== null && ! $existing->is_active) {
@@ -93,7 +100,10 @@ class MaterialCatalogHomeDepotPullService
             $material->refresh()->load('vendor');
 
             return $this->ok($material, $created);
-        });
+                });
+        } catch (LockTimeoutException $e) {
+            return $this->fail(409, self::MSG_BUSY);
+        }
     }
 
     /**

@@ -15,6 +15,8 @@ class HomeDepotCaUrlsTest extends TestCase
         $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku(' 100-189-8921 '));
         $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku('1001898921'));
         $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku('100 189 8921'));
+        $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku('SKU 1001898921'));
+        $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku('sku: 100-189-8921'));
         $this->assertNull(HomeDepotCaUrls::normalizeStoredSku('   '));
         $this->assertNull(HomeDepotCaUrls::normalizeStoredSku(null));
     }
@@ -35,6 +37,15 @@ class HomeDepotCaUrlsTest extends TestCase
         ));
         $this->assertTrue(MaterialPriceSyncService::isUnreachableError(
             new RuntimeException('SerpApi connection failed: failed to connect')
+        ));
+        $this->assertTrue(MaterialPriceSyncService::isUnreachableError(
+            new RuntimeException('HTTP 503 fetching https://www.homedepot.ca/product/1001898921')
+        ));
+        $this->assertTrue(MaterialPriceSyncService::isUnreachableError(
+            new RuntimeException('SerpApi HTTP 429')
+        ));
+        $this->assertTrue(MaterialPriceSyncService::isUnreachableError(
+            new RuntimeException('Your account has exceeded its API quota')
         ));
         $this->assertFalse(MaterialPriceSyncService::isUnreachableError(
             new RuntimeException('Could not extract name and price from page.')

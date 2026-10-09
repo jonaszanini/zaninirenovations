@@ -7,9 +7,11 @@ use App\Services\MaterialMetadataPopulationService;
 use App\Services\MaterialScraping\AmazonCaSerpApiProductFetcher;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\MaterialScraping\HomeDepotCaProductParser;
+use App\Services\MaterialScraping\HomeDepotCaSerpApiPriceFetcher;
 use App\Services\MaterialScraping\MaterialPageFetcher;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use App\Services\MaterialScraping\ParsedProductData;
+use Illuminate\Support\Facades\Http;
 use Mockery;
 use Tests\TestCase;
 
@@ -105,6 +107,40 @@ class MaterialPriceSyncServiceTest extends TestCase
 
         $this->assertSame(Material::SCRAPE_FAILED, $result['status']);
         $this->assertTrue($result['unreachable']);
+        $this->assertNull($result['parsed']);
+    }
+
+    public function test_mismatched_serpapi_sku_is_treated_as_not_found(): void
+    {
+        config([
+            'materials.scraper.serpapi_key' => 'test-key',
+            'materials.scraper.homedepot_store_id' => '7263',
+        ]);
+
+        Http::fake([
+            'serpapi.com/*' => Http::response([
+                'search_metadata' => ['status' => 'Success'],
+                'products' => [[
+                    'product_id' => '9999999999',
+                    'title' => 'Some other product',
+                    'price' => 9.99,
+                ]],
+            ], 200),
+        ]);
+
+        $localized = new HomeDepotCaLocalizedPriceFetcher(new HomeDepotCaSerpApiPriceFetcher);
+        $service = new MaterialPriceSyncService(
+            Mockery::mock(MaterialPageFetcher::class),
+            new HomeDepotCaProductParser($localized),
+            $localized,
+            Mockery::mock(AmazonCaSerpApiProductFetcher::class),
+            Mockery::mock(MaterialMetadataPopulationService::class),
+        );
+
+        $result = $service->fetchHomeDepotSku('1001898921');
+
+        $this->assertSame(Material::SCRAPE_FAILED, $result['status']);
+        $this->assertFalse($result['unreachable']);
         $this->assertNull($result['parsed']);
     }
 
