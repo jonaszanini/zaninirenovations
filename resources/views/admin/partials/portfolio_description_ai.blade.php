@@ -15,7 +15,10 @@
       <span>Writing with Gemini…</span>
     </div>
   </div>
-  <p class="admin-form-help">Write a rough description first. AI uses your text plus up to 8 project photos (uploads, checked Google Photos{{ isset($hasExistingPhotos) && $hasExistingPhotos ? ', or saved photos on edit' : '' }}) to draft two portfolio options. Use the history icon to switch between versions.</p>
+  <span class="admin-label-with-tip">
+    <span class="admin-form-group-label">Improve description</span>
+    <x-admin.info-tip label="Improve description with AI">Write a rough description first. AI uses your text plus up to 8 project photos (uploads, checked Google Photos{{ isset($hasExistingPhotos) && $hasExistingPhotos ? ', or saved photos on edit' : '' }}) to draft two portfolio options. Use the history icon to switch between versions.</x-admin.info-tip>
+  </span>
   <p id="portfolio-desc-ai-status" class="nb2-status" role="status"></p>
 </div>
 

@@ -288,7 +288,10 @@
             <div class="sq-intro-option-block">
               <h5 class="sq-intro-option-title">
                 Document type
-                @include('admin.partials.info_tip', ['text' => 'You can switch between quotation and estimate at any time; the document number prefix updates when you save.'])
+                @include('admin.partials.info_tip', [
+                  'tipText' => 'You can switch between quotation and estimate at any time; the document number prefix updates when you save.',
+                  'tipLabel' => 'Document type',
+                ])
               </h5>
               @php $docSel = old('document_type', $defaultDocType); @endphp
               <div class="sq-intro-choice-row">
@@ -307,33 +310,27 @@
             <div class="sq-intro-option-block" id="sq-pdf-detail-block">
               <h5 class="sq-intro-option-title">
                 Client PDF line items
-                @include('admin.partials.info_tip', ['text' => 'Controls how material and labour appear on the client PDF.'])
+                @include('admin.partials.info_tip', [
+                  'tipHtml' => 'Controls how material and labour appear on the client PDF.<br><strong>Combined:</strong> Material and labour as one line (one line per job when there are several).<br><strong>Summary:</strong> Two lines for the whole quotation: Material and Labour.<br><strong>Detailed:</strong> Separate Material and Labour lines per job (not each SKU).',
+                  'tipLabel' => 'Client PDF line items',
+                ])
               </h5>
               <div class="sq-intro-choice-row sq-intro-choice-row--pdf-detail" id="sq-pdf-detail-choices">
-                <div class="sq-intro-choice-with-tip">
-                  <label class="cp-checkbox-row">
-                    <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_COMBINED }}"
-                      @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_COMBINED)>
-                    <span>Combined</span>
-                  </label>
-                  @include('admin.partials.info_tip', ['text' => 'Material and labour as one line (one line per job when there are several).'])
-                </div>
-                <div class="sq-intro-choice-with-tip">
-                  <label class="cp-checkbox-row">
-                    <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
-                      @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
-                    <span>Summary</span>
-                  </label>
-                  @include('admin.partials.info_tip', ['text' => 'Two lines for the whole quotation: Material and Labour.'])
-                </div>
-                <div class="sq-intro-choice-with-tip">
-                  <label class="cp-checkbox-row">
-                    <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
-                      @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
-                    <span>Detailed</span>
-                  </label>
-                  @include('admin.partials.info_tip', ['text' => 'Separate Material and Labour lines per job (not each SKU).'])
-                </div>
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_COMBINED }}"
+                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_COMBINED)>
+                  <span>Combined</span>
+                </label>
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
+                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
+                  <span>Summary</span>
+                </label>
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
+                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
+                  <span>Detailed</span>
+                </label>
               </div>
               @error('pdf_detail_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
@@ -341,7 +338,10 @@
             <div class="sq-intro-option-block">
               <h5 class="sq-intro-option-title">
                 Includes (PDF wording)
-                @include('admin.partials.info_tip', ['text' => 'Controls the summary line on the client PDF (e.g. Labour and material or Labour).'])
+                @include('admin.partials.info_tip', [
+                  'tipText' => 'Controls the summary line on the client PDF (e.g. Labour and material or Labour).',
+                  'tipLabel' => 'Includes (PDF wording)',
+                ])
               </h5>
               @php
                 $matDef = $isEdit ? (($quotation->includes_material ?? true) ? '1' : '0') : '1';
@@ -367,7 +367,10 @@
         </section>
 
         <section class="sq-field-box">
-          <h4 class="sq-field-box-title">Description of the work</h4>
+          <h4 class="sq-field-box-title">
+            Description of the work
+            <x-admin.info-tip label="Description of the work">Shown on the client PDF beneath the priced line items. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+          </h4>
           <div class="admin-form-group sq-intro-work-desc quotation-work-desc">
             <label for="sq-work-description" class="visually-hidden">Description of the work</label>
             <textarea id="sq-work-description" name="work_description" rows="8"
@@ -378,7 +381,6 @@
                 'aiContextFormId' => 'sq-standard-form',
                 'aiQuotationType' => 'standard',
             ])
-            <p class="admin-form-help sq-intro-option-help">Shown on the client PDF beneath the priced line items. Formatting (bold, lists, headings) is preserved.</p>
             @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </section>

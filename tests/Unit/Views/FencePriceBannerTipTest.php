@@ -12,7 +12,7 @@ class FencePriceBannerTipTest extends TestCase
         $blade = (string) file_get_contents(resource_path('views/admin/quotations/fence/create.blade.php'));
 
         $this->assertStringContainsString("'tipText'", $blade);
-        $this->assertStringContainsString("'tipLabel' => 'About saved unit prices'", $blade);
+        $this->assertStringContainsString("'tipLabel' => 'saved unit prices'", $blade);
         $this->assertStringContainsString('Save keeps the unit prices from the last save', $blade);
         $this->assertStringNotContainsString('FenceQuotationInfoTipTest', $blade);
     }
@@ -24,7 +24,7 @@ class FencePriceBannerTipTest extends TestCase
             [
                 'tip' => [
                     'tipText' => 'Save keeps the unit prices from the last save. Quantities still follow the current runs. Re-price updates unit prices from the catalogue.',
-                    'tipLabel' => 'About saved unit prices',
+                    'tipLabel' => 'saved unit prices',
                 ],
             ]
         );

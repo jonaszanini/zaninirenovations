@@ -40,10 +40,10 @@
 
     @include('admin.quotations._shared_price_banner', ['consumer' => 'flooring'])
 
-    <h3 style="margin:0 0 12px;">This quote only — add-on rates</h3>
-    <p class="admin-form-help" style="margin:0 0 16px;">
-      Carpet removal and shoe moulding live in Shared prices. Closet doors and re-screw stay here.
-    </p>
+    <h3 style="margin:0 0 12px;">
+      This quote only — add-on rates
+      <x-admin.info-tip label="This quote only — add-on rates">Carpet removal and shoe moulding live in Shared prices. Closet doors and re-screw stay here.</x-admin.info-tip>
+    </h3>
     <input type="hidden" name="remove_carpet_dispose_rate" value="{{ number_format($settings->removeCarpetRate(), 4, '.', '') }}">
     <input type="hidden" name="install_shoe_moulding_rate" value="{{ number_format($settings->shoeInstallRate(), 4, '.', '') }}">
     <input type="hidden" name="caulk_paint_shoe_moulding_rate" value="{{ number_format($settings->shoeCaulkPaintRate(), 4, '.', '') }}">
@@ -63,8 +63,10 @@
 
     <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
 
-    <h3 style="margin:0 0 12px;">Flooring types</h3>
-    <p class="admin-form-help" style="margin:0 0 16px;">Installation rate per sq ft for each flooring product type.</p>
+    <h3 style="margin:0 0 12px;">
+      Flooring types
+      <x-admin.info-tip label="Flooring types">Installation rate per sq ft for each flooring product type.</x-admin.info-tip>
+    </h3>
 
     @foreach ($flooringTypes as $i => $type)
       <div class="fl-type-row">

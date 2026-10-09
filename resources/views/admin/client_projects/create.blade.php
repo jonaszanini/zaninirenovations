@@ -72,12 +72,13 @@
         </div>
 
         <div class="admin-form-group">
-          <label for="cp-conversation-on" class="cp-label-with-hint">
-            Conversation on
+          <span class="admin-label-with-tip cp-label-with-hint">
+            <label for="cp-conversation-on">Conversation on</label>
             @include('admin.client_projects._cp_field_hint', [
-              'text' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
+              'tipText' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
+              'tipLabel' => 'Conversation on',
             ])
-          </label>
+          </span>
           <select id="cp-conversation-on" name="conversation_on" @class(['admin-input', 'is-invalid' => $errors->has('conversation_on')])>
             <option value="" @selected(old('conversation_on') === null || old('conversation_on') === '')>— Not set —</option>
             @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
@@ -144,7 +145,10 @@
           </div>
 
           <div class="admin-form-group">
-            <label for="cp-client-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(optional — CC'd on every client email)</small></label>
+            <span class="admin-label-with-tip">
+              <label for="cp-client-email-secondary">Secondary email</label>
+              <x-admin.info-tip label="Secondary email">Optional — CC'd on every client email.</x-admin.info-tip>
+            </span>
             <input type="email" id="cp-client-email-secondary" name="client_email_secondary"
                    value="{{ old('client_email_secondary') }}" maxlength="255"
                    placeholder="spouse@example.com"
@@ -170,7 +174,8 @@
             <h3 style="font-size:1rem;" class="cp-label-with-hint">
               Invoice billing <span class="admin-form-help cp-inline-help">(optional)</span>
               @include('admin.client_projects._cp_field_hint', [
-                'text' => 'When the payer is a company or a different legal entity, enter the name and address that should appear in the Bill to block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.',
+                'tipText' => 'When the payer is a company or a different legal entity, enter the name and address that should appear in the Bill to block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.',
+                'tipLabel' => 'Invoice billing',
               ])
             </h3>
             <div class="admin-form-group">
@@ -182,11 +187,13 @@
               @error('invoice_billing_name') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group">
-              <label for="cp-invoice-billing-address">Billing address</label>
+              <span class="admin-label-with-tip">
+                <label for="cp-invoice-billing-address">Billing address</label>
+                <x-admin.info-tip label="Billing address">Leave blank to use the client address above on PDFs.</x-admin.info-tip>
+              </span>
               <textarea id="cp-invoice-billing-address" name="invoice_billing_address" rows="3" maxlength="2000"
                         class="admin-input" placeholder="Registered office or mailing address for AP">{{ old('invoice_billing_address') }}</textarea>
               @error('invoice_billing_address') <p class="admin-form-error">{{ $message }}</p> @enderror
-              <p class="admin-form-help">Leave blank to use the client address above on PDFs.</p>
             </div>
           </div>
         </div>

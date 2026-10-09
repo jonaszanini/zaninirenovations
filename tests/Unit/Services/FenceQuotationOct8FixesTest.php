@@ -478,6 +478,7 @@ class FenceQuotationOct8FixesTest extends TestCase
             'labour_rate_per_ft' => 55.00,
             'labour_rate_8ft_per_ft' => 60.00,
             'labour_per_additional_gate' => 150.00,
+            'existing_post_labour_credit' => 30.00,
             'rails_per_section_6ft' => 2,
             'rails_per_section_8ft' => 3,
             'nails_per_picket' => 6,

@@ -1,10 +1,12 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Create image')
+@section('heading')
+  Create image
+  <x-admin.info-tip label="Create image">Generate new images with Gemini (Nano Banana 2). Choose aspect ratio and resolution, then download the full original or an optimized WebP copy from history. The API returns a full-resolution original; a compressed WebP copy is saved for fast gallery preview ({{ (int) config('webp.quality', 75) }}% quality, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB).</x-admin.info-tip>
+@endsection
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Generate new images with Gemini (Nano Banana 2). Choose aspect ratio and resolution, then download the full original or an optimized WebP copy from history.</p>
     <a href="{{ route('admin.image-creation.index') }}" class="admin-btn admin-btn--ghost">
       <i class="fa fa-arrow-left"></i> AI Image
     </a>
@@ -12,7 +14,6 @@
 
   <div class="admin-card nb2-prompt-card">
     <h2 class="nb2-card-title">Create image</h2>
-    <p class="admin-form-help nb2-card-lede">Describe the image you want. The API returns a full-resolution original; a compressed WebP copy is saved for fast gallery preview ({{ (int) config('webp.quality', 75) }}% quality, about {{ (int) round(config('webp.max_bytes', 102400) / 1024) }}&nbsp;KB).</p>
 
     <div class="admin-form-group">
       <label for="nb2-prompt">Image prompt</label>
@@ -41,9 +42,14 @@
     </div>
 
     <div class="admin-form-group">
-      <label for="nb2-image-size">Image size</label>
+      @include('admin.partials.tipped_label', [
+        'label' => 'Image size',
+        'for' => 'nb2-image-size',
+        'tipText' => 'Pixel dimensions update when you change aspect ratio.',
+        'tipLabel' => 'Image size',
+      ])
       <select id="nb2-image-size" class="admin-input"></select>
-      <p class="admin-form-help" id="nb2-size-help">Pixel dimensions update when you change aspect ratio.</p>
+      <p class="admin-form-help" id="nb2-size-help"></p>
     </div>
 
     <div class="nb2-generate-row">

@@ -106,6 +106,9 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .admin-toast--success',
             'html.admin-dark .admin-toast--error',
             'html.admin-dark .admin-toast--warning',
+            'html.admin-dark input[type="date"]',
+            'html.admin-dark input[type="time"]',
+            'html.admin-dark input[type="datetime-local"]',
         ] as $selector) {
             $this->assertStringContainsString($selector, $dark, "Missing dark rule {$selector}");
         }

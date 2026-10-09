@@ -57,8 +57,10 @@
 
     <section class="cp-tab-panel{{ $startTab === 'rates' ? ' is-active' : '' }}"
              data-panel="rates" id="br-config-rates" role="tabpanel" aria-labelledby="br-tab-rates">
-      <h3 class="br-config-heading">This quote only — labour rates</h3>
-      <p class="admin-form-help br-config-help">Shared crew and overlapping trades are edited in Shared prices. Each basement quote can still override owner and helper rates on the form.</p>
+      <h3 class="br-config-heading">
+        This quote only — labour rates
+        <x-admin.info-tip label="This quote only — labour rates">Shared crew and overlapping trades are edited in Shared prices. Each basement quote can still override owner and helper rates on the form.</x-admin.info-tip>
+      </h3>
       <div class="admin-form-grid-4">
         <div class="admin-form-group">
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
@@ -73,16 +75,20 @@
                  value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="admin-form-group">
-          <label for="hours_per_day">Hours per working day</label>
+          <span class="admin-label-with-tip">
+            <label for="hours_per_day">Hours per working day</label>
+            <x-admin.info-tip label="Hours per working day">Used for calendar-day estimates (1 / 2 / 3 people).</x-admin.info-tip>
+          </span>
           <input type="number" step="0.25" min="0.5" max="16" class="admin-input" id="hours_per_day" name="hours_per_day"
                  value="{{ old('hours_per_day', $settings->hours_per_day) }}" required>
-          <p class="admin-form-help">Used for calendar-day estimates (1 / 2 / 3 people).</p>
         </div>
       </div>
 
       <hr class="br-config-divider">
-      <h3 class="br-config-heading">Labour productivity</h3>
-      <p class="admin-form-help br-config-help">Hours per unit of work. Higher numbers mean faster production (more units per hour) except where the label says “hours each”.</p>
+      <h3 class="br-config-heading">
+        Labour productivity
+        <x-admin.info-tip label="Labour productivity">Hours per unit of work. Higher numbers mean faster production (more units per hour) except where the label says “hours each”.</x-admin.info-tip>
+      </h3>
 
       @include('admin.partials.quotation_productivity_groups', [
         'excludeKeys' => \App\Services\SharedWorkCatalog::sharedProductivityKeys('basement'),
@@ -91,13 +97,15 @@
 
     <section class="cp-tab-panel{{ $startTab === 'materials' ? ' is-active' : '' }}"
              data-panel="materials" id="br-config-materials" role="tabpanel" aria-labelledby="br-tab-materials">
-      <h3 class="br-config-heading">Default materials</h3>
-      <p class="admin-form-help br-config-help">
-        Each line is priced in the unit shown: tile, LVP, and similar finishes are <strong>per sq ft</strong>; toilets and fans are <strong>each</strong>; drywall is per <strong>sheet</strong>; compound is per <strong>17 L pail</strong>.
-        Link a Materials DB product to fill the name, a starting price, and delivery — or leave the search empty and type the CAD$ yourself.
-        After linking you can still edit the price. On each quotation you can change it again if the client picks a cheaper or more expensive product.
-        2x4 plate lumber is always the 2x4x8 stud price ÷ 8 (per linear foot) and cannot be linked separately.
-      </p>
+      <h3 class="br-config-heading">
+        Default materials
+        <x-admin.info-tip label="Default materials">
+          Each line is priced in the unit shown: tile, LVP, and similar finishes are <strong>per sq ft</strong>; toilets and fans are <strong>each</strong>; drywall is per <strong>sheet</strong>; compound is per <strong>17 L pail</strong>.
+          Link a Materials DB product to fill the name, a starting price, and delivery — or leave the search empty and type the CAD$ yourself.
+          After linking you can still edit the price. On each quotation you can change it again if the client picks a cheaper or more expensive product.
+          2x4 plate lumber is always the 2x4x8 stud price ÷ 8 (per linear foot) and cannot be linked separately.
+        </x-admin.info-tip>
+      </h3>
       <p class="br-config-legend" aria-label="How to read material rows">
         <span class="br-config-source br-config-source--linked"><i class="fa fa-link" aria-hidden="true"></i> Catalog</span>
         linked from Materials DB

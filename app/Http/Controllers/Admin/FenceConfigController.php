@@ -98,6 +98,7 @@ class FenceConfigController extends Controller
             'concrete_per_post_6ft' => ['required', 'numeric', 'min:0', 'max:20'],
             'concrete_per_post_8ft' => ['required', 'numeric', 'min:0', 'max:20'],
             'labour_per_additional_gate' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'existing_post_labour_credit' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'rails_per_section_6ft' => ['required', 'integer', 'min:1', 'max:10'],
             'rails_per_section_8ft' => ['required', 'integer', 'min:1', 'max:10'],
             'nails_per_picket' => ['required', 'integer', 'min:1', 'max:50'],

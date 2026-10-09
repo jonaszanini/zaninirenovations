@@ -198,8 +198,10 @@
                    value="{{ old('total_property_sqf', $inputs['total_property_sqf'] ?? '') }}">
           </div>
 
-          <h5 style="margin:16px 0 8px;">Excluded rooms / areas</h5>
-          <p class="pq-hint" style="margin:0 0 10px;">Subtract rooms you are not painting. Use dimensions (L × W) or enter total sq ft.</p>
+          <h5 class="admin-label-with-tip" style="margin:16px 0 8px;">
+            Excluded rooms / areas
+            <x-admin.info-tip label="Excluded rooms / areas">Subtract rooms you are not painting. Use dimensions (L × W) or enter total sq ft.</x-admin.info-tip>
+          </h5>
           <div id="pt-excluded-root">
             @foreach ($excludedRows as $i => $row)
               @php
@@ -262,9 +264,11 @@
               </select>
             </div>
             <div class="admin-form-group">
-              <label>Number of top coats</label>
+              <span class="admin-label-with-tip">
+                <label>Number of top coats</label>
+                <x-admin.info-tip label="Number of top coats">Fixed at {{ PaintingQuotationCalculator::DEFAULT_COATS }} top coats per company standards.</x-admin.info-tip>
+              </span>
               <input type="text" class="admin-input" value="{{ PaintingQuotationCalculator::DEFAULT_COATS }} (company standard)" readonly>
-              <p class="pq-hint">Fixed at {{ PaintingQuotationCalculator::DEFAULT_COATS }} top coats per company standards.</p>
             </div>
           </div>
           <div class="admin-form-group">
@@ -272,7 +276,10 @@
             <textarea class="admin-input" id="surface_prep_description" name="surface_prep_description" rows="4" maxlength="5000">{{ old('surface_prep_description', $inputs['surface_prep_description'] ?? PaintingQuotationCalculator::defaultSurfacePrepDescription()) }}</textarea>
           </div>
           <div class="admin-form-group quotation-work-desc">
-            <label for="work-description">Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
+            <span class="admin-label-with-tip">
+              <label for="work-description">Project description</label>
+              <x-admin.info-tip label="Project description">Optional — appears on the client PDF. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+            </span>
             <textarea class="admin-input" id="work-description" name="work_description" rows="8"
                       placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
             @include('admin.partials.quotation_work_description_ai', [
@@ -280,7 +287,6 @@
                 'aiContextFormId' => 'pt-main-form',
                 'aiQuotationType' => 'painting',
             ])
-            <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
           </div>
         </div>
 

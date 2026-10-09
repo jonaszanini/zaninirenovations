@@ -119,7 +119,10 @@
           </div>
         </div>
         <div class="admin-form-group quotation-work-desc">
-          <label for="tm-work-description">Work description</label>
+          <span class="admin-label-with-tip">
+            <label for="tm-work-description">Work description</label>
+            <x-admin.info-tip label="Work description">Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+          </span>
           <textarea class="admin-input" id="tm-work-description" name="work_description" rows="8"
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
@@ -127,7 +130,6 @@
               'aiContextFormId' => 'tm-main-form',
               'aiQuotationType' => 'trimming',
           ])
-          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 
@@ -156,7 +158,10 @@
               ])
             </div>
             <div class="admin-form-group">
-              <label for="tm-windows">@include('admin.partials.info_tip', ['text' => $tips['windows']]) Window openings</label>
+              <span class="admin-label-with-tip">
+  <label for="tm-windows">Window openings</label>
+  @include('admin.partials.info_tip', ['tipText' => $tips['windows'], 'tipLabel' => 'Window openings'])
+</span>
               <input type="number" min="0" step="1" class="admin-input tm-preview" id="tm-windows" name="window_qty" value="{{ $tmVal('window_qty', 0) }}">
             </div>
           </div>
@@ -277,7 +282,10 @@
         <div class="tm-family-body" data-tm-family-body="floor_wall" @unless($familyOn('floor_wall')) hidden @endunless>
           <div class="pq-form-grid">
             <div class="admin-form-group">
-              <label for="tm-floor-lf">@include('admin.partials.info_tip', ['text' => $tips['floor_lf']]) Linear feet</label>
+              <span class="admin-label-with-tip">
+  <label for="tm-floor-lf">Linear feet</label>
+  @include('admin.partials.info_tip', ['tipText' => $tips['floor_lf'], 'tipLabel' => 'Linear feet'])
+</span>
               <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-floor-lf" name="floor_lf" value="{{ $tmVal('floor_lf', 0) }}">
             </div>
           </div>
@@ -383,7 +391,10 @@
           </div>
           <div class="pq-form-grid">
             <div class="admin-form-group">
-              <label for="tm-crown-lf">@include('admin.partials.info_tip', ['text' => $tips['crown']]) Crown (lf)</label>
+              <span class="admin-label-with-tip">
+  <label for="tm-crown-lf">Crown (lf)</label>
+  @include('admin.partials.info_tip', ['tipText' => $tips['crown'], 'tipLabel' => 'Crown (lf)'])
+</span>
               <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-crown-lf" name="crown_lf" value="{{ $tmVal('crown_lf', 0) }}">
             </div>
             <div class="admin-form-group">
@@ -461,7 +472,10 @@
               </select>
             </div>
             <div class="admin-form-group">
-              <label for="tm-wain-lf">@include('admin.partials.info_tip', ['text' => $tips['wainscot']]) Wall lf</label>
+              <span class="admin-label-with-tip">
+  <label for="tm-wain-lf">Wall lf</label>
+  @include('admin.partials.info_tip', ['tipText' => $tips['wainscot'], 'tipLabel' => 'Wall lf'])
+</span>
               <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-wain-lf" name="wainscot_wall_lf" value="{{ $tmVal('wainscot_wall_lf', 0) }}">
             </div>
             <div class="admin-form-group">
@@ -475,30 +489,37 @@
       <div class="admin-card tm-card">
         <h4>Prep &amp; finish</h4>
         <div class="tm-chip-row">
-          <label class="admin-checkbox">
-            <input type="hidden" name="include_remove_existing" value="0">
-            <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_remove_existing" value="1" @checked($tmOn('include_remove_existing'))>
-            <span class="admin-checkbox__mark"></span>
-            <span class="admin-checkbox__text">@include('admin.partials.info_tip', ['text' => $tips['remove']]) Remove existing</span>
-          </label>
-          <label class="admin-checkbox">
-            <input type="hidden" name="include_caulk_paint" value="0">
-            <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_caulk_paint" value="1" @checked($tmOn('include_caulk_paint'))>
-            <span class="admin-checkbox__mark"></span>
-            <span class="admin-checkbox__text">@include('admin.partials.info_tip', ['text' => $tips['paint']]) Caulk &amp; paint</span>
-          </label>
+          @include('admin.partials.checkbox', [
+            'name' => 'include_remove_existing',
+            'hiddenFallback' => true,
+            'checked' => $tmOn('include_remove_existing'),
+            'label' => 'Remove existing',
+            'info' => $tips['remove'],
+            'inputClass' => 'admin-checkbox__input tm-preview',
+          ])
+          @include('admin.partials.checkbox', [
+            'name' => 'include_caulk_paint',
+            'hiddenFallback' => true,
+            'checked' => $tmOn('include_caulk_paint'),
+            'label' => 'Caulk & paint',
+            'info' => $tips['paint'],
+            'inputClass' => 'admin-checkbox__input tm-preview',
+          ])
           <label class="admin-checkbox">
             <input type="hidden" name="include_stain" value="0">
             <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_stain" value="1" @checked($tmOn('include_stain'))>
             <span class="admin-checkbox__mark"></span>
             <span class="admin-checkbox__text">Stain &amp; clear coat</span>
           </label>
-          <label class="admin-checkbox">
-            <input type="hidden" name="client_provides_all" value="0">
-            <input type="checkbox" class="admin-checkbox__input tm-preview" id="tm-client-all" name="client_provides_all" value="1" @checked($tmOn('client_provides_all'))>
-            <span class="admin-checkbox__mark"></span>
-            <span class="admin-checkbox__text">@include('admin.partials.info_tip', ['text' => $tips['client_all']]) Client supplies materials</span>
-          </label>
+          @include('admin.partials.checkbox', [
+            'name' => 'client_provides_all',
+            'id' => 'tm-client-all',
+            'hiddenFallback' => true,
+            'checked' => $tmOn('client_provides_all'),
+            'label' => 'Client supplies materials',
+            'info' => $tips['client_all'],
+            'inputClass' => 'admin-checkbox__input tm-preview',
+          ])
         </div>
         <div class="pq-form-grid tm-override-grid">
           <div class="admin-form-group" data-tm-show-when="include_remove_existing">

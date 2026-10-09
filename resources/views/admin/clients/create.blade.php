@@ -52,7 +52,10 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="cl-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(optional)</small></label>
+        <span class="admin-label-with-tip">
+          <label for="cl-email-secondary">Secondary email</label>
+          <x-admin.info-tip label="Secondary email">Optional — CC'd on every client email.</x-admin.info-tip>
+        </span>
         <input @class(['admin-input', 'is-invalid' => $errors->has('email_secondary')]) type="email" id="cl-email-secondary" name="email_secondary" value="{{ old('email_secondary') }}" maxlength="255">
         @error('email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>

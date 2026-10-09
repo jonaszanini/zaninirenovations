@@ -123,7 +123,10 @@
         <div class="admin-card fl-step-card mw-client-card">
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
-              <label for="mw-client-name">@include('admin.partials.info_tip', ['text' => 'Name printed on the quotation PDF and used when linking this quote to a project.']) Client name</label>
+              <span class="admin-label-with-tip">
+                <label for="mw-client-name">Client name</label>
+                <x-admin.info-tip label="Client name">Name printed on the quotation PDF and used when linking this quote to a project.</x-admin.info-tip>
+              </span>
               <input type="text" class="admin-input" id="mw-client-name" name="client_name" maxlength="160"
                      value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
             </div>
@@ -300,7 +303,10 @@
             </template>
 
             <div class="admin-form-group quotation-work-desc">
-              <label for="mw-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary on the client PDF. Improve with AI after you fill the wizard.']) Description</label>
+              <span class="admin-label-with-tip">
+                <label for="mw-work-description">Description</label>
+                <x-admin.info-tip label="Description">Optional scope summary on the client PDF. Improve with AI after you fill the wizard. Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+              </span>
               <textarea class="admin-input" id="mw-work-description" name="work_description" rows="5"
                         placeholder="Describe the millwork to be built and installed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
               @include('admin.partials.quotation_work_description_ai', [
@@ -308,7 +314,6 @@
                   'aiContextFormId' => 'mw-main-form',
                   'aiQuotationType' => 'millwork',
               ])
-              <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
             </div>
 
             @include('admin.quotations._payment_schedule', ['quotation' => $quotation])

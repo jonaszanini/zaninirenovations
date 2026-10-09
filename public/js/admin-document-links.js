@@ -53,6 +53,8 @@
       if (!row) return;
       reindexIds(row, index);
       rows.appendChild(row);
+      var refresh = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+      if (refresh) refresh(row);
       syncRemoveButtons(rows);
       var urlInput = row.querySelector('input[name*="[url]"]');
       if (urlInput) urlInput.focus();
