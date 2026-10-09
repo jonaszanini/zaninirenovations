@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Material;
 use App\Models\RoomAreaAssembly;
+use App\Models\RoomAreaAssemblyLine;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Models\StandardQuotation;
@@ -325,21 +326,26 @@ class RoomAreaAssemblyController extends Controller
                 $qtyLines = [];
                 foreach ($evaluated as $kit) {
                     foreach ($kit['lines'] as $line) {
-                        $qtyLines[] = [
-                            'trade' => 'assembly',
-                            'label' => $line['name'],
-                            'short_name' => $line['material_name'] ?: $line['name'],
-                            'description' => $kit['name'].' — '.$line['name'].' — '.$roomLabel,
-                            'unit' => $line['unit'],
-                            'qty' => $line['qty'],
-                            'unit_price' => (float) ($line['unit_price'] ?? 0),
-                            'catalog_material_id' => $line['material_id'],
-                            'apply_hst' => true,
-                            'assembly_name' => $kit['name'],
-                            'assembly_line_id' => $line['id'],
-                            'assembly_layout_id' => $layoutId,
-                            'assembly_covered_layouts' => $this->encodeCoveredLayouts($pendingCoveredByLine[(int) $line['id']] ?? []),
-                        ];
+                        $lineId = (int) ($line['id'] ?? 0);
+                        $chunks = $this->chunkCoveredMaps($pendingCoveredByLine[$lineId] ?? []);
+                        if (count($chunks) <= 1) {
+                            $qtyLines[] = $this->projectQuoteQtyLine($kit, $line, $layoutId, $chunks[0] ?? [], $roomLabel);
+                            continue;
+                        }
+                        foreach ($chunks as $chunkMap) {
+                            $chunkEval = $this->evaluator->evaluateProject($project, function ($room, $evalLine) use ($lineId, $chunkMap) {
+                                return (int) ($evalLine['id'] ?? 0) === $lineId
+                                    && isset($chunkMap['room:'.$room->id]);
+                            });
+                            foreach ($chunkEval as $chunkKit) {
+                                foreach ($chunkKit['lines'] as $chunkLine) {
+                                    if ((int) ($chunkLine['id'] ?? 0) !== $lineId) {
+                                        continue;
+                                    }
+                                    $qtyLines[] = $this->projectQuoteQtyLine($chunkKit, $chunkLine, $layoutId, $chunkMap, $roomLabel);
+                                }
+                            }
+                        }
                     }
                 }
             } else {
@@ -441,6 +447,7 @@ class RoomAreaAssemblyController extends Controller
                 $displayTitle,
                 $roomLabel
             );
+            $this->relabelKitLinesForMultipleProjects($quote);
             $this->consumeQuoteToken($token, $quote->id);
 
             $message = $this->quoteSuccessMessage($quote, (bool) $existing, $addedBits, $skippedBits);
@@ -635,10 +642,10 @@ class RoomAreaAssemblyController extends Controller
         foreach ($quote->resolvedWorks() as $work) {
             foreach (($work['materials'] ?? []) as $row) {
                 $lineId = (int) ($row['assembly_line_id'] ?? 0);
-                if ($lineId <= 0) {
+                if ($lineId <= 0 || ! $this->isKitCoverageLine($row)) {
                     continue;
                 }
-                foreach (array_keys($this->parseCoveredLayouts($row, $quote)) as $layout) {
+                foreach (array_keys($this->parseCoveredLayouts($row)) as $layout) {
                     $byLine[$lineId][$layout] = true;
                 }
             }
@@ -651,7 +658,30 @@ class RoomAreaAssemblyController extends Controller
      * @param  array<string, mixed>  $row
      * @return array<string, true>
      */
-    private function parseCoveredLayouts(array $row, ?StandardQuotation $quote = null): array
+    /**
+     * Kit coverage is stored on the line. A row without both fields is not a kit line.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function isKitCoverageLine(array $row): bool
+    {
+        $quotedAt = trim((string) ($row['assembly_quoted_at'] ?? ''));
+        if ($quotedAt === '') {
+            return false;
+        }
+        $covered = $row['assembly_covered_layouts'] ?? '';
+        if (is_array($covered)) {
+            return $covered !== [];
+        }
+
+        return trim((string) $covered) !== '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, true>
+     */
+    private function parseCoveredLayouts(array $row): array
     {
         $out = [];
         $raw = $row['assembly_covered_layouts'] ?? '';
@@ -675,35 +705,51 @@ class RoomAreaAssemblyController extends Controller
         if (str_starts_with($layout, 'room:')) {
             $out[$layout] = true;
         }
-        if ($out === [] && preg_match('/^project:(\d+)$/', $layout, $match)) {
-            $asOf = $this->coveredLayoutsAsOf($row, $quote);
-            $rooms = RoomAreaRoom::query()->where('room_area_project_id', (int) $match[1]);
-            if ($asOf) {
-                $rooms->where('created_at', '<=', $asOf);
-            }
-            foreach ($rooms->pluck('id') as $roomId) {
-                $out['room:'.$roomId] = true;
-            }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, true>  $layouts
+     * @return list<array<string, true>>
+     */
+    private function chunkCoveredMaps(array $layouts, int $chunkSize = 2000): array
+    {
+        $keys = array_keys($layouts);
+        if ($keys === []) {
+            return [[]];
+        }
+        $out = [];
+        foreach (array_chunk($keys, max(1, $chunkSize)) as $part) {
+            $out[] = array_fill_keys($part, true);
         }
 
         return $out;
     }
 
     /**
-     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $kit
+     * @param  array<string, mixed>  $line
+     * @param  array<string, true>  $coveredMap
+     * @return array<string, mixed>
      */
-    private function coveredLayoutsAsOf(array $row, ?StandardQuotation $quote = null): ?\Carbon\Carbon
+    private function projectQuoteQtyLine(array $kit, array $line, string $layoutId, array $coveredMap, string $roomLabel): array
     {
-        $raw = trim((string) ($row['assembly_quoted_at'] ?? ''));
-        if ($raw !== '') {
-            try {
-                return \Carbon\Carbon::parse($raw);
-            } catch (\Throwable $e) {
-                // Fall through to the quote timestamps used by older lines.
-            }
-        }
-
-        return $quote?->updated_at ?? $quote?->created_at;
+        return [
+            'trade' => 'assembly',
+            'label' => $line['name'],
+            'short_name' => $line['material_name'] ?: $line['name'],
+            'description' => $kit['name'].' — '.$line['name'].' — '.$roomLabel,
+            'unit' => $line['unit'],
+            'qty' => $line['qty'],
+            'unit_price' => (float) ($line['unit_price'] ?? 0),
+            'catalog_material_id' => $line['material_id'],
+            'apply_hst' => true,
+            'assembly_name' => $kit['name'],
+            'assembly_line_id' => $line['id'],
+            'assembly_layout_id' => $layoutId,
+            'assembly_covered_layouts' => $this->encodeCoveredLayouts($coveredMap),
+        ];
     }
 
     /**
@@ -811,11 +857,11 @@ class RoomAreaAssemblyController extends Controller
         $projectId = (int) $project->id;
         foreach ($quote->resolvedWorks() as $work) {
             foreach (($work['materials'] ?? []) as $row) {
-                if ((int) ($row['assembly_line_id'] ?? 0) !== $assemblyLineId) {
+                if ((int) ($row['assembly_line_id'] ?? 0) !== $assemblyLineId || ! $this->isKitCoverageLine($row)) {
                     continue;
                 }
                 $ids = [];
-                foreach (array_keys($this->parseCoveredLayouts($row, $quote)) as $layout) {
+                foreach (array_keys($this->parseCoveredLayouts($row)) as $layout) {
                     if (preg_match('/^room:(\d+)$/', (string) $layout, $match)) {
                         $ids[] = (int) $match[1];
                     }
@@ -843,7 +889,7 @@ class RoomAreaAssemblyController extends Controller
         $wanted = $this->parseCoveredLayouts([
             'assembly_covered_layouts' => $coveredLayouts,
             'assembly_layout_id' => $layoutId,
-        ], null);
+        ]);
         if ($wanted === []) {
             return false;
         }
@@ -919,8 +965,75 @@ class RoomAreaAssemblyController extends Controller
             return '';
         }
         $shown = array_slice($parts, 0, 3);
+        $hidden = $count - count($shown);
+        $list = implode(', ', $shown);
+        if ($hidden > 0) {
+            $list .= ' +'.$hidden.' more';
+        }
 
-        return 'Skipped '.$count.': '.implode(', ', $shown).'. Existing lines were left alone.';
+        return 'Skipped '.$count.': '.$list.'. Existing lines were left alone.';
+    }
+
+    private function relabelKitLinesForMultipleProjects(StandardQuotation $quote): void
+    {
+        $works = $quote->resolvedWorks();
+        $projectIds = [];
+        $rowMeta = [];
+        foreach ($works as $workIdx => $work) {
+            foreach (($work['materials'] ?? []) as $matIdx => $row) {
+                if (! $this->isKitCoverageLine($row)) {
+                    continue;
+                }
+                $ids = [];
+                foreach (array_keys($this->parseCoveredLayouts($row)) as $layout) {
+                    if (preg_match('/^room:(\d+)$/', (string) $layout, $match)) {
+                        $ids[] = (int) $match[1];
+                    }
+                }
+                if ($ids === []) {
+                    continue;
+                }
+                $pid = (int) (RoomAreaRoom::query()->whereIn('id', $ids)->value('room_area_project_id') ?? 0);
+                if ($pid > 0) {
+                    $projectIds[$pid] = true;
+                    $rowMeta[] = [$workIdx, $matIdx, $ids, $pid, (int) ($row['assembly_line_id'] ?? 0)];
+                }
+            }
+        }
+        if (count($projectIds) < 2 || $rowMeta === []) {
+            return;
+        }
+
+        $projects = RoomAreaProject::query()->whereIn('id', array_keys($projectIds))->get()->keyBy('id');
+        $lineNames = RoomAreaAssemblyLine::query()
+            ->whereIn('id', array_values(array_unique(array_map(static fn ($meta) => $meta[4], $rowMeta))))
+            ->pluck('name', 'id');
+        $changed = false;
+        foreach ($rowMeta as [$workIdx, $matIdx, $ids, $pid, $lineId]) {
+            $project = $projects->get($pid);
+            $map = [];
+            foreach ($ids as $id) {
+                $map['room:'.$id] = true;
+            }
+            $lineName = trim((string) ($lineNames[$lineId] ?? $works[$workIdx]['materials'][$matIdx]['short_name'] ?? 'Line'));
+            if (str_contains($lineName, ' (')) {
+                $lineName = trim(explode(' (', $lineName, 2)[0]);
+            }
+            $cover = $this->coverLabelForLayouts($map, $project, '', true);
+            $short = $this->formatAssemblyShortName($lineName !== '' ? $lineName : 'Line', $cover);
+            if (($works[$workIdx]['materials'][$matIdx]['short_name'] ?? '') !== $short) {
+                $works[$workIdx]['materials'][$matIdx]['short_name'] = $short;
+                $changed = true;
+            }
+        }
+        if (! $changed) {
+            return;
+        }
+        $quote->works = $works;
+        if (isset($works[0]['materials'])) {
+            $quote->materials = $works[0]['materials'];
+        }
+        $quote->save();
     }
 
     /**

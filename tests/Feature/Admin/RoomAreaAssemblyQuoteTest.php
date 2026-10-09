@@ -746,11 +746,11 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertStringContainsString('R101', (string) ($quote->flattenedMaterials()[1]['short_name'] ?? ''));
     }
 
-    public function test_old_project_line_without_covered_treats_existing_rooms_as_covered(): void
+    public function test_line_without_kit_meta_is_ignored_for_coverage(): void
     {
         $this->actingAsAdmin();
         $project = RoomAreaProject::create([
-            'name' => 'Legacy covered',
+            'name' => 'No kit meta',
             'scale_pixels_per_foot' => 12,
         ]);
         $kitchen = $this->makeRoom(null, 'Kitchen', $project, 144, 120);
@@ -775,21 +775,18 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
             'assembly_ids' => [$assembly->id],
             'client_name' => 'Pat Owner',
-            'display_title' => 'Legacy',
+            'display_title' => 'No meta',
         ])->assertRedirect();
 
         $quote = StandardQuotation::query()->latest('id')->first();
         $this->assertNotNull($quote);
+        $this->assertNotEmpty($quote->flattenedMaterials()[0]['assembly_quoted_at'] ?? null);
+        $this->assertNotEmpty($quote->flattenedMaterials()[0]['assembly_covered_layouts'] ?? null);
         $works = $quote->resolvedWorks();
-        unset($works[0]['materials'][0]['assembly_covered_layouts']);
+        unset($works[0]['materials'][0]['assembly_covered_layouts'], $works[0]['materials'][0]['assembly_quoted_at']);
         $quote->works = $works;
         $quote->materials = $works[0]['materials'];
-        $quote->updated_at = now();
         $quote->save();
-
-        $this->travel(2)->seconds();
-        $hall = $this->makeRoom(null, 'Hall', $project, 120, 96);
-        $hall->assemblies()->sync([$assembly->id]);
 
         $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
             'layout' => 'project:'.$project->id,
@@ -797,11 +794,11 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
             'assembly_ids' => [$assembly->id],
             'quotation_id' => $quote->id,
             'client_name' => 'Pat Owner',
-            'display_title' => 'Legacy',
+            'display_title' => 'No meta',
         ])->assertRedirect(route('admin.quotations.standard.edit', $quote))
             ->assertSessionHas('success', function ($message) {
                 return is_string($message)
-                    && str_contains($message, 'Added Drywall wall — Sheets (Hall)')
+                    && str_contains($message, 'Added Drywall wall — Sheets')
                     && ! str_contains($message, 'Those kit lines are already');
             });
 
@@ -809,9 +806,10 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $materials = $quote->flattenedMaterials();
         $this->assertCount(2, $materials);
         $this->assertEquals(20.0, (float) $materials[0]['quantity']);
-        $this->assertEquals(8.0, (float) $materials[1]['quantity']);
-        $this->assertStringContainsString('Hall', (string) ($materials[1]['short_name'] ?? ''));
-        $this->assertStringContainsString('room:'.$hall->id, (string) ($materials[1]['assembly_covered_layouts'] ?? ''));
+        $this->assertEquals(20.0, (float) $materials[1]['quantity']);
+        $this->assertNotEmpty($materials[1]['assembly_quoted_at'] ?? null);
+        $this->assertStringContainsString('room:'.$kitchen->id, (string) ($materials[1]['assembly_covered_layouts'] ?? ''));
+        $this->assertStringContainsString('room:'.$bath->id, (string) ($materials[1]['assembly_covered_layouts'] ?? ''));
     }
 
     public function test_two_projects_on_one_quote_add_separate_lines(): void
@@ -880,11 +878,12 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertEquals(29.0, (float) $materials[0]['quantity']);
         $this->assertEquals(20.0, (float) $materials[1]['quantity']);
         $this->assertEqualsWithDelta(49.0, (float) $materials[0]['quantity'] + (float) $materials[1]['quantity'], 0.01);
-        $this->assertSame('Sheets (Kitchen, Bathroom +2)', $materials[0]['short_name'] ?? null);
+        $this->assertSame('Sheets (House A · Kitchen, Bathroom +2)', $materials[0]['short_name'] ?? null);
         $this->assertSame('Sheets (House B · Kitchen, Bathroom)', $materials[1]['short_name'] ?? null);
         $this->assertLessThanOrEqual(60, mb_strlen((string) ($materials[0]['short_name'] ?? '')));
         $this->assertLessThanOrEqual(60, mb_strlen((string) ($materials[1]['short_name'] ?? '')));
-        $this->assertStringNotContainsString('House A', (string) ($materials[0]['short_name'] ?? ''));
+        $this->assertStringContainsString('House A', (string) ($materials[0]['short_name'] ?? ''));
+        $this->assertStringContainsString('House B', (string) ($materials[1]['short_name'] ?? ''));
     }
 
     public function test_hand_edited_line_qty_is_left_untouched_when_adding_rooms(): void
@@ -999,70 +998,17 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertEquals(20.0, (float) $quote->flattenedMaterials()[0]['quantity']);
     }
 
-    public function test_legacy_empty_covered_uses_updated_at_when_line_has_no_date(): void
+    public function test_skipped_message_lists_three_names_then_plus_more(): void
     {
         $this->actingAsAdmin();
-        $project = RoomAreaProject::create([
-            'name' => 'Created cutoff',
-            'scale_pixels_per_foot' => 12,
-        ]);
-        $kitchen = $this->makeRoom(null, 'Kitchen', $project, 144, 120);
-        $bath = $this->makeRoom(null, 'Bathroom', $project, 120, 96);
-        $assembly = RoomAreaAssembly::create([
-            'name' => 'Drywall wall',
-            'notes' => null,
-            'sort_order' => 0,
-        ]);
-        $assembly->lines()->create([
-            'name' => 'Sheets',
-            'formula' => 'area_sqft * 0.096',
-            'unit' => 'sheet',
-            'whole_units' => true,
-            'sort_order' => 0,
-        ]);
-        $kitchen->assemblies()->sync([$assembly->id]);
-        $bath->assemblies()->sync([$assembly->id]);
+        $controller = app(\App\Http\Controllers\Admin\RoomAreaAssemblyController::class);
+        $method = new \ReflectionMethod($controller, 'formatSkippedParts');
+        $method->setAccessible(true);
 
-        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
-            'layout' => 'project:'.$project->id,
-            'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
-            'assembly_ids' => [$assembly->id],
-            'client_name' => 'Pat Owner',
-            'display_title' => 'Cutoff',
-        ])->assertRedirect();
-
-        $quote = StandardQuotation::query()->latest('id')->first();
-        $this->assertNotNull($quote);
-        $this->assertEquals(20.0, (float) $quote->flattenedMaterials()[0]['quantity']);
-
-        $this->travel(2)->seconds();
-        $hall = $this->makeRoom(null, 'Hall', $project, 120, 96);
-        $hall->assemblies()->sync([$assembly->id]);
-
-        $works = $quote->resolvedWorks();
-        unset($works[0]['materials'][0]['assembly_covered_layouts'], $works[0]['materials'][0]['assembly_quoted_at']);
-        $quote->works = $works;
-        $quote->materials = $works[0]['materials'];
-        $quote->updated_at = now()->addMinute();
-        $quote->save();
-
-        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
-            'layout' => 'project:'.$project->id,
-            'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
-            'assembly_ids' => [$assembly->id],
-            'quotation_id' => $quote->id,
-            'client_name' => 'Pat Owner',
-            'display_title' => 'Cutoff',
-        ])->assertRedirect(route('admin.quotations.standard.edit', $quote))
-            ->assertSessionHas('success', function ($message) {
-                return is_string($message)
-                    && str_contains($message, 'Those kit lines are already')
-                    && ! str_contains($message, 'Added Drywall wall — Sheets (Hall)');
-            });
-
-        $quote->refresh();
-        $this->assertCount(1, $quote->flattenedMaterials());
-        $this->assertEquals(20.0, (float) $quote->flattenedMaterials()[0]['quantity']);
+        $this->assertSame(
+            'Skipped 4: Alpha, Beta, Gamma +1 more. Existing lines were left alone.',
+            $method->invoke($controller, ['Alpha', 'Beta', 'Gamma', 'Delta'])
+        );
     }
 
     public function test_auto_line_name_caps_at_sixty_and_lists_rooms_not_the_project(): void
@@ -1104,24 +1050,25 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertStringNotContainsString('Smith', $short);
     }
 
-    public function test_covering_more_than_2000_rooms_returns_a_visible_error(): void
+    public function test_more_than_2000_rooms_are_quoted_in_chunks(): void
     {
         $this->actingAsAdmin();
         $controller = app(\App\Http\Controllers\Admin\RoomAreaAssemblyController::class);
-        $method = new \ReflectionMethod($controller, 'encodeCoveredLayouts');
-        $method->setAccessible(true);
+        $chunk = new \ReflectionMethod($controller, 'chunkCoveredMaps');
+        $chunk->setAccessible(true);
         $rooms = [];
         for ($i = 1; $i <= 2001; $i++) {
             $rooms['room:'.$i] = true;
         }
+        $parts = $chunk->invoke($controller, $rooms);
+        $this->assertCount(2, $parts);
+        $this->assertCount(2000, $parts[0]);
+        $this->assertCount(1, $parts[1]);
 
-        try {
-            $method->invoke($controller, $rooms);
-            $this->fail('2001 rooms must not be truncated silently');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            $this->assertArrayHasKey('assembly_ids', $e->errors());
-            $this->assertStringContainsString('2000', implode(' ', $e->errors()['assembly_ids']));
-        }
+        $encode = new \ReflectionMethod($controller, 'encodeCoveredLayouts');
+        $encode->setAccessible(true);
+        $this->assertNotSame('', $encode->invoke($controller, $parts[0]));
+        $this->assertSame('["room:2001"]', $encode->invoke($controller, $parts[1]));
     }
 
     public function test_expired_quote_token_is_rejected_and_pruned(): void
