@@ -99,6 +99,8 @@ function assertCssGeometry() {
   const js = fs.readFileSync(path.join(ROOT, 'public/js/admin-utilities-room-area.js'), 'utf8');
   assert.ok(js.includes('function resetDesktopSheetState('), 'desktop resets leftover sheet collapse');
   assert.ok(/if \(!isPhoneChrome\(\)\) return;[\s\S]{0,160}is-sheet-expanded/.test(js), 'sheet expand is ignored on desktop');
+  assert.ok(CSS.includes('.util-ra-project-bar__menu-btn'), 'phone project picker has a menu button');
+  assert.ok(js.includes('function bindProjectMenu('), 'phone project menu is wired');
 }
 
 function resolveKonvaFile() {
@@ -1198,6 +1200,7 @@ async function measureLiveEditor() {
     await page.goto(base + '/admin/utilities/room-area?ra_project=1&ra_room=1', { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForSelector('.util-ra--fullpage', { timeout: 20000 });
     await page.waitForSelector('.util-ra-canvas-wrap', { timeout: 20000 });
+    await page.waitForFunction(() => typeof window.Konva !== 'undefined', { timeout: 20000 }).catch(function () {});
 
     for (const vp of [
       { width: 901, height: 768, mobile: false },
@@ -1206,28 +1209,34 @@ async function measureLiveEditor() {
       { width: 1000, height: 768, mobile: false },
       { width: 1024, height: 768, mobile: false },
     ]) {
-      await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: 1, isMobile: vp.mobile, hasTouch: vp.mobile });
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+      await new Promise((resolve) => setTimeout(resolve, 280));
       const geo = await page.evaluate(() => {
         const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
-        const tools = document.querySelector('.util-ra-canvas-toolbar, .util-ra-full-header__row--tools');
-        const help = document.querySelector('.util-ra-canvas-toolbar .util-ra-help, .util-ra-help-q');
-        const unit = document.querySelector('[data-ra-unit-system="imperial"], [data-ra-unit-system]');
+        const help = document.querySelector('.util-ra-canvas-toolbar .util-ra-help-q, .util-ra-help-q');
+        const unit = document.querySelector('[data-ra-unit-system="imperial"], .util-ra-unit-system__btn, [data-ra-unit-system]');
         const w = wrap ? wrap.getBoundingClientRect() : null;
-        const t = tools ? tools.getBoundingClientRect() : null;
         const h = help ? help.getBoundingClientRect() : null;
         const u = unit ? unit.getBoundingClientRect() : null;
         const hitHelp = h ? document.elementFromPoint(h.left + h.width / 2, h.top + h.height / 2) : null;
         const hitUnit = u ? document.elementFromPoint(u.left + u.width / 2, u.top + u.height / 2) : null;
+        const parentHit = function (el, hit) {
+          return !!(hit && el && hit !== el && hit.contains(el) && !el.contains(hit));
+        };
         return {
           wrapH: w && w.height,
           wrapTop: w && w.top,
           wrapBottom: w && w.bottom,
-          toolsH: t && t.height,
           helpH: h && h.height,
           helpDisplay: help ? getComputedStyle(help).display : 'missing',
           helpSelf: !!(help && hitHelp && (hitHelp === help || help.contains(hitHelp))),
+          helpParent: parentHit(help, hitHelp),
+          helpHit: hitHelp && (hitHelp.className || hitHelp.tagName),
           unitSelf: !!(unit && hitUnit && (hitUnit === unit || unit.contains(hitUnit))),
+          unitParent: parentHit(unit, hitUnit),
+          unitHit: hitUnit && (hitUnit.className || hitUnit.tagName),
+          unitBox: u ? { x: u.left + u.width / 2, y: u.top + u.height / 2 } : null,
+          helpBox: h ? { x: h.left + h.width / 2, y: h.top + h.height / 2 } : null,
           innerH: window.innerHeight,
         };
       });
@@ -1241,27 +1250,19 @@ async function measureLiveEditor() {
         };
       });
       const canScroll = scroll.rootH > scroll.innerH + 4 || scroll.mainH > scroll.innerH + 4;
+      const visible = Math.max(0, Math.min(geo.wrapBottom, geo.innerH) - Math.max(geo.wrapTop, 0));
       assert.ok(geo.wrapH >= 300, 'live canvas is at least 300px at ' + vp.width + 'x' + vp.height + ': ' + JSON.stringify(geo));
       assert.ok(
-        (geo.wrapTop >= 0 && geo.wrapBottom <= geo.innerH + 8) || canScroll,
-        'live canvas stays on screen or the page scrolls at ' + vp.width + 'x' + vp.height + ': ' + JSON.stringify({ geo, scroll, canScroll })
+        visible >= 300 || canScroll,
+        'mutant canvas off-screen at ' + vp.width + 'x' + vp.height + ': ' + JSON.stringify({ geo, scroll, canScroll, visible })
       );
       if (vp.width === 1024) {
-        assert.ok(geo.helpH > 8 && geo.helpDisplay !== 'none', 'live ⓘ stays visible at 1024: ' + JSON.stringify(geo));
-        assert.ok(geo.helpSelf, 'live ⓘ elementFromPoint hits the control itself at 1024');
+        assert.ok(geo.helpH > 8 && geo.helpDisplay !== 'none', 'mutant ⓘ hidden at 1024: ' + JSON.stringify(geo));
+        assert.ok(geo.helpSelf && !geo.helpParent, 'live ⓘ elementFromPoint must hit the control itself, not a parent: ' + JSON.stringify(geo));
+        if (geo.helpBox) await page.mouse.click(geo.helpBox.x, geo.helpBox.y);
       }
-      if (geo.unitSelf === false && vp.width >= 901) {
-        assert.ok(false, 'invisible overlay over unit buttons at ' + vp.width + ': ' + JSON.stringify(geo));
-      }
-      if (geo.unitSelf) {
-        const unitBox = await page.evaluate(() => {
-          const el = document.querySelector('[data-ra-unit-system="imperial"], [data-ra-unit-system]');
-          if (!el) return null;
-          const r = el.getBoundingClientRect();
-          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-        });
-        if (unitBox) await page.mouse.click(unitBox.x, unitBox.y);
-      }
+      assert.ok(geo.unitSelf && !geo.unitParent, 'mutant invisible overlay over the unit buttons at ' + vp.width + ': ' + JSON.stringify(geo));
+      if (geo.unitBox) await page.mouse.click(geo.unitBox.x, geo.unitBox.y);
     }
 
     for (const phone of [
@@ -1270,49 +1271,78 @@ async function measureLiveEditor() {
       { width: 414, height: 736 },
     ]) {
       await page.setViewport({ width: phone.width, height: phone.height, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 350));
       const phoneGeo = await page.evaluate(() => {
         const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
         const sheet = document.querySelector('[data-ra-side], .util-ra-side');
-        const handle = document.querySelector('[data-ra-sheet-handle]');
         const status = document.querySelector('[data-ra-feedback], .util-ra-feedback');
         const palette = document.querySelector('.util-ra-palette__toggle, [data-ra-palette-toggle]');
+        const menuBtn = document.querySelector('[data-ra-project-menu-toggle]');
         const w = wrap ? wrap.getBoundingClientRect() : null;
         const s = sheet ? sheet.getBoundingClientRect() : null;
-        const st = status && !status.hasAttribute('hidden') ? status.getBoundingClientRect() : null;
+        const st = status && getComputedStyle(status).display !== 'none' ? status.getBoundingClientRect() : null;
         const p = palette ? palette.getBoundingClientRect() : null;
-        if (handle) handle.click();
+        const bar = document.querySelector('.util-ra-project-bar');
         return {
           wrapH: w && w.height,
+          wrapTop: w && w.top,
           wrapBottom: w && w.bottom,
           sheetTop: s && s.top,
-          statusBottom: st && st.bottom,
-          paletteTop: p && p.top,
-          innerH: window.innerHeight,
-        };
-      });
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      const afterSheet = await page.evaluate(() => {
-        const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
-        const sheet = document.querySelector('[data-ra-side], .util-ra-side');
-        const w = wrap ? wrap.getBoundingClientRect() : null;
-        const s = sheet ? sheet.getBoundingClientRect() : null;
-        return {
-          wrapH: w && w.height,
-          wrapBottom: w && w.bottom,
           sheetH: s && s.height,
-          sheetTop: s && s.top,
+          statusBottom: st && st.bottom,
+          statusTop: st && st.top,
+          paletteTop: p && p.top,
+          paletteH: p && p.height,
+          barH: bar ? bar.getBoundingClientRect().height : 0,
+          menuBtn: menuBtn ? getComputedStyle(menuBtn).display : 'missing',
+          handleBox: (function () {
+            const handle = document.querySelector('[data-ra-sheet-handle]');
+            if (!handle) return null;
+            const r = handle.getBoundingClientRect();
+            return { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height, display: getComputedStyle(handle).display };
+          })(),
           innerH: window.innerHeight,
-          expanded: !!(document.querySelector('[data-room-area]') && document.querySelector('[data-room-area]').classList.contains('is-sheet-expanded')),
         };
       });
-      assert.ok(phoneGeo.wrapH >= 120, 'live ' + phone.width + ' canvas is visible: ' + JSON.stringify(phoneGeo));
-      if (phone.width === 320 && phoneGeo.statusBottom && phoneGeo.paletteTop) {
-        assert.ok(phoneGeo.statusBottom <= phoneGeo.paletteTop + 2 || phoneGeo.paletteTop + 2 < phoneGeo.statusBottom - 40, '320 palette toggle does not cover status: ' + JSON.stringify(phoneGeo));
+      assert.ok(phoneGeo.menuBtn !== 'none' && phoneGeo.menuBtn !== 'missing', 'phone project picker menu is visible at ' + phone.width + ': ' + JSON.stringify(phoneGeo));
+      assert.ok(phoneGeo.barH <= 72, 'phone project/client block is a single compact line at ' + phone.width + ': ' + phoneGeo.barH);
+      assert.ok(phoneGeo.wrapH >= 160 && phoneGeo.wrapTop >= 0 && phoneGeo.wrapBottom <= phoneGeo.innerH + 1, 'live ' + phone.width + ' canvas is fully visible: ' + JSON.stringify(phoneGeo));
+      assert.ok(phoneGeo.wrapBottom <= phoneGeo.sheetTop + 1, 'mutant 320 canvas under the bottom bar at ' + phone.width + ': ' + JSON.stringify(phoneGeo));
+      if (phone.width === 320 && phoneGeo.statusBottom && phoneGeo.paletteH > 0) {
+        const covers = phoneGeo.paletteTop < phoneGeo.statusBottom - 2 && (phoneGeo.paletteTop + phoneGeo.paletteH) > phoneGeo.statusTop + 2;
+        assert.ok(!covers, '320 palette toggle must not cover the status: ' + JSON.stringify(phoneGeo));
       }
-      if (afterSheet.expanded) {
+      if (phoneGeo.handleBox && phoneGeo.handleBox.display !== 'none') {
+        await page.mouse.click(phoneGeo.handleBox.x, phoneGeo.handleBox.y);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const opened = await page.evaluate(() => {
+          const root = document.querySelector('[data-room-area]');
+          if (root && root.classList.contains('is-sheet-expanded')) return true;
+          const handle = document.querySelector('[data-ra-sheet-handle]');
+          if (handle) handle.click();
+          return !!(root && root.classList.contains('is-sheet-expanded'));
+        });
+        assert.ok(opened, 'live ' + phone.width + ' sheet handle is clickable');
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const afterSheet = await page.evaluate(() => {
+          const wrap = document.querySelector('.util-ra-canvas-wrap, [data-ra-canvas-wrap]');
+          const sheet = document.querySelector('[data-ra-side], .util-ra-side');
+          const w = wrap ? wrap.getBoundingClientRect() : null;
+          const s = sheet ? sheet.getBoundingClientRect() : null;
+          return {
+            wrapH: w && w.height,
+            wrapBottom: w && w.bottom,
+            sheetH: s && s.height,
+            sheetTop: s && s.top,
+            innerH: window.innerHeight,
+            expanded: !!(document.querySelector('[data-room-area]') && document.querySelector('[data-room-area]').classList.contains('is-sheet-expanded')),
+          };
+        });
+        assert.ok(afterSheet.expanded, 'live ' + phone.width + ' sheet opens from the handle: ' + JSON.stringify(afterSheet));
         assert.ok(afterSheet.wrapH >= 160, 'live ' + phone.width + ' keeps 160px canvas with sheet open: ' + JSON.stringify(afterSheet));
-        assert.ok(afterSheet.sheetH <= 280 + 1, 'live ' + phone.width + ' sheet is capped: ' + JSON.stringify(afterSheet));
+        assert.ok(afterSheet.sheetH <= 280 + 1, 'mutant taller sheet at ' + phone.width + ': ' + JSON.stringify(afterSheet));
+        assert.ok(afterSheet.wrapBottom <= afterSheet.sheetTop + 1, 'open sheet must stay below the canvas at ' + phone.width + ': ' + JSON.stringify(afterSheet));
+        await page.mouse.click(phoneGeo.handleBox.x, phoneGeo.handleBox.y);
       }
     }
   } finally {

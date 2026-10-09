@@ -198,27 +198,34 @@
             <option value="">— Select a project —</option>
           </select>
         </div>
-        <div class="util-ra-linked" data-ra-linked hidden>
-          <div class="admin-form-group util-ra-link-edit">
-            <div class="util-ra-link-edit__label-row">
-              <label for="ra-link-client-project">Link to client project</label>
-              <a href="#" data-ra-linked-link class="util-ra-linked__go" hidden>Go to project</a>
+        <div class="util-ra-project-bar__extras">
+          <button type="button" class="admin-btn admin-btn--ghost util-ra-project-bar__menu-btn" data-ra-project-menu-toggle aria-expanded="false" aria-controls="ra-project-menu" aria-label="Project actions">
+            <i class="fa fa-ellipsis-v" aria-hidden="true"></i>
+          </button>
+          <div class="util-ra-project-bar__menu" id="ra-project-menu" data-ra-project-menu>
+            <div class="util-ra-linked" data-ra-linked hidden>
+              <div class="admin-form-group util-ra-link-edit">
+                <div class="util-ra-link-edit__label-row">
+                  <label for="ra-link-client-project">Link to client project</label>
+                  <a href="#" data-ra-linked-link class="util-ra-linked__go" hidden>Go to project</a>
+                </div>
+                <select class="admin-input" id="ra-link-client-project" data-ra-link-client-project>
+                  <option value="">— None —</option>
+                  @foreach ($clientProjects as $cp)
+                    <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
+                  @endforeach
+                </select>
+              </div>
             </div>
-            <select class="admin-input" id="ra-link-client-project" data-ra-link-client-project>
-              <option value="">— None —</option>
-              @foreach ($clientProjects as $cp)
-                <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
-              @endforeach
-            </select>
+            <div class="util-ra-project-bar__actions">
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-new-project-toggle>
+                <i class="fa fa-plus"></i> New project
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-delete-project hidden>
+                <i class="fa fa-trash"></i> Delete project
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="util-ra-project-bar__actions">
-          <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-new-project-toggle>
-            <i class="fa fa-plus"></i> New project
-          </button>
-          <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-delete-project hidden>
-            <i class="fa fa-trash"></i> Delete project
-          </button>
         </div>
       </div>
 

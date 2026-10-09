@@ -249,6 +249,8 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertNotFalse($tipAt);
         $this->assertNotFalse($projectAt);
         $this->assertTrue($toolsAt < $tipAt && $tipAt < $projectAt, 'first-tip sits in the View toolbar, not as a strip above Project');
+        $this->assertStringContainsString('data-ra-project-menu-toggle', $html);
+        $this->assertStringContainsString('data-ra-project-menu', $html);
         $guideUrl = route('admin.client-projects.utilities.room-area.guide', [
             'client_project' => $project,
             'room_area_room' => $room,

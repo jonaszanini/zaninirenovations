@@ -1774,6 +1774,18 @@
   min-width: 0;
 }
 
+.util-ra-project-bar__extras {
+  display: contents;
+}
+
+.util-ra-project-bar__menu {
+  display: contents;
+}
+
+.util-ra-project-bar__menu-btn {
+  display: none;
+}
+
 .util-ra-project-bar__actions {
   display: flex;
   flex-wrap: wrap;
@@ -3603,6 +3615,80 @@
   .util-ra--fullpage .util-ra-action-btn i {
     font-size: 0.9rem;
     margin: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .util-ra--fullpage .util-ra-project-bar__extras {
+    display: flex;
+    align-items: center;
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .util-ra--fullpage .util-ra-project-bar__menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--admin-control-height);
+    min-width: var(--admin-control-height);
+    height: var(--admin-control-height);
+    padding: 0;
+  }
+
+  .util-ra--fullpage .util-ra-project-bar__menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.25rem);
+    z-index: 30;
+    min-width: min(18rem, 82vw);
+    padding: 0.55rem;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    background: var(--admin-elevated, var(--admin-surface));
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+  }
+
+  .util-ra--fullpage .util-ra-project-bar__menu.is-open {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .util-ra--fullpage .util-ra-project-bar__menu .util-ra-linked {
+    flex: none;
+    width: 100%;
+  }
+
+  .util-ra--fullpage .util-ra-project-bar__menu .admin-form-group label,
+  .util-ra--fullpage .util-ra-project-bar__menu .util-ra-link-edit__label-row {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0 0 0.2rem;
+    clip: auto;
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .util-ra--fullpage .util-ra-project-bar__menu .util-ra-project-bar__actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .util-ra--fullpage .util-ra-project-bar__menu .util-ra-action-btn {
+    font-size: 0.9rem;
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .util-ra--fullpage .util-ra-project-bar__menu .util-ra-action-btn i {
+    margin-right: 0.4rem;
   }
 }
 
