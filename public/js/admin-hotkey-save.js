@@ -638,6 +638,16 @@
       }
     }
 
+    function isUnlockingResponse(res) {
+      if (!res) return false;
+      if ((res.status || 0) === 204) return true;
+      try {
+        var cd = res.headers && res.headers.get && res.headers.get('content-disposition');
+        if (cd && /(?:^|[\s;])attachment\b/i.test(cd)) return true;
+      } catch (err) { /* ignore */ }
+      return false;
+    }
+
     function parseAjaxResult(res, body) {
       var ctype = '';
       try {
@@ -645,6 +655,12 @@
       } catch (err) { /* ignore */ }
       var isJson = /application\/json/i.test(ctype) || (body && typeof body === 'object');
       var status = res.status || 0;
+      if (isUnlockingResponse(res)) {
+        return { kind: 'saved' };
+      }
+      if (status >= 500) {
+        return { kind: 'error', title: 'Could not save', message: (isJson && body && (body.message || body.error)) || 'The server did not confirm the save.' };
+      }
       if (!isJson) {
         var text = typeof body === 'string' ? body : '';
         if (status === 401 || status === 419 || /(?:^|[\s>])(?:login|sign in|page expired)/i.test(text)) {
@@ -697,7 +713,8 @@
     }
 
     function takeAjax(res) {
-      if (!session || !session.inflight || session.mode === 'form') return;
+      if (!session || !session.inflight) return;
+      if (session.mode === 'form' && !isUnlockingResponse(res)) return;
       session.mode = 'ajax';
       readBody(res).then(function (body) {
         applyAjaxResult(res, body);
@@ -725,7 +742,7 @@
           var method = requestMethod(input, init);
           var url = requestUrl(input);
           var p = origFetch.apply(this, arguments);
-          if (session && session.inflight && session.mode !== 'form' && isMutating(method) && !isIgnoredUrl(url)) {
+          if (session && session.inflight && isMutating(method) && !isIgnoredUrl(url)) {
             p.then(function (res) { takeAjax(res); }).catch(function () {
               if (session && session.inflight && session.mode !== 'form') {
                 finishSession();
@@ -746,7 +763,7 @@
           return origOpen.apply(this, arguments);
         };
         proto.send = function () {
-          if (session && session.inflight && session.mode !== 'form' && isMutating(this.__adminSaveMethod) && !isIgnoredUrl(this.__adminSaveUrl)) {
+          if (session && session.inflight && isMutating(this.__adminSaveMethod) && !isIgnoredUrl(this.__adminSaveUrl)) {
             this.addEventListener('load', function () {
               takeAjax({
                 ok: this.status >= 200 && this.status < 300,
@@ -945,18 +962,57 @@
     function watchTiny() {
       if (tinyWatch) return;
       var win = env.window;
+      var doc = env.document;
       var timeoutFn = (win && win.setTimeout) || setTimeout;
-      var tries = 0;
-      var poll = function () {
-        tries += 1;
-        if (tinymceApi(env)) {
-          tinyWatch = null;
-          bindTiny();
-          return;
+      var Observer = win && win.MutationObserver;
+      var stopped = false;
+
+      var stopWatch = function () {
+        if (stopped) return;
+        stopped = true;
+        if (tinyWatch && typeof tinyWatch.disconnect === 'function') {
+          try { tinyWatch.disconnect(); } catch (err) { /* ignore */ }
         }
-        if (tries < 40) tinyWatch = timeoutFn(poll, 250);
+        tinyWatch = null;
       };
-      tinyWatch = timeoutFn(poll, 250);
+
+      var tryBind = function () {
+        if (stopped) return true;
+        if (!tinymceApi(env)) return false;
+        stopWatch();
+        bindTiny();
+        return true;
+      };
+
+      if (Observer && doc && (doc.documentElement || doc.body)) {
+        var obs = new Observer(function () { tryBind(); });
+        try {
+          obs.observe(doc.documentElement || doc.body, { childList: true, subtree: true });
+        } catch (err) { /* ignore */ }
+        if (win && typeof win.addEventListener === 'function') {
+          win.addEventListener('load', tryBind, true);
+        }
+        tinyWatch = {
+          disconnect: function () {
+            try { obs.disconnect(); } catch (err) { /* ignore */ }
+            if (win && typeof win.removeEventListener === 'function') {
+              win.removeEventListener('load', tryBind, true);
+            }
+          },
+        };
+        tryBind();
+        return;
+      }
+
+      var poll = function () {
+        if (tryBind()) return;
+        var id = timeoutFn(poll, 250);
+        if (id && typeof id.unref === 'function') id.unref();
+        tinyWatch = id;
+      };
+      var first = timeoutFn(poll, 250);
+      if (first && typeof first.unref === 'function') first.unref();
+      tinyWatch = first;
     }
 
     function consumeFlash(payload) {
@@ -1052,6 +1108,7 @@
       laravelToName: laravelToName,
       isIgnoredUrl: isIgnoredUrl,
       parseAjaxResult: parseAjaxResult,
+      isUnlockingResponse: isUnlockingResponse,
       readBody: readBody,
       collectInvalidFields: function (form) { return collectInvalidFields(form, env); },
       handleKeydown: handleKeydown,

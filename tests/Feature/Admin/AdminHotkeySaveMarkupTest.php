@@ -40,11 +40,13 @@ class AdminHotkeySaveMarkupTest extends IntegrationTestCase
 
         $project = ClientProject::factory()->create();
         $this->assertButtonMarked(route('admin.client-projects.edit', $project), [
+            'id="cp-btn-save"',
             'data-hotkey-save',
         ], 'Save changes');
 
         $client = Client::create(['name' => 'Hotkey Markup Client']);
         $this->assertButtonMarked(route('admin.clients.edit', $client), [
+            'id="cl-btn-save"',
             'data-hotkey-save',
         ], 'Save');
 
@@ -73,6 +75,7 @@ class AdminHotkeySaveMarkupTest extends IntegrationTestCase
         $instruction = AiInstruction::forKey(AiInstruction::KEY_BLOG_POST);
         $this->assertNotNull($instruction);
         $this->assertButtonMarked(route('admin.ai-instructions.edit', $instruction), [
+            'id="ai-btn-save"',
             'data-hotkey-save',
         ], 'Save changes');
 
@@ -82,20 +85,21 @@ class AdminHotkeySaveMarkupTest extends IntegrationTestCase
         ], 'Save configuration');
 
         $vehicles = $this->get(route('admin.vehicles.index'))->assertOk()->getContent();
-        $this->assertButtonHas($vehicles, ['data-hotkey-save'], 'Save business contact');
-        $this->assertButtonHas($vehicles, ['data-hotkey-save'], 'Save gas price');
-        $this->assertButtonHas($vehicles, ['data-hotkey-save'], 'Save home address');
+        $this->assertButtonHas($vehicles, ['id="vh-btn-contact"', 'data-hotkey-save'], 'Save business contact');
+        $this->assertButtonHas($vehicles, ['id="vh-btn-gas"', 'data-hotkey-save'], 'Save gas price');
+        $this->assertButtonHas($vehicles, ['id="vh-btn-home"', 'data-hotkey-save'], 'Save home address');
         $this->assertMatchesRegularExpression(
             '/id="company-gas-price"[^>]*data-cp-money-entry="direct"|data-cp-money-entry="direct"[^>]*id="company-gas-price"/',
             $vehicles
         );
 
         $fence = $this->get(route('admin.quotations.fence.config'))->assertOk()->getContent();
-        $this->assertButtonHas($fence, ['data-hotkey-save'], 'Save links');
-        $this->assertButtonHas($fence, ['data-hotkey-save'], 'Save formula');
+        $this->assertButtonHas($fence, ['id="fq-btn-save-links"', 'data-hotkey-save'], 'Save links');
+        $this->assertButtonHas($fence, ['id="fq-btn-save-formula"', 'data-hotkey-save'], 'Save formula');
 
         $deck = $this->get(route('admin.quotations.low-deck.config'))->assertOk()->getContent();
-        $this->assertButtonHas($deck, ['data-hotkey-save'], 'Save links');
+        $this->assertButtonHas($deck, ['id="ld-btn-save-links"', 'data-hotkey-save'], 'Save links');
+        $this->assertButtonHas($deck, ['id="ld-btn-save-formula"', 'data-hotkey-save'], 'Save formula');
     }
 
     public function test_rendered_publish_and_send_buttons_are_not_opted_in(): void

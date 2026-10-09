@@ -43,7 +43,7 @@
           'lngValue' => old('home_address_longitude', $settings->home_address_longitude),
           'help' => 'Pick a Google suggestion so distance to projects can be calculated automatically.',
         ])
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save home address</button>
+        <button type="submit" id="vh-btn-home" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save home address</button>
       </form>
     </div>
 
@@ -82,7 +82,7 @@
             @error('contact_email') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </div>
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save business contact</button>
+        <button type="submit" id="vh-btn-contact" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save business contact</button>
       </form>
     </div>
 
@@ -116,7 +116,7 @@
                    data-cp-gas-price
                    placeholder="1.450"
                    required data-cp-money-entry="direct">
-            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save gas price</button>
+            <button type="submit" id="vh-btn-gas" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save gas price</button>
           </div>
           <p class="admin-form-help">Company-wide — used with each vehicle’s L/100 km for fuel estimates.</p>
           @error('gas_price_per_liter') <p class="admin-form-error">{{ $message }}</p> @enderror

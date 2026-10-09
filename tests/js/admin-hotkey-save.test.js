@@ -492,6 +492,22 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
     'finish removes leftover _hotkey_save');
 })();
 
+(function neverEmailUntickedPriorIsZero() {
+  const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: false, value: '1' });
+  checkbox.checked = false;
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [checkbox, btn]);
+  const doc = makeDoc([form]);
+  const inst = apiFor(doc);
+  inst.handleKeydown(chord());
+  assert.strictEqual(checkbox.checked, false, 'Ctrl+S leaves an unticked email box unticked');
+  const prior = form.children.find((c) => c.name === '_hotkey_email_prior' || (c.getAttribute && c.getAttribute('name') === '_hotkey_email_prior'));
+  assert.ok(prior, 'Ctrl+S still posts the prior email-box choice when unticked');
+  assert.strictEqual(prior.value, '0', 'unticked email box posts _hotkey_email_prior=0');
+  inst.reset();
+  assert.strictEqual(checkbox.checked, false, 'finish keeps an unticked email box unticked');
+})();
+
 (function focusedFormChoice() {
   const homeInput = makeEl('input', { id: 'home-address', name: 'home_address' });
   const homeBtn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'save-home' });
@@ -565,6 +581,11 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   );
   assert.strictEqual(expired.title, 'Sign in required', '419 HTML is a login/session message');
   assert.ok(/session expired/i.test(expired.message));
+  const stale = inst.parseAjaxResult(
+    { headers: { get() { return 'text/html'; } }, ok: false, status: 419 },
+    '<html><h1>Token mismatch</h1><p>Please retry the request.</p></html>'
+  );
+  assert.strictEqual(stale.title, 'Sign in required', '419 HTML without expired text still uses the status branch');
   const serverErr = inst.parseAjaxResult(
     { headers: { get() { return 'text/html'; } }, ok: false, status: 500 },
     '<html><h1>Server Error</h1></html>'
@@ -575,6 +596,37 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
     '<html>Service Unavailable</html>'
   );
   assert.notStrictEqual(unavailable.title, 'Sign in required', 'HTML 503 is not session expired');
+  const fiveLogin = inst.parseAjaxResult(
+    { headers: { get() { return 'text/html'; } }, ok: false, status: 500 },
+    '<html><nav><a href="/login">Login</a></nav><p>Sign in again later</p></html>'
+  );
+  assert.strictEqual(fiveLogin.title, 'Could not save', '5xx HTML never shows Sign in required');
+  const empty = inst.parseAjaxResult(
+    { headers: { get() { return ''; } }, ok: true, status: 204 },
+    ''
+  );
+  assert.strictEqual(empty.kind, 'saved', '204 is a confirmed save');
+  const download = inst.parseAjaxResult(
+    {
+      headers: {
+        get(name) {
+          const key = String(name || '').toLowerCase();
+          if (key === 'content-disposition') return 'attachment; filename="quote.pdf"';
+          if (key === 'content-type') return 'application/pdf';
+          return '';
+        },
+      },
+      ok: true,
+      status: 200,
+    },
+    null
+  );
+  assert.strictEqual(download.kind, 'saved', 'attachment download is a confirmed save');
+  assert.ok(inst.isUnlockingResponse({ status: 204, headers: { get() { return ''; } } }));
+  assert.ok(inst.isUnlockingResponse({
+    status: 200,
+    headers: { get(name) { return String(name).toLowerCase() === 'content-disposition' ? 'attachment; filename=x.csv' : ''; } },
+  }));
   const csrf = inst.parseAjaxResult(
     { headers: { get() { return 'application/json'; } }, ok: false, status: 419 },
     { message: 'CSRF token mismatch' }
@@ -1034,6 +1086,54 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   inst.reset();
 })();
 
+(function watchTinyObserverHooksLateTiny() {
+  const btn = makeEl('button', { type: 'button', 'data-hotkey-save': '', id: 'tiny-save' });
+  const doc = makeDoc([btn]);
+  const observers = [];
+  function FakeObserver(cb) {
+    this.cb = cb;
+    this.disconnected = false;
+    observers.push(this);
+  }
+  FakeObserver.prototype.observe = function () {};
+  FakeObserver.prototype.disconnect = function () { this.disconnected = true; };
+
+  const loadListeners = [];
+  const win = {
+    navigator: { platform: 'Linux' },
+    MutationObserver: FakeObserver,
+    addEventListener(type, fn) {
+      if (type === 'load') loadListeners.push(fn);
+    },
+    removeEventListener() {},
+    setTimeout() { throw new Error('watchTiny must not poll when MutationObserver exists'); },
+    clearTimeout() {},
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return 1000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.bindTiny();
+  assert.strictEqual(observers.length, 1, 'watchTiny uses MutationObserver when available');
+  assert.ok(loadListeners.length >= 1, 'watchTiny also listens for late script load');
+
+  let keydown = null;
+  let addEditor = null;
+  const editor = { on(name, fn) { if (name === 'keydown') keydown = fn; } };
+  win.tinymce = {
+    get() { return [editor]; },
+    on(name, fn) { if (name === 'AddEditor') addEditor = fn; },
+  };
+  observers[0].cb();
+  assert.ok(typeof addEditor === 'function', 'late tinymce after the 10s window is still bound');
+  assert.ok(typeof keydown === 'function', 'late tinymce editors receive the hotkey hook');
+  assert.strictEqual(observers[0].disconnected, true, 'observer disconnects once tinymce is bound');
+  inst.reset();
+})();
+
 (function logoutFormIsSkippedForErrors() {
   const logout = makeEl('form', { id: 'logout-form' });
   const field = makeEl('input', { name: 'pieces[0][width]', id: 'w' });
@@ -1129,6 +1229,62 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
     assert.deepStrictEqual(body, { ok: true });
     inst.reset();
   });
+}).then(() => {
+  const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
+  checkbox.checked = true;
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [checkbox, btn]);
+  const doc = makeDoc([form]);
+  const toasts = [];
+  const pending = [];
+  const timers = [];
+  const win = {
+    navigator: { platform: 'Linux' },
+    fetch() {
+      let resolve;
+      const p = new Promise((res) => { resolve = res; });
+      pending.push({ resolve, promise: p });
+      return p;
+    },
+    setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+    clearTimeout() {},
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return 20000; },
+    toast: {
+      saved() { toasts.push('saved'); },
+      error() { toasts.push('error'); },
+      validation() { toasts.push('validation'); },
+    },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  btn.click = function () {
+    this.clicked += 1;
+    inst.onFormSubmit({ target: form, defaultPrevented: false });
+    win.fetch('/admin/client-projects', { method: 'POST' });
+  };
+  inst.handleKeydown(chord());
+  assert.strictEqual(pending.length, 1, 'form-mode save still wraps fetch');
+  timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
+  assert.ok(inst.isInflight(), 'native submit stays locked until a response');
+  pending[0].resolve({
+    ok: true,
+    status: 204,
+    headers: { get() { return ''; } },
+    text() { return Promise.resolve(''); },
+    clone() { return this; },
+  });
+  return Promise.resolve()
+    .then(() => Promise.resolve())
+    .then(() => Promise.resolve())
+    .then(() => {
+      assert.strictEqual(inst.isInflight(), false, '204 unlocks a form-mode session');
+      assert.deepStrictEqual(toasts, ['saved'], '204 shows Saved');
+      assert.strictEqual(checkbox.checked, true, '204 restore re-ticks the email box');
+      inst.reset();
+    });
 }).then(() => {
   console.log('admin-hotkey-save tests: ok');
 }).catch((err) => {

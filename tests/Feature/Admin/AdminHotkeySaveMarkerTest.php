@@ -242,6 +242,50 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
         $this->assertSame('1', (string) session()->getOldInput('send_client_email'));
     }
 
+    public function test_hotkey_validation_bounce_keeps_the_users_email_box_choice(): void
+    {
+        $this->actingAsAdmin();
+
+        $ticked = $this->from(route('admin.client-projects.create'))
+            ->post(route('admin.client-projects.store'), [
+                'name' => 'Front deck',
+                'contacted_via' => 'email',
+                'client_name' => 'Jane Doe',
+                'client_email' => 'not-an-email',
+                'billing_type' => 'fixed',
+                'send_client_email' => '0',
+                '_hotkey_save' => '1',
+                '_hotkey_email_prior' => '1',
+            ]);
+
+        $ticked->assertRedirect(route('admin.client-projects.create'));
+        $ticked->assertSessionHasErrors('client_email');
+        $this->assertSame('1', (string) session()->getOldInput('send_client_email'));
+        $this->assertNull(session()->getOldInput('_hotkey_save'));
+
+        $html = $this->get(route('admin.client-projects.create'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/id="cp-send-client-email"[^>]*\bchecked\b|\bchecked\b[^>]*id="cp-send-client-email"/',
+            $html
+        );
+
+        $unticked = $this->from(route('admin.client-projects.create'))
+            ->post(route('admin.client-projects.store'), [
+                'name' => 'Front deck',
+                'contacted_via' => 'email',
+                'client_name' => 'Jane Doe',
+                'client_email' => 'not-an-email',
+                'billing_type' => 'fixed',
+                'send_client_email' => '0',
+                '_hotkey_save' => '1',
+                '_hotkey_email_prior' => '0',
+            ]);
+
+        $unticked->assertRedirect(route('admin.client-projects.create'));
+        $unticked->assertSessionHasErrors('client_email');
+        $this->assertSame('0', (string) session()->getOldInput('send_client_email'));
+    }
+
     public function test_hotkey_save_notes_when_schedule_confirmation_is_held_back(): void
     {
         Mail::fake();

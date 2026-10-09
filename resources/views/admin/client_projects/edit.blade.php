@@ -246,14 +246,14 @@
       </div>
 
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save><i class="fa fa-check"></i> Save changes</button>
+        <button type="submit" id="cp-btn-save" class="admin-btn admin-btn--primary" data-hotkey-save><i class="fa fa-check"></i> Save changes</button>
         <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Project form actions">
-      <button type="submit" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
+      <button type="submit" id="cp-btn-save-aside" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-check"></i> Save changes
       </button>
       <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
