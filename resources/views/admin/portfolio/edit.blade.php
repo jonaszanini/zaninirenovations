@@ -178,7 +178,7 @@
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Portfolio form actions">
-      <button type="submit" form="portfolio-edit-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="portfolio-edit-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-check"></i> Save changes
       </button>
       <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Back to list</a>
@@ -287,7 +287,7 @@
           </div>
           <div class="admin-photo-edit-actions-end">
             <button type="button" class="admin-btn admin-btn--ghost" data-edit-modal-dismiss>Cancel</button>
-            <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-apply" disabled>Save</button>
+            <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-apply" data-hotkey-save disabled>Save</button>
           </div>
         </div>
         <div class="admin-photo-edit-feedback">

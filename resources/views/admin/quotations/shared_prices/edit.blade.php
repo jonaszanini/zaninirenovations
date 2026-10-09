@@ -295,7 +295,7 @@ td.sp-col-consumers {
       </a>
     </div>
     <div class="admin-toolbar-group admin-toolbar-actions">
-      <button type="submit" form="sp-lib-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="sp-lib-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-save"></i> Save shared prices
       </button>
     </div>

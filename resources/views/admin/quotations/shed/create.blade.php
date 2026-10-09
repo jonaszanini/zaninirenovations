@@ -72,7 +72,7 @@
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="sh-btn-publish">
           <i class="fa fa-save"></i> Save quotation
         </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sh-btn-draft">Save as draft</button>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sh-btn-draft" data-hotkey-save>Save as draft</button>
         <a href="{{ route('admin.quotations.shed.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-cog"></i> Price configuration
         </a>

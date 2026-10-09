@@ -61,7 +61,7 @@
         <i class="fa fa-cog"></i> Price configuration
       </a>
       @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tm-btn-draft">Save as draft</button>
+      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tm-btn-draft" data-hotkey-save>Save as draft</button>
       @include('admin.partials.quotation_view_pdf')
       <button type="submit" form="tm-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="tm-btn-publish">
         <i class="fa fa-save"></i> Save quotation

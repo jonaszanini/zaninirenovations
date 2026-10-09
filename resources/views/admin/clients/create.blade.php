@@ -93,7 +93,7 @@
       </div>
 
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
           <i class="fa fa-check"></i> {{ session('duplicate_candidates') ? 'Save anyway' : 'Save client' }}
         </button>
         <a href="{{ route('admin.clients.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>

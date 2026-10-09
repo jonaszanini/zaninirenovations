@@ -24,7 +24,7 @@
         </div>
       </div>
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save tag</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save tag</button>
         <a href="{{ route('admin.client-tags.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

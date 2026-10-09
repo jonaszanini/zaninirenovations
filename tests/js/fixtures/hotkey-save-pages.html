@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin hotkey save fixtures</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    .toolbar { display: flex; justify-content: flex-end; padding: 12px; }
+    .pad { padding: 16px; }
+    #canvas-controls { position: absolute; right: 12px; top: 72px; }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="page-quotation" class="pad">
+    <form id="sq-standard-form">
+      <label for="sq-title">Title</label>
+      <input id="sq-title" class="admin-input" name="title" value="Deck">
+      <div class="toolbar admin-toolbar-actions">
+        <button type="button" id="sq-email">Email client</button>
+        <button type="button" id="sq-save" class="admin-btn admin-btn--primary" data-hotkey-save data-ajax-save>Save</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="page-room-area" class="pad" hidden>
+    <header class="util-ra-full-header" style="display:flex;justify-content:flex-end;gap:8px;padding:8px;">
+      <button type="button" class="admin-btn admin-btn--primary util-ra-full-header__save" data-ra-save-room data-hotkey-save id="ra-save">Save</button>
+    </header>
+    <div id="canvas-controls">
+      <button type="button" data-ra-zoom-in id="ra-zoom">+</button>
+    </div>
+    <label for="ra-room-name">Room name</label>
+    <input id="ra-room-name" class="admin-input" name="name" value="">
+  </div>
+
+  <div id="page-toast-layout" class="pad" hidden>
+    <button type="button" id="layout-save" class="admin-btn admin-btn--primary" data-hotkey-save style="position:fixed;top:12px;right:12px;">Save</button>
+    <label for="layout-field">Name</label>
+    <input id="layout-field" class="admin-input" required>
+  </div>
+
+  <script src="/js/admin-toast.js"></script>
+  <script src="/js/admin-hotkey-save.js"></script>
+  <script>
+    window.__saves = [];
+    function mockSave(kind) {
+      window.__saves.push(kind);
+      return fetch('/save/' + kind, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: kind, value: (document.activeElement && document.activeElement.value) || '' })
+      });
+    }
+    document.getElementById('sq-save').addEventListener('click', function (e) {
+      e.preventDefault();
+      mockSave('quotation');
+    });
+    document.getElementById('ra-save').addEventListener('click', function () {
+      mockSave('room');
+    });
+    document.getElementById('sq-standard-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+    });
+  </script>
+</body>
+</html>

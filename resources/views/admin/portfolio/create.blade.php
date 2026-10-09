@@ -92,7 +92,7 @@
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Portfolio form actions">
-      <button type="submit" form="portfolio-create-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="portfolio-create-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-check"></i> Save project
       </button>
       <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>

@@ -12,7 +12,7 @@
       @csrf
       @include('admin.vehicles._form')
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Add vehicle</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Add vehicle</button>
         <a href="{{ route('admin.vehicles.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

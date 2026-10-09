@@ -54,7 +54,7 @@
       <div class="mat-edit-footer">
         <div class="mat-edit-footer__main">
           <div class="admin-form-actions mat-edit-actions">
-            <button type="submit" class="admin-btn admin-btn--primary">
+            <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
               <i class="fa fa-save"></i> Save
             </button>
             @if ($material->isSerpApiSyncable())

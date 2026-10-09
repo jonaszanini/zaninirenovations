@@ -202,7 +202,8 @@
               form="sq-standard-form"
               class="admin-btn admin-btn--primary admin-btn--sm admin-btn--icon"
               title="Save"
-              aria-label="Save">
+              aria-label="Save"
+              data-hotkey-save>
         <i class="fa fa-save" aria-hidden="true"></i>
       </button>
       <div class="br-toolbar-grand" id="sq-toolbar-grand" title="Live grand total (incl. HST)">
@@ -492,7 +493,7 @@
     </div>
 
     <div class="sq-form-actions">
-      <button type="submit" class="admin-btn admin-btn--primary">
+      <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
         <i class="fa fa-save"></i> Save
       </button>
     </div>

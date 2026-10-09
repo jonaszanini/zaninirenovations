@@ -30,7 +30,7 @@
         @enderror
       </div>
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save changes</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save changes</button>
         <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost">Back to categories</a>
       </div>
     </form>

@@ -64,6 +64,8 @@ jobs:
           npm ci --no-fund
           node tests/js/room-area-lib.test.js
           node tests/js/room-area-phone-geometry.test.js
+          node tests/js/admin-hotkey-save.test.js
+          node tests/js/admin-hotkey-save-browser.test.js
 
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
@@ -78,6 +80,8 @@ jobs:
         run: |
           php artisan test tests/Unit/Views/PublicCssLightOnlyTest.php
           php artisan test tests/Unit/Views/PublicMobileNavDropdownTest.php
+          php artisan test tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
+          php artisan test tests/Unit/Views/AdminHotkeySaveMarkupTest.php
           php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
           php artisan test tests/Unit/Views/HomeKitchenTileImageTest.php
 
@@ -209,6 +213,7 @@ jobs:
           php artisan test tests/Unit/Services/RoomAreaTemplatesTest.php
           php artisan test tests/Unit/Models/BlogPostListHelpersTest.php
           php artisan test tests/Feature/Admin/BlogPostsIndexLayoutTest.php
+          php artisan test tests/Feature/Admin/AdminHotkeySaveMarkerTest.php
           php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
           php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
 

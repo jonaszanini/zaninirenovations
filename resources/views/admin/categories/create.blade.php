@@ -23,7 +23,7 @@
       </div>
       <p class="admin-form-help" style="margin-top:-0.5rem;">A URL-friendly slug is created automatically from the name (e.g. “Kitchen renovation” → <code class="admin-code">kitchen-renovation</code>). You can change it when editing.</p>
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save category</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save category</button>
         <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

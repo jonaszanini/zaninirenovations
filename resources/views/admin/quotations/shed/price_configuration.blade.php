@@ -26,7 +26,7 @@
       </a>
     </div>
     <div class="admin-toolbar-group admin-toolbar-actions">
-      <button type="submit" form="sh-config-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="sh-config-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-save"></i> Save configuration
       </button>
     </div>
@@ -215,7 +215,7 @@
     </section>
 
     <div class="admin-form-actions">
-      <button type="submit" class="admin-btn admin-btn--primary">
+      <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
         <i class="fa fa-save"></i> Save configuration
       </button>
     </div>

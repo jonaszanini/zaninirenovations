@@ -72,7 +72,7 @@
             Delete
           </button>
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-modal-close>Cancel</button>
-          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-personal-event-save">
+          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-personal-event-save" data-hotkey-save>
             <i class="fa fa-check"></i> Save
           </button>
         </div>

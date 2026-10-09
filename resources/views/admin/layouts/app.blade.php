@@ -481,6 +481,27 @@
   <script src="{{ asset('js/admin-quotation-leave-save.js') }}?v={{ @filemtime(public_path('js/admin-quotation-leave-save.js')) ?: time() }}"></script>
   @endif
 
+  {{-- Shared save toast + Ctrl/Cmd+S (admin only) --}}
+  @php
+    $adminToastFields = [];
+    if ($errors->any()) {
+        foreach ($errors->messages() as $fieldName => $messages) {
+            $adminToastFields[] = [
+                'name' => $fieldName,
+                'message' => $messages[0] ?? 'is invalid',
+            ];
+        }
+    }
+  @endphp
+  <script type="application/json" id="admin-toast-flash">@json([
+    'success' => (bool) session('success'),
+    'error' => session('error'),
+    'warning' => session('warning'),
+    'fields' => $adminToastFields,
+  ])</script>
+  <script src="{{ asset('js/admin-toast.js') }}?v={{ @filemtime(public_path('js/admin-toast.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-hotkey-save.js') }}?v={{ @filemtime(public_path('js/admin-hotkey-save.js')) ?: time() }}"></script>
+
   {{-- Global search palette (Ctrl+K / Cmd+K) --}}
   <div id="admin-search-palette" class="asp" hidden>
     <div class="asp__backdrop" onclick="AdminSearchPalette.close()"></div>

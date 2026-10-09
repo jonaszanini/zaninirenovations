@@ -486,7 +486,7 @@
           <button type="submit" form="pq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="pq-btn-publish">
             <i class="fa fa-save"></i> Save quotation
           </button>
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft">Save as draft</button>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft" data-hotkey-save>Save as draft</button>
           <a href="{{ route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
             <i class="fa fa-cog"></i> Price configuration
           </a>

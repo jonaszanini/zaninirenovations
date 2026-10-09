@@ -3457,3 +3457,42 @@ html.admin-dark .util-oc-card {
 html.admin-dark .util-lb-min-offcut > label {
   color: var(--admin-muted);
 }
+
+html.admin-dark .admin-toast__card {
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  box-shadow: var(--admin-shadow-md);
+}
+
+html.admin-dark .admin-toast--success {
+  background: var(--admin-success-soft);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+html.admin-dark .admin-toast--error {
+  background: var(--admin-danger-soft);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+html.admin-dark .admin-toast--warning {
+  background: var(--admin-warn-tile-bg);
+  color: var(--admin-warn-tile-text);
+  border-color: var(--admin-warn-tile-border);
+}
+
+html.admin-dark .admin-toast__close:hover,
+html.admin-dark .admin-toast__close:focus-visible {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .admin-input.admin-field-invalid,
+html.admin-dark input.admin-field-invalid,
+html.admin-dark textarea.admin-field-invalid,
+html.admin-dark select.admin-field-invalid,
+html.admin-dark [contenteditable].admin-field-invalid {
+  border-color: var(--admin-danger);
+  box-shadow: 0 0 0 3px var(--admin-danger-soft);
+}

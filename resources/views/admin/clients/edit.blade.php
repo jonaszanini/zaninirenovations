@@ -90,7 +90,7 @@
       </p>
 
       <div class="admin-form-actions" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-        <button type="submit" class="admin-btn admin-btn--primary">
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
           <i class="fa fa-save"></i> Save
         </button>
         <a href="{{ route('admin.clients.index') }}" class="admin-btn admin-btn--ghost">Back</a>

@@ -79,7 +79,7 @@
             </button>
           </span>
           <span class="util-ra-tip util-ra-tip--end util-ra-tip--below" data-tooltip="Save this room's outline, scale, and objects." data-ra-save-tip>
-            <button type="button" class="admin-btn admin-btn--primary util-ra-full-header__save" data-ra-save-room disabled aria-label="Save room">
+            <button type="button" class="admin-btn admin-btn--primary util-ra-full-header__save" data-ra-save-room data-hotkey-save disabled aria-label="Save room">
               <i class="fa fa-save" aria-hidden="true"></i>
               <span class="util-ra-full-header__save-label">Save</span>
             </button>
@@ -282,7 +282,7 @@
                 <input class="admin-input" type="text" id="ra-room-name" maxlength="120" placeholder="Room name" @unless($fullPage) data-ra-room-name @endunless>
               </div>
               <span class="util-ra-tip" data-tooltip="Save room" data-ra-save-tip>
-                <button type="button" class="admin-btn admin-btn--primary util-ra-icon-btn" data-ra-save-room disabled aria-label="Save room">
+                <button type="button" class="admin-btn admin-btn--primary util-ra-icon-btn" data-ra-save-room data-hotkey-save disabled aria-label="Save room">
                   <i class="fa fa-save" aria-hidden="true"></i>
                 </button>
               </span>
