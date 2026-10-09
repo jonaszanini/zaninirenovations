@@ -3,6 +3,8 @@
   'use strict';
 
   if (typeof Konva === 'undefined') return;
+  var RA = window.RoomAreaLib;
+  if (!RA) return;
 
   var root = document.querySelector('[data-room-area]');
   if (!root) return;
@@ -79,7 +81,14 @@
   var OBJECT_SNAP_PX = 36;
   var OBJECT_MIN_WIDTH_IN = 6;
   var OBJECT_MAX_WIDTH_IN = 240;
-  var DEFAULT_WALL_HEIGHT_FT = 8;
+  var DEFAULT_WALL_HEIGHT_FT = RA.DEFAULT_WALL_HEIGHT_FT || 8;
+  var DEFAULT_EDITOR_PREFS = {
+    layers_locked: false,
+    dimensions_mode: DIM_MODES.all,
+    unit_system: 'imperial',
+    measure_unit: MEASURE_UNITS.feet_inch_frac,
+    angle_snap: true
+  };
   var DEFAULT_DOOR_HEIGHT_IN = 80;
   var DEFAULT_WINDOW_HEIGHT_IN = 36;
   var DEFAULT_TYPED_PPF = 12;
@@ -134,8 +143,8 @@
   }
 
   function canvasTagFill(selected) {
-    if (selected) return 'rgba(249, 168, 37, 0.95)';
-    return isAdminDark() ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255,255,255,0.92)';
+    if (selected) return 'rgba(249, 168, 37, 0.98)';
+    return isAdminDark() ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255,255,255,0.98)';
   }
 
   function canvasBrandStroke() {
@@ -1055,25 +1064,36 @@
   }
 
   function wallHeightFt() {
-    var n = els.wallHeight ? parseFloat(els.wallHeight.value) : state.wallHeightFt;
+    if (els.wallHeight && String(els.wallHeight.value).trim()) {
+      var parsed = RA.parseWallHeight(els.wallHeight.value, isMetricDisplay());
+      if (isFinite(parsed) && parsed >= 1) {
+        return Math.round(parsed * 100) / 100;
+      }
+    }
+    var n = state.wallHeightFt;
     if (!isFinite(n) || n < 1) return DEFAULT_WALL_HEIGHT_FT;
     if (n > 20) return 20;
     return Math.round(n * 100) / 100;
+  }
+
+  function syncWallHeightInput() {
+    if (!els.wallHeight || document.activeElement === els.wallHeight) return;
+    els.wallHeight.value = RA.wallHeightDisplay(state.wallHeightFt, isMetricDisplay(), fmt);
   }
 
   function setWallHeight(value) {
-    var next = wallHeightFtFromValue(value);
-    state.wallHeightFt = next;
-    if (els.wallHeight && document.activeElement !== els.wallHeight) {
-      els.wallHeight.value = String(next);
-    }
+    var n = parseFloat(value);
+    if (!isFinite(n) || n < 1) n = DEFAULT_WALL_HEIGHT_FT;
+    if (n > 20) n = 20;
+    state.wallHeightFt = Math.round(n * 100) / 100;
+    syncWallHeightInput();
   }
 
   function wallHeightFtFromValue(value) {
-    var n = parseFloat(value);
-    if (!isFinite(n) || n < 1) return DEFAULT_WALL_HEIGHT_FT;
-    if (n > 20) return 20;
-    return Math.round(n * 100) / 100;
+    var parsed = RA.parseWallHeight(value, isMetricDisplay());
+    if (!isFinite(parsed) || parsed < 1) return DEFAULT_WALL_HEIGHT_FT;
+    if (parsed > 20) return 20;
+    return Math.round(parsed * 100) / 100;
   }
 
   function objectHeightInches(obj, heightFt) {
@@ -1399,6 +1419,10 @@
   }
 
   function deleteActivePolygon() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var group = activeGroup();
     var poly = activePolygon();
     if (!group || !poly) return;
@@ -1468,11 +1492,22 @@
     return payload;
   }
 
+  function defaultEditorPrefs() {
+    return {
+      layers_locked: false,
+      dimensions_mode: DIM_MODES.all,
+      unit_system: 'imperial',
+      measure_unit: MEASURE_UNITS.feet_inch_frac,
+      angle_snap: true
+    };
+  }
+
   function serializeEditorPrefs() {
     var editor = {
       layers_locked: !!state.layersLocked,
       dimensions_mode: DIM_MODES[state.dimensionsMode] ? state.dimensionsMode : DIM_MODES.all,
       unit_system: isMetricDisplay() ? 'metric' : 'imperial',
+      measure_unit: state.measureUnit || MEASURE_UNITS.feet_inch_frac,
       angle_snap: state.angleSnap !== false
     };
     if (state.templateKind) editor.template = state.templateKind;
@@ -1480,12 +1515,16 @@
   }
 
   function applyEditorPrefs(editor, silent) {
-    if (!editor || typeof editor !== 'object') return;
-    if (editor.dimensions_mode) setDimensionsMode(editor.dimensions_mode);
-    if (editor.unit_system) setUnitSystem(editor.unit_system);
-    if (editor.layers_locked != null) setLayersLocked(!!editor.layers_locked, silent !== false);
-    if (editor.angle_snap != null) setAngleSnap(!!editor.angle_snap, silent !== false);
-    if (editor.template) state.templateKind = editor.template;
+    var prefs = Object.assign({}, defaultEditorPrefs(), editor && typeof editor === 'object' ? editor : {});
+    if (prefs.measure_unit && MEASURE_UNITS[prefs.measure_unit]) {
+      setMeasureUnit(prefs.measure_unit, silent);
+    } else if (prefs.unit_system) {
+      setUnitSystem(prefs.unit_system, silent);
+    }
+    setDimensionsMode(prefs.dimensions_mode, silent);
+    setLayersLocked(!!prefs.layers_locked, silent !== false);
+    setAngleSnap(prefs.angle_snap !== false, silent !== false);
+    state.templateKind = prefs.template || null;
   }
 
   function serializeObjects() {
@@ -1657,7 +1696,7 @@
     }
     hydrateObjects(data.objects || []);
     setWallThickness(data.wall_thickness_in != null ? data.wall_thickness_in : (activeProject() && activeProject().wall_thickness_in) || 0, true);
-    if (data.editor) applyEditorPrefs(data.editor, true);
+    applyEditorPrefs(data.editor && typeof data.editor === 'object' ? data.editor : defaultEditorPrefs(), true);
   }
 
   function hydrateObjects(rawObjects) {
@@ -2010,7 +2049,8 @@
           width: Math.round(state.bgLayout.width * 1000) / 1000,
           height: Math.round(state.bgLayout.height * 1000) / 1000
         }
-        : null
+        : null,
+      editor: serializeEditorPrefs()
     };
   }
 
@@ -2165,63 +2205,7 @@
   }
 
   function parseFeetInput(raw) {
-    var s = String(raw).trim();
-    if (!s) throw new Error('Enter a length (e.g. 12\' 6", 12.5, or 150").');
-
-    s = s.replace(/½/g, '1/2').replace(/¼/g, '1/4').replace(/¾/g, '3/4');
-    s = s.replace(/feet|foot/gi, "'");
-    s = s.replace(/\bft\b/gi, "'");
-    s = s.replace(/inches|inch/gi, '"');
-    s = s.replace(/\bin\b/gi, '"');
-    s = s.replace(/\s+/g, ' ').trim();
-
-    var m;
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*([\d.]+)\s+(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) + parseFloat(m[3]) / parseFloat(m[4])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) / parseFloat(m[3])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*([\d.]+)\s*["″]?$/))) {
-      return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*-\s*([\d.]+)$/))) {
-      return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s+([\d.]+)\s+(\d+)\s*\/\s*(\d+)$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) + parseFloat(m[3]) / parseFloat(m[4])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s+(\d+)\s*\/\s*(\d+)$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) / parseFloat(m[3])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s+([\d.]+)$/))) {
-      return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*$/))) {
-      var feetOnly = parseFloat(m[1]);
-      if (isNaN(feetOnly) || feetOnly <= 0) throw new Error('Enter a valid length greater than zero.');
-      return feetOnly;
-    }
-    if ((m = s.match(/^([\d.]+)\s*["″]\s*$/))) {
-      var inchesOnly = parseFloat(m[1]);
-      if (isNaN(inchesOnly) || inchesOnly <= 0) throw new Error('Enter a valid length greater than zero.');
-      return inchesOnly / INCHES_PER_FOOT;
-    }
-
-    if (/^[\d.,]+$/.test(s)) {
-      var n = parseFloat(s.replace(/,/g, ''));
-      if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-      if (s.indexOf('.') !== -1) return n;
-      return n / INCHES_PER_FOOT;
-    }
-
-    if ((m = s.match(/^(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
-      var fracIn = parseFloat(m[1]) / parseFloat(m[2]);
-      if (isNaN(fracIn) || fracIn <= 0) throw new Error('Enter a valid length greater than zero.');
-      return fracIn / INCHES_PER_FOOT;
-    }
-
-    throw new Error('Use 12\' 6", 12.5 ft, or 150" (inches).');
+    return RA.parseLengthInput(raw, MEASURE_UNITS.feet_inch_frac);
   }
 
   function fmt(n, d) {
@@ -2320,26 +2304,39 @@
     var ph = measureUnitPlaceholder();
     if (els.wallLength) els.wallLength.placeholder = ph;
     if (els.knownLength) els.knownLength.placeholder = ph;
+    if (els.typeLength) els.typeLength.placeholder = isMetricDisplay() ? '3.66 m' : (state.measureUnit === MEASURE_UNITS.inch ? '150"' : (state.measureUnit === MEASURE_UNITS.feet_decimal ? '12.5' : "12'6"));
+    if (els.typeRectW) els.typeRectW.placeholder = isMetricDisplay() ? '3.66' : '12';
+    if (els.typeRectL) els.typeRectL.placeholder = isMetricDisplay() ? '3.05' : '10';
+    if (els.wallHeight) els.wallHeight.placeholder = isMetricDisplay() ? '2.44' : '8';
   }
 
   function isMetricDisplay() {
     return state.measureUnit === MEASURE_UNITS.meter;
   }
 
-  function setMeasureUnit(unit) {
+  function setMeasureUnit(unit, silent) {
     if (!MEASURE_UNITS[unit]) return;
     if (unit !== MEASURE_UNITS.meter) state.imperialUnit = unit;
     state.measureUnit = unit;
     try { localStorage.setItem(MEASURE_UNIT_STORAGE_KEY, unit); } catch (e) { /* ignore */ }
-    raAll('[data-ra-measure-unit]').forEach(function (sel) { sel.value = unit; });
+    raAll('[data-ra-measure-unit]').forEach(function (sel) {
+      if (unit === MEASURE_UNITS.meter) {
+        sel.value = state.imperialUnit || MEASURE_UNITS.feet_inch_frac;
+      } else {
+        sel.value = unit;
+      }
+    });
     syncUnitSystemUi();
     updateMeasureUnitPlaceholders();
     updateLiveUnitLabels();
-    redrawLabels();
-    redrawRulers();
-    refreshWallLengthInput();
-    updateLiveArea();
-    renderTypedWallsList();
+    syncWallHeightInput();
+    if (!silent) {
+      redrawLabels();
+      redrawRulers();
+      refreshWallLengthInput();
+      updateLiveArea();
+      renderTypedWallsList();
+    }
     if (state.selectedRulerId !== null && els.rulerLength) {
       var ruler = findRulerById(state.selectedRulerId);
       if (ruler) els.rulerLength.textContent = rulerLengthLabel(ruler);
@@ -2356,14 +2353,14 @@
     });
   }
 
-  function setUnitSystem(system) {
+  function setUnitSystem(system, silent) {
     if (system === 'metric') {
-      setMeasureUnit(MEASURE_UNITS.meter);
+      setMeasureUnit(MEASURE_UNITS.meter, silent);
       return;
     }
     setMeasureUnit(state.imperialUnit && state.imperialUnit !== MEASURE_UNITS.meter
       ? state.imperialUnit
-      : MEASURE_UNITS.feet_inch_frac);
+      : MEASURE_UNITS.feet_inch_frac, silent);
   }
 
   function updateLiveUnitLabels() {
@@ -2371,10 +2368,16 @@
     var linear = isMetricDisplay() ? 'm' : 'lf';
     raAll('[data-ra-area-unit]').forEach(function (el) { el.textContent = area; });
     raAll('[data-ra-linear-unit]').forEach(function (el) { el.textContent = linear; });
+    raAll('[data-ra-wall-area-label]').forEach(function (el) {
+      el.textContent = isMetricDisplay() ? 'Wall m²' : 'Wall SF';
+    });
     if (els.wallHeight) {
       var unitEl = els.wallHeight.parentNode && els.wallHeight.parentNode.querySelector('.util-ra-live-area__height-unit');
       if (unitEl) unitEl.textContent = isMetricDisplay() ? 'm' : 'ft';
     }
+    raAll('[data-ra-measure-unit-wrap]').forEach(function (el) {
+      el.hidden = isMetricDisplay();
+    });
   }
 
   function refreshWallLengthInput() {
@@ -2384,70 +2387,27 @@
   }
 
   function parseMetersInput(raw) {
-    var s = String(raw).trim();
-    var cm = s.match(/^([\d.,]+)\s*cm(s)?$/i);
-    if (cm) {
-      var cmVal = parseFloat(cm[1].replace(/,/g, ''));
-      if (isNaN(cmVal) || cmVal <= 0) throw new Error('Enter a valid length greater than zero.');
-      return (cmVal / 100) / FEET_TO_METERS;
-    }
-    s = s.replace(/\s*m(eters?|etres?)?\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in meters.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return n / FEET_TO_METERS;
+    return RA.parseLengthInput(raw, MEASURE_UNITS.meter);
   }
 
   function parseInchesOnlyInput(raw) {
-    var s = String(raw).trim();
-    s = s.replace(/["″]\s*$/, '').replace(/\s*in(ch(es)?)?\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in inches.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return n / INCHES_PER_FOOT;
+    return RA.parseLengthInput(raw, MEASURE_UNITS.inch);
   }
 
   function parseFeetDecimalInput(raw) {
-    var s = String(raw).trim().replace(/\s*(ft|feet|foot)\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in feet.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return n;
+    return RA.parseLengthInput(raw, MEASURE_UNITS.feet_decimal);
   }
 
   function parseMmInput(raw) {
-    var s = String(raw).trim();
-    s = s.replace(/\s*(mm|millimet(er|re)s?)\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in millimetres.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return (n / 1000) / FEET_TO_METERS;
+    return RA.parseLengthInput(raw, 'mm');
   }
 
   function detectExplicitLengthUnit(raw) {
-    var s = String(raw).trim();
-    if (!s) return null;
-    if (/\bmm\b/i.test(s) || /millimet/i.test(s)) return 'mm';
-    if (/\bcm\b/i.test(s) || /\bm(eters?|etres?)?\b/i.test(s)) return MEASURE_UNITS.meter;
-    if (/['′]/.test(s) || /\b(ft|feet|foot)\b/i.test(s)) return MEASURE_UNITS.feet_inch_frac;
-    if (/["″]/.test(s) || /\bin(ch(es)?)?\b/i.test(s)) return MEASURE_UNITS.inch;
-    return null;
+    return RA.detectExplicitUnit(raw);
   }
 
   function parseLengthInput(raw) {
-    var detected = detectExplicitLengthUnit(raw);
-    var unit = detected || state.measureUnit;
-    if (unit === 'mm') return parseMmInput(raw);
-    switch (unit) {
-      case MEASURE_UNITS.meter:
-        return parseMetersInput(raw);
-      case MEASURE_UNITS.inch:
-        return parseInchesOnlyInput(raw);
-      case MEASURE_UNITS.feet_decimal:
-        return parseFeetDecimalInput(raw);
-      default:
-        return parseFeetInput(raw);
-    }
+    return RA.parseLengthInput(raw, state.measureUnit);
   }
 
   function geometryLocked() {
@@ -2677,6 +2637,12 @@
   function angleDelta(a, b) {
     var d = Math.abs(a - b) % (Math.PI * 2);
     return d > Math.PI ? Math.PI * 2 - d : d;
+  }
+
+  function angleSnapPoint(raw, prev) {
+    if (!prev || !raw) return raw;
+    var mag = snapPointMagnetic(raw, prev, 'incoming');
+    return mag.snapped ? { x: mag.x, y: mag.y } : raw;
   }
 
   function snapPoint(raw, prev, step) {
@@ -4488,6 +4454,18 @@
       redrawVertices();
     });
 
+    window.addEventListener('blur', function () {
+      state.altHeld = false;
+      state.shiftHeld = false;
+      updateDrawPreviewFromPointer();
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        state.altHeld = false;
+        state.shiftHeld = false;
+      }
+    });
+
     document.addEventListener('keyup', function (e) {
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         state.shiftHeld = false;
@@ -5263,7 +5241,7 @@
   function snapDrawPreviewPoint(pos) {
     var prev = lastDrawVertex();
     if (!prev || !pos) return null;
-    var point = shouldAngleSnap() ? snapPoint(pos, prev, SHIFT_SNAP_STEP) : pos;
+    var point = shouldAngleSnap() ? angleSnapPoint(pos, prev) : pos;
     var verts = activeVertices();
     if (verts.length >= 3) {
       var first = verts[0];
@@ -5301,6 +5279,17 @@
     var pos = getPointerPos();
     if (!pos) return;
     state.drawPreview = snapDrawPreviewPoint(pos);
+    if (state.drawPreview) {
+      var last = lastDrawVertex();
+      var aligned = collectAlignmentGuides(-1, state.drawPreview);
+      state.alignGuides = aligned.guides || [];
+      if (last && shouldAngleSnap()) {
+        var snapped = angleSnapPoint(state.drawPreview, last);
+        if (snapped && (snapped.x !== state.drawPreview.x || snapped.y !== state.drawPreview.y)) {
+          state.drawPreview = snapped;
+        }
+      }
+    }
     redrawDrawPreview();
   }
 
@@ -6482,12 +6471,26 @@
     kLabel.offsetX(kLabel.width() / 2);
     kLabel.offsetY(kLabel.height() / 2);
     var boxLabel = konvaLabelBox(kLabel);
-    if (overlapsAnyBox(boxLabel, nameBoxes, uiSize(2))) {
-      kLabel.y(c.y + uiSize(18));
+    var offsets = [0, uiSize(22), -uiSize(22), uiSize(40), -uiSize(40)];
+    var placed = false;
+    var i;
+    for (i = 0; i < offsets.length; i++) {
+      kLabel.y(c.y + offsets[i]);
       kLabel.offsetY(kLabel.height() / 2);
       boxLabel = konvaLabelBox(kLabel);
-      if (overlapsAnyBox(boxLabel, nameBoxes, uiSize(2))) return;
+      if (!overlapsAnyBox(boxLabel, nameBoxes, uiSize(2))) {
+        placed = true;
+        break;
+      }
     }
+    if (!placed && (areaOnly || state.dimensionsMode === DIM_MODES.main || state.dimensionsMode === DIM_MODES.area)) {
+      var aabb = polygonAabbSize(verts);
+      kLabel.y(isFinite(aabb.minY) ? aabb.minY - uiSize(16) : c.y - uiSize(28));
+      kLabel.offsetY(kLabel.height() / 2);
+      boxLabel = konvaLabelBox(kLabel);
+      placed = true;
+    }
+    if (!placed) return;
     labelLayer.add(kLabel);
     nameBoxes.push(boxLabel);
   }
@@ -6556,7 +6559,14 @@
       if (v.x > maxX) maxX = v.x;
       if (v.y > maxY) maxY = v.y;
     });
-    return { width: Math.max(0, maxX - minX), height: Math.max(0, maxY - minY) };
+    return {
+      width: Math.max(0, maxX - minX),
+      height: Math.max(0, maxY - minY),
+      minX: minX,
+      minY: minY,
+      maxX: maxX,
+      maxY: maxY
+    };
   }
 
   function polygonAxisSpan(origin, verts, axisX, axisY) {
@@ -7103,7 +7113,7 @@
       if (activeVertices().length > 0) {
         var drawPrev = activeVertices()[activeVertices().length - 1];
         if (shouldAngleSnap(e)) {
-          drawPoint = snapPoint(pos, drawPrev, SHIFT_SNAP_STEP);
+          drawPoint = angleSnapPoint(pos, drawPrev);
         }
       }
       pushUndoSnapshot();
@@ -7154,7 +7164,7 @@
     if (activeVertices().length > 0) {
       var prev = activeVertices()[activeVertices().length - 1];
       if (shouldAngleSnap(e)) {
-        point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
+        point = angleSnapPoint(pos, prev);
       }
     }
     pushUndoSnapshot();
@@ -7258,6 +7268,10 @@
   }
 
   function clearShape() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     resetDraftCanvas();
   }
 
@@ -7302,6 +7316,10 @@
   }
 
   function undoVertex() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!state.undoStack.length) return;
     if (state.draggingWall) finishWallDrag(getPointerPos());
     state.draggingVertex = false;
@@ -7320,6 +7338,10 @@
   }
 
   function redoAction() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!state.redoStack.length) return;
     if (state.draggingWall) finishWallDrag(getPointerPos());
     state.draggingVertex = false;
@@ -7532,6 +7554,10 @@
       setFeedback('Calibration cancelled.', false);
       return;
     }
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
 
     if (state.rulerMode) stopRulerMode();
     stopBgMoveMode();
@@ -7550,6 +7576,10 @@
   }
 
   function applyScale() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.calibPoints.length !== 2) return;
     try {
       var feet = parseLengthInput(els.knownLength.value);
@@ -8823,14 +8853,14 @@
     setDimensionsMode(on ? DIM_MODES.all : DIM_MODES.off);
   }
 
-  function setDimensionsMode(mode) {
+  function setDimensionsMode(mode, silent) {
     if (!DIM_MODES[mode]) mode = DIM_MODES.all;
     state.dimensionsMode = mode;
     state.showDimensions = mode !== DIM_MODES.off;
     try { localStorage.setItem(DIM_MODE_STORAGE_KEY, mode); } catch (e) { /* ignore */ }
     raAll('[data-ra-dimensions-mode]').forEach(function (sel) { sel.value = mode; });
     if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
-    redrawLabels();
+    if (!silent) redrawLabels();
   }
 
   function loadDimensionsMode() {
@@ -8892,6 +8922,17 @@
     }
   }
 
+  function bindTemplatesPopoverFollow() {
+    if (!els.templatesPopover || !els.templatesToggle) return;
+    var reposition = function () {
+      if (templatesPopoverOpen()) setTemplatesPopover(true);
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    var toolbar = root.querySelector('.util-ra-canvas-toolbar');
+    if (toolbar) toolbar.addEventListener('scroll', reposition);
+  }
+
   function toggleTemplatesPopover() {
     setTemplatesPopover(!templatesPopoverOpen());
   }
@@ -8913,54 +8954,19 @@
   }
 
   function templateRectFeet(w, l) {
-    return [
-      { x: 0, y: 0 },
-      { x: w, y: 0 },
-      { x: w, y: l },
-      { x: 0, y: l }
-    ];
+    return RA.rectangle(w, l);
   }
 
   function templateLFeet(w, h, rw, rh) {
-    if (rw >= w || rh >= h) return templateRectFeet(w, h);
-    return [
-      { x: 0, y: 0 },
-      { x: w, y: 0 },
-      { x: w, y: h },
-      { x: w - rw, y: h },
-      { x: w - rw, y: h - rh },
-      { x: 0, y: h - rh }
-    ];
+    return RA.lShape(w, h, rw, rh);
   }
 
   function templateUFeet(w, h, ow, od) {
-    if (ow >= w || od >= h) return templateRectFeet(w, h);
-    var arm = (w - ow) / 2;
-    return [
-      { x: 0, y: 0 },
-      { x: w, y: 0 },
-      { x: w, y: h },
-      { x: w - arm, y: h },
-      { x: w - arm, y: h - od },
-      { x: arm, y: h - od },
-      { x: arm, y: h },
-      { x: 0, y: h }
-    ];
+    return RA.uShape(w, h, ow, od);
   }
 
   function templateTFeet(bw, bh, sw, sh) {
-    if (sw >= bw) return templateRectFeet(bw, bh + sh);
-    var left = (bw - sw) / 2;
-    return [
-      { x: 0, y: 0 },
-      { x: bw, y: 0 },
-      { x: bw, y: bh },
-      { x: left + sw, y: bh },
-      { x: left + sw, y: bh + sh },
-      { x: left, y: bh + sh },
-      { x: left, y: bh },
-      { x: 0, y: bh }
-    ];
+    return RA.tShape(bw, bh, sw, sh);
   }
 
   function feetTemplateToPixels(feetVerts) {
@@ -8977,20 +8983,10 @@
       return;
     }
     ensureInitialCanvas();
-    var size = readTemplateSize(12, 10);
-    var feet;
-    if (kind === 'l') {
-      var lSize = readTemplateSize(16, 12);
-      feet = templateLFeet(lSize.w, lSize.l, Math.min(6, lSize.w / 3), Math.min(4, lSize.l / 3));
-    } else if (kind === 'u') {
-      var uSize = readTemplateSize(16, 12);
-      feet = templateUFeet(uSize.w, uSize.l, Math.min(8, uSize.w / 2), Math.min(8, uSize.l * 0.65));
-    } else if (kind === 't') {
-      var tSize = readTemplateSize(16, 12);
-      feet = templateTFeet(tSize.w, Math.min(4, tSize.l / 3), Math.min(6, tSize.w / 2.5), Math.max(6, tSize.l - 4));
-    } else {
-      feet = templateRectFeet(size.w, size.l);
-    }
+    var size = (kind === 'l' || kind === 'u' || kind === 't')
+      ? readTemplateSize(16, 12)
+      : readTemplateSize(12, 10);
+    var feet = RA.shapeFromKind(kind, size.w, size.l);
     pushUndoSnapshot();
     setActiveVertices(feetTemplateToPixels(feet));
     setActiveClosed(true);
@@ -9006,59 +9002,9 @@
   }
 
   function insertAlcoveVertices(verts, wallIndex, width, depth, closed) {
-    var n = verts.length;
-    var count = closed && n >= 3 ? n : Math.max(0, n - 1);
-    if (n < 2 || count < 1) return null;
-    var idx = ((wallIndex % count) + count) % count;
-    var a = verts[idx];
-    var b = verts[closed && n >= 3 ? (idx + 1) % n : idx + 1];
-    var dx = b.x - a.x;
-    var dy = b.y - a.y;
-    var len = Math.hypot(dx, dy);
-    if (len < 1e-6) return null;
-    width = Math.min(Math.max(width, 1), len * 0.9);
-    depth = Math.max(depth, 1);
-    var ux = dx / len;
-    var uy = dy / len;
-    var nx = -uy;
-    var ny = ux;
-    if (closed && n >= 3) {
-      var cx = 0;
-      var cy = 0;
-      verts.forEach(function (v) { cx += v.x; cy += v.y; });
-      cx /= n;
-      cy /= n;
-      var mx = (a.x + b.x) / 2;
-      var my = (a.y + b.y) / 2;
-      if (nx * (cx - mx) + ny * (cy - my) > 0) {
-        nx = -nx;
-        ny = -ny;
-      }
-    }
-    var inset = (len - width) / 2;
-    var p0 = { x: a.x + ux * inset, y: a.y + uy * inset };
-    var p1 = { x: a.x + ux * (inset + width), y: a.y + uy * (inset + width) };
-    var p0o = { x: p0.x + nx * depth, y: p0.y + ny * depth };
-    var p1o = { x: p1.x + nx * depth, y: p1.y + ny * depth };
-    var out = [];
-    verts.forEach(function (v, i) {
-      out.push({ x: v.x, y: v.y });
-      if (i === idx) {
-        out.push(p0, p0o, p1o, p1);
-      }
-    });
-    var deduped = [];
-    out.forEach(function (v) {
-      var last = deduped[deduped.length - 1];
-      if (last && Math.hypot(v.x - last.x, v.y - last.y) < 1e-6) return;
-      deduped.push(v);
-    });
-    if (deduped.length > 1) {
-      var first = deduped[0];
-      var lastPt = deduped[deduped.length - 1];
-      if (Math.hypot(first.x - lastPt.x, first.y - lastPt.y) < 1e-6) deduped.pop();
-    }
-    return deduped;
+    var next = RA.insertAlcove(verts, wallIndex, width, depth, closed);
+    if (!next || next.length < 3) return null;
+    return next;
   }
 
   function longestWallIndex() {
@@ -10412,7 +10358,7 @@
         updateLiveArea();
       });
       els.wallHeight.addEventListener('change', function () {
-        setWallHeight(els.wallHeight.value);
+        setWallHeight(wallHeightFtFromValue(els.wallHeight.value));
         updateLiveArea();
       });
     }
@@ -10661,20 +10607,12 @@
 
   function init() {
     state.projects = parseJson('data-projects', []);
-    state.measureUnit = loadMeasureUnit();
-    if (state.measureUnit !== MEASURE_UNITS.meter) state.imperialUnit = state.measureUnit;
-    raAll('[data-ra-measure-unit]').forEach(function (sel) { sel.value = state.measureUnit; });
+    applyEditorPrefs(defaultEditorPrefs(), true);
+    raAll('[data-ra-measure-unit]').forEach(function (sel) { sel.value = state.imperialUnit || MEASURE_UNITS.feet_inch_frac; });
     updateMeasureUnitPlaceholders();
-    setDimensionsMode(loadDimensionsMode());
-    try {
-      setLayersLocked(localStorage.getItem(LOCK_LAYERS_STORAGE_KEY) === '1', true);
-    } catch (e) { setLayersLocked(false, true); }
-    try {
-      var snapSaved = localStorage.getItem(SNAP_STORAGE_KEY);
-      setAngleSnap(snapSaved == null ? true : snapSaved !== '0', true);
-    } catch (e2) { setAngleSnap(true, true); }
     bindEvents();
     bindViewportEvents();
+    bindTemplatesPopoverFollow();
     renderObjectPalette();
     syncUnitSystemUi();
     updateLiveUnitLabels();
@@ -10714,23 +10652,6 @@
     }
     syncGuideLinks();
   }
-
-  window.__roomAreaQA = {
-    showSnapGuides: function () {
-      var verts = activeVertices();
-      if (!verts || verts.length < 2) return false;
-      state.alignGuides = [
-        { type: 'v', x: verts[0].x },
-        { type: 'h', y: verts[0].y }
-      ];
-      state.openingHint = {
-        point: { x: (verts[0].x + verts[1].x) / 2, y: verts[0].y },
-        text: '4′ 0″ from corner'
-      };
-      redrawAll();
-      return true;
-    }
-  };
 
   init();
 })();

@@ -45,6 +45,11 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('data-ra-linear-unit', $html);
         $this->assertStringContainsString('data-ra-live-dual', $html);
         $this->assertStringContainsString('Disable angle snap', $html);
+        $this->assertStringContainsString('Imperial', $html);
+        $this->assertStringContainsString('Metric', $html);
+        $this->assertStringContainsString('ft-in-frac', $html);
+        $this->assertStringNotContainsString('>Meter</option>', $html);
+        $this->assertStringContainsString('data-ra-wall-area-label', $html);
     }
 
     public function test_client_project_full_page_keeps_batch0_groups_and_batch1_controls(): void
@@ -91,7 +96,14 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString("els.templatesPopover.style.position = 'fixed'", $js);
         $this->assertStringContainsString('function serializeEditorPrefs()', $js);
         $this->assertStringContainsString('function applyEditorPrefs(', $js);
-        $this->assertStringContainsString('window.__roomAreaQA', $js);
+        $this->assertStringNotContainsString('window.__roomAreaQA', $js);
+        $this->assertStringContainsString('RoomAreaLib', $js);
+
+        $lib = file_get_contents(public_path('js/room-area-lib.js'));
+        $this->assertNotFalse($lib);
+        $this->assertStringContainsString('function parseLengthInput', $lib);
+        $this->assertStringContainsString('function insertAlcove', $lib);
+        $this->assertStringContainsString('function shapeFromKind', $lib);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
         $this->assertNotFalse($css);
@@ -181,6 +193,66 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
             'name' => 'Kitchen',
             'canvas' => $room->vertices,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk()->assertJsonPath('ok', true);
+    }
+
+    public function test_locked_room_rejects_geometry_and_scale_changes(): void
+    {
+        $this->actingAsAdmin();
+        $layout = RoomAreaProject::create([
+            'name' => 'Locked layout',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $canvas = [
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 144, 'y' => 0],
+                        ['x' => 144, 'y' => 120],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+            'editor' => [
+                'layers_locked' => true,
+                'dimensions_mode' => 'all',
+                'unit_system' => 'imperial',
+                'angle_snap' => true,
+            ],
+        ];
+        $store = $this->postJson(route('admin.utilities.room-area.rooms.store', $layout), [
+            'name' => 'Locked',
+            'canvas' => $canvas,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk();
+        $room = RoomAreaRoom::query()->findOrFail($store->json('room.id'));
+
+        $moved = $canvas;
+        $moved['groups'][0]['polygons'][0]['vertices'][1]['x'] = 200;
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $moved,
+            'scale_pixels_per_foot' => 12,
+        ])->assertStatus(422)->assertJsonPath('ok', false);
+
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $canvas,
+            'scale_pixels_per_foot' => 18,
+        ])->assertStatus(422)->assertJsonPath('ok', false);
+
+        $unlocked = $canvas;
+        $unlocked['editor']['layers_locked'] = false;
+        $unlocked['groups'][0]['polygons'][0]['vertices'][1]['x'] = 200;
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $unlocked,
             'scale_pixels_per_foot' => 12,
         ])->assertOk()->assertJsonPath('ok', true);
     }

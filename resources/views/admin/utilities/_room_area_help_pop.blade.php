@@ -10,7 +10,7 @@
     data-ra-help-pop="{{ $tipId }}"
     aria-expanded="false"
     aria-controls="ra-help-{{ $tipId }}"
-    aria-label="{{ $label }}">?</button>
+    aria-label="{{ $label }}">ⓘ</button>
   <div class="util-ra-help-pop" id="ra-help-{{ $tipId }}" data-ra-help-pop-panel="{{ $tipId }}" hidden role="tooltip">
     {{ $text }}
   </div>

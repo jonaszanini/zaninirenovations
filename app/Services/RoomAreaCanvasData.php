@@ -50,6 +50,8 @@ class RoomAreaCanvasData
 
     public const EDITOR_UNIT_SYSTEMS = ['imperial', 'metric'];
 
+    public const EDITOR_MEASURE_UNITS = ['meter', 'inch', 'feet_decimal', 'feet_inch_frac'];
+
     public const EDITOR_TEMPLATES = ['rect', 'l', 'u', 't', 'alcove'];
 
     public const DEFAULT_WALL_HEIGHT_FT = 8.0;
@@ -274,6 +276,10 @@ class RoomAreaCanvasData
         $units = isset($raw['unit_system']) ? (string) $raw['unit_system'] : '';
         if (in_array($units, self::EDITOR_UNIT_SYSTEMS, true)) {
             $out['unit_system'] = $units;
+        }
+        $measure = isset($raw['measure_unit']) ? (string) $raw['measure_unit'] : '';
+        if (in_array($measure, self::EDITOR_MEASURE_UNITS, true)) {
+            $out['measure_unit'] = $measure;
         }
         if (array_key_exists('angle_snap', $raw)) {
             $out['angle_snap'] = filter_var($raw['angle_snap'], FILTER_VALIDATE_BOOLEAN);
@@ -1081,5 +1087,32 @@ class RoomAreaCanvasData
             'u' => $base + 6,
             default => $base,
         };
+    }
+
+    /**
+     * When a saved room is locked, reject geometry or scale changes until unlocked.
+     *
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>  $incoming
+     */
+    public function lockedGeometryChangeMessage($existing, array $incoming, ?float $existingScale = null, ?float $incomingScale = null): ?string
+    {
+        $wasLocked = is_array($existing) && ! empty($existing['editor']['layers_locked']);
+        $unlocking = ! empty($incoming['editor']) && array_key_exists('layers_locked', $incoming['editor'])
+            && ! $incoming['editor']['layers_locked'];
+        if (! $wasLocked || $unlocking) {
+            return null;
+        }
+
+        $existingGroups = json_encode($existing['groups'] ?? []);
+        $incomingGroups = json_encode($incoming['groups'] ?? []);
+        if ($existingGroups !== $incomingGroups) {
+            return 'Unlock layers to change walls or areas.';
+        }
+        if ($existingScale !== null && $incomingScale !== null && abs($existingScale - $incomingScale) > 0.0001) {
+            return 'Unlock layers to recalibrate scale.';
+        }
+
+        return null;
     }
 }

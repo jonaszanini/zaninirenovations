@@ -216,6 +216,7 @@ class RoomAreaController extends Controller
             'canvas.editor.layers_locked' => ['nullable', 'boolean'],
             'canvas.editor.dimensions_mode' => ['nullable', 'string', 'in:all,main,area,off'],
             'canvas.editor.unit_system' => ['nullable', 'string', 'in:imperial,metric'],
+            'canvas.editor.measure_unit' => ['nullable', 'string', 'in:meter,inch,feet_decimal,feet_inch_frac'],
             'canvas.editor.angle_snap' => ['nullable', 'boolean'],
             'canvas.editor.template' => ['nullable', 'string', 'in:rect,l,u,t,alcove'],
             'vertices' => ['nullable', 'array'],
@@ -288,6 +289,7 @@ class RoomAreaController extends Controller
             'canvas.editor.layers_locked' => ['nullable', 'boolean'],
             'canvas.editor.dimensions_mode' => ['nullable', 'string', 'in:all,main,area,off'],
             'canvas.editor.unit_system' => ['nullable', 'string', 'in:imperial,metric'],
+            'canvas.editor.measure_unit' => ['nullable', 'string', 'in:meter,inch,feet_decimal,feet_inch_frac'],
             'canvas.editor.angle_snap' => ['nullable', 'boolean'],
             'canvas.editor.template' => ['nullable', 'string', 'in:rect,l,u,t,alcove'],
             'vertices' => ['nullable', 'array'],
@@ -306,6 +308,16 @@ class RoomAreaController extends Controller
 
         if (! $validation['valid']) {
             return response()->json(['ok' => false, 'message' => $validation['message']], 422);
+        }
+
+        $lockMessage = $canvasData->lockedGeometryChangeMessage(
+            is_array($room_area_room->vertices) ? $room_area_room->vertices : null,
+            $normalized,
+            $room_area_room->scale_pixels_per_foot !== null ? (float) $room_area_room->scale_pixels_per_foot : null,
+            isset($data['scale_pixels_per_foot']) ? (float) $data['scale_pixels_per_foot'] : null
+        );
+        if ($lockMessage !== null) {
+            return response()->json(['ok' => false, 'message' => $lockMessage], 422);
         }
 
         $room_area_room->update([
@@ -556,6 +568,7 @@ class RoomAreaController extends Controller
             'canvas.editor.layers_locked' => ['nullable', 'boolean'],
             'canvas.editor.dimensions_mode' => ['nullable', 'string', 'in:all,main,area,off'],
             'canvas.editor.unit_system' => ['nullable', 'string', 'in:imperial,metric'],
+            'canvas.editor.measure_unit' => ['nullable', 'string', 'in:meter,inch,feet_decimal,feet_inch_frac'],
             'canvas.editor.angle_snap' => ['nullable', 'boolean'],
             'canvas.editor.template' => ['nullable', 'string', 'in:rect,l,u,t,alcove'],
             'vertices' => ['nullable', 'array'],

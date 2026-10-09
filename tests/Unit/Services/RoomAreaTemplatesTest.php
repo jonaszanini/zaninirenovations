@@ -72,6 +72,46 @@ class RoomAreaTemplatesTest extends TestCase
         $this->assertGreaterThan($before['perimeter_lf'], $after['perimeter_lf']);
     }
 
+    public function test_l_from_overall_keeps_6_by_4_return(): void
+    {
+        $feet = $this->templates->fromKind('l', 16, 12);
+        $metrics = $this->metricsFromFeet($feet);
+        $this->assertEqualsWithDelta(152.0, $metrics['area_sqft'], 0.01);
+    }
+
+    public function test_t_from_overall_uses_typed_length(): void
+    {
+        $feet = $this->templates->fromKind('t', 16, 12);
+        $maxY = max(array_map(static fn (array $p) => $p['y'], $feet));
+        $this->assertEqualsWithDelta(12.0, $maxY, 0.01);
+        $this->assertEqualsWithDelta(16 * 4 + 6 * 8, $this->metricsFromFeet($feet)['area_sqft'], 0.01);
+    }
+
+    public function test_alcove_on_u_l_t_inner_walls_adds_area(): void
+    {
+        $u = $this->templates->uShape(16, 12, 8, 8);
+        $l = $this->templates->lFromOverall(16, 12);
+        $t = $this->templates->tFromOverall(16, 12);
+
+        $this->assertEqualsWithDelta(8.0, $this->alcoveDelta($u, 4, 4, 2), 0.05);
+        $this->assertEqualsWithDelta(8.0, $this->alcoveDelta($u, 3, 4, 2), 0.05);
+        $this->assertEqualsWithDelta(8.0, $this->alcoveDelta($u, 5, 4, 2), 0.05);
+        $this->assertEqualsWithDelta(7.2, $this->alcoveDelta($l, 3, 4, 2), 0.05);
+        $this->assertEqualsWithDelta(8.0, $this->alcoveDelta($t, 2, 4, 2), 0.05);
+        $this->assertEqualsWithDelta(8.0, $this->alcoveDelta($t, 6, 4, 2), 0.05);
+    }
+
+    /**
+     * @param  list<array{x: float, y: float}>  $feet
+     */
+    private function alcoveDelta(array $feet, int $wall, float $width, float $depth): float
+    {
+        $before = $this->metricsFromFeet($feet)['area_sqft'];
+        $after = $this->metricsFromFeet($this->templates->insertAlcove($feet, $wall, $width, $depth, true))['area_sqft'];
+
+        return $after - $before;
+    }
+
     /**
      * @param  list<array{x: float, y: float}>  $feet
      * @return array<string, mixed>

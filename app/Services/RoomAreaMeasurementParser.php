@@ -26,6 +26,10 @@ class RoomAreaMeasurementParser
 
     public const FEET_TO_METERS = 0.3048;
 
+    public const MIN_LENGTH_FT = 1 / 192.0;
+
+    public const MAX_LENGTH_FT = 1000.0;
+
     /**
      * @return float Length in feet
      */
@@ -58,16 +62,20 @@ class RoomAreaMeasurementParser
         if ($s === '') {
             return null;
         }
-        if (preg_match('/\bmm\b/i', $s) || preg_match('/millimet/i', $s)) {
+        if (preg_match('/mm|millimet/iu', $s)) {
             return 'mm';
         }
-        if (preg_match('/\bcm\b/i', $s) || preg_match('/\bm(eters?|etres?)?\b/i', $s)) {
+        if (preg_match('/cm/iu', $s)) {
             return self::UNIT_METER;
         }
-        if (preg_match('/[\'′]/', $s) || preg_match('/\b(ft|feet|foot)\b/i', $s)) {
+        if (preg_match('/(?:^|[^\w])m(?:eters?|etres?)?(?:$|[^\w])/iu', $s)
+            || preg_match('/\d\s*m(?:eters?|etres?)?(?:\s|$)/iu', $s)) {
+            return self::UNIT_METER;
+        }
+        if (preg_match('/[\'′]|ft|feet|foot/iu', $s)) {
             return self::UNIT_FEET_INCH_FRAC;
         }
-        if (preg_match('/["″]/', $s) || preg_match('/\bin(ch(es)?)?\b/i', $s)) {
+        if (preg_match('/["″]|in(?:ch(?:es)?)?/iu', $s)) {
             return self::UNIT_INCH;
         }
 
@@ -202,43 +210,63 @@ class RoomAreaMeasurementParser
         return $a ?: 1;
     }
 
+    private function parseCombinedMetric(string $s): ?float
+    {
+        if (preg_match('/^([\d.,]+)\s*m(?:eters?|etres?)?\s+([\d.,]+)\s*cm(?:s)?$/iu', $s, $m)) {
+            return $this->positive((($this->toFloat($m[1]) + $this->toFloat($m[2]) / 100.0) / self::FEET_TO_METERS));
+        }
+        if (preg_match('/^([\d.,]+)\s*m(?:eters?|etres?)?\s+([\d.,]+)\s*mm(?:s)?$/iu', $s, $m)) {
+            return $this->positive((($this->toFloat($m[1]) + $this->toFloat($m[2]) / 1000.0) / self::FEET_TO_METERS));
+        }
+        if (preg_match('/^([\d.,]+)\s*cm(?:s)?\s+([\d.,]+)\s*mm(?:s)?$/iu', $s, $m)) {
+            return $this->positive((($this->toFloat($m[1]) / 100.0 + $this->toFloat($m[2]) / 1000.0) / self::FEET_TO_METERS));
+        }
+
+        return null;
+    }
+
     private function parseMillimeters(string $raw): float
     {
         $s = $this->normalizeRaw($raw);
-        $s = preg_replace('/\s*(mm|millimet(er|re)s?)\s*$/i', '', $s) ?? $s;
-        $s = trim($s);
-        if ($s === '') {
+        $combo = $this->parseCombinedMetric($s);
+        if ($combo !== null) {
+            return $combo;
+        }
+        if (! preg_match('/^([\d.,]+)\s*(mm|millimet(?:er|re)s?)$/iu', $s, $m)) {
             throw new InvalidArgumentException('Enter a length in millimetres.');
         }
 
-        return $this->positive(($this->toFloat($s) / 1000.0) / self::FEET_TO_METERS);
+        return $this->positive(($this->toFloat($m[1]) / 1000.0) / self::FEET_TO_METERS);
     }
 
     private function parseMeters(string $raw): float
     {
         $s = $this->normalizeRaw($raw);
-        if (preg_match('/^([\d.,]+)\s*mm(s)?$/i', $s, $m)) {
+        $combo = $this->parseCombinedMetric($s);
+        if ($combo !== null) {
+            return $combo;
+        }
+        if (preg_match('/^([\d.,]+)\s*mm(?:s)?$/iu', $s)) {
             return $this->parseMillimeters($raw);
         }
-        if (preg_match('/^([\d.,]+)\s*cm(s)?$/i', $s, $m)) {
-            $cm = $this->toFloat($m[1]);
-
-            return $this->positive(($cm / 100.0) / self::FEET_TO_METERS);
+        if (preg_match('/^([\d.,]+)\s*cm(?:s)?$/iu', $s, $m)) {
+            return $this->positive(($this->toFloat($m[1]) / 100.0) / self::FEET_TO_METERS);
         }
-        $s = preg_replace('/\s*m(eters?|etres?)?\s*$/i', '', $s) ?? $s;
-        $s = trim($s);
-        if ($s === '') {
-            throw new InvalidArgumentException('Enter a length in meters.');
+        if (preg_match('/^([\d.,]+)\s*m(?:eters?|etres?)?$/iu', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]) / self::FEET_TO_METERS);
+        }
+        if (preg_match('/^[\d.,]+$/u', $s)) {
+            return $this->positive($this->toFloat($s) / self::FEET_TO_METERS);
         }
 
-        return $this->positive($this->toFloat($s) / self::FEET_TO_METERS);
+        throw new InvalidArgumentException('Enter a length in meters.');
     }
 
     private function parseInchesOnly(string $raw): float
     {
         $s = $this->normalizeRaw($raw);
-        $s = preg_replace('/["″]\s*$/', '', $s) ?? $s;
-        $s = preg_replace('/\s*in(ch(es)?)?\s*$/i', '', $s) ?? $s;
+        $s = preg_replace('/["″]\s*$/u', '', $s) ?? $s;
+        $s = preg_replace('/\s*in(?:ch(?:es)?)?\s*$/iu', '', $s) ?? $s;
         $s = trim($s);
         if ($s === '') {
             throw new InvalidArgumentException('Enter a length in inches.');
@@ -250,9 +278,9 @@ class RoomAreaMeasurementParser
     private function parseFeetDecimal(string $raw): float
     {
         $s = $this->normalizeRaw($raw);
-        $s = preg_replace('/\s*(ft|feet|foot)\s*$/i', '', $s) ?? $s;
+        $s = preg_replace('/\s*(ft|feet|foot)\s*$/iu', '', $s) ?? $s;
         $s = trim($s);
-        if ($s === '') {
+        if ($s === '' || ! preg_match('/^[\d.,]+$/u', $s)) {
             throw new InvalidArgumentException('Enter a length in feet.');
         }
 
@@ -266,46 +294,46 @@ class RoomAreaMeasurementParser
             throw new InvalidArgumentException('Enter a length (e.g. 12\' 6", 12.5, or 150").');
         }
 
-        $s = preg_replace('/feet|foot/i', "'", $s) ?? $s;
-        $s = preg_replace('/\bft\b/i', "'", $s) ?? $s;
-        $s = preg_replace('/inches|inch/i', '"', $s) ?? $s;
-        $s = preg_replace('/\bin\b/i', '"', $s) ?? $s;
-        $s = preg_replace('/\s+/', ' ', $s) ?? $s;
+        $s = preg_replace('/feet|foot/iu', "'", $s) ?? $s;
+        $s = preg_replace('/ft/iu', "'", $s) ?? $s;
+        $s = preg_replace('/inches|inch/iu', '"', $s) ?? $s;
+        $s = preg_replace('/in/iu', '"', $s) ?? $s;
+        $s = preg_replace('/\s+/u', ' ', $s) ?? $s;
         $s = trim($s);
 
-        if (preg_match('/^([\d.]+)\s*[\'′]\s*([\d.]+)\s+(\d+)\s*\/\s*(\d+)\s*["″]?$/', $s, $m)) {
-            return $this->positive(((float) $m[1]) + ($this->mixedInches($m[2], $m[3], $m[4]) / self::INCHES_PER_FOOT));
+        if (preg_match('/^([\d.,]+)\s*[\'′]\s*([\d.,]+)\s+(\d+)\s*\/\s*(\d+)\s*["″]?$/u', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]) + ($this->mixedInches($m[2], $m[3], $m[4]) / self::INCHES_PER_FOOT));
         }
-        if (preg_match('/^([\d.]+)\s*[\'′]\s*(\d+)\s*\/\s*(\d+)\s*["″]?$/', $s, $m)) {
-            return $this->positive(((float) $m[1]) + (((float) $m[2] / (float) $m[3]) / self::INCHES_PER_FOOT));
+        if (preg_match('/^([\d.,]+)\s*[\'′]\s*(\d+)\s*\/\s*(\d+)\s*["″]?$/u', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]) + ($this->fraction($m[2], $m[3]) / self::INCHES_PER_FOOT));
         }
-        if (preg_match('/^([\d.]+)\s*[\'′]\s*([\d.]+)\s*["″]?$/', $s, $m)) {
-            return $this->positive(((float) $m[1]) + (((float) $m[2]) / self::INCHES_PER_FOOT));
+        if (preg_match('/^([\d.,]+)\s*[\'′]\s*([\d.,]+)\s*["″]?$/u', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]) + ($this->toFloat($m[2]) / self::INCHES_PER_FOOT));
         }
-        if (preg_match('/^([\d.]+)\s*-\s*([\d.]+)$/', $s, $m)) {
-            return $this->positive(((float) $m[1]) + (((float) $m[2]) / self::INCHES_PER_FOOT));
+        if (preg_match('/^([\d.,]+)\s*-\s*([\d.,]+)$/u', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]) + ($this->toFloat($m[2]) / self::INCHES_PER_FOOT));
         }
-        if (preg_match('/^([\d.]+)\s+([\d.]+)\s+(\d+)\s*\/\s*(\d+)$/', $s, $m)) {
-            return $this->positive(((float) $m[1]) + ($this->mixedInches($m[2], $m[3], $m[4]) / self::INCHES_PER_FOOT));
+        if (preg_match('/^([\d.,]+)\s+([\d.,]+)\s+(\d+)\s*\/\s*(\d+)$/u', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]) + ($this->mixedInches($m[2], $m[3], $m[4]) / self::INCHES_PER_FOOT));
         }
-        if (preg_match('/^([\d.]+)\s+(\d+)\s*\/\s*(\d+)$/', $s, $m)) {
-            return $this->positive(((float) $m[1]) + (((float) $m[2] / (float) $m[3]) / self::INCHES_PER_FOOT));
+        if (preg_match('/^([\d.,]+)\s+(\d+)\s*\/\s*(\d+)$/u', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]) + ($this->fraction($m[2], $m[3]) / self::INCHES_PER_FOOT));
         }
-        if (preg_match('/^([\d.]+)\s+([\d.]+)$/', $s, $m)) {
-            return $this->positive(((float) $m[1]) + (((float) $m[2]) / self::INCHES_PER_FOOT));
+        if (preg_match('/^([\d.,]+)\s+([\d.,]+)$/u', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]) + ($this->toFloat($m[2]) / self::INCHES_PER_FOOT));
         }
-        if (preg_match('/^([\d.]+)\s*[\'′]\s*$/', $s, $m)) {
-            return $this->positive((float) $m[1]);
+        if (preg_match('/^([\d.,]+)\s*[\'′]\s*$/u', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]));
         }
-        if (preg_match('/^([\d.]+)\s*["″]\s*$/', $s, $m)) {
-            return $this->positive(((float) $m[1]) / self::INCHES_PER_FOOT);
+        if (preg_match('/^([\d.,]+)\s*["″]\s*$/u', $s, $m)) {
+            return $this->positive($this->toFloat($m[1]) / self::INCHES_PER_FOOT);
         }
-        if (preg_match('/^(\d+)\s*\/\s*(\d+)\s*["″]?$/', $s, $m)) {
-            return $this->positive(((float) $m[1] / (float) $m[2]) / self::INCHES_PER_FOOT);
+        if (preg_match('/^(\d+)\s*\/\s*(\d+)\s*["″]?$/u', $s, $m)) {
+            return $this->positive($this->fraction($m[1], $m[2]) / self::INCHES_PER_FOOT);
         }
-        if (preg_match('/^[\d.,]+$/', $s)) {
+        if (preg_match('/^[\d.,]+$/u', $s)) {
             $n = $this->toFloat($s);
-            if (str_contains($s, '.')) {
+            if (str_contains($s, '.') || str_contains($s, ',')) {
                 return $this->positive($n);
             }
 
@@ -317,11 +345,14 @@ class RoomAreaMeasurementParser
 
     private function parseInchAmount(string $s): float
     {
-        if (preg_match('/^([\d.]+)\s+(\d+)\s*\/\s*(\d+)$/', $s, $m)) {
+        if (preg_match('/^([\d.,]+)\s+(\d+)\s*\/\s*(\d+)$/u', $s, $m)) {
             return $this->mixedInches($m[1], $m[2], $m[3]);
         }
-        if (preg_match('/^(\d+)\s*\/\s*(\d+)$/', $s, $m)) {
-            return (float) $m[1] / (float) $m[2];
+        if (preg_match('/^(\d+)\s*\/\s*(\d+)$/u', $s, $m)) {
+            return $this->fraction($m[1], $m[2]);
+        }
+        if (! preg_match('/^[\d.,]+$/u', $s)) {
+            throw new InvalidArgumentException('Enter a length in inches.');
         }
 
         return $this->toFloat($s);
@@ -329,12 +360,17 @@ class RoomAreaMeasurementParser
 
     private function mixedInches(string $whole, string $num, string $den): float
     {
-        $d = (float) $den;
+        return $this->toFloat($whole) + $this->fraction($num, $den);
+    }
+
+    private function fraction(string $num, string $den): float
+    {
+        $d = $this->toFloat($den);
         if ($d == 0.0) {
             throw new InvalidArgumentException('Enter a valid length greater than zero.');
         }
 
-        return ((float) $whole) + (((float) $num) / $d);
+        return $this->toFloat($num) / $d;
     }
 
     private function normalizeRaw(string $raw): string
@@ -352,14 +388,30 @@ class RoomAreaMeasurementParser
             '⅝' => '5/8',
             '⅞' => '7/8',
         ];
-        $s = strtr($s, $map);
+        foreach ($map as $glyph => $repl) {
+            $s = preg_replace('/(\d)'.preg_quote($glyph, '/').'/u', '$1 '.$repl, $s) ?? $s;
+            $s = str_replace($glyph, $repl, $s);
+        }
 
-        return trim(preg_replace('/\s+/', ' ', $s) ?? $s);
+        return trim(preg_replace('/\s+/u', ' ', $s) ?? $s);
     }
 
     private function toFloat(string $s): float
     {
-        $n = (float) str_replace(',', '', $s);
+        $s = trim($s);
+        if ($s === '' || preg_match('/[eE]/', $s)) {
+            throw new InvalidArgumentException('Enter a valid length greater than zero.');
+        }
+        if (str_contains($s, '.')) {
+            $s = str_replace(',', '', $s);
+        } elseif (str_contains($s, ',')) {
+            $last = strrpos($s, ',');
+            $s = str_replace(',', '', substr($s, 0, $last)).'.'.substr($s, $last + 1);
+        }
+        if (! preg_match('/^[+-]?\d+(\.\d+)?$/', $s)) {
+            throw new InvalidArgumentException('Use 12\' 6", 12.5 ft, or 150" (inches).');
+        }
+        $n = (float) $s;
         if (is_nan($n) || is_infinite($n)) {
             throw new InvalidArgumentException('Enter a valid length greater than zero.');
         }
@@ -371,6 +423,9 @@ class RoomAreaMeasurementParser
     {
         if (is_nan($n) || is_infinite($n) || $n <= 0) {
             throw new InvalidArgumentException('Enter a valid length greater than zero.');
+        }
+        if ($n < self::MIN_LENGTH_FT || $n > self::MAX_LENGTH_FT) {
+            throw new InvalidArgumentException('Enter a length between 1/16 in and 1000 ft.');
         }
 
         return $n;

@@ -136,23 +136,13 @@ class RoomAreaTemplates
         $depth = $this->positive($depth);
         $ux = $dx / $len;
         $uy = $dy / $len;
-        $nx = -$uy;
-        $ny = $ux;
-        if ($closed && $n >= 3) {
-            $cx = 0.0;
-            $cy = 0.0;
-            foreach ($vertices as $v) {
-                $cx += (float) $v['x'];
-                $cy += (float) $v['y'];
-            }
-            $cx /= $n;
-            $cy /= $n;
-            $mx = ((float) $a['x'] + (float) $b['x']) / 2.0;
-            $my = ((float) $a['y'] + (float) $b['y']) / 2.0;
-            if ($nx * ($cx - $mx) + $ny * ($cy - $my) > 0) {
-                $nx = -$nx;
-                $ny = -$ny;
-            }
+        $leftNx = -$uy;
+        $leftNy = $ux;
+        $nx = $leftNx;
+        $ny = $leftNy;
+        if ($closed && $n >= 3 && $this->signedArea2($vertices) > 0) {
+            $nx = -$leftNx;
+            $ny = -$leftNy;
         }
 
         $inset = ($len - $width) / 2.0;
@@ -177,6 +167,79 @@ class RoomAreaTemplates
         }
 
         return $this->dedupeClose($out);
+    }
+
+    /**
+     * L / T from overall W×L. L uses a 6×4 return when it fits (152 sq ft at 16×12).
+     * T uses typed L as overall height (bar + stem).
+     *
+     * @return list<array{x: float, y: float}>
+     */
+    public function fromKind(string $kind, float $width, float $length): array
+    {
+        $kind = strtolower($kind);
+        if ($kind === 'l') {
+            return $this->lFromOverall($width > 0 ? $width : 16.0, $length > 0 ? $length : 12.0);
+        }
+        if ($kind === 'u') {
+            $w = $width > 0 ? $width : 16.0;
+            $h = $length > 0 ? $length : 12.0;
+
+            return $this->uShape($w, $h, min(8.0, $w / 2.0), min(8.0, $h * 0.65));
+        }
+        if ($kind === 't') {
+            return $this->tFromOverall($width > 0 ? $width : 16.0, $length > 0 ? $length : 12.0);
+        }
+
+        return $this->rectangle($width > 0 ? $width : 12.0, $length > 0 ? $length : 10.0);
+    }
+
+    /**
+     * @return list<array{x: float, y: float}>
+     */
+    public function lFromOverall(float $width, float $length): array
+    {
+        $rw = 6.0;
+        $rh = 4.0;
+        if ($rw >= $width) {
+            $rw = $width / 3.0;
+        }
+        if ($rh >= $length) {
+            $rh = $length / 3.0;
+        }
+
+        return $this->lShape($width, $length, $rw, $rh);
+    }
+
+    /**
+     * @return list<array{x: float, y: float}>
+     */
+    public function tFromOverall(float $width, float $length): array
+    {
+        $barH = min(4.0, $length / 2.0);
+        $stemH = $length - $barH;
+        if ($stemH < 1.0) {
+            $barH = $length / 2.0;
+            $stemH = $length / 2.0;
+        }
+
+        return $this->tShape($width, $barH, min(6.0, $width / 2.0), $stemH);
+    }
+
+    /**
+     * @param  list<array{x: float, y: float}>  $vertices
+     */
+    public function signedArea2(array $vertices): float
+    {
+        $s = 0.0;
+        $n = count($vertices);
+        for ($i = 0; $i < $n; $i++) {
+            $j = ($i + 1) % $n;
+            $s += ((float) $vertices[$i]['x'] * (float) $vertices[$j]['y'])
+                - ((float) $vertices[$j]['x'] * (float) $vertices[$i]['y']);
+        }
+
+        return $s;
     }
 
     /**

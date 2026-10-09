@@ -1,6 +1,6 @@
 /**
- * Batch 1 review screenshots: 1280 + 390, light + dark.
- * Places an L + alcove, enables undo/redo, snap guides, lock, All dims, metric.
+ * Batch 1 review screenshots from real interaction: 1280 + 390, light + dark,
+ * plus metric wall-height conversion.
  *
  *   BASE_URL=http://127.0.0.1:8000 EDITOR_PATH=/admin/client-projects/1/utilities/room-area \
  *     ADMIN_EMAIL=admin@zanini.ca ADMIN_PASSWORD=password \
@@ -40,15 +40,18 @@ async function login(page) {
 
 async function waitForEditor(page) {
   await page.waitForSelector('.util-ra--fullpage', { timeout: 20000 });
-  await page.waitForFunction(() => typeof window.Konva !== 'undefined', { timeout: 20000 });
+  await page.waitForFunction(() => typeof window.Konva !== 'undefined' && typeof window.RoomAreaLib !== 'undefined', { timeout: 20000 });
   await delay(500);
 }
 
-async function prepareScene(page) {
+async function prepareScene(page, opts) {
+  opts = opts || {};
   await page.evaluate(() => {
     try {
       localStorage.removeItem('zr-room-area-guide-tip-v1');
-      localStorage.setItem('room-area-layers-locked', '0');
+      localStorage.removeItem('room-area-layers-locked');
+      localStorage.removeItem('room-area-measure-unit');
+      localStorage.removeItem('room-area-dimensions-mode');
     } catch (e) {}
     const tip = document.querySelector('[data-ra-first-tip]');
     if (tip) tip.hidden = true;
@@ -86,39 +89,40 @@ async function prepareScene(page) {
     if (redo && !redo.disabled) redo.click();
   });
   await delay(150);
-  await page.evaluate(() => {
+  await page.evaluate((wantMetric) => {
     const dim = document.querySelector('[data-ra-dimensions-mode]');
     if (dim) {
       dim.value = 'all';
       dim.dispatchEvent(new Event('change', { bubbles: true }));
     }
     const metric = document.querySelector('[data-ra-unit-system="metric"]');
-    if (metric) metric.click();
-    if (window.__roomAreaQA && window.__roomAreaQA.showSnapGuides) {
-      window.__roomAreaQA.showSnapGuides();
-    }
+    if (wantMetric && metric) metric.click();
+    const snap = document.querySelector('[data-ra-snap-toggle]');
+    if (snap && snap.getAttribute('aria-pressed') !== 'true') snap.click();
     const lock = document.querySelector('[data-ra-lock-layers]');
     if (lock && !lock.checked) {
       lock.checked = true;
       lock.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    const roomTools = document.querySelector('.util-ra-tool-group--room-tools');
-    const toolbar = document.querySelector('.util-ra-canvas-toolbar');
-    const lockWrap = document.querySelector('[data-ra-lock-layers-wrap]');
-    if (toolbar && roomTools) {
-      const t = toolbar.getBoundingClientRect();
-      const r = roomTools.getBoundingClientRect();
-      toolbar.scrollLeft += (r.left - t.left - 8);
-    }
-    if (toolbar && lockWrap) {
-      const t = toolbar.getBoundingClientRect();
-      const l = lockWrap.getBoundingClientRect();
-      if (l.right > t.right - 4) toolbar.scrollLeft += (l.right - t.right + 8);
-    }
     const tpl = document.querySelector('[data-ra-templates-toggle]');
     if (tpl) tpl.click();
-  });
-  await delay(250);
+    const mathTab = document.querySelector('[data-ra-side-tab="math"]');
+    if (mathTab) mathTab.click();
+  }, !!opts.metric);
+  await delay(200);
+  if (opts.metric) {
+    await page.evaluate(() => {
+      const height = document.querySelector('[data-ra-wall-height]');
+      if (height) {
+        height.focus();
+        height.value = '2.44';
+        height.dispatchEvent(new Event('input', { bubbles: true }));
+        height.dispatchEvent(new Event('change', { bubbles: true }));
+        height.blur();
+      }
+    });
+    await delay(200);
+  }
 }
 
 async function main() {
@@ -149,11 +153,21 @@ async function main() {
     }, shot.theme);
     await page.evaluate(() => window.dispatchEvent(new Event('resize')));
     await delay(200);
-    await prepareScene(page);
+    await prepareScene(page, { metric: false });
     const file = path.join(OUT, `${shot.name}.png`);
     await page.screenshot({ path: file, fullPage: false });
     console.log('wrote', file);
   }
+
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await page.evaluate(() => {
+    document.documentElement.classList.remove('admin-dark');
+    try { localStorage.setItem('admin-theme', 'light'); } catch (e) {}
+  });
+  await prepareScene(page, { metric: true });
+  const metricFile = path.join(OUT, 'ra-b1-metric-wall-height.png');
+  await page.screenshot({ path: metricFile, fullPage: false });
+  console.log('wrote', metricFile);
 
   await browser.close();
   console.log('Batch 1 screenshots in', OUT);
