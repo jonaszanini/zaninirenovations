@@ -58,7 +58,7 @@
              placeholder="0.00"
              value="{{ $debrisAmount }}"
              data-cp-debris-amount
-             @if ($includeDebrisChoice === true) required @endif>
+             @if ($includeDebrisChoice === true) required @endif data-cp-money-entry="direct">
       <p class="admin-form-help">Incl. HST — folded into Labour on the client PDF (not shown as its own line).</p>
       @error('debris_removal_amount')
         <p class="admin-form-error">{{ $message }}</p>

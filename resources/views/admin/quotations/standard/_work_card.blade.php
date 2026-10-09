@@ -145,7 +145,7 @@
           <div class="admin-form-group">
             <label for="{{ $idBase }}-labour-fixed-amount">Amount (CAD)</label>
             <input type="text" inputmode="decimal" autocomplete="off" id="{{ $idBase }}-labour-fixed-amount" name="works[{{ $workIndex }}][labour_fixed_amount]"
-                   class="admin-input cp-money-input sq-labour-fixed-amount" placeholder="0.00" value="{{ $labourFixedAmount }}">
+                   class="admin-input cp-money-input sq-labour-fixed-amount" placeholder="0.00" value="{{ $labourFixedAmount }}" data-cp-money-entry="direct">
             @error('works.'.$workIndex.'.labour_fixed_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="sq-labour-hst-field">
@@ -163,7 +163,7 @@
           <div class="admin-form-group sq-labour-rate-group">
             <label for="{{ $idBase }}-labour-rate">Hourly rate (CAD) @unless($labourUseFixed)<span class="cp-required">*</span>@endunless</label>
             <input type="text" inputmode="decimal" autocomplete="off" id="{{ $idBase }}-labour-rate" name="works[{{ $workIndex }}][labour_hourly_rate]" class="admin-input cp-money-input sq-labour-rate"
-                   @unless($labourUseFixed) required @endunless placeholder="65.00" value="{{ $labourRate }}">
+                   @unless($labourUseFixed) required @endunless placeholder="65.00" value="{{ $labourRate }}" data-cp-money-entry="direct">
             @error('works.'.$workIndex.'.labour_hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
 

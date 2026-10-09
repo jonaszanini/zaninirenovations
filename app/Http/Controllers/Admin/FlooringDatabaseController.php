@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FlooringQuotation;
 use App\Models\FlooringType;
+use App\Support\CadMoney;
 use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -27,6 +28,8 @@ class FlooringDatabaseController extends Controller
 
     public function update(Request $request)
     {
+        $this->normalizeMoneyFields($request);
+
         $data = $request->validate([
             'remove_carpet_dispose_rate' => ['required', 'numeric', 'min:0'],
             'rescrew_subfloor_rate' => ['required', 'numeric', 'min:0'],
@@ -125,5 +128,38 @@ class FlooringDatabaseController extends Controller
                 )
             )
             ->with('success', 'Flooring price database updated.');
+    }
+
+    /**
+     * Posted CAD fields are dollars (4.75 stays 4.75). Strip grouping
+     * commas only — never divide by 100.
+     */
+    protected function normalizeMoneyFields(Request $request): void
+    {
+        foreach ([
+            'remove_carpet_dispose_rate',
+            'rescrew_subfloor_rate',
+            'install_shoe_moulding_rate',
+            'caulk_paint_shoe_moulding_rate',
+            'closet_door_reinstall_rate',
+        ] as $field) {
+            if ($request->has($field)) {
+                $request->merge([$field => CadMoney::stripGrouping($request->input($field))]);
+            }
+        }
+
+        foreach (['flooring_types', 'new_flooring_types'] as $key) {
+            $rows = $request->input($key);
+            if (! is_array($rows)) {
+                continue;
+            }
+            foreach ($rows as $i => $row) {
+                if (! is_array($row) || ! array_key_exists('installation_price_per_sqft', $row)) {
+                    continue;
+                }
+                $rows[$i]['installation_price_per_sqft'] = CadMoney::stripGrouping($row['installation_price_per_sqft']);
+            }
+            $request->merge([$key => $rows]);
+        }
     }
 }

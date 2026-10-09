@@ -10,27 +10,19 @@
  * Money mask (inputs with class `.cp-money-input`):
  *   - Optional `data-cp-money-places="4"` sets fractional digits (default 2).
  *     Standard CAD amounts use 2; paving tier $/sq ft uses 4.
- *   - Calculator-style entry: only digits are accepted, and they accumulate
- *     from the right so (2 places) `1` -> `0.01`, `12` -> `0.12`, `123` -> `1.23`,
- *     `12345` -> `123.45`, `1234567` -> `12,345.67`.
- *   - Thousand separators (",") are inserted and refreshed on every keystroke
- *     (including backspace).
- *   - On form submit the visible value is replaced with a plain numeric string
- *     (e.g. `12345.67`) so server-side numeric validation keeps working.
- *     This also runs for native `HTMLFormElement.submit()` (used by basement /
- *     millwork wizards), which skips DOM `submit` event listeners.
+ *   - Entry is always direct decimals: type 4.75 and the field stays 4.75.
+ *   - A lone comma followed by 1–2 digits is the decimal point (4,75 → 4.75).
+ *     US thousands (1,234.56) stay valid. Mixed/ambiguous forms (1.234,56)
+ *     show an inline error instead of guessing.
+ *   - Extra fractional digits round on blur (4.756 → 4.76). Negatives and
+ *     a lone "." are rejected and block submit.
+ *   - Thousand separators are applied on blur and stripped on submit so
+ *     server-side numeric validation works. This also runs for native
+ *     `HTMLFormElement.submit()` (used by basement / millwork wizards).
  *   - Calling `cpMoneyMask.wire(input)` again on the same element re-formats
  *     the current value (e.g. mark-paid modal preset).
- *   - Server-side also accepts grouped amounts via `App\Support\CadMoney`.
- *
- *   - Optional `data-cp-money-entry="direct"` on a `.cp-money-input`:
- *     normal decimal typing (130 or 130.00) with thousand separators applied
- *     on blur — use where calculator-style cents entry would be confusing
- *     (e.g. invoice discount).
- *
- *   - Optional `data-cp-money-hybrid="1"` on a direct-entry field: digit-only
- *     strings use calculator minor-units (13000 → 130.00); a "." means plain
- *     dollars (13000.00 → thirteen thousand). Same rules as parseHybridCadMoney.
+ *   - Server-side also accepts grouped amounts via `App\Support\CadMoney`
+ *     and must not divide posted dollars by 100.
  */
 (function () {
   document.addEventListener('change', function (e) {
@@ -65,56 +57,141 @@
     return wholeStr + '.' + fracStr;
   }
 
-  // Raw visible value -> integer minor units (digits only, right-aligned).
-  function parseToMinorUnits(value) {
-    if (value == null) return 0;
-    var digits = String(value).replace(/\D/g, '');
-    if (!digits) return 0;
-    digits = digits.replace(/^0+(?=\d)/, '');
-    var n = parseInt(digits, 10);
-    return isNaN(n) ? 0 : n;
+  /**
+   * Parse a typed CAD string.
+   * Lone comma + 1–2 digits → decimal (4,75 → 4.75).
+   * US thousands (1,234 / 1,234.56) → strip grouping.
+   * Mixed EU (1.234,56) and other ambiguous forms → error.
+   */
+  function parseDirectCadMoney(value) {
+    if (value == null) {
+      return { ok: true, num: 0, normalized: '', empty: true };
+    }
+    var s = String(value).replace(/\u00a0/g, '').replace(/\$/g, '').replace(/ /g, '').trim();
+    if (s === '') {
+      return { ok: true, num: 0, normalized: '', empty: true };
+    }
+    if (s.indexOf('-') !== -1) {
+      return { ok: false, num: NaN, normalized: s, error: 'Amount cannot be negative.' };
+    }
+    if (s === '.' || s === ',') {
+      return { ok: false, num: NaN, normalized: s, error: 'Enter a valid amount.' };
+    }
+
+    var hasComma = s.indexOf(',') !== -1;
+    var hasDot = s.indexOf('.') !== -1;
+    var normalized = s;
+
+    if (hasComma && !hasDot) {
+      if (/^\d+,\d{1,2}$/.test(s)) {
+        normalized = s.replace(',', '.');
+      } else if (/^\d{1,3}(,\d{3})+$/.test(s)) {
+        normalized = s.replace(/,/g, '');
+      } else if (/^\d+,$/.test(s)) {
+        normalized = s.slice(0, -1);
+      } else {
+        return { ok: false, num: NaN, normalized: s, error: 'Enter a valid amount (e.g. 4.75 or 1,234.56).' };
+      }
+    } else if (hasDot && hasComma) {
+      if (/^\d{1,3}(,\d{3})+\.\d*$/.test(s)) {
+        normalized = s.replace(/,/g, '');
+      } else {
+        return { ok: false, num: NaN, normalized: s, error: 'Enter a valid amount (e.g. 4.75 or 1,234.56).' };
+      }
+    } else if (!hasComma && !hasDot) {
+      if (!/^\d+$/.test(s)) {
+        return { ok: false, num: NaN, normalized: s, error: 'Enter a valid amount.' };
+      }
+    } else if (!/^\d*\.\d*$/.test(s)) {
+      return { ok: false, num: NaN, normalized: s, error: 'Enter a valid amount.' };
+    }
+
+    var num = parseFloat(normalized);
+    if (!isFinite(num)) {
+      return { ok: false, num: NaN, normalized: normalized, error: 'Enter a valid amount.' };
+    }
+    return { ok: true, num: num, normalized: normalized };
   }
 
-  // Blade / presets often use plain "1234.56". Reformat to masked calculator display.
-  function initExistingValue(input, places) {
-    var raw = (input.value || '').trim();
-    if (!raw) return;
-    var num = parseFloat(raw.replace(/,/g, ''));
-    if (!isFinite(num) || num < 0) {
-      input.value = '';
-      return;
-    }
-    var minor = Math.round(num * Math.pow(10, places));
-    input.value = formatMinorUnits(minor, places);
+  function moneyErrorHost(input) {
+    return input.closest('.cp-discount-field-value')
+      || input.closest('.admin-form-group')
+      || input.parentElement;
   }
 
-  function onMoneyInput(e, places) {
-    var input = e.target;
-    var raw = input.value;
-    if (!raw.replace(/\D/g, '')) {
-      input.value = '';
-      return;
-    }
-    var minor = parseToMinorUnits(raw);
-    if (minor === 0) {
-      input.value = formatMinorUnits(0, places);
-      return;
-    }
-    input.value = formatMinorUnits(minor, places);
-    var end = input.value.length;
-    try { input.setSelectionRange(end, end); } catch (err) { /* ignore */ }
+  function clearMoneyFieldError(input) {
+    if (!input) return;
+    input.classList.remove('is-invalid');
+    input.setCustomValidity('');
+    var host = moneyErrorHost(input);
+    if (!host) return;
+    var err = host.querySelector('.cp-money-error');
+    if (err) err.remove();
   }
 
-  function onFormSubmitStripCommas(e) {
-    var form = e && e.target ? e.target : e;
-    stripMoneyCommasOnForm(form);
+  function setMoneyFieldError(input, message) {
+    if (!input) return;
+    if (!message) {
+      clearMoneyFieldError(input);
+      return;
+    }
+    input.classList.add('is-invalid');
+    input.setCustomValidity(message);
+    var host = moneyErrorHost(input);
+    if (!host) return;
+    var err = host.querySelector('.cp-money-error');
+    if (!err) {
+      err = document.createElement('p');
+      err.className = 'admin-form-error cp-money-error';
+      host.appendChild(err);
+    }
+    err.textContent = message;
+  }
+
+  function roundedNormalized(num, places) {
+    var factor = Math.pow(10, places || 2);
+    return (Math.round(num * factor) / factor).toFixed(places || 2);
+  }
+
+  function formHasInvalidMoney(form) {
+    var invalid = false;
+    if (!form || !form.querySelectorAll) return false;
+    form.querySelectorAll('.cp-money-input').forEach(function (input) {
+      var raw = (input.value || '').trim();
+      if (!raw) {
+        clearMoneyFieldError(input);
+        return;
+      }
+      var parsed = parseDirectCadMoney(raw);
+      if (!parsed.ok) {
+        setMoneyFieldError(input, parsed.error);
+        invalid = true;
+      }
+    });
+    return invalid;
   }
 
   function stripMoneyCommasOnForm(form) {
     if (!form || !form.querySelectorAll) return;
     form.querySelectorAll('.cp-money-input').forEach(function (input) {
-      if (input.value) input.value = input.value.replace(/,/g, '');
+      var parsed = parseDirectCadMoney(input.value);
+      if (!parsed.ok || parsed.empty) {
+        if (parsed && parsed.empty) input.value = '';
+        return;
+      }
+      input.value = roundedNormalized(parsed.num, moneyPlaces(input));
     });
+  }
+
+  function onFormSubmitStripCommas(e) {
+    var form = e && e.target ? e.target : e;
+    if (formHasInvalidMoney(form)) {
+      if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+      }
+      return;
+    }
+    stripMoneyCommasOnForm(form);
   }
 
   // Native HTMLFormElement.submit() skips 'submit' listeners (basement / millwork
@@ -123,64 +200,45 @@
     HTMLFormElement.prototype._cpMoneySubmitPatched = true;
     var nativeFormSubmit = HTMLFormElement.prototype.submit;
     HTMLFormElement.prototype.submit = function () {
+      if (formHasInvalidMoney(this)) {
+        return;
+      }
       stripMoneyCommasOnForm(this);
       return nativeFormSubmit.call(this);
     };
   }
 
-  /** Same semantics as line-item calculator: digits form minor units; dollars = minor / 10^places. */
-  function parseHybridCadMoney(value, places) {
-    places = places || 2;
-    var s = String(value == null ? '' : value).replace(/,/g, '').trim();
-    if (!s) {
-      return 0;
-    }
-    if (s.indexOf('.') !== -1) {
-      var n = parseFloat(s);
-      return isFinite(n) ? n : 0;
-    }
-    var digits = s.replace(/\D/g, '');
-    if (!digits) {
-      return 0;
-    }
-    digits = digits.replace(/^0+(?=\d)/, '');
-    var minor = parseInt(digits, 10);
-    if (isNaN(minor)) {
-      return 0;
-    }
-    return minor / Math.pow(10, places);
-  }
-
-  /** Format a plain decimal amount using the same grouping as calculator mode. */
   function normalizeDirectMoneyOnBlur(input, places) {
     places = places || 2;
-    var raw = (input.value || '').trim().replace(/,/g, '');
+    var raw = (input.value || '').trim();
     if (!raw) {
+      clearMoneyFieldError(input);
       return;
     }
-    var num;
-    if (input.getAttribute('data-cp-money-hybrid') === '1') {
-      num = parseHybridCadMoney(raw, places);
-    } else {
-      num = parseFloat(raw);
-    }
-    if (!isFinite(num) || num < 0) {
-      input.value = '';
+    var parsed = parseDirectCadMoney(raw);
+    if (!parsed.ok) {
+      setMoneyFieldError(input, parsed.error);
       return;
     }
-    var minor = Math.round(num * Math.pow(10, places));
+    clearMoneyFieldError(input);
+    if (parsed.empty) {
+      return;
+    }
+    var minor = Math.round(parsed.num * Math.pow(10, places));
     input.value = formatMinorUnits(minor, places);
   }
 
   /**
-   * Money field: type dollars/decimals normally (not calculator cents entry).
-   * Live value stays parseable by cpMoneyMask.parse (strip commas → parseFloat).
+   * Money field: type dollars/decimals normally.
+   * Live value stays parseable by cpMoneyMask.parse.
    */
   function wireDirectMoneyEntry(input) {
     if (!input) return;
     var places = moneyPlaces(input);
     if (input._cpMoneyWired) {
-      normalizeDirectMoneyOnBlur(input, places);
+      if (typeof document === 'undefined' || document.activeElement !== input) {
+        normalizeDirectMoneyOnBlur(input, places);
+      }
       return;
     }
     input._cpMoneyWired = true;
@@ -192,6 +250,7 @@
         ev.key === 'Backspace' ||
         ev.key === 'Delete' ||
         ev.key === 'Tab' ||
+        ev.key === 'Enter' ||
         ev.key === 'ArrowLeft' ||
         ev.key === 'ArrowRight' ||
         ev.key === 'ArrowUp' ||
@@ -199,13 +258,6 @@
         ev.key === 'Home' ||
         ev.key === 'End'
       ) {
-        return;
-      }
-      // Hybrid discount: same as calculator line items — digits only (no "." while typing).
-      if (input.getAttribute('data-cp-money-hybrid') === '1') {
-        if (ev.key && ev.key.length === 1 && !/[\d]/.test(ev.key) && !ev.ctrlKey && !ev.metaKey) {
-          ev.preventDefault();
-        }
         return;
       }
       if (ev.key.length === 1) {
@@ -222,47 +274,17 @@
     });
 
     input.addEventListener('input', function () {
-      var raw = input.value.replace(/,/g, '');
-      var hybrid = input.getAttribute('data-cp-money-hybrid') === '1';
-
-      // Hybrid: always use calculator semantics (same as line-item mask). Never branch on "." in
-      // the formatted display — that wrongly switched to decimal truncation after the first digit.
-      if (hybrid) {
-        if (!raw.replace(/\D/g, '')) {
-          input.value = '';
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          return;
-        }
-        var minor = parseToMinorUnits(raw);
-        if (minor === 0) {
-          input.value = '';
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          return;
-        }
-        var nextVal = formatMinorUnits(minor, places);
-        if (input.value !== nextVal) {
-          input.value = nextVal;
-          var end = input.value.length;
-          try {
-            input.setSelectionRange(end, end);
-          } catch (err) { /* ignore */ }
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-        }
+      var raw = input.value;
+      if (raw.indexOf('-') !== -1) {
+        setMoneyFieldError(input, 'Amount cannot be negative.');
         return;
       }
-
-      var v = raw.replace(/[^\d.]/g, '');
-      var dot = v.indexOf('.');
-      if (dot !== -1) {
-        v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '');
-        if (places > 0) {
-          v = v.slice(0, dot + 1 + places);
-        }
+      var parsed = parseDirectCadMoney(raw);
+      if (!parsed.ok && raw.trim() !== '' && raw.trim() !== '.' && raw.trim() !== ',') {
+        setMoneyFieldError(input, parsed.error);
+        return;
       }
-      if (v !== raw) {
-        input.value = v;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+      clearMoneyFieldError(input);
     });
 
     input.addEventListener('blur', function () {
@@ -277,29 +299,7 @@
 
   function wireMoneyInput(input) {
     if (!input) return;
-    if (input.getAttribute('data-cp-money-entry') === 'direct') {
-      wireDirectMoneyEntry(input);
-      return;
-    }
-    var places = moneyPlaces(input);
-    if (input._cpMoneyWired) {
-      initExistingValue(input, places);
-      return;
-    }
-    input._cpMoneyWired = true;
-    initExistingValue(input, places);
-    input.addEventListener('input', function (e) {
-      onMoneyInput(e, moneyPlaces(input));
-    });
-    input.addEventListener('keydown', function (ev) {
-      if (ev.key && ev.key.length === 1 && !/[\d]/.test(ev.key) && !ev.ctrlKey && !ev.metaKey) {
-        ev.preventDefault();
-      }
-    });
-    if (input.form && !input.form._cpMoneyFormWired) {
-      input.form._cpMoneyFormWired = true;
-      input.form.addEventListener('submit', onFormSubmitStripCommas);
-    }
+    wireDirectMoneyEntry(input);
   }
 
   function initMoneyMask() {
@@ -315,14 +315,11 @@
         target.forEach(wireMoneyInput);
       }
     },
-    /** Parse a masked value ("1,234.56") into a Number. NaN/empty → 0. */
+    /** Parse a masked value ("1,234.56" or "4,75") into a Number. NaN/empty/invalid → 0. */
     parse: function (value) {
-      if (value == null || value === '') return 0;
-      var n = parseFloat(String(value).replace(/,/g, ''));
-      return isFinite(n) ? n : 0;
+      var parsed = parseDirectCadMoney(value);
+      return parsed.ok ? parsed.num : 0;
     },
-    /** Direct discount field: digits only → minor/100; includes "." → parseFloat. */
-    parseHybridCadMoney: parseHybridCadMoney,
     /** Strip thousands separators on `.cp-money-input` before a programmatic submit. */
     stripFormCommas: stripMoneyCommasOnForm
   };
