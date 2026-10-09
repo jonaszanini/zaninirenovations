@@ -520,6 +520,7 @@ class MaterialController extends Controller
             'material_ids' => [],
             'created' => 0,
             'updated' => 0,
+            'skipped_inactive' => 0,
             'sync_ok' => 0,
             'sync_failed' => 0,
             'blank_lines' => $plan['blank_lines'],
@@ -583,6 +584,9 @@ class MaterialController extends Controller
 
             if ($result['action'] === 'skipped') {
                 $reason = $result['reason'] ?? 'inactive';
+                if ($reason === 'inactive') {
+                    $state['skipped_inactive'] = (int) ($state['skipped_inactive'] ?? 0) + 1;
+                }
                 $message = 'skipped: '.$reason.' (SKU '.$sku.')';
             } elseif ($result['action'] === 'created') {
                 $state['material_ids'][] = $result['material_id'];
@@ -816,17 +820,23 @@ class MaterialController extends Controller
             }
         }
 
-        $normalizedSku = HomeDepotCaUrls::normalizeStoredSku($data['store_sku'] ?? null);
-        $data['store_sku'] = $normalizedSku;
-        if (HomeDepotCaUrls::isValidSku($normalizedSku)) {
-            $owner = Material::findByNormalizedHdSku(
-                $normalizedSku,
-                $current !== null ? (int) $current->id : null
-            );
-            if ($owner !== null) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'store_sku' => 'Another material already uses Home Depot SKU '.$normalizedSku.'.',
-                ]);
+        if ($this->submittedRowIsHomeDepot($data, $current)) {
+            $normalizedSku = HomeDepotCaUrls::normalizeStoredSku($data['store_sku'] ?? null);
+            $data['store_sku'] = $normalizedSku;
+            $currentNormalized = $current !== null
+                ? HomeDepotCaUrls::normalizeStoredSku($current->store_sku)
+                : null;
+            $skuChanged = $current === null || $currentNormalized !== $normalizedSku;
+            if ($skuChanged && HomeDepotCaUrls::isValidSku($normalizedSku)) {
+                $owner = Material::findByNormalizedHdSku(
+                    $normalizedSku,
+                    $current !== null ? (int) $current->id : null
+                );
+                if ($owner !== null) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'store_sku' => 'Another material already uses Home Depot SKU '.$normalizedSku.'.',
+                    ]);
+                }
             }
         }
 
@@ -843,6 +853,22 @@ class MaterialController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function submittedRowIsHomeDepot(array $data, ?Material $current): bool
+    {
+        $homeDepotId = MaterialVendor::homeDepotId();
+        $vendorId = $data['vendor_id'] ?? $current?->vendor_id;
+        if ($homeDepotId !== null && $vendorId !== null && (int) $vendorId === $homeDepotId) {
+            return true;
+        }
+
+        $url = $data['product_url'] ?? $current?->product_url;
+
+        return HomeDepotCaUrls::hostIsHomeDepot((string) ($url ?? ''));
     }
 
     /**
@@ -876,6 +902,7 @@ class MaterialController extends Controller
         return [
             'created' => (int) ($state['created'] ?? 0),
             'updated' => (int) ($state['updated'] ?? 0),
+            'skipped_inactive' => (int) ($state['skipped_inactive'] ?? 0),
             'sync_ok' => (int) ($state['sync_ok'] ?? 0),
             'sync_failed' => (int) ($state['sync_failed'] ?? 0),
             'blank_lines' => (int) ($state['blank_lines'] ?? 0),
@@ -980,6 +1007,9 @@ class MaterialController extends Controller
         }
         if (($state['invalid_lines'] ?? 0) > 0) {
             $skipParts[] = $state['invalid_lines'].' invalid line(s) skipped';
+        }
+        if (($state['skipped_inactive'] ?? 0) > 0) {
+            $skipParts[] = $state['skipped_inactive'].' inactive material(s) skipped';
         }
         if ($skipParts !== []) {
             $message .= '. '.ucfirst(implode(', ', $skipParts)).'.';

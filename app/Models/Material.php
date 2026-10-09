@@ -54,13 +54,30 @@ class Material extends Model
     protected static function booted(): void
     {
         static::saving(function (Material $material) {
+            if (! $material->isHomeDepotCatalogRow()) {
+                return;
+            }
+
             $material->store_sku = HomeDepotCaUrls::normalizeStoredSku($material->store_sku);
         });
     }
 
     /**
+     * Home Depot vendor, or a homedepot.ca product URL.
+     */
+    public function isHomeDepotCatalogRow(): bool
+    {
+        $homeDepotId = MaterialVendor::homeDepotId();
+        if ($homeDepotId !== null && $this->vendor_id !== null && (int) $this->vendor_id === $homeDepotId) {
+            return true;
+        }
+
+        return $this->isHomeDepotUrl();
+    }
+
+    /**
      * Find a catalog row whose stored SKU or product URL matches this Home Depot item number,
-     * including legacy "SKU 100-189-8921" formatting. Does not rewrite stored values.
+     * including legacy "SKU: 100-189-8921." formatting. Does not rewrite stored values.
      */
     public static function findByNormalizedHdSku(string $sku, ?int $ignoreId = null, bool $forUpdate = false): ?self
     {
@@ -69,29 +86,47 @@ class Material extends Model
             return null;
         }
 
-        $query = static::query()->where(function ($inner) use ($sku) {
-            $digitsExpr = "REPLACE(REPLACE(REPLACE(REPLACE(UPPER(TRIM(IFNULL(store_sku,''))), 'SKU ', ''), 'SKU', ''), '-', ''), ' ', '')";
-            $inner->where('store_sku', $sku)
-                ->orWhereRaw($digitsExpr.' = ?', [$sku])
-                ->orWhere('product_url', 'like', '%/'.$sku)
-                ->orWhere('product_url', 'like', '%/'.$sku.'/%')
-                ->orWhere('product_url', 'like', '%/'.$sku.'?%');
-        });
-
+        $query = static::query();
         if ($ignoreId !== null) {
             $query->where('id', '!=', $ignoreId);
         }
-
         if ($forUpdate) {
             $query->lockForUpdate();
         }
 
-        $rows = $query
-            ->orderByRaw('case when store_sku = ? then 0 else 1 end', [$sku])
-            ->get();
+        try {
+            $query->where(function ($inner) use ($sku) {
+                $inner->where('store_sku', $sku)
+                    ->orWhereRaw("REGEXP_REPLACE(IFNULL(store_sku,''), '[^0-9]', '') = ?", [$sku])
+                    ->orWhere('product_url', 'like', '%/'.$sku)
+                    ->orWhere('product_url', 'like', '%/'.$sku.'/%')
+                    ->orWhere('product_url', 'like', '%/'.$sku.'?%');
+            });
+            $rows = $query
+                ->orderByRaw('case when store_sku = ? then 0 else 1 end', [$sku])
+                ->get();
+        } catch (\Throwable $e) {
+            $fallback = static::query();
+            if ($ignoreId !== null) {
+                $fallback->where('id', '!=', $ignoreId);
+            }
+            if ($forUpdate) {
+                $fallback->lockForUpdate();
+            }
+            $rows = $fallback
+                ->where(function ($inner) use ($sku) {
+                    $inner->whereNotNull('store_sku')->where('store_sku', '!=', '')
+                        ->orWhere('product_url', 'like', '%'.$sku.'%');
+                })
+                ->get();
+        }
 
         return $rows->first(function (self $material) use ($sku) {
             if (HomeDepotCaUrls::normalizeStoredSku($material->store_sku) === $sku) {
+                return true;
+            }
+            if (HomeDepotCaUrls::digitsOnly($material->store_sku) === $sku
+                && HomeDepotCaUrls::isValidSku($sku)) {
                 return true;
             }
 

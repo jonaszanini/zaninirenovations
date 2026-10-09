@@ -17,6 +17,9 @@ class HomeDepotCaUrlsTest extends TestCase
         $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku('100 189 8921'));
         $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku('SKU 1001898921'));
         $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku('sku: 100-189-8921'));
+        $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku('SKU#1001898921'));
+        $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku("SKU:\t100-189-8921."));
+        $this->assertSame('1001898921', HomeDepotCaUrls::normalizeStoredSku("1001898921\u{00A0}"));
         $this->assertNull(HomeDepotCaUrls::normalizeStoredSku('   '));
         $this->assertNull(HomeDepotCaUrls::normalizeStoredSku(null));
     }

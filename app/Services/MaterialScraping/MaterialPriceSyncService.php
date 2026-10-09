@@ -309,6 +309,25 @@ class MaterialPriceSyncService
                 );
             }
 
+            $parsedSku = HomeDepotCaUrls::normalizeStoredSku($parsed->sku);
+            $rowSku = HomeDepotCaUrls::normalizeStoredSku($material->store_sku);
+            if (HomeDepotCaUrls::isValidSku($parsedSku)
+                && HomeDepotCaUrls::isValidSku($rowSku)
+                && $parsedSku !== $rowSku) {
+                AppLogger::warning('materials.sync.sku_mismatch', [
+                    'material_id' => $material->id,
+                    'row_store_sku' => $material->store_sku,
+                    'parsed_store_sku' => $parsed->sku,
+                ]);
+
+                return [
+                    'status' => Material::SCRAPE_SKIPPED,
+                    'parsed' => $parsed,
+                    'error' => 'Parsed Home Depot SKU '.$parsedSku.' does not match this material ('.$rowSku.').',
+                    'old_price' => $oldPrice,
+                ];
+            }
+
             if (! $dryRun) {
                 $this->applyParsedFields($material, $parsed);
                 $material->last_scraped_at = now();
