@@ -304,11 +304,12 @@
   }
 
   function uniquifyTipLabelIds(scope) {
+    if (!scope || scope.nodeType !== 1) return;
     var seen = Object.create(null);
     if (document.querySelectorAll) {
       document.querySelectorAll('[id^="admin-tip-lab-"]').forEach(function (el) {
         if (!el.id) return;
-        if (scope && scope.nodeType === 1 && scope.contains && scope.contains(el)) {
+        if (scope.contains && scope.contains(el)) {
           return;
         }
         seen[el.id] = true;
@@ -349,10 +350,11 @@
 
   function uniquifyControlIds(scope) {
     var seen = Object.create(null);
-    if (document.querySelectorAll) {
+    var scoped = !!(scope && scope.nodeType === 1);
+    if (scoped && document.querySelectorAll) {
       document.querySelectorAll('input[id], select[id], textarea[id]').forEach(function (el) {
         if (!el.id) return;
-        if (scope && scope.nodeType === 1 && scope.contains && scope.contains(el)) {
+        if (scope.contains && scope.contains(el)) {
           return;
         }
         seen[el.id] = true;

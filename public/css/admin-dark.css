@@ -66,18 +66,12 @@ html.admin-dark .admin-toolbar-lede {
   color: var(--admin-muted);
 }
 
-html.admin-dark .admin-form-group .admin-checkbox-row,
 html.admin-dark .admin-checkbox-row {
   color: var(--admin-text);
 }
-html.admin-dark .admin-form-group .admin-checkbox-row > label.admin-checkbox,
-html.admin-dark .admin-form-group .admin-checkbox-row .admin-checkbox__text,
-html.admin-dark .admin-form-group .admin-checkbox-row label.admin-checkbox__tail {
+html.admin-dark .admin-checkbox-row label,
+html.admin-dark .admin-checkbox-row .admin-checkbox__text {
   color: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  text-transform: inherit;
-  letter-spacing: inherit;
 }
 
 html.admin-dark .admin-sidebar-brand {
@@ -2932,6 +2926,7 @@ html.admin-dark .cp-recalc-preview tr.is-paid td {
 
 html.admin-dark .cp-required,
 html.admin-dark .admin-required,
+html.admin-dark label.cp-required,
 html.admin-dark .admin-form-error {
   color: #fca5a5;
 }

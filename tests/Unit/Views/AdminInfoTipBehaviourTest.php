@@ -213,6 +213,7 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('function uniquifyTipLabelIds', $js);
         $this->assertStringContainsString('uniquifyTipLabelIds(scope)', $js);
         $this->assertStringContainsString('id^="admin-tip-lab-"', $js);
+        $this->assertStringContainsString('if (!scope || scope.nodeType !== 1) return', $js);
         $this->assertStringContainsString('function idFromControlName', $js);
         $this->assertStringContainsString("idFromControlName(input.getAttribute && input.getAttribute('name'))", $js);
         $this->assertStringContainsString("btn.setAttribute('aria-label', aboutLabel(aria))", $js);
@@ -293,9 +294,10 @@ class AdminInfoTipBehaviourTest extends TestCase
         );
         $darkCss = file_get_contents(public_path('css/admin-dark.css'));
         $this->assertMatchesRegularExpression(
-            '/html\.admin-dark \.admin-form-group \.admin-checkbox-row[\s\S]{0,80}color:\s*var\(--admin-text\)/',
+            '/html\.admin-dark \.admin-checkbox-row[\s\S]{0,80}color:\s*var\(--admin-text\)/',
             $darkCss
         );
+        $this->assertStringContainsString('html.admin-dark label.cp-required', $darkCss);
         $this->assertStringContainsString('.admin-btn[hidden]', $css);
         $dialog = file_get_contents(public_path('js/admin-dialog.js'));
         $this->assertStringContainsString('global.AdminInfoTip = global.AdminInfoTip ||', $dialog);
@@ -322,9 +324,10 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-label-with-tip__end\s*>\s*\.cp-required[\s\S]{0,160}color:\s*var\(--admin-danger\)/',
+            '/\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,160}overflow-wrap:\s*anywhere/',
             $css
         );
+        $this->assertStringContainsString('.admin-form-group label.cp-required', $css);
         $this->assertDoesNotMatchRegularExpression(
             '/\.admin-form-group\s*>\s*label:has\(\.admin-info-tip\)[\s\S]{0,400}align-items:\s*center/',
             $css

@@ -31,6 +31,8 @@ assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowr
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,220}display:\s*inline/);
 assert.match(adminCss, /admin-label-with-tip__tail/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*\.admin-info-tip-wrap[\s\S]{0,80}display:\s*inline-flex/);
+assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,160}overflow-wrap:\s*anywhere/);
+assert.doesNotMatch(darkCss, /html\.admin-dark \.admin-form-group \.admin-checkbox-row >/);
 assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S]{0,160}pointer-events:\s*auto/);
 assert.match(cpCss, /\.tm-chip-row\s*>\s*\.admin-checkbox-row/);
 assert.match(source, /function glueLastTextNode/);
@@ -39,6 +41,7 @@ assert.match(source, /function wrapElementAndTip/);
 assert.match(source, /function makeWordEl/);
 assert.match(source, /function linkSplitLabels/);
 assert.match(source, /function uniquifyTipLabelIds/);
+assert.match(source, /if \(!scope \|\| scope\.nodeType !== 1\) return/);
 assert.match(source, /admin-label-with-tip__tail/);
 assert.match(source, /admin-tip-lab-/);
 assert.doesNotMatch(source, /function moveTrailingSkipped/);
@@ -381,6 +384,26 @@ function fixtureHtml() {
       </span>
       <input class="admin-input" id="named-input" aria-labelledby="named-hint" value="">
       <span id="named-hint">Existing hint</span>
+    </div>
+    <div class="admin-form-group" id="url-group">
+      <span class="admin-label-with-tip" id="url-row">
+        <label for="url-field">Catalog https://images.homedepot.ca/productimages/super-long-hyphenated-path-name.jpg</label>
+        <span class="admin-info-tip-wrap">
+          <button type="button" class="admin-info-tip" aria-label="About Catalog URL" aria-expanded="false" aria-controls="t-url">i</button>
+          <span id="t-url" class="admin-info-tip__bubble" role="tooltip">Product link.</span>
+        </span>
+      </span>
+      <input class="admin-input" id="url-field" value="">
+    </div>
+    <div class="admin-form-group" id="hyphen-group">
+      <span class="admin-label-with-tip" id="hyphen-row">
+        <label for="hyphen-field">Coating polyurethane-acrylic-waterborne-topcoat</label>
+        <span class="admin-info-tip-wrap">
+          <button type="button" class="admin-info-tip" aria-label="About Coating" aria-expanded="false" aria-controls="t-hyphen">i</button>
+          <span id="t-hyphen" class="admin-info-tip__bubble" role="tooltip">Finish system.</span>
+        </span>
+      </span>
+      <input class="admin-input" id="hyphen-field" value="">
     </div>
     <span class="admin-label-with-tip" id="improve-row">
       <span class="admin-form-group-label">Improve description</span>
@@ -923,6 +946,32 @@ async function puppeteerClick() {
     assert.match(runtimeNotes.starClass, /cp-required/, 'D5: split * keeps cp-required');
     assert.equal(runtimeNotes.starColor, runtimeNotes.danger, 'D5: split * stays danger red');
 
+    const unscope = await page.evaluate(() => {
+      const input = document.getElementById('named-input');
+      const before = input.getAttribute('aria-labelledby');
+      window.AdminInfoTip.refreshControlIds();
+      return {
+        before,
+        after: input.getAttribute('aria-labelledby'),
+      };
+    });
+    assert.equal(unscope.after, unscope.before, 'refreshControlIds() without a scope must not rewrite the original labelledby');
+
+    const darkStar = await page.evaluate(() => {
+      document.documentElement.classList.add('admin-dark');
+      const jsOn = document.querySelector('#star-split-row .admin-label-with-tip__end > .cp-required, #star-split-row .admin-label-with-tip__end > label.cp-required');
+      const jsOff = document.querySelector('#store-name-row .cp-required');
+      const out = {
+        on: jsOn ? getComputedStyle(jsOn).color : '',
+        off: jsOff ? getComputedStyle(jsOff).color : '',
+      };
+      document.documentElement.classList.remove('admin-dark');
+      return out;
+    });
+    assert.ok(darkStar.on, 'dark JS-on * must render');
+    assert.ok(darkStar.off, 'dark JS-off * must render');
+    assert.equal(darkStar.on, darkStar.off, 'dark-mode * must be the same red with JS on and off');
+
     await page.evaluate(() => window.AdminInfoTip && window.AdminInfoTip.closeAll && window.AdminInfoTip.closeAll());
     await page.click('#waste-row .admin-label-with-tip__end > label');
     const wasteClick = await page.evaluate(() => ({
@@ -1142,6 +1191,9 @@ async function puppeteerClick() {
             clientFilledOffset,
             tmLine,
             gaps,
+            pageOverflow: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+            urlRight: (document.getElementById('url-row') || {}).getBoundingClientRect ? document.getElementById('url-row').getBoundingClientRect().right : 0,
+            hyphenRight: (document.getElementById('hyphen-row') || {}).getBoundingClientRect ? document.getElementById('hyphen-row').getBoundingClientRect().right : 0,
           };
         });
         aligned.checks.forEach((row, i) => {
@@ -1157,6 +1209,11 @@ async function puppeteerClick() {
         if (width <= 390) {
           assert.ok(aligned.clientFilledOffset <= 1, `${theme}: client-filled wrapped line offset ${aligned.clientFilledOffset}px at ${width}px`);
           assert.ok(aligned.tmLine.sameLine, `${theme}: Client supplies materials ⓘ stays with the last word at ${width}px`);
+        }
+        if (width === 320) {
+          assert.ok(aligned.pageOverflow <= 8, `${theme}: 320px page overflow ${aligned.pageOverflow}px must not be 163–193px`);
+          assert.ok(aligned.urlRight <= width + 1, `${theme}: URL row right ${aligned.urlRight}px at 320`);
+          assert.ok(aligned.hyphenRight <= width + 1, `${theme}: hyphen row right ${aligned.hyphenRight}px at 320`);
         }
         assert.ok(aligned.gaps.length >= 4, `${theme}: D1 measurable gaps at ${width}px`);
         aligned.gaps.forEach((hit) => {

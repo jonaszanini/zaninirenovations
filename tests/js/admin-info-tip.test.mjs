@@ -608,6 +608,12 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   assert.ok(!by.includes('admin-tip-lab-aaa1'), 'D3: old tip label id is gone from the clone');
   assert.equal(a.lead.id, 'admin-tip-lab-aaa1');
   assert.equal(a.input.getAttribute('aria-labelledby'), 'admin-tip-lab-aaa1 admin-tip-lab-aaa2 named-hint');
+  const origBy = a.input.getAttribute('aria-labelledby');
+  const origId = a.input.id;
+  AdminInfoTip.refreshControlIds();
+  assert.equal(a.input.getAttribute('aria-labelledby'), origBy, 'refreshControlIds() without a scope must not rewrite the original labelledby');
+  assert.equal(a.input.id, origId, 'refreshControlIds() without a scope must not rewrite the original input id');
+  assert.equal(a.lead.id, 'admin-tip-lab-aaa1');
 }
 
 {
