@@ -1269,12 +1269,16 @@ function liveSnapshotScript() {
     const bottomHit = document.elementFromPoint(bottomX, bottomY);
     const lowX = window.innerWidth / 2;
     const lowHit = document.elementFromPoint(lowX, lowY);
+    function isAllowedCanvasHit(hit) {
+      if (!hit || !wrap) return false;
+      if (wrap === hit || wrap.contains(hit)) return true;
+      return !!(hit.closest && hit.closest('.util-ra-help, .util-ra-help-q, .util-ra-help-pop'));
+    }
     function hitCoversCanvas(hit, x, y) {
       if (!hit || !wrap) return false;
       const r = wrap.getBoundingClientRect();
       if (y < r.top || y > r.bottom || x < r.left || x > r.right) return false;
-      if (wrap === hit || wrap.contains(hit)) return false;
-      return true;
+      return !isAllowedCanvasHit(hit);
     }
     const root = document.querySelector('.util-ra--fullpage');
     const main = document.querySelector('.admin-main') || document.scrollingElement;
@@ -1450,6 +1454,7 @@ async function measureLiveEditor() {
       if (geo.unitBox) await page.mouse.click(geo.unitBox.x, geo.unitBox.y);
       if (vp.width === 1024 && geo.visibleHelps[0] && geo.visibleHelps[0].box) {
         await page.mouse.click(geo.visibleHelps[0].box.x, geo.visibleHelps[0].box.y);
+        await page.keyboard.press('Escape');
       }
     }
 
