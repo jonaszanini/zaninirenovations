@@ -99,6 +99,13 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         );
         $this->assertStringNotContainsString("var cur = input.value.replace(/,/g, '');", $js);
         $this->assertStringContainsString('remaining.indexOf(ev.key)', $js);
+        $harness = file_get_contents(base_path('tests/Feature/Admin/money-direct-entry.js'));
+        $this->assertIsString($harness);
+        $this->assertStringContainsString("keyboard.type('1.234,56'", $harness);
+        $this->assertDoesNotMatchRegularExpression(
+            "/cp-kp-mixed[\s\S]{0,240}input\.value\s*=\s*['\"]1\.234,56['\"]/",
+            $harness
+        );
     }
 
     public function test_flooring_add_type_saves_4_75_and_keeps_existing(): void
