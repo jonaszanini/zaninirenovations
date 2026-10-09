@@ -553,6 +553,33 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
 }
 
 {
+  // Accordion: summary > title span + tip. wrapUnitAndTip used to insert the
+  // glue end inside the title then appendChild(title) — HierarchyRequestError
+  // aborted hoist, so later flex headings never got .admin-heading-copy.
+  const { document, body, AdminInfoTip } = createEnv();
+  const summary = document.createElement('summary');
+  summary.className = 'admin-accordion__summary';
+  const title = document.createElement('span');
+  title.className = 'admin-accordion__title';
+  title.appendChild(document.createTextNode('Client Email Message'));
+  const { wrap } = makeTip(document, 'admin-info-tip-email-msg', 'Client Email Message');
+  summary.appendChild(title);
+  summary.appendChild(wrap);
+  const h5 = document.createElement('h5');
+  h5.className = 'sq-intro-option-title';
+  h5.appendChild(document.createTextNode('Client PDF line items'));
+  const htip = makeTip(document, 'admin-info-tip-pdf-after-acc', 'Client PDF line items');
+  h5.appendChild(htip.wrap);
+  body.appendChild(summary);
+  body.appendChild(h5);
+  assert.doesNotThrow(() => AdminInfoTip.hoist(document));
+  assert.ok(title.classList.contains('admin-heading-copy'), 'N4: existing title span is the heading copy');
+  assert.ok(title.querySelector('.admin-heading-tip, .admin-label-with-tip__end'), 'last word glued inside the title');
+  assert.ok(h5.querySelector('.admin-heading-copy'), 'later flex headings still wrap after the accordion');
+  assert.match(String(h5.querySelector('.admin-heading-copy').textContent || ''), /Client PDF line items/);
+}
+
+{
   const { document, body, AdminInfoTip } = createEnv();
   const row = document.createElement('span');
   row.className = 'admin-label-with-tip';

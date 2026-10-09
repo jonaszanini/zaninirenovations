@@ -555,10 +555,12 @@
     var dest = end.parentNode || host;
     if (!dest || !dest.insertBefore) return;
     trailingSkippedChildren(host).forEach(function (el) {
-      if (el === end || (end.contains && end.contains(el))) return;
+      if (!el || el === end || el === dest) return;
+      if (end.contains && end.contains(el)) return;
+      if (el.contains && (el.contains(end) || el.contains(dest))) return;
       if (end.nextSibling && end.nextSibling.parentNode === dest) {
         dest.insertBefore(el, end.nextSibling);
-      } else {
+      } else if (dest.appendChild) {
         dest.appendChild(el);
       }
     });
@@ -580,19 +582,24 @@
 
   function wrapUnitAndTip(host, tip, extraClass) {
     var unit = lastElementUnit(host, tip);
-    if (!unit || !tip) return null;
+    if (!unit || !tip || unit === tip) return null;
+    if (tip.contains && tip.contains(unit)) return null;
     var end = document.createElement('span');
     end.className = extraClass || 'admin-label-with-tip__end';
-    var insertHost = (tip && tip.parentNode) ? tip.parentNode : host;
-    if (insertHost && insertHost.insertBefore && tip && tip.parentNode === insertHost) {
+    var unitHasTip = !!(unit.contains && unit.contains(tip));
+    var insertHost = unitHasTip ? (unit.parentNode || host) : (tip.parentNode || unit.parentNode || host);
+    if (!insertHost || (unit.contains && unit.contains(insertHost))) return null;
+    if (insertHost.insertBefore && !unitHasTip && tip.parentNode === insertHost) {
       insertHost.insertBefore(end, tip);
-    } else if (insertHost && insertHost.appendChild) {
+    } else if (insertHost.insertBefore && unit.parentNode === insertHost) {
+      insertHost.insertBefore(end, unit);
+    } else if (insertHost.appendChild) {
       insertHost.appendChild(end);
-    } else if (host && host.appendChild) {
-      host.appendChild(end);
+    } else {
+      return null;
     }
     end.appendChild(unit);
-    end.appendChild(tip);
+    if (tip.parentNode !== end) end.appendChild(tip);
     return end;
   }
 
@@ -738,12 +745,34 @@
     glueHeadingTips(root);
   }
 
+  function headingContentNodes(heading, tip) {
+    var out = [];
+    var kids = heading.childNodes || [];
+    for (var i = 0; i < kids.length; i++) {
+      var n = kids[i];
+      if (n === tip) continue;
+      if (n.nodeType === 3 && !String(n.textContent || '').trim()) continue;
+      if (n.nodeType === 1 && n.classList && (n.classList.contains('br-acc__num') || n.classList.contains('admin-info-tip-wrap'))) continue;
+      out.push(n);
+    }
+    return out;
+  }
+
   function wrapHeadingCopy(heading, tip) {
     if (!heading || !tip) return heading;
     var existing = heading.querySelector ? heading.querySelector(':scope > .admin-heading-copy') : null;
     if (existing) {
       if (tip.parentNode !== existing) existing.appendChild(tip);
       return existing;
+    }
+    var content = headingContentNodes(heading, tip);
+    if (content.length === 1 && content[0].nodeType === 1) {
+      var only = content[0];
+      if (only.classList && !only.classList.contains('admin-heading-copy')) {
+        only.classList.add('admin-heading-copy');
+      }
+      if (tip.parentNode !== only) only.appendChild(tip);
+      return only;
     }
     var copy = document.createElement('span');
     copy.className = 'admin-heading-copy';

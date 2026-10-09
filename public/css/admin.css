@@ -1748,6 +1748,8 @@ a.admin-client-link:focus-visible {
 }
 .sq-intro-option-title > .admin-heading-copy,
 .br-acc__summary > .admin-heading-copy,
+.admin-accordion__summary > .admin-heading-copy,
+.admin-accordion__title.admin-heading-copy,
 h1 > .admin-heading-copy,
 h2 > .admin-heading-copy,
 h3 > .admin-heading-copy,
