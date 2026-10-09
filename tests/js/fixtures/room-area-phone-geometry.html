@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Room Area phone geometry</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-utilities.css">
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #edf0f2;
+    }
+    .util-ra--fullpage {
+      height: 100%;
+    }
+    .geom-stage {
+      flex: 1 1 auto;
+      min-height: 80px;
+    }
+  </style>
+</head>
+<body>
+  <div class="util-ra util-ra--fullpage is-more-open" data-room-area data-ra-fullpage="1">
+    <div class="geom-stage"></div>
+    <div class="util-ra-more-sheet" data-ra-more-sheet>
+      <div class="util-ra-more-sheet__chrome">
+        <div class="util-ra-more-sheet__head">
+          <p class="util-ra-more-sheet__title" id="ra-more-sheet-title">More</p>
+          <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-more-close aria-label="Close more tools">
+            <span class="util-ra-more-btn-label">Close</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <aside class="util-ra-side" data-ra-side>
+      <button type="button" class="util-ra-sheet-handle" data-ra-sheet-handle aria-label="Expand or collapse panel" aria-expanded="false">
+        <span class="util-ra-sheet-handle__bar" aria-hidden="true"></span>
+      </button>
+      <div class="util-ra-sheet-strip" data-ra-sheet-strip>
+        <div class="util-ra-sheet-strip__dock" data-ra-sheet-dock>
+          <div class="util-ra-object-dock">
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-palette__toggle" data-ra-palette-toggle>Objects</button>
+            <section class="util-ra-walls-panel">
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-palette__toggle" data-ra-walls-toggle>Walls</button>
+            </section>
+          </div>
+        </div>
+        <div class="util-ra-sheet-strip__total">
+          <span class="util-ra-sheet-strip__label">Area</span>
+          <strong data-ra-sheet-total>152 sq ft</strong>
+        </div>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

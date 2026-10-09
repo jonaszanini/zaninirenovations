@@ -934,6 +934,37 @@ class RoomAreaCanvasDataTest extends TestCase
             'Unlock layers to change the floor plan.',
             $this->service->lockedGeometryChangeMessage($existing, $moved, 12.0, 12.0)
         );
+
+        $restored = $this->service->restoreStoredGeometryIfWithinTolerance($moved, $existing, 12.0, 12.0);
+        $this->assertSame(
+            'Unlock layers to change the floor plan.',
+            $this->service->lockedGeometryChangeMessage($existing, $restored, 12.0, 12.0)
+        );
+    }
+
+    public function test_scale_factor_rounds_incoming_scale_to_four_decimals(): void
+    {
+        $existing = $this->lockedRect();
+        $existing['background'] = ['x' => 24, 'y' => 36, 'width' => 480, 'height' => 360];
+        $incoming = $existing;
+        foreach ($incoming['groups'][0]['polygons'][0]['vertices'] as $i => $vertex) {
+            $incoming['groups'][0]['polygons'][0]['vertices'][$i]['x'] = $vertex['x'] * 1.0137;
+            $incoming['groups'][0]['polygons'][0]['vertices'][$i]['y'] = $vertex['y'] * 1.0137;
+        }
+        $incoming['background'] = [
+            'x' => 24 * 1.0137,
+            'y' => 36 * 1.0137,
+            'width' => 480 * 1.0137,
+            'height' => 360 * 1.0137,
+        ];
+        $restored = $this->service->restoreStoredGeometryIfWithinTolerance(
+            $incoming,
+            $existing,
+            12.0,
+            12.0 * 1.0137
+        );
+        $roundedIncoming = round(12.0 * 1.0137, 4);
+        $this->assertEqualsWithDelta(144.0 * ($roundedIncoming / 12.0), $restored['groups'][0]['polygons'][0]['vertices'][1]['x'], 0.0001);
     }
 
     /**

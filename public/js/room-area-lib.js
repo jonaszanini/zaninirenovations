@@ -429,6 +429,77 @@
     return rectangle(width || 12, length || 10);
   }
 
+  function isAxisAlignedRectangle(verts) {
+    if (!verts || verts.length !== 4) return false;
+    var area = Math.abs(polygonArea(verts));
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    var i;
+    for (i = 0; i < verts.length; i++) {
+      if (verts[i].x < minX) minX = verts[i].x;
+      if (verts[i].y < minY) minY = verts[i].y;
+      if (verts[i].x > maxX) maxX = verts[i].x;
+      if (verts[i].y > maxY) maxY = verts[i].y;
+    }
+    var aabb = (maxX - minX) * (maxY - minY);
+    return aabb > 0 && Math.abs(area - aabb) <= 1e-6;
+  }
+
+  function overallDimensionText(verts, opts) {
+    opts = opts || {};
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    (verts || []).forEach(function (v) {
+      if (v.x < minX) minX = v.x;
+      if (v.y < minY) minY = v.y;
+      if (v.x > maxX) maxX = v.x;
+      if (v.y > maxY) maxY = v.y;
+    });
+    var boxW = opts.width != null ? opts.width : (maxX - minX);
+    var boxH = opts.height != null ? opts.height : (maxY - minY);
+    var wLabel = opts.formatLength ? opts.formatLength(boxW) : boxW;
+    var hLabel = opts.formatLength ? opts.formatLength(boxH) : boxH;
+    if (opts.areaOnly) return opts.areaLabel || '';
+    if (isAxisAlignedRectangle(verts)) {
+      return opts.areaLabel ? (wLabel + ' × ' + hLabel + ' · ' + opts.areaLabel) : (wLabel + ' × ' + hLabel);
+    }
+    return 'Overall ' + wLabel + ' × ' + hLabel;
+  }
+
+  function readFetchJson(res, fallbackMessage) {
+    if (!res || typeof res.json !== 'function') {
+      return Promise.resolve({
+        ok: false,
+        status: res && res.status != null ? res.status : 0,
+        data: { message: fallbackMessage || 'Could not read server response.' }
+      });
+    }
+    return Promise.resolve(res.json()).then(function (data) {
+      return { ok: !!res.ok, status: res.status, data: data || {} };
+    }).catch(function () {
+      var message = fallbackMessage || 'Could not read server response.';
+      if (res && res.status === 413) message = 'That file is too large to upload.';
+      return { ok: false, status: res.status, data: { message: message } };
+    });
+  }
+
+  function friendlyNetworkError(err, fallbackMessage) {
+    var raw = err && err.message ? String(err.message) : '';
+    if (err && (err.status === 413 || /413/.test(raw) || /payload too large/i.test(raw))) {
+      return 'That file is too large to upload.';
+    }
+    if (!raw || /failed to fetch/i.test(raw) || /networkerror/i.test(raw)
+      || /unexpected token/i.test(raw) || /not valid json/i.test(raw)
+      || /json is not a function/i.test(raw) || /is not a function/i.test(raw)) {
+      return fallbackMessage || 'Check your connection and try again.';
+    }
+    return raw;
+  }
+
   function signedArea2(verts) {
     var s = 0;
     var n = verts.length;
@@ -526,6 +597,10 @@
     shapeFromKind: shapeFromKind,
     insertAlcove: insertAlcove,
     signedArea2: signedArea2,
-    polygonArea: polygonArea
+    polygonArea: polygonArea,
+    isAxisAlignedRectangle: isAxisAlignedRectangle,
+    overallDimensionText: overallDimensionText,
+    readFetchJson: readFetchJson,
+    friendlyNetworkError: friendlyNetworkError
   };
 }));

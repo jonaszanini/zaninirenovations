@@ -265,7 +265,9 @@ class RoomAreaController extends Controller
             'vertices' => $normalized,
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
-            'scale_pixels_per_foot' => $data['scale_pixels_per_foot'] ?? null,
+            'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
+                ? round((float) $data['scale_pixels_per_foot'], 4)
+                : null,
             'area_sqft' => $validation['area_sqft'],
             'wall_height_ft' => $canvasData->normalizeWallHeight($data['wall_height_ft'] ?? null),
         ]);
@@ -342,12 +344,6 @@ class RoomAreaController extends Controller
             : null;
         $normalized = $canvasData->preserveEditorLock($normalized, $existingCanvas, $rawCanvas);
         $normalized = $canvasData->preserveLockedBackground($normalized, $existingCanvas, $existingScale, $incomingScale);
-        $normalized = $canvasData->restoreStoredGeometryIfWithinTolerance(
-            $normalized,
-            $existingCanvas,
-            $existingScale,
-            $incomingScale
-        );
         $lockMessage = $canvasData->lockedGeometryChangeMessage(
             $existingCanvas,
             $normalized,
@@ -357,13 +353,21 @@ class RoomAreaController extends Controller
         if ($lockMessage !== null) {
             return response()->json(['ok' => false, 'message' => $lockMessage], 422);
         }
+        $normalized = $canvasData->restoreStoredGeometryIfWithinTolerance(
+            $normalized,
+            $existingCanvas,
+            $existingScale,
+            $incomingScale
+        );
 
         $room_area_room->update([
             'name' => $data['name'],
             'vertices' => $normalized,
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
-            'scale_pixels_per_foot' => $data['scale_pixels_per_foot'] ?? $room_area_room->scale_pixels_per_foot,
+            'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
+                ? round((float) $data['scale_pixels_per_foot'], 4)
+                : $room_area_room->scale_pixels_per_foot,
             'area_sqft' => $validation['area_sqft'],
             'wall_height_ft' => array_key_exists('wall_height_ft', $data)
                 ? $canvasData->normalizeWallHeight($data['wall_height_ft'])

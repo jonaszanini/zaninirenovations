@@ -2111,6 +2111,14 @@
     return data.message || fallback;
   }
 
+  function readFetchJson(res, fallbackMessage) {
+    return RA.readFetchJson(res, fallbackMessage);
+  }
+
+  function friendlyNetworkError(err, fallbackMessage) {
+    return RA.friendlyNetworkError(err, fallbackMessage);
+  }
+
   function csrf() {
     var input = root.querySelector('#util-ra-csrf');
     return input ? input.value : '';
@@ -4893,10 +4901,14 @@
     show(els.bgDeleteCanvas, hasBg);
     show(els.bgShowWrap, hasBg);
     show(els.bgMoveToggle, hasBg);
+    if (els.bgMoveToggle) {
+      els.bgMoveToggle.disabled = !hasBg || geometryLocked();
+      els.bgMoveToggle.setAttribute('aria-disabled', (!hasBg || geometryLocked()) ? 'true' : 'false');
+    }
     if (els.bgShowImage) {
       els.bgShowImage.checked = state.bgImageVisible;
     }
-    if (!hasBg) stopBgMoveMode();
+    if (!hasBg || geometryLocked()) stopBgMoveMode();
     applyBackgroundImageVisibility();
   }
 
@@ -4990,6 +5002,11 @@
 
   function toggleBgMoveMode() {
     if (!state.bgImage) return;
+    if (geometryLocked()) {
+      stopBgMoveMode();
+      setFeedback('Unlock layers to move the floor plan.', true);
+      return;
+    }
     if (state.bgMoveMode) {
       stopBgMoveMode();
       setFeedback('Image move mode off.', false);
@@ -6439,8 +6456,12 @@
     if (areaOnly) {
       text = fmtAreaFromSqFt(area);
     } else {
-      text = fmtLengthFromFeet(box.width / ppf) + ' × ' + fmtLengthFromFeet(box.height / ppf);
-      if (area != null) text += ' · ' + fmtAreaFromSqFt(area);
+      text = RA.overallDimensionText(verts, {
+        width: box.width / ppf,
+        height: box.height / ppf,
+        formatLength: fmtLengthFromFeet,
+        areaLabel: area != null ? fmtAreaFromSqFt(area) : null
+      });
     }
     var c = polygonCentroid(verts) || { x: box.width / 2, y: box.height / 2 };
     var kLabel = new Konva.Label({
@@ -8035,12 +8056,17 @@
       },
       body: JSON.stringify({ client_project_id: clientProjectId ? parseInt(clientProjectId, 10) : null })
     })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (!data.ok) return;
-        project.client_project_id = data.project.client_project_id;
-        project.client_project_name = data.project.client_project_name;
+      .then(function (res) {
+        return readFetchJson(res, 'Could not update project.');
+      })
+      .then(function (result) {
+        if (!result.ok) return;
+        project.client_project_id = result.data.project.client_project_id;
+        project.client_project_name = result.data.project.client_project_name;
         renderLinked();
+      })
+      .catch(function (err) {
+        setFeedback(friendlyNetworkError(err, 'Could not update project. Check your connection and try again.'), true);
       });
   }
 
@@ -8064,13 +8090,8 @@
           Accept: 'application/json'
         }
       })
-        .then(function (res) { return res.json(); })
         .then(function (res) {
-          return res.json().then(function (data) {
-            return { ok: res.ok, data: data };
-          }).catch(function () {
-            return { ok: false, data: { message: 'Could not delete project.' } };
-          });
+          return readFetchJson(res, 'Could not delete project.');
         })
         .then(function (result) {
           if (!result.ok) {
@@ -8082,6 +8103,9 @@
           refreshProjectSelect();
           renderWorkspace();
           setFeedback('Project deleted.', false);
+        })
+        .catch(function (err) {
+          setFeedback(friendlyNetworkError(err, 'Could not delete project. Check your connection and try again.'), true);
         });
     });
   }
@@ -8133,11 +8157,7 @@
       })
     })
       .then(function (res) {
-        return res.json().then(function (data) {
-          return { ok: res.ok, status: res.status, data: data };
-        }).catch(function () {
-          return { ok: false, status: res.status, data: { message: 'Could not read server response.' } };
-        });
+        return readFetchJson(res, 'Could not read server response.');
       })
       .then(function (result) {
         if (!result.ok) {
@@ -8156,7 +8176,7 @@
             savedRoom.background_url = bgResult.background_url;
             return { ok: true, data: { room: savedRoom }, created: !isUpdate };
           }).catch(function (err) {
-            throw new Error((err && err.message) || 'Floor plan upload failed. Save again to retry.');
+            throw new Error(friendlyNetworkError(err, 'Floor plan upload failed. The room itself was saved. Save again to retry.'));
           });
         }
         return result;
@@ -8239,11 +8259,7 @@
         }
       })
         .then(function (res) {
-          return res.json().then(function (data) {
-            return { ok: res.ok, data: data };
-          }).catch(function () {
-            return { ok: false, data: { message: 'Could not delete room.' } };
-          });
+          return readFetchJson(res, 'Could not delete room.');
         })
         .then(function (result) {
           if (!result.ok) {
@@ -8282,10 +8298,19 @@
       },
       body: fd
     })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (res) {
+        return readFetchJson(res, 'Could not upload the floor plan.');
+      })
       .then(function (result) {
-        if (!result.ok) throw new Error(result.data.message || 'Upload failed.');
+        if (!result.ok) {
+          throw new Error(saveErrorMessage(result.data, result.status === 413
+            ? 'That file is too large to upload.'
+            : 'Could not upload the floor plan.'));
+        }
         return result.data;
+      })
+      .catch(function (err) {
+        throw new Error(friendlyNetworkError(err, 'Could not upload the floor plan. Check your connection and try again.'));
       });
   }
 
@@ -8971,8 +8996,10 @@
     if (els.canvasWrap) els.canvasWrap.classList.toggle('is-layers-locked', state.layersLocked);
     if (state.layersLocked) {
       clearVertexSelection();
+      stopBgMoveMode();
       // Keep opening selection; only drop vertex/wall edits.
     }
+    syncBackgroundUI();
     updateToolbar();
     redrawVertices();
     redrawWalls();
@@ -9027,7 +9054,7 @@
       return;
     }
     if (root.classList.contains('is-sheet-expanded')) return;
-    root.style.setProperty('--ra-sheet-h', '64px');
+    root.style.setProperty('--ra-sheet-h', 'auto');
   }
 
   function syncPhoneBarOverflow() {
@@ -9979,9 +10006,15 @@
       },
       body: fd
     })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (res) {
+        return readFetchJson(res, 'Could not upload photos.');
+      })
       .then(function (result) {
-        if (!result.ok) throw new Error(result.data.message || 'Could not upload photos.');
+        if (!result.ok) {
+          throw new Error(saveErrorMessage(result.data, result.status === 413
+            ? 'That file is too large to upload.'
+            : 'Could not upload photos.'));
+        }
         var room = activeRoom();
         if (room) {
           room.photos = (room.photos || []).concat(result.data.photos || []);
@@ -9992,7 +10025,7 @@
         setFeedback('Photos added.', false);
       })
       .catch(function (err) {
-        setFeedback((err && err.message) || 'Could not upload photos.', true);
+        setFeedback(friendlyNetworkError(err, 'Could not upload photos. Check your connection and try again.'), true);
       });
   }
 
@@ -10009,18 +10042,26 @@
           Accept: 'application/json'
         }
       })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
+        .then(function (res) {
+          return readFetchJson(res, 'Could not delete photo.');
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            setFeedback((result.data && result.data.message) || 'Could not delete photo.', true);
+            return;
+          }
           var room = activeRoom();
           if (room) {
             room.photos = (room.photos || []).filter(function (p) { return p.id !== photoId; });
-            room.photo_count = data.photo_count;
+            room.photo_count = result.data.photo_count;
           }
           renderPhotos();
           renderRooms();
           closeLightbox();
           setFeedback('Photo deleted.', false);
+        })
+        .catch(function (err) {
+          setFeedback(friendlyNetworkError(err, 'Could not delete photo. Check your connection and try again.'), true);
         });
     });
   }
@@ -10716,10 +10757,20 @@
 
     window.addEventListener('resize', scheduleStageResize);
 
-    document.addEventListener('admin-theme-change', function () {
+    function redrawForTheme() {
       drawGrid();
       redrawAll();
-    });
+    }
+    document.addEventListener('admin-theme-change', redrawForTheme);
+    var lastHtmlDark = document.documentElement.classList.contains('admin-dark');
+    if (window.MutationObserver) {
+      new MutationObserver(function () {
+        var dark = document.documentElement.classList.contains('admin-dark');
+        if (dark === lastHtmlDark) return;
+        lastHtmlDark = dark;
+        redrawForTheme();
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    }
 
     window.addEventListener('beforeunload', function (e) {
       if (!hasUnsavedChanges()) return;
@@ -10842,8 +10893,15 @@
       return e.clientY;
     }
 
+    function collapsedSheetMin() {
+      var handleH = handle.getBoundingClientRect().height || 44;
+      var strip = root.querySelector('[data-ra-sheet-strip]');
+      var stripH = strip ? strip.getBoundingClientRect().height : 0;
+      return Math.max(44, Math.round(handleH + stripH));
+    }
+
     function clampSheet(height) {
-      var minH = isPhoneChrome() ? 64 : Math.round(Math.min(window.innerHeight * 0.22, 168));
+      var minH = isPhoneChrome() ? collapsedSheetMin() : Math.round(Math.min(window.innerHeight * 0.22, 168));
       var maxH = Math.round(window.innerHeight * (isPhoneChrome() ? 0.7 : 0.55));
       return Math.max(minH, Math.min(maxH, Math.round(height)));
     }
@@ -10859,21 +10917,24 @@
       if (!isPhoneChrome()) return;
       var expanded = root.classList.toggle('is-sheet-expanded');
       handle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-      root.style.setProperty('--ra-sheet-h', expanded ? 'min(52vh, 360px)' : '64px');
+      root.style.setProperty('--ra-sheet-h', expanded ? 'min(52vh, 360px)' : 'auto');
       scheduleStageResize();
     }
+
+    var tapHandled = false;
 
     function onDown(e) {
       if (window.matchMedia('(min-width: 901px)').matches) return;
       dragging = true;
       moved = false;
+      tapHandled = false;
       startY = eventY(e);
       startH = side.getBoundingClientRect().height;
       if (e.pointerId != null && handle.setPointerCapture) {
         pointerId = e.pointerId;
         try { handle.setPointerCapture(e.pointerId); } catch (err) {}
       }
-      e.preventDefault();
+      if (e.type !== 'touchstart') e.preventDefault();
     }
 
     function onMove(e) {
@@ -10882,24 +10943,34 @@
       if (!moved) return;
       var next = startH + (startY - eventY(e));
       applySheet(next);
-      root.classList.toggle('is-sheet-expanded', clampSheet(next) > 80);
+      root.classList.toggle('is-sheet-expanded', clampSheet(next) > collapsedSheetMin() + 16);
       handle.setAttribute('aria-expanded', root.classList.contains('is-sheet-expanded') ? 'true' : 'false');
       e.preventDefault();
     }
 
-    function onUp() {
+    function onUp(e) {
+      var wasDragging = dragging;
       dragging = false;
       pointerId = null;
+      if (!wasDragging || moved) return;
+      if (e && (e.type === 'touchend' || e.pointerType === 'touch')) {
+        tapHandled = true;
+        toggleSheet();
+      }
     }
 
     handle.addEventListener('pointerdown', onDown);
     handle.addEventListener('pointermove', onMove);
     handle.addEventListener('pointerup', onUp);
     handle.addEventListener('pointercancel', onUp);
-    handle.addEventListener('touchstart', onDown, { passive: false });
+    handle.addEventListener('touchstart', onDown, { passive: true });
     handle.addEventListener('touchmove', onMove, { passive: false });
     handle.addEventListener('touchend', onUp);
     handle.addEventListener('click', function () {
+      if (tapHandled) {
+        tapHandled = false;
+        return;
+      }
       if (moved) return;
       toggleSheet();
     });
@@ -10952,7 +11023,7 @@
       }
     }
     if (isPhoneChrome()) {
-      root.style.setProperty('--ra-sheet-h', '64px');
+      root.style.setProperty('--ra-sheet-h', 'auto');
     }
     placeObjectDock();
     window.addEventListener('resize', function () {

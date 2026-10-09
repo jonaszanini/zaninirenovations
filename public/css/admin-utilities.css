@@ -6563,7 +6563,7 @@ body:has(.util-ra-guide) {
 
 @media (max-width: 900px) {
   .util-ra--fullpage {
-    --ra-sheet-h: 64px;
+    --ra-sheet-h: auto;
   }
 
   .util-ra--fullpage .util-ra-full-header {
@@ -6776,7 +6776,7 @@ body:has(.util-ra-guide) {
     font-weight: 600;
   }
 
-  .util-ra--fullpage.is-more-open .util-ra-more-sheet .admin-btn.util-ra-icon-btn,
+  .util-ra--fullpage.is-more-open .util-ra-more-sheet .admin-btn.util-ra-icon-btn:not([data-ra-more-close]),
   .util-ra--fullpage.is-more-open .util-ra-more-sheet .admin-btn.util-ra-file-label,
   .util-ra--fullpage.is-more-open .util-ra-more-sheet .admin-btn.util-ra-icon-toggle {
     width: 100%;
@@ -6902,9 +6902,13 @@ body:has(.util-ra-guide) {
   }
 
   .util-ra-more-sheet__head .admin-btn,
-  .util-ra--fullpage.is-more-open .util-ra-more-sheet__head .admin-btn {
+  .util-ra--fullpage.is-more-open .util-ra-more-sheet__head .admin-btn,
+  .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-more-sheet__head .admin-btn.util-ra-icon-btn {
     width: auto;
+    min-width: 0;
+    max-width: 100%;
     flex: 0 0 auto;
+    justify-content: center;
   }
 
   .util-ra--fullpage .util-ra-more-sheet__title {
@@ -7008,8 +7012,8 @@ body:has(.util-ra-guide) {
   }
 
   .util-ra--fullpage .util-ra-side {
-    height: var(--ra-sheet-h);
-    min-height: 64px;
+    height: var(--ra-sheet-h, auto);
+    min-height: 0;
     max-height: 70vh;
     overflow: hidden;
     overflow-x: hidden;
@@ -7018,10 +7022,13 @@ body:has(.util-ra-guide) {
     max-width: 100%;
   }
 
+  .util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side,
   .util-ra--fullpage.is-side-collapsed .util-ra-side {
     display: flex;
-    height: 64px;
-    min-height: 64px;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    max-height: none;
   }
 
   .util-ra--fullpage .util-ra-sheet-strip {

@@ -1155,7 +1155,8 @@ class RoomAreaCanvasData
 
         $factor = $this->scaleFactor($existingScale, $incomingScale);
         $normalized = $this->copyStoredVertices($normalized, $existing, $factor);
-        if (isset($existing['background']) && is_array($existing['background'])) {
+        if (isset($existing['background']) && is_array($existing['background'])
+            && ! $this->backgroundLayoutDiffers($existing, $normalized, $existingScale, $incomingScale)) {
             $scaledBg = $this->scaleBackgroundLayout($existing['background'], $factor);
             if ($scaledBg !== null) {
                 $normalized['background'] = $scaledBg;
@@ -1199,7 +1200,7 @@ class RoomAreaCanvasData
             return 1.0;
         }
 
-        return $incomingScale / $existingScale;
+        return round($incomingScale, 4) / $existingScale;
     }
 
     /**

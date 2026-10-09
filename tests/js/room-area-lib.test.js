@@ -112,4 +112,35 @@ almost(areaChange(tRoom, 6, 4, 2), 8, 'T wall 6 alcove adds 8');
 var r = lib.rectangle(12, 10);
 almost(areaChange(r, 0, 4, 2), 8, 'rectangle alcove still adds 8');
 
-console.log('room-area-lib tests: ' + process.uptime().toFixed(3) + 's ok');
+assert.strictEqual(lib.isAxisAlignedRectangle(rect), true, 'rect is a rectangle');
+assert.strictEqual(lib.isAxisAlignedRectangle(l), false, 'L is not a rectangle');
+assert.strictEqual(lib.overallDimensionText(rect, { width: 16, height: 12, areaLabel: '192 sq ft' }), '16 × 12 · 192 sq ft');
+assert.strictEqual(lib.overallDimensionText(l, { width: 16, height: 12, areaLabel: '152 sq ft' }), 'Overall 16 × 12');
+
+var jsonCalls = 0;
+var okRes = {
+  ok: true,
+  status: 200,
+  json: function () {
+    jsonCalls += 1;
+    return Promise.resolve({ ok: true, photo_count: 2 });
+  }
+};
+lib.readFetchJson(okRes, 'fail').then(function (result) {
+  assert.strictEqual(jsonCalls, 1, 'readFetchJson parses JSON once');
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.data.photo_count, 2);
+  assert.strictEqual(typeof result.data.json, 'undefined');
+  return lib.readFetchJson({ ok: true, status: 200 }, 'Could not delete project.').then(function (bad) {
+    assert.strictEqual(bad.ok, false);
+    assert.strictEqual(bad.data.message, 'Could not delete project.');
+  });
+}).then(function () {
+  assert.strictEqual(lib.friendlyNetworkError(new Error('Failed to fetch'), 'Could not delete project. Check your connection and try again.'), 'Could not delete project. Check your connection and try again.');
+  assert.strictEqual(lib.friendlyNetworkError({ message: 'Unexpected token < in JSON' }, 'Could not upload photos. Check your connection and try again.'), 'Could not upload photos. Check your connection and try again.');
+  assert.strictEqual(lib.friendlyNetworkError({ status: 413, message: 'Payload Too Large' }, 'x'), 'That file is too large to upload.');
+  console.log('room-area-lib tests: ' + process.uptime().toFixed(3) + 's ok');
+}).catch(function (err) {
+  console.error(err);
+  process.exit(1);
+});

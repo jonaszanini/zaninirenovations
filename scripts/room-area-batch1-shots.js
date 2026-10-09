@@ -95,11 +95,17 @@ async function measureCanvas(page) {
 
 async function setTheme(page, mode) {
   await page.evaluate((theme) => {
+    if (window.AdminTheme && typeof window.AdminTheme.setDark === 'function') {
+      window.AdminTheme.setDark(theme === 'dark');
+      return;
+    }
     const root = document.documentElement;
     if (theme === 'dark') root.classList.add('admin-dark');
     else root.classList.remove('admin-dark');
-    try { localStorage.setItem('admin-theme', theme === 'dark' ? 'dark' : 'light'); } catch (e) {}
+    try { localStorage.setItem('zanini-admin-theme', theme === 'dark' ? 'dark' : 'light'); } catch (e) {}
+    document.dispatchEvent(new CustomEvent('admin-theme-change', { detail: { dark: theme === 'dark' } }));
   }, mode);
+  await delay(200);
 }
 
 async function closeMore(page) {
@@ -156,7 +162,7 @@ async function resetEditor(page) {
     const root = document.querySelector('[data-room-area]');
     if (root) {
       root.classList.remove('is-more-open');
-      root.style.setProperty('--ra-sheet-h', window.matchMedia('(max-width: 900px)').matches ? '64px' : '');
+      root.style.setProperty('--ra-sheet-h', window.matchMedia('(max-width: 900px)').matches ? 'auto' : '');
     }
     const w = document.querySelector('[data-ra-type-rect-w]');
     const l = document.querySelector('[data-ra-type-rect-l]');
@@ -289,7 +295,7 @@ async function main() {
     const root = document.querySelector('[data-room-area]');
     if (root) {
       root.classList.remove('is-sheet-expanded');
-      root.style.setProperty('--ra-sheet-h', '64px');
+      root.style.setProperty('--ra-sheet-h', 'auto');
     }
   });
   await delay(200);
@@ -303,6 +309,8 @@ async function main() {
   await closeMore(phone);
   await setTheme(phone, 'dark');
   await delay(150);
+  await openTemplates(phone);
+  await shot(phone, 'ra-b1-390-templates-dark');
   await closeMore(phone);
   const phoneDark = await shot(phone, 'ra-b1-390-dark');
 
