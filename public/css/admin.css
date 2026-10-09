@@ -1695,6 +1695,9 @@ legend:has(.admin-info-tip-wrap),
   display: inline-flex;
   vertical-align: middle;
 }
+.admin-heading-tip {
+  white-space: nowrap;
+}
 .admin-checkbox .admin-info-tip,
 .admin-label-with-tip > .admin-info-tip-wrap .admin-info-tip {
   margin: -10px -6px;
