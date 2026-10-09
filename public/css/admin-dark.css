@@ -1917,6 +1917,13 @@ html.admin-dark .mw-col-kind select.admin-input {
   background-position: right 0.45rem center;
 }
 
+html.admin-dark #mw-main-form select.admin-input.mw-dim__unit,
+html.admin-dark #mw-main-form .admin-form-group select.mw-dim__unit {
+  padding: 0 1.2rem 0 0.3rem;
+  background-position: right 0.28rem center;
+  background-size: 10px 7px;
+}
+
 html.admin-dark .sq-qty__gear {
   color: var(--admin-primary);
   background: transparent;

@@ -1,5 +1,14 @@
 /* Custom millwork quotation — mobile-first, admin tokens. */
 
+.br-acc__summary .admin-info-tip {
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.mw-dim-field .admin-form-error {
+  margin-top: 4px;
+}
+
 .mw-piece,
 .mw-piece.admin-card {
   margin: 0 0 8px;
@@ -56,15 +65,19 @@
 }
 .mw-dim .mw-input--dim {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 4.75rem;
   max-width: none;
 }
-.mw-dim__unit {
-  flex: 0 0 4.25rem;
-  width: 4.25rem;
-  max-width: 4.25rem;
-  padding-left: 6px;
-  padding-right: 20px;
+#mw-main-form select.admin-input.mw-dim__unit,
+#mw-main-form .admin-form-group select.mw-dim__unit {
+  flex: 0 0 3.5rem;
+  width: 3.5rem;
+  min-width: 3.5rem;
+  max-width: 3.5rem;
+  padding: 0 1.2rem 0 0.3rem;
+  background-position: right 0.28rem center;
+  background-size: 10px 7px;
+  font-size: 13px;
 }
 .mw-piece__row--pack {
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -667,7 +680,7 @@
     min-width: 0;
   }
   .mw-piece__row--dims {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
   .mw-field--qty,
   .mw-field--w,
@@ -677,10 +690,14 @@
   .mw-field--lf {
     grid-column: auto;
   }
-  .mw-dim__unit {
-    flex-basis: 3.6rem;
-    width: 3.6rem;
-    max-width: 3.6rem;
+  #mw-main-form select.admin-input.mw-dim__unit,
+  #mw-main-form .admin-form-group select.mw-dim__unit {
+    flex-basis: 3.5rem;
+    width: 3.5rem;
+    min-width: 3.5rem;
+    max-width: 3.5rem;
+    padding: 0 1.2rem 0 0.3rem;
+    background-position: right 0.28rem center;
   }
   .mw-piece__row--pack {
     grid-template-columns: 1fr 1fr;

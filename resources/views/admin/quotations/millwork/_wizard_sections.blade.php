@@ -20,6 +20,7 @@
   $needsEdgeBanding = false;
   $needsPaint = false;
   $needsStain = false;
+  $isLegacyQuote = $isLegacyQuote ?? (((int) ($cutPlanVersion ?? $builderVersion ?? 2)) < 2);
 
   foreach ($pieces as $pieceRow) {
       if (! is_array($pieceRow)) {
@@ -56,14 +57,14 @@
     <p class="admin-form-help">Add each millwork item — cabinets, closets, vanities, trim, and more. Duplicate a piece to copy its sizes.</p>
     <div id="mw-piece-list">
       @foreach ($pieces as $pi => $piece)
-        @include('admin.quotations.millwork._piece_card', ['pi' => $pi, 'piece' => is_array($piece) ? $piece : []])
+        @include('admin.quotations.millwork._piece_card', ['pi' => $pi, 'piece' => is_array($piece) ? $piece : [], 'isLegacyQuote' => $isLegacyQuote ?? (((int) ($cutPlanVersion ?? 2)) < 2)])
       @endforeach
     </div>
     <button type="button" class="admin-btn admin-btn--ghost" id="mw-add-piece" style="margin-top:10px;">
       <i class="fa fa-plus"></i> Add another piece
     </button>
     <template id="mw-piece-template">
-      @include('admin.quotations.millwork._piece_card', ['pi' => '__P__', 'piece' => MillworkQuotationCalculator::defaultPiece('shelf')])
+      @include('admin.quotations.millwork._piece_card', ['pi' => '__P__', 'piece' => MillworkQuotationCalculator::defaultPiece('shelf'), 'isLegacyQuote' => $isLegacyQuote ?? (((int) ($cutPlanVersion ?? 2)) < 2)])
     </template>
     <template id="mw-set-template">
       @include('admin.quotations.millwork._set_row', ['pi' => '__P__', 'si' => '__S__', 'set' => ['qty' => 1, 'unit' => 'in']])
@@ -72,9 +73,11 @@
 </details>
 
 <details class="br-acc admin-card" data-br-step="materials">
-  <summary class="br-acc__summary"><span class="br-acc__num">2</span> Materials &amp; finish</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">2</span> Materials &amp; finish @include('admin.partials.info_tip', [
+    'tipText' => 'Sheet size defaults to 4×8 from Price configuration. Add spare sheets if you want extras on site.',
+    'tipLabel' => 'Materials & finish',
+  ])</summary>
   <div class="br-acc__body">
-    <p class="admin-form-help">Sheet size defaults to 4×8 from Price configuration. Waste % is applied to edge banding, finish, and linear trim. Nesting leftover is already in the cut plan — add spare sheets if you want extras.</p>
     <div class="admin-form-group mw-sheet-field">
       <label for="mw-sheet">@include('admin.partials.info_tip', ['text' => 'Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.']) Wood sheet</label>
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">

@@ -108,6 +108,76 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
         $this->assertGreaterThan(0, (float) $fresh->final_quote_total);
     }
 
+    public function test_v1_edit_with_fractions_and_ft_matches_inch_total(): void
+    {
+        $this->actingAsAdmin();
+
+        $inputs = [
+            'pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => 36,
+                'height' => 34.5,
+                'depth' => 24,
+                'unit' => 'in',
+                'include_doors' => 0,
+                'include_back' => 0,
+                'edge_banding' => 0,
+                'shelf_count' => 0,
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 80,
+        ];
+        $expected = (new MillworkQuotationCalculator)->calculate($inputs, null, 1);
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V1-FRAC',
+            'client_name' => 'Legacy Fraction',
+            'is_draft' => false,
+            'cut_plan_version' => 1,
+            'inputs' => $inputs,
+            'calculation' => $expected,
+            'final_quote_total' => $expected['summary']['grand_total'] ?? 0,
+        ]);
+
+        $this->put(route('admin.quotations.millwork.update', $quote), [
+            'save_intent' => 'publish',
+            'client_name' => 'Legacy Fraction',
+            '_cut_plan_version' => 1,
+            'pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => '3',
+                'width_unit' => 'ft',
+                'height' => '34 1/2',
+                'height_unit' => 'in',
+                'depth' => '2 ft',
+                'depth_unit' => 'in',
+                'unit' => 'in',
+                'include_doors' => 0,
+                'include_back' => 0,
+                'edge_banding' => 0,
+                'shelf_count' => 0,
+            ]],
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'include_install' => 0,
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'include_commute' => 0,
+            'ask_reply_to_accept' => '0',
+        ])->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $fresh = $quote->fresh();
+        $this->assertSame(1, (int) $fresh->cut_plan_version);
+        $this->assertEqualsWithDelta(
+            (float) ($expected['summary']['grand_total'] ?? 0),
+            (float) $fresh->final_quote_total,
+            0.05
+        );
+    }
+
     public function test_project_pdf_totals_match_calculator(): void
     {
         $this->actingAsAdmin();

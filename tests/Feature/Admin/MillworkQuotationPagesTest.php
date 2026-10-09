@@ -57,8 +57,12 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('id="mw-hinge"', false)
             ->assertSee('width_unit', false)
             ->assertSee('hinge_qty', false)
+            ->assertSee('Hinges (per unit)')
+            ->assertSee('Hinges (total)')
             ->assertSee('mw-delivery-wrap', false)
             ->assertSee('mw-cut-plan-status', false)
+            ->assertSee('Sheet size defaults to 4×8 from Price configuration.')
+            ->assertDontSee('Waste % is applied to edge banding')
             ->assertSee('Extra on linear trim and wainscoting rails.')
             ->assertSee('CA$3.80')
             ->assertSee('CA$6.50')
@@ -319,5 +323,120 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
                 'ask_reply_to_accept' => '0',
             ])->assertRedirect()
             ->assertSessionHasErrors('calculation');
+    }
+
+    public function test_draft_save_rejects_scientific_dimension_without_500(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.millwork.create'))
+            ->post(route('admin.quotations.millwork.store'), [
+                'save_intent' => 'draft',
+                'client_name' => 'Huge exp',
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'qty' => 1,
+                    'width' => '1E400',
+                    'height' => 34.5,
+                    'depth' => 24,
+                    'unit' => 'in',
+                    'include_doors' => 0,
+                ]],
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasErrors('pieces.0.width');
+    }
+
+    public function test_publish_rejects_second_unsized_piece(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.millwork.create'))
+            ->post(route('admin.quotations.millwork.store'), [
+                'save_intent' => 'publish',
+                'client_name' => 'Mixed sizes',
+                'pieces' => [
+                    [
+                        'type' => 'shelf',
+                        'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+                    ],
+                    [
+                        'type' => 'shelf',
+                        'sets' => [['qty' => 1, 'length' => '2\' 6"oops', 'depth' => 12, 'unit' => 'in']],
+                    ],
+                ],
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasErrors(['pieces.1.sets.0.length', 'calculation']);
+    }
+
+    public function test_preview_of_scientific_dimension_returns_json(): void
+    {
+        $this->actingAsAdmin();
+
+        $res = $this->post(route('admin.quotations.millwork.preview'), [
+            'pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => '1E400',
+                'height' => 34.5,
+                'depth' => 24,
+                'include_doors' => 0,
+            ]],
+            'owner_hourly_rate' => 80,
+            'include_install' => 0,
+        ]);
+
+        $this->assertNotSame(500, $res->status());
+        $res->assertOk();
+        $this->assertIsArray($res->json());
+        $this->assertTrue(is_finite((float) $res->json('summary.grand_total')));
+    }
+
+    public function test_v1_edit_hides_hinge_qty_and_keeps_in_ft_controls(): void
+    {
+        $this->actingAsAdmin();
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V1-EDIT',
+            'client_name' => 'Legacy Edit',
+            'is_draft' => true,
+            'cut_plan_version' => 1,
+            'inputs' => [
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'qty' => 1,
+                    'width' => 36,
+                    'height' => 34.5,
+                    'depth' => 24,
+                    'unit' => 'in',
+                    'include_doors' => true,
+                    'door_count' => 2,
+                ]],
+            ],
+            'calculation' => [],
+        ]);
+
+        $this->get(route('admin.quotations.millwork.edit', $quote))
+            ->assertOk()
+            ->assertSee('width_unit', false)
+            ->assertSee('>In</option>', false)
+            ->assertDontSee('name="pieces[0][hinge_qty]"', false);
+    }
+
+    public function test_script_clears_busy_state_on_persisted_pageshow(): void
+    {
+        $js = file_get_contents(public_path('js/admin-millwork-quotation.js'));
+        $this->assertIsString($js);
+        $this->assertStringContainsString("addEventListener('pageshow'", $js);
+        $this->assertStringContainsString('e.persisted', $js);
+        $this->assertStringContainsString('setSaveBusy(false)', $js);
+        $this->assertStringContainsString('Preview timed out', $js);
     }
 }

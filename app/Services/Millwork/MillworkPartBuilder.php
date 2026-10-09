@@ -389,11 +389,12 @@ class MillworkPartBuilder
             if (! array_key_exists($key, $row)) {
                 continue;
             }
-            $n = MillworkDimensionParser::parse($row[$key] ?? null);
-            if ($n > 0) {
-                $inches = self::toInches($n, self::dimUnit($row, $key, $fallbackUnit));
-
-                return $inches > 0 ? $inches : 0.0;
+            $parsed = MillworkDimensionParser::inspect(
+                $row[$key] ?? null,
+                MillworkDimensionParser::fieldUnitOf($key, $row, $fallbackUnit)
+            );
+            if ($parsed['status'] === MillworkDimensionParser::STATUS_OK && $parsed['inches'] > 0) {
+                return $parsed['inches'];
             }
         }
 
@@ -414,9 +415,10 @@ class MillworkPartBuilder
             if (! array_key_exists($key, $row)) {
                 continue;
             }
-            $n = MillworkDimensionParser::parse($row[$key] ?? null);
-            if ($n > 0) {
-                return $n;
+            $unit = MillworkDimensionParser::fieldUnitOf($key, $row);
+            $parsed = MillworkDimensionParser::inspect($row[$key] ?? null, $unit);
+            if ($parsed['status'] === MillworkDimensionParser::STATUS_OK && $parsed['inches'] > 0) {
+                return $unit === 'ft' ? $parsed['inches'] / 12.0 : $parsed['inches'];
             }
         }
 
@@ -609,9 +611,8 @@ class MillworkPartBuilder
             $doorW = max(4, ($w / $doorCount) - $gap);
             $doorH = max(8, $boxH - $gap);
             $parts[] = $this->uprightRect('cab-door', 'Cabinet door', $doorH, $doorW, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
-            $hingesEach = $doorCount * self::hingesForDoorHeight($doorH);
+            $hingesEach = self::resolvedHingeQty($piece, $doorCount * self::hingesForDoorHeight($doorH));
         }
-        $hingesEach = self::resolvedHingeQty($piece, $hingesEach);
         $slides = 0;
         if ($drawerCount > 0) {
             $dw = max(4, $innerW - 1);
@@ -680,7 +681,7 @@ class MillworkPartBuilder
             }
         }
         $pulls = self::resolvedPullQty($piece, $doors);
-        $hinges = self::resolvedHingeQty($piece, $hinges);
+        $hinges = $doors > 0 ? self::resolvedHingeQty($piece, $hinges) : 0;
 
         return [
             'parts' => $parts,
@@ -802,9 +803,8 @@ class MillworkPartBuilder
             $doorW = max(4, ($w / $doorCount) - $gap);
             $doorH = max(8, $h - $gap);
             $parts[] = $this->uprightRect('cl-door', 'Closet door', $doorH, $doorW, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
-            $hingesEach = $doorCount * self::hingesForDoorHeight($doorH);
+            $hingesEach = self::resolvedHingeQty($piece, $doorCount * self::hingesForDoorHeight($doorH));
         }
-        $hingesEach = self::resolvedHingeQty($piece, $hingesEach);
         $slides = 0;
         if ($drawerCount > 0) {
             $dw = max(4, $bayW - 1);
@@ -1034,9 +1034,11 @@ class MillworkPartBuilder
      */
     private function linearFeetToInches(array $piece): float
     {
-        $explicit = self::positiveDim($piece, ['linear_ft']);
-        if ($explicit > 0) {
-            return $explicit * 12.0;
+        if (array_key_exists('linear_ft', $piece)) {
+            $parsed = MillworkDimensionParser::inspect($piece['linear_ft'], 'ft');
+            if ($parsed['status'] === MillworkDimensionParser::STATUS_OK && $parsed['inches'] > 0) {
+                return $parsed['inches'];
+            }
         }
 
         return self::dimInches($piece, ['length']);

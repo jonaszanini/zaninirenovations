@@ -21,6 +21,8 @@
     var saving = false;
     var allowUnload = false;
     var previewSeq = 0;
+    var previewAbort = null;
+    var PREVIEW_TIMEOUT_MS = 8000;
 
     var fmt = function (n) {
       return 'CA$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -158,6 +160,12 @@
       e.preventDefault();
       e.returnValue = '';
     });
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) {
+        setSaveBusy(false);
+        allowUnload = false;
+      }
+    });
 
     if (!isEdit) {
       setWizardStep(0, false);
@@ -197,7 +205,10 @@
         root.classList.toggle('is-loading', !!on);
         root.setAttribute('aria-busy', on ? 'true' : 'false');
       }
-      if (status) status.hidden = !on;
+      if (status && on) {
+        status.hidden = false;
+        if (!status.textContent) status.textContent = 'Updating cut plan…';
+      }
     }
 
     function clientProvidesAll() {
@@ -237,30 +248,58 @@
       syncHardwarePrices();
       setCutPlanLoading(true);
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(runPreview, 280);
+      debounceTimer = setTimeout(runPreview, 400);
+    }
+
+    function showPreviewMessage(text) {
+      var status = document.getElementById('mw-cut-plan-status');
+      if (!status) return;
+      status.hidden = !text;
+      status.textContent = text || 'Updating cut plan…';
     }
 
     function fetchPreview() {
       if (!previewUrl) return Promise.resolve(null);
+      if (previewAbort) previewAbort.abort();
+      previewAbort = new AbortController();
+      var timer = setTimeout(function () { previewAbort.abort(); }, PREVIEW_TIMEOUT_MS);
       var body = new FormData(form);
       body.delete('_method');
       return fetch(previewUrl, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         body: body,
-        credentials: 'same-origin'
-      }).then(function (res) { return res.json(); });
+        credentials: 'same-origin',
+        signal: previewAbort.signal
+      }).then(function (res) { return res.json(); }).finally(function () {
+        clearTimeout(timer);
+      });
     }
 
     function runPreview() {
       var seq = ++previewSeq;
       setCutPlanLoading(true);
+      showPreviewMessage('Updating cut plan…');
       return fetchPreview().then(function (data) {
         if (seq !== previewSeq) return data;
         if (data) renderPreview(data);
         return data;
-      }).catch(function () { return null; }).then(function (data) {
-        if (seq === previewSeq) setCutPlanLoading(false);
+      }).catch(function () {
+        if (seq === previewSeq) {
+          showPreviewMessage('Preview timed out. Save to calculate, or simplify the quote.');
+        }
+        return { _previewTimedOut: true };
+      }).then(function (data) {
+        if (seq !== previewSeq) return data;
+        setCutPlanLoading(false);
+        if (data && data._previewTimedOut) {
+          return null;
+        }
+        if (data && data.cut_plan && data.cut_plan.preview_message) {
+          showPreviewMessage(data.cut_plan.preview_message);
+        } else {
+          showPreviewMessage('');
+        }
         return data;
       });
     }

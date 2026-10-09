@@ -199,7 +199,13 @@ class MillworkQuotation extends Model
         if ($hasFinish) {
             $included[] = 'finishing';
         }
-        if ((float) ($summary['delivery_amount'] ?? $inputs['delivery_amount'] ?? 0) > 0) {
+        $deliveryStored = (float) ($summary['delivery_amount'] ?? $inputs['delivery_amount'] ?? 0);
+        $legacyQuote = $this->usesLegacyCutBuilder();
+        if ($legacyQuote) {
+            if ($deliveryStored > 0) {
+                $included[] = 'delivery';
+            }
+        } elseif ($deliveryStored > 0 && empty($inputs['client_provides_all'])) {
             $included[] = 'delivery';
         }
         if (! array_key_exists('include_install', $inputs) || ! empty($inputs['include_install'])) {
@@ -212,7 +218,9 @@ class MillworkQuotation extends Model
             if (! is_array($piece)) {
                 continue;
             }
-            $line = \App\Services\Millwork\MillworkPartBuilder::clientScopeLine($piece);
+            $line = $legacyQuote
+                ? \App\Services\Millwork\LegacyMillworkPartBuilder::clientScopeLine($piece)
+                : \App\Services\Millwork\MillworkPartBuilder::clientScopeLine($piece);
             if ($line === '') {
                 continue;
             }

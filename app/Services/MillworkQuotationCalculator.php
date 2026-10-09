@@ -9,6 +9,7 @@ use App\Services\CutOptimizer\Part;
 use App\Services\CutOptimizer\StockOption;
 use App\Services\CutOptimizer\SvgVisualizer;
 use App\Services\Millwork\LegacyMillworkQuotationCalculator;
+use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPanelSplitter;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Support\QuotationBuildingLabor;
@@ -301,7 +302,8 @@ class MillworkQuotationCalculator
             }
         }
 
-        $cutPlan = $this->buildCutPlan(
+        $cutPlan = $this->previewCutPlanOrSkip(
+            $inputs,
             $primaryParts,
             $backParts,
             $sheet,
@@ -524,54 +526,62 @@ class MillworkQuotationCalculator
      */
     public function validationHints(array $inputs, bool $draft, ?MillworkSettings $settings = null): array
     {
-        if ($draft) {
-            return [];
-        }
+        return array_values($this->validationMessages($inputs, $draft, $settings));
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @return array<string, string>
+     */
+    public function validationMessages(array $inputs, bool $draft, ?MillworkSettings $settings = null): array
+    {
+        $messages = [];
+        $this->collectDimensionFieldErrors($inputs, $messages);
+
         if (self::resolveCutPlanVersion($inputs) < self::CUT_PLAN_VERSION) {
-            return (new LegacyMillworkQuotationCalculator)->validationHints($inputs, $draft);
-        }
-        $hints = [];
-        $hasPart = false;
-        foreach ($this->pieces($inputs) as $piece) {
-            $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
-            if (in_array($type, ['shelf', 'floating_shelf', 'cabinet_door'], true)) {
-                foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
-                    if ((int) ($set['qty'] ?? 0) > 0) {
-                        $len = MillworkPartBuilder::positiveDim($set, ['length', 'height']);
-                        $wid = MillworkPartBuilder::positiveDim($set, ['width', 'depth']);
-                        if ($len > 0 && $wid > 0) {
-                            $hasPart = true;
-                        }
-                    }
-                }
-            } elseif (in_array($type, ['trim', 'wainscoting'], true)) {
-                $lf = MillworkPartBuilder::positiveDim($piece, ['linear_ft', 'length']);
-                if ($lf > 0) {
-                    $hasPart = true;
-                }
-            } elseif ($type === 'mantel') {
-                $len = MillworkPartBuilder::positiveDim($piece, ['length', 'width']);
-                $dep = MillworkPartBuilder::positiveDim($piece, ['depth']);
-                if ($len > 0 && $dep > 0) {
-                    $hasPart = true;
-                }
-            } else {
-                $w = MillworkPartBuilder::positiveDim($piece, ['width', 'length']);
-                $h = MillworkPartBuilder::positiveDim($piece, ['height']);
-                $d = MillworkPartBuilder::positiveDim($piece, ['depth']);
-                if ($w > 0 && ($h > 0 || $type === 'bench') && $d > 0) {
-                    $hasPart = true;
-                }
+            if ($draft) {
+                return $messages;
             }
+            $legacy = (new LegacyMillworkQuotationCalculator)->validationHints($inputs, false);
+            if ($legacy !== []) {
+                $messages['calculation'] = $messages['calculation'] ?? implode(' ', $legacy);
+            }
+
+            return $messages;
         }
-        if (! $hasPart) {
-            $hints[] = 'Add at least one millwork piece with quantity and dimensions.';
-        }
+
         $limitHint = $this->dimensionLimitHint($inputs);
         if ($limitHint !== null) {
-            $hints[] = $limitHint;
+            $messages['calculation'] = $limitHint;
         }
-        if ($hasPart) {
+
+        if ($draft) {
+            return $messages;
+        }
+
+        $hasPart = false;
+        $unsized = [];
+        foreach ($this->pieces($inputs) as $idx => $piece) {
+            if ($this->pieceIsSized($piece)) {
+                $hasPart = true;
+            } else {
+                $unsized[] = $idx;
+            }
+        }
+        if ($unsized !== []) {
+            foreach ($unsized as $idx) {
+                $key = 'pieces.'.$idx;
+                if (! isset($messages[$key])) {
+                    $messages[$key] = 'This piece needs quantity and dimensions.';
+                }
+            }
+            $messages['calculation'] = $messages['calculation']
+                ?? 'Every millwork piece needs quantity and dimensions before publishing.';
+        }
+        if (! $hasPart) {
+            $messages['calculation'] = 'Add at least one millwork piece with quantity and dimensions.';
+        }
+        if ($hasPart && $limitHint === null && ! $this->hasInvalidPostedDimension($inputs)) {
             $preview = $this->calculate($inputs, $settings);
             $unplaced = is_array($preview['cut_plan']['unplaced'] ?? null) ? $preview['cut_plan']['unplaced'] : [];
             if ($unplaced !== []) {
@@ -580,11 +590,136 @@ class MillworkQuotationCalculator
                     $unplaced
                 ))));
                 $list = $labels !== [] ? ' ('.implode(', ', $labels).')' : '';
-                $hints[] = 'These parts do not fit on any sheet we stock'.$list.'. Change the size or pick a larger sheet before publishing.';
+                $messages['calculation'] = 'These parts do not fit on any sheet we stock'.$list.'. Change the size or pick a larger sheet before publishing.';
             }
         }
 
-        return $hints;
+        return $messages;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, string>  $messages
+     */
+    private function collectDimensionFieldErrors(array $inputs, array &$messages): void
+    {
+        foreach ($this->pieces($inputs) as $pi => $piece) {
+            $this->collectRowDimensionErrors($piece, 'pieces.'.$pi, $messages);
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $si => $set) {
+                if (! is_array($set)) {
+                    continue;
+                }
+                $this->collectRowDimensionErrors($set, 'pieces.'.$pi.'.sets.'.$si, $messages, (string) ($piece['unit'] ?? 'in'));
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, string>  $messages
+     */
+    private function collectRowDimensionErrors(array $row, string $prefix, array &$messages, ?string $fallbackUnit = null): void
+    {
+        foreach (['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'] as $key) {
+            if (! array_key_exists($key, $row)) {
+                continue;
+            }
+            $unit = $fallbackUnit !== null && ! in_array($key, ['linear_ft', 'stock_length_ft'], true)
+                ? MillworkDimensionParser::fieldUnitOf($key, $row, $fallbackUnit)
+                : MillworkDimensionParser::fieldUnitOf($key, $row);
+            $parsed = MillworkDimensionParser::inspect($row[$key], $unit);
+            if ($parsed['status'] === MillworkDimensionParser::STATUS_INVALID) {
+                $messages[$prefix.'.'.$key] = $parsed['message'] ?? MillworkDimensionParser::INVALID_MESSAGE;
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     */
+    private function pieceIsSized(array $piece): bool
+    {
+        $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+        if (in_array($type, ['shelf', 'floating_shelf', 'cabinet_door'], true)) {
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
+                if (! is_array($set) || (int) ($set['qty'] ?? 0) <= 0) {
+                    continue;
+                }
+                $len = MillworkPartBuilder::positiveDim($set, ['length', 'height']);
+                $wid = MillworkPartBuilder::positiveDim($set, ['width', 'depth']);
+                if ($len > 0 && $wid > 0) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        if (in_array($type, ['trim', 'wainscoting'], true)) {
+            return MillworkPartBuilder::positiveDim($piece, ['linear_ft', 'length']) > 0;
+        }
+        if ($type === 'mantel') {
+            $len = MillworkPartBuilder::positiveDim($piece, ['length', 'width']);
+            $dep = MillworkPartBuilder::positiveDim($piece, ['depth']);
+
+            return $len > 0 && $dep > 0;
+        }
+        $w = MillworkPartBuilder::positiveDim($piece, ['width', 'length']);
+        $h = MillworkPartBuilder::positiveDim($piece, ['height']);
+        $d = MillworkPartBuilder::positiveDim($piece, ['depth']);
+
+        return $w > 0 && ($h > 0 || $type === 'bench') && $d > 0;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    public function hasInvalidPostedDimension(array $inputs): bool
+    {
+        $messages = [];
+        $this->collectDimensionFieldErrors($inputs, $messages);
+
+        return $messages !== [];
+    }
+
+    /**
+     * @param  list<Part>  $primary
+     * @param  list<Part>  $backs
+     * @param  array<string, mixed>|null  $sheet
+     * @param  array<string, mixed>|null  $backSheet
+     * @param  list<array<string, mixed>>  $allSheets
+     * @return array<string, mixed>
+     */
+    private function previewCutPlanOrSkip(
+        array $inputs,
+        array $primary,
+        array $backs,
+        ?array $sheet,
+        ?array $backSheet,
+        array $allSheets,
+        float $kerf,
+        float $trim,
+        float $minOffcut
+    ): array {
+        $limitHint = $this->dimensionLimitHint($inputs);
+        if ($limitHint !== null || $this->hasInvalidPostedDimension($inputs)) {
+            return [
+                'version' => self::CUT_PLAN_VERSION,
+                'sheet_count' => 0,
+                'yield_pct' => 0.0,
+                'kerf_in' => $kerf,
+                'layouts' => [],
+                'stock_used' => [],
+                'original_part_count' => 0,
+                'placed_part_count' => 0,
+                'placed_by_id' => [],
+                'unplaced' => [],
+                'seams' => [],
+                'preview_skipped' => true,
+                'preview_message' => $limitHint ?? 'Fix the highlighted sizes to update the cut plan.',
+            ];
+        }
+
+        return $this->buildCutPlan($primary, $backs, $sheet, $backSheet, $allSheets, $kerf, $trim, $minOffcut);
     }
 
     /**

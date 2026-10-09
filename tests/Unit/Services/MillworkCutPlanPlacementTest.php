@@ -804,6 +804,180 @@ class MillworkCutPlanPlacementTest extends TestCase
         $this->assertSame($plain['labels'], $mixed['labels']);
     }
 
+    public function test_cabinet_does_not_bill_hinges_without_doors(): void
+    {
+        $noDoors = (new MillworkPartBuilder)->explode([
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => 36,
+            'height' => 34.5,
+            'depth' => 24,
+            'include_doors' => false,
+            'hinge_qty' => 8,
+            'edge_banding' => false,
+            'shelf_count' => 0,
+        ], 0.75, 0.018);
+
+        $this->assertSame(0.0, (float) $noDoors['hardware']['hinges']);
+    }
+
+    public function test_feet_inch_and_metric_dims_price_like_plain_inches(): void
+    {
+        $base = [
+            'type' => 'cabinet',
+            'qty' => 1,
+            'include_doors' => false,
+            'include_back' => false,
+            'edge_banding' => false,
+            'shelf_count' => 0,
+            'unit' => 'in',
+        ];
+        $plain = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [array_merge($base, ['width' => 30, 'height' => 34.5, 'depth' => 24])],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 2);
+        $fancy = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [array_merge($base, [
+                'width' => '2\' 6"',
+                'height' => '876.3mm',
+                'depth' => '2 ft',
+            ])],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 2);
+
+        $this->assertEqualsWithDelta(
+            (float) $plain['summary']['grand_total'],
+            (float) $fancy['summary']['grand_total'],
+            0.05
+        );
+        $this->assertGreaterThan(500, (float) $fancy['summary']['grand_total']);
+    }
+
+    public function test_legacy_edit_converts_fractions_and_per_dim_units(): void
+    {
+        $base = [
+            'type' => 'cabinet',
+            'qty' => 1,
+            'include_doors' => false,
+            'include_back' => false,
+            'edge_banding' => false,
+            'shelf_count' => 0,
+        ];
+        $plain = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [array_merge($base, [
+                'width' => 36,
+                'height' => 34.5,
+                'depth' => 24,
+                'unit' => 'in',
+            ])],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 1);
+        $mixed = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [array_merge($base, [
+                'width' => '3',
+                'width_unit' => 'ft',
+                'height' => '34 1/2',
+                'height_unit' => 'in',
+                'depth' => 2,
+                'depth_unit' => 'ft',
+                'unit' => 'in',
+            ])],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 1);
+
+        $this->assertEqualsWithDelta(
+            (float) $plain['summary']['grand_total'],
+            (float) $mixed['summary']['grand_total'],
+            0.02
+        );
+        $this->assertGreaterThan(0, (float) $mixed['summary']['grand_total']);
+    }
+
+    public function test_legacy_edit_treats_two_ft_typed_in_inch_field_as_24(): void
+    {
+        $base = [
+            'type' => 'kallax',
+            'qty' => 1,
+            'columns' => 2,
+            'rows' => 2,
+            'include_back' => false,
+            'edge_banding' => false,
+            'unit' => 'in',
+        ];
+        $plain = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [array_merge($base, ['width' => 24, 'height' => 24, 'depth' => 12])],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 1);
+        $typedFt = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [array_merge($base, [
+                'width' => '2 ft',
+                'height' => '2 ft',
+                'depth' => 12,
+                'width_unit' => 'in',
+                'height_unit' => 'in',
+            ])],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 1);
+
+        $this->assertEqualsWithDelta(
+            (float) $plain['summary']['grand_total'],
+            (float) $typedFt['summary']['grand_total'],
+            0.02
+        );
+    }
+
+    public function test_draft_validation_rejects_scientific_and_oversized_dims(): void
+    {
+        $sci = (new MillworkQuotationCalculator)->validationMessages([
+            'pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => '1E400',
+                'height' => 34.5,
+                'depth' => 24,
+                'unit' => 'in',
+            ]],
+        ], true);
+        $this->assertArrayHasKey('pieces.0.width', $sci);
+
+        $over = (new MillworkQuotationCalculator)->validationMessages([
+            'pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => 300,
+                'height' => 34.5,
+                'depth' => 24,
+                'unit' => 'in',
+            ]],
+        ], true);
+        $this->assertNotEmpty($over);
+        $this->assertStringContainsString('240 inches', implode(' ', $over));
+    }
+
+    public function test_publish_validation_rejects_any_unsized_piece(): void
+    {
+        $hints = (new MillworkQuotationCalculator)->validationMessages([
+            'pieces' => [
+                [
+                    'type' => 'shelf',
+                    'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+                ],
+                [
+                    'type' => 'shelf',
+                    'sets' => [['qty' => 1, 'length' => 'abc', 'depth' => 12, 'unit' => 'in']],
+                ],
+            ],
+        ], false);
+        $this->assertArrayHasKey('pieces.1.sets.0.length', $hints);
+        $this->assertArrayHasKey('calculation', $hints);
+    }
+
     public function test_new_builder_honors_hinge_qty_override(): void
     {
         $auto = (new MillworkPartBuilder)->explode([
@@ -849,6 +1023,47 @@ class MillworkCutPlanPlacementTest extends TestCase
 
         $this->assertNotEmpty($hints);
         $this->assertStringContainsString('240 inches', implode(' ', $hints));
+    }
+
+    public function test_v2_scope_omits_delivery_when_client_provides_all(): void
+    {
+        $quote = new MillworkQuotation([
+            'cut_plan_version' => 2,
+            'inputs' => [
+                'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+                'client_provides_all' => true,
+                'delivery_amount' => 80,
+                'include_install' => true,
+            ],
+            'calculation' => ['summary' => ['delivery_amount' => 80]],
+        ]);
+        $text = $quote->scopeDescriptionForPdf();
+        $this->assertStringNotContainsString('delivery', strtolower($text));
+        $this->assertStringContainsString('Closet system', $text);
+    }
+
+    public function test_v1_scope_keeps_stored_delivery_wording(): void
+    {
+        $quote = new MillworkQuotation([
+            'cut_plan_version' => 1,
+            'inputs' => [
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'unit' => 'in',
+                    'width' => 36,
+                    'height' => 34.5,
+                    'depth' => 24,
+                    'style' => 'base',
+                    'finish' => 'none',
+                ]],
+                'delivery_amount' => 80,
+                'include_install' => true,
+            ],
+            'calculation' => ['summary' => ['delivery_amount' => 80]],
+        ]);
+        $text = $quote->scopeDescriptionForPdf();
+        $this->assertStringContainsString('delivery', $text);
+        $this->assertStringContainsString('36"', $text);
     }
 
     public function test_client_provides_all_drops_delivery_from_new_path_total(): void

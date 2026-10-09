@@ -9,30 +9,129 @@ use PHPUnit\Framework\TestCase;
 class MillworkDimensionParserTest extends TestCase
 {
     /**
-     * @dataProvider dimProvider
+     * @dataProvider okProvider
      */
-    public function test_parses_plain_numbers_and_fractions(mixed $raw, float $expected): void
+    public function test_parses_unambiguous_sizes_to_inches(mixed $raw, string $fieldUnit, float $inches): void
     {
-        $this->assertEqualsWithDelta($expected, MillworkDimensionParser::parse($raw), 0.0001);
+        $parsed = MillworkDimensionParser::inspect($raw, $fieldUnit);
+        $this->assertSame(MillworkDimensionParser::STATUS_OK, $parsed['status'], (string) json_encode($raw));
+        $this->assertNull($parsed['message']);
+        $this->assertEqualsWithDelta($inches, $parsed['inches'], 0.0008);
+        $this->assertGreaterThan(0, $parsed['inches']);
+        $this->assertTrue(is_finite($parsed['inches']));
     }
 
     /**
-     * @return list<array{0: mixed, 1: float}>
+     * @return list<array{0: mixed, 1: string, 2: float}>
      */
-    public function dimProvider(): array
+    public function okProvider(): array
     {
         return [
-            [23, 23.0],
-            ['23.5', 23.5],
-            ['23 1/2', 23.5],
-            ['23-1/2', 23.5],
-            ['23 1/2"', 23.5],
-            ['1/2', 0.5],
-            ['2 1/4', 2.25],
-            ['', 0.0],
-            [null, 0.0],
-            ['abc', 0.0],
+            [23, 'in', 23.0],
+            [23.0, 'in', 23.0],
+            ['23.5', 'in', 23.5],
+            ['23 1/2', 'in', 23.5],
+            ['23-1/2', 'in', 23.5],
+            ['23 1/2"', 'in', 23.5],
+            ['1/2', 'in', 0.5],
+            ['2 1/4', 'in', 2.25],
+            ['2\' 6"', 'in', 30.0],
+            ['2\'6"', 'in', 30.0],
+            ['2 ft 6 in', 'in', 30.0],
+            ['2 ft', 'in', 24.0],
+            ['2ft', 'in', 24.0],
+            ['2\'', 'in', 24.0],
+            ['2\' 6 1/2"', 'in', 30.5],
+            ['762mm', 'in', 762 / 25.4],
+            ['76.2cm', 'in', 76.2 / 2.54],
+            ['0.762m', 'in', 0.762 / 0.0254],
+            ['1,5', 'in', 1.5],
+            ['½', 'in', 0.5],
+            ['23½', 'in', 23.5],
+            ['23 ½', 'in', 23.5],
+            ['¼', 'in', 0.25],
+            ['¾', 'in', 0.75],
+            ['2 1/2', 'ft', 30.0],
+            ['2', 'ft', 24.0],
+            [2, 'ft', 24.0],
+            ['36 in', 'ft', 36.0],
+            ['3 ft', 'ft', 36.0],
         ];
+    }
+
+    /**
+     * @dataProvider emptyProvider
+     */
+    public function test_blank_values_are_empty_not_invalid(mixed $raw): void
+    {
+        $parsed = MillworkDimensionParser::inspect($raw, 'in');
+        $this->assertSame(MillworkDimensionParser::STATUS_EMPTY, $parsed['status']);
+        $this->assertSame(0.0, $parsed['inches']);
+        $this->assertNull($parsed['message']);
+        $this->assertSame(0.0, MillworkDimensionParser::parse($raw));
+    }
+
+    /**
+     * @return list<array{0: mixed}>
+     */
+    public function emptyProvider(): array
+    {
+        return [
+            [null],
+            [''],
+            ['   '],
+            [0],
+            [0.0],
+        ];
+    }
+
+    /**
+     * @dataProvider invalidProvider
+     */
+    public function test_rejects_unparseable_and_unsafe_values(mixed $raw, string $needle): void
+    {
+        $parsed = MillworkDimensionParser::inspect($raw, 'in');
+        $this->assertSame(MillworkDimensionParser::STATUS_INVALID, $parsed['status'], (string) json_encode($raw));
+        $this->assertSame(0.0, $parsed['inches']);
+        $this->assertNotNull($parsed['message']);
+        $this->assertStringContainsString($needle, (string) $parsed['message']);
+        $this->assertSame(0.0, MillworkDimensionParser::parse($raw));
+    }
+
+    /**
+     * @return list<array{0: mixed, 1: string}>
+     */
+    public function invalidProvider(): array
+    {
+        return [
+            ['abc', 'valid size'],
+            ['xyz"', 'valid size'],
+            ['1/0', 'valid size'],
+            ['23 1/0', 'valid size'],
+            ['-24', 'greater than zero'],
+            [-24, 'greater than zero'],
+            ['-2\' 6"', 'greater than zero'],
+            ['1E400', 'valid size'],
+            ['1e3', 'valid size'],
+            [INF, 'valid size'],
+            [NAN, 'valid size'],
+            ['--24', 'greater than zero'],
+            ['12foo', 'valid size'],
+        ];
+    }
+
+    public function test_parse_keeps_backward_compatible_zero_for_garbage(): void
+    {
+        $this->assertSame(0.0, MillworkDimensionParser::parse('abc'));
+        $this->assertEqualsWithDelta(23.5, MillworkDimensionParser::parse('23 1/2'), 0.0001);
+        $this->assertEqualsWithDelta(24.0, MillworkDimensionParser::parse('2 ft'), 0.0001);
+    }
+
+    public function test_typed_zero_string_is_invalid_not_empty(): void
+    {
+        $parsed = MillworkDimensionParser::inspect('0', 'in');
+        $this->assertSame(MillworkDimensionParser::STATUS_INVALID, $parsed['status']);
+        $this->assertStringContainsString('greater than zero', (string) $parsed['message']);
     }
 
     public function test_per_dimension_units_fall_back_to_piece_unit(): void
@@ -58,5 +157,43 @@ class MillworkDimensionParserTest extends TestCase
             MillworkPartBuilder::dimInches(['width' => '2 1/2', 'width_unit' => 'ft'], ['width']),
             0.001
         );
+    }
+
+    public function test_two_ft_in_an_inch_field_is_twenty_four_inches(): void
+    {
+        $this->assertEqualsWithDelta(
+            24.0,
+            MillworkPartBuilder::dimInches(['width' => '2 ft', 'width_unit' => 'in'], ['width']),
+            0.001
+        );
+    }
+
+    public function test_legacy_conversion_writes_numeric_inches(): void
+    {
+        $legacy = MillworkDimensionParser::toLegacyInchPiece([
+            'type' => 'cabinet',
+            'width' => '23 1/2',
+            'width_unit' => 'in',
+            'height' => '2',
+            'height_unit' => 'ft',
+            'depth' => '762mm',
+            'unit' => 'ft',
+            'sets' => [[
+                'qty' => 1,
+                'length' => '3 ft',
+                'depth' => '1,5',
+                'unit' => 'in',
+            ]],
+        ]);
+
+        $this->assertSame('in', $legacy['unit']);
+        $this->assertEqualsWithDelta(23.5, (float) $legacy['width'], 0.001);
+        $this->assertEqualsWithDelta(24.0, (float) $legacy['height'], 0.001);
+        $this->assertEqualsWithDelta(762 / 25.4, (float) $legacy['depth'], 0.01);
+        $this->assertSame('in', $legacy['width_unit']);
+        $this->assertEqualsWithDelta(36.0, (float) $legacy['sets'][0]['length'], 0.001);
+        $this->assertEqualsWithDelta(1.5, (float) $legacy['sets'][0]['depth'], 0.001);
+        $this->assertSame(23.0, (float) '23 1/2');
+        $this->assertEqualsWithDelta(23.5, (float) $legacy['width'], 0.001);
     }
 }

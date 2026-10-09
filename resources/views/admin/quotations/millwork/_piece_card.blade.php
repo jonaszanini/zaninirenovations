@@ -7,6 +7,7 @@
   $unit = ($piece['unit'] ?? 'in') === 'ft' ? 'ft' : 'in';
   $style = MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
   $profile = MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
+  $isLegacyQuote = $isLegacyQuote ?? (((int) ($cutPlanVersion ?? $builderVersion ?? 2)) < 2);
 @endphp
 <article class="mw-piece admin-card" data-mw-piece data-mw-type="{{ $type }}" data-mw-below="{{ (($piece['below'] ?? 'divisions') === 'drawers') ? 'drawers' : 'divisions' }}">
   <div class="mw-piece__head">
@@ -78,8 +79,13 @@
     ])
     <div class="admin-form-group mw-field--lf" data-mw-show="wainscoting trim">
       <label>Lin. ft</label>
-      <input type="text" inputmode="decimal" autocomplete="off" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][linear_ft]"
+      <input type="text" inputmode="decimal" autocomplete="off"
+             class="admin-input mw-preview mw-input--dim{{ $errors->has('pieces.'.$pi.'.linear_ft') ? ' is-invalid' : '' }}"
+             name="pieces[{{ $pi }}][linear_ft]"
              placeholder="24" value="{{ $piece['linear_ft'] ?? '' }}">
+      @error('pieces.'.$pi.'.linear_ft')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     @include('admin.quotations.millwork._dim_field', [
       'pi' => $pi,
@@ -175,11 +181,14 @@
   </div>
 
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="cabinet cabinet_door vanity closet bench-drawers">
+    @unless ($isLegacyQuote)
     <div class="admin-form-group" data-mw-show="cabinet cabinet_door vanity closet">
-      <label>Hinges</label>
+      <label data-mw-show="cabinet vanity closet">Hinges (per unit)</label>
+      <label data-mw-show="cabinet_door">Hinges (total)</label>
       <input type="number" min="0" max="100" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][hinge_qty]"
              placeholder="Auto" value="{{ $piece['hinge_qty'] ?? '' }}">
     </div>
+    @endunless
     <div class="admin-form-group">
       <label>Pulls</label>
       <input type="number" min="0" max="100" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][pull_qty]"

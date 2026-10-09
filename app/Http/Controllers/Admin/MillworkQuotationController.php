@@ -133,6 +133,19 @@ class MillworkQuotationController extends Controller
         $raw['_cut_plan_version'] = $cutPlanVersion;
 
         $calc = (new MillworkQuotationCalculator)->calculate($raw, null, $cutPlanVersion);
+        $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+        if (json_encode($calc, $jsonFlags) === false) {
+            return response()->json([
+                'error' => 'Preview could not be calculated. Check the sizes and try again.',
+                'summary' => ['grand_total' => 0],
+                'cut_plan' => [
+                    'layouts' => [],
+                    'unplaced' => [],
+                    'preview_skipped' => true,
+                    'preview_message' => 'Preview could not be calculated. Check the sizes and try again.',
+                ],
+            ], 422);
+        }
         if ($upgrade && $millwork_quotation && $millwork_quotation->usesLegacyCutBuilder()) {
             $notice = $this->recalcNoticePayload($millwork_quotation, $calc, $request);
             if ($notice !== null) {
@@ -439,13 +452,9 @@ class MillworkQuotationController extends Controller
         $cutPlanVersion = $this->resolveCutPlanVersion($request, $existing);
         $rawInputs['_cut_plan_version'] = $cutPlanVersion;
 
-        if (! $draft) {
-            $hints = (new MillworkQuotationCalculator)->validationHints($rawInputs, false);
-            if ($hints !== []) {
-                throw ValidationException::withMessages([
-                    'calculation' => implode(' ', $hints),
-                ]);
-            }
+        $messages = (new MillworkQuotationCalculator)->validationMessages($rawInputs, $draft);
+        if ($messages !== []) {
+            throw ValidationException::withMessages($messages);
         }
 
         $calc = (new MillworkQuotationCalculator)->calculate($rawInputs, null, $cutPlanVersion);
@@ -675,16 +684,21 @@ class MillworkQuotationController extends Controller
             return '';
         }
         if (is_int($raw) || is_float($raw)) {
-            return $raw > 0 ? round((float) $raw, 4) : '';
+            if (! is_finite($raw) || $raw <= 0) {
+                return is_finite($raw) ? '' : (string) $raw;
+            }
+
+            return round((float) $raw, 4);
         }
         $s = trim((string) $raw);
         if ($s === '') {
             return '';
         }
-        if (is_numeric($s)) {
+        if (is_numeric($s) && ! preg_match('/[eE]/', $s)) {
             $n = (float) $s;
-
-            return $n > 0 ? round($n, 4) : '';
+            if (is_finite($n) && $n > 0) {
+                return round($n, 4);
+            }
         }
 
         return $s;
