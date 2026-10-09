@@ -456,6 +456,7 @@ class MillworkSettings extends Model
             $item['material_kind'] = in_array($kind, ['plywood', 'mdf'], true) ? $kind : 'plywood';
             $grade = strtolower(trim((string) ($row['grade'] ?? 'cabinet')));
             $item['grade'] = in_array($grade, ['cabinet', 'utility'], true) ? $grade : 'cabinet';
+            $item['species'] = self::sheetSpecies(array_merge($row, $item));
         }
         if ($slot === self::SLOT_PAINTS || $slot === self::SLOT_STAINS) {
             $item['size'] = trim((string) ($row['size'] ?? ''));
@@ -520,5 +521,41 @@ class MillworkSettings extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Exact material/species key for sheet swaps. Grade "cabinet" is too
+     * broad (cabinet ply, Baltic 5×5, and 18mm Baltic all share it).
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function sheetSpecies(array $row): string
+    {
+        $explicit = strtolower(trim((string) ($row['species'] ?? '')));
+        if ($explicit !== '') {
+            return $explicit;
+        }
+        $id = strtolower((string) ($row['id'] ?? ''));
+        $name = strtolower((string) ($row['name'] ?? ''));
+        if (str_starts_with($id, 'ws_bb_bb_') || str_contains($name, 'bb/bb')) {
+            return 'baltic_bb_bb';
+        }
+        if (str_starts_with($id, 'ws_b_bb_') || str_contains($name, 'b/bb')) {
+            return 'baltic_b_bb';
+        }
+        if (str_contains($id, 'birch_5x5') || str_contains($name, '5×5') || str_contains($name, '5x5')) {
+            return 'baltic_5x5';
+        }
+        if (($row['material_kind'] ?? '') === 'mdf' || str_contains($name, 'mdf')) {
+            return 'mdf';
+        }
+        if (str_contains($name, 'utility')) {
+            return 'utility_ply';
+        }
+        if (str_contains($name, 'baltic')) {
+            return 'baltic_birch';
+        }
+
+        return 'cabinet_ply';
     }
 }

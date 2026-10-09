@@ -166,7 +166,15 @@ class ClientProjectQuotationController extends Controller
             return null;
         }
 
-        abort(422, 'This quotation has parts that do not fit on any sheet. Fix the cut plan before sending or downloading the PDF.');
+        $message = MillworkQuotation::unplacedClientMessage();
+        $view = auth()->check()
+            ? 'admin.quotations.millwork.unplaced_blocked'
+            : 'site.quotations.unplaced_blocked';
+
+        return response()->view($view, [
+            'message' => $message,
+            'quotation' => $quotation,
+        ], 422);
     }
 
     /**
@@ -226,8 +234,8 @@ class ClientProjectQuotationController extends Controller
             return back()->with('error', 'Please add at least one line item before sending the quotation.');
         }
 
-        if ($response = $this->rejectUnplacedMillworkPdf($quotation)) {
-            return $response;
+        if ($this->millworkHasUnplacedParts($quotation)) {
+            return back()->with('error', MillworkQuotation::unplacedClientMessage());
         }
 
         $emailTo = trim((string) $client_project->client_email);
@@ -434,6 +442,12 @@ class ClientProjectQuotationController extends Controller
         ]);
 
         if ($data['status'] === ClientProjectQuotation::STATUS_ACCEPTED) {
+            if ($this->millworkHasUnplacedParts($quotation)) {
+                return redirect()
+                    ->route('admin.client-projects.show', $client_project)
+                    ->withFragment('quotation')
+                    ->with('error', MillworkQuotation::unplacedClientMessage());
+            }
             $result = app(\App\Services\QuoteAcceptanceService::class)->accept(
                 $quotation,
                 ClientProjectQuotation::ACCEPTED_VIA_ADMIN,
@@ -441,11 +455,14 @@ class ClientProjectQuotationController extends Controller
                 optional($request->user())->email,
             );
 
-            if ($result === \App\Services\QuoteAcceptanceService::STATUS_INVALID_STATE) {
+            if ($result === \App\Services\QuoteAcceptanceService::STATUS_INVALID_STATE
+                || $result === \App\Services\QuoteAcceptanceService::STATUS_INCOMPLETE) {
                 return redirect()
                     ->route('admin.client-projects.show', $client_project)
                     ->withFragment('quotation')
-                    ->with('error', 'This quotation cannot be accepted in its current state.');
+                    ->with('error', $result === \App\Services\QuoteAcceptanceService::STATUS_INCOMPLETE
+                        ? MillworkQuotation::unplacedClientMessage()
+                        : 'This quotation cannot be accepted in its current state.');
             }
 
             return redirect()
@@ -633,6 +650,9 @@ class ClientProjectQuotationController extends Controller
 
         if (! $quotation->hasContent()) {
             $out[] = 'Add at least one line item before sending an SMS link.';
+        }
+        if ($this->millworkHasUnplacedParts($quotation)) {
+            $out[] = MillworkQuotation::unplacedClientMessage();
         }
 
         if (! $mocean->isConfigured()) {
@@ -865,5 +885,15 @@ class ClientProjectQuotationController extends Controller
         $next = random_int(1, 9999);
 
         return sprintf('%s-%d-%04d', $prefix, $year, $next);
+    }
+
+    protected function millworkHasUnplacedParts(ClientProjectQuotation $quotation): bool
+    {
+        if ($quotation->source_type !== ClientProjectQuotation::SOURCE_MILLWORK || ! $quotation->source_id) {
+            return false;
+        }
+        $millwork = MillworkQuotation::query()->find($quotation->source_id);
+
+        return $millwork?->hasUnplacedCutParts() ?? false;
     }
 }

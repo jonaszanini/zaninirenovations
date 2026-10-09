@@ -259,8 +259,11 @@
       var banner = document.getElementById('mw-unplaced-banner');
       var list = document.getElementById('mw-unplaced-list');
       var seamsRoot = document.getElementById('mw-cut-seams');
+      var recalc = document.getElementById('mw-recalc-banner');
+      var recalcText = document.getElementById('mw-recalc-text');
       var unplaced = plan.unplaced || [];
       var seams = plan.seams || [];
+      var notice = plan.recalc_notice || null;
       if (banner) {
         banner.hidden = unplaced.length === 0;
       }
@@ -271,15 +274,29 @@
           return '<li>' + label + size + '</li>';
         }).join('');
       }
+      if (recalc) {
+        recalc.hidden = !notice;
+      }
+      if (recalcText && notice) {
+        recalcText.textContent = 'was $' + Number(notice.was).toFixed(2)
+          + ', now $' + Number(notice.now).toFixed(2)
+          + '. Review the cut plan before you save.';
+      }
       if (seamsRoot) {
         seamsRoot.hidden = seams.length === 0;
         seamsRoot.innerHTML = seams.map(function (seam) {
           var panels = (seam.panels || []).join(' + ');
           var note = seam.note || '';
           var original = seam.original || '';
+          var tip = original
+            ? ' <button type="button" class="admin-info-tip" aria-expanded="false" aria-label="Finished size">'
+              + '<i class="fa fa-info-circle" aria-hidden="true"></i>'
+              + '<span class="admin-info-tip__bubble" role="tooltip">Finished sizes still add up to '
+              + escapeHtml(original) + '.</span></button>'
+            : '';
           return '<p>' + escapeHtml(seam.label || 'Back') + ': ' + escapeHtml(note)
             + (panels ? ' (' + escapeHtml(panels) + ')' : '')
-            + '. Finished sizes still add up to ' + escapeHtml(original) + '.</p>';
+            + tip + '</p>';
         }).join('');
       }
     }

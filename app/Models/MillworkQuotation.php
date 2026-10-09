@@ -73,17 +73,40 @@ class MillworkQuotation extends Model
         return max(0, (int) ($cut['sheet_count'] ?? 0));
     }
 
+    public static function unplacedClientMessage(): string
+    {
+        return 'This quotation has parts that do not fit on any sheet. Change the size or pick a larger sheet before sending, downloading, or accepting.';
+    }
+
     /**
-     * v1 snapshots (no unplaced key) stay downloadable. Live v2 plans with
-     * leftover parts block the client PDF.
+     * Live v2 plans store leftover parts. Old snapshots without an unplaced
+     * key are recomputed from inputs when possible (D7).
      */
     public function hasUnplacedCutParts(): bool
     {
         $calc = is_array($this->calculation) ? $this->calculation : [];
         $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
         $unplaced = $cut['unplaced'] ?? null;
+        if (is_array($unplaced)) {
+            return $unplaced !== [];
+        }
 
-        return is_array($unplaced) && $unplaced !== [];
+        $inputs = is_array($this->inputs) ? $this->inputs : [];
+        if ($inputs === []) {
+            return false;
+        }
+
+        try {
+            $live = (new \App\Services\MillworkQuotationCalculator)->calculate(
+                $inputs,
+                null,
+                max(1, $this->cutPlanVersion())
+            );
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return ($live['cut_plan']['unplaced'] ?? []) !== [];
     }
 
     public function cutPlanVersion(): int

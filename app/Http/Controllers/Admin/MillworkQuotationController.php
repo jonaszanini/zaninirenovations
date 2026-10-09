@@ -97,11 +97,16 @@ class MillworkQuotationController extends Controller
 
         $warnings = [];
         if ($millwork_quotation->isLinked() && $millwork_quotation->client_project_id) {
-            $project = ClientProject::query()->find($millwork_quotation->client_project_id);
-            if ($project) {
-                DB::transaction(function () use ($project, $millwork_quotation) {
-                    $this->syncLineToProjectQuotation($project, $millwork_quotation->fresh());
-                });
+            $fresh = $millwork_quotation->fresh();
+            if ($fresh && $fresh->hasUnplacedCutParts()) {
+                $warnings[] = MillworkQuotation::unplacedClientMessage().' The project price was not updated.';
+            } else {
+                $project = ClientProject::query()->find($millwork_quotation->client_project_id);
+                if ($project && $fresh) {
+                    DB::transaction(function () use ($project, $fresh) {
+                        $this->syncLineToProjectQuotation($project, $fresh);
+                    });
+                }
             }
         }
 
@@ -122,6 +127,13 @@ class MillworkQuotationController extends Controller
     {
         $raw = $this->gatherInputsFromRequest($request);
         $calc = (new MillworkQuotationCalculator)->calculate($raw);
+        if ($millwork_quotation && $millwork_quotation->cutPlanVersion() < MillworkQuotationCalculator::CUT_PLAN_VERSION) {
+            $was = round((float) ($millwork_quotation->calculation['summary']['grand_total'] ?? $millwork_quotation->final_quote_total ?? 0), 2);
+            $now = round((float) ($calc['summary']['grand_total'] ?? 0), 2);
+            if (abs($was - $now) >= 0.01) {
+                $calc['recalc_notice'] = ['was' => $was, 'now' => $now];
+            }
+        }
 
         return response()->json($calc);
     }
@@ -218,6 +230,9 @@ class MillworkQuotationController extends Controller
         if ((float) $millwork_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before linking.');
         }
+        if ($millwork_quotation->hasUnplacedCutParts()) {
+            return back()->with('error', MillworkQuotation::unplacedClientMessage());
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -244,6 +259,9 @@ class MillworkQuotationController extends Controller
         }
         if ((float) $millwork_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before creating a project.');
+        }
+        if ($millwork_quotation->hasUnplacedCutParts()) {
+            return back()->with('error', MillworkQuotation::unplacedClientMessage());
         }
 
         $this->normalisePhoneOnRequest($request);
@@ -365,7 +383,18 @@ class MillworkQuotationController extends Controller
                 $previewInputs[$key] = $value;
             }
         }
-        $initialPreview = (new MillworkQuotationCalculator)->calculate($previewInputs, $settings);
+        $initialPreview = (new MillworkQuotationCalculator)->calculate(
+            $previewInputs,
+            $settings,
+            MillworkPartBuilder::BUILDER_VERSION
+        );
+        if ($quotation && $quotation->cutPlanVersion() < MillworkQuotationCalculator::CUT_PLAN_VERSION) {
+            $was = round((float) ($quotation->calculation['summary']['grand_total'] ?? $quotation->final_quote_total ?? 0), 2);
+            $now = round((float) ($initialPreview['summary']['grand_total'] ?? 0), 2);
+            if (abs($was - $now) >= 0.01) {
+                $initialPreview['recalc_notice'] = ['was' => $was, 'now' => $now];
+            }
+        }
 
         return view('admin.quotations.millwork.create', [
             'quotation' => $quotation,
@@ -629,6 +658,11 @@ class MillworkQuotationController extends Controller
 
         if ((float) $quote->final_quote_total <= 0) {
             $warnings[] = 'Set a final quote total greater than zero before it can attach to the project.';
+
+            return false;
+        }
+        if ($quote->hasUnplacedCutParts()) {
+            $warnings[] = MillworkQuotation::unplacedClientMessage();
 
             return false;
         }

@@ -65,6 +65,25 @@ class MillworkPartBuilder
 
     public const DEFAULT_SHEET_LENGTH = 96.0;
 
+    /** v1 keeps the pre-PR-A L/W order so saved quotes do not silently change. */
+    public const BUILDER_VERSION = 2;
+
+    private int $version;
+
+    private int $pieceIndex = 0;
+
+    private int $seq = 0;
+
+    public function __construct(int $version = self::BUILDER_VERSION)
+    {
+        $this->version = $version >= 2 ? self::BUILDER_VERSION : 1;
+    }
+
+    public function version(): int
+    {
+        return $this->version;
+    }
+
     /**
      * @param  array<string, mixed>  $piece
      * @return array{
@@ -82,8 +101,9 @@ class MillworkPartBuilder
      *   labels: list<string>
      * }
      */
-    public function explode(array $piece, float $sheetThickness, float $edgeBandThickness): array
+    public function explode(array $piece, float $sheetThickness, float $edgeBandThickness, int $pieceIndex = 0): array
     {
+        $this->pieceIndex = max(0, $pieceIndex);
         $type = self::normalizeType((string) ($piece['type'] ?? 'shelf'));
         $band = ! empty($piece['edge_banding']);
         $finish = self::normalizeFinish((string) ($piece['finish'] ?? 'none'));
@@ -464,7 +484,7 @@ class MillworkPartBuilder
         $innerH = max(0.5, $h - (2 * $mat));
         $bayW = $cols > 0 ? $innerW / $cols : $innerW;
         $parts = [];
-        $parts[] = $this->rect('kx-side', 'Kallax side', $h, $d, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+        $parts[] = $this->uprightRect('kx-side', 'Kallax side', $h, $d, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         $parts[] = $this->rect('kx-tb', 'Kallax top/bottom', $innerW, $d, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         if ($cols > 1) {
             $parts[] = $this->rect('kx-vert', 'Kallax vertical', $d, $innerH, $qty * ($cols - 1), GrainDirection::ANY, false, 0, 'none');
@@ -518,10 +538,10 @@ class MillworkPartBuilder
         $innerW = max(0.5, $w - (($left ? $mat : 0) + ($right ? $mat : 0)));
         $parts = [];
         if ($left) {
-            $parts[] = $this->rect('cab-left', 'Cabinet left', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->uprightRect('cab-left', 'Cabinet left', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         if ($right) {
-            $parts[] = $this->rect('cab-right', 'Cabinet right', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->uprightRect('cab-right', 'Cabinet right', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         $parts[] = $this->rect('cab-top', 'Cabinet top', $innerW, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         $parts[] = $this->rect('cab-bot', 'Cabinet bottom', $innerW, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
@@ -539,7 +559,7 @@ class MillworkPartBuilder
             $gap = $overlay === 'inset' ? 0.125 : ($overlay === 'half' ? 0.375 : 0);
             $doorW = max(4, ($w / $doorCount) - $gap);
             $doorH = max(8, $boxH - $gap);
-            $parts[] = $this->rect('cab-door', 'Cabinet door', $doorH, $doorW, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
+            $parts[] = $this->uprightRect('cab-door', 'Cabinet door', $doorH, $doorW, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
             $hinges = $qty * $doorCount * self::hingesForDoorHeight($doorH);
         }
         $slides = 0;
@@ -604,7 +624,7 @@ class MillworkPartBuilder
             $n++;
             $doors += $qty;
             $hinges += $qty * self::hingesForDoorHeight($h);
-            $parts[] = $this->rect('door-'.$n, 'Door '.$this->fmt($w).'×'.$this->fmt($h), $h, $w, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'all');
+            $parts[] = $this->uprightRect('door-'.$n, 'Door '.$this->fmt($w).'×'.$this->fmt($h), $h, $w, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'all');
             $labels[] = $qty.'× door '.$this->fmt($w).'×'.$this->fmt($h);
             if ($band) {
                 $edgeLf += $qty * (2 * ($w + $h)) / 12.0;
@@ -647,7 +667,7 @@ class MillworkPartBuilder
         $parts[] = $this->rect('bn-seat', 'Bench seat', $len, $dep, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         $parts[] = $this->rect('bn-front', 'Bench front', $len, $h, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         if ($includeSides) {
-            $parts[] = $this->rect('bn-side', 'Bench side', $h, $dep, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->uprightRect('bn-side', 'Bench side', $h, $dep, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         if ($includeBack) {
             $parts[] = $this->rect('bn-back', 'Bench back', $len, $h, $qty, GrainDirection::LENGTHWISE, false, 0, 'none', 'back');
@@ -712,10 +732,10 @@ class MillworkPartBuilder
         $bayW = $cols > 0 ? $innerW / $cols : $innerW;
         $parts = [];
         if ($left) {
-            $parts[] = $this->rect('cl-left', 'Closet left', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->uprightRect('cl-left', 'Closet left', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         if ($right) {
-            $parts[] = $this->rect('cl-right', 'Closet right', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->uprightRect('cl-right', 'Closet right', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         $parts[] = $this->rect('cl-top', 'Closet top', $innerW, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         $parts[] = $this->rect('cl-bot', 'Closet bottom', $innerW, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
@@ -733,7 +753,7 @@ class MillworkPartBuilder
             $gap = $overlay === 'inset' ? 0.125 : ($overlay === 'half' ? 0.375 : 0);
             $doorW = max(4, ($w / $doorCount) - $gap);
             $doorH = max(8, $h - $gap);
-            $parts[] = $this->rect('cl-door', 'Closet door', $doorH, $doorW, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
+            $parts[] = $this->uprightRect('cl-door', 'Closet door', $doorH, $doorW, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
             $hinges = $qty * $doorCount * self::hingesForDoorHeight($doorH);
         }
         $slides = 0;
@@ -1016,6 +1036,29 @@ class MillworkPartBuilder
         return $out;
     }
 
+    /**
+     * Vertical panel: height is grain-length on v2, depth×height on v1.
+     * Banding edges swap with the dims so the front edge stays the front edge.
+     */
+    private function uprightRect(
+        string $id,
+        string $label,
+        float $height,
+        float $depth,
+        int $qty,
+        string $grain,
+        bool $band,
+        float $eb,
+        string $faces,
+        string $materialKey = 'primary'
+    ): Part {
+        if ($this->version < 2) {
+            return $this->rect($id, $label, $depth, $height, $qty, $grain, $band, $eb, $faces, $materialKey, false);
+        }
+
+        return $this->rect($id, $label, $height, $depth, $qty, $grain, $band, $eb, $faces, $materialKey, true);
+    }
+
     private function rect(
         string $id,
         string $label,
@@ -1026,19 +1069,27 @@ class MillworkPartBuilder
         bool $band,
         float $eb,
         string $faces,
-        string $materialKey = 'primary'
+        string $materialKey = 'primary',
+        bool $swapBanding = false
     ): Part {
+        $this->seq++;
+        $uniqueId = 'p'.$this->pieceIndex.'-'.$this->seq.'-'.$id;
+
         $top = $bottom = $left = $right = 0.0;
         if ($band && $eb > 0) {
             if ($faces === 'all') {
                 $top = $bottom = $left = $right = $eb;
             } elseif ($faces === 'front') {
-                $top = $eb;
+                if ($swapBanding) {
+                    $left = $eb;
+                } else {
+                    $top = $eb;
+                }
             }
         }
 
         return new Part(
-            $id,
+            $uniqueId,
             $label,
             $width,
             $length,
@@ -1048,7 +1099,9 @@ class MillworkPartBuilder
             $bottom,
             $left,
             $right,
-            $materialKey
+            $materialKey,
+            null,
+            $this->pieceIndex
         );
     }
 

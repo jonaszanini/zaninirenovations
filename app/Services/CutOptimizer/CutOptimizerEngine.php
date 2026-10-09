@@ -32,7 +32,8 @@ class CutOptimizerEngine
                     $part->edgeBandLeft,
                     $part->edgeBandRight,
                     $part->materialKey,
-                    $part->groupLabel
+                    $part->groupLabel,
+                    $part->sourcePieceIndex
                 );
                 $flat[] = $clone;
             }
@@ -140,7 +141,8 @@ class CutOptimizerEngine
                     $part->edgeBandLeft,
                     $part->edgeBandRight,
                     $part->materialKey,
-                    $part->groupLabel
+                    $part->groupLabel,
+                    $part->sourcePieceIndex
                 );
             }
         }

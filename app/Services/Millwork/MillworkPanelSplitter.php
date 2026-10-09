@@ -71,17 +71,20 @@ class MillworkPanelSplitter
     private function splitPart(Part $part, StockOption $stock): ?array
     {
         $attempts = [
-            ['split' => 'length', 'overflow' => $part->length, 'keep' => $part->width, 'chunk' => $stock->width],
-            ['split' => 'length', 'overflow' => $part->length, 'keep' => $part->width, 'chunk' => $stock->length],
-            ['split' => 'width', 'overflow' => $part->width, 'keep' => $part->length, 'chunk' => $stock->width],
-            ['split' => 'width', 'overflow' => $part->width, 'keep' => $part->length, 'chunk' => $stock->length],
+            ['split' => 'width', 'overflow' => $part->width, 'keep' => $part->length, 'axis' => 'width'],
+            ['split' => 'length', 'overflow' => $part->length, 'keep' => $part->width, 'axis' => 'height'],
         ];
 
+        $best = null;
         foreach ($attempts as $attempt) {
-            if ($attempt['overflow'] <= $attempt['chunk'] + GuillotineSheet::EPS) {
+            $maxPiece = $this->maxSplitSize((float) $attempt['keep'], (string) $attempt['split'], $stock, $part->grain);
+            if ($maxPiece <= GuillotineSheet::EPS) {
                 continue;
             }
-            $sizes = $this->chunkExact((float) $attempt['overflow'], (float) $attempt['chunk']);
+            if ($attempt['overflow'] <= $maxPiece + GuillotineSheet::EPS) {
+                continue;
+            }
+            $sizes = $this->chunkEven((float) $attempt['overflow'], $maxPiece);
             if (count($sizes) < 2) {
                 continue;
             }
@@ -97,77 +100,104 @@ class MillworkPanelSplitter
             if (! $ok) {
                 continue;
             }
-
-            $letters = range('A', 'Z');
-            $panels = [];
-            foreach ($sizes as $i => $size) {
-                $letter = $letters[$i] ?? (string) ($i + 1);
-                $w = $attempt['split'] === 'width' ? $size : $attempt['keep'];
-                $l = $attempt['split'] === 'length' ? $size : $attempt['keep'];
-                $panels[] = new Part(
-                    $part->id.'-'.$letter,
-                    $part->label.' '.$letter,
-                    $w,
-                    $l,
-                    max(1, $part->quantity),
-                    $part->grain,
-                    $part->edgeBandTop,
-                    $part->edgeBandBottom,
-                    $part->edgeBandLeft,
-                    $part->edgeBandRight,
-                    $part->materialKey,
-                    $part->groupLabel
-                );
+            $score = [count($sizes), -min($sizes)];
+            if ($best === null || $score < $best['score']) {
+                $best = ['attempt' => $attempt, 'sizes' => $sizes, 'score' => $score];
             }
-
-            $overflow = (float) $attempt['overflow'];
-            $chunk = (float) $attempt['chunk'];
-            $originalW = max($part->width, $part->length);
-            $originalH = min($part->width, $part->length);
-
-            return [
-                'parts' => $panels,
-                'seam' => [
-                    'part_id' => $part->id,
-                    'label' => $part->label,
-                    'original' => $this->fmt($part->width).'×'.$this->fmt($part->length),
-                    'finished_width' => $originalW,
-                    'finished_height' => $originalH,
-                    'seam_at' => $chunk,
-                    'along' => $overflow,
-                    'note' => 'seam at '.$this->fmt($chunk).' along '.$this->fmt($overflow).' width',
-                    'panels' => array_map(fn (Part $p) => $p->label, $panels),
-                    'panel_sizes' => array_map(
-                        fn (Part $p) => $this->fmt($p->width).'×'.$this->fmt($p->length),
-                        $panels
-                    ),
-                ],
-            ];
         }
 
-        return null;
+        if ($best === null) {
+            return null;
+        }
+
+        $attempt = $best['attempt'];
+        $sizes = $best['sizes'];
+        $letters = range('A', 'Z');
+        $panels = [];
+        foreach ($sizes as $i => $size) {
+            $letter = $letters[$i] ?? (string) ($i + 1);
+            $w = $attempt['split'] === 'width' ? $size : $attempt['keep'];
+            $l = $attempt['split'] === 'length' ? $size : $attempt['keep'];
+            $panels[] = new Part(
+                $part->id.'-'.$letter,
+                $part->label.' '.$letter,
+                $w,
+                $l,
+                max(1, $part->quantity),
+                $part->grain,
+                $part->edgeBandTop,
+                $part->edgeBandBottom,
+                $part->edgeBandLeft,
+                $part->edgeBandRight,
+                $part->materialKey,
+                $part->groupLabel,
+                $part->sourcePieceIndex
+            );
+        }
+
+        $overflow = (float) $attempt['overflow'];
+        $seamAt = (float) $sizes[0];
+        $axis = (string) $attempt['axis'];
+        $originalW = max($part->width, $part->length);
+        $originalH = min($part->width, $part->length);
+
+        return [
+            'parts' => $panels,
+            'seam' => [
+                'part_id' => $part->id,
+                'label' => $part->label,
+                'original' => $this->fmt($part->width).'×'.$this->fmt($part->length),
+                'finished_width' => $originalW,
+                'finished_height' => $originalH,
+                'seam_at' => $seamAt,
+                'along' => $overflow,
+                'axis' => $axis,
+                'note' => 'seam at '.$this->fmt($seamAt).' along '.$this->fmt($overflow).' '.$axis,
+                'panels' => array_map(fn (Part $p) => $p->label, $panels),
+                'panel_sizes' => array_map(
+                    fn (Part $p) => $this->fmt($p->width).'×'.$this->fmt($p->length),
+                    $panels
+                ),
+            ],
+        ];
+    }
+
+    private function maxSplitSize(float $keep, string $split, StockOption $stock, string $grain): float
+    {
+        $best = 0.0;
+        foreach ([$stock->width, $stock->length] as $size) {
+            $w = $split === 'width' ? $size : $keep;
+            $l = $split === 'length' ? $size : $keep;
+            if ($this->fitsStock($w, $l, $stock, $grain)) {
+                $best = max($best, $size);
+            }
+        }
+
+        return $best;
     }
 
     /**
+     * Split into the fewest equal panels that each fit on the stock.
+     * 100" on a 96" sheet becomes 50+50, not 48+48+4.
+     *
      * @return list<float>
      */
-    private function chunkExact(float $total, float $chunk): array
+    private function chunkEven(float $total, float $maxPiece): array
     {
-        if ($chunk <= GuillotineSheet::EPS || $total <= GuillotineSheet::EPS) {
+        if ($maxPiece <= GuillotineSheet::EPS || $total <= GuillotineSheet::EPS) {
             return [$total];
         }
-        $sizes = [];
-        $left = $total;
-        while ($left > GuillotineSheet::EPS) {
-            $take = min($chunk, $left);
-            $sizes[] = $take;
-            $left -= $take;
-        }
-        if ($sizes === []) {
+        if ($total <= $maxPiece + GuillotineSheet::EPS) {
             return [$total];
         }
-        $drift = $total - array_sum($sizes);
-        $sizes[count($sizes) - 1] += $drift;
+        $n = max(2, (int) ceil($total / $maxPiece - 1e-9));
+        $each = $total / $n;
+        while ($each > $maxPiece + GuillotineSheet::EPS) {
+            $n++;
+            $each = $total / $n;
+        }
+        $sizes = array_fill(0, $n, round($each, 4));
+        $sizes[$n - 1] += $total - array_sum($sizes);
 
         return $sizes;
     }

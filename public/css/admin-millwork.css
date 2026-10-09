@@ -224,8 +224,13 @@
   align-self: flex-end;
 }
 
+.mw-recalc-banner,
 .mw-unplaced-banner {
   margin: 0 0 12px;
+}
+.mw-recalc-banner p {
+  margin: 6px 0 0;
+  font-weight: 400;
 }
 .mw-unplaced-banner p {
   margin: 6px 0 8px;
