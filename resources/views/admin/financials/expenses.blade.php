@@ -63,24 +63,17 @@
     grid-column: 2;
   }
 }
-/* Table column widths — shrink-to-fit date/amount, wrap long text */
-.gf-expenses-table { width: 100%; min-width: 0; }
-@media (min-width: 641px) {
-  .gf-expenses-table th:nth-child(1),
-  .gf-expenses-table td:nth-child(1) { white-space: nowrap; width: 1%; overflow: visible; } /* # */
-  .gf-expenses-table th:nth-child(2),
-  .gf-expenses-table td:nth-child(2) { white-space: nowrap; width: 1%; min-width: 7.5rem; overflow: visible; } /* Date */
-  .gf-expenses-table th:nth-child(3),
-  .gf-expenses-table td:nth-child(3),
-  .gf-expenses-table th:nth-child(4),
-  .gf-expenses-table td:nth-child(4) { overflow-wrap: anywhere; } /* Project / Client */
-  .gf-expenses-table th:nth-child(5),
-  .gf-expenses-table td:nth-child(5) { overflow-wrap: anywhere; } /* Description */
-  .gf-expenses-table th:nth-child(6),
-  .gf-expenses-table td:nth-child(6) { white-space: nowrap; text-align: right; width: 1%; overflow: visible; } /* Amount */
-  .gf-expenses-table th:nth-child(8),
-  .gf-expenses-table td:nth-child(8) { width: 1%; overflow: visible; } /* Actions */
-}
+.gf-expenses-table { width: 100%; }
+.gf-expenses-table th:nth-child(1),
+.gf-expenses-table td:nth-child(1) { white-space: nowrap; } /* # */
+.gf-expenses-table th:nth-child(2),
+.gf-expenses-table td:nth-child(2) { white-space: nowrap; } /* Date */
+.gf-expenses-table th:nth-child(3),
+.gf-expenses-table td:nth-child(3) { white-space: nowrap; } /* Project */
+.gf-expenses-table th:nth-child(4),
+.gf-expenses-table td:nth-child(4) { white-space: nowrap; } /* Client */
+.gf-expenses-table th:nth-child(6),
+.gf-expenses-table td:nth-child(6) { white-space: nowrap; text-align: right; } /* Amount */
 </style>
 @endpush
 
@@ -200,7 +193,7 @@
       </div>
     @else
       <div class="admin-table-scroll">
-        <table class="admin-table admin-table--stack admin-table--fixed gf-expenses-table">
+        <table class="admin-table admin-table--stack gf-expenses-table">
           <thead>
             <tr>
               <th>#</th>
