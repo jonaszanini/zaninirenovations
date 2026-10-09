@@ -6056,6 +6056,10 @@ body:has(.util-ra--fullpage) {
 }
 
 @media (max-width: 900px) {
+  .util-ra--fullpage {
+    --ra-feedback-gutter: 22px;
+  }
+
   .util-ra--fullpage .util-ra-stage {
     flex-direction: column;
   }
@@ -6920,6 +6924,7 @@ body:has(.util-ra-guide) {
 @media (max-width: 900px) {
   .util-ra--fullpage {
     --ra-sheet-h: auto;
+    --ra-feedback-gutter: 22px;
   }
 
   .util-ra--fullpage .util-ra-full-header {

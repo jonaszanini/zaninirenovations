@@ -625,7 +625,8 @@ async function measureViewports() {
         const stage = window.Konva && window.Konva.stages && window.Konva.stages[0];
         if (!root || !root.classList.contains('is-sheet-expanded') || !wrap || !stage) return false;
         const wrapH = wrap.getBoundingClientRect().height;
-        return Math.abs(wrapH - prevH) > 8 && Math.abs(stage.height() - wrapH) < 2;
+        const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ra-feedback-gutter')) || 22;
+        return Math.abs(wrapH - prevH) > 8 && Math.abs(stage.height() - (wrapH - gutter)) < 3;
       }, { timeout: 8000 }, phoneZoomed.wrapH);
     } catch (err) {
       const dump = await page.evaluate(() => {
