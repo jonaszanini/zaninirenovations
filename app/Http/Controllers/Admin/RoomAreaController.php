@@ -341,7 +341,7 @@ class RoomAreaController extends Controller
             ? (float) $room_area_room->scale_pixels_per_foot
             : null;
         $normalized = $canvasData->preserveEditorLock($normalized, $existingCanvas, $rawCanvas);
-        $normalized = $canvasData->preserveLockedBackground($normalized, $existingCanvas);
+        $normalized = $canvasData->preserveLockedBackground($normalized, $existingCanvas, $existingScale, $incomingScale);
         $normalized = $canvasData->restoreStoredGeometryIfWithinTolerance(
             $normalized,
             $existingCanvas,

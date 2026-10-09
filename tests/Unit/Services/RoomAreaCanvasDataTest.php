@@ -896,6 +896,34 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertNull($this->service->lockedGeometryChangeMessage($existing, $restored, 12.0, 12.0));
     }
 
+    public function test_locked_resize_scales_stored_vertices_and_background(): void
+    {
+        $existing = $this->lockedRect();
+        $existing['background'] = ['x' => 10, 'y' => 20, 'width' => 400, 'height' => 300];
+
+        foreach ([0.5, 0.9, 1.02, 1.1, 1.5] as $factor) {
+            $incoming = $existing;
+            foreach ($incoming['groups'][0]['polygons'][0]['vertices'] as $i => $vertex) {
+                $incoming['groups'][0]['polygons'][0]['vertices'][$i]['x'] = $vertex['x'] * $factor;
+                $incoming['groups'][0]['polygons'][0]['vertices'][$i]['y'] = $vertex['y'] * $factor;
+            }
+            $incoming['background'] = [
+                'x' => 10 * $factor,
+                'y' => 20 * $factor,
+                'width' => 400 * $factor,
+                'height' => 300 * $factor,
+            ];
+            $this->assertNull(
+                $this->service->lockedGeometryChangeMessage($existing, $incoming, 12.0, 12.0 * $factor),
+                'factor '.$factor
+            );
+            $restored = $this->service->restoreStoredGeometryIfWithinTolerance($incoming, $existing, 12.0, 12.0 * $factor);
+            $this->assertEqualsWithDelta(144.0 * $factor, $restored['groups'][0]['polygons'][0]['vertices'][1]['x'], 0.0001);
+            $this->assertEqualsWithDelta(400.0 * $factor, $restored['background']['width'], 0.01);
+            $this->assertNull($this->service->lockedGeometryChangeMessage($existing, $restored, 12.0, 12.0 * $factor));
+        }
+    }
+
     public function test_locked_background_layout_change_is_rejected(): void
     {
         $existing = $this->lockedRect();

@@ -421,17 +421,21 @@ class RoomAreaMeasurementParser
         return $n;
     }
 
-        /**
-     * Thousands in millimetres:
-     * - comma groups: 3,810 and 12,700
-     * - dot groups only when the first group is a single 1–9 digit (3.810),
-     *   so 0.500 mm and 12.700 mm stay decimals.
+    /**
+     * Treat '.' as a decimal unless the token is clearly thousands:
+     * comma groups (3,810), two-or-more dot groups (1.500.000), or
+     * European mixed (3.810,5). So 1.500 mm and 10.000 mm stay decimals.
      */
     private function toFloatMm(string $s): float
     {
         $s = trim($s);
-        if (preg_match('/^[1-9]\d{0,2}(?:,\d{3})+$/', $s) || preg_match('/^[1-9](?:\.\d{3})+$/', $s)) {
-            $s = str_replace([',', '.'], '', $s);
+        if (preg_match('/^\d{1,3}(?:\.\d{3})+,\d+$/', $s)) {
+            $s = str_replace('.', '', $s);
+            $s = str_replace(',', '.', $s);
+        } elseif (preg_match('/^[1-9]\d{0,2}(?:,\d{3})+$/', $s)) {
+            $s = str_replace(',', '', $s);
+        } elseif (preg_match('/^[1-9]\d{0,2}(?:\.\d{3}){2,}$/', $s)) {
+            $s = str_replace('.', '', $s);
         }
 
         return $this->toFloat($s);

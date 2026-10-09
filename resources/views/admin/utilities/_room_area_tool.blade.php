@@ -340,11 +340,11 @@
             </button>
           </div>
           @endif
-          <div class="util-ra-more-sheet" data-ra-more-sheet id="ra-more-sheet">
+          <div class="util-ra-more-sheet" data-ra-more-sheet id="ra-more-sheet" role="dialog" aria-modal="false" aria-labelledby="ra-more-sheet-title" tabindex="-1">
             @if ($fullPage)
             <div class="util-ra-more-sheet__chrome">
               <div class="util-ra-more-sheet__head">
-                <p class="util-ra-more-sheet__title">More</p>
+                <p class="util-ra-more-sheet__title" id="ra-more-sheet-title">More</p>
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-more-close aria-label="Close more tools">
                   <i class="fa fa-times" aria-hidden="true"></i>
                   <span class="util-ra-more-btn-label">Close</span>
@@ -965,7 +965,7 @@
       </div>{{-- stage__main --}}
 
       <aside class="util-ra-side" id="ra-side-panel" data-ra-side>
-        <button type="button" class="util-ra-sheet-handle" data-ra-sheet-handle aria-label="Drag to resize panel">
+        <button type="button" class="util-ra-sheet-handle" data-ra-sheet-handle aria-label="Expand or collapse panel" aria-expanded="false">
           <span class="util-ra-sheet-handle__bar" aria-hidden="true"></span>
         </button>
         <div class="util-ra-sheet-strip" data-ra-sheet-strip>

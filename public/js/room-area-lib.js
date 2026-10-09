@@ -85,17 +85,29 @@
   }
 
   /**
-   * Thousands in millimetres:
-   * - comma groups: 3,810 and 12,700
-   * - dot groups only when the first group is a single 1–9 digit (3.810),
-   *   so 0.500 mm and 12.700 mm stay decimals.
+   * Treat '.' as a decimal unless the token is clearly thousands:
+   * comma groups (3,810), two-or-more dot groups (1.500.000), or
+   * European mixed (3.810,5). So 1.500 mm and 10.000 mm stay decimals.
    */
   function toFloatMm(token) {
     var s = String(token).trim();
-    if (/^[1-9]\d{0,2}(?:,\d{3})+$/.test(s) || /^[1-9](?:\.\d{3})+$/.test(s)) {
-      s = s.replace(/[.,]/g, '');
+    if (/^\d{1,3}(?:\.\d{3})+,\d+$/.test(s)) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (/^[1-9]\d{0,2}(?:,\d{3})+$/.test(s)) {
+      s = s.replace(/,/g, '');
+    } else if (/^[1-9]\d{0,2}(?:\.\d{3}){2,}$/.test(s)) {
+      s = s.replace(/\./g, '');
     }
     return toFloat(s);
+  }
+
+  function describeParsedLength(feet) {
+    var meters = feet * FEET_TO_METERS;
+    var mm = meters * 1000;
+    if (mm < 1000) {
+      return (Math.round(mm * 1000) / 1000) + ' mm (' + (Math.round(feet * 10000) / 10000) + ' ft)';
+    }
+    return (Math.round(meters * 1000) / 1000) + ' m (' + (Math.round(feet * 100) / 100) + ' ft)';
   }
 
   function parseFraction(num, den) {
@@ -498,6 +510,7 @@
     L_RETURN_H: L_RETURN_H,
     UNITS: UNITS,
     parseLengthInput: parseLengthInput,
+    describeParsedLength: describeParsedLength,
     detectExplicitUnit: detectExplicitUnit,
     normalizeUnit: normalizeUnit,
     parseWallHeight: parseWallHeight,

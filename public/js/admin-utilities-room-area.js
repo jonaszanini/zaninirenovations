@@ -7651,7 +7651,7 @@
             if (idx >= 0) project.rooms[idx] = result.data.room;
             updateScaleUI();
             captureSavedSnapshot();
-            setFeedback('Scale calibrated for this room.', false);
+            setFeedback('Scale calibrated for this room. Parsed as ' + RA.describeParsedLength(feet) + '.', false);
           })
           .catch(function (e) {
             setFeedback(e.message, true);
@@ -7661,7 +7661,7 @@
 
       state.draftScale = ppf;
       setWorkingPixelsPerFoot(ppf);
-      setFeedback('Scale calibrated. Save the room to keep this scale with it.', false);
+      setFeedback('Scale calibrated. Parsed as ' + RA.describeParsedLength(feet) + '. Save the room to keep this scale with it.', false);
     } catch (err) {
       setFeedback(err.message, true);
     }
@@ -8147,31 +8147,31 @@
           ));
         }
         var savedRoom = result.data.room;
-        if (!isUpdate && savedRoom && savedRoom.id) {
+        if (savedRoom && savedRoom.id && !state.editingRoomId) {
           state.editingRoomId = savedRoom.id;
         }
-        if (!isUpdate && state.draftBackground && state.draftBackground.file) {
-          return uploadRoomBackgroundFile(savedRoom.id, state.draftBackground.file).then(function (bgResult) {
+        var pendingFile = state.draftBackground && state.draftBackground.file;
+        if (pendingFile && savedRoom && savedRoom.id) {
+          return uploadRoomBackgroundFile(savedRoom.id, pendingFile).then(function (bgResult) {
             savedRoom.background_url = bgResult.background_url;
-            return { ok: true, data: { room: savedRoom } };
+            return { ok: true, data: { room: savedRoom }, created: !isUpdate };
+          }).catch(function (err) {
+            throw new Error((err && err.message) || 'Floor plan upload failed. Save again to retry.');
           });
         }
         return result;
       })
       .then(function (result) {
         setSaveDisabled(false);
-        if (isUpdate) {
-          var idx = project.rooms.findIndex(function (r) { return r.id === result.data.room.id; });
-          if (idx >= 0) {
-            var oldRoom = project.rooms[idx];
-            var newRoom = result.data.room;
-            if (oldRoom && oldRoom.rulers) newRoom.rulers = oldRoom.rulers;
-            project.rooms[idx] = newRoom;
-          }
+        var savedListRoom = result.data.room;
+        var idx = project.rooms.findIndex(function (r) { return r.id === savedListRoom.id; });
+        if (idx >= 0) {
+          var oldRoom = project.rooms[idx];
+          if (oldRoom && oldRoom.rulers) savedListRoom.rulers = oldRoom.rulers;
+          project.rooms[idx] = savedListRoom;
         } else {
-          var newRoom = result.data.room;
           if (state.draftRulers && state.draftRulers.length) {
-            newRoom.rulers = state.draftRulers.map(function (r) {
+            savedListRoom.rulers = state.draftRulers.map(function (r) {
               return {
                 id: r.id,
                 p1: { x: r.p1.x, y: r.p1.y },
@@ -8179,7 +8179,7 @@
               };
             });
           }
-          project.rooms.push(newRoom);
+          project.rooms.push(savedListRoom);
         }
         project.canvas_width = contentW();
         project.canvas_height = contentH();
@@ -8261,6 +8261,9 @@
             renderRooms();
             setFeedback('Room deleted.', false);
           }
+        })
+        .catch(function () {
+          setFeedback('Could not delete room. Check your connection and try again.', true);
         });
     });
   }
@@ -8358,6 +8361,9 @@
             loadBackground(null);
             captureSavedSnapshot();
             setFeedback('Floor plan image deleted for this room.', false);
+          })
+          .catch(function () {
+            setFeedback('Could not delete floor plan. Check your connection and try again.', true);
           });
       });
       return;
@@ -9016,20 +9022,75 @@
     var open = (els.palette && els.palette.classList.contains('is-open'))
       || (els.wallsPanel && els.wallsPanel.classList.contains('is-open'));
     root.classList.toggle('is-dock-open', !!open);
-    root.style.setProperty('--ra-sheet-h', open ? 'min(52vh, 420px)' : '64px');
+    if (open) {
+      root.style.setProperty('--ra-sheet-h', 'min(52vh, 420px)');
+      return;
+    }
+    if (root.classList.contains('is-sheet-expanded')) return;
+    root.style.setProperty('--ra-sheet-h', '64px');
+  }
+
+  function syncPhoneBarOverflow() {
+    var bar = root.querySelector('[data-ra-phone-bar]');
+    var scroll = root.querySelector('[data-ra-phone-scroll]');
+    if (!bar || !scroll) return;
+    bar.classList.toggle('is-overflowing', scroll.scrollWidth > scroll.clientWidth + 1);
+  }
+
+  var moreLastFocus = null;
+
+  function moreSheetFocusables() {
+    if (!els.moreSheet) return [];
+    return Array.prototype.filter.call(
+      els.moreSheet.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+      function (el) {
+        if (el.disabled || el.hidden) return false;
+        var cs = window.getComputedStyle(el);
+        return cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0;
+      }
+    );
+  }
+
+  function trapMoreFocus(e) {
+    if (!root.classList.contains('is-more-open') || e.key !== 'Tab' || !els.moreSheet) return;
+    var list = moreSheetFocusables();
+    if (!list.length) return;
+    var first = list[0];
+    var last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 
   function setMoreOpen(open) {
+    var wasOpen = root.classList.contains('is-more-open');
     root.classList.toggle('is-more-open', !!open);
     raAll('[data-ra-more-toggle]').forEach(function (btn) {
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       btn.classList.toggle('is-active', !!open);
     });
+    if (els.moreSheet) {
+      els.moreSheet.setAttribute('aria-modal', open ? 'true' : 'false');
+    }
     if (isPhoneChrome() && els.templatesPopover) {
       els.templatesPopover.removeAttribute('hidden');
     }
     if (open && isPhoneChrome() && els.moreSheet) {
       els.moreSheet.scrollTop = 0;
+      if (!wasOpen) moreLastFocus = document.activeElement;
+      requestAnimationFrame(function () {
+        var closeBtn = els.moreSheet.querySelector('[data-ra-more-close]');
+        var list = moreSheetFocusables();
+        (closeBtn || list[0] || els.moreSheet).focus();
+      });
+    } else if (!open && wasOpen) {
+      var toggle = root.querySelector('[data-ra-more-toggle]');
+      if (toggle) toggle.focus();
+      else if (moreLastFocus && moreLastFocus.focus) moreLastFocus.focus();
     }
   }
 
@@ -10150,6 +10211,11 @@
   }
 
   function handleRoomAreaKeydown(e) {
+    if (e.key === 'Escape' && root.classList.contains('is-more-open')) {
+      e.preventDefault();
+      setMoreOpen(false);
+      return;
+    }
     if (isTypingTarget(e.target)) return;
     if (els.lightbox && !els.lightbox.hasAttribute('hidden')) return;
 
@@ -10505,6 +10571,7 @@
     bindAreaNameField();
 
     document.addEventListener('keydown', handleRoomAreaKeydown);
+    document.addEventListener('keydown', trapMoreFocus, true);
 
     document.addEventListener('pointerdown', function (e) {
       if (shortcutsPopoverOpen() && !(els.shortcuts && els.shortcuts.contains(e.target))) {
@@ -10786,9 +10853,20 @@
       scheduleStageResize();
     }
 
+    var moved = false;
+
+    function toggleSheet() {
+      if (!isPhoneChrome()) return;
+      var expanded = root.classList.toggle('is-sheet-expanded');
+      handle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      root.style.setProperty('--ra-sheet-h', expanded ? 'min(52vh, 360px)' : '64px');
+      scheduleStageResize();
+    }
+
     function onDown(e) {
       if (window.matchMedia('(min-width: 901px)').matches) return;
       dragging = true;
+      moved = false;
       startY = eventY(e);
       startH = side.getBoundingClientRect().height;
       if (e.pointerId != null && handle.setPointerCapture) {
@@ -10800,8 +10878,12 @@
 
     function onMove(e) {
       if (!dragging) return;
+      if (Math.abs(startY - eventY(e)) > 6) moved = true;
+      if (!moved) return;
       var next = startH + (startY - eventY(e));
       applySheet(next);
+      root.classList.toggle('is-sheet-expanded', clampSheet(next) > 80);
+      handle.setAttribute('aria-expanded', root.classList.contains('is-sheet-expanded') ? 'true' : 'false');
       e.preventDefault();
     }
 
@@ -10817,6 +10899,16 @@
     handle.addEventListener('touchstart', onDown, { passive: false });
     handle.addEventListener('touchmove', onMove, { passive: false });
     handle.addEventListener('touchend', onUp);
+    handle.addEventListener('click', function () {
+      if (moved) return;
+      toggleSheet();
+    });
+    handle.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleSheet();
+      }
+    });
   }
 
   function init() {
@@ -10866,7 +10958,9 @@
     window.addEventListener('resize', function () {
       placeObjectDock();
       syncPhoneSheetForDock();
+      syncPhoneBarOverflow();
     });
+    syncPhoneBarOverflow();
     renderWorkspace();
     updateFullpageTitle();
     if (initialRoom) {

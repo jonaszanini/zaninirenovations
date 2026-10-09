@@ -90,6 +90,7 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .util-ra-templates-pop',
             'html.admin-dark .util-ra-more-sheet',
             'html.admin-dark .util-ra-phone-bar',
+            'html.admin-dark .util-ra--fullpage .util-ra-phone-bar.is-overflowing::after',
             'html.admin-dark .util-ra-more-block__title',
             'html.admin-dark .util-ra-sheet-strip',
             'html.admin-dark .util-ra-first-tip',

@@ -1153,7 +1153,16 @@ class RoomAreaCanvasData
             return $normalized;
         }
 
-        return $this->copyStoredVertices($normalized, $existing);
+        $factor = $this->scaleFactor($existingScale, $incomingScale);
+        $normalized = $this->copyStoredVertices($normalized, $existing, $factor);
+        if (isset($existing['background']) && is_array($existing['background'])) {
+            $scaledBg = $this->scaleBackgroundLayout($existing['background'], $factor);
+            if ($scaledBg !== null) {
+                $normalized['background'] = $scaledBg;
+            }
+        }
+
+        return $normalized;
     }
 
     /**
@@ -1163,13 +1172,17 @@ class RoomAreaCanvasData
      * @param  array<string, mixed>|null  $existing
      * @return array<string, mixed>
      */
-    public function preserveLockedBackground(array $normalized, $existing): array
+    public function preserveLockedBackground(array $normalized, $existing, ?float $existingScale = null, ?float $incomingScale = null): array
     {
         if (! $this->isLayersLocked($existing) || ! is_array($existing)) {
             return $normalized;
         }
         if (! isset($normalized['background']) && isset($existing['background'])) {
-            $normalized['background'] = $existing['background'];
+            $scaled = $this->scaleBackgroundLayout(
+                $existing['background'],
+                $this->scaleFactor($existingScale, $incomingScale)
+            );
+            $normalized['background'] = $scaled ?? $existing['background'];
         }
 
         return $normalized;
@@ -1180,7 +1193,33 @@ class RoomAreaCanvasData
      * @param  array<string, mixed>  $existing
      * @return array<string, mixed>
      */
-    private function copyStoredVertices(array $normalized, array $existing): array
+    private function scaleFactor(?float $existingScale, ?float $incomingScale): float
+    {
+        if ($existingScale === null || $existingScale <= 0 || $incomingScale === null || $incomingScale <= 0) {
+            return 1.0;
+        }
+
+        return $incomingScale / $existingScale;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $background
+     * @return array{x: float, y: float, width: float, height: float}|null
+     */
+    private function scaleBackgroundLayout($background, float $factor): ?array
+    {
+        $norm = is_array($background) ? $this->normalizeBackground($background) : null;
+        if ($norm === null) {
+            return null;
+        }
+        foreach (['x', 'y', 'width', 'height'] as $key) {
+            $norm[$key] = round($norm[$key] * $factor, 3);
+        }
+
+        return $norm;
+    }
+
+    private function copyStoredVertices(array $normalized, array $existing, float $factor = 1.0): array
     {
         $exGroups = $existing['groups'] ?? [];
         $inGroups = $normalized['groups'] ?? [];
@@ -1195,9 +1234,15 @@ class RoomAreaCanvasData
             }
             foreach ($exPolys as $pi => $exPoly) {
                 $exVerts = is_array($exPoly) ? ($exPoly['vertices'] ?? []) : [];
-                if (is_array($exVerts) && isset($normalized['groups'][$gi]['polygons'][$pi])) {
-                    $normalized['groups'][$gi]['polygons'][$pi]['vertices'] = $exVerts;
+                if (! is_array($exVerts) || ! isset($normalized['groups'][$gi]['polygons'][$pi])) {
+                    continue;
                 }
+                $normalized['groups'][$gi]['polygons'][$pi]['vertices'] = array_map(function ($vertex) use ($factor) {
+                    return [
+                        'x' => ((float) ($vertex['x'] ?? 0)) * $factor,
+                        'y' => ((float) ($vertex['y'] ?? 0)) * $factor,
+                    ];
+                }, $exVerts);
             }
         }
 
@@ -1235,7 +1280,7 @@ class RoomAreaCanvasData
             return 'Unlock layers to change walls or areas.';
         }
 
-        if ($this->backgroundLayoutDiffers($existing, $incoming)) {
+        if ($this->backgroundLayoutDiffers($existing, $incoming, $exScale, $inScale)) {
             return 'Unlock layers to change the floor plan.';
         }
 
@@ -1246,7 +1291,7 @@ class RoomAreaCanvasData
      * @param  array<string, mixed>|null  $existing
      * @param  array<string, mixed>  $incoming
      */
-    private function backgroundLayoutDiffers($existing, array $incoming): bool
+    private function backgroundLayoutDiffers($existing, array $incoming, ?float $existingScale = null, ?float $incomingScale = null): bool
     {
         $incomingBg = $incoming['background'] ?? null;
         if (! is_array($incomingBg)) {
@@ -1262,7 +1307,15 @@ class RoomAreaCanvasData
             return true;
         }
 
-        return json_encode($existingNorm) !== json_encode($incomingNorm);
+        $exScale = $existingScale !== null && $existingScale > 0 ? $existingScale : 1.0;
+        $inScale = $incomingScale !== null && $incomingScale > 0 ? $incomingScale : $exScale;
+        foreach (['x', 'y', 'width', 'height'] as $key) {
+            if (abs(($existingNorm[$key] / $exScale) - ($incomingNorm[$key] / $inScale)) > self::LOCK_GEOM_TOLERANCE_FT) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

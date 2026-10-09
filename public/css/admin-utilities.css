@@ -6627,7 +6627,7 @@ body:has(.util-ra-guide) {
     display: none;
   }
 
-  .util-ra--fullpage .util-ra-phone-bar::after {
+  .util-ra--fullpage .util-ra-phone-bar.is-overflowing::after {
     content: "";
     position: absolute;
     top: 0;
@@ -6815,6 +6815,20 @@ body:has(.util-ra-guide) {
     min-width: 0;
   }
 
+  .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-measure-unit-wrap {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .util-ra--fullpage.is-more-open .util-ra-more-block--area .admin-btn:disabled {
+    display: none;
+  }
+
+  .util-ra--fullpage.is-more-open .util-ra-more-block--area:not(:has(.admin-btn:not(:disabled), .util-ra-area-name:not([hidden]))) {
+    display: none;
+  }
+
   .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-measure-unit,
   .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-dim-mode,
   .util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-scale-input,
@@ -6885,6 +6899,12 @@ body:has(.util-ra-guide) {
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
+  }
+
+  .util-ra-more-sheet__head .admin-btn,
+  .util-ra--fullpage.is-more-open .util-ra-more-sheet__head .admin-btn {
+    width: auto;
+    flex: 0 0 auto;
   }
 
   .util-ra--fullpage .util-ra-more-sheet__title {
@@ -6992,6 +7012,10 @@ body:has(.util-ra-guide) {
     min-height: 64px;
     max-height: 70vh;
     overflow: hidden;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    max-width: 100%;
   }
 
   .util-ra--fullpage.is-side-collapsed .util-ra-side {
@@ -7009,6 +7033,9 @@ body:has(.util-ra-guide) {
     padding: 0 0.45rem 0.2rem;
     flex-shrink: 0;
     color: var(--admin-text);
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .util-ra--fullpage .util-ra-sheet-strip__dock {
@@ -7067,7 +7094,9 @@ body:has(.util-ra-guide) {
   }
 
   .util-ra--fullpage .util-ra-sheet-handle {
-    min-height: 1.15rem;
+    min-height: 44px;
+    height: 44px;
+    cursor: pointer;
   }
 }
 

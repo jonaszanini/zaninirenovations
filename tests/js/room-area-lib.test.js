@@ -36,9 +36,13 @@ almost(lib.parseLengthInput('6½', 'inch'), 6.5 / 12, 'vulgar 6½ is 6.5 inches,
 almost(lib.parseLengthInput('6½"', 'feet_inch_frac'), 6.5 / 12, '6½"');
 almost(lib.parseLengthInput("12' ½\"", 'feet_inch_frac'), 12 + 0.5 / 12, "12' ½\"");
 almost(lib.parseLengthInput('3,810 mm', 'meter'), 3.81 / FT, '3,810 mm thousands comma');
-almost(lib.parseLengthInput('3.810 mm', 'feet_decimal'), 3.81 / FT, '3.810 mm thousands dot');
+almost(lib.parseLengthInput('3.810 mm', 'feet_decimal'), 0.00381 / FT, '3.810 mm is a decimal millimetre');
+almost(lib.parseLengthInput('1.700 mm', 'meter'), 0.0017 / FT, '1.700 mm is a decimal millimetre');
+almost(lib.parseLengthInput('10.000 mm', 'meter'), 0.01 / FT, '10.000 mm is a decimal millimetre');
+almost(lib.parseLengthInput('3.810,5 mm', 'meter'), 3.8105 / FT, '3.810,5 mm is European thousands + decimal');
 almost(lib.parseLengthInput('12.700 mm', 'feet_decimal'), 0.0127 / FT, '12.700 mm stays a decimal millimetre');
 almost(lib.parseLengthInput('50.000 mm', 'meter'), 0.05 / FT, '50.000 mm stays a decimal millimetre');
+assert.ok(lib.describeParsedLength(0.0015 / FT).indexOf('1.5 mm') !== -1, 'describe 1.500 mm');
 almost(lib.parseLengthInput('12’ 6”', 'meter'), 12.5, 'iOS smart quotes 12’ 6”');
 
 rejects('12abc', 'meter');
@@ -49,6 +53,7 @@ rejects('6 1/0"', 'feet_inch_frac');
 rejects('0', 'feet_inch_frac');
 rejects('', 'meter');
 rejects('0.500 mm', 'meter'); // 0.5 mm is below 1/16"; 500 mm would parse
+rejects('1.500 mm', 'meter'); // 1.5 mm decimal is below 1/16"; 1500 mm would have parsed
 
 // Bare integer in feet-inch-frac is inches
 almost(lib.parseLengthInput('150', 'feet_inch_frac'), 12.5, 'bare 150 is inches');

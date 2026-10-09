@@ -129,6 +129,15 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('data-ra-phone-bar', $html);
         $this->assertStringContainsString('data-ra-more-toggle', $html);
         $this->assertStringContainsString('data-ra-more-sheet', $html);
+        $this->assertStringContainsString('role="dialog"', $html);
+        $this->assertStringContainsString('aria-modal', $html);
+        $this->assertStringContainsString('Expand or collapse panel', $html);
+        $this->assertStringContainsString('is-overflowing::after', $css);
+        $this->assertStringContainsString("describeParsedLength(feet)", $js);
+        $this->assertStringContainsString('Floor plan upload failed. Save again to retry.', $js);
+        $this->assertStringContainsString('Could not delete room. Check your connection and try again.', $js);
+        $this->assertStringContainsString('Could not delete floor plan. Check your connection and try again.', $js);
+        $this->assertStringContainsString('is-sheet-expanded', $js);
         $this->assertStringContainsString('data-ra-sheet-total', $html);
         $this->assertStringContainsString('data-ra-more-templates', $html);
         $this->assertStringContainsString('data-ra-sheet-dock', $html);
@@ -368,6 +377,96 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->deleteJson(route('admin.utilities.room-area.projects.destroy', $layout))
             ->assertStatus(422)
             ->assertJsonPath('ok', false);
+    }
+
+    public function test_locked_room_resize_keeps_feet_and_allows_objects(): void
+    {
+        $this->actingAsAdmin();
+        $layout = RoomAreaProject::create([
+            'name' => 'Resize lock',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $baseVerts = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 144, 'y' => 0],
+            ['x' => 144, 'y' => 120],
+            ['x' => 0, 'y' => 120],
+        ];
+        $canvas = [
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => $baseVerts,
+                ]],
+            ]],
+            'background' => ['x' => 10, 'y' => 20, 'width' => 400, 'height' => 300],
+            'editor' => ['layers_locked' => true],
+        ];
+        $store = $this->postJson(route('admin.utilities.room-area.rooms.store', $layout), [
+            'name' => 'Locked',
+            'canvas' => $canvas,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk();
+        $room = RoomAreaRoom::query()->findOrFail($store->json('room.id'));
+
+        $assertFeet = function (RoomAreaRoom $room) {
+            $scale = (float) $room->scale_pixels_per_foot;
+            $verts = $room->vertices['groups'][0]['polygons'][0]['vertices'];
+            $this->assertEqualsWithDelta(12.0, $verts[1]['x'] / $scale, 0.0001);
+            $this->assertEqualsWithDelta(10.0, $verts[2]['y'] / $scale, 0.0001);
+        };
+
+        foreach ([0.5, 0.9, 1.02, 1.1, 1.5] as $factor) {
+            $scaled = $canvas;
+            foreach ($scaled['groups'][0]['polygons'][0]['vertices'] as $i => $vertex) {
+                $scaled['groups'][0]['polygons'][0]['vertices'][$i]['x'] = $vertex['x'] * $factor;
+                $scaled['groups'][0]['polygons'][0]['vertices'][$i]['y'] = $vertex['y'] * $factor;
+            }
+            $scaled['background'] = [
+                'x' => 10 * $factor,
+                'y' => 20 * $factor,
+                'width' => 400 * $factor,
+                'height' => 300 * $factor,
+            ];
+            $scaled['objects'] = [[
+                'id' => 'obj_door',
+                'type' => 'door',
+                'subtype' => 'single',
+                'wall_id' => 'wall_p1_0_1',
+                'width' => 36,
+                'offset' => 24,
+                'swing' => 'right_out',
+                'hinge' => 'right',
+            ]];
+            $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+                'name' => 'Locked',
+                'canvas' => $scaled,
+                'scale_pixels_per_foot' => 12 * $factor,
+                'canvas_width' => (int) round(800 * $factor),
+                'canvas_height' => (int) round(800 * $factor),
+            ])->assertOk()->assertJsonPath('ok', true);
+            $room->refresh();
+            $assertFeet($room);
+            $this->assertSame('door', $room->vertices['objects'][0]['type'] ?? null);
+        }
+
+        $working = $room->vertices;
+        $workingScale = (float) $room->scale_pixels_per_foot;
+        for ($i = 0; $i < 40; $i++) {
+            $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+                'name' => 'Locked',
+                'canvas' => $working,
+                'scale_pixels_per_foot' => $workingScale,
+            ])->assertOk()->assertJsonPath('ok', true);
+            $room->refresh();
+            $assertFeet($room);
+            $working = $room->vertices;
+            $workingScale = (float) $room->scale_pixels_per_foot;
+        }
+        $this->assertEqualsWithDelta(12.0, $working['groups'][0]['polygons'][0]['vertices'][1]['x'] / $workingScale, 0.0001);
     }
 
     public function test_locked_new_room_allows_first_background_upload(): void
