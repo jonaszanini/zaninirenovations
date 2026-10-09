@@ -191,8 +191,8 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
         }
 
         $creates = [
-            'basement/create.blade.php' => ['Email quotation to client', 'br-email-quote-form'],
-            'standard/create.blade.php' => ['showHubLink', 'sms', 'Email quotation to client'],
+            'basement/create.blade.php' => ["'email'", 'br-email-quote-form'],
+            'standard/create.blade.php' => ['showHubLink', "'sms'", "'email'"],
             'fence/create.blade.php' => ['showCreateProject', 'create_project'],
             'low_deck/create.blade.php' => ['layoutDiagramsUrl'],
             'millwork/create.blade.php' => ['cutListUrl', 'mw-btn-draft'],
