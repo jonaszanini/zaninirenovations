@@ -101,7 +101,7 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertStringNotContainsString("var cur = input.value.replace(/,/g, '');", $js);
         $this->assertStringContainsString("if (remaining.indexOf('.') !== -1)", $js);
         $this->assertDoesNotMatchRegularExpression(
-            "/ev\.key === '\.' \|\| ev\.key === ','/",
+            "/places > 0 && \(ev\.key === '\.' \|\| ev\.key === ','\)/",
             $js
         );
         $harness = file_get_contents(base_path('tests/Feature/Admin/money-direct-entry.js'));
