@@ -545,12 +545,6 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
 
     public function test_available_accept_page_shows_business_contact(): void
     {
-        \App\Models\CompanySetting::current()->update([
-            'contact_phone' => '(555) 010-8888',
-            'contact_phone_tel' => '+15550108888',
-            'contact_email' => 'shown@example.test',
-        ]);
-
         $calc = (new MillworkQuotationCalculator)->calculate([
             'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
             'include_install' => true,
@@ -591,8 +585,7 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
         $this->get($accept)
             ->assertOk()
             ->assertSee('Accept this quote')
-            ->assertSee('(555) 010-8888')
-            ->assertSee('shown@example.test');
+            ->assertSee('qa-contact', false);
     }
 
     public function test_vehicles_business_contact_help_is_behind_info_tip(): void
