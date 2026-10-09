@@ -28,6 +28,7 @@ class InvoiceNegativeLineResaveTest extends IntegrationTestCase
                 'intent' => 'draft',
                 'hst_exempt' => '0',
                 'manual_description' => 'Manual invoice',
+                'manual_total' => '800.00',
                 'items' => [
                     ['description' => 'Labour', 'amount' => '1000.00'],
                     ['description' => 'Deposit credit', 'amount' => '-200.00'],
