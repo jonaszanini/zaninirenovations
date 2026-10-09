@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPdfFoldVersion;
 use App\Services\DebrisRemovalExpenseService;
+use App\Support\Quotations\LegacyPdfFoldV1;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationReplyToAccept;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +23,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class ClientProjectQuotation extends Model
 {
+    use HasPdfFoldVersion;
+
     public const TYPE_QUOTATION = 'quotation';
     public const TYPE_ESTIMATE = 'estimate';
 
@@ -135,6 +139,7 @@ class ClientProjectQuotation extends Model
         });
 
         static::saving(function (self $quotation): void {
+            $quotation->resolvePdfFoldVersionBeforeTotals();
             if ($quotation->hasContent()) {
                 $quotation->total_amount = $quotation->grandTotal();
             }
@@ -563,6 +568,9 @@ class ClientProjectQuotation extends Model
             if (array_key_exists('hst_taxable_amount', $row)) {
                 $cleanRow['hst_taxable_amount'] = round((float) $row['hst_taxable_amount'], 2);
             }
+            if (array_key_exists('hst_amount', $row)) {
+                $cleanRow['hst_amount'] = round((float) $row['hst_amount'], 2);
+            }
             if (! empty($row['is_heading'])) {
                 $cleanRow['is_heading'] = true;
             }
@@ -586,6 +594,10 @@ class ClientProjectQuotation extends Model
      */
     public function pdfLineItems(): array
     {
+        if ($this->usesLegacyPdfFold()) {
+            return (new LegacyPdfFoldV1($this))->pdfLineItems();
+        }
+
         if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
             $sq = StandardQuotation::query()->find($this->source_id);
             if ($sq) {
@@ -620,7 +632,7 @@ class ClientProjectQuotation extends Model
      * @param  list<array{description: string, amount: float, apply_hst: bool}>  $items
      * @return list<array{description: string, amount: float, apply_hst: bool}>
      */
-    protected function applyStandardSummaryLineWording(array $items, StandardQuotation $sq): array
+    public function applyStandardSummaryLineWording(array $items, StandardQuotation $sq): array
     {
         $wording = $sq->pdfSummaryLineDescription();
         $bases = ['Standard quotation', 'Labour and material', 'Labour', 'Material'];
@@ -647,6 +659,10 @@ class ClientProjectQuotation extends Model
     /** Pre-tax subtotal for {@see pdfLineItems()}. */
     public function pdfSubtotal(): float
     {
+        if ($this->usesLegacyPdfFold()) {
+            return (new LegacyPdfFoldV1($this))->pdfSubtotal();
+        }
+
         $sum = 0.0;
         foreach ($this->pdfLineItems() as $row) {
             if (! empty($row['is_heading'])) {
@@ -661,6 +677,10 @@ class ClientProjectQuotation extends Model
     /** HST for {@see pdfLineItems()}. */
     public function pdfHst(): float
     {
+        if ($this->usesLegacyPdfFold()) {
+            return (new LegacyPdfFoldV1($this))->pdfHst();
+        }
+
         $sum = 0.0;
         foreach ($this->pdfLineItems() as $row) {
             if (! empty($row['is_heading'])) {
@@ -672,8 +692,16 @@ class ClientProjectQuotation extends Model
         return round($sum, 2);
     }
 
+    /**
+     * Footer total: sum of visible PDF line amounts plus per-line HST
+     * ({@see pdfSubtotal()} + {@see pdfHst()}).
+     */
     public function pdfGrandTotal(): float
     {
+        if ($this->usesLegacyPdfFold()) {
+            return (new LegacyPdfFoldV1($this))->pdfGrandTotal();
+        }
+
         return round($this->pdfSubtotal() + $this->pdfHst(), 2);
     }
 
@@ -768,11 +796,18 @@ class ClientProjectQuotation extends Model
 
         $indexes = $this->commuteLabourLineIndexes($items);
         if ($indexes === []) {
+            // v1 and cash/untaxed quotes: Labour stays apply_hst=false,
+            // hst_included=true ("13% incl."). v2 only taxes a new Labour
+            // row when the quote already has a taxed line.
+            $taxNewLabour = ! $this->usesLegacyPdfNonMaterialFold()
+                && $this->itemsHaveTaxedAmount($items);
             $items[] = [
                 'description' => 'Labour',
                 'amount' => 0.0,
-                'apply_hst' => false,
-                'hst_included' => true,
+                'apply_hst' => $taxNewLabour,
+                // v1 keeps "13% incl." on an untaxed created Labour row.
+                // v2 does not claim included HST when the footer HST is 0.
+                'hst_included' => ! $taxNewLabour && $this->usesLegacyPdfNonMaterialFold(),
             ];
             $indexes = $this->commuteLabourLineIndexes($items);
             if ($indexes === []) {
@@ -791,10 +826,28 @@ class ClientProjectQuotation extends Model
         }
 
         // Taxed labour: add pre-tax so the footer 13% covers the extra.
-        // Cash / tax-in labour: add the gross so 13% is not stripped away.
+        // Cash / tax-in labour: add the gross so 13% is not stripped away
+        // — unless the quote already charges HST, in which case v2 puts
+        // the leftover on its own taxed Labour row (same as materials D1).
+        $leftoverHst = 0.0;
         if ($taxed !== []) {
             $total = self::preTaxFromHstIncluded($hiddenGross);
+            $leftoverHst = round($hiddenGross - $total, 2);
             $targets = $taxed;
+        } elseif (! $this->usesLegacyPdfNonMaterialFold() && $this->itemsHaveTaxedAmount($items)) {
+            $hiddenPreTax = self::preTaxFromHstIncluded($hiddenGross);
+            $ownLeftover = round($hiddenGross - $hiddenPreTax, 2);
+            if ($hiddenPreTax <= 0 && $ownLeftover <= 0) {
+                return $items;
+            }
+            $items[] = [
+                'description' => 'Labour',
+                'amount' => $hiddenPreTax,
+                'apply_hst' => true,
+                'hst_amount' => $ownLeftover,
+            ];
+
+            return array_values($items);
         } else {
             $total = round($hiddenGross, 2);
             $targets = $untaxed;
@@ -805,9 +858,16 @@ class ClientProjectQuotation extends Model
         }
 
         $shares = self::splitAmountEvenly($total, count($targets));
+        $hstShares = self::splitAmountEvenly($leftoverHst, count($targets));
         foreach ($targets as $i => $idx) {
             $row = &$items[$idx];
+            $hstBefore = self::lineHstAmount($row);
             $this->addAmountToPdfLine($row, $shares[$i]);
+            if (! empty($row['apply_hst'])) {
+                // Always persist, including a 0.00 share, so the line never
+                // falls back to amount × 13% after the pre-tax add.
+                $row['hst_amount'] = round($hstBefore + $hstShares[$i], 2);
+            }
             unset($row);
         }
 
@@ -830,17 +890,116 @@ class ClientProjectQuotation extends Model
             return $indexes;
         }
 
-        $one = $this->commuteMergeTargetIndex($items);
+        if ($this->usesLegacyPdfNonMaterialFold()) {
+            $one = $this->commuteMergeTargetIndex($items);
 
-        return $one !== null ? [$one] : [];
+            return $one !== null ? [$one] : [];
+        }
+
+        foreach ($items as $i => $row) {
+            if (self::isPdfCombinedSummaryLine($row)) {
+                $indexes[] = $i;
+            }
+        }
+
+        return $indexes;
+    }
+
+    /**
+     * Resolve {@see $pdf_fold_version} before {@see grandTotal()} so a first
+     * calculator link stores the source quote's fold (v1 total unchanged).
+     */
+    protected function resolvePdfFoldVersionBeforeTotals(): void
+    {
+        if ($this->getAttribute('pdf_fold_version') !== null) {
+            return;
+        }
+
+        $this->setAttribute('pdf_fold_version', $this->resolvedPdfFoldVersion());
+    }
+
+    protected function sourcePdfFoldVersion(): ?int
+    {
+        $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];
+        if (array_key_exists('pdf_fold_version', $snap) && $snap['pdf_fold_version'] !== null && $snap['pdf_fold_version'] !== '') {
+            return (int) $snap['pdf_fold_version'];
+        }
+
+        $source = $this->sourceQuotationModel();
+        if ($source !== null && $source->getAttribute('pdf_fold_version') !== null) {
+            return (int) $source->getAttribute('pdf_fold_version');
+        }
+
+        return null;
+    }
+
+    protected function usesLegacyPdfNonMaterialFold(): bool
+    {
+        return $this->usesLegacyPdfFold();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    protected function itemsHaveTaxedAmount(array $items): bool
+    {
+        foreach ($items as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
+            if (! empty($row['apply_hst'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
      * @param  array<string, mixed>  $row
      */
+    /**
+     * Main's word match `\blabou?r\b`, minus trade / permit / supply / custom
+     * / labourer-supplies lines so those never become fold targets.
+     *
+     * @param  array<string, mixed>  $row
+     */
     protected static function isPdfLabourLine(array $row): bool
     {
-        if (! empty($row['is_heading'])) {
+        if (! empty($row['is_heading']) || self::isPdfExcludedFoldLine($row)) {
+            return false;
+        }
+
+        $desc = trim((string) ($row['description'] ?? ''));
+        if ($desc === '' || stripos($desc, 'HST exempt') !== false) {
+            return false;
+        }
+        if (DebrisRemovalExpenseService::isLineDescription($desc)) {
+            return false;
+        }
+
+        return (bool) preg_match('/\blabou?r\b/i', $desc);
+    }
+
+    protected static function normalizePdfLineLabel(string $desc): string
+    {
+        $desc = strtr($desc, ['—' => '-', '–' => '-', '−' => '-']);
+        $desc = (string) preg_replace('/\s*-\s*/u', ' - ', $desc);
+        $desc = (string) preg_replace('/\s+/u', ' ', $desc);
+
+        return strtolower(trim($desc));
+    }
+
+    /**
+     * Allow-list: combined materials+labour summary only ("Labour and
+     * material", or a fence / deck / paving job line). Never a trade,
+     * permit, supply, or custom line.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    protected static function isPdfCombinedSummaryLine(array $row): bool
+    {
+        if (! empty($row['is_heading']) || self::isPdfExcludedFoldLine($row) || self::isPdfMaterialOnlyLine($row)) {
             return false;
         }
 
@@ -851,12 +1010,47 @@ class ClientProjectQuotation extends Model
         if (DebrisRemovalExpenseService::isLineDescription($desc)) {
             return false;
         }
+        if (empty($row['apply_hst']) && empty($row['hst_included'])) {
+            return false;
+        }
 
-        return $desc === 'Labour'
-            || $desc === 'Labor'
-            || str_ends_with($desc, ' — Labour')
-            || str_ends_with($desc, ' — Labor')
-            || (bool) preg_match('/\blabou?r\b/i', $desc);
+        if (preg_match('/\b(?:labour|labor)\s+and\s+material|\bmaterial\s+and\s+(?:labour|labor)\b/i', $desc)) {
+            return true;
+        }
+
+        return (bool) preg_match('/\b(?:fence|deck|paving|interlock|unilock|patio)\b/i', $desc);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected static function isPdfMaterialOnlyLine(array $row): bool
+    {
+        $normalized = self::normalizePdfLineLabel((string) ($row['description'] ?? ''));
+        if ($normalized === 'material' || $normalized === 'materials') {
+            return true;
+        }
+        if (str_ends_with($normalized, ' - material') || str_ends_with($normalized, ' - materials')) {
+            return true;
+        }
+        if (preg_match('/\blabou?r\b/i', $normalized)) {
+            return false;
+        }
+
+        return (bool) preg_match('/\bmaterials?\b/i', $normalized);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected static function isPdfExcludedFoldLine(array $row): bool
+    {
+        $desc = (string) ($row['description'] ?? '');
+
+        return (bool) preg_match(
+            '/\b(permits?|electrical|plumbing|demolition|demo|supply|custom|labourer)\b/i',
+            $desc
+        );
     }
 
     /**
@@ -889,6 +1083,7 @@ class ClientProjectQuotation extends Model
             return;
         }
 
+        $hstBefore = ! empty($row['apply_hst']) ? self::lineHstAmount($row) : 0.0;
         $row['amount'] = round((float) ($row['amount'] ?? 0) + $add, 2);
 
         if (! empty($row['apply_hst'])) {
@@ -896,6 +1091,7 @@ class ClientProjectQuotation extends Model
                 ? (float) $row['hst_taxable_amount']
                 : (float) $row['amount'] - $add;
             $row['hst_taxable_amount'] = round($taxableBase + $add, 2);
+            $row['hst_amount'] = round($hstBefore + round($add * self::HST_RATE, 2), 2);
         }
     }
 
@@ -914,26 +1110,46 @@ class ClientProjectQuotation extends Model
             : $this->commuteMergeTargetIndex($items);
 
         if ($targetIdx === null) {
-            return $items;
+            $items[] = [
+                'description' => $bucket === 'materials' ? 'Material' : 'Labour',
+                'amount' => 0.0,
+                'apply_hst' => true,
+            ];
+            $targetIdx = count($items) - 1;
         }
 
         $row = &$items[$targetIdx];
 
-        // Tax-included material buckets (e.g. paving) absorb the gross amount.
-        if (! empty($row['hst_included']) && empty($row['apply_hst'])) {
-            $row['amount'] = round((float) ($row['amount'] ?? 0) + $hiddenGross, 2);
+        // Untaxed targets must not swallow included HST into a "—" line
+        // (Material $1000 HST-off + Dumpster $113 would show $1,113 / no HST
+        // while $13 was collected). Keep the original line and put the extra
+        // on its own taxed Material/Labour row so the footer HST is $78.
+        if (empty($row['apply_hst'])) {
             unset($row);
+            $hiddenPreTax = self::preTaxFromHstIncluded($hiddenGross);
+            $leftoverHst = round($hiddenGross - $hiddenPreTax, 2);
+            if ($hiddenPreTax <= 0 && $leftoverHst <= 0) {
+                return $items;
+            }
+            $items[] = [
+                'description' => $bucket === 'materials' ? 'Material' : 'Labour',
+                'amount' => $hiddenPreTax,
+                'apply_hst' => true,
+                'hst_amount' => $leftoverHst,
+            ];
 
-            return $items;
+            return array_values($items);
         }
 
         $hiddenPreTax = self::preTaxFromHstIncluded($hiddenGross);
-        if ($hiddenPreTax <= 0) {
+        $leftoverHst = round($hiddenGross - $hiddenPreTax, 2);
+        if ($hiddenPreTax <= 0 && $leftoverHst <= 0) {
             unset($row);
 
             return $items;
         }
 
+        $hstBefore = ! empty($row['apply_hst']) ? self::lineHstAmount($row) : 0.0;
         $row['amount'] = round((float) ($row['amount'] ?? 0) + $hiddenPreTax, 2);
 
         if (! empty($row['apply_hst'])) {
@@ -941,6 +1157,7 @@ class ClientProjectQuotation extends Model
                 ? (float) $row['hst_taxable_amount']
                 : (float) ($row['amount'] ?? 0) - $hiddenPreTax;
             $row['hst_taxable_amount'] = round($taxableBase + $hiddenPreTax, 2);
+            $row['hst_amount'] = round($hstBefore + $leftoverHst, 2);
         }
 
         unset($row);
@@ -994,16 +1211,18 @@ class ClientProjectQuotation extends Model
             if (DebrisRemovalExpenseService::isLineDescription($desc)) {
                 continue;
             }
+            if (self::isPdfExcludedFoldLine($row)) {
+                continue;
+            }
 
+            $normalized = self::normalizePdfLineLabel($desc);
             $score = 0;
-            if (str_ends_with($desc, ' — Material') || str_ends_with($desc, ' — materials')) {
+            if (str_ends_with($normalized, ' - material') || str_ends_with($normalized, ' - materials')) {
                 $score = 100;
-            } elseif (preg_match('/\bMaterials?\b/i', $desc) && stripos($desc, 'labour') === false) {
+            } elseif (preg_match('/\bmaterials?\b/i', $normalized) && ! preg_match('/\blabou?r\b/i', $normalized)) {
                 $score = 90;
-            } elseif (stripos($desc, 'Labour and material') !== false || stripos($desc, 'Material and labour') !== false) {
+            } elseif (preg_match('/\b(?:labour|labor)\s+and\s+material|\bmaterial\s+and\s+(?:labour|labor)\b/i', $normalized)) {
                 $score = 70;
-            } elseif (! empty($row['apply_hst']) || ! empty($row['hst_included'])) {
-                $score = 10;
             } else {
                 continue;
             }
@@ -1040,6 +1259,9 @@ class ClientProjectQuotation extends Model
                 continue;
             }
             if (DebrisRemovalExpenseService::isLineDescription($desc)) {
+                continue;
+            }
+            if (self::isPdfExcludedFoldLine($row)) {
                 continue;
             }
 
@@ -1083,18 +1305,30 @@ class ClientProjectQuotation extends Model
             $description = (string) ($row['description'] ?? '');
             $amount = (float) ($row['amount'] ?? 0);
 
-            if (DebrisRemovalExpenseService::isLineDescription($description)) {
+            // v1 matches main: only debris is left at its stored amount.
+            // v2 also leaves commute / additional-cost rows alone so the
+            // fold does not pre-tax them twice.
+            $isHiddenExtra = DebrisRemovalExpenseService::isLineDescription($description)
+                || self::isLabourHiddenInternalExpenseLineDescription($description)
+                || self::isMaterialsHiddenInternalExpenseLineDescription($description);
+            if (DebrisRemovalExpenseService::isLineDescription($description)
+                || ($isHiddenExtra && ! $this->usesLegacyPdfFold())) {
                 $normalized[] = $row;
 
                 continue;
             }
 
             if (! empty($row['hst_included'])) {
-                $normalized[] = [
+                $preTax = self::preTaxFromHstIncluded($amount);
+                $line = [
                     'description' => $description,
-                    'amount' => self::preTaxFromHstIncluded($amount),
+                    'amount' => $preTax,
                     'apply_hst' => true,
                 ];
+                if (! $this->usesLegacyPdfFold()) {
+                    $line['hst_amount'] = round($amount - $preTax, 2);
+                }
+                $normalized[] = $line;
 
                 continue;
             }
@@ -1110,11 +1344,23 @@ class ClientProjectQuotation extends Model
                     $preTaxAmount = round($taxableBase + self::preTaxFromHstIncluded($includedPortion), 2);
                 }
 
-                $normalized[] = [
+                $line = [
                     'description' => $description,
                     'amount' => round($preTaxAmount, 2),
                     'apply_hst' => true,
                 ];
+                if (array_key_exists('hst_taxable_amount', $row)) {
+                    $line['hst_taxable_amount'] = $taxableBase;
+                }
+                if (! $this->usesLegacyPdfFold()) {
+                    $editorLineTotal = round($amount + self::lineHstAmount([
+                        'apply_hst' => true,
+                        'amount' => $amount,
+                        'hst_taxable_amount' => $taxableBase,
+                    ]), 2);
+                    $line['hst_amount'] = round($editorLineTotal - $line['amount'], 2);
+                }
+                $normalized[] = $line;
 
                 continue;
             }
@@ -1292,6 +1538,10 @@ class ClientProjectQuotation extends Model
     /** 13% HST only on rows where `apply_hst` is true (default). */
     public function hst(): float
     {
+        if ($this->usesLegacyPdfFold()) {
+            return (new LegacyPdfFoldV1($this))->hst();
+        }
+
         if (! $this->hasSubtotalOverrideActive()) {
             return $this->pdfHst();
         }
@@ -1307,7 +1557,13 @@ class ClientProjectQuotation extends Model
                 if (empty($row['apply_hst'])) {
                     continue;
                 }
-                $sum += (float) ($row['amount'] ?? 0) * $ratio * self::HST_RATE;
+                // v1: scale the face amount then apply 13% (main).
+                // v2: scale the per-line HST (honours leftover cents).
+                if ($this->usesLegacyPdfFold()) {
+                    $sum += (float) ($row['amount'] ?? 0) * $ratio * self::HST_RATE;
+                } else {
+                    $sum += self::lineHstAmount($row) * $ratio;
+                }
             }
 
             return round($sum, 2);
@@ -1330,7 +1586,77 @@ class ClientProjectQuotation extends Model
 
     public function grandTotal(): float
     {
+        if ($this->usesLegacyPdfFold()) {
+            return (new LegacyPdfFoldV1($this))->grandTotal();
+        }
+
         return round($this->subtotal() + $this->hst(), 2);
+    }
+
+    /**
+     * Unfolded editor total: each stored line's face amount plus that
+     * row's HST (per-row rounding, same as the standard editor JS).
+     * HST-included extras stay at their gross amount.
+     */
+    public function editorGrandTotal(): float
+    {
+        if ($this->hasSubtotalOverrideActive()) {
+            return $this->grandTotal();
+        }
+
+        $sum = 0.0;
+        foreach ($this->cleanItems() as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
+            $sum += (float) ($row['amount'] ?? 0);
+            $sum += self::lineHstAmount($row);
+        }
+
+        return round($sum, 2);
+    }
+
+    /**
+     * HST the editor charges: per-line 13% plus leftover inside HST-included
+     * extras (commute, debris, additional costs). v2 PDF footer must match.
+     */
+    public function editorHst(): float
+    {
+        if ($this->hasSubtotalOverrideActive()) {
+            return $this->hst();
+        }
+
+        $sum = 0.0;
+        $materialsHiddenGross = 0.0;
+        $labourHiddenGross = 0.0;
+        foreach ($this->cleanItems() as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
+            $desc = (string) ($row['description'] ?? '');
+            $hiddenMaterials = self::isMaterialsHiddenInternalExpenseLineDescription($desc);
+            $hiddenLabour = DebrisRemovalExpenseService::isLineDescription($desc)
+                || self::isLabourHiddenInternalExpenseLineDescription($desc);
+            if ($hiddenMaterials && ! empty($row['hst_included']) && empty($row['apply_hst'])) {
+                $materialsHiddenGross += (float) ($row['amount'] ?? 0);
+                continue;
+            }
+            if ($hiddenLabour && ! empty($row['hst_included']) && empty($row['apply_hst'])) {
+                $labourHiddenGross += (float) ($row['amount'] ?? 0);
+                continue;
+            }
+            if (! empty($row['apply_hst'])) {
+                $sum += self::lineHstAmount($row);
+            }
+        }
+        if ($materialsHiddenGross > 0) {
+            $sum += round($materialsHiddenGross - self::preTaxFromHstIncluded($materialsHiddenGross), 2);
+        }
+        if ($labourHiddenGross > 0) {
+            $sum += round($labourHiddenGross - self::preTaxFromHstIncluded($labourHiddenGross), 2);
+        }
+
+        return round($sum, 2);
     }
 
     public function statusLabel(): string
@@ -1577,6 +1903,10 @@ class ClientProjectQuotation extends Model
     {
         if (empty($row['apply_hst'])) {
             return 0.0;
+        }
+
+        if (array_key_exists('hst_amount', $row)) {
+            return round((float) $row['hst_amount'], 2);
         }
 
         $base = array_key_exists('hst_taxable_amount', $row)
