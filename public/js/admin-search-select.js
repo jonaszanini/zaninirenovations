@@ -234,7 +234,8 @@
       var rect = input.getBoundingClientRect();
       var pad = 8;
       var vw = window.innerWidth || document.documentElement.clientWidth || 0;
-      var width = Math.min(Math.max(rect.width, 280), Math.max(rect.width, vw - pad * 2));
+      var maxW = Math.max(80, vw - pad * 2);
+      var width = Math.min(Math.max(rect.width, Math.min(280, maxW)), maxW);
       var left = rect.left;
       if (left + width > vw - pad) {
         left = vw - pad - width;
@@ -247,7 +248,7 @@
       list.style.right = 'auto';
       list.style.top = (rect.bottom + 4) + 'px';
       list.style.width = Math.round(width) + 'px';
-      list.style.maxWidth = (vw - pad * 2) + 'px';
+      list.style.maxWidth = maxW + 'px';
       list.style.zIndex = '200';
     }
 
@@ -259,6 +260,7 @@
       list.style.right = '';
       list.style.top = '';
       list.style.width = '';
+      list.style.maxWidth = '';
       list.style.zIndex = '';
     }
 

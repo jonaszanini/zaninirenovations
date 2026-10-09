@@ -214,6 +214,10 @@ class SharedPricesLayoutTest extends IntegrationTestCase
     private function assertBrowserGeometry(string $email): void
     {
         $this->assertTrue(is_dir(base_path('node_modules/puppeteer')), 'Puppeteer must be installed — geometry cannot silently skip');
+        $probe = [];
+        $probeCode = 0;
+        exec('cd '.escapeshellarg(base_path()).' && node -e "require(\'puppeteer\'); console.log(\'ok\')"', $probe, $probeCode);
+        $this->assertSame(0, $probeCode, 'Puppeteer must be require()-able — geometry cannot silently skip: '.implode("\n", $probe));
 
         $base = $this->startLayoutServer();
         $script = storage_path('app/sp-layout-geometry.js');
@@ -307,6 +311,12 @@ const base = process.env.SP_GEO_BASE;
         ) : 0,
         sellClipped: sellInputs.filter((s) => /99999\.9999|1234\.5678/.test(s.value) && s.clipped),
         sellMin: sellInputs.length ? Math.min(...sellInputs.map((s) => s.client)) : 0,
+        catalogHit: (() => {
+          const btn = document.querySelector('.sp-catalog-btn');
+          if (!btn) return 0;
+          const box = btn.getBoundingClientRect();
+          return Math.round(Math.min(box.width, box.height));
+        })(),
         workW: work ? Math.round(work.getBoundingClientRect().width) : 0,
         nameW: name ? Math.round(name.getBoundingClientRect().width) : 0,
         longChipOk: !longChip || (longChip.title === longChip.text && longChip.scroll >= longChip.client),
@@ -331,6 +341,35 @@ const base = process.env.SP_GEO_BASE;
       });
       await page.keyboard.press('Escape');
       out[String(w)].escClosed = await page.evaluate(() => !document.querySelector('.sp-chip--more[aria-expanded="true"]'));
+    }
+
+    if (w === 1024) {
+      out[String(w)].liveSell = await page.evaluate(() => {
+        const owner = document.getElementById('owner_hourly_rate');
+        const row = document.querySelector('tr.sp-row[data-sp-area="0"]');
+        const rate = row && row.querySelector('.sp-col-rate input');
+        const sell = row && row.querySelector('.sp-col-sell input');
+        const outEl = row && row.querySelector('[data-sp-effective]');
+        if (!owner || !rate || !sell || !outEl) return { ok: false, reason: 'missing' };
+        owner.value = '50.00';
+        owner.dispatchEvent(new Event('input', { bubbles: true }));
+        rate.value = '10.0000';
+        rate.dispatchEvent(new Event('input', { bubbles: true }));
+        const afterRate = outEl.textContent || '';
+        sell.value = '99.0000';
+        rate.value = '';
+        rate.dispatchEvent(new Event('input', { bubbles: true }));
+        sell.dispatchEvent(new Event('input', { bubbles: true }));
+        const afterSell = outEl.textContent || '';
+        const kind = row.getAttribute('data-sp-kind') || '';
+        const expectedFromRate = kind === 'hours_each' ? '500.00' : '5.00';
+        return {
+          ok: afterRate.includes(expectedFromRate) && afterSell.includes('99.00'),
+          afterRate,
+          afterSell,
+          kind,
+        };
+      });
     }
 
     if (w === 320 || w === 390) {
@@ -407,8 +446,11 @@ JS
                 $this->assertGreaterThanOrEqual(115, (int) ($row['workW'] ?? 0), "Work item too narrow at {$w}");
                 $this->assertGreaterThanOrEqual(100, (int) ($row['sellMin'] ?? 0), "Sell column too narrow at {$w}");
                 $this->assertGreaterThanOrEqual(44, (int) ($row['moreHit'] ?? 0), "+N hit area must be ≥44px at {$w}");
+                $this->assertGreaterThanOrEqual(44, (int) ($row['catalogHit'] ?? 0), "Catalog hit area must be ≥44px at {$w}");
             }
         }
+
+        $this->assertTrue($json['1024']['liveSell']['ok'] ?? false, 'Effective sell must update live when Rate or Sell changes: '.json_encode($json['1024']['liveSell'] ?? []));
 
         foreach (['320', '390'] as $w) {
             $this->assertFalse($json[$w]['tip']['off'] ?? true, "+N tooltip must stay in the viewport at {$w}");
