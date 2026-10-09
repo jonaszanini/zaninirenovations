@@ -825,24 +825,38 @@ async function puppeteerClick() {
           const r = icon.getBoundingClientRect();
           if (r.width >= 8 && r.height >= 8) return r;
         }
-        const node = Array.from(btn.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
-        if (node) {
-          const range = document.createRange();
-          range.selectNodeContents(node);
-          const r = range.getBoundingClientRect();
-          if (r.width >= 1) return r;
-        }
-        return null;
+        const b = btn.getBoundingClientRect();
+        if (b.width < 8 || b.height < 8) return null;
+        const size = 16;
+        return {
+          left: b.left + (b.width - size) / 2,
+          right: b.left + (b.width + size) / 2,
+          top: b.top + (b.height - size) / 2,
+          bottom: b.top + (b.height + size) / 2,
+          width: size,
+          height: size,
+        };
       }
       function endGap(end) {
         const wrap = end.querySelector('.admin-info-tip-wrap');
         const word = Array.from(end.children).find((c) => c !== wrap);
         const wr = word && word.getBoundingClientRect();
         const ir = glyphBox(wrap);
+        const btn = wrap && wrap.querySelector('.admin-info-tip');
+        const br = btn && btn.getBoundingClientRect();
+        const wp = wrap && wrap.getBoundingClientRect();
         if (!wr || !ir || wr.width < 1 || ir.width < 1) return null;
         return {
           gap: ir.left - wr.right,
+          layout: wp ? wp.left - wr.right : null,
           vOff: Math.abs(((wr.top + wr.bottom) / 2) - ((ir.top + ir.bottom) / 2)),
+          wrapDisplay: wrap ? getComputedStyle(wrap).display : '',
+          btnMargin: btn ? getComputedStyle(btn).margin : '',
+          wordW: wr.width,
+          wrapL: wp ? wp.left : null,
+          wordR: wr.right,
+          iconL: ir.left,
+          btnL: br ? br.left : null,
           aria: String((wrap.querySelector('.admin-info-tip') || {}).getAttribute && wrap.querySelector('.admin-info-tip').getAttribute('aria-label') || '').slice(0, 60),
         };
       }
@@ -1089,14 +1103,17 @@ async function puppeteerClick() {
               const r = icon.getBoundingClientRect();
               if (r.width >= 8 && r.height >= 8) return r;
             }
-            const node = Array.from(btn.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
-            if (node) {
-              const range = document.createRange();
-              range.selectNodeContents(node);
-              const r = range.getBoundingClientRect();
-              if (r.width >= 1) return r;
-            }
-            return null;
+            const b = btn.getBoundingClientRect();
+            if (b.width < 8 || b.height < 8) return null;
+            const size = 16;
+            return {
+              left: b.left + (b.width - size) / 2,
+              right: b.left + (b.width + size) / 2,
+              top: b.top + (b.height - size) / 2,
+              bottom: b.top + (b.height + size) / 2,
+              width: size,
+              height: size,
+            };
           }
           const gaps = [];
           document.querySelectorAll('.admin-label-with-tip__end').forEach((end) => {

@@ -305,6 +305,10 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline-flex/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
             '/\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,220}display:\s*inline/',
             $css
         );

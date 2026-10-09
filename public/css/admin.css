@@ -1802,6 +1802,9 @@ summary > .admin-heading-copy {
   min-width: 0;
 }
 .admin-label-with-tip__end {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
   white-space: nowrap;
 }
 .admin-label-with-tip__end > span {
@@ -1815,6 +1818,12 @@ summary > .admin-heading-copy {
   align-items: center;
   vertical-align: middle;
   flex-shrink: 0;
+}
+.admin-label-with-tip .admin-label-with-tip__end > .admin-info-tip-wrap .admin-info-tip,
+.admin-label-with-tip__end > .admin-info-tip-wrap > .admin-info-tip,
+.sq-intro-option-title .admin-label-with-tip__end .admin-info-tip,
+.admin-heading-copy .admin-label-with-tip__end .admin-info-tip {
+  margin: -10px -8px;
 }
 .admin-label-with-tip__end > label,
 .admin-label-with-tip__end > span:not(.admin-info-tip-wrap) {
