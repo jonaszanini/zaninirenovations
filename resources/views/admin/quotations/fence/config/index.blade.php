@@ -238,7 +238,7 @@
         <label for="fq-labour-6">Labour rate 6′ fence (CAD$ / linear ft)</label>
         <input id="fq-labour-6" type="text" name="labour_rate_per_ft"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
-               value="{{ old('labour_rate_per_ft', number_format((float) $settings->labour_rate_per_ft, 2, '.', '')) }}">
+               value="{{ old('labour_rate_per_ft', number_format((float) $settings->labour_rate_per_ft, 2, '.', '')) }}" data-cp-money-entry="direct">
         <p class="admin-form-help">Default start price for new 6′ fence quotations.</p>
       </div>
 
@@ -246,7 +246,7 @@
         <label for="fq-labour-8">Labour rate 8′ fence (CAD$ / linear ft)</label>
         <input id="fq-labour-8" type="text" name="labour_rate_8ft_per_ft"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
-               value="{{ old('labour_rate_8ft_per_ft', number_format((float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft), 2, '.', '')) }}">
+               value="{{ old('labour_rate_8ft_per_ft', number_format((float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft), 2, '.', '')) }}" data-cp-money-entry="direct">
         <p class="admin-form-help">Default start price for new 8′ fence quotations.</p>
       </div>
 
@@ -254,7 +254,7 @@
         <label for="fq-labour-additional-gate">Labour per additional gate (CAD$)</label>
         <input id="fq-labour-additional-gate" type="text" name="labour_per_additional_gate"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
-               value="{{ old('labour_per_additional_gate', number_format((float) ($settings->labour_per_additional_gate ?? 0), 2, '.', '')) }}">
+               value="{{ old('labour_per_additional_gate', number_format((float) ($settings->labour_per_additional_gate ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
         <p class="admin-form-help">Added to labour for gate #2 and each gate after that.</p>
       </div>
 

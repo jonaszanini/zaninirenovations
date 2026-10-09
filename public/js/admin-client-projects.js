@@ -10,23 +10,18 @@
  * Money mask (inputs with class `.cp-money-input`):
  *   - Optional `data-cp-money-places="4"` sets fractional digits (default 2).
  *     Standard CAD amounts use 2; paving tier $/sq ft uses 4.
- *   - Calculator-style entry: only digits are accepted, and they accumulate
- *     from the right so (2 places) `1` -> `0.01`, `12` -> `0.12`, `123` -> `1.23`,
- *     `12345` -> `123.45`, `1234567` -> `12,345.67`.
- *   - Thousand separators (",") are inserted and refreshed on every keystroke
- *     (including backspace).
- *   - On form submit the visible value is replaced with a plain numeric string
- *     (e.g. `12345.67`) so server-side numeric validation keeps working.
+ *   - Default entry is direct decimals (`data-cp-money-entry="direct"`):
+ *     type 4.75 and the field stays 4.75. Calculator-style right-fill
+ *     (digits accumulate as minor units) is opt-in only via
+ *     `data-cp-money-entry="cents"`.
+ *   - Thousand separators (",") are applied on blur for direct fields
+ *     and stripped on submit so server-side numeric validation works.
  *     This also runs for native `HTMLFormElement.submit()` (used by basement /
  *     millwork wizards), which skips DOM `submit` event listeners.
  *   - Calling `cpMoneyMask.wire(input)` again on the same element re-formats
  *     the current value (e.g. mark-paid modal preset).
- *   - Server-side also accepts grouped amounts via `App\Support\CadMoney`.
- *
- *   - Optional `data-cp-money-entry="direct"` on a `.cp-money-input`:
- *     normal decimal typing (130 or 130.00) with thousand separators applied
- *     on blur — use where calculator-style cents entry would be confusing
- *     (e.g. invoice discount).
+ *   - Server-side also accepts grouped amounts via `App\Support\CadMoney`
+ *     and must not divide posted dollars by 100.
  *
  *   - Optional `data-cp-money-hybrid="1"` on a direct-entry field: digit-only
  *     strings use calculator minor-units (13000 → 130.00); a "." means plain
@@ -180,7 +175,9 @@
     if (!input) return;
     var places = moneyPlaces(input);
     if (input._cpMoneyWired) {
-      normalizeDirectMoneyOnBlur(input, places);
+      if (typeof document === 'undefined' || document.activeElement !== input) {
+        normalizeDirectMoneyOnBlur(input, places);
+      }
       return;
     }
     input._cpMoneyWired = true;
@@ -277,10 +274,14 @@
 
   function wireMoneyInput(input) {
     if (!input) return;
-    if (input.getAttribute('data-cp-money-entry') === 'direct') {
-      wireDirectMoneyEntry(input);
+    if (input.getAttribute('data-cp-money-entry') === 'cents') {
+      wireCentsMoneyEntry(input);
       return;
     }
+    wireDirectMoneyEntry(input);
+  }
+
+  function wireCentsMoneyEntry(input) {
     var places = moneyPlaces(input);
     if (input._cpMoneyWired) {
       initExistingValue(input, places);

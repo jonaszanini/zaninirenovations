@@ -126,7 +126,7 @@ class QuotationCutListImportTest extends IntegrationTestCase
         $js = file_get_contents(public_path('js/admin-utilities-lumber-board.js'));
         $this->assertNotFalse($js);
         $this->assertStringContainsString('cp-money-input', $js);
-        $this->assertStringNotContainsString('data-cp-money-entry="direct"', $js);
+        $this->assertStringContainsString('data-cp-money-entry="direct"', $js);
     }
 
     private function seedDeckQuote(): LowDeckQuotation

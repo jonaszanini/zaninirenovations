@@ -931,13 +931,13 @@
           <label for="owner_hourly_rate">Owner hourly (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
-                 value="{{ old('owner_hourly_rate', number_format((float) $crew->owner_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('owner_hourly_rate', number_format((float) $crew->owner_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="sp-crew-field">
           <label for="helper_hourly_rate">Helper hourly (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
-                 value="{{ old('helper_hourly_rate', number_format((float) $crew->helper_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('helper_hourly_rate', number_format((float) $crew->helper_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="sp-crew-field">
           <label for="hours_per_day">Hours / day</label>
@@ -1046,7 +1046,7 @@
                            class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
                            name="works[{{ $work->id }}][rate]"
                            value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '') }}"
-                           placeholder="0.00">
+                           placeholder="0.00" data-cp-money-entry="direct">
                   </td>
                   <td class="sp-col-sell" data-label="">
                     <span class="sp-sell-phone-label">Sell rate</span>
@@ -1055,7 +1055,7 @@
                              class="sp-input sp-input--sm cp-money-input" id="sp-flat-{{ $work->id }}"
                              name="works[{{ $work->id }}][flat_rate]"
                              value="{{ $savedSell }}"
-                             placeholder="{{ $sellPlaceholder }}">
+                             placeholder="{{ $sellPlaceholder }}" data-cp-money-entry="direct">
                     </div>
                     <small class="sp-effective" data-sp-effective @if ($effective === null) hidden @endif>{{ $effective !== null ? \App\Models\ClientProject::formatMoney($effective)."\u{200B}/".$work->unit : '' }}</small>
                   </td>
@@ -1070,7 +1070,7 @@
                            class="sp-input sp-input--sm cp-money-input" id="sp-mat-price-{{ $work->id }}"
                            name="works[{{ $work->id }}][material_unit_price]"
                            value="{{ old('works.'.$work->id.'.material_unit_price', $work->material_unit_price !== null ? number_format((float) $work->material_unit_price, 4, '.', '') : '') }}"
-                           placeholder="0.00">
+                           placeholder="0.00" data-cp-money-entry="direct">
                   </td>
                   <td class="sp-col-name" data-label="Mat. name">
                     @php $matNameVal = old('works.'.$work->id.'.material_name', $work->material_name); @endphp

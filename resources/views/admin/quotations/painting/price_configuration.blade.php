@@ -48,13 +48,13 @@
       <div class="admin-form-group">
         <label for="paint_per_gallon">Paint price per gallon (CAD$)</label>
         <input type="text" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" id="paint_per_gallon" name="paint_per_gallon"
-               placeholder="0.00" value="{{ old('paint_per_gallon', number_format((float) $settings->paint_per_gallon, 2, '.', '')) }}" required>
+               placeholder="0.00" value="{{ old('paint_per_gallon', number_format((float) $settings->paint_per_gallon, 2, '.', '')) }}" required data-cp-money-entry="direct">
         <p class="pq-hint">Premium paint e.g. Dulux Lifemaster</p>
       </div>
       <div class="admin-form-group">
         <label for="material_addon_fee">Material add-on fixed fee (CAD$)</label>
         <input type="text" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" id="material_addon_fee" name="material_addon_fee"
-               placeholder="0.00" value="{{ old('material_addon_fee', number_format((float) $settings->material_addon_fee, 2, '.', '')) }}" required>
+               placeholder="0.00" value="{{ old('material_addon_fee', number_format((float) $settings->material_addon_fee, 2, '.', '')) }}" required data-cp-money-entry="direct">
         <p class="pq-hint">Brushes, sleeves, masking, etc.</p>
       </div>
       <div class="admin-form-group">

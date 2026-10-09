@@ -14,6 +14,15 @@ class CadMoneyTest extends TestCase
         $this->assertSame(3850.0, CadMoney::parse(3850));
     }
 
+    public function test_parse_keeps_typed_dollars_and_does_not_divide_by_100(): void
+    {
+        $this->assertSame(4.75, CadMoney::parse('4.75'));
+        $this->assertSame(4.75, CadMoney::parse('4.7500'));
+        $this->assertNotSame(4.75 / 100, CadMoney::parse('4.75'));
+        $this->assertSame(475.0, CadMoney::parse('475'));
+        $this->assertNotSame(4.75, CadMoney::parse('475'));
+    }
+
     public function test_parse_rejects_invalid_and_empty(): void
     {
         $this->assertNull(CadMoney::parse(''));

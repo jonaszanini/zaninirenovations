@@ -217,6 +217,7 @@ jobs:
           php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
           php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
           php artisan test tests/Feature/SharedPricesLayoutTest.php
+          php artisan test tests/Feature/AdminMoneyDirectEntryTest.php
           php artisan test tests/Feature/SharedPricesTest.php
           php artisan test tests/Feature/SharedPricesAddRenameTest.php
           php artisan test tests/Feature/SharedWorksNormalizedLabelMigrationTest.php

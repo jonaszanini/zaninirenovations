@@ -234,7 +234,7 @@
                  autocomplete="off"
                 
                  placeholder="0.00"
-                 value="{{ old('hourly_rate', $project->hourly_rate ? number_format((float) $project->hourly_rate, 2, '.', '') : '') }}">
+                 value="{{ old('hourly_rate', $project->hourly_rate ? number_format((float) $project->hourly_rate, 2, '.', '') : '') }}" data-cp-money-entry="direct">
           @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
       </div>

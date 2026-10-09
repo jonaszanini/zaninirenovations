@@ -50,7 +50,7 @@ class RecordEtransferPaymentTest extends IntegrationTestCase
             ->assertSee('Paste email')
             ->assertSee('INV-2026-0001')
             ->assertSee('cp-money-input', false)
-            ->assertDontSee('data-cp-money-entry="direct"', false)
+            ->assertSee('data-cp-money-entry="direct"', false)
             ->assertSee('>Cancel</button>', false)
             ->assertSee('et-paste-advanced', false)
             ->assertDontSee('et-paste-advanced" open', false)
