@@ -46,7 +46,9 @@ jobs:
         run: |
           php artisan test tests/Unit/Views/BladeSyntaxTest.php
           php artisan test tests/Unit/Views/AiActionGroupTest.php
-          php artisan test tests/Unit/Views/QuotationPdfPageBreakTest.php tests/Unit/BasementQuotationWizardViewTest.php tests/Unit/Models/BasementQuotationScopePdfTest.php
+          php artisan test tests/Unit/Views/QuotationPdfPageBreakTest.php
+          php artisan test tests/Unit/BasementQuotationWizardViewTest.php
+          php artisan test tests/Unit/Models/BasementQuotationScopePdfTest.php
           php artisan test tests/Unit/Support/AdminListFiltersTest.php
           php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
@@ -56,7 +58,10 @@ jobs:
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
 
       - name: Admin dark-theme CSS coverage (no database)
-        run: php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php tests/Unit/Views/QuotationExpensePairLayoutTest.php
+        run: |
+          php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php
+          php artisan test tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
+          php artisan test tests/Unit/Views/QuotationExpensePairLayoutTest.php
 
       - name: Public CSS light-only (no database)
         run: |
