@@ -120,6 +120,38 @@
     </div>
   @endif
 
+  <h2 class="pdf-section-title">Finish</h2>
+  <table class="pdf-rows">
+    @php
+      $finishRows = collect($rows ?? [])->filter(function ($row) {
+        $label = strtolower((string) ($row['label'] ?? ''));
+        return str_contains($label, 'ceiling')
+          || str_contains($label, 'net wall')
+          || str_contains($label, 'flooring')
+          || str_contains($label, 'waste')
+          || str_contains($label, 'box')
+          || str_contains($label, 'casing');
+      })->values();
+    @endphp
+    @forelse ($finishRows as $row)
+      <tr>
+        <td class="label">{{ $row['label'] }}</td>
+        <td class="value">{{ $row['value'] }}</td>
+      </tr>
+    @empty
+      @php $finish = $finish ?? []; @endphp
+      @if (!empty($finish['ceiling_height_ft']))
+        <tr><td class="label">Ceiling height</td><td class="value">{{ rtrim(rtrim(number_format((float) $finish['ceiling_height_ft'], 2, '.', ''), '0'), '.') }} ft</td></tr>
+      @endif
+      @if (array_key_exists('flooring_waste_percent', $finish) && $finish['flooring_waste_percent'] !== null)
+        <tr><td class="label">Flooring waste</td><td class="value">{{ rtrim(rtrim(number_format((float) $finish['flooring_waste_percent'], 2, '.', ''), '0'), '.') }}%</td></tr>
+      @endif
+      @if (array_key_exists('flooring_box_sqft', $finish) && $finish['flooring_box_sqft'] !== null)
+        <tr><td class="label">Box size</td><td class="value">{{ rtrim(rtrim(number_format((float) $finish['flooring_box_sqft'], 2, '.', ''), '0'), '.') }} sq ft</td></tr>
+      @endif
+    @endforelse
+  </table>
+
   <h2 class="pdf-section-title">Wall metrics</h2>
   <table class="pdf-rows">
     @foreach ($rows as $row)

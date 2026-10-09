@@ -97,6 +97,7 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .util-ra-guide',
             'html.admin-dark .util-ra-guide__body',
             'html.admin-dark .util-ra-guide__samples',
+            'html.admin-dark .util-ra-finish',
             'html.admin-dark .admin-filters-accordion .bp-list-filters',
             'html.admin-dark .bp-list-cat__more',
             'html.admin-dark .bp-status-badge',

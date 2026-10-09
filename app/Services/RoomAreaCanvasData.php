@@ -60,6 +60,8 @@ class RoomAreaCanvasData
 
     public const DEFAULT_WINDOW_HEIGHT_IN = 36.0;
 
+    public const DEFAULT_OPENING_HEIGHT_IN = 84.0;
+
     public const STAIR_TREAD_IN = 10.0;
 
     public const MAX_WALL_THICKNESS_IN = 12.0;
@@ -426,14 +428,50 @@ class RoomAreaCanvasData
             $object['hinge'] = in_array($hinge, self::OBJECT_HINGES, true) ? $hinge : 'left';
         }
 
-        if ($type === 'window' || $type === 'opening') {
-            $height = isset($item['height']) ? (float) $item['height'] : 48.0;
-            $sill = isset($item['sill_height']) ? (float) $item['sill_height'] : 36.0;
+        if (in_array($type, ['door', 'window'], true)) {
+            $sides = array_key_exists('casing_sides', $item) && is_numeric($item['casing_sides'])
+                ? (int) $item['casing_sides']
+                : ($type === 'door' ? 2 : 4);
+            $object['casing_sides'] = max(0, min($type === 'window' ? 4 : 2, $sides));
+        }
+
+        if ($type === 'door') {
+            $face = isset($item['door_face']) && is_string($item['door_face'])
+                ? strtolower(trim($item['door_face']))
+                : RoomAreaFinishMath::DOOR_FACE_INTERIOR;
+            $object['door_face'] = $face === RoomAreaFinishMath::DOOR_FACE_EXTERIOR
+                ? RoomAreaFinishMath::DOOR_FACE_EXTERIOR
+                : RoomAreaFinishMath::DOOR_FACE_INTERIOR;
+        }
+
+        if ($type === 'opening') {
+            $legacyPlaceholder = isset($item['height']) && is_numeric($item['height'])
+                && abs((float) $item['height'] - RoomAreaFinishMath::LEGACY_OPENING_HEIGHT_IN) < 0.001;
+            $sides = array_key_exists('casing_sides', $item) && is_numeric($item['casing_sides'])
+                ? (int) $item['casing_sides']
+                : ($legacyPlaceholder ? 0 : 2);
+            $object['casing_sides'] = max(0, min(2, $sides));
+        }
+
+        if ($type === 'window') {
+            $height = isset($item['height']) && is_numeric($item['height'])
+                ? (float) $item['height']
+                : self::DEFAULT_WINDOW_HEIGHT_IN;
             if ($height > 0 && $height <= 240) {
                 $object['height'] = round($height, 3);
             }
-            if ($sill >= 0 && $sill <= 240) {
-                $object['sill_height'] = round($sill, 3);
+            if (isset($item['sill_height']) && is_numeric($item['sill_height'])) {
+                $sill = (float) $item['sill_height'];
+                if ($sill >= 0 && $sill <= 240) {
+                    $object['sill_height'] = round($sill, 3);
+                }
+            }
+        } elseif ($type === 'opening') {
+            if (isset($item['height']) && is_numeric($item['height'])) {
+                $height = (float) $item['height'];
+                if ($height > 0 && $height <= 240) {
+                    $object['height'] = round($height, 3);
+                }
             }
         } elseif ($type === 'door' && isset($item['height']) && is_numeric($item['height'])) {
             $height = (float) $item['height'];
@@ -788,7 +826,10 @@ class RoomAreaCanvasData
      *   stairs_quote_type: string
      * }
      */
-    public function layoutMetrics(array $canvas, float $pixelsPerFoot, float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT): array
+    /**
+     * @param  array<string, mixed>  $finish
+     */
+    public function layoutMetrics(array $canvas, float $pixelsPerFoot, float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT, array $finish = []): array
     {
         $normalized = $this->normalize($canvas);
         $area = 0.0;
@@ -830,10 +871,16 @@ class RoomAreaCanvasData
         $sharedLf = $this->sharedWalls->sharedLengthFeet($normalized, $pixelsPerFoot);
         $framing = $this->sharedWalls->framingLf($perimeter, $sharedLf);
         $baseboard = max(0.0, round($perimeter - $objectMetrics['baseboard_deduction_lf'], 2));
-        $grossWall = $perimeter * $wallHeightFt;
-        $wallArea = max(0.0, round($grossWall - $objectMetrics['wall_deduction_sqft'], 2));
         $insideArea = round($area, 2);
         $outsideArea = $this->outsideAreaSqFt($insideArea, $perimeter, $sharedLf, $thicknessIn);
+        $finishMetrics = app(RoomAreaFinishMath::class)->finishMetrics(
+            $normalized,
+            $pixelsPerFoot,
+            $wallHeightFt,
+            $insideArea,
+            $finish
+        );
+        $wallArea = (float) ($finishMetrics['net_wall_area_sqft'] ?? 0);
 
         return [
             'area_sqft' => $insideArea,
@@ -859,7 +906,7 @@ class RoomAreaCanvasData
             'stairs_treads' => $library['stairs_treads'],
             'stairs_run_lf' => $library['stairs_run_lf'],
             'stairs_quote_type' => $library['stairs_quote_type'],
-        ];
+        ] + $finishMetrics;
     }
 
     /**
@@ -904,7 +951,12 @@ class RoomAreaCanvasData
             'stairs_treads' => 0,
             'stairs_run_lf' => 0.0,
             'stairs_quote_type' => 'standard',
-        ];
+        ] + app(RoomAreaFinishMath::class)->finishMetrics(
+            $this->emptyCanvas(),
+            0,
+            $this->normalizeWallHeight($wallHeightFt),
+            0.0
+        );
     }
 
     public function outsideAreaSqFt(float $insideArea, float $perimeterLf, float $sharedLf, float $thicknessIn): float
@@ -997,15 +1049,7 @@ class RoomAreaCanvasData
      */
     private function objectHeightInches(array $object, string $type, float $wallHeightFt): float
     {
-        if (isset($object['height']) && is_numeric($object['height']) && (float) $object['height'] > 0) {
-            return (float) $object['height'];
-        }
-
-        return match ($type) {
-            'window' => self::DEFAULT_WINDOW_HEIGHT_IN,
-            'opening' => $wallHeightFt * 12.0,
-            default => self::DEFAULT_DOOR_HEIGHT_IN,
-        };
+        return app(RoomAreaFinishMath::class)->objectHeightInches($object, $type, $wallHeightFt);
     }
 
     /**

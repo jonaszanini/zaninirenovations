@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\RoomAreaCanvasData;
+use App\Services\RoomAreaFinishMath;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,6 +20,10 @@ class RoomAreaRoom extends Model
         'canvas_height',
         'area_sqft',
         'wall_height_ft',
+        'ceiling_height_ft',
+        'flooring_waste_percent',
+        'flooring_direction',
+        'flooring_box_sqft',
         'pdf_path',
     ];
 
@@ -27,6 +32,10 @@ class RoomAreaRoom extends Model
         'area_sqft' => 'float',
         'scale_pixels_per_foot' => 'float',
         'wall_height_ft' => 'float',
+        'ceiling_height_ft' => 'float',
+        'flooring_waste_percent' => 'float',
+        'flooring_direction' => 'integer',
+        'flooring_box_sqft' => 'float',
     ];
 
     public function canvasData(): array
@@ -47,6 +56,24 @@ class RoomAreaRoom extends Model
     public function resolvedWallHeightFt(): float
     {
         return app(RoomAreaCanvasData::class)->normalizeWallHeight($this->wall_height_ft);
+    }
+
+    public function resolvedCeilingHeightFt(): float
+    {
+        return app(RoomAreaFinishMath::class)->ceilingHeightFt($this->ceiling_height_ft, $this->resolvedWallHeightFt());
+    }
+
+    /**
+     * @return array{ceiling_height_ft: ?float, flooring_waste_percent: float, flooring_direction: int, flooring_box_sqft: ?float}
+     */
+    public function finishSettings(): array
+    {
+        return [
+            'ceiling_height_ft' => $this->ceiling_height_ft,
+            'flooring_waste_percent' => $this->flooring_waste_percent,
+            'flooring_direction' => $this->flooring_direction,
+            'flooring_box_sqft' => $this->flooring_box_sqft,
+        ];
     }
 
     /**
@@ -73,7 +100,7 @@ class RoomAreaRoom extends Model
             return app(RoomAreaCanvasData::class)->emptyLayoutMetrics($height);
         }
 
-        return app(RoomAreaCanvasData::class)->layoutMetrics($this->canvasData(), $scale, $height);
+        return app(RoomAreaCanvasData::class)->layoutMetrics($this->canvasData(), $scale, $height, $this->finishSettings());
     }
 
     public function project(): BelongsTo
