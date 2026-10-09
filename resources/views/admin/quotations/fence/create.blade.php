@@ -928,9 +928,20 @@
     return flagOn(value);
   }
 
+  var nextRunId = 1;
+  function sideRunId(side) {
+    if (side && side.run_id != null && String(side.run_id) !== '') {
+      var n = parseInt(String(side.run_id), 10);
+      if (isFinite(n) && n >= nextRunId) nextRunId = n + 1;
+      return String(side.run_id);
+    }
+    return String(nextRunId++);
+  }
+
   function renderSides(sides) {
     sidesEl.innerHTML = '';
     sides.forEach(function (side, i) {
+      var runId = sideRunId(side);
       var leftChecked = !!(side && flagOn(side.already_have_post_left));
       var rightChecked = !!(side && flagOn(side.already_have_post_right));
       var gateChecked = !!(side && flagOn(side.gate_goes_here));
@@ -938,6 +949,7 @@
       var preset = (side && side.gate_preset) ? side.gate_preset : '4_single';
       var card = document.createElement('div');
       card.className = 'fq-side-card';
+      card.setAttribute('data-run-id', runId);
       card.innerHTML = [
         '<div class="fq-side-card__head">',
         '  <h5>Run ' + (i + 1) + '</h5>',
@@ -983,6 +995,7 @@
         '    <input type="hidden" name="sides[' + i + '][gate_goes_here]" value="0">',
         '    <input type="checkbox" class="admin-checkbox__input fq-side-gate-here"',
         '           name="sides[' + i + '][gate_goes_here]" value="1"',
+        '           data-run-id="' + runId + '"',
         (gateChecked ? ' checked' : '') + '>',
         '    <span class="admin-checkbox__mark" aria-hidden="true"></span>',
         '    <span class="admin-checkbox__text">Gate goes here</span>',
@@ -1029,7 +1042,17 @@
 
   var lastClearedGateTicks = 0;
   var lastGateLimitSeen = null;
-  var clearedGateTickIndexes = [];
+  var clearedGateTickIds = [];
+
+  function gateInputRunId(input) {
+    return input ? String(input.getAttribute('data-run-id') || '') : '';
+  }
+
+  function findGateInputByRunId(gateInputs, runId) {
+    return Array.prototype.find.call(gateInputs, function (input) {
+      return gateInputRunId(input) === String(runId);
+    }) || null;
+  }
 
   function syncGateTickChrome(gateInputs) {
     gateInputs.forEach(function (input) {
@@ -1059,9 +1082,9 @@
       if (input.checked) checkedCount++;
     });
 
-    if (checkedCount < limit && clearedGateTickIndexes.length) {
-      clearedGateTickIndexes = clearedGateTickIndexes.filter(function (idx) {
-        var input = gateInputs[idx];
+    if (checkedCount < limit && clearedGateTickIds.length) {
+      clearedGateTickIds = clearedGateTickIds.filter(function (runId) {
+        var input = findGateInputByRunId(gateInputs, runId);
         if (!input || input.checked) return false;
         if (checkedCount >= limit) return true;
         input.checked = true;
@@ -1077,16 +1100,16 @@
         if (input.checked) {
           input.checked = false;
           excess--;
-          var idx = Array.prototype.indexOf.call(gateInputs, input);
-          if (idx >= 0 && clearedGateTickIndexes.indexOf(idx) === -1) {
-            clearedGateTickIndexes.unshift(idx);
+          var runId = gateInputRunId(input);
+          if (runId && clearedGateTickIds.indexOf(runId) === -1) {
+            clearedGateTickIds.unshift(runId);
           }
         }
       });
       checkedCount = limit;
     }
 
-    lastClearedGateTicks = clearedGateTickIndexes.length;
+    lastClearedGateTicks = clearedGateTickIds.length;
     lastGateLimitSeen = limit;
 
     // Keep every box clickable so checking another run moves the gate.
@@ -1197,7 +1220,8 @@
       already_have_post_right: false,
       gate_goes_here: false,
       connected_to_previous: true,
-      gate_preset: '4_single'
+      gate_preset: '4_single',
+      run_id: String(nextRunId++)
     });
     renderSides(current);
     schedulePreview();
@@ -1226,6 +1250,7 @@
         var connectedInput = card.querySelector('.fq-side-connected');
         var presetInput = card.querySelector('.fq-side-gate-preset');
         var gateChecked = !!(gateInput && gateInput.checked);
+        var runId = card.getAttribute('data-run-id') || (gateInput && gateInput.getAttribute('data-run-id')) || '';
         return {
           length_ft: isFinite(v) ? v : null,
           already_have_post_left: !!(leftInput && leftInput.checked),
@@ -1233,6 +1258,7 @@
           gate_goes_here: gateChecked,
           connected_to_previous: connectedInput ? !!connectedInput.checked : false,
           gate_preset: presetInput ? presetInput.value : '4_single',
+          run_id: runId || null,
         };
       }
     );

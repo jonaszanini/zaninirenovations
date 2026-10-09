@@ -90,7 +90,9 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertIsString($fence);
         $this->assertStringContainsString('document.activeElement !== gatesInput', $fence);
         $this->assertStringContainsString('lastClearedGateTicks', $fence);
-        $this->assertStringContainsString('clearedGateTickIndexes', $fence);
+        $this->assertStringContainsString('clearedGateTickIds', $fence);
+        $this->assertStringNotContainsString('clearedGateTickIndexes', $fence);
+        $this->assertStringContainsString('data-run-id', $fence);
         $this->assertStringContainsString('Gate goes here', $fence);
 
         $quoteCreates = glob(resource_path('views/admin/quotations/*/create.blade.php')) ?: [];
@@ -295,6 +297,14 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertSame('3', (string) ($report['fenceGateNotice']['afterRetype']['gates'] ?? ''));
         $this->assertSame(2, (int) ($report['fenceGateNotice']['afterRetype']['ticks'] ?? 0));
         $this->assertStringNotContainsString('cleared', strtolower((string) ($report['fenceGateNotice']['afterRetype']['notice'] ?? '')));
+        $afterRemove = $report['fenceGateNotice']['afterRemove'] ?? [];
+        $this->assertSame(2, (int) ($afterRemove['ticks'] ?? 0));
+        $removedIds = $afterRemove['ids'] ?? [];
+        $restoredIds = $afterRemove['tickedIds'] ?? [];
+        $this->assertNotSame('', (string) ($removedIds[0] ?? ''));
+        $this->assertNotSame('', (string) ($removedIds[2] ?? ''));
+        $this->assertContains((string) $removedIds[0], $restoredIds);
+        $this->assertContains((string) $removedIds[2], $restoredIds);
 
         $created = FlooringType::query()->where('name', 'Direct entry oak')->first();
         $this->assertNotNull($created, 'browser save must create the add-type row');
