@@ -112,53 +112,29 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
 
-        $inputs = [
-            'pieces' => [[
-                'type' => 'cabinet',
-                'qty' => 1,
-                'width' => 36,
-                'height' => 34.5,
-                'depth' => 24,
-                'unit' => 'in',
-                'include_doors' => 0,
-                'include_back' => 0,
-                'edge_banding' => 0,
-                'shelf_count' => 0,
-            ]],
-            'include_install' => false,
-            'owner_hourly_rate' => 80,
-        ];
-        $expected = (new MillworkQuotationCalculator)->calculate($inputs, null, 1);
-
         $quote = MillworkQuotation::query()->create([
             'quote_number' => 'MW-V1-FRAC',
             'client_name' => 'Legacy Fraction',
             'is_draft' => false,
             'cut_plan_version' => 1,
-            'inputs' => $inputs,
-            'calculation' => $expected,
-            'final_quote_total' => $expected['summary']['grand_total'] ?? 0,
+            'inputs' => [
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'qty' => 1,
+                    'width' => 36,
+                    'height' => 34.5,
+                    'depth' => 24,
+                    'unit' => 'in',
+                ]],
+            ],
+            'calculation' => ['summary' => ['grand_total' => 0]],
+            'final_quote_total' => 0,
         ]);
 
-        $this->put(route('admin.quotations.millwork.update', $quote), [
+        $common = [
             'save_intent' => 'publish',
             'client_name' => 'Legacy Fraction',
             '_cut_plan_version' => 1,
-            'pieces' => [[
-                'type' => 'cabinet',
-                'qty' => 1,
-                'width' => '3',
-                'width_unit' => 'ft',
-                'height' => '34 1/2',
-                'height_unit' => 'in',
-                'depth' => '2 ft',
-                'depth_unit' => 'in',
-                'unit' => 'in',
-                'include_doors' => 0,
-                'include_back' => 0,
-                'edge_banding' => 0,
-                'shelf_count' => 0,
-            ]],
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
             'include_install' => 0,
@@ -166,16 +142,42 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
             'include_debris_removal' => 0,
             'include_commute' => 0,
             'ask_reply_to_accept' => '0',
-        ])->assertRedirect()
-            ->assertSessionHasNoErrors();
+        ];
+        $piece = [
+            'type' => 'cabinet',
+            'qty' => 1,
+            'include_doors' => 0,
+            'include_back' => 0,
+            'edge_banding' => 0,
+            'shelf_count' => 0,
+            'unit' => 'in',
+        ];
+
+        $this->put(route('admin.quotations.millwork.update', $quote), array_merge($common, [
+            'pieces' => [array_merge($piece, [
+                'width' => 36,
+                'height' => 34.5,
+                'depth' => 24,
+            ])],
+        ]))->assertRedirect()->assertSessionHasNoErrors();
+
+        $inchTotal = (float) $quote->fresh()->final_quote_total;
+        $this->assertGreaterThan(0, $inchTotal);
+
+        $this->put(route('admin.quotations.millwork.update', $quote), array_merge($common, [
+            'pieces' => [array_merge($piece, [
+                'width' => '3',
+                'width_unit' => 'ft',
+                'height' => '34 1/2',
+                'height_unit' => 'in',
+                'depth' => '2 ft',
+                'depth_unit' => 'in',
+            ])],
+        ]))->assertRedirect()->assertSessionHasNoErrors();
 
         $fresh = $quote->fresh();
         $this->assertSame(1, (int) $fresh->cut_plan_version);
-        $this->assertEqualsWithDelta(
-            (float) ($expected['summary']['grand_total'] ?? 0),
-            (float) $fresh->final_quote_total,
-            0.05
-        );
+        $this->assertEqualsWithDelta($inchTotal, (float) $fresh->final_quote_total, 0.05);
     }
 
     public function test_project_pdf_totals_match_calculator(): void
