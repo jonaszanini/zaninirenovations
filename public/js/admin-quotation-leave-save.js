@@ -1,4 +1,55 @@
 (function () {
+  var PUBLISH_ONLY_REQUIRED = 'input[name="payment_installments"], input[name="include_debris_removal"], input[name="debris_removal_amount"], input[name="ask_reply_to_accept"]';
+
+  function relaxPublishOnlyRequired(form) {
+    if (!form || !form.querySelectorAll) {
+      return;
+    }
+    form.querySelectorAll(PUBLISH_ONLY_REQUIRED).forEach(function (el) {
+      if (el.required) {
+        el.setAttribute('data-qh-publish-required', '1');
+        el.required = false;
+      }
+    });
+  }
+
+  function isDraftSubmit(form) {
+    var intent = form.querySelector('input[name="save_intent"]');
+    if (intent && intent.value === 'draft') {
+      return true;
+    }
+    var isDraft = form.querySelector('input[name="is_draft"]');
+    return !!(isDraft && (isDraft.value === '1' || isDraft.value === 'true'));
+  }
+
+  window.AdminQuoteDraftValidation = {
+    relax: relaxPublishOnlyRequired,
+    isDraftSubmit: isDraftSubmit,
+  };
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('.qh-actions__draft, [id$="-btn-draft"]');
+    if (!btn) {
+      return;
+    }
+    var form = btn.form
+      || (btn.getAttribute('form') ? document.getElementById(btn.getAttribute('form')) : null)
+      || editorForm();
+    if (form) {
+      relaxPublishOnlyRequired(form);
+    }
+  }, true);
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form || !form.matches || !form.matches('form[data-quotation-editor]')) {
+      return;
+    }
+    if (isDraftSubmit(form)) {
+      relaxPublishOnlyRequired(form);
+    }
+  }, true);
+
   function editorForm() {
     return document.querySelector('form[data-quotation-editor]');
   }
@@ -131,8 +182,11 @@
   }
 
   function canAutosave(form) {
-    if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
-      return false;
+    if (typeof form.checkValidity === 'function') {
+      relaxPublishOnlyRequired(form);
+      if (!form.checkValidity()) {
+        return false;
+      }
     }
 
     // Untouched new quotes (including ones prefilled from a project) should not
@@ -287,6 +341,7 @@
       tinymce.triggerSave();
     }
     preserveDraft(form);
+    relaxPublishOnlyRequired(form);
     hiddenInput(form, 'after_save_url', dest.pathname + dest.search + dest.hash);
     hiddenInput(form, 'after_save_attach_return', attachReturn ? '1' : '0');
     if (typeof form.requestSubmit === 'function') {

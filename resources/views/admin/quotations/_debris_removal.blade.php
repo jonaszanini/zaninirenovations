@@ -14,7 +14,10 @@
           || old('include_debris_removal') === 1
           || old('include_debris_removal') === true;
   } elseif ($isEdit) {
-      $includeDebrisChoice = (bool) ($quotation->include_debris_removal ?? false);
+      $rawDebris = $quotation->getRawOriginal('include_debris_removal');
+      if ($rawDebris !== null && $rawDebris !== '') {
+          $includeDebrisChoice = (int) $rawDebris === 1;
+      }
   }
 
   $debrisAmount = old('debris_removal_amount');

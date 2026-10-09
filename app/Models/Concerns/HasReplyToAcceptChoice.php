@@ -27,7 +27,7 @@ trait HasReplyToAcceptChoice
             }
 
             $parsed = QuotationReplyToAccept::parse($request->input(QuotationReplyToAccept::FIELD));
-            if ($parsed === null) {
+            if ($parsed === null && ! \App\Support\QuotationSaveIntent::isDraft($request)) {
                 throw ValidationException::withMessages([
                     QuotationReplyToAccept::FIELD => QuotationReplyToAccept::MESSAGE,
                 ]);

@@ -246,8 +246,9 @@ class ClientProjectQuotationController extends Controller
             return back()->with('error', "Cannot email the {$quotation->typeLabel()} — add the client's email address first.");
         }
 
-        if (! $quotation->hasReplyToAcceptChoice()) {
-            return back()->with('error', \App\Support\QuotationReplyToAccept::MESSAGE);
+        $publishOnly = $quotation->missingPublishOnlyChoices();
+        if ($publishOnly !== []) {
+            return back()->with('error', $publishOnly[0]);
         }
 
         // If the quotation has already been sent at least once, the next save
@@ -664,6 +665,10 @@ class ClientProjectQuotationController extends Controller
 
         if (ClientProject::phoneDigitsForSms($project->client_phone) === null) {
             $out[] = 'Add a mobile phone number the client uses for texting (save on Edit project).';
+        }
+
+        foreach ($quotation->missingPublishOnlyChoices() as $message) {
+            $out[] = $message;
         }
 
         return $out;

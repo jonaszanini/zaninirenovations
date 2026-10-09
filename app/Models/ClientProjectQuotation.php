@@ -2201,6 +2201,47 @@ class ClientProjectQuotation extends Model
         return $this->askReplyToAccept() !== null;
     }
 
+    public function hasPaymentScheduleChoice(): bool
+    {
+        $source = $this->sourceQuotationModel();
+        $raw = $source
+            ? $source->getRawOriginal('payment_installments')
+            : $this->getRawOriginal('payment_installments');
+
+        return in_array((int) $raw, QuotationPaymentSchedule::ALLOWED, true)
+            && $raw !== null
+            && $raw !== '';
+    }
+
+    public function hasDebrisRemovalChoice(): bool
+    {
+        $source = $this->sourceQuotationModel();
+        $raw = $source
+            ? $source->getRawOriginal('include_debris_removal')
+            : $this->getRawOriginal('include_debris_removal');
+
+        return $raw !== null && $raw !== '';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function missingPublishOnlyChoices(): array
+    {
+        $out = [];
+        if (! $this->hasPaymentScheduleChoice()) {
+            $out[] = QuotationPaymentSchedule::validationMessages()['payment_installments.required'];
+        }
+        if (! $this->hasDebrisRemovalChoice()) {
+            $out[] = DebrisRemovalExpenseService::validationMessages()['include_debris_removal.required'];
+        }
+        if (! $this->hasReplyToAcceptChoice()) {
+            $out[] = QuotationReplyToAccept::MESSAGE;
+        }
+
+        return $out;
+    }
+
     public function asksClientToReplyIAccept(): bool
     {
         return $this->askReplyToAccept() === true;

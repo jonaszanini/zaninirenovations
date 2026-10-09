@@ -41,7 +41,7 @@
       <p class="admin-form-error" role="alert">{{ $errors->first($field) }}</p>
     @else
       <p class="admin-form-help cp-reply-to-accept__help">
-        Required. Pick Yes or No before saving or emailing. When Yes, the email asks the client to reply “I accept”.
+        Required to save the quotation or email it. Drafts can leave this blank. When Yes, the email asks the client to reply “I accept”.
       </p>
     @endif
   </fieldset>
