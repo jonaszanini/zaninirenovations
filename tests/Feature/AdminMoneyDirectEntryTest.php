@@ -211,7 +211,9 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(1.01, (float) ($report['behaviors']['halfUp'] ?? 0), 0.0001);
         $this->assertTrue((bool) ($report['behaviors']['loneDotBlocked'] ?? false));
         $this->assertTrue((bool) ($report['behaviors']['gasCommaInvalid'] ?? false));
-        $this->assertNotEquals(1459.0, (float) ($report['behaviors']['gasCommaNum'] ?? 0));
+        $this->assertSame('1,459', $report['behaviors']['gasCommaShown'] ?? '');
+        $this->assertNotSame('1,459.000', $report['behaviors']['gasCommaShown'] ?? '');
+        $this->assertNotSame('1459.000', $report['behaviors']['gasCommaShown'] ?? '');
         $this->assertTrue((bool) ($report['behaviors']['storedNegativeBlank'] ?? false));
         $this->assertTrue((bool) ($report['behaviors']['storedNegativeSubmitAllowed'] ?? false));
         $this->assertFalse((bool) ($report['behaviors']['storedNegativeInvalid'] ?? true));

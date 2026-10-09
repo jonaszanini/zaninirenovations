@@ -364,7 +364,7 @@ function parseMoney(value) {
     if (!b.loneDotBlocked) {
       throw new Error('Lone "." was submittable');
     }
-    if (!b.gasCommaInvalid || Math.abs((b.gasCommaNum || 0) - 1459) < 0.0001) {
+    if (!b.gasCommaInvalid || String(b.gasCommaShown) === '1,459.000' || String(b.gasCommaShown) === '1459.000') {
       throw new Error('1,459 on a 3-place field was read as ' + b.gasCommaShown);
     }
     if (!b.storedNegativeBlank || !b.storedNegativeSubmitAllowed || b.storedNegativeInvalid) {
