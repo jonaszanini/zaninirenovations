@@ -147,6 +147,8 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString(':not([data-ra-more-close])', $css);
         $this->assertStringContainsString('.util-ra--fullpage.is-more-open .util-ra-more-sheet .util-ra-more-sheet__head .admin-btn.util-ra-icon-btn', $css);
         $this->assertStringContainsString('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side', $css);
+        $this->assertStringContainsString('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side__tabs', $css);
+        $this->assertStringContainsString('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side__body', $css);
         $this->assertStringContainsString('is-sheet-expanded', $js);
         $this->assertStringContainsString('data-ra-sheet-total', $html);
         $this->assertStringContainsString('data-ra-more-templates', $html);
