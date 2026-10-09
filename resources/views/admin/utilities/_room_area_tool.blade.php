@@ -307,6 +307,75 @@
       <section class="admin-card util-ra-canvas-card">
         <div class="util-ra-desktop-notice" hidden></div>
         <div class="util-ra-canvas-toolbar">
+          @if ($fullPage)
+          <div class="util-ra-phone-bar" data-ra-phone-bar>
+            <div class="util-ra-phone-bar__scroll" data-ra-phone-scroll>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-undo-vertex disabled aria-label="Undo">
+                <i class="fa fa-undo" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-redo disabled aria-label="Redo">
+                <i class="fa fa-repeat" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-close-shape disabled aria-label="Close shape">
+                <i class="fa fa-check-circle" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-ruler-toggle aria-label="Measure distance">
+                <i class="fa fa-arrows-alt" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn is-active" data-ra-snap-toggle aria-pressed="true" aria-label="Angle snap">
+                <i class="fa fa-magnet" aria-hidden="true"></i>
+              </button>
+              <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-icon-toggle" data-ra-lock-layers-wrap>
+                <input type="checkbox" class="util-sr-only" data-ra-lock-layers>
+                <i class="fa fa-lock util-ra-icon-toggle__on" aria-hidden="true"></i>
+                <i class="fa fa-unlock-alt util-ra-icon-toggle__off" aria-hidden="true"></i>
+                <span class="util-sr-only">Lock layers</span>
+              </label>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-templates-toggle aria-label="Room templates" aria-expanded="false" aria-controls="ra-templates-popover">
+                <i class="fa fa-clone" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-reset aria-label="Fit drawing in view">
+                <i class="fa fa-compress" aria-hidden="true"></i>
+              </button>
+            </div>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-phone-bar__more" data-ra-more-toggle aria-label="More tools" aria-expanded="false" aria-controls="ra-more-sheet">
+              <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+            </button>
+          </div>
+          @endif
+          <div class="util-ra-more-sheet" data-ra-more-sheet id="ra-more-sheet">
+            @if ($fullPage)
+            <div class="util-ra-more-sheet__chrome">
+              <div class="util-ra-more-sheet__head">
+                <p class="util-ra-more-sheet__title">More</p>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-more-close aria-label="Close more tools">
+                  <i class="fa fa-times" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div class="util-ra-more-sheet__zoom">
+                <span class="util-ra-more-sheet__label">Zoom</span>
+                <span class="util-ra-zoom-label" data-ra-zoom-label>100%</span>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-out aria-label="Zoom out">
+                  <i class="fa fa-minus" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-in aria-label="Zoom in">
+                  <i class="fa fa-plus" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-zoom-100 aria-label="Reset zoom to 100%">
+                  <i class="fa fa-search" aria-hidden="true"></i>
+                </button>
+              </div>
+              <details class="util-ra-more-help">
+                <summary class="util-ra-more-help__summary">Help</summary>
+                <div class="util-ra-more-help__body">
+                  <p>Undo and redo last edits. Fit to see the whole room. Pinch or scroll to zoom; two fingers or empty-canvas drag to pan.</p>
+                  <p>Close the outline when the last wall meets the first. Add another area in this color group, or start a new color group. Name the active area. Draw a ruler to measure any distance. Clear all areas from this room.</p>
+                  <p>Tap calibrate, click two ends of a known wall, then type that length. Switch Imperial or Metric; type 12' 6", 3.81 m, or 3810 mm in any mode.</p>
+                  <p>Show or hide the floor-plan photo, reposition it, or remove it. Templates start a rectangle, L, U, or T. Alcove cuts a bump into the selected wall. Lock wall corners so doors, windows, and notes stay editable.</p>
+                </div>
+              </details>
+            </div>
+            @endif
           <div class="util-ra-toolbar__groups">
             <div class="util-ra-tool-group util-ra-tool-group--draw">
               <div class="util-ra-tool-group__head">
@@ -643,6 +712,7 @@
             </div>
           </div>
           @endunless
+          </div>
         </div>
 
         <div class="util-ra-object-dock">
@@ -854,6 +924,10 @@
         <button type="button" class="util-ra-sheet-handle" data-ra-sheet-handle aria-label="Drag to resize panel">
           <span class="util-ra-sheet-handle__bar" aria-hidden="true"></span>
         </button>
+        <div class="util-ra-sheet-strip" data-ra-sheet-strip>
+          <span class="util-ra-sheet-strip__label">Area</span>
+          <strong data-ra-sheet-total>—</strong>
+        </div>
         <div class="util-ra-side__tabs" data-ra-side-tabs role="tablist" aria-label="Room Area panel">
           <span class="util-ra-tip util-ra-tip--block" data-tooltip="Type wall lengths, Add rect, and R90/L90 turns.">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab is-active" data-ra-side-tab="measure" role="tab" aria-selected="true" aria-label="Measure tab">Measure</button>

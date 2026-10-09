@@ -13,6 +13,11 @@
     return root.hasAttribute('data-ra-fullpage');
   }
 
+  function isPhoneChrome() {
+    return isFullPage() && typeof window.matchMedia === 'function'
+      && window.matchMedia('(max-width: 900px)').matches;
+  }
+
   function raAll(sel) {
     return Array.prototype.slice.call(root.querySelectorAll(sel));
   }
@@ -281,6 +286,10 @@
     templatesToggle: root.querySelector('[data-ra-templates-toggle]'),
     templatesPopover: root.querySelector('[data-ra-templates-popover]'),
     templatesRoot: root.querySelector('[data-ra-templates]'),
+    moreToggle: root.querySelector('[data-ra-more-toggle]'),
+    moreClose: root.querySelector('[data-ra-more-close]'),
+    moreSheet: root.querySelector('[data-ra-more-sheet]'),
+    sheetTotal: root.querySelector('[data-ra-sheet-total]'),
     areaName: root.querySelector('[data-ra-area-name]'),
     areaNameWrap: root.querySelector('[data-ra-area-name-wrap]'),
     palette: root.querySelector('[data-ra-palette]'),
@@ -1066,8 +1075,9 @@
     return Math.round(n * 100) / 100;
   }
 
-  function syncWallHeightInput() {
-    if (!els.wallHeight || document.activeElement === els.wallHeight) return;
+  function syncWallHeightInput(force) {
+    if (!els.wallHeight) return;
+    if (!force && document.activeElement === els.wallHeight) return;
     els.wallHeight.value = RA.wallHeightDisplay(state.wallHeightFt, isMetricDisplay(), fmt);
   }
 
@@ -1076,7 +1086,7 @@
     if (!isFinite(n) || n < 1) n = DEFAULT_WALL_HEIGHT_FT;
     if (n > 20) n = 20;
     state.wallHeightFt = Math.round(n * 100) / 100;
-    syncWallHeightInput();
+    syncWallHeightInput(true);
   }
 
   function wallHeightFtFromValue(value) {
@@ -2287,7 +2297,7 @@
   function updateMeasureUnitPlaceholders() {
     var ph = measureUnitPlaceholder();
     if (els.wallLength) els.wallLength.placeholder = ph;
-    if (els.knownLength) els.knownLength.placeholder = ph;
+    raAll('[data-ra-known-length]').forEach(function (el) { el.placeholder = ph; });
     if (els.typeLength) els.typeLength.placeholder = isMetricDisplay() ? '3.66 m' : (state.measureUnit === MEASURE_UNITS.inch ? '150"' : (state.measureUnit === MEASURE_UNITS.feet_decimal ? '12.5' : "12'6"));
     if (els.typeRectW) els.typeRectW.placeholder = isMetricDisplay() ? '3.66' : '12';
     if (els.typeRectL) els.typeRectL.placeholder = isMetricDisplay() ? '3.05' : '10';
@@ -3606,7 +3616,7 @@
     state.rulerMode = false;
     state.rulerDraft = [];
     state.rulerPreview = null;
-    if (els.rulerToggle) els.rulerToggle.classList.remove('is-active');
+    raAll('[data-ra-ruler-toggle]').forEach(function (btn) { btn.classList.remove('is-active'); });
     redrawRulers();
     redrawWalls();
     redrawLabels();
@@ -3627,7 +3637,7 @@
     state.rulerMode = true;
     state.rulerDraft = [];
     state.rulerPreview = null;
-    if (els.rulerToggle) els.rulerToggle.classList.add('is-active');
+    raAll('[data-ra-ruler-toggle]').forEach(function (btn) { btn.classList.add('is-active'); });
     redrawAll();
     var ppf = pixelsPerFoot();
     if (ppf > 0) {
@@ -6201,7 +6211,9 @@
       } else if (state.dimensionsMode === DIM_MODES.main) {
         drawOverallDimensionLabel(labelLayer, occupied);
       } else if (state.dimensionsMode === DIM_MODES.area) {
-        drawOverallDimensionLabel(labelLayer, occupied, true);
+        if (!nameItems.length) {
+          drawOverallDimensionLabel(labelLayer, occupied, true);
+        }
       }
     }
 
@@ -7025,9 +7037,9 @@
       state.calibPoints.push({ x: pos.x, y: pos.y });
       redrawCalib();
       var ready = state.calibPoints.length === 2;
-      els.knownLength.disabled = !ready;
-      els.applyScale.disabled = !ready;
-      if (ready) els.knownLength.focus();
+      raAll('[data-ra-known-length]').forEach(function (el) { el.disabled = !ready; });
+      raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = !ready; });
+      if (ready && els.knownLength) els.knownLength.focus();
       return;
     }
 
@@ -7300,12 +7312,30 @@
     });
   }
 
+  function snapshotGeometryKey(snap) {
+    var groups = (snap && snap.groups) || [];
+    return JSON.stringify({
+      g: groups.map(function (group) {
+        return (group.polygons || []).map(function (poly) {
+          return { id: poly.id, closed: !!poly.closed, v: poly.vertices };
+        });
+      }),
+      scale: snap ? snap.scalePixelsPerFoot : null,
+      thick: snap ? snap.wallThicknessIn : null
+    });
+  }
+
+  function historyAllowedWhileLocked(snap) {
+    if (!snap) return false;
+    return snapshotGeometryKey(snap) === snapshotGeometryKey(snapshotState());
+  }
+
   function undoVertex() {
-    if (geometryLocked()) {
+    if (!state.undoStack.length) return;
+    if (geometryLocked() && !historyAllowedWhileLocked(state.undoStack[state.undoStack.length - 1])) {
       warnGeometryLocked();
       return;
     }
-    if (!state.undoStack.length) return;
     if (state.draggingWall) finishWallDrag(getPointerPos());
     state.draggingVertex = false;
     state.vertexDragFrom = null;
@@ -7323,11 +7353,11 @@
   }
 
   function redoAction() {
-    if (geometryLocked()) {
+    if (!state.redoStack.length) return;
+    if (geometryLocked() && !historyAllowedWhileLocked(state.redoStack[state.redoStack.length - 1])) {
       warnGeometryLocked();
       return;
     }
-    if (!state.redoStack.length) return;
     if (state.draggingWall) finishWallDrag(getPointerPos());
     state.draggingVertex = false;
     state.vertexDragFrom = null;
@@ -7350,6 +7380,7 @@
     if (grandTotal === null) {
       show(els.liveArea, false);
       setSaveDisabled(true);
+      if (els.sheetTotal) els.sheetTotal.textContent = '—';
       updateGroupChip();
       return;
     }
@@ -7371,6 +7402,7 @@
     }
     if (els.liveSqft) els.liveSqft.textContent = fmt(grandTotal, 2);
     if (els.liveSqm) els.liveSqm.textContent = fmt(grandTotal * SQFT_TO_SQM, 2);
+    if (els.sheetTotal) els.sheetTotal.textContent = fmtAreaFromSqFt(grandTotal);
     var alt = root.querySelector('[data-ra-live-sqft-alt]');
     if (alt) alt.textContent = fmt(grandTotal, 2);
     var metrics = computeWallMetrics();
@@ -7431,16 +7463,23 @@
   }
 
   function updateToolbar() {
-    var historyLocked = geometryLocked();
-    setAllDisabled('[data-ra-undo-vertex]', historyLocked || state.undoStack.length === 0);
-    setAllDisabled('[data-ra-redo]', historyLocked || state.redoStack.length === 0);
+    var undoDisabled = state.undoStack.length === 0;
+    if (!undoDisabled && geometryLocked()) {
+      undoDisabled = !historyAllowedWhileLocked(state.undoStack[state.undoStack.length - 1]);
+    }
+    var redoDisabled = state.redoStack.length === 0;
+    if (!redoDisabled && geometryLocked()) {
+      redoDisabled = !historyAllowedWhileLocked(state.redoStack[state.redoStack.length - 1]);
+    }
+    setAllDisabled('[data-ra-undo-vertex]', undoDisabled);
+    setAllDisabled('[data-ra-redo]', redoDisabled);
     if (els.splitWall) els.splitWall.disabled = state.selectedWallIndex === null;
     setAllDisabled('[data-ra-close-shape]', activeVertices().length < 3 || isActiveClosed());
-    if (els.addArea) els.addArea.disabled = !isActiveClosed();
-    if (els.addAreaNewGroup) els.addAreaNewGroup.disabled = !isActiveClosed();
+    setAllDisabled('[data-ra-add-area]', !isActiveClosed());
+    setAllDisabled('[data-ra-add-area-new-group]', !isActiveClosed());
     if (els.deleteArea) {
       var canDelete = hasAnyClosedPolygon() || activeVertices().length > 0;
-      els.deleteArea.disabled = !canDelete;
+      setAllDisabled('[data-ra-delete-area]', !canDelete);
     }
     if (els.deleteWall) {
       els.deleteWall.disabled = state.selectedWallIndex === null;
@@ -7524,12 +7563,12 @@
   function stopCalibrationMode() {
     state.calibrating = false;
     state.calibPoints = [];
-    if (els.calibrateToggle) els.calibrateToggle.classList.remove('is-active');
-    if (els.knownLength) {
-      els.knownLength.value = '';
-      els.knownLength.disabled = true;
-    }
-    if (els.applyScale) els.applyScale.disabled = true;
+    raAll('[data-ra-calibrate-toggle]').forEach(function (btn) { btn.classList.remove('is-active'); });
+    raAll('[data-ra-known-length]').forEach(function (el) {
+      el.value = '';
+      el.disabled = true;
+    });
+    raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = true; });
     redrawCalib();
     redrawVertices();
   }
@@ -7551,12 +7590,12 @@
 
     state.calibrating = true;
     state.calibPoints = [];
-    if (els.calibrateToggle) els.calibrateToggle.classList.add('is-active');
-    if (els.knownLength) {
-      els.knownLength.disabled = true;
-      els.knownLength.value = '';
-    }
-    if (els.applyScale) els.applyScale.disabled = true;
+    raAll('[data-ra-calibrate-toggle]').forEach(function (btn) { btn.classList.add('is-active'); });
+    raAll('[data-ra-known-length]').forEach(function (el) {
+      el.disabled = true;
+      el.value = '';
+    });
+    raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = true; });
     redrawCalib();
     setFeedback('Click two points on a known wall length.', false);
   }
@@ -7568,7 +7607,11 @@
     }
     if (state.calibPoints.length !== 2) return;
     try {
-      var feet = parseLengthInput(els.knownLength.value);
+      var knownRaw = '';
+      raAll('[data-ra-known-length]').forEach(function (el) {
+        if (el.value) knownRaw = el.value;
+      });
+      var feet = parseLengthInput(knownRaw);
       var pxDist = dist(state.calibPoints[0], state.calibPoints[1]);
       if (pxDist < 5) throw new Error('Points are too close — pick a longer reference.');
       var ppf = pxDist / feet;
@@ -8003,6 +8046,10 @@
   function deleteProject() {
     var project = activeProject();
     if (!project) return;
+    if (projectHasLockedRoom(project)) {
+      setFeedback('Unlock layers to delete this project.', true);
+      return;
+    }
 
     confirmAction('Delete this project and all saved rooms?', { title: 'Delete project', danger: true }).then(function (ok) {
       if (!ok) return;
@@ -8017,8 +8064,18 @@
         }
       })
         .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          }).catch(function () {
+            return { ok: false, data: { message: 'Could not delete project.' } };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            setFeedback((result.data && result.data.message) || 'Unlock layers to delete this project.', true);
+            return;
+          }
           state.projects = state.projects.filter(function (p) { return p.id !== project.id; });
           state.activeProjectId = null;
           refreshProjectSelect();
@@ -8089,6 +8146,9 @@
           ));
         }
         var savedRoom = result.data.room;
+        if (!isUpdate && savedRoom && savedRoom.id) {
+          state.editingRoomId = savedRoom.id;
+        }
         if (!isUpdate && state.draftBackground && state.draftBackground.file) {
           return uploadRoomBackgroundFile(savedRoom.id, state.draftBackground.file).then(function (bgResult) {
             savedRoom.background_url = bgResult.background_url;
@@ -8143,7 +8203,28 @@
       });
   }
 
+  function roomLayersLocked(roomId) {
+    if (state.editingRoomId === roomId && geometryLocked()) return true;
+    var project = activeProject();
+    if (!project || !project.rooms) return false;
+    var room = project.rooms.find(function (r) { return r.id === roomId; });
+    if (!room) return false;
+    var canvas = room.canvas || room.vertices;
+    return !!(canvas && canvas.editor && canvas.editor.layers_locked);
+  }
+
+  function projectHasLockedRoom(project) {
+    return !!(project && project.rooms && project.rooms.some(function (room) {
+      var canvas = room.canvas || room.vertices;
+      return !!(canvas && canvas.editor && canvas.editor.layers_locked);
+    }));
+  }
+
   function deleteRoom(roomId) {
+    if (roomLayersLocked(roomId)) {
+      setFeedback('Unlock layers to delete this room.', true);
+      return;
+    }
     confirmAction('Delete this room?', { title: 'Delete room', danger: true }).then(function (ok) {
       if (!ok) return;
 
@@ -8156,9 +8237,18 @@
           Accept: 'application/json'
         }
       })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          }).catch(function () {
+            return { ok: false, data: { message: 'Could not delete room.' } };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            setFeedback((result.data && result.data.message) || 'Unlock layers to delete this room.', true);
+            return;
+          }
           var project = activeProject();
           if (project) {
             project.rooms = project.rooms.filter(function (r) { return r.id !== roomId; });
@@ -8202,6 +8292,10 @@
     if (state.editingRoomId) {
       var room = activeRoom();
       if (!room) return;
+      if (room.background_url && geometryLocked()) {
+        setFeedback('Unlock layers to change the floor plan.', true);
+        return;
+      }
 
       uploadRoomBackgroundFile(room.id, file)
         .then(function (data) {
@@ -8227,6 +8321,10 @@
     if (state.editingRoomId) {
       var room = activeRoom();
       if (!room || !room.background_url) return;
+      if (geometryLocked() || roomLayersLocked(room.id)) {
+        setFeedback('Unlock layers to change the floor plan.', true);
+        return;
+      }
 
       confirmAction(
         'Delete the floor plan image for this room? The room outline will stay.',
@@ -8243,9 +8341,18 @@
             Accept: 'application/json'
           }
         })
-          .then(function (res) { return res.json(); })
-          .then(function (data) {
-            if (!data.ok) return;
+          .then(function (res) {
+            return res.json().then(function (data) {
+              return { ok: res.ok, data: data };
+            }).catch(function () {
+              return { ok: false, data: { message: 'Could not delete floor plan.' } };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok) {
+              setFeedback((result.data && result.data.message) || 'Unlock layers to change the floor plan.', true);
+              return;
+            }
             room.background_url = null;
             loadBackground(null);
             captureSavedSnapshot();
@@ -8883,11 +8990,32 @@
     return !!(els.templatesPopover && !els.templatesPopover.hasAttribute('hidden'));
   }
 
+  function setMoreOpen(open) {
+    root.classList.toggle('is-more-open', !!open);
+    raAll('[data-ra-more-toggle]').forEach(function (btn) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('is-active', !!open);
+    });
+    if (isPhoneChrome() && els.templatesPopover) {
+      show(els.templatesPopover, !!open);
+    }
+  }
+
   function setTemplatesPopover(open) {
+    if (isPhoneChrome()) {
+      if (open) setMoreOpen(true);
+      raAll('[data-ra-templates-toggle]').forEach(function (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.classList.toggle('is-active', !!open);
+      });
+      return;
+    }
     if (!els.templatesPopover || !els.templatesToggle) return;
     show(els.templatesPopover, open);
-    els.templatesToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    els.templatesToggle.classList.toggle('is-active', !!open);
+    raAll('[data-ra-templates-toggle]').forEach(function (btn) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('is-active', !!open);
+    });
     if (open) {
       var r = els.templatesToggle.getBoundingClientRect();
       var left = Math.max(8, Math.min(r.left, window.innerWidth - 280));
@@ -8972,6 +9100,7 @@
     renderTypedWallsList();
     updateTypedCloseBar();
     closeTemplatesPopover();
+    setMoreOpen(false);
     state.templateKind = (kind === 'l' || kind === 'u' || kind === 't') ? kind : 'rect';
     redrawAll();
     fitViewport();
@@ -9024,6 +9153,7 @@
     renderTypedWallsList();
     updateTypedCloseBar();
     closeTemplatesPopover();
+    setMoreOpen(false);
     clearWallSelection();
     state.templateKind = 'alcove';
     redrawAll();
@@ -10111,9 +10241,9 @@
         els.projectSelect.value = newId ? String(newId) : '';
         state.calibrating = false;
         state.calibPoints = [];
-        if (els.calibrateToggle) els.calibrateToggle.classList.remove('is-active');
-        if (els.knownLength) els.knownLength.disabled = true;
-        if (els.applyScale) els.applyScale.disabled = true;
+        raAll('[data-ra-calibrate-toggle]').forEach(function (btn) { btn.classList.remove('is-active'); });
+        raAll('[data-ra-known-length]').forEach(function (el) { el.disabled = true; });
+        raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = true; });
         stopRulerMode();
         clearRulerSelection();
         renderWorkspace();
@@ -10130,11 +10260,15 @@
       updateProjectLink(els.linkClientProject.value);
     });
 
-    if (els.calibrateToggle) els.calibrateToggle.addEventListener('click', toggleCalibrate);
-    if (els.applyScale) els.applyScale.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      applyScale();
+    raAll('[data-ra-calibrate-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', toggleCalibrate);
+    });
+    raAll('[data-ra-apply-scale]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyScale();
+      });
     });
 
     raAll('[data-ra-undo-vertex]').forEach(function (btn) {
@@ -10151,7 +10285,9 @@
         toggleShortcutsPopover();
       });
     }
-    els.closeShape.addEventListener('click', closeShape);
+    raAll('[data-ra-close-shape]').forEach(function (btn) {
+      btn.addEventListener('click', closeShape);
+    });
     if (els.paletteToggle) {
       els.paletteToggle.addEventListener('click', function (e) {
         e.preventDefault();
@@ -10194,10 +10330,18 @@
         }
       });
     }
-    if (els.addArea) els.addArea.addEventListener('click', addAreaSameGroup);
-    if (els.addAreaNewGroup) els.addAreaNewGroup.addEventListener('click', addAreaNewGroup);
-    if (els.deleteArea) els.deleteArea.addEventListener('click', deleteActivePolygon);
-    els.clearShape.addEventListener('click', clearShape);
+    raAll('[data-ra-add-area]').forEach(function (btn) {
+      btn.addEventListener('click', addAreaSameGroup);
+    });
+    raAll('[data-ra-add-area-new-group]').forEach(function (btn) {
+      btn.addEventListener('click', addAreaNewGroup);
+    });
+    raAll('[data-ra-delete-area]').forEach(function (btn) {
+      btn.addEventListener('click', deleteActivePolygon);
+    });
+    raAll('[data-ra-clear-shape]').forEach(function (btn) {
+      btn.addEventListener('click', clearShape);
+    });
     raAll('[data-ra-save-room]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         saveRoom().catch(function () {});
@@ -10214,7 +10358,9 @@
     if (els.deleteWall) els.deleteWall.addEventListener('click', deleteSelectedWall);
     if (els.deleteVertex) els.deleteVertex.addEventListener('click', deleteSelectedVertex);
     if (els.vertexCancel) els.vertexCancel.addEventListener('click', clearVertexSelection);
-    if (els.rulerToggle) els.rulerToggle.addEventListener('click', toggleRulerMode);
+    raAll('[data-ra-ruler-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', toggleRulerMode);
+    });
     if (els.deleteRuler) els.deleteRuler.addEventListener('click', deleteSelectedRuler);
     if (els.rulerCancel) els.rulerCancel.addEventListener('click', clearRulerSelection);
     if (els.objectWidth) {
@@ -10284,13 +10430,26 @@
         setUnitSystem(btn.getAttribute('data-ra-unit-system'));
       });
     });
-    if (els.templatesToggle) {
-      els.templatesToggle.addEventListener('click', function (e) {
+    raAll('[data-ra-templates-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         toggleTemplatesPopover();
       });
-    }
+    });
+    raAll('[data-ra-more-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMoreOpen(!root.classList.contains('is-more-open'));
+      });
+    });
+    raAll('[data-ra-more-close]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setMoreOpen(false);
+      });
+    });
     raAll('[data-ra-template]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         applyRoomTemplate(btn.getAttribute('data-ra-template'));
@@ -10306,6 +10465,16 @@
     document.addEventListener('pointerdown', function (e) {
       if (shortcutsPopoverOpen() && !(els.shortcuts && els.shortcuts.contains(e.target))) {
         closeShortcutsPopover();
+      }
+      if (isPhoneChrome()) {
+        if (root.classList.contains('is-more-open')) {
+          var more = els.moreSheet;
+          var phoneBar = root.querySelector('[data-ra-phone-bar]');
+          if (more && !more.contains(e.target) && !(phoneBar && phoneBar.contains(e.target))) {
+            setMoreOpen(false);
+          }
+        }
+        return;
       }
       if (templatesPopoverOpen() && !(els.templatesRoot && els.templatesRoot.contains(e.target))) {
         closeTemplatesPopover();
@@ -10345,7 +10514,18 @@
       els.wallHeight.addEventListener('change', function () {
         var next = wallHeightFtFromValue(els.wallHeight.value);
         if (next == null) {
-          syncWallHeightInput();
+          syncWallHeightInput(true);
+          return;
+        }
+        setWallHeight(next);
+        updateLiveArea();
+      });
+      els.wallHeight.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        var next = wallHeightFtFromValue(els.wallHeight.value);
+        if (next == null) {
+          syncWallHeightInput(true);
           return;
         }
         setWallHeight(next);
@@ -10552,8 +10732,8 @@
     }
 
     function clampSheet(height) {
-      var minH = Math.round(Math.min(window.innerHeight * 0.22, 168));
-      var maxH = Math.round(window.innerHeight * 0.55);
+      var minH = isPhoneChrome() ? 64 : Math.round(Math.min(window.innerHeight * 0.22, 168));
+      var maxH = Math.round(window.innerHeight * (isPhoneChrome() ? 0.7 : 0.55));
       return Math.max(minH, Math.min(maxH, Math.round(height)));
     }
 
@@ -10634,6 +10814,9 @@
         state.activeProjectId = state.projects[0].id;
         refreshProjectSelect();
       }
+    }
+    if (isPhoneChrome()) {
+      root.style.setProperty('--ra-sheet-h', '64px');
     }
     renderWorkspace();
     updateFullpageTitle();

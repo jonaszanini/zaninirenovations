@@ -1338,8 +1338,39 @@ html.admin-dark .util-ra-thickness-chip:focus-visible {
 
 html.admin-dark .util-ra-thickness-chip.is-active {
   background: var(--admin-primary);
-  color: #fff;
+  color: #0f172a;
   border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-group-chip__swatch {
+  border-color: #f8fafc;
+  box-shadow: 0 0 0 1px #f8fafc;
+  opacity: 1;
+}
+
+html.admin-dark .util-ra-phone-bar {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-more-sheet {
+  background: var(--admin-elevated, var(--admin-surface));
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-more-sheet__title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-more-help {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-sheet-strip {
+  color: var(--admin-text);
 }
 
 html.admin-dark .util-ra-thickness-custom label {

@@ -1107,16 +1107,98 @@ class RoomAreaCanvasData
      */
     public function preserveEditorLock(array $normalized, $existing, $rawInput): array
     {
-        $inputHadEditor = is_array($rawInput) && array_key_exists('editor', $rawInput);
-        if ($inputHadEditor) {
+        $existingLocked = is_array($existing) && ! empty($existing['editor']['layers_locked']);
+        if (! $existingLocked) {
             return $normalized;
         }
-        if (! is_array($existing) || empty($existing['editor'])) {
+
+        $rawEditor = is_array($rawInput) && isset($rawInput['editor']) && is_array($rawInput['editor'])
+            ? $rawInput['editor']
+            : null;
+        $explicitUnlock = is_array($rawEditor)
+            && array_key_exists('layers_locked', $rawEditor)
+            && filter_var($rawEditor['layers_locked'], FILTER_VALIDATE_BOOLEAN) === false;
+
+        if ($explicitUnlock) {
             return $normalized;
         }
-        $editor = $this->normalizeEditorPrefs($existing['editor']);
-        if ($editor !== null) {
-            $normalized['editor'] = $editor;
+
+        $editor = isset($normalized['editor']) && is_array($normalized['editor'])
+            ? $normalized['editor']
+            : [];
+        $existingEditor = $this->normalizeEditorPrefs($existing['editor'] ?? []);
+        if ($existingEditor !== null) {
+            $editor = array_merge($existingEditor, $editor);
+        }
+        $editor['layers_locked'] = true;
+        $normalized['editor'] = $editor;
+
+        return $normalized;
+    }
+
+    /**
+     * Keep stored vertices when a locked save is within the geometry tolerance
+     * so sub-tolerance moves cannot accumulate across requests.
+     *
+     * @param  array<string, mixed>  $normalized
+     * @param  array<string, mixed>|null  $existing
+     * @return array<string, mixed>
+     */
+    public function restoreStoredGeometryIfWithinTolerance(array $normalized, $existing, ?float $existingScale, ?float $incomingScale): array
+    {
+        if (! $this->isLayersLocked($existing) || ! is_array($existing)) {
+            return $normalized;
+        }
+        if ($this->geometryDiffersInFeet($existing, $normalized, $existingScale, $incomingScale)) {
+            return $normalized;
+        }
+
+        return $this->copyStoredVertices($normalized, $existing);
+    }
+
+    /**
+     * Keep the stored floor-plan layout when a locked save omits background.
+     *
+     * @param  array<string, mixed>  $normalized
+     * @param  array<string, mixed>|null  $existing
+     * @return array<string, mixed>
+     */
+    public function preserveLockedBackground(array $normalized, $existing): array
+    {
+        if (! $this->isLayersLocked($existing) || ! is_array($existing)) {
+            return $normalized;
+        }
+        if (! isset($normalized['background']) && isset($existing['background'])) {
+            $normalized['background'] = $existing['background'];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalized
+     * @param  array<string, mixed>  $existing
+     * @return array<string, mixed>
+     */
+    private function copyStoredVertices(array $normalized, array $existing): array
+    {
+        $exGroups = $existing['groups'] ?? [];
+        $inGroups = $normalized['groups'] ?? [];
+        if (! is_array($exGroups) || ! is_array($inGroups) || count($exGroups) !== count($inGroups)) {
+            return $normalized;
+        }
+        foreach ($exGroups as $gi => $exGroup) {
+            $exPolys = is_array($exGroup) ? ($exGroup['polygons'] ?? []) : [];
+            $inPolys = is_array($inGroups[$gi] ?? null) ? ($inGroups[$gi]['polygons'] ?? []) : [];
+            if (! is_array($exPolys) || ! is_array($inPolys) || count($exPolys) !== count($inPolys)) {
+                continue;
+            }
+            foreach ($exPolys as $pi => $exPoly) {
+                $exVerts = is_array($exPoly) ? ($exPoly['vertices'] ?? []) : [];
+                if (is_array($exVerts) && isset($normalized['groups'][$gi]['polygons'][$pi])) {
+                    $normalized['groups'][$gi]['polygons'][$pi]['vertices'] = $exVerts;
+                }
+            }
         }
 
         return $normalized;
@@ -1153,7 +1235,34 @@ class RoomAreaCanvasData
             return 'Unlock layers to change walls or areas.';
         }
 
+        if ($this->backgroundLayoutDiffers($existing, $incoming)) {
+            return 'Unlock layers to change the floor plan.';
+        }
+
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>  $incoming
+     */
+    private function backgroundLayoutDiffers($existing, array $incoming): bool
+    {
+        $incomingBg = $incoming['background'] ?? null;
+        if (! is_array($incomingBg)) {
+            return false;
+        }
+        $existingBg = is_array($existing) ? ($existing['background'] ?? null) : null;
+        $incomingNorm = $this->normalizeBackground($incomingBg);
+        $existingNorm = is_array($existingBg) ? $this->normalizeBackground($existingBg) : null;
+        if ($incomingNorm === null) {
+            return false;
+        }
+        if ($existingNorm === null) {
+            return true;
+        }
+
+        return json_encode($existingNorm) !== json_encode($incomingNorm);
     }
 
     /**

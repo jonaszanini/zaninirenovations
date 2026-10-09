@@ -421,14 +421,16 @@ class RoomAreaMeasurementParser
         return $n;
     }
 
-    /**
-     * A separator followed by exactly 3 digits with an mm unit is thousands
-     * (3,810 mm and 3.810 mm are 3810 mm, not 3.81 mm).
+        /**
+     * Thousands in millimetres:
+     * - comma groups: 3,810 and 12,700
+     * - dot groups only when the first group is a single 1–9 digit (3.810),
+     *   so 0.500 mm and 12.700 mm stay decimals.
      */
     private function toFloatMm(string $s): float
     {
         $s = trim($s);
-        if (preg_match('/^\d{1,3}(?:[.,]\d{3})+$/', $s)) {
+        if (preg_match('/^[1-9]\d{0,2}(?:,\d{3})+$/', $s) || preg_match('/^[1-9](?:\.\d{3})+$/', $s)) {
             $s = str_replace([',', '.'], '', $s);
         }
 

@@ -3,7 +3,7 @@
   $label = $label ?? 'About this tool';
   $text = $text ?? '';
 @endphp
-<span class="util-ra-help">
+<div class="util-ra-help">
   <button
     type="button"
     class="util-ra-help-q"
@@ -14,4 +14,4 @@
   <div class="util-ra-help-pop" id="ra-help-{{ $tipId }}" data-ra-help-pop-panel="{{ $tipId }}" hidden role="region" aria-label="{{ $label }}">
     {{ $text }}
   </div>
-</span>
+</div>

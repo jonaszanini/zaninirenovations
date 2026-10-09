@@ -182,6 +182,16 @@ class RoomAreaController extends Controller
 
     public function destroyProject(RoomAreaProject $room_area_project)
     {
+        $canvasData = app(RoomAreaCanvasData::class);
+        foreach ($room_area_project->rooms as $room) {
+            if ($canvasData->isLayersLocked($room->vertices)) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Unlock layers to delete this project.',
+                ], 422);
+            }
+        }
+
         if ($room_area_project->background_path) {
             Storage::disk('local')->delete($room_area_project->background_path);
         }
@@ -324,14 +334,25 @@ class RoomAreaController extends Controller
         }
 
         $existingCanvas = is_array($room_area_room->vertices) ? $room_area_room->vertices : null;
+        $incomingScale = isset($data['scale_pixels_per_foot']) ? (float) $data['scale_pixels_per_foot'] : (
+            $room_area_room->scale_pixels_per_foot !== null ? (float) $room_area_room->scale_pixels_per_foot : null
+        );
+        $existingScale = $room_area_room->scale_pixels_per_foot !== null
+            ? (float) $room_area_room->scale_pixels_per_foot
+            : null;
         $normalized = $canvasData->preserveEditorLock($normalized, $existingCanvas, $rawCanvas);
+        $normalized = $canvasData->preserveLockedBackground($normalized, $existingCanvas);
+        $normalized = $canvasData->restoreStoredGeometryIfWithinTolerance(
+            $normalized,
+            $existingCanvas,
+            $existingScale,
+            $incomingScale
+        );
         $lockMessage = $canvasData->lockedGeometryChangeMessage(
             $existingCanvas,
             $normalized,
-            $room_area_room->scale_pixels_per_foot !== null ? (float) $room_area_room->scale_pixels_per_foot : null,
-            isset($data['scale_pixels_per_foot']) ? (float) $data['scale_pixels_per_foot'] : (
-                $room_area_room->scale_pixels_per_foot !== null ? (float) $room_area_room->scale_pixels_per_foot : null
-            )
+            $existingScale,
+            $incomingScale
         );
         if ($lockMessage !== null) {
             return response()->json(['ok' => false, 'message' => $lockMessage], 422);
@@ -619,7 +640,8 @@ class RoomAreaController extends Controller
 
     public function uploadBackground(Request $request, RoomAreaRoom $room_area_room)
     {
-        if (app(RoomAreaCanvasData::class)->isLayersLocked($room_area_room->vertices)) {
+        if (app(RoomAreaCanvasData::class)->isLayersLocked($room_area_room->vertices)
+            && $room_area_room->background_path) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Unlock layers to change the floor plan.',

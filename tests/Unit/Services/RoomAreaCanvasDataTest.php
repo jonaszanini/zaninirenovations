@@ -865,4 +865,70 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertTrue($merged['editor']['layers_locked']);
         $this->assertSame('main', $merged['editor']['dimensions_mode']);
     }
+
+    public function test_preserve_editor_lock_unless_explicitly_unlocked(): void
+    {
+        $existing = $this->lockedRect();
+        $incoming = $existing;
+        $incoming['editor'] = [];
+        $keptEmpty = $this->service->preserveEditorLock($incoming, $existing, ['editor' => []]);
+        $this->assertTrue($keptEmpty['editor']['layers_locked']);
+
+        $incomingMode = $existing;
+        $incomingMode['editor'] = ['dimensions_mode' => 'area'];
+        $keptMode = $this->service->preserveEditorLock($incomingMode, $existing, ['editor' => ['dimensions_mode' => 'area']]);
+        $this->assertTrue($keptMode['editor']['layers_locked']);
+        $this->assertSame('area', $keptMode['editor']['dimensions_mode']);
+
+        $unlocked = $existing;
+        $unlocked['editor'] = ['layers_locked' => false];
+        $cleared = $this->service->preserveEditorLock($unlocked, $existing, ['editor' => ['layers_locked' => false]]);
+        $this->assertFalse($cleared['editor']['layers_locked'] ?? false);
+    }
+
+    public function test_restore_stored_geometry_within_lock_tolerance(): void
+    {
+        $existing = $this->lockedRect();
+        $nudged = $existing;
+        $nudged['groups'][0]['polygons'][0]['vertices'][1]['x'] = 144.5; // 0.5px = 0.0417 ft at 12 px/ft
+        $restored = $this->service->restoreStoredGeometryIfWithinTolerance($nudged, $existing, 12.0, 12.0);
+        $this->assertSame(144.0, $restored['groups'][0]['polygons'][0]['vertices'][1]['x']);
+        $this->assertNull($this->service->lockedGeometryChangeMessage($existing, $restored, 12.0, 12.0));
+    }
+
+    public function test_locked_background_layout_change_is_rejected(): void
+    {
+        $existing = $this->lockedRect();
+        $existing['background'] = ['x' => 10, 'y' => 20, 'width' => 400, 'height' => 300];
+        $moved = $existing;
+        $moved['background']['x'] = 80;
+        $this->assertSame(
+            'Unlock layers to change the floor plan.',
+            $this->service->lockedGeometryChangeMessage($existing, $moved, 12.0, 12.0)
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function lockedRect(): array
+    {
+        return $this->service->normalize([
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 144, 'y' => 0],
+                        ['x' => 144, 'y' => 120],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+            'editor' => ['layers_locked' => true],
+        ]);
+    }
 }

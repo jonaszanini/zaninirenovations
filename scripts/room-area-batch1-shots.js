@@ -1,6 +1,5 @@
 /**
- * Batch 1 review screenshots from real interaction: 1280 + 390, light + dark,
- * plus metric wall-height conversion.
+ * Batch 1 review screenshots from real pointer/tap interaction.
  *
  *   BASE_URL=http://127.0.0.1:8000 EDITOR_PATH=/admin/client-projects/1/utilities/room-area \
  *     ADMIN_EMAIL=admin@zanini.ca ADMIN_PASSWORD=password \
@@ -16,13 +15,6 @@ const EMAIL = process.env.ADMIN_EMAIL || 'admin@zanini.ca';
 const PASSWORD = process.env.ADMIN_PASSWORD || 'password';
 const OUT = process.env.QA_OUT || '/opt/cursor/artifacts/screenshots';
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const shots = [
-  { name: 'ra-b1-1280-light', width: 1280, height: 900, theme: 'light' },
-  { name: 'ra-b1-1280-dark', width: 1280, height: 900, theme: 'dark' },
-  { name: 'ra-b1-390-light', width: 390, height: 844, theme: 'light' },
-  { name: 'ra-b1-390-dark', width: 390, height: 844, theme: 'dark' },
-];
 
 async function gotoReady(page, url) {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -41,81 +33,106 @@ async function login(page) {
 async function waitForEditor(page) {
   await page.waitForSelector('.util-ra--fullpage', { timeout: 20000 });
   await page.waitForFunction(() => typeof window.Konva !== 'undefined' && typeof window.RoomAreaLib !== 'undefined', { timeout: 20000 });
-  await delay(500);
+  await delay(400);
 }
 
-async function prepareScene(page, opts) {
-  opts = opts || {};
-  const dimMode = opts.dimMode || 'all';
-  const templatesOpen = opts.templates !== false;
+async function tap(page, selector) {
+  await page.waitForSelector(selector, { timeout: 8000 });
+  const handle = await page.$(selector);
+  if (!handle) throw new Error('missing ' + selector);
+  await page.evaluate((el) => el.scrollIntoView({ block: 'nearest', inline: 'nearest' }), handle);
+  const box = await handle.boundingBox();
+  if (!box) throw new Error('no box for ' + selector);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const vp = page.viewport();
+  if (vp && vp.width <= 500 && page.touchscreen) {
+    await page.touchscreen.tap(x, y);
+  } else {
+    await page.mouse.click(x, y);
+  }
+}
+
+async function measureCanvas(page) {
+  return page.evaluate(() => {
+    const wrap = document.querySelector('[data-ra-canvas-wrap], .util-ra-canvas-wrap');
+    if (!wrap) return { width: 0, height: 0 };
+    const r = wrap.getBoundingClientRect();
+    return { width: Math.round(r.width), height: Math.round(r.height) };
+  });
+}
+
+async function setTheme(page, mode) {
+  await page.evaluate((theme) => {
+    const root = document.documentElement;
+    if (theme === 'dark') root.classList.add('admin-dark');
+    else root.classList.remove('admin-dark');
+    try { localStorage.setItem('admin-theme', theme === 'dark' ? 'dark' : 'light'); } catch (e) {}
+  }, mode);
+}
+
+async function resetEditor(page) {
   await page.evaluate(() => {
     try {
       localStorage.removeItem('zr-room-area-guide-tip-v1');
-      localStorage.removeItem('room-area-layers-locked');
-      localStorage.removeItem('room-area-measure-unit');
-      localStorage.removeItem('room-area-dimensions-mode');
     } catch (e) {}
     const tip = document.querySelector('[data-ra-first-tip]');
     if (tip) tip.hidden = true;
+    const root = document.querySelector('[data-room-area]');
+    if (root) {
+      root.classList.remove('is-more-open');
+      root.style.setProperty('--ra-sheet-h', window.matchMedia('(max-width: 900px)').matches ? '64px' : '');
+    }
     const w = document.querySelector('[data-ra-type-rect-w]');
     const l = document.querySelector('[data-ra-type-rect-l]');
     if (w) w.value = '';
     if (l) l.value = '';
-    const lock = document.querySelector('[data-ra-lock-layers]');
-    if (lock && lock.checked) {
-      lock.checked = false;
-      lock.dispatchEvent(new Event('change', { bubbles: true }));
-    }
   });
-  await delay(80);
-  await page.evaluate(() => {
-    const l = document.querySelector('[data-ra-template="l"]');
-    if (l) l.click();
-  });
+}
+
+async function applyLTemplate(page) {
+  const phone = page.viewport() && page.viewport().width <= 500;
+  if (phone) {
+    const moreOpen = await page.evaluate(() => document.querySelector('[data-room-area]')?.classList.contains('is-more-open'));
+    if (!moreOpen) await tap(page, '[data-ra-more-toggle]');
+    await delay(200);
+  }
+  await tap(page, '[data-ra-template="l"]');
+  await delay(250);
   await page.waitForFunction(() => {
     const undo = document.querySelector('[data-ra-undo-vertex]');
     return undo && !undo.disabled;
   }, { timeout: 8000 });
-  await page.evaluate(() => {
-    const alcove = document.querySelector('[data-ra-alcove]');
-    if (alcove) alcove.click();
-  });
-  await delay(200);
-  await page.evaluate(() => {
-    const undo = document.querySelector('[data-ra-undo-vertex]');
-    if (undo && !undo.disabled) undo.click();
-  });
-  await delay(120);
-  await page.evaluate(() => {
-    const redo = document.querySelector('[data-ra-redo]');
-    if (redo && !redo.disabled) redo.click();
-  });
-  await delay(150);
-  await page.evaluate((wantMetric, mode, openTpl) => {
-    const dim = document.querySelector('[data-ra-dimensions-mode]');
-    if (dim) {
-      dim.value = mode;
-      dim.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    const metric = document.querySelector('[data-ra-unit-system="metric"]');
-    if (wantMetric && metric) metric.click();
-    const snap = document.querySelector('[data-ra-snap-toggle]');
-    if (snap && snap.getAttribute('aria-pressed') !== 'true') snap.click();
-    const lock = document.querySelector('[data-ra-lock-layers]');
-    if (lock && !lock.checked) {
-      lock.checked = true;
-      lock.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    const tpl = document.querySelector('[data-ra-templates-toggle]');
-    const pop = document.querySelector('[data-ra-templates-popover]');
-    const isOpen = pop && !pop.hidden;
-    if (tpl && openTpl && !isOpen) tpl.click();
-    if (tpl && !openTpl && isOpen) tpl.click();
-    const mathTab = document.querySelector('[data-ra-side-tab="math"]');
-    if (mathTab) mathTab.click();
-  }, !!opts.metric, dimMode, templatesOpen);
-  await delay(200);
+  if (phone) {
+    await page.evaluate(() => {
+      const root = document.querySelector('[data-room-area]');
+      if (root) root.classList.remove('is-more-open');
+    });
+  }
+}
+
+async function prepareScene(page, opts) {
+  opts = opts || {};
+  await resetEditor(page);
+  await applyLTemplate(page);
+  if (opts.alcove) {
+    const phone = page.viewport() && page.viewport().width <= 500;
+    if (phone) await tap(page, '[data-ra-more-toggle]');
+    await delay(150);
+    await tap(page, '[data-ra-alcove]');
+    await delay(200);
+  }
+  if (opts.dimMode) {
+    await page.evaluate((mode) => {
+      document.querySelectorAll('[data-ra-dimensions-mode]').forEach((sel) => {
+        sel.value = mode;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }, opts.dimMode);
+  }
   if (opts.metric) {
+    await tap(page, '[data-ra-unit-system="metric"]');
+    await delay(80);
     await page.evaluate(() => {
       const height = document.querySelector('[data-ra-wall-height]');
       if (height) {
@@ -126,8 +143,16 @@ async function prepareScene(page, opts) {
         height.blur();
       }
     });
-    await delay(200);
   }
+  await delay(200);
+}
+
+async function shot(page, name) {
+  const file = path.join(OUT, `${name}.png`);
+  await page.screenshot({ path: file, fullPage: false });
+  const canvas = await measureCanvas(page);
+  console.log('wrote', file, 'canvas', canvas.width + 'x' + canvas.height);
+  return canvas;
 }
 
 async function main() {
@@ -142,62 +167,66 @@ async function main() {
   const editorUrl = EDITOR_PATH.startsWith('http') ? EDITOR_PATH : `${BASE_URL}${EDITOR_PATH}`;
   await gotoReady(page, editorUrl);
   await waitForEditor(page);
-  await page.waitForSelector('[data-ra-template="l"]', { timeout: 15000 });
-
-  for (const shot of shots) {
-    await page.setViewport({
-      width: shot.width,
-      height: shot.height,
-      deviceScaleFactor: shot.width <= 400 ? 2 : 1,
-    });
-    await page.evaluate((mode) => {
-      const root = document.documentElement;
-      if (mode === 'dark') root.classList.add('admin-dark');
-      else root.classList.remove('admin-dark');
-      try { localStorage.setItem('admin-theme', mode === 'dark' ? 'dark' : 'light'); } catch (e) {}
-    }, shot.theme);
-    await page.evaluate(() => window.dispatchEvent(new Event('resize')));
-    await delay(200);
-    await prepareScene(page, {
-      metric: false,
-      templates: shot.width <= 400,
-      dimMode: 'all',
-    });
-    const file = path.join(OUT, `${shot.name}.png`);
-    await page.screenshot({ path: file, fullPage: false });
-    console.log('wrote', file);
-  }
-
-  for (const mode of ['main', 'area']) {
-    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
-    await page.evaluate(() => {
-      document.documentElement.classList.remove('admin-dark');
-      try { localStorage.setItem('admin-theme', 'light'); } catch (e) {}
-    });
-    await prepareScene(page, { metric: false, templates: false, dimMode: mode });
-    const dimFile = path.join(OUT, `ra-b1-1280-dims-${mode}.png`);
-    await page.screenshot({ path: dimFile, fullPage: false });
-    console.log('wrote', dimFile);
-  }
-
-  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
-  await prepareScene(page, { metric: false, templates: true, dimMode: 'all' });
-  const tplFile = path.join(OUT, 'ra-b1-390-templates.png');
-  await page.screenshot({ path: tplFile, fullPage: false });
-  console.log('wrote', tplFile);
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await setTheme(page, 'light');
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await delay(200);
+  await prepareScene(page, { dimMode: 'all' });
+  await shot(page, 'ra-b1-1280-light');
+
+  await setTheme(page, 'dark');
+  await delay(150);
+  await shot(page, 'ra-b1-1280-dark');
+
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await setTheme(page, 'light');
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await delay(250);
+  await prepareScene(page, { dimMode: 'all' });
+  const phoneLight = await shot(page, 'ra-b1-390-light');
+
+  await setTheme(page, 'dark');
+  await delay(150);
+  const phoneDark = await shot(page, 'ra-b1-390-dark');
+
+  await tap(page, '[data-ra-more-toggle]');
+  await delay(250);
+  await shot(page, 'ra-b1-390-more');
+  await shot(page, 'ra-b1-390-templates');
+
   await page.evaluate(() => {
-    document.documentElement.classList.remove('admin-dark');
-    try { localStorage.setItem('admin-theme', 'light'); } catch (e) {}
+    const root = document.querySelector('[data-room-area]');
+    if (root) {
+      root.classList.remove('is-more-open');
+      root.style.setProperty('--ra-sheet-h', '280px');
+    }
+    window.dispatchEvent(new Event('resize'));
   });
+  await delay(250);
+  await shot(page, 'ra-b1-390-sheet');
+
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  await setTheme(page, 'light');
+  await page.evaluate(() => {
+    const root = document.querySelector('[data-room-area]');
+    if (root) {
+      root.classList.remove('is-more-open');
+      root.style.removeProperty('--ra-sheet-h');
+    }
+    window.dispatchEvent(new Event('resize'));
+  });
+  await delay(200);
+  await prepareScene(page, { dimMode: 'main' });
+  await shot(page, 'ra-b1-1280-dims-main');
+  await prepareScene(page, { dimMode: 'area' });
+  await shot(page, 'ra-b1-1280-dims-area');
   await prepareScene(page, { metric: true });
-  const metricFile = path.join(OUT, 'ra-b1-metric-wall-height.png');
-  await page.screenshot({ path: metricFile, fullPage: false });
-  console.log('wrote', metricFile);
+  await shot(page, 'ra-b1-metric-wall-height');
 
   await browser.close();
   console.log('Batch 1 screenshots in', OUT);
+  console.log('390 canvas light', phoneLight.height, 'dark', phoneDark.height);
 }
 
 main().catch((err) => {

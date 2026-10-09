@@ -124,10 +124,17 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringNotContainsString("'tipId' => 'objects-snap'", $html);
         $this->assertStringContainsString("'tipId' => 'draw'", $html);
         $this->assertStringContainsString("'tipId' => 'plan'", $html);
+        $this->assertStringContainsString('data-ra-phone-bar', $html);
+        $this->assertStringContainsString('data-ra-more-toggle', $html);
+        $this->assertStringContainsString('data-ra-more-sheet', $html);
+        $this->assertStringContainsString('data-ra-sheet-total', $html);
+        $this->assertStringContainsString('state.editingRoomId = savedRoom.id', $js);
         $this->assertStringNotContainsString('title="Recalibrate scale so this wall matches', $html);
         $help = file_get_contents(resource_path('views/admin/utilities/_room_area_help_pop.blade.php'));
         $this->assertStringContainsString('role="region"', $help);
         $this->assertStringNotContainsString('role="tooltip"', $help);
+        $this->assertStringContainsString('<div class="util-ra-help">', $help);
+        $this->assertStringNotContainsString('<span class="util-ra-help">', $help);
     }
 
     public function test_saved_room_editor_prefs_round_trip(): void
@@ -312,6 +319,91 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->putJson(route('admin.utilities.room-area.projects.update', $layout), [
             'scale_pixels_per_foot' => 18,
         ])->assertStatus(422)->assertJsonPath('ok', false);
+
+        $emptyEditor = $canvas;
+        $emptyEditor['editor'] = [];
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $emptyEditor,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk()->assertJsonPath('room.canvas.editor.layers_locked', true);
+
+        $dimsOnly = $canvas;
+        $dimsOnly['editor'] = ['dimensions_mode' => 'main'];
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $dimsOnly,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk()->assertJsonPath('room.canvas.editor.layers_locked', true);
+
+        $nudge = $canvas;
+        $nudge['groups'][0]['polygons'][0]['vertices'][1]['x'] = 144.5;
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $nudge,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk();
+        $room->refresh();
+        $this->assertSame(144, (int) $room->vertices['groups'][0]['polygons'][0]['vertices'][1]['x']);
+
+        $movedBg = $room->vertices;
+        $movedBg['background'] = ['x' => 10, 'y' => 10, 'width' => 400, 'height' => 300];
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $movedBg,
+            'scale_pixels_per_foot' => 12,
+        ])->assertStatus(422)->assertJsonPath('ok', false);
+
+        $this->deleteJson(route('admin.utilities.room-area.projects.destroy', $layout))
+            ->assertStatus(422)
+            ->assertJsonPath('ok', false);
+    }
+
+    public function test_locked_new_room_allows_first_background_upload(): void
+    {
+        $this->actingAsAdmin();
+        $layout = RoomAreaProject::create([
+            'name' => 'Locked plan',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $canvas = [
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 144, 'y' => 0],
+                        ['x' => 144, 'y' => 120],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+            'editor' => ['layers_locked' => true],
+        ];
+        $store = $this->postJson(route('admin.utilities.room-area.rooms.store', $layout), [
+            'name' => 'Studio',
+            'canvas' => $canvas,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk();
+        $room = RoomAreaRoom::query()->findOrFail($store->json('room.id'));
+        $this->assertNull($room->background_path);
+
+        $file = \Illuminate\Http\UploadedFile::fake()->image('plan.png', 24, 24);
+        $this->post(route('admin.utilities.room-area.rooms.background.upload', $room), [
+            'background' => $file,
+        ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('ok', true);
+
+        $room->refresh();
+        $this->assertNotEmpty($room->background_path);
+
+        $this->post(route('admin.utilities.room-area.rooms.background.upload', $room), [
+            'background' => \Illuminate\Http\UploadedFile::fake()->image('plan2.png', 24, 24),
+        ], ['Accept' => 'application/json'])
+            ->assertStatus(422)
+            ->assertJsonPath('ok', false);
     }
 
     private function makeRoom(ClientProject $clientProject, string $name): RoomAreaRoom

@@ -133,6 +133,8 @@ class RoomAreaMeasurementParserTest extends TestCase
             ['6½"', RoomAreaMeasurementParser::UNIT_FEET_INCH_FRAC, 6.5 / 12],
             ['3,810 mm', RoomAreaMeasurementParser::UNIT_METER, 3.81 / $ft],
             ['3.810 mm', RoomAreaMeasurementParser::UNIT_FEET_DECIMAL, 3.81 / $ft],
+            ['12.700 mm', RoomAreaMeasurementParser::UNIT_FEET_DECIMAL, 0.0127 / $ft],
+            ['50.000 mm', RoomAreaMeasurementParser::UNIT_METER, 0.05 / $ft],
             ["12’ 6”", RoomAreaMeasurementParser::UNIT_METER, 12.5],
         ];
     }
@@ -157,6 +159,7 @@ class RoomAreaMeasurementParserTest extends TestCase
             ['1e9', RoomAreaMeasurementParser::UNIT_METER],
             ['1e9', RoomAreaMeasurementParser::UNIT_FEET_DECIMAL],
             ['6 1/0"', RoomAreaMeasurementParser::UNIT_FEET_INCH_FRAC],
+            ['0.500 mm', RoomAreaMeasurementParser::UNIT_METER],
         ];
     }
 }
