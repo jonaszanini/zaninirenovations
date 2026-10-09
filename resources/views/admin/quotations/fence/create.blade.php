@@ -60,14 +60,9 @@
           is_array($quotation->calculation) ? $quotation->calculation : null
       );
   }
-  $priceDeltaAmountLabel = '';
-  if (is_array($priceDelta) && abs((float) ($priceDelta['delta'] ?? 0)) >= 0.01) {
-      $delta = (float) ($priceDelta['delta'] ?? 0);
-      $priceDeltaAmountLabel = ' (unit prices '
-          .($delta < 0 ? '-' : '+')
-          .\App\Models\ClientProject::formatMoney(abs($delta))
-          .')';
-  }
+  $priceDeltaAmountLabel = is_array($priceDelta)
+      ? \App\Services\FenceQuotationCalculator::formatCatalogueDeltaLabel((float) ($priceDelta['delta'] ?? 0))
+      : '';
   $frozenUnitPrices = $isEdit
       ? \App\Services\FenceQuotationCalculator::frozenUnitPricesFromCalculation(
           is_array($quotation->calculation) ? $quotation->calculation : null
@@ -871,7 +866,7 @@
     return value === true || value === 1 || value === '1';
   }
 
-  // Saved null is off (legacy PHP). Missing/undefined on a new run is on.
+  // Saved null is off. Missing/undefined (pre-#50) is on. Matches PHP array_key_exists.
   function connectedOn(value, index) {
     if (index <= 0) return false;
     if (value === undefined) return true;

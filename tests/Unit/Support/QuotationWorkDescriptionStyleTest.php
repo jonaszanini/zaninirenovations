@@ -88,5 +88,25 @@ class QuotationWorkDescriptionStyleTest extends TestCase
             'Build a A-frame shed. Approx. 8 ft. high.',
             QuotationWorkDescriptionStyle::apply('Build a A-frame shed. approx. 8 ft. high.')
         );
+        $this->assertSame(
+            'Clear the drain. Then reset the cabin. The loft. Stays open.',
+            QuotationWorkDescriptionStyle::apply('Clear the drain. then reset the cabin. the loft. stays open.')
+        );
+        $this->assertSame(
+            'Oct. the first week.',
+            QuotationWorkDescriptionStyle::apply('Oct. the first week.')
+        );
+        $this->assertSame(
+            'Install the posts... then add the rails.',
+            QuotationWorkDescriptionStyle::apply('Install the posts... then add the rails.')
+        );
+        $this->assertSame(
+            'The deck gets new boards.',
+            QuotationWorkDescriptionStyle::apply('The The deck gets new boards.')
+        );
+        $this->assertSame(
+            'Build a A-frame shed.',
+            QuotationWorkDescriptionStyle::apply('Build a A-frame shed.')
+        );
     }
 }

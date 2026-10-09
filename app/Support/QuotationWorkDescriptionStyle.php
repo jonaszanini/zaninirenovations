@@ -136,13 +136,14 @@ TXT;
         $text = preg_replace('/^```[a-zA-Z0-9_-]*\s*/u', '', $text) ?? $text;
         $text = preg_replace('/\s*```$/u', '', $text) ?? $text;
 
-        $text = preg_replace('/\b(a|an|the)\s+\1\b/u', '$1', $text) ?? $text;
+        $text = preg_replace('/\b(a|an|the)\s+\1\b(?!-)/iu', '$1', $text) ?? $text;
         $text = preg_replace('/[ \t]+/u', ' ', $text) ?? $text;
         $text = preg_replace('/\s+,/u', ',', $text) ?? $text;
         $text = preg_replace('/\s+;/u', ';', $text) ?? $text;
         $text = preg_replace('/,\s*,/u', ',', $text) ?? $text;
         $text = preg_replace('/\s+\./u', '.', $text) ?? $text;
-        $text = preg_replace('/\.\s*\./u', '.', $text) ?? $text;
+        // Collapse doubled periods, but leave ellipses ("posts... then") intact.
+        $text = preg_replace('/(?<!\.)\.\s*\.(?!\.)/u', '.', $text) ?? $text;
         $text = preg_replace('/(?:^|\s)\.(?:\s|$)/u', ' ', $text) ?? $text;
         $text = preg_replace('/\s{2,}/u', ' ', $text) ?? $text;
 
@@ -170,7 +171,10 @@ TXT;
             $letter = $matches[$i][1][0];
             $letterPos = (int) $matches[$i][1][1];
             $before = substr($text, 0, $letterPos);
-            if (preg_match('/(?:sq|ft|in|approx|etc|no|vs|e\.g|i\.e)\.\s*$/iu', $before)) {
+            if (preg_match('/\.{2,}\s*$/u', $before)) {
+                continue;
+            }
+            if (preg_match('/\b(?:sq|ft|in|approx|etc|no|vs|oct|e\.g|i\.e)\.\s*$/iu', $before)) {
                 continue;
             }
             $text = substr($text, 0, $letterPos).mb_strtoupper($letter).substr($text, $letterPos + strlen($letter));

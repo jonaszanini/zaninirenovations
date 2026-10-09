@@ -124,6 +124,18 @@ class FenceQuotationCalculator
         ];
     }
 
+    /** Banner suffix, e.g. " (unit prices -CA$5.00)". Empty when the delta is a wash. */
+    public static function formatCatalogueDeltaLabel(float $delta): string
+    {
+        if (abs($delta) < 0.01) {
+            return '';
+        }
+
+        $sign = $delta < 0 ? '-' : '+';
+
+        return ' (unit prices '.$sign.\App\Models\ClientProject::formatMoney(abs($delta)).')';
+    }
+
     public function calculate(array $inputs, ?array $frozenUnitPrices = null): array
     {
         $normalised = $this->normaliseInputs($inputs);
@@ -162,10 +174,7 @@ class FenceQuotationCalculator
                 continue;
             }
             $gateSpec = FenceGateSpec::fromSide($side);
-            $connected = FenceSideFlags::connectedToPrevious(
-                $side['connected_to_previous'] ?? null,
-                $index
-            );
+            $connected = FenceSideFlags::connectedToPreviousFromSide($side, $index);
             $sides[] = [
                 'length_ft' => round($len, 2),
                 'already_have_post_left' => FenceSideFlags::isOn($side['already_have_post_left'] ?? false),
@@ -246,10 +255,7 @@ class FenceQuotationCalculator
 
             $existingLeft = (bool) ($side['already_have_post_left'] ?? false);
             $existingRight = (bool) ($side['already_have_post_right'] ?? false);
-            $connectedToPrevious = FenceSideFlags::connectedToPrevious(
-                $side['connected_to_previous'] ?? null,
-                $idx
-            );
+            $connectedToPrevious = FenceSideFlags::connectedToPreviousFromSide($side, $idx);
 
             // Gate-side layout: gate consumes its opening at the end of the run.
             //   [existing left?] — fence run (length − opening) — hinge — opening — far post
@@ -310,10 +316,7 @@ class FenceQuotationCalculator
 
         $structuralPosts = array_sum($postsPerSide);
         for ($i = 1; $i < $sideCount; $i++) {
-            $connected = FenceSideFlags::connectedToPrevious(
-                $in['sides'][$i]['connected_to_previous'] ?? null,
-                $i
-            );
+            $connected = FenceSideFlags::connectedToPreviousFromSide($in['sides'][$i], $i);
             if (! $connected) {
                 continue;
             }

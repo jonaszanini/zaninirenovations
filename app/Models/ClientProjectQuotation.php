@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPdfFoldVersion;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationReplyToAccept;
@@ -21,17 +22,12 @@ use Illuminate\Support\Facades\Storage;
  */
 class ClientProjectQuotation extends Model
 {
+    use HasPdfFoldVersion;
+
     public const TYPE_QUOTATION = 'quotation';
     public const TYPE_ESTIMATE = 'estimate';
 
     public const HST_RATE = 0.13;
-
-    /**
-     * Quotes created at/after this get a taxed Labour line when commute or
-     * debris has no labour row. Earlier saved quotes keep the old fold
-     * (non-material amounts land on the first taxed line, often Material).
-     */
-    public const TAXED_LABOUR_FOLD_FROM = '2026-10-09 03:00:00';
 
     public const STATUS_DRAFT = 'draft';
 
@@ -775,10 +771,13 @@ class ClientProjectQuotation extends Model
 
         $indexes = $this->commuteLabourLineIndexes($items);
         if ($indexes === []) {
+            // Only tax a new Labour row when the quote already has taxed
+            // lines. Cash / fully-untaxed quotes keep extras at the gross
+            // amount so HST and total_amount do not change.
             $items[] = [
                 'description' => 'Labour',
                 'amount' => 0.0,
-                'apply_hst' => true,
+                'apply_hst' => $this->itemsHaveTaxedAmount($items),
                 'hst_included' => false,
             ];
             $indexes = $this->commuteLabourLineIndexes($items);
@@ -799,8 +798,10 @@ class ClientProjectQuotation extends Model
 
         // Taxed labour: add pre-tax so the footer 13% covers the extra.
         // Cash / tax-in labour: add the gross so 13% is not stripped away.
+        $leftoverHst = 0.0;
         if ($taxed !== []) {
             $total = self::preTaxFromHstIncluded($hiddenGross);
+            $leftoverHst = round($hiddenGross - $total, 2);
             $targets = $taxed;
         } else {
             $total = round($hiddenGross, 2);
@@ -812,9 +813,16 @@ class ClientProjectQuotation extends Model
         }
 
         $shares = self::splitAmountEvenly($total, count($targets));
+        $hstShares = $leftoverHst > 0 && ! $this->usesLegacyPdfNonMaterialFold()
+            ? self::splitAmountEvenly($leftoverHst, count($targets))
+            : array_fill(0, count($targets), 0.0);
         foreach ($targets as $i => $idx) {
             $row = &$items[$idx];
+            $hstBefore = self::lineHstAmount($row);
             $this->addAmountToPdfLine($row, $shares[$i]);
+            if (! empty($row['apply_hst']) && $hstShares[$i] != 0.0) {
+                $row['hst_amount'] = round($hstBefore + $hstShares[$i], 2);
+            }
             unset($row);
         }
 
@@ -828,7 +836,11 @@ class ClientProjectQuotation extends Model
     {
         $indexes = [];
         foreach ($items as $i => $row) {
-            if (self::isPdfLabourLine($row)) {
+            if ($this->usesLegacyPdfNonMaterialFold()) {
+                if (self::isPdfLabourLine($row)) {
+                    $indexes[] = $i;
+                }
+            } elseif (self::isPdfFoldTargetLine($row)) {
                 $indexes[] = $i;
             }
         }
@@ -844,20 +856,30 @@ class ClientProjectQuotation extends Model
     }
 
     /**
-     * Saved quotes from before {@see TAXED_LABOUR_FOLD_FROM} keep the old
-     * no-labour fold so their PDF lines and cents stay identical.
+     * Saved quotes on fold version 1 keep the old no-labour fold so their
+     * PDF lines and cents stay identical. Version 2 (and unsaved new rows)
+     * fold into labour or a combined materials+labour summary.
      */
     protected function usesLegacyPdfNonMaterialFold(): bool
     {
-        if (! $this->exists) {
-            return false;
+        return $this->usesLegacyPdfFold();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    protected function itemsHaveTaxedAmount(array $items): bool
+    {
+        foreach ($items as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
+            if (! empty($row['apply_hst'])) {
+                return true;
+            }
         }
 
-        $created = $this->created_at
-            ? $this->asDateTime($this->created_at)
-            : $this->asDateTime('2000-01-01 00:00:00');
-
-        return $created->lt($this->asDateTime(self::TAXED_LABOUR_FOLD_FROM));
+        return false;
     }
 
     /**
@@ -882,6 +904,57 @@ class ClientProjectQuotation extends Model
             || str_ends_with($desc, ' — Labour')
             || str_ends_with($desc, ' — Labor')
             || (bool) preg_match('/\blabou?r\b/i', $desc);
+    }
+
+    /**
+     * Labour rows plus combined materials+labour summaries (fence / low-deck
+     * / paving job lines). Material-only rows stay out so extras never land
+     * on Material for new quotes.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    protected static function isPdfFoldTargetLine(array $row): bool
+    {
+        if (self::isPdfLabourLine($row)) {
+            return true;
+        }
+        if (! empty($row['is_heading'])) {
+            return false;
+        }
+        if (self::isPdfMaterialOnlyLine($row)) {
+            return false;
+        }
+
+        $desc = (string) ($row['description'] ?? '');
+        if (stripos($desc, 'HST exempt') !== false) {
+            return false;
+        }
+        if (DebrisRemovalExpenseService::isLineDescription($desc)) {
+            return false;
+        }
+
+        return ! empty($row['apply_hst']) || ! empty($row['hst_included']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected static function isPdfMaterialOnlyLine(array $row): bool
+    {
+        $desc = (string) ($row['description'] ?? '');
+        if ($desc === 'Material' || $desc === 'Materials') {
+            return true;
+        }
+        if (str_ends_with($desc, ' — Material')
+            || str_ends_with($desc, ' — Materials')
+            || str_ends_with($desc, ' — materials')) {
+            return true;
+        }
+        if (preg_match('/\blabou?r\b/i', $desc)) {
+            return false;
+        }
+
+        return (bool) preg_match('/\bmaterials?\b/i', $desc);
     }
 
     /**
@@ -1358,6 +1431,29 @@ class ClientProjectQuotation extends Model
         return round($this->subtotal() + $this->hst(), 2);
     }
 
+    /**
+     * Editor / invoice-source total from the stored (unfolded) lines: each
+     * taxed amount plus its 13%, cash and HST-included extras at face value.
+     * New-fold PDFs must match this to the cent.
+     */
+    public function editorGrandTotal(): float
+    {
+        if ($this->hasSubtotalOverrideActive()) {
+            return $this->grandTotal();
+        }
+
+        $sum = 0.0;
+        foreach ($this->cleanItems() as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
+            $sum += (float) ($row['amount'] ?? 0);
+            $sum += self::lineHstAmount($row);
+        }
+
+        return round($sum, 2);
+    }
+
     public function statusLabel(): string
     {
         return match ($this->status) {
@@ -1602,6 +1698,10 @@ class ClientProjectQuotation extends Model
     {
         if (empty($row['apply_hst'])) {
             return 0.0;
+        }
+
+        if (array_key_exists('hst_amount', $row)) {
+            return round((float) $row['hst_amount'], 2);
         }
 
         $base = array_key_exists('hst_taxable_amount', $row)

@@ -158,6 +158,25 @@ class FenceQuotationOct8FixesTest extends TestCase
             $stringZero['geometry']['structural_posts'],
             $nullConnected['geometry']['structural_posts']
         );
+
+        $missingKey = $this->calculator()->calculate([
+            'sides' => [
+                ['length_ft' => 16],
+                ['length_ft' => 16],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+        ]);
+        $this->assertTrue($missingKey['geometry']['sides_breakdown'][1]['connected_to_previous']);
+        $this->assertSame(
+            $connected['geometry']['structural_posts'],
+            $missingKey['geometry']['structural_posts']
+        );
+        $this->assertSame(
+            $connected['geometry']['structural_posts'] + 1,
+            $nullConnected['geometry']['structural_posts']
+        );
     }
 
     public function test_catalogue_price_delta_negative_stays_signed(): void
@@ -178,6 +197,15 @@ class FenceQuotationOct8FixesTest extends TestCase
         $delta = FenceQuotationCalculator::cataloguePriceDelta($live, $saved);
         $this->assertTrue($delta['changed']);
         $this->assertEqualsWithDelta(-5.0, $delta['delta'], 0.01);
+
+        $label = FenceQuotationCalculator::formatCatalogueDeltaLabel($delta['delta']);
+        $this->assertSame(' (unit prices -CA$5.00)', $label);
+        $rendered = \Illuminate\Support\Facades\Blade::render(
+            'Catalogue unit prices have changed since this quote was saved{{ $priceDeltaAmountLabel }}.',
+            ['priceDeltaAmountLabel' => $label]
+        );
+        $this->assertStringContainsString('-CA$5.00', $rendered);
+        $this->assertStringNotContainsString('+-', $rendered);
     }
 
     public function test_catalogue_price_delta_ignores_quantity_only_changes(): void

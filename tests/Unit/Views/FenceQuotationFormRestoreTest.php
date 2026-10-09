@@ -14,10 +14,9 @@ class FenceQuotationFormRestoreTest extends TestCase
         $this->assertStringContainsString('function connectedOn(', $blade);
         $this->assertStringContainsString("value === '1'", $blade);
         $this->assertStringContainsString('FenceSideFlags::normaliseSides', $blade);
-        $this->assertStringContainsString('Saved null is off (legacy PHP)', $blade);
+        $this->assertStringContainsString('Saved null is off', $blade);
         $this->assertStringContainsString('$priceDeltaAmountLabel', $blade);
-        $this->assertStringContainsString("formatMoney(abs(\$delta))", $blade);
-        $this->assertStringContainsString("\$delta < 0 ? '-' : '+'", $blade);
+        $this->assertStringContainsString('formatCatalogueDeltaLabel', $blade);
         $this->assertStringNotContainsString('@endif.', $blade);
 
         $this->assertStringContainsString('flagOn(side.already_have_post_left)', $blade);

@@ -21,16 +21,35 @@ final class FenceSideFlags
     }
 
     /**
-     * Run 0 is never connected. Saved rows store null/missing as off
-     * (legacy). New form runs set the flag to on explicitly.
+     * Run 0 is never connected. A missing key matches JS
+     * connectedOn(undefined) = on (pre-#50 saved sides). An explicit null
+     * is off. Posted "0" / false is off; "1" / true is on.
      */
-    public static function connectedToPrevious(mixed $value, int $index): bool
+    public static function connectedToPrevious(mixed $value, int $index, bool $keyPresent = true): bool
     {
         if ($index <= 0) {
             return false;
         }
+        if (! $keyPresent) {
+            return true;
+        }
+        if ($value === null) {
+            return false;
+        }
 
         return self::isOn($value);
+    }
+
+    /**
+     * @param  array<string, mixed>  $side
+     */
+    public static function connectedToPreviousFromSide(array $side, int $index): bool
+    {
+        return self::connectedToPrevious(
+            $side['connected_to_previous'] ?? null,
+            $index,
+            array_key_exists('connected_to_previous', $side)
+        );
     }
 
     /**
@@ -40,11 +59,13 @@ final class FenceSideFlags
     public static function normaliseSides(array $sides): array
     {
         $out = [];
+        $index = 0;
         foreach ($sides as $side) {
             if (! is_array($side)) {
                 continue;
             }
-            $out[] = self::normaliseSide($side);
+            $out[] = self::normaliseSide($side, $index);
+            $index++;
         }
 
         return $out;
@@ -54,13 +75,12 @@ final class FenceSideFlags
      * @param  array<string, mixed>  $side
      * @return array<string, mixed>
      */
-    public static function normaliseSide(array $side): array
+    public static function normaliseSide(array $side, int $index = 0): array
     {
         $side['already_have_post_left'] = self::isOn($side['already_have_post_left'] ?? false);
         $side['already_have_post_right'] = self::isOn($side['already_have_post_right'] ?? false);
         $side['gate_goes_here'] = self::isOn($side['gate_goes_here'] ?? false);
-        // Missing/null on a saved row is off (legacy). New runs set the key to true.
-        $side['connected_to_previous'] = self::isOn($side['connected_to_previous'] ?? null);
+        $side['connected_to_previous'] = self::connectedToPreviousFromSide($side, $index);
 
         return $side;
     }
