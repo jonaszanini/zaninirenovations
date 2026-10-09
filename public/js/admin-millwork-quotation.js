@@ -83,6 +83,7 @@
         var el = sectionEl(wizardKeys[idx]);
         if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+      syncClientProvidesAll();
     }
 
     function setSaveBusy(on) {
@@ -206,6 +207,7 @@
 
     function syncClientProvidesAll() {
       var hide = clientProvidesAll();
+      form.classList.toggle('is-client-all', hide);
       var wrap = document.getElementById('mw-delivery-wrap');
       if (wrap) wrap.hidden = hide;
       var bar = document.getElementById('mw-bar-delivery-wrap');
@@ -1040,6 +1042,14 @@
       undoBannerBtn.addEventListener('click', revertToLegacy);
     }
 
+    var clientAll = document.getElementById('mw-client-all');
+    if (clientAll) {
+      clientAll.addEventListener('change', function () {
+        syncClientProvidesAll();
+        schedulePreview();
+      });
+    }
+    syncClientProvidesAll();
     if (cfg.initialPreview) renderPreview(cfg.initialPreview);
     schedulePreview();
   }

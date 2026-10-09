@@ -60,11 +60,11 @@
   max-width: none;
 }
 .mw-dim__unit {
-  flex: 0 0 3.4rem;
-  width: 3.4rem;
-  max-width: 3.4rem;
-  padding-left: 4px;
-  padding-right: 18px;
+  flex: 0 0 4.25rem;
+  width: 4.25rem;
+  max-width: 4.25rem;
+  padding-left: 6px;
+  padding-right: 20px;
 }
 .mw-piece__row--pack {
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -310,6 +310,10 @@
 }
 .mw-hw-price {
   margin: 2px 0 0;
+}
+#mw-main-form.is-client-all #mw-delivery-wrap,
+#mw-main-form.is-client-all #mw-bar-delivery-wrap {
+  display: none !important;
 }
 
 .mw-cut-plan {

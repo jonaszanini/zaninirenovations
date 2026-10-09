@@ -204,7 +204,7 @@
           'rateValue' => old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate), 2, '.', '')),
         ])
       </div>
-      <div class="admin-form-group" id="mw-delivery-wrap">
+      <div class="admin-form-group" id="mw-delivery-wrap" @if (old('client_provides_all', $inputs['client_provides_all'] ?? false)) hidden @endif>
         <label for="mw-delivery">Delivery</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input mw-preview mw-input--money" id="mw-delivery" name="delivery_amount"
