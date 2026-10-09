@@ -17,12 +17,14 @@ Canonical API (same path as any parallel fence PR — slot + `label`):
 
 `label` becomes `aria-label="About Board style"`. **Do not put the tip inside a `<label for>`** — the ⓘ must not become part of the input's accessible name. Headings may wrap the tip.
 
-Existing includes and the `:text` attribute still work (same component file):
+The include wrapper **does not** inherit parent `$text` / `$html` / `$id` / `$label`. Pass `tipText` / `tipHtml` / `tipLabel` / `tipId` only. The component `:text` attribute and slot still work:
 
 ```blade
-@include('admin.partials.info_tip', ['text' => 'Plain explanation.', 'label' => 'Labour rate'])
+@include('admin.partials.info_tip', ['tipText' => 'Plain explanation.', 'tipLabel' => 'Labour rate'])
 <x-admin.info-tip :text="'Plain explanation.'" label="Labour rate" />
 ```
+
+`admin.client_projects._cp_field_hint` and `search_select` `$labelHint` use the same keys (`tipText` / `tipHtml` / `tipLabel`). Do not pass `'text'` or `'html'` — those keys are ignored and CI fails the leftover scan.
 
 HTML (links, `<code>`, `<strong>`) goes in the slot (trusted Blade only):
 

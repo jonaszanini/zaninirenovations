@@ -402,7 +402,7 @@
     <div class="admin-form-group cp-expense-receipt-field">
       <span class="admin-label-with-tip">
         <label for="cp-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
-        <x-admin.info-tip label="Receipt">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
+        <x-admin.info-tip label="Receipt (new expense)">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
       </span>
       <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf" capture="environment">
     </div>
@@ -509,9 +509,9 @@
                         @endif
                       </label>
                       @if (! $expenseOnInvoice)
-                        <x-admin.info-tip label="Receipt">Leave blank to keep the current receipt. Add or replace with an image (stored as WebP) or a PDF — filename <strong>Receipt-{{ $expense->expense_ref }}</strong> with the matching extension.</x-admin.info-tip>
+                        <x-admin.info-tip :label="'Receipt '.$expense->expense_ref.(filled($expense->description) ? ' — '.$expense->description : '')">Leave blank to keep the current receipt. Add or replace with an image (stored as WebP) or a PDF — filename <strong>Receipt-{{ $expense->expense_ref }}</strong> with the matching extension.</x-admin.info-tip>
                       @else
-                        <x-admin.info-tip label="Receipt">Image (JPEG, PNG, WebP, AVIF) or PDF — stored as WebP or PDF named <strong>Receipt-{{ $expense->expense_ref }}</strong>.</x-admin.info-tip>
+                        <x-admin.info-tip :label="'Receipt '.$expense->expense_ref.(filled($expense->description) ? ' — '.$expense->description : '')">Image (JPEG, PNG, WebP, AVIF) or PDF — stored as WebP or PDF named <strong>Receipt-{{ $expense->expense_ref }}</strong>.</x-admin.info-tip>
                       @endif
                     </span>
                     <input class="admin-input" type="file" id="cp-expense-edit-receipt-{{ $expense->id }}" name="receipt" accept="image/*,application/pdf" @if ($expenseOnInvoice) required @endif>

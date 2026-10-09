@@ -167,6 +167,12 @@ class FakeEl {
     return false;
   }
 
+  get previousElementSibling() {
+    if (!this.parentNode || !Array.isArray(this.parentNode.children)) return null;
+    const i = this.parentNode.children.indexOf(this);
+    return i > 0 ? this.parentNode.children[i - 1] : null;
+  }
+
   appendChild(el) {
     if (el.parentNode) {
       el.parentNode.children = el.parentNode.children.filter((c) => c !== el);
@@ -503,7 +509,35 @@ function fire(list, type, event) {
     stopPropagation() { linkStopped = true; },
   });
   assert.equal(linkPrevented, false, 'links inside a summary bubble stay clickable');
-  assert.equal(linkStopped, true, 'summary does not toggle when clicking a bubble link');
+  assert.equal(linkStopped, false, 'capture does not stop a bubble link so its own handler can fire');
+
+  let linkHandlerFired = false;
+  link.addEventListener('click', function () { linkHandlerFired = true; });
+  if (!linkStopped) {
+    link.dispatchEvent('click', {
+      target: link,
+      preventDefault() {},
+      stopPropagation() {},
+    });
+  }
+  assert.equal(linkHandlerFired, true, 'the link\'s own click handler fires (e.g. data-cp-jump-tab)');
+
+  const bubblePhase = listeners.document.click.find((l) => !l.opts || l.opts === false || (typeof l.opts === 'object' && !l.opts.capture));
+  assert.ok(bubblePhase, 'bubble-phase click listener keeps summary from toggling after the link handler');
+  let bubbleStopped = false;
+  bubblePhase.fn({
+    target: {
+      closest(sel) {
+        if (sel === '.admin-info-tip__bubble') return bubble;
+        if (sel === 'summary') return summary;
+        if (sel === 'a') return link;
+        return null;
+      },
+    },
+    preventDefault() {},
+    stopPropagation() { bubbleStopped = true; },
+  });
+  assert.equal(bubbleStopped, true, 'bubble-phase stop keeps <summary> from toggling');
 
   const down = listeners.document.mousedown.find((l) => l.opts === true || (l.opts && l.opts.capture));
   assert.ok(down, 'capture-phase mousedown listener');
@@ -519,6 +553,37 @@ function fire(list, type, event) {
     preventDefault() { downPrevented = true; },
   });
   assert.equal(downPrevented, false, 'mousedown on a bubble link is not cancelled');
+}
+
+// --- JS label fallback: "More info" becomes "About {adjacent label}" ---
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
+  row.className = 'admin-label-with-tip';
+  const label = document.createElement('label');
+  label.textContent = 'Owner rate (CAD$)';
+  const { wrap, btn } = makeTip(document, 'admin-info-tip-fallback', 'ignored');
+  btn.setAttribute('aria-label', 'More info');
+  row.appendChild(label);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  AdminInfoTip.hoist(document);
+  assert.equal(btn.getAttribute('aria-label'), 'About Owner rate (CAD$)');
+}
+
+// --- prefer opening downward so the bubble stays attached to its icon ---
+{
+  const { document, body, listeners } = createEnv();
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-down', 'Owner rate');
+  bubble._rect = { top: 0, bottom: 200, left: 0, right: 200, width: 200, height: 200 };
+  btn._rect = { top: 500, bottom: 544, left: 40, right: 84, width: 44, height: 44 };
+  body.appendChild(wrap);
+  wrap.classList.add('is-open');
+  btn.setAttribute('aria-expanded', 'true');
+  const resize = listeners.window.resize[0];
+  resize.fn();
+  const top = parseInt(bubble.style.top, 10);
+  assert.ok(top >= 536 && top <= 548, 'stays below the icon instead of flipping under the previous field, got ' + top);
 }
 
 console.log('admin-info-tip.test.mjs: ok');

@@ -51,9 +51,11 @@
 @endphp
 
 <details class="br-acc admin-card is-active" data-br-step="pieces" open>
-  <summary class="br-acc__summary"><span class="br-acc__num">1</span> Pieces</summary>
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">1</span> Pieces
+    <x-admin.info-tip label="Pieces">Add each millwork item — cabinets, closets, vanities, trim, and more. Duplicate a piece to copy its sizes.</x-admin.info-tip>
+  </summary>
   <div class="br-acc__body">
-    <p class="admin-form-help">Add each millwork item — cabinets, closets, vanities, trim, and more. Duplicate a piece to copy its sizes.</p>
     <div id="mw-piece-list">
       @foreach ($pieces as $pi => $piece)
         @include('admin.quotations.millwork._piece_card', ['pi' => $pi, 'piece' => is_array($piece) ? $piece : []])

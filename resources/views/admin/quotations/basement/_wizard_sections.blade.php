@@ -1101,7 +1101,7 @@
             <div class="admin-form-group" id="br-bath-fixture-qty-wrap" @unless($brOn('include_bath_fixture')) hidden @endunless>
               <span class="admin-label-with-tip">
   <label for="br-bath-fixture-qty">@include('admin.quotations.basement._client_filled', ['key' => 'bath_fixture_qty', 'filledKeys' => $filledKeys]) How many</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_fixture_qty'], 'tipLabel' => 'How many'])
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_fixture_qty'], 'tipLabel' => 'How many fixtures'])
 </span>
               <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-fixture-qty" name="bath_fixture_qty"
                      value="{{ $brVal('bath_fixture_qty', 1) }}">
@@ -1121,7 +1121,7 @@
             <div class="admin-form-group" id="br-bath-spot-qty-wrap" @unless($brOn('include_bath_spot')) hidden @endunless>
               <span class="admin-label-with-tip">
   <label for="br-bath-spot-qty">@include('admin.quotations.basement._client_filled', ['key' => 'bath_spot_qty', 'filledKeys' => $filledKeys]) How many</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_spot_qty'], 'tipLabel' => 'How many'])
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_spot_qty'], 'tipLabel' => 'How many pot lights'])
 </span>
               <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-spot-qty" name="bath_spot_qty"
                      value="{{ $brVal('bath_spot_qty', 0) }}">

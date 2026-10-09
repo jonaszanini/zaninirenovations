@@ -1,37 +1,44 @@
 {{--
   Label as a sibling of the info-tip — never nest the tip inside <label>.
 
-  @param string      $for         label[for]
-  @param string      $labelText   Visible label (escaped)
-  @param string|null $labelHtml   Trusted label HTML instead of $labelText
-  @param string|null $tipText     Plain tip (escaped)
-  @param string|null $tipHtml     HTML tip
-  @param string|null $tipLabel    aria-label "About {tipLabel}"
-  @param string|null $filledKey   Optional client-filled marker
-  @param array       $filledKeys
-  @param string|null $labelId
+  Never read parent-scope $for / $labelHtml / $labelId / $tipText / $tipHtml /
+  $tipLabel — @include inherits the parent view. Pass lw* keys only.
+
+  @param string|null $lwFor         label[for]
+  @param string      $lwLabelText   Visible label (escaped)
+  @param string|null $lwLabelHtml   Trusted label HTML instead of $lwLabelText
+  @param string|null $lwTipText     Plain tip (escaped)
+  @param string|null $lwTipHtml     HTML tip
+  @param string|null $lwTipLabel    aria-label "About {tipLabel}"
+  @param string|null $lwFilledKey   Optional client-filled marker
+  @param array       $lwFilledKeys
+  @param string|null $lwLabelId
 --}}
 @php
-  $for = $for ?? null;
-  $labelText = $labelText ?? '';
-  $tipLabel = $tipLabel ?? trim(strip_tags($labelText));
-  $filledKey = $filledKey ?? null;
-  $filledKeys = $filledKeys ?? [];
+  $lwFor = $lwFor ?? null;
+  $lwLabelText = $lwLabelText ?? '';
+  $lwLabelHtml = $lwLabelHtml ?? null;
+  $lwLabelId = $lwLabelId ?? null;
+  $lwTipText = $lwTipText ?? null;
+  $lwTipHtml = $lwTipHtml ?? null;
+  $lwTipLabel = $lwTipLabel ?? trim(strip_tags((string) $lwLabelText));
+  $lwFilledKey = $lwFilledKey ?? null;
+  $lwFilledKeys = $lwFilledKeys ?? [];
 @endphp
 <span class="admin-label-with-tip">
-  <label @if (! empty($for)) for="{{ $for }}" @endif @if (! empty($labelId)) id="{{ $labelId }}" @endif>
-    @if (! empty($filledKey))
-      @include('admin.quotations.basement._client_filled', ['key' => $filledKey, 'filledKeys' => $filledKeys])
+  <label @if (! empty($lwFor)) for="{{ $lwFor }}" @endif @if (! empty($lwLabelId)) id="{{ $lwLabelId }}" @endif>
+    @if (! empty($lwFilledKey))
+      @include('admin.quotations.basement._client_filled', ['key' => $lwFilledKey, 'filledKeys' => $lwFilledKeys])
     @endif
-    @if (! empty($labelHtml))
-      {!! $labelHtml !!}
+    @if (! empty($lwLabelHtml))
+      {!! $lwLabelHtml !!}
     @else
-      {{ $labelText }}
+      {{ $lwLabelText }}
     @endif
   </label>
   @include('admin.partials.info_tip', [
-    'tipText' => $tipText ?? null,
-    'tipHtml' => $tipHtml ?? null,
-    'tipLabel' => $tipLabel,
+    'tipText' => $lwTipText,
+    'tipHtml' => $lwTipHtml,
+    'tipLabel' => $lwTipLabel,
   ])
 </span>

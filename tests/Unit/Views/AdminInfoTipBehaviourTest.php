@@ -104,11 +104,26 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('isIconVisibleInClip', $js);
         $this->assertStringContainsString('idsAlreadyInDocument', $js);
         $this->assertStringContainsString("e.target.closest('summary')", $js);
+        $this->assertStringContainsString('spaceBelow < minBelow && spaceAbove >= need', $js);
+        $this->assertStringContainsString("document.addEventListener('click', function (e) {\n    if (!e.target.closest || !e.target.closest('.admin-info-tip__bubble')) return;\n    if (!e.target.closest('summary')) return;\n    e.stopPropagation();\n  }, false)", $js);
         $this->assertStringContainsString('function refreshIds(scope)', $js);
         $this->assertStringContainsString('refreshIds: refreshIds', $js);
         $this->assertStringContainsString('btn.focus()', $js);
         $this->assertStringContainsString("e.key !== 'Escape'", $js);
-        $this->assertStringContainsString('flex-wrap: nowrap', file_get_contents(public_path('css/admin.css')));
+        $css = file_get_contents(public_path('css/admin.css'));
+        $this->assertStringContainsString('flex-wrap: nowrap', $css);
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.admin-label-with-tip\s*\{[^}]*white-space:\s*nowrap/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip\s*>\s*label[^}]*white-space:\s*normal/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip\s*>\s*\.admin-info-tip-wrap[^}]*flex-shrink:\s*0/',
+            $css
+        );
     }
 
     public function test_clone_sites_refresh_tip_ids(): void
@@ -241,5 +256,23 @@ class AdminInfoTipBehaviourTest extends TestCase
 
         $this->assertStringContainsString('aria-label="More info"', $html);
         $this->assertStringContainsString('Fallback copy.', $html);
+    }
+
+    public function test_millwork_step_one_intro_is_a_tip_and_accessible_names_are_unique(): void
+    {
+        $millwork = file_get_contents(resource_path('views/admin/quotations/millwork/_wizard_sections.blade.php'));
+        $this->assertStringContainsString('Add each millwork item — cabinets, closets, vanities, trim, and more.', $millwork);
+        $this->assertStringContainsString('label="Pieces"', $millwork);
+        $this->assertStringNotContainsString('<p class="admin-form-help">Add each millwork item', $millwork);
+
+        $basement = file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php'));
+        $this->assertStringContainsString("'tipLabel' => 'How many fixtures'", $basement);
+        $this->assertStringContainsString("'tipLabel' => 'How many pot lights'", $basement);
+        $this->assertStringNotContainsString("'tipLabel' => 'How many'", $basement);
+
+        $financials = file_get_contents(resource_path('views/admin/client_projects/_financials.blade.php'));
+        $this->assertStringContainsString('label="Receipt (new expense)"', $financials);
+        $this->assertStringContainsString(":label=\"'Receipt '.\$expense->expense_ref", $financials);
+        $this->assertStringNotContainsString('<x-admin.info-tip label="Receipt">', $financials);
     }
 }

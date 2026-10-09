@@ -70,13 +70,15 @@
       left = PAD;
     }
 
-    if (top + popRect.height > window.innerHeight - PAD) {
-      var above = btnRect.top - popRect.height + 4;
-      if (above >= PAD) {
-        top = above;
-      } else {
-        top = Math.max(PAD, window.innerHeight - PAD - popRect.height);
+    var spaceBelow = window.innerHeight - PAD - top;
+    var spaceAbove = btnRect.top - PAD;
+    var need = popRect.height;
+    var minBelow = Math.max(48, need * 0.35);
+    if (spaceBelow < need) {
+      if (spaceBelow < minBelow && spaceAbove >= need) {
+        top = btnRect.top - need + 4;
       }
+      // else stay below the icon so the bubble stays attached (may overlap the footer)
     }
 
     bubble.style.top = Math.round(top) + 'px';
@@ -334,11 +336,9 @@
     }
     var inSummary = !!(e.target.closest && e.target.closest('summary'));
     if (e.target.closest('.admin-info-tip__bubble')) {
-      if (inSummary) {
+      if (inSummary && !isLinkTarget(e.target)) {
         e.stopPropagation();
-        if (!isLinkTarget(e.target)) {
-          e.preventDefault();
-        }
+        e.preventDefault();
       }
       return;
     }
@@ -349,6 +349,12 @@
     e.stopPropagation();
     toggleTip(root);
   }, true);
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest || !e.target.closest('.admin-info-tip__bubble')) return;
+    if (!e.target.closest('summary')) return;
+    e.stopPropagation();
+  }, false);
 
   document.addEventListener('focusout', function (e) {
     var root = rootOf(e.target);

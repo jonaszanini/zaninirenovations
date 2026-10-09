@@ -1655,7 +1655,7 @@ a.admin-client-link:focus-visible {
   align-items: center;
   gap: 0.15rem;
   flex-wrap: nowrap;
-  white-space: nowrap;
+  max-width: 100%;
 }
 .admin-form-group > .admin-label-with-tip {
   display: flex;
@@ -1664,6 +1664,13 @@ a.admin-client-link:focus-visible {
 .admin-label-with-tip > label,
 .admin-label-with-tip > .admin-form-group-label {
   margin-bottom: 0;
+  white-space: normal;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.admin-label-with-tip > .admin-info-tip-wrap,
+.br-acc__summary > .admin-info-tip-wrap {
+  flex-shrink: 0;
 }
 .admin-form-group > label:has(.admin-info-tip),
 .admin-form-group > label:has(.admin-info-tip-wrap),
