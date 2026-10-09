@@ -6701,10 +6701,19 @@ body:has(.util-ra--fullpage) {
   .util-ra--fullpage .util-ra-canvas-toolbar {
     flex-wrap: nowrap;
     overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .util-ra--fullpage .util-ra-toolbar__groups,
+  .util-ra--fullpage .util-ra-toolbar__view,
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group {
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+    max-width: none;
+    min-width: max-content;
   }
 
   .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-toolbar__view {
-    flex: 0 0 auto;
     margin-left: auto;
   }
 
