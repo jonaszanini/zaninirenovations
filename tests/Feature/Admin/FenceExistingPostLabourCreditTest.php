@@ -30,7 +30,7 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
             '/id="fq-existing-post-credit"[^>]*class="[^"]*cp-money-input/',
             $html
         );
-        $this->assertDoesNotMatchRegularExpression(
+        $this->assertMatchesRegularExpression(
             '/id="fq-existing-post-credit"[^>]*data-cp-money-entry="direct"/',
             $html
         );
@@ -163,9 +163,9 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
             $creditInput
         ));
         $this->assertMatchesRegularExpression('/\brequired\b/', $creditInput[0]);
-        $this->assertDoesNotMatchRegularExpression(
-            '/id="fq-existing-post-credit"[^>]*data-cp-money-entry="direct"/',
-            $html
+        $this->assertMatchesRegularExpression(
+            '/\bdata-cp-money-entry="direct"/',
+            $creditInput[0]
         );
         $this->assertStringContainsString('admin-info-tip', $html);
         $this->assertStringContainsString('aria-label="About Labour credit"', $html);
@@ -309,6 +309,21 @@ class FenceExistingPostLabourCreditTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(80.0, $json['totals']['labour_before_credit'], 0.001);
         $this->assertEqualsWithDelta(80.0, $json['totals']['existing_post_credit']['amount'], 0.001);
         $this->assertEqualsWithDelta(0.0, $json['totals']['labour_subtotal'], 0.001);
+    }
+
+    public function test_preview_applies_decimal_existing_post_credit(): void
+    {
+        $this->actingAsAdmin();
+
+        $json = $this->postJson(route('admin.quotations.fence.preview'), $this->previewPayload([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => 1]],
+            'existing_post_labour_credit' => 12.50,
+        ]))->assertOk()->json();
+
+        $this->assertSame(1, $json['totals']['existing_post_credit']['count']);
+        $this->assertEqualsWithDelta(12.50, (float) $json['inputs']['existing_post_labour_credit'], 0.001);
+        $this->assertEqualsWithDelta(12.50, $json['totals']['existing_post_credit']['amount'], 0.001);
+        $this->assertEqualsWithDelta(24 * 55 - 12.50, $json['totals']['labour_subtotal'], 0.02);
     }
 
     public function test_editor_total_matches_pdf_total_with_commute_debris_and_credit(): void

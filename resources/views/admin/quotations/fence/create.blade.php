@@ -671,7 +671,7 @@
                 <label for="fq-existing-post-credit">Labour credit per existing post</label>
                 <x-admin.info-tip label="Labour credit">Subtracted from labour when a left/right tick actually removes a post.</x-admin.info-tip>
               </span>
-              <input id="fq-existing-post-credit" type="text" name="existing_post_labour_credit"
+              <input id="fq-existing-post-credit" data-cp-money-entry="direct" type="text" name="existing_post_labour_credit"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('existing_post_labour_credit')])
                      inputmode="decimal" autocomplete="off" required
                      value="{{ number_format((float) $initialExistingPostCredit, 2, '.', '') }}">
@@ -1465,10 +1465,15 @@
       tLabourNetRow.classList.toggle('is-hidden', !showCredit);
     }
     if (showCredit && tExistingPostCreditLabel) {
-      var rateLabel = Math.abs(creditRate - Math.round(creditRate)) < 1e-6
-        ? String(Math.round(creditRate))
-        : creditRate.toFixed(2);
-      tExistingPostCreditLabel.textContent = '−$' + rateLabel + ' × ' + creditCount + ' existing post credit';
+      var rawCredit = creditRate * creditCount;
+      var isClamped = creditAmount + 0.009 < rawCredit;
+      var labelNumber = isClamped ? creditAmount : creditRate;
+      var numberLabel = Math.abs(labelNumber - Math.round(labelNumber)) < 1e-6
+        ? String(Math.round(labelNumber))
+        : labelNumber.toFixed(2);
+      tExistingPostCreditLabel.textContent = isClamped
+        ? ('−$' + numberLabel + ' existing post credit')
+        : ('−$' + numberLabel + ' × ' + creditCount + ' existing post credit');
     }
     if (tExistingPostCredit) {
       tExistingPostCredit.textContent = showCredit ? ('−' + money(creditAmount)) : money(0);

@@ -46,7 +46,8 @@ class FenceQuotationFormRestoreTest extends TestCase
         );
         $this->assertStringContainsString('existing-post tick that actually removes a post', $blade);
         $this->assertStringContainsString('label="Labour credit"', $blade);
-        $this->assertStringContainsString('−$\' + rateLabel + \' × \'', $blade);
+        $this->assertStringContainsString('isClamped ? creditAmount : creditRate', $blade);
+        $this->assertStringContainsString("'−$' + numberLabel + ' existing post credit'", $blade);
         $this->assertStringContainsString('existing post credit', $blade);
         $this->assertStringContainsString('fq-t-existing-post-credit-row', $blade);
         $this->assertStringContainsString('fq-t-labour-net-row', $blade);
@@ -58,7 +59,7 @@ class FenceQuotationFormRestoreTest extends TestCase
             "existingPostCreditInput.addEventListener('input'",
             $blade
         );
-        $this->assertDoesNotMatchRegularExpression(
+        $this->assertMatchesRegularExpression(
             '/id="fq-existing-post-credit"[^>]*data-cp-money-entry="direct"/',
             $blade
         );
@@ -82,7 +83,7 @@ class FenceQuotationFormRestoreTest extends TestCase
             'admin-form-help">Subtracted from labour when',
             $blade
         );
-        $this->assertDoesNotMatchRegularExpression(
+        $this->assertMatchesRegularExpression(
             '/id="fq-existing-post-credit"[^>]*data-cp-money-entry="direct"/',
             $blade
         );

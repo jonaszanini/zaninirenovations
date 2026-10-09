@@ -528,6 +528,79 @@ class FenceQuotationCalculatorTest extends TestCase
         $this->assertNotEquals(1998.0, $result['totals']['existing_post_credit']['amount']);
     }
 
+    public function test_calculator_clamps_negative_existing_post_credit_to_zero(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => -15,
+        ]);
+
+        $this->assertSame(0.0, $result['inputs']['existing_post_labour_credit']);
+        $this->assertSame(0.0, $result['totals']['existing_post_credit']['rate']);
+        $this->assertSame(0.0, $result['totals']['existing_post_credit']['amount']);
+        $this->assertSame(24.0 * 55.0, $result['totals']['labour_subtotal']);
+    }
+
+    public function test_decimal_existing_post_credit_is_applied(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 12.50,
+        ]);
+
+        $this->assertSame(1, $result['totals']['existing_post_credit']['count']);
+        $this->assertEqualsWithDelta(12.50, $result['totals']['existing_post_credit']['amount'], 0.001);
+        $this->assertEqualsWithDelta(12.50, $result['totals']['existing_post_credit']['rate'], 0.001);
+        $this->assertEqualsWithDelta(24.0 * 55.0 - 12.50, $result['totals']['labour_subtotal'], 0.001);
+    }
+
+    public function test_extra_gates_and_existing_post_ticks_both_apply(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $base = $calculator->calculate([
+            'sides' => [['length_ft' => 24]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 2,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 30,
+        ]);
+        $ticked = $calculator->calculate([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 2,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 30,
+        ]);
+
+        $this->assertSame(1, $ticked['totals']['additional_gates_count']);
+        $this->assertEqualsWithDelta(24.0 * 55.0 + 150.0, $base['totals']['labour_before_credit'], 0.001);
+        $this->assertEqualsWithDelta(24.0 * 55.0 + 150.0, $ticked['totals']['labour_before_credit'], 0.001);
+        $this->assertSame(1, $ticked['totals']['existing_post_credit']['count']);
+        $this->assertEqualsWithDelta(30.0, $ticked['totals']['existing_post_credit']['amount'], 0.001);
+        $this->assertEqualsWithDelta(
+            $ticked['totals']['labour_before_credit'] - 30.0,
+            $ticked['totals']['labour_subtotal'],
+            0.001
+        );
+        $this->assertEqualsWithDelta(
+            $base['totals']['labour_subtotal'] - 30.0,
+            $ticked['totals']['labour_subtotal'],
+            0.001
+        );
+    }
+
     public function test_gate_edge_ticks_credit_left_and_right_posts(): void
     {
         $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());

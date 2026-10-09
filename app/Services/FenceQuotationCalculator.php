@@ -26,7 +26,7 @@ use App\Support\FenceSideFlags;
  *     inputs:      echo of the normalised inputs,
  *     geometry:    { total_linear_ft, sections_total, sides_breakdown },
  *     materials:   [ { key, name, long_name, model, store_sku, quantity, unit, unit_price, subtotal, notes, url } ],
-     *     totals:      { materials_subtotal, hst, labour_subtotal, total, labour_hst, grand_total, existing_post_credit }
+ *     totals:      { materials_subtotal, hst, labour_subtotal, total, labour_hst, grand_total, existing_post_credit }
  *   }
  *
  * The output is JSON-serialisable so it can be stored on
@@ -953,7 +953,7 @@ class FenceQuotationCalculator
         $linearLabour = (float) $geom['total_linear_ft'] * $labourRatePerFt;
         $additionalGateLabour = $additionalGates * $labourPerAdditionalGate;
         $grossLabour = $linearLabour + $additionalGateLabour;
-        $creditPerPost = (float) ($in['existing_post_labour_credit'] ?? $this->settings->existingPostLabourCredit());
+        $creditPerPost = max(0, (float) ($in['existing_post_labour_credit'] ?? $this->settings->existingPostLabourCredit()));
         $creditCount = $this->countPostsRemovedByExistingTicks($in, $geom);
         $rawCredit = round($creditCount * $creditPerPost, 2);
         $creditAmount = round(min($rawCredit, max(0, $grossLabour)), 2);
