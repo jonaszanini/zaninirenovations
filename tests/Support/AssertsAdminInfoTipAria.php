@@ -13,8 +13,14 @@ trait AssertsAdminInfoTipAria
     {
         $about = 'aria-label="About '.$label.'"';
         $plain = 'aria-label="'.$label.'"';
+        $escaped = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+        $aboutEsc = 'aria-label="About '.$escaped.'"';
+        $plainEsc = 'aria-label="'.$escaped.'"';
         $this->assertTrue(
-            str_contains($html, $about) || str_contains($html, $plain),
+            str_contains($html, $about)
+            || str_contains($html, $plain)
+            || str_contains($html, $aboutEsc)
+            || str_contains($html, $plainEsc),
             'Expected '.$about.' (#54 always prefixes About {label}).'
         );
     }
