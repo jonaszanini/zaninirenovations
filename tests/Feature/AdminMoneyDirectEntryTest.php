@@ -73,7 +73,7 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $invoiceEdit = file_get_contents(resource_path('views/admin/client_projects/invoice/edit.blade.php'));
         $this->assertIsString($invoiceEdit);
         $this->assertStringNotContainsString('parseHybridCadMoney', $invoiceEdit);
-        $this->assertMatchesRegularExpression('/amtRaw\s*=\s*parseAmount\(\s*amtInput\s*\)/', $invoiceEdit);
+        $this->assertMatchesRegularExpression('/amtRaw\s*=\s*amtInput\s*\?\s*parseAmount\(\s*amtInput\s*\)/', $invoiceEdit);
     }
 
     public function test_flooring_add_type_saves_4_75_and_keeps_existing(): void
