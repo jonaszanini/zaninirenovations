@@ -9,7 +9,7 @@
 @section('content')
   <div class="admin-toolbar">
     <p class="admin-toolbar-lede">
-      Track company vehicles, fuel costs, and your home / office address for project travel estimates.
+      Track company vehicles, fuel costs, business contact, and your home / office address for project travel estimates.
     </p>
     <a href="{{ route('admin.vehicles.create') }}" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> Add new vehicle
@@ -44,6 +44,45 @@
           'help' => 'Pick a Google suggestion so distance to projects can be calculated automatically.',
         ])
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save home address</button>
+      </form>
+    </div>
+
+    <div class="admin-card admin-vehicles-contact-card">
+      <h3>Business contact @include('admin.partials.info_tip', [
+        'tipText' => 'Shown to clients on quote accept pages.',
+        'tipLabel' => 'About business contact',
+      ])</h3>
+      <form action="{{ route('admin.vehicles.settings.business-contact') }}" method="post">
+        @csrf
+        @method('PUT')
+        <div class="admin-form-grid-2">
+          <div class="admin-form-group">
+            <label for="company-contact-phone">Phone</label>
+            <input class="admin-input cp-phone-input"
+                   type="text"
+                   id="company-contact-phone"
+                   name="contact_phone"
+                   value="{{ old('contact_phone', $settings->contact_phone) }}"
+                   inputmode="tel"
+                   autocomplete="tel"
+                   maxlength="40"
+                   placeholder="(647) 834-7570">
+            @error('contact_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+          <div class="admin-form-group">
+            <label for="company-contact-email">Email</label>
+            <input class="admin-input"
+                   type="email"
+                   id="company-contact-email"
+                   name="contact_email"
+                   value="{{ old('contact_email', $settings->contact_email) }}"
+                   autocomplete="email"
+                   maxlength="160"
+                   placeholder="zaninirenovations@gmail.com">
+            @error('contact_email') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+        </div>
+        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save business contact</button>
       </form>
     </div>
 

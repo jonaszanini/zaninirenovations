@@ -68,6 +68,9 @@ jobs:
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
 
+      - name: Millwork cut-plan placement (no database)
+        run: php artisan test tests/Unit/Services/MillworkCutPlanPlacementTest.php
+
       - name: Admin dark-theme CSS coverage (no database)
         run: |
           php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php
@@ -172,6 +175,7 @@ jobs:
           php artisan test tests/Unit/Services/MillworkQuotationCalculatorTest.php
           php artisan test tests/Feature/Admin/MillworkQuotationPagesTest.php
           php artisan test tests/Feature/Admin/MillworkQuotationRoundTripTest.php
+          php artisan test tests/Feature/Admin/MillworkCutPlanPlacementTest.php
           php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
           php artisan test tests/Unit/Views/QuotationExpensePairLayoutTest.php
           php artisan test tests/Unit/Support/QuotationWorkDescriptionStyleTest.php

@@ -21,6 +21,8 @@ class QuoteAcceptanceService
 
     public const STATUS_INVALID_STATE = 'invalid_state';
 
+    public const STATUS_INCOMPLETE = 'incomplete';
+
     public function __construct(
         private ClientProjectStatusService $statusService,
     ) {
@@ -67,6 +69,13 @@ class QuoteAcceptanceService
 
         if ($project === null || $project->isClosed() || $quotation->isRejected() || $quotation->isSuperseded()) {
             return self::STATUS_INVALID_STATE;
+        }
+
+        if ($quotation->source_type === ClientProjectQuotation::SOURCE_MILLWORK && $quotation->source_id) {
+            $millwork = \App\Models\MillworkQuotation::query()->find($quotation->source_id);
+            if ($millwork && $millwork->hasUnplacedCutParts()) {
+                return self::STATUS_INCOMPLETE;
+            }
         }
 
         $viaLabel = ClientProjectQuotation::acceptedViaLabel($via);

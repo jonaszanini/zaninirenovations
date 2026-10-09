@@ -1,0 +1,263 @@
+{
+    "scope": {
+        "piece_count": 1,
+        "piece_summary": "1× kallax 2×2 30\"×30\"×14\"",
+        "sheet_count": 2,
+        "finish_label": "Unfinished",
+        "labels": [
+            "1× kallax 2×2 30\"×30\"×14\""
+        ]
+    },
+    "sheet": {
+        "id": "ws_ply_34_cab_48x96",
+        "catalog_material_id": null,
+        "name": "3/4\" cabinet-grade plywood 4×8",
+        "unit": "sheet",
+        "unit_price": 72,
+        "thickness_in": 0.75,
+        "width_in": 48,
+        "length_in": 96,
+        "material_kind": "plywood",
+        "grade": "cabinet"
+    },
+    "back_sheet": {
+        "id": "ws_ply_14_48x96",
+        "catalog_material_id": null,
+        "name": "1/4\" plywood 4×8 (backs)",
+        "unit": "sheet",
+        "unit_price": 28,
+        "thickness_in": 0.25,
+        "width_in": 48,
+        "length_in": 96,
+        "material_kind": "plywood",
+        "grade": "utility"
+    },
+    "labor": [
+        {
+            "key": "cut",
+            "label": "Shop — cut / nest sheets",
+            "hours": 0.9,
+            "amount": 76.5
+        },
+        {
+            "key": "kallax",
+            "label": "Shop — cube / kallax",
+            "hours": 3.4,
+            "amount": 289
+        },
+        {
+            "key": "edge",
+            "label": "Shop — edge banding",
+            "hours": 0.45,
+            "amount": 38.25
+        },
+        {
+            "key": "install",
+            "label": "On-site install",
+            "hours": 0.78,
+            "amount": 66.3
+        }
+    ],
+    "materials": [
+        {
+            "key": "sheet_1",
+            "label": "3/4\" Baltic birch 5×5",
+            "qty": 1,
+            "unit": "sheet",
+            "unit_price": 89,
+            "amount": 89,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "sheet_2",
+            "label": "1/4\" plywood 4×8 (backs)",
+            "qty": 1,
+            "unit": "sheet",
+            "unit_price": 28,
+            "amount": 28,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "edge",
+            "label": "Iron-on edge banding (50 ft roll)",
+            "qty": 1,
+            "unit": "roll",
+            "unit_price": 12.48,
+            "amount": 12.48,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "glue",
+            "label": "Wood glue, 16 oz",
+            "qty": 1,
+            "unit": "each",
+            "unit_price": 8.9,
+            "amount": 8.9,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "fastener",
+            "label": "1-1/4\" cabinet screws (box of 100)",
+            "qty": 1,
+            "unit": "box",
+            "unit_price": 8.5,
+            "amount": 8.5,
+            "client_provided": false,
+            "catalog_material_id": null
+        }
+    ],
+    "extra_materials": [],
+    "summary": {
+        "total_hours": 5.53,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45,
+        "include_helper": false,
+        "include_building": false,
+        "building_labor_percent": 30,
+        "building_labor_surcharge": 0,
+        "labor_pre_hst": 470.05,
+        "labor_hst": 61.11,
+        "labor_after_hst": 531.16,
+        "materials_goods_pre_hst": 146.88,
+        "materials_pre_hst": 146.88,
+        "materials_hst": 19.09,
+        "materials_after_hst": 165.97,
+        "subtotal_pre_hst": 616.93,
+        "hst": 80.2,
+        "grand_total": 697.13,
+        "final_quote_total": 697.13,
+        "client_provides_all": false,
+        "paint_sf": 0,
+        "stain_sf": 0,
+        "edge_band_lf": 13.62,
+        "edge_band_coverage_lf": 50,
+        "fastener_count": 30,
+        "waste_pct": 10,
+        "edge_waste_pct": 10,
+        "finish_waste_pct": 10,
+        "markup_pct": 0,
+        "markup_amount": 0,
+        "delivery_amount": 0,
+        "spare_sheets": 0,
+        "trim_lf": 0,
+        "wainscot_lf": 0
+    },
+    "cut_plan": {
+        "sheet_count": 2,
+        "yield_pct": 40.6,
+        "stock_used": [
+            {
+                "label": "3/4\" Baltic birch 5×5",
+                "width": 60,
+                "length": 60,
+                "qty": 1,
+                "unit_price": 89,
+                "catalog_material_id": null,
+                "name": "3/4\" Baltic birch 5×5"
+            },
+            {
+                "label": "1/4\" plywood 4×8 (backs)",
+                "width": 48,
+                "length": 96,
+                "qty": 1,
+                "unit_price": 28,
+                "catalog_material_id": null,
+                "name": "1/4\" plywood 4×8 (backs)"
+            }
+        ],
+        "layouts": [
+            {
+                "svg": "<svg class=\"mw-cut-svg\" viewBox=\"0 0 86 80\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Cut plan 3/4&quot; Baltic birch 5×5\">\n<rect class=\"mw-cut-bg\" x=\"0\" y=\"0\" width=\"86\" height=\"80\" />\n<defs>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-1\"><rect x=\"0.125\" y=\"45.893\" width=\"30\" height=\"13.982\" /></clipPath>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-2\"><rect x=\"0.125\" y=\"31.786\" width=\"30\" height=\"13.982\" /></clipPath>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-3\"><rect x=\"30.25\" y=\"45.875\" width=\"28.5\" height=\"14\" /></clipPath>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-4\"><rect x=\"0.125\" y=\"3.179\" width=\"14\" height=\"28.482\" /></clipPath>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-5\"><rect x=\"14.25\" y=\"3.179\" width=\"14\" height=\"28.482\" /></clipPath>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-6\"><rect x=\"30.25\" y=\"31.75\" width=\"14.232\" height=\"14\" /></clipPath>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-7\"><rect x=\"30.25\" y=\"17.625\" width=\"14.232\" height=\"14\" /></clipPath>\n</defs>\n<g transform=\"translate(18 6)\">\n<rect class=\"mw-cut-stock\" x=\"0\" y=\"0\" width=\"60\" height=\"60\" />\n<rect class=\"mw-cut-offcut\" x=\"0.125\" y=\"0.125\" width=\"14\" height=\"2.929\" />\n<rect class=\"mw-cut-offcut\" x=\"14.25\" y=\"0.125\" width=\"14\" height=\"2.929\" />\n<rect class=\"mw-cut-offcut\" x=\"44.607\" y=\"0.125\" width=\"14.143\" height=\"45.625\" />\n<text class=\"mw-cut-offcut-label\" x=\"51.679\" y=\"22.938\" font-size=\"1.768\" text-anchor=\"middle\" dominant-baseline=\"middle\">14.14&quot; × 45.63&quot;</text>\n<rect class=\"mw-cut-offcut\" x=\"30.25\" y=\"0.125\" width=\"14.232\" height=\"17.375\" />\n<text class=\"mw-cut-offcut-label\" x=\"37.366\" y=\"8.813\" font-size=\"1.779\" text-anchor=\"middle\" dominant-baseline=\"middle\">14.23&quot; × 17.38&quot;</text>\n<g class=\"mw-cut-part\">\n<title>Kallax side 1 — 30&quot; × 13.98&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"0.125\" y=\"45.893\" width=\"30\" height=\"13.982\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-1)\">\n<text class=\"mw-cut-part-label\" x=\"15.125\" y=\"50.927\" font-size=\"2.4\" text-anchor=\"middle\" dominant-baseline=\"middle\">Kallax side 1</text>\n<text class=\"mw-cut-part-dim\" x=\"15.125\" y=\"55.121\" font-size=\"2\" text-anchor=\"middle\" dominant-baseline=\"middle\">30&quot; × 13.98&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>Kallax side 2 — 30&quot; × 13.98&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"0.125\" y=\"31.786\" width=\"30\" height=\"13.982\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-2)\">\n<text class=\"mw-cut-part-label\" x=\"15.125\" y=\"36.82\" font-size=\"2.4\" text-anchor=\"middle\" dominant-baseline=\"middle\">Kallax side 2</text>\n<text class=\"mw-cut-part-dim\" x=\"15.125\" y=\"41.014\" font-size=\"2\" text-anchor=\"middle\" dominant-baseline=\"middle\">30&quot; × 13.98&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>Kallax vertical — 28.5&quot; × 14&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"30.25\" y=\"45.875\" width=\"28.5\" height=\"14\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-3)\">\n<text class=\"mw-cut-part-label\" x=\"44.5\" y=\"50.915\" font-size=\"2.4\" text-anchor=\"middle\" dominant-baseline=\"middle\">Kallax vertical</text>\n<text class=\"mw-cut-part-dim\" x=\"44.5\" y=\"55.115\" font-size=\"2\" text-anchor=\"middle\" dominant-baseline=\"middle\">28.5&quot; × 14&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>Kallax top/bottom 1 — 14&quot; × 28.48&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"0.125\" y=\"3.179\" width=\"14\" height=\"28.482\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-4)\">\n<text class=\"mw-cut-part-label\" x=\"7.125\" y=\"15.46\" font-size=\"1.158\" text-anchor=\"middle\" dominant-baseline=\"middle\">Kallax top/bottom 1</text>\n<text class=\"mw-cut-part-dim\" x=\"7.125\" y=\"19.66\" font-size=\"1.692\" text-anchor=\"middle\" dominant-baseline=\"middle\">14&quot; × 28.48&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>Kallax top/bottom 2 — 14&quot; × 28.48&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"14.25\" y=\"3.179\" width=\"14\" height=\"28.482\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-5)\">\n<text class=\"mw-cut-part-label\" x=\"21.25\" y=\"15.46\" font-size=\"1.158\" text-anchor=\"middle\" dominant-baseline=\"middle\">Kallax top/bottom 2</text>\n<text class=\"mw-cut-part-dim\" x=\"21.25\" y=\"19.66\" font-size=\"1.692\" text-anchor=\"middle\" dominant-baseline=\"middle\">14&quot; × 28.48&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>Kallax shelf 1 — 14.23&quot; × 14&quot; (rotated)</title>\n<rect class=\"mw-cut-part-fill\" x=\"30.25\" y=\"31.75\" width=\"14.232\" height=\"14\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-6)\">\n<text class=\"mw-cut-part-label\" x=\"37.366\" y=\"36.79\" font-size=\"1.597\" text-anchor=\"middle\" dominant-baseline=\"middle\">Kallax shelf 1</text>\n<text class=\"mw-cut-part-dim\" x=\"37.366\" y=\"40.99\" font-size=\"1.72\" text-anchor=\"middle\" dominant-baseline=\"middle\">14.23&quot; × 14&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>Kallax shelf 2 — 14.23&quot; × 14&quot; (rotated)</title>\n<rect class=\"mw-cut-part-fill\" x=\"30.25\" y=\"17.625\" width=\"14.232\" height=\"14\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-7)\">\n<text class=\"mw-cut-part-label\" x=\"37.366\" y=\"22.665\" font-size=\"1.597\" text-anchor=\"middle\" dominant-baseline=\"middle\">Kallax shelf 2</text>\n<text class=\"mw-cut-part-dim\" x=\"37.366\" y=\"26.865\" font-size=\"1.72\" text-anchor=\"middle\" dominant-baseline=\"middle\">14.23&quot; × 14&quot;</text>\n</g>\n</g>\n<rect class=\"mw-cut-kerf\" x=\"30.125\" y=\"0.125\" width=\"0.125\" height=\"59.75\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"0.125\" y=\"45.768\" width=\"30\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"0.125\" y=\"31.661\" width=\"30\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"58.75\" y=\"0.125\" width=\"0.125\" height=\"59.75\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"30.25\" y=\"45.75\" width=\"28.5\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"14.125\" y=\"0.125\" width=\"0.125\" height=\"31.536\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"0.125\" y=\"3.054\" width=\"14\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"28.25\" y=\"0.125\" width=\"0.125\" height=\"31.536\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"14.25\" y=\"3.054\" width=\"14\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"44.482\" y=\"0.125\" width=\"0.125\" height=\"45.625\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"30.25\" y=\"31.625\" width=\"14.232\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"30.25\" y=\"17.5\" width=\"14.232\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<line class=\"mw-cut-dim-line\" x1=\"0\" y1=\"67\" x2=\"60\" y2=\"67\" /><text class=\"mw-cut-dim\" x=\"30\" y=\"71.2\" font-size=\"2.1\" text-anchor=\"middle\" dominant-baseline=\"middle\">60&quot;</text>\n<line class=\"mw-cut-dim-line\" x1=\"-7\" y1=\"60\" x2=\"-7\" y2=\"0\" /><text class=\"mw-cut-dim\" x=\"-11.5\" y=\"30\" font-size=\"2.1\" text-anchor=\"middle\" dominant-baseline=\"middle\">60&quot;</text>\n</g>\n</svg>",
+                "legend": [
+                    {
+                        "n": 1,
+                        "label": "Kallax side 1",
+                        "size": "30\" × 13.98\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 2,
+                        "label": "Kallax side 2",
+                        "size": "30\" × 13.98\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 3,
+                        "label": "Kallax vertical",
+                        "size": "28.5\" × 14\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 4,
+                        "label": "Kallax top/bottom 1",
+                        "size": "14\" × 28.48\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 5,
+                        "label": "Kallax top/bottom 2",
+                        "size": "14\" × 28.48\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 6,
+                        "label": "Kallax shelf 1",
+                        "size": "14.23\" × 14\"",
+                        "rotated": true
+                    },
+                    {
+                        "n": 7,
+                        "label": "Kallax shelf 2",
+                        "size": "14.23\" × 14\"",
+                        "rotated": true
+                    }
+                ],
+                "stats": {
+                    "id": "ws_birch_5x5_1",
+                    "label": "3/4\" Baltic birch 5×5",
+                    "width": 60,
+                    "length": 60,
+                    "used_area": 2433.9,
+                    "sheet_area": 3600,
+                    "waste_pct": 32.4,
+                    "used_pct": 67.6,
+                    "part_count": 7,
+                    "total_cuts": 12,
+                    "total_cut_length": 373.16,
+                    "kerf_in": 0.125
+                },
+                "group": "primary"
+            },
+            {
+                "svg": "<svg class=\"mw-cut-svg\" viewBox=\"0 0 74 116\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Cut plan 1/4&quot; plywood 4×8 (backs)\">\n<rect class=\"mw-cut-bg\" x=\"0\" y=\"0\" width=\"74\" height=\"116\" />\n<defs>\n<clipPath id=\"mw-clip-ws_ply_14_48x96_1-1\"><rect x=\"0.125\" y=\"65.875\" width=\"30\" height=\"30\" /></clipPath>\n</defs>\n<g transform=\"translate(18 6)\">\n<rect class=\"mw-cut-stock\" x=\"0\" y=\"0\" width=\"48\" height=\"96\" />\n<rect class=\"mw-cut-offcut\" x=\"30.25\" y=\"65.875\" width=\"17.625\" height=\"30\" />\n<text class=\"mw-cut-offcut-label\" x=\"39.063\" y=\"80.875\" font-size=\"2.2\" text-anchor=\"middle\" dominant-baseline=\"middle\">17.63&quot; × 30&quot;</text>\n<rect class=\"mw-cut-offcut\" x=\"0.125\" y=\"0.125\" width=\"47.75\" height=\"65.625\" />\n<text class=\"mw-cut-offcut-label\" x=\"24\" y=\"32.938\" font-size=\"2.2\" text-anchor=\"middle\" dominant-baseline=\"middle\">47.75&quot; × 65.63&quot;</text>\n<g class=\"mw-cut-part\">\n<title>Kallax back — 30&quot; × 30&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"0.125\" y=\"65.875\" width=\"30\" height=\"30\" />\n<g clip-path=\"url(#mw-clip-ws_ply_14_48x96_1-1)\">\n<text class=\"mw-cut-part-label\" x=\"15.125\" y=\"76.675\" font-size=\"2.4\" text-anchor=\"middle\" dominant-baseline=\"middle\">Kallax back</text>\n<text class=\"mw-cut-part-dim\" x=\"15.125\" y=\"85.675\" font-size=\"2\" text-anchor=\"middle\" dominant-baseline=\"middle\">30&quot; × 30&quot;</text>\n</g>\n</g>\n<rect class=\"mw-cut-kerf\" x=\"30.125\" y=\"65.875\" width=\"0.125\" height=\"30\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"0.125\" y=\"65.75\" width=\"30\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<line class=\"mw-cut-dim-line\" x1=\"0\" y1=\"103\" x2=\"48\" y2=\"103\" /><text class=\"mw-cut-dim\" x=\"24\" y=\"107.2\" font-size=\"2.1\" text-anchor=\"middle\" dominant-baseline=\"middle\">48&quot;</text>\n<line class=\"mw-cut-dim-line\" x1=\"-7\" y1=\"96\" x2=\"-7\" y2=\"0\" /><text class=\"mw-cut-dim\" x=\"-11.5\" y=\"48\" font-size=\"2.1\" text-anchor=\"middle\" dominant-baseline=\"middle\">96&quot;</text>\n</g>\n</svg>",
+                "legend": [
+                    {
+                        "n": 1,
+                        "label": "Kallax back",
+                        "size": "30\" × 30\"",
+                        "rotated": false
+                    }
+                ],
+                "stats": {
+                    "id": "ws_ply_14_48x96_1",
+                    "label": "1/4\" plywood 4×8 (backs)",
+                    "width": 48,
+                    "length": 96,
+                    "used_area": 900,
+                    "sheet_area": 4608,
+                    "waste_pct": 80.5,
+                    "used_pct": 19.5,
+                    "part_count": 1,
+                    "total_cuts": 2,
+                    "total_cut_length": 60,
+                    "kerf_in": 0.125
+                },
+                "group": "back"
+            }
+        ]
+    }
+}

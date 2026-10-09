@@ -1,0 +1,215 @@
+{
+    "scope": {
+        "piece_count": 1,
+        "piece_summary": "1× cabinet 25\"×84\"×24\"",
+        "sheet_count": 1,
+        "finish_label": "Unfinished",
+        "labels": [
+            "1× cabinet 25\"×84\"×24\""
+        ]
+    },
+    "sheet": {
+        "id": "ws_ply_34_cab_48x96",
+        "catalog_material_id": null,
+        "name": "3/4\" cabinet-grade plywood 4×8",
+        "unit": "sheet",
+        "unit_price": 72,
+        "thickness_in": 0.75,
+        "width_in": 48,
+        "length_in": 96,
+        "material_kind": "plywood",
+        "grade": "cabinet"
+    },
+    "back_sheet": null,
+    "labor": [
+        {
+            "key": "cut",
+            "label": "Shop — cut / nest sheets",
+            "hours": 0.45,
+            "amount": 38.25
+        },
+        {
+            "key": "cabinet",
+            "label": "Shop — cabinet / vanity boxes",
+            "hours": 9.08,
+            "amount": 771.8
+        },
+        {
+            "key": "doors",
+            "label": "Shop — doors / fronts",
+            "hours": 2,
+            "amount": 170
+        },
+        {
+            "key": "edge",
+            "label": "Shop — edge banding",
+            "hours": 1.79,
+            "amount": 152.15
+        },
+        {
+            "key": "install",
+            "label": "On-site install",
+            "hours": 4.54,
+            "amount": 385.9
+        }
+    ],
+    "materials": [
+        {
+            "key": "sheet_1",
+            "label": "3/4\" Baltic birch 5×5",
+            "qty": 1,
+            "unit": "sheet",
+            "unit_price": 89,
+            "amount": 89,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "edge",
+            "label": "Iron-on edge banding (50 ft roll)",
+            "qty": 2,
+            "unit": "roll",
+            "unit_price": 12.48,
+            "amount": 24.96,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "hinge",
+            "label": "Concealed overlay hinge (each)",
+            "qty": 8,
+            "unit": "each",
+            "unit_price": 3.8,
+            "amount": 30.4,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "pull",
+            "label": "Bar pull / handle (each)",
+            "qty": 2,
+            "unit": "each",
+            "unit_price": 6.5,
+            "amount": 13,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "glue",
+            "label": "Wood glue, 16 oz",
+            "qty": 1,
+            "unit": "each",
+            "unit_price": 8.9,
+            "amount": 8.9,
+            "client_provided": false,
+            "catalog_material_id": null
+        },
+        {
+            "key": "fastener",
+            "label": "1-1/4\" cabinet screws (box of 100)",
+            "qty": 1,
+            "unit": "box",
+            "unit_price": 8.5,
+            "amount": 8.5,
+            "client_provided": false,
+            "catalog_material_id": null
+        }
+    ],
+    "extra_materials": [],
+    "summary": {
+        "total_hours": 17.86,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45,
+        "include_helper": false,
+        "include_building": false,
+        "building_labor_percent": 30,
+        "building_labor_surcharge": 0,
+        "labor_pre_hst": 1518.1,
+        "labor_hst": 197.35,
+        "labor_after_hst": 1715.45,
+        "materials_goods_pre_hst": 174.76,
+        "materials_pre_hst": 174.76,
+        "materials_hst": 22.72,
+        "materials_after_hst": 197.48,
+        "subtotal_pre_hst": 1692.86,
+        "hst": 220.07,
+        "grand_total": 1912.93,
+        "final_quote_total": 1912.93,
+        "client_provides_all": false,
+        "paint_sf": 0,
+        "stain_sf": 0,
+        "edge_band_lf": 53.71,
+        "edge_band_coverage_lf": 50,
+        "fastener_count": 28,
+        "waste_pct": 10,
+        "edge_waste_pct": 10,
+        "finish_waste_pct": 10,
+        "markup_pct": 0,
+        "markup_amount": 0,
+        "delivery_amount": 0,
+        "spare_sheets": 0,
+        "trim_lf": 0,
+        "wainscot_lf": 0
+    },
+    "cut_plan": {
+        "sheet_count": 1,
+        "yield_pct": 49.4,
+        "stock_used": [
+            {
+                "label": "3/4\" Baltic birch 5×5",
+                "width": 60,
+                "length": 60,
+                "qty": 1,
+                "unit_price": 89,
+                "catalog_material_id": null,
+                "name": "3/4\" Baltic birch 5×5"
+            }
+        ],
+        "layouts": [
+            {
+                "svg": "<svg class=\"mw-cut-svg\" viewBox=\"0 0 86 80\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Cut plan 3/4&quot; Baltic birch 5×5\">\n<rect class=\"mw-cut-bg\" x=\"0\" y=\"0\" width=\"86\" height=\"80\" />\n<defs>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-1\"><rect x=\"0.125\" y=\"34.893\" width=\"4.5\" height=\"24.982\" /></clipPath>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-2\"><rect x=\"4.75\" y=\"36.393\" width=\"24\" height=\"23.482\" /></clipPath>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-3\"><rect x=\"28.875\" y=\"36.393\" width=\"24\" height=\"23.482\" /></clipPath>\n<clipPath id=\"mw-clip-ws_birch_5x5_1-4\"><rect x=\"0.125\" y=\"11.286\" width=\"23\" height=\"23.482\" /></clipPath>\n</defs>\n<g transform=\"translate(18 6)\">\n<rect class=\"mw-cut-stock\" x=\"0\" y=\"0\" width=\"60\" height=\"60\" />\n<rect class=\"mw-cut-offcut\" x=\"53\" y=\"36.393\" width=\"6.875\" height=\"23.482\" />\n<rect class=\"mw-cut-offcut\" x=\"23.25\" y=\"11.286\" width=\"36.625\" height=\"23.482\" />\n<text class=\"mw-cut-offcut-label\" x=\"41.563\" y=\"23.027\" font-size=\"2.2\" text-anchor=\"middle\" dominant-baseline=\"middle\">36.63&quot; × 23.48&quot;</text>\n<rect class=\"mw-cut-offcut\" x=\"0.125\" y=\"0.125\" width=\"59.75\" height=\"11.036\" />\n<text class=\"mw-cut-offcut-label\" x=\"30\" y=\"5.643\" font-size=\"1.38\" text-anchor=\"middle\" dominant-baseline=\"middle\">59.75&quot; × 11.04&quot;</text>\n<g class=\"mw-cut-part\">\n<title>Toe kick — 4.5&quot; × 24.98&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"0.125\" y=\"34.893\" width=\"4.5\" height=\"24.982\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-1)\">\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>Cabinet top — 24&quot; × 23.48&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"4.75\" y=\"36.393\" width=\"24\" height=\"23.482\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-2)\">\n<text class=\"mw-cut-part-label\" x=\"16.75\" y=\"44.847\" font-size=\"2.4\" text-anchor=\"middle\" dominant-baseline=\"middle\">Cabinet top</text>\n<text class=\"mw-cut-part-dim\" x=\"16.75\" y=\"51.891\" font-size=\"2\" text-anchor=\"middle\" dominant-baseline=\"middle\">24&quot; × 23.48&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>Cabinet bottom — 24&quot; × 23.48&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"28.875\" y=\"36.393\" width=\"24\" height=\"23.482\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-3)\">\n<text class=\"mw-cut-part-label\" x=\"40.875\" y=\"44.847\" font-size=\"2.4\" text-anchor=\"middle\" dominant-baseline=\"middle\">Cabinet bottom</text>\n<text class=\"mw-cut-part-dim\" x=\"40.875\" y=\"51.891\" font-size=\"2\" text-anchor=\"middle\" dominant-baseline=\"middle\">24&quot; × 23.48&quot;</text>\n</g>\n</g>\n<g class=\"mw-cut-part\">\n<title>Cabinet shelf — 23&quot; × 23.48&quot;</title>\n<rect class=\"mw-cut-part-fill\" x=\"0.125\" y=\"11.286\" width=\"23\" height=\"23.482\" />\n<g clip-path=\"url(#mw-clip-ws_birch_5x5_1-4)\">\n<text class=\"mw-cut-part-label\" x=\"11.625\" y=\"19.807\" font-size=\"2.4\" text-anchor=\"middle\" dominant-baseline=\"middle\">Cabinet shelf</text>\n<text class=\"mw-cut-part-dim\" x=\"11.625\" y=\"26.707\" font-size=\"2\" text-anchor=\"middle\" dominant-baseline=\"middle\">23&quot; × 23.48&quot;</text>\n</g>\n</g>\n<rect class=\"mw-cut-kerf\" x=\"4.625\" y=\"34.893\" width=\"0.125\" height=\"24.982\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"0.125\" y=\"34.768\" width=\"4.5\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"28.75\" y=\"36.393\" width=\"0.125\" height=\"23.482\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"4.75\" y=\"36.268\" width=\"24\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"52.875\" y=\"36.393\" width=\"0.125\" height=\"23.482\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"23.125\" y=\"11.286\" width=\"0.125\" height=\"23.482\"><title>Kerf 1/8\"</title></rect>\n<rect class=\"mw-cut-kerf\" x=\"0.125\" y=\"11.161\" width=\"23\" height=\"0.125\"><title>Kerf 1/8\"</title></rect>\n<line class=\"mw-cut-dim-line\" x1=\"0\" y1=\"67\" x2=\"60\" y2=\"67\" /><text class=\"mw-cut-dim\" x=\"30\" y=\"71.2\" font-size=\"2.1\" text-anchor=\"middle\" dominant-baseline=\"middle\">60&quot;</text>\n<line class=\"mw-cut-dim-line\" x1=\"-7\" y1=\"60\" x2=\"-7\" y2=\"0\" /><text class=\"mw-cut-dim\" x=\"-11.5\" y=\"30\" font-size=\"2.1\" text-anchor=\"middle\" dominant-baseline=\"middle\">60&quot;</text>\n</g>\n</svg>",
+                "legend": [
+                    {
+                        "n": 1,
+                        "label": "Toe kick",
+                        "size": "4.5\" × 24.98\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 2,
+                        "label": "Cabinet top",
+                        "size": "24\" × 23.48\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 3,
+                        "label": "Cabinet bottom",
+                        "size": "24\" × 23.48\"",
+                        "rotated": false
+                    },
+                    {
+                        "n": 4,
+                        "label": "Cabinet shelf",
+                        "size": "23\" × 23.48\"",
+                        "rotated": false
+                    }
+                ],
+                "stats": {
+                    "id": "ws_birch_5x5_1",
+                    "label": "3/4\" Baltic birch 5×5",
+                    "width": 60,
+                    "length": 60,
+                    "used_area": 1779.6,
+                    "sheet_area": 3600,
+                    "waste_pct": 50.6,
+                    "used_pct": 49.4,
+                    "part_count": 4,
+                    "total_cuts": 7,
+                    "total_cut_length": 146.93,
+                    "kerf_in": 0.125
+                },
+                "group": "primary"
+            }
+        ]
+    }
+}
