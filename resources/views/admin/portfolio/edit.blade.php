@@ -270,15 +270,14 @@
         </div>
         <div class="admin-modal-actions">
           <div class="admin-photo-edit-tools">
-            <div class="admin-ai-action-group">
-              @include('admin.partials.ai_instruction_edit_link', [
-                'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT,
-                'instructionLabel' => 'Edit portfolio photo prompt',
-              ])
+            @component('admin.partials.ai_action_group', [
+              'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT,
+              'instructionLabel' => 'Edit portfolio photo prompt',
+            ])
               <button type="button" class="admin-btn admin-btn--primary admin-btn--icon" id="admin-photo-edit-ai" disabled aria-label="Apply AI improvements" title="Apply AI improvements">
                 <i class="fa fa-magic" aria-hidden="true"></i>
               </button>
-            </div>
+            @endcomponent
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--icon" id="admin-photo-edit-replace-toggle" disabled aria-expanded="false" aria-controls="admin-photo-edit-replace" aria-label="Replace" title="Replace">
               <i class="fa fa-exchange" aria-hidden="true"></i>
             </button>

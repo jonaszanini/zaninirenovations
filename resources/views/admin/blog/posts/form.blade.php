@@ -84,22 +84,24 @@
 
         <div class="bp-block bp-block--ai admin-card">
           <div class="blog-admin-ai-metadata-wrap">
-            <div class="admin-ai-action-group">
-              @include('admin.partials.ai_instruction_edit_link', [
-                'instructionKey' => \App\Models\AiInstruction::KEY_BLOG_POST,
-                'instructionLabel' => 'Edit blog post metadata prompt',
-              ])
+            @component('admin.partials.ai_action_group', [
+              'instructionKey' => \App\Models\AiInstruction::KEY_BLOG_POST,
+              'instructionLabel' => 'Edit blog post metadata prompt',
+              'showHistory' => true,
+              'historyKey' => 'blog-post-'.((int) ($post->id ?? 0)),
+            ])
               <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-ai-suggest-btn">
                 <i class="fa fa-magic" aria-hidden="true"></i> Suggest metadata
               </button>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-ai-image-btn">
-                <i class="fa fa-picture-o" aria-hidden="true"></i> Generate image
-              </button>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-check-btn">
-                Check content
-              </button>
-              <span class="admin-ai-text-history-mount" data-history-mount data-history-key="blog-post-{{ (int) ($post->id ?? 0) }}"></span>
-            </div>
+              @slot('extra')
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-ai-image-btn">
+                  <i class="fa fa-picture-o" aria-hidden="true"></i> Generate image
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-check-btn">
+                  Check content
+                </button>
+              @endslot
+            @endcomponent
             <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>
           </div>
         </div>
