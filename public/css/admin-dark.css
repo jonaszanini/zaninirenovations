@@ -3085,6 +3085,9 @@ html.admin-dark .fq-totals-row--labour-hst-excluded .fq-labour-hst-toggle .admin
 html.admin-dark .fq-totals-row--labour-hst-excluded #fq-t-labour-hst {
   color: var(--admin-muted);
 }
+html.admin-dark .fq-totals-row--credit {
+  color: var(--admin-muted);
+}
 
 html.admin-dark .pt-net-banner {
   background: var(--admin-info-tile-bg);

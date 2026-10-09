@@ -263,6 +263,17 @@
 
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
+          <label for="fq-existing-post-credit">Labour credit per existing post</label>
+          <x-admin.info-tip label="Labour credit">Subtracted from labour when a left/right tick actually removes a post.</x-admin.info-tip>
+        </span>
+        <input id="fq-existing-post-credit" data-cp-money-entry="direct" type="text" name="existing_post_labour_credit"
+               class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
+               value="{{ old('existing_post_labour_credit', number_format((float) ($settings->existing_post_labour_credit ?? 30), 2, '.', '')) }}">
+        @error('existing_post_labour_credit') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
+      <div class="admin-form-group">
+        <span class="admin-label-with-tip">
           <label for="fq-gate-rails">Extra rails per gate (2x4x8')</label>
           <x-admin.info-tip label="Extra rails per gate">Frame + diagonal brace (typically 5).</x-admin.info-tip>
         </span>
