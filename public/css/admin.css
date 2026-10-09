@@ -1685,24 +1685,44 @@ a.admin-client-link:focus-visible {
 /* Fix C: hanging indent so the ⓘ stays with the last word inside
    .admin-form-group, where `label.admin-checkbox { display:flex }` would
    otherwise park the tip on the next line at 320/390. */
-.admin-label-with-tip:has(> label.admin-checkbox) {
+.admin-label-with-tip:has(> label.admin-checkbox),
+.admin-checkbox-row {
   display: block;
   padding-left: 34px;
   text-indent: -34px;
   min-height: 44px;
   color: var(--admin-text);
   font-weight: 500;
+  font-size: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.admin-checkbox-row.sq-checkbox-label,
+.admin-label-with-tip.admin-checkbox-row.sq-checkbox-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 0;
 }
 .admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox,
 .admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox--block,
 .admin-form-group .admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox,
 .admin-form-group .admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox--block,
 .admin-form-group .admin-label-with-tip > label.admin-checkbox,
-.admin-form-group .admin-label-with-tip > label.admin-checkbox--block {
+.admin-form-group .admin-label-with-tip > label.admin-checkbox--block,
+.admin-checkbox-row > label.admin-checkbox,
+.admin-form-group .admin-checkbox-row > label.admin-checkbox {
   display: inline;
   align-items: unset;
   margin-bottom: 0;
   text-indent: 0;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
 }
 .admin-label-with-tip:has(> label.admin-checkbox) .admin-checkbox__mark {
   display: inline-block;
@@ -1711,9 +1731,17 @@ a.admin-client-link:focus-visible {
   text-indent: 0;
   flex-shrink: 0;
 }
-.admin-label-with-tip:has(> label.admin-checkbox) .admin-checkbox__text {
+.admin-label-with-tip:has(> label.admin-checkbox) .admin-checkbox__text,
+.admin-checkbox-row .admin-checkbox__text {
   display: inline;
   flex: none;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
 }
 .admin-label-with-tip:has(> label.admin-checkbox) > .admin-label-with-tip__end {
   white-space: nowrap;
@@ -1722,7 +1750,9 @@ a.admin-client-link:focus-visible {
 .admin-checkbox__tail,
 .admin-form-group label.admin-checkbox__tail,
 .admin-label-with-tip__end > label.admin-checkbox__tail,
-.admin-form-group .admin-label-with-tip__end > label.admin-checkbox__tail {
+.admin-form-group .admin-label-with-tip__end > label.admin-checkbox__tail,
+.admin-checkbox-row .admin-checkbox__tail,
+.admin-form-group .admin-checkbox-row .admin-checkbox__tail {
   display: inline;
   margin: 0;
   padding: 0;
@@ -1731,8 +1761,8 @@ a.admin-client-link:focus-visible {
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
-  letter-spacing: normal;
-  text-transform: none;
+  letter-spacing: inherit;
+  text-transform: inherit;
   color: inherit;
   cursor: pointer;
   text-indent: 0;
@@ -1919,11 +1949,14 @@ details[open] > summary.admin-chevron-summary::after {
   }
 }
 .admin-accordion__title {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--admin-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: normal;
 }
 .admin-accordion__panel {
   padding: 1rem 1.5rem 1.5rem;
@@ -1977,10 +2010,13 @@ details[open] > summary.admin-chevron-summary::after {
   color: var(--admin-primary);
 }
 .admin-filters-accordion__title {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--admin-heading);
   letter-spacing: 0.01em;
+  white-space: normal;
 }
 .admin-filters-accordion__badge {
   display: inline-flex;

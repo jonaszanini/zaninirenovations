@@ -8423,9 +8423,8 @@ body.cp-modal-open {
 .br-bath-light-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(72px, 110px);
-  align-items: end;
+  align-items: start;
   gap: 4px 12px;
-  align-items: stretch;
   margin-bottom: 0;
 }
 .br-bath-light-row .admin-form-group {
@@ -8435,6 +8434,9 @@ body.cp-modal-open {
   display: none !important;
 }
 .br-bath-light-row .admin-checkbox {
+  min-height: 0;
+}
+.br-bath-light-row .admin-checkbox-row {
   min-height: 44px;
 }
 .br-tile-areas__head {
@@ -9005,7 +9007,7 @@ body.cp-modal-open {
   }
   .br-bath-light-row {
     grid-template-columns: minmax(0, 1fr) minmax(96px, 140px);
-    align-items: end;
+    align-items: start;
   }
   .br-provide-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

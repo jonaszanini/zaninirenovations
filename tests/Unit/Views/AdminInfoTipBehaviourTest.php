@@ -70,8 +70,52 @@ class AdminInfoTipBehaviourTest extends TestCase
 
         $this->assertStringContainsString('id="pieces-__P__-edge_banding"', $html);
         $this->assertStringContainsString('for="pieces-__P__-edge_banding"', $html);
-        $this->assertStringNotContainsString('admin-checkbox-', $html);
+        $this->assertStringNotContainsString('id="admin-checkbox-', $html);
         $this->assertGreaterThanOrEqual(2, substr_count($html, 'pieces-__P__-edge_banding'));
+    }
+
+    public function test_checkbox_id_fails_if_name_is_ignored(): void
+    {
+        $a = view('admin.partials.checkbox', [
+            'name' => 'works[0][labour_fixed_hst_included]',
+            'label' => 'HST included',
+            'info' => 'When checked, the amount is the total with tax.',
+            'errors' => new ViewErrorBag,
+        ])->render();
+        $b = view('admin.partials.checkbox', [
+            'name' => 'pieces[2][edge_banding]',
+            'label' => 'Edge banding',
+            'info' => 'Shrinks the raw cut.',
+            'errors' => new ViewErrorBag,
+        ])->render();
+
+        $this->assertStringContainsString('id="works-0-labour_fixed_hst_included"', $a);
+        $this->assertStringContainsString('id="pieces-2-edge_banding"', $b);
+        $this->assertStringNotContainsString('id="works-0-labour_fixed_hst_included"', $b);
+        $this->assertSame(
+            'works-0-labour_fixed_hst_included',
+            \App\Support\AdminInfoTipInclude::controlIdFromName('works[0][labour_fixed_hst_included]')
+        );
+        $this->assertNotSame(
+            \App\Support\AdminInfoTipInclude::controlIdFromName('works[0][labour_fixed_hst_included]'),
+            \App\Support\AdminInfoTipInclude::controlIdFromName('pieces[2][edge_banding]')
+        );
+    }
+
+    public function test_checkbox_entity_label_is_not_double_escaped(): void
+    {
+        $html = view('admin.partials.checkbox', [
+            'name' => 'include_demo',
+            'id' => 'br-include-demo',
+            'label' => 'Include demolition &amp; debris',
+            'info' => 'Demo the existing finish.',
+            'errors' => new ViewErrorBag,
+        ])->render();
+
+        $this->assertStringContainsString('Include demolition &amp; ', $html);
+        $this->assertStringContainsString('debris', $html);
+        $this->assertStringNotContainsString('&amp;amp;', $html);
+        $this->assertStringNotContainsString('Include demolition &amp;amp; debris', $html);
     }
 
     public function test_checkbox_strong_label_does_not_leave_an_open_tag(): void
@@ -151,15 +195,18 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('function bindSummaryGuard', $js);
         $this->assertStringContainsString('function refreshRepeatLabels', $js);
         $this->assertStringContainsString('function glueLastWord', $js);
-        $this->assertStringContainsString('function glueHeadingTips', $js);
         $this->assertStringContainsString('function setLabelText', $js);
-        $this->assertStringContainsString('function skipGlueNode', $js);
-        $this->assertStringContainsString('if (node.nodeType === 1) return true', $js);
+        $this->assertStringContainsString('function glueLastTextNode', $js);
+        $this->assertStringContainsString('if (!prev || prev.nodeType !== 3) return null', $js);
+        $this->assertStringNotContainsString('function moveTrailingSkipped', $js);
+        $this->assertStringNotContainsString('function wrapHeadingCopy', $js);
+        $this->assertStringNotContainsString('function skipGlueNode', $js);
         $this->assertStringContainsString('function refreshControlIds', $js);
         $this->assertStringContainsString('refreshControlIds: refreshControlIds', $js);
-        $this->assertStringContainsString('function wrapHeadingCopy', $js);
+        $this->assertStringContainsString('function idFromControlName', $js);
+        $this->assertStringContainsString("idFromControlName(input.getAttribute && input.getAttribute('name'))", $js);
         $this->assertStringContainsString("btn.setAttribute('aria-label', 'About ' + aria)", $js);
-        $this->assertStringContainsString("label.classList.contains('admin-checkbox')) return", $js);
+        $this->assertStringContainsString("label.admin-checkbox, .admin-checkbox-row > .admin-label-with-tip__end", $js);
         $this->assertStringContainsString("'.mw-totals-bar'", $js);
         $this->assertStringContainsString('setLabelText: setLabelText', $js);
         $basementJs = file_get_contents(public_path('js/admin-basement-quotation.js'));
@@ -190,11 +237,11 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s*\{[^}]*text-indent:\s*-34px/',
+            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,220}text-indent:\s*-34px/',
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s*\{[^}]*display:\s*block/',
+            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,220}display:\s*block/',
             $css
         );
         $this->assertMatchesRegularExpression(
@@ -202,7 +249,7 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}text-transform:\s*none/',
+            '/\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}text-transform:\s*inherit/',
             $css
         );
         $this->assertMatchesRegularExpression(
@@ -210,13 +257,14 @@ class AdminInfoTipBehaviourTest extends TestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s*\{[^}]*font-weight:\s*500/',
+            '/\.admin-checkbox-row\s*\{[^}]*font-weight:\s*500/',
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}letter-spacing:\s*normal/',
+            '/\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}letter-spacing:\s*inherit/',
             $css
         );
+        $this->assertStringContainsString('.admin-checkbox-row', $css);
         $this->assertMatchesRegularExpression(
             '/\.admin-checkbox__tail\s*,[\s\S]{0,500}white-space:\s*nowrap/',
             $css
@@ -460,6 +508,84 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('AdminInfoTip.html', $history);
         $this->assertStringContainsString('Original text and each AI result are saved for this session', $history);
         $this->assertStringNotContainsString('admin-ai-text-history-modal__lede', $history);
+
+        $aiImprove = file_get_contents(resource_path('views/admin/partials/portfolio_ai_improve.blade.php'));
+        $this->assertStringContainsString('Latest projects photo prompt improvement', $aiImprove);
+        $this->assertStringNotContainsString('<p class="admin-form-help">', $aiImprove);
+        $descAi = file_get_contents(resource_path('views/admin/partials/portfolio_description_ai.blade.php'));
+        $this->assertStringContainsString('Write a rough description first', $descAi);
+        $this->assertStringNotContainsString('<p class="admin-form-help">Write a rough description first', $descAi);
+
+        $edit = file_get_contents(resource_path('views/admin/client_projects/edit.blade.php'));
+        $this->assertStringContainsString('(CC\'d)', $edit);
+        $this->assertStringContainsString('Optional — CC\'d on every client email.', $edit);
+        $clients = file_get_contents(resource_path('views/admin/clients/create.blade.php'));
+        $this->assertStringContainsString('(optional)', $clients);
+    }
+
+    public function test_required_star_sits_before_the_tip_in_blade(): void
+    {
+        $mat = file_get_contents(resource_path('views/admin/materials/_form.blade.php'));
+        $this->assertMatchesRegularExpression(
+            '#<label for="mat-name">Store name</label>\s*<span class="cp-required">\*</span>\s*<x-admin.info-tip#',
+            $mat
+        );
+        $invoice = file_get_contents(resource_path('views/admin/client_projects/invoice/edit.blade.php'));
+        $this->assertMatchesRegularExpression(
+            '#<label for="cp-invoice-due">Due date</label>\s*<span class="cp-required">\*</span>\s*<x-admin.info-tip#',
+            $invoice
+        );
+        $debris = file_get_contents(resource_path('views/admin/quotations/_debris_removal.blade.php'));
+        $this->assertMatchesRegularExpression(
+            '#<label for="q-debris-amount">Amount to charge</label>\s*<span class="cp-required">\*</span>\s*<x-admin.info-tip#',
+            $debris
+        );
+        $places = file_get_contents(resource_path('views/admin/partials/places_address_field.blade.php'));
+        $this->assertMatchesRegularExpression(
+            '#<label for="\{\{ \$inputId \}\}-widget">\{\{ \$label \}\}</label>\s*@if \(\$required\) <span class="cp-required">\*</span>@endif\s*@if \(\$help\)\s*<x-admin.info-tip#',
+            $places
+        );
+        $tipped = file_get_contents(resource_path('views/admin/partials/tipped_label.blade.php'));
+        $this->assertStringContainsString('<span class="cp-required">*</span>', $tipped);
+        $this->assertDoesNotMatchRegularExpression(
+            '#\{\{ \$last \}\}@if \(\$required\)<span class="cp-required">\*</span>#',
+            $tipped
+        );
+        $reply = file_get_contents(resource_path('views/admin/partials/quotation_reply_to_accept.blade.php'));
+        $this->assertMatchesRegularExpression(
+            '#<span class="cp-required">\*</span>\s*<x-admin.info-tip label="Ask client to reply I accept">#',
+            $reply
+        );
+    }
+
+    public function test_restating_field_tips_were_removed_from_dense_clusters(): void
+    {
+        $drywall = file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php'));
+        $this->assertStringNotContainsString("'tipLabel' => 'Door openings'", $drywall);
+        $this->assertStringNotContainsString("'tipLabel' => 'Window openings'", $drywall);
+        $this->assertStringNotContainsString("'tipLabel' => 'Outside corners'", $drywall);
+        $this->assertStringContainsString("'tipLabel' => 'Opening area'", $drywall);
+        $this->assertStringContainsString("'tipLabel' => 'Level of finish'", $drywall);
+
+        $elec = file_get_contents(resource_path('views/admin/quotations/basement/_electrical_fields.blade.php'));
+        $this->assertStringNotContainsString("'tipLabel' => 'New outlets'", $elec);
+        $this->assertStringNotContainsString("'tipLabel' => 'Switches'", $elec);
+        $this->assertStringContainsString("'tipLabel' => 'Basement ceiling lighting'", $elec);
+        $this->assertStringContainsString("'tipLabel' => 'Smoke / CO'", $elec);
+
+        $shed = file_get_contents(resource_path('views/admin/quotations/shed/_wizard_sections.blade.php'));
+        $this->assertStringNotContainsString("'tipLabel' => 'Wall height (ft)'", $shed);
+        $this->assertStringNotContainsString("'tipLabel' => 'Area'", $shed);
+        $this->assertStringContainsString("'tipLabel' => 'Length (ft)'", $shed);
+
+        $paint = file_get_contents(resource_path('views/admin/quotations/painting/price_configuration.blade.php'));
+        $this->assertStringNotContainsString('label="Paint price per gallon"', $paint);
+        $this->assertStringContainsString('label="Material add-on fixed fee"', $paint);
+
+        $fence = file_get_contents(resource_path('views/admin/quotations/fence/config/index.blade.php'));
+        $this->assertStringNotContainsString('label="Labour rate 6′ fence"', $fence);
+        $this->assertStringNotContainsString('label="Labour rate 8′ fence"', $fence);
+        $this->assertStringContainsString('label="Labour per additional gate"', $fence);
     }
 
     public function test_qty_lw_puts_label_id_on_the_wrapper_not_the_lead(): void

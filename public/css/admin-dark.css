@@ -66,6 +66,20 @@ html.admin-dark .admin-toolbar-lede {
   color: var(--admin-muted);
 }
 
+html.admin-dark .admin-form-group .admin-checkbox-row,
+html.admin-dark .admin-checkbox-row {
+  color: var(--admin-text);
+}
+html.admin-dark .admin-form-group .admin-checkbox-row > label.admin-checkbox,
+html.admin-dark .admin-form-group .admin-checkbox-row .admin-checkbox__text,
+html.admin-dark .admin-form-group .admin-checkbox-row label.admin-checkbox__tail {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+
 html.admin-dark .admin-sidebar-brand {
   background: #024768;
 }

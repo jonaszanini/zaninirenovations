@@ -157,6 +157,15 @@ class AdminInfoTipInclude
     }
 
     /**
+     * True when the label must be printed with `{!! !!}` (tags or entities).
+     */
+    public static function labelIsHtml(string $html): bool
+    {
+        return $html !== strip_tags($html)
+            || (bool) preg_match('/&(?:[a-zA-Z][a-zA-Z0-9]+|#\d+|#x[0-9A-Fa-f]+);/', $html);
+    }
+
+    /**
      * Split a (possibly HTML) label on the last text word without leaving
      * unclosed tags. `<strong>Client provides all materials</strong>` becomes
      * lead `<strong>Client provides all</strong>` + last `<strong>materials</strong>`.
@@ -175,7 +184,7 @@ class AdminInfoTipInclude
             return [
                 'lead' => $parts['lead'],
                 'last' => $parts['last'],
-                'lastIsHtml' => false,
+                'lastIsHtml' => self::labelIsHtml($html),
             ];
         }
 
@@ -215,13 +224,13 @@ class AdminInfoTipInclude
         $open = [];
         $void = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
         foreach ($leadTokens as $token) {
-            if (! preg_match('/^<(\/?)([A-Za-z][A-Za-z0-9]*)/', $token, $m)) {
+            if (! preg_match('/^<(\/?)([A-Za-z][A-Za-z0-9]*)([^>]*)>/', $token, $m)) {
                 continue;
             }
             $tag = strtolower($m[2]);
             if ($m[1] === '/') {
                 for ($j = count($open) - 1; $j >= 0; $j--) {
-                    if ($open[$j] === $tag) {
+                    if ($open[$j]['name'] === $tag) {
                         array_splice($open, $j, 1);
                         break;
                     }
@@ -232,16 +241,16 @@ class AdminInfoTipInclude
             if (in_array($tag, $void, true) || preg_match('/\/\s*>$/', $token)) {
                 continue;
             }
-            $open[] = $tag;
+            $open[] = ['name' => $tag, 'html' => $token];
         }
 
         $closeLead = '';
         $reopenLast = '';
         for ($j = count($open) - 1; $j >= 0; $j--) {
-            $closeLead .= '</'.$open[$j].'>';
+            $closeLead .= '</'.$open[$j]['name'].'>';
         }
-        foreach ($open as $tag) {
-            $reopenLast .= '<'.$tag.'>';
+        foreach ($open as $item) {
+            $reopenLast .= $item['html'];
         }
 
         $lead = rtrim(implode('', $leadTokens)).$closeLead.' ';
@@ -250,7 +259,7 @@ class AdminInfoTipInclude
         return [
             'lead' => $lead,
             'last' => $last,
-            'lastIsHtml' => $last !== strip_tags($last),
+            'lastIsHtml' => self::labelIsHtml($last),
         ];
     }
 

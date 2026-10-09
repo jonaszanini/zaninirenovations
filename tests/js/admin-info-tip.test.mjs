@@ -482,12 +482,19 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   row.appendChild(wrap);
   body.appendChild(row);
   AdminInfoTip.hoist(document);
-  const end = row.querySelector('.admin-label-with-tip__end');
-  assert.ok(end, 'M18: glueLastWord wraps the last word + tip');
-  assert.equal(end.contains(wrap), true);
+  assert.equal(row.querySelector('.admin-label-with-tip__end'), null, 'do not glue when the node before ⓘ is a label');
+  assert.equal(label.textContent.replace(/\s+/g, ' ').trim(), 'Finished rooms');
+
+  const heading = document.createElement('h4');
+  heading.appendChild(document.createTextNode('Finished rooms'));
+  const htip = makeTip(document, 'admin-info-tip-glue-h', 'Finished rooms');
+  heading.appendChild(htip.wrap);
+  body.appendChild(heading);
+  AdminInfoTip.hoist(document);
+  const end = heading.querySelector('.admin-label-with-tip__end');
+  assert.ok(end, 'M18: last text node before ⓘ is split');
+  assert.equal(end.contains(htip.wrap), true);
   assert.match(String(end.textContent || ''), /rooms/);
-  assert.match(String(label.textContent || ''), /Finished/);
-  assert.ok(!String(label.textContent || '').includes('rooms') || String(label.textContent || '').trim() === 'Finished');
 }
 
 {
@@ -506,10 +513,8 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   body.appendChild(row);
   AdminInfoTip.hoist(document);
   assert.equal(span.textContent, 'Pot lights', 'D2/M18: do not glue words out of #br-lights-label');
-  const lightsEnd = row.querySelector('.admin-label-with-tip__end');
-  assert.ok(lightsEnd, 'N8: wrap the id\'d Pot lights unit + tip so ⓘ does not orphan');
-  assert.equal(lightsEnd.contains(span), true);
-  assert.equal(lightsEnd.contains(wrap), true);
+  assert.equal(row.querySelector('.admin-label-with-tip__end'), null, 'do not move the label or #br-lights-label');
+  assert.equal(span.parentNode, label);
   span.textContent = 'Fixtures';
   assert.equal(span.textContent, 'Fixtures', 'D2: JS rewrite stays exact');
   span.textContent = 'Pot lights';
@@ -537,34 +542,33 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
 {
   const { document, body, AdminInfoTip } = createEnv();
   const heading = document.createElement('h4');
-  heading.textContent = 'Pricing engine — $/sq ft by area';
+  heading.appendChild(document.createTextNode('Pricing engine — $/sq ft by area'));
   const { wrap } = makeTip(document, 'admin-info-tip-heading-glue', 'Pricing engine — $/sq ft by area');
   heading.appendChild(wrap);
   body.appendChild(heading);
   AdminInfoTip.hoist(document);
-  const copy = heading.querySelector('.admin-heading-copy');
-  assert.ok(copy, 'N4: heading text is wrapped in one inline span before gluing');
   const end = heading.querySelector('.admin-label-with-tip__end, .admin-heading-tip');
-  assert.ok(end, 'D5/M19: heading last word is glued to the tip');
-  assert.equal(copy.contains(end), true, 'glue lives inside the heading-copy span');
+  assert.ok(end, 'heading last word is glued to the tip');
   assert.equal(end.contains(wrap), true);
   assert.match(String(end.textContent || ''), /area/);
-  assert.match(String(copy.textContent || ''), /Pricing engine/);
+  assert.match(String(heading.textContent || ''), /Pricing engine/);
+  assert.equal(heading.querySelector('.admin-heading-copy'), null, 'do not wrap the whole heading');
 }
 
 {
-  // Accordion: summary > title span + tip. wrapUnitAndTip used to insert the
-  // glue end inside the title then appendChild(title) — HierarchyRequestError
-  // aborted hoist, so later flex headings never got .admin-heading-copy.
   const { document, body, AdminInfoTip } = createEnv();
   const summary = document.createElement('summary');
   summary.className = 'admin-accordion__summary';
+  const chevron = document.createElement('span');
+  chevron.className = 'admin-chevron-down';
+  chevron.setAttribute('aria-hidden', 'true');
   const title = document.createElement('span');
   title.className = 'admin-accordion__title';
   title.appendChild(document.createTextNode('Client Email Message'));
   const { wrap } = makeTip(document, 'admin-info-tip-email-msg', 'Client Email Message');
+  title.appendChild(wrap);
+  summary.appendChild(chevron);
   summary.appendChild(title);
-  summary.appendChild(wrap);
   const h5 = document.createElement('h5');
   h5.className = 'sq-intro-option-title';
   h5.appendChild(document.createTextNode('Client PDF line items'));
@@ -573,10 +577,12 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   body.appendChild(summary);
   body.appendChild(h5);
   assert.doesNotThrow(() => AdminInfoTip.hoist(document));
-  assert.ok(title.classList.contains('admin-heading-copy'), 'N4: existing title span is the heading copy');
+  assert.equal(summary.firstElementChild, chevron, 'N2: chevron stays first');
   assert.ok(title.querySelector('.admin-heading-tip, .admin-label-with-tip__end'), 'last word glued inside the title');
-  assert.ok(h5.querySelector('.admin-heading-copy'), 'later flex headings still wrap after the accordion');
-  assert.match(String(h5.querySelector('.admin-heading-copy').textContent || ''), /Client PDF line items/);
+  assert.match(String(title.querySelector('.admin-label-with-tip__end').textContent || ''), /Message/);
+  assert.ok(!String(title.querySelector('.admin-label-with-tip__end').textContent || '').includes('Client Email'), 'N2: do not nowrap the whole title');
+  assert.ok(h5.querySelector('.admin-label-with-tip__end, .admin-heading-tip'), 'later headings still glue the last word');
+  assert.match(String(h5.querySelector('.admin-label-with-tip__end').textContent || ''), /items/);
 }
 
 {
@@ -626,28 +632,25 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   AdminInfoTip.hoist(document);
   assert.equal(star.textContent, '*', 'N5: asterisk stays in span.cp-required');
   assert.equal(star.className, 'cp-required');
-  const end = legend.querySelector('.admin-label-with-tip__end');
-  assert.ok(end, 'last word glued');
-  assert.ok(!end.contains(star), 'N5: asterisk stays outside the glue');
-  assert.match(String(end.textContent || ''), /name/);
+  assert.equal(star.nextElementSibling, wrap, 'N4: * stays before the ⓘ');
+  assert.equal(legend.querySelector('.admin-label-with-tip__end'), null, 'do not glue across *');
+  const order = String(legend.textContent || '').replace(/\s+/g, ' ').trim();
+  assert.match(order, /^Store name\s*\*/);
 }
 
 {
-  // Trailing skipped children live on the LABEL, but the glue end is a
-  // sibling on the row. insertBefore(ref) must use end.parentNode or hoist
-  // throws and glueHeadingTips never runs (flex headings stay unwrapped).
   const { document, body, AdminInfoTip } = createEnv();
   const row = document.createElement('span');
   row.className = 'admin-label-with-tip';
   const label = document.createElement('label');
   label.setAttribute('for', 'due');
-  label.appendChild(document.createTextNode('Due date '));
+  label.appendChild(document.createTextNode('Due date'));
   const star = document.createElement('span');
   star.className = 'cp-required';
   star.textContent = '*';
-  label.appendChild(star);
   const { wrap } = makeTip(document, 'admin-info-tip-due-star', 'Due date');
   row.appendChild(label);
+  row.appendChild(star);
   row.appendChild(wrap);
   body.appendChild(row);
   const heading = document.createElement('h5');
@@ -657,14 +660,42 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   heading.appendChild(htip.wrap);
   body.appendChild(heading);
   assert.doesNotThrow(() => AdminInfoTip.hoist(document));
-  assert.ok(heading.querySelector('.admin-heading-copy'), 'N4: heading wrap still runs after a trailing-skipped label');
-  assert.match(String(heading.querySelector('.admin-heading-copy').textContent || ''), /Client PDF line items/);
+  assert.ok(heading.querySelector('.admin-label-with-tip__end, .admin-heading-tip'), 'heading last word still glues');
+  assert.match(String(heading.querySelector('.admin-label-with-tip__end').textContent || ''), /items/);
   assert.equal(star.className, 'cp-required');
   assert.equal(star.textContent, '*');
-  const rowEnd = row.querySelector('.admin-label-with-tip__end');
-  assert.ok(rowEnd, 'due-date last word glued');
-  assert.ok(!rowEnd.contains(star), 'N5: asterisk stays outside the glue');
-  assert.ok(star.parentNode === row || star.previousSibling === rowEnd || row.contains(star));
+  assert.equal(star.nextElementSibling, wrap, 'N1/N4: * stays immediately before the ⓘ');
+  assert.equal(row.querySelector('.admin-label-with-tip__end'), null, 'do not glue when * sits before the tip');
+  const order = String(row.textContent || '').replace(/\s+/g, ' ').trim();
+  assert.match(order, /^Due date\s*\*/);
+  assert.ok(!/^name \*/i.test(order) && !order.includes('NAME'), 'N1: do not reorder to NAME ⓘ *STORE');
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const summary = document.createElement('summary');
+  summary.className = 'admin-filters-accordion__summary';
+  const title = document.createElement('span');
+  title.className = 'admin-filters-accordion__title';
+  title.appendChild(document.createTextNode('Filters'));
+  const { wrap } = makeTip(document, 'admin-info-tip-filters', 'Filters');
+  title.appendChild(wrap);
+  const badge = document.createElement('span');
+  badge.className = 'admin-filters-accordion__badge';
+  badge.textContent = '3 active';
+  summary.appendChild(title);
+  summary.appendChild(badge);
+  body.appendChild(summary);
+  AdminInfoTip.hoist(document);
+  assert.equal(title.nextElementSibling, badge, 'N3: badge stays after the title');
+  assert.equal(badge.parentNode, summary);
+  const end = title.querySelector('.admin-label-with-tip__end');
+  assert.ok(end && end.contains(wrap), 'N3: ⓘ glues to Filters, not the badge');
+  assert.match(String(end.textContent || ''), /Filters/);
+  assert.ok(!String(end.textContent || '').includes('3 active'));
+  const order = String(summary.textContent || '').replace(/\s+/g, ' ').trim();
+  assert.match(order, /^Filters/);
+  assert.match(order, /3 active$/);
 }
 
 {
@@ -696,6 +727,7 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   assert.equal(a.input.id, b.input.id);
   AdminInfoTip.refreshControlIds(b.row);
   assert.notEqual(b.input.id, a.input.id, 'M1: cloned checkbox gets its own id');
+  assert.equal(b.input.id, 'pieces-1-edge_banding', 'id is built from the input name (fails if name is ignored)');
   assert.equal(b.lab.getAttribute('for'), b.input.id);
   assert.equal(a.lab.getAttribute('for'), a.input.id);
   assert.notEqual(b.row.querySelector('.admin-info-tip__bubble').id, a.row.querySelector('.admin-info-tip__bubble').id);

@@ -499,107 +499,46 @@
     return !!closestFrom(el, 'a');
   }
 
-  function skipGlueNode(node, isRoot) {
-    if (isRoot || !node) return false;
-    if (node.nodeType === 1) return true;
-    return false;
-  }
-
-  function takeLastWord(label) {
-    var nodes = [];
-    function walk(node, isRoot) {
-      if (skipGlueNode(node, isRoot)) return;
-      var kids = node.childNodes || [];
-      for (var i = 0; i < kids.length; i++) {
-        walk(kids[i], false);
-      }
-      if (node.nodeType === 3 && String(node.textContent || '').replace(/\s+/g, ' ').trim()) {
-        nodes.push(node);
-      }
+  function previousNonEmptyNode(el) {
+    var n = el ? el.previousSibling : null;
+    while (n && n.nodeType === 3 && !String(n.textContent || '').trim()) {
+      n = n.previousSibling;
     }
-    walk(label, true);
-    var textNode = nodes[nodes.length - 1];
-    if (!textNode) return '';
-    var raw = String(textNode.textContent || '');
-    var trimmed = raw.replace(/\s+$/g, '');
-    var space = trimmed.lastIndexOf(' ');
-    if (space === -1) {
-      textNode.textContent = raw.slice(trimmed.length);
-      return trimmed;
-    }
-    var last = trimmed.slice(space + 1);
-    textNode.textContent = trimmed.slice(0, space) + ' ' + raw.slice(trimmed.length);
-    return last;
+    return n;
   }
 
-  function trailingSkippedChildren(host) {
-    var trail = [];
-    var kids = host.childNodes || [];
-    for (var i = kids.length - 1; i >= 0; i--) {
-      var n = kids[i];
-      if (n.nodeType === 3 && !String(n.textContent || '').trim()) continue;
-      if (n.nodeType === 1 && n.classList && (n.classList.contains('admin-info-tip-wrap') || n.classList.contains('admin-label-with-tip__end') || n.classList.contains('admin-heading-tip'))) {
-        continue;
-      }
-      if (n.nodeType === 1) {
-        trail.unshift(n);
-        continue;
-      }
-      break;
-    }
-    return trail;
-  }
-
-  function moveTrailingSkipped(host, end) {
-    if (!host || !end) return;
-    var dest = end.parentNode || host;
-    if (!dest || !dest.insertBefore) return;
-    trailingSkippedChildren(host).forEach(function (el) {
-      if (!el || el === end || el === dest) return;
-      if (end.contains && end.contains(el)) return;
-      if (el.contains && (el.contains(end) || el.contains(dest))) return;
-      if (end.nextSibling && end.nextSibling.parentNode === dest) {
-        dest.insertBefore(el, end.nextSibling);
-      } else if (dest.appendChild) {
-        dest.appendChild(el);
-      }
-    });
-  }
-
-  function lastElementUnit(host, tip) {
-    var kids = host.childNodes || [];
-    for (var i = kids.length - 1; i >= 0; i--) {
-      var n = kids[i];
-      if (n === tip) continue;
-      if (n.nodeType === 3 && !String(n.textContent || '').trim()) continue;
-      if (n.nodeType === 1 && n.classList && (n.classList.contains('admin-info-tip-wrap') || n.classList.contains('admin-label-with-tip__end'))) {
-        continue;
-      }
-      if (n.nodeType === 1) return n;
-    }
-    return null;
-  }
-
-  function wrapUnitAndTip(host, tip, extraClass) {
-    var unit = lastElementUnit(host, tip);
-    if (!unit || !tip || unit === tip) return null;
-    if (tip.contains && tip.contains(unit)) return null;
-    var end = document.createElement('span');
-    end.className = extraClass || 'admin-label-with-tip__end';
-    var unitHasTip = !!(unit.contains && unit.contains(tip));
-    var insertHost = unitHasTip ? (unit.parentNode || host) : (tip.parentNode || unit.parentNode || host);
-    if (!insertHost || (unit.contains && unit.contains(insertHost))) return null;
-    if (insertHost.insertBefore && !unitHasTip && tip.parentNode === insertHost) {
-      insertHost.insertBefore(end, tip);
-    } else if (insertHost.insertBefore && unit.parentNode === insertHost) {
-      insertHost.insertBefore(end, unit);
-    } else if (insertHost.appendChild) {
-      insertHost.appendChild(end);
-    } else {
+  /**
+   * Only allowed DOM change: split the last text node immediately before
+   * the ⓘ and wrap that last word + tip in a nowrap span. Never move or
+   * reorder element children (*, small, badge, chevron, label).
+   */
+  function glueLastTextNode(tip, extraClass) {
+    if (!tip || !tip.parentNode) return null;
+    if (tip.parentNode.classList && (
+      tip.parentNode.classList.contains('admin-label-with-tip__end')
+      || tip.parentNode.classList.contains('admin-heading-tip')
+    )) {
       return null;
     }
-    end.appendChild(unit);
-    if (tip.parentNode !== end) end.appendChild(tip);
+    var prev = previousNonEmptyNode(tip);
+    if (!prev || prev.nodeType !== 3) return null;
+    var raw = String(prev.textContent || '');
+    var trimmed = raw.replace(/\s+$/g, '');
+    if (!trimmed) return null;
+    var space = trimmed.lastIndexOf(' ');
+    var last = space === -1 ? trimmed : trimmed.slice(space + 1);
+    var keep = space === -1
+      ? raw.slice(trimmed.length)
+      : (trimmed.slice(0, space + 1) + raw.slice(trimmed.length));
+    if (!last) return null;
+    prev.textContent = keep;
+    var end = document.createElement('span');
+    end.className = extraClass || 'admin-label-with-tip__end';
+    var word = document.createElement('span');
+    word.textContent = last;
+    end.appendChild(word);
+    tip.parentNode.insertBefore(end, tip);
+    end.appendChild(tip);
     return end;
   }
 
@@ -686,127 +625,17 @@
     return labelCopy(el);
   }
 
-  function wrapLastAndTip(host, tip, last, tagName, htmlFor, extraClass) {
-    var end = document.createElement('span');
-    end.className = extraClass || 'admin-label-with-tip__end';
-    var lastEl = document.createElement(tagName || 'span');
-    if (htmlFor && lastEl.setAttribute) {
-      lastEl.setAttribute('for', htmlFor);
-      lastEl.htmlFor = htmlFor;
-    }
-    lastEl.textContent = last;
-    var insertHost = (tip && tip.parentNode) ? tip.parentNode : host;
-    if (insertHost && insertHost.insertBefore && tip && tip.parentNode === insertHost) {
-      insertHost.insertBefore(end, tip);
-    } else if (insertHost && insertHost.appendChild) {
-      insertHost.appendChild(end);
-    } else if (host.appendChild) {
-      host.appendChild(end);
-    }
-    end.appendChild(lastEl);
-    if (tip) end.appendChild(tip);
-    return end;
-  }
-
   function glueLastWord(scope) {
     var root = scope && scope.querySelectorAll ? scope : document;
     if (!root.querySelectorAll) return;
-    root.querySelectorAll('.admin-label-with-tip').forEach(function (row) {
-      if (row.querySelector('.admin-label-with-tip__end')) return;
-      var tip = null;
-      var label = null;
-      var kids = row.children || [];
-      for (var i = 0; i < kids.length; i++) {
-        var child = kids[i];
-        if (child.classList && child.classList.contains('admin-info-tip-wrap')) {
-          tip = child;
-        } else if (child.tagName === 'LABEL' || (child.classList && child.classList.contains('admin-form-group-label'))) {
-          label = child;
-        }
+    wrapsIn(root).forEach(function (tip) {
+      if (tip.closest && tip.closest('label.admin-checkbox, .admin-checkbox-row > .admin-label-with-tip__end')) {
+        return;
       }
-      if (!tip || !label) return;
-      if (label.classList && label.classList.contains('admin-checkbox')) return;
-      var last = takeLastWord(label);
-      var end = null;
-      if (last) {
-        var htmlFor = '';
-        if (label.tagName === 'LABEL') {
-          htmlFor = label.htmlFor || (label.getAttribute && label.getAttribute('for')) || '';
-        }
-        end = wrapLastAndTip(row, tip, last, label.tagName === 'LABEL' ? 'label' : 'span', htmlFor, 'admin-label-with-tip__end');
-      } else {
-        end = wrapUnitAndTip(label, tip, 'admin-label-with-tip__end') || wrapUnitAndTip(row, tip, 'admin-label-with-tip__end');
-      }
-      if (end) {
-        moveTrailingSkipped(label, end);
-        moveTrailingSkipped(row, end);
-      }
-    });
-    glueHeadingTips(root);
-  }
-
-  function headingContentNodes(heading, tip) {
-    var out = [];
-    var kids = heading.childNodes || [];
-    for (var i = 0; i < kids.length; i++) {
-      var n = kids[i];
-      if (n === tip) continue;
-      if (n.nodeType === 3 && !String(n.textContent || '').trim()) continue;
-      if (n.nodeType === 1 && n.classList && (n.classList.contains('br-acc__num') || n.classList.contains('admin-info-tip-wrap'))) continue;
-      out.push(n);
-    }
-    return out;
-  }
-
-  function wrapHeadingCopy(heading, tip) {
-    if (!heading || !tip) return heading;
-    var existing = heading.querySelector ? heading.querySelector(':scope > .admin-heading-copy') : null;
-    if (existing) {
-      if (tip.parentNode !== existing) existing.appendChild(tip);
-      return existing;
-    }
-    var content = headingContentNodes(heading, tip);
-    if (content.length === 1 && content[0].nodeType === 1) {
-      var only = content[0];
-      if (only.classList && !only.classList.contains('admin-heading-copy')) {
-        only.classList.add('admin-heading-copy');
-      }
-      if (tip.parentNode !== only) only.appendChild(tip);
-      return only;
-    }
-    var copy = document.createElement('span');
-    copy.className = 'admin-heading-copy';
-    var nodes = [];
-    var kids = heading.childNodes || [];
-    for (var i = 0; i < kids.length; i++) {
-      nodes.push(kids[i]);
-    }
-    nodes.forEach(function (n) {
-      if (n.nodeType === 1 && n.classList && n.classList.contains('br-acc__num')) return;
-      copy.appendChild(n);
-    });
-    heading.appendChild(copy);
-    return copy;
-  }
-
-  function glueHeadingTips(scope) {
-    var root = scope && scope.querySelectorAll ? scope : document;
-    if (!root.querySelectorAll) return;
-    var sels = 'h1, h2, h3, h4, h5, summary, legend, .br-acc__summary, .admin-accordion__title, .admin-filters-accordion__title, .cp-heading-sm, .cp-heading-md, .q-additional-costs-card__title';
-    root.querySelectorAll(sels).forEach(function (heading) {
-      if (heading.querySelector && heading.querySelector('.admin-heading-tip')) return;
-      var tip = heading.querySelector ? heading.querySelector('.admin-info-tip-wrap') : null;
-      if (!tip) return;
-      var copy = wrapHeadingCopy(heading, tip);
-      if (copy.querySelector && copy.querySelector('.admin-heading-tip')) return;
-      var last = takeLastWord(copy);
-      var end = null;
-      if (last) {
-        end = wrapLastAndTip(copy, tip, last, 'span', '', 'admin-label-with-tip__end admin-heading-tip');
-      } else {
-        end = wrapUnitAndTip(copy, tip, 'admin-label-with-tip__end admin-heading-tip');
-      }
-      if (end) moveTrailingSkipped(copy, end);
+      var inHeading = tip.closest && tip.closest(
+        'h1, h2, h3, h4, h5, summary, legend, .br-acc__summary, .admin-accordion__title, .admin-filters-accordion__title, .cp-heading-sm, .cp-heading-md, .q-additional-costs-card__title'
+      );
+      glueLastTextNode(tip, inHeading ? 'admin-label-with-tip__end admin-heading-tip' : 'admin-label-with-tip__end');
     });
   }
 

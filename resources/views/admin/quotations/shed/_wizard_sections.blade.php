@@ -59,10 +59,7 @@
                value="{{ $shVal('width_ft') }}">
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
         <label for="sh-height">Wall height (ft)</label>
-        @include('admin.partials.info_tip', ['tipText' => 'Eave wall height. Default 8 ft.', 'tipLabel' => 'Wall height (ft)'])
-      </span>
         <input type="number" min="4" max="16" step="0.25" class="admin-input sh-preview" id="sh-height" name="wall_height_ft"
                value="{{ $shVal('wall_height_ft', 8) }}">
       </div>
@@ -86,10 +83,7 @@
                value="{{ $shVal('overhang_in', 12) }}">
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-  <label>Area</label>
-  @include('admin.partials.info_tip', ['tipText' => 'Detached, one-storey, storage-only sheds can be up to '.ShedQuotationCalculator::permitExemptMaxLabel().' without a building permit.', 'tipLabel' => 'Area'])
-</span>
+        <label>Area</label>
         <p class="sh-area-readout" id="sh-area-readout">—</p>
       </div>
     </div>

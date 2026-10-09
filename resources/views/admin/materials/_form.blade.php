@@ -28,7 +28,8 @@
     <div class="mat-form-grid-names">
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
-          <label for="mat-name">Store name <span class="cp-required">*</span></label>
+          <label for="mat-name">Store name</label>
+          <span class="cp-required">*</span>
           <x-admin.info-tip label="Store name">Full product title from the store — updated when you sync prices.</x-admin.info-tip>
         </span>
         <input @class(['admin-input', 'is-invalid' => $errors->has('name')]) type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255">

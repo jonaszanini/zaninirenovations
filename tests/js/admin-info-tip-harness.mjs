@@ -60,6 +60,8 @@ function matchAttr(el, spec) {
 }
 
 function matchSimple(el, raw) {
+  raw = String(raw || '').trim();
+  if (!raw || raw === '>') return false;
   if (raw === '*') return true;
   const tag = (raw.match(/^[a-z][\w-]*/i) || [''])[0].toLowerCase();
   const id = (raw.match(/#([\w-]+)/) || [])[1];
@@ -76,6 +78,39 @@ function matchSimple(el, raw) {
   return true;
 }
 
+function matchSelector(el, sel) {
+  if (!el || el.nodeType !== 1 || !sel) return false;
+  if (sel.includes(',')) {
+    return sel.split(',').some((part) => matchSelector(el, part.trim()));
+  }
+  const { child, raw } = parseSelector(sel);
+  if (child) return matchSimple(el, raw);
+  if (raw.includes('>')) {
+    const parts = raw.split(/\s*>\s*/).map((p) => p.trim()).filter((p) => p && p !== '>');
+    let node = el;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (!node || node.nodeType !== 1 || !matchSimple(node, parts[i])) return false;
+      if (i > 0) node = node.parentNode;
+    }
+    return true;
+  }
+  if (raw.includes(' ')) {
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const last = parts.pop();
+    if (!matchSimple(el, last)) return false;
+    let anc = el.parentNode;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      while (anc && anc.nodeType === 1 && !matchSimple(anc, parts[i])) {
+        anc = anc.parentNode;
+      }
+      if (!anc || anc.nodeType !== 1) return false;
+      anc = anc.parentNode;
+    }
+    return true;
+  }
+  return matchSimple(el, raw);
+}
+
 class FakeText {
   constructor(text, owner) {
     this.nodeType = 3;
@@ -90,6 +125,11 @@ class FakeText {
   }
   set textContent(v) {
     this._text = String(v ?? '');
+  }
+  get previousSibling() {
+    if (!this.parentNode || !Array.isArray(this.parentNode.childNodes)) return null;
+    const i = this.parentNode.childNodes.indexOf(this);
+    return i > 0 ? this.parentNode.childNodes[i - 1] : null;
   }
 }
 
@@ -117,7 +157,17 @@ class FakeEl {
 
   get textContent() {
     if (this.childNodes.length) {
-      return this.childNodes.map((c) => (c.textContent ?? '')).join('');
+      const seen = new Set();
+      const read = (node) => {
+        if (!node || seen.has(node)) return '';
+        seen.add(node);
+        if (node.nodeType === 3) return node.textContent ?? '';
+        if (node.childNodes && node.childNodes.length) {
+          return node.childNodes.map((c) => read(c)).join('');
+        }
+        return node._text || '';
+      };
+      return read(this);
     }
     return this._text || '';
   }
@@ -143,17 +193,37 @@ class FakeEl {
   }
 
   matches(sel) {
-    const { raw } = parseSelector(sel);
-    return matchSimple(this, raw);
+    return matchSelector(this, sel);
   }
 
   closest(sel) {
     let n = this;
+    const seen = new Set();
     while (n && n.nodeType === 1) {
+      if (seen.has(n)) return null;
+      seen.add(n);
       if (n.matches(sel)) return n;
       n = n.parentNode;
     }
     return null;
+  }
+
+  get parentElement() {
+    return this.parentNode && this.parentNode.nodeType === 1 ? this.parentNode : null;
+  }
+
+  get firstElementChild() {
+    return this.children[0] || null;
+  }
+
+  get lastElementChild() {
+    return this.children.length ? this.children[this.children.length - 1] : null;
+  }
+
+  get nextElementSibling() {
+    if (!this.parentNode || !Array.isArray(this.parentNode.children)) return null;
+    const i = this.parentNode.children.indexOf(this);
+    return i >= 0 && i < this.parentNode.children.length - 1 ? this.parentNode.children[i + 1] : null;
   }
 
   querySelector(sel) {
@@ -175,12 +245,46 @@ class FakeEl {
       return out;
     }
     const { child, raw } = parseSelector(sel);
-    if (!child && raw.includes(' ')) {
-      const parts = raw.split(/\s+/);
+    const walked = new Set();
+    let steps = 0;
+    const walkSafe = (node, fn) => {
+      if (!node || walked.has(node)) return;
+      walked.add(node);
+      if (++steps > 5000) {
+        throw new Error('querySelectorAll walked too many nodes for ' + sel);
+      }
+      for (const c of node.children) fn(c);
+    };
+    if (!child && raw.includes('>')) {
+      const parts = raw.split(/\s*>\s*/).map((p) => p.trim()).filter((p) => p && p !== '>');
       const last = parts.pop();
       const out = [];
       const walk = (node) => {
-        for (const c of node.children) {
+        walkSafe(node, (c) => {
+          if (matchSimple(c, last)) {
+            let anc = c.parentNode;
+            let ok = true;
+            for (let i = parts.length - 1; i >= 0 && ok; i--) {
+              if (!anc || anc.nodeType !== 1 || !matchSimple(anc, parts[i])) {
+                ok = false;
+                break;
+              }
+              anc = anc.parentNode;
+            }
+            if (ok) out.push(c);
+          }
+          walk(c);
+        });
+      };
+      walk(this);
+      return out;
+    }
+    if (!child && raw.includes(' ')) {
+      const parts = raw.split(/\s+/).filter(Boolean);
+      const last = parts.pop();
+      const out = [];
+      const walk = (node) => {
+        walkSafe(node, (c) => {
           if (matchSimple(c, last)) {
             let anc = c.parentNode;
             let ok = true;
@@ -194,17 +298,17 @@ class FakeEl {
             if (ok) out.push(c);
           }
           walk(c);
-        }
+        });
       };
       walk(this);
       return out;
     }
     const out = [];
     const walk = (node, depth) => {
-      for (const c of node.children) {
+      walkSafe(node, (c) => {
         if (matchSimple(c, raw) && (!child || depth === 0)) out.push(c);
         if (!child) walk(c, depth + 1);
-      }
+      });
     };
     walk(this, 0);
     return out;
@@ -251,6 +355,12 @@ class FakeEl {
     return i > 0 ? this.parentNode.children[i - 1] : null;
   }
 
+  get previousSibling() {
+    if (!this.parentNode || !Array.isArray(this.parentNode.childNodes)) return null;
+    const i = this.parentNode.childNodes.indexOf(this);
+    return i > 0 ? this.parentNode.childNodes[i - 1] : null;
+  }
+
   _detach(el) {
     if (!el || !el.parentNode) return;
     const parent = el.parentNode;
@@ -263,17 +373,23 @@ class FakeEl {
     el.parentNode = null;
   }
 
-  appendChild(el) {
+  _adopt(el) {
+    if (!el || el === this) {
+      throw new Error('cannot append a node to itself');
+    }
     this._detach(el);
     el.parentNode = this;
+  }
+
+  appendChild(el) {
+    this._adopt(el);
     this.childNodes.push(el);
     if (el.nodeType === 1) this.children.push(el);
     return el;
   }
 
   insertBefore(el, ref) {
-    this._detach(el);
-    el.parentNode = this;
+    this._adopt(el);
     const i = ref ? this.childNodes.indexOf(ref) : -1;
     if (i === -1) this.childNodes.push(el);
     else this.childNodes.splice(i, 0, el);

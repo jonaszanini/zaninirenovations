@@ -2,6 +2,9 @@
   Label + ⓘ with the last word glued to the tip (nowrap) so two-column
   grids keep inputs aligned when the icon would otherwise wrap alone.
 
+  Order is always: label text, then *, then <small>, then ⓘ.
+  Required * is a sibling after the words — never inside the nowrap with the tip.
+
   @param string      $label
   @param string|null $for
   @param string|null $tipText
@@ -24,8 +27,8 @@
   $tipLabel = array_key_exists('tipLabel', $defined) ? $defined['tipLabel'] : $label;
   $tipId = array_key_exists('tipId', $defined) ? $defined['tipId'] : null;
   $parts = \App\Support\AdminInfoTipInclude::splitLabel(trim(strip_tags((string) $label)));
-  $lead = $parts['lead'];
-  $last = $parts['last'];
+  $lead = $required ? '' : $parts['lead'];
+  $last = $required ? trim(strip_tags((string) $label)) : $parts['last'];
   $forAttr = $for !== '' ? ' for="'.e($for).'"' : '';
   $idAttr = $labelId !== null ? ' id="'.e($labelId).'"' : '';
 @endphp
@@ -33,13 +36,24 @@
   @if ($lead !== '')
     <label{!! $forAttr !!}>{!! $prefixHtml !!}{{ $lead }}</label>
   @endif
-  <span class="admin-label-with-tip__end">
-    <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}@if ($required)<span class="cp-required">*</span>@endif</label>
+  @if ($required)
+    <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}</label>
+    <span class="cp-required">*</span>
     @include('admin.partials.info_tip', [
       'tipText' => $tipText,
       'tipHtml' => $tipHtml,
       'tipLabel' => $tipLabel,
       'tipId' => $tipId,
     ])
-  </span>
+  @else
+    <span class="admin-label-with-tip__end">
+      <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}</label>
+      @include('admin.partials.info_tip', [
+        'tipText' => $tipText,
+        'tipHtml' => $tipHtml,
+        'tipLabel' => $tipLabel,
+        'tipId' => $tipId,
+      ])
+    </span>
+  @endif
 </span>

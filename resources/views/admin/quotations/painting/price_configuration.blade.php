@@ -46,10 +46,7 @@
 
     <div class="admin-form-grid-4">
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-          <label for="paint_per_gallon">Paint price per gallon (CAD$)</label>
-          <x-admin.info-tip label="Paint price per gallon">Premium paint e.g. Dulux Lifemaster</x-admin.info-tip>
-        </span>
+        <label for="paint_per_gallon">Paint price per gallon (CAD$)</label>
         <input type="text" inputmode="decimal" autocomplete="off" class="admin-input cp-money-input" id="paint_per_gallon" name="paint_per_gallon"
                placeholder="0.00" value="{{ old('paint_per_gallon', number_format((float) $settings->paint_per_gallon, 2, '.', '')) }}" required>
       </div>
@@ -62,10 +59,7 @@
                placeholder="0.00" value="{{ old('material_addon_fee', number_format((float) $settings->material_addon_fee, 2, '.', '')) }}" required>
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-          <label for="sqf_per_gallon">Sq ft floor coverage per gallon (2 top coats)</label>
-          <x-admin.info-tip label="Sq ft floor coverage per gallon">Default 70 sq ft per gallon</x-admin.info-tip>
-        </span>
+        <label for="sqf_per_gallon">Sq ft floor coverage per gallon (2 top coats)</label>
         <input type="number" step="0.01" min="0.01" class="admin-input" id="sqf_per_gallon" name="sqf_per_gallon"
                value="{{ old('sqf_per_gallon', $settings->sqf_per_gallon) }}" required>
       </div>

@@ -142,7 +142,8 @@
 
         <div class="admin-form-group">
           <span class="admin-label-with-tip">
-            <label for="cp-invoice-due">Due date <span class="cp-required">*</span></label>
+            <label for="cp-invoice-due">Due date</label>
+            <span class="cp-required">*</span>
             <x-admin.info-tip label="Due date">Required before the invoice can be sent to the client.</x-admin.info-tip>
           </span>
           <input type="date"

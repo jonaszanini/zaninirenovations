@@ -238,20 +238,14 @@
 
     <div class="fq-formula-grid">
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-          <label for="fq-labour-6">Labour rate 6′ fence (CAD$ / linear ft)</label>
-          <x-admin.info-tip label="Labour rate 6′ fence">Default start price for new 6′ fence quotations.</x-admin.info-tip>
-        </span>
+        <label for="fq-labour-6">Labour rate 6′ fence (CAD$ / linear ft)</label>
         <input id="fq-labour-6" type="text" name="labour_rate_per_ft"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
                value="{{ old('labour_rate_per_ft', number_format((float) $settings->labour_rate_per_ft, 2, '.', '')) }}">
       </div>
 
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-          <label for="fq-labour-8">Labour rate 8′ fence (CAD$ / linear ft)</label>
-          <x-admin.info-tip label="Labour rate 8′ fence">Default start price for new 8′ fence quotations.</x-admin.info-tip>
-        </span>
+        <label for="fq-labour-8">Labour rate 8′ fence (CAD$ / linear ft)</label>
         <input id="fq-labour-8" type="text" name="labour_rate_8ft_per_ft"
                class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
                value="{{ old('labour_rate_8ft_per_ft', number_format((float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft), 2, '.', '')) }}">

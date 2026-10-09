@@ -48,7 +48,8 @@
   <div class="q-debris-card__body" data-cp-debris-body @if ($includeDebrisChoice !== true) hidden @endif>
     <div class="admin-form-group q-debris-amount-group">
       <span class="admin-label-with-tip">
-        <label for="q-debris-amount">Amount to charge <span class="cp-required">*</span></label>
+        <label for="q-debris-amount">Amount to charge</label>
+        <span class="cp-required">*</span>
         <x-admin.info-tip label="Amount to charge">Incl. HST — folded into Labour on the client PDF (not shown as its own line).</x-admin.info-tip>
       </span>
       <input type="text"

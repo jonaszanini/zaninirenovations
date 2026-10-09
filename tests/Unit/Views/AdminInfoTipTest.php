@@ -173,6 +173,26 @@ class AdminInfoTipTest extends TestCase
         $this->assertSame(substr_count($split['last'], '<strong>'), substr_count($split['last'], '</strong>'));
     }
 
+    public function test_label_is_html_for_entities_and_split_keeps_them(): void
+    {
+        $this->assertTrue(\App\Support\AdminInfoTipInclude::labelIsHtml('Include demolition &amp; debris'));
+        $this->assertTrue(\App\Support\AdminInfoTipInclude::labelIsHtml('Width &#8212; inches'));
+        $this->assertFalse(\App\Support\AdminInfoTipInclude::labelIsHtml('Include demolition & debris'));
+
+        $split = \App\Support\AdminInfoTipInclude::splitLabelHtml('Include demolition &amp; debris');
+        $this->assertSame('Include demolition &amp; ', $split['lead']);
+        $this->assertSame('debris', $split['last']);
+        $this->assertTrue($split['lastIsHtml']);
+    }
+
+    public function test_split_label_html_preserves_attributes_on_reopened_tags(): void
+    {
+        $split = \App\Support\AdminInfoTipInclude::splitLabelHtml('<a href="/admin/materials" class="admin-text-link">Open materials config</a>');
+        $this->assertSame('<a href="/admin/materials" class="admin-text-link">Open materials</a> ', $split['lead']);
+        $this->assertSame('<a href="/admin/materials" class="admin-text-link">config</a>', $split['last']);
+        $this->assertTrue($split['lastIsHtml']);
+    }
+
     public function test_control_id_from_name_is_rewriteable_for_templates(): void
     {
         $this->assertSame(

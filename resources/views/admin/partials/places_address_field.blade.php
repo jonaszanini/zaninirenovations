@@ -19,9 +19,8 @@
 @endphp
 <div class="admin-form-group admin-places-field">
   <span class="admin-label-with-tip">
-    <label for="{{ $inputId }}-widget">
-      {{ $label }}@if ($required) <span class="cp-required">*</span>@endif
-    </label>
+    <label for="{{ $inputId }}-widget">{{ $label }}</label>
+    @if ($required) <span class="cp-required">*</span>@endif
     @if ($help)
       <x-admin.info-tip :label="$label">{{ $help }}</x-admin.info-tip>
     @endif

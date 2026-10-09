@@ -333,7 +333,7 @@
       'name' => 'include_demolition',
       'hiddenFallback' => true,
       'checked' => $brOn('include_demolition'),
-      'label' => 'Include demolition &amp; debris',
+      'label' => 'Include demolition & debris',
       'info' => $brInfo['include_demolition'],
       'inputClass' => 'admin-checkbox__input br-preview',
       'attrs' => ['data-br-reveal' => 'br-demo-fields'],
@@ -690,26 +690,17 @@
       ])
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-  <label for="br-dw-door-open">Door openings</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_door_openings'], 'tipLabel' => 'Door openings'])
-</span>
+        <label for="br-dw-door-open">Door openings</label>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-door-open" name="drywall_door_openings"
                value="{{ $brVal('drywall_door_openings', 0) }}">
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-  <label for="br-dw-window-open">Window openings</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_window_openings'], 'tipLabel' => 'Window openings'])
-</span>
+        <label for="br-dw-window-open">Window openings</label>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-window-open" name="drywall_window_openings"
                value="{{ $brVal('drywall_window_openings', 0) }}">
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-  <label for="br-dw-open">Other openings</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_openings'], 'tipLabel' => 'Other openings'])
-</span>
+        <label for="br-dw-open">Other openings</label>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-open" name="drywall_openings"
                value="{{ $brVal('drywall_openings', 0) }}">
       </div>
@@ -722,18 +713,12 @@
                value="{{ $brQty('drywall_opening_sf') }}" placeholder="Auto">
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-  <label for="br-dw-corners">Outside corners</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_corners'], 'tipLabel' => 'Outside corners'])
-</span>
+        <label for="br-dw-corners">Outside corners</label>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-corners" name="drywall_corners"
                value="{{ $brVal('drywall_corners', 0) }}">
       </div>
       <div class="admin-form-group">
-        <span class="admin-label-with-tip">
-  <label for="br-dw-inside-corners">Inside corners</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_inside_corners'], 'tipLabel' => 'Inside corners'])
-</span>
+        <label for="br-dw-inside-corners">Inside corners</label>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-inside-corners" name="drywall_inside_corners"
                value="{{ $brVal('drywall_inside_corners', 0) }}">
       </div>

@@ -211,7 +211,6 @@ jobs:
           php artisan test tests/Unit/Support/FenceSideFlagsTest.php
           php artisan test tests/Unit/Views/FenceQuotationFormRestoreTest.php
           php artisan test tests/Feature/Admin/FenceQuotationFormRestoreTest.php
-          php artisan test tests/Unit/Views/FencePriceBannerTipTest.php
           php artisan test tests/Feature/Admin/FenceQuotationInfoTipTest.php
           php artisan test tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
