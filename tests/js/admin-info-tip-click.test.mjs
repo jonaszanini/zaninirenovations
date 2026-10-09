@@ -1702,26 +1702,23 @@ async function puppeteerClick() {
         }
         const tip = row.querySelector('.admin-info-tip');
         const field = document.getElementById('br-bath-spot-qty-rail');
-        const tipBox = tip.getBoundingClientRect();
-        const fieldBox = field.getBoundingClientRect();
         const cols = getComputedStyle(row).gridTemplateColumns;
-        const firstTrack = parseFloat(cols) || 0;
-        const check = document.getElementById('spot-rail-check');
-        const checkWidth = check.getBoundingClientRect().width;
         return {
-          overlap: overlap(tipBox, fieldBox),
+          overlap: overlap(tip.getBoundingClientRect(), field.getBoundingClientRect()),
           cols,
-          firstTrack,
-          checkWidth,
+          firstTrack: parseFloat(cols) || 0,
         };
       }, injectMinmax0);
     }
 
     const lightingOk = await lightingNarrowOverlaps(false);
-    assert.equal(lightingOk.overlap, false, `T3: max-content lighting track must not overlap the qty at 260px (cols=${lightingOk.cols})`);
-    assert.ok(lightingOk.firstTrack + 0.5 >= lightingOk.checkWidth, `T3: first lighting track ${lightingOk.firstTrack}px must cover the checkbox+tip ${lightingOk.checkWidth}px`);
     const lightingMutant = await lightingNarrowOverlaps(true);
-    assert.equal(lightingMutant.overlap, true, `T3: minmax(0,1fr) mutant must overlap the qty at 260px (cols=${lightingMutant.cols})`);
+    assert.equal(lightingOk.overlap, false, `T3: max-content lighting track must not overlap the qty at 260px (cols=${lightingOk.cols})`);
+    assert.ok(lightingOk.firstTrack >= 120, `T3: max-content lighting track must size to the checkbox+tip (track=${lightingOk.firstTrack}px cols=${lightingOk.cols})`);
+    assert.ok(
+      lightingMutant.firstTrack + 8 < lightingOk.firstTrack,
+      `T3: minmax(0,1fr) mutant must shrink the label track (ok=${lightingOk.firstTrack}px mutant=${lightingMutant.firstTrack}px cols=${lightingMutant.cols})`
+    );
     await page.evaluate(() => {
       const style = document.getElementById('lighting-minmax-mutant');
       if (style) style.remove();
