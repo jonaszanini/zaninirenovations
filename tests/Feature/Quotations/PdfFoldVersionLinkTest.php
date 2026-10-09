@@ -70,7 +70,7 @@ class PdfFoldVersionLinkTest extends IntegrationTestCase
         $this->assertSame(['Material'], array_column($row->pdfLineItems(), 'description'));
     }
 
-    public function test_new_quote_defaults_to_fold_version_two(): void
+    public function test_new_quote_defaults_to_fold_version_three(): void
     {
         $this->actingAsAdmin();
 
@@ -104,7 +104,7 @@ class PdfFoldVersionLinkTest extends IntegrationTestCase
         $quote->save();
 
         $quote->refresh();
-        $this->assertSame(2, (int) $quote->pdf_fold_version);
+        $this->assertSame(3, (int) $quote->pdf_fold_version);
         $this->assertEquals('114.00', $quote->total_amount);
         $this->assertEquals($quote->editorGrandTotal(), $quote->pdfGrandTotal());
     }

@@ -1,0 +1,383 @@
+{
+    "sq_2x_33_33": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Material",
+                "amount": 66.66,
+                "apply_hst": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Material",
+                "amount": 66.66,
+                "apply_hst": true
+            }
+        ],
+        "hst": 8.67,
+        "pdf_hst": 8.67,
+        "total": 75.33,
+        "pdf_total": 75.33,
+        "sq_materials": [
+            {
+                "short_name": "A",
+                "unit_price": 33.33,
+                "quantity": 1,
+                "apply_hst": true
+            },
+            {
+                "short_name": "B",
+                "unit_price": 33.33,
+                "quantity": 1,
+                "apply_hst": true
+            }
+        ]
+    },
+    "material_1000_debris_565": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "Debris removal and disposal",
+                "amount": 565,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "Labour",
+                "amount": 500,
+                "apply_hst": true,
+                "hst_taxable_amount": 500,
+                "hst_amount": 65
+            }
+        ],
+        "hst": 195,
+        "pdf_hst": 195,
+        "total": 1695,
+        "pdf_total": 1695
+    },
+    "material_1000_commute_113": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "Commute expense",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "Labour",
+                "amount": 100,
+                "apply_hst": true,
+                "hst_taxable_amount": 100,
+                "hst_amount": 13
+            }
+        ],
+        "hst": 143,
+        "pdf_hst": 143,
+        "total": 1243,
+        "pdf_total": 1243
+    },
+    "paving_1000_labour_613_commute": {
+        "source": "paving",
+        "items": [
+            {
+                "description": "Paving Stones — Material",
+                "amount": 1000,
+                "apply_hst": false,
+                "hst_included": true
+            },
+            {
+                "description": "Paving Stones — Labour",
+                "amount": 613,
+                "apply_hst": true,
+                "hst_taxable_amount": 500
+            },
+            {
+                "description": "Commute expense",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Paving Stones — Material",
+                "amount": 884.96,
+                "apply_hst": true,
+                "hst_amount": 115.04
+            },
+            {
+                "description": "Paving Stones — Labour",
+                "amount": 700,
+                "apply_hst": true,
+                "hst_taxable_amount": 600,
+                "hst_amount": 91
+            }
+        ],
+        "hst": 206.04,
+        "pdf_hst": 206.04,
+        "total": 1791,
+        "pdf_total": 1791
+    },
+    "labour_and_electrical_labour_split": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Labour",
+                "amount": 500,
+                "apply_hst": true
+            },
+            {
+                "description": "Electrical labour",
+                "amount": 300,
+                "apply_hst": true
+            },
+            {
+                "description": "Commute expense",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Labour",
+                "amount": 600,
+                "apply_hst": true,
+                "hst_taxable_amount": 600,
+                "hst_amount": 78
+            },
+            {
+                "description": "Electrical labour",
+                "amount": 300,
+                "apply_hst": true
+            }
+        ],
+        "hst": 117,
+        "pdf_hst": 117,
+        "total": 1017,
+        "pdf_total": 1017
+    },
+    "cash_fence_labour_plus_debris": {
+        "source": "fence",
+        "items": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "6 ft fence — labour",
+                "amount": 500,
+                "apply_hst": false
+            },
+            {
+                "description": "Debris removal and disposal",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "6 ft fence — labour",
+                "amount": 500,
+                "apply_hst": false
+            },
+            {
+                "description": "Labour",
+                "amount": 100,
+                "apply_hst": true,
+                "hst_amount": 13
+            }
+        ],
+        "hst": 143,
+        "pdf_hst": 143,
+        "total": 1743,
+        "pdf_total": 1743
+    },
+    "tile_client_selected_materials": {
+        "source": "tile",
+        "items": [
+            {
+                "description": "Client-selected tile & materials",
+                "amount": 800,
+                "apply_hst": true
+            },
+            {
+                "description": "Commute expense",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Materials",
+                "amount": 800,
+                "apply_hst": true
+            },
+            {
+                "description": "Labour",
+                "amount": 100,
+                "apply_hst": true,
+                "hst_taxable_amount": 100,
+                "hst_amount": 13
+            }
+        ],
+        "hst": 117,
+        "pdf_hst": 117,
+        "total": 1017,
+        "pdf_total": 1017
+    },
+    "custom_millwork_labour_plus_commute": {
+        "source": "millwork",
+        "items": [
+            {
+                "description": "Custom millwork (labour)",
+                "amount": 8000,
+                "apply_hst": true
+            },
+            {
+                "description": "Custom millwork materials",
+                "amount": 400,
+                "apply_hst": true
+            },
+            {
+                "description": "Commute expense",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Custom millwork (labour)",
+                "amount": 8000,
+                "apply_hst": true
+            },
+            {
+                "description": "Custom millwork materials",
+                "amount": 400,
+                "apply_hst": true
+            },
+            {
+                "description": "Labour",
+                "amount": 100,
+                "apply_hst": true,
+                "hst_taxable_amount": 100,
+                "hst_amount": 13
+            }
+        ],
+        "hst": 1105,
+        "pdf_hst": 1105,
+        "total": 9605,
+        "pdf_total": 9605
+    },
+    "paving_heading_missing_apply_hst": {
+        "source": "paving",
+        "items": [
+            {
+                "description": "Job 1 — Driveway",
+                "amount": 0,
+                "is_heading": true
+            },
+            {
+                "description": "Paving Stones — Material",
+                "amount": 1130,
+                "apply_hst": true,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Job 1 — Driveway",
+                "amount": 0,
+                "apply_hst": true,
+                "hst_amount": 0
+            },
+            {
+                "description": "Paving Stones — Material",
+                "amount": 1000,
+                "apply_hst": true,
+                "hst_amount": 130
+            }
+        ],
+        "hst": 130,
+        "pdf_hst": 130,
+        "total": 1130,
+        "pdf_total": 1130
+    },
+    "standard_heading_missing_apply_hst": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Job one",
+                "amount": 0,
+                "is_heading": true
+            },
+            {
+                "description": "Material",
+                "amount": 100,
+                "apply_hst": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Job one",
+                "amount": 0,
+                "apply_hst": true,
+                "is_heading": true
+            },
+            {
+                "description": "Material",
+                "amount": 100,
+                "apply_hst": true
+            }
+        ],
+        "hst": 13,
+        "pdf_hst": 13,
+        "total": 113,
+        "pdf_total": 113
+    }
+}

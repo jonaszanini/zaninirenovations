@@ -1428,6 +1428,27 @@ html.admin-dark .util-ra-live-area__height-unit {
   color: var(--admin-muted);
 }
 
+html.admin-dark .util-ra-finish {
+  border-top-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-finish__title,
+html.admin-dark .util-ra-finish__walls strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-finish__dir-label,
+html.admin-dark .util-ra-finish__walls li,
+html.admin-dark .util-ra-wall-edit__net {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-finish__dir .admin-btn.is-active {
+  background: var(--admin-primary);
+  color: #fff;
+  border-color: var(--admin-primary);
+}
+
 html.admin-dark .util-ra-live-area__exports .admin-btn--ghost {
   background: var(--admin-surface);
   color: var(--admin-heading);

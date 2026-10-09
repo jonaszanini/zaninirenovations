@@ -36,7 +36,12 @@ class RoomAreaQuotePrefillTest extends IntegrationTestCase
         $this->actingAsAdmin();
         $room = $this->makeRoom();
         $metrics = $room->layoutMetrics();
-        $expected = rtrim(rtrim(number_format($metrics['wall_area_sqft'] + $metrics['area_sqft'], 2, '.', ''), '0'), '.');
+        $expected = rtrim(rtrim(number_format(
+            ($metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft']) + ($metrics['ceiling_area_sqft'] ?? $metrics['area_sqft']),
+            2,
+            '.',
+            ''
+        ), '0'), '.');
 
         $this->get(route('admin.quotations.painting.create', [
             'room_area_import_id' => 'room:'.$room->id,

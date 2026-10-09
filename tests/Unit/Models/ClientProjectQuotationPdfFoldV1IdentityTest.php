@@ -19,6 +19,12 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
         $this->assertEquals(1243, $named['material_1000_commute_113']['total']);
         $this->assertEquals(1778.01, $named['paving_1000_labour_613_commute']['total']);
         $this->assertEquals(130, $named['cash_fence_labour_plus_debris']['hst']);
+        $this->assertArrayHasKey('paving_heading_missing_apply_hst', $named);
+        $this->assertArrayNotHasKey('is_heading', $named['paving_heading_missing_apply_hst']['lines'][0]);
+        $this->assertTrue($named['paving_heading_missing_apply_hst']['lines'][0]['apply_hst']);
+        $this->assertArrayHasKey('standard_heading_missing_apply_hst', $named);
+        $this->assertTrue((bool) ($named['standard_heading_missing_apply_hst']['lines'][0]['is_heading'] ?? false));
+        $this->assertTrue($named['standard_heading_missing_apply_hst']['lines'][0]['apply_hst']);
 
         $split = $named['labour_and_electrical_labour_split']['lines'];
         $this->assertEqualsWithDelta(550.0, $split[0]['amount'], 0.001);
@@ -94,13 +100,50 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
             'items' => $sq->summaryPdfLineItems(),
             'pdf_fold_version' => 2,
         ]);
-        $this->assertTrue($quote->usesCurrentPdfFold());
+        $this->assertTrue($quote->usesPdfFoldV2());
+        $this->assertFalse($quote->usesCurrentPdfFold());
+        // v2 SQ leftover hst_amount: 2 × round(33.33 × 0.13, 2) = 8.66
         $this->assertEquals(8.66, $quote->editorHst());
         $this->assertEquals(8.66, $quote->pdfHst());
         $this->assertEquals(8.66, $quote->hst());
         $this->assertEquals(75.32, $quote->editorGrandTotal());
         $this->assertEquals(75.32, $quote->pdfGrandTotal());
         $this->assertEquals(75.32, $quote->grandTotal());
+        $this->assertArrayHasKey('hst_amount', $sq->summaryPdfLineItems()[0]);
+    }
+
+    public function test_v3_sq_2x_33_33_linked_path_matches_editor(): void
+    {
+        $named = $this->loadFixture('named.json');
+        $fx = $named['sq_2x_33_33'];
+        $this->assertNotEmpty($fx['sq_materials'] ?? []);
+
+        $sq = StandardQuotation::query()->create([
+            'quote_number' => 'SQ-V3-'.uniqid(),
+            'client_name' => 'Identity v3',
+            'materials' => $fx['sq_materials'],
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'labour_use_fixed' => false,
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+            'pdf_fold_version' => 3,
+        ]);
+
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'source_id' => $sq->id,
+            'items' => $sq->summaryPdfLineItems(),
+            'pdf_fold_version' => 3,
+        ]);
+        $this->assertTrue($quote->usesCurrentPdfFold());
+        $this->assertEquals($quote->editorHst(), $quote->pdfHst());
+        $this->assertEquals($quote->editorGrandTotal(), $quote->pdfGrandTotal());
+        $this->assertEquals($quote->editorHst(), $quote->hst());
+        $this->assertEquals($quote->editorGrandTotal(), $quote->grandTotal());
     }
 
     public function test_same_lines_detects_hst_included_and_hst_amount_flips(): void
@@ -268,6 +311,9 @@ class ClientProjectQuotationPdfFoldV1IdentityTest extends IntegrationTestCase
                 return false;
             }
             if ((bool) ($row['hst_included'] ?? false) !== (bool) ($b[$i]['hst_included'] ?? false)) {
+                return false;
+            }
+            if ((bool) ($row['is_heading'] ?? false) !== (bool) ($b[$i]['is_heading'] ?? false)) {
                 return false;
             }
             $ha = array_key_exists('hst_amount', $row) ? (float) $row['hst_amount'] : null;

@@ -66,6 +66,34 @@
       <div class="util-ra-side__body">
         <p>Type walls and extra panel content that must stay clipped when the sheet is collapsed.</p>
         <p>More collapsed-panel filler so height:auto cannot swallow the canvas.</p>
+        <div class="util-ra-finish" data-ra-finish>
+          <div class="util-ra-finish__head">
+            <p class="util-ra-finish__title">Finish</p>
+            <button type="button" class="util-ra-help-q" data-ra-help-pop="finish" aria-label="About finish takeoffs">i</button>
+          </div>
+          <div class="util-ra-finish__grid">
+            <div class="admin-form-group util-ra-live-area__height">
+              <label for="ra-wall-height">Wall ht</label>
+              <input class="admin-input" id="ra-wall-height" value="8" data-ra-wall-height>
+            </div>
+            <div class="admin-form-group util-ra-live-area__height">
+              <label for="ra-ceiling-height">Ceiling</label>
+              <input class="admin-input" id="ra-ceiling-height" value="8" data-ra-ceiling-height>
+            </div>
+            <div class="admin-form-group util-ra-live-area__height">
+              <label for="ra-floor-waste">Waste</label>
+              <input class="admin-input" id="ra-floor-waste" value="10" data-ra-floor-waste>
+            </div>
+            <div class="admin-form-group util-ra-live-area__height">
+              <label for="ra-floor-box">Box</label>
+              <input class="admin-input" id="ra-floor-box" value="20" data-ra-floor-box>
+            </div>
+          </div>
+          <div class="util-ra-finish__dir">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm is-active" data-ra-floor-dir="0">Length</button>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-floor-dir="90">Width</button>
+          </div>
+        </div>
       </div>
     </aside>
   </div>
