@@ -14,6 +14,8 @@ use App\Services\RoomAreaLayoutQuoteService;
 use App\Services\RoomAreaQuoteLineInserter;
 use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class RoomAreaAssemblyController extends Controller
@@ -129,14 +131,23 @@ class RoomAreaAssemblyController extends Controller
         $attachedIds = $room
             ? $room->assemblies()->pluck('room_area_assemblies.id')->all()
             : [];
-        $assemblies = RoomAreaAssembly::query()
-            ->with('lines.material')
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->when($attachedIds !== [], fn ($q) => $q->whereIn('id', $attachedIds))
-            ->get();
-        if ($assemblies->isEmpty()) {
-            $assemblies = RoomAreaAssembly::query()->with('lines.material')->orderBy('sort_order')->orderBy('id')->get();
+        $assemblies = collect();
+        if ($room) {
+            if ($attachedIds !== []) {
+                $assemblies = RoomAreaAssembly::query()
+                    ->with('lines.material')
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->whereIn('id', $attachedIds)
+                    ->get();
+            }
+        } elseif ($resolved['project']) {
+            $assemblies = RoomAreaAssembly::query()
+                ->with('lines.material')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->whereIn('id', $resolved['project']->rooms->flatMap->assemblies->pluck('id')->unique()->all() ?: [0])
+                ->get();
         }
 
         $evaluated = $this->evaluator->evaluateMany($assemblies, $option);
@@ -161,10 +172,14 @@ class RoomAreaAssemblyController extends Controller
             ]))
             : route('admin.utilities.room-area', $resolved['project'] ? ['ra_project' => $resolved['project']->id] : []);
 
+        $token = (string) Str::uuid();
+        Cache::put($this->quoteTokenIssuedKey($token), 1, now()->addHours(6));
+
         return view('admin.utilities.room_area_assembly_quote', [
             'layoutId' => $option['id'],
             'option' => $option,
             'assemblies' => $evaluated,
+            'idempotencyToken' => $token,
             'roomAreaProject' => $resolved['project'],
             'clientProject' => $clientProject,
             'backUrl' => $backUrl,
@@ -184,6 +199,7 @@ class RoomAreaAssemblyController extends Controller
 
         $data = $request->validate([
             'layout' => ['required', 'string', 'max:40'],
+            'idempotency_token' => ['required', 'string', 'max:80'],
             'assembly_ids' => ['required', 'array', 'min:1'],
             'assembly_ids.*' => ['required', 'integer', 'exists:room_area_assemblies,id'],
             'unit_price' => ['nullable', 'array'],
@@ -196,7 +212,19 @@ class RoomAreaAssemblyController extends Controller
         ], [
             'assembly_ids.required' => 'Pick at least one kit.',
             'assembly_ids.min' => 'Pick at least one kit.',
+            'idempotency_token.required' => 'Reload the page and add the kits again.',
         ]);
+
+        $token = trim((string) $data['idempotency_token']);
+        if ($token === '' || ! Cache::get($this->quoteTokenIssuedKey($token))) {
+            throw ValidationException::withMessages([
+                'idempotency_token' => 'Reload the page and add the kits again.',
+            ]);
+        }
+
+        if ($replay = $this->replayQuoteFromToken($token, (string) $data['layout'])) {
+            return $replay;
+        }
 
         $assemblies = RoomAreaAssembly::query()
             ->with('lines.material')
@@ -231,9 +259,24 @@ class RoomAreaAssemblyController extends Controller
             $qtyLines = $this->evaluator->quoteLines($assemblies, $option, $roomLabel);
         }
 
+        $existing = null;
+        if (! empty($data['quotation_id'])) {
+            $existing = StandardQuotation::query()->find((int) $data['quotation_id']);
+            if ($existing && $clientProject && (int) $existing->client_project_id !== (int) $clientProject->id) {
+                throw ValidationException::withMessages([
+                    'quotation_id' => 'That quotation is not for the linked client project.',
+                ]);
+            }
+        }
+        $alreadyOnQuote = $this->assemblyLineIdsOnQuote($existing);
+
         $built = [];
         foreach ($qtyLines as $qtyLine) {
             if (($qtyLine['qty'] ?? 0) <= 0) {
+                continue;
+            }
+            $assemblyLineId = (int) ($qtyLine['assembly_line_id'] ?? 0);
+            if ($assemblyLineId > 0 && isset($alreadyOnQuote[$assemblyLineId])) {
                 continue;
             }
             $lineId = (string) ($qtyLine['assembly_line_id'] ?? $qtyLine['label']);
@@ -258,23 +301,19 @@ class RoomAreaAssemblyController extends Controller
                 'unit_price' => $price,
                 'catalog_material_id' => $catalogId,
                 'apply_hst' => true,
+                'assembly_line_id' => $assemblyLineId > 0 ? $assemblyLineId : null,
             ]);
         }
 
         if ($built === []) {
+            if ($existing && $alreadyOnQuote !== []) {
+                return redirect()
+                    ->route('admin.quotations.standard.edit', $existing)
+                    ->with('success', 'Those kit lines are already on '.$existing->quote_number.'.');
+            }
             throw ValidationException::withMessages([
                 'assembly_ids' => 'None of the selected kits have a quantity from this layout.',
             ]);
-        }
-
-        $existing = null;
-        if (! empty($data['quotation_id'])) {
-            $existing = StandardQuotation::query()->find((int) $data['quotation_id']);
-            if ($existing && $clientProject && (int) $existing->client_project_id !== (int) $clientProject->id) {
-                throw ValidationException::withMessages([
-                    'quotation_id' => 'That quotation is not for the linked client project.',
-                ]);
-            }
         }
 
         $clientName = trim((string) ($data['client_name'] ?? ''));
@@ -292,6 +331,16 @@ class RoomAreaAssemblyController extends Controller
             $displayTitle = $existing?->display_title ?: $roomLabel.' kits';
         }
 
+        if (! Cache::add($this->quoteTokenOnceKey($token), 1, now()->addHours(6))) {
+            if ($replay = $this->replayQuoteFromToken($token, (string) $data['layout'])) {
+                return $replay;
+            }
+
+            return redirect()
+                ->route('admin.utilities.room-area.assemblies.quote', ['layout' => $data['layout']])
+                ->with('success', 'That add-to-quote request was already submitted.');
+        }
+
         $quote = $this->inserter->insert(
             $built,
             $existing,
@@ -300,6 +349,7 @@ class RoomAreaAssemblyController extends Controller
             $displayTitle,
             $roomLabel
         );
+        Cache::put($this->quoteTokenResultKey($token), $quote->id, now()->addHours(6));
 
         $message = $existing
             ? 'Kit lines added to '.$quote->quote_number.'.'
@@ -343,6 +393,8 @@ class RoomAreaAssemblyController extends Controller
             'wall_height_ft' => 8,
             'flooring_boxes' => 6,
             'flooring_waste_percent' => 10,
+            'outside_corners' => 0,
+            'inside_corners' => 4,
         ]);
         foreach ($data['lines'] as $i => $line) {
             $result = $this->parser->evaluate((string) $line['formula'], $dummy);
@@ -412,5 +464,63 @@ class RoomAreaAssemblyController extends Controller
         abort_if($resolved === null, 404, 'Saved room or layout not found.');
 
         return $resolved;
+    }
+
+    private function quoteTokenIssuedKey(string $token): string
+    {
+        return 'ra_kit_quote_issued_'.$token;
+    }
+
+    private function quoteTokenOnceKey(string $token): string
+    {
+        return 'ra_kit_quote_once_'.$token;
+    }
+
+    private function quoteTokenResultKey(string $token): string
+    {
+        return 'ra_kit_quote_result_'.$token;
+    }
+
+    /**
+     * @return \Illuminate\Http\RedirectResponse|null
+     */
+    private function replayQuoteFromToken(string $token, string $layout)
+    {
+        $quoteId = Cache::get($this->quoteTokenResultKey($token));
+        if (! $quoteId) {
+            return null;
+        }
+        $replay = StandardQuotation::query()->find((int) $quoteId);
+        if (! $replay) {
+            return redirect()
+                ->route('admin.utilities.room-area.assemblies.quote', ['layout' => $layout])
+                ->with('success', 'That add-to-quote request was already submitted.');
+        }
+
+        return redirect()
+            ->route('admin.quotations.standard.edit', $replay)
+            ->with('success', 'Kit lines were already added to '.$replay->quote_number.'.');
+    }
+
+    /**
+     * @return array<int, true>
+     */
+    private function assemblyLineIdsOnQuote(?StandardQuotation $quote): array
+    {
+        if (! $quote) {
+            return [];
+        }
+        $ids = [];
+        $works = $quote->resolvedWorks();
+        foreach ($works as $work) {
+            foreach (($work['materials'] ?? []) as $row) {
+                $id = (int) ($row['assembly_line_id'] ?? 0);
+                if ($id > 0) {
+                    $ids[$id] = true;
+                }
+            }
+        }
+
+        return $ids;
     }
 }

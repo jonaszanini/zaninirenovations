@@ -21,6 +21,13 @@ class RoomAreaFormulaParserTest extends TestCase
             $this->assertEqualsWithDelta($row['value'], $result['value'], 1e-9, $row['formula']);
         }
 
+        foreach ($cases['overrides'] ?? [] as $row) {
+            $local = RoomAreaFormulaParser::variablesFromMetrics(array_merge($cases['variables'], $row['variables'] ?? []));
+            $result = $parser->evaluate($row['formula'], $local);
+            $this->assertTrue($result['ok'], $row['formula'].' override '.$result['error']);
+            $this->assertEqualsWithDelta($row['value'], $result['value'], 1e-9, $row['formula'].' override');
+        }
+
         foreach ($cases['round'] as $row) {
             $this->assertEqualsWithDelta(
                 $row['qty'],

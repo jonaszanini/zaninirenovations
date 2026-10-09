@@ -18,6 +18,29 @@
 
       return $rounded !== '' ? $rounded : '0';
   };
+  $unitLabel = static function (?float $n, string $unit): string {
+      $unit = trim($unit);
+      if ($unit === '' || $n === null || abs((float) $n) === 1.0) {
+          return $unit;
+      }
+      if (preg_match('/(?:s|x)$/i', $unit)) {
+          return $unit;
+      }
+      if (preg_match('/pail$/i', $unit)) {
+          return preg_replace('/pail$/i', 'pails', $unit) ?: $unit;
+      }
+      if (preg_match('/box$/i', $unit)) {
+          return preg_replace('/box$/i', 'boxes', $unit) ?: $unit;
+      }
+      if (preg_match('/stick$/i', $unit)) {
+          return preg_replace('/stick$/i', 'sticks', $unit) ?: $unit;
+      }
+      if (preg_match('/^(ea|lf|sf|gal|qt|in|ft|mm|cm|m|sq)$/i', $unit)) {
+          return $unit;
+      }
+
+      return $unit.'s';
+  };
 @endphp
 
 @section('heading', 'Add kits to quote')
@@ -39,9 +62,10 @@
     </a>
   </div>
 
-  <form class="util-rq util-ra-kit-quote" method="post" action="{{ route('admin.utilities.room-area.assemblies.quote.store') }}">
+  <form class="util-rq util-ra-kit-quote" method="post" action="{{ route('admin.utilities.room-area.assemblies.quote.store') }}" data-ra-kit-quote-form>
     @csrf
     <input type="hidden" name="layout" value="{{ $layoutId }}">
+    <input type="hidden" name="idempotency_token" value="{{ $idempotencyToken ?? '' }}">
 
     <section class="admin-card util-rq-card">
       <div class="util-rq-card-head">
@@ -71,7 +95,7 @@
                 @if (!empty($line['error']))
                   <em class="util-ra-kit-quote__err">{{ $line['error'] }}</em>
                 @else
-                  <strong>{{ $fmt($line['qty']) }} {{ $line['unit'] }}</strong>
+                  <strong>{{ $fmt($line['qty']) }} {{ $unitLabel($line['qty'], (string) ($line['unit'] ?? '')) }}</strong>
                 @endif
                 @if (!empty($line['material_name']))
                   <span class="util-ra-kit-quote__mat">{{ $line['material_name'] }}</span>
@@ -117,9 +141,26 @@
         </div>
       </div>
       <div class="util-rq-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Add to quote</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-ra-kit-quote-submit>Add to quote</button>
         <a class="admin-btn admin-btn--ghost" href="{{ $backUrl ?? route('admin.utilities.room-area') }}">Cancel</a>
       </div>
     </section>
   </form>
+  <script>
+    (function () {
+      var form = document.querySelector('[data-ra-kit-quote-form]');
+      if (!form) return;
+      form.addEventListener('submit', function (e) {
+        var btn = form.querySelector('[data-ra-kit-quote-submit]');
+        if (btn && btn.disabled) {
+          e.preventDefault();
+          return;
+        }
+        if (btn) {
+          btn.disabled = true;
+          btn.setAttribute('aria-busy', 'true');
+        }
+      });
+    })();
+  </script>
 @endsection

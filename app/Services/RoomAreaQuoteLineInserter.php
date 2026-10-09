@@ -106,10 +106,16 @@ class RoomAreaQuoteLineInserter
             $materialsForStorage = [];
             foreach ($computed['works'] as $i => $job) {
                 $posted = $works[$i] ?? [];
-                $jobMaterials = array_map(
-                    fn (array $m) => $this->persistMaterial($m),
-                    is_array($job['materials'] ?? null) ? $job['materials'] : []
-                );
+                $postedMaterials = is_array($posted['materials'] ?? null) ? $posted['materials'] : [];
+                $jobMaterials = [];
+                foreach (is_array($job['materials'] ?? null) ? $job['materials'] : [] as $idx => $m) {
+                    $row = $this->persistMaterial($m);
+                    $fromPosted = $postedMaterials[$idx] ?? $m;
+                    if (isset($fromPosted['assembly_line_id']) && (int) $fromPosted['assembly_line_id'] > 0) {
+                        $row['assembly_line_id'] = (int) $fromPosted['assembly_line_id'];
+                    }
+                    $jobMaterials[] = $row;
+                }
                 foreach ($jobMaterials as $row) {
                     $materialsForStorage[] = $row;
                 }
@@ -199,6 +205,9 @@ class RoomAreaQuoteLineInserter
             'line_kind' => StandardQuotation::LINE_KIND_MATERIAL,
             'url' => $line['url'] ?? null,
             'image_url' => $line['image_url'] ?? null,
+            'assembly_line_id' => isset($line['assembly_line_id']) && (int) $line['assembly_line_id'] > 0
+                ? (int) $line['assembly_line_id']
+                : null,
         ];
     }
 
@@ -253,6 +262,9 @@ class RoomAreaQuoteLineInserter
             'delivery_cad' => round(max(0.0, (float) ($m['delivery_cad'] ?? 0)), 2),
             'line_kind' => StandardQuotation::LINE_KIND_MATERIAL,
             'entry_mode' => $catalogId ? 'catalog' : 'manual',
+            'assembly_line_id' => isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0
+                ? (int) $m['assembly_line_id']
+                : null,
         ];
     }
 

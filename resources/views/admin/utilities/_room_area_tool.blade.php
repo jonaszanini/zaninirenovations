@@ -170,11 +170,11 @@
             </div>
           </div>
         </div>
-        <div class="util-ra-first-tip" data-ra-first-tip hidden>
-          <p class="util-ra-first-tip__text">New here? Open the <a href="{{ $guideUrl }}">Room Area guide</a> for a short on-site walkthrough.</p>
-          <button type="button" class="admin-btn admin-btn--primary util-ra-first-tip__dismiss" data-ra-first-tip-dismiss>Got it</button>
-        </div>
       </header>
+      <div class="util-ra-first-tip" data-ra-first-tip hidden>
+        <p class="util-ra-first-tip__text">New here? Open the <a href="{{ $guideUrl }}">Room Area guide</a> for a short on-site walkthrough.</p>
+        <button type="button" class="admin-btn admin-btn--primary util-ra-first-tip__dismiss" data-ra-first-tip-dismiss>Got it</button>
+      </div>
     @endif
 
 
@@ -1275,16 +1275,16 @@
               <div class="util-ra-kit-line__row">
                 <div class="admin-form-group">
                   <label>Item</label>
-                  <input class="admin-input" type="text" data-ra-kit-line-name placeholder="Drywall sheets">
+                  <input class="admin-input" type="text" data-ra-kit-line-name maxlength="120" placeholder="Drywall sheets">
                 </div>
                 <div class="admin-form-group util-ra-kit-line__unit">
                   <label>Unit</label>
-                  <input class="admin-input" type="text" data-ra-kit-line-unit placeholder="sheet">
+                  <input class="admin-input" type="text" data-ra-kit-line-unit maxlength="20" placeholder="sheet">
                 </div>
               </div>
               <div class="admin-form-group">
                 <label>Formula</label>
-                <input class="admin-input" type="text" data-ra-kit-line-formula placeholder="ceil(net_wall_sf * 1.1 / 32)" spellcheck="false">
+                <input class="admin-input" type="text" data-ra-kit-line-formula maxlength="200" placeholder="ceil(net_wall_sf * 1.12 / 32)" spellcheck="false">
               </div>
               <div class="util-ra-kit-line__row util-ra-kit-line__row--meta">
                 <label class="util-ra-kit-line__whole">

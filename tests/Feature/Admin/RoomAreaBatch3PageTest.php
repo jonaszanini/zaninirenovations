@@ -28,31 +28,107 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
             ->assertSee('data-ra-kit-quote', false)
             ->assertSee('Add kits to quote')
             ->assertSee('data-ra-kit-name', false)
-            ->assertSee('ceil(net_wall_sf * 1.1 / 32)', false)
+            ->assertSee('maxlength="120"', false)
+            ->assertSee('maxlength="200"', false)
+            ->assertSee('ceil(net_wall_sf * 1.12 / 32)', false)
             ->getContent();
 
         $this->assertStringContainsString('data-ra-help-pop="kits"', $html);
         $this->assertStringContainsString('util-ra--fullpage', $html);
         $this->assertStringContainsString('id="ra-catalog-options"', $html);
+        $this->assertStringContainsString('maxlength="120"', $html);
+        $this->assertStringContainsString('maxlength="200"', $html);
+        $this->assertStringContainsString('maxlength="20"', $html);
         $this->assertStringContainsString('Drywall wall', $html);
         $this->assertStringContainsString('LVP floor', $html);
         $this->assertStringContainsString('Baseboard', $html);
         $this->assertSame(3, RoomAreaAssembly::query()->count());
     }
 
-    public function test_reload_saved_room_canvas_refit_and_resize_stage_are_required(): void
+    public function test_deleted_default_kits_are_not_recreated_on_get(): void
     {
-        $js = file_get_contents(public_path('js/admin-utilities-room-area.js'));
-        $this->assertNotFalse($js);
+        $this->actingAsAdmin();
+        app(RoomAreaAssemblyDefaults::class)->ensure();
+        $this->assertSame(3, RoomAreaAssembly::query()->count());
 
-        preg_match('/function reloadSavedRoomCanvas\(room\) \{([\s\S]*?)\n  function /', $js, $reload);
-        $this->assertArrayHasKey(1, $reload, 'reloadSavedRoomCanvas must be present');
-        $this->assertStringContainsString('requestAnimationFrame(refitCanvasToLayout)', $reload[1]);
+        RoomAreaAssembly::query()->delete();
+        $this->assertSame(0, RoomAreaAssembly::query()->count());
 
-        preg_match('/function refitCanvasToLayout\(\) \{([\s\S]*?)\n  function /', $js, $refit);
-        $this->assertArrayHasKey(1, $refit, 'refitCanvasToLayout must be present');
-        $this->assertStringContainsString('resizeStage()', $refit[1]);
-        $this->assertStringContainsString('fitViewport()', $refit[1]);
+        $this->get(route('admin.utilities.room-area'))->assertOk();
+        $this->assertSame(0, RoomAreaAssembly::query()->count());
+    }
+
+    public function test_unicode_formula_saves_without_server_error(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->postJson(route('admin.utilities.room-area.assemblies.store'), [
+            'name' => 'Unicode kit',
+            'lines' => [[
+                'name' => 'Sheets',
+                'formula' => "ceil(net_wall_sf\u{00A0}×\u{00A0}1.12\u{00A0}÷\u{00A0}32)",
+                'unit' => 'sheet',
+                'whole_units' => true,
+            ]],
+        ])->assertCreated()->assertJsonPath('ok', true);
+    }
+
+    public function test_project_totals_sum_raw_then_round_once(): void
+    {
+        $assembly = RoomAreaAssembly::create([
+            'name' => 'Paint',
+            'notes' => null,
+            'sort_order' => 9,
+        ]);
+        $assembly->lines()->create([
+            'name' => 'Gallons',
+            'formula' => '1.4',
+            'unit' => 'gal',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+
+        $project = RoomAreaProject::create([
+            'name' => 'Two rooms',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $makeRoom = function (string $name) use ($project, $assembly) {
+            $room = RoomAreaRoom::create([
+                'room_area_project_id' => $project->id,
+                'name' => $name,
+                'scale_pixels_per_foot' => 12,
+                'area_sqft' => 100,
+                'wall_height_ft' => 8,
+                'vertices' => [
+                    'v' => 3,
+                    'groups' => [[
+                        'id' => 'g1',
+                        'color' => '#024768',
+                        'polygons' => [[
+                            'id' => 'p1',
+                            'vertices' => [
+                                ['x' => 0, 'y' => 0],
+                                ['x' => 120, 'y' => 0],
+                                ['x' => 120, 'y' => 120],
+                                ['x' => 0, 'y' => 120],
+                            ],
+                        ]],
+                    ]],
+                    'objects' => [],
+                ],
+            ]);
+            $room->assemblies()->sync([$assembly->id]);
+
+            return $room;
+        };
+        // 1.4 + 1.4 = 2.8 → ceil once = 3, not 2+2 = 4.
+        $makeRoom('A');
+        $makeRoom('B');
+
+        $project->refresh();
+        $totals = app(RoomAreaAssemblyEvaluator::class)->evaluateProject($project);
+        $line = $totals[0]['lines'][0];
+        $this->assertEquals(3.0, $line['qty']);
     }
 
     public function test_assets_wire_formula_parser_and_kit_styles(): void

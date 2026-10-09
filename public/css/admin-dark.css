@@ -1647,7 +1647,8 @@ html.admin-dark .util-ra-icon-toggle:has([data-ra-lock-layers]:checked) {
 }
 
 html.admin-dark .util-ra-first-tip {
-  border-top-color: var(--admin-border);
+  border-bottom-color: var(--admin-border);
+  background: var(--admin-surface);
 }
 
 html.admin-dark .util-ra-first-tip__text {

@@ -15,17 +15,33 @@
     .util-ra--fullpage {
       height: 100%;
     }
-    /* Real layout change: first fit at 520×400, then shrink to a 390 phone wrap. */
-    .util-ra-canvas-wrap {
-      width: 520px !important;
-      height: 400px !important;
-      min-height: 400px !important;
-      flex: 0 0 auto !important;
+    /* Real flex layout change: 520 host, then a 130px rail shrinks the wrap to 390. */
+    .geom-host {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      width: 520px;
+      height: 400px;
     }
-    html.is-geom-grown .util-ra-canvas-wrap {
-      width: 390px !important;
-      height: 520px !important;
-      min-height: 520px !important;
+    html.is-geom-grown .geom-host {
+      width: 520px;
+      height: 520px;
+    }
+    .geom-host .util-ra-canvas-card,
+    .geom-host .util-ra-canvas-wrap {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      width: auto;
+      height: auto;
+    }
+    .geom-rail {
+      display: none;
+      flex: 0 0 130px;
+      width: 130px;
+    }
+    html.is-geom-grown .geom-rail {
+      display: block;
     }
     .geom-required {
       position: absolute;
@@ -101,11 +117,14 @@
     <div class="util-ra-workspace" data-ra-workspace hidden>
       <div class="util-ra-stage">
         <div class="util-ra-stage__main">
-          <div class="util-ra-canvas-card">
-            <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
-              <div id="ra-konva-container" class="util-ra-konva"></div>
+          <div class="geom-host">
+            <div class="util-ra-canvas-card">
+              <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
+                <div id="ra-konva-container" class="util-ra-konva"></div>
+              </div>
+              <p class="util-ra-feedback" data-ra-feedback hidden></p>
             </div>
-            <p class="util-ra-feedback" data-ra-feedback hidden></p>
+            <div class="geom-rail" aria-hidden="true"></div>
           </div>
         </div>
         <aside class="util-ra-side" data-ra-side>
@@ -123,25 +142,14 @@
       </div>
     </div>
   </div>
-  <script>
-    (function () {
-      var orig = window.requestAnimationFrame;
-      window.requestAnimationFrame = function (cb) {
-        return orig.call(window, function (stamp) {
-          cb(stamp);
-          if (document.documentElement.classList.contains('is-geom-grown')) return;
-          if (!window.Konva || !window.Konva.stages || !window.Konva.stages[0]) return;
-          var world = window.Konva.stages[0].getLayers()[0] && window.Konva.stages[0].getLayers()[0].getChildren()[0];
-          if (!world || world.scaleX() < 2.85) return;
-          document.documentElement.classList.add('is-geom-grown');
-          var wrap = document.querySelector('[data-ra-canvas-wrap]');
-          if (wrap) void wrap.offsetWidth;
-        });
-      };
-    })();
-  </script>
   <script src="/vendor-test/konva.min.js"></script>
   <script src="/js/room-area-lib.js"></script>
   <script src="/js/admin-utilities-room-area.js"></script>
+  <script>
+    /* After loadRoom's first rAF hydrates at 520, shrink the wrap so the inner refit must run. */
+    requestAnimationFrame(function () {
+      document.documentElement.classList.add('is-geom-grown');
+    });
+  </script>
 </body>
 </html>

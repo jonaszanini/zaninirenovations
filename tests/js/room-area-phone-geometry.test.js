@@ -288,6 +288,10 @@ async function measureViewports() {
     const layoutChangeHtml = fs.readFileSync(path.join(__dirname, 'fixtures/room-area-layout-change-fit.html'), 'utf8');
     assert.ok(!/width:\s*900px/.test(layoutChangeHtml), 'layout-change fixture must not force 900px');
     assert.ok(!/height:\s*640px/.test(layoutChangeHtml), 'layout-change fixture must not force 640px');
+    assert.ok(!/!important/.test(layoutChangeHtml), 'layout-change fixture must not use !important sizes');
+    assert.ok(!/requestAnimationFrame\s*=/.test(layoutChangeHtml), 'layout-change fixture must not shim requestAnimationFrame');
+    assert.ok(/class="geom-host"/.test(layoutChangeHtml), 'layout-change fixture must use a real flex host');
+    assert.ok(/class="geom-rail"/.test(layoutChangeHtml), 'layout-change fixture must change layout with a sibling rail');
 
     await page.setViewport({ width: 390, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     await page.goto('http://127.0.0.1:' + port + '/layout-change', { waitUntil: 'load' });

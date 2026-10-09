@@ -1355,6 +1355,16 @@
     var walls = perWallNetAreas(ceiling);
     var waste = flooringWastePercent();
     var box = flooringBoxSqFt();
+    var corners = { inside: 0, outside: 0 };
+    (state.groups || []).forEach(function (group) {
+      (group.polygons || []).forEach(function (poly) {
+        if (!poly || !poly.vertices || poly.vertices.length < 3) return;
+        if (poly.closed === false) return;
+        var counted = RA.cornerCounts(poly.vertices);
+        corners.inside += counted.inside;
+        corners.outside += counted.outside;
+      });
+    });
     return {
       area_sqft: floor,
       inside_area_sqft: floor,
@@ -1383,7 +1393,9 @@
       flooring_box_sqft: box,
       flooring_boxes: RA.flooringBoxes(floor, waste, box),
       flooring_with_waste_sqft: RA.flooringWithWasteSqFt(floor, waste),
-      casing_lf: RA.totalCasingLf(metricObjects(), ceiling)
+      casing_lf: RA.totalCasingLf(metricObjects(), ceiling),
+      inside_corners: corners.inside,
+      outside_corners: corners.outside
     };
   }
 
@@ -11248,12 +11260,24 @@
     return tpl ? urlFromTemplate(tpl, projectId) : '';
   }
 
+  function displayKitUnit(qty, unit) {
+    unit = String(unit || '');
+    if (!unit) return '';
+    if (Math.abs(Number(qty)) === 1) return unit;
+    if (/(?:s|x)$/i.test(unit)) return unit;
+    if (/pail$/i.test(unit)) return unit.replace(/pail$/i, 'pails');
+    if (/box$/i.test(unit)) return unit.replace(/box$/i, 'boxes');
+    if (/stick$/i.test(unit)) return unit.replace(/stick$/i, 'sticks');
+    if (/^(ea|lf|sf|gal|qt|in|ft|mm|cm|m|sq)$/i.test(unit)) return unit;
+    return unit + 's';
+  }
+
   function formatKitQty(qty, unit, whole) {
     if (qty == null || !isFinite(qty)) return '—';
     var n = whole || Math.abs(qty - Math.round(qty)) < 0.001
       ? String(Math.round(qty))
       : fmt(qty, 2);
-    return unit ? n + ' ' + unit : n;
+    return unit ? n + ' ' + displayKitUnit(qty, unit) : n;
   }
 
   function evaluateKit(assembly, metrics) {
@@ -11265,6 +11289,7 @@
         unit: line.unit,
         whole_units: !!line.whole_units,
         qty: result.qty,
+        raw: result.raw,
         error: result.error,
         material_name: line.material_name || ''
       };
@@ -11341,10 +11366,10 @@
           evaluateKit(kit, roomMetrics).forEach(function (line) {
             var key = String(line.id || line.name);
             if (!totals[kit.id].lines[key]) {
-              totals[kit.id].lines[key] = { name: line.name, unit: line.unit, whole: line.whole_units, qty: 0, error: null };
+              totals[kit.id].lines[key] = { name: line.name, unit: line.unit, whole: line.whole_units, raw: 0, error: null };
             }
             if (line.error) totals[kit.id].lines[key].error = line.error;
-            else if (line.qty != null) totals[kit.id].lines[key].qty += line.qty;
+            else if (line.raw != null) totals[kit.id].lines[key].raw += line.raw;
           });
         });
       });
@@ -11358,7 +11383,8 @@
             Object.keys(kit.lines).map(function (key) {
               var line = kit.lines[key];
               if (line.error) return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><span class="util-ra-kit__line-err">' + esc(line.error) + '</span></li>';
-              return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><strong>' + esc(formatKitQty(line.qty, line.unit, line.whole)) + '</strong></li>';
+              var qty = RA.applyFormulaRounding(line.raw, !!line.whole);
+              return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><strong>' + esc(formatKitQty(qty, line.unit, line.whole)) + '</strong></li>';
             }).join('') + '</ul>';
           projectList.appendChild(item);
         });
@@ -11463,6 +11489,8 @@
 
   function saveKitEditor(e) {
     if (e) e.preventDefault();
+    var saveBtn = root.querySelector('[data-ra-kit-save]');
+    if (saveBtn && saveBtn.disabled) return;
     var form = root.querySelector('[data-ra-kit-editor]');
     var name = ((root.querySelector('[data-ra-kit-name]') || {}).value || '').trim();
     var notes = ((root.querySelector('[data-ra-kit-notes]') || {}).value || '').trim();
@@ -11479,7 +11507,7 @@
       var check = RA.evaluateFormula(lines[i].formula, RA.formulaVariablesFromMetrics({
         area_sqft: 100, net_wall_area_sqft: 320, ceiling_area_sqft: 100,
         perimeter_lf: 40, door_count: 1, window_count: 1, wall_height_ft: 8,
-        flooring_boxes: 6, flooring_waste_percent: 10
+        flooring_boxes: 6, flooring_waste_percent: 10, outside_corners: 0, inside_corners: 4
       }));
       if (!check.ok) {
         setKitEditorError(lines[i].name + ': ' + check.error);
@@ -11490,6 +11518,7 @@
     var url = id
       ? urlFromTemplate(root.getAttribute('data-assembly-update-template') || '', id)
       : (root.getAttribute('data-assembly-store-url') || '');
+    if (saveBtn) saveBtn.disabled = true;
     fetch(url, {
       method: id ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
@@ -11502,6 +11531,9 @@
       })
       .catch(function (err) {
         setKitEditorError(err.message || 'Could not save that kit.');
+      })
+      .then(function () {
+        if (saveBtn) saveBtn.disabled = false;
       });
   }
 

@@ -75,26 +75,36 @@ class RoomAreaAssemblyEvaluator
                     $key = (string) ($line['id'] ?? $line['name']);
                     if (! isset($byAssembly[$assembly->id]['lines'][$key])) {
                         $byAssembly[$assembly->id]['lines'][$key] = $line;
-                        $byAssembly[$assembly->id]['lines'][$key]['qty'] = $line['qty'];
+                        $byAssembly[$assembly->id]['lines'][$key]['raw'] = $line['raw'];
+                        $byAssembly[$assembly->id]['lines'][$key]['qty'] = null;
                         continue;
                     }
                     if ($line['error']) {
                         $byAssembly[$assembly->id]['lines'][$key]['error'] = $line['error'];
                         continue;
                     }
-                    if ($byAssembly[$assembly->id]['lines'][$key]['qty'] === null) {
-                        $byAssembly[$assembly->id]['lines'][$key]['qty'] = $line['qty'];
+                    if ($byAssembly[$assembly->id]['lines'][$key]['raw'] === null) {
+                        $byAssembly[$assembly->id]['lines'][$key]['raw'] = $line['raw'];
                         continue;
                     }
-                    if ($line['qty'] !== null) {
-                        $byAssembly[$assembly->id]['lines'][$key]['qty'] += $line['qty'];
+                    if ($line['raw'] !== null) {
+                        $byAssembly[$assembly->id]['lines'][$key]['raw'] += $line['raw'];
                     }
                 }
             }
         }
 
         return array_values(array_map(function (array $row) {
-            $row['lines'] = array_values($row['lines']);
+            $row['lines'] = array_values(array_map(function (array $line) {
+                if ($line['error'] || $line['raw'] === null) {
+                    $line['qty'] = null;
+
+                    return $line;
+                }
+                $line['qty'] = $this->parser->applyRounding((float) $line['raw'], (bool) $line['whole_units']);
+
+                return $line;
+            }, $row['lines']));
 
             return $row;
         }, $byAssembly));
@@ -125,6 +135,7 @@ class RoomAreaAssemblyEvaluator
             'unit' => $line->unit,
             'whole_units' => (bool) $line->whole_units,
             'qty' => $qty,
+            'raw' => $result['ok'] ? (float) $result['value'] : null,
             'error' => $error,
             'material_id' => $line->material_id,
             'material_name' => $material?->displayName(),

@@ -11,7 +11,9 @@
     "opening_count": 0,
     "wall_height_ft": 8,
     "flooring_boxes": 7,
-    "flooring_waste_percent": 10
+    "flooring_waste_percent": 10,
+    "outside_corners": 1,
+    "inside_corners": 5
   },
   "ok": [
     { "formula": "2 + 3 * 4", "value": 14 },
@@ -27,6 +29,20 @@
     { "formula": "max(9, 3, 4)", "value": 9 },
     { "formula": "ceil(net_wall_sf * 1.1 / 32)", "value": 10 },
     { "formula": "ceil(net_wall_sf * 1.1 / 32) * 32", "value": 320 },
+    { "formula": "ceil(net_wall_sf * 1.12 / 32)", "value": 11 },
+    { "formula": "ceil(net_wall_sf * 1.12 / 32) * 32", "value": 352 },
+    { "formula": "ceil(net_wall_sf * 1.12 / 500)", "value": 1 },
+    { "formula": "ceil(net_wall_sf * 1.12 / 450)", "value": 1 },
+    { "formula": "ceil(outside_corners * wall_height / 8)", "value": 1 },
+    { "formula": "ceil(floor_sf * 1.05 / 100)", "value": 2 },
+    { "formula": "door_count + opening_count", "value": 1 },
+    { "formula": "baseboard_lf * 1.10", "value": 45.65 },
+    { "formula": "ceil(baseboard_lf / 40)", "value": 2 },
+    { "formula": "ceil(baseboard_lf * 1.5 / 1000)", "value": 1 },
+    { "formula": "2 × 3", "value": 6 },
+    { "formula": "8 ÷ 2", "value": 4 },
+    { "formula": "7 − 2", "value": 5 },
+    { "formula": "2\u00A0+\u00A03", "value": 5 },
     { "formula": "net_wall_sf / 100", "value": 2.88 },
     { "formula": "net_wall_sf / 20", "value": 14.4 },
     { "formula": "flooring_boxes", "value": 7 },
@@ -37,6 +53,10 @@
     { "formula": "ceil(max(0, perimeter_lf - door_count * 2.5) / 150)", "value": 1 },
     { "formula": "waste", "value": 10 },
     { "formula": "ceil(floor_sf * (1 + waste / 100) / 20)", "value": 7 }
+  ],
+  "overrides": [
+    { "formula": "ceil(net_wall_sf * 1.1 / 32)", "variables": { "net_wall_area_sqft": 1600 }, "value": 55 },
+    { "formula": "wall_height", "variables": { "wall_height_ft": 0 }, "value": 0 }
   ],
   "round": [
     { "value": 2.1, "whole": true, "qty": 3 },
@@ -59,6 +79,9 @@
     { "formula": "2 + 3 extra", "contains": "Unexpected text" },
     { "formula": "ceil()", "contains": "one number" },
     { "formula": "min(1)", "contains": "at least two" },
-    { "formula": "1 @ 2", "contains": "Unexpected" }
+    { "formula": "1 @ 2", "contains": "Unexpected" },
+    { "formula": ".5.5", "contains": "Unexpected" },
+    { "formula": "round(5,-0.5)", "contains": "round digits" },
+    { "formula": "1 + 2\u0000", "contains": "Unexpected" }
   ]
 }

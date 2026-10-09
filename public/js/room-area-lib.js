@@ -961,6 +961,34 @@
     return Math.round(total * 100) / 100;
   }
 
+  function cornerCounts(verts, minTurnDeg) {
+    var n = verts && verts.length ? verts.length : 0;
+    if (n < 3) return { inside: 0, outside: 0 };
+    var signed = signedArea2(verts);
+    if (Math.abs(signed) < 1e-9) return { inside: 0, outside: 0 };
+    var positiveWinding = signed > 0;
+    var minTurn = ((minTurnDeg == null ? 20 : minTurnDeg) * Math.PI) / 180;
+    var inside = 0;
+    var outside = 0;
+    for (var i = 0; i < n; i++) {
+      var prev = verts[(i - 1 + n) % n];
+      var curr = verts[i];
+      var next = verts[(i + 1) % n];
+      var inX = curr.x - prev.x;
+      var inY = curr.y - prev.y;
+      var outX = next.x - curr.x;
+      var outY = next.y - curr.y;
+      if (Math.hypot(inX, inY) < 1e-6 || Math.hypot(outX, outY) < 1e-6) continue;
+      var cross = (inX * outY) - (inY * outX);
+      var dot = (inX * outX) + (inY * outY);
+      var angle = Math.atan2(cross, dot);
+      if (Math.abs(angle) < minTurn) continue;
+      if ((cross > 0) === positiveWinding) inside += 1;
+      else outside += 1;
+    }
+    return { inside: inside, outside: outside };
+  }
+
   function signedArea2(verts) {
     var s = 0;
     var n = verts.length;
@@ -1043,7 +1071,9 @@
     opening_count: true, openings: true,
     wall_height_ft: true, wall_height: true, height: true,
     flooring_boxes: true, boxes: true,
-    flooring_waste_percent: true, waste: true
+    flooring_waste_percent: true, waste: true,
+    outside_corners: true, outside_corner_count: true,
+    inside_corners: true, inside_corner_count: true
   };
 
   function formulaVariablesFromMetrics(metrics) {
@@ -1059,10 +1089,12 @@
     var windows = Number(metrics.window_count != null ? metrics.window_count : metrics.windows) || 0;
     var openings = Number(metrics.opening_count != null ? metrics.opening_count : metrics.openings) || 0;
     var height = Number(metrics.wall_height_ft != null ? metrics.wall_height_ft : (metrics.wall_height != null ? metrics.wall_height : metrics.height));
-    if (!isFinite(height) || height <= 0) height = 8;
+    if (!isFinite(height)) height = 8;
     var boxes = Number(metrics.flooring_boxes != null ? metrics.flooring_boxes : metrics.boxes) || 0;
     var waste = Number(metrics.flooring_waste_percent != null ? metrics.flooring_waste_percent : metrics.waste);
     if (!isFinite(waste)) waste = 10;
+    var outside = Number(metrics.outside_corners != null ? metrics.outside_corners : metrics.outside_corner_count) || 0;
+    var inside = Number(metrics.inside_corners != null ? metrics.inside_corners : metrics.inside_corner_count) || 0;
     return {
       floor_sf: floor, floor: floor, area_sqft: floor, inside_area_sqft: inside,
       net_wall_sf: netWall, net_wall: netWall, net_wall_area_sqft: netWall, wall_sf: netWall, wall_area_sqft: netWall,
@@ -1075,8 +1107,36 @@
       opening_count: openings, openings: openings,
       wall_height_ft: height, wall_height: height, height: height,
       flooring_boxes: boxes, boxes: boxes,
-      flooring_waste_percent: waste, waste: waste
+      flooring_waste_percent: waste, waste: waste,
+      outside_corners: outside, outside_corner_count: outside,
+      inside_corners: inside, inside_corner_count: inside
     };
+  }
+
+  function formulaCharAt(raw, i) {
+    return raw.charAt(i);
+  }
+
+  function isFormulaWhitespace(ch) {
+    return ch !== '' && /[\s\u00A0\u1680\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]/.test(ch);
+  }
+
+  function formulaOperatorType(ch) {
+    if (ch === '+') return '+';
+    if (ch === '-' || ch === '−' || ch === '–') return '-';
+    if (ch === '*' || ch === '×' || ch === '⋅') return '*';
+    if (ch === '/' || ch === '÷') return '/';
+    if (ch === '(' || ch === ')' || ch === ',') return ch;
+    return null;
+  }
+
+  function unexpectedFormulaChar(ch) {
+    var label = ch === '\0' ? 'NUL' : ch;
+    return 'Unexpected “' + label + '”. Use + − × ÷, brackets, and names like floor_sf.';
+  }
+
+  function trimFormula(raw) {
+    return String(raw || '').replace(/^[\s\u00A0\u1680\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]+|[\s\u00A0\u1680\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]+$/g, '');
   }
 
   function tokenizeFormula(raw) {
@@ -1084,28 +1144,35 @@
     var i = 0;
     var len = raw.length;
     while (i < len) {
-      var ch = raw.charAt(i);
-      if (/\s/.test(ch)) {
+      var ch = formulaCharAt(raw, i);
+      if (isFormulaWhitespace(ch)) {
         i += 1;
         continue;
       }
-      if ('+-*/(),'.indexOf(ch) !== -1) {
-        tokens.push({ type: ch, value: ch });
+      var op = formulaOperatorType(ch);
+      if (op) {
+        tokens.push({ type: op, value: op });
         i += 1;
         continue;
       }
-      if (/[0-9]/.test(ch) || (ch === '.' && i + 1 < len && /[0-9]/.test(raw.charAt(i + 1)))) {
+      if (/[0-9]/.test(ch) || (ch === '.' && i + 1 < len && /[0-9]/.test(formulaCharAt(raw, i + 1)))) {
         var start = i;
-        if (ch === '.') i += 1;
-        while (i < len && /[0-9]/.test(raw.charAt(i))) i += 1;
-        if (i < len && raw.charAt(i) === '.') {
+        var hasDot = ch === '.';
+        if (hasDot) i += 1;
+        while (i < len && /[0-9]/.test(formulaCharAt(raw, i))) i += 1;
+        if (i < len && formulaCharAt(raw, i) === '.') {
+          if (hasDot) throw new Error(unexpectedFormulaChar('.'));
+          hasDot = true;
           i += 1;
-          if (i >= len || !/[0-9]/.test(raw.charAt(i))) {
+          if (i >= len || !/[0-9]/.test(formulaCharAt(raw, i))) {
             throw new Error('Enter a number after the decimal point.');
           }
-          while (i < len && /[0-9]/.test(raw.charAt(i))) i += 1;
+          while (i < len && /[0-9]/.test(formulaCharAt(raw, i))) i += 1;
         }
-        if (i < len && (raw.charAt(i) === 'e' || raw.charAt(i) === 'E')) {
+        if (i < len && formulaCharAt(raw, i) === '.') {
+          throw new Error(unexpectedFormulaChar('.'));
+        }
+        if (i < len && (formulaCharAt(raw, i) === 'e' || formulaCharAt(raw, i) === 'E')) {
           throw new Error('Scientific notation is not allowed. Write the full number.');
         }
         tokens.push({ type: 'number', value: raw.slice(start, i) });
@@ -1114,11 +1181,11 @@
       if (/[A-Za-z_]/.test(ch)) {
         var nameStart = i;
         i += 1;
-        while (i < len && /[A-Za-z0-9_]/.test(raw.charAt(i))) i += 1;
+        while (i < len && /[A-Za-z0-9_]/.test(formulaCharAt(raw, i))) i += 1;
         tokens.push({ type: 'name', value: raw.slice(nameStart, i).toLowerCase() });
         continue;
       }
-      throw new Error('Unexpected “' + ch + '”. Use + − × ÷, brackets, and names like floor_sf.');
+      throw new Error(unexpectedFormulaChar(ch));
     }
     return tokens;
   }
@@ -1126,13 +1193,16 @@
   function formulaCall(name, args) {
     if (name === 'ceil' || name === 'floor' || name === 'abs') {
       if (args.length !== 1) throw new Error(name + ' needs one number inside the brackets.');
-      if (name === 'ceil') return Math.ceil(args[0]);
+      if (name === 'ceil') return Math.ceil(roundTo(args[0], 9));
       if (name === 'floor') return Math.floor(args[0]);
       return Math.abs(args[0]);
     }
     if (name === 'round') {
       if (args.length < 1 || args.length > 2) {
         throw new Error('round needs one number, or a number and the digits to keep.');
+      }
+      if (args.length === 2 && (args[1] < 0 || args[1] > 9)) {
+        throw new Error('round digits must be between 0 and 9.');
       }
       var digits = args.length === 2 ? Math.round(args[1]) : 0;
       if (digits < 0 || digits > 9) throw new Error('round digits must be between 0 and 9.');
@@ -1146,7 +1216,7 @@
   }
 
   function evaluateFormula(formula, variables) {
-    var raw = String(formula || '').trim();
+    var raw = trimFormula(formula);
     if (!raw) return { ok: false, value: null, error: 'Enter a formula.' };
     if (raw.length > FORMULA_MAX_LENGTH) return { ok: false, value: null, error: 'Formula is too long.' };
     try {
@@ -1217,7 +1287,8 @@
           if (!Object.prototype.hasOwnProperty.call(variables, name)) {
             throw new Error('Unknown name: ' + name + '. Use floor_sf, net_wall_sf, ceiling_sf, perimeter_lf, casing_lf, door_count, window_count, wall_height, or waste.');
           }
-          return Number(variables[name]) || 0;
+          var named = Number(variables[name]);
+          return isFinite(named) ? named : 0;
         }
         if (done()) throw new Error('The formula ended early. Check for a missing number.');
         throw new Error('Use + − × ÷, brackets, and names like floor_sf.');
@@ -1287,6 +1358,7 @@
     shapeFromKind: shapeFromKind,
     insertAlcove: insertAlcove,
     signedArea2: signedArea2,
+    cornerCounts: cornerCounts,
     polygonArea: polygonArea,
     isAxisAlignedRectangle: isAxisAlignedRectangle,
     overallDimensionText: overallDimensionText,

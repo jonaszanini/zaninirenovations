@@ -18,6 +18,13 @@ cases.ok.forEach(function (row) {
   assert.ok(Math.abs(result.value - row.value) < 1e-9, row.formula + ' => ' + result.value + ' expected ' + row.value);
 });
 
+(cases.overrides || []).forEach(function (row) {
+  const local = lib.formulaVariablesFromMetrics(Object.assign({}, cases.variables, row.variables || {}));
+  const result = lib.evaluateFormula(row.formula, local);
+  assert.strictEqual(result.ok, true, row.formula + ' override should succeed: ' + result.error);
+  assert.ok(Math.abs(result.value - row.value) < 1e-9, row.formula + ' override => ' + result.value + ' expected ' + row.value);
+});
+
 cases.round.forEach(function (row) {
   const qty = lib.applyFormulaRounding(row.value, row.whole);
   assert.ok(Math.abs(qty - row.qty) < 1e-9, 'round ' + row.value + ' whole=' + row.whole + ' => ' + qty + ' expected ' + row.qty);
@@ -33,10 +40,10 @@ cases.errors.forEach(function (row) {
 });
 
 const drywall = lib.evaluateAssemblyLine(
-  { formula: 'ceil(net_wall_sf * 1.1 / 32)', whole_units: true, unit: 'sheet' },
+  { formula: 'ceil(net_wall_sf * 1.12 / 32)', whole_units: true, unit: 'sheet' },
   cases.variables
 );
 assert.strictEqual(drywall.ok, true);
-assert.strictEqual(drywall.qty, 10);
+assert.strictEqual(drywall.qty, 11);
 
 console.log('room-area formula tests: ok');

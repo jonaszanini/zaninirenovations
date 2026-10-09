@@ -31,6 +31,8 @@ class RoomAreaFormulaParser
             'wall_height_ft', 'wall_height', 'height',
             'flooring_boxes', 'boxes',
             'flooring_waste_percent', 'waste',
+            'outside_corners', 'outside_corner_count',
+            'inside_corners', 'inside_corner_count',
         ];
     }
 
@@ -50,9 +52,18 @@ class RoomAreaFormulaParser
         $doors = (float) ($metrics['door_count'] ?? $metrics['doors'] ?? 0);
         $windows = (float) ($metrics['window_count'] ?? $metrics['windows'] ?? 0);
         $openings = (float) ($metrics['opening_count'] ?? $metrics['openings'] ?? 0);
-        $height = (float) ($metrics['wall_height_ft'] ?? $metrics['wall_height'] ?? $metrics['height'] ?? 8);
+        $height = array_key_exists('wall_height_ft', $metrics)
+            ? (float) $metrics['wall_height_ft']
+            : (array_key_exists('wall_height', $metrics)
+                ? (float) $metrics['wall_height']
+                : (array_key_exists('height', $metrics) ? (float) $metrics['height'] : 8.0));
+        if (! is_finite($height)) {
+            $height = 8.0;
+        }
         $boxes = (float) ($metrics['flooring_boxes'] ?? $metrics['boxes'] ?? 0);
         $waste = (float) ($metrics['flooring_waste_percent'] ?? $metrics['waste'] ?? 10);
+        $outsideCorners = (float) ($metrics['outside_corners'] ?? $metrics['outside_corner_count'] ?? 0);
+        $insideCorners = (float) ($metrics['inside_corners'] ?? $metrics['inside_corner_count'] ?? 0);
 
         return [
             'floor_sf' => $floor,
@@ -86,6 +97,10 @@ class RoomAreaFormulaParser
             'boxes' => $boxes,
             'flooring_waste_percent' => $waste,
             'waste' => $waste,
+            'outside_corners' => $outsideCorners,
+            'outside_corner_count' => $outsideCorners,
+            'inside_corners' => $insideCorners,
+            'inside_corner_count' => $insideCorners,
         ];
     }
 
@@ -95,11 +110,11 @@ class RoomAreaFormulaParser
      */
     public function evaluate(string $formula, array $variables = []): array
     {
-        $raw = trim($formula);
+        $raw = $this->trimFormula($formula);
         if ($raw === '') {
             return $this->fail('Enter a formula.');
         }
-        if (strlen($raw) > self::MAX_LENGTH) {
+        if (mb_strlen($raw, 'UTF-8') > self::MAX_LENGTH) {
             return $this->fail('Formula is too long.');
         }
 
@@ -137,7 +152,51 @@ class RoomAreaFormulaParser
      */
     private function fail(string $error): array
     {
-        return ['ok' => false, 'value' => null, 'error' => $error];
+        return ['ok' => false, 'value' => null, 'error' => $this->safeError($error)];
+    }
+
+    private function safeError(string $error): string
+    {
+        $error = str_replace("\0", 'NUL', $error);
+        if (! mb_check_encoding($error, 'UTF-8')) {
+            $error = mb_convert_encoding($error, 'UTF-8', 'UTF-8');
+        }
+
+        return $error;
+    }
+
+    private function trimFormula(string $formula): string
+    {
+        $trimmed = preg_replace('/^[\s\p{Z}\x{FEFF}]+|[\s\p{Z}\x{FEFF}]+$/u', '', $formula);
+
+        return is_string($trimmed) ? $trimmed : trim($formula);
+    }
+
+    private function isWhitespace(string $ch): bool
+    {
+        return $ch !== '' && preg_match('/^[\s\p{Z}\x{FEFF}]$/u', $ch) === 1;
+    }
+
+    private function operatorType(string $ch): ?string
+    {
+        return match ($ch) {
+            '+' => '+',
+            '-', '−', '–' => '-',
+            '*', '×', '⋅' => '*',
+            '/', '÷' => '/',
+            '(', ')', ',' => $ch,
+            default => null,
+        };
+    }
+
+    private function unexpectedCharMessage(string $ch): string
+    {
+        $label = $ch === "\0" ? 'NUL' : $ch;
+        if ($label !== 'NUL' && ! mb_check_encoding($label, 'UTF-8')) {
+            $label = '?';
+        }
+
+        return 'Unexpected “'.$label.'”. Use + − × ÷, brackets, and names like floor_sf.';
     }
 
     /**
@@ -146,53 +205,68 @@ class RoomAreaFormulaParser
     private function tokenize(string $raw): array
     {
         $tokens = [];
-        $len = strlen($raw);
+        $len = mb_strlen($raw, 'UTF-8');
         $i = 0;
         while ($i < $len) {
-            $ch = $raw[$i];
-            if (ctype_space($ch)) {
+            $ch = mb_substr($raw, $i, 1, 'UTF-8');
+            if ($this->isWhitespace($ch)) {
                 $i++;
                 continue;
             }
-            if (str_contains('+-*/(),', $ch)) {
-                $tokens[] = ['type' => $ch, 'value' => $ch];
+            $op = $this->operatorType($ch);
+            if ($op !== null) {
+                $tokens[] = ['type' => $op, 'value' => $op];
                 $i++;
                 continue;
             }
-            if (ctype_digit($ch) || ($ch === '.' && $i + 1 < $len && ctype_digit($raw[$i + 1]))) {
+            $next = $i + 1 < $len ? mb_substr($raw, $i + 1, 1, 'UTF-8') : '';
+            if (ctype_digit($ch) || ($ch === '.' && ctype_digit($next))) {
                 $start = $i;
-                if ($ch === '.') {
+                $hasDot = $ch === '.';
+                if ($hasDot) {
                     $i++;
                 }
-                while ($i < $len && ctype_digit($raw[$i])) {
+                while ($i < $len && ctype_digit(mb_substr($raw, $i, 1, 'UTF-8'))) {
                     $i++;
                 }
-                if ($i < $len && $raw[$i] === '.') {
+                if ($i < $len && mb_substr($raw, $i, 1, 'UTF-8') === '.') {
+                    if ($hasDot) {
+                        throw new \InvalidArgumentException($this->unexpectedCharMessage('.'));
+                    }
+                    $hasDot = true;
                     $i++;
-                    if ($i >= $len || ! ctype_digit($raw[$i])) {
+                    if ($i >= $len || ! ctype_digit(mb_substr($raw, $i, 1, 'UTF-8'))) {
                         throw new \InvalidArgumentException('Enter a number after the decimal point.');
                     }
-                    while ($i < $len && ctype_digit($raw[$i])) {
+                    while ($i < $len && ctype_digit(mb_substr($raw, $i, 1, 'UTF-8'))) {
                         $i++;
                     }
                 }
-                if ($i < $len && ($raw[$i] === 'e' || $raw[$i] === 'E')) {
+                if ($i < $len && mb_substr($raw, $i, 1, 'UTF-8') === '.') {
+                    throw new \InvalidArgumentException($this->unexpectedCharMessage('.'));
+                }
+                $exp = $i < $len ? mb_substr($raw, $i, 1, 'UTF-8') : '';
+                if ($exp === 'e' || $exp === 'E') {
                     throw new \InvalidArgumentException('Scientific notation is not allowed. Write the full number.');
                 }
-                $tokens[] = ['type' => 'number', 'value' => substr($raw, $start, $i - $start)];
+                $tokens[] = ['type' => 'number', 'value' => mb_substr($raw, $start, $i - $start, 'UTF-8')];
                 continue;
             }
-            if (ctype_alpha($ch) || $ch === '_') {
+            if (preg_match('/^[A-Za-z_]$/', $ch) === 1) {
                 $start = $i;
                 $i++;
-                while ($i < $len && (ctype_alnum($raw[$i]) || $raw[$i] === '_')) {
+                while ($i < $len) {
+                    $nameCh = mb_substr($raw, $i, 1, 'UTF-8');
+                    if (preg_match('/^[A-Za-z0-9_]$/', $nameCh) !== 1) {
+                        break;
+                    }
                     $i++;
                 }
-                $tokens[] = ['type' => 'name', 'value' => strtolower(substr($raw, $start, $i - $start))];
+                $tokens[] = ['type' => 'name', 'value' => strtolower(mb_substr($raw, $start, $i - $start, 'UTF-8'))];
                 continue;
             }
 
-            throw new \InvalidArgumentException('Unexpected “'.$ch.'”. Use + − × ÷, brackets, and names like floor_sf.');
+            throw new \InvalidArgumentException($this->unexpectedCharMessage($ch));
         }
 
         return $tokens;
@@ -324,7 +398,7 @@ class RoomAreaFormulaParser
     {
         $count = count($args);
         return match ($name) {
-            'ceil' => $this->oneArg($name, $args, fn (float $n) => (float) ceil($n)),
+            'ceil' => $this->oneArg($name, $args, fn (float $n) => (float) ceil($this->roundTo($n, 9))),
             'floor' => $this->oneArg($name, $args, fn (float $n) => (float) floor($n)),
             'abs' => $this->oneArg($name, $args, fn (float $n) => abs($n)),
             'round' => $this->callRound($args),
@@ -370,6 +444,9 @@ class RoomAreaFormulaParser
         $count = count($args);
         if ($count < 1 || $count > 2) {
             throw new \InvalidArgumentException('round needs one number, or a number and the digits to keep.');
+        }
+        if ($count === 2 && ($args[1] < 0 || $args[1] > 9)) {
+            throw new \InvalidArgumentException('round digits must be between 0 and 9.');
         }
         $digits = $count === 2 ? (int) round($args[1]) : 0;
         if ($digits < 0 || $digits > 9) {
