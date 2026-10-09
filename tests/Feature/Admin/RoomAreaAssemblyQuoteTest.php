@@ -991,11 +991,28 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $controller = app(\App\Http\Controllers\Admin\RoomAreaAssemblyController::class);
         $method = new \ReflectionMethod($controller, 'formatAssemblyShortName');
         $method->setAccessible(true);
-        $line = 'Drywall sheets Drywall sheets Drywall sheets Drywall sheets';
-        $short = $method->invoke($controller, $line, 'House A · Kitchen, Bathroom');
+        $line = 'Drywall sheets';
+        $short = $method->invoke($controller, $line, 'House A · Kitchen, Bathroom, Hall, Dining, Living, Office');
         $this->assertLessThanOrEqual(60, mb_strlen($short));
-        $this->assertStringContainsString('House A ·', $short);
+        $this->assertStringStartsWith('Drywall sheets (House A ·', $short);
+        $this->assertStringContainsString('…', $short);
         $this->assertStringNotContainsString('(…)', $short);
+    }
+
+    public function test_long_project_name_is_truncated_and_material_stays_intact(): void
+    {
+        $controller = app(\App\Http\Controllers\Admin\RoomAreaAssemblyController::class);
+        $method = new \ReflectionMethod($controller, 'formatAssemblyShortName');
+        $method->setAccessible(true);
+        $project = str_repeat('LongProjectNameChunk', 6);
+        $this->assertSame(120, mb_strlen($project));
+        $line = 'Drywall sheets';
+        $short = $method->invoke($controller, $line, $project.' · Kitchen, Bathroom');
+        $this->assertLessThanOrEqual(60, mb_strlen($short));
+        $this->assertStringStartsWith('Drywall sheets (', $short);
+        $this->assertStringContainsString('…', $short);
+        $this->assertStringNotContainsString($project, $short);
+        $this->assertStringNotContainsString('Drywall sheet…', $short);
     }
 
     public function test_hand_edited_line_qty_is_left_untouched_when_adding_rooms(): void

@@ -823,6 +823,7 @@ class RoomAreaAssemblyController extends Controller
         }
 
         $prefix = '';
+        $project = '';
         $rooms = $cover;
         $dot = ' · ';
         if ($cover !== '' && str_contains($cover, $dot)) {
@@ -836,11 +837,14 @@ class RoomAreaAssemblyController extends Controller
             return $head.$this->truncateAssemblyLabel($rooms, $roomBudget).')';
         }
 
-        $coverKeep = $prefix !== '' ? rtrim($prefix) : '';
-        $suffix = $coverKeep !== '' ? ' ('.$coverKeep.')' : ($cover !== '' ? ' (…)' : '');
-        $keep = max(1, 60 - mb_strlen($suffix));
+        $innerBudget = 60 - mb_strlen($line) - 3;
+        if ($innerBudget >= 1) {
+            $house = $project !== '' ? $project : $cover;
 
-        return $this->truncateAssemblyLabel($line, $keep).$suffix;
+            return $line.' ('.$this->truncateAssemblyLabel($house, $innerBudget).')';
+        }
+
+        return mb_strlen($line) <= 60 ? $line : $this->truncateAssemblyLabel($line, 60);
     }
 
     private function truncateAssemblyLabel(string $text, int $max): string

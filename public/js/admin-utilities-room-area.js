@@ -10832,10 +10832,12 @@
       if (!menu.classList.contains('is-open')) return;
       if (menu.contains(e.target) || btn.contains(e.target)) return;
       setOpen(false);
+      e.stopPropagation();
     }, true);
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && menu.classList.contains('is-open')) {
         setOpen(false);
+        e.stopPropagation();
       }
     });
     window.addEventListener('resize', function () {

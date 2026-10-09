@@ -532,7 +532,7 @@
                 @include('admin.utilities._room_area_help_pop', [
                   'tipId' => 'measure',
                   'label' => 'About scale and units',
-                  'text' => 'Tap calibrate, click two ends of a known wall, then type that length. Or skip the photo and type walls in the Measure panel. Switch ft-in or metres for display; type 12\' 6", 3.81 m, or 3810 mm in any mode. Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win.',
+                  'text' => 'Tap calibrate, click two ends of a known wall, then type that length. Or skip the photo and type walls in the Measure panel. Switch ft-in or metres for display; type 12\' 6", 3.81 m, or 3810 mm in any mode. Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win. Templates use Rect W×L when filled, otherwise 12×10. L is 16×12 with a 6×4 return (152 sq ft). T uses the typed length as overall height. Walls snap to 45° / 90° within about 10°; turn snap off or hold Alt for other angles. Unlock corners to move walls, undo, delete an area, or recalibrate. Scale entire project recalibrates so this wall matches the length you type; all other lengths and areas update proportionally and the shape stays the same.',
                 ])
               </div>
               <div class="util-ra-tool-group__actions">

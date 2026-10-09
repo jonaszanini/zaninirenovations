@@ -129,6 +129,11 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringNotContainsString("'tipId' => 'draw'", $html);
         $this->assertStringNotContainsString("'tipId' => 'plan'", $html);
         $this->assertStringContainsString("'tipId' => 'measure'", $html);
+        $this->assertStringContainsString('Templates use Rect W×L when filled, otherwise 12×10', $html);
+        $this->assertStringContainsString('16×12 with a 6×4 return', $html);
+        $this->assertStringContainsString('within about 10°', $html);
+        $this->assertStringContainsString('Unlock corners', $html);
+        $this->assertStringContainsString('Scale entire project', $html);
         $this->assertStringContainsString("'tipId' => 'type-walls'", $html);
         $this->assertStringContainsString("'tipId' => 'finish'", $html);
         $this->assertStringContainsString("'tipId' => 'kits'", $html);

@@ -107,6 +107,14 @@ function assertCssGeometry() {
   );
   assert.ok(js.includes("addEventListener('pointerdown'"), 'phone project menu closes on canvas pointerdown');
   assert.ok(js.includes("e.key === 'Escape'"), 'phone project menu closes on Esc');
+  assert.ok(
+    /pointerdown[\s\S]{0,360}setOpen\(false\);\s*e\.stopPropagation\(\)/.test(js),
+    'tap-close of the phone project menu stops propagation'
+  );
+  assert.ok(
+    /Escape[\s\S]{0,180}setOpen\(false\);\s*e\.stopPropagation\(\)/.test(js),
+    'Esc-close of the phone project menu stops propagation'
+  );
 }
 
 function resolveKonvaFile() {
@@ -1259,9 +1267,14 @@ function liveSnapshotScript() {
     const bottomY = Math.min(window.innerHeight - 12, w ? Math.max(w.top + 8, w.bottom - 8) : window.innerHeight - 12);
     const lowY = window.innerHeight * 0.85;
     const bottomHit = document.elementFromPoint(bottomX, bottomY);
-    const lowHit = document.elementFromPoint(window.innerWidth / 2, lowY);
-    function isStrip(hit) {
-      return !!(hit && (hit.id === 'ra-mutant-strip' || (hit.className && String(hit.className).indexOf('ra-mutant-strip') !== -1)));
+    const lowX = window.innerWidth / 2;
+    const lowHit = document.elementFromPoint(lowX, lowY);
+    function hitCoversCanvas(hit, x, y) {
+      if (!hit || !wrap) return false;
+      const r = wrap.getBoundingClientRect();
+      if (y < r.top || y > r.bottom || x < r.left || x > r.right) return false;
+      if (wrap === hit || wrap.contains(hit)) return false;
+      return true;
     }
     const root = document.querySelector('.util-ra--fullpage');
     const main = document.querySelector('.admin-main') || document.scrollingElement;
@@ -1298,7 +1311,7 @@ function liveSnapshotScript() {
       menuBtn: menuBtn ? getComputedStyle(menuBtn).display : 'missing',
       bottomHit: bottomHit && ((bottomHit.id || '') + ' ' + (bottomHit.className || bottomHit.tagName)),
       bottomIsHandle: !!(handle && ((bottomHit && (bottomHit === handle || handle.contains(bottomHit))) || (lowHit && (lowHit === handle || handle.contains(lowHit))))),
-      bottomIsStrip: isStrip(bottomHit) || isStrip(lowHit),
+      bottomIsStrip: hitCoversCanvas(bottomHit, bottomX, bottomY) || hitCoversCanvas(lowHit, lowX, lowY),
       projectValue: project ? project.value : '',
       hasKitchen: document.body.innerText.indexOf('Kitchen') !== -1,
     };
@@ -1471,6 +1484,11 @@ async function measureLiveEditor() {
     });
     await assertInjectedFaultDies(page, 'desktop drag strip', async function () {
       await injectDom(page, '<div id="ra-mutant-strip" class="ra-mutant-strip" style="position:fixed;left:0;right:0;bottom:0;height:40%;background:transparent;z-index:9999;"></div>');
+    }, async function () {
+      assertDesktopLive(await page.evaluate(snap), desktopVp);
+    });
+    await assertInjectedFaultDies(page, 'anonymous overlay at canvas bottom', async function () {
+      await injectDom(page, '<div id="ra-foreign-bottom" style="position:fixed;left:0;right:0;bottom:0;height:40%;background:transparent;z-index:9999;"></div>');
     }, async function () {
       assertDesktopLive(await page.evaluate(snap), desktopVp);
     });
