@@ -209,6 +209,7 @@
                 </p>
               @endforeach
             </div>
+            <p class="admin-form-help mw-cut-plan__status" id="mw-cut-plan-status" hidden>Updating cut plan…</p>
             <p class="admin-form-help" id="mw-cut-meta">
               {{ (int) ($initialPreview['cut_plan']['sheet_count'] ?? 0) }} sheet(s)
               @if (! empty($initialPreview['cut_plan']['yield_pct']))
@@ -221,7 +222,7 @@
                 · Kerf {{ $kerfLabel }}
               @endif
             </p>
-            <div id="mw-cut-plan" class="mw-cut-plan">
+            <div id="mw-cut-plan" class="mw-cut-plan" aria-busy="false">
               @forelse ($cutLayouts as $layout)
                 @include('admin.quotations.millwork._cut_sheet', ['layout' => $layout])
               @empty

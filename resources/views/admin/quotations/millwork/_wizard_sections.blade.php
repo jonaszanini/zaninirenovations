@@ -155,17 +155,26 @@
     </div>
     <div class="mw-short-row">
       <div class="admin-form-group">
-        <label for="mw-waste">@include('admin.partials.info_tip', ['text' => 'Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.']) Waste %</label>
+        <label for="mw-waste">@include('admin.partials.info_tip', [
+          'tipText' => 'Extra on linear trim and wainscoting rails. Sheet leftover is already in the cut plan.',
+          'tipLabel' => 'Waste %',
+        ]) Waste %</label>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-waste" name="waste_pct"
                value="{{ old('waste_pct', $inputs['waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-edge-waste">Edge waste %</label>
+        <label for="mw-edge-waste">@include('admin.partials.info_tip', [
+          'tipText' => 'Extra edge banding beyond the cut-plan length.',
+          'tipLabel' => 'Edge waste %',
+        ]) Edge waste %</label>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-edge-waste" name="edge_waste_pct"
                value="{{ old('edge_waste_pct', $inputs['edge_waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-finish-waste">Finish waste %</label>
+        <label for="mw-finish-waste">@include('admin.partials.info_tip', [
+          'tipText' => 'Extra paint or stain beyond the measured faces.',
+          'tipLabel' => 'Finish waste %',
+        ]) Finish waste %</label>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-finish-waste" name="finish_waste_pct"
                value="{{ old('finish_waste_pct', $inputs['finish_waste_pct'] ?? 10) }}">
       </div>
@@ -195,7 +204,7 @@
           'rateValue' => old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate), 2, '.', '')),
         ])
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" id="mw-delivery-wrap">
         <label for="mw-delivery">Delivery</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input mw-preview mw-input--money" id="mw-delivery" name="delivery_amount"
@@ -219,19 +228,27 @@
     <div class="mw-hw-grid">
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-hinge">Hinges</label>
-        <select class="admin-input mw-preview" id="mw-hinge" name="hinge_id">
+        <select class="admin-input mw-preview" id="mw-hinge" name="hinge_id" data-mw-hw-select>
           @foreach ($opt(MillworkSettings::SLOT_HINGES) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('hinge_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
+            @php $hwPrice = (float) ($row['unit_price'] ?? 0); @endphp
+            <option value="{{ $row['id'] }}" data-price="{{ number_format($hwPrice, 2, '.', '') }}" @selected($mwVal('hinge_id') === ($row['id'] ?? ''))>
+              {{ $row['name'] }}@if ($hwPrice > 0) — {{ \App\Models\ClientProject::formatMoney($hwPrice) }}@endif
+            </option>
           @endforeach
         </select>
+        <p class="admin-form-help mw-hw-price" data-mw-hw-price hidden></p>
       </div>
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-pull">Pulls</label>
-        <select class="admin-input mw-preview" id="mw-pull" name="pull_id">
+        <select class="admin-input mw-preview" id="mw-pull" name="pull_id" data-mw-hw-select>
           @foreach ($opt(MillworkSettings::SLOT_PULLS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('pull_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
+            @php $hwPrice = (float) ($row['unit_price'] ?? 0); @endphp
+            <option value="{{ $row['id'] }}" data-price="{{ number_format($hwPrice, 2, '.', '') }}" @selected($mwVal('pull_id') === ($row['id'] ?? ''))>
+              {{ $row['name'] }}@if ($hwPrice > 0) — {{ \App\Models\ClientProject::formatMoney($hwPrice) }}@endif
+            </option>
           @endforeach
         </select>
+        <p class="admin-form-help mw-hw-price" data-mw-hw-price hidden></p>
       </div>
       <div class="admin-form-group">
         <label for="mw-screw">Screws</label>

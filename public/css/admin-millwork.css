@@ -46,7 +46,25 @@
   min-width: 9.5rem;
 }
 .mw-piece__row--dims {
-  grid-template-columns: 5.25rem 4.75rem 5.4rem 5.4rem 5.4rem;
+  grid-template-columns: 4.75rem repeat(3, minmax(7.25rem, 1fr));
+}
+.mw-dim {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+}
+.mw-dim .mw-input--dim {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+}
+.mw-dim__unit {
+  flex: 0 0 3.4rem;
+  width: 3.4rem;
+  max-width: 3.4rem;
+  padding-left: 4px;
+  padding-right: 18px;
 }
 .mw-piece__row--pack {
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -283,6 +301,17 @@
   margin-bottom: 0;
 }
 
+.mw-cut-plan__status {
+  margin: 0 0 8px;
+  color: var(--admin-muted);
+}
+.mw-cut-plan.is-loading {
+  opacity: 0.55;
+}
+.mw-hw-price {
+  margin: 2px 0 0;
+}
+
 .mw-cut-plan {
   display: grid;
   gap: 16px;
@@ -427,7 +456,8 @@
 .mw-piece[data-mw-type="bench"] .mw-piece__row[data-mw-show~="bench"],
 .mw-piece[data-mw-type="wainscoting"] .mw-piece__row[data-mw-show~="wainscoting"],
 .mw-piece[data-mw-type="mantel"] .mw-piece__row[data-mw-show~="mantel"],
-.mw-piece[data-mw-type="trim"] .mw-piece__row[data-mw-show~="trim"] {
+.mw-piece[data-mw-type="trim"] .mw-piece__row[data-mw-show~="trim"],
+.mw-piece[data-mw-type="bench"][data-mw-below="drawers"] .mw-piece__row[data-mw-show~="bench-drawers"] {
   display: grid;
 }
 
@@ -633,18 +663,20 @@
     min-width: 0;
   }
   .mw-piece__row--dims {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: 1fr 1fr;
   }
   .mw-field--qty,
-  .mw-field--unit {
-    grid-column: span 3;
-  }
   .mw-field--w,
   .mw-field--h,
   .mw-field--d,
   .mw-field--len,
   .mw-field--lf {
-    grid-column: span 2;
+    grid-column: auto;
+  }
+  .mw-dim__unit {
+    flex-basis: 3.6rem;
+    width: 3.6rem;
+    max-width: 3.6rem;
   }
   .mw-piece__row--pack {
     grid-template-columns: 1fr 1fr;

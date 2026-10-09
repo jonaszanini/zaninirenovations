@@ -55,6 +55,15 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('data-mw-mat="paint"', false)
             ->assertSee('data-mw-mat="stain"', false)
             ->assertSee('id="mw-hinge"', false)
+            ->assertSee('width_unit', false)
+            ->assertSee('hinge_qty', false)
+            ->assertSee('mw-delivery-wrap', false)
+            ->assertSee('mw-cut-plan-status', false)
+            ->assertSee('Extra on linear trim and wainscoting rails.')
+            ->assertSee('CA$3.80')
+            ->assertSee('CA$6.50')
+            ->assertDontSee('About waste')
+            ->assertDontSee('About Waste')
             ->assertSee('Waste %')
             ->assertDontSee('Waste % (linear)')
             ->assertSee('mw-bar-expand', false)
@@ -252,6 +261,57 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
                 'pieces' => [[
                     'type' => 'shelf',
                     'sets' => [['qty' => 1, 'length' => '', 'depth' => '', 'unit' => 'in']],
+                ]],
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasErrors('calculation');
+    }
+
+    public function test_preview_accepts_fraction_and_per_dimension_units(): void
+    {
+        $this->actingAsAdmin();
+
+        $res = $this->post(route('admin.quotations.millwork.preview'), [
+            'pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => '2 1/2',
+                'width_unit' => 'ft',
+                'height' => '34 1/2',
+                'height_unit' => 'in',
+                'depth' => 24,
+                'depth_unit' => 'in',
+                'include_doors' => 0,
+                'edge_banding' => 0,
+                'shelf_count' => 0,
+            ]],
+            'owner_hourly_rate' => 80,
+            'include_install' => 0,
+        ])->assertOk();
+
+        $this->assertSame([], $res->json('cut_plan.unplaced'));
+        $this->assertGreaterThan(0, (float) $res->json('summary.grand_total'));
+    }
+
+    public function test_publish_rejects_dimension_over_limit(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.millwork.create'))
+            ->post(route('admin.quotations.millwork.store'), [
+                'save_intent' => 'publish',
+                'client_name' => 'Huge cabinet',
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'qty' => 1,
+                    'width' => 300,
+                    'height' => 34.5,
+                    'depth' => 24,
+                    'unit' => 'in',
+                    'include_doors' => 0,
                 ]],
                 'payment_installments' => 3,
                 'include_debris_removal' => 0,

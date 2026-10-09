@@ -18,6 +18,9 @@
     var lastCommuteAmount = 0;
     var lastPreviewData = null;
     var currentIndex = 0;
+    var saving = false;
+    var allowUnload = false;
+    var previewSeq = 0;
 
     var fmt = function (n) {
       return 'CA$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -82,7 +85,21 @@
       }
     }
 
+    function setSaveBusy(on) {
+      saving = !!on;
+      [publishBtn, draftBtn].forEach(function (btn) {
+        if (!btn) return;
+        btn.disabled = !!on;
+        btn.setAttribute('aria-busy', on ? 'true' : 'false');
+      });
+    }
+
+    function allowFormUnload() {
+      allowUnload = true;
+    }
+
     function submitWizard(intent) {
+      if (saving) return;
       var intentEl = document.getElementById('mw-save-intent');
       if (intentEl) intentEl.value = intent;
       if (!isEdit) {
@@ -107,6 +124,8 @@
         }, 80);
         return;
       }
+      allowFormUnload();
+      setSaveBusy(true);
       HTMLFormElement.prototype.submit.call(form);
     }
 
@@ -127,6 +146,16 @@
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       submitWizard('publish');
+    });
+    form.submit = function () {
+      allowFormUnload();
+      HTMLFormElement.prototype.submit.call(form);
+    };
+    window.addEventListener('beforeunload', function (e) {
+      if (allowUnload || saving) return;
+      if (form.getAttribute('data-quotation-user-edited') !== '1') return;
+      e.preventDefault();
+      e.returnValue = '';
     });
 
     if (!isEdit) {
@@ -160,9 +189,51 @@
       });
     });
 
+    function setCutPlanLoading(on) {
+      var root = document.getElementById('mw-cut-plan');
+      var status = document.getElementById('mw-cut-plan-status');
+      if (root) {
+        root.classList.toggle('is-loading', !!on);
+        root.setAttribute('aria-busy', on ? 'true' : 'false');
+      }
+      if (status) status.hidden = !on;
+    }
+
+    function clientProvidesAll() {
+      var cb = document.getElementById('mw-client-all');
+      return !!(cb && cb.checked);
+    }
+
+    function syncClientProvidesAll() {
+      var hide = clientProvidesAll();
+      var wrap = document.getElementById('mw-delivery-wrap');
+      if (wrap) wrap.hidden = hide;
+      var bar = document.getElementById('mw-bar-delivery-wrap');
+      if (hide && bar) bar.hidden = true;
+    }
+
+    function syncHardwarePrices() {
+      form.querySelectorAll('[data-mw-hw-select]').forEach(function (sel) {
+        var hint = sel.parentElement ? sel.parentElement.querySelector('[data-mw-hw-price]') : null;
+        if (!hint) return;
+        var opt = sel.options[sel.selectedIndex];
+        var price = opt ? Number(opt.getAttribute('data-price') || 0) : 0;
+        if (price > 0) {
+          hint.hidden = false;
+          hint.textContent = fmt(price) + ' each';
+        } else {
+          hint.hidden = true;
+          hint.textContent = '';
+        }
+      });
+    }
+
     function schedulePreview() {
       syncHardwareCatalog();
       syncMaterialsCatalog();
+      syncClientProvidesAll();
+      syncHardwarePrices();
+      setCutPlanLoading(true);
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(runPreview, 280);
     }
@@ -180,10 +251,16 @@
     }
 
     function runPreview() {
+      var seq = ++previewSeq;
+      setCutPlanLoading(true);
       return fetchPreview().then(function (data) {
+        if (seq !== previewSeq) return data;
         if (data) renderPreview(data);
         return data;
-      }).catch(function () { return null; });
+      }).catch(function () { return null; }).then(function (data) {
+        if (seq === previewSeq) setCutPlanLoading(false);
+        return data;
+      });
     }
 
     function renderPreview(data) {
@@ -227,7 +304,7 @@
       if (barLabor) barLabor.textContent = fmt(laborPre);
       if (barDelivery) barDelivery.textContent = fmt(delivery);
       if (barMarkup) barMarkup.textContent = fmt(markup);
-      if (wrapDelivery) wrapDelivery.hidden = delivery <= 0;
+      if (wrapDelivery) wrapDelivery.hidden = clientProvidesAll() || delivery <= 0;
       if (wrapMarkup) wrapMarkup.hidden = markup <= 0;
       if (barSub) barSub.textContent = fmt(subtotal);
       if (barHst) barHst.textContent = fmt(hst);
@@ -236,7 +313,7 @@
       var html = '';
       html += '<div class="pq-row"><span>Material</span><span>' + fmt(goodsPre) + '</span></div>';
       html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';
-      if (delivery > 0) {
+      if (delivery > 0 && !clientProvidesAll()) {
         html += '<div class="pq-row"><span>Delivery</span><span>' + fmt(delivery) + '</span></div>';
       }
       if (markup > 0) {

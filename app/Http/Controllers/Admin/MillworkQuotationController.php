@@ -490,7 +490,7 @@ class MillworkQuotationController extends Controller
         $out['finish_waste_pct'] = $this->boundedPct($request->input('finish_waste_pct', $defaults['finish_waste_pct']));
         $out['markup_pct'] = $this->boundedPct($request->input('markup_pct', $defaults['markup_pct']));
         $out['delivery_amount'] = round(max(0, (float) $request->input('delivery_amount', $defaults['delivery_amount'])), 2);
-        $out['spare_sheets'] = max(0, (int) $request->input('spare_sheets', $defaults['spare_sheets']));
+        $out['spare_sheets'] = max(0, min(MillworkQuotationCalculator::MAX_SPARE_SHEETS, (int) $request->input('spare_sheets', $defaults['spare_sheets'])));
         foreach ([
             'sheet_id', 'back_sheet_id', 'edge_banding_id', 'paint_id', 'stain_id',
             'hinge_id', 'pull_id', 'screw_id', 'nail_id', 'slide_id', 'glue_id',
@@ -523,7 +523,7 @@ class MillworkQuotationController extends Controller
             $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
             $row = MillworkQuotationCalculator::defaultPiece($type);
             $row['type'] = $type;
-            $row['qty'] = max(0, (int) ($piece['qty'] ?? 1));
+            $row['qty'] = max(0, min(MillworkQuotationCalculator::MAX_QTY, (int) ($piece['qty'] ?? 1)));
             $row['unit'] = strtolower((string) ($piece['unit'] ?? 'in')) === 'ft' ? 'ft' : 'in';
             $row['name'] = trim((string) ($piece['name'] ?? ''));
             $row['room'] = trim((string) ($piece['room'] ?? ''));
@@ -532,7 +532,11 @@ class MillworkQuotationController extends Controller
             foreach ([
                 'width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft',
             ] as $dim) {
-                $row[$dim] = is_numeric($piece[$dim] ?? null) ? round((float) $piece[$dim], 4) : ($piece[$dim] ?? '');
+                $row[$dim] = $this->postedDimension($piece[$dim] ?? '');
+                $unitKey = $dim.'_unit';
+                if (array_key_exists($unitKey, $piece) && $piece[$unitKey] !== '' && $piece[$unitKey] !== null) {
+                    $row[$unitKey] = strtolower((string) $piece[$unitKey]) === 'ft' ? 'ft' : 'in';
+                }
             }
             foreach ([
                 'edge_banding', 'include_back', 'include_doors', 'include_toe_kick', 'same_size',
@@ -549,27 +553,39 @@ class MillworkQuotationController extends Controller
             $style = strtolower((string) ($piece['hinge_style'] ?? 'overlay'));
             $row['hinge_style'] = in_array($style, ['overlay', 'inset', 'soft_close'], true) ? $style : 'overlay';
             foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $intKey) {
-                $row[$intKey] = max(0, (int) ($piece[$intKey] ?? ($row[$intKey] ?? 0)));
+                $row[$intKey] = max(0, min(MillworkQuotationCalculator::MAX_COUNT, (int) ($piece[$intKey] ?? ($row[$intKey] ?? 0))));
             }
             if (array_key_exists('pull_qty', $piece) && $piece['pull_qty'] !== '' && $piece['pull_qty'] !== null) {
-                $row['pull_qty'] = max(0, (int) $piece['pull_qty']);
+                $row['pull_qty'] = max(0, min(MillworkQuotationCalculator::MAX_COUNT, (int) $piece['pull_qty']));
             } else {
                 unset($row['pull_qty']);
+            }
+            if (array_key_exists('hinge_qty', $piece) && $piece['hinge_qty'] !== '' && $piece['hinge_qty'] !== null) {
+                $row['hinge_qty'] = max(0, min(MillworkQuotationCalculator::MAX_COUNT, (int) $piece['hinge_qty']));
+            } else {
+                unset($row['hinge_qty']);
             }
             $sets = [];
             foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
                 if (! is_array($set)) {
                     continue;
                 }
-                $sets[] = [
-                    'qty' => max(0, (int) ($set['qty'] ?? 0)),
-                    'length' => $set['length'] ?? '',
-                    'width' => $set['width'] ?? '',
-                    'depth' => $set['depth'] ?? '',
-                    'height' => $set['height'] ?? '',
-                    'thickness' => $set['thickness'] ?? '',
+                $setRow = [
+                    'qty' => max(0, min(MillworkQuotationCalculator::MAX_QTY, (int) ($set['qty'] ?? 0))),
+                    'length' => $this->postedDimension($set['length'] ?? ''),
+                    'width' => $this->postedDimension($set['width'] ?? ''),
+                    'depth' => $this->postedDimension($set['depth'] ?? ''),
+                    'height' => $this->postedDimension($set['height'] ?? ''),
+                    'thickness' => $this->postedDimension($set['thickness'] ?? ''),
                     'unit' => strtolower((string) ($set['unit'] ?? $row['unit'])) === 'ft' ? 'ft' : 'in',
                 ];
+                foreach (['length', 'width', 'depth', 'height', 'thickness'] as $dim) {
+                    $unitKey = $dim.'_unit';
+                    if (array_key_exists($unitKey, $set) && $set[$unitKey] !== '' && $set[$unitKey] !== null) {
+                        $setRow[$unitKey] = strtolower((string) $set[$unitKey]) === 'ft' ? 'ft' : 'in';
+                    }
+                }
+                $sets[] = $setRow;
             }
             $row['sets'] = $sets !== [] ? $sets : $row['sets'];
             $out[] = $row;
@@ -647,6 +663,31 @@ class MillworkQuotationController extends Controller
         }
 
         return round(max(0, min(100, (float) $value)), 2);
+    }
+
+    /**
+     * Keep typed fractions as strings so the v2 builder can parse 23 1/2.
+     * Plain numbers stay numeric for stored JSON compatibility.
+     */
+    private function postedDimension(mixed $raw): float|string
+    {
+        if ($raw === null) {
+            return '';
+        }
+        if (is_int($raw) || is_float($raw)) {
+            return $raw > 0 ? round((float) $raw, 4) : '';
+        }
+        $s = trim((string) $raw);
+        if ($s === '') {
+            return '';
+        }
+        if (is_numeric($s)) {
+            $n = (float) $s;
+
+            return $n > 0 ? round($n, 4) : '';
+        }
+
+        return $s;
     }
 
     protected function autoLinkIfRequested(MillworkQuotation $quote, Request $request, array &$warnings): bool

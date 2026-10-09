@@ -7,7 +7,6 @@
   $unit = ($piece['unit'] ?? 'in') === 'ft' ? 'ft' : 'in';
   $style = MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
   $profile = MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
-  $unitSuffix = $unit === 'ft' ? 'ft' : 'in';
 @endphp
 <article class="mw-piece admin-card" data-mw-piece data-mw-type="{{ $type }}" data-mw-below="{{ (($piece['below'] ?? 'divisions') === 'drawers') ? 'drawers' : 'divisions' }}">
   <div class="mw-piece__head">
@@ -48,44 +47,64 @@
   </div>
 
   <div class="mw-piece__row mw-piece__row--dims" data-mw-show="kallax cabinet vanity closet bench mantel wainscoting trim">
+    <input type="hidden" name="pieces[{{ $pi }}][unit]" value="{{ $unit }}" data-mw-unit>
     <div class="admin-form-group mw-field--qty" data-mw-show="kallax cabinet vanity closet bench mantel">
       <label>How many</label>
-      <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][qty]" value="{{ $piece['qty'] ?? 1 }}">
+      <input type="number" min="1" max="200" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][qty]" value="{{ $piece['qty'] ?? 1 }}">
     </div>
-    <div class="admin-form-group mw-field--unit" data-mw-show="kallax cabinet vanity closet bench mantel wainscoting trim">
-      <label>Units</label>
-      <select class="admin-input mw-preview" name="pieces[{{ $pi }}][unit]" data-mw-unit>
-        <option value="in" @selected($unit === 'in')>In</option>
-        <option value="ft" @selected($unit === 'ft')>Ft</option>
-      </select>
-    </div>
-    <div class="admin-form-group mw-field--w" data-mw-show="kallax cabinet vanity closet">
-      <label>W (<span data-mw-unit-label>{{ $unitSuffix }}</span>)</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][width]"
-             placeholder="{{ $type === 'closet' ? '72' : '36' }}" value="{{ $piece['width'] ?? '' }}">
-    </div>
-    <div class="admin-form-group mw-field--len" data-mw-show="bench mantel">
-      <label>L (<span data-mw-unit-label>{{ $unitSuffix }}</span>)</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][length]"
-             placeholder="{{ $type === 'mantel' ? '60' : '48' }}" value="{{ $piece['length'] ?? '' }}">
-    </div>
+    @include('admin.quotations.millwork._dim_field', [
+      'pi' => $pi,
+      'piece' => $piece,
+      'row' => $piece,
+      'namePrefix' => 'pieces['.$pi.']',
+      'dimName' => 'width',
+      'dimLabel' => 'W',
+      'dimField' => 'w',
+      'dimShow' => 'kallax cabinet vanity closet',
+      'dimPlaceholder' => $type === 'closet' ? '72' : '36',
+      'setField' => null,
+    ])
+    @include('admin.quotations.millwork._dim_field', [
+      'pi' => $pi,
+      'piece' => $piece,
+      'row' => $piece,
+      'namePrefix' => 'pieces['.$pi.']',
+      'dimName' => 'length',
+      'dimLabel' => 'L',
+      'dimField' => 'len',
+      'dimShow' => 'bench mantel',
+      'dimPlaceholder' => $type === 'mantel' ? '60' : '48',
+      'setField' => null,
+    ])
     <div class="admin-form-group mw-field--lf" data-mw-show="wainscoting trim">
       <label>Lin. ft</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][linear_ft]"
+      <input type="text" inputmode="decimal" autocomplete="off" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][linear_ft]"
              placeholder="24" value="{{ $piece['linear_ft'] ?? '' }}">
     </div>
-    <div class="admin-form-group mw-field--h" data-mw-show="kallax cabinet vanity closet bench mantel wainscoting">
-      <label>H (<span data-mw-unit-label>{{ $unitSuffix }}</span>)</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][height]"
-             placeholder="{{ in_array($type, ['closet'], true) ? '84' : ($type === 'wainscoting' ? '36' : '34.5') }}"
-             value="{{ $piece['height'] ?? '' }}">
-    </div>
-    <div class="admin-form-group mw-field--d" data-mw-show="kallax cabinet vanity closet bench mantel">
-      <label>D (<span data-mw-unit-label>{{ $unitSuffix }}</span>)</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][depth]"
-             placeholder="{{ $type === 'vanity' ? '21' : ($type === 'closet' ? '14' : ($type === 'mantel' ? '10' : '24')) }}"
-             value="{{ $piece['depth'] ?? '' }}">
-    </div>
+    @include('admin.quotations.millwork._dim_field', [
+      'pi' => $pi,
+      'piece' => $piece,
+      'row' => $piece,
+      'namePrefix' => 'pieces['.$pi.']',
+      'dimName' => 'height',
+      'dimLabel' => 'H',
+      'dimField' => 'h',
+      'dimShow' => 'kallax cabinet vanity closet bench mantel wainscoting',
+      'dimPlaceholder' => in_array($type, ['closet'], true) ? '84' : ($type === 'wainscoting' ? '36' : '34.5'),
+      'setField' => null,
+    ])
+    @include('admin.quotations.millwork._dim_field', [
+      'pi' => $pi,
+      'piece' => $piece,
+      'row' => $piece,
+      'namePrefix' => 'pieces['.$pi.']',
+      'dimName' => 'depth',
+      'dimLabel' => 'D',
+      'dimField' => 'd',
+      'dimShow' => 'kallax cabinet vanity closet bench mantel',
+      'dimPlaceholder' => $type === 'vanity' ? '21' : ($type === 'closet' ? '14' : ($type === 'mantel' ? '10' : '24')),
+      'setField' => null,
+    ])
   </div>
 
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="kallax closet">
@@ -144,11 +163,6 @@
       <label>Drawers</label>
       <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}">
     </div>
-    <div class="admin-form-group" data-mw-show="cabinet cabinet_door vanity closet bench-drawers">
-      <label>Pulls</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][pull_qty]"
-             placeholder="Auto" value="{{ $piece['pull_qty'] ?? '' }}">
-    </div>
     <div class="admin-form-group mw-field--finish">
       <label>Finish</label>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][finish]">
@@ -157,6 +171,19 @@
         <option value="stain" @selected(($piece['finish'] ?? '') === 'stain')>Stained</option>
         <option value="clear" @selected(($piece['finish'] ?? '') === 'clear')>Clear coat</option>
       </select>
+    </div>
+  </div>
+
+  <div class="mw-piece__row mw-piece__row--pack" data-mw-show="cabinet cabinet_door vanity closet bench-drawers">
+    <div class="admin-form-group" data-mw-show="cabinet cabinet_door vanity closet">
+      <label>Hinges</label>
+      <input type="number" min="0" max="100" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][hinge_qty]"
+             placeholder="Auto" value="{{ $piece['hinge_qty'] ?? '' }}">
+    </div>
+    <div class="admin-form-group">
+      <label>Pulls</label>
+      <input type="number" min="0" max="100" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][pull_qty]"
+             placeholder="Auto" value="{{ $piece['pull_qty'] ?? '' }}">
     </div>
   </div>
 

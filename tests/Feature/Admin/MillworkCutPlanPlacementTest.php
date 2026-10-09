@@ -595,11 +595,13 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('Business contact')
             ->assertSee('admin-info-tip', false)
-            ->assertSee('Shown to clients on quote accept pages.')
+            ->assertSee('Shown to clients on quote accept pages and the blocked PDF page.')
+            ->assertSee('aria-label="Business contact"', false)
+            ->assertDontSee('About business contact')
             ->getContent();
 
         $this->assertStringNotContainsString(
-            '<p class="admin-form-help">Shown to clients on quote accept pages.</p>',
+            '<p class="admin-form-help">Shown to clients on quote accept pages and the blocked PDF page.</p>',
             $html
         );
     }

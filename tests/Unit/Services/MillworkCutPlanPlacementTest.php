@@ -752,6 +752,129 @@ class MillworkCutPlanPlacementTest extends TestCase
         $this->assertNotEquals(94.35, $this->laborAmount($mixed, 'install'));
     }
 
+    public function test_new_path_prices_custom_maple_sheet_at_catalogue_price(): void
+    {
+        $case = $this->legacyEditedCases()['custom_catalogue'];
+        $calc = (new MillworkQuotationCalculator)->calculate($case['inputs'], $case['settings'], 2);
+
+        $sheet = null;
+        foreach ($calc['materials'] ?? [] as $row) {
+            $label = (string) ($row['label'] ?? '');
+            if (stripos($label, 'maple') !== false) {
+                $sheet = $row;
+                break;
+            }
+        }
+        $this->assertNotNull($sheet, 'Expected a maple sheet on the shopping list.');
+        $this->assertEqualsWithDelta(187.65, (float) ($sheet['unit_price'] ?? 0), 0.001);
+        $this->assertNotEquals(72.0, (float) ($sheet['unit_price'] ?? 0));
+    }
+
+    public function test_new_builder_parses_fraction_and_per_dimension_units(): void
+    {
+        $plain = (new MillworkPartBuilder)->explode([
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => 36,
+            'height' => 34.5,
+            'depth' => 24,
+            'unit' => 'in',
+            'include_doors' => false,
+            'include_back' => false,
+            'edge_banding' => false,
+            'shelf_count' => 0,
+        ], 0.75, 0.018);
+        $mixed = (new MillworkPartBuilder)->explode([
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => '2 1/2',
+            'width_unit' => 'ft',
+            'height' => '34 1/2',
+            'height_unit' => 'in',
+            'depth' => 2,
+            'depth_unit' => 'ft',
+            'unit' => 'in',
+            'include_doors' => false,
+            'include_back' => false,
+            'edge_banding' => false,
+            'shelf_count' => 0,
+        ], 0.75, 0.018);
+
+        $this->assertSame($plain['box_sf'], $mixed['box_sf']);
+        $this->assertSame($plain['labels'], $mixed['labels']);
+    }
+
+    public function test_new_builder_honors_hinge_qty_override(): void
+    {
+        $auto = (new MillworkPartBuilder)->explode([
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => 36,
+            'height' => 34.5,
+            'depth' => 24,
+            'include_doors' => true,
+            'door_count' => 2,
+            'edge_banding' => false,
+            'shelf_count' => 0,
+        ], 0.75, 0.018);
+        $over = (new MillworkPartBuilder)->explode([
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => 36,
+            'height' => 34.5,
+            'depth' => 24,
+            'include_doors' => true,
+            'door_count' => 2,
+            'hinge_qty' => 8,
+            'edge_banding' => false,
+            'shelf_count' => 0,
+        ], 0.75, 0.018);
+
+        $this->assertGreaterThan(0, $auto['hardware']['hinges']);
+        $this->assertSame(8.0, (float) $over['hardware']['hinges']);
+    }
+
+    public function test_new_path_validation_rejects_oversized_dimension(): void
+    {
+        $hints = (new MillworkQuotationCalculator)->validationHints([
+            'pieces' => [[
+                'type' => 'cabinet',
+                'qty' => 1,
+                'width' => 300,
+                'height' => 34.5,
+                'depth' => 24,
+                'unit' => 'in',
+            ]],
+        ], false);
+
+        $this->assertNotEmpty($hints);
+        $this->assertStringContainsString('240 inches', implode(' ', $hints));
+    }
+
+    public function test_client_provides_all_drops_delivery_from_new_path_total(): void
+    {
+        $withDelivery = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+            'include_install' => true,
+            'delivery_amount' => 80,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 2);
+        $clientAll = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+            'include_install' => true,
+            'delivery_amount' => 80,
+            'client_provides_all' => true,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 2);
+
+        $this->assertEqualsWithDelta(80.0, (float) ($withDelivery['summary']['delivery_amount'] ?? 0), 0.01);
+        $this->assertEqualsWithDelta(0.0, (float) ($clientAll['summary']['delivery_amount'] ?? 0), 0.01);
+        $this->assertGreaterThan(
+            (float) ($clientAll['summary']['grand_total'] ?? 0),
+            (float) ($withDelivery['summary']['grand_total'] ?? 0)
+        );
+    }
+
     /**
      * @return array<string, array{inputs: array<string, mixed>, settings?: MillworkSettings}>
      */

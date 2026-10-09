@@ -28,6 +28,16 @@ class MillworkQuotationCalculator
     /** Stored cut plans without this key (or with a lower value) keep the v1 snapshot. */
     public const CUT_PLAN_VERSION = 2;
 
+    public const MAX_QTY = 200;
+
+    public const MAX_COUNT = 100;
+
+    public const MAX_DIM_IN = 240.0;
+
+    public const MAX_LINEAR_FT = 500.0;
+
+    public const MAX_SPARE_SHEETS = 50;
+
     /**
      * @return array<string, mixed>
      */
@@ -557,6 +567,10 @@ class MillworkQuotationCalculator
         if (! $hasPart) {
             $hints[] = 'Add at least one millwork piece with quantity and dimensions.';
         }
+        $limitHint = $this->dimensionLimitHint($inputs);
+        if ($limitHint !== null) {
+            $hints[] = $limitHint;
+        }
         if ($hasPart) {
             $preview = $this->calculate($inputs, $settings);
             $unplaced = is_array($preview['cut_plan']['unplaced'] ?? null) ? $preview['cut_plan']['unplaced'] : [];
@@ -571,6 +585,45 @@ class MillworkQuotationCalculator
         }
 
         return $hints;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    private function dimensionLimitHint(array $inputs): ?string
+    {
+        if ((int) ($inputs['spare_sheets'] ?? 0) > self::MAX_SPARE_SHEETS) {
+            return 'Spare sheets cannot be more than '.self::MAX_SPARE_SHEETS.'.';
+        }
+        foreach ($this->pieces($inputs) as $piece) {
+            if ((int) ($piece['qty'] ?? 0) > self::MAX_QTY) {
+                return 'Quantity cannot be more than '.self::MAX_QTY.'.';
+            }
+            $linearFt = MillworkPartBuilder::positiveDim($piece, ['linear_ft']);
+            if ($linearFt > self::MAX_LINEAR_FT) {
+                return 'Linear footage cannot be more than '.self::MAX_LINEAR_FT.' ft.';
+            }
+            foreach (['width', 'height', 'depth', 'length', 'thickness'] as $key) {
+                if (MillworkPartBuilder::dimInches($piece, [$key]) > self::MAX_DIM_IN) {
+                    return 'Each width, height, depth, and length must be 240 inches (20 ft) or less.';
+                }
+            }
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
+                if (! is_array($set)) {
+                    continue;
+                }
+                if ((int) ($set['qty'] ?? 0) > self::MAX_QTY) {
+                    return 'Quantity cannot be more than '.self::MAX_QTY.'.';
+                }
+                foreach (['width', 'height', 'depth', 'length', 'thickness'] as $key) {
+                    if (MillworkPartBuilder::dimInches($set, [$key], (string) ($piece['unit'] ?? 'in')) > self::MAX_DIM_IN) {
+                        return 'Each width, height, depth, and length must be 240 inches (20 ft) or less.';
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
