@@ -461,6 +461,8 @@
         wrap.innerHTML = tpl.innerHTML.replace(/__I__/g, String(i)).trim();
         var row = wrap.firstElementChild;
         list.appendChild(row);
+        var refreshTile = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+        if (refreshTile) refreshTile(row);
         initTileRow(row);
         schedulePreview();
       });
@@ -512,7 +514,10 @@
         wall: 'Basement area (sq ft, optional)',
         custom: 'Work area (sq ft)'
       };
-      areaLabel.textContent = labels[currentPreset()] || labels.full;
+      var nextLabel = labels[currentPreset()] || labels.full;
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.setLabelText === 'function') {
+        window.AdminInfoTip.setLabelText(areaLabel, nextLabel);
+      }
     }
     var baseEl = document.getElementById('br-base');
     if (baseEl) {
@@ -1156,6 +1161,8 @@
       wrap.innerHTML = extraTpl.innerHTML.replace(/__I__/g, String(i)).trim();
       var row = wrap.firstElementChild;
       extraList.appendChild(row);
+      var refreshExtra = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+      if (refreshExtra) refreshExtra(row);
       initExtraRow(row);
       schedulePreview();
     });

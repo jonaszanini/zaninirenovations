@@ -52,6 +52,7 @@
           'gate_count' => $quotation->gate_count,
           'labour_rate_per_ft' => $quotation->labour_rate_per_ft,
           'labour_rate_8ft_per_ft' => $quotation->labour_rate_8ft_per_ft,
+          'existing_post_labour_credit' => $quotation->existing_post_labour_credit,
           'include_labour_hst' => $quotation->include_labour_hst,
           'extra_gate_preset' => $initialExtraGatePreset,
       ]);
@@ -71,6 +72,7 @@
 
   $defaultLabour6 = (float) $settings->labour_rate_per_ft;
   $defaultLabour8 = (float) ($settings->labour_rate_8ft_per_ft ?? $settings->labour_rate_per_ft);
+  $defaultExistingPostCredit = (float) ($settings->existing_post_labour_credit ?? 30);
   $initialLabour6 = old(
       'labour_rate_per_ft',
       $isEdit ? (float) ($quotation->labour_rate_per_ft ?? $defaultLabour6) : $defaultLabour6
@@ -78,6 +80,10 @@
   $initialLabour8 = old(
       'labour_rate_8ft_per_ft',
       $isEdit ? (float) ($quotation->labour_rate_8ft_per_ft ?? $defaultLabour8) : $defaultLabour8
+  );
+  $initialExistingPostCredit = old(
+      'existing_post_labour_credit',
+      $isEdit ? (float) ($quotation->existing_post_labour_credit ?? 0) : $defaultExistingPostCredit
   );
   $initialIncludeLabourHst = old('include_labour_hst') !== null
       ? filter_var(old('include_labour_hst'), FILTER_VALIDATE_BOOLEAN)
@@ -318,6 +324,10 @@
       text-decoration: line-through;
       color: #9ca3af;
     }
+    .fq-totals-row--credit {
+      color: var(--admin-muted);
+      font-size: 12px;
+    }
     .fq-materials-preview {
       width: 100%;
       border-collapse: collapse;
@@ -445,10 +455,16 @@
       border-top: 1px dashed #e0e4ea;
     }
     .fq-quote-labour-grid {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
     @media (max-width: 640px) {
       .fq-quote-labour-grid { grid-template-columns: 1fr; }
+    }
+    .fq-quote-labour-section .cp-heading-sm {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.15rem;
     }
   </style>
 @endpush
@@ -542,10 +558,10 @@
         <div class="admin-form-group cp-form-group-spaced">
           <div class="fq-sides-header">
             <div>
-              <label class="cp-label-flush">Runs (up to {{ \App\Models\FenceQuotation::MAX_RUNS }})</label>
-              <p class="admin-form-help cp-form-help-tight-top">
-                Length in feet (quarter-foot is fine, e.g. 20.25). Blank extra runs are ignored.
-              </p>
+              <span class="admin-label-with-tip">
+                <span class="admin-form-group-label cp-label-flush">Runs (up to {{ \App\Models\FenceQuotation::MAX_RUNS }})</span>
+                <x-admin.info-tip label="Runs">Length in feet (quarter-foot is fine, e.g. 20.25). Blank extra runs are ignored.</x-admin.info-tip>
+              </span>
               <p class="fq-total-lf" id="fq-total-lf">Total LF: 0</p>
             </div>
             <div class="fq-sides-actions">
@@ -584,7 +600,10 @@
           </div>
 
           <div class="admin-form-group">
-            <label for="fq-style">Board style</label>
+            <span class="admin-label-with-tip">
+              <label for="fq-style">Board style</label>
+              <x-admin.info-tip label="Board style">Clear span between posts is at most the max spacing. An 8 ft top board covers that clear span; it may not reach post centres at near-max spacing.</x-admin.info-tip>
+            </span>
             <select name="board_style" id="fq-style" class="admin-input">
               <option value="{{ \App\Models\FenceQuotation::BOARD_STYLE_STANDARD }}"
                       @selected($initialStyle === \App\Models\FenceQuotation::BOARD_STYLE_STANDARD)>
@@ -595,19 +614,23 @@
                 Overlapping
               </option>
             </select>
-            <p class="admin-form-help">Clear span between posts is at most the max spacing. An 8 ft top board covers that clear span; it may not reach post centres at near-max spacing.</p>
           </div>
 
           <div class="admin-form-group">
-            <label for="fq-gates">Gates</label>
+            <span class="admin-label-with-tip">
+              <label for="fq-gates">Gates</label>
+              <x-admin.info-tip label="Gates">Tick “Gate goes here” on a run. Extra gates (count higher than ticked runs) use Extra gate size.</x-admin.info-tip>
+            </span>
             <input id="fq-gates" type="number" min="0" max="16" step="1"
                    name="gate_count" class="admin-input"
                    value="{{ $initialGates }}">
-            <p class="admin-form-help">Tick “Gate goes here” on a run. Extra gates (count higher than ticked runs) use Extra gate size.</p>
           </div>
 
           <div class="admin-form-group{{ $initialGates > $initialTickedGates ? '' : ' is-hidden' }}" id="fq-extra-gate-wrap">
-            <label for="fq-extra-gate-preset">Extra gate size</label>
+            <span class="admin-label-with-tip">
+              <label for="fq-extra-gate-preset">Extra gate size</label>
+              <x-admin.info-tip label="Extra gate size">Size for gates not ticked on a run.</x-admin.info-tip>
+            </span>
             <select name="extra_gate_preset" id="fq-extra-gate-preset" class="admin-input">
               @foreach ($gatePresets as $preset)
                 <option value="{{ $preset['key'] }}" @selected($initialExtraGatePreset === $preset['key'])>
@@ -615,17 +638,15 @@
                 </option>
               @endforeach
             </select>
-            <p class="admin-form-help">Size for gates not ticked on a run.</p>
           </div>
         </div>
 
         {{-- 4. Labour (rate for the chosen height) ------------------- --}}
         <div class="admin-form-section fq-quote-labour-section">
-          <h4 class="cp-heading-sm">Labour rate for this quotation</h4>
-          <p class="admin-form-help cp-form-help-spaced">
-            Stored with this quote{{ $isEdit ? '' : ' (prefilled from formula defaults)' }}.
-            First gate is included in the per-foot rate; extra gates add the configured extra-gate labour if any.
-          </p>
+          <h4 class="cp-heading-sm">
+            Labour rate for this quotation
+            <x-admin.info-tip label="Labour rate">Stored with this quote{{ $isEdit ? '' : ' (prefilled from formula defaults)' }}. First gate is included in the per-foot rate; extra gates add the configured extra-gate labour if any. An existing-post tick that actually removes a post also subtracts the labour credit (internal only — the client PDF stays a single labour line).</x-admin.info-tip>
+          </h4>
           <div class="fq-formula-grid fq-quote-labour-grid">
             <div class="admin-form-group" id="fq-labour-6-wrap">
               <label for="fq-labour-rate-6">Labour rate 6&prime; fence (CAD$ / linear ft)</label>
@@ -643,6 +664,17 @@
                      value="{{ number_format((float) $initialLabour8, 2, '.', '') }}" data-cp-money-entry="direct">
               @error('labour_rate_8ft_per_ft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
+            <div class="admin-form-group" id="fq-labour-credit-wrap">
+              <span class="admin-label-with-tip">
+                <label for="fq-existing-post-credit">Labour credit per existing post</label>
+                <x-admin.info-tip label="Labour credit">Subtracted from labour when a left/right tick actually removes a post.</x-admin.info-tip>
+              </span>
+              <input id="fq-existing-post-credit" data-cp-money-entry="direct" type="text" name="existing_post_labour_credit"
+                     @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('existing_post_labour_credit')])
+                     inputmode="decimal" autocomplete="off" required
+                     value="{{ number_format((float) $initialExistingPostCredit, 2, '.', '') }}">
+              @error('existing_post_labour_credit') <p class="admin-form-error">{{ $message }}</p> @enderror
+            </div>
           </div>
         </div>
 
@@ -652,7 +684,10 @@
 
         {{-- 6. Description (needs runs first for auto-fill) ---------- --}}
         <div class="admin-form-group quotation-work-desc">
-          <label for="fq-work-description">Description of the work</label>
+          <span class="admin-label-with-tip">
+            <label for="fq-work-description">Description of the work</label>
+            <x-admin.info-tip label="Description of the work">Shown on the client PDF beneath the priced line item. Use Fill from template for a count-accurate draft, then polish with AI if you want.</x-admin.info-tip>
+          </span>
           <textarea id="fq-work-description" name="work_description" rows="8"
                     @class(['admin-input', 'is-invalid' => $errors->has('work_description')])
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
@@ -662,7 +697,6 @@
               'aiQuotationType' => 'fence',
               'trailingActionPartial' => 'admin.quotations.fence._work_description_trailing_actions',
           ])
-          <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Use Fill from template for a count-accurate draft, then polish with AI if you want.</p>
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
@@ -703,20 +737,23 @@
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
 
       <div class="qh-priced-head">
-        <h3 class="cp-heading-md">Live breakdown</h3>
+        <h3 class="cp-heading-md">
+          Live breakdown
+          <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
+        </h3>
         @include('admin.partials.quotation_price_config_gear', [
           'url' => route('admin.quotations.fence.config'),
         ])
       </div>
-      <p class="admin-form-help cp-breakdown-intro">
-        Preview updates as you type. <span class="fq-badge" id="fq-status-badge">Calculating…</span>
+      <p class="cp-breakdown-intro">
+        <span class="fq-badge" id="fq-status-badge">Calculating…</span>
       </p>
       @if ($isEdit && ! empty($priceDelta['changed']) && ! $initialReprice)
         <div class="fq-price-banner" id="fq-price-banner">
           Catalogue unit prices have changed since this quote was saved{{ $priceDeltaAmountLabel }}.
           @include('admin.partials.info_tip', [
             'tipText' => 'Save keeps the unit prices from the last save. Quantities still follow the current runs. Re-price updates unit prices from the catalogue.',
-            'tipLabel' => 'About saved unit prices',
+            'tipLabel' => 'saved unit prices',
           ])
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fq-reprice-btn">
             Re-price from catalogue
@@ -759,6 +796,14 @@
         <div class="fq-totals-row">
           <span>Labour <span class="admin-form-help" id="fq-t-labour-rate"></span></span>
           <span id="fq-t-labour">CA$0.00</span>
+        </div>
+        <div class="fq-totals-row fq-totals-row--credit is-hidden" id="fq-t-existing-post-credit-row">
+          <span id="fq-t-existing-post-credit-label">−$0 × 0 existing post credit</span>
+          <span id="fq-t-existing-post-credit">−CA$0.00</span>
+        </div>
+        <div class="fq-totals-row is-hidden" id="fq-t-labour-net-row">
+          <span>Net labour</span>
+          <span id="fq-t-labour-net">CA$0.00</span>
         </div>
         <div class="fq-totals-row fq-totals-row--total">
           <span>Total</span>
@@ -840,6 +885,14 @@
   var tHst = document.getElementById('fq-t-hst');
   var tLabour = document.getElementById('fq-t-labour');
   var tLabourRate = document.getElementById('fq-t-labour-rate');
+  var tExistingPostCreditRow = document.getElementById('fq-t-existing-post-credit-row');
+  var tExistingPostCreditLabel = document.getElementById('fq-t-existing-post-credit-label');
+  var tExistingPostCredit = document.getElementById('fq-t-existing-post-credit');
+  var tLabourNetRow = document.getElementById('fq-t-labour-net-row');
+  var tLabourNet = document.getElementById('fq-t-labour-net');
+  var existingPostCreditInput = document.getElementById('fq-existing-post-credit');
+  var configExistingPostCredit = {{ json_encode($defaultExistingPostCredit) }};
+  var fenceQuotationId = @json($isEdit ? (int) $quotation->id : null);
   var tTotal = document.getElementById('fq-t-total');
   var tLabourHst = document.getElementById('fq-t-labour-hst');
   var tLabourHstRow = document.getElementById('fq-t-labour-hst-row');
@@ -906,7 +959,10 @@
         '  </button>',
         '</div>',
         '<div class="admin-form-group cp-form-group-flush">',
-        '  <label for="fq-side-' + i + '">Length (feet)</label>',
+        '  <span class="admin-label-with-tip">',
+        '    <label for="fq-side-' + i + '">Length (feet)</label>',
+        (window.AdminInfoTip ? AdminInfoTip.html('Length in feet (quarter-foot is fine, e.g. 20.25). Blank extra runs are ignored.', 'Length (feet)') : ''),
+        '  </span>',
         '  <input id="fq-side-' + i + '" type="number" min="0.25" step="0.01"',
         '         name="sides[' + i + '][length_ft]"',
         '         class="admin-input fq-side-length"',
@@ -1172,6 +1228,16 @@
       labour_rate_8ft_per_ft: parseLabourRate(labourRate8Input),
       include_labour_hst: includeLabourHstInput ? !!includeLabourHstInput.checked : true
     };
+    var postedCredit = parseOptionalLabourRate(existingPostCreditInput);
+    if (postedCredit !== null) {
+      payload.existing_post_labour_credit = postedCredit;
+    }
+    if (fenceQuotationId) {
+      payload.fence_quotation_id = fenceQuotationId;
+    }
+    if (repriceInput && repriceInput.value === '1') {
+      payload.reprice = true;
+    }
     if (useFrozenPrices && frozenUnitPrices && Object.keys(frozenUnitPrices).length) {
       payload.use_frozen_prices = true;
       payload.frozen_unit_prices = frozenUnitPrices;
@@ -1187,6 +1253,13 @@
     }
     var v = parseFloat(raw);
     return isFinite(v) ? v : 0;
+  }
+
+  function parseOptionalLabourRate(input) {
+    if (!input) return null;
+    var raw = String(input.value || '').replace(/,/g, '').trim();
+    if (raw === '') return null;
+    return parseLabourRate(input);
   }
 
   function runPreview() {
@@ -1249,6 +1322,10 @@
     tMaterials.textContent = 'CA$0.00';
     tHst.textContent = 'CA$0.00';
     tLabour.textContent = 'CA$0.00';
+    if (tExistingPostCreditRow) tExistingPostCreditRow.classList.add('is-hidden');
+    if (tExistingPostCredit) tExistingPostCredit.textContent = 'CA$0.00';
+    if (tLabourNetRow) tLabourNetRow.classList.add('is-hidden');
+    if (tLabourNet) tLabourNet.textContent = 'CA$0.00';
     tGrand.textContent = 'CA$0.00';
     window.__quoteGrandTotal = 0;
     document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: 0 } }));
@@ -1365,7 +1442,14 @@
     }).join('');
     materialsBody.innerHTML = rows || '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
 
-    tLabour.textContent = money(Number(t.labour_subtotal || 0) + lastAdditionalLaborPreTax);
+    var credit = t.existing_post_credit || {};
+    var creditCount = Number(credit.count || 0);
+    var creditAmount = Number(credit.amount || 0);
+    var creditRate = Number(credit.rate != null ? credit.rate : 0);
+    var showCredit = creditCount > 0 && creditAmount > 0;
+    var grossLabour = Number(t.labour_before_credit != null ? t.labour_before_credit : (t.labour_subtotal || 0));
+    var netLabour = Number(t.labour_subtotal || 0);
+    tLabour.textContent = money((showCredit ? grossLabour : netLabour) + lastAdditionalLaborPreTax);
     tLabourHst.textContent = money(Number(t.labour_hst || 0) + lastAdditionalLaborHst);
     if (tLabourHstRow) {
       tLabourHstRow.classList.toggle(
@@ -1386,6 +1470,29 @@
     document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: window.__quoteGrandTotal } }));
     if (t.labour_rate_per_ft) {
       tLabourRate.textContent = '(' + money(t.labour_rate_per_ft) + '/ft)';
+    }
+    if (tExistingPostCreditRow) {
+      tExistingPostCreditRow.classList.toggle('is-hidden', !showCredit);
+    }
+    if (tLabourNetRow) {
+      tLabourNetRow.classList.toggle('is-hidden', !showCredit);
+    }
+    if (showCredit && tExistingPostCreditLabel) {
+      var rawCredit = creditRate * creditCount;
+      var isClamped = creditAmount + 0.009 < rawCredit;
+      var labelNumber = isClamped ? creditAmount : creditRate;
+      var numberLabel = Math.abs(labelNumber - Math.round(labelNumber)) < 1e-6
+        ? String(Math.round(labelNumber))
+        : labelNumber.toFixed(2);
+      tExistingPostCreditLabel.textContent = isClamped
+        ? ('−$' + numberLabel + ' existing post credit')
+        : ('−$' + numberLabel + ' × ' + creditCount + ' existing post credit');
+    }
+    if (tExistingPostCredit) {
+      tExistingPostCredit.textContent = showCredit ? ('−' + money(creditAmount)) : money(0);
+    }
+    if (tLabourNet) {
+      tLabourNet.textContent = money(netLabour + lastAdditionalLaborPreTax);
     }
   }
 
@@ -1419,6 +1526,9 @@
     repriceBtn.addEventListener('click', function () {
       useFrozenPrices = false;
       repriceInput.value = '1';
+      if (existingPostCreditInput) {
+        existingPostCreditInput.value = Number(configExistingPostCredit).toFixed(2);
+      }
       var banner = document.getElementById('fq-price-banner');
       if (banner) banner.classList.add('is-hidden');
       schedulePreview();

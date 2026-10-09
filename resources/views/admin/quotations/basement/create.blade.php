@@ -173,7 +173,10 @@
         <div class="admin-card fl-step-card br-client-card">
           <div class="br-client-card__row">
             <div class="admin-form-group">
-              <label for="br-client-name">@include('admin.partials.info_tip', ['text' => 'Name printed on the quotation PDF and used when linking this quote to a project.']) Client name</label>
+              <span class="admin-label-with-tip">
+  <label for="br-client-name">Client name</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Name printed on the quotation PDF and used when linking this quote to a project.', 'tipLabel' => 'Client name'])
+</span>
               <input type="text" class="admin-input" id="br-client-name" name="client_name" maxlength="160"
                      value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
             </div>
@@ -207,10 +210,11 @@
         ])
 
         <details class="br-acc admin-card" data-br-step="review" @if ($isEdit) open @endif>
-          <summary class="br-acc__summary">Review, materials &amp; live edits</summary>
+          <summary class="br-acc__summary">
+            Review, materials &amp; live edits
+            <x-admin.info-tip label="Review, materials & live edits">Edit hours, quantities, or unit prices below. Totals recalculate as you type. Enter 0 on an auto-filled quantity in a previous section to skip that trade.</x-admin.info-tip>
+          </summary>
           <div class="br-acc__body">
-            <p class="admin-form-help">Edit hours, quantities, or unit prices below. Totals recalculate as you type. Enter 0 on an auto-filled quantity in a previous section to skip that trade.</p>
-
             @include('admin.partials.checkbox', [
               'name' => 'client_provides_all',
               'hiddenFallback' => true,
@@ -222,7 +226,12 @@
             ])
             <div id="br-provide-wrap">
             <fieldset class="br-provide-grid" id="br-provide-sections">
-              <legend>Or client provides materials for specific sections</legend>
+              <legend>
+                <span class="admin-label-with-tip">
+                  <span>Or client provides materials for specific sections</span>
+                  <x-admin.info-tip label="Client provides materials">Check a trade when the client buys those materials; you still carry the labour.</x-admin.info-tip>
+                </span>
+              </legend>
               @foreach ($sectionList as $key => $label)
                 @if ($key === 'overview' || $key === 'bathroom')
                   @continue
@@ -232,7 +241,6 @@
                   'value' => $key,
                   'checked' => in_array($key, $provideSections, true),
                   'label' => $label,
-                  'info' => 'Client buys the materials for '.$label.'; you still carry the labour for that trade.',
                   'inputClass' => 'admin-checkbox__input br-preview',
                   'clientFilled' => $key === 'flooring' && in_array('client_provides_sections', $filledKeys, true),
                 ])
@@ -240,9 +248,10 @@
             </fieldset>
             <fieldset class="br-bath-provide" id="br-provide-bath-items">
               <legend class="br-bath-provide__title">
-                @include('admin.partials.info_tip', ['text' => 'Client buys these fixtures; you still install them. Tile and fan stay on the Bathroom step. Bathroom and living-area lights are electrician scope (priced on Electrical lines).'])
-                @include('admin.quotations.basement._client_filled', ['key' => 'client_provides_bath_items', 'filledKeys' => $filledKeys])
-                Bathroom items
+                <span class="admin-label-with-tip">
+                  <span>@include('admin.quotations.basement._client_filled', ['key' => 'client_provides_bath_items', 'filledKeys' => $filledKeys]) Bathroom items</span>
+                  <x-admin.info-tip label="Bathroom items">Client buys these fixtures; you still install them. Tile and fan stay on the Bathroom step. Bathroom and living-area lights are electrician scope (priced on Electrical lines).</x-admin.info-tip>
+                </span>
               </legend>
               <div class="br-bath-provide__grid">
                 @foreach (\App\Services\BasementQuotationCalculator::clientProvidesBathItemLabels() as $itemKey => $itemLabel)
@@ -251,7 +260,6 @@
                     'value' => $itemKey,
                     'checked' => in_array($itemKey, $provideBathItems, true),
                     'label' => $itemLabel,
-                    'info' => 'Client supplies the '.$itemLabel.'; material cost drops out. Labour stays.',
                     'inputClass' => 'admin-checkbox__input br-preview',
                     'clientFilled' => in_array('client_provides_bath_items', $filledKeys, true) && in_array($itemKey, $provideBathItems, true),
                   ])
@@ -284,8 +292,10 @@
               </table>
             </div>
 
-            <h4 class="br-review-heading">Materials</h4>
-            <p class="admin-form-help">Waste % is on Overview (default 10%). Bulk quantities below already include it.</p>
+            <h4 class="br-review-heading">
+              Materials
+              <x-admin.info-tip label="Materials">Waste % is on Overview (default 10%). Bulk quantities below already include it.</x-admin.info-tip>
+            </h4>
             <div class="admin-table-scroll">
               <table class="admin-table br-review-table">
                 <thead>
@@ -314,8 +324,10 @@
               </table>
             </div>
 
-            <h4 class="br-review-heading">Extra materials</h4>
-            <p class="admin-form-help">Add items from the Materials DB or type them manually. Catalog rows are marked in blue; typed rows stay gray.</p>
+            <h4 class="br-review-heading">
+              Extra materials
+              <x-admin.info-tip label="Extra materials">Add items from the Materials DB or type them manually. Catalog rows are marked in blue; typed rows stay gray.</x-admin.info-tip>
+            </h4>
             <div id="br-extra-list">
               @foreach ($extraRows as $ei => $erow)
                 @include('admin.quotations.basement._extra_material_row', ['i' => $ei, 'row' => is_array($erow) ? $erow : []])

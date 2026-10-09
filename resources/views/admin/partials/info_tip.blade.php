@@ -1,16 +1,22 @@
 {{--
-  Tap/click information icon.
+  Wrapper around <x-admin.info-tip> for existing @include / view() callers.
 
-  Prefer $tipText / $tipLabel so @include does not inherit a parent $text or
-  $label (form_field / checkbox loops). $text remains a fallback.
+  @include is rewritten by AdminInfoTipInclude::rewriteBlade to render() so
+  parent Blade scope cannot leak tip* keys (does not rely on IsolatingFactory).
+  view() / ->with() still hit this file; resolveFromView() applies the
+  text/html guard and reads only the four tip* keys from $__data.
 --}}
 @php
-    $resolvedTipText = $tipText ?? $text ?? null;
-    $resolvedTipLabel = $tipLabel ?? 'More info';
+    $passed = (isset($__data) && is_array($__data)) ? $__data : [];
+    $resolved = \App\Support\AdminInfoTipInclude::resolveFromView($passed);
+    $resolvedTipId = $resolved['tipId'];
+    $resolvedTipLabel = $resolved['tipLabel'];
+    $resolvedTipText = $resolved['tipText'];
+    $resolvedTipHtml = $resolved['tipHtml'];
+    $tipId = $tipLabel = $tipText = $tipHtml = null;
 @endphp
-@if (filled($resolvedTipText))
-  <button type="button" class="admin-info-tip" aria-expanded="false" aria-label="{{ $resolvedTipLabel }}">
-    <i class="fa fa-info-circle" aria-hidden="true"></i>
-    <span class="admin-info-tip__bubble" role="tooltip">{{ $resolvedTipText }}</span>
-  </button>
+@if (filled($resolvedTipHtml))
+  <x-admin.info-tip :id="$resolvedTipId" :label="$resolvedTipLabel">{!! $resolvedTipHtml !!}</x-admin.info-tip>
+@elseif (filled($resolvedTipText))
+  <x-admin.info-tip :id="$resolvedTipId" :label="$resolvedTipLabel">{{ $resolvedTipText }}</x-admin.info-tip>
 @endif

@@ -176,7 +176,7 @@ class FenceQuotationController extends Controller
      */
     public function update(Request $request, FenceQuotation $fence_quotation)
     {
-        $data = $this->validateFenceInputs($request);
+        $data = $this->validateFenceInputs($request, $fence_quotation);
 
         $frozen = $request->boolean('reprice')
             ? null
@@ -233,6 +233,8 @@ class FenceQuotationController extends Controller
                 }
             }
         }
+
+        unset($data['fence_quotation_id']);
 
         $calc = (new FenceQuotationCalculator())->calculate($data, $frozen ?: null);
         $calc['suggested_work_description'] = FenceWorkDescriptionGenerator::generate($calc);
@@ -393,6 +395,7 @@ class FenceQuotationController extends Controller
             'gate_count',
             'labour_rate_per_ft',
             'labour_rate_8ft_per_ft',
+            'existing_post_labour_credit',
             'sides',
             'calculation',
             'materials_subtotal',
@@ -621,10 +624,11 @@ class FenceQuotationController extends Controller
     }
 
     /** Shared validation rules for store() and update(). */
-    protected function validateFenceInputs(Request $request): array
+    protected function validateFenceInputs(Request $request, ?FenceQuotation $existing = null): array
     {
         $this->prepareAdditionalCostMoneyOnRequest($request);
         $this->prepareDebrisRemovalMoneyOnRequest($request);
+        $this->prepareExistingPostLabourCreditOnRequest($request, $existing);
 
         $rules = array_merge(
             $this->fenceGeometryRules(requiredClient: true),
@@ -662,10 +666,70 @@ class FenceQuotationController extends Controller
      */
     protected function validateFencePreviewInputs(Request $request): array
     {
-        $data = $request->validate($this->fenceGeometryRules(requiredClient: false));
+        $quote = null;
+        $quoteId = $request->input('fence_quotation_id');
+        if (is_numeric($quoteId) && (int) $quoteId > 0) {
+            $quote = FenceQuotation::query()->find((int) $quoteId);
+        }
+        $this->prepareExistingPostLabourCreditOnRequest($request, $quote);
+
+        $data = $request->validate(array_merge($this->fenceGeometryRules(requiredClient: false), [
+            'fence_quotation_id' => ['nullable', 'integer', 'exists:fence_quotations,id'],
+            'reprice' => ['nullable', 'boolean'],
+        ]));
         $data['sides'] = $this->dropBlankFenceRuns($data['sides'] ?? []);
 
         return $data;
+    }
+
+    /**
+     * Blank and missing credit fields use the same fallback as save:
+     * posted value (including "0") always wins — even during re-price;
+     * else re-price → config; else stored quote; else config for new quotes.
+     */
+    protected function prepareExistingPostLabourCreditOnRequest(Request $request, ?FenceQuotation $quote = null): void
+    {
+        $raw = $request->input('existing_post_labour_credit');
+        $missing = $raw === null || $raw === '';
+        if (! $missing) {
+            return;
+        }
+
+        $request->merge([
+            'existing_post_labour_credit' => $this->resolveExistingPostLabourCredit(
+                $request->all(),
+                $quote,
+                $request->boolean('reprice')
+            ),
+        ]);
+    }
+
+    /**
+     * Posted credit (including the string "0") always wins, including
+     * when `reprice` is set. Re-price only supplies the current config
+     * when the field is missing or blank. Re-price still means live
+     * catalogue prices on update().
+     */
+    protected function resolveExistingPostLabourCredit(
+        array $data,
+        ?FenceQuotation $quote = null,
+        bool $reprice = false
+    ): float {
+        if (array_key_exists('existing_post_labour_credit', $data)
+            && $data['existing_post_labour_credit'] !== null
+            && $data['existing_post_labour_credit'] !== '') {
+            return round(max(0, (float) $data['existing_post_labour_credit']), 2);
+        }
+
+        if ($reprice) {
+            return FenceFormulaSetting::current()->existingPostLabourCredit();
+        }
+
+        if ($quote !== null && $quote->existing_post_labour_credit !== null) {
+            return round(max(0, (float) $quote->existing_post_labour_credit), 2);
+        }
+
+        return FenceFormulaSetting::current()->existingPostLabourCredit();
     }
 
     /**
@@ -698,6 +762,7 @@ class FenceQuotationController extends Controller
             'extra_gate_preset' => ['nullable', Rule::in($gateKeys)],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'existing_post_labour_credit' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'include_labour_hst' => ['nullable', 'boolean'],
         ];
 
@@ -754,6 +819,7 @@ class FenceQuotationController extends Controller
             'gate_count' => $calc['inputs']['gate_count'],
             'labour_rate_per_ft' => $data['labour_rate_per_ft'],
             'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],
+            'existing_post_labour_credit' => $calc['inputs']['existing_post_labour_credit'],
             'sides' => $calc['inputs']['sides'],
             'calculation' => $calc,
             'materials_subtotal' => $calc['totals']['materials_subtotal'],

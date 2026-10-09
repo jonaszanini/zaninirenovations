@@ -33,15 +33,17 @@
     aria-controls="{{ $panelId }}"
   >
     <span class="admin-filters-accordion__icon" aria-hidden="true"><i class="fa fa-filter"></i></span>
-    <span class="admin-filters-accordion__title">Filters</span>
+    <span class="admin-filters-accordion__title">
+      Filters
+      @if (filled($hint))
+        <x-admin.info-tip label="Filters">{{ $hint }}</x-admin.info-tip>
+      @endif
+    </span>
     @if ($activeCount > 0)
       <span class="admin-filters-accordion__badge">{{ $activeCount }} active</span>
     @endif
   </summary>
   <div class="admin-filters-accordion__panel" id="{{ $panelId }}">
-    @if (filled($hint))
-      <p class="admin-filters-accordion__hint">{{ $hint }}</p>
-    @endif
     {{ $slot }}
   </div>
 </details>

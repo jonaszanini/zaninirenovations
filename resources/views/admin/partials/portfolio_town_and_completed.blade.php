@@ -5,7 +5,12 @@
 @endphp
 <div class="admin-form-grid-2">
   <div class="admin-form-group">
-    <label for="town">Town</label>
+    @include('admin.partials.tipped_label', [
+      'label' => 'Town',
+      'for' => 'town',
+      'tipText' => 'Short name on the public page. No ward or neighbourhood.',
+      'tipLabel' => 'Town',
+    ])
     <input
       class="admin-input"
       type="text"
@@ -22,15 +27,18 @@
         <option value="{{ $townOption }}"></option>
       @endforeach
     </datalist>
-    <p class="admin-form-help">Short name on the public page. No ward or neighbourhood.</p>
     @error('town')
       <div class="admin-form-error">{{ $message }}</div>
     @enderror
   </div>
   <div class="admin-form-group">
-    <label for="completed_on">Completed on</label>
+    @include('admin.partials.tipped_label', [
+      'label' => 'Completed on',
+      'for' => 'completed_on',
+      'tipText' => 'Used to order projects on the site — newest completion first.',
+      'tipLabel' => 'Completed on',
+    ])
     <input class="admin-input" type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', $completedDefault) }}" required>
-    <p class="admin-form-help">Used to order projects on the site — newest completion first.</p>
     @error('completed_on')
       <div class="admin-form-error">{{ $message }}</div>
     @enderror

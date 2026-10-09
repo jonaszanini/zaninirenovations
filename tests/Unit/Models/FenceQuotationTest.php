@@ -43,4 +43,14 @@ class FenceQuotationTest extends TestCase
         $this->assertSame(FenceQuotation::POST_SIZE_4X4, $quote->resolvedPostSize());
         $this->assertStringContainsString('4×4 posts', $quote->summaryDescription());
     }
+
+    public function test_existing_post_labour_credit_is_fillable_and_cast(): void
+    {
+        $quote = new FenceQuotation([
+            'existing_post_labour_credit' => '30.00',
+        ]);
+
+        $this->assertContains('existing_post_labour_credit', $quote->getFillable());
+        $this->assertSame('30.00', $quote->existing_post_labour_credit);
+    }
 }

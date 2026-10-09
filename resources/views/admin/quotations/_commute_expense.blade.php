@@ -83,14 +83,16 @@
 
     <div class="q-commute-card__fields">
       <div class="admin-form-group q-commute-field q-commute-field--pct">
-        <label for="q-commute-percent">% of round trip</label>
+        <span class="admin-label-with-tip">
+          <label for="q-commute-percent">% of round trip</label>
+          <x-admin.info-tip label="% of round trip">100% = full round-trip fuel cost per trip.</x-admin.info-tip>
+        </span>
         <div class="q-commute-field__inline">
           <input type="text" inputmode="decimal" id="q-commute-percent" name="commute_trip_percent"
                  class="admin-input" maxlength="6" autocomplete="off"
                  value="{{ $commutePercent }}" data-cp-commute-percent>
           <span class="q-commute-field__suffix">%</span>
         </div>
-        <p class="admin-form-help">100% = full round-trip fuel cost per trip.</p>
       </div>
       <div class="admin-form-group q-commute-field">
         <label for="q-commute-trips">Estimated trips</label>

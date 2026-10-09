@@ -691,9 +691,19 @@
       form.querySelectorAll('[data-mw-piece]').forEach(function (piece, i) {
         var n = piece.querySelector('[data-mw-piece-n]');
         if (n) n.textContent = String(i + 1);
+        if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshRepeatLabels === 'function') {
+          window.AdminInfoTip.refreshRepeatLabels(piece);
+        }
         piece.querySelectorAll('[name]').forEach(function (input) {
           input.name = input.name.replace(/pieces\[\d+\]/, 'pieces[' + i + ']');
           if (input.id) input.id = input.id.replace(/pieces-\d+/, 'pieces-' + i);
+        });
+        piece.querySelectorAll('label[for]').forEach(function (lab) {
+          var current = lab.getAttribute('for') || lab.htmlFor || '';
+          if (!current) return;
+          var next = current.replace(/pieces-\d+/, 'pieces-' + i);
+          lab.setAttribute('for', next);
+          lab.htmlFor = next;
         });
       });
     }
@@ -798,6 +808,8 @@
           });
           list.insertBefore(clone, piece.nextSibling);
           reindexPieces();
+          var refreshClone = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+          if (refreshClone) refreshClone(clone);
           initPiece(clone);
           schedulePreview();
         });
@@ -814,6 +826,8 @@
           wrap.innerHTML = tpl.innerHTML.replace(/__P__/g, String(pIndex)).replace(/__S__/g, String(sIndex)).trim();
           var row = wrap.firstElementChild;
           list.appendChild(row);
+          var refreshSet = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+          if (refreshSet) refreshSet(row);
           row.querySelectorAll('.mw-preview').forEach(bindPreview);
           bindSetRemove(row);
           schedulePreview();
@@ -846,8 +860,10 @@
         wrap.innerHTML = pieceTpl.innerHTML.replace(/__P__/g, String(i)).trim();
         var piece = wrap.firstElementChild;
         pieceList.appendChild(piece);
-        initPiece(piece);
         reindexPieces();
+        var refreshPiece = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+        if (refreshPiece) refreshPiece(piece);
+        initPiece(piece);
         if (window.cpMoneyMask) window.cpMoneyMask.wire(piece.querySelectorAll('.cp-money-input'));
         schedulePreview();
       });
@@ -892,6 +908,8 @@
         wrap.innerHTML = extraTpl.innerHTML.replace(/__I__/g, String(i)).trim();
         var row = wrap.firstElementChild;
         extraList.appendChild(row);
+        var refreshExtra = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+        if (refreshExtra) refreshExtra(row);
         initExtraRow(row);
         schedulePreview();
       });

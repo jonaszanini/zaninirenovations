@@ -103,6 +103,9 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .bp-status-badge',
             'html.admin-dark .qh',
             'html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"])',
+            'html.admin-dark input[type="date"]',
+            'html.admin-dark input[type="time"]',
+            'html.admin-dark input[type="datetime-local"]',
         ] as $selector) {
             $this->assertStringContainsString($selector, $dark, "Missing dark rule {$selector}");
         }

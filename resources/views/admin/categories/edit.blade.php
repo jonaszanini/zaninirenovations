@@ -15,9 +15,11 @@
         @enderror
       </div>
       <div class="admin-form-group">
-        <label for="slug">Slug</label>
+        <span class="admin-label-with-tip">
+          <label for="slug">Slug</label>
+          <x-admin.info-tip label="Slug">Used internally. Change only if you know you need a new identifier.</x-admin.info-tip>
+        </span>
         <input class="admin-input" type="text" id="slug" name="slug" value="{{ old('slug', $category->slug) }}" required maxlength="80" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" title="Lowercase letters, numbers, and hyphens only">
-        <p class="admin-form-help">Used internally. Change only if you know you need a new identifier.</p>
         @error('slug')
           <div class="admin-form-error">{{ $message }}</div>
         @enderror

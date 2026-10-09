@@ -256,7 +256,8 @@ Toolbar / filter (no label wrapper):
 - Always use `<label for="...">` matching input `id` (except toolbar-only controls).
 - Always **`admin-input`** on the control — never rely on bare tags inside `.admin-form-group`.
 - Validation errors: **`.admin-form-error`**.
-- Help text: **`.admin-form-help`**.
+- Help text: **`<x-admin.info-tip label="Field name">…</x-admin.info-tip>`** as a sibling of the `<label>` (or on a heading) — never a standing `.admin-form-help` paragraph and never inside a labeled `<label>`. See `docs/admin-ui.md`.
+- Keep `.admin-form-help` only for live computed values, empty states, and must-see warnings.
 - Checkboxes: `@include('admin.partials.checkbox', [...])` — do **not** use `admin-input` on checkboxes.
 - Searchable dropdowns: `@include('admin.partials.search_select', [...])` — do **not** add Tom Select.
 - Required fields: `<span class="cp-required">*</span>`.

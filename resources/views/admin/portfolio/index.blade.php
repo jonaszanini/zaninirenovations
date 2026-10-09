@@ -1,13 +1,17 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Latest Projects Photos')
-
-@section('content')
-  <div class="admin-toolbar">
+@section('heading')
+  Latest Projects Photos
+  <x-admin.info-tip label="Latest Projects Photos">
     @php
       $portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
     @endphp
-    <p class="admin-toolbar-lede">Each project is a public page at /portfolio/… as soon as you save it. Photos are stored as WebP at {{ $portfolioWebp['quality'] }}% quality, max edge {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each; up to 15 per project.</p>
+    Each project is a public page at /portfolio/… as soon as you save it. Photos are stored as WebP at {{ $portfolioWebp['quality'] }}% quality, max edge {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each; up to 15 per project.
+  </x-admin.info-tip>
+@endsection
+
+@section('content')
+  <div class="admin-toolbar">
     <div class="admin-toolbar-actions">
       <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
         <i class="fa fa-cog"></i> Categories

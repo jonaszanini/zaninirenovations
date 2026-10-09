@@ -26,6 +26,7 @@ class FenceFormulaSetting extends Model
         'labour_rate_per_ft',
         'labour_rate_8ft_per_ft',
         'labour_per_additional_gate',
+        'existing_post_labour_credit',
         'rails_per_section_6ft',
         'rails_per_section_8ft',
         'nails_per_picket',
@@ -50,6 +51,7 @@ class FenceFormulaSetting extends Model
         'labour_rate_per_ft' => 'decimal:2',
         'labour_rate_8ft_per_ft' => 'decimal:2',
         'labour_per_additional_gate' => 'decimal:2',
+        'existing_post_labour_credit' => 'decimal:2',
         'rails_per_section_6ft' => 'integer',
         'rails_per_section_8ft' => 'integer',
         'nails_per_picket' => 'integer',
@@ -146,5 +148,13 @@ class FenceFormulaSetting extends Model
         return (float) (((int) round($heightFt)) === 8
             ? $this->labour_rate_8ft_per_ft
             : $this->labour_rate_per_ft);
+    }
+
+    /**
+     * Labour credit (CAD$) for each existing-post tick that actually removes a post.
+     */
+    public function existingPostLabourCredit(): float
+    {
+        return max(0, (float) ($this->existing_post_labour_credit ?? 30));
     }
 }

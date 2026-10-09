@@ -247,7 +247,10 @@
         </div>
 
         <div class="admin-form-group quotation-work-desc">
-          <label for="ld-work-description">Description of the work</label>
+          <span class="admin-label-with-tip">
+            <label for="ld-work-description">Description of the work</label>
+            <x-admin.info-tip label="Description of the work">Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+          </span>
           <textarea id="ld-work-description" name="work_description" rows="8"
                     @class(['admin-input', 'is-invalid' => $errors->has('work_description')])
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
@@ -257,7 +260,6 @@
               'aiQuotationType' => 'low_deck',
               'trailingActionPartial' => 'admin.quotations.low_deck._work_description_trailing_actions',
           ])
-          <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</p>
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
@@ -267,10 +269,10 @@
 
         {{-- Dimensions ------------------------------------------------ --}}
         <div class="admin-form-section ld-section">
-          <h4 class="cp-heading-sm">Deck dimensions</h4>
-          <p class="admin-form-help cp-form-help-spaced">
-            Maximum {{ rtrim(rtrim(number_format((float) $settings->max_area_sq_ft, 2), '0'), '.') }} sq ft footprint (Ontario Building Code floating deck guardrail).
-          </p>
+          <h4 class="cp-heading-sm">
+            Deck dimensions
+            <x-admin.info-tip label="Deck dimensions">Maximum {{ rtrim(rtrim(number_format((float) $settings->max_area_sq_ft, 2), '0'), '.') }} sq ft footprint (Ontario Building Code floating deck guardrail). Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.</x-admin.info-tip>
+          </h4>
           <div class="ld-dims-grid">
             <div class="admin-form-group">
               <label for="ld-width">Width (feet) <span class="admin-required">*</span></label>
@@ -290,28 +292,24 @@
           <p id="ld-area-display" class="admin-form-help cp-form-help-spaced" style="display: none; margin-top: 10px;">
             Total area: <strong id="ld-area-value">0</strong> sq ft
           </p>
-          <p class="admin-form-help cp-form-help-spaced">
-            Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.
-          </p>
           <div class="admin-form-group cp-form-group-spaced">
-            <label class="admin-checkbox">
-              <input type="hidden" name="include_under_deck_gravel" value="0">
-              <input type="checkbox" class="admin-checkbox__input" id="ld-under-deck-gravel"
-                     name="include_under_deck_gravel" value="1"
-                     @checked($initialIncludeUnderDeckGravel)>
-              <span class="admin-checkbox__mark" aria-hidden="true"></span>
-              <span class="admin-checkbox__text">Gravel under the deck</span>
-            </label>
-            <p class="admin-form-help">Adds under-deck gravel bags (1 per {{ rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.') }} sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.</p>
+            @include('admin.partials.checkbox', [
+              'name' => 'include_under_deck_gravel',
+              'id' => 'ld-under-deck-gravel',
+              'hiddenFallback' => true,
+              'checked' => $initialIncludeUnderDeckGravel,
+              'label' => 'Gravel under the deck',
+              'info' => 'Adds under-deck gravel bags (1 per '.rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.').' sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.',
+            ])
           </div>
         </div>
 
         {{-- Rates ----------------------------------------------------- --}}
         <div class="admin-form-section ld-section">
-          <h4 class="cp-heading-sm">Rates for this quotation</h4>
-          <p class="admin-form-help cp-form-help-spaced">
-            Prefilled from configuration defaults. Change them here to adjust this project only.
-          </p>
+          <h4 class="cp-heading-sm">
+            Rates for this quotation
+            <x-admin.info-tip label="Rates for this quotation">Prefilled from configuration defaults. Change them here to adjust this project only.</x-admin.info-tip>
+          </h4>
           <div class="ld-rates-grid">
             <div class="admin-form-group">
               <label for="ld-labour-rate">Labour rate (CA$ / sq ft)</label>
@@ -322,13 +320,15 @@
               @error('labour_rate_per_sqft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group">
-              <label for="ld-material-waste">Material waste (%)</label>
+              <span class="admin-label-with-tip">
+                <label for="ld-material-waste">Material waste (%)</label>
+                <x-admin.info-tip label="Material waste">Extra material for cuts and breakage. Internal ordering buffer — not shown on the client quotation.</x-admin.info-tip>
+              </span>
               <input id="ld-material-waste" type="number" min="0" max="100" step="0.1" name="material_waste_percent"
                      @class(['admin-input', 'is-invalid' => $errors->has('material_waste_percent')])
                      value="{{ rtrim(rtrim(number_format((float) $initialMaterialWaste, 2, '.', ''), '0'), '.') }}"
                      autocomplete="off">
               @error('material_waste_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
-              <p class="admin-form-help">Extra material for cuts and breakage. Internal ordering buffer — not shown on the client quotation.</p>
             </div>
             <div class="admin-form-group">
               <label for="ld-waste-fee">Material dump fee</label>
@@ -379,13 +379,16 @@
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
 
       <div class="qh-priced-head">
-        <h3 class="cp-heading-md">Live breakdown</h3>
+        <h3 class="cp-heading-md">
+          Live breakdown
+          <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
+        </h3>
         @include('admin.partials.quotation_price_config_gear', [
           'url' => route('admin.quotations.low-deck.config'),
         ])
       </div>
-      <p class="admin-form-help cp-breakdown-intro">
-        Preview updates as you type. <span class="ld-badge" id="ld-status-badge">Calculating…</span>
+      <p class="cp-breakdown-intro">
+        <span class="ld-badge" id="ld-status-badge">Calculating…</span>
       </p>
 
       <div id="ld-geometry" class="admin-form-help cp-geometry-hint"></div>
@@ -460,7 +463,12 @@
   {{-- ====================== DIAGRAMS ============================= --}}
   <div class="admin-card ld-diagrams-card">
     <div class="ld-diagrams-toolbar no-print">
-      <h3 class="cp-heading-md" style="margin:0;">Layout diagrams</h3>
+      <h3 class="cp-heading-md admin-label-with-tip" style="margin:0;">
+        Layout diagrams
+        <span id="ld-diagrams-hint">
+          <x-admin.info-tip label="Layout diagrams">Enter dimensions to generate the foundations, framing, and decking layouts.</x-admin.info-tip>
+        </span>
+      </h3>
       <div class="ld-diagrams-toolbar-actions">
         @if ($isEdit)
           <a href="{{ route('admin.quotations.low-deck.layout-diagrams', $quotation) }}"
@@ -481,7 +489,6 @@
       @endif
       <span id="ld-diagram-print-dims"></span>
     </div>
-    <p class="admin-form-help cp-form-help-flush no-print" id="ld-diagrams-hint">Enter dimensions to generate the foundations, framing, and decking layouts.</p>
     <div class="ld-diagrams-grid">
       <div class="ld-diagram-panel">
         <h5>1. Foundations</h5>
