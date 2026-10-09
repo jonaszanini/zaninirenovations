@@ -4,7 +4,8 @@ namespace App\Services;
 
 /**
  * Batch 2 finish takeoffs from a Room Area canvas: ceiling height, net wall
- * area (per wall, minus doors/windows/openings), flooring boxes, and casing LF.
+ * area (per wall, ceiling height minus the union of clamped openings),
+ * flooring boxes, and casing LF.
  */
 class RoomAreaFinishMath
 {
@@ -19,6 +20,12 @@ class RoomAreaFinishMath
     public const MIN_BOX_SQFT = 0.25;
 
     public const MAX_BOX_SQFT = 500.0;
+
+    public const MAX_WASTE_PERCENT = 100.0;
+
+    public const DOOR_FACE_INTERIOR = 'interior';
+
+    public const DOOR_FACE_EXTERIOR = 'exterior';
 
     public function ceilingHeightFt(mixed $ceilingHeightFt, mixed $wallHeightFt): float
     {
@@ -35,11 +42,36 @@ class RoomAreaFinishMath
         return round(max(0.0, $floorAreaSqFt), 2);
     }
 
+    /**
+     * @return array{ok: bool, value: float, error: ?string}
+     */
+    public function parseWastePercent(mixed $percent): array
+    {
+        if ($percent === null) {
+            return ['ok' => true, 'value' => self::DEFAULT_WASTE_PERCENT, 'error' => null];
+        }
+        if (is_int($percent) || is_float($percent)) {
+            return $this->clampWasteResult((float) $percent);
+        }
+
+        $raw = trim((string) $percent);
+        if ($raw === '') {
+            return ['ok' => true, 'value' => self::DEFAULT_WASTE_PERCENT, 'error' => null];
+        }
+
+        $raw = str_replace(["\u{00A0}", ' '], '', $raw);
+        $raw = str_replace('%', '', $raw);
+        $raw = str_replace(',', '.', $raw);
+        if ($raw === '' || ! is_numeric($raw)) {
+            return ['ok' => false, 'value' => self::DEFAULT_WASTE_PERCENT, 'error' => 'Enter waste as a percent, like 10 or 15%.'];
+        }
+
+        return $this->clampWasteResult((float) $raw);
+    }
+
     public function normalizeWastePercent(mixed $percent): float
     {
-        $value = is_numeric($percent) ? (float) $percent : self::DEFAULT_WASTE_PERCENT;
-
-        return round(max(0.0, min(50.0, $value)), 2);
+        return $this->parseWastePercent($percent)['value'];
     }
 
     public function normalizeBoxSqFt(mixed $boxSqFt): float
@@ -80,6 +112,17 @@ class RoomAreaFinishMath
     }
 
     /**
+     * Union of opening rectangles on one wall, in sq ft. Heights are clamped
+     * to the ceiling; overlapping openings are not double-subtracted.
+     *
+     * @param  list<array<string, mixed>>  $objects
+     */
+    public function unionOpeningAreaSqFt(array $objects, float $ceilingHeightFt): float
+    {
+        return round($this->unionRectAreaInches($this->openingRects($objects, $ceilingHeightFt)) / 144.0, 2);
+    }
+
+    /**
      * Boxes needed, always rounded up. Zero when area or box size is missing.
      */
     public function flooringBoxes(float $floorAreaSqFt, mixed $wastePercent, mixed $boxSqFt): int
@@ -91,29 +134,65 @@ class RoomAreaFinishMath
         }
         $needed = $area * (1.0 + ($this->normalizeWastePercent($wastePercent) / 100.0));
 
-        return (int) ceil($needed / $box - 1e-9);
+        return (int) ceil($needed / $box);
+    }
+
+    public function flooringWithWasteSqFt(float $floorAreaSqFt, mixed $wastePercent): float
+    {
+        $area = max(0.0, $floorAreaSqFt);
+        if ($area <= 0) {
+            return 0.0;
+        }
+
+        return round($area * (1.0 + ($this->normalizeWastePercent($wastePercent) / 100.0)), 2);
     }
 
     /**
-     * One side is header + two legs: (W + 2H) / 12 lf.
+     * Window: 4 sides = (2W+2H)/12, 3 sides (stool) = (W+2H)/12.
+     * Door / cased opening: faces × (W+2H)/12 (interior 2, exterior 1).
      */
-    public function casingLf(float $widthIn, float $heightIn, int $sides): float
+    public function casingLf(float $widthIn, float $heightIn, int $sides, string $type = 'door'): float
     {
+        $type = strtolower(trim($type));
+        if ($widthIn <= 0 || $heightIn <= 0) {
+            return 0.0;
+        }
+        if ($type === 'window') {
+            if ($sides >= 4) {
+                return round((2.0 * $widthIn + 2.0 * $heightIn) / 12.0, 2);
+            }
+            if ($sides === 3) {
+                return round(($widthIn + (2.0 * $heightIn)) / 12.0, 2);
+            }
+
+            return 0.0;
+        }
+
         $sides = max(0, min(2, $sides));
-        if ($widthIn <= 0 || $heightIn <= 0 || $sides <= 0) {
+        if ($sides <= 0) {
             return 0.0;
         }
 
         return round($sides * ($widthIn + (2.0 * $heightIn)) / 12.0, 2);
     }
 
-    public function defaultCasingSides(string $type): int
+    public function defaultCasingSides(string $type, ?string $doorFace = null): int
     {
         return match (strtolower(trim($type))) {
-            'door' => 2,
-            'window' => 1,
+            'door' => $this->normalizeDoorFace($doorFace) === self::DOOR_FACE_EXTERIOR ? 1 : 2,
+            'window' => 4,
+            'opening' => 2,
             default => 0,
         };
+    }
+
+    public function normalizeDoorFace(mixed $face): string
+    {
+        $value = is_string($face) ? strtolower(trim($face)) : '';
+
+        return $value === self::DOOR_FACE_EXTERIOR
+            ? self::DOOR_FACE_EXTERIOR
+            : self::DOOR_FACE_INTERIOR;
     }
 
     /**
@@ -124,11 +203,19 @@ class RoomAreaFinishMath
         $type = isset($object['type']) && is_string($object['type'])
             ? strtolower(trim($object['type']))
             : '';
-        if (array_key_exists('casing_sides', $object) && is_numeric($object['casing_sides'])) {
-            return max(0, min(2, (int) $object['casing_sides']));
+        $doorFace = isset($object['door_face']) && is_string($object['door_face'])
+            ? $object['door_face']
+            : null;
+        if (! array_key_exists('casing_sides', $object) || $object['casing_sides'] === null || $object['casing_sides'] === '') {
+            return $this->defaultCasingSides($type, $doorFace);
         }
+        if (! is_numeric($object['casing_sides'])) {
+            return $this->defaultCasingSides($type, $doorFace);
+        }
+        $sides = (int) $object['casing_sides'];
+        $max = $type === 'window' ? 4 : 2;
 
-        return $this->defaultCasingSides($type);
+        return max(0, min($max, $sides));
     }
 
     /**
@@ -144,7 +231,7 @@ class RoomAreaFinishMath
             $type = isset($object['type']) && is_string($object['type'])
                 ? strtolower(trim($object['type']))
                 : '';
-            if (! in_array($type, ['door', 'window'], true)) {
+            if (! in_array($type, RoomAreaCanvasData::WALL_OBJECT_TYPES, true)) {
                 continue;
             }
             $widthIn = isset($object['width']) ? (float) $object['width'] : 0.0;
@@ -154,7 +241,8 @@ class RoomAreaFinishMath
             $total += $this->casingLf(
                 $widthIn,
                 $this->objectHeightInches($object, $type, $wallHeightFt),
-                $this->casingSidesForObject($object)
+                $this->casingSidesForObject($object),
+                $type
             );
         }
 
@@ -188,6 +276,7 @@ class RoomAreaFinishMath
             if ($wallId === '') {
                 continue;
             }
+            $object['type'] = $type;
             $objectsByWall[$wallId][] = $object;
         }
 
@@ -216,25 +305,14 @@ class RoomAreaFinishMath
                     }
                     $wallId = $this->canvas()->wallId($polyId, $i, $j);
                     $lengthFt = hypot((float) $b['x'] - (float) $a['x'], (float) $b['y'] - (float) $a['y']) / $pixelsPerFoot;
-                    $deduct = 0.0;
-                    foreach ($objectsByWall[$wallId] ?? [] as $object) {
-                        $type = strtolower(trim((string) ($object['type'] ?? '')));
-                        $widthIn = isset($object['width']) ? (float) $object['width'] : 0.0;
-                        if ($widthIn <= 0) {
-                            continue;
-                        }
-                        $deduct += $this->openingAreaSqFt(
-                            $widthIn,
-                            $this->objectHeightInches($object, $type, $ceilingHeightFt)
-                        );
-                    }
+                    $deduct = $this->unionOpeningAreaSqFt($objectsByWall[$wallId] ?? [], $ceilingHeightFt);
                     $index++;
                     $walls[] = [
                         'id' => $wallId,
                         'index' => $index,
                         'label' => 'W'.$index,
                         'length_lf' => round($lengthFt, 2),
-                        'opening_area_sqft' => round($deduct, 2),
+                        'opening_area_sqft' => $deduct,
                         'net_area_sqft' => $this->netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deduct),
                     ];
                 }
@@ -268,6 +346,7 @@ class RoomAreaFinishMath
      *   flooring_direction: int,
      *   flooring_box_sqft: float,
      *   flooring_boxes: int,
+     *   flooring_with_waste_sqft: float,
      *   casing_lf: float
      * }
      */
@@ -288,7 +367,8 @@ class RoomAreaFinishMath
             'flooring_direction' => $direction,
             'flooring_box_sqft' => $box,
             'flooring_boxes' => $this->flooringBoxes($floorAreaSqFt, $waste, $box),
-            'casing_lf' => $this->totalCasingLf($canvas['objects'] ?? [], $wallHeightFt),
+            'flooring_with_waste_sqft' => $this->flooringWithWasteSqFt($floorAreaSqFt, $waste),
+            'casing_lf' => $this->totalCasingLf($canvas['objects'] ?? [], $ceiling),
         ];
     }
 
@@ -297,15 +377,139 @@ class RoomAreaFinishMath
      */
     public function objectHeightInches(array $object, string $type, float $wallHeightFt): float
     {
+        $type = strtolower(trim($type));
+        $ceilingIn = max(0.0, $wallHeightFt) * 12.0;
+        $height = 0.0;
         if (isset($object['height']) && is_numeric($object['height']) && (float) $object['height'] > 0) {
-            return (float) $object['height'];
+            $height = (float) $object['height'];
+        } else {
+            $height = match ($type) {
+                'window' => RoomAreaCanvasData::DEFAULT_WINDOW_HEIGHT_IN,
+                'opening' => $ceilingIn > 0 ? $ceilingIn : RoomAreaCanvasData::DEFAULT_DOOR_HEIGHT_IN,
+                default => RoomAreaCanvasData::DEFAULT_DOOR_HEIGHT_IN,
+            };
+        }
+        if ($ceilingIn > 0) {
+            $height = min($height, $ceilingIn);
         }
 
-        return match ($type) {
-            'window' => RoomAreaCanvasData::DEFAULT_WINDOW_HEIGHT_IN,
-            'opening' => $wallHeightFt * 12.0,
-            default => RoomAreaCanvasData::DEFAULT_DOOR_HEIGHT_IN,
-        };
+        return max(0.0, $height);
+    }
+
+    /**
+     * @return array{ok: bool, value: float, error: ?string}
+     */
+    private function clampWasteResult(float $value): array
+    {
+        if ($value < 0) {
+            return ['ok' => false, 'value' => self::DEFAULT_WASTE_PERCENT, 'error' => 'Waste must be between 0 and 100%.'];
+        }
+
+        return ['ok' => true, 'value' => round(min(self::MAX_WASTE_PERCENT, $value), 2), 'error' => null];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $objects
+     * @return list<array{x0: float, x1: float, y0: float, y1: float}>
+     */
+    private function openingRects(array $objects, float $ceilingHeightFt): array
+    {
+        $ceilingIn = max(0.0, $ceilingHeightFt) * 12.0;
+        $rects = [];
+        foreach ($objects as $object) {
+            if (! is_array($object)) {
+                continue;
+            }
+            $type = isset($object['type']) && is_string($object['type'])
+                ? strtolower(trim($object['type']))
+                : '';
+            if (! in_array($type, RoomAreaCanvasData::WALL_OBJECT_TYPES, true)) {
+                continue;
+            }
+            $widthIn = isset($object['width']) ? (float) $object['width'] : 0.0;
+            if ($widthIn <= 0) {
+                continue;
+            }
+            $heightIn = $this->objectHeightInches($object, $type, $ceilingHeightFt);
+            if ($heightIn <= 0) {
+                continue;
+            }
+            $offset = isset($object['offset']) ? max(0.0, (float) $object['offset']) : 0.0;
+            $sill = 0.0;
+            if ($type === 'window' && isset($object['sill_height']) && is_numeric($object['sill_height'])) {
+                $sill = max(0.0, (float) $object['sill_height']);
+            }
+            $y0 = $sill;
+            $y1 = $sill + $heightIn;
+            if ($ceilingIn > 0) {
+                $y0 = min($y0, $ceilingIn);
+                $y1 = min($y1, $ceilingIn);
+            }
+            if ($y1 <= $y0) {
+                continue;
+            }
+            $rects[] = [
+                'x0' => $offset,
+                'x1' => $offset + $widthIn,
+                'y0' => $y0,
+                'y1' => $y1,
+            ];
+        }
+
+        return $rects;
+    }
+
+    /**
+     * @param  list<array{x0: float, x1: float, y0: float, y1: float}>  $rects
+     */
+    private function unionRectAreaInches(array $rects): float
+    {
+        if ($rects === []) {
+            return 0.0;
+        }
+        $xs = [];
+        foreach ($rects as $rect) {
+            $xs[] = $rect['x0'];
+            $xs[] = $rect['x1'];
+        }
+        $xs = array_values(array_unique($xs));
+        sort($xs, SORT_NUMERIC);
+        $area = 0.0;
+        $count = count($xs);
+        for ($i = 0; $i < $count - 1; $i++) {
+            $x0 = $xs[$i];
+            $x1 = $xs[$i + 1];
+            $dx = $x1 - $x0;
+            if ($dx <= 0) {
+                continue;
+            }
+            $spans = [];
+            foreach ($rects as $rect) {
+                if ($rect['x0'] < $x1 && $rect['x1'] > $x0) {
+                    $spans[] = [$rect['y0'], $rect['y1']];
+                }
+            }
+            if ($spans === []) {
+                continue;
+            }
+            usort($spans, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
+            $cur0 = $spans[0][0];
+            $cur1 = $spans[0][1];
+            $cover = 0.0;
+            for ($j = 1, $n = count($spans); $j < $n; $j++) {
+                if ($spans[$j][0] <= $cur1) {
+                    $cur1 = max($cur1, $spans[$j][1]);
+                } else {
+                    $cover += $cur1 - $cur0;
+                    $cur0 = $spans[$j][0];
+                    $cur1 = $spans[$j][1];
+                }
+            }
+            $cover += $cur1 - $cur0;
+            $area += $dx * $cover;
+        }
+
+        return $area;
     }
 
     private function canvas(): RoomAreaCanvasData

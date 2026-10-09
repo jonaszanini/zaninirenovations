@@ -141,7 +141,11 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.friendlyNetworkError({ status: 413, message: 'Payload Too Large' }, 'x'), 'That file is too large to upload.');
   var saved = 'Floor plan upload failed. The room itself was saved. Save again to retry.';
   assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 413, message: 'Payload Too Large' }), saved + ' That file is too large.');
-  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 422, message: 'The background must be an image.' }), saved + ' Wrong file type.');
+  assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 422, message: 'The background must be an image.' }), 'The background must be an image.');
+  assert.ok(lib.planUploadErrorAfterRoomSaved({ status: 422, message: 'The background must be an image.' }).indexOf('Save again to retry') === -1);
+  assert.strictEqual(lib.planUploadReason({ status: 422, message: 'Unlock layers to change the floor plan.' }), 'Unlock layers to change the floor plan.');
+  assert.strictEqual(lib.planUploadReason({ status: 422, message: 'The background must not be greater than 10240 kilobytes.' }), 'The background must not be greater than 10240 kilobytes.');
+  assert.ok(lib.friendlyPlanUploadError({ status: 422, message: 'Unlock layers to change the floor plan.' }).indexOf('Wrong file type') === -1);
   assert.strictEqual(lib.planUploadErrorAfterRoomSaved({ status: 500, message: 'Server Error' }), saved + ' The server had a problem.');
   assert.strictEqual(lib.planUploadErrorAfterRoomSaved(new Error('Failed to fetch')), saved + ' Check your connection and try again.');
   assert.strictEqual(lib.planUploadErrorAfterRoomSaved(new Error('Could not upload the floor plan. Check your connection and try again.')), saved + ' Check your connection and try again.');
@@ -151,12 +155,55 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
   assert.strictEqual(lib.ceilingHeightFt(9, 8), 9);
   assert.strictEqual(lib.ceilingAreaSqFt(152), 152);
   assert.strictEqual(lib.netWallAreaSqFt(12, 8, lib.openingAreaSqFt(36, 80) + lib.openingAreaSqFt(36, 36) + lib.openingAreaSqFt(36, 96)), 43);
+  assert.strictEqual(lib.parseWastePercent('').value, 10);
+  assert.strictEqual(lib.parseWastePercent('15%').value, 15);
+  assert.strictEqual(lib.parseWastePercent('7,5').value, 7.5);
+  assert.strictEqual(lib.parseWastePercent(75).value, 75);
+  assert.strictEqual(lib.parseWastePercent(150).value, 100);
+  assert.strictEqual(lib.parseWastePercent('abc').ok, false);
+  assert.strictEqual(lib.normalizeBoxSqFt(0.1), 0);
+  assert.strictEqual(lib.flooringBoxes(100, 10, 0.1), 0);
   assert.strictEqual(lib.flooringBoxes(100, 10, 20), 6);
   assert.strictEqual(lib.flooringBoxes(100, 10, 19), 6);
+  assert.strictEqual(lib.flooringBoxes(20, 0, 20), 1);
   assert.strictEqual(lib.flooringBoxes(20.01, 0, 20), 2);
   assert.strictEqual(lib.casingLf(36, 80, 2), 32.67);
+  assert.strictEqual(lib.casingLf(36, 36, 4, 'window'), 12);
+  assert.strictEqual(lib.casingLf(36, 36, 3, 'window'), 9);
+  assert.strictEqual(lib.casingLf(36, 36, 2, 'window'), 0);
   assert.strictEqual(lib.defaultCasingSides('door'), 2);
+  assert.strictEqual(lib.defaultCasingSides('DOOR', 'exterior'), 1);
+  assert.strictEqual(lib.defaultCasingSides('window'), 4);
+  assert.strictEqual(lib.defaultCasingSides('opening'), 2);
   assert.strictEqual(lib.casingSidesForObject({ type: 'door', casing_sides: 1 }), 1);
+  assert.strictEqual(lib.casingSidesForObject({ type: 'WINDOW' }), 4);
+  assert.strictEqual(lib.casingSidesForObject({ type: 'window', casing_sides: '' }), 4);
+  assert.strictEqual(lib.casingSidesForObject({ type: 'opening' }), 2);
+  assert.strictEqual(lib.objectHeightInches({ type: 'opening', height: 120 }, 8), 96);
+  assert.strictEqual(lib.objectType({ type: 'DOOR' }), 'door');
+  var perWallCanvas = {
+    groups: [{ polygons: [{ id: 'p1', vertices: [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }] }] }],
+    objects: [
+      { type: 'Door', wall_id: 'wall_p1_0_1', width: 36, offset: 24 },
+      { type: 'WINDOW', wall_id: 'wall_p1_1_2', width: 48, offset: 24, height: 36 },
+      { type: 'Opening', wall_id: 'wall_p1_2_3', width: 36, offset: 24 }
+    ]
+  };
+  var walls8 = lib.perWallNetAreas(perWallCanvas, 12, 8);
+  var walls9 = lib.perWallNetAreas(perWallCanvas, 12, 9);
+  assert.strictEqual(walls8.length, 4);
+  assert.strictEqual(walls8[0].net_area_sqft, 76);
+  assert.strictEqual(walls8[1].net_area_sqft, 68);
+  assert.strictEqual(walls8[2].net_area_sqft, 72);
+  assert.strictEqual(walls8[3].net_area_sqft, 80);
+  assert.strictEqual(walls9[0].net_area_sqft, 88);
+  assert.strictEqual(walls9[2].net_area_sqft, 81);
+  var overlap = lib.unionOpeningAreaSqFt([
+    { type: 'door', width: 36, offset: 12, height: 80 },
+    { type: 'door', width: 36, offset: 36, height: 80 }
+  ], 8);
+  assert.ok(Math.abs(overlap - 33.33) < 0.02);
+  assert.notStrictEqual(overlap, 40);
   console.log('room-area-lib tests: ' + process.uptime().toFixed(3) + 's ok');
 }).catch(function (err) {
   console.error(err);

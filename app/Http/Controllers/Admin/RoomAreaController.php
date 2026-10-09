@@ -226,7 +226,8 @@ class RoomAreaController extends Controller
             'canvas.objects.*.hinge' => ['nullable', 'string', 'max:20'],
             'canvas.objects.*.height' => ['nullable', 'numeric'],
             'canvas.objects.*.sill_height' => ['nullable', 'numeric'],
-            'canvas.objects.*.casing_sides' => ['nullable', 'integer', 'min:0', 'max:2'],
+            'canvas.objects.*.casing_sides' => ['nullable', 'integer', 'min:0', 'max:4'],
+            'canvas.objects.*.door_face' => ['nullable', 'string', 'in:interior,exterior'],
             'canvas.objects.*.x' => ['nullable', 'numeric'],
             'canvas.objects.*.y' => ['nullable', 'numeric'],
             'canvas.objects.*.depth' => ['nullable', 'numeric'],
@@ -252,7 +253,7 @@ class RoomAreaController extends Controller
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
             'wall_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
             'ceiling_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
-            'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:50'],
+            'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
             'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
         ]);
@@ -306,7 +307,8 @@ class RoomAreaController extends Controller
             'canvas.objects.*.hinge' => ['nullable', 'string', 'max:20'],
             'canvas.objects.*.height' => ['nullable', 'numeric'],
             'canvas.objects.*.sill_height' => ['nullable', 'numeric'],
-            'canvas.objects.*.casing_sides' => ['nullable', 'integer', 'min:0', 'max:2'],
+            'canvas.objects.*.casing_sides' => ['nullable', 'integer', 'min:0', 'max:4'],
+            'canvas.objects.*.door_face' => ['nullable', 'string', 'in:interior,exterior'],
             'canvas.objects.*.x' => ['nullable', 'numeric'],
             'canvas.objects.*.y' => ['nullable', 'numeric'],
             'canvas.objects.*.depth' => ['nullable', 'numeric'],
@@ -332,7 +334,7 @@ class RoomAreaController extends Controller
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
             'wall_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
             'ceiling_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
-            'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:50'],
+            'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
             'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
         ]);
@@ -514,7 +516,7 @@ class RoomAreaController extends Controller
             'attach' => ['nullable'],
             'wall_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
             'ceiling_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
-            'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:50'],
+            'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
             'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
         ]);
@@ -567,6 +569,13 @@ class RoomAreaController extends Controller
             }
         }
 
+        $finish = [
+            'ceiling_height_ft' => isset($data['ceiling_height_ft']) ? (float) $data['ceiling_height_ft'] : null,
+            'flooring_waste_percent' => isset($data['flooring_waste_percent']) ? (float) $data['flooring_waste_percent'] : null,
+            'flooring_direction' => isset($data['flooring_direction']) ? (int) $data['flooring_direction'] : null,
+            'flooring_box_sqft' => isset($data['flooring_box_sqft']) ? (float) $data['flooring_box_sqft'] : null,
+        ];
+
         $pdf = Pdf::loadView('admin.utilities.room_area_pdf', [
             'title' => $title,
             'summary' => $data['summary'] ?? '',
@@ -576,6 +585,7 @@ class RoomAreaController extends Controller
             'photos' => $photoUris,
             'generatedAt' => now()->format('M j, Y g:i A'),
             'clientProjectName' => $room?->project?->clientProject?->name,
+            'finish' => $finish,
         ])
             ->setPaper('a4', 'portrait')
             ->setOption('isRemoteEnabled', true)
@@ -618,7 +628,8 @@ class RoomAreaController extends Controller
             'canvas.objects.*.hinge' => ['nullable', 'string', 'max:20'],
             'canvas.objects.*.height' => ['nullable', 'numeric'],
             'canvas.objects.*.sill_height' => ['nullable', 'numeric'],
-            'canvas.objects.*.casing_sides' => ['nullable', 'integer', 'min:0', 'max:2'],
+            'canvas.objects.*.casing_sides' => ['nullable', 'integer', 'min:0', 'max:4'],
+            'canvas.objects.*.door_face' => ['nullable', 'string', 'in:interior,exterior'],
             'canvas.objects.*.x' => ['nullable', 'numeric'],
             'canvas.objects.*.y' => ['nullable', 'numeric'],
             'canvas.objects.*.depth' => ['nullable', 'numeric'],

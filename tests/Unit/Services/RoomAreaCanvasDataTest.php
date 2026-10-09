@@ -629,8 +629,9 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertSame(3, $metrics['drywall_openings']);
         // 36" door + 36" opening = 6 lf; 48" window does not reduce baseboard.
         $this->assertSame(30.0, $metrics['baseboard_lf']);
-        // Door 36x80 and window 48x36 (explicit height) come out of wall SF; opening does not.
-        $this->assertEqualsWithDelta(256.0, $metrics['wall_area_sqft'], 0.01);
+        // Net wall area: ceiling-height walls minus door, window, and opening.
+        $this->assertEqualsWithDelta(232.0, $metrics['wall_area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(232.0, $metrics['net_wall_area_sqft'], 0.01);
     }
 
     public function test_wall_metrics_use_object_height_when_present(): void
@@ -643,7 +644,9 @@ class RoomAreaCanvasDataTest extends TestCase
 
         $doorArea = (36 / 12) * (84 / 12);
         $windowArea = (48 / 12) * (24 / 12);
-        $this->assertEqualsWithDelta(36.0 * 9.0 - $doorArea - $windowArea, $metrics['wall_area_sqft'], 0.01);
+        $openingArea = (36 / 12) * (9.0);
+        $this->assertEqualsWithDelta(36.0 * 9.0 - $doorArea - $windowArea - $openingArea, $metrics['wall_area_sqft'], 0.01);
+        $this->assertSame($metrics['net_wall_area_sqft'], $metrics['wall_area_sqft']);
         $this->assertSame(9.0, $metrics['wall_height_ft']);
     }
 

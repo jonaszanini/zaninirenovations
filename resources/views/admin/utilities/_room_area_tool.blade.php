@@ -908,11 +908,18 @@
                     <option value="right">Right</option>
                   </select>
                 </div>
+                <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--face" data-ra-object-door-face-wrap hidden>
+                  <label for="ra-object-door-face">Door</label>
+                  <select class="admin-input" id="ra-object-door-face" data-ra-object-door-face>
+                    <option value="interior">Interior</option>
+                    <option value="exterior">Exterior</option>
+                  </select>
+                </div>
                 <div class="admin-form-group util-ra-object-edit__field util-ra-object-edit__field--casing" data-ra-object-casing-wrap hidden>
                   <label for="ra-object-casing">Casing</label>
                   <select class="admin-input" id="ra-object-casing" data-ra-object-casing>
-                    <option value="2">2 sides</option>
-                    <option value="1">1 side</option>
+                    <option value="2">Both sides</option>
+                    <option value="1">One side</option>
                     <option value="0">None</option>
                   </select>
                 </div>
@@ -1102,7 +1109,7 @@
                 <strong><span data-ra-live-baseboard>—</span> <span data-ra-linear-unit>lf</span></strong>
               </div>
               <div class="util-ra-live-metrics__item">
-                <span class="util-ra-live-area__label" data-ra-wall-area-label>Wall SF</span>
+                <span class="util-ra-live-area__label" data-ra-wall-area-label>Net wall area</span>
                 <strong><span data-ra-live-wall-area>—</span></strong>
               </div>
               <div class="util-ra-live-metrics__item">
@@ -1140,7 +1147,7 @@
                 @include('admin.utilities._room_area_help_pop', [
                   'tipId' => 'finish',
                   'label' => 'About finish takeoffs',
-                  'text' => 'Ceiling defaults to wall height. Net wall area is each wall minus doors, windows, and openings. Boxes = floor × (1 + waste) ÷ coverage, rounded up. Interior doors default to casing on both sides.',
+                  'text' => 'Ceiling defaults to wall height. Net wall area is each wall at ceiling height minus doors, windows, and openings (overlaps count once). Boxes = floor × (1 + waste) ÷ coverage, rounded up. Interior doors: casing both sides. Exterior doors: one side. Windows default to 4 sides (2w+2h); use 3 if there is a stool. Cased openings can take casing too.',
                 ])
               </div>
               <div class="util-ra-finish__grid">
@@ -1162,7 +1169,7 @@
                 <div class="admin-form-group util-ra-live-area__height">
                   <label for="ra-floor-box">Box</label>
                   <input class="admin-input" type="text" id="ra-floor-box" inputmode="decimal" value="20" data-ra-floor-box>
-                  <span class="util-ra-live-area__height-unit">sf</span>
+                  <span class="util-ra-live-area__height-unit" data-ra-floor-box-unit>sf</span>
                 </div>
               </div>
               <div class="util-ra-finish__dir" role="group" aria-label="Flooring lay direction">

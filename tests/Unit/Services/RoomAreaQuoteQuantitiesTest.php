@@ -59,6 +59,8 @@ class RoomAreaQuoteQuantitiesTest extends TestCase
 
         $this->assertSame(80.0, $metrics['area_sqft']);
         $this->assertSame(30.0, $metrics['baseboard_lf']);
+        $this->assertSame(232.0, $metrics['wall_area_sqft']);
+        $this->assertSame(232.0, $metrics['net_wall_area_sqft']);
         $this->assertLessThan($metrics['perimeter_lf'] * $metrics['wall_height_ft'], $metrics['wall_area_sqft']);
 
         $baseboard = $this->mapper->line(RoomAreaQuoteQuantities::TRADE_BASEBOARD, $metrics, 0);

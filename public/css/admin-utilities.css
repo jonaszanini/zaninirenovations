@@ -3252,8 +3252,12 @@
   width: 5.5rem;
 }
 
+.util-ra-object-edit__field--face {
+  width: 6.25rem;
+}
+
 .util-ra-object-edit__field--casing {
-  width: 5.5rem;
+  width: 7.25rem;
 }
 
 .util-ra-object-edit__field .admin-input {
@@ -3330,6 +3334,7 @@
   .util-ra-object-edit__field--num,
   .util-ra-object-edit__field--swing,
   .util-ra-object-edit__field--hinge,
+  .util-ra-object-edit__field--face,
   .util-ra-object-edit__field--casing {
     width: auto;
   }
@@ -6048,9 +6053,14 @@ body:has(.util-ra--fullpage) {
     flex: 0 0 4.25rem;
   }
 
+  .util-ra--fullpage .util-ra-object-edit__field--face {
+    width: 6.25rem;
+    flex: 0 0 6.25rem;
+  }
+
   .util-ra--fullpage .util-ra-object-edit__field--casing {
-    width: 5.25rem;
-    flex: 0 0 5.25rem;
+    width: 7.25rem;
+    flex: 0 0 7.25rem;
   }
 
   .util-ra--fullpage .util-ra-object-edit__actions {

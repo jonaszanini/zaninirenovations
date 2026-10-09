@@ -28,7 +28,9 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
             ->assertSee('data-ra-live-boxes', false)
             ->assertSee('data-ra-live-casing', false)
             ->assertSee('data-ra-object-casing', false)
-            ->assertSee('2 sides')
+            ->assertSee('data-ra-object-door-face', false)
+            ->assertSee('Both sides')
+            ->assertSee('Interior')
             ->getContent();
 
         $this->assertStringContainsString('data-ra-help-pop="finish"', $html);
@@ -43,6 +45,11 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertNotFalse($js);
         $this->assertStringContainsString('function ceilingHeightFt()', $js);
         $this->assertStringContainsString('function perWallNetAreas(', $js);
+        $this->assertStringContainsString('RA.perWallNetAreas(', $js);
+        $this->assertStringContainsString('function finishSnapshot(', $js);
+        $this->assertStringContainsString('function applyFinishSnapshot(', $js);
+        $this->assertStringContainsString('parseWastePercent(', $js);
+        $this->assertStringContainsString('Net wall area', $js);
         $this->assertStringContainsString('function redrawFlooringDirection(', $js);
         $this->assertStringContainsString('RA.flooringBoxes(', $js);
         $this->assertStringContainsString('RA.totalCasingLf(', $js);
@@ -58,6 +65,9 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertStringContainsString('function netWallAreaSqFt(', $lib);
         $this->assertStringContainsString('function planUploadReason(', $lib);
         $this->assertStringContainsString('Wrong file type.', $lib);
+        $this->assertStringContainsString('function parseWastePercent(', $lib);
+        $this->assertStringContainsString('function perWallNetAreas(', $lib);
+        $this->assertStringContainsString('function isWrongFileTypeError(', $lib);
         $this->assertStringContainsString('The server had a problem.', $lib);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
@@ -111,7 +121,7 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
                     'width' => 48,
                     'offset' => 24,
                     'height' => 36,
-                    'casing_sides' => 1,
+                    'casing_sides' => 4,
                 ],
             ],
         ];
@@ -139,6 +149,7 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertSame(7, $metrics['flooring_boxes']);
         $this->assertSame(90, $metrics['flooring_direction']);
         $this->assertCount(4, $metrics['walls']);
+        $this->assertSame($metrics['net_wall_area_sqft'], $metrics['wall_area_sqft']);
         $this->assertGreaterThan(0, $metrics['net_wall_area_sqft']);
         $this->assertGreaterThan(0, $metrics['casing_lf']);
 
@@ -146,7 +157,7 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $expectedBoxes = $math->flooringBoxes(120, 10, 20);
         $this->assertSame($expectedBoxes, $metrics['flooring_boxes']);
         $this->assertEqualsWithDelta(
-            $math->casingLf(36, 80, 2) + $math->casingLf(48, 36, 1),
+            $math->casingLf(36, 80, 2, 'door') + $math->casingLf(48, 36, 4, 'window'),
             $metrics['casing_lf'],
             0.01
         );

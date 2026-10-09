@@ -496,13 +496,16 @@
   }
 
   function planUploadReason(err) {
-    var raw = err && err.message ? String(err.message) : '';
+    var raw = err && err.message ? String(err.message).trim() : '';
     var status = Number(err && err.status);
     if (status === 413 || /413/.test(raw) || /payload too large/i.test(raw) || /too large to upload/i.test(raw)) {
-      return 'That file is too large.';
+      return raw && !/payload too large/i.test(raw) && !/^413/.test(raw) ? raw : 'That file is too large.';
     }
-    if (status === 422 || /wrong type|must be an image|not a valid|unsupported|invalid file/i.test(raw)) {
-      return 'Wrong file type.';
+    if (status === 422 && raw) {
+      return raw;
+    }
+    if (/wrong type|must be an image|not a valid|unsupported|invalid file/i.test(raw)) {
+      return raw;
     }
     if (status >= 500 || /server error/i.test(raw)) {
       return 'The server had a problem.';
@@ -516,9 +519,23 @@
     return raw;
   }
 
+  function isWrongFileTypeError(err) {
+    var raw = err && err.message ? String(err.message) : '';
+    var status = Number(err && err.status);
+    if (status === 413 || /too large|payload too large|unlock layers/i.test(raw)) return false;
+    if (/must be an image|wrong (file )?type|mimes|jpeg|png|webp|unsupported|not a valid/i.test(raw)
+      && !/too large|10240|10 ?mb|kilobytes/i.test(raw)) {
+      return true;
+    }
+    return false;
+  }
+
   function planUploadErrorAfterRoomSaved(err) {
-    var base = 'Floor plan upload failed. The room itself was saved. Save again to retry.';
     var reason = planUploadReason(err);
+    if (isWrongFileTypeError(err)) {
+      return reason || 'Wrong file type. Use a JPEG, PNG, or WebP image.';
+    }
+    var base = 'Floor plan upload failed. The room itself was saved. Save again to retry.';
     return reason ? base + ' ' + reason : base;
   }
 
@@ -539,13 +556,18 @@
   }
 
   function friendlyPlanUploadError(err) {
-    var raw = err && err.message ? String(err.message) : '';
+    var raw = err && err.message ? String(err.message).trim() : '';
     var status = Number(err && err.status);
     if (status === 413 || /413/.test(raw) || /payload too large/i.test(raw) || /too large to upload/i.test(raw)) {
-      return 'That file is too large to upload.';
+      return raw && /too large/i.test(raw) && !/payload too large/i.test(raw)
+        ? raw
+        : 'That file is too large to upload.';
     }
-    if (status === 422 || /wrong type|must be an image|not a valid|unsupported|invalid file/i.test(raw)) {
-      return 'Wrong file type. Use a JPEG, PNG, or WebP image.';
+    if (status === 422 && raw) {
+      return raw;
+    }
+    if (isWrongFileTypeError(err)) {
+      return raw || 'Wrong file type. Use a JPEG, PNG, or WebP image.';
     }
     if (status >= 500 || /server error/i.test(raw)) {
       return 'Could not upload the floor plan. The server had a problem. Try again.';
@@ -564,10 +586,34 @@
     return Math.round(Math.max(0, isFinite(n) ? n : 0) * 100) / 100;
   }
 
+  function parseWastePercent(percent) {
+    if (percent == null) {
+      return { ok: true, value: DEFAULT_WASTE_PERCENT, error: null };
+    }
+    if (typeof percent === 'number') {
+      if (!isFinite(percent)) {
+        return { ok: false, value: DEFAULT_WASTE_PERCENT, error: 'Enter waste as a percent, like 10 or 15%.' };
+      }
+      if (percent < 0) {
+        return { ok: false, value: DEFAULT_WASTE_PERCENT, error: 'Waste must be between 0 and 100%.' };
+      }
+      return { ok: true, value: Math.round(Math.min(100, percent) * 100) / 100, error: null };
+    }
+    var raw = String(percent).trim();
+    if (!raw) return { ok: true, value: DEFAULT_WASTE_PERCENT, error: null };
+    raw = raw.replace(/\s+/g, '').replace(/%/g, '').replace(',', '.');
+    if (!raw || !/^[+-]?\d+(\.\d+)?$/.test(raw)) {
+      return { ok: false, value: DEFAULT_WASTE_PERCENT, error: 'Enter waste as a percent, like 10 or 15%.' };
+    }
+    var n = Number(raw);
+    if (!isFinite(n) || n < 0) {
+      return { ok: false, value: DEFAULT_WASTE_PERCENT, error: 'Waste must be between 0 and 100%.' };
+    }
+    return { ok: true, value: Math.round(Math.min(100, n) * 100) / 100, error: null };
+  }
+
   function normalizeWastePercent(percent) {
-    var n = Number(percent);
-    if (!isFinite(n)) n = DEFAULT_WASTE_PERCENT;
-    return Math.round(Math.max(0, Math.min(50, n)) * 100) / 100;
+    return parseWastePercent(percent).value;
   }
 
   function normalizeBoxSqFt(box) {
@@ -603,47 +649,198 @@
     var box = normalizeBoxSqFt(boxSqFt);
     if (area <= 0 || box < MIN_BOX_SQFT) return 0;
     var needed = area * (1 + (normalizeWastePercent(wastePercent) / 100));
-    return Math.ceil(needed / box - 1e-9);
+    return Math.ceil(needed / box);
   }
 
-  function casingLf(widthIn, heightIn, sides) {
+  function objectType(obj) {
+    return String(obj && obj.type != null ? obj.type : obj || '').toLowerCase().trim();
+  }
+
+  function normalizeDoorFace(face) {
+    return String(face || '').toLowerCase().trim() === 'exterior' ? 'exterior' : 'interior';
+  }
+
+  function casingLf(widthIn, heightIn, sides, type) {
     var w = Number(widthIn);
     var h = Number(heightIn);
+    var kind = objectType(type || 'door');
     var n = parseInt(sides, 10);
-    if (!isFinite(n)) n = 0;
+    if (!isFinite(n)) n = defaultCasingSides(kind);
+    if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0) return 0;
+    if (kind === 'window') {
+      if (n >= 4) return Math.round((2 * w + 2 * h) / INCHES_PER_FOOT * 100) / 100;
+      if (n === 3) return Math.round((w + (2 * h)) / INCHES_PER_FOOT * 100) / 100;
+      return 0;
+    }
     n = Math.max(0, Math.min(2, n));
-    if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0 || n <= 0) return 0;
+    if (n <= 0) return 0;
     return Math.round(n * (w + (2 * h)) / INCHES_PER_FOOT * 100) / 100;
   }
 
-  function defaultCasingSides(type) {
-    type = String(type || '').toLowerCase();
-    if (type === 'door') return 2;
-    if (type === 'window') return 1;
+  function defaultCasingSides(type, doorFace) {
+    type = objectType(type);
+    if (type === 'door') return normalizeDoorFace(doorFace) === 'exterior' ? 1 : 2;
+    if (type === 'window') return 4;
+    if (type === 'opening') return 2;
     return 0;
   }
 
   function casingSidesForObject(obj) {
-    if (obj && obj.casing_sides != null && isFinite(Number(obj.casing_sides))) {
-      return Math.max(0, Math.min(2, parseInt(obj.casing_sides, 10)));
+    var type = objectType(obj);
+    var raw = obj && obj.casing_sides;
+    if (raw == null || String(raw).trim() === '' || !isFinite(Number(raw))) {
+      return defaultCasingSides(type, obj && obj.door_face);
     }
-    return defaultCasingSides(obj && obj.type);
+    var n = parseInt(raw, 10);
+    if (!isFinite(n)) return defaultCasingSides(type, obj && obj.door_face);
+    var max = type === 'window' ? 4 : 2;
+    return Math.max(0, Math.min(max, n));
   }
 
   function objectHeightInches(obj, wallHeightFt) {
-    if (obj && obj.height != null && isFinite(obj.height) && obj.height > 0) return Number(obj.height);
-    if (obj && obj.type === 'window') return DEFAULT_WINDOW_HEIGHT_IN;
-    if (obj && obj.type === 'opening') return clampWallHeightFt(wallHeightFt) * INCHES_PER_FOOT;
-    return DEFAULT_DOOR_HEIGHT_IN;
+    var type = objectType(obj);
+    var ceilingIn = clampWallHeightFt(wallHeightFt) * INCHES_PER_FOOT;
+    var height;
+    if (obj && obj.height != null && isFinite(obj.height) && obj.height > 0) {
+      height = Number(obj.height);
+    } else if (type === 'window') {
+      height = DEFAULT_WINDOW_HEIGHT_IN;
+    } else if (type === 'opening') {
+      height = ceilingIn;
+    } else {
+      height = DEFAULT_DOOR_HEIGHT_IN;
+    }
+    if (ceilingIn > 0) height = Math.min(height, ceilingIn);
+    return Math.max(0, height);
+  }
+
+  function openingRect(obj, ceilingHeightFt) {
+    var type = objectType(obj);
+    var width = Number(obj && obj.width) || 0;
+    var height = objectHeightInches(obj, ceilingHeightFt);
+    if (width <= 0 || height <= 0) return null;
+    var offset = Math.max(0, Number(obj && obj.offset) || 0);
+    var sill = 0;
+    if (type === 'window' && obj && obj.sill_height != null && isFinite(obj.sill_height)) {
+      sill = Math.max(0, Number(obj.sill_height));
+    }
+    var ceilingIn = clampWallHeightFt(ceilingHeightFt) * INCHES_PER_FOOT;
+    var y0 = sill;
+    var y1 = sill + height;
+    if (ceilingIn > 0) {
+      y0 = Math.min(y0, ceilingIn);
+      y1 = Math.min(y1, ceilingIn);
+    }
+    if (y1 <= y0) return null;
+    return { x0: offset, x1: offset + width, y0: y0, y1: y1 };
+  }
+
+  function unionRectAreaInches(rects) {
+    if (!rects || !rects.length) return 0;
+    var xs = [];
+    rects.forEach(function (r) {
+      xs.push(r.x0, r.x1);
+    });
+    xs = xs.filter(function (v, i, all) { return all.indexOf(v) === i; }).sort(function (a, b) { return a - b; });
+    var area = 0;
+    for (var i = 0; i < xs.length - 1; i++) {
+      var x0 = xs[i];
+      var x1 = xs[i + 1];
+      var dx = x1 - x0;
+      if (dx <= 0) continue;
+      var spans = [];
+      rects.forEach(function (r) {
+        if (r.x0 < x1 && r.x1 > x0) spans.push([r.y0, r.y1]);
+      });
+      if (!spans.length) continue;
+      spans.sort(function (a, b) { return a[0] - b[0]; });
+      var cur0 = spans[0][0];
+      var cur1 = spans[0][1];
+      var cover = 0;
+      for (var j = 1; j < spans.length; j++) {
+        if (spans[j][0] <= cur1) {
+          cur1 = Math.max(cur1, spans[j][1]);
+        } else {
+          cover += cur1 - cur0;
+          cur0 = spans[j][0];
+          cur1 = spans[j][1];
+        }
+      }
+      cover += cur1 - cur0;
+      area += dx * cover;
+    }
+    return area;
+  }
+
+  function unionOpeningAreaSqFt(objects, ceilingHeightFt) {
+    var rects = [];
+    (objects || []).forEach(function (obj) {
+      var type = objectType(obj);
+      if (type !== 'door' && type !== 'window' && type !== 'opening') return;
+      var rect = openingRect(obj, ceilingHeightFt);
+      if (rect) rects.push(rect);
+    });
+    return Math.round(unionRectAreaInches(rects) / 144 * 100) / 100;
+  }
+
+  function wallId(polyId, start, end) {
+    return 'wall_' + polyId + '_' + start + '_' + end;
+  }
+
+  function perWallNetAreas(canvas, pixelsPerFoot, ceilingHeightFt) {
+    var ppf = Number(pixelsPerFoot) || 0;
+    var height = clampWallHeightFt(ceilingHeightFt);
+    if (ppf <= 0) return [];
+    var objectsByWall = {};
+    ((canvas && canvas.objects) || []).forEach(function (obj) {
+      if (!obj) return;
+      var type = objectType(obj);
+      if (type !== 'door' && type !== 'window' && type !== 'opening') return;
+      var id = obj.wall_id ? String(obj.wall_id) : '';
+      if (!id) return;
+      if (!objectsByWall[id]) objectsByWall[id] = [];
+      objectsByWall[id].push(obj);
+    });
+    var walls = [];
+    var index = 0;
+    ((canvas && canvas.groups) || []).forEach(function (group) {
+      if (!group) return;
+      (group.polygons || []).forEach(function (polygon) {
+        if (!polygon) return;
+        var verts = polygon.vertices || [];
+        if (verts.length < 3) return;
+        var polyId = polygon.id || 'p';
+        for (var i = 0; i < verts.length; i++) {
+          var j = (i + 1) % verts.length;
+          var a = verts[i];
+          var b = verts[j];
+          if (!a || !b || a.x == null || b.x == null) continue;
+          var id = wallId(polyId, i, j);
+          var lengthFt = Math.hypot(b.x - a.x, b.y - a.y) / ppf;
+          var deduct = unionOpeningAreaSqFt(objectsByWall[id] || [], height);
+          index += 1;
+          walls.push({
+            id: id,
+            index: index,
+            label: 'W' + index,
+            length_lf: Math.round(lengthFt * 100) / 100,
+            opening_area_sqft: deduct,
+            net_area_sqft: netWallAreaSqFt(lengthFt, height, deduct)
+          });
+        }
+      });
+    });
+    return walls;
   }
 
   function totalCasingLf(objects, wallHeightFt) {
     var total = 0;
     (objects || []).forEach(function (obj) {
-      if (!obj || (obj.type !== 'door' && obj.type !== 'window')) return;
+      var type = objectType(obj);
+      if (type !== 'door' && type !== 'window' && type !== 'opening') return;
       var width = Number(obj.width) || 0;
       if (width <= 0) return;
-      total += casingLf(width, objectHeightInches(obj, wallHeightFt), casingSidesForObject(obj));
+      total += casingLf(width, objectHeightInches(obj, wallHeightFt), casingSidesForObject(obj), type);
     });
     return Math.round(total * 100) / 100;
   }
@@ -759,18 +956,29 @@
     friendlyPlanUploadError: friendlyPlanUploadError,
     planUploadReason: planUploadReason,
     planUploadErrorAfterRoomSaved: planUploadErrorAfterRoomSaved,
+    isWrongFileTypeError: isWrongFileTypeError,
     ceilingHeightFt: ceilingHeightFt,
     ceilingAreaSqFt: ceilingAreaSqFt,
+    parseWastePercent: parseWastePercent,
     normalizeWastePercent: normalizeWastePercent,
     normalizeBoxSqFt: normalizeBoxSqFt,
     normalizeDirection: normalizeDirection,
     openingAreaSqFt: openingAreaSqFt,
+    unionOpeningAreaSqFt: unionOpeningAreaSqFt,
+    perWallNetAreas: perWallNetAreas,
     netWallAreaSqFt: netWallAreaSqFt,
     flooringBoxes: flooringBoxes,
+    flooringWithWasteSqFt: function (area, waste) {
+      var n = Math.max(0, Number(area) || 0);
+      if (n <= 0) return 0;
+      return Math.round(n * (1 + (normalizeWastePercent(waste) / 100)) * 100) / 100;
+    },
     casingLf: casingLf,
     defaultCasingSides: defaultCasingSides,
     casingSidesForObject: casingSidesForObject,
     objectHeightInches: objectHeightInches,
+    objectType: objectType,
+    normalizeDoorFace: normalizeDoorFace,
     totalCasingLf: totalCasingLf
   };
 }));
