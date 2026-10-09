@@ -4,14 +4,18 @@ namespace App\Models\Concerns;
 
 /**
  * Client PDF commute/debris fold is versioned so saved quotes keep their
- * lines, HST and total. 1 = legacy (main: extras may land on the first
- * taxed line). 2 = Labour or combined materials+labour only.
+ * lines, HST and total.
+ * 1 = legacy (extras may land on the first taxed line).
+ * 2 = #60 fold (live since ~01:20; frozen byte-for-byte).
+ * 3 = current (labour-category / calculator HST / override footer).
  */
 trait HasPdfFoldVersion
 {
     public const PDF_FOLD_VERSION_LEGACY = 1;
 
-    public const PDF_FOLD_VERSION_CURRENT = 2;
+    public const PDF_FOLD_VERSION_V2 = 2;
+
+    public const PDF_FOLD_VERSION_CURRENT = 3;
 
     public function initializeHasPdfFoldVersion(): void
     {
@@ -39,7 +43,7 @@ trait HasPdfFoldVersion
     /**
      * Same resolution preview and save use. An explicit version wins; otherwise
      * a linked calculator quote's version is copied; otherwise persisted rows
-     * stay on v1 and new unsaved rows preview as v2.
+     * stay on v1 and new unsaved rows preview as v3.
      */
     public function resolvedPdfFoldVersion(): int
     {
@@ -61,9 +65,23 @@ trait HasPdfFoldVersion
         return $this->resolvedPdfFoldVersion() === self::PDF_FOLD_VERSION_CURRENT;
     }
 
+    public function usesPdfFoldV2(): bool
+    {
+        return $this->resolvedPdfFoldVersion() === self::PDF_FOLD_VERSION_V2;
+    }
+
+    /**
+     * v2 and v3 share leftover hst_amount emission. 0 / unknown versions
+     * follow #60 and stay on legacy.
+     */
+    public function usesNonLegacyPdfFold(): bool
+    {
+        return $this->usesPdfFoldV2() || $this->usesCurrentPdfFold();
+    }
+
     public function usesLegacyPdfFold(): bool
     {
-        return ! $this->usesCurrentPdfFold();
+        return ! $this->usesNonLegacyPdfFold();
     }
 
     protected function sourcePdfFoldVersion(): ?int

@@ -537,7 +537,7 @@ class StandardQuotationPdfLineItemsTest extends TestCase
 
             $cpq = new \App\Models\ClientProjectQuotation([
                 'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'items' => $items,
             ]);
 
@@ -547,7 +547,14 @@ class StandardQuotationPdfLineItemsTest extends TestCase
 
             $this->assertEqualsWithDelta($editorGrand, $cpq->pdfGrandTotal(), 0.01, $mode);
             $this->assertEqualsWithDelta(1678.00 + 50.00, $editorGrand, 0.01, $mode);
+            $this->assertEquals(65.00, $cpq->pdfHst(), $mode);
+            $this->assertEquals($cpq->editorHst(), $cpq->pdfHst(), $mode);
             $this->assertFalse((bool) preg_grep('/Commute|Debris/i', $descriptions), $mode);
+            foreach ($cpq->pdfLineItems() as $row) {
+                if (($row['description'] ?? '') === 'Labour') {
+                    $this->assertFalse((bool) ($row['apply_hst'] ?? false), $mode);
+                }
+            }
         }
     }
 
@@ -677,7 +684,7 @@ JS;
                 ];
             }
             $sq = new StandardQuotation([
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'materials' => $materials,
                 'labour_hourly_rate' => 0,
                 'labour_mode' => 'hours',
@@ -694,7 +701,7 @@ JS;
             }
             $cpq = new \App\Models\ClientProjectQuotation([
                 'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'items' => $sqLines,
             ]);
 
@@ -864,7 +871,7 @@ JS;
         foreach ($cases as $i => $case) {
             $jobs = $case['jobs'] ?? null;
             $attrs = [
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'include_labour_hst' => true,
                 'include_building' => ((float) ($case['buildingPct'] ?? 0)) > 0,
                 'building_labor_percent' => $case['buildingPct'] ?? 0,
@@ -914,7 +921,7 @@ JS;
             }
             $cpq = new \App\Models\ClientProjectQuotation([
                 'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
-                'pdf_fold_version' => 2,
+                'pdf_fold_version' => 3,
                 'items' => $items,
             ]);
             $this->assertEquals($jsOut[$i]['grand'], $cpq->pdfGrandTotal(), 'grand case '.$i);
@@ -999,10 +1006,10 @@ JS;
         $this->assertTrue($mutantLabourFired, 'Need an HST-included labour mutant that drifts');
     }
 
-    public function test_v2_multi_job_assigns_hst_remainder_when_last_job_has_no_labour(): void
+    public function test_v3_multi_job_assigns_hst_remainder_when_last_job_has_no_labour(): void
     {
         $sq = new StandardQuotation([
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'works' => [
                 [
                     'title' => 'Job one',
@@ -1079,7 +1086,7 @@ JS;
 
         $cpq = new \App\Models\ClientProjectQuotation([
             'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
-            'pdf_fold_version' => 2,
+            'pdf_fold_version' => 3,
             'items' => $lines,
         ]);
         $this->assertEquals($cpq->editorGrandTotal(), $cpq->pdfGrandTotal());

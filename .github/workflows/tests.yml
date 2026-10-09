@@ -195,6 +195,9 @@ jobs:
           php artisan test tests/Unit/Services/QuotationWorkDescriptionAiServiceTest.php
           php artisan test tests/Unit/Models/ClientProjectQuotationPdfLineItemsTest.php
           php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV2Test.php
+          php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV3Test.php
+          php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV2IdentityTest.php
+          php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV2SqLinkedIdentityTest.php
           php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV1IdentityTest.php
           php artisan test tests/Feature/Quotations/PdfFoldVersionLinkTest.php
           php artisan test tests/Unit/Models/StandardQuotationPdfLineItemsTest.php
@@ -217,3 +220,31 @@ jobs:
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
           php artisan test tests/Feature/Admin/RoomAreaBatch1PageTest.php
           php artisan test tests/Unit/Services/RoomAreaTemplatesTest.php
+          php artisan test tests/Unit/Models/BlogPostListHelpersTest.php
+          php artisan test tests/Feature/Admin/BlogPostsIndexLayoutTest.php
+          php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
+          php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
+
+      - name: Blog posts live layout geometry
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: zanini_blog_geometry
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          APP_URL: http://127.0.0.1:8000
+          GEOMETRY_LIVE: '1'
+        run: |
+          php -r "(new PDO('mysql:host=127.0.0.1', 'root', 'root'))->exec('CREATE DATABASE IF NOT EXISTS zanini_blog_geometry');"
+          php artisan migrate --force
+          php artisan db:seed --class=BlogPostsGeometrySeeder --force
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8000/admin/login >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/admin/login >/dev/null
+          node tests/Feature/Admin/blog-posts-geometry.js

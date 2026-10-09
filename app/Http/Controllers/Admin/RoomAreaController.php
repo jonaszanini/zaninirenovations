@@ -8,6 +8,7 @@ use App\Models\RoomAreaPhoto;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Services\RoomAreaCanvasData;
+use App\Services\RoomAreaFinishMath;
 use App\Services\RoomAreaLayoutQuoteService;
 use App\Services\RoomAreaPhotoStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -225,6 +226,8 @@ class RoomAreaController extends Controller
             'canvas.objects.*.hinge' => ['nullable', 'string', 'max:20'],
             'canvas.objects.*.height' => ['nullable', 'numeric'],
             'canvas.objects.*.sill_height' => ['nullable', 'numeric'],
+            'canvas.objects.*.casing_sides' => ['nullable', 'integer', 'min:0', 'max:4'],
+            'canvas.objects.*.door_face' => ['nullable', 'string', 'in:interior,exterior'],
             'canvas.objects.*.x' => ['nullable', 'numeric'],
             'canvas.objects.*.y' => ['nullable', 'numeric'],
             'canvas.objects.*.depth' => ['nullable', 'numeric'],
@@ -249,6 +252,10 @@ class RoomAreaController extends Controller
             'canvas_height' => ['nullable', 'integer', 'min:1', 'max:20000'],
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
             'wall_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
+            'ceiling_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
+            'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
+            'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
         ]);
 
         $scale = (float) ($data['scale_pixels_per_foot'] ?? $room_area_project->scale_pixels_per_foot ?? 0);
@@ -270,7 +277,7 @@ class RoomAreaController extends Controller
                 : null,
             'area_sqft' => $validation['area_sqft'],
             'wall_height_ft' => $canvasData->normalizeWallHeight($data['wall_height_ft'] ?? null),
-        ]);
+        ] + $this->finishAttributes($data, $canvasData));
 
         $this->syncProjectCanvasDimensions($room_area_project, $data);
         $this->syncProjectWallThickness($room_area_project, $normalized);
@@ -300,6 +307,8 @@ class RoomAreaController extends Controller
             'canvas.objects.*.hinge' => ['nullable', 'string', 'max:20'],
             'canvas.objects.*.height' => ['nullable', 'numeric'],
             'canvas.objects.*.sill_height' => ['nullable', 'numeric'],
+            'canvas.objects.*.casing_sides' => ['nullable', 'integer', 'min:0', 'max:4'],
+            'canvas.objects.*.door_face' => ['nullable', 'string', 'in:interior,exterior'],
             'canvas.objects.*.x' => ['nullable', 'numeric'],
             'canvas.objects.*.y' => ['nullable', 'numeric'],
             'canvas.objects.*.depth' => ['nullable', 'numeric'],
@@ -324,6 +333,10 @@ class RoomAreaController extends Controller
             'canvas_height' => ['nullable', 'integer', 'min:1', 'max:20000'],
             'scale_pixels_per_foot' => ['nullable', 'numeric', 'gt:0'],
             'wall_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
+            'ceiling_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
+            'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
+            'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
         ]);
 
         $scale = (float) ($data['scale_pixels_per_foot'] ?? $room_area_room->scale_pixels_per_foot ?? $room_area_room->project->scale_pixels_per_foot ?? 0);
@@ -372,7 +385,7 @@ class RoomAreaController extends Controller
             'wall_height_ft' => array_key_exists('wall_height_ft', $data)
                 ? $canvasData->normalizeWallHeight($data['wall_height_ft'])
                 : $room_area_room->wall_height_ft,
-        ]);
+        ] + $this->finishAttributes($data, $canvasData, $room_area_room));
 
         $this->syncProjectCanvasDimensions($room_area_room->project, $data);
         $this->syncProjectWallThickness($room_area_room->project, $normalized);
@@ -502,6 +515,10 @@ class RoomAreaController extends Controller
             'room_id' => ['nullable', 'integer', 'exists:room_area_rooms,id'],
             'attach' => ['nullable'],
             'wall_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
+            'ceiling_height_ft' => ['nullable', 'numeric', 'min:1', 'max:20'],
+            'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
+            'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
         ]);
 
         $diagram = '';
@@ -552,6 +569,13 @@ class RoomAreaController extends Controller
             }
         }
 
+        $finish = [
+            'ceiling_height_ft' => isset($data['ceiling_height_ft']) ? (float) $data['ceiling_height_ft'] : null,
+            'flooring_waste_percent' => isset($data['flooring_waste_percent']) ? (float) $data['flooring_waste_percent'] : null,
+            'flooring_direction' => isset($data['flooring_direction']) ? (int) $data['flooring_direction'] : null,
+            'flooring_box_sqft' => isset($data['flooring_box_sqft']) ? (float) $data['flooring_box_sqft'] : null,
+        ];
+
         $pdf = Pdf::loadView('admin.utilities.room_area_pdf', [
             'title' => $title,
             'summary' => $data['summary'] ?? '',
@@ -561,6 +585,7 @@ class RoomAreaController extends Controller
             'photos' => $photoUris,
             'generatedAt' => now()->format('M j, Y g:i A'),
             'clientProjectName' => $room?->project?->clientProject?->name,
+            'finish' => $finish,
         ])
             ->setPaper('a4', 'portrait')
             ->setOption('isRemoteEnabled', true)
@@ -603,6 +628,8 @@ class RoomAreaController extends Controller
             'canvas.objects.*.hinge' => ['nullable', 'string', 'max:20'],
             'canvas.objects.*.height' => ['nullable', 'numeric'],
             'canvas.objects.*.sill_height' => ['nullable', 'numeric'],
+            'canvas.objects.*.casing_sides' => ['nullable', 'integer', 'min:0', 'max:4'],
+            'canvas.objects.*.door_face' => ['nullable', 'string', 'in:interior,exterior'],
             'canvas.objects.*.x' => ['nullable', 'numeric'],
             'canvas.objects.*.y' => ['nullable', 'numeric'],
             'canvas.objects.*.depth' => ['nullable', 'numeric'],
@@ -719,7 +746,7 @@ class RoomAreaController extends Controller
             ? $canvasData->groupSummaries($canvas, $scale)
             : [];
         $metrics = $scale > 0
-            ? $canvasData->layoutMetrics($canvas, $scale, $room->resolvedWallHeightFt())
+            ? $canvasData->layoutMetrics($canvas, $scale, $room->resolvedWallHeightFt(), $room->finishSettings())
             : $canvasData->emptyLayoutMetrics($room->resolvedWallHeightFt());
 
         return [
@@ -733,6 +760,10 @@ class RoomAreaController extends Controller
             'canvas_height' => $room->canvas_height,
             'scale_pixels_per_foot' => $room->scale_pixels_per_foot,
             'wall_height_ft' => $room->resolvedWallHeightFt(),
+            'ceiling_height_ft' => $room->resolvedCeilingHeightFt(),
+            'flooring_waste_percent' => $metrics['flooring_waste_percent'],
+            'flooring_direction' => $metrics['flooring_direction'],
+            'flooring_box_sqft' => $metrics['flooring_box_sqft'],
             'background_url' => $room->background_path
                 ? route('admin.utilities.room-area.rooms.background', $room)
                 : null,
@@ -763,6 +794,40 @@ class RoomAreaController extends Controller
             'caption' => $photo->caption,
             'width' => $photo->width,
             'height' => $photo->height,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{ceiling_height_ft: float, flooring_waste_percent: float, flooring_direction: int, flooring_box_sqft: float}
+     */
+    private function finishAttributes(array $data, RoomAreaCanvasData $canvasData, ?RoomAreaRoom $existing = null): array
+    {
+        $math = app(RoomAreaFinishMath::class);
+        $wall = array_key_exists('wall_height_ft', $data)
+            ? $canvasData->normalizeWallHeight($data['wall_height_ft'])
+            : ($existing?->resolvedWallHeightFt() ?? $canvasData->normalizeWallHeight(null));
+
+        return [
+            'ceiling_height_ft' => $math->ceilingHeightFt(
+                array_key_exists('ceiling_height_ft', $data) ? $data['ceiling_height_ft'] : $existing?->ceiling_height_ft,
+                $wall
+            ),
+            'flooring_waste_percent' => $math->normalizeWastePercent(
+                array_key_exists('flooring_waste_percent', $data)
+                    ? $data['flooring_waste_percent']
+                    : ($existing?->flooring_waste_percent ?? RoomAreaFinishMath::DEFAULT_WASTE_PERCENT)
+            ),
+            'flooring_direction' => $math->normalizeDirection(
+                array_key_exists('flooring_direction', $data)
+                    ? $data['flooring_direction']
+                    : ($existing?->flooring_direction ?? RoomAreaFinishMath::DIRECTION_LENGTH)
+            ),
+            'flooring_box_sqft' => $math->normalizeBoxSqFt(
+                array_key_exists('flooring_box_sqft', $data)
+                    ? $data['flooring_box_sqft']
+                    : ($existing?->flooring_box_sqft ?? RoomAreaFinishMath::DEFAULT_BOX_SQFT)
+            ),
         ];
     }
 

@@ -193,7 +193,7 @@
 
     @if (count($readOnlyDropdownItems) > 0)
       <div class="admin-actions-dropdown">
-        <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions menu">
+        <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions menu" aria-expanded="false" aria-haspopup="menu">
           <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
         </button>
         <div class="admin-actions-dropdown__menu">
@@ -521,7 +521,7 @@
     {{-- Mobile actions dropdown --}}
     @if (count($invoiceDropdownItems) > 0)
       <div class="admin-actions-dropdown">
-        <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions menu">
+        <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions menu" aria-expanded="false" aria-haspopup="menu">
           <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
         </button>
         <div class="admin-actions-dropdown__menu">

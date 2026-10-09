@@ -342,7 +342,7 @@ a.cp-table-street .fa {
 }
 .cp-table-project-name {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--admin-heading);
   line-height: 1.35;
   white-space: nowrap;
 }

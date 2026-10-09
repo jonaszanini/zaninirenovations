@@ -304,7 +304,8 @@ class StandardQuotationCalculator
         float $contingencyPercent = 10.0,
         bool $includeLabourHst = true,
         bool $includeBuilding = false,
-        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT
+        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT,
+        bool $assignSurchargeRemainderToLabourJobs = false
     ): array {
         if ($works === []) {
             $works = [[
@@ -373,13 +374,25 @@ class StandardQuotationCalculator
         $buildingSurcharge = QuotationBuildingLabor::surchargeAmount($labourTotal, $buildingInputs);
         if ($buildingSurcharge > 0) {
             $baseLabour = $labourTotal;
+            $labourJobIndexes = [];
+            foreach ($jobResults as $idx => $jobRow) {
+                if ((float) ($jobRow['labour_total'] ?? 0) > 0) {
+                    $labourJobIndexes[] = $idx;
+                }
+            }
+            $remainderIdx = $assignSurchargeRemainderToLabourJobs && $labourJobIndexes !== []
+                ? (int) end($labourJobIndexes)
+                : array_key_last($jobResults);
             $allocated = 0.0;
-            $lastIdx = array_key_last($jobResults);
             foreach ($jobResults as $idx => &$jobRow) {
                 $jobLab = (float) ($jobRow['labour_total'] ?? 0);
-                $share = $idx === $lastIdx
+                if ($assignSurchargeRemainderToLabourJobs && $jobLab <= 0 && $idx !== $remainderIdx) {
+                    $jobRow['building_labor_surcharge'] = 0.0;
+                    continue;
+                }
+                $share = $idx === $remainderIdx
                     ? round($buildingSurcharge - $allocated, 2)
-                    : round($buildingSurcharge * ($jobLab / $baseLabour), 2);
+                    : ($baseLabour > 0 ? round($buildingSurcharge * ($jobLab / $baseLabour), 2) : 0.0);
                 $allocated += $share;
                 $jobRow['building_labor_surcharge'] = $share;
                 $jobRow['labour_total'] = round($jobLab + $share, 2);
