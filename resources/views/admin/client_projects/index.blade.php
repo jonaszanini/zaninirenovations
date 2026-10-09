@@ -12,7 +12,6 @@
   @endphp
 
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Manage every project from quote request to completion. Status changes and emails are logged automatically.</p>
     <a href="{{ route('admin.client-projects.create') }}" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> New project
     </a>
@@ -36,9 +35,6 @@
         </a>
       </div>
     </div>
-    <p class="cp-projects-scope-hint">
-      <i class="fa fa-filter"></i> By default Completed and Rejected are hidden. Use All projects or the Status filter below to surface them.
-    </p>
   </div>
 
   <form method="get" action="{{ route('admin.client-projects.index') }}" class="cp-filters">
