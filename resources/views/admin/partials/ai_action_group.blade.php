@@ -19,6 +19,7 @@
   ])
   {{ $extra ?? '' }}
   @if ($showHistory)
-    <span class="admin-ai-text-history-mount" data-history-mount@if (filled($historyKey)) data-history-key="{{ $historyKey }}"@endif></span>
+    <span class="admin-ai-text-history-mount" data-history-mount
+      @if (filled($historyKey)) data-history-key="{{ $historyKey }}" @endif></span>
   @endif
 </div>
