@@ -6,6 +6,7 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectInvoice;
 use App\Models\FlooringSettings;
 use App\Models\FlooringType;
+use App\Models\PavingQuotation;
 use App\Models\User;
 use App\Support\CadMoney;
 use Illuminate\Support\Facades\Hash;
@@ -97,6 +98,41 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             '/parsed\.negative[\s\S]{0,160}input\.value\s*=\s*[\'"][\'"]/',
             $js
         );
+
+        $paving = file_get_contents(resource_path('views/admin/quotations/paving/create.blade.php'));
+        $this->assertIsString($paving);
+        $this->assertDoesNotMatchRegularExpression(
+            '/function\s+runPreview\s*\(\s*\)\s*\{\s*normalizeLabourRateFields\s*\(/',
+            $paving
+        );
+        $this->assertMatchesRegularExpression(
+            '/if\s*\(\s*labourRateFieldIsFocused\s*\(\s*el\s*\)\s*\)\s*return/',
+            $paving
+        );
+        $this->assertStringContainsString("el.addEventListener('blur'", $paving);
+
+        $fence = file_get_contents(resource_path('views/admin/quotations/fence/create.blade.php'));
+        $this->assertIsString($fence);
+        $this->assertStringContainsString('document.activeElement !== gatesInput', $fence);
+
+        $quoteCreates = glob(resource_path('views/admin/quotations/*/create.blade.php')) ?: [];
+        foreach ($quoteCreates as $path) {
+            if (basename(dirname($path)) === 'paving') {
+                continue;
+            }
+            $text = file_get_contents($path);
+            $this->assertIsString($text);
+            $this->assertStringNotContainsString(
+                'normalizeLabourRate',
+                $text,
+                $path.' must not rewrite labour rates during preview'
+            );
+        }
+
+        $harness = file_get_contents(base_path('tests/Feature/Admin/money-direct-entry.js'));
+        $this->assertIsString($harness);
+        $this->assertStringNotContainsString('PREVIEW_SETTLE_MS', $harness);
+        $this->assertStringContainsString('PREVIEW_FIRE_MS', $harness);
     }
 
     public function test_flooring_add_type_saves_4_75_and_keeps_existing(): void
@@ -281,6 +317,40 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertTrue((bool) ($report['hourlyMaterialsNegative']['afterKindChange']['allowNegative'] ?? false));
         $this->assertFalse((bool) ($report['hourlyMaterialsNegative']['afterKindChange']['invalid'] ?? true));
         $this->assertStringContainsString('-', (string) ($report['hourlyMaterialsNegative']['afterKindChange']['value'] ?? ''));
+
+        $this->assertIsArray($report['labourRateKeypress'] ?? null);
+        $this->assertSame(0, (int) ($report['labourRateKeypress']['failed'] ?? 1));
+        $labourFields = $report['labourRateKeypress']['fields'] ?? [];
+        $this->assertCount(3, $labourFields);
+        $expectedLabour = ['65', '35', '120.50'];
+        foreach ($labourFields as $i => $field) {
+            $this->assertSame($expectedLabour[$i], $field['typed'] ?? '');
+            $this->assertSame($expectedLabour[$i], $field['focusedValue'] ?? '');
+            $this->assertSame($expectedLabour[$i], $field['posted'] ?? '');
+            $this->assertNotSame('6.00', $field['focusedValue'] ?? '');
+            $this->assertNotSame('6.01', $field['focusedValue'] ?? '');
+            $this->assertNotSame('3.00', $field['focusedValue'] ?? '');
+            $this->assertNotSame('1.00', $field['focusedValue'] ?? '');
+            foreach ($field['snapshots'] ?? [] as $snap) {
+                $this->assertSame($snap['typedSoFar'] ?? null, $snap['value'] ?? '', ($field['name'] ?? 'labour').' rewritten mid-type');
+                $this->assertTrue((bool) ($snap['focused'] ?? false), ($field['name'] ?? 'labour').' lost focus mid-type');
+            }
+        }
+        $labourPosted = (string) ($report['labourRateKeypress']['posted'] ?? '');
+        $this->assertTrue(
+            str_contains($labourPosted, '120.50'),
+            'paving draft must post owner 120.50'
+        );
+        $this->assertTrue(
+            str_contains($labourPosted, '35.00') || str_contains($labourPosted, 'helper_hourly_rate=35'),
+            'paving draft must post helper 35'
+        );
+        $savedQuote = PavingQuotation::query()->latest('id')->first();
+        if ($savedQuote) {
+            $this->assertTrue((bool) $savedQuote->is_draft);
+            $this->assertEqualsWithDelta(120.50, (float) ($savedQuote->inputs['owner_hourly_rate'] ?? 0), 0.0001);
+            $this->assertEqualsWithDelta(35.00, (float) ($savedQuote->inputs['helper_hourly_rate'] ?? 0), 0.0001);
+        }
         $negStandard->refresh();
         $negHourly->refresh();
         $this->assertNegativeLineTotals($negStandard, $negHourly);

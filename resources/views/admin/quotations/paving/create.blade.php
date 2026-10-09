@@ -527,9 +527,15 @@
       var form = document.getElementById('pq-main-form');
       var intent = document.getElementById('pq-save-intent');
 
+      function labourRateFieldIsFocused(el) {
+        return typeof document !== 'undefined' && document.activeElement === el;
+      }
+
       function normalizeLabourRateField(id) {
         var el = document.getElementById(id);
         if (!el) return;
+        // Never rewrite a rate the user is focused on or still typing.
+        if (labourRateFieldIsFocused(el)) return;
         var raw = (el.value || '').trim().replace(/,/g, '');
         var n = raw === '' ? 0 : (window.cpMoneyMask ? window.cpMoneyMask.parse(raw) : parseFloat(raw));
         if (!isFinite(n) || n < 0) n = 0;
@@ -541,6 +547,14 @@
         normalizeLabourRateField('pq-owner');
       }
 
+      // Preview must not format rates. Only blur (unfocused field) and submit.
+      ['pq-helper', 'pq-owner'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('blur', function () {
+          normalizeLabourRateField(id);
+        });
+      });
       form.addEventListener('submit', normalizeLabourRateFields);
       document.getElementById('pq-btn-draft').addEventListener('click', function () {
         intent.value = 'draft';
@@ -1116,7 +1130,6 @@
       }
 
       function runPreview() {
-        normalizeLabourRateFields();
         var missing = collectMissingPreviewInputs();
         if (missing.length) {
           renderMissingSummary(missing);

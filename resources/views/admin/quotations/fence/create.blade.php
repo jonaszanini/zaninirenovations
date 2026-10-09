@@ -1146,7 +1146,10 @@
     var gateCount = parseInt(gatesInput.value, 10) || 0;
     if (gateSides > gateCount) {
       gateCount = gateSides;
-      gatesInput.value = String(gateCount);
+      // Preview must not refill Gates while the user is typing ("" → "2" → "23").
+      if (typeof document === 'undefined' || document.activeElement !== gatesInput) {
+        gatesInput.value = String(gateCount);
+      }
     }
     var payload = {
       sides: sides,

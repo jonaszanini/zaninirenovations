@@ -16,10 +16,15 @@ const invoiceUrl = process.env.MONEY_INVOICE_URL || '';
 const negStandardUrl = process.env.MONEY_NEG_STANDARD_URL || '';
 const negHourlyUrl = process.env.MONEY_NEG_HOURLY_URL || '';
 const outPath = process.env.MONEY_OUT || path.join(process.cwd(), 'storage/app/money-direct-entry.json');
+const PREVIEW_FIRE_MS = 280;
 
 function parseMoney(value) {
   const n = parseFloat(String(value || '').replace(/,/g, ''));
   return isFinite(n) ? n : 0;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 (async () => {
@@ -336,7 +341,154 @@ function parseMoney(value) {
     return { before, afterUrl: page.url(), posted };
   }
 
-  const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null, negativeResave: null };
+  async function revealPavingLabourRates() {
+    await revealMoneyFields();
+    await page.evaluate(() => {
+      const include = document.getElementById('pq-helper-include');
+      if (include && !include.checked) {
+        include.click();
+      }
+    });
+    await page.waitForFunction(() => {
+      const el = document.getElementById('pq-helper');
+      if (!el) return false;
+      const wrap = document.getElementById('pq-helper-wrap');
+      if (wrap && wrap.hidden) return false;
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width >= 2 && rect.height >= 2;
+    }, { timeout: 10000 });
+  }
+
+  async function typeIntoFocusedSlowly(handle, typed) {
+    await handle.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    await handle.click({ clickCount: 3 });
+    await page.keyboard.press('Backspace');
+    const snapshots = [];
+    let expected = '';
+    for (const ch of typed) {
+      expected += ch;
+      await page.keyboard.type(ch);
+      // Longer than the 220ms preview debounce so a focused rewrite
+      // lands between keystrokes (6 → 6.00, leftover 5 → 6.01).
+      await sleep(PREVIEW_FIRE_MS);
+      const state = await page.evaluate((el) => ({
+        value: el.value || '',
+        focused: document.activeElement === el,
+      }), handle);
+      snapshots.push({ typedSoFar: expected, value: state.value, focused: state.focused });
+    }
+    const posted = await page.evaluate((el) => {
+      if (!el.form) return null;
+      const value = new FormData(el.form).get(el.name);
+      return value == null ? null : String(value);
+    }, handle);
+    const name = await page.evaluate((el) => el.name || el.id || '', handle);
+    const focusedValue = snapshots.length ? snapshots[snapshots.length - 1].value : '';
+    return {
+      name,
+      typed,
+      focusedValue,
+      posted,
+      snapshots,
+      ok: snapshots.every((s) => s.value === s.typedSoFar && s.focused) && posted === typed,
+    };
+  }
+
+  async function labourRateKeypressSave() {
+    await go(base + '/admin/quotations/paving/create');
+    await revealPavingLabourRates();
+    const owner = await page.$('#pq-owner');
+    const helper = await page.$('#pq-helper');
+    if (!owner || !helper) {
+      throw new Error('Paving labour rate fields missing');
+    }
+    const fields = [
+      Object.assign({ selector: '#pq-owner' }, await typeIntoFocusedSlowly(owner, '65')),
+      Object.assign({ selector: '#pq-helper' }, await typeIntoFocusedSlowly(helper, '35')),
+      Object.assign({ selector: '#pq-owner' }, await typeIntoFocusedSlowly(owner, '120.50')),
+    ];
+    await page.evaluate(() => {
+      const ownerEl = document.getElementById('pq-owner');
+      const helperEl = document.getElementById('pq-helper');
+      if (ownerEl) ownerEl.blur();
+      if (helperEl) helperEl.blur();
+      const area = document.querySelector('input[name="stone_entries[0][area_sq_ft]"]');
+      if (area && !(area.value || '').trim()) {
+        area.value = '168';
+        area.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+    let posted = '';
+    const onRequest = (req) => {
+      const method = String(req.method() || '').toUpperCase();
+      if (method === 'POST' || method === 'PUT') {
+        posted = req.postData() || posted;
+      }
+    };
+    page.on('request', onRequest);
+    try {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => null),
+        page.click('#pq-btn-draft'),
+      ]);
+    } finally {
+      page.off('request', onRequest);
+    }
+    return { fields, afterUrl: page.url(), posted, failed: fields.filter((f) => !f.ok).length };
+  }
+
+  async function fenceGateCountKeypress() {
+    await go(base + '/admin/quotations/fence/create');
+    await page.waitForSelector('#fq-gates');
+    await page.click('#fq-add-side');
+    const lengths = await page.$$('.fq-side-length');
+    if (lengths.length < 2) {
+      throw new Error('Fence needs two runs for the gate-count race');
+    }
+    for (const handle of lengths) {
+      await handle.click({ clickCount: 3 });
+      await page.keyboard.type('20');
+    }
+    await page.evaluate(() => {
+      const gates = document.getElementById('fq-gates');
+      if (gates) {
+        gates.value = '2';
+        gates.dispatchEvent(new Event('input', { bubbles: true }));
+        gates.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    const gates = await page.$$('.fq-side-gate-here');
+    for (const handle of gates) {
+      const checked = await page.evaluate((el) => el.checked, handle);
+      if (!checked) {
+        await handle.click();
+      }
+    }
+    await sleep(PREVIEW_FIRE_MS);
+    const gatesHandle = await page.$('#fq-gates');
+    await gatesHandle.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    await gatesHandle.click({ clickCount: 3 });
+    await page.keyboard.press('Backspace');
+    await sleep(PREVIEW_FIRE_MS);
+    const afterClear = await page.evaluate((el) => ({
+      value: el.value || '',
+      focused: document.activeElement === el,
+    }), gatesHandle);
+    await page.keyboard.type('3');
+    await sleep(PREVIEW_FIRE_MS);
+    const afterType = await page.evaluate((el) => ({
+      value: el.value || '',
+      focused: document.activeElement === el,
+    }), gatesHandle);
+    return {
+      afterClear,
+      afterType,
+      ok: afterClear.value === '' && afterClear.focused && afterType.value === '3' && afterType.focused,
+    };
+  }
+
+  const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null, negativeResave: null, labourRateKeypress: null, fenceGateKeypress: null };
   try {
     await login();
     report.invoicePreview = await invoiceDiscountPreview();
@@ -383,6 +535,8 @@ function parseMoney(value) {
       };
     });
     report.hourlyMaterialsNegative = hourlyMaterialsNegative;
+    report.labourRateKeypress = await labourRateKeypressSave();
+    report.fenceGateKeypress = await fenceGateCountKeypress();
     for (const url of pages) {
       await go(base + url);
       if (page.url().includes('/admin/login')) {
@@ -547,6 +701,25 @@ function parseMoney(value) {
     const afterKind = mats.afterKindChange || {};
     if (!afterKind.allowNegative || afterKind.invalid || String(afterKind.value || '').indexOf('-') === -1) {
       throw new Error('Changing materials to labour must clear the stale minus error: ' + JSON.stringify(afterKind));
+    }
+    const labour = report.labourRateKeypress || {};
+    if (!labour.fields || labour.fields.length !== 3 || labour.failed > 0) {
+      throw new Error('Labour rate keypress mismatch: ' + JSON.stringify(labour));
+    }
+    const expectedLabour = ['65', '35', '120.50'];
+    labour.fields.forEach((field, i) => {
+      if (field.typed !== expectedLabour[i] || field.focusedValue !== expectedLabour[i] || field.posted !== expectedLabour[i]) {
+        throw new Error('Labour rate ' + field.name + ' did not keep typed ' + expectedLabour[i] + ': ' + JSON.stringify(field));
+      }
+    });
+    const posted = String(labour.posted || '');
+    if (!posted.includes('owner_hourly_rate=120.50') && !posted.includes('owner_hourly_rate=120.50'.replace('.', '%2E'))) {
+      if (!posted.includes('120.50')) {
+        throw new Error('Paving draft did not post owner 120.50: ' + posted.slice(0, 400));
+      }
+    }
+    if (!posted.includes('35.00') && !posted.includes('helper_hourly_rate=35')) {
+      throw new Error('Paving draft did not post helper 35: ' + posted.slice(0, 400));
     }
     await browser.close();
     process.exit(0);
