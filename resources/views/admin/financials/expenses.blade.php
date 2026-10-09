@@ -129,8 +129,26 @@
     </form>
   </div>
 
-  <div class="admin-card cp-filters">
-    <form action="{{ route('admin.financials.expenses') }}" method="get" class="cp-filters-form" style="display:contents;">
+  @php
+    $activeFilterCount = \App\Support\AdminListFilters::activeCount([
+        'search' => $search ?? '',
+        'date_from' => $dateFrom ?? '',
+        'date_to' => $dateTo ?? '',
+        'has_receipt' => $hasReceipt ?? '',
+    ], [], [
+        'dateRange' => ['date_from', 'date_to'],
+        'minLength' => ['search' => 2],
+        'allowed' => [
+            'has_receipt' => ['yes', 'no'],
+        ],
+    ]);
+  @endphp
+  @component('admin.partials.filters_accordion', [
+    'id' => 'admin-filters-expenses',
+    'storageKey' => 'admin-filters:expenses',
+    'activeCount' => $activeFilterCount,
+  ])
+    <form action="{{ route('admin.financials.expenses') }}" method="get" class="cp-filters">
       <div class="cp-filter cp-filter--search">
         <label for="gf-search">Search</label>
         <input type="text" id="gf-search" name="search" class="admin-input" placeholder="Description, project…" value="{{ $search }}" minlength="2">
@@ -156,7 +174,7 @@
         <a href="{{ route('admin.financials.expenses') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
       </div>
     </form>
-  </div>
+  @endcomponent
 
   <div class="gf-totals">
     <div class="gf-total-tile">

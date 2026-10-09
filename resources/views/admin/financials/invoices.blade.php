@@ -50,8 +50,26 @@
 @endpush
 
 @section('content')
-  <div class="admin-card cp-filters">
-    <form action="{{ route('admin.financials.invoices') }}" method="get" class="cp-filters-form" style="display:contents;">
+  @php
+    $activeFilterCount = \App\Support\AdminListFilters::activeCount([
+        'status' => $status ?? '',
+        'search' => $search ?? '',
+        'date_from' => $dateFrom ?? '',
+        'date_to' => $dateTo ?? '',
+    ], [], [
+        'dateRange' => ['date_from', 'date_to'],
+        'minLength' => ['search' => 2],
+        'allowed' => [
+            'status' => ['draft', 'sent', 'paid'],
+        ],
+    ]);
+  @endphp
+  @component('admin.partials.filters_accordion', [
+    'id' => 'admin-filters-invoices',
+    'storageKey' => 'admin-filters:invoices',
+    'activeCount' => $activeFilterCount,
+  ])
+    <form action="{{ route('admin.financials.invoices') }}" method="get" class="cp-filters">
       <div class="cp-filter cp-filter--select">
         <label for="gf-status">Status</label>
         <select id="gf-status" name="status" class="admin-input">
@@ -78,7 +96,7 @@
         <a href="{{ route('admin.financials.invoices') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
       </div>
     </form>
-  </div>
+  @endcomponent
 
   <div class="gf-totals">
     <div class="gf-total-tile">

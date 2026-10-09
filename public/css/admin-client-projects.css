@@ -157,17 +157,6 @@ a.cp-projects-scope-chip.cp-projects-scope-chip--active {
   color: var(--admin-primary);
   font-weight: 600;
 }
-.cp-projects-scope-hint {
-  margin: 10px 0 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--admin-muted);
-}
-.cp-projects-scope-hint .fa {
-  margin-right: 6px;
-  color: #94a3b8;
-}
-
 /* =================================================================
    Shared: badges, subtle labels, table helpers
    ================================================================= */

@@ -1773,6 +1773,104 @@ details[open] > summary.admin-chevron-summary::after {
   }
 }
 
+/* =================================================================
+   List-page Filters accordion (shared)
+   Slim header row; filter fields live in the panel. Collapsed by default.
+   ================================================================= */
+.admin-filters-accordion.admin-card {
+  padding: 0;
+  margin-bottom: 12px;
+  overflow: visible;
+}
+.admin-filters-accordion > summary.admin-filters-accordion__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--admin-control-height);
+  padding: 0 12px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  color: var(--admin-heading);
+  background: var(--admin-surface);
+  -webkit-tap-highlight-color: transparent;
+}
+.admin-filters-accordion > summary.admin-filters-accordion__summary::-webkit-details-marker {
+  display: none;
+}
+.admin-filters-accordion > summary.admin-filters-accordion__summary::marker {
+  content: '';
+}
+.admin-filters-accordion > summary.admin-filters-accordion__summary:hover {
+  background: var(--admin-surface-hover);
+}
+.admin-filters-accordion > summary.admin-filters-accordion__summary:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: -2px;
+}
+.admin-filters-accordion__icon {
+  flex-shrink: 0;
+  width: 1.1rem;
+  text-align: center;
+  color: var(--admin-primary);
+}
+.admin-filters-accordion__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--admin-heading);
+  letter-spacing: 0.01em;
+}
+.admin-filters-accordion__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  white-space: nowrap;
+}
+.admin-filters-accordion__panel {
+  padding: 12px;
+  border-top: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+}
+.admin-filters-accordion__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--admin-muted);
+}
+.admin-filters-accordion .cp-filters,
+.admin-filters-accordion .bp-list-filters {
+  margin-bottom: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+.admin-filters-accordion .cp-filter,
+.admin-filters-accordion .cp-filter--date,
+.admin-filters-accordion .cp-filter--search,
+.admin-filters-accordion .cp-filter--select {
+  min-width: 0;
+}
+.admin-filters-accordion input[type="date"] {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+@media (min-width: 768px) {
+  .admin-filters-accordion > summary.admin-filters-accordion__summary {
+    padding: 0 14px;
+  }
+  .admin-filters-accordion__panel {
+    padding: 12px 14px 14px;
+  }
+}
+
 .admin-body select:not([multiple]):not([size]),
 .admin-body select:not([multiple])[size="1"],
 .admin-select {

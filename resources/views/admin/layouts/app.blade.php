@@ -387,6 +387,7 @@
   <script src="{{ asset('js/admin-avif-to-webp.js') }}?v={{ @filemtime(public_path('js/admin-avif-to-webp.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-dialog.js') }}?v={{ @filemtime(public_path('js/admin-dialog.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-search-select.js') }}?v={{ @filemtime(public_path('js/admin-search-select.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-filters-accordion.js') }}?v={{ @filemtime(public_path('js/admin-filters-accordion.js')) ?: time() }}"></script>
   <script>
     (function () {
       var app = document.getElementById('admin-app');

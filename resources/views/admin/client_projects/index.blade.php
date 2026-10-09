@@ -9,6 +9,14 @@
         ['list' => $listMode],
     );
     $isOngoingList = (($filters['list'] ?? 'ongoing') === 'ongoing');
+    $activeFilterCount = \App\Support\AdminListFilters::activeCount([
+        'q' => $filters['q'] ?? '',
+        'status' => $filters['status'] ?? '',
+        'from' => $filters['from'] ?? '',
+        'to' => $filters['to'] ?? '',
+    ], [], [
+        'dateRange' => ['from', 'to'],
+    ]);
   @endphp
 
   <div class="cp-projects-scope-bar">
@@ -36,42 +44,49 @@
     </div>
   </div>
 
-  <form method="get" action="{{ route('admin.client-projects.index') }}" class="cp-filters">
-    <input type="hidden" name="list" value="{{ $filters['list'] ?? 'ongoing' }}">
-    <div class="cp-filter">
-      <label for="cp-filter-q">Search</label>
-      <input class="admin-input" type="text" id="cp-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project #, name, or client">
-    </div>
-    <div class="cp-filter">
-      <label for="cp-filter-status">Status</label>
-      <select class="admin-input" id="cp-filter-status" name="status">
-        <option value="">All statuses</option>
-        @foreach ($statusLabels as $key => $statusLabel)
-          <option value="{{ $key }}" @selected($filters['status'] === $key)>{{ $statusLabel }}</option>
-        @endforeach
-      </select>
-    </div>
-    <div class="cp-filter">
-      <label for="cp-filter-from">From</label>
-      <input class="admin-input" type="date" id="cp-filter-from" name="from" value="{{ $filters['from'] }}">
-    </div>
-    <div class="cp-filter">
-      <label for="cp-filter-to">To</label>
-      <input class="admin-input" type="date" id="cp-filter-to" name="to" value="{{ $filters['to'] }}">
-    </div>
-    <div class="cp-filter">
-      <label for="cp-filter-per-page">Show</label>
-      <select class="admin-input" id="cp-filter-per-page" name="per_page" aria-label="Rows per page" onchange="this.form.submit()">
-        @foreach ($perPageOptions as $option)
-          <option value="{{ $option }}" @selected((int) $perPage === $option)>{{ $option }}</option>
-        @endforeach
-      </select>
-    </div>
-    <div class="cp-filter cp-filter--actions">
-      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
-      <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
-    </div>
-  </form>
+  @component('admin.partials.filters_accordion', [
+    'id' => 'admin-filters-client-projects',
+    'storageKey' => 'admin-filters:client-projects',
+    'activeCount' => $activeFilterCount,
+    'hint' => 'By default Completed and Rejected are hidden. Use All projects or the Status filter below to surface them.',
+  ])
+    <form method="get" action="{{ route('admin.client-projects.index') }}" class="cp-filters">
+      <input type="hidden" name="list" value="{{ $filters['list'] ?? 'ongoing' }}">
+      <div class="cp-filter">
+        <label for="cp-filter-q">Search</label>
+        <input class="admin-input" type="text" id="cp-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project #, name, or client">
+      </div>
+      <div class="cp-filter">
+        <label for="cp-filter-status">Status</label>
+        <select class="admin-input" id="cp-filter-status" name="status">
+          <option value="">All statuses</option>
+          @foreach ($statusLabels as $key => $statusLabel)
+            <option value="{{ $key }}" @selected($filters['status'] === $key)>{{ $statusLabel }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="cp-filter">
+        <label for="cp-filter-from">From</label>
+        <input class="admin-input" type="date" id="cp-filter-from" name="from" value="{{ $filters['from'] }}">
+      </div>
+      <div class="cp-filter">
+        <label for="cp-filter-to">To</label>
+        <input class="admin-input" type="date" id="cp-filter-to" name="to" value="{{ $filters['to'] }}">
+      </div>
+      <div class="cp-filter">
+        <label for="cp-filter-per-page">Show</label>
+        <select class="admin-input" id="cp-filter-per-page" name="per_page" aria-label="Rows per page" onchange="this.form.submit()">
+          @foreach ($perPageOptions as $option)
+            <option value="{{ $option }}" @selected((int) $perPage === $option)>{{ $option }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="cp-filter cp-filter--actions">
+        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
+        <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
+      </div>
+    </form>
+  @endcomponent
 
   @php
     $quickStatusKeys = [

@@ -18,25 +18,37 @@
     </div>
   </div>
 
-  <form method="get" action="{{ route('admin.portfolio.index') }}" class="cp-filters cp-filters--3col portfolio-admin-filters">
-    <div class="cp-filter">
-      <label for="portfolio-filter-q">Search</label>
-      <input class="admin-input" type="search" id="portfolio-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project title or description">
-    </div>
-    <div class="cp-filter">
-      <label for="portfolio-filter-category">Category</label>
-      <select class="admin-input" id="portfolio-filter-category" name="category">
-        <option value="">All categories</option>
-        @foreach ($categories as $cat)
-          <option value="{{ $cat->slug }}" @selected($filters['category'] === $cat->slug)>{{ $cat->name }}</option>
-        @endforeach
-      </select>
-    </div>
-    <div class="cp-filter cp-filter--actions">
-      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
-      <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
-    </div>
-  </form>
+  @php
+    $activeFilterCount = \App\Support\AdminListFilters::activeCount([
+        'q' => $filters['q'] ?? '',
+        'category' => $filters['category'] ?? '',
+    ]);
+  @endphp
+  @component('admin.partials.filters_accordion', [
+    'id' => 'admin-filters-portfolio',
+    'storageKey' => 'admin-filters:portfolio',
+    'activeCount' => $activeFilterCount,
+  ])
+    <form method="get" action="{{ route('admin.portfolio.index') }}" class="cp-filters cp-filters--3col portfolio-admin-filters">
+      <div class="cp-filter">
+        <label for="portfolio-filter-q">Search</label>
+        <input class="admin-input" type="search" id="portfolio-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project title or description">
+      </div>
+      <div class="cp-filter">
+        <label for="portfolio-filter-category">Category</label>
+        <select class="admin-input" id="portfolio-filter-category" name="category">
+          <option value="">All categories</option>
+          @foreach ($categories as $cat)
+            <option value="{{ $cat->slug }}" @selected($filters['category'] === $cat->slug)>{{ $cat->name }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="cp-filter cp-filter--actions">
+        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
+        <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
+      </div>
+    </form>
+  @endcomponent
 
   @if ($projects->isEmpty())
     <div class="admin-card">

@@ -65,42 +65,56 @@
     </p>
   </div>
 
-  <form method="get" action="{{ route('admin.communications.index') }}" class="cp-filters cp-filters--5col">
-    <div class="cp-filter">
-      <label for="comm-filter-q">Search</label>
-      <input class="admin-input" type="text" id="comm-filter-q" name="q" value="{{ $filters['q'] }}"
-             placeholder="Client, project, recipient, subject…">
-    </div>
-    <div class="cp-filter">
-      <label for="comm-filter-channel">Channel</label>
-      <select class="admin-input" id="comm-filter-channel" name="channel">
-        <option value="">All channels</option>
-        <option value="email" @selected($filters['channel'] === 'email')>Email</option>
-        <option value="sms" @selected($filters['channel'] === 'sms')>SMS</option>
-      </select>
-    </div>
-    <div class="cp-filter">
-      <label for="comm-filter-reason">Reason</label>
-      <select class="admin-input" id="comm-filter-reason" name="reason">
-        <option value="">All reasons</option>
-        @foreach ($reasonOptions as $key => $label)
-          <option value="{{ $key }}" @selected($filters['reason'] === $key)>{{ $label }}</option>
-        @endforeach
-      </select>
-    </div>
-    <div class="cp-filter">
-      <label for="comm-filter-direction">Audience</label>
-      <select class="admin-input" id="comm-filter-direction" name="direction">
-        <option value="">All</option>
-        <option value="to_client" @selected($filters['direction'] === 'to_client')>To client</option>
-        <option value="to_admin" @selected($filters['direction'] === 'to_admin')>To admin (internal)</option>
-      </select>
-    </div>
-    <div class="cp-filter cp-filter--actions">
-      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
-      <a href="{{ route('admin.communications.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
-    </div>
-  </form>
+  @php
+    $activeFilterCount = \App\Support\AdminListFilters::activeCount([
+        'q' => $filters['q'] ?? '',
+        'channel' => $filters['channel'] ?? '',
+        'reason' => $filters['reason'] ?? '',
+        'direction' => $filters['direction'] ?? '',
+    ]);
+  @endphp
+  @component('admin.partials.filters_accordion', [
+    'id' => 'admin-filters-communications',
+    'storageKey' => 'admin-filters:communications',
+    'activeCount' => $activeFilterCount,
+  ])
+    <form method="get" action="{{ route('admin.communications.index') }}" class="cp-filters cp-filters--5col">
+      <div class="cp-filter">
+        <label for="comm-filter-q">Search</label>
+        <input class="admin-input" type="text" id="comm-filter-q" name="q" value="{{ $filters['q'] }}"
+               placeholder="Client, project, recipient, subject…">
+      </div>
+      <div class="cp-filter">
+        <label for="comm-filter-channel">Channel</label>
+        <select class="admin-input" id="comm-filter-channel" name="channel">
+          <option value="">All channels</option>
+          <option value="email" @selected($filters['channel'] === 'email')>Email</option>
+          <option value="sms" @selected($filters['channel'] === 'sms')>SMS</option>
+        </select>
+      </div>
+      <div class="cp-filter">
+        <label for="comm-filter-reason">Reason</label>
+        <select class="admin-input" id="comm-filter-reason" name="reason">
+          <option value="">All reasons</option>
+          @foreach ($reasonOptions as $key => $label)
+            <option value="{{ $key }}" @selected($filters['reason'] === $key)>{{ $label }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="cp-filter">
+        <label for="comm-filter-direction">Audience</label>
+        <select class="admin-input" id="comm-filter-direction" name="direction">
+          <option value="">All</option>
+          <option value="to_client" @selected($filters['direction'] === 'to_client')>To client</option>
+          <option value="to_admin" @selected($filters['direction'] === 'to_admin')>To admin (internal)</option>
+        </select>
+      </div>
+      <div class="cp-filter cp-filter--actions">
+        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
+        <a href="{{ route('admin.communications.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
+      </div>
+    </form>
+  @endcomponent
 
   @if ($logs->isEmpty())
     <div class="admin-card">

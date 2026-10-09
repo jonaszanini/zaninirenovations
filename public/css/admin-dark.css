@@ -1870,6 +1870,10 @@ html.admin-dark .bp-list-filters {
   background: var(--admin-surface-hover);
   border-color: var(--admin-border);
 }
+html.admin-dark .admin-filters-accordion .bp-list-filters {
+  background: transparent;
+  border: none;
+}
 html.admin-dark .bp-list-tab {
   background: var(--admin-surface);
   border-color: var(--admin-border);
@@ -2530,10 +2534,6 @@ html.admin-dark .cp-projects-quick-status-btn {
 
 html.admin-dark .br-step-nav__status,
 html.admin-dark .admin-form-help {
-  color: var(--admin-muted);
-}
-
-html.admin-dark .cp-projects-scope-hint {
   color: var(--admin-muted);
 }
 
