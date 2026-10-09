@@ -631,13 +631,21 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString("'tipLabel' => 'Level of finish'", $drywall);
 
         $elec = file_get_contents(resource_path('views/admin/quotations/basement/_electrical_fields.blade.php'));
-        $this->assertStringNotContainsString("'tipLabel' => 'New outlets'", $elec);
-        $this->assertStringNotContainsString("'tipLabel' => 'Switches'", $elec);
+        $this->assertStringContainsString("'tipLabel' => 'New outlets'", $elec);
+        $this->assertStringContainsString("'tipLabel' => 'Switches'", $elec);
         $this->assertStringContainsString("'tipLabel' => 'Ceiling lights'", $elec);
         $this->assertStringContainsString("\$brInfo['outlet_qty']", $elec);
+        $this->assertStringContainsString("\$brInfo['switch_qty']", $elec);
         $this->assertStringContainsString('Bathroom spots', $drywall);
         $this->assertStringContainsString("'tipLabel' => 'Basement ceiling lighting'", $elec);
         $this->assertStringContainsString("'tipLabel' => 'Smoke / CO'", $elec);
+        $this->assertStringContainsString("'info' => \$brInfo['include_bath_fixture']", $drywall);
+        $this->assertStringContainsString("'info' => \$brInfo['include_bath_spot']", $drywall);
+        $this->assertStringContainsString("'tipLabel' => 'Electrical scope'", $drywall);
+        $this->assertStringContainsString("'tipLabel' => 'Plumbing scope'", $drywall);
+        $this->assertStringNotContainsString('label="Electrical scope"', $elec);
+        $plumb = file_get_contents(resource_path('views/admin/quotations/basement/_plumbing_fields.blade.php'));
+        $this->assertStringNotContainsString('label="Plumbing scope"', $plumb);
 
         $shed = file_get_contents(resource_path('views/admin/quotations/shed/_wizard_sections.blade.php'));
         $this->assertStringNotContainsString("'tipLabel' => 'Wall height (ft)'", $shed);

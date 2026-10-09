@@ -37,6 +37,10 @@ assert.match(darkCss, /html\.admin-dark \.admin-form-group \.admin-label-with-ti
 assert.match(darkCss, /html\.admin-dark \.admin-form-group \.admin-label-with-tip__end\s*>\s*label\.cp-required/);
 assert.match(cpCss, /\.br-layout--create \.br-acc__summary \.admin-info-tip[\s\S]{0,160}pointer-events:\s*auto/);
 assert.match(cpCss, /\.tm-chip-row\s*>\s*\.admin-checkbox-row/);
+assert.match(cpCss, /\.br-bath-light-row\s*\{[^}]*grid-template-columns:\s*1fr/);
+assert.match(cpCss, /@media \(min-width:\s*1100px\)[\s\S]*\.br-bath-light-row[\s\S]*minmax\(0,\s*1fr\)\s+minmax\(96px,\s*140px\)/);
+assert.match(cpCss, /@media \(min-width:\s*1100px\)[\s\S]*\.br-tile-row__main[\s\S]*max-content minmax\(8\.5rem/);
+assert.match(cpCss, /@media \(min-width:\s*700px\)\s*\{\s*\.br-bath-light-grid[\s\S]{0,80}1fr 1fr/);
 assert.match(source, /function glueLastTextNode/);
 assert.match(source, /function wrapHeadingCopy/);
 assert.match(source, /function wrapElementAndTip/);
@@ -455,6 +459,104 @@ function fixtureHtml() {
         <span id="t-imp" class="admin-info-tip__bubble" role="tooltip">Write a rough description first.</span>
       </span>
     </span>
+    <div id="step-rail-chrome">
+      <aside id="step-rail-sidebar" hidden></aside>
+      <div class="br-shell" id="step-rail-shell">
+        <nav class="br-progress" aria-hidden="true">
+          <span class="br-progress__item">1 Bathroom</span>
+          <span class="br-progress__item">2 Electrical</span>
+          <span class="br-progress__item">3 Plumbing</span>
+        </nav>
+        <div class="br-main">
+          <div class="br-bath-lighting">
+            <div class="br-bath-light-grid">
+              <div class="br-bath-light-row">
+                <span class="admin-label-with-tip admin-checkbox-row">
+                  <label class="admin-checkbox" for="br-bath-include-fixture-rail">
+                    <input type="checkbox" class="admin-checkbox__input" id="br-bath-include-fixture-rail" checked>
+                    <span class="admin-checkbox__mark"></span><span class="admin-checkbox__text">Light fixture</span>
+                  </label>
+                  <span class="admin-info-tip-wrap">
+                    <button type="button" class="admin-info-tip" aria-label="About Light fixture" aria-expanded="false" aria-controls="t-fix-rail">i</button>
+                    <span id="t-fix-rail" class="admin-info-tip__bubble" role="tooltip">Bathroom ceiling fixture.</span>
+                  </span>
+                </span>
+                <div class="admin-form-group">
+                  <label for="br-bath-fixture-qty-rail">How many</label>
+                  <input class="admin-input" id="br-bath-fixture-qty-rail" value="1">
+                </div>
+              </div>
+              <div class="br-bath-light-row" id="spot-rail-row">
+                <span class="admin-label-with-tip admin-checkbox-row" id="spot-rail-check">
+                  <label class="admin-checkbox" for="br-bath-include-spot-rail">
+                    <input type="checkbox" class="admin-checkbox__input" id="br-bath-include-spot-rail" checked>
+                    <span class="admin-checkbox__mark"></span><span class="admin-checkbox__text">Spot light</span>
+                  </label>
+                  <span class="admin-info-tip-wrap">
+                    <button type="button" class="admin-info-tip" aria-label="About Spot light" aria-expanded="false" aria-controls="t-spot-rail">i</button>
+                    <span id="t-spot-rail" class="admin-info-tip__bubble" role="tooltip">Recessed pot / spot.</span>
+                  </span>
+                </span>
+                <div class="admin-form-group">
+                  <label for="br-bath-spot-qty-rail">How many</label>
+                  <input class="admin-input" id="br-bath-spot-qty-rail" type="number" value="2">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="br-tile-row" id="tile-rail-row">
+            <div class="br-tile-row__main">
+              <div class="admin-form-group br-tile-row__sqft">
+                <label for="br-tile-rail">Square feet</label>
+                <div class="br-tile-row__sqft-controls">
+                  <div class="br-lw__sqft">
+                    <input type="number" class="admin-input" id="br-tile-rail" value="40">
+                  </div>
+                  <div class="br-lw-segment" role="radiogroup" aria-label="Square feet entry">
+                    <label class="br-lw-segment__item"><input type="radio" checked><span>Total sq ft</span></label>
+                    <label class="br-lw-segment__item"><input type="radio"><span>Length × width</span></label>
+                  </div>
+                </div>
+              </div>
+              <div class="admin-form-group br-tile-row__finish">
+                <label>Finish</label>
+                <div class="br-lw-segment" role="radiogroup">
+                  <label class="br-lw-segment__item"><input type="radio" checked><span>Tile</span></label>
+                  <label class="br-lw-segment__item"><input type="radio"><span>Vinyl</span></label>
+                </div>
+              </div>
+              <div class="admin-form-group br-tile-row__name">
+                <label for="br-tile-label-rail">Area name</label>
+                <input class="admin-input" id="br-tile-label-rail" value="Floor">
+              </div>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm br-tile-row__remove" aria-label="Remove tile area">×</button>
+            </div>
+          </div>
+          <div class="br-qty-grid" id="qty-align-row">
+            <div class="admin-form-group" id="qty-outlets-group">
+              <span class="admin-label-with-tip" id="qty-outlets-row">
+                <label for="qty-outlets">New outlets</label>
+                <span class="admin-info-tip-wrap">
+                  <button type="button" class="admin-info-tip" aria-label="About New outlets" aria-expanded="false" aria-controls="t-qty-out">i</button>
+                  <span id="t-qty-out" class="admin-info-tip__bubble" role="tooltip">Typical bathroom: 1 at the sink.</span>
+                </span>
+              </span>
+              <input class="admin-input" id="qty-outlets" value="1">
+            </div>
+            <div class="admin-form-group" id="qty-switches-group">
+              <span class="admin-label-with-tip" id="qty-switches-row">
+                <label for="qty-switches">Switches</label>
+                <span class="admin-info-tip-wrap">
+                  <button type="button" class="admin-info-tip" aria-label="About Switches" aria-expanded="false" aria-controls="t-qty-sw">i</button>
+                  <span id="t-qty-sw" class="admin-info-tip__bubble" role="tooltip">Typical bathroom: 1 for the light.</span>
+                </span>
+              </span>
+              <input class="admin-input" id="qty-switches" value="2">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="tm-chip-row" id="tm-chip-row">
       <span class="admin-label-with-tip admin-checkbox-row" id="tm-client-all-row">
         <label class="admin-checkbox" for="tm-client-all">
@@ -1243,6 +1345,29 @@ async function puppeteerClick() {
               height: size,
             };
           }
+          function rectsOverlap(a, b) {
+            return a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
+          }
+          const tipInputOverlaps = [];
+          document.querySelectorAll('#step-rail-shell .br-bath-light-row, #bath-light-row').forEach((row) => {
+            const tips = Array.from(row.querySelectorAll('.admin-info-tip'));
+            const fields = Array.from(row.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select, textarea')).filter((el) => {
+              if (el.closest('.admin-info-tip-wrap, .admin-info-tip__bubble')) return false;
+              const cs = getComputedStyle(el);
+              const r = el.getBoundingClientRect();
+              return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' && !el.hidden;
+            });
+            tips.forEach((btn) => {
+              const br = btn.getBoundingClientRect();
+              if (br.width <= 0 || br.height <= 0) return;
+              fields.forEach((el) => {
+                const fr = el.getBoundingClientRect();
+                if (rectsOverlap(br, fr)) {
+                  tipInputOverlaps.push((btn.getAttribute('aria-label') || '') + ' × #' + (el.id || el.name || '?'));
+                }
+              });
+            });
+          });
           function distinctLineCount(rects) {
             const lines = [];
             rects.forEach((r) => {
@@ -1293,6 +1418,7 @@ async function puppeteerClick() {
             tmLine,
             gaps,
             brokenWords,
+            tipInputOverlaps,
           };
         });
         aligned.checks.forEach((row, i) => {
@@ -1315,6 +1441,9 @@ async function puppeteerClick() {
           assert.ok(hit.gap > 0 && hit.gap <= 8, `${theme}: D1 ${hit.aria} gap ${hit.gap}px at ${width}px`);
           assert.ok(hit.vOff <= 6, `${theme}: D1 ${hit.aria} v-offset ${hit.vOff}px at ${width}px`);
         });
+        if (width === 1024 || width === 1280) {
+          assert.deepEqual(aligned.tipInputOverlaps, [], `${theme}: ⓘ must not overlap an input at ${width}px: ${aligned.tipInputOverlaps.join(' | ')}`);
+        }
         if (theme === 'light') {
           geometryByWidth[width] = { orphans: aligned.orphanCount, headings: aligned.headingCount, brokenWords: aligned.brokenWords.length };
         }
@@ -1322,6 +1451,80 @@ async function puppeteerClick() {
     }
     console.log('info-tip geometry', JSON.stringify(geometryByWidth));
     await page.evaluate(() => document.documentElement.classList.remove('admin-dark'));
+
+    async function measureRailGeometry(width) {
+      await page.setViewport({ width, height: 900 });
+      return page.evaluate(() => {
+        const chrome = document.getElementById('step-rail-chrome');
+        const sidebar = document.getElementById('step-rail-sidebar');
+        chrome.style.display = 'grid';
+        chrome.style.gridTemplateColumns = '240px minmax(0, 1fr)';
+        chrome.style.width = '100%';
+        sidebar.hidden = false;
+        sidebar.style.display = 'block';
+        sidebar.style.width = '240px';
+        const shell = document.getElementById('step-rail-shell');
+        window.scrollTo(0, shell.getBoundingClientRect().top + window.scrollY - 8);
+        function overlap(a, b) {
+          return a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
+        }
+        const hits = [];
+        shell.querySelectorAll('.br-bath-light-row').forEach((row) => {
+          const tips = Array.from(row.querySelectorAll('.admin-info-tip'));
+          const fields = Array.from(row.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select, textarea')).filter((el) => {
+            if (el.closest('.admin-info-tip-wrap, .admin-info-tip__bubble')) return false;
+            const cs = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' && !el.hidden;
+          });
+          tips.forEach((btn) => {
+            const br = btn.getBoundingClientRect();
+            if (br.width <= 0) return;
+            fields.forEach((el) => {
+              const fr = el.getBoundingClientRect();
+              if (overlap(br, fr)) hits.push((btn.getAttribute('aria-label') || '') + ' × #' + (el.id || el.name || '?'));
+            });
+          });
+        });
+        const tile = document.querySelector('#tile-rail-row .br-tile-row__main');
+        const main = shell.querySelector('.br-main');
+        const tileBox = tile.getBoundingClientRect();
+        const mainBox = main.getBoundingClientRect();
+        const overflow = Math.max(tile.scrollWidth - main.clientWidth, tileBox.right - mainBox.right);
+        const outTop = document.querySelector('#qty-outlets-row label').getBoundingClientRect().top;
+        const swTop = document.querySelector('#qty-switches-row label').getBoundingClientRect().top;
+        return {
+          hits,
+          overflow,
+          labelDelta: Math.abs(outTop - swTop),
+          rowCols: getComputedStyle(document.getElementById('spot-rail-row')).gridTemplateColumns,
+          rowTracks: getComputedStyle(document.getElementById('spot-rail-row')).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length,
+        };
+      });
+    }
+
+    for (const width of [1024, 1280]) {
+      const rail = await measureRailGeometry(width);
+      assert.deepEqual(rail.hits, [], `D1: ⓘ must not overlap an input at ${width}px with the step rail: ${rail.hits.join(' | ')}`);
+      assert.ok(rail.overflow <= 1, `D2: tile row overflow ${rail.overflow}px at ${width}px with the step rail`);
+      if (width === 1024) {
+        assert.equal(rail.rowTracks, 1, `D1: lighting row stacks at 1024 with the rail (tracks=${rail.rowCols})`);
+      }
+      if (width === 1280) {
+        assert.ok(rail.labelDelta <= 2, `D3: New outlets / Switches label tops differ ${rail.labelDelta}px at 1280`);
+      }
+    }
+    await page.evaluate(() => {
+      const chrome = document.getElementById('step-rail-chrome');
+      const sidebar = document.getElementById('step-rail-sidebar');
+      chrome.style.display = '';
+      chrome.style.gridTemplateColumns = '';
+      chrome.style.width = '';
+      sidebar.hidden = true;
+      sidebar.style.display = '';
+      sidebar.style.width = '';
+    });
+    await page.setViewport({ width: 1280, height: 800 });
 
     const r14WrapCss = `
       .admin-label-with-tip__end { max-width: 100%; }

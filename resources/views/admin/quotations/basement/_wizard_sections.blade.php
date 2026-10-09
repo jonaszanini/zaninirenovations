@@ -103,6 +103,8 @@
       'light_qty' => 'Recessed pot / spot lights in the basement rooms. Optional extra pots. Bathroom spots are on the Bathroom step. Used as electrician scope, not Zanini labour.',
       'detector_qty' => 'Interconnected smoke/CO units. Ontario typically wants one on this level. Used as electrician scope, not Zanini labour.',
       'panel_upgrade' => 'Note that the electrician should upgrade or add capacity in the electrical panel when the new circuits will not fit. Used as electrician scope, not Zanini labour.',
+      'electrical_scope' => 'These answers are scope for a qualified electrician — they are not Zanini labour or materials. Type their quote as priced lines below.',
+      'plumbing_scope' => 'These answers are scope for a qualified plumber — they are not Zanini labour or materials. Type their quote as priced lines below.',
       'include_plumbing' => 'Turns on plumbing scope questions to send to a qualified plumber. Priced plumbing lines sit below.',
       'bath_rough_in' => 'New drain, vent, and hot/cold supply for a basement bathroom.',
       'sink_laundry' => 'Water and drain for a laundry tub or washer hookup, not a full bathroom.',
@@ -475,7 +477,9 @@
 {{-- 4. Electrical --}}
 @php $step++; @endphp
 <details class="br-acc admin-card" data-br-step="electrical" @if($bathNestTrades || ! in_array('electrical', $enabledNow, true)) hidden @endif>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Electrical</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Electrical
+    @include('admin.partials.info_tip', ['tipText' => $brInfo['electrical_scope'], 'tipLabel' => 'Electrical scope'])
+  </summary>
   <div class="br-acc__body">
     <div id="br-electrical-slot-step">
       @unless($bathNestTrades)
@@ -488,7 +492,9 @@
 {{-- 5. Plumbing --}}
 @php $step++; @endphp
 <details class="br-acc admin-card" data-br-step="plumbing" @if($bathNestTrades || ! in_array('plumbing', $enabledNow, true)) hidden @endif>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Plumbing</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Plumbing
+    @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
+  </summary>
   <div class="br-acc__body">
     <div id="br-plumbing-slot-step">
       @unless($bathNestTrades)
@@ -1069,7 +1075,10 @@
       </div>
       <div class="br-nested-trade" id="br-plumbing-slot-bath" @unless($bathNestTrades) hidden @endunless>
         <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title">Plumbing</span>
+          <span class="br-tile-areas__title admin-label-with-tip">
+            <span>Plumbing</span>
+            @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
+          </span>
         </div>
         @if($bathNestTrades)
           @include('admin.quotations.basement._plumbing_fields')
@@ -1077,7 +1086,10 @@
       </div>
       <div class="br-nested-trade" id="br-electrical-slot-bath" @unless($bathNestTrades) hidden @endunless>
         <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title">Electrical</span>
+          <span class="br-tile-areas__title admin-label-with-tip">
+            <span>Electrical</span>
+            @include('admin.partials.info_tip', ['tipText' => $brInfo['electrical_scope'], 'tipLabel' => 'Electrical scope'])
+          </span>
         </div>
         @if($bathNestTrades)
           @include('admin.quotations.basement._electrical_fields')
@@ -1098,6 +1110,7 @@
               'hiddenFallback' => true,
               'checked' => $brOn('include_bath_fixture'),
               'label' => 'Light fixture',
+              'info' => $brInfo['include_bath_fixture'],
               'inputClass' => 'admin-checkbox__input br-preview',
               'attrs' => ['data-br-reveal' => 'br-bath-fixture-qty-wrap', 'data-br-bath-light' => 'fixture'],
               'clientFilled' => $brFilled('include_bath_fixture'),

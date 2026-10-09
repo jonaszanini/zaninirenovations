@@ -1,16 +1,18 @@
 <div id="br-electrical-fields" class="br-electrical-fields">
-  <x-admin.info-tip label="Electrical scope">These answers are scope for a qualified electrician — they are not Zanini labour or materials. Type their quote as priced lines below.</x-admin.info-tip>
   <div class="br-qty-grid">
     <div class="admin-form-group">
       <span class="admin-label-with-tip">
         <label for="br-outlets">@include('admin.quotations.basement._client_filled', ['key' => 'outlet_qty', 'filledKeys' => $filledKeys ?? []]) New outlets</label>
-        @include('admin.partials.info_tip', ['tipText' => $brInfo['outlet_qty'], 'tipLabel' => 'Outlet count'])
+        @include('admin.partials.info_tip', ['tipText' => $brInfo['outlet_qty'], 'tipLabel' => 'New outlets'])
       </span>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-outlets" name="outlet_qty"
              value="{{ $brVal('outlet_qty', 0) }}">
     </div>
     <div class="admin-form-group">
-      <label for="br-switches">@include('admin.quotations.basement._client_filled', ['key' => 'switch_qty', 'filledKeys' => $filledKeys ?? []]) Switches</label>
+      <span class="admin-label-with-tip">
+        <label for="br-switches">@include('admin.quotations.basement._client_filled', ['key' => 'switch_qty', 'filledKeys' => $filledKeys ?? []]) Switches</label>
+        @include('admin.partials.info_tip', ['tipText' => $brInfo['switch_qty'], 'tipLabel' => 'Switches'])
+      </span>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-switches" name="switch_qty"
              value="{{ $brVal('switch_qty', 0) }}">
     </div>
