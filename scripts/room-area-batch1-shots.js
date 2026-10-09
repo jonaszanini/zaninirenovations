@@ -33,15 +33,42 @@ async function login(page) {
 async function waitForEditor(page) {
   await page.waitForSelector('.util-ra--fullpage', { timeout: 20000 });
   await page.waitForFunction(() => typeof window.Konva !== 'undefined' && typeof window.RoomAreaLib !== 'undefined', { timeout: 20000 });
-  await delay(400);
+  await delay(600);
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await delay(250);
+  await page.waitForFunction(() => {
+    const wrap = document.querySelector('.util-ra-canvas-wrap');
+    return wrap && wrap.getBoundingClientRect().height > 80;
+  }, { timeout: 8000 });
+}
+
+async function visibleBox(page, selector) {
+  return page.evaluate((sel) => {
+    const el = Array.from(document.querySelectorAll(sel)).find((node) => {
+      if (node.hidden) return false;
+      const cs = getComputedStyle(node);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+      const r = node.getBoundingClientRect();
+      return r.width > 2 && r.height > 2;
+    });
+    if (!el) return null;
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  }, selector);
 }
 
 async function tap(page, selector) {
-  await page.waitForSelector(selector, { timeout: 8000 });
-  const handle = await page.$(selector);
-  if (!handle) throw new Error('missing ' + selector);
-  await page.evaluate((el) => el.scrollIntoView({ block: 'nearest', inline: 'nearest' }), handle);
-  const box = await handle.boundingBox();
+  await page.waitForFunction((sel) => {
+    return Array.from(document.querySelectorAll(sel)).some((node) => {
+      if (node.hidden) return false;
+      const cs = getComputedStyle(node);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+      const r = node.getBoundingClientRect();
+      return r.width > 2 && r.height > 2;
+    });
+  }, { timeout: 8000 }, selector);
+  const box = await visibleBox(page, selector);
   if (!box) throw new Error('no box for ' + selector);
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
@@ -95,6 +122,13 @@ async function applyLTemplate(page) {
   if (phone) {
     const moreOpen = await page.evaluate(() => document.querySelector('[data-room-area]')?.classList.contains('is-more-open'));
     if (!moreOpen) await tap(page, '[data-ra-more-toggle]');
+    await delay(200);
+  } else {
+    const open = await page.evaluate(() => {
+      const pop = document.querySelector('[data-ra-templates-popover]');
+      return pop && !pop.hidden;
+    });
+    if (!open) await tap(page, '[data-ra-templates-toggle]');
     await delay(200);
   }
   await tap(page, '[data-ra-template="l"]');
@@ -179,34 +213,40 @@ async function main() {
   await delay(150);
   await shot(page, 'ra-b1-1280-dark');
 
-  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
-  await setTheme(page, 'light');
-  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  const phone = await browser.newPage();
+  phone.setDefaultTimeout(30000);
+  await phone.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+  await gotoReady(phone, editorUrl);
+  await waitForEditor(phone);
+  await setTheme(phone, 'light');
+  await phone.evaluate(() => window.dispatchEvent(new Event('resize')));
   await delay(250);
-  await prepareScene(page, { dimMode: 'all' });
-  const phoneLight = await shot(page, 'ra-b1-390-light');
+  await prepareScene(phone, { dimMode: 'all' });
+  const phoneLight = await shot(phone, 'ra-b1-390-light');
 
-  await setTheme(page, 'dark');
+  await setTheme(phone, 'dark');
   await delay(150);
-  const phoneDark = await shot(page, 'ra-b1-390-dark');
+  const phoneDark = await shot(phone, 'ra-b1-390-dark');
 
-  await tap(page, '[data-ra-more-toggle]');
+  await tap(phone, '[data-ra-more-toggle]');
   await delay(250);
-  await shot(page, 'ra-b1-390-more');
-  await shot(page, 'ra-b1-390-templates');
+  await shot(phone, 'ra-b1-390-more');
+  await shot(phone, 'ra-b1-390-templates');
 
-  await page.evaluate(() => {
+  await phone.evaluate(() => {
     const root = document.querySelector('[data-room-area]');
     if (root) {
       root.classList.remove('is-more-open');
       root.style.setProperty('--ra-sheet-h', '280px');
     }
+    const math = document.querySelector('[data-ra-side-tab="math"]');
+    if (math) math.click();
     window.dispatchEvent(new Event('resize'));
   });
-  await delay(250);
-  await shot(page, 'ra-b1-390-sheet');
+  await delay(350);
+  await shot(phone, 'ra-b1-390-sheet');
+  await phone.close();
 
-  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
   await setTheme(page, 'light');
   await page.evaluate(() => {
     const root = document.querySelector('[data-room-area]');
