@@ -1,18 +1,22 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Modify image')
+@section('heading')
+  Modify image
+  <x-admin.info-tip>Upload one or more photos (from your PC or Google Photos) and describe what to change. The same prompt is applied to every selected photo. Results are saved at full resolution (no WebP).</x-admin.info-tip>
+@endsection
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Upload one or more photos (from your PC or Google Photos) and describe what to change. The same prompt is applied to every selected photo. Results are saved at full resolution (no WebP).</p>
     <a href="{{ route('admin.image-creation.index') }}" class="admin-btn admin-btn--ghost">
       <i class="fa fa-arrow-left"></i> AI Image
     </a>
   </div>
 
   <div class="admin-card nb2-prompt-card">
-    <h2 class="nb2-card-title">Modify image</h2>
-    <p class="admin-form-help nb2-card-lede">JPEG, PNG, WebP, or AVIF up to {{ (int) round($inlineMaxMb * 4) }}&nbsp;MB each. Files up to {{ $inlineMaxMb }}&nbsp;MB are sent inline to Gemini; larger uploads use the File API automatically.</p>
+    <h2 class="nb2-card-title">
+      Modify image
+      <x-admin.info-tip>JPEG, PNG, WebP, or AVIF up to {{ (int) round($inlineMaxMb * 4) }}&nbsp;MB each. Files up to {{ $inlineMaxMb }}&nbsp;MB are sent inline to Gemini; larger uploads use the File API automatically.</x-admin.info-tip>
+    </h2>
 
     @include('admin.partials.local_and_google_photos', [
       'fileInputId' => 'aim-source-images',

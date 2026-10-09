@@ -38,4 +38,17 @@ class AdminInfoTipTest extends TestCase
 
         $this->assertSame('', trim($html));
     }
+
+    public function test_text_attribute_matches_slot_api(): void
+    {
+        $html = Blade::render('<x-admin.info-tip :text="$text" />', [
+            'text' => 'An existing-post tick that actually removes a post also subtracts the configured labour credit.',
+        ]);
+
+        $this->assertStringContainsString('class="admin-info-tip"', $html);
+        $this->assertStringContainsString('aria-label="More info"', $html);
+        $this->assertStringContainsString('aria-expanded="false"', $html);
+        $this->assertStringContainsString('role="tooltip"', $html);
+        $this->assertStringContainsString('An existing-post tick that actually removes a post also subtracts the configured labour credit.', $html);
+    }
 }

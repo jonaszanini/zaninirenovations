@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Project Calendar')
+@section('heading')
+  Project Calendar
+  <x-admin.info-tip>Job timelines and visit days from projects. <strong>Personal</strong> events (red) are only on this calendar — click to edit. Project events open the project.</x-admin.info-tip>
+@endsection
 
 @push('head')
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
@@ -8,7 +11,6 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Job timelines and visit days from projects. <strong>Personal</strong> events (red) are only on this calendar — click to edit. Project events open the project.</p>
     <div class="cp-calendar-toolbar-actions">
       <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-personal-event-add">
         <i class="fa fa-plus"></i> Add personal event

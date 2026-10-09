@@ -14,14 +14,16 @@
   <details class="admin-accordion admin-card" @if(old('names')) open @endif>
     <summary class="admin-accordion__summary">
       <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
-      <span class="admin-accordion__title">Bulk add tags</span>
+      <span class="admin-accordion__title">
+        Bulk add tags
+        <x-admin.info-tip>One tag per line. Existing tags (matched by name, case-insensitive) and duplicate lines are skipped automatically.</x-admin.info-tip>
+      </span>
     </summary>
     <div class="admin-accordion__panel">
       <form method="post" action="{{ route('admin.blog.tags.bulk') }}">
         @csrf
         <div class="admin-form-group">
           <textarea id="bt-bulk" name="names" rows="8" class="admin-input" aria-label="Tag list, one per line" placeholder="Paste one tag per line…">{{ old('names') }}</textarea>
-          <p class="admin-form-help">One tag per line. Existing tags (matched by name, case-insensitive) and duplicate lines are skipped automatically.</p>
         </div>
         <div class="admin-form-actions">
           <button type="submit" class="admin-btn admin-btn--primary">Add tags</button>

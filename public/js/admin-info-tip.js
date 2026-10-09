@@ -6,16 +6,19 @@
   var OPEN = 'is-open';
   var PAD = 12;
 
-  function wrapOf(el) {
-    return el && el.closest ? el.closest('.admin-info-tip-wrap') : null;
+  function rootOf(el) {
+    if (!el || !el.closest) return null;
+    return el.closest('.admin-info-tip-wrap') || el.closest('.admin-info-tip');
   }
 
-  function buttonOf(wrap) {
-    return wrap ? wrap.querySelector('.admin-info-tip') : null;
+  function buttonOf(root) {
+    if (!root) return null;
+    if (root.classList.contains('admin-info-tip')) return root;
+    return root.querySelector('.admin-info-tip');
   }
 
-  function bubbleOf(wrap) {
-    return wrap ? wrap.querySelector('.admin-info-tip__bubble') : null;
+  function bubbleOf(root) {
+    return root ? root.querySelector('.admin-info-tip__bubble') : null;
   }
 
   function resetBubble(bubble) {
@@ -65,49 +68,42 @@
     bubble.style.left = Math.round(left) + 'px';
   }
 
-  function closeTip(wrap) {
-    if (!wrap) return;
-    var btn = buttonOf(wrap);
-    wrap.classList.remove(OPEN);
+  function closeTip(root) {
+    if (!root) return;
+    var btn = buttonOf(root);
+    root.classList.remove(OPEN);
     if (btn) {
       btn.setAttribute('aria-expanded', 'false');
     }
-    resetBubble(bubbleOf(wrap));
+    resetBubble(bubbleOf(root));
   }
 
-  function closeTips(exceptWrap) {
-    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN).forEach(function (wrap) {
-      if (wrap !== exceptWrap) {
-        closeTip(wrap);
-      }
-    });
-    document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach(function (btn) {
-      var wrap = wrapOf(btn);
-      if (wrap && wrap !== exceptWrap) {
-        closeTip(wrap);
-      } else if (!wrap && btn !== exceptWrap) {
-        btn.setAttribute('aria-expanded', 'false');
+  function closeTips(exceptRoot) {
+    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN + ', .admin-info-tip[aria-expanded="true"]').forEach(function (node) {
+      var root = rootOf(node);
+      if (root && root !== exceptRoot) {
+        closeTip(root);
       }
     });
   }
 
-  function openTip(wrap) {
-    var btn = buttonOf(wrap);
-    var bubble = bubbleOf(wrap);
+  function openTip(root) {
+    var btn = buttonOf(root);
+    var bubble = bubbleOf(root);
     if (!btn || !bubble) return;
-    wrap.classList.add(OPEN);
+    root.classList.add(OPEN);
     btn.setAttribute('aria-expanded', 'true');
     positionBubble(btn, bubble);
   }
 
-  function toggleTip(wrap) {
-    var btn = buttonOf(wrap);
+  function toggleTip(root) {
+    var btn = buttonOf(root);
     var open = btn && btn.getAttribute('aria-expanded') === 'true';
-    closeTips(wrap);
+    closeTips(root);
     if (!open) {
-      openTip(wrap);
+      openTip(root);
     } else {
-      closeTip(wrap);
+      closeTip(root);
     }
   }
 
@@ -139,17 +135,14 @@
   }, true);
 
   document.addEventListener('click', function (e) {
-    var wrap = wrapOf(e.target);
-    if (!wrap) {
+    var btn = e.target.closest ? e.target.closest('.admin-info-tip') : null;
+    if (!btn) {
       closeTips(null);
-      return;
-    }
-    if (!e.target.closest('.admin-info-tip')) {
       return;
     }
     e.preventDefault();
     e.stopPropagation();
-    toggleTip(wrap);
+    toggleTip(rootOf(btn));
   }, true);
 
   document.addEventListener('keydown', function (e) {
@@ -159,8 +152,9 @@
   });
 
   window.addEventListener('resize', function () {
-    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN).forEach(function (wrap) {
-      positionBubble(buttonOf(wrap), bubbleOf(wrap));
+    document.querySelectorAll('.admin-info-tip-wrap.' + OPEN + ', .admin-info-tip[aria-expanded="true"]').forEach(function (node) {
+      var root = rootOf(node);
+      positionBubble(buttonOf(root), bubbleOf(root));
     });
   });
 

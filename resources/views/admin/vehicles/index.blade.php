@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Vehicles')
+@section('heading')
+  Vehicles
+  <x-admin.info-tip>Track company vehicles, fuel costs, and your home / office address for project travel estimates.</x-admin.info-tip>
+@endsection
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-vehicles.css') }}?v={{ @filemtime(public_path('css/admin-vehicles.css')) ?: time() }}">
@@ -8,9 +11,6 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Track company vehicles, fuel costs, and your home / office address for project travel estimates.
-    </p>
     <a href="{{ route('admin.vehicles.create') }}" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> Add new vehicle
     </a>

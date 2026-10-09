@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Pillar & Spindle Calculator')
+@section('heading')
+  Pillar &amp; Spindle Calculator
+  <x-admin.info-tip>Plan an even run of pillars, posts, or spindles. Enter the total length and either a target spacing or a fixed count — the layout, spacing, and a scaled diagram update as you type.</x-admin.info-tip>
+@endsection
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-utilities.css') }}?v={{ @filemtime(public_path('css/admin-utilities.css')) ?: time() }}">
@@ -8,10 +11,6 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Plan an even run of pillars, posts, or spindles. Enter the total length and either a target spacing
-      or a fixed count &mdash; the layout, spacing, and a scaled diagram update as you type.
-    </p>
     <a href="{{ route('admin.utilities.index') }}" class="admin-btn admin-btn--ghost">
       <i class="fa fa-arrow-left"></i> All utilities
     </a>

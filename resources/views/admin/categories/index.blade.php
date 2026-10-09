@@ -1,10 +1,12 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Portfolio categories')
+@section('heading')
+  Portfolio categories
+  <x-admin.info-tip>These labels appear on the Latest projects section of the public site. Slugs are for internal use and stable links.</x-admin.info-tip>
+@endsection
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">These labels appear on the Latest projects section of the public site. Slugs are for internal use and stable links.</p>
     <div class="admin-toolbar-actions">
       <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
         <i class="fa fa-arrow-left"></i> Latest Projects Photos

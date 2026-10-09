@@ -54,8 +54,10 @@
 @if ($isHourly)
   {{-- HOURLY BILLING — RATE FORM ---------------------------------------- --}}
   <div class="admin-card">
-    <h3>Hourly billing</h3>
-    <p class="admin-form-help">This project is billed by the hour. The amount earned is calculated from the rate × hours logged in the Time Tracking tab.</p>
+    <h3>
+      Hourly billing
+      <x-admin.info-tip>This project is billed by the hour. The amount earned is calculated from the rate × hours logged in the Time Tracking tab.</x-admin.info-tip>
+    </h3>
 
     <form action="{{ route('admin.client-projects.update', $project) }}" method="post">
       @csrf
@@ -397,9 +399,11 @@
       </div>
     </div>
     <div class="admin-form-group cp-expense-receipt-field">
-      <label for="cp-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
+      <label for="cp-expense-receipt">
+        <i class="fa fa-camera"></i> Receipt (optional)
+        <x-admin.info-tip>Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
+      </label>
       <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf" capture="environment">
-      <p class="admin-form-help">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</p>
     </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror

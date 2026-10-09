@@ -267,7 +267,7 @@
     <div class="admin-card pq-db-tiers">
       <h4 class="cp-form-help-spaced">
         Pricing engine — $/sq ft by area
-        <x-admin.info-tip>Interpolated linearly between rows (matches Excel reference table). Keep rows sorted by area.</x-admin.info-tip>
+        <x-admin.info-tip>Interpolated linearly between rows (matches Excel reference table). Use Add row for extra breakpoints, then save. Areas should stay sorted ascending for clearest interpolation.</x-admin.info-tip>
       </h4>
       <form method="post" action="{{ route('admin.quotations.paving.database.tiers.sync') }}">
         @csrf
@@ -298,9 +298,6 @@
             </tbody>
           </table>
         </div>
-        <p class="admin-form-help cp-form-group-spaced">
-          Use <strong>Add row</strong> for extra breakpoints, then save. Areas should stay sorted ascending for clearest interpolation.
-        </p>
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" style="margin-top:12px;">
           <i class="fa fa-save"></i> Save tier table
         </button>

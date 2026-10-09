@@ -15,10 +15,11 @@ Canonical API (keep this path and slot usage so other PRs merge cleanly):
 </label>
 ```
 
-Existing includes still work:
+Existing includes and the `:text` attribute still work (same component file):
 
 ```blade
 @include('admin.partials.info_tip', ['text' => 'Plain explanation.'])
+<x-admin.info-tip :text="'Plain explanation.'" />
 ```
 
 HTML (links, `<code>`, `<strong>`) goes in the slot:

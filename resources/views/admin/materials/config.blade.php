@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Materials — Config')
+@section('heading')
+  Materials — Config
+  <x-admin.info-tip>Bulk import Home Depot SKUs, manage categories and vendors, and copy local commands for your PC.</x-admin.info-tip>
+@endsection
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-materials.css') }}?v={{ @filemtime(public_path('css/admin-materials.css')) ?: time() }}">
@@ -8,9 +11,6 @@
 
 @section('content')
   <div class="admin-toolbar mat-config-toolbar">
-    <p class="admin-toolbar-lede mat-config-toolbar__lede">
-      Bulk import Home Depot SKUs, manage categories and vendors, and copy local commands for your PC.
-    </p>
     <div class="mat-config-toolbar__actions">
       <form method="post" action="{{ route('admin.materials.config.delete-failed') }}"
             onsubmit="return confirm('Delete {{ number_format($failedCount) }} material{{ $failedCount === 1 ? '' : 's' }} with failed sync status? This cannot be undone.');">
@@ -48,13 +48,12 @@
               data-step-url="{{ route('admin.materials.bulk-import.step') }}">
           @csrf
           <div class="admin-form-group">
-            <label for="mat-bulk-skus">SKUs or product URLs</label>
+            <label for="mat-bulk-skus">
+              SKUs or product URLs
+              <x-admin.info-tip>One SKU (e.g. <code>1000108771</code>) or full Home Depot product URL per line. Blank lines are ignored. If the same SKU appears more than once in your paste, only the first is imported; the rest are skipped. SKUs already in the catalog are updated.</x-admin.info-tip>
+            </label>
             <textarea id="mat-bulk-skus" name="skus" rows="8" class="admin-input @error('skus') is-invalid @enderror" aria-label="SKU list, one per line" placeholder="Paste one SKU or product URL per line…">{{ old('skus') }}</textarea>
             @error('skus') <p class="admin-form-error">{{ $message }}</p> @enderror
-            <p class="admin-form-help">
-              One SKU (e.g. <code>1000108771</code>) or full Home Depot product URL per line.
-              Blank lines are ignored. If the same SKU appears more than once in your paste, only the first is imported; the rest are skipped. SKUs already in the catalog are updated.
-            </p>
           </div>
           <div class="admin-form-group">
             <label for="mat-bulk-category">Category</label>
@@ -81,11 +80,8 @@
               'id' => 'mat-bulk-sync',
               'checked' => old('sync_prices'),
               'label' => 'Sync prices after import',
+              'info' => 'When checked, fetches name and price via SerpApi (online admin) or the local store API for each imported item (~2 s each). For large lists (30+ SKUs), leave unchecked and use Sync all on the materials list afterward.',
             ])
-            <p class="admin-form-help">
-              When checked, fetches name and price via SerpApi (online admin) or the local store API for each imported item (~2&nbsp;s each).
-              For large lists (30+ SKUs), leave unchecked and use <strong>Sync all</strong> on the materials list afterward.
-            </p>
           </div>
           <div id="mat-bulk-progress" class="mat-bulk-progress" hidden aria-live="polite">
             <div class="mat-bulk-progress__head">
@@ -138,17 +134,18 @@
     <details class="admin-accordion admin-card mat-config-accordion mat-ai-short-names">
       <summary class="admin-accordion__summary">
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
-        <span class="admin-accordion__title">Short names (Gemini)</span>
+        <span class="admin-accordion__title">
+          Short names (Gemini)
+          <x-admin.info-tip>Generate compact short names from store product titles using Gemini. Prompt is editable under <a href="{{ route('admin.ai-instructions.edit', \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME) }}" class="admin-text-link">Tools → AI Instructions</a>.</x-admin.info-tip>
+        </span>
       </summary>
       <div class="admin-accordion__panel">
         <p class="admin-form-help">
-          Generate compact short names from store product titles using Gemini.
           @if ($missingShortNameCount > 0)
             <strong>{{ number_format($missingShortNameCount) }}</strong> material{{ $missingShortNameCount === 1 ? '' : 's' }} missing a short name.
           @else
             All {{ number_format($totalMaterials) }} materials have a short name.
           @endif
-          Prompt is editable under <a href="{{ route('admin.ai-instructions.edit', \App\Models\AiInstruction::KEY_MATERIAL_SHORT_NAME) }}" class="admin-text-link">Tools → AI Instructions</a>.
         </p>
         <div class="mat-ai-short-names__actions">
           @component('admin.partials.ai_action_group', [
@@ -209,20 +206,24 @@
     <details class="admin-accordion admin-card mat-config-accordion mat-local-sync">
       <summary class="admin-accordion__summary">
         <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
-        <span class="admin-accordion__title">Local commands (your PC)</span>
+        <span class="admin-accordion__title">
+          Local commands (your PC)
+          <x-admin.info-tip>
+            Run from your project root in PowerShell or Terminal.
+            @if ($usesSerpApi)
+              On your PC, leave <code>MATERIALS_SCRAPER_SERPAPI_KEY</code> unset so price sync uses the free Home Depot store API instead of SerpApi credits.
+            @else
+              Price sync uses the Home Depot store API (Carleton Place store <code>7263</code> when configured).
+            @endif
+          </x-admin.info-tip>
+        </span>
       </summary>
       <div class="admin-accordion__panel">
-        <p class="admin-form-help mat-local-sync__lede">
-          Run from your project root in PowerShell or Terminal.
-          @if ($usesSerpApi)
-            On your PC, leave <code>MATERIALS_SCRAPER_SERPAPI_KEY</code> unset so price sync uses the free Home Depot store API instead of SerpApi credits.
-          @else
-            Price sync uses the Home Depot store API (Carleton Place store <code>7263</code> when configured).
-          @endif
-          @if ($needsSyncCount> 0)
+        @if ($needsSyncCount> 0)
+          <p class="admin-form-help mat-local-sync__lede">
             <strong>{{ number_format($needsSyncCount) }}</strong> material{{ $needsSyncCount === 1 ? '' : 's' }} never synced or last sync failed.
-          @endif
-        </p>
+          </p>
+        @endif
         <ul class="mat-sync-commands__list">
           <li class="mat-sync-commands__row">
             <div class="mat-sync-commands__cmd-wrap">

@@ -35,12 +35,14 @@
       @endphp
       <div class="admin-form-group">
         <div class="admin-form-group__label-row">
-          <span class="admin-form-group-label">Categories</span>
+          <span class="admin-form-group-label">
+            Categories
+            <x-admin.info-tip>Select all that apply (e.g. tile and wood).</x-admin.info-tip>
+          </span>
           <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
             <i class="fa fa-cog" aria-hidden="true"></i> Configure
           </a>
         </div>
-        <p class="admin-form-help" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
         @include('admin.partials.portfolio_category_ai')
         <div class="admin-category-checkboxes" id="portfolio-category-checkboxes">
           @foreach ($categories as $cat)

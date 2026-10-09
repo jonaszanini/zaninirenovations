@@ -1,10 +1,12 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Helpers')
+@section('heading')
+  Helpers
+  <x-admin.info-tip>Register helpers, their hourly rates, and contact details. Assign them to projects on the Time tracking tab.</x-admin.info-tip>
+@endsection
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Register helpers, their hourly rates, and contact details. Assign them to projects on the Time tracking tab.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       @if ($returnProjectId)
         <a href="{{ route('admin.client-projects.show', $returnProjectId) }}#time" class="admin-btn admin-btn--ghost">
