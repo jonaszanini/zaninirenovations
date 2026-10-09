@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MillworkSettings;
+use App\Services\Millwork\MillworkCatalog;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
@@ -57,22 +58,9 @@ class MillworkDatabaseController extends Controller
             $cut[$key] = round((float) $value, 4);
         }
 
-        $catalog = [];
         foreach (MillworkSettings::catalogSlots() as $slot => $_label) {
             $rows = $request->input('catalog.'.$slot, []);
-            $normalized = [];
-            if (is_array($rows)) {
-                foreach ($rows as $row) {
-                    if (! is_array($row)) {
-                        continue;
-                    }
-                    $item = MillworkSettings::normalizeCatalogItem($slot, $row);
-                    if ($item !== null) {
-                        $normalized[] = $item;
-                    }
-                }
-            }
-            $catalog[$slot] = $normalized;
+            MillworkCatalog::replaceSlot($settings, $slot, is_array($rows) ? $rows : []);
         }
 
         $settings->fill([
@@ -81,7 +69,6 @@ class MillworkDatabaseController extends Controller
             'hours_per_day' => round((float) $data['hours_per_day'], 2),
             'productivity' => $prod,
             'cut_settings' => $cut,
-            'catalog' => $catalog,
         ]);
         $settings->save();
 

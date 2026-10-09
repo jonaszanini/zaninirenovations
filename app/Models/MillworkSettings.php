@@ -398,7 +398,7 @@ class MillworkSettings extends Model
     /**
      * @return array<string, list<array<string, mixed>>>
      */
-    public function resolvedCatalog(): array
+    public function resolvedCatalog(bool $includeHidden = false): array
     {
         $defaults = self::defaultCatalog();
         $stored = is_array($this->catalog) ? $this->catalog : [];
@@ -415,11 +415,15 @@ class MillworkSettings extends Model
                     continue;
                 }
                 $item = self::normalizeCatalogItem($slot, $row);
-                if ($item !== null) {
-                    $normalized[] = $item;
+                if ($item === null) {
+                    continue;
                 }
+                if (! $includeHidden && filled($item['deleted_at'] ?? null)) {
+                    continue;
+                }
+                $normalized[] = $item;
             }
-            $out[$slot] = $normalized !== [] ? $normalized : ($defaults[$slot] ?? []);
+            $out[$slot] = $normalized;
         }
 
         return $out;
@@ -491,6 +495,11 @@ class MillworkSettings extends Model
                 : 'baseboard';
             $item['stock_length_ft'] = round(max(1, (float) ($row['stock_length_ft'] ?? 12)), 2);
             $item['unit'] = 'lf';
+        }
+
+        $deletedAt = trim((string) ($row['deleted_at'] ?? ''));
+        if ($deletedAt !== '') {
+            $item['deleted_at'] = $deletedAt;
         }
 
         return $item;

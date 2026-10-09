@@ -367,6 +367,8 @@
         'usePlacesAddress' => true,
     ])
   @endif
+
+  @include('admin.quotations.millwork._catalog_modal')
 @endsection
 
 @include('admin.partials.quotation_work_description_tinymce', [
@@ -390,6 +392,7 @@
       sectionKeys: @json(array_keys($sectionList)),
       quoteNumber: @json($isEdit && $quotation ? ($quotation->quote_number ?? '') : ''),
       printCssUrl: @json(asset('css/millwork-cut-list-print.css').'?v='.(@filemtime(public_path('css/millwork-cut-list-print.css')) ?: time())),
+      catalogUrl: @json(route('admin.quotations.millwork.catalog.show', ['slot' => '__SLOT__'])),
     };
   </script>
   <script src="{{ asset('js/admin-millwork-quotation.js') }}?v={{ @filemtime(public_path('js/admin-millwork-quotation.js')) ?: time() }}"></script>

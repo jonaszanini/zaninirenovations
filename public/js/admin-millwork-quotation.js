@@ -1552,6 +1552,190 @@ window.MillworkDimensionParser = (function () {
       });
     }
     syncClientProvidesAll();
+
+    (function initCatalogManage() {
+      var modal = document.getElementById('mw-catalog-modal');
+      var rowsHost = document.getElementById('mw-catalog-modal-rows');
+      var titleEl = document.getElementById('mw-catalog-modal-title');
+      var tpl = document.getElementById('mw-catalog-modal-row-tpl');
+      var addBtn = document.getElementById('mw-catalog-add');
+      var saveBtn = document.getElementById('mw-catalog-save');
+      if (!modal || !rowsHost || !tpl || !form) return;
+
+      var state = { slot: '', schema: [], selectId: '' };
+
+      function catalogUrl(slot) {
+        var base = cfg.catalogUrl || '';
+        return base.replace('__SLOT__', encodeURIComponent(slot));
+      }
+
+      function fieldValue(row, key) {
+        if (key === 'unit_price') {
+          return row.unit_price != null ? Number(row.unit_price).toFixed(2) : '';
+        }
+        return row[key] != null ? String(row[key]) : '';
+      }
+
+      function renderField(field, value) {
+        var wrap = document.createElement('div');
+        wrap.className = 'admin-form-group mw-catalog-modal__field';
+        var lab = document.createElement('label');
+        lab.textContent = field.label;
+        wrap.appendChild(lab);
+        var input;
+        if (field.type === 'select') {
+          input = document.createElement('select');
+          input.className = 'admin-input';
+          Object.keys(field.options || {}).forEach(function (val) {
+            var opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = field.options[val];
+            if (String(value) === val) opt.selected = true;
+            input.appendChild(opt);
+          });
+        } else {
+          input = document.createElement('input');
+          input.className = 'admin-input' + (field.type === 'money' ? ' cp-money-input' : '');
+          input.type = field.type === 'number' ? 'number' : 'text';
+          if (field.type === 'money') input.setAttribute('inputmode', 'decimal');
+          if (field.step) input.step = field.step;
+          if (field.min) input.min = field.min;
+          input.value = value;
+        }
+        input.setAttribute('data-mw-cat-field', field.key);
+        wrap.appendChild(input);
+        return wrap;
+      }
+
+      function addRow(item) {
+        var html = tpl.innerHTML;
+        var wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        var card = wrap.querySelector('[data-mw-catalog-item]');
+        if (!card) return;
+        var idInput = card.querySelector('[data-mw-cat-field="id"]');
+        if (idInput) idInput.value = item && item.id ? item.id : '';
+        var grid = card.querySelector('[data-mw-catalog-fields]');
+        state.schema.forEach(function (field) {
+          grid.appendChild(renderField(field, fieldValue(item || {}, field.key)));
+        });
+        rowsHost.appendChild(card);
+        if (window.cpMoneyMask) window.cpMoneyMask.wire(card.querySelectorAll('.cp-money-input'));
+      }
+
+      function collectItems() {
+        return Array.prototype.map.call(rowsHost.querySelectorAll('[data-mw-catalog-item]'), function (card) {
+          var row = {};
+          card.querySelectorAll('[data-mw-cat-field]').forEach(function (el) {
+            row[el.getAttribute('data-mw-cat-field')] = el.value;
+          });
+          return row;
+        });
+      }
+
+      function fillSelects(slot, options, keepId) {
+        document.querySelectorAll('select[data-mw-catalog-slot="' + slot + '"]').forEach(function (sel) {
+          var current = keepId || sel.value;
+          sel.innerHTML = '';
+          (options || []).forEach(function (opt) {
+            var el = document.createElement('option');
+            el.value = opt.id;
+            el.textContent = opt.label;
+            if (opt.price != null) el.setAttribute('data-price', opt.price);
+            if (String(opt.id) === String(current)) el.selected = true;
+            sel.appendChild(el);
+          });
+          if (current && !sel.value && options && options[0]) {
+            var extra = document.createElement('option');
+            extra.value = current;
+            extra.textContent = current;
+            extra.selected = true;
+            sel.appendChild(extra);
+          }
+        });
+      }
+
+      function openModal(slot, selectId) {
+        state.slot = slot;
+        state.selectId = selectId || '';
+        rowsHost.innerHTML = '';
+        fetch(catalogUrl(slot), { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(function (res) { return res.json().then(function (body) { return { ok: res.ok, body: body }; }); })
+          .then(function (pack) {
+            if (!pack.ok) return;
+            state.schema = pack.body.fields || [];
+            if (titleEl) titleEl.textContent = 'Manage ' + (pack.body.label || 'list').toLowerCase();
+            (pack.body.items || []).forEach(addRow);
+            modal.hidden = false;
+            document.body.classList.add('admin-modal-open');
+            var first = modal.querySelector('input, select, button');
+            if (first) first.focus();
+          })
+          .catch(function () {});
+      }
+
+      function closeModal() {
+        modal.hidden = true;
+        document.body.classList.remove('admin-modal-open');
+        state.slot = '';
+      }
+
+      form.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('[data-mw-manage-slot]') : null;
+        if (!btn) return;
+        e.preventDefault();
+        openModal(btn.getAttribute('data-mw-manage-slot'), btn.getAttribute('data-mw-manage-select') || '');
+      });
+
+      modal.addEventListener('click', function (e) {
+        if (e.target.closest('[data-mw-catalog-dismiss]')) {
+          closeModal();
+          return;
+        }
+        var rm = e.target.closest('[data-mw-catalog-remove]');
+        if (rm) {
+          var card = rm.closest('[data-mw-catalog-item]');
+          if (card) card.remove();
+        }
+      });
+
+      if (addBtn) {
+        addBtn.addEventListener('click', function () { addRow({}); });
+      }
+
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function () {
+          if (!state.slot) return;
+          saveBtn.disabled = true;
+          fetch(catalogUrl(state.slot), {
+            method: 'PUT',
+            headers: {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': token
+            },
+            body: JSON.stringify({ items: collectItems() })
+          }).then(function (res) {
+            return res.json().then(function (body) { return { ok: res.ok, body: body }; });
+          }).then(function (pack) {
+            saveBtn.disabled = false;
+            if (!pack.ok) return;
+            var keep = state.selectId ? (document.getElementById(state.selectId) || {}).value : '';
+            fillSelects(state.slot, pack.body.options || [], keep);
+            closeModal();
+            schedulePreview();
+          }).catch(function () {
+            saveBtn.disabled = false;
+          });
+        });
+      }
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) closeModal();
+      });
+    })();
+
     if (cfg.initialPreview) renderPreview(cfg.initialPreview);
     schedulePreview();
   }

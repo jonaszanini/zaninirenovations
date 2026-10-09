@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Millwork catalog manage geometry</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-client-projects.css">
+  <link rel="stylesheet" href="/css/admin-millwork.css">
+  <style>
+    body { margin: 0; padding: 12px; background: var(--admin-bg); color: var(--admin-text); font-family: var(--admin-font); }
+  </style>
+</head>
+<body>
+  <div class="admin-card cp-reply-to-accept">
+    <fieldset class="cp-reply-to-accept__fieldset">
+      <legend class="cp-reply-to-accept__legend">
+        <span class="cp-reply-to-accept__legend-row">
+          Ask client to reply “I accept” to this email
+          <button type="button" class="admin-info-tip" aria-expanded="false" aria-label="Reply to accept">
+            <i class="fa fa-info-circle" aria-hidden="true"></i>
+            <span class="admin-info-tip__bubble" role="tooltip">Required. Pick Yes or No before saving or emailing.</span>
+          </button>
+          <span class="cp-required">*</span>
+        </span>
+      </legend>
+      <div class="cp-reply-to-accept__choices">
+        <label class="cp-checkbox-row cp-reply-to-accept__choice"><input type="radio" name="ask_reply_to_accept" value="1"><span>Yes</span></label>
+        <label class="cp-checkbox-row cp-reply-to-accept__choice"><input type="radio" name="ask_reply_to_accept" value="0"><span>No</span></label>
+      </div>
+    </fieldset>
+  </div>
+
+  <form id="mw-main-form">
+    <div class="admin-form-group mw-sheet-field">
+      <label for="mw-sheet">Wood sheet</label>
+      <div class="fq-catalog-picker-wrap mw-catalog-picker">
+        <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id" data-mw-catalog-slot="wood_sheets">
+          <option value="ws_ply_34_cab_48x96">3/4" cabinet-grade plywood 4×8</option>
+        </select>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mw-catalog-manage" data-mw-manage-slot="wood_sheets" aria-label="Manage wood sheets">
+          <i class="fa fa-list" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+    <div class="admin-form-group">
+      <label for="mw-eb">Edge banding</label>
+      <div class="fq-catalog-picker-wrap mw-catalog-picker">
+        <select class="admin-input mw-preview" id="mw-eb" name="edge_banding_id" data-mw-catalog-slot="edge_banding">
+          <option value="eb1">Maple iron-on (50 LF roll)</option>
+        </select>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mw-catalog-manage" data-mw-manage-slot="edge_banding" aria-label="Manage edge banding">
+          <i class="fa fa-list" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+    <div class="admin-form-group">
+      <label for="mw-trim">Trim stock (per LF)</label>
+      <div class="fq-catalog-picker-wrap mw-catalog-picker">
+        <select class="admin-input mw-preview" id="mw-trim" name="trim_id" data-mw-catalog-slot="trim_stock">
+          <option value="tr1">MDF baseboard</option>
+        </select>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mw-catalog-manage" data-mw-manage-slot="trim_stock" aria-label="Manage trim stock">
+          <i class="fa fa-list" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div id="mw-catalog-modal" class="admin-modal mw-catalog-modal">
+    <div class="admin-modal-backdrop" data-mw-catalog-dismiss></div>
+    <div class="admin-modal-panel mw-catalog-modal__panel" role="dialog" aria-modal="true" aria-labelledby="mw-catalog-modal-title">
+      <h2 id="mw-catalog-modal-title" class="admin-modal-title">Manage wood sheets</h2>
+      <p class="admin-modal-hint">Add, edit, or remove items. Saved quotations keep their own copy.</p>
+      <div class="admin-table-scroll mw-catalog-modal__scroll">
+        <div id="mw-catalog-modal-rows" class="mw-catalog-modal__rows">
+          <article class="mw-catalog-modal__card">
+            <div class="mw-catalog-modal__grid">
+              <div class="admin-form-group mw-catalog-modal__field">
+                <label>Name</label>
+                <input class="admin-input" value="3/4&quot; cabinet-grade plywood 4×8">
+              </div>
+              <div class="admin-form-group mw-catalog-modal__field">
+                <label>Price</label>
+                <input class="admin-input" value="72.00">
+              </div>
+            </div>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm mw-catalog-modal__remove" aria-label="Remove item">×</button>
+          </article>
+        </div>
+      </div>
+      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-catalog-add">Add item</button>
+      <div class="admin-modal-actions mw-catalog-modal__actions">
+        <button type="button" class="admin-btn admin-btn--ghost" data-mw-catalog-dismiss>Cancel</button>
+        <button type="button" class="admin-btn admin-btn--primary" id="mw-catalog-save">Save list</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

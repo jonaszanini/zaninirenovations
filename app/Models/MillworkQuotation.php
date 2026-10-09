@@ -20,6 +20,7 @@ class MillworkQuotation extends Model
         'is_draft',
         'inputs',
         'calculation',
+        'catalog_snapshot',
         'final_quote_total',
         'work_description',
         'payment_installments',
@@ -40,6 +41,7 @@ class MillworkQuotation extends Model
     protected $casts = [
         'inputs' => 'array',
         'calculation' => 'array',
+        'catalog_snapshot' => 'array',
         'is_draft' => 'boolean',
         'final_quote_total' => 'decimal:2',
         'payment_installments' => 'integer',

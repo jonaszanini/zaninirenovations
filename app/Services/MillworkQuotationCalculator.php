@@ -10,6 +10,7 @@ use App\Services\CutOptimizer\StockOption;
 use App\Services\CutOptimizer\SvgVisualizer;
 use App\Services\Millwork\Frozen\V2MillworkQuotationCalculator;
 use App\Services\Millwork\LegacyMillworkQuotationCalculator;
+use App\Services\Millwork\MillworkCatalog;
 use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPanelSplitter;
 use App\Services\Millwork\MillworkPartBuilder;
@@ -239,7 +240,10 @@ class MillworkQuotationCalculator
         $inputs['_cut_plan_version'] = $calcVersion;
         $prod = $settings->resolvedProductivity();
         $cut = $settings->resolvedCutSettings();
-        $catalog = $settings->resolvedCatalog();
+        $catalog = MillworkCatalog::mergeSnapshot(
+            $settings->resolvedCatalog(),
+            is_array($inputs['_catalog_snapshot'] ?? null) ? $inputs['_catalog_snapshot'] : []
+        );
         $ownerRate = round(max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate)), 2);
         $helperRate = round(max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate)), 2);
         $includeHelper = QuotationHelperLabor::enabled($inputs);

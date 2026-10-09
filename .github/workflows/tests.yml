@@ -85,6 +85,7 @@ jobs:
           node tests/js/admin-date-picker-browser.test.js
           node tests/js/quotation-redraft-confirm-browser.test.js
           node tests/js/quotation-redraft-hotkey-lock-browser.test.js
+          node tests/js/millwork-catalog-manage-geometry.test.js
 
       - name: Admin info-tip JS behaviour (no database)
         run: |
@@ -95,7 +96,9 @@ jobs:
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
 
       - name: Millwork cut-plan placement (no database)
-        run: php artisan test tests/Unit/Services/MillworkCutPlanPlacementTest.php
+        run: |
+          php artisan test tests/Unit/Services/MillworkCutPlanPlacementTest.php
+          php artisan test tests/Unit/Services/Millwork/MillworkCatalogTest.php
 
       - name: Millwork dimension parser (no database)
         run: php artisan test tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
@@ -223,6 +226,7 @@ jobs:
           php artisan test tests/Feature/Admin/MillworkLeaveSaveBrowserTest.php
           php artisan test tests/Feature/Admin/MillworkQuotationRoundTripTest.php
           php artisan test tests/Feature/Admin/MillworkCutPlanPlacementTest.php
+          php artisan test tests/Feature/Admin/MillworkCatalogManageTest.php
           php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
           php artisan test tests/Unit/Views/QuotationExpensePairLayoutTest.php
           php artisan test tests/Unit/Support/QuotationWorkDescriptionStyleTest.php

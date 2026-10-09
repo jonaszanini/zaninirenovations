@@ -17,6 +17,7 @@ use App\Services\AdditionalCostsService;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
+use App\Services\Millwork\MillworkCatalog;
 use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Services\MillworkQuotationCalculator;
@@ -416,11 +417,15 @@ class MillworkQuotationController extends Controller
             : MillworkQuotationCalculator::CALC_VERSION;
         $previewInputs['_cut_plan_version'] = $cutPlanVersion;
         $previewInputs['_calc_version'] = $cutPlanVersion;
+        if ($quotation && is_array($quotation->catalog_snapshot)) {
+            $previewInputs['_catalog_snapshot'] = $quotation->catalog_snapshot;
+        }
         $initialPreview = (new MillworkQuotationCalculator)->calculate(
             $previewInputs,
             $settings,
             $cutPlanVersion
         );
+        $quoteInputs = $quotation && is_array($quotation->inputs) ? $quotation->inputs : $previewInputs;
 
         return view('admin.quotations.millwork.create', [
             'quotation' => $quotation,
@@ -433,7 +438,11 @@ class MillworkQuotationController extends Controller
             'cutPlanVersion' => $cutPlanVersion,
             'builderVersion' => $cutPlanVersion,
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
-            'catalog' => $settings->resolvedCatalog(),
+            'catalog' => MillworkCatalog::dropdownCatalog(
+                $settings,
+                $quotation?->catalog_snapshot,
+                $quoteInputs
+            ),
             'roomAreaImport' => $quotation ? null : $roomAreaImport,
         ]);
     }
@@ -471,6 +480,10 @@ class MillworkQuotationController extends Controller
 
         $calc = (new MillworkQuotationCalculator)->calculate($rawInputs, null, $cutPlanVersion);
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
+        $catalogSnapshot = MillworkCatalog::snapshotFromInputs(
+            $rawInputs,
+            MillworkSettings::current()->resolvedCatalog(true)
+        );
         $workDescription = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage(
             $request->input('work_description')
         );
@@ -481,6 +494,7 @@ class MillworkQuotationController extends Controller
             'is_draft' => $draft,
             'inputs' => $rawInputs,
             'calculation' => $calc,
+            'catalog_snapshot' => $catalogSnapshot,
             'final_quote_total' => round($final, 2),
             'cut_plan_version' => $cutPlanVersion,
         ], $this->paymentScheduleFromRequest($request));

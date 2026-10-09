@@ -832,6 +832,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('quotations.millwork.calculate');
     Route::post('quotations/millwork/database', [\App\Http\Controllers\Admin\MillworkDatabaseController::class, 'update'])
         ->name('quotations.millwork.database.update');
+    Route::get('quotations/millwork/catalog/{slot}', [\App\Http\Controllers\Admin\MillworkCatalogController::class, 'show'])
+        ->name('quotations.millwork.catalog.show');
+    Route::put('quotations/millwork/catalog/{slot}', [\App\Http\Controllers\Admin\MillworkCatalogController::class, 'update'])
+        ->name('quotations.millwork.catalog.update');
     Route::post('quotations/millwork', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'store'])
         ->name('quotations.millwork.store');
     Route::post('quotations/millwork/preview', [\App\Http\Controllers\Admin\MillworkQuotationController::class, 'preview'])

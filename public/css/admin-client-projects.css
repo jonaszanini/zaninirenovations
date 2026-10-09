@@ -3510,6 +3510,12 @@ a:hover .cp-expense-receipt-pdf {
   font-weight: 600;
   color: var(--admin-heading);
 }
+.cp-reply-to-accept__legend-row {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .cp-reply-to-accept__choices {
   display: flex;
   flex-wrap: wrap;

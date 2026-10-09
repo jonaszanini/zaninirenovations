@@ -1970,6 +1970,22 @@ html.admin-dark #mw-main-form .admin-form-group select.mw-dim__unit {
   background-size: 10px 7px;
 }
 
+html.admin-dark #mw-catalog-modal .mw-catalog-modal__panel {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+html.admin-dark #mw-catalog-modal .admin-modal-title {
+  color: var(--admin-heading);
+}
+html.admin-dark #mw-catalog-modal .admin-modal-hint {
+  color: var(--admin-muted);
+}
+html.admin-dark .mw-catalog-modal__card {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+
 html.admin-dark .sq-qty__gear {
   color: var(--admin-primary);
   background: transparent;

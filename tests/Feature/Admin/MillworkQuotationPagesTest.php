@@ -66,6 +66,11 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Sheet size defaults to 4×8 from Price configuration.')
             ->assertSee('Waste % is applied to edge banding')
             ->assertSee('Applied to linear trim and wainscoting rails.')
+            ->assertSee('data-mw-manage-slot="wood_sheets"', false)
+            ->assertSee('data-mw-manage-slot="edge_banding"', false)
+            ->assertSee('data-mw-manage-slot="trim_stock"', false)
+            ->assertSee('id="mw-catalog-modal"', false)
+            ->assertDontSee('cp-reply-to-accept__help', false)
             ->assertSee('CA$3.80')
             ->assertSee('CA$6.50')
             ->assertSee('Waste %')
@@ -83,6 +88,7 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Pieces');
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Materials & finish');
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Wood sheet');
+        $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Ask client to reply I accept');
         $create->assertSee('aria-label="About Pieces"', false);
         $create->assertSee('aria-label="About Wood sheet"', false);
         $create->assertSee('Primary 4×8 (or catalog size).', false);

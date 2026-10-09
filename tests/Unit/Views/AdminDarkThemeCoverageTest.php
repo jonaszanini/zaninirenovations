@@ -76,6 +76,7 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .et-paste-advanced',
             'html.admin-dark .et-paste-advanced > summary',
             'html.admin-dark .dash-etransfer-today',
+            'html.admin-dark #mw-catalog-modal .mw-catalog-modal__panel',
             'html.admin-dark .util-lb-offcut-used',
             'html.admin-dark .util-lb-sheet-group',
             'html.admin-dark .util-oc-pill',

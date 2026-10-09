@@ -89,48 +89,49 @@
         <label for="mw-sheet">Wood sheet</label>
         <x-admin.info-tip label="Wood sheet">Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.</x-admin.info-tip>
       </span>
-      <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
-        @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
-          <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>
-            {{ trim((string) ($row['name'] ?? 'Sheet')) }}
-          </option>
-        @endforeach
-      </select>
+      @include('admin.quotations.millwork._catalog_select', [
+        'selectId' => 'mw-sheet',
+        'selectName' => 'sheet_id',
+        'slot' => MillworkSettings::SLOT_WOOD_SHEETS,
+        'rows' => $opt(MillworkSettings::SLOT_WOOD_SHEETS),
+        'selected' => $mwVal('sheet_id'),
+        'selectClass' => 'mw-sheet-select',
+        'manageLabel' => 'wood sheets',
+      ])
     </div>
     <div class="admin-form-grid-2">
       <div class="admin-form-group" data-mw-mat="back" @if (! $needsBack) hidden @endif>
         <label for="mw-back">Back / 1/4" sheet</label>
-        <select class="admin-input mw-preview" id="mw-back" name="back_sheet_id">
-          @php
-            $backSelected = (string) $mwVal('back_sheet_id');
-            if ($backSelected === '') {
-                foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row) {
-                    if ((float) ($row['thickness_in'] ?? 0) <= 0.3) {
-                        $backSelected = (string) ($row['id'] ?? '');
-                        break;
-                    }
-                }
-            }
-          @endphp
-          @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
-            <option value="{{ $row['id'] }}" @selected($backSelected === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @php
+          $backSelected = (string) $mwVal('back_sheet_id');
+          if ($backSelected === '') {
+              foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row) {
+                  if ((float) ($row['thickness_in'] ?? 0) <= 0.3) {
+                      $backSelected = (string) ($row['id'] ?? '');
+                      break;
+                  }
+              }
+          }
+        @endphp
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-back',
+          'selectName' => 'back_sheet_id',
+          'slot' => MillworkSettings::SLOT_WOOD_SHEETS,
+          'rows' => $opt(MillworkSettings::SLOT_WOOD_SHEETS),
+          'selected' => $backSelected,
+          'manageLabel' => 'wood sheets',
+        ])
       </div>
       <div class="admin-form-group" data-mw-mat="edge-banding" @if (! $needsEdgeBanding) hidden @endif>
         <label for="mw-eb">Edge banding</label>
-        <select class="admin-input mw-preview" id="mw-eb" name="edge_banding_id">
-          @foreach ($opt(MillworkSettings::SLOT_EDGE_BANDING) as $row)
-            @php
-              $ebCov = (float) ($row['coverage_lf'] ?? 0);
-              $hasCovInName = preg_match('/\b\d+(?:\.\d+)?\s*(?:feet|foot|ft|lf)\b/i', $row['name'] ?? '');
-              $covSuffix = ($ebCov > 0 && ! $hasCovInName) ? ' ('.rtrim(rtrim(number_format($ebCov, 1, '.', ''), '0'), '.').' LF roll)' : '';
-            @endphp
-            <option value="{{ $row['id'] }}" @selected($mwVal('edge_banding_id') === ($row['id'] ?? ''))>
-              {{ $row['name'] }}{{ $covSuffix }}
-            </option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-eb',
+          'selectName' => 'edge_banding_id',
+          'slot' => MillworkSettings::SLOT_EDGE_BANDING,
+          'rows' => $opt(MillworkSettings::SLOT_EDGE_BANDING),
+          'selected' => $mwVal('edge_banding_id'),
+          'manageLabel' => 'edge banding',
+        ])
         <p class="admin-form-help" id="mw-eb-meta">
           @php
             $initialEdgeLf = (float) ($initialPreview['summary']['edge_band_lf'] ?? 0);
@@ -142,27 +143,36 @@
       </div>
       <div class="admin-form-group" data-mw-mat="paint" @if (! $needsPaint) hidden @endif>
         <label for="mw-paint">Paint (quart / half gallon)</label>
-        <select class="admin-input mw-preview" id="mw-paint" name="paint_id">
-          @foreach ($opt(MillworkSettings::SLOT_PAINTS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('paint_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-paint',
+          'selectName' => 'paint_id',
+          'slot' => MillworkSettings::SLOT_PAINTS,
+          'rows' => $opt(MillworkSettings::SLOT_PAINTS),
+          'selected' => $mwVal('paint_id'),
+          'manageLabel' => 'paint',
+        ])
       </div>
       <div class="admin-form-group" data-mw-mat="stain" @if (! $needsStain) hidden @endif>
         <label for="mw-stain">Stain / clear coat</label>
-        <select class="admin-input mw-preview" id="mw-stain" name="stain_id">
-          @foreach ($opt(MillworkSettings::SLOT_STAINS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('stain_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-stain',
+          'selectName' => 'stain_id',
+          'slot' => MillworkSettings::SLOT_STAINS,
+          'rows' => $opt(MillworkSettings::SLOT_STAINS),
+          'selected' => $mwVal('stain_id'),
+          'manageLabel' => 'stain',
+        ])
       </div>
       <div class="admin-form-group" data-mw-mat="trim">
         <label for="mw-trim">Trim stock (per LF)</label>
-        <select class="admin-input mw-preview" id="mw-trim" name="trim_id">
-          @foreach ($opt(MillworkSettings::SLOT_TRIM) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('trim_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-trim',
+          'selectName' => 'trim_id',
+          'slot' => MillworkSettings::SLOT_TRIM,
+          'rows' => $opt(MillworkSettings::SLOT_TRIM),
+          'selected' => $mwVal('trim_id'),
+          'manageLabel' => 'trim stock',
+        ])
       </div>
     </div>
     <div class="mw-short-row">
@@ -244,75 +254,97 @@
     <div class="mw-hw-grid">
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-hinge">Hinges</label>
-        <select class="admin-input mw-preview" id="mw-hinge" name="hinge_id" data-mw-hw-select>
-          @foreach ($opt(MillworkSettings::SLOT_HINGES) as $row)
-            @php $hwPrice = (float) ($row['unit_price'] ?? 0); @endphp
-            <option value="{{ $row['id'] }}" data-price="{{ number_format($hwPrice, 2, '.', '') }}" @selected($mwVal('hinge_id') === ($row['id'] ?? ''))>
-              {{ $row['name'] }}@if ($hwPrice > 0) — {{ \App\Models\ClientProject::formatMoney($hwPrice) }}@endif
-            </option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-hinge',
+          'selectName' => 'hinge_id',
+          'slot' => MillworkSettings::SLOT_HINGES,
+          'rows' => $opt(MillworkSettings::SLOT_HINGES),
+          'selected' => $mwVal('hinge_id'),
+          'manageLabel' => 'hinges',
+          'extraSelectAttrs' => 'data-mw-hw-select',
+          'withPrice' => true,
+        ])
         <p class="admin-form-help mw-hw-price" data-mw-hw-price hidden></p>
       </div>
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-pull">Pulls</label>
-        <select class="admin-input mw-preview" id="mw-pull" name="pull_id" data-mw-hw-select>
-          @foreach ($opt(MillworkSettings::SLOT_PULLS) as $row)
-            @php $hwPrice = (float) ($row['unit_price'] ?? 0); @endphp
-            <option value="{{ $row['id'] }}" data-price="{{ number_format($hwPrice, 2, '.', '') }}" @selected($mwVal('pull_id') === ($row['id'] ?? ''))>
-              {{ $row['name'] }}@if ($hwPrice > 0) — {{ \App\Models\ClientProject::formatMoney($hwPrice) }}@endif
-            </option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-pull',
+          'selectName' => 'pull_id',
+          'slot' => MillworkSettings::SLOT_PULLS,
+          'rows' => $opt(MillworkSettings::SLOT_PULLS),
+          'selected' => $mwVal('pull_id'),
+          'manageLabel' => 'pulls',
+          'extraSelectAttrs' => 'data-mw-hw-select',
+          'withPrice' => true,
+        ])
         <p class="admin-form-help mw-hw-price" data-mw-hw-price hidden></p>
       </div>
       <div class="admin-form-group">
         <label for="mw-screw">Screws</label>
-        <select class="admin-input mw-preview" id="mw-screw" name="screw_id">
-          @foreach ($opt(MillworkSettings::SLOT_SCREWS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('screw_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-screw',
+          'selectName' => 'screw_id',
+          'slot' => MillworkSettings::SLOT_SCREWS,
+          'rows' => $opt(MillworkSettings::SLOT_SCREWS),
+          'selected' => $mwVal('screw_id'),
+          'manageLabel' => 'screws',
+        ])
       </div>
       <div class="admin-form-group">
         <label for="mw-nail">Nails</label>
-        <select class="admin-input mw-preview" id="mw-nail" name="nail_id">
-          @foreach ($opt(MillworkSettings::SLOT_NAILS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('nail_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-nail',
+          'selectName' => 'nail_id',
+          'slot' => MillworkSettings::SLOT_NAILS,
+          'rows' => $opt(MillworkSettings::SLOT_NAILS),
+          'selected' => $mwVal('nail_id'),
+          'manageLabel' => 'nails',
+        ])
       </div>
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-slide">Drawer slides</label>
-        <select class="admin-input mw-preview" id="mw-slide" name="slide_id">
-          @foreach ($opt(MillworkSettings::SLOT_DRAWER_SLIDES) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('slide_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-slide',
+          'selectName' => 'slide_id',
+          'slot' => MillworkSettings::SLOT_DRAWER_SLIDES,
+          'rows' => $opt(MillworkSettings::SLOT_DRAWER_SLIDES),
+          'selected' => $mwVal('slide_id'),
+          'manageLabel' => 'drawer slides',
+        ])
       </div>
       <div class="admin-form-group">
         <label for="mw-glue">Wood glue</label>
-        <select class="admin-input mw-preview" id="mw-glue" name="glue_id">
-          @foreach ($opt(MillworkSettings::SLOT_GLUE) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('glue_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-glue',
+          'selectName' => 'glue_id',
+          'slot' => MillworkSettings::SLOT_GLUE,
+          'rows' => $opt(MillworkSettings::SLOT_GLUE),
+          'selected' => $mwVal('glue_id'),
+          'manageLabel' => 'wood glue',
+        ])
       </div>
       <div class="admin-form-group" data-mw-hw="closet-family" @if (! $needsClosetHardware) hidden @endif>
         <label for="mw-rod">Closet rods</label>
-        <select class="admin-input mw-preview" id="mw-rod" name="rod_id">
-          @foreach ($opt(MillworkSettings::SLOT_RODS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('rod_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-rod',
+          'selectName' => 'rod_id',
+          'slot' => MillworkSettings::SLOT_RODS,
+          'rows' => $opt(MillworkSettings::SLOT_RODS),
+          'selected' => $mwVal('rod_id'),
+          'manageLabel' => 'closet rods',
+        ])
       </div>
       <div class="admin-form-group" data-mw-hw="closet-family" @if (! $needsClosetHardware) hidden @endif>
         <label for="mw-pins">Shelf pins</label>
-        <select class="admin-input mw-preview" id="mw-pins" name="pin_id">
-          @foreach ($opt(MillworkSettings::SLOT_SHELF_PINS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('pin_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
-          @endforeach
-        </select>
+        @include('admin.quotations.millwork._catalog_select', [
+          'selectId' => 'mw-pins',
+          'selectName' => 'pin_id',
+          'slot' => MillworkSettings::SLOT_SHELF_PINS,
+          'rows' => $opt(MillworkSettings::SLOT_SHELF_PINS),
+          'selected' => $mwVal('pin_id'),
+          'manageLabel' => 'shelf pins',
+        ])
       </div>
     </div>
   </div>
