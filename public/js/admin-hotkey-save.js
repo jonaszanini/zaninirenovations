@@ -13,6 +13,7 @@
   var WATCH_MS = 12000;
   var EXPECT_KEY = 'admin-save-expect';
   var HOTKEY_FIELD = '_hotkey_save';
+  var EMAIL_PRIOR_FIELD = '_hotkey_email_prior';
   var EMAIL_FIELDS = [
     'send_client_email',
     'send_schedule_email',
@@ -538,6 +539,12 @@
       }
     });
     ensureHidden(form, HOTKEY_FIELD, '1', env);
+    var prior = '0';
+    snap.forEach(function (item) {
+      if (!item || !item.el) return;
+      if (item.el.name === 'send_client_email' && item.checked) prior = '1';
+    });
+    ensureHidden(form, EMAIL_PRIOR_FIELD, prior, env);
     form.__adminEmailSnap = snap;
     return snap;
   }
@@ -637,9 +644,10 @@
         ctype = (res.headers && res.headers.get && res.headers.get('content-type')) || '';
       } catch (err) { /* ignore */ }
       var isJson = /application\/json/i.test(ctype) || (body && typeof body === 'object');
+      var status = res.status || 0;
       if (!isJson) {
         var text = typeof body === 'string' ? body : '';
-        if (/<html|login|sign in/i.test(text)) {
+        if (status === 401 || status === 419 || /(?:^|[\s>])(?:login|sign in|page expired)/i.test(text)) {
           return { kind: 'error', title: 'Sign in required', message: 'Your session expired. Sign in and save again.' };
         }
         return { kind: 'error', title: 'Could not save', message: 'The server did not confirm the save.' };
@@ -653,7 +661,6 @@
       if (res.ok && body && (body.ok === true || body.event)) {
         return { kind: 'saved' };
       }
-      var status = res.status || 0;
       if (status === 401 || status === 419 || (typeof body === 'string' && /login|sign in|page expired/i.test(body))) {
         return { kind: 'error', title: 'Sign in required', message: 'Your session expired. Sign in and save again.' };
       }
@@ -775,7 +782,7 @@
       }
 
       var timer = timeoutFn(function () {
-        if (session && session.inflight) {
+        if (session && session.inflight && session.mode !== 'form') {
           finishSession();
         }
       }, WATCH_MS);
@@ -879,6 +886,33 @@
       for (var i = 0; i < nodes.length; i++) annotateTitle(nodes[i], env.window);
     }
 
+    function eachTinyEditor(tm, fn) {
+      if (!tm || typeof fn !== 'function') return;
+      var seen = [];
+      var add = function (editor) {
+        if (!editor || seen.indexOf(editor) !== -1) return;
+        seen.push(editor);
+        fn(editor);
+      };
+      if (typeof tm.get === 'function') {
+        try {
+          var all = tm.get();
+          if (Array.isArray(all)) {
+            all.forEach(add);
+          } else if (all) {
+            add(all);
+          }
+        } catch (err) { /* ignore */ }
+      }
+      if (tm.editors) {
+        if (typeof tm.editors.forEach === 'function') {
+          tm.editors.forEach(add);
+        } else {
+          for (var i = 0; i < tm.editors.length; i++) add(tm.editors[i]);
+        }
+      }
+    }
+
     function bindTiny() {
       var tm = tinymceApi(env);
       if (!tm) {
@@ -886,16 +920,14 @@
         return;
       }
       if (tinyBoundApi === tm) {
-        if (tm.editors && tm.editors.forEach) tm.editors.forEach(hookTinyEditor);
+        eachTinyEditor(tm, hookTinyEditor);
         return;
       }
       tinyBoundApi = tm;
       if (typeof tm.on === 'function') {
         tm.on('AddEditor', function (e) { hookTinyEditor(e.editor); });
       }
-      if (tm.editors && tm.editors.forEach) {
-        tm.editors.forEach(hookTinyEditor);
-      }
+      eachTinyEditor(tm, hookTinyEditor);
     }
 
     function hookTinyEditor(editor) {
@@ -999,8 +1031,10 @@
 
     return {
       DEBOUNCE_MS: DEBOUNCE_MS,
+      WATCH_MS: WATCH_MS,
       EXPECT_KEY: EXPECT_KEY,
       HOTKEY_FIELD: HOTKEY_FIELD,
+      EMAIL_PRIOR_FIELD: EMAIL_PRIOR_FIELD,
       isSaveChord: isSaveChord,
       shouldTriggerSave: shouldTriggerSave,
       shortcutLabel: function () { return shortcutLabel(env.window); },
@@ -1018,6 +1052,7 @@
       laravelToName: laravelToName,
       isIgnoredUrl: isIgnoredUrl,
       parseAjaxResult: parseAjaxResult,
+      readBody: readBody,
       collectInvalidFields: function (form) { return collectInvalidFields(form, env); },
       handleKeydown: handleKeydown,
       onMarkedClick: onMarkedClick,
@@ -1053,6 +1088,7 @@
 
   return {
     DEBOUNCE_MS: DEBOUNCE_MS,
+    WATCH_MS: WATCH_MS,
     EXPECT_KEY: EXPECT_KEY,
     create: create,
     isSaveChord: isSaveChord,

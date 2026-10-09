@@ -235,8 +235,17 @@ class ClientProjectController extends Controller
             if ($duplicates->isNotEmpty()) {
                 $except = ['confirm_duplicate_project', 'photos'];
                 if ($request->boolean('_hotkey_save')) {
-                    $except[] = 'send_client_email';
                     $except[] = '_hotkey_save';
+                    $except[] = '_hotkey_email_prior';
+                    $input = $request->except($except);
+                    if ($request->exists('_hotkey_email_prior')) {
+                        $input['send_client_email'] = $request->boolean('_hotkey_email_prior') ? '1' : '0';
+                    }
+
+                    return back()
+                        ->withInput($input)
+                        ->with('duplicate_project_candidates', $duplicates)
+                        ->with('warning', 'A similar project already exists for this client or address. Open it below, or click "Create anyway" if this is a separate job.');
                 }
 
                 return back()

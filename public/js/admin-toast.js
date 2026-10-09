@@ -31,6 +31,9 @@
     '#mw-next',
     '#sh-next',
     '#tm-next',
+    '[data-hotkey-save]',
+    '.br-toolbar-actions',
+    '.admin-toolbar-actions',
   ].join(',');
   var AVOID_SEL = [
     '[data-hotkey-save]',
@@ -118,7 +121,13 @@
       var id = el && el.id;
       var cls = el && el.className && String(el.className);
       return id === 'br-next' || id === 'mw-next' || id === 'sh-next' || id === 'tm-next'
-        || (cls && (cls.indexOf('br-sticky-total') !== -1 || cls.indexOf('br-step-nav') !== -1));
+        || (el.getAttribute && el.getAttribute('data-hotkey-save') != null)
+        || (cls && (
+          cls.indexOf('br-sticky-total') !== -1
+          || cls.indexOf('br-step-nav') !== -1
+          || cls.indexOf('br-toolbar-actions') !== -1
+          || cls.indexOf('admin-toolbar-actions') !== -1
+        ));
     }
     try { return el.matches(PRIORITY_AVOID_SEL); } catch (err) { return false; }
   }
@@ -432,6 +441,9 @@
     bindFieldLinks(env);
     if (options.fields) highlightFields(options.fields, true);
     pickPlacement(env);
+    if (options.fields && options.fields[0] && options.fields[0].el) {
+      focusField(options.fields[0], env);
+    }
 
     if (!sticky) {
       hideTimer = setTimeout(function () {
@@ -497,6 +509,7 @@
     PLACEMENTS: PLACEMENTS,
     AVOID_SEL: AVOID_SEL,
     PRIORITY_AVOID_SEL: PRIORITY_AVOID_SEL,
+    AVOID_PAD: AVOID_PAD,
     show: show,
     saved: saved,
     error: error,

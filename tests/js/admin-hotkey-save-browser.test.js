@@ -424,9 +424,19 @@ async function showOnly(page, id) {
         }
         return { bar: hits(bar), nav: hits(nav), next: hits(next), placement: toast.getAttribute('data-placement') };
       });
-      assert.strictEqual(hit.bar, false, width + ' toast does not cover sticky totals');
-      assert.strictEqual(hit.nav, false, width + ' toast does not cover step nav');
-      assert.strictEqual(hit.next, false, width + ' toast does not cover Next');
+    assert.strictEqual(hit.bar, false, width + ' toast does not cover sticky totals');
+    assert.strictEqual(hit.nav, false, width + ' toast does not cover step nav');
+    assert.strictEqual(hit.next, false, width + ' toast does not cover Next');
+    if (width >= 1024) {
+      const coversSave = await page.evaluate(() => {
+        const toast = document.querySelector('[data-admin-toast-host]');
+        const save = document.getElementById('layout-save');
+        const tr = toast.getBoundingClientRect();
+        const r = save.getBoundingClientRect();
+        return !(tr.right < r.left - 8 || tr.left > r.right + 8 || tr.bottom < r.top - 8 || tr.top > r.bottom + 8);
+      });
+      assert.strictEqual(coversSave, false, width + ' toast does not cover the main Save');
+    }
     }
     await assertToastMissesChrome(390, 720);
     await assertToastMissesChrome(1024, 800);

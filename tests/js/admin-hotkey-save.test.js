@@ -483,6 +483,9 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   const flag = form.children.find((c) => c.name === '_hotkey_save' || (c.getAttribute && c.getAttribute('name') === '_hotkey_save'));
   assert.ok(flag, 'Ctrl+S posts _hotkey_save');
   assert.strictEqual(flag.value, '1');
+  const prior = form.children.find((c) => c.name === '_hotkey_email_prior' || (c.getAttribute && c.getAttribute('name') === '_hotkey_email_prior'));
+  assert.ok(prior, 'Ctrl+S posts the prior email-box choice');
+  assert.strictEqual(prior.value, '1');
   inst.reset();
   assert.strictEqual(checkbox.checked, true, 'finish restores the email box');
   assert.ok(!form.children.some((c) => c.name === '_hotkey_save' || (c.getAttribute && c.getAttribute('name') === '_hotkey_save')),
@@ -553,6 +556,7 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   const html = { headers: { get() { return 'text/html'; } }, ok: true, status: 200 };
   const htmlResult = inst.parseAjaxResult(html, '<html><body>Projects</body></html>');
   assert.strictEqual(htmlResult.kind, 'error', 'HTML 200 is not Saved');
+  assert.notStrictEqual(htmlResult.title, 'Sign in required', 'HTML 200 is not session expired');
   const login = inst.parseAjaxResult(html, '<html>Sign in</html>');
   assert.strictEqual(login.title, 'Sign in required');
   const expired = inst.parseAjaxResult(
@@ -561,6 +565,26 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   );
   assert.strictEqual(expired.title, 'Sign in required', '419 HTML is a login/session message');
   assert.ok(/session expired/i.test(expired.message));
+  const serverErr = inst.parseAjaxResult(
+    { headers: { get() { return 'text/html'; } }, ok: false, status: 500 },
+    '<html><h1>Server Error</h1></html>'
+  );
+  assert.notStrictEqual(serverErr.title, 'Sign in required', 'HTML 500 is not session expired');
+  const unavailable = inst.parseAjaxResult(
+    { headers: { get() { return 'text/html'; } }, ok: false, status: 503 },
+    '<html>Service Unavailable</html>'
+  );
+  assert.notStrictEqual(unavailable.title, 'Sign in required', 'HTML 503 is not session expired');
+  const csrf = inst.parseAjaxResult(
+    { headers: { get() { return 'application/json'; } }, ok: false, status: 419 },
+    { message: 'CSRF token mismatch' }
+  );
+  assert.strictEqual(csrf.title, 'Sign in required', 'JSON 419 uses the status branch');
+  const unauthorized = inst.parseAjaxResult(
+    { headers: { get() { return 'application/json'; } }, ok: false, status: 401 },
+    { message: 'Unauthenticated.' }
+  );
+  assert.strictEqual(unauthorized.title, 'Sign in required', 'JSON 401 uses the status branch');
   inst.reset();
 })();
 
@@ -618,6 +642,7 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   const form = makeEl('form', { id: 'cp-create' }, [btn]);
   const doc = makeDoc([form]);
   const timers = [];
+  const store = { 'admin-save-expect': '1' };
   const inst = hotkey.create({
     document: doc,
     window: {
@@ -627,7 +652,11 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
     },
     now() { return 8000; },
     toast: { saved() {}, error() {}, validation() {} },
-    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+    storage: {
+      getItem(k) { return store[k] || null; },
+      setItem(k, v) { store[k] = String(v); },
+      removeItem(k) { delete store[k]; },
+    },
   });
   inst.onMarkedClick({ target: btn, preventDefault() {}, stopImmediatePropagation() {} });
   assert.ok(inst.isInflight(), 'mouse save starts a session');
@@ -635,6 +664,7 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
   timers.filter((t) => t.ms === 50).forEach((t) => t.fn());
   assert.strictEqual(inst.isInflight(), false, 'cancelled submit releases the lock');
+  assert.strictEqual(store['admin-save-expect'], undefined, 'cancelled submit clears the expect flag');
   const later = {
     target: btn,
     prevented: false,
@@ -786,6 +816,7 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   const env = { document: doc, window: { innerWidth: 1024, innerHeight: 800, addEventListener() {} } };
   toast.validation([{ el: field, label: 'Width', message: 'is required' }], {}, env);
   assert.strictEqual(host.hidden, false, 'validation toast is shown');
+  assert.strictEqual(doc.activeElement, field, 'first invalid field is focused');
   field.validity = { valid: true };
   field.invalid = false;
   if (doc.listeners.input) {
@@ -801,39 +832,95 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   assert.strictEqual(host.hidden, true, 'Esc closes the toast');
 })();
 
-(function toastAvoidsStickyFallback() {
+(function toastAvoidsStickyAndSave() {
   const sticky = makeEl('div', { class: 'br-sticky-total', id: 'br-sticky-total' });
   sticky.className = 'br-sticky-total';
   sticky.rect = { left: 0, top: 744, right: 1024, bottom: 800, width: 1024, height: 56 };
   const next = makeEl('button', { id: 'br-next' });
   next.rect = { left: 900, top: 750, right: 1010, bottom: 794, width: 110, height: 44 };
   const save = makeEl('button', { 'data-hotkey-save': '', id: 'toolbar-save' });
-  save.rect = { left: 900, top: 8, right: 1010, bottom: 52, width: 110, height: 44 };
-  const doc = makeDoc([sticky, next, save]);
+  save.rect = { left: 880, top: 8, right: 1010, bottom: 52, width: 130, height: 44 };
+  const field = makeEl('input', { id: 'area' });
+  field.rect = { left: 0, right: 1024, top: 0, bottom: 130, width: 1024, height: 130 };
+  const doc = makeDoc([sticky, next, save, field]);
+  doc.activeElement = field;
   const host = makeEl('div', { 'data-admin-toast-host': '' });
   host.hidden = true;
   host.getBoundingClientRect = function () {
     const place = this.getAttribute('data-placement') || 'bottom-center';
     const pinned = parseFloat((this.style && this.style.bottom) || '');
-    if (place === 'bottom-center' && pinned > 40) {
+    if (pinned > 40) {
       const bottom = 800 - pinned;
       return { left: 362, right: 662, top: bottom - 80, bottom, width: 300, height: 80 };
     }
-    if (place === 'bottom-center' || place === 'bottom-left' || place === 'bottom-right') {
+    if (place === 'top-right') {
+      return { left: 700, right: 1000, top: 12, bottom: 92, width: 300, height: 80 };
+    }
+    if (String(place).indexOf('bottom') === 0) {
       return { left: 362, right: 662, top: 700, bottom: 780, width: 300, height: 80 };
     }
-    return { left: 362, right: 662, top: 20, bottom: 100, width: 300, height: 80 };
+    return { left: 20, right: 320, top: 20, bottom: 100, width: 300, height: 80 };
   };
   doc.body.appendChild(host);
   const env = { document: doc, window: { innerWidth: 1024, innerHeight: 800, addEventListener() {} } };
-  toast.validation([{ el: save, label: 'Area', message: 'is required' }], {}, env);
+  toast.error('Please fix these fields', env);
   const tr = host.getBoundingClientRect();
   function hits(r) {
     return !(tr.right < r.left - 8 || tr.left > r.right + 8 || tr.bottom < r.top - 8 || tr.top > r.bottom + 8);
   }
   assert.strictEqual(hits(sticky.rect), false, 'scored placement does not cover sticky totals');
   assert.strictEqual(hits(next.rect), false, 'scored placement does not cover Next');
+  assert.strictEqual(hits(save.rect), false, 'error toast does not cover Save at 1024');
   assert.ok(toast.PRIORITY_AVOID_SEL.indexOf('.br-sticky-total') !== -1);
+  assert.ok(toast.PRIORITY_AVOID_SEL.indexOf('[data-hotkey-save]') !== -1, 'Save buttons are priority avoid rects');
+  const place = host.getAttribute('data-placement');
+  assert.ok(place !== 'bottom-center' || parseFloat(host.style.bottom || '0') > 40,
+    'priority weighting prefers a placement that misses sticky over a tiny sticky overlap');
+})();
+
+(function toastPinsWhenEveryPlacementHitsPriority() {
+  const sticky = makeEl('div', { class: 'br-sticky-total', id: 'br-sticky-total' });
+  sticky.className = 'br-sticky-total';
+  sticky.rect = { left: 0, top: 660, right: 1024, bottom: 800, width: 1024, height: 140 };
+  const save = makeEl('button', { 'data-hotkey-save': '', id: 'toolbar-save' });
+  save.rect = { left: 0, top: 0, right: 1024, bottom: 140, width: 1024, height: 140 };
+  const doc = makeDoc([sticky, save]);
+  const host = makeEl('div', { 'data-admin-toast-host': '' });
+  host.hidden = true;
+  host.getBoundingClientRect = function () {
+    const pinned = parseFloat((this.style && this.style.bottom) || '');
+    if (pinned > 40) {
+      const bottom = 800 - pinned;
+      return { left: 362, right: 662, top: bottom - 80, bottom, width: 300, height: 80 };
+    }
+    const place = this.getAttribute('data-placement') || 'bottom-center';
+    if (String(place).indexOf('top') === 0) {
+      return { left: 362, right: 662, top: 20, bottom: 100, width: 300, height: 80 };
+    }
+    return { left: 362, right: 662, top: 700, bottom: 780, width: 300, height: 80 };
+  };
+  doc.body.appendChild(host);
+  const env = { document: doc, window: { innerWidth: 1024, innerHeight: 800, addEventListener() {} } };
+  toast.error('Please fix these fields', env);
+  assert.ok(parseFloat(host.style.bottom || '0') > 50, 'pinAboveSticky lifts the toast above the sticky bar');
+  const tr = host.getBoundingClientRect();
+  function hits(r) {
+    return !(tr.right < r.left - 8 || tr.left > r.right + 8 || tr.bottom < r.top - 8 || tr.top > r.bottom + 8);
+  }
+  assert.strictEqual(hits(sticky.rect), false, 'pinned fallback does not cover sticky');
+  assert.strictEqual(hits(save.rect), false, 'pinned fallback does not cover Save');
+})();
+
+(function toastShowsServerFlashText() {
+  const host = makeEl('div', { 'data-admin-toast-host': '' });
+  host.hidden = true;
+  const doc = makeDoc([host]);
+  const env = { document: doc, window: { innerWidth: 1024, innerHeight: 800, addEventListener() {} } };
+  toast.saved(env, 'Schedule confirmation emailed to the client.');
+  assert.ok(String(host.innerHTML).indexOf('Schedule confirmation emailed to the client.') !== -1,
+    'success toast title uses the server flash text');
+  toast.saved(env, 'Saved');
+  assert.ok(String(host.innerHTML).indexOf('Saved') !== -1);
 })();
 
 (function darkCardOpacityIsSolid() {
@@ -843,6 +930,108 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   assert.ok(/html\.admin-dark \.admin-toast__card\s*\{[^}]*opacity:\s*1/.test(dark), 'dark toast card is opaque');
   assert.ok(/html\.admin-dark \.admin-toast--success\s*\{[^}]*opacity:\s*1/.test(dark), 'dark success toast is opaque');
   assert.ok(/html\.admin-dark \.admin-toast--error\s*\{[^}]*opacity:\s*1/.test(dark), 'dark error toast is opaque');
+})();
+
+(function formWatchTimerDoesNotRelease() {
+  const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
+  checkbox.checked = true;
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [checkbox, btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const inst = hotkey.create({
+    document: doc,
+    window: {
+      navigator: { platform: 'Linux' },
+      setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+      clearTimeout() {},
+    },
+    now() { return 11000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  assert.strictEqual(checkbox.checked, false);
+  inst.onFormSubmit({ target: form, defaultPrevented: false });
+  timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
+  assert.ok(inst.isInflight(), 'real submit stays inflight');
+  timers.filter((t) => t.ms === 12000 || t.ms === inst.WATCH_MS).forEach((t) => t.fn());
+  assert.ok(inst.isInflight(), '12s timer does not release a form-mode session');
+  assert.strictEqual(checkbox.checked, false, '12s timer does not re-tick the email box');
+  assert.ok(form.children.some((c) => c.name === '_hotkey_save'), '_hotkey_save stays until pageshow');
+  inst.onPageShow({ persisted: true });
+  assert.strictEqual(inst.isInflight(), false, 'pageshow releases the form session');
+  assert.strictEqual(checkbox.checked, true, 'pageshow restores the email box');
+  inst.reset();
+})();
+
+(function pageshowListenerIsBound() {
+  const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
+  checkbox.checked = true;
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [checkbox, btn]);
+  const doc = makeDoc([form]);
+  const winListeners = {};
+  const inst = hotkey.create({
+    document: doc,
+    window: {
+      navigator: { platform: 'Linux' },
+      addEventListener(type, fn) { winListeners[type] = fn; },
+    },
+    now() { return 12000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.bind();
+  assert.ok(typeof winListeners.pageshow === 'function', 'bind() wires the pageshow listener');
+  inst.handleKeydown(chord());
+  assert.strictEqual(checkbox.checked, false);
+  winListeners.pageshow({ persisted: true });
+  assert.strictEqual(checkbox.checked, true, 'bound pageshow restores the email box');
+  inst.reset();
+})();
+
+(function finishSessionRestoresFocus() {
+  const doc = page('typing');
+  const input = doc.getElementById('title');
+  doc.activeElement = input;
+  const inst = apiFor(doc);
+  inst.handleKeydown(chord());
+  doc.activeElement = doc.body;
+  inst.releaseInflight();
+  assert.strictEqual(doc.activeElement, input, 'finishSession restores focus');
+  inst.reset();
+})();
+
+(function watchTinyUsesGet() {
+  const btn = makeEl('button', { type: 'button', 'data-hotkey-save': '', id: 'tiny-save' });
+  const doc = makeDoc([btn]);
+  const timers = [];
+  const win = {
+    navigator: { platform: 'Linux' },
+    setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+    clearTimeout() {},
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return 1000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.bindTiny();
+  assert.ok(timers.some((t) => t.ms === 250), 'watchTiny polls while tinymce is missing');
+  let keydown = null;
+  let addEditor = null;
+  const editor = { on(name, fn) { if (name === 'keydown') keydown = fn; } };
+  win.tinymce = {
+    get() { return [editor]; },
+    on(name, fn) { if (name === 'AddEditor') addEditor = fn; },
+  };
+  timers.filter((t) => t.ms === 250).forEach((t) => t.fn());
+  assert.ok(typeof addEditor === 'function', 'poll registers AddEditor');
+  assert.ok(typeof keydown === 'function', 'poll hooks editors from tinymce.get()');
+  inst.reset();
 })();
 
 (function logoutFormIsSkippedForErrors() {
@@ -927,6 +1116,20 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
     inst.reset();
   });
 })().then(() => {
+  const inst = apiFor(page('standard'));
+  let textCalls = 0;
+  let jsonCalls = 0;
+  return inst.readBody({
+    clone() { return this; },
+    text() { textCalls += 1; return Promise.resolve('{"ok":true}'); },
+    json() { jsonCalls += 1; return Promise.resolve({ ok: true }); },
+  }).then((body) => {
+    assert.strictEqual(textCalls, 1, 'readBody reads text first');
+    assert.strictEqual(jsonCalls, 0, 'readBody does not call json() first');
+    assert.deepStrictEqual(body, { ok: true });
+    inst.reset();
+  });
+}).then(() => {
   console.log('admin-hotkey-save tests: ok');
 }).catch((err) => {
   console.error(err);

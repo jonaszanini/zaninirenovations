@@ -187,7 +187,7 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
         $this->assertStringContainsString('No client email sent', session('success'));
     }
 
-    public function test_hotkey_duplicate_check_does_not_flash_email_box_off(): void
+    public function test_hotkey_duplicate_check_keeps_the_users_email_box_choice(): void
     {
         $this->actingAsAdmin();
 
@@ -202,7 +202,7 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
             'client_email' => 'jane@example.com',
         ]);
 
-        $response = $this->from(route('admin.client-projects.create'))
+        $unticked = $this->from(route('admin.client-projects.create'))
             ->post(route('admin.client-projects.store'), [
                 'name' => 'Front Deck Repair',
                 'contacted_via' => 'email',
@@ -212,18 +212,34 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
                 'billing_type' => 'fixed',
                 'send_client_email' => '0',
                 '_hotkey_save' => '1',
+                '_hotkey_email_prior' => '0',
             ]);
 
-        $response->assertRedirect(route('admin.client-projects.create'));
-        $response->assertSessionHas('duplicate_project_candidates');
-        $this->assertNull(session()->getOldInput('send_client_email'));
+        $unticked->assertRedirect(route('admin.client-projects.create'));
+        $unticked->assertSessionHas('duplicate_project_candidates');
+        $this->assertSame('0', (string) session()->getOldInput('send_client_email'));
         $this->assertNull(session()->getOldInput('_hotkey_save'));
 
         $html = $this->get(route('admin.client-projects.create'))->assertOk()->getContent();
-        $this->assertMatchesRegularExpression(
-            '/id="cp-send-client-email"[^>]*checked|checked[^>]*id="cp-send-client-email"/',
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="cp-send-client-email"[^>]*\bchecked\b|\bchecked\b[^>]*id="cp-send-client-email"/',
             $html
         );
+
+        $ticked = $this->from(route('admin.client-projects.create'))
+            ->post(route('admin.client-projects.store'), [
+                'name' => 'Front Deck Repair',
+                'contacted_via' => 'email',
+                'client_id' => $client->id,
+                'client_name' => 'Jane Doe',
+                'client_email' => 'jane@example.com',
+                'billing_type' => 'fixed',
+                'send_client_email' => '0',
+                '_hotkey_save' => '1',
+                '_hotkey_email_prior' => '1',
+            ]);
+        $ticked->assertRedirect(route('admin.client-projects.create'));
+        $this->assertSame('1', (string) session()->getOldInput('send_client_email'));
     }
 
     public function test_hotkey_save_notes_when_schedule_confirmation_is_held_back(): void
