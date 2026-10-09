@@ -43,7 +43,7 @@
                 @disabled($linkedSyncCount === 0)>
           <i class="fa fa-refresh"></i> Sync fence prices
         </button>
-        <button type="submit" class="admin-btn admin-btn--primary">
+        <button type="submit" id="fq-btn-save-links" class="admin-btn admin-btn--primary" data-hotkey-save>
           <i class="fa fa-save"></i> Save links
         </button>
       </div>
@@ -228,7 +228,7 @@
           Structural assumptions used by the calculator. Labour rates below are defaults for new fence quotations (editable per quote).
         </p>
       </div>
-      <button type="submit" class="admin-btn admin-btn--primary">
+      <button type="submit" id="fq-btn-save-formula" class="admin-btn admin-btn--primary" data-hotkey-save>
         <i class="fa fa-save"></i> Save formula
       </button>
     </div>

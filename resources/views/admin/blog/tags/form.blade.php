@@ -16,7 +16,7 @@
         <input class="admin-input" type="text" id="bt-slug" name="slug" value="{{ old('slug', $tag->slug) }}" maxlength="80" class="admin-input">
       </div>
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save</button>
         <a href="{{ route('admin.blog.tags.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

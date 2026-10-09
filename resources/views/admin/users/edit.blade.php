@@ -47,7 +47,7 @@
       </div>
 
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save changes</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save changes</button>
         <a href="{{ route('admin.users.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

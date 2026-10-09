@@ -190,7 +190,7 @@
         </a>
         @include('admin.partials.quotation_view_pdf')
       @endif
-      <button type="submit" form="ld-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="ld-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-save"></i> {{ $isEdit ? 'Save changes' : 'Save quotation' }}
       </button>
     </div>

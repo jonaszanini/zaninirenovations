@@ -43,7 +43,7 @@
             <i class="fa fa-refresh"></i> Sync low deck prices
           </button>
         @endif
-        <button type="submit" class="admin-btn admin-btn--primary">
+        <button type="submit" id="ld-btn-save-links" class="admin-btn admin-btn--primary" data-hotkey-save>
           <i class="fa fa-save"></i> Save links
         </button>
       </div>
@@ -200,7 +200,7 @@
           Structural and retail assumptions used by the calculator. The labour rate and dump fee are prefilled onto each quotation.
         </p>
       </div>
-      <button type="submit" class="admin-btn admin-btn--primary">
+      <button type="submit" id="ld-btn-save-formula" class="admin-btn admin-btn--primary" data-hotkey-save>
         <i class="fa fa-save"></i> Save formula
       </button>
     </div>

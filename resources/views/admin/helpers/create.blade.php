@@ -11,7 +11,7 @@
       @endif
       @include('admin.helpers._form')
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save helper</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save helper</button>
         <a href="{{ $returnProjectId ? route('admin.helpers.index', ['return_project' => $returnProjectId]) : route('admin.helpers.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

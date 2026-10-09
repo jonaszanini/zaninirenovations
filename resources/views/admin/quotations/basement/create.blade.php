@@ -127,7 +127,7 @@
     @endphp
     <div class="br-toolbar" aria-label="Quotation actions">
       <div class="admin-toolbar-group">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-btn-draft">Save as draft</button>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-btn-draft" data-hotkey-save>Save as draft</button>
         <a href="{{ route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
           <i class="fa fa-cog"></i> Price configuration
         </a>

@@ -478,7 +478,7 @@
           <i class="fa fa-folder-plus"></i> Save &amp; create project
         </button>
       @endif
-      <button type="submit" form="fq-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="fq-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-save"></i> {{ $isEdit ? 'Save changes' : 'Save quotation' }}
       </button>
     </div>
