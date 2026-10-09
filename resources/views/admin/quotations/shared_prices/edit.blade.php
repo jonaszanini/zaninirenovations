@@ -93,9 +93,9 @@
       minmax(6rem, 6.15rem)
       minmax(4.6rem, 4.85rem)
       minmax(5.5rem, 5.75rem)
-      minmax(4.25rem, 5rem)
+      minmax(4rem, 4.75rem)
       2.5rem
-      6.5rem;
+      6.75rem;
     column-gap: 0.08rem;
     align-items: stretch;
     width: 100%;

@@ -94,8 +94,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
             'Unit must be ~7ch so opening does not clip'
         );
         $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
-        $this->assertGreaterThanOrEqual(4.25, $this->cssMinRem($columns[5]));
-        $this->assertLessThanOrEqual(5.25, $this->cssMinRem($columns[5]), 'Mat. name gives surplus to Work item');
+        $this->assertGreaterThanOrEqual(4.0, $this->cssMinRem($columns[5]));
+        $this->assertLessThanOrEqual(5.0, $this->cssMinRem($columns[5]), 'Mat. name gives surplus to Work item');
         $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
 
         $this->assertStringContainsString('title="{{ $work->label }}"', file_get_contents(resource_path('views/admin/quotations/shared_prices/edit.blade.php')));
