@@ -26,10 +26,6 @@
   var INCHES_PER_FOOT = 12;
   var SQFT_TO_SQM = 0.092903;
   var FEET_TO_METERS = 0.3048;
-  var MEASURE_UNIT_STORAGE_KEY = 'room-area-measure-unit';
-  var DIM_MODE_STORAGE_KEY = 'room-area-dimensions-mode';
-  var LOCK_LAYERS_STORAGE_KEY = 'room-area-layers-locked';
-  var SNAP_STORAGE_KEY = 'room-area-angle-snap';
   var FIRST_TIP_STORAGE_KEY = 'zr-room-area-guide-tip-v1';
   var MEASURE_UNITS = {
     meter: 'meter',
@@ -1064,12 +1060,6 @@
   }
 
   function wallHeightFt() {
-    if (els.wallHeight && String(els.wallHeight.value).trim()) {
-      var parsed = RA.parseWallHeight(els.wallHeight.value, isMetricDisplay());
-      if (isFinite(parsed) && parsed >= 1) {
-        return Math.round(parsed * 100) / 100;
-      }
-    }
     var n = state.wallHeightFt;
     if (!isFinite(n) || n < 1) return DEFAULT_WALL_HEIGHT_FT;
     if (n > 20) return 20;
@@ -1091,9 +1081,13 @@
 
   function wallHeightFtFromValue(value) {
     var parsed = RA.parseWallHeight(value, isMetricDisplay());
-    if (!isFinite(parsed) || parsed < 1) return DEFAULT_WALL_HEIGHT_FT;
-    if (parsed > 20) return 20;
-    return Math.round(parsed * 100) / 100;
+    if (parsed && parsed.warning) {
+      setFeedback(parsed.warning, true);
+      return null;
+    }
+    if (!parsed || !isFinite(parsed.feet) || parsed.feet < 1) return DEFAULT_WALL_HEIGHT_FT;
+    if (parsed.feet > 20) return 20;
+    return Math.round(parsed.feet * 100) / 100;
   }
 
   function objectHeightInches(obj, heightFt) {
@@ -2212,14 +2206,6 @@
     return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d).replace(/\.?0+$/, '');
   }
 
-  function loadMeasureUnit() {
-    try {
-      var saved = localStorage.getItem(MEASURE_UNIT_STORAGE_KEY);
-      if (saved && MEASURE_UNITS[saved]) return saved;
-    } catch (e) { /* ignore */ }
-    return MEASURE_UNITS.feet_inch_frac;
-  }
-
   function reduceFraction(num, den) {
     function gcd(a, b) { return b ? gcd(b, a % b) : Math.abs(a); }
     var g = gcd(num, den);
@@ -2257,7 +2243,7 @@
   }
 
   function fmtFeetDecimal(lenFt) {
-    return fmt(Math.round(lenFt * 1000) / 1000, 3) + ' ft';
+    return fmt(lenFt, 2) + ' ft';
   }
 
   function fmtInchesOnly(lenFt) {
@@ -2267,9 +2253,7 @@
   }
 
   function fmtMeters(lenFt) {
-    var meters = lenFt * FEET_TO_METERS;
-    var decimals = meters >= 10 ? 2 : 3;
-    return fmt(meters, decimals) + ' m';
+    return fmt(lenFt * FEET_TO_METERS, 2) + ' m';
   }
 
   function fmtLengthFromFeet(lenFt) {
@@ -2318,7 +2302,6 @@
     if (!MEASURE_UNITS[unit]) return;
     if (unit !== MEASURE_UNITS.meter) state.imperialUnit = unit;
     state.measureUnit = unit;
-    try { localStorage.setItem(MEASURE_UNIT_STORAGE_KEY, unit); } catch (e) { /* ignore */ }
     raAll('[data-ra-measure-unit]').forEach(function (sel) {
       if (unit === MEASURE_UNITS.meter) {
         sel.value = state.imperialUnit || MEASURE_UNITS.feet_inch_frac;
@@ -3662,8 +3645,7 @@
     var point = pos;
     if (state.rulerDraft.length === 1) {
       var prev = state.rulerDraft[0];
-      if (shiftSnap) point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
-      else point = pos;
+      if (shiftSnap) point = angleSnapPoint(pos, prev);
     }
     point = clampToCanvas(point);
     state.rulerDraft.push(point);
@@ -4006,6 +3988,7 @@
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     setWallHeight(DEFAULT_WALL_HEIGHT_FT);
+    applyEditorPrefs(defaultEditorPrefs(), true);
     show(els.liveArea, false);
     if (state.stage) {
       state.lastUiScale = 0;
@@ -4824,8 +4807,7 @@
       var pos = getPointerPos();
       if (!pos) return;
       var preview = pos;
-      if (shouldAngleSnap()) preview = snapPoint(pos, state.rulerDraft[0], SHIFT_SNAP_STEP);
-      else preview = pos;
+      if (shouldAngleSnap()) preview = angleSnapPoint(pos, state.rulerDraft[0]);
       state.rulerPreview = clampToCanvas(preview);
       redrawRulers();
     });
@@ -7257,6 +7239,7 @@
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     setWallHeight(DEFAULT_WALL_HEIGHT_FT);
+    applyEditorPrefs(defaultEditorPrefs(), true);
     show(els.liveArea, false);
     clearDraftLayers();
     resetTypedWalls();
@@ -7267,8 +7250,9 @@
     captureSavedSnapshot();
   }
 
-  function clearShape() {
-    if (geometryLocked()) {
+  function clearShape(opts) {
+    opts = opts || {};
+    if (!opts.force && geometryLocked()) {
       warnGeometryLocked();
       return;
     }
@@ -7277,6 +7261,7 @@
 
   function beginNewRoom() {
     resetDraftCanvas();
+    applyEditorPrefs(defaultEditorPrefs(), true);
     revokeDraftBackground();
     state.bgLayout = null;
     stopBgMoveMode();
@@ -7446,8 +7431,9 @@
   }
 
   function updateToolbar() {
-    setAllDisabled('[data-ra-undo-vertex]', state.undoStack.length === 0);
-    setAllDisabled('[data-ra-redo]', state.redoStack.length === 0);
+    var historyLocked = geometryLocked();
+    setAllDisabled('[data-ra-undo-vertex]', historyLocked || state.undoStack.length === 0);
+    setAllDisabled('[data-ra-redo]', historyLocked || state.redoStack.length === 0);
     if (els.splitWall) els.splitWall.disabled = state.selectedWallIndex === null;
     setAllDisabled('[data-ra-close-shape]', activeVertices().length < 3 || isActiveClosed());
     if (els.addArea) els.addArea.disabled = !isActiveClosed();
@@ -7718,7 +7704,7 @@
       if (!currentProject) return;
       var currentRoom = currentProject.rooms.find(function (r) { return r.id === roomId; });
       if (!currentRoom || !roomHasDrawableData(currentRoom)) {
-        clearShape();
+        clearShape({ force: true });
         return;
       }
 
@@ -7748,10 +7734,12 @@
 
   function cancelEdit() {
     if (!state.editingRoomId) return;
-    clearShape();
+    clearShape({ force: true });
+    revokeDraftBackground();
+    state.bgLayout = null;
     loadBackground(null);
     captureSavedSnapshot();
-    setFeedback('Edit cancelled.', false);
+    setFeedback('Left this room. The saved plan is unchanged.', false);
   }
 
   function renderRooms() {
@@ -7926,7 +7914,7 @@
     var projectId = project.id;
     stopRulerMode();
     clearRulerSelection();
-    clearShape();
+    clearShape({ force: true });
     var token = state.editorToken;
     ensureStage();
     loadBackground(null);
@@ -8175,7 +8163,7 @@
           if (project) {
             project.rooms = project.rooms.filter(function (r) { return r.id !== roomId; });
             if (state.editingRoomId === roomId) {
-              clearShape();
+              clearShape({ force: true });
               loadBackground(null);
               renderPhotos();
             }
@@ -8857,23 +8845,13 @@
     if (!DIM_MODES[mode]) mode = DIM_MODES.all;
     state.dimensionsMode = mode;
     state.showDimensions = mode !== DIM_MODES.off;
-    try { localStorage.setItem(DIM_MODE_STORAGE_KEY, mode); } catch (e) { /* ignore */ }
     raAll('[data-ra-dimensions-mode]').forEach(function (sel) { sel.value = mode; });
     if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
     if (!silent) redrawLabels();
   }
 
-  function loadDimensionsMode() {
-    try {
-      var saved = localStorage.getItem(DIM_MODE_STORAGE_KEY);
-      if (saved && DIM_MODES[saved]) return saved;
-    } catch (e) { /* ignore */ }
-    return DIM_MODES.all;
-  }
-
   function setLayersLocked(on, silent) {
     state.layersLocked = !!on;
-    try { localStorage.setItem(LOCK_LAYERS_STORAGE_KEY, on ? '1' : '0'); } catch (e) { /* ignore */ }
     raAll('[data-ra-lock-layers]').forEach(function (box) { box.checked = state.layersLocked; });
     if (els.canvasWrap) els.canvasWrap.classList.toggle('is-layers-locked', state.layersLocked);
     if (state.layersLocked) {
@@ -8892,7 +8870,6 @@
 
   function setAngleSnap(on, silent) {
     state.angleSnap = !!on;
-    try { localStorage.setItem(SNAP_STORAGE_KEY, on ? '1' : '0'); } catch (e) { /* ignore */ }
     raAll('[data-ra-snap-toggle]').forEach(function (btn) {
       btn.classList.toggle('is-active', state.angleSnap);
       btn.setAttribute('aria-pressed', state.angleSnap ? 'true' : 'false');
@@ -9179,6 +9156,18 @@
   }
 
   function metricRows(metrics) {
+    if (isMetricDisplay()) {
+      return [
+        { label: 'Floor area', value: formatMetricQty(metrics.area_sqft * SQFT_TO_SQM) + ' m²' },
+        { label: 'Perimeter', value: formatMetricQty(metrics.perimeter_lf * FEET_TO_METERS) + ' m' },
+        { label: 'Baseboard', value: formatMetricQty(metrics.baseboard_lf * FEET_TO_METERS) + ' m' },
+        { label: 'Wall height', value: formatMetricQty(metrics.wall_height_ft * FEET_TO_METERS) + ' m' },
+        { label: 'Wall area', value: formatMetricQty(metrics.wall_area_sqft * SQFT_TO_SQM) + ' m²' },
+        { label: 'Doors', value: String(metrics.door_count) },
+        { label: 'Windows', value: String(metrics.window_count) },
+        { label: 'Openings', value: String(metrics.opening_count) }
+      ];
+    }
     return [
       { label: 'Floor area', value: formatMetricQty(metrics.area_sqft) + ' sq ft' },
       { label: 'Perimeter', value: formatMetricQty(metrics.perimeter_lf) + ' lf' },
@@ -10353,12 +10342,13 @@
     });
 
     if (els.wallHeight) {
-      els.wallHeight.addEventListener('input', function () {
-        state.wallHeightFt = wallHeightFt();
-        updateLiveArea();
-      });
       els.wallHeight.addEventListener('change', function () {
-        setWallHeight(wallHeightFtFromValue(els.wallHeight.value));
+        var next = wallHeightFtFromValue(els.wallHeight.value);
+        if (next == null) {
+          syncWallHeightInput();
+          return;
+        }
+        setWallHeight(next);
         updateLiveArea();
       });
     }

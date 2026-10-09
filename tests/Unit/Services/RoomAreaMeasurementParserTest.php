@@ -43,6 +43,7 @@ class RoomAreaMeasurementParserTest extends TestCase
             ["12' 6 1/2\"", 12 + 6.5 / 12],
             ['12 6 1/2', 12 + 6.5 / 12],
             ["12' ½\"", 12 + 0.5 / 12],
+            ["12’ 6”", 12.5],
             ['3/4"', 0.75 / 12],
             ["10'", 10.0],
             ['12-6', 12.5],
@@ -130,6 +131,9 @@ class RoomAreaMeasurementParserTest extends TestCase
             ['12′ 6″', RoomAreaMeasurementParser::UNIT_METER, 12.5],
             ['6½', RoomAreaMeasurementParser::UNIT_INCH, 6.5 / 12],
             ['6½"', RoomAreaMeasurementParser::UNIT_FEET_INCH_FRAC, 6.5 / 12],
+            ['3,810 mm', RoomAreaMeasurementParser::UNIT_METER, 3.81 / $ft],
+            ['3.810 mm', RoomAreaMeasurementParser::UNIT_FEET_DECIMAL, 3.81 / $ft],
+            ["12’ 6”", RoomAreaMeasurementParser::UNIT_METER, 12.5],
         ];
     }
 

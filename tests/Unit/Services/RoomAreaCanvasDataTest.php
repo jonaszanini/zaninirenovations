@@ -794,4 +794,75 @@ class RoomAreaCanvasDataTest extends TestCase
 
         return $canvas;
     }
+
+    public function test_locked_geometry_ignores_name_and_canvas_resize_but_rejects_unlock_plus_move(): void
+    {
+        $existing = $this->service->normalize([
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'name' => 'Kitchen',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 144, 'y' => 0],
+                        ['x' => 144, 'y' => 120],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+            'editor' => ['layers_locked' => true],
+        ]);
+
+        $renamed = $existing;
+        $renamed['groups'][0]['polygons'][0]['name'] = 'Dining';
+        $this->assertNull($this->service->lockedGeometryChangeMessage($existing, $renamed, 12.0, 12.0));
+
+        $resized = $existing;
+        foreach ($resized['groups'][0]['polygons'][0]['vertices'] as $i => $vertex) {
+            $resized['groups'][0]['polygons'][0]['vertices'][$i]['x'] = $vertex['x'] * (803 / 800);
+            $resized['groups'][0]['polygons'][0]['vertices'][$i]['y'] = $vertex['y'] * (803 / 800);
+        }
+        $this->assertNull($this->service->lockedGeometryChangeMessage($existing, $resized, 12.0, 12.0 * (803 / 800)));
+
+        $moved = $existing;
+        $moved['editor']['layers_locked'] = false;
+        $moved['groups'][0]['polygons'][0]['vertices'][1]['x'] = 200;
+        $this->assertSame(
+            'Unlock layers to change walls or areas.',
+            $this->service->lockedGeometryChangeMessage($existing, $moved, 12.0, 12.0)
+        );
+
+        $recal = $existing;
+        $this->assertSame(
+            'Unlock layers to recalibrate scale.',
+            $this->service->lockedGeometryChangeMessage($existing, $recal, 12.0, 18.0)
+        );
+    }
+
+    public function test_preserve_editor_lock_when_editor_omitted(): void
+    {
+        $existing = ['editor' => ['layers_locked' => true, 'dimensions_mode' => 'main']];
+        $incoming = $this->service->normalize([
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 144, 'y' => 0],
+                        ['x' => 144, 'y' => 120],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+        ]);
+        $merged = $this->service->preserveEditorLock($incoming, $existing, ['groups' => $incoming['groups']]);
+        $this->assertTrue($merged['editor']['layers_locked']);
+        $this->assertSame('main', $merged['editor']['dimensions_mode']);
+    }
 }

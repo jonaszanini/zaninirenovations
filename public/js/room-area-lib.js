@@ -59,6 +59,8 @@
 
   function normalizeRaw(raw) {
     var s = String(raw == null ? '' : raw).replace(/[\u00A0\t]/g, ' ');
+    s = s.replace(/[\u2018\u2019\u201B]/g, "'");
+    s = s.replace(/[\u201C\u201D\u201F]/g, '"');
     s = replaceVulgar(s);
     s = s.replace(/\s+/g, ' ').trim();
     return s;
@@ -80,6 +82,18 @@
     var n = Number(s);
     if (!isFinite(n)) throw ParseError('Enter a valid length greater than zero.');
     return n;
+  }
+
+  /**
+   * A separator followed by exactly 3 digits with an mm unit is thousands
+   * (3,810 mm and 3.810 mm are 3810 mm, not 3.81 mm).
+   */
+  function toFloatMm(token) {
+    var s = String(token).trim();
+    if (/^\d{1,3}(?:[.,]\d{3})+$/.test(s)) {
+      s = s.replace(/[.,]/g, '');
+    }
+    return toFloat(s);
   }
 
   function parseFraction(num, den) {
@@ -127,9 +141,9 @@
     var m = s.match(/^([\d.,]+)\s*m(?:eters?|etres?)?\s+([\d.,]+)\s*cm(?:s)?$/i);
     if (m) return positiveFeet((toFloat(m[1]) + toFloat(m[2]) / 100) / FEET_TO_METERS);
     m = s.match(/^([\d.,]+)\s*m(?:eters?|etres?)?\s+([\d.,]+)\s*mm(?:s)?$/i);
-    if (m) return positiveFeet((toFloat(m[1]) + toFloat(m[2]) / 1000) / FEET_TO_METERS);
+    if (m) return positiveFeet((toFloat(m[1]) + toFloatMm(m[2]) / 1000) / FEET_TO_METERS);
     m = s.match(/^([\d.,]+)\s*cm(?:s)?\s+([\d.,]+)\s*mm(?:s)?$/i);
-    if (m) return positiveFeet((toFloat(m[1]) / 100 + toFloat(m[2]) / 1000) / FEET_TO_METERS);
+    if (m) return positiveFeet((toFloat(m[1]) / 100 + toFloatMm(m[2]) / 1000) / FEET_TO_METERS);
     return null;
   }
 
@@ -140,7 +154,7 @@
     var m = s.match(/^([\d.,]+)\s*(mm|millimet(?:er|re)s?)$/i);
     if (!m) throw ParseError('Enter a length in millimetres.');
     assertNoJunk(remainderAfter(s, m[0]));
-    return positiveFeet((toFloat(m[1]) / 1000) / FEET_TO_METERS);
+    return positiveFeet((toFloatMm(m[1]) / 1000) / FEET_TO_METERS);
   }
 
   function parseMeters(raw) {
@@ -268,14 +282,20 @@
 
   function parseWallHeight(raw, metric) {
     var s = String(raw == null ? '' : raw).trim();
-    if (!s) return DEFAULT_WALL_HEIGHT_FT;
+    if (!s) {
+      return { feet: DEFAULT_WALL_HEIGHT_FT, warning: null };
+    }
     try {
       var feet = parseLengthInput(s, metric ? UNITS.meter : UNITS.feet_decimal);
-      if (!isFinite(feet) || feet < MIN_WALL_HEIGHT_FT) return DEFAULT_WALL_HEIGHT_FT;
-      if (feet > MAX_WALL_HEIGHT_FT) return MAX_WALL_HEIGHT_FT;
-      return feet;
+      if (!isFinite(feet) || feet < MIN_WALL_HEIGHT_FT || feet > MAX_WALL_HEIGHT_FT) {
+        return {
+          feet: null,
+          warning: 'Wall height must be between 1 ft and 20 ft (0.30–6.10 m).'
+        };
+      }
+      return { feet: feet, warning: null };
     } catch (e) {
-      return DEFAULT_WALL_HEIGHT_FT;
+      return { feet: null, warning: (e && e.message) || 'Enter a valid wall height.' };
     }
   }
 

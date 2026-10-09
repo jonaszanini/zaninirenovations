@@ -216,10 +216,10 @@ class RoomAreaMeasurementParser
             return $this->positive((($this->toFloat($m[1]) + $this->toFloat($m[2]) / 100.0) / self::FEET_TO_METERS));
         }
         if (preg_match('/^([\d.,]+)\s*m(?:eters?|etres?)?\s+([\d.,]+)\s*mm(?:s)?$/iu', $s, $m)) {
-            return $this->positive((($this->toFloat($m[1]) + $this->toFloat($m[2]) / 1000.0) / self::FEET_TO_METERS));
+            return $this->positive((($this->toFloat($m[1]) + $this->toFloatMm($m[2]) / 1000.0) / self::FEET_TO_METERS));
         }
         if (preg_match('/^([\d.,]+)\s*cm(?:s)?\s+([\d.,]+)\s*mm(?:s)?$/iu', $s, $m)) {
-            return $this->positive((($this->toFloat($m[1]) / 100.0 + $this->toFloat($m[2]) / 1000.0) / self::FEET_TO_METERS));
+            return $this->positive((($this->toFloat($m[1]) / 100.0 + $this->toFloatMm($m[2]) / 1000.0) / self::FEET_TO_METERS));
         }
 
         return null;
@@ -236,7 +236,7 @@ class RoomAreaMeasurementParser
             throw new InvalidArgumentException('Enter a length in millimetres.');
         }
 
-        return $this->positive(($this->toFloat($m[1]) / 1000.0) / self::FEET_TO_METERS);
+        return $this->positive(($this->toFloatMm($m[1]) / 1000.0) / self::FEET_TO_METERS);
     }
 
     private function parseMeters(string $raw): float
@@ -377,6 +377,8 @@ class RoomAreaMeasurementParser
     {
         $s = trim($raw);
         $s = str_replace(["\u{00A0}", "\t"], ' ', $s);
+        $s = str_replace(["\u{2018}", "\u{2019}", "\u{201B}"], "'", $s);
+        $s = str_replace(["\u{201C}", "\u{201D}", "\u{201F}"], '"', $s);
         $map = [
             '½' => '1/2',
             '¼' => '1/4',
@@ -417,6 +419,20 @@ class RoomAreaMeasurementParser
         }
 
         return $n;
+    }
+
+    /**
+     * A separator followed by exactly 3 digits with an mm unit is thousands
+     * (3,810 mm and 3.810 mm are 3810 mm, not 3.81 mm).
+     */
+    private function toFloatMm(string $s): float
+    {
+        $s = trim($s);
+        if (preg_match('/^\d{1,3}(?:[.,]\d{3})+$/', $s)) {
+            $s = str_replace([',', '.'], '', $s);
+        }
+
+        return $this->toFloat($s);
     }
 
     private function positive(float $n): float

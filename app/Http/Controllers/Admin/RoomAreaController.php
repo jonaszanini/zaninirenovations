@@ -157,6 +157,19 @@ class RoomAreaController extends Controller
             'canvas_height' => ['nullable', 'integer', 'min:1', 'max:20000'],
         ]);
 
+        if (array_key_exists('scale_pixels_per_foot', $data)
+            && (float) $data['scale_pixels_per_foot'] !== (float) $room_area_project->scale_pixels_per_foot) {
+            $room_area_project->loadMissing('rooms');
+            foreach ($room_area_project->rooms as $room) {
+                if (app(RoomAreaCanvasData::class)->isLayersLocked($room->vertices)) {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'Unlock layers to recalibrate scale.',
+                    ], 422);
+                }
+            }
+        }
+
         $room_area_project->fill($data);
         $room_area_project->save();
         $room_area_project->load(['clientProject:id,name', 'rooms']);
@@ -310,11 +323,15 @@ class RoomAreaController extends Controller
             return response()->json(['ok' => false, 'message' => $validation['message']], 422);
         }
 
+        $existingCanvas = is_array($room_area_room->vertices) ? $room_area_room->vertices : null;
+        $normalized = $canvasData->preserveEditorLock($normalized, $existingCanvas, $rawCanvas);
         $lockMessage = $canvasData->lockedGeometryChangeMessage(
-            is_array($room_area_room->vertices) ? $room_area_room->vertices : null,
+            $existingCanvas,
             $normalized,
             $room_area_room->scale_pixels_per_foot !== null ? (float) $room_area_room->scale_pixels_per_foot : null,
-            isset($data['scale_pixels_per_foot']) ? (float) $data['scale_pixels_per_foot'] : null
+            isset($data['scale_pixels_per_foot']) ? (float) $data['scale_pixels_per_foot'] : (
+                $room_area_room->scale_pixels_per_foot !== null ? (float) $room_area_room->scale_pixels_per_foot : null
+            )
         );
         if ($lockMessage !== null) {
             return response()->json(['ok' => false, 'message' => $lockMessage], 422);
@@ -344,6 +361,13 @@ class RoomAreaController extends Controller
 
     public function destroyRoom(RoomAreaRoom $room_area_room)
     {
+        if (app(RoomAreaCanvasData::class)->isLayersLocked($room_area_room->vertices)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Unlock layers to delete this room.',
+            ], 422);
+        }
+
         $this->deleteRoomBackgroundFile($room_area_room);
         $this->deleteRoomPdfFile($room_area_room);
         $this->deleteRoomPhotos($room_area_room);
@@ -595,6 +619,13 @@ class RoomAreaController extends Controller
 
     public function uploadBackground(Request $request, RoomAreaRoom $room_area_room)
     {
+        if (app(RoomAreaCanvasData::class)->isLayersLocked($room_area_room->vertices)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Unlock layers to change the floor plan.',
+            ], 422);
+        }
+
         $data = $request->validate([
             'background' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
         ]);
@@ -622,6 +653,13 @@ class RoomAreaController extends Controller
 
     public function destroyBackground(RoomAreaRoom $room_area_room)
     {
+        if (app(RoomAreaCanvasData::class)->isLayersLocked($room_area_room->vertices)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Unlock layers to change the floor plan.',
+            ], 422);
+        }
+
         $this->deleteRoomBackgroundFile($room_area_room);
         $room_area_room->save();
 

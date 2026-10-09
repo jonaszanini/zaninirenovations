@@ -46,6 +46,8 @@ async function waitForEditor(page) {
 
 async function prepareScene(page, opts) {
   opts = opts || {};
+  const dimMode = opts.dimMode || 'all';
+  const templatesOpen = opts.templates !== false;
   await page.evaluate(() => {
     try {
       localStorage.removeItem('zr-room-area-guide-tip-v1');
@@ -89,10 +91,10 @@ async function prepareScene(page, opts) {
     if (redo && !redo.disabled) redo.click();
   });
   await delay(150);
-  await page.evaluate((wantMetric) => {
+  await page.evaluate((wantMetric, mode, openTpl) => {
     const dim = document.querySelector('[data-ra-dimensions-mode]');
     if (dim) {
-      dim.value = 'all';
+      dim.value = mode;
       dim.dispatchEvent(new Event('change', { bubbles: true }));
     }
     const metric = document.querySelector('[data-ra-unit-system="metric"]');
@@ -105,10 +107,13 @@ async function prepareScene(page, opts) {
       lock.dispatchEvent(new Event('change', { bubbles: true }));
     }
     const tpl = document.querySelector('[data-ra-templates-toggle]');
-    if (tpl) tpl.click();
+    const pop = document.querySelector('[data-ra-templates-popover]');
+    const isOpen = pop && !pop.hidden;
+    if (tpl && openTpl && !isOpen) tpl.click();
+    if (tpl && !openTpl && isOpen) tpl.click();
     const mathTab = document.querySelector('[data-ra-side-tab="math"]');
     if (mathTab) mathTab.click();
-  }, !!opts.metric);
+  }, !!opts.metric, dimMode, templatesOpen);
   await delay(200);
   if (opts.metric) {
     await page.evaluate(() => {
@@ -153,11 +158,33 @@ async function main() {
     }, shot.theme);
     await page.evaluate(() => window.dispatchEvent(new Event('resize')));
     await delay(200);
-    await prepareScene(page, { metric: false });
+    await prepareScene(page, {
+      metric: false,
+      templates: shot.width <= 400,
+      dimMode: 'all',
+    });
     const file = path.join(OUT, `${shot.name}.png`);
     await page.screenshot({ path: file, fullPage: false });
     console.log('wrote', file);
   }
+
+  for (const mode of ['main', 'area']) {
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.evaluate(() => {
+      document.documentElement.classList.remove('admin-dark');
+      try { localStorage.setItem('admin-theme', 'light'); } catch (e) {}
+    });
+    await prepareScene(page, { metric: false, templates: false, dimMode: mode });
+    const dimFile = path.join(OUT, `ra-b1-1280-dims-${mode}.png`);
+    await page.screenshot({ path: dimFile, fullPage: false });
+    console.log('wrote', dimFile);
+  }
+
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+  await prepareScene(page, { metric: false, templates: true, dimMode: 'all' });
+  const tplFile = path.join(OUT, 'ra-b1-390-templates.png');
+  await page.screenshot({ path: tplFile, fullPage: false });
+  console.log('wrote', tplFile);
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.evaluate(() => {

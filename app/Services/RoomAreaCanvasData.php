@@ -64,6 +64,9 @@ class RoomAreaCanvasData
 
     public const MAX_WALL_THICKNESS_IN = 12.0;
 
+    /** Real-world lock compare; ignores a few pixels of canvas resize. */
+    public const LOCK_GEOM_TOLERANCE_FT = 0.05;
+
     /** @var list<string> */
     public const GROUP_COLORS = [
         '#024768',
@@ -1089,30 +1092,170 @@ class RoomAreaCanvasData
         };
     }
 
+    public function isLayersLocked($canvas): bool
+    {
+        return is_array($canvas) && ! empty($canvas['editor']['layers_locked']);
+    }
+
     /**
-     * When a saved room is locked, reject geometry or scale changes until unlocked.
+     * Keep the stored lock when the client omits canvas.editor.
+     *
+     * @param  array<string, mixed>  $normalized
+     * @param  array<string, mixed>|null  $existing
+     * @param  mixed  $rawInput
+     * @return array<string, mixed>
+     */
+    public function preserveEditorLock(array $normalized, $existing, $rawInput): array
+    {
+        $inputHadEditor = is_array($rawInput) && array_key_exists('editor', $rawInput);
+        if ($inputHadEditor) {
+            return $normalized;
+        }
+        if (! is_array($existing) || empty($existing['editor'])) {
+            return $normalized;
+        }
+        $editor = $this->normalizeEditorPrefs($existing['editor']);
+        if ($editor !== null) {
+            $normalized['editor'] = $editor;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * When a saved room is locked, reject real-world geometry or scale changes
+     * until the stored lock is already off. Unlocking in the same request as a
+     * corner move is rejected. Area names and canvas-pixel resize (same feet)
+     * are not geometry changes.
      *
      * @param  array<string, mixed>|null  $existing
      * @param  array<string, mixed>  $incoming
      */
     public function lockedGeometryChangeMessage($existing, array $incoming, ?float $existingScale = null, ?float $incomingScale = null): ?string
     {
-        $wasLocked = is_array($existing) && ! empty($existing['editor']['layers_locked']);
-        $unlocking = ! empty($incoming['editor']) && array_key_exists('layers_locked', $incoming['editor'])
-            && ! $incoming['editor']['layers_locked'];
-        if (! $wasLocked || $unlocking) {
+        if (! $this->isLayersLocked($existing)) {
             return null;
         }
 
-        $existingGroups = json_encode($existing['groups'] ?? []);
-        $incomingGroups = json_encode($incoming['groups'] ?? []);
-        if ($existingGroups !== $incomingGroups) {
-            return 'Unlock layers to change walls or areas.';
+        $exScale = $existingScale !== null && $existingScale > 0 ? $existingScale : null;
+        $inScale = $incomingScale !== null && $incomingScale > 0 ? $incomingScale : $exScale;
+        if ($exScale === null) {
+            $exScale = $inScale;
         }
-        if ($existingScale !== null && $incomingScale !== null && abs($existingScale - $incomingScale) > 0.0001) {
-            return 'Unlock layers to recalibrate scale.';
+
+        if ($this->geometryDiffersInFeet($existing, $incoming, $exScale, $inScale)) {
+            $pixelsSame = $this->vertexPixelsMatch($existing, $incoming);
+            if ($pixelsSame && $existingScale !== null && $incomingScale !== null
+                && abs($existingScale - $incomingScale) > 0.0001) {
+                return 'Unlock layers to recalibrate scale.';
+            }
+
+            return 'Unlock layers to change walls or areas.';
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>  $incoming
+     */
+    private function geometryDiffersInFeet($existing, array $incoming, ?float $existingScale, ?float $incomingScale): bool
+    {
+        $exGroups = is_array($existing) ? ($existing['groups'] ?? []) : [];
+        $inGroups = $incoming['groups'] ?? [];
+        if (! is_array($exGroups) || ! is_array($inGroups)) {
+            return true;
+        }
+        if (count($exGroups) !== count($inGroups)) {
+            return true;
+        }
+
+        foreach ($exGroups as $gi => $exGroup) {
+            $inGroup = $inGroups[$gi] ?? null;
+            if (! is_array($exGroup) || ! is_array($inGroup)) {
+                return true;
+            }
+            $exPolys = $exGroup['polygons'] ?? [];
+            $inPolys = $inGroup['polygons'] ?? [];
+            if (! is_array($exPolys) || ! is_array($inPolys) || count($exPolys) !== count($inPolys)) {
+                return true;
+            }
+            foreach ($exPolys as $pi => $exPoly) {
+                $inPoly = $inPolys[$pi] ?? null;
+                if (! is_array($exPoly) || ! is_array($inPoly)) {
+                    return true;
+                }
+                $exVerts = $exPoly['vertices'] ?? [];
+                $inVerts = $inPoly['vertices'] ?? [];
+                if (! is_array($exVerts) || ! is_array($inVerts) || count($exVerts) !== count($inVerts)) {
+                    return true;
+                }
+                foreach ($exVerts as $vi => $exV) {
+                    $inV = $inVerts[$vi] ?? null;
+                    if (! is_array($exV) || ! is_array($inV)) {
+                        return true;
+                    }
+                    $exFt = $this->pointInFeet($exV, $existingScale);
+                    $inFt = $this->pointInFeet($inV, $incomingScale);
+                    if ($exFt === null || $inFt === null) {
+                        return true;
+                    }
+                    if (abs($exFt[0] - $inFt[0]) > self::LOCK_GEOM_TOLERANCE_FT
+                        || abs($exFt[1] - $inFt[1]) > self::LOCK_GEOM_TOLERANCE_FT) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>  $incoming
+     */
+    private function vertexPixelsMatch($existing, array $incoming): bool
+    {
+        $exGroups = is_array($existing) ? ($existing['groups'] ?? []) : [];
+        $inGroups = $incoming['groups'] ?? [];
+        if (! is_array($exGroups) || ! is_array($inGroups) || count($exGroups) !== count($inGroups)) {
+            return false;
+        }
+        foreach ($exGroups as $gi => $exGroup) {
+            $inGroup = $inGroups[$gi] ?? null;
+            $exPolys = is_array($exGroup) ? ($exGroup['polygons'] ?? []) : [];
+            $inPolys = is_array($inGroup) ? ($inGroup['polygons'] ?? []) : [];
+            if (! is_array($exPolys) || ! is_array($inPolys) || count($exPolys) !== count($inPolys)) {
+                return false;
+            }
+            foreach ($exPolys as $pi => $exPoly) {
+                $inPoly = $inPolys[$pi] ?? null;
+                $exVerts = is_array($exPoly) ? ($exPoly['vertices'] ?? []) : [];
+                $inVerts = is_array($inPoly) ? ($inPoly['vertices'] ?? []) : [];
+                if (json_encode($exVerts) !== json_encode($inVerts)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $point
+     * @return array{0: float, 1: float}|null
+     */
+    private function pointInFeet(array $point, ?float $scale): ?array
+    {
+        if ($scale === null || $scale <= 0) {
+            return null;
+        }
+        if (! isset($point['x'], $point['y']) || ! is_numeric($point['x']) || ! is_numeric($point['y'])) {
+            return null;
+        }
+
+        return [(float) $point['x'] / $scale, (float) $point['y'] / $scale];
     }
 }

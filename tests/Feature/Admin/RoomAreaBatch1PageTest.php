@@ -91,8 +91,9 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('geometryLocked()', $js);
         $this->assertStringContainsString('openingCornerHint', $js);
         $this->assertStringContainsString('drawOverallDimensionLabel', $js);
-        $this->assertStringContainsString('room-area-layers-locked', $js);
-        $this->assertStringContainsString('room-area-dimensions-mode', $js);
+        $this->assertStringContainsString('clearShape({ force: true })', $js);
+        $this->assertStringContainsString('applyEditorPrefs(defaultEditorPrefs(), true)', $js);
+        $this->assertStringNotContainsString('room-area-layers-locked', $js);
         $this->assertStringContainsString("els.templatesPopover.style.position = 'fixed'", $js);
         $this->assertStringContainsString('function serializeEditorPrefs()', $js);
         $this->assertStringContainsString('function applyEditorPrefs(', $js);
@@ -111,6 +112,22 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
         $this->assertStringContainsString('.util-ra-templates-pop', $css);
         $this->assertStringContainsString('.util-ra-dim-mode', $css);
         $this->assertStringContainsString('.util-ra-canvas-wrap.is-layers-locked', $css);
+        $this->assertStringNotContainsString('flex: 0 0 7.5rem;', $css);
+        $this->assertStringNotContainsString('flex: 0 0 8.25rem;', $css);
+        $html = file_get_contents(resource_path('views/admin/utilities/_room_area_tool.blade.php'));
+        $this->assertNotFalse($html);
+        $this->assertStringNotContainsString("'tipId' => 'units-format-fp'", $html);
+        $this->assertStringNotContainsString("'tipId' => 'dims'", $html);
+        $this->assertStringNotContainsString("'tipId' => 'snap'", $html);
+        $this->assertStringNotContainsString("'tipId' => 'templates'", $html);
+        $this->assertStringNotContainsString("'tipId' => 'lock'", $html);
+        $this->assertStringNotContainsString("'tipId' => 'objects-snap'", $html);
+        $this->assertStringContainsString("'tipId' => 'draw'", $html);
+        $this->assertStringContainsString("'tipId' => 'plan'", $html);
+        $this->assertStringNotContainsString('title="Recalibrate scale so this wall matches', $html);
+        $help = file_get_contents(resource_path('views/admin/utilities/_room_area_help_pop.blade.php'));
+        $this->assertStringContainsString('role="region"', $help);
+        $this->assertStringNotContainsString('role="tooltip"', $help);
     }
 
     public function test_saved_room_editor_prefs_round_trip(): void
@@ -254,7 +271,47 @@ class RoomAreaBatch1PageTest extends IntegrationTestCase
             'name' => 'Locked',
             'canvas' => $unlocked,
             'scale_pixels_per_foot' => 12,
+        ])->assertStatus(422)->assertJsonPath('ok', false);
+
+        $named = $canvas;
+        $named['groups'][0]['polygons'][0]['name'] = 'Office zone';
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $named,
+            'scale_pixels_per_foot' => 12,
         ])->assertOk()->assertJsonPath('ok', true);
+
+        $resized = $canvas;
+        $resized['groups'][0]['polygons'][0]['name'] = 'Office zone';
+        foreach ($resized['groups'][0]['polygons'][0]['vertices'] as $i => $vertex) {
+            $resized['groups'][0]['polygons'][0]['vertices'][$i]['x'] = $vertex['x'] * (803 / 800);
+            $resized['groups'][0]['polygons'][0]['vertices'][$i]['y'] = $vertex['y'] * (803 / 800);
+        }
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $resized,
+            'scale_pixels_per_foot' => 12 * (803 / 800),
+            'canvas_width' => 803,
+            'canvas_height' => 803,
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $noEditor = $canvas;
+        unset($noEditor['editor']);
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $room), [
+            'name' => 'Locked',
+            'canvas' => $noEditor,
+            'scale_pixels_per_foot' => 12,
+        ])->assertOk()->assertJsonPath('room.canvas.editor.layers_locked', true);
+
+        $this->deleteJson(route('admin.utilities.room-area.rooms.destroy', $room))
+            ->assertStatus(422)->assertJsonPath('ok', false);
+
+        $this->deleteJson(route('admin.utilities.room-area.rooms.background.destroy', $room))
+            ->assertStatus(422)->assertJsonPath('ok', false);
+
+        $this->putJson(route('admin.utilities.room-area.projects.update', $layout), [
+            'scale_pixels_per_foot' => 18,
+        ])->assertStatus(422)->assertJsonPath('ok', false);
     }
 
     private function makeRoom(ClientProject $clientProject, string $name): RoomAreaRoom

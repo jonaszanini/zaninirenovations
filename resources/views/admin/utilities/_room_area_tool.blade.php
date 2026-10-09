@@ -92,7 +92,7 @@
               @include('admin.utilities._room_area_help_pop', [
                 'tipId' => 'view',
                 'label' => 'About view tools',
-                'text' => 'Undo and redo last edits. Zoom with +/−, Fit to see the whole room, Panel to show Measure, Math, Photos, and Rooms.',
+                'text' => 'Undo and redo last edits. Zoom with +/−, Fit to see the whole room, Panel to show Measure, Math, Photos, and Rooms. Pinch or scroll to zoom around the cursor. Two fingers, empty-canvas drag, or Space+drag to pan. Type wall lengths in the panel if corners are fiddly.',
               ])
             </div>
             <div class="util-ra-tool-group__actions util-ra-full-header__view-actions">
@@ -305,18 +305,19 @@
 
       {{-- Full-width drawing area --}}
       <section class="admin-card util-ra-canvas-card">
-        <div class="util-ra-desktop-notice">
-          @include('admin.utilities._room_area_help_pop', [
-            'tipId' => 'canvas-nav',
-            'label' => 'About zoom and pan',
-            'text' => 'Pinch or scroll to zoom around the cursor. Two fingers, empty-canvas drag, or Space+drag to pan. Type wall lengths in the panel if corners are fiddly.',
-          ])
-        </div>
+        <div class="util-ra-desktop-notice" hidden></div>
         <div class="util-ra-canvas-toolbar">
           <div class="util-ra-toolbar__groups">
             <div class="util-ra-tool-group util-ra-tool-group--draw">
               <div class="util-ra-tool-group__head">
                 <span class="util-ra-tool-group__label">{{ $fullPage ? 'Draw / Edit' : 'Draw' }}</span>
+                @if ($fullPage)
+                @include('admin.utilities._room_area_help_pop', [
+                  'tipId' => 'draw',
+                  'label' => 'About draw and edit',
+                  'text' => 'Close the outline when the last wall meets the first. Add another area in this color group, or start a new color group for a different finish. Name the active area. Draw a ruler to measure any distance. Clear all areas from this room.',
+                ])
+                @endif
               </div>
               <div class="util-ra-tool-group__actions">
                 @unless($fullPage)
@@ -438,7 +439,7 @@
                 @include('admin.utilities._room_area_help_pop', [
                   'tipId' => 'measure',
                   'label' => 'About scale and units',
-                  'text' => 'Tap calibrate, click two ends of a known wall, then type that length. Or skip the photo and type walls in the Measure panel. Switch ft-in or metres for display; type 12\' 6", 3.81 m, or 3810 mm in any mode.',
+                  'text' => 'Tap calibrate, click two ends of a known wall, then type that length. Or skip the photo and type walls in the Measure panel. Switch ft-in or metres for display; type 12\' 6", 3.81 m, or 3810 mm in any mode. Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win.',
                 ])
               </div>
               <div class="util-ra-tool-group__actions">
@@ -452,11 +453,6 @@
                     <option value="feet_decimal">Decimal ft</option>
                     <option value="inch">Inches</option>
                   </select>
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'units-format-fp',
-                    'label' => 'About number format',
-                    'text' => 'Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win.',
-                  ])
                 </span>
                 <span class="util-ra-tip" data-tooltip="Tap two ends of a known wall, then type that length.">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-calibrate-toggle aria-label="Calibrate scale from a known wall">
@@ -490,7 +486,16 @@
             @endif
 
             <div class="util-ra-tool-group util-ra-tool-group--plan">
-              <span class="util-ra-tool-group__label">Plan</span>
+              <div class="util-ra-tool-group__head">
+                <span class="util-ra-tool-group__label">Plan</span>
+                @if ($fullPage)
+                @include('admin.utilities._room_area_help_pop', [
+                  'tipId' => 'plan',
+                  'label' => 'About the floor plan',
+                  'text' => 'Show or hide the floor-plan photo, reposition it, or remove it from the drawing.',
+                ])
+                @endif
+              </div>
               <div class="util-ra-tool-group__actions">
                 <label class="admin-btn admin-btn--ghost util-ra-icon-btn util-ra-icon-toggle util-ra-tip" data-ra-bg-show-wrap data-tooltip="Show or hide floor plan" hidden>
                   <input type="checkbox" class="util-sr-only" data-ra-bg-show checked>
@@ -517,7 +522,7 @@
                 @include('admin.utilities._room_area_help_pop', [
                   'tipId' => 'room-tools',
                   'label' => 'About room tools',
-                  'text' => 'Dimension labels: all walls, main size only, area only, or off. Templates start a rectangle, L, U, or T. Alcove cuts a bump into the selected wall. Lock corners so doors, windows, and notes stay editable.',
+                  'text' => 'Dimension labels: all walls, main size only, area only, or off. When snap is on, walls snap to 45° / 90° if they are within about 10°. Turn snap off to trace 30° or 80° walls. On a keyboard, hold Alt to bypass. Templates start a rectangle, L, U, or T. Uses Rect W×L when filled, otherwise 12×10. L is 16×12 with a 6×4 return (152 sq ft). T uses the typed length as overall height. Alcove cuts a bump into the selected wall. Lock wall corners so doors, windows, and notes stay editable. Unlock to move walls, undo, delete an area, or recalibrate.',
                 ])
               </div>
               <div class="util-ra-tool-group__actions">
@@ -528,31 +533,16 @@
                     <option value="area">Area only</option>
                     <option value="off">Dims off</option>
                   </select>
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'dims',
-                    'label' => 'About dimension labels',
-                    'text' => 'All dims labels every wall. Main only shows overall size. Area only shows floor area. Dims off hides labels.',
-                  ])
                 </span>
                 <span class="util-ra-snap-wrap">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn is-active" data-ra-snap-toggle aria-pressed="true" aria-label="Angle snap">
                     <i class="fa fa-magnet" aria-hidden="true"></i>
                   </button>
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'snap',
-                    'label' => 'About angle snap',
-                    'text' => 'When on, walls snap to 45° / 90° if they are within about 10°. Turn snap off to trace 30° or 80° walls. On a keyboard, hold Alt to bypass.',
-                  ])
                 </span>
                 <div class="util-ra-templates" data-ra-templates>
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-templates-toggle aria-label="Room templates" aria-expanded="false" aria-controls="ra-templates-popover">
                     <i class="fa fa-clone" aria-hidden="true"></i>
                   </button>
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'templates',
-                    'label' => 'About room templates',
-                    'text' => 'Start from a rectangle, L, U, or T. Uses Rect W×L when filled, otherwise 12×10. L is 16×12 with a 6×4 return (152 sq ft). T uses the typed length as overall height.',
-                  ])
                   <div class="util-ra-shortcuts__popover util-ra-templates-pop" id="ra-templates-popover" data-ra-templates-popover hidden role="dialog" aria-label="Room templates">
                     <p class="util-ra-shortcuts__title">Start from a shape</p>
                     <div class="util-ra-templates-pop__grid" role="group" aria-label="Room templates">
@@ -573,11 +563,6 @@
                     <i class="fa fa-unlock-alt util-ra-icon-toggle__off" aria-hidden="true"></i>
                     <span class="util-sr-only">Lock layers</span>
                   </label>
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'lock',
-                    'label' => 'About lock',
-                    'text' => 'Lock wall corners so doors, windows, and notes stay editable. Unlock to move walls, undo, delete an area, or recalibrate.',
-                  ])
                 </span>
               </div>
             </div>
@@ -666,7 +651,7 @@
             @include('admin.utilities._room_area_help_pop', [
               'tipId' => 'objects',
               'label' => 'About objects and walls',
-              'text' => 'Objects: drop doors and windows on walls; stairs, cabinets, and fixtures on the floor. Walls: optional thickness. Quotes always use the inside.',
+              'text' => 'Objects: drop doors and windows on walls; stairs, cabinets, and fixtures on the floor. Walls: optional thickness. Quotes always use the inside. Select a wall, corner, object, or ruler to edit it here.',
             ])
           </div>
           <section class="util-ra-palette" data-ra-palette aria-label="Object library">
@@ -678,13 +663,7 @@
             </span>
             <div class="util-ra-palette__body" id="ra-palette-body" data-ra-palette-body>
               <div class="util-ra-palette__head">
-                <h3 class="util-ra-palette__title">Objects
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'objects-snap',
-                    'label' => 'About objects',
-                    'text' => 'Doors and windows snap to walls. Stairs, cabinets, and fixtures drop on the floor.',
-                  ])
-                </h3>
+                <h3 class="util-ra-palette__title">Objects</h3>
               </div>
               <div class="util-ra-palette__groups">
                 <div class="util-ra-palette__group">
@@ -723,13 +702,12 @@
             </span>
             <div class="util-ra-palette__body" id="ra-walls-body" data-ra-walls-body>
               <div class="util-ra-palette__head">
-                <h3 class="util-ra-palette__title">Wall thickness
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'thick-walls',
-                    'label' => 'About wall thickness',
-                    'text' => 'Off keeps drawings as-is. On draws thick walls and shows inside vs footprint. Quotes use inside.',
-                  ])
-                </h3>
+                <h3 class="util-ra-palette__title">Wall thickness</h3>
+                @include('admin.utilities._room_area_help_pop', [
+                  'tipId' => 'thick-walls',
+                  'label' => 'About wall thickness',
+                  'text' => 'Off keeps drawings as-is. On draws thick walls and shows inside vs footprint. Quotes use inside.',
+                ])
               </div>
               <div class="util-ra-thickness-chips" role="group" aria-label="Wall thickness">
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-thickness-chip is-active" data-ra-thickness="0">Off</button>
@@ -748,8 +726,12 @@
         </div>
 
         <div class="util-ra-edit-dock" data-ra-edit-dock>
-          <div class="util-ra-edit-dock__idle" aria-hidden="true">
-            <span class="util-ra-edit-dock__hint">Select a wall, corner, object, or ruler to edit it here.</span>
+          <div class="util-ra-edit-dock__idle">
+            @include('admin.utilities._room_area_help_pop', [
+              'tipId' => 'edit-idle',
+              'label' => 'About editing',
+              'text' => 'Select a wall, corner, object, or ruler to edit it here.',
+            ])
           </div>
           <div class="util-ra-edit-dock__panels">
             <div class="util-ra-wall-edit util-ra-ruler-edit" data-ra-ruler-edit hidden>
@@ -836,10 +818,15 @@
                   <label for="ra-wall-length" class="util-sr-only">Wall length in feet</label>
                   <input class="admin-input" type="text" id="ra-wall-length" inputmode="decimal" placeholder="e.g. 12' 6&quot;, 12.5, or 150&quot;" data-ra-wall-length>
                 </div>
-                <label class="util-ra-wall-edit__scale-option" title="Recalibrate scale so this wall matches the value you enter; all other wall lengths and areas update proportionally. The drawing shape stays the same.">
+                <label class="util-ra-wall-edit__scale-option">
                   <input type="checkbox" data-ra-wall-scale-project>
                   <span>Scale entire project</span>
                 </label>
+                @include('admin.utilities._room_area_help_pop', [
+                  'tipId' => 'scale-project',
+                  'label' => 'About scaling the project',
+                  'text' => 'Recalibrate scale so this wall matches the value you enter; all other wall lengths and areas update proportionally. The drawing shape stays the same.',
+                ])
                 <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-split-wall>
                   <i class="fa fa-plus-circle"></i> Split wall
@@ -885,13 +872,12 @@
         <div class="util-ra-side__pane is-active" data-ra-side-pane="measure">
         <section class="util-ra-type-walls" data-ra-type-walls aria-label="Type walls">
           <div class="util-ra-type-walls__head">
-            <h3 class="util-ra-type-walls__title">Type walls
-              @include('admin.utilities._room_area_help_pop', [
-                'tipId' => 'type-walls',
-                'label' => 'About typed walls',
-                'text' => 'Tape lengths from the top-left, first wall going right.',
-              ])
-            </h3>
+            <h3 class="util-ra-type-walls__title">Type walls</h3>
+            @include('admin.utilities._room_area_help_pop', [
+              'tipId' => 'type-walls',
+              'label' => 'About typed walls',
+              'text' => 'Tape lengths from the top-left, first wall going right.',
+            ])
           </div>
 
           <div class="util-ra-type-walls__entry">

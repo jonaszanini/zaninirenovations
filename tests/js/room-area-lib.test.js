@@ -25,6 +25,8 @@ almost(lib.parseLengthInput('5 m 20 cm', 'feet_inch_frac'), 5.2 / FT, '5 m 20 cm
 almost(lib.parseLengthInput('5m 20cm', 'inch'), 5.2 / FT, '5m 20cm no spaces');
 almost(lib.parseLengthInput('3,81', 'meter'), 3.81 / FT, 'comma is a decimal point in metric');
 almost(lib.parseLengthInput('3,81 m', 'feet_inch_frac'), 3.81 / FT, '3,81 m');
+almost(lib.parseLengthInput('3,81 mm', 'meter'), 0.00381 / FT, '3,81 mm stays a decimal millimetre');
+almost(lib.parseLengthInput('3.81 mm', 'meter'), 0.00381 / FT, '3.81 mm stays a decimal millimetre');
 almost(lib.parseLengthInput('12.5', 'feet_decimal'), 12.5, 'decimal feet');
 almost(lib.parseLengthInput("12' 6\"", 'meter'), 12.5, 'explicit feet-inch wins over metric');
 almost(lib.parseLengthInput('150"', 'meter'), 12.5, '150" is inches');
@@ -33,6 +35,9 @@ almost(lib.parseLengthInput('12′ 6″', 'meter'), 12.5, 'unicode prime feet-in
 almost(lib.parseLengthInput('6½', 'inch'), 6.5 / 12, 'vulgar 6½ is 6.5 inches, not 61/2');
 almost(lib.parseLengthInput('6½"', 'feet_inch_frac'), 6.5 / 12, '6½"');
 almost(lib.parseLengthInput("12' ½\"", 'feet_inch_frac'), 12 + 0.5 / 12, "12' ½\"");
+almost(lib.parseLengthInput('3,810 mm', 'meter'), 3.81 / FT, '3,810 mm thousands comma');
+almost(lib.parseLengthInput('3.810 mm', 'feet_decimal'), 3.81 / FT, '3.810 mm thousands dot');
+almost(lib.parseLengthInput('12’ 6”', 'meter'), 12.5, 'iOS smart quotes 12’ 6”');
 
 rejects('12abc', 'meter');
 rejects('12abc', 'feet_inch_frac');
@@ -46,8 +51,12 @@ rejects('', 'meter');
 almost(lib.parseLengthInput('150', 'feet_inch_frac'), 12.5, 'bare 150 is inches');
 
 // --- D1 wall height store feet / display metres ---
-almost(lib.parseWallHeight('2.44', true), 2.44 / FT, 'metric 2.44 stores as feet');
-almost(lib.parseWallHeight('8', false), 8, 'imperial 8 stays feet');
+almost(lib.parseWallHeight('2.44', true).feet, 2.44 / FT, 'metric 2.44 stores as feet');
+almost(lib.parseWallHeight('8', false).feet, 8, 'imperial 8 stays feet');
+assert.ok(lib.parseWallHeight('8', true).warning, '8 in metric is out of range and warns');
+assert.strictEqual(lib.parseWallHeight('8', true).feet, null, '8 in metric does not clamp to 20');
+assert.ok(lib.parseWallHeight('junk', false).warning, 'junk wall height warns');
+assert.strictEqual(lib.parseWallHeight('junk', false).feet, null, 'junk does not fall back to 8');
 almost(lib.clampWallHeightFt(2.44 / FT), 8.01, '2.44 m clamps near 8 ft');
 var shown = lib.wallHeightDisplay(8, true);
 assert.ok(Math.abs(Number(shown) - 8 * FT) < 0.01, 'display 8 ft as metres: ' + shown);
