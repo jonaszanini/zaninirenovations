@@ -573,8 +573,9 @@
   font-size: 0.8rem;
 }
 
-/* Stacked cards below 68.75em (1099px at 16px; larger roots stay stacked). */
-@media (max-width: 68.6875em) {
+/* Stacked cards below 68.75em — use width < so nothing sits between
+   this query and min-width: 68.75em (18px@1237, 20px@1374, fractional zoom). */
+@media (width < 68.75em) {
   .sp-group .admin-table-scroll {
     overflow: visible;
   }

@@ -148,7 +148,11 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('title="{{ $work->label }}"', $blade);
         $this->assertStringContainsString('grid-area: search', $css);
         $this->assertStringContainsString('@media (min-width: 68.75em)', $css);
-        $this->assertStringContainsString('@media (max-width: 68.6875em)', $css);
+        $this->assertTrue(
+            str_contains($css, '@media (width < 68.75em)') || str_contains($css, '@media not all and (min-width: 68.75em)'),
+            'Stacked query must abut min-width: 68.75em with no gap'
+        );
+        $this->assertStringNotContainsString('@media (max-width: 68.6875em)', $css);
         $this->assertDoesNotMatchRegularExpression('/\.sp-col-sell:has\(\.admin-info-tip\)\s+\.sp-input\s*\{[^}]*padding-right:\s*1\.85rem/', $css);
         $this->assertMatchesRegularExpression('/\.sp-table\s+\.sp-work\s*\{[^}]*padding:\s*0/', $css);
         $this->assertDoesNotMatchRegularExpression('/\.sp-group \.admin-table-scroll\s*\{[^}]*overflow-x:\s*hidden/', $css);
@@ -493,28 +497,39 @@ const base = process.env.SP_GEO_BASE;
     }
 
     if (w === 1280) {
-      await page.evaluate(() => {
-        const btn = document.querySelector('.sp-th-sell .admin-info-tip, .sp-group__sell-tip .admin-info-tip');
+      const headerTipSel = '.sp-th-sell .admin-info-tip';
+      await page.evaluate((sel) => {
+        document.querySelectorAll('.admin-info-tip[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+        const btn = [...document.querySelectorAll(sel)].find((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width > 8 && r.height > 8 && getComputedStyle(el).display !== 'none';
+        });
         if (btn) btn.click();
-      });
+      }, headerTipSel);
       await new Promise((r) => setTimeout(r, 80));
-      const tipGap = () => page.evaluate(() => {
-        const btn = document.querySelector('.admin-info-tip[aria-expanded="true"]');
+      const tipGap = () => page.evaluate((sel) => {
+        const btn = [...document.querySelectorAll(sel + '[aria-expanded="true"]')].find((el) => el.getBoundingClientRect().width > 8);
         const bubble = btn && (btn.querySelector('.admin-info-tip__bubble') || (btn.parentElement && btn.parentElement.querySelector('.admin-info-tip__bubble')));
-        if (!btn || !bubble || getComputedStyle(bubble).display === 'none') return { open: false, gap: 999, width: 0, cap: 0 };
+        if (!btn || !bubble || getComputedStyle(bubble).display === 'none') {
+          return { open: false, gap: 999, width: 0, cap: 0, btnW: 0 };
+        }
         const a = btn.getBoundingClientRect();
         const b = bubble.getBoundingClientRect();
         const cap = Math.min(280, window.innerWidth * 0.7);
-        return { open: true, gap: Math.round(b.top - a.bottom), width: Math.round(b.width), cap: Math.round(cap) };
-      });
+        return { open: true, gap: Math.round(b.top - a.bottom), width: Math.round(b.width), cap: Math.round(cap), btnW: Math.round(a.width) };
+      }, headerTipSel);
       const before = await tipGap();
       await page.evaluate(() => window.scrollBy(0, 200));
       await new Promise((r) => setTimeout(r, 80));
       const after = await tipGap();
+      const follows = !!(before.open && before.btnW > 8 && after.open && Math.abs((after.gap || 0) - (before.gap || 0)) <= 8);
+      const closed = !!(before.open && before.btnW > 8 && !after.open);
       out[String(w)].tipScroll = {
         before,
         after,
-        follows: !after.open || Math.abs((after.gap || 0) - (before.gap || 0)) <= 8,
+        follows,
+        closed,
+        ok: follows || closed,
         capped: !after.open || after.width <= (after.cap || 280) + 1,
       };
       await page.evaluate(() => {
@@ -594,20 +609,32 @@ const base = process.env.SP_GEO_BASE;
     }
   }
 
-  for (const root of [18, 20]) {
-    await page.evaluate((px) => { document.documentElement.style.fontSize = px + 'px'; }, root);
-    for (const rw of [1100, 1280]) {
+  const cdp = await page.createCDPSession();
+  await cdp.send('Page.enable').catch(() => {});
+  const rootCases = [
+    { root: 18, widths: [1100, 1237, 1280] },
+    { root: 20, widths: [1100, 1280, 1374] },
+  ];
+  for (const { root, widths: rootWidths } of rootCases) {
+    await cdp.send('Page.setFontSizes', { fontSizes: { standard: root, fixed: 13 } });
+    for (const rw of rootWidths) {
       await page.setViewport({ width: rw, height: 900 });
       await openPage();
       out['root' + root + '_' + rw] = await page.evaluate(() => {
         const card = document.querySelector('details.sp-group.admin-card');
         const scroller = document.querySelector('.sp-group .admin-table-scroll');
         const table = document.querySelector('.sp-table');
+        const thead = document.querySelector('.sp-table thead');
+        const row = document.querySelector('.sp-table tbody tr');
+        const rowStyle = row ? getComputedStyle(row) : null;
+        const colCount = rowStyle ? rowStyle.gridTemplateColumns.split(' ').filter(Boolean).length : 0;
+        const theadDisplay = thead ? getComputedStyle(thead).display : '';
         const cardBox = card ? card.getBoundingClientRect() : null;
         const usedBy = document.querySelector('.sp-col-consumers');
         const usedRight = usedBy ? usedBy.getBoundingClientRect().right : 0;
         const overflowX = scroller ? getComputedStyle(scroller).overflowX : '';
         return {
+          rootFont: parseFloat(getComputedStyle(document.documentElement).fontSize),
           docW: document.documentElement.scrollWidth,
           viewW: window.innerWidth,
           pageScroll: document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -615,18 +642,15 @@ const base = process.env.SP_GEO_BASE;
           tablePastCard: cardBox && table && table.getBoundingClientRect().right > cardBox.right + 1
             ? Math.round(table.getBoundingClientRect().right - cardBox.right) : 0,
           scrollerOverflow: overflowX,
-          stacked: (() => {
-            const row = document.querySelector('.sp-table tbody tr');
-            const thead = document.querySelector('.sp-table thead');
-            const rowStyle = row ? getComputedStyle(row) : null;
-            return !rowStyle || rowStyle.gridTemplateColumns.split(' ').filter(Boolean).length <= 2
-              || (thead && getComputedStyle(thead).display === 'none');
-          })(),
+          colCount,
+          theadDisplay,
+          stacked: theadDisplay === 'none' || colCount <= 2,
+          rawTable: theadDisplay !== 'none' && colCount !== 8,
         };
       });
     }
   }
-  await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+  await cdp.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 13 } }).catch(() => {});
 
   await browser.close();
   process.stdout.write(JSON.stringify(out));
@@ -709,13 +733,27 @@ JS
             );
         }
 
-        $this->assertTrue($json['1280']['tipScroll']['follows'] ?? false, 'Open tip must follow or close on scroll: '.json_encode($json['1280']['tipScroll'] ?? []));
+        $this->assertTrue($json['1280']['tipScroll']['ok'] ?? false, 'Visible column-header tip must follow or close on scroll: '.json_encode($json['1280']['tipScroll'] ?? []));
+        $this->assertGreaterThan(8, (int) ($json['1280']['tipScroll']['before']['btnW'] ?? 0), 'Scroll check must target the visible Sell ⓘ, not the hidden group-header tip: '.json_encode($json['1280']['tipScroll'] ?? []));
         $this->assertTrue($json['1280']['tipScroll']['capped'] ?? false, 'Desktop tip must stay ≤ min(280px, 70vw): '.json_encode($json['1280']['tipScroll'] ?? []));
 
-        foreach (['root18_1100', 'root18_1280', 'root20_1100', 'root20_1280'] as $key) {
+        foreach ([
+            'root18_1100' => 18,
+            'root18_1237' => 18,
+            'root18_1280' => 18,
+            'root20_1100' => 20,
+            'root20_1280' => 20,
+            'root20_1374' => 20,
+        ] as $key => $expectRoot) {
             $row = $json[$key] ?? null;
             $this->assertIsArray($row, "Missing root-font geometry {$key}");
+            $this->assertEquals(
+                $expectRoot,
+                (int) round((float) ($row['rootFont'] ?? 0)),
+                "Computed root font must be {$expectRoot}px ({$key}): ".json_encode($row)
+            );
             $this->assertFalse($row['pageScroll'] ?? true, "Larger root font must not widen the page ({$key}): ".json_encode($row));
+            $this->assertFalse($row['rawTable'] ?? true, "Must not fall between stacked and grid queries ({$key}): ".json_encode($row));
             $spills = (int) ($row['usedPastCard'] ?? 0);
             $scrollsInside = in_array($row['scrollerOverflow'] ?? '', ['auto', 'scroll'], true);
             $this->assertTrue(
@@ -723,6 +761,8 @@ JS
                 "Used-by must stay in the card or scroll inside it ({$key}): ".json_encode($row)
             );
         }
+        $this->assertTrue($json['root18_1237']['stacked'] ?? false, '18px @ 1237px must stay stacked (no query gap): '.json_encode($json['root18_1237'] ?? []));
+        $this->assertTrue($json['root20_1374']['stacked'] ?? false, '20px @ 1374px must stay stacked (no query gap): '.json_encode($json['root20_1374'] ?? []));
 
         $this->assertTrue($json['1024']['liveSell']['ok'] ?? false, 'Effective sell must update live when Rate or Sell changes: '.json_encode($json['1024']['liveSell'] ?? []));
         $this->assertTrue($json['1100']['liveSell']['ok'] ?? false, 'Effective sell must update live on the desktop grid: '.json_encode($json['1100']['liveSell'] ?? []));
