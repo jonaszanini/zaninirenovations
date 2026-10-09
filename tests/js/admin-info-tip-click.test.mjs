@@ -315,8 +315,7 @@ function fixtureHtml() {
       <span class="admin-label-with-tip admin-checkbox-row" id="client-filled-check">
         <label class="admin-checkbox" for="br-client-filled-demo">
           <input type="checkbox" class="admin-checkbox__input" id="br-client-filled-demo" checked>
-          <span class="admin-checkbox__mark"></span>
-          <span class="br-client-filled" title="Filled from client form" aria-label="Filled from client form"><i class="fa fa-user" aria-hidden="true"></i></span>
+          <span class="admin-checkbox__mark"></span><span class="br-client-filled" title="Filled from client form" aria-label="Filled from client form"><i class="fa fa-user" aria-hidden="true"></i></span>
           <span class="admin-checkbox__text">Client provides painted trim and all finish hardware for the wrapped </span>
         </label><span class="admin-label-with-tip__end">
           <label for="br-client-filled-demo" class="admin-checkbox__tail">line</label>
@@ -661,10 +660,20 @@ async function puppeteerClick() {
         await page.setViewport({ width, height: 800 });
         const aligned = await page.evaluate(() => {
           window.scrollTo(0, 240);
+          function boxOf(el) {
+            if (!el) return null;
+            if (el.nodeType === 3) {
+              const range = document.createRange();
+              range.selectNodeContents(el);
+              return range.getBoundingClientRect();
+            }
+            const icon = el.querySelector && el.querySelector('i, .fa');
+            return (icon || el).getBoundingClientRect();
+          }
           function sameLine(a, b) {
-            if (!a || !b) return { sameLine: false, aTop: null, bTop: null };
-            const ar = a.getBoundingClientRect();
-            const br = b.getBoundingClientRect();
+            const ar = boxOf(a);
+            const br = boxOf(b);
+            if (!ar || !br) return { sameLine: false, aTop: null, bTop: null };
             const overlap = br.bottom > ar.top && ar.bottom > br.top;
             const wrappedBelow = br.top > ar.bottom + 2;
             return { sameLine: overlap && !wrappedBelow, aTop: ar.top, bTop: br.top };
@@ -678,36 +687,19 @@ async function puppeteerClick() {
           function lastWordTop(tipWrap) {
             const btn = tipWrap.querySelector('.admin-info-tip');
             if (!btn) return { orphan: true, wordTop: null, tipTop: null };
-            const tipTop = btn.getBoundingClientRect().top;
             const end = tipWrap.closest('.admin-label-with-tip__end');
             let wordEl = null;
             if (end) {
-              wordEl = Array.from(end.childNodes).find((n) => n !== tipWrap && n.nodeType === 1);
-              if (!wordEl) {
-                const tn = Array.from(end.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
-                if (tn) {
-                  const range = document.createRange();
-                  range.selectNodeContents(tn);
-                  return { orphan: Math.abs(range.getBoundingClientRect().top - tipTop) > 4, wordTop: range.getBoundingClientRect().top, tipTop };
-                }
-              }
+              wordEl = Array.from(end.childNodes).find((n) => n !== tipWrap && n.nodeType === 1)
+                || Array.from(end.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
             }
             if (!wordEl) {
               let prev = tipWrap.previousSibling;
               while (prev && prev.nodeType === 3 && !String(prev.textContent || '').trim()) prev = prev.previousSibling;
-              if (prev && prev.nodeType === 1) wordEl = prev;
-              else if (prev && prev.nodeType === 3) {
-                const range = document.createRange();
-                const raw = String(prev.textContent || '');
-                const trimmed = raw.replace(/\s+$/g, '');
-                const space = trimmed.lastIndexOf(' ');
-                range.setStart(prev, Math.max(0, space === -1 ? 0 : space + 1));
-                range.setEnd(prev, raw.length);
-                return { orphan: Math.abs(range.getBoundingClientRect().top - tipTop) > 4, wordTop: range.getBoundingClientRect().top, tipTop };
-              }
+              wordEl = prev || null;
             }
-            if (!wordEl) return { orphan: true, wordTop: null, tipTop };
-            return { orphan: Math.abs(wordEl.getBoundingClientRect().top - tipTop) > 4, wordTop: wordEl.getBoundingClientRect().top, tipTop };
+            const line = sameLine(wordEl, btn);
+            return { orphan: !line.sameLine, wordTop: line.aTop, tipTop: line.bTop };
           }
           function headingProblem(el) {
             const tip = el.querySelector('.admin-info-tip-wrap');

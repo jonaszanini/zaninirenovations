@@ -666,6 +666,8 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   const starEnd = legend.querySelector('.admin-label-with-tip__end');
   assert.ok(starEnd && starEnd.contains(star) && starEnd.contains(wrap), 'wrap * with the tip so they stay together');
   assert.equal(star.nextElementSibling, wrap, 'N4: * stays before the ⓘ');
+  AdminInfoTip.hoist(document);
+  assert.equal(wrap.parentNode, starEnd, 'second hoist must not pull the tip out of the glued end');
   const order = String(legend.textContent || '').replace(/\s+/g, ' ').trim();
   assert.match(order, /^Store name\s*\*/);
 }

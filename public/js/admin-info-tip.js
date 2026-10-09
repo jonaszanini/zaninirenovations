@@ -636,7 +636,9 @@
     if (!heading || !tip) return heading;
     var existing = heading.querySelector ? heading.querySelector(':scope > .admin-heading-copy') : null;
     if (existing) {
-      if (tip.parentNode !== existing) existing.appendChild(tip);
+      if (tip.parentNode !== existing && !(existing.contains && existing.contains(tip))) {
+        existing.appendChild(tip);
+      }
       return existing;
     }
     var copy = document.createElement('span');
