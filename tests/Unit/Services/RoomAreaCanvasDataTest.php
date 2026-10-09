@@ -629,8 +629,33 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertSame(3, $metrics['drywall_openings']);
         // 36" door + 36" opening = 6 lf; 48" window does not reduce baseboard.
         $this->assertSame(30.0, $metrics['baseboard_lf']);
-        // Door 36x80 and window 48x36 (explicit height) come out of wall SF; opening does not.
-        $this->assertEqualsWithDelta(256.0, $metrics['wall_area_sqft'], 0.01);
+        // Net wall area: ceiling-height walls minus door, window, and opening.
+        $this->assertEqualsWithDelta(235.0, $metrics['wall_area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(235.0, $metrics['net_wall_area_sqft'], 0.01);
+    }
+
+    public function test_legacy_opening_placeholder_migrates_on_read(): void
+    {
+        $canvas = $this->rectangleCanvas(true);
+        $canvas['objects'][2]['height'] = 48;
+        unset($canvas['objects'][2]['casing_sides']);
+
+        $normalized = $this->service->normalize($canvas);
+        $opening = collect($normalized['objects'])->firstWhere('type', 'opening');
+        $this->assertNotNull($opening);
+        $this->assertSame(48.0, $opening['height']);
+        $this->assertSame(0, $opening['casing_sides']);
+
+        $metrics = $this->service->layoutMetrics($canvas, 12.0, 8.0);
+        $openingWall = collect($metrics['walls'])->firstWhere('id', 'wall_p1_2_3');
+        $this->assertNotNull($openingWall);
+        $this->assertEqualsWithDelta((36 / 12) * (84 / 12), $openingWall['opening_area_sqft'], 0.01);
+        $this->assertNotEquals(12.0, $openingWall['opening_area_sqft']);
+        $this->assertNotEquals(24.0, $openingWall['opening_area_sqft']);
+        $this->assertEqualsWithDelta(0.0, $metrics['casing_lf'] - (
+            app(\App\Services\RoomAreaFinishMath::class)->casingLf(36, 80, 2, 'door')
+            + app(\App\Services\RoomAreaFinishMath::class)->casingLf(48, 36, 4, 'window')
+        ), 0.01);
     }
 
     public function test_wall_metrics_use_object_height_when_present(): void
@@ -643,7 +668,9 @@ class RoomAreaCanvasDataTest extends TestCase
 
         $doorArea = (36 / 12) * (84 / 12);
         $windowArea = (48 / 12) * (24 / 12);
-        $this->assertEqualsWithDelta(36.0 * 9.0 - $doorArea - $windowArea, $metrics['wall_area_sqft'], 0.01);
+        $openingArea = (36 / 12) * (84 / 12);
+        $this->assertEqualsWithDelta(36.0 * 9.0 - $doorArea - $windowArea - $openingArea, $metrics['wall_area_sqft'], 0.01);
+        $this->assertSame($metrics['net_wall_area_sqft'], $metrics['wall_area_sqft']);
         $this->assertSame(9.0, $metrics['wall_height_ft']);
     }
 

@@ -197,6 +197,23 @@ class RoomAreaLayoutQuoteService
             $metrics['perimeter_lf'] += $row['perimeter_lf'];
             $metrics['baseboard_lf'] += $row['baseboard_lf'];
             $metrics['wall_area_sqft'] += $row['wall_area_sqft'];
+            $metrics['net_wall_area_sqft'] += $row['net_wall_area_sqft'] ?? $row['wall_area_sqft'];
+            $metrics['ceiling_area_sqft'] += $row['ceiling_area_sqft'] ?? $row['area_sqft'];
+            $metrics['ceiling_height_ft'] = max(
+                (float) ($metrics['ceiling_height_ft'] ?? 0),
+                (float) ($row['ceiling_height_ft'] ?? $row['wall_height_ft'] ?? 0)
+            );
+            $metrics['casing_lf'] += $row['casing_lf'] ?? 0;
+            $metrics['flooring_boxes'] += $row['flooring_boxes'] ?? 0;
+            $metrics['flooring_with_waste_sqft'] += $row['flooring_with_waste_sqft'] ?? 0;
+            $metrics['flooring_waste_percent'] = max(
+                (float) ($metrics['flooring_waste_percent'] ?? 0),
+                (float) ($row['flooring_waste_percent'] ?? 0)
+            );
+            $metrics['flooring_box_sqft'] = max(
+                (float) ($metrics['flooring_box_sqft'] ?? 0),
+                (float) ($row['flooring_box_sqft'] ?? 0)
+            );
             $metrics['door_count'] += $row['door_count'];
             $metrics['window_count'] += $row['window_count'];
             $metrics['opening_count'] += $row['opening_count'];
@@ -228,6 +245,10 @@ class RoomAreaLayoutQuoteService
         $metrics['perimeter_lf'] = round($metrics['perimeter_lf'], 2);
         $metrics['baseboard_lf'] = round($metrics['baseboard_lf'], 2);
         $metrics['wall_area_sqft'] = round($metrics['wall_area_sqft'], 2);
+        $metrics['net_wall_area_sqft'] = round((float) ($metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft']), 2);
+        $metrics['ceiling_area_sqft'] = round((float) ($metrics['ceiling_area_sqft'] ?? $metrics['area_sqft']), 2);
+        $metrics['casing_lf'] = round((float) ($metrics['casing_lf'] ?? 0), 2);
+        $metrics['flooring_with_waste_sqft'] = round((float) ($metrics['flooring_with_waste_sqft'] ?? 0), 2);
         $metrics['inside_area_sqft'] = round((float) ($metrics['inside_area_sqft'] ?? $metrics['area_sqft']), 2);
         $metrics['outside_area_sqft'] = round((float) ($metrics['outside_area_sqft'] ?? $metrics['area_sqft']), 2);
         $metrics['shared_wall_lf'] = round((float) ($metrics['shared_wall_lf'] ?? 0), 2);
@@ -269,7 +290,14 @@ class RoomAreaLayoutQuoteService
         $cabinetBase = (float) ($metrics['cabinet_base_lf'] ?? 0);
         $cabinetUpper = (float) ($metrics['cabinet_upper_lf'] ?? 0);
         $stairsTreads = (int) ($metrics['stairs_treads'] ?? 0);
+        $netWall = $this->formatQty((float) ($metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft'] ?? 0));
+        $ceiling = $this->formatQty((float) ($metrics['ceiling_area_sqft'] ?? $metrics['area_sqft'] ?? 0));
+        $casing = $this->formatQty((float) ($metrics['casing_lf'] ?? 0));
+        $boxes = (int) ($metrics['flooring_boxes'] ?? 0);
         $meta = $area.' sq ft floor · '.$peri.' lf perimeter · '.$base.' lf baseboard'
+            .' · '.$netWall.' sq ft net walls · '.$ceiling.' sq ft ceiling'
+            .($boxes > 0 ? ' · '.$boxes.' boxes' : '')
+            .((float) ($metrics['casing_lf'] ?? 0) > 0 ? ' · '.$casing.' lf casing' : '')
             .($openings > 0 ? ' · '.$openings.' openings' : '');
         if ($cabinetBase > 0 || $cabinetUpper > 0) {
             $meta .= ' · '.$this->formatQty($cabinetBase + $cabinetUpper).' lf cabinets';
@@ -289,7 +317,15 @@ class RoomAreaLayoutQuoteService
             'perimeter_lf' => $metrics['perimeter_lf'],
             'baseboard_lf' => $metrics['baseboard_lf'] ?? $metrics['perimeter_lf'],
             'wall_height_ft' => $metrics['wall_height_ft'] ?? RoomAreaCanvasData::DEFAULT_WALL_HEIGHT_FT,
-            'wall_area_sqft' => $metrics['wall_area_sqft'] ?? 0,
+            'ceiling_height_ft' => $metrics['ceiling_height_ft'] ?? ($metrics['wall_height_ft'] ?? RoomAreaCanvasData::DEFAULT_WALL_HEIGHT_FT),
+            'ceiling_area_sqft' => $metrics['ceiling_area_sqft'] ?? $metrics['area_sqft'],
+            'wall_area_sqft' => $metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft'] ?? 0,
+            'net_wall_area_sqft' => $metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft'] ?? 0,
+            'flooring_waste_percent' => $metrics['flooring_waste_percent'] ?? RoomAreaFinishMath::DEFAULT_WASTE_PERCENT,
+            'flooring_box_sqft' => $metrics['flooring_box_sqft'] ?? RoomAreaFinishMath::DEFAULT_BOX_SQFT,
+            'flooring_boxes' => (int) ($metrics['flooring_boxes'] ?? 0),
+            'flooring_with_waste_sqft' => $metrics['flooring_with_waste_sqft'] ?? 0,
+            'casing_lf' => $metrics['casing_lf'] ?? 0,
             'door_count' => (int) ($metrics['door_count'] ?? 0),
             'window_count' => (int) ($metrics['window_count'] ?? 0),
             'opening_count' => (int) ($metrics['opening_count'] ?? 0),

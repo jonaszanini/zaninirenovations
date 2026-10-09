@@ -252,6 +252,19 @@
     liveWallArea: root.querySelector('[data-ra-live-wall-area]'),
     liveCounts: root.querySelector('[data-ra-live-counts]'),
     wallHeight: root.querySelector('[data-ra-wall-height]'),
+    ceilingHeight: root.querySelector('[data-ra-ceiling-height]'),
+    floorWaste: root.querySelector('[data-ra-floor-waste]'),
+    floorBox: root.querySelector('[data-ra-floor-box]'),
+    wallList: root.querySelector('[data-ra-wall-list]'),
+    liveCeilingArea: root.querySelector('[data-ra-live-ceiling-area]'),
+    liveBoxes: root.querySelector('[data-ra-live-boxes]'),
+    liveCasing: root.querySelector('[data-ra-live-casing]'),
+    wallNetArea: root.querySelector('[data-ra-wall-net-area]'),
+    objectCasing: root.querySelector('[data-ra-object-casing]'),
+    objectCasingWrap: root.querySelector('[data-ra-object-casing-wrap]'),
+    objectDoorFace: root.querySelector('[data-ra-object-door-face]'),
+    objectDoorFaceWrap: root.querySelector('[data-ra-object-door-face-wrap]'),
+    floorBoxUnit: root.querySelector('[data-ra-floor-box-unit]'),
     exportPng: root.querySelector('[data-ra-export-png]'),
     exportPdf: root.querySelector('[data-ra-export-pdf]'),
     attachPdf: root.querySelector('[data-ra-attach-pdf]'),
@@ -444,6 +457,10 @@
     canvasW: 5400,
     canvasH: 3840,
     wallHeightFt: DEFAULT_WALL_HEIGHT_FT,
+    ceilingHeightFt: null,
+    flooringWastePercent: RA.DEFAULT_WASTE_PERCENT || 10,
+    flooringDirection: RA.DIRECTION_LENGTH || 0,
+    flooringBoxSqFt: RA.DEFAULT_BOX_SQFT || 20,
     wallThicknessIn: 0,
     transformer: null,
     sharedPairs: [],
@@ -492,13 +509,19 @@
         x: obj.x,
         y: obj.y,
         depth: obj.depth,
-        rotation: obj.rotation || 0
+        rotation: obj.rotation || 0,
+        casing_sides: obj.casing_sides,
+        door_face: obj.door_face
       };
     });
   }
 
+  function objectType(obj) {
+    return RA.objectType ? RA.objectType(obj) : String(obj && obj.type || '').toLowerCase().trim();
+  }
+
   function isWallObject(obj) {
-    return !!(obj && WALL_OBJECT_TYPES[obj.type]);
+    return !!(obj && WALL_OBJECT_TYPES[objectType(obj)]);
   }
 
   function isFreeObject(obj) {
@@ -747,7 +770,9 @@
       width: item.width,
       offset: 0,
       swing: 'left_in',
-      hinge: 'left'
+      hinge: 'left',
+      casing_sides: RA.defaultCasingSides(item.type),
+      door_face: item.type && String(item.type).toLowerCase() === 'door' ? 'interior' : undefined
     };
     state.nextObjectId += 1;
     if (item.place === 'floor' || FREE_OBJECT_TYPES[item.type]) {
@@ -1075,18 +1100,137 @@
     return Math.round(n * 100) / 100;
   }
 
+  function ceilingHeightFt() {
+    return RA.ceilingHeightFt(state.ceilingHeightFt, wallHeightFt());
+  }
+
+  function flooringWastePercent() {
+    return RA.normalizeWastePercent(state.flooringWastePercent);
+  }
+
+  function finishSnapshot() {
+    return {
+      wallHeightFt: state.wallHeightFt,
+      ceilingHeightFt: state.ceilingHeightFt,
+      flooringWastePercent: state.flooringWastePercent,
+      flooringDirection: state.flooringDirection,
+      flooringBoxSqFt: state.flooringBoxSqFt
+    };
+  }
+
+  function applyFinishSnapshot(snap) {
+    if (!snap) return;
+    if (snap.wallHeightFt != null && isFinite(snap.wallHeightFt)) state.wallHeightFt = snap.wallHeightFt;
+    state.ceilingHeightFt = snap.ceilingHeightFt;
+    if (snap.flooringWastePercent != null) state.flooringWastePercent = snap.flooringWastePercent;
+    if (snap.flooringDirection != null) state.flooringDirection = snap.flooringDirection;
+    if (snap.flooringBoxSqFt != null) state.flooringBoxSqFt = snap.flooringBoxSqFt;
+    syncFinishInputs(true);
+  }
+
+  function flooringBoxSqFt() {
+    return RA.normalizeBoxSqFt(state.flooringBoxSqFt);
+  }
+
+  function flooringDirectionDeg() {
+    return RA.normalizeDirection(state.flooringDirection);
+  }
+
   function syncWallHeightInput(force) {
     if (!els.wallHeight) return;
     if (!force && document.activeElement === els.wallHeight) return;
     els.wallHeight.value = RA.wallHeightDisplay(state.wallHeightFt, isMetricDisplay(), fmt);
   }
 
-  function setWallHeight(value) {
+  function syncCeilingHeightInput(force) {
+    if (!els.ceilingHeight) return;
+    if (!force && document.activeElement === els.ceilingHeight) return;
+    els.ceilingHeight.value = RA.wallHeightDisplay(ceilingHeightFt(), isMetricDisplay(), fmt);
+  }
+
+  function syncFinishInputs(force) {
+    syncWallHeightInput(force);
+    syncCeilingHeightInput(force);
+    if (els.floorWaste && (force || document.activeElement !== els.floorWaste)) {
+      els.floorWaste.value = String(flooringWastePercent());
+    }
+    if (els.floorBox && (force || document.activeElement !== els.floorBox)) {
+      els.floorBox.value = String(flooringBoxSqFt());
+    }
+    raAll('[data-ra-floor-dir]').forEach(function (btn) {
+      var on = parseInt(btn.getAttribute('data-ra-floor-dir'), 10) === flooringDirectionDeg();
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function setWallHeight(value, recordUndo) {
     var n = parseFloat(value);
     if (!isFinite(n) || n < 1) n = DEFAULT_WALL_HEIGHT_FT;
     if (n > 20) n = 20;
-    state.wallHeightFt = Math.round(n * 100) / 100;
-    syncWallHeightInput(true);
+    var prev = state.wallHeightFt;
+    var next = Math.round(n * 100) / 100;
+    if (recordUndo && Math.abs(next - prev) > 0.0001) pushUndoSnapshot();
+    state.wallHeightFt = next;
+    if (state.ceilingHeightFt == null || Math.abs((state.ceilingHeightFt || 0) - prev) < 0.001) {
+      state.ceilingHeightFt = null;
+    }
+    syncFinishInputs(true);
+  }
+
+  function setCeilingHeight(value, recordUndo) {
+    var n = parseFloat(value);
+    var next = null;
+    if (isFinite(n) && n >= 1) {
+      if (n > 20) n = 20;
+      next = Math.round(n * 100) / 100;
+    }
+    if (recordUndo) {
+      var prev = state.ceilingHeightFt;
+      if ((prev == null && next != null) || (prev != null && next == null) || (prev != null && next != null && Math.abs(prev - next) > 0.0001)) {
+        pushUndoSnapshot();
+      }
+    }
+    state.ceilingHeightFt = next;
+    syncCeilingHeightInput(true);
+  }
+
+  function setFlooringWaste(value, recordUndo) {
+    var parsed = RA.parseWastePercent(value);
+    if (!parsed.ok) {
+      setFeedback(parsed.error, true);
+      syncFinishInputs(true);
+      return false;
+    }
+    if (recordUndo && Math.abs((state.flooringWastePercent || 0) - parsed.value) > 0.0001) {
+      pushUndoSnapshot();
+    }
+    state.flooringWastePercent = parsed.value;
+    syncFinishInputs(true);
+    return true;
+  }
+
+  function setFlooringBox(value, recordUndo) {
+    var next = RA.normalizeBoxSqFt(value);
+    if (recordUndo && Math.abs((state.flooringBoxSqFt || 0) - next) > 0.0001) pushUndoSnapshot();
+    state.flooringBoxSqFt = next;
+    syncFinishInputs(true);
+  }
+
+  function setFlooringDirection(deg, recordUndo) {
+    var next = RA.normalizeDirection(deg);
+    if (recordUndo && state.flooringDirection !== next) pushUndoSnapshot();
+    state.flooringDirection = next;
+    syncFinishInputs(true);
+    if (state.stage) redrawFlooringDirection();
+  }
+
+  function resetFinishSettings() {
+    state.ceilingHeightFt = null;
+    state.flooringWastePercent = RA.DEFAULT_WASTE_PERCENT || 10;
+    state.flooringDirection = RA.DIRECTION_LENGTH || 0;
+    state.flooringBoxSqFt = RA.DEFAULT_BOX_SQFT || 20;
+    syncFinishInputs(true);
   }
 
   function wallHeightFtFromValue(value) {
@@ -1101,12 +1245,7 @@
   }
 
   function objectHeightInches(obj, heightFt) {
-    if (obj && obj.height != null && isFinite(obj.height) && obj.height > 0) {
-      return obj.height;
-    }
-    if (obj && obj.type === 'window') return DEFAULT_WINDOW_HEIGHT_IN;
-    if (obj && obj.type === 'opening') return heightFt * INCHES_PER_FOOT;
-    return DEFAULT_DOOR_HEIGHT_IN;
+    return RA.objectHeightInches(obj, heightFt);
   }
 
   function metricObjects() {
@@ -1184,14 +1323,15 @@
       if (width <= 0) return;
       var objHeight = objectHeightInches(obj, height);
       var area = (width / INCHES_PER_FOOT) * (objHeight / INCHES_PER_FOOT);
-      if (obj.type === 'door') {
+      var kind = objectType(obj);
+      if (kind === 'door') {
         doorCount += 1;
         baseboardIn += width;
         wallDeduction += area;
-      } else if (obj.type === 'window') {
+      } else if (kind === 'window') {
         windowCount += 1;
         wallDeduction += area;
-      } else if (obj.type === 'opening') {
+      } else if (kind === 'opening') {
         openingCount += 1;
         baseboardIn += width;
       }
@@ -1210,6 +1350,10 @@
     var library = libraryMetrics();
     var baseboard = Math.max(0, Math.round((perimeter - baseboardIn / INCHES_PER_FOOT) * 100) / 100);
     var wallArea = Math.max(0, Math.round((perimeter * height - wallDeduction) * 100) / 100);
+    var ceiling = ceilingHeightFt();
+    var walls = perWallNetAreas(ceiling);
+    var waste = flooringWastePercent();
+    var box = flooringBoxSqFt();
     return {
       area_sqft: floor,
       inside_area_sqft: floor,
@@ -1217,7 +1361,7 @@
       perimeter_lf: perimeter,
       baseboard_lf: baseboard,
       wall_height_ft: height,
-      wall_area_sqft: wallArea,
+      wall_area_sqft: walls.reduce(function (sum, wall) { return sum + wall.net_area_sqft; }, 0),
       door_count: doorCount,
       window_count: windowCount,
       opening_count: openingCount,
@@ -1228,8 +1372,26 @@
       cabinet_base_lf: library.cabinet_base_lf,
       cabinet_upper_lf: library.cabinet_upper_lf,
       stairs_count: library.stairs_count,
-      stairs_treads: library.stairs_treads
+      stairs_treads: library.stairs_treads,
+      ceiling_height_ft: ceiling,
+      ceiling_area_sqft: RA.ceilingAreaSqFt(floor),
+      net_wall_area_sqft: walls.reduce(function (sum, wall) { return sum + wall.net_area_sqft; }, 0),
+      walls: walls,
+      flooring_waste_percent: waste,
+      flooring_direction: flooringDirectionDeg(),
+      flooring_box_sqft: box,
+      flooring_boxes: RA.flooringBoxes(floor, waste, box),
+      flooring_with_waste_sqft: RA.flooringWithWasteSqFt(floor, waste),
+      casing_lf: RA.totalCasingLf(metricObjects(), ceiling)
     };
+  }
+
+  function perWallNetAreas(ceiling) {
+    var height = ceiling != null ? ceiling : ceilingHeightFt();
+    return RA.perWallNetAreas({
+      groups: state.groups,
+      objects: metricObjects()
+    }, pixelsPerFoot() || 0, height);
   }
 
   function libraryMetrics() {
@@ -1710,7 +1872,7 @@
     state.nextObjectId = 1;
     (rawObjects || []).forEach(function (item, idx) {
       if (!item) return;
-      var type = item.type || 'door';
+      var type = objectType(item) || 'door';
       if (FREE_OBJECT_TYPES[type]) {
         if (item.x == null || item.y == null) return;
         var size = defaultFreeSize(type, item.subtype || '');
@@ -1737,7 +1899,11 @@
         swing: item.swing || 'left_in',
         hinge: item.hinge || 'left',
         height: item.height != null ? parseFloat(item.height) : undefined,
-        sill_height: item.sill_height != null ? parseFloat(item.sill_height) : undefined
+        sill_height: item.sill_height != null ? parseFloat(item.sill_height) : undefined,
+        casing_sides: item.casing_sides != null && String(item.casing_sides).trim() !== ''
+          ? parseInt(item.casing_sides, 10)
+          : RA.defaultCasingSides(type, item.door_face),
+        door_face: item.door_face || (type === 'door' ? 'interior' : undefined)
       };
       var wall = resolveWall(obj.wall_id);
       if (wall) clampObjectToWall(obj, wall);
@@ -2055,7 +2221,8 @@
           height: Math.round(state.bgLayout.height * 1000) / 1000
         }
         : null,
-      editor: serializeEditorPrefs()
+      editor: serializeEditorPrefs(),
+      finish: finishSnapshot()
     };
   }
 
@@ -2311,6 +2478,7 @@
     if (els.typeRectW) els.typeRectW.placeholder = isMetricDisplay() ? '3.66' : '12';
     if (els.typeRectL) els.typeRectL.placeholder = isMetricDisplay() ? '3.05' : '10';
     if (els.wallHeight) els.wallHeight.placeholder = isMetricDisplay() ? '2.44' : '8';
+    if (els.ceilingHeight) els.ceilingHeight.placeholder = isMetricDisplay() ? '2.44' : '8';
   }
 
   function isMetricDisplay() {
@@ -2371,12 +2539,23 @@
     raAll('[data-ra-area-unit]').forEach(function (el) { el.textContent = area; });
     raAll('[data-ra-linear-unit]').forEach(function (el) { el.textContent = linear; });
     raAll('[data-ra-wall-area-label]').forEach(function (el) {
-      el.textContent = isMetricDisplay() ? 'Wall m²' : 'Wall SF';
+      el.textContent = 'Net wall area';
     });
+    if (els.floorBoxUnit) {
+      els.floorBoxUnit.textContent = isMetricDisplay() ? 'm²' : 'sf';
+    } else if (els.floorBox) {
+      var boxUnit = els.floorBox.parentNode && els.floorBox.parentNode.querySelector('.util-ra-live-area__height-unit');
+      if (boxUnit) boxUnit.textContent = isMetricDisplay() ? 'm²' : 'sf';
+    }
     if (els.wallHeight) {
       var unitEl = els.wallHeight.parentNode && els.wallHeight.parentNode.querySelector('.util-ra-live-area__height-unit');
       if (unitEl) unitEl.textContent = isMetricDisplay() ? 'm' : 'ft';
     }
+    if (els.ceilingHeight) {
+      var ceilUnit = els.ceilingHeight.parentNode && els.ceilingHeight.parentNode.querySelector('.util-ra-live-area__height-unit');
+      if (ceilUnit) ceilUnit.textContent = isMetricDisplay() ? 'm' : 'ft';
+    }
+    syncFinishInputs(false);
     raAll('[data-ra-measure-unit-wrap]').forEach(function (el) {
       el.hidden = isMetricDisplay();
     });
@@ -2524,7 +2703,8 @@
       activeGroupId: state.activeGroupId,
       activePolygonId: state.activePolygonId,
       scalePixelsPerFoot: captureScaleSnapshot(),
-      wallThicknessIn: wallThicknessIn()
+      wallThicknessIn: wallThicknessIn(),
+      finish: finishSnapshot()
     };
   }
 
@@ -2601,6 +2781,7 @@
     if (snap.wallThicknessIn != null) {
       setWallThickness(snap.wallThicknessIn, true);
     }
+    if (snap.finish) applyFinishSnapshot(snap.finish);
     state.selectedVertexIndices = [];
     clearWallSelection();
     clearVertexSelection();
@@ -4007,6 +4188,7 @@
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     setWallHeight(DEFAULT_WALL_HEIGHT_FT);
+    resetFinishSettings();
     applyEditorPrefs(defaultEditorPrefs(), true);
     show(els.liveArea, false);
     if (state.stage) {
@@ -4379,12 +4561,7 @@
     state.lastUiScale = 0;
     applyViewport();
     updateCanvasCursor();
-  }
-
-  function refitCanvasToLayout() {
-    if (!state.stage || !els.canvasWrap) return;
-    resizeStage();
-    if (viewportContentBounds().hasContent) fitViewport();
+    redrawLabels();
   }
 
   function updateZoomUI() {
@@ -4633,11 +4810,17 @@
     els.canvasWrap.addEventListener('touchcancel', onTouchEnd, { passive: false, capture: true });
   }
 
+  function refitCanvasToLayout() {
+    if (!state.stage || !els.canvasWrap) return;
+    resizeStage();
+    if (viewportContentBounds().hasContent) fitViewport();
+  }
+
   function resizeStage() {
     if (!state.stage || !els.canvasWrap) return;
     var vp = getViewportDimensions();
     if (vp.w === state.viewportW && vp.h === state.viewportH) {
-      if (viewportContentBounds().hasContent) fitViewport();
+      redrawLabels();
       return;
     }
 
@@ -4653,8 +4836,6 @@
 
     var oldContentW = state.viewportW;
     var oldContentH = state.viewportH;
-    var oldWorldW = state.canvasW;
-    var oldWorldH = state.canvasH;
 
     syncDrawableDimensions();
 
@@ -4685,11 +4866,7 @@
     }
     drawGrid();
     redrawAll();
-    if (viewportContentBounds().hasContent) {
-      fitViewport();
-    } else if (oldWorldW !== state.canvasW || oldWorldH !== state.canvasH) {
-      applyViewport();
-    }
+    applyViewport();
   }
 
   function scheduleStageResize() {
@@ -4725,6 +4902,7 @@
     state.layers.bg = new Konva.Group();
     state.layers.grid = new Konva.Group();
     state.layers.draw = new Konva.Group();
+    state.layers.finish = new Konva.Group({ listening: false });
     state.layers.objects = new Konva.Group();
     state.layers.vertices = new Konva.Group();
     state.layers.walls = new Konva.Group();
@@ -4736,6 +4914,7 @@
     state.worldGroup.add(state.layers.bg);
     state.worldGroup.add(state.layers.grid);
     state.worldGroup.add(state.layers.draw);
+    state.worldGroup.add(state.layers.finish);
     state.worldGroup.add(state.layers.objects);
     state.worldGroup.add(state.layers.walls);
     state.worldGroup.add(state.layers.vertices);
@@ -5093,8 +5272,83 @@
     syncBackgroundUI();
   }
 
+  function redrawFlooringDirection() {
+    var layer = state.layers.finish;
+    if (!layer) return;
+    layer.destroyChildren();
+    if (!hasAnyClosedPolygon() || !pixelsPerFoot()) {
+      flushKonva();
+      return;
+    }
+    var deg = flooringDirectionDeg();
+    var rad = deg * Math.PI / 180;
+    var nx = -Math.sin(rad);
+    var ny = Math.cos(rad);
+    var stroke = isAdminDark() ? 'rgba(125, 211, 252, 0.62)' : 'rgba(2, 71, 104, 0.42)';
+    var step = Math.max(14, (pixelsPerFoot() || 12) * 0.9);
+    allClosedPolygons().forEach(function (entry) {
+      var verts = entry.polygon.vertices || [];
+      if (verts.length < 3) return;
+      var minX = verts[0].x;
+      var maxX = verts[0].x;
+      var minY = verts[0].y;
+      var maxY = verts[0].y;
+      verts.forEach(function (v) {
+        if (v.x < minX) minX = v.x;
+        if (v.x > maxX) maxX = v.x;
+        if (v.y < minY) minY = v.y;
+        if (v.y > maxY) maxY = v.y;
+      });
+      var group = new Konva.Group({
+        listening: false,
+        clipFunc: function (ctx) {
+          ctx.beginPath();
+          verts.forEach(function (v, i) {
+            if (i === 0) ctx.moveTo(v.x, v.y);
+            else ctx.lineTo(v.x, v.y);
+          });
+          ctx.closePath();
+        }
+      });
+      var cx = (minX + maxX) / 2;
+      var cy = (minY + maxY) / 2;
+      var span = Math.hypot(maxX - minX, maxY - minY) + step * 2;
+      var count = Math.ceil(span / step);
+      for (var i = -count; i <= count; i++) {
+        var ox = cx + nx * i * step;
+        var oy = cy + ny * i * step;
+        var dx = Math.cos(rad) * span;
+        var dy = Math.sin(rad) * span;
+        group.add(new Konva.Line({
+          points: [ox - dx, oy - dy, ox + dx, oy + dy],
+          stroke: stroke,
+          strokeWidth: uiSize(1),
+          listening: false
+        }));
+      }
+      var arrowLen = Math.min(maxX - minX, maxY - minY) * 0.28;
+      if (arrowLen > 12) {
+        var ax = Math.cos(rad) * arrowLen / 2;
+        var ay = Math.sin(rad) * arrowLen / 2;
+        group.add(new Konva.Arrow({
+          points: [cx - ax, cy - ay, cx + ax, cy + ay],
+          stroke: isAdminDark() ? '#7dd3fc' : '#024768',
+          fill: isAdminDark() ? '#7dd3fc' : '#024768',
+          strokeWidth: uiSize(1.5),
+          pointerLength: uiSize(7),
+          pointerWidth: uiSize(7),
+          listening: false,
+          opacity: 0.85
+        }));
+      }
+      layer.add(group);
+    });
+    flushKonva();
+  }
+
   function redrawAll() {
     redrawPolygonLine();
+    redrawFlooringDirection();
     redrawObjects();
     redrawVertices();
     redrawLabels();
@@ -7273,6 +7527,7 @@
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     setWallHeight(DEFAULT_WALL_HEIGHT_FT);
+    resetFinishSettings();
     applyEditorPrefs(defaultEditorPrefs(), true);
     show(els.liveArea, false);
     clearDraftLayers();
@@ -7430,7 +7685,12 @@
     var metrics = computeWallMetrics();
     if (els.livePerimeter) els.livePerimeter.textContent = formatLinearQty(metrics.perimeter_lf);
     if (els.liveBaseboard) els.liveBaseboard.textContent = formatLinearQty(metrics.baseboard_lf);
-    if (els.liveWallArea) els.liveWallArea.textContent = formatAreaQty(metrics.wall_area_sqft);
+    if (els.liveWallArea) els.liveWallArea.textContent = formatAreaQty(metrics.net_wall_area_sqft != null ? metrics.net_wall_area_sqft : metrics.wall_area_sqft);
+    if (els.liveCeilingArea) els.liveCeilingArea.textContent = formatAreaQty(metrics.ceiling_area_sqft);
+    if (els.liveBoxes) els.liveBoxes.textContent = metrics.flooring_boxes > 0 ? String(metrics.flooring_boxes) : '—';
+    if (els.liveCasing) els.liveCasing.textContent = formatLinearQty(metrics.casing_lf || 0);
+    renderWallNetList(metrics.walls || []);
+    updateSelectedWallNet(metrics.walls || []);
     if (els.liveCounts) {
       var counts = metrics.door_count + (metrics.door_count === 1 ? ' door' : ' doors') +
         ' · ' + metrics.window_count + (metrics.window_count === 1 ? ' window' : ' windows') +
@@ -7476,6 +7736,46 @@
     }
     updateGroupChip();
     setSaveDisabled(!pixelsPerFoot());
+    redrawFlooringDirection();
+  }
+
+  function renderWallNetList(walls) {
+    if (!els.wallList) return;
+    els.wallList.innerHTML = '';
+    if (!walls.length) {
+      show(els.wallList, false);
+      return;
+    }
+    walls.forEach(function (wall) {
+      var li = document.createElement('li');
+      var lengthLabel = fmtLengthFromFeet(wall.length_lf);
+      var areaLabel = isMetricDisplay()
+        ? formatAreaQty(wall.net_area_sqft) + ' m²'
+        : formatAreaQty(wall.net_area_sqft) + ' sq ft';
+      li.textContent = wall.label + ' ' + lengthLabel + ' — ';
+      var strong = document.createElement('strong');
+      strong.textContent = areaLabel;
+      li.appendChild(strong);
+      els.wallList.appendChild(li);
+    });
+    show(els.wallList, true);
+  }
+
+  function updateSelectedWallNet(walls) {
+    if (!els.wallNetArea) return;
+    if (state.selectedWallIndex == null) {
+      show(els.wallNetArea, false);
+      return;
+    }
+    var wallsList = listClosedWalls();
+    var selected = wallsList[state.selectedWallIndex];
+    var row = selected && (walls || []).find(function (w) { return w.id === selected.wallId; });
+    if (!row) {
+      show(els.wallNetArea, false);
+      return;
+    }
+    els.wallNetArea.textContent = 'Net ' + formatAreaQty(row.net_area_sqft);
+    show(els.wallNetArea, true);
   }
 
   function setAllDisabled(sel, disabled) {
@@ -7758,6 +8058,13 @@
     state.editingRoomId = room.id;
     if (els.roomName) els.roomName.value = room.name;
     setWallHeight(room.wall_height_ft || DEFAULT_WALL_HEIGHT_FT);
+    state.ceilingHeightFt = room.ceiling_height_ft != null && Math.abs(room.ceiling_height_ft - wallHeightFt()) > 0.001
+      ? room.ceiling_height_ft
+      : null;
+    state.flooringWastePercent = room.flooring_waste_percent != null ? room.flooring_waste_percent : (RA.DEFAULT_WASTE_PERCENT || 10);
+    state.flooringDirection = room.flooring_direction != null ? room.flooring_direction : (RA.DIRECTION_LENGTH || 0);
+    state.flooringBoxSqFt = room.flooring_box_sqft != null ? room.flooring_box_sqft : (RA.DEFAULT_BOX_SQFT || 20);
+    syncFinishInputs(true);
     updateEditUI();
 
     ensureStage();
@@ -8153,7 +8460,11 @@
         canvas_width: contentW(),
         canvas_height: contentH(),
         scale_pixels_per_foot: scale,
-        wall_height_ft: wallHeightFt()
+        wall_height_ft: wallHeightFt(),
+        ceiling_height_ft: ceilingHeightFt(),
+        flooring_waste_percent: flooringWastePercent(),
+        flooring_direction: flooringDirectionDeg(),
+        flooring_box_sqft: flooringBoxSqFt()
       })
     })
       .then(function (res) {
@@ -8333,7 +8644,7 @@
           setFeedback('Floor plan uploaded for this room.', false);
         })
         .catch(function (e) {
-          setFeedback(friendlyNetworkError(e, 'Could not upload the floor plan. Check your connection and try again.'), true);
+          setFeedback(RA.friendlyPlanUploadError(e), true);
         });
       return;
     }
@@ -8794,6 +9105,26 @@
     updateToolbar();
   }
 
+  function fillCasingOptions(obj) {
+    if (!els.objectCasing) return;
+    var kind = objectType(obj);
+    var options = kind === 'window'
+      ? [['4', '4 sides'], ['3', '3 sides (stool)'], ['0', 'None']]
+      : [['2', 'Both sides'], ['1', 'One side'], ['0', 'None']];
+    var current = String(RA.casingSidesForObject(obj));
+    els.objectCasing.innerHTML = '';
+    options.forEach(function (opt) {
+      var option = document.createElement('option');
+      option.value = opt[0];
+      option.textContent = opt[1];
+      els.objectCasing.appendChild(option);
+    });
+    if (!options.some(function (opt) { return opt[0] === current; })) {
+      current = String(RA.defaultCasingSides(kind, obj && obj.door_face));
+    }
+    els.objectCasing.value = current;
+  }
+
   function syncObjectPropertiesPanel() {
     var obj = selectedObject();
     if (!obj || !els.objectEdit) return;
@@ -8804,10 +9135,18 @@
     if (els.objectRotation) els.objectRotation.value = String(Math.round((obj.rotation || 0) * 10) / 10);
     if (els.objectSwing) els.objectSwing.value = obj.swing || 'left_in';
     if (els.objectHinge) els.objectHinge.value = obj.hinge || 'left';
+    fillCasingOptions(obj);
+    if (els.objectCasing) els.objectCasing.value = String(RA.casingSidesForObject(obj));
+    if (els.objectDoorFace) els.objectDoorFace.value = RA.normalizeDoorFace(obj.door_face);
     var free = isFreeObject(obj);
-    var showSwing = !free && obj.type === 'door' && obj.subtype !== 'sliding' && obj.subtype !== 'pocket' && obj.subtype !== 'bifold';
+    var kind = objectType(obj);
+    var showSwing = !free && kind === 'door' && obj.subtype !== 'sliding' && obj.subtype !== 'pocket' && obj.subtype !== 'bifold';
+    var showCasing = !free && (kind === 'door' || kind === 'window' || kind === 'opening');
+    var showDoorFace = !free && kind === 'door';
     show(els.objectSwingWrap, showSwing);
     show(els.objectHingeWrap, showSwing);
+    show(els.objectCasingWrap, showCasing);
+    show(els.objectDoorFaceWrap, showDoorFace);
     show(els.objectOffsetWrap, !free);
     show(els.objectDepthWrap, free);
     show(els.objectRotationWrap, free);
@@ -8900,6 +9239,22 @@
     pushUndoSnapshot();
     if (els.objectSwing) obj.swing = els.objectSwing.value;
     if (els.objectHinge) obj.hinge = els.objectHinge.value;
+    var kind = objectType(obj);
+    if (els.objectDoorFace && kind === 'door') {
+      var nextFace = RA.normalizeDoorFace(els.objectDoorFace.value);
+      if (nextFace !== RA.normalizeDoorFace(obj.door_face)) {
+        obj.door_face = nextFace;
+        if (els.objectCasing) els.objectCasing.value = String(RA.defaultCasingSides('door', nextFace));
+      }
+      obj.door_face = nextFace;
+    }
+    if (els.objectCasing && (kind === 'door' || kind === 'window' || kind === 'opening')) {
+      obj.casing_sides = RA.casingSidesForObject({
+        type: kind,
+        casing_sides: els.objectCasing.value,
+        door_face: obj.door_face
+      });
+    }
     if (obj.hinge === 'right' && obj.swing && obj.swing.indexOf('left') === 0) {
       obj.swing = obj.swing.replace('left', 'right');
     } else if (obj.hinge === 'left' && obj.swing && obj.swing.indexOf('right') === 0) {
@@ -9425,7 +9780,13 @@
         { label: 'Perimeter', value: formatMetricQty(metrics.perimeter_lf * FEET_TO_METERS) + ' m' },
         { label: 'Baseboard', value: formatMetricQty(metrics.baseboard_lf * FEET_TO_METERS) + ' m' },
         { label: 'Wall height', value: formatMetricQty(metrics.wall_height_ft * FEET_TO_METERS) + ' m' },
-        { label: 'Wall area', value: formatMetricQty(metrics.wall_area_sqft * SQFT_TO_SQM) + ' m²' },
+        { label: 'Ceiling height', value: formatMetricQty((metrics.ceiling_height_ft || metrics.wall_height_ft) * FEET_TO_METERS) + ' m' },
+        { label: 'Ceiling area', value: formatMetricQty((metrics.ceiling_area_sqft || metrics.area_sqft) * SQFT_TO_SQM) + ' m²' },
+        { label: 'Net wall area', value: formatMetricQty((metrics.net_wall_area_sqft != null ? metrics.net_wall_area_sqft : metrics.wall_area_sqft) * SQFT_TO_SQM) + ' m²' },
+        { label: 'Flooring with waste', value: formatMetricQty((metrics.flooring_with_waste_sqft || metrics.area_sqft) * SQFT_TO_SQM) + ' m²' },
+        { label: 'Flooring boxes', value: String(metrics.flooring_boxes || 0) },
+        { label: 'Box size', value: formatMetricQty((metrics.flooring_box_sqft || 20) * SQFT_TO_SQM) + ' m²' },
+        { label: 'Casing', value: formatMetricQty((metrics.casing_lf || 0) * FEET_TO_METERS) + ' m' },
         { label: 'Doors', value: String(metrics.door_count) },
         { label: 'Windows', value: String(metrics.window_count) },
         { label: 'Openings', value: String(metrics.opening_count) }
@@ -9436,7 +9797,13 @@
       { label: 'Perimeter', value: formatMetricQty(metrics.perimeter_lf) + ' lf' },
       { label: 'Baseboard', value: formatMetricQty(metrics.baseboard_lf) + ' lf' },
       { label: 'Wall height', value: formatMetricQty(metrics.wall_height_ft) + ' ft' },
-      { label: 'Wall area', value: formatMetricQty(metrics.wall_area_sqft) + ' sq ft' },
+      { label: 'Ceiling height', value: formatMetricQty(metrics.ceiling_height_ft || metrics.wall_height_ft) + ' ft' },
+      { label: 'Ceiling area', value: formatMetricQty(metrics.ceiling_area_sqft || metrics.area_sqft) + ' sq ft' },
+      { label: 'Net wall area', value: formatMetricQty(metrics.net_wall_area_sqft != null ? metrics.net_wall_area_sqft : metrics.wall_area_sqft) + ' sq ft' },
+      { label: 'Flooring with waste', value: formatMetricQty(metrics.flooring_with_waste_sqft || metrics.area_sqft) + ' sq ft' },
+      { label: 'Flooring boxes', value: String(metrics.flooring_boxes || 0) },
+      { label: 'Box size', value: formatMetricQty(metrics.flooring_box_sqft || 20) + ' sq ft' },
+      { label: 'Casing', value: formatMetricQty(metrics.casing_lf || 0) + ' lf' },
       { label: 'Doors', value: String(metrics.door_count) },
       { label: 'Windows', value: String(metrics.window_count) },
       { label: 'Openings', value: String(metrics.opening_count) }
@@ -9464,6 +9831,10 @@
     addPdfField(form, 'title', roomExportTitle());
     addPdfField(form, 'summary', 'Wall metrics from the Room Area drawing.');
     addPdfField(form, 'wall_height_ft', metrics.wall_height_ft);
+    addPdfField(form, 'ceiling_height_ft', metrics.ceiling_height_ft);
+    addPdfField(form, 'flooring_waste_percent', metrics.flooring_waste_percent);
+    addPdfField(form, 'flooring_direction', metrics.flooring_direction);
+    addPdfField(form, 'flooring_box_sqft', metrics.flooring_box_sqft);
     if (state.editingRoomId) addPdfField(form, 'room_id', state.editingRoomId);
     if (attach) addPdfField(form, 'attach', '1');
     if (diagram) addPdfField(form, 'diagram', diagram);
@@ -10553,6 +10924,8 @@
     }
     if (els.objectSwing) els.objectSwing.addEventListener('change', applyObjectSwingHinge);
     if (els.objectHinge) els.objectHinge.addEventListener('change', applyObjectSwingHinge);
+    if (els.objectCasing) els.objectCasing.addEventListener('change', applyObjectSwingHinge);
+    if (els.objectDoorFace) els.objectDoorFace.addEventListener('change', applyObjectSwingHinge);
     if (els.objectFlip) els.objectFlip.addEventListener('click', flipSelectedObject);
     if (els.objectRotate) els.objectRotate.addEventListener('click', rotateSelectedObject);
     if (els.deleteObject) els.deleteObject.addEventListener('click', deleteSelectedObject);
@@ -10670,7 +11043,7 @@
           syncWallHeightInput(true);
           return;
         }
-        setWallHeight(next);
+        setWallHeight(next, true);
         updateLiveArea();
       });
       els.wallHeight.addEventListener('keydown', function (e) {
@@ -10681,10 +11054,51 @@
           syncWallHeightInput(true);
           return;
         }
-        setWallHeight(next);
+        setWallHeight(next, true);
         updateLiveArea();
       });
     }
+    if (els.ceilingHeight) {
+      function commitCeilingFromInput() {
+        var raw = els.ceilingHeight.value;
+        if (raw == null || String(raw).trim() === '') {
+          setCeilingHeight(null, true);
+          updateLiveArea();
+          return;
+        }
+        var next = wallHeightFtFromValue(raw);
+        if (next == null) {
+          syncCeilingHeightInput(true);
+          return;
+        }
+        setCeilingHeight(next, true);
+        updateLiveArea();
+      }
+      els.ceilingHeight.addEventListener('change', commitCeilingFromInput);
+      els.ceilingHeight.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        commitCeilingFromInput();
+      });
+    }
+    if (els.floorWaste) {
+      els.floorWaste.addEventListener('change', function () {
+        setFlooringWaste(els.floorWaste.value, true);
+        updateLiveArea();
+      });
+    }
+    if (els.floorBox) {
+      els.floorBox.addEventListener('change', function () {
+        setFlooringBox(els.floorBox.value, true);
+        updateLiveArea();
+      });
+    }
+    raAll('[data-ra-floor-dir]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setFlooringDirection(btn.getAttribute('data-ra-floor-dir'), true);
+        updateLiveArea();
+      });
+    });
     if (els.exportPng) els.exportPng.addEventListener('click', exportPng);
     if (els.exportPdf) els.exportPdf.addEventListener('click', exportPdf);
     if (els.attachPdf) els.attachPdf.addEventListener('click', attachPdf);
@@ -10907,9 +11321,19 @@
       return Math.max(minH, Math.min(maxH, Math.round(height)));
     }
 
+    function afterSheetLayoutChange() {
+      scheduleStageResize();
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          resizeStage();
+          redrawLabels();
+        });
+      });
+    }
+
     function applySheet(height) {
       root.style.setProperty('--ra-sheet-h', clampSheet(height) + 'px');
-      scheduleStageResize();
+      afterSheetLayoutChange();
     }
 
     var moved = false;
@@ -10919,7 +11343,7 @@
       var expanded = root.classList.toggle('is-sheet-expanded');
       handle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
       root.style.setProperty('--ra-sheet-h', expanded ? 'min(52vh, 360px)' : 'auto');
-      scheduleStageResize();
+      afterSheetLayoutChange();
     }
 
     var tapHandled = false;
