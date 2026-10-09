@@ -768,6 +768,8 @@
         updatePreview(root, initial && initial !== '0' ? initial : '', optionMap);
         applyProductLinkIfPresent(root, initial && initial !== '0' ? initial : '', optionMap);
         root.addEventListener('admin-search-select:change', function (e) {
+          var opt = e.detail && e.detail.option;
+          if (opt && opt.id != null) optionMap[String(opt.id)] = opt;
           var resolved = (e.detail && e.detail.id) || '';
           updatePreview(root, resolved, optionMap);
           applyProductLinkIfPresent(root, resolved, optionMap);

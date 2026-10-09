@@ -125,13 +125,10 @@ class HomeDepotCaSerpApiPriceFetcher
                 continue;
             }
 
-            if ((string) ($product['product_id'] ?? '') === $sku) {
+            $productId = (string) ($product['product_id'] ?? $product['sku'] ?? '');
+            if ($productId !== '' && $productId === $sku) {
                 return $product;
             }
-        }
-
-        if (count($products) === 1 && is_array($products[0])) {
-            return $products[0];
         }
 
         return null;

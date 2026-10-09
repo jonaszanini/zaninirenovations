@@ -110,4 +110,50 @@ class HomeDepotCaUrls
     {
         return $sku !== null && preg_match('/^\d{6,}$/', $sku) === 1;
     }
+
+    /**
+     * Canonical store_sku for Home Depot writes: item numbers become digits only.
+     * Strips a leading "SKU" prefix (SKU:, SKU#, spaces), dashes, dots, tabs, and NBSP.
+     * ASINs and other letter codes are trimmed but not rewritten.
+     */
+    public static function normalizeStoredSku(?string $sku): ?string
+    {
+        if ($sku === null) {
+            return null;
+        }
+
+        $sku = str_replace(["\u{00A0}", "\xC2\xA0", "\t", "\r", "\n"], ' ', $sku);
+        $sku = trim(preg_replace('/\s+/', ' ', $sku) ?? $sku);
+        if ($sku === '') {
+            return null;
+        }
+
+        $withoutPrefix = trim((string) preg_replace('/^sku[[:space:]\-:#]*/i', '', $sku));
+        $withoutPrefix = rtrim($withoutPrefix, " \t.-#");
+        if ($withoutPrefix === '') {
+            return null;
+        }
+
+        $separatorsRemoved = preg_replace('/[\s\-\.]+/', '', $withoutPrefix) ?? '';
+        if ($separatorsRemoved !== '' && preg_match('/^\d+$/', $separatorsRemoved) === 1) {
+            return self::isValidSku($separatorsRemoved) ? $separatorsRemoved : $withoutPrefix;
+        }
+
+        return $withoutPrefix;
+    }
+
+    /**
+     * Digit characters only — used to find legacy formatted Home Depot SKUs.
+     */
+    public static function digitsOnly(?string $sku): ?string
+    {
+        if ($sku === null) {
+            return null;
+        }
+
+        $sku = str_replace(["\u{00A0}", "\xC2\xA0"], '', $sku);
+        $digits = preg_replace('/\D+/', '', $sku) ?? '';
+
+        return $digits !== '' ? $digits : null;
+    }
 }

@@ -7,9 +7,12 @@ use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialVendor;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
+use App\Services\MaterialScraping\HomeDepotCaUrls;
+use App\Services\MaterialScraping\MaterialCatalogHomeDepotPullService;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use App\Services\MaterialScraping\MaterialSkuImportService;
 use App\Services\MaterialShortNameAiService;
+use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -195,7 +198,7 @@ class MaterialController extends Controller
 
     public function update(Request $request, Material $material)
     {
-        $material->update($this->validated($request));
+        $material->update($this->validated($request, $material));
 
         return redirect()
             ->route('admin.materials.edit', $material)
@@ -467,6 +470,25 @@ class MaterialController extends Controller
             ->with('success', $deleted === 1 ? '1 material deleted.' : $deleted.' materials deleted.');
     }
 
+    public function importFromHomeDepot(
+        Request $request,
+        MaterialCatalogHomeDepotPullService $puller,
+    ): JsonResponse {
+        $data = $request->validate([
+            'query' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $result = $puller->pull($data['query']);
+        $payload = ['message' => $result['message']];
+
+        if ($result['material'] !== null) {
+            $payload['created'] = $result['created'];
+            $payload['material'] = $this->catalogPickerOption($result['material']);
+        }
+
+        return response()->json($payload, $result['status']);
+    }
+
     public function bulkImportStart(Request $request, MaterialSkuImportService $importer): JsonResponse
     {
         $data = $request->validate([
@@ -498,6 +520,7 @@ class MaterialController extends Controller
             'material_ids' => [],
             'created' => 0,
             'updated' => 0,
+            'skipped_inactive' => 0,
             'sync_ok' => 0,
             'sync_failed' => 0,
             'blank_lines' => $plan['blank_lines'],
@@ -557,17 +580,23 @@ class MaterialController extends Controller
             $sku = $state['skus'][$state['import_index']];
             $result = $importer->importSku($sku, $state['category_id'] ?? null, $state['vendor_id'] ?? null);
 
-            $state['material_ids'][] = $result['material_id'];
-            if ($result['action'] === 'created') {
-                $state['created']++;
-            } else {
-                $state['updated']++;
-            }
             $state['import_index']++;
 
-            $message = $result['action'] === 'created'
-                ? 'Created material for SKU '.$sku
-                : 'Updated existing material for SKU '.$sku;
+            if ($result['action'] === 'skipped') {
+                $reason = $result['reason'] ?? 'inactive';
+                if ($reason === 'inactive') {
+                    $state['skipped_inactive'] = (int) ($state['skipped_inactive'] ?? 0) + 1;
+                }
+                $message = 'skipped: '.$reason.' (SKU '.$sku.')';
+            } elseif ($result['action'] === 'created') {
+                $state['material_ids'][] = $result['material_id'];
+                $state['created']++;
+                $message = 'Created material for SKU '.$sku;
+            } else {
+                $state['material_ids'][] = $result['material_id'];
+                $state['updated']++;
+                $message = 'Updated existing material for SKU '.$sku;
+            }
 
             $state = $this->bulkImportAppendLog($state, $message);
 
@@ -760,7 +789,7 @@ class MaterialController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validated(Request $request): array
+    private function validated(Request $request, ?Material $current = null): array
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -791,6 +820,26 @@ class MaterialController extends Controller
             }
         }
 
+        if ($this->submittedRowIsHomeDepot($data, $current)) {
+            $normalizedSku = HomeDepotCaUrls::normalizeStoredSku($data['store_sku'] ?? null);
+            $data['store_sku'] = $normalizedSku;
+            $currentNormalized = $current !== null
+                ? HomeDepotCaUrls::normalizeStoredSku($current->store_sku)
+                : null;
+            $skuChanged = $current === null || $currentNormalized !== $normalizedSku;
+            if ($skuChanged && HomeDepotCaUrls::isValidSku($normalizedSku)) {
+                $owner = Material::findByNormalizedHdSku(
+                    $normalizedSku,
+                    $current !== null ? (int) $current->id : null
+                );
+                if ($owner !== null) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'store_sku' => 'Another material already uses Home Depot SKU '.$normalizedSku.'.',
+                    ]);
+                }
+            }
+        }
+
         if (! filled($data['vendor_id'] ?? null)) {
             $data['vendor_id'] = null;
         }
@@ -804,6 +853,22 @@ class MaterialController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function submittedRowIsHomeDepot(array $data, ?Material $current): bool
+    {
+        $homeDepotId = MaterialVendor::homeDepotId();
+        $vendorId = $data['vendor_id'] ?? $current?->vendor_id;
+        if ($homeDepotId !== null && $vendorId !== null && (int) $vendorId === $homeDepotId) {
+            return true;
+        }
+
+        $url = $data['product_url'] ?? $current?->product_url;
+
+        return HomeDepotCaUrls::hostIsHomeDepot((string) ($url ?? ''));
     }
 
     /**
@@ -837,6 +902,7 @@ class MaterialController extends Controller
         return [
             'created' => (int) ($state['created'] ?? 0),
             'updated' => (int) ($state['updated'] ?? 0),
+            'skipped_inactive' => (int) ($state['skipped_inactive'] ?? 0),
             'sync_ok' => (int) ($state['sync_ok'] ?? 0),
             'sync_failed' => (int) ($state['sync_failed'] ?? 0),
             'blank_lines' => (int) ($state['blank_lines'] ?? 0),
@@ -941,6 +1007,9 @@ class MaterialController extends Controller
         }
         if (($state['invalid_lines'] ?? 0) > 0) {
             $skipParts[] = $state['invalid_lines'].' invalid line(s) skipped';
+        }
+        if (($state['skipped_inactive'] ?? 0) > 0) {
+            $skipParts[] = $state['skipped_inactive'].' inactive material(s) skipped';
         }
         if ($skipParts !== []) {
             $message .= '. '.ucfirst(implode(', ', $skipParts)).'.';
@@ -1074,5 +1143,20 @@ class MaterialController extends Controller
             (int) ($state['failed'] ?? 0),
             $totalMaterials,
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function catalogPickerOption(Material $material): array
+    {
+        $material->loadMissing('vendor');
+        $option = MaterialCatalogPickerOptions::fromMaterials([$material])[0] ?? null;
+
+        return is_array($option) ? $option : [
+            'id' => $material->id,
+            'name' => $material->displayName(),
+            'sku' => trim((string) ($material->store_sku ?? '')),
+        ];
     }
 }

@@ -195,8 +195,8 @@ td.sp-col-consumers {
 
 /* Catalog search: match input height */
 .sp-search-wrap { position: relative; }
-.sp-search-wrap .admin-ss-combobox { font-size: 0.8rem; }
-.sp-search-wrap .admin-ss-combobox__input {
+.sp-search-wrap .admin-search-select { font-size: 0.8rem; }
+.sp-search-wrap .admin-search-select__input {
   padding: 0.25rem 0.4rem;
   min-height: 28px;
   height: 28px;
@@ -425,7 +425,7 @@ td.sp-col-consumers {
                   <td class="sp-col-catalog" data-label="Catalog">
                     <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
                             title="Search catalog materials"
-                            onclick="this.nextElementSibling.querySelector('.admin-ss-combobox__input').focus();">
+                            onclick="this.nextElementSibling.querySelector('.admin-search-select__input').focus();">
                       <i class="fa fa-search" aria-hidden="true"></i>
                     </button>
                     <div class="sp-search-wrap sp-search-wrap--hidden">

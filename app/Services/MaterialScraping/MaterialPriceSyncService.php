@@ -179,6 +179,112 @@ class MaterialPriceSyncService
     }
 
     /**
+     * Fetch and parse a Home Depot CA product without writing to the database.
+     *
+     * @return array{status: string, parsed: ?ParsedProductData, error: ?string, unreachable: bool}
+     */
+    public function fetchHomeDepotSku(string $sku): array
+    {
+        $sku = HomeDepotCaUrls::normalizeStoredSku($sku) ?? $sku;
+        $productUrl = HomeDepotCaUrls::productUrl($sku);
+
+        try {
+            $parsed = $this->resolveHomeDepotStorePrice($productUrl);
+            if ($parsed === null) {
+                $html = $this->fetcher->fetch($productUrl);
+                $parsed = $this->homeDepotParser->parse($html, $productUrl);
+            }
+
+            if (! $parsed->isComplete()) {
+                return [
+                    'status' => Material::SCRAPE_FAILED,
+                    'parsed' => $parsed,
+                    'error' => 'Could not extract name and price from page.',
+                    'unreachable' => false,
+                ];
+            }
+
+            $parsedSku = HomeDepotCaUrls::normalizeStoredSku($parsed->sku);
+            if (HomeDepotCaUrls::isValidSku($parsedSku) && $parsedSku !== $sku) {
+                return [
+                    'status' => Material::SCRAPE_FAILED,
+                    'parsed' => $parsed,
+                    'error' => 'SerpApi returned a different product than SKU '.$sku.'.',
+                    'unreachable' => false,
+                ];
+            }
+
+            return [
+                'status' => Material::SCRAPE_OK,
+                'parsed' => $parsed,
+                'error' => null,
+                'unreachable' => false,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'status' => Material::SCRAPE_FAILED,
+                'parsed' => null,
+                'error' => $e->getMessage(),
+                'unreachable' => self::isUnreachableError($e),
+            ];
+        }
+    }
+
+    public static function isUnreachableError(\Throwable $e): bool
+    {
+        if ($e instanceof \Illuminate\Http\Client\ConnectionException) {
+            return true;
+        }
+
+        $status = null;
+        if (method_exists($e, 'getCode')) {
+            $code = (int) $e->getCode();
+            if ($code === 429 || $code >= 500) {
+                $status = $code;
+            }
+        }
+        if ($e instanceof \Illuminate\Http\Client\RequestException && $e->response) {
+            $status = $e->response->status();
+        }
+        if ($status === 429 || ($status !== null && $status >= 500)) {
+            return true;
+        }
+
+        $message = strtolower($e->getMessage());
+        $needles = [
+            'timed out',
+            'timeout',
+            'curl error 28',
+            'curl error 6',
+            'curl error 7',
+            'could not resolve',
+            'failed to connect',
+            'connection refused',
+            'network is unreachable',
+            'too many requests',
+            'rate limit',
+            'quota',
+            'http 429',
+            'http 500',
+            'http 502',
+            'http 503',
+            'http 504',
+            'serpapi http 429',
+            'serpapi http 5',
+            'status code 429',
+            'status code 5',
+        ];
+
+        foreach ($needles as $needle) {
+            if (str_contains($message, $needle)) {
+                return true;
+            }
+        }
+
+        return (bool) preg_match('/\bhttp(?:\s+|[^0-9]{0,12})(429|5\d\d)\b/', $message);
+    }
+
+    /**
      * @return array{status: string, parsed: ?ParsedProductData, error: ?string, old_price: float}
      */
     private function syncHomeDepotMaterial(Material $material, bool $dryRun, float $oldPrice): array
@@ -201,6 +307,25 @@ class MaterialPriceSyncService
                     $dryRun,
                     $oldPrice,
                 );
+            }
+
+            $parsedSku = HomeDepotCaUrls::normalizeStoredSku($parsed->sku);
+            $rowSku = HomeDepotCaUrls::normalizeStoredSku($material->store_sku);
+            if (HomeDepotCaUrls::isValidSku($parsedSku)
+                && HomeDepotCaUrls::isValidSku($rowSku)
+                && $parsedSku !== $rowSku) {
+                AppLogger::warning('materials.sync.sku_mismatch', [
+                    'material_id' => $material->id,
+                    'row_store_sku' => $material->store_sku,
+                    'parsed_store_sku' => $parsed->sku,
+                ]);
+
+                return [
+                    'status' => Material::SCRAPE_SKIPPED,
+                    'parsed' => $parsed,
+                    'error' => 'Parsed Home Depot SKU '.$parsedSku.' does not match this material ('.$rowSku.').',
+                    'old_price' => $oldPrice,
+                ];
             }
 
             if (! $dryRun) {
@@ -295,8 +420,12 @@ class MaterialPriceSyncService
     {
         $material->name = $parsed->name ?? $material->name;
 
-        if (filled($parsed->sku)) {
-            $material->store_sku = $parsed->sku;
+        if (filled($parsed->sku) && ! $material->assignStoreSkuIfAvailable($parsed->sku)) {
+            AppLogger::warning('materials.sync.sku_owned', [
+                'material_id' => $material->id,
+                'wanted_store_sku' => $parsed->sku,
+                'kept_store_sku' => $material->store_sku,
+            ]);
         }
 
         if (filled($parsed->model)) {

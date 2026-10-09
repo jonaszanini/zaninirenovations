@@ -31,6 +31,7 @@
     $maxOptions
     $listParent      "body" to portal the list (tables / overflow-clipped parents)
     $trailing         Optional HTML after the input (e.g. a manage-clients button)
+    $homeDepotPull   bool — offer “Pull SKU from Home Depot” for catalog pickers
 --}}
 @php
   $id = $id ?? 'admin-ss-'.substr(uniqid(), -6);
@@ -54,6 +55,9 @@
   $metaKeys = $metaKeys ?? ['email', 'phone_display', 'sku', 'price_label'];
   $attrs = $attrs ?? [];
   $trailing = $trailing ?? '';
+  $homeDepotPull = isset($homeDepotPull)
+    ? ! empty($homeDepotPull)
+    : (! empty($optionsSource) && str_contains((string) $optionsSource, 'catalog'));
 @endphp
 
 <div class="{{ $hideLabel ? '' : 'admin-form-group' }} {{ $wrapperClass }}"
@@ -72,6 +76,7 @@
      @if (! empty($emptyQueryMessage)) data-empty-query-message="{{ $emptyQueryMessage }}" @endif
      @if (! empty($maxOptions)) data-max-options="{{ (int) $maxOptions }}" @endif
      @if (! empty($listParent)) data-list-parent="{{ $listParent }}" @endif
+     @if ($homeDepotPull) data-hd-import-url="{{ route('admin.materials.import-from-home-depot') }}" @endif
      @if (is_array($selectedOption) && ($selectedOption['id'] ?? null)) data-initial='@json($selectedOption)' @endif
      @foreach ($attrs as $attrName => $attrValue)
        {{ $attrName }}="{{ $attrValue }}"

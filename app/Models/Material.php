@@ -51,6 +51,129 @@ class Material extends Model
         'sort_order' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (Material $material) {
+            if (! $material->isHomeDepotCatalogRow()) {
+                return;
+            }
+
+            $material->store_sku = HomeDepotCaUrls::normalizeStoredSku($material->store_sku);
+        });
+    }
+
+    /**
+     * Home Depot vendor, or a homedepot.ca product URL.
+     */
+    public function isHomeDepotCatalogRow(): bool
+    {
+        $homeDepotId = MaterialVendor::homeDepotId();
+        if ($homeDepotId !== null && $this->vendor_id !== null && (int) $this->vendor_id === $homeDepotId) {
+            return true;
+        }
+
+        return $this->isHomeDepotUrl();
+    }
+
+    /**
+     * Find a catalog row whose stored SKU or product URL matches this Home Depot item number,
+     * including legacy "SKU: 100-189-8921." formatting. Does not rewrite stored values.
+     */
+    public static function findByNormalizedHdSku(string $sku, ?int $ignoreId = null, bool $forUpdate = false): ?self
+    {
+        $sku = HomeDepotCaUrls::normalizeStoredSku($sku) ?? trim($sku);
+        if (! HomeDepotCaUrls::isValidSku($sku)) {
+            return null;
+        }
+
+        $query = static::query();
+        if ($ignoreId !== null) {
+            $query->where('id', '!=', $ignoreId);
+        }
+        if ($forUpdate) {
+            $query->lockForUpdate();
+        }
+
+        try {
+            $query->where(function ($inner) use ($sku) {
+                $inner->where('store_sku', $sku)
+                    ->orWhereRaw("REGEXP_REPLACE(IFNULL(store_sku,''), '[^0-9]', '') = ?", [$sku])
+                    ->orWhere('product_url', 'like', '%/'.$sku)
+                    ->orWhere('product_url', 'like', '%/'.$sku.'/%')
+                    ->orWhere('product_url', 'like', '%/'.$sku.'?%');
+            });
+            $rows = $query
+                ->orderByRaw('case when store_sku = ? then 0 else 1 end', [$sku])
+                ->get();
+        } catch (\Throwable $e) {
+            $fallback = static::query();
+            if ($ignoreId !== null) {
+                $fallback->where('id', '!=', $ignoreId);
+            }
+            if ($forUpdate) {
+                $fallback->lockForUpdate();
+            }
+            $rows = $fallback
+                ->where(function ($inner) use ($sku) {
+                    $inner->whereNotNull('store_sku')->where('store_sku', '!=', '')
+                        ->orWhere('product_url', 'like', '%'.$sku.'%');
+                })
+                ->get();
+        }
+
+        return $rows->first(function (self $material) use ($sku) {
+            if (HomeDepotCaUrls::normalizeStoredSku($material->store_sku) === $sku) {
+                return true;
+            }
+            if (HomeDepotCaUrls::digitsOnly($material->store_sku) === $sku
+                && HomeDepotCaUrls::isValidSku($sku)) {
+                return true;
+            }
+
+            return HomeDepotCaUrls::normalizeSku((string) $material->product_url) === $sku;
+        });
+    }
+
+    /**
+     * Set store_sku when the normalised Home Depot value is not owned by another row.
+     * Returns false when the assignment was skipped to avoid a duplicate.
+     */
+    public function assignStoreSkuIfAvailable(?string $sku): bool
+    {
+        $normalized = HomeDepotCaUrls::normalizeStoredSku($sku);
+        if ($normalized === null) {
+            $this->store_sku = null;
+
+            return true;
+        }
+
+        if (HomeDepotCaUrls::isValidSku($normalized)) {
+            $owner = static::findByNormalizedHdSku($normalized, $this->id ? (int) $this->id : null);
+            if ($owner !== null) {
+                return false;
+            }
+        }
+
+        $this->store_sku = $normalized;
+
+        return true;
+    }
+
+    public function isCatalogReady(): bool
+    {
+        if (! $this->is_active) {
+            return false;
+        }
+
+        $name = trim((string) $this->name);
+        $sku = trim((string) ($this->store_sku ?? ''));
+        if ($name === '' || ($sku !== '' && strcasecmp($name, 'HD '.$sku) === 0)) {
+            return false;
+        }
+
+        return is_numeric($this->price_cad);
+    }
+
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(MaterialVendor::class, 'vendor_id');
