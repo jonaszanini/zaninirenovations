@@ -655,14 +655,7 @@
           var pctInput = document.getElementById('cp-invoice-discount-pct');
           var amtInput = document.getElementById('cp-invoice-discount-amt');
           var pct = pctInput ? parsePlainDecimal(pctInput) : 0;
-          var amtRaw = 0;
-          if (amtInput) {
-            if (window.cpMoneyMask && typeof window.cpMoneyMask.parseHybridCadMoney === 'function') {
-              amtRaw = window.cpMoneyMask.parseHybridCadMoney(amtInput.value, 2);
-            } else {
-              amtRaw = parseAmount(amtInput);
-            }
-          }
+          var amtRaw = amtInput ? parseAmount(amtInput) : 0;
           var discount = 0;
           if (pct> 0.00001) {
             discount = Math.round(Math.min(gross * pct / 100, gross) * 100) / 100;

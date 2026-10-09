@@ -12,6 +12,7 @@ const email = process.env.MONEY_EMAIL;
 const password = process.env.MONEY_PASSWORD;
 const base = process.env.MONEY_BASE;
 const pages = JSON.parse(process.env.MONEY_PAGES || '[]');
+const invoiceUrl = process.env.MONEY_INVOICE_URL || '';
 const outPath = process.env.MONEY_OUT || path.join(process.cwd(), 'storage/app/money-direct-entry.json');
 
 function parseMoney(value) {
@@ -113,9 +114,96 @@ function parseMoney(value) {
     return results;
   }
 
-  const report = { pages: [], save: null };
+  async function invoiceDiscountPreview() {
+    if (!invoiceUrl) {
+      throw new Error('MONEY_INVOICE_URL is required for the discount preview');
+    }
+    await go(base + invoiceUrl);
+    await page.waitForFunction(() => window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function');
+    await page.waitForSelector('#cp-invoice-discount-amt');
+    const amt = await page.$('#cp-invoice-discount-amt');
+    await amt.click({ clickCount: 3 });
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type('130', { delay: 15 });
+    await page.keyboard.press('Tab');
+    return page.evaluate(() => {
+      const text = (id) => {
+        const el = document.getElementById(id);
+        return el ? String(el.textContent || '').trim() : '';
+      };
+      return {
+        field: document.getElementById('cp-invoice-discount-amt').value,
+        net: text('cp-invoice-net-subtotal'),
+        hst: text('cp-invoice-hst'),
+        grand: text('cp-invoice-grand'),
+      };
+    });
+  }
+
+  async function behaviorChecks() {
+    return page.evaluate(() => {
+      if (!window.cpMoneyMask || typeof window.cpMoneyMask.wire !== 'function') {
+        throw new Error('cpMoneyMask missing');
+      }
+      function probe(raw, opts) {
+        opts = opts || {};
+        const form = document.createElement('form');
+        const input = document.createElement('input');
+        input.className = 'cp-money-input';
+        input.setAttribute('data-cp-money-places', '2');
+        if (opts.direct) {
+          input.setAttribute('data-cp-money-entry', 'direct');
+        }
+        form.appendChild(input);
+        document.body.appendChild(form);
+        window.cpMoneyMask.wire(input);
+        input.focus();
+        input.value = raw;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        if (!opts.skipBlur) {
+          input.blur();
+          input.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+        }
+        const submitted = form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        const result = {
+          value: input.value,
+          num: parseFloat(String(input.value || '').replace(/,/g, '')),
+          invalid: input.classList.contains('is-invalid') || input.validity.customError,
+          submitAllowed: submitted,
+        };
+        form.remove();
+        return result;
+      }
+
+      const untagged = probe('4');
+      const comma = probe('4,75');
+      const ambiguous = probe('1.234,56');
+      const negative = probe('-5');
+      const rounded = probe('4.756');
+      const loneDot = probe('.', { skipBlur: true });
+
+      return {
+        untaggedFour: untagged.num,
+        untaggedShown: untagged.value,
+        commaDecimal: comma.num,
+        commaShown: comma.value,
+        ambiguousInvalid: ambiguous.invalid,
+        ambiguousShown: ambiguous.value,
+        ambiguousValue: isFinite(ambiguous.num) ? ambiguous.num : 0,
+        negativeInvalid: negative.invalid,
+        negativeShown: negative.value,
+        negativeValue: isFinite(negative.num) ? negative.num : 0,
+        rounded: rounded.num,
+        loneDotBlocked: loneDot.invalid && !loneDot.submitAllowed,
+      };
+    });
+  }
+
+  const report = { pages: [], save: null, invoicePreview: null, behaviors: null };
   try {
     await login();
+    report.invoicePreview = await invoiceDiscountPreview();
+    report.behaviors = await behaviorChecks();
     for (const url of pages) {
       await go(base + url);
       if (page.url().includes('/admin/login')) {
@@ -180,6 +268,29 @@ function parseMoney(value) {
     }
     if (Math.abs(addShown - 4.75) > 0.0001) {
       throw new Error('Add flooring type showed ' + addShown + ' after typing 4.75');
+    }
+    const preview = report.invoicePreview || {};
+    if (preview.field !== '130.00' || preview.net !== 'CA$870.00' || preview.hst !== 'CA$113.10' || preview.grand !== 'CA$983.10') {
+      throw new Error('Invoice discount preview mismatch: ' + JSON.stringify(preview));
+    }
+    const b = report.behaviors || {};
+    if (Math.abs((b.untaggedFour || 0) - 4) > 0.0001) {
+      throw new Error('JS default reverted (untagged 4 → ' + b.untaggedShown + ')');
+    }
+    if (Math.abs((b.commaDecimal || 0) - 4.75) > 0.0001) {
+      throw new Error('Comma decimal 4,75 became ' + b.commaShown);
+    }
+    if (!b.ambiguousInvalid || String(b.ambiguousShown) === '1.23') {
+      throw new Error('Ambiguous 1.234,56 was not rejected: ' + b.ambiguousShown);
+    }
+    if (!b.negativeInvalid || Math.abs((b.negativeValue || 0) - 5) < 0.0001) {
+      throw new Error('Negative -5 was silently flipped: ' + b.negativeShown);
+    }
+    if (Math.abs((b.rounded || 0) - 4.76) > 0.0001) {
+      throw new Error('4.756 rounded to ' + b.rounded + ' instead of 4.76');
+    }
+    if (!b.loneDotBlocked) {
+      throw new Error('Lone "." was submittable');
     }
     await browser.close();
     process.exit(0);

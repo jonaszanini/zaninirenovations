@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ClientProject;
+use App\Models\ClientProjectInvoice;
 use App\Models\FlooringSettings;
 use App\Models\FlooringType;
 use App\Models\User;
@@ -48,6 +49,31 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertSame([], $missing, "Money inputs still missing data-cp-money-entry=\"direct\":\n".implode("\n", $missing));
         $this->assertSame(4.75, CadMoney::parse('4.75'));
         $this->assertNotEquals(4.75 / 100, CadMoney::parse('4.75'));
+        $this->assertSame(4.75, CadMoney::parse('4,75'));
+        $this->assertNull(CadMoney::parse('1.234,56'));
+    }
+
+    public function test_money_mask_js_default_is_direct_and_has_no_cents_mode(): void
+    {
+        $js = file_get_contents(public_path('js/admin-client-projects.js'));
+        $this->assertIsString($js);
+        $this->assertDoesNotMatchRegularExpression('/function\s+wireCentsMoneyEntry\b/', $js);
+        $this->assertStringNotContainsString('parseHybridCadMoney', $js);
+        $this->assertStringNotContainsString('data-cp-money-hybrid', $js);
+        $this->assertDoesNotMatchRegularExpression("/data-cp-money-entry['\"]\\s*===?\\s*['\"]cents['\"]/", $js);
+        $this->assertMatchesRegularExpression(
+            '/function\s+wireMoneyInput\s*\(\s*input\s*\)\s*\{\s*if\s*\(\s*!input\s*\)\s*return;\s*wireDirectMoneyEntry\s*\(\s*input\s*\)/',
+            $js
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/function\s+wireMoneyInput\s*\([^)]*\)\s*\{[^}]*cents/s',
+            $js
+        );
+
+        $invoiceEdit = file_get_contents(resource_path('views/admin/client_projects/invoice/edit.blade.php'));
+        $this->assertIsString($invoiceEdit);
+        $this->assertStringNotContainsString('parseHybridCadMoney', $invoiceEdit);
+        $this->assertMatchesRegularExpression('/amtRaw\s*=\s*parseAmount\(\s*amtInput\s*\)/', $invoiceEdit);
     }
 
     public function test_flooring_add_type_saves_4_75_and_keeps_existing(): void
@@ -111,12 +137,14 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         ]);
         $this->actingAs($user);
         ClientProject::factory()->create(['name' => 'Money sweep project']);
+        $invoiceUrl = $this->makeInstallmentInvoiceEditUrl();
 
         $this->assertTrue(is_dir(base_path('node_modules/puppeteer')), 'Puppeteer must be installed');
         $pages = $this->moneySweepPages();
         foreach ($pages as $url) {
             $this->get($url)->assertOk();
         }
+        $this->get($invoiceUrl)->assertOk();
 
         $existing = FlooringType::query()->orderBy('id')->get()
             ->mapWithKeys(fn (FlooringType $t) => [$t->id => (float) $t->installation_price_per_sqft])
@@ -132,6 +160,7 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             .' MONEY_PASSWORD='.escapeshellarg('password')
             .' MONEY_BASE='.escapeshellarg($base)
             .' MONEY_PAGES='.escapeshellarg(json_encode($pages))
+            .' MONEY_INVOICE_URL='.escapeshellarg($invoiceUrl)
             .' MONEY_OUT='.escapeshellarg($out)
             .' node '.escapeshellarg($script);
         $output = [];
@@ -161,6 +190,26 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         }
         $this->assertGreaterThanOrEqual(8, $typed);
 
+        $this->assertIsArray($report['invoicePreview'] ?? null);
+        $this->assertSame('130.00', $report['invoicePreview']['field'] ?? '');
+        $this->assertSame('CA$870.00', $report['invoicePreview']['net'] ?? '');
+        $this->assertSame('CA$113.10', $report['invoicePreview']['hst'] ?? '');
+        $this->assertSame('CA$983.10', $report['invoicePreview']['grand'] ?? '');
+        $this->assertNotSame('CA$998.70', $report['invoicePreview']['net'] ?? '');
+        $this->assertNotSame('CA$1.30', $report['invoicePreview']['discount'] ?? '');
+
+        $this->assertIsArray($report['behaviors'] ?? null);
+        $this->assertEqualsWithDelta(4.0, (float) ($report['behaviors']['untaggedFour'] ?? 0), 0.0001);
+        $this->assertNotEquals(0.04, (float) ($report['behaviors']['untaggedFour'] ?? 0));
+        $this->assertEqualsWithDelta(4.75, (float) ($report['behaviors']['commaDecimal'] ?? 0), 0.0001);
+        $this->assertTrue((bool) ($report['behaviors']['ambiguousInvalid'] ?? false));
+        $this->assertSame('1.234,56', $report['behaviors']['ambiguousShown'] ?? '');
+        $this->assertNotSame('1.23', $report['behaviors']['ambiguousShown'] ?? '');
+        $this->assertTrue((bool) ($report['behaviors']['negativeInvalid'] ?? false));
+        $this->assertNotEquals(5.0, (float) ($report['behaviors']['negativeValue'] ?? 0));
+        $this->assertEqualsWithDelta(4.76, (float) ($report['behaviors']['rounded'] ?? 0), 0.0001);
+        $this->assertTrue((bool) ($report['behaviors']['loneDotBlocked'] ?? false));
+
         $created = FlooringType::query()->where('name', 'Direct entry oak')->first();
         $this->assertNotNull($created, 'browser save must create the add-type row');
         $this->assertEqualsWithDelta(4.75, (float) $created->installation_price_per_sqft, 0.0001);
@@ -172,6 +221,42 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
                 0.0001
             );
         }
+    }
+
+    private function makeInstallmentInvoiceEditUrl(): string
+    {
+        $project = ClientProject::factory()->create([
+            'name' => 'Invoice discount preview',
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'payment_plan' => 1,
+            'total_amount' => 1000,
+        ]);
+        $project->installments()->create([
+            'sort_order' => 0,
+            'label' => 'On signing',
+            'percentage' => 100,
+            'amount' => 1000,
+            'is_paid' => false,
+        ]);
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->create([
+            'installment_number' => 1,
+            'installment_description' => 'On signing',
+            'items' => [
+                [
+                    'description' => 'Deposit',
+                    'amount' => 1000.00,
+                    'line_kind' => ClientProjectInvoice::LINE_KIND_LABOUR,
+                ],
+            ],
+            'subtotal' => 1000.00,
+            'hst' => 130.00,
+            'total' => 1130.00,
+            'hst_exempt' => false,
+            'status' => ClientProjectInvoice::STATUS_DRAFT,
+        ]);
+
+        return parse_url(route('admin.client-projects.invoices.edit', [$project, $invoice]), PHP_URL_PATH);
     }
 
     /**
