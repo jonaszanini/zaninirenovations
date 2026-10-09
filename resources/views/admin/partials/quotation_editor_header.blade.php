@@ -116,7 +116,7 @@
               class="admin-btn admin-btn--ghost admin-btn--sm"
               id="{{ $qhWizard['prevId'] ?? 'qh-prev' }}"
               disabled>← Back</button>
-      <span class="br-step-nav__status qh-wizard__status"
+      <span class="br-step-nav__status"
             id="{{ $qhWizard['statusId'] ?? 'qh-step-status' }}">1 of {{ (int) ($qhWizard['count'] ?? 1) }}</span>
       <button type="button"
               class="admin-btn admin-btn--primary admin-btn--sm"
