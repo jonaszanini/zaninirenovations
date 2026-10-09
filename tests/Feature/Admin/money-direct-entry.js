@@ -150,19 +150,24 @@ function parseMoney(value) {
         const form = document.createElement('form');
         const input = document.createElement('input');
         input.className = 'cp-money-input';
-        input.setAttribute('data-cp-money-places', '2');
+        input.setAttribute('data-cp-money-places', String(opts.places || 2));
         if (opts.direct) {
           input.setAttribute('data-cp-money-entry', 'direct');
+        }
+        if (opts.stored) {
+          input.value = raw;
         }
         form.appendChild(input);
         document.body.appendChild(form);
         window.cpMoneyMask.wire(input);
-        input.focus();
-        input.value = raw;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        if (!opts.skipBlur) {
-          input.blur();
-          input.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+        if (!opts.stored) {
+          input.focus();
+          input.value = raw;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          if (!opts.skipBlur) {
+            input.blur();
+            input.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+          }
         }
         const submitted = form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
         const result = {
@@ -180,7 +185,10 @@ function parseMoney(value) {
       const ambiguous = probe('1.234,56');
       const negative = probe('-5');
       const rounded = probe('4.756');
+      const halfUp = probe('1.005');
       const loneDot = probe('.', { skipBlur: true });
+      const gasComma = probe('1,459', { places: 3 });
+      const storedNeg = probe('-5.00', { stored: true });
 
       return {
         untaggedFour: untagged.num,
@@ -194,16 +202,77 @@ function parseMoney(value) {
         negativeShown: negative.value,
         negativeValue: isFinite(negative.num) ? negative.num : 0,
         rounded: rounded.num,
+        halfUp: halfUp.num,
+        halfUpShown: halfUp.value,
         loneDotBlocked: loneDot.invalid && !loneDot.submitAllowed,
+        gasCommaInvalid: gasComma.invalid,
+        gasCommaShown: gasComma.value,
+        gasCommaNum: isFinite(gasComma.num) ? gasComma.num : 0,
+        storedNegativeBlank: storedNeg.value === '',
+        storedNegativeSubmitAllowed: storedNeg.submitAllowed,
+        storedNegativeInvalid: storedNeg.invalid,
       };
     });
   }
 
-  const report = { pages: [], save: null, invoicePreview: null, behaviors: null };
+  async function mountKeypressField(id, places) {
+    await page.evaluate((fieldId, fieldPlaces) => {
+      const existing = document.getElementById(fieldId);
+      if (existing && existing.closest('form')) {
+        existing.closest('form').remove();
+      }
+      const form = document.createElement('form');
+      const input = document.createElement('input');
+      input.id = fieldId;
+      input.className = 'cp-money-input admin-input';
+      input.setAttribute('data-cp-money-places', String(fieldPlaces));
+      input.setAttribute('data-cp-money-entry', 'direct');
+      input.style.width = '220px';
+      input.style.height = '44px';
+      form.appendChild(input);
+      document.body.appendChild(form);
+      window.cpMoneyMask.wire(input);
+    }, id, places);
+  }
+
+  async function readKeypressField(id) {
+    return page.evaluate((fieldId) => {
+      const el = document.getElementById(fieldId);
+      return {
+        value: el ? el.value : '',
+        invalid: !!(el && (el.classList.contains('is-invalid') || el.validity.customError)),
+        message: el ? String(el.validationMessage || '') : '',
+      };
+    }, id);
+  }
+
+  async function keypressChecks() {
+    await mountKeypressField('cp-kp-minus', 2);
+    await page.click('#cp-kp-minus');
+    await page.keyboard.type('-5', { delay: 20 });
+    const typedMinus = await readKeypressField('cp-kp-minus');
+
+    await mountKeypressField('cp-kp-gas', 3);
+    await page.click('#cp-kp-gas');
+    await page.keyboard.type('1,459', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const gasComma = await readKeypressField('cp-kp-gas');
+
+    await mountKeypressField('cp-kp-round', 2);
+    await page.click('#cp-kp-round');
+    await page.keyboard.type('1.005', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const halfUp = await readKeypressField('cp-kp-round');
+
+    return { typedMinus, gasComma, halfUp };
+  }
+
+  const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null };
   try {
     await login();
     report.invoicePreview = await invoiceDiscountPreview();
     report.behaviors = await behaviorChecks();
+    report.keypress = await keypressChecks();
     for (const url of pages) {
       await go(base + url);
       if (page.url().includes('/admin/login')) {
@@ -289,8 +358,31 @@ function parseMoney(value) {
     if (Math.abs((b.rounded || 0) - 4.76) > 0.0001) {
       throw new Error('4.756 rounded to ' + b.rounded + ' instead of 4.76');
     }
+    if (Math.abs((b.halfUp || 0) - 1.01) > 0.0001) {
+      throw new Error('1.005 rounded to ' + b.halfUpShown + ' instead of 1.01');
+    }
     if (!b.loneDotBlocked) {
       throw new Error('Lone "." was submittable');
+    }
+    if (!b.gasCommaInvalid || Math.abs((b.gasCommaNum || 0) - 1459) < 0.0001) {
+      throw new Error('1,459 on a 3-place field was read as ' + b.gasCommaShown);
+    }
+    if (!b.storedNegativeBlank || !b.storedNegativeSubmitAllowed || b.storedNegativeInvalid) {
+      throw new Error('Stored negative blocked the form: ' + JSON.stringify({
+        blank: b.storedNegativeBlank,
+        submit: b.storedNegativeSubmitAllowed,
+        invalid: b.storedNegativeInvalid,
+      }));
+    }
+    const kp = report.keypress || {};
+    if (!kp.typedMinus || !kp.typedMinus.invalid || String(kp.typedMinus.value).indexOf('-') === -1) {
+      throw new Error('Typed -5 did not show the inline negative error: ' + JSON.stringify(kp.typedMinus));
+    }
+    if (!kp.gasComma || !kp.gasComma.invalid || String(kp.gasComma.value) === '1,459.000' || String(kp.gasComma.value) === '1459.000') {
+      throw new Error('Keypress 1,459 on 3-place was not flagged: ' + JSON.stringify(kp.gasComma));
+    }
+    if (!kp.halfUp || Math.abs(parseFloat(String(kp.halfUp.value || '').replace(/,/g, '')) - 1.01) > 0.0001) {
+      throw new Error('Keypress 1.005 did not round to 1.01: ' + JSON.stringify(kp.halfUp));
     }
     await browser.close();
     process.exit(0);

@@ -208,7 +208,21 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertTrue((bool) ($report['behaviors']['negativeInvalid'] ?? false));
         $this->assertNotEquals(5.0, (float) ($report['behaviors']['negativeValue'] ?? 0));
         $this->assertEqualsWithDelta(4.76, (float) ($report['behaviors']['rounded'] ?? 0), 0.0001);
+        $this->assertEqualsWithDelta(1.01, (float) ($report['behaviors']['halfUp'] ?? 0), 0.0001);
         $this->assertTrue((bool) ($report['behaviors']['loneDotBlocked'] ?? false));
+        $this->assertTrue((bool) ($report['behaviors']['gasCommaInvalid'] ?? false));
+        $this->assertNotEquals(1459.0, (float) ($report['behaviors']['gasCommaNum'] ?? 0));
+        $this->assertTrue((bool) ($report['behaviors']['storedNegativeBlank'] ?? false));
+        $this->assertTrue((bool) ($report['behaviors']['storedNegativeSubmitAllowed'] ?? false));
+        $this->assertFalse((bool) ($report['behaviors']['storedNegativeInvalid'] ?? true));
+
+        $this->assertIsArray($report['keypress'] ?? null);
+        $this->assertTrue((bool) ($report['keypress']['typedMinus']['invalid'] ?? false));
+        $this->assertStringContainsString('-', (string) ($report['keypress']['typedMinus']['value'] ?? ''));
+        $this->assertStringContainsString('negative', strtolower((string) ($report['keypress']['typedMinus']['message'] ?? '')));
+        $this->assertTrue((bool) ($report['keypress']['gasComma']['invalid'] ?? false));
+        $this->assertNotSame('1459.000', $report['keypress']['gasComma']['value'] ?? '');
+        $this->assertEqualsWithDelta(1.01, $this->parseMoney($report['keypress']['halfUp']['value'] ?? ''), 0.0001);
 
         $created = FlooringType::query()->where('name', 'Direct entry oak')->first();
         $this->assertNotNull($created, 'browser save must create the add-type row');
