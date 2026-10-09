@@ -121,7 +121,7 @@
 }
 
 .bp-list-table .bp-list-col--cat {
-  width: 22%;
+  width: 20%;
   min-width: 0;
   overflow: visible;
 }
@@ -133,7 +133,7 @@
 }
 
 .bp-list-table .bp-list-col--date {
-  width: 7rem;
+  width: 6.75rem;
   white-space: nowrap;
   overflow: visible;
 }
@@ -149,7 +149,7 @@
 .bp-list-table th.bp-list-col--actions,
 .bp-list-table td.bp-list-col--actions,
 .bp-list-table td.admin-table__actions {
-  width: 9.75rem;
+  width: 7.25rem;
   white-space: nowrap;
   overflow: visible;
 }
@@ -157,8 +157,8 @@
 .bp-list-post {
   display: flex;
   align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-wrap: nowrap;
+  gap: 8px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -624,65 +624,17 @@
   .bp-list > .admin-card {
     padding: 14px 16px;
   }
-}
 
-@media (min-width: 641px) {
   .bp-list .admin-table-scroll {
     overflow-x: hidden;
   }
-}
 
-/* Sidebar is still open at 1024. Give the title the full card width on
-   its own row so it can wrap two lines, then keep category / status /
-   date / actions aligned on the row below. */
-@media (min-width: 641px) and (max-width: 1100px) {
-  .bp-list-table.admin-table,
-  .bp-list-table.admin-table thead,
-  .bp-list-table.admin-table tbody {
-    display: block;
-    width: 100%;
-  }
-
-  .bp-list-table.admin-table thead tr,
-  .bp-list-table.admin-table tbody tr {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 5.5rem 6.75rem 9.5rem;
-    column-gap: 8px;
-    align-items: center;
-    width: 100%;
-  }
-
-  .bp-list-table.admin-table thead tr {
-    grid-template-areas: "cat status date actions";
-    padding: 0 0 6px;
-  }
-
-  .bp-list-table.admin-table tbody tr {
-    grid-template-areas:
-      "post post post post"
-      "cat status date actions";
-    row-gap: 6px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--admin-border);
-  }
-
-  .bp-list-table.admin-table tbody tr:last-child {
-    border-bottom: none;
-  }
-
-  .bp-list-table.admin-table thead .bp-list-col--post,
-  .bp-list-table.admin-table .bp-list-col--views {
-    display: none;
-  }
-
-  .bp-list-table.admin-table .bp-list-col--post { grid-area: post; width: auto; padding: 0; }
-  .bp-list-table.admin-table .bp-list-col--cat { grid-area: cat; width: auto; min-width: 0; padding: 0; }
-  .bp-list-table.admin-table .bp-list-col--status { grid-area: status; width: auto; padding: 0; }
-  .bp-list-table.admin-table .bp-list-col--date { grid-area: date; width: auto; padding: 0; }
-  .bp-list-table.admin-table .bp-list-col--actions { grid-area: actions; width: auto; padding: 0; }
-
-  .bp-list-table.admin-table thead th {
-    background: transparent;
+  .bp-list-table .bp-list-icon-btn.admin-btn {
+    width: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    height: 32px;
+    padding: 0;
   }
 }
 
@@ -759,7 +711,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .bp-list {
     max-width: 100%;
     overflow-x: hidden;
@@ -767,6 +719,18 @@
 
   .bp-list .admin-table-scroll {
     overflow-x: hidden;
+  }
+
+  .bp-list-table.admin-table--stack thead {
+    display: none;
+  }
+
+  .bp-list-table.admin-table--stack,
+  .bp-list-table.admin-table--stack tbody,
+  .bp-list-table.admin-table--stack tr,
+  .bp-list-table.admin-table--stack td {
+    display: block;
+    width: 100%;
   }
 
   .bp-list-table.admin-table--stack td.bp-list-col--cat,

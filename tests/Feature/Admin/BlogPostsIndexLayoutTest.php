@@ -28,6 +28,7 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
             'slug' => 'home-improvement',
         ]);
 
+        $placeholder = $this->storeListPlaceholderImage();
         $post = BlogPost::query()->create([
             'title' => 'The Ultimate Decking Showdown',
             'slug' => 'ultimate-decking-showdown',
@@ -37,6 +38,8 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
             'published_at' => null,
             'author_name' => 'Jonas Zanini',
             'views_count' => 128,
+            'featured_image_path' => $placeholder,
+            'featured_image_alt' => 'Deck boards',
         ]);
         $post->categories()->sync([$first->id, $second->id, $third->id]);
 
@@ -47,7 +50,10 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('bp-list-table', $html);
         $this->assertStringContainsString('admin-table--stack', $html);
         $this->assertStringContainsString('bp-list-seo--card', $html);
+        $this->assertStringContainsString('bp-list-thumb', $html);
+        $this->assertStringContainsString('onerror=', $html);
         $this->assertStringNotContainsString('bp-list-thumb--empty', $html);
+        $this->assertStringContainsString('>Views<', $html);
 
         foreach ([
             'bp-list-col--post',
@@ -122,5 +128,39 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('Finishing a Basement in Ottawa', $html);
         $this->assertStringContainsString('Basements &amp; Interior Renovations', $html);
         $this->assertStringNotContainsString('bp-list-cat__more', $html);
+    }
+
+    public function test_index_omits_thumb_when_featured_image_file_is_missing(): void
+    {
+        $this->actingAsAdmin();
+
+        BlogPost::query()->create([
+            'title' => 'Missing image post',
+            'slug' => 'missing-image-post',
+            'html_content' => '<p>Body.</p>',
+            'status' => BlogPost::STATUS_DRAFT,
+            'author_name' => 'Jonas Zanini',
+            'featured_image_path' => 'blog/does-not-exist.jpg',
+        ]);
+
+        $html = $this->get(route('admin.blog.posts.index'))->getContent();
+        $this->assertStringContainsString('Missing image post', $html);
+        $this->assertStringNotContainsString('bp-list-thumb', $html);
+        $this->assertStringNotContainsString('does-not-exist.jpg', $html);
+    }
+
+    private function storeListPlaceholderImage(): string
+    {
+        $relative = 'blog/test-list-placeholder.jpg';
+        $dest = storage_path('app/public/'.$relative);
+        if (! is_dir(dirname($dest))) {
+            mkdir(dirname($dest), 0775, true);
+        }
+        $src = public_path('images/gallery_1.jpg');
+        $this->assertFileExists($src);
+        copy($src, $dest);
+        $this->assertFileExists($dest);
+
+        return $relative;
     }
 }

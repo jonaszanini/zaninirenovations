@@ -244,6 +244,13 @@ class DarkModeAuditSeeder extends Seeder
                 'published_at' => now(),
             ]
         );
+        $placeholderPath = $this->blogListPlaceholderPath();
+        if ($placeholderPath !== null) {
+            $post->forceFill([
+                'featured_image_path' => $placeholderPath,
+                'featured_image_alt' => 'Dark mode audit placeholder',
+            ])->save();
+        }
         if (method_exists($post, 'categories')) {
             $post->categories()->syncWithoutDetaching([$blogCat->id]);
         }
@@ -354,5 +361,26 @@ class DarkModeAuditSeeder extends Seeder
             'blog_post_id' => $post->id,
             'blog_category_id' => $blogCat->id,
         ] + collect($calcIds)->mapWithKeys(fn ($id, $key) => ["{$key}_quotation_id" => $id])->all();
+    }
+
+    private function blogListPlaceholderPath(): ?string
+    {
+        $relative = 'blog/list-placeholder.jpg';
+        $dest = storage_path('app/public/'.$relative);
+        if (! is_dir(dirname($dest)) && ! mkdir(dirname($dest), 0775, true) && ! is_dir(dirname($dest))) {
+            return null;
+        }
+
+        foreach ([
+            public_path('images/gallery_1.jpg'),
+            public_path('images/blog_thumb_1.jpg'),
+            public_path('images/services/deck.webp'),
+        ] as $src) {
+            if (is_file($src) && copy($src, $dest)) {
+                return $relative;
+            }
+        }
+
+        return is_file($dest) ? $relative : null;
     }
 }

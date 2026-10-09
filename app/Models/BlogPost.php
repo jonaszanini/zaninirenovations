@@ -126,6 +126,27 @@ class BlogPost extends Model
         return $url;
     }
 
+    /**
+     * Same-origin list src. Returns null when the stored file is missing
+     * so the admin table never paints a broken-image icon.
+     */
+    public function featuredImageListSrc(): ?string
+    {
+        if (! filled($this->featured_image_path)) {
+            return null;
+        }
+
+        $absolute = Storage::disk('public')->path((string) $this->featured_image_path);
+        if (! is_file($absolute)) {
+            return null;
+        }
+
+        $url = Storage::disk('public')->url($this->featured_image_path);
+        $path = parse_url($url, PHP_URL_PATH) ?: '/storage/'.ltrim((string) $this->featured_image_path, '/');
+
+        return $path.'?v='.filemtime($absolute);
+    }
+
     public function readTimeMinutes(): int
     {
         $text = strip_tags((string) $this->html_content);

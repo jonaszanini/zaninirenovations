@@ -106,9 +106,9 @@
               <tr>
                 <td class="bp-list-col bp-list-col--post">
                   <div class="bp-list-post">
-                    @if ($post->featuredImageUrl())
+                    @if ($post->featuredImageListSrc())
                       <span class="bp-list-thumb">
-                        <img src="{{ $post->featuredImageUrl() }}" alt="">
+                        <img src="{{ $post->featuredImageListSrc() }}" alt="" onerror="var t=this.closest('.bp-list-thumb'); if (t) t.setAttribute('hidden','hidden');">
                       </span>
                     @endif
                     <span class="bp-list-post__text">
