@@ -10,6 +10,7 @@ use App\Support\CadMoney;
 use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SharedPriceLibraryController extends Controller
 {
@@ -33,6 +34,7 @@ class SharedPriceLibraryController extends Controller
             'hours_per_day' => ['required', 'numeric', 'min:0.5', 'max:16'],
             'works' => ['nullable', 'array'],
             'works.*.id' => ['required', 'integer', 'exists:shared_works,id'],
+            'works.*.label' => ['nullable', 'string', 'max:160'],
             'works.*.rate' => ['nullable', 'numeric', 'min:0'],
             'works.*.flat_rate' => ['nullable', 'numeric', 'min:0'],
             'works.*.catalog_material_id' => ['nullable', 'integer', 'exists:materials,id'],
@@ -44,7 +46,17 @@ class SharedPriceLibraryController extends Controller
                 SharedWork::KIND_HOURS_EACH,
                 SharedWork::KIND_FLAT,
             ])],
+            'new_works' => ['nullable', 'array'],
+            'new_works.*' => ['nullable', 'array'],
+            'new_works.*.*.label' => ['nullable', 'string', 'max:160'],
+            'new_works.*.*.unit' => ['nullable', 'string', 'max:20'],
+            'new_works.*.*.rate' => ['nullable', 'numeric', 'min:0'],
+            'new_works.*.*.flat_rate' => ['nullable', 'numeric', 'min:0'],
+            'new_works.*.*.consumers' => ['nullable', 'array'],
+            'new_works.*.*.consumers.*' => ['nullable', 'string', Rule::in(array_keys(SharedWorkCatalog::CONSUMER_LABELS))],
         ]);
+
+        $this->assertUniqueLabelsInGroup($data);
 
         $crew = SharedCrewRate::current();
         $crew->fill([
@@ -61,6 +73,10 @@ class SharedPriceLibraryController extends Controller
             $work = SharedWork::query()->find((int) $row['id']);
             if (! $work) {
                 continue;
+            }
+            $label = trim((string) ($row['label'] ?? ''));
+            if ($label !== '') {
+                $work->label = $label;
             }
             $catalogId = (int) ($row['catalog_material_id'] ?? 0);
             $owner = (float) $crew->owner_hourly_rate;
@@ -97,6 +113,8 @@ class SharedPriceLibraryController extends Controller
             $work->save();
         }
 
+        $this->createNewWorks($data);
+
         SharedWorkCatalog::forgetCache();
 
         return redirect()
@@ -116,19 +134,189 @@ class SharedPriceLibraryController extends Controller
         }
 
         $works = $request->input('works');
-        if (! is_array($works)) {
+        if (is_array($works)) {
+            foreach ($works as $i => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                foreach (['rate', 'flat_rate', 'material_unit_price'] as $field) {
+                    if (array_key_exists($field, $row)) {
+                        $works[$i][$field] = CadMoney::stripGrouping($row[$field]);
+                    }
+                }
+            }
+            $request->merge(['works' => $works]);
+        }
+
+        $newWorks = $request->input('new_works');
+        if (! is_array($newWorks)) {
             return;
         }
-        foreach ($works as $i => $row) {
-            if (! is_array($row)) {
+        foreach ($newWorks as $groupKey => $rows) {
+            if (! is_array($rows)) {
                 continue;
             }
-            foreach (['rate', 'flat_rate', 'material_unit_price'] as $field) {
-                if (array_key_exists($field, $row)) {
-                    $works[$i][$field] = CadMoney::stripGrouping($row[$field]);
+            foreach ($rows as $i => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                foreach (['rate', 'flat_rate'] as $field) {
+                    if (array_key_exists($field, $row)) {
+                        $newWorks[$groupKey][$i][$field] = CadMoney::stripGrouping($row[$field]);
+                    }
                 }
             }
         }
-        $request->merge(['works' => $works]);
+        $request->merge(['new_works' => $newWorks]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<int>
+     */
+    protected function postedWorkIds(array $data): array
+    {
+        $ids = [];
+        foreach ($data['works'] ?? [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $id = (int) ($row['id'] ?? 0);
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    protected function assertUniqueLabelsInGroup(array $data): void
+    {
+        $seen = [];
+        $errors = [];
+        $postedIds = $this->postedWorkIds($data);
+
+        foreach ($data['works'] ?? [] as $idx => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $work = SharedWork::query()->find((int) ($row['id'] ?? 0));
+            if (! $work) {
+                continue;
+            }
+            $label = trim((string) ($row['label'] ?? $work->label));
+            if ($label === '') {
+                $errors['works.'.$idx.'.label'] = 'Enter a name for this item.';
+
+                continue;
+            }
+            $norm = SharedWork::normalizeLabel($label);
+            $bucket = $work->group_key.'|'.$norm;
+            $taken = SharedWork::query()
+                ->where('group_key', $work->group_key)
+                ->where('id', '!=', $work->id)
+                ->when($postedIds !== [], fn ($q) => $q->whereNotIn('id', $postedIds))
+                ->whereRaw('LOWER(TRIM(label)) = ?', [$norm])
+                ->exists();
+            if (isset($seen[$bucket]) || $taken) {
+                $errors['works.'.$idx.'.label'] = 'That name is already used in this group.';
+            }
+            $seen[$bucket] = true;
+        }
+
+        foreach ($data['new_works'] ?? [] as $groupKey => $rows) {
+            if (! is_string($groupKey) || ! is_array($rows)) {
+                continue;
+            }
+            foreach ($rows as $i => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $label = trim((string) ($row['label'] ?? ''));
+                if ($label === '') {
+                    continue;
+                }
+                $norm = SharedWork::normalizeLabel($label);
+                $bucket = $groupKey.'|'.$norm;
+                $taken = SharedWork::query()
+                    ->where('group_key', $groupKey)
+                    ->when($postedIds !== [], fn ($q) => $q->whereNotIn('id', $postedIds))
+                    ->whereRaw('LOWER(TRIM(label)) = ?', [$norm])
+                    ->exists();
+                if (isset($seen[$bucket]) || $taken) {
+                    $errors['new_works.'.$groupKey.'.'.$i.'.label'] = 'That name is already used in this group.';
+                }
+                $seen[$bucket] = true;
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function createNewWorks(array $data): void
+    {
+        $owner = (float) ($data['owner_hourly_rate'] ?? SharedWorkCatalog::ownerHourlyRate());
+        $maxSort = (int) SharedWork::query()->max('sort_order');
+
+        foreach ($data['new_works'] ?? [] as $groupKey => $rows) {
+            if (! is_string($groupKey) || ! isset(SharedWorkCatalog::GROUPS[$groupKey]) || ! is_array($rows)) {
+                continue;
+            }
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $label = trim((string) ($row['label'] ?? ''));
+                if ($label === '') {
+                    continue;
+                }
+                $unit = strtolower(trim((string) ($row['unit'] ?? 'each')));
+                if ($unit === '') {
+                    $unit = 'each';
+                }
+                $rate = isset($row['rate']) && $row['rate'] !== '' && $row['rate'] !== null
+                    ? round((float) $row['rate'], 4)
+                    : 0.0;
+                $flat = isset($row['flat_rate']) && $row['flat_rate'] !== '' && $row['flat_rate'] !== null
+                    ? round((float) $row['flat_rate'], 4)
+                    : null;
+                $isArea = in_array($unit, ['lf', 'sf'], true);
+                $kind = $isArea || ($flat !== null && $flat > 0 && $rate <= 0)
+                    ? SharedWork::KIND_FLAT
+                    : SharedWork::KIND_HOURS_EACH;
+                if ($isArea && $flat !== null && $flat > 0 && $owner > 0) {
+                    $rate = round($owner / $flat, 4);
+                }
+                $consumers = [];
+                foreach ($row['consumers'] ?? SharedWorkCatalog::defaultConsumersForGroup($groupKey) as $consumer) {
+                    $consumer = (string) $consumer;
+                    if (isset(SharedWorkCatalog::CONSUMER_LABELS[$consumer])) {
+                        $consumers[] = $consumer;
+                    }
+                }
+                $consumers = array_values(array_unique($consumers));
+                $maxSort++;
+                SharedWork::query()->create([
+                    'key' => SharedWork::allocateUniqueKey($label),
+                    'group_key' => $groupKey,
+                    'label' => $label,
+                    'unit' => $unit,
+                    'labor_kind' => $kind,
+                    'rate' => $rate,
+                    'flat_rate' => $flat,
+                    'material_unit' => $unit,
+                    'consumers' => $consumers,
+                    'sort_order' => $maxSort,
+                ]);
+            }
+        }
     }
 }

@@ -2210,11 +2210,24 @@ html.admin-dark .admin-content .sp-table tr:hover > th {
   background: transparent;
   border-bottom-color: var(--admin-border);
 }
-html.admin-dark .sp-work-label {
+html.admin-dark .sp-work-label,
+html.admin-dark .sp-work-label-input {
   color: var(--admin-heading);
 }
-html.admin-dark .sp-work-label small {
+html.admin-dark .sp-work-label small,
+html.admin-dark .sp-work-key,
+html.admin-dark .sp-work-meta {
   color: var(--admin-muted);
+}
+html.admin-dark .sp-work-label-input {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+html.admin-dark .sp-add {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .sp-add > summary {
+  color: var(--admin-primary);
 }
 html.admin-dark .sp-input {
   background: var(--admin-input-bg);

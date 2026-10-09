@@ -283,6 +283,32 @@
   word-break: break-word;
   white-space: normal;
 }
+.sp-work-label-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  color: var(--admin-heading);
+  background: var(--admin-input-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  padding: 0.3rem 0.4rem;
+  height: 28px;
+  box-sizing: border-box;
+}
+.sp-work-label-input:focus {
+  outline: none;
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}
+.sp-work-key {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--admin-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
 .sp-work-meta {
   display: block;
   font-weight: 400;
@@ -745,6 +771,68 @@
     max-width: 100%;
     box-sizing: border-box;
   }
+  .sp-work-label-input {
+    min-height: 44px;
+    height: 44px;
+  }
+}
+
+.sp-add {
+  margin-top: 0.75rem;
+  padding-top: 0.15rem;
+  border-top: 1px solid var(--admin-border);
+}
+.sp-add > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--admin-primary);
+}
+.sp-add > summary::-webkit-details-marker { display: none; }
+.sp-add__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem 0.75rem;
+  padding: 0.25rem 0 0.5rem;
+}
+.sp-add__name { grid-column: 1 / -1; }
+.sp-add__consumers { grid-column: 1 / -1; }
+.sp-add label {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-muted);
+  margin-bottom: 2px;
+}
+.sp-add .sp-input,
+.sp-add .admin-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.sp-add__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+.sp-add__checks .admin-checkbox {
+  min-height: 44px;
+}
+@media (min-width: 68.75em) {
+  .sp-add__grid {
+    grid-template-columns: minmax(8rem, 1.5fr) 6.6rem 6.6rem 6.6rem;
+  }
+  .sp-add__name { grid-column: auto; }
+  .sp-add .sp-input,
+  .sp-add .admin-input { height: 28px; min-height: 28px; }
+  .sp-add__checks .admin-checkbox { min-height: 32px; }
 }
 </style>
 @endpush
@@ -829,7 +917,15 @@
           <table class="sp-table">
             <thead>
               <tr>
-                <th class="sp-col-label">Work item</th>
+                <th class="sp-col-label">
+                  <span class="sp-th-sell">
+                    Work item
+                    @include('admin.partials.info_tip', [
+                      'tipText' => 'Rename here — saved quotes keep using the hidden key, not this name. Names must be unique inside this group.',
+                      'tipLabel' => 'work item name',
+                    ])
+                  </span>
+                </th>
                 <th class="sp-col-rate">Rate</th>
                 <th class="sp-col-sell">
                   <span class="sp-th-sell">
@@ -882,10 +978,14 @@
                   <td class="sp-col-label" data-label="Work item">
                     <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
                     <span class="sp-work">
-                      <span class="sp-work-label" title="{{ $work->label }}">{{ $work->label }}</span>
-                      @if ($workMeta)
-                        <small class="sp-work-meta">{{ $workMeta }}</small>
-                      @endif
+                      <input type="text" class="sp-input sp-work-label-input{{ $errors->has('works.'.$work->id.'.label') ? ' is-invalid' : '' }}" id="sp-label-{{ $work->id }}"
+                             name="works[{{ $work->id }}][label]"
+                             value="{{ old('works.'.$work->id.'.label', $work->label) }}"
+                             title="{{ $work->label }}"
+                             maxlength="160"
+                             required
+                             aria-label="Name for {{ $work->label }}">
+                      <small class="sp-work-key" title="Stable key used by quote calculators">{{ $work->key }}@if ($workMeta) · {{ $workMeta }}@endif</small>
                     </span>
                   </td>
                   <td class="sp-col-rate" data-label="Rate">
@@ -984,12 +1084,77 @@
             </tbody>
           </table>
         </div>
+        @php
+          $addHasInput = filled(old('new_works.'.$groupKey.'.0.label'));
+          $addHasError = $errors->has('new_works.'.$groupKey.'.0.label');
+        @endphp
+        <details class="sp-add" id="sp-add-{{ $groupKey }}" @if ($addHasInput || $addHasError) open @endif>
+          <summary>
+            <i class="fa fa-plus" aria-hidden="true"></i> Add item
+            <span onclick="event.preventDefault(); event.stopPropagation();">
+              @include('admin.partials.info_tip', [
+                'tipText' => 'New items get a permanent key from the name. They show on the Shared list of the quote types you tick; built-in calculators still use their existing keys.',
+                'tipLabel' => 'add shared item',
+              ])
+            </span>
+          </summary>
+          <div class="sp-add__grid">
+            <div class="sp-add__name">
+              <label for="sp-new-{{ $groupKey }}-label">Name</label>
+              <input type="text" class="sp-input{{ $addHasError ? ' is-invalid' : '' }}" id="sp-new-{{ $groupKey }}-label"
+                     name="new_works[{{ $groupKey }}][0][label]" maxlength="160"
+                     value="{{ old('new_works.'.$groupKey.'.0.label') }}"
+                     placeholder="e.g. Extra return">
+            </div>
+            <div>
+              <label for="sp-new-{{ $groupKey }}-unit">Unit</label>
+              <select class="admin-input sp-input" id="sp-new-{{ $groupKey }}-unit"
+                      name="new_works[{{ $groupKey }}][0][unit]">
+                @php $newUnit = old('new_works.'.$groupKey.'.0.unit', 'each'); @endphp
+                @foreach (['each' => 'each', 'lf' => 'lf', 'sf' => 'sf', 'opening' => 'opening'] as $unitVal => $unitLabel)
+                  <option value="{{ $unitVal }}" @selected($newUnit === $unitVal)>{{ $unitLabel }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div>
+              <label for="sp-new-{{ $groupKey }}-cost">Cost</label>
+              <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                     class="sp-input cp-money-input" id="sp-new-{{ $groupKey }}-cost"
+                     name="new_works[{{ $groupKey }}][0][rate]"
+                     value="{{ old('new_works.'.$groupKey.'.0.rate') }}"
+                     placeholder="0.00">
+            </div>
+            <div>
+              <label for="sp-new-{{ $groupKey }}-sell">Sell</label>
+              <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                     class="sp-input cp-money-input" id="sp-new-{{ $groupKey }}-sell"
+                     name="new_works[{{ $groupKey }}][0][flat_rate]"
+                     value="{{ old('new_works.'.$groupKey.'.0.flat_rate') }}"
+                     placeholder="0.00">
+            </div>
+            <div class="sp-add__consumers">
+              <label>Show on quote types</label>
+              <div class="sp-add__checks">
+                @php $defaultNewConsumers = old('new_works.'.$groupKey.'.0.consumers', \App\Services\SharedWorkCatalog::defaultConsumersForGroup($groupKey)); @endphp
+                @foreach (\App\Services\SharedWorkCatalog::CONSUMER_LABELS as $consumerKey => $consumerLabel)
+                  <label class="admin-checkbox">
+                    <input type="checkbox" class="admin-checkbox__input"
+                           name="new_works[{{ $groupKey }}][0][consumers][]" value="{{ $consumerKey }}"
+                           @checked(in_array($consumerKey, $defaultNewConsumers, true))>
+                    <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                    <span class="admin-checkbox__text">{{ $consumerLabel }}</span>
+                  </label>
+                @endforeach
+              </div>
+            </div>
+          </div>
+        </details>
       </details>
     @endforeach
   </form>
 
   <script>
-    document.querySelectorAll('.sp-mat-name-input').forEach(function(input) {
+    document.querySelectorAll('.sp-mat-name-input, .sp-work-label-input').forEach(function(input) {
       input.addEventListener('input', function() {
         this.title = this.value;
       });

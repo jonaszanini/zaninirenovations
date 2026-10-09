@@ -56,4 +56,30 @@ class SharedWork extends Model
     {
         return $this->isLinearFoot() || $this->isSquareFoot();
     }
+
+    /**
+     * Stable lookup key from a display name. Never reused; rename must not change it.
+     */
+    public static function allocateUniqueKey(string $label): string
+    {
+        $base = strtolower(trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $label), '_'));
+        if ($base === '') {
+            $base = 'item';
+        }
+        $base = substr($base, 0, 50);
+        $key = $base;
+        $n = 2;
+        while (static::query()->where('key', $key)->exists()) {
+            $suffix = '_'.$n;
+            $key = substr($base, 0, max(1, 64 - strlen($suffix))).$suffix;
+            $n++;
+        }
+
+        return $key;
+    }
+
+    public static function normalizeLabel(string $label): string
+    {
+        return mb_strtolower(trim($label));
+    }
 }

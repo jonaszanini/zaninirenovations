@@ -213,6 +213,7 @@ jobs:
           php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
           php artisan test tests/Feature/SharedPricesLayoutTest.php
           php artisan test tests/Feature/SharedPricesTest.php
+          php artisan test tests/Feature/SharedPricesAddRenameTest.php
 
       - name: Upload Shared prices geometry
         if: always()
