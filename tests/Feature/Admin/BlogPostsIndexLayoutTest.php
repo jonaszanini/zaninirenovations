@@ -56,7 +56,7 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('>Views<', $html);
         $this->assertStringContainsString('123.5K', $html);
         $this->assertStringContainsString('title="123,456"', $html);
-        $this->assertStringContainsString('aria-label="123,456 views"', $html);
+        $this->assertStringNotContainsString('aria-label="123,456 views"', $html);
         $this->assertStringContainsString('sr-only', $html);
         $this->assertStringContainsString('bp-list-post__title-link', $html);
         $this->assertStringContainsString('role="menu"', $html);
@@ -139,6 +139,26 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         $this->assertStringNotContainsString('bp-list-cat__more', $html);
     }
 
+    public function test_index_flags_http_featured_image_as_insecure_url_not_missing(): void
+    {
+        $this->actingAsAdmin();
+
+        BlogPost::query()->create([
+            'title' => 'HTTP CDN post',
+            'slug' => 'http-cdn-post',
+            'html_content' => '<p>Body.</p>',
+            'status' => BlogPost::STATUS_DRAFT,
+            'author_name' => 'Jonas Zanini',
+            'featured_image_path' => 'http://cdn.example.com/blog/deck.webp',
+        ]);
+
+        $html = $this->get(route('admin.blog.posts.index'))->getContent();
+        $this->assertStringContainsString('HTTP CDN post', $html);
+        $this->assertStringContainsString('insecure URL', $html);
+        $this->assertStringNotContainsString('missing image', $html);
+        $this->assertStringNotContainsString('http://cdn.example.com/blog/deck.webp', $html);
+    }
+
     public function test_index_shows_missing_image_warning_when_featured_file_is_absent(): void
     {
         $this->actingAsAdmin();
@@ -172,7 +192,8 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
             'featured_image_path' => 'http://cdn.example.com/blog/deck.webp',
         ]);
         $this->assertNull($http->featuredImageListSrc());
-        $this->assertTrue($http->featuredImageIsMissing());
+        $this->assertTrue($http->featuredImageIsInsecureUrl());
+        $this->assertFalse($http->featuredImageIsMissing());
 
         $relative = $this->storeListPlaceholderImage();
         $absolute = storage_path('app/public/'.$relative);
@@ -203,7 +224,15 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
             $css
         );
         $this->assertMatchesRegularExpression(
+            '/\.bp-list-table \.bp-list-col--date\s*\{[^}]*font-size:\s*12px/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
             '/\.bp-list-table \.bp-list-col--views\s*\{[^}]*width:\s*4\.75rem/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.bp-list-table \.bp-list-col--views\s*\{[^}]*font-size:\s*12px/s',
             $css
         );
         $this->assertMatchesRegularExpression(
@@ -219,7 +248,7 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/@media \(min-width: 901px\) and \(max-width: 1100px\)[\s\S]*\.bp-list-col--actions[\s\S]*?width:\s*8rem/s',
+            '/@media \(min-width: 901px\) and \(max-width: 1100px\)[\s\S]*\.bp-list-col--actions[\s\S]*?width:\s*8\.25rem/s',
             $css
         );
         $this->assertMatchesRegularExpression(
@@ -239,7 +268,27 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.bp-list-actions[\s\S]*?gap:\s*12px/',
+            '/\.bp-list-actions,\s*\.bp-inline-form\s*\{[^}]*gap:\s*12px/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.bp-list-icon-btn\.admin-btn::after[\s\S]*?inset:\s*-7px/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media \(min-width: 1001px\) and \(max-width: 1100px\)[\s\S]*\.bp-list-col--cat\s*\{[^}]*width:\s*7rem/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media \(min-width: 768px\) and \(max-width: 1000px\)[\s\S]*\.bp-list-post__meta\s*\{[^}]*display:\s*flex/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media \(min-width: 901px\) and \(max-width: 1100px\)[\s\S]{0,400}?\.admin-table-scroll\s*\{[^}]*overflow-x:\s*auto/s',
+            $css
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/@media \(min-width: 901px\) and \(max-width: 1100px\)[\s\S]{0,400}?\.admin-table-scroll\s*\{[^}]*overflow-x:\s*hidden/s',
             $css
         );
         $this->assertStringContainsString('text-overflow: ellipsis', $css);
@@ -272,10 +321,30 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('aria-expanded', $js);
         $this->assertStringContainsString('items[0].focus()', $js);
         $this->assertStringContainsString("e.key === 'Tab'", $js);
+        $this->assertStringContainsString("e.key === 'ArrowDown'", $js);
+        $this->assertStringContainsString("e.key === 'ArrowUp'", $js);
+        $this->assertStringContainsString("e.key === 'Home'", $js);
+        $this->assertStringContainsString("e.key === 'End'", $js);
         $this->assertStringContainsString("role', 'menu'", $js);
         $this->assertStringContainsString("role', 'menuitem'", $js);
         $this->assertStringContainsString('toggle.focus()', $js);
         $this->assertStringNotContainsString('first.focus()', $js);
+    }
+
+    public function test_dropdown_outside_click_does_not_return_focus(): void
+    {
+        $js = file_get_contents(public_path('js/admin-actions-dropdown.js'));
+        $this->assertNotFalse($js);
+        $this->assertMatchesRegularExpression(
+            '/closest\(\'\.admin-actions-dropdown__menu\'\)[\s\S]{0,160}closeAll\(null, false\)/',
+            $js
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/closest\(\'\.admin-actions-dropdown__menu\'\)[\s\S]{0,160}closeAll\(null, true\)/',
+            $js
+        );
+        $this->assertStringContainsString("e.key === 'Escape'", $js);
+        $this->assertStringContainsString('returnFocus && focusInside', $js);
     }
 
     public function test_published_badge_and_dark_tabs_meet_aa_contrast_tokens(): void
@@ -306,8 +375,23 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         exec($cmd, $output, $code);
         $joined = implode("\n", $output);
         $this->assertSame(0, $code, $joined);
-        $this->assertStringContainsString('"overflowing":[]', $joined);
         $this->assertStringNotContainsString('GEOMETRY_HARNESS_UNAVAILABLE', $joined);
+
+        $payloads = [];
+        foreach ($output as $line) {
+            $trim = trim($line);
+            if ($trim === '' || ! str_starts_with($trim, '{')) {
+                continue;
+            }
+            $data = json_decode($trim, true);
+            if (is_array($data) && isset($data['mode'], $data['overflowing'])) {
+                $payloads[] = $data;
+            }
+        }
+        $this->assertNotEmpty($payloads, $joined);
+        foreach ($payloads as $data) {
+            $this->assertSame([], $data['overflowing'], json_encode($data['overflowing']));
+        }
     }
 
     private function storeListPlaceholderImage(): string

@@ -120,10 +120,13 @@
                         <span class="bp-seo-badge bp-seo-badge--warn">{{ $post->pending_comments_count }} pending</span>
                       @endif
                       <span class="bp-list-seo bp-list-seo--card">
+                        @if ($post->featuredImageIsInsecureUrl())
+                          <span class="bp-seo-badge bp-seo-badge--warn">insecure URL</span>
+                        @endif
                         @if ($post->featuredImageIsMissing())
                           <span class="bp-seo-badge bp-seo-badge--warn">missing image</span>
                         @endif
-                        @if ($seoKeys === [] && ! $post->featuredImageIsMissing())
+                        @if ($seoKeys === [] && ! $post->featuredImageIsMissing() && ! $post->featuredImageIsInsecureUrl())
                           <span class="bp-seo-badge bp-seo-badge--ok">OK</span>
                         @else
                           @foreach ($seoKeys as $key)
@@ -167,7 +170,7 @@
                   <span class="bp-status-badge {{ $statusClass }}">{{ $statusLabel }}</span>
                 </td>
                 <td class="bp-list-col bp-list-col--date" data-label="Published">{{ $publishedLabel }}</td>
-                <td class="bp-list-col bp-list-col--views" data-label="Views" title="{{ $viewsExact }}" aria-label="{{ $viewsExact }} views">
+                <td class="bp-list-col bp-list-col--views" data-label="Views" title="{{ $viewsExact }}">
                   <span aria-hidden="true">{{ $viewsLabel }}</span>
                   <span class="sr-only">{{ $viewsExact }} views</span>
                 </td>

@@ -1,17 +1,17 @@
 /**
  * Real-layout geometry for /admin/blog/posts.
- * Measures overflow at 768 / 901 / 930 / 955 / 1024 with 123.5K views
- * and 4 SEO chips. Fails loudly if Chromium/puppeteer cannot launch.
+ * Measures overflow, 44px action hits, and Post/Category balance.
+ * Fails loudly if Chromium/puppeteer cannot launch.
  *
- * Fixture mode (default) inlines admin.css + admin-blog.css so CI does
- * not depend on PHPUnit transactions being visible to artisan serve.
+ * Fixture mode (default) inlines admin CSS so CI does not depend on
+ * PHPUnit transactions being visible to artisan serve.
  * Set GEOMETRY_LIVE=1 to also login and measure the running app.
  */
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../../..');
-const WIDTHS = [768, 901, 930, 955, 1024];
+const WIDTHS = [768, 901, 930, 955, 1001, 1024, 1050, 1100];
 const BASE = process.env.APP_URL || 'http://127.0.0.1:8000';
 const CHROME = process.env.CHROME_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome';
 
@@ -21,7 +21,7 @@ function failHarness(message) {
 }
 
 function loadCss() {
-  const files = ['public/css/admin.css', 'public/css/admin-blog.css'];
+  const files = ['public/css/admin.css', 'public/css/admin-blog.css', 'public/css/admin-dark.css'];
   return files.map((rel) => {
     const abs = path.join(ROOT, rel);
     if (!fs.existsSync(abs)) {
@@ -31,14 +31,76 @@ function loadCss() {
   }).join('\n');
 }
 
-function fixtureHtml(css) {
+function fixtureRow(opts) {
+  const title = opts.title;
+  const chips = opts.chips.map((c) => `<span class="bp-seo-badge bp-seo-badge--warn">${c}</span>`).join('');
+  return `
+                  <tr>
+                    <td class="bp-list-col bp-list-col--post">
+                      <div class="bp-list-post">
+                        <span class="bp-list-thumb"></span>
+                        <span class="bp-list-post__text">
+                          <a class="bp-list-post__title-link" href="#">
+                            <span class="bp-list-post__title">${title}</span>
+                          </a>
+                          <span class="bp-list-seo bp-list-seo--card">${chips}</span>
+                          <span class="bp-list-post__meta">
+                            <span class="bp-status-badge blog-post-status--published">Published</span>
+                            <span class="bp-list-post__meta-cats">
+                              <span class="bp-list-cat">
+                                <span class="bp-list-cat__name">Decks, Fences &amp; Outdoor Living</span>
+                                <span class="bp-list-cat__more">+2</span>
+                              </span>
+                            </span>
+                            <span>10/02/2026</span>
+                            <span>123.5K views</span>
+                          </span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="bp-list-col bp-list-col--cat">
+                      <span class="bp-list-cat">
+                        <span class="bp-list-cat__name">Decks, Fences &amp; Outdoor Living</span>
+                        <span class="bp-list-cat__more">+2</span>
+                      </span>
+                    </td>
+                    <td class="bp-list-col bp-list-col--status">
+                      <span class="bp-status-badge blog-post-status--published">Published</span>
+                    </td>
+                    <td class="bp-list-col bp-list-col--date">10/02/2026</td>
+                    <td class="bp-list-col bp-list-col--views" title="123,456">
+                      <span aria-hidden="true">123.5K</span>
+                      <span class="sr-only">123,456 views</span>
+                    </td>
+                    <td class="admin-table__actions bp-list-col bp-list-col--actions">
+                      <div class="bp-list-actions">
+                        <a class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn" href="#"></a>
+                        <a class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn" href="#"></a>
+                        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn admin-actions-dropdown__toggle"></button>
+                      </div>
+                    </td>
+                  </tr>`;
+}
+
+function fixtureHtml(css, dark) {
+  const rows = [
+    fixtureRow({
+      title: 'The Ultimate Decking Showdown For Ottawa Backyards And Long Titles',
+      chips: ['Meta', 'SEO title', 'Image', 'Alt'],
+    }),
+    fixtureRow({
+      title: 'Pressure-Treated Cedar Composite And PVC Decking Compared For Ontario Homes This Season',
+      chips: ['Meta', 'SEO title', 'Image', 'Alt', 'missing image'],
+    }),
+  ].join('\n');
+
   return `<!doctype html>
-<html lang="en">
+<html lang="en"${dark ? ' class="admin-dark"' : ''}>
 <head>
   <meta charset="utf-8">
   <style>${css}</style>
 </head>
-<body class="admin-body">
+<body class="admin-body${dark ? ' admin-dark' : ''}">
   <div class="admin-app" id="admin-app">
     <aside class="admin-sidebar" id="admin-sidebar"></aside>
     <div class="admin-main">
@@ -57,43 +119,7 @@ function fixtureHtml(css) {
                     <th class="bp-list-col bp-list-col--actions" scope="col"></th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr>
-                    <td class="bp-list-col bp-list-col--post">
-                      <div class="bp-list-post">
-                        <span class="bp-list-thumb"></span>
-                        <span class="bp-list-post__text">
-                          <a class="bp-list-post__title-link" href="#">
-                            <span class="bp-list-post__title">The Ultimate Decking Showdown For Ottawa Backyards And Long Titles</span>
-                          </a>
-                          <span class="bp-list-seo bp-list-seo--card">
-                            <span class="bp-seo-badge bp-seo-badge--warn">Meta</span>
-                            <span class="bp-seo-badge bp-seo-badge--warn">SEO title</span>
-                            <span class="bp-seo-badge bp-seo-badge--warn">Image</span>
-                            <span class="bp-seo-badge bp-seo-badge--warn">Alt</span>
-                          </span>
-                        </span>
-                      </div>
-                    </td>
-                    <td class="bp-list-col bp-list-col--cat">
-                      <span class="bp-list-cat">
-                        <span class="bp-list-cat__name">Decks, Fences &amp; Outdoor Living</span>
-                        <span class="bp-list-cat__more">+2</span>
-                      </span>
-                    </td>
-                    <td class="bp-list-col bp-list-col--status">
-                      <span class="bp-status-badge blog-post-status--published">Published</span>
-                    </td>
-                    <td class="bp-list-col bp-list-col--date">10/02/2026</td>
-                    <td class="bp-list-col bp-list-col--views" title="123,456" aria-label="123,456 views">123.5K</td>
-                    <td class="admin-table__actions bp-list-col bp-list-col--actions">
-                      <div class="bp-list-actions">
-                        <a class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn" href="#"></a>
-                        <a class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn" href="#"></a>
-                        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm bp-list-icon-btn admin-actions-dropdown__toggle"></button>
-                      </div>
-                    </td>
-                  </tr>
+                <tbody>${rows}
                 </tbody>
               </table>
             </div>
@@ -149,6 +175,37 @@ async function login(page) {
 }
 
 function measureInPage(vp) {
+  function hitSize(el) {
+    if (!el) return { w: 0, h: 0, after: false };
+    const r = el.getBoundingClientRect();
+    const after = getComputedStyle(el, '::after');
+    const hasAfter = after && after.content && after.content !== 'none' && after.content !== '""' && after.content !== "''";
+    if (!hasAfter && after.content !== '""') {
+      const named = after.content && after.content !== 'none';
+      if (!named) {
+        return { w: r.width, h: r.height, after: false };
+      }
+    }
+    if (!after || after.content === 'none') {
+      return { w: r.width, h: r.height, after: false };
+    }
+    const cs = getComputedStyle(el);
+    const bl = parseFloat(cs.borderLeftWidth) || 0;
+    const br = parseFloat(cs.borderRightWidth) || 0;
+    const bt = parseFloat(cs.borderTopWidth) || 0;
+    const bb = parseFloat(cs.borderBottomWidth) || 0;
+    const padW = r.width - bl - br;
+    const padH = r.height - bt - bb;
+    const top = parseFloat(after.top);
+    const bottom = parseFloat(after.bottom);
+    const left = parseFloat(after.left);
+    const right = parseFloat(after.right);
+    if ([top, bottom, left, right].some((n) => Number.isNaN(n))) {
+      return { w: r.width, h: r.height, after: false };
+    }
+    return { w: padW - left - right, h: padH - top - bottom, after: true };
+  }
+
   const table = document.querySelector('.bp-list-table');
   const scroll = document.querySelector('.bp-list .admin-table-scroll');
   const overflowing = [];
@@ -159,13 +216,52 @@ function measureInPage(vp) {
       const cell = row.querySelector(sel);
       if (!cell || getComputedStyle(cell).display === 'none') return;
       const extra = cell.scrollWidth - cell.clientWidth;
-      if (extra > 1) {
+      const limit = sel === '.bp-list-col--actions' ? 4 : 1;
+      if (extra > limit) {
         overflowing.push({
           vp, row: i, sel, extra,
           text: (cell.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60),
         });
       }
+      if (sel === '.bp-list-col--date' || sel === '.bp-list-col--views') {
+        const fs = parseFloat(getComputedStyle(cell).fontSize);
+        if (!Number.isNaN(fs) && fs > 13) {
+          overflowing.push({
+            vp, row: i, sel: sel.replace('.', '') + '-font', extra: fs - 12, fontSize: fs,
+          });
+        }
+      }
     });
+
+    const actions = row.querySelector('.bp-list-actions');
+    if (actions && vp >= 768) {
+      const gap = parseFloat(getComputedStyle(actions).columnGap || getComputedStyle(actions).gap);
+      if (!Number.isNaN(gap) && gap < 11.5) {
+        overflowing.push({ vp, row: i, sel: 'action-gap', extra: 12 - gap, gap });
+      }
+      const btns = [...actions.querySelectorAll('.bp-list-icon-btn, .admin-actions-dropdown__toggle')];
+      const hits = btns.map((el) => {
+        const size = hitSize(el);
+        const r = el.getBoundingClientRect();
+        return { el, size, r };
+      });
+      hits.forEach((h, idx) => {
+        if (h.size.w < 44 - 0.5 || h.size.h < 44 - 0.5) {
+          overflowing.push({
+            vp, row: i, sel: 'hit-too-small', extra: 44 - Math.min(h.size.w, h.size.h),
+            w: h.size.w, h: h.size.h, after: h.size.after, btn: idx,
+          });
+        }
+      });
+      for (let a = 0; a < hits.length - 1; a += 1) {
+        const left = hits[a].r.left + hits[a].r.width / 2 - hits[a].size.w / 2;
+        const right = left + hits[a].size.w;
+        const nextLeft = hits[a + 1].r.left + hits[a + 1].r.width / 2 - hits[a + 1].size.w / 2;
+        if (right > nextLeft + 0.5) {
+          overflowing.push({ vp, row: i, sel: 'hit-overlap', extra: right - nextLeft });
+        }
+      }
+    }
 
     const post = row.querySelector('.bp-list-col--post');
     const cat = row.querySelector('.bp-list-col--cat');
@@ -176,6 +272,12 @@ function measureInPage(vp) {
       }
       const catVisible = cat && getComputedStyle(cat).display !== 'none';
       const catBox = catVisible ? cat.getBoundingClientRect() : null;
+      if (vp >= 1001 && vp <= 1100 && catBox && postBox.width <= catBox.width + 1) {
+        overflowing.push({
+          vp, row: i, sel: 'post-not-widest', extra: catBox.width - postBox.width + 1,
+          post: postBox.width, cat: catBox.width,
+        });
+      }
       row.querySelectorAll('.bp-list-seo--card .bp-seo-badge').forEach((chip) => {
         const r = chip.getBoundingClientRect();
         if (r.right > postBox.right + 1) {
@@ -194,6 +296,16 @@ function measureInPage(vp) {
           overflowing.push({ vp, row: i, sel: 'title-under-thumb', extra: t.right - ti.left });
         }
       }
+      if (vp >= 768 && vp <= 1000 && !catVisible) {
+        const metaCats = row.querySelector('.bp-list-post__meta-cats');
+        const meta = row.querySelector('.bp-list-post__meta');
+        const shown = meta && metaCats
+          && getComputedStyle(meta).display !== 'none'
+          && metaCats.getBoundingClientRect().width > 4;
+        if (!shown) {
+          overflowing.push({ vp, row: i, sel: 'cat-missing-in-post', extra: 1 });
+        }
+      }
     }
   });
 
@@ -207,6 +319,8 @@ function measureInPage(vp) {
 
   return {
     vp,
+    dark: document.documentElement.classList.contains('admin-dark'),
+    rows: document.querySelectorAll('.bp-list-table tbody tr').length,
     tableW: table ? Math.round(table.getBoundingClientRect().width) : 0,
     overflow: scroll ? scroll.scrollWidth - scroll.clientWidth : 0,
     chipCount: chips.length,
@@ -226,10 +340,19 @@ async function measureFixture(page, width, html) {
   return page.evaluate(measureInPage, width);
 }
 
-async function measureLive(page, width) {
+async function measureLive(page, width, dark) {
   await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
   await page.goto(`${BASE}/admin/blog/posts`, { waitUntil: 'networkidle0', timeout: 60000 });
   await page.waitForSelector('.bp-list-table', { timeout: 15000 });
+  await page.evaluate((mode) => {
+    if (mode) {
+      document.documentElement.classList.add('admin-dark');
+      document.body.classList.add('admin-dark');
+    } else {
+      document.documentElement.classList.remove('admin-dark');
+      document.body.classList.remove('admin-dark');
+    }
+  }, dark);
   return page.evaluate(measureInPage, width);
 }
 
@@ -237,8 +360,9 @@ function assertReports(label, reports) {
   const overflowing = reports.flatMap((r) => r.overflowing);
   const tableOverflow = reports.filter((r) => r.overflow > 2);
   const missingChips = reports.filter((r) => r.chipCount < 4);
-  if (overflowing.length || tableOverflow.length || missingChips.length) {
-    console.error(JSON.stringify({ label, overflowing, tableOverflow, missingChips, reports }, null, 2));
+  const missingRows = reports.filter((r) => r.rows < 2);
+  if (overflowing.length || tableOverflow.length || missingChips.length || missingRows.length) {
+    console.error(JSON.stringify({ label, overflowing, tableOverflow, missingChips, missingRows, reports }, null, 2));
     process.exit(1);
   }
 }
@@ -246,12 +370,19 @@ function assertReports(label, reports) {
 (async () => {
   const browser = await launchBrowser();
   const page = await browser.newPage();
-  const html = fixtureHtml(loadCss());
+  const css = loadCss();
   const fixtureReports = [];
-  for (const width of WIDTHS) {
-    fixtureReports.push(await measureFixture(page, width, html));
+  for (const dark of [false, true]) {
+    const html = fixtureHtml(css, dark);
+    for (const width of WIDTHS) {
+      fixtureReports.push(await measureFixture(page, width, html));
+    }
   }
-  console.log(JSON.stringify({ mode: 'fixture', reports: fixtureReports, overflowing: [] }));
+  console.log(JSON.stringify({
+    mode: 'fixture',
+    reports: fixtureReports,
+    overflowing: fixtureReports.flatMap((r) => r.overflowing),
+  }));
   assertReports('fixture', fixtureReports);
 
   if (process.env.GEOMETRY_LIVE === '1') {
@@ -262,10 +393,16 @@ function assertReports(label, reports) {
       failHarness('live app server login failed: ' + err.message);
     }
     const liveReports = [];
-    for (const width of WIDTHS) {
-      liveReports.push(await measureLive(page, width));
+    for (const dark of [false, true]) {
+      for (const width of WIDTHS) {
+        liveReports.push(await measureLive(page, width, dark));
+      }
     }
-    console.log(JSON.stringify({ mode: 'live', reports: liveReports, overflowing: [] }));
+    console.log(JSON.stringify({
+      mode: 'live',
+      reports: liveReports,
+      overflowing: liveReports.flatMap((r) => r.overflowing),
+    }));
     assertReports('live', liveReports);
   }
 

@@ -126,10 +126,13 @@ class BlogPost extends Model
         return $url;
     }
 
+    /** @var array<string, string> */
+    private static array $featuredImageListHashCache = [];
+
     /**
      * Admin list src. HTTPS CDN / absolute hosts only (no plain http).
-     * Local files use a content hash, not mtime. Returns null when the
-     * file is missing or the remote URL would be mixed content.
+     * Local files use a memoized content hash, not mtime. Returns null
+     * when the file is missing or the remote URL would be mixed content.
      */
     public function featuredImageListSrc(): ?string
     {
@@ -152,14 +155,21 @@ class BlogPost extends Model
 
         $url = Storage::disk('public')->url($path);
         $src = parse_url($url, PHP_URL_PATH) ?: '/storage/'.ltrim($path, '/');
-        $hash = hash_file('sha1', $absolute);
+        $hash = self::$featuredImageListHashCache[$absolute] ??= substr((string) hash_file('sha1', $absolute), 0, 12);
 
-        return $src.'?v='.substr((string) $hash, 0, 12);
+        return $src.'?v='.$hash;
+    }
+
+    public function featuredImageIsInsecureUrl(): bool
+    {
+        $path = (string) $this->featured_image_path;
+
+        return filled($path) && preg_match('#^http://#i', $path) === 1;
     }
 
     public function featuredImageIsMissing(): bool
     {
-        if (! filled($this->featured_image_path)) {
+        if (! filled($this->featured_image_path) || $this->featuredImageIsInsecureUrl()) {
             return false;
         }
 

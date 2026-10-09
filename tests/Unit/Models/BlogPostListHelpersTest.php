@@ -28,6 +28,16 @@ class BlogPostListHelpersTest extends TestCase
 
         $http = new BlogPost(['featured_image_path' => 'http://cdn.example.com/blog/deck.webp']);
         $this->assertNull($http->featuredImageListSrc());
-        $this->assertTrue($http->featuredImageIsMissing());
+        $this->assertTrue($http->featuredImageIsInsecureUrl());
+        $this->assertFalse($http->featuredImageIsMissing());
+    }
+
+    public function test_featured_image_list_src_memoizes_content_hash(): void
+    {
+        $src = file_get_contents(dirname(__DIR__, 3).'/app/Models/BlogPost.php');
+        $this->assertIsString($src);
+        $this->assertStringContainsString('featuredImageListHashCache', $src);
+        $this->assertStringContainsString('hash_file', $src);
+        $this->assertStringContainsString('??=', $src);
     }
 }

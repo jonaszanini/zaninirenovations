@@ -55,7 +55,9 @@
   }
 
   function restoreMenu(dropdown, returnFocus) {
-    var menu = dropdown._portaledMenu;
+    var menu = dropdown._portaledMenu || dropdown.querySelector('.admin-actions-dropdown__menu');
+    var focusInside = !!(menu && menu.contains(document.activeElement));
+    menu = dropdown._portaledMenu;
     if (menu) {
       if (menu.parentNode !== dropdown) {
         dropdown.appendChild(menu);
@@ -75,7 +77,7 @@
     }
     dropdown.classList.remove('is-open', 'is-up');
     setExpanded(dropdown, false);
-    if (returnFocus) {
+    if (returnFocus && focusInside) {
       var toggle = toggleOf(dropdown);
       if (toggle) toggle.focus();
     }
@@ -175,22 +177,51 @@
       !e.target.closest('.admin-actions-dropdown') &&
       !e.target.closest('.admin-actions-dropdown__menu')
     ) {
-      closeAll(null, true);
+      closeAll(null, false);
     }
   });
 
   document.addEventListener('keydown', function (e) {
     var open = document.querySelector('.admin-actions-dropdown.is-open');
+    if (!open) return;
+
     if (e.key === 'Escape') {
-      if (open) restoreMenu(open, true);
+      restoreMenu(open, true);
       return;
     }
 
-    if (e.key === 'Tab' && open) {
-      var toggle = toggleOf(open);
+    if (e.key === 'Tab') {
+      var tabToggle = toggleOf(open);
       restoreMenu(open, false);
-      if (toggle) toggle.focus();
+      if (tabToggle) tabToggle.focus();
+      return;
     }
+
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') {
+      return;
+    }
+
+    var items = menuItems(menuOf(open));
+    if (!items.length) return;
+    e.preventDefault();
+    var idx = items.indexOf(document.activeElement);
+    if (e.key === 'Home') {
+      items[0].focus();
+      return;
+    }
+    if (e.key === 'End') {
+      items[items.length - 1].focus();
+      return;
+    }
+    if (idx < 0) {
+      items[e.key === 'ArrowUp' ? items.length - 1 : 0].focus();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      items[(idx + 1) % items.length].focus();
+      return;
+    }
+    items[(idx - 1 + items.length) % items.length].focus();
   });
 
   if (document.readyState === 'loading') {
