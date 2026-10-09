@@ -987,9 +987,8 @@
 
         <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
           <div id="ra-konva-container" class="util-ra-konva"></div>
+          <p class="util-ra-feedback" data-ra-feedback hidden aria-live="polite"></p>
         </div>
-
-        <p class="util-ra-feedback" data-ra-feedback hidden></p>
       </section>
       </div>{{-- stage__main --}}
 

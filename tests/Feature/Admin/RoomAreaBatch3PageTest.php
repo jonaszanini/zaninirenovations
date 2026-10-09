@@ -26,6 +26,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
             ->assertSee('data-ra-kit-list', false)
             ->assertSee('data-ra-kit-new', false)
             ->assertSee('data-ra-kit-quote', false)
+            ->assertSee('aria-live="polite"', false)
             ->assertSee('Add kits to quote')
             ->assertSee('data-ra-kit-name', false)
             ->assertSee('maxlength="120"', false)
@@ -216,8 +217,13 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString("if (/\\bpails\\b/i.test(unit)", $js);
         $this->assertStringContainsString("addEventListener('pageshow'", $js);
         $this->assertStringContainsString('var shiftPan', $js);
+        $this->assertStringContainsString('e.shiftKey', $js);
         $this->assertMatchesRegularExpression(
             '/function deleteCurrentKit\([\s\S]*payload\.ok === false[\s\S]*Kit deleted/',
+            $js
+        );
+        $this->assertMatchesRegularExpression(
+            '/function deleteCurrentKit\([\s\S]*friendlyNetworkError\([\s\S]*Could not delete that kit/',
             $js
         );
         $this->assertDoesNotMatchRegularExpression('/\beval\s*\(/', $js);
@@ -234,6 +240,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('.util-ra-kit__line', $css);
         $this->assertStringContainsString('.util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }', $css);
         $this->assertStringContainsString('position: absolute', $css);
+        $this->assertStringContainsString('min-height: 280px', $css);
 
         $dark = file_get_contents(public_path('css/admin-dark.css'));
         $this->assertStringContainsString('html.admin-dark .util-ra-kits', $dark);

@@ -2393,6 +2393,8 @@
   function setFeedback(msg, isError) {
     if (!els.feedback) return;
     els.feedback.textContent = msg;
+    if (msg) els.feedback.setAttribute('title', msg);
+    else els.feedback.removeAttribute('title');
     els.feedback.className = 'util-ra-feedback ' + (isError ? 'is-error' : 'is-ok');
     show(els.feedback, !!msg);
     if (msg) setTimeout(function () { show(els.feedback, false); }, 4500);
@@ -11574,7 +11576,7 @@
         setFeedback('Kit deleted.', false);
       })
       .catch(function (err) {
-        setKitEditorError(err.message || 'Could not delete that kit.');
+        setKitEditorError(friendlyNetworkError(err, 'Could not delete that kit. Check your connection and try again.'));
       });
   }
 

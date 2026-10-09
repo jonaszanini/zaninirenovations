@@ -1077,15 +1077,25 @@
     inside_corners: true, inside_corner_count: true
   };
 
+  function isPlainFiniteNumber(value) {
+    if (typeof value === 'boolean' || value == null) return false;
+    if (Array.isArray(value) || (typeof value === 'object')) return false;
+    if (typeof value === 'number') return isFinite(value);
+    if (typeof value !== 'string') return false;
+    var trim = value.trim();
+    if (trim === '' || /^[-+]?0[xob]/i.test(trim)) return false;
+    var n = Number(trim);
+    return isFinite(n);
+  }
+
   function firstFiniteMetric(metrics, keys, fallback) {
     metrics = metrics || {};
     keys = keys || [];
     for (var i = 0; i < keys.length; i++) {
       if (!Object.prototype.hasOwnProperty.call(metrics, keys[i])) continue;
       var value = metrics[keys[i]];
-      if (value == null || value === '') continue;
-      var n = Number(value);
-      if (isFinite(n)) return n;
+      if (!isPlainFiniteNumber(value)) continue;
+      return typeof value === 'string' ? Number(value.trim()) : Number(value);
     }
     return fallback;
   }

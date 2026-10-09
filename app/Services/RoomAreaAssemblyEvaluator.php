@@ -174,8 +174,10 @@ class RoomAreaAssemblyEvaluator
                     'catalog_material_id' => $line['material_id'],
                     'apply_hst' => true,
                     'assembly_id' => $kit['id'],
+                    'assembly_name' => $kit['name'],
                     'assembly_line_id' => $line['id'],
                     'assembly_layout_id' => (string) ($metrics['id'] ?? ''),
+                    'assembly_covered_layouts' => (string) ($metrics['id'] ?? ''),
                 ];
             }
         }

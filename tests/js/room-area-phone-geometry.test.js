@@ -28,9 +28,10 @@ function assertCssGeometry() {
   const collapsed = CSS.slice(CSS.indexOf('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side'));
   assert.ok(/height:\s*auto/.test(collapsed.slice(0, 220)), 'collapsed sheet height is auto');
   const phoneFeedback = CSS.slice(CSS.lastIndexOf('.util-ra--fullpage .util-ra-feedback {'));
-  const phoneFeedbackHead = phoneFeedback.slice(0, 420);
-  assert.ok(/position:\s*static/.test(phoneFeedbackHead), '390 feedback stays in flow, not over the drawing');
-  assert.ok(/white-space:\s*nowrap/.test(phoneFeedbackHead), '390 feedback is one line so the canvas keeps height');
+  const phoneFeedbackHead = phoneFeedback.slice(0, 520);
+  assert.ok(/position:\s*absolute/.test(phoneFeedbackHead), '390 feedback overlays the canvas');
+  assert.ok(/top:\s*0\.2rem/.test(phoneFeedbackHead), '390 feedback sits on the canvas top edge');
+  assert.ok(/-webkit-line-clamp:\s*2/.test(phoneFeedbackHead), '390 feedback wraps to two lines max');
   assert.ok(!/color:\s*var\(--admin-text\)/.test(phoneFeedbackHead), '390 feedback must not override status colours');
   assert.ok(
     CSS.includes('.util-ra--fullpage .util-ra-feedback.is-error { color: var(--admin-danger); }'),
@@ -179,6 +180,10 @@ async function zoomAndPan(page) {
     }));
   });
   const after = await page.evaluate(readCameraScript());
+  assert.ok(
+    after && Math.abs(after.scale - afterX.scale) <= afterX.scale * 0.02,
+    'shift+wheel must pan, not zoom: ' + JSON.stringify({ afterX, after })
+  );
   assert.ok(
     after && Math.abs(after.worldCy - afterX.worldCy) > 1,
     'shift+vertical wheel panned Y: ' + JSON.stringify({ afterX, after })

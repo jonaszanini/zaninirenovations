@@ -109,19 +109,29 @@ class RoomAreaFormulaParser
                 continue;
             }
             $value = $metrics[$key];
-            if ($value === null || $value === '') {
+            if (! self::isPlainFiniteNumber($value)) {
                 continue;
             }
-            if (is_bool($value) || (is_string($value) && ! is_numeric($value))) {
-                continue;
-            }
-            $n = (float) $value;
-            if (is_finite($n)) {
-                return $n;
-            }
+            return (float) (is_string($value) ? trim($value) : $value);
         }
 
         return $fallback;
+    }
+
+    private static function isPlainFiniteNumber(mixed $value): bool
+    {
+        if (is_int($value) || is_float($value)) {
+            return is_finite((float) $value);
+        }
+        if (! is_string($value)) {
+            return false;
+        }
+        $trim = trim($value);
+        if ($trim === '' || ! is_numeric($trim) || preg_match('/^[-+]?0[xob]/i', $trim)) {
+            return false;
+        }
+
+        return is_finite((float) $trim);
     }
 
     /**

@@ -197,6 +197,10 @@ class StandardQuotationCalculator
             if ($layoutId !== '') {
                 $clean['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
             }
+            $covered = trim((string) ($row['assembly_covered_layouts'] ?? ''));
+            if ($covered !== '') {
+                $clean['assembly_covered_layouts'] = mb_substr($covered, 0, 500);
+            }
             $cleanMaterials[] = $clean;
         }
 

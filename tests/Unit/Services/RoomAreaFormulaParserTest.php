@@ -64,6 +64,10 @@ class RoomAreaFormulaParserTest extends TestCase
             ['wall_height_ft' => null, 'wall_height' => null],
             ['wall_height_ft' => '', 'wall_height' => ''],
             ['wall_height_ft' => 'abc', 'wall_height' => 'abc'],
+            ['wall_height_ft' => ' ', 'wall_height' => ' '],
+            ['wall_height_ft' => '0x10', 'wall_height' => '0x10'],
+            ['wall_height_ft' => true, 'wall_height' => true],
+            ['wall_height_ft' => [7], 'wall_height' => [7]],
         ] as $row) {
             $heightVars = RoomAreaFormulaParser::variablesFromMetrics($row);
             $this->assertSame(8.0, $heightVars['wall_height_ft'], json_encode($row));

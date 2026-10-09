@@ -111,13 +111,7 @@ class RoomAreaQuoteLineInserter
                 foreach (is_array($job['materials'] ?? null) ? $job['materials'] : [] as $idx => $m) {
                     $row = $this->persistMaterial($m);
                     $fromPosted = $postedMaterials[$idx] ?? $m;
-                    if (isset($fromPosted['assembly_line_id']) && (int) $fromPosted['assembly_line_id'] > 0) {
-                        $row['assembly_line_id'] = (int) $fromPosted['assembly_line_id'];
-                    }
-                    $layoutId = trim((string) ($fromPosted['assembly_layout_id'] ?? ''));
-                    if ($layoutId !== '') {
-                        $row['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
-                    }
+                    $row = $this->copyAssemblyQuoteMeta($fromPosted, $row);
                     $jobMaterials[] = $row;
                 }
                 foreach ($jobMaterials as $row) {
@@ -210,12 +204,26 @@ class RoomAreaQuoteLineInserter
             'url' => $line['url'] ?? null,
             'image_url' => $line['image_url'] ?? null,
         ];
-        if (isset($line['assembly_line_id']) && (int) $line['assembly_line_id'] > 0) {
-            $row['assembly_line_id'] = (int) $line['assembly_line_id'];
+        return $this->copyAssemblyQuoteMeta($line, $row);
+    }
+
+    /**
+     * @param  array<string, mixed>  $from
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function copyAssemblyQuoteMeta(array $from, array $row): array
+    {
+        if (isset($from['assembly_line_id']) && (int) $from['assembly_line_id'] > 0) {
+            $row['assembly_line_id'] = (int) $from['assembly_line_id'];
         }
-        $layoutId = trim((string) ($line['assembly_layout_id'] ?? ''));
+        $layoutId = trim((string) ($from['assembly_layout_id'] ?? ''));
         if ($layoutId !== '') {
             $row['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+        }
+        $covered = trim((string) ($from['assembly_covered_layouts'] ?? ''));
+        if ($covered !== '') {
+            $row['assembly_covered_layouts'] = mb_substr($covered, 0, 500);
         }
 
         return $row;
@@ -273,15 +281,7 @@ class RoomAreaQuoteLineInserter
             'line_kind' => StandardQuotation::LINE_KIND_MATERIAL,
             'entry_mode' => $catalogId ? 'catalog' : 'manual',
         ];
-        if (isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0) {
-            $row['assembly_line_id'] = (int) $m['assembly_line_id'];
-        }
-        $layoutId = trim((string) ($m['assembly_layout_id'] ?? ''));
-        if ($layoutId !== '') {
-            $row['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
-        }
-
-        return $row;
+        return $this->copyAssemblyQuoteMeta($m, $row);
     }
 
     private function projectAllowsLink(ClientProject $project): bool
