@@ -1017,6 +1017,64 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   inst.reset();
 })();
 
+(function formUnlockTimeoutReleasesWithoutRetick() {
+  const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
+  checkbox.checked = true;
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [checkbox, btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const inst = hotkey.create({
+    document: doc,
+    window: {
+      navigator: { platform: 'Linux' },
+      setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+      clearTimeout() {},
+    },
+    now() { return 13000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  inst.onFormSubmit({ target: form, defaultPrevented: false });
+  timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
+  assert.ok(inst.isInflight(), 'native submit stays locked');
+  assert.ok(timers.some((t) => t.ms === 30000 || t.ms === inst.FORM_UNLOCK_MS), 'form-mode schedules a late unlock');
+  timers.filter((t) => t.ms === 30000 || t.ms === inst.FORM_UNLOCK_MS).forEach((t) => t.fn());
+  assert.strictEqual(inst.isInflight(), false, 'native-submit timeout releases the lock');
+  assert.strictEqual(checkbox.checked, false, 'native-submit timeout never re-ticks the email box');
+  assert.ok(!form.children.some((c) => c.name === '_hotkey_save' || (c.getAttribute && c.getAttribute('name') === '_hotkey_save')),
+    'native-submit timeout drops leftover _hotkey_save');
+  inst.reset();
+})();
+
+(function sameDocumentPageShowUnlocksWithoutRetick() {
+  const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
+  checkbox.checked = true;
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [checkbox, btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const inst = hotkey.create({
+    document: doc,
+    window: {
+      navigator: { platform: 'Linux' },
+      setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+      clearTimeout() {},
+    },
+    now() { return 14000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  inst.onFormSubmit({ target: form, defaultPrevented: false });
+  timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
+  inst.onPageShow({ persisted: false });
+  assert.strictEqual(inst.isInflight(), false, 'same-document pageshow unlocks a stuck form session');
+  assert.strictEqual(checkbox.checked, false, 'same-document pageshow never re-ticks the email box');
+  inst.reset();
+})();
+
 (function pageshowListenerIsBound() {
   const checkbox = makeEl('input', { type: 'checkbox', name: 'send_client_email', checked: true, value: '1' });
   checkbox.checked = true;
@@ -1083,6 +1141,57 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   timers.filter((t) => t.ms === 250).forEach((t) => t.fn());
   assert.ok(typeof addEditor === 'function', 'poll registers AddEditor');
   assert.ok(typeof keydown === 'function', 'poll hooks editors from tinymce.get()');
+  inst.reset();
+})();
+
+(function watchTinyPollKeepsGoingAfter10s() {
+  const btn = makeEl('button', { type: 'button', 'data-hotkey-save': '', id: 'tiny-save' });
+  const doc = makeDoc([btn]);
+  const timers = [];
+  const win = {
+    navigator: { platform: 'Linux' },
+    setTimeout(fn, ms) {
+      const t = { fn, ms: ms || 0, ran: false };
+      timers.push(t);
+      return timers.length;
+    },
+    clearTimeout() {},
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return 1000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.bindTiny();
+  let polls = 0;
+  while (polls < 50) {
+    const pending = timers.filter((t) => t.ms === 250 && !t.ran);
+    if (!pending.length) break;
+    pending.forEach((t) => {
+      t.ran = true;
+      t.fn();
+    });
+    polls += 1;
+  }
+  assert.ok(polls > 40, 'fallback poll does not stop after 40 tries / 10s');
+  const leftover = timers.filter((t) => t.ms === 250 && !t.ran);
+  assert.ok(leftover.length >= 1, 'a poll is still scheduled after the 10s window');
+
+  let keydown = null;
+  let addEditor = null;
+  const editor = { on(name, fn) { if (name === 'keydown') keydown = fn; } };
+  win.tinymce = {
+    get() { return [editor]; },
+    on(name, fn) { if (name === 'AddEditor') addEditor = fn; },
+  };
+  leftover.forEach((t) => {
+    t.ran = true;
+    t.fn();
+  });
+  assert.ok(typeof addEditor === 'function', 'tinymce appearing after 10s still registers AddEditor');
+  assert.ok(typeof keydown === 'function', 'tinymce appearing after 10s is still hooked');
   inst.reset();
 })();
 

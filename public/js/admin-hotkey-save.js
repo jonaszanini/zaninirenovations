@@ -11,6 +11,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
   var DEBOUNCE_MS = 700;
   var WATCH_MS = 12000;
+  var FORM_UNLOCK_MS = 30000;
   var EXPECT_KEY = 'admin-save-expect';
   var HOTKEY_FIELD = '_hotkey_save';
   var EMAIL_PRIOR_FIELD = '_hotkey_email_prior';
@@ -638,6 +639,21 @@
       }
     }
 
+    function releaseFormLock() {
+      if (!session || session.mode !== 'form') return;
+      var form = session.form;
+      var focus = session.focus;
+      session.inflight = false;
+      session = null;
+      emailUndo = [];
+      removeHotkeyFields(form);
+      restoreFocus(focus);
+      if (unwrap) {
+        try { unwrap(); } catch (err) { /* ignore */ }
+        unwrap = null;
+      }
+    }
+
     function isUnlockingResponse(res) {
       if (!res) return false;
       if ((res.status || 0) === 204) return true;
@@ -805,8 +821,16 @@
       }, WATCH_MS);
       if (timer && typeof timer.unref === 'function') timer.unref();
 
+      var formTimer = timeoutFn(function () {
+        if (session && session.inflight && session.mode === 'form') {
+          releaseFormLock();
+        }
+      }, FORM_UNLOCK_MS);
+      if (formTimer && typeof formTimer.unref === 'function') formTimer.unref();
+
       unwrap = function () {
         clearFn(timer);
+        clearFn(formTimer);
         if (typeof origFetch === 'function') win.fetch = origFetch;
         if (proto && origOpen) proto.open = origOpen;
         if (proto && origSend) proto.send = origSend;
@@ -1054,6 +1078,10 @@
         undoHotkeyMutations();
         clearExpect(env);
         finishSession();
+        return;
+      }
+      if (session && session.mode === 'form') {
+        releaseFormLock();
       }
     }
 
@@ -1088,6 +1116,7 @@
     return {
       DEBOUNCE_MS: DEBOUNCE_MS,
       WATCH_MS: WATCH_MS,
+      FORM_UNLOCK_MS: FORM_UNLOCK_MS,
       EXPECT_KEY: EXPECT_KEY,
       HOTKEY_FIELD: HOTKEY_FIELD,
       EMAIL_PRIOR_FIELD: EMAIL_PRIOR_FIELD,
@@ -1146,6 +1175,7 @@
   return {
     DEBOUNCE_MS: DEBOUNCE_MS,
     WATCH_MS: WATCH_MS,
+    FORM_UNLOCK_MS: FORM_UNLOCK_MS,
     EXPECT_KEY: EXPECT_KEY,
     create: create,
     isSaveChord: isSaveChord,
