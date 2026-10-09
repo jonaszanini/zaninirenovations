@@ -43,6 +43,13 @@ function assertCssGeometry() {
     /\.util-ra-first-tip\s*\{[^}]*width:\s*auto/.test(CSS.replace(/\s+/g, ' ')),
     'first-tip is an inline toolbar chip, not a full-width strip'
   );
+  assert.ok(
+    /@media \(min-width: 901px\)[\s\S]{0,400}?\.util-ra-sheet-handle[\s\S]{0,280}?display:\s*none\s*!important/.test(CSS),
+    'desktop hides the phone sheet handle'
+  );
+  const js = fs.readFileSync(path.join(ROOT, 'public/js/admin-utilities-room-area.js'), 'utf8');
+  assert.ok(js.includes('function resetDesktopSheetState('), 'desktop resets leftover sheet collapse');
+  assert.ok(/if \(!isPhoneChrome\(\)\) return;[\s\S]{0,160}is-sheet-expanded/.test(js), 'sheet expand is ignored on desktop');
 }
 
 function downloadFile(url, destPath) {
@@ -343,6 +350,7 @@ async function measureViewports() {
         const bar = document.querySelector('.util-ra-project-bar');
         const tip = document.querySelector('[data-ra-first-tip]');
         const feedback = document.querySelector('[data-ra-feedback]');
+        const handle = document.querySelector('[data-ra-sheet-handle]');
         if (!tools || !bar) return { missing: true };
         const t = tools.getBoundingClientRect();
         const b = bar.getBoundingClientRect();
@@ -367,12 +375,16 @@ async function measureViewports() {
         const tipBox = tip ? tip.getBoundingClientRect() : { height: 0 };
         const tipCs = tip ? getComputedStyle(tip) : { display: 'none' };
         const feedbackBox = feedback ? feedback.getBoundingClientRect() : { height: 0 };
+        const handleBox = handle ? handle.getBoundingClientRect() : { height: 0 };
+        const handleCs = handle ? getComputedStyle(handle) : { display: 'none' };
         return {
           empties,
           tipHeight: tipBox.height,
           tipDisplay: tipCs.display,
           tipHidden: !!(tip && tip.hasAttribute('hidden')),
           feedbackHeight: feedbackBox.height,
+          handleHeight: handleBox.height,
+          handleDisplay: handleCs.display,
           gap: Math.round((b.top - t.bottom) * 10) / 10,
         };
       });
@@ -380,6 +392,7 @@ async function measureViewports() {
       assert.ok(strip.tipHidden, 'first-tip stays hidden when no status is shown at ' + width);
       assert.ok(strip.tipDisplay === 'none' && strip.tipHeight < 0.5, 'hidden first-tip takes no space at ' + width + ': ' + JSON.stringify(strip));
       assert.ok(strip.feedbackHeight < 0.5, 'hidden status line takes no space at ' + width + ': ' + strip.feedbackHeight);
+      assert.ok(strip.handleDisplay === 'none' && strip.handleHeight < 0.5, 'desktop sheet handle takes no space at ' + width + ': ' + JSON.stringify(strip));
       assert.strictEqual(
         strip.empties.length,
         0,

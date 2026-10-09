@@ -9397,9 +9397,17 @@
     card.insertBefore(dock, edit || wrap || null);
   }
 
+  function resetDesktopSheetState() {
+    if (isPhoneChrome()) return;
+    root.classList.remove('is-sheet-expanded', 'is-dock-open');
+    root.style.removeProperty('--ra-sheet-h');
+    var handle = root.querySelector('[data-ra-sheet-handle]');
+    if (handle) handle.setAttribute('aria-expanded', 'false');
+  }
+
   function syncPhoneSheetForDock() {
     if (!isPhoneChrome()) {
-      root.classList.remove('is-dock-open');
+      resetDesktopSheetState();
       return;
     }
     var open = (els.palette && els.palette.classList.contains('is-open'))
@@ -11449,6 +11457,8 @@
     }
     if (isPhoneChrome()) {
       root.style.setProperty('--ra-sheet-h', 'auto');
+    } else {
+      resetDesktopSheetState();
     }
     placeObjectDock();
     window.addEventListener('resize', function () {
