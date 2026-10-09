@@ -352,6 +352,76 @@ class RoomAreaAssemblyQuoteTest extends IntegrationTestCase
         $this->assertCount($countAfterRoom, $quote->fresh()->flattenedMaterials());
     }
 
+    public function test_project_add_skips_only_duplicated_kit_lines(): void
+    {
+        $this->actingAsAdmin();
+        $project = RoomAreaProject::create([
+            'name' => 'Partial overlap',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $kitchen = $this->makeRoom(null, 'Kitchen', $project);
+        $bath = $this->makeRoom(null, 'Bathroom', $project);
+        $drywall = RoomAreaAssembly::create([
+            'name' => 'Overlap drywall',
+            'notes' => null,
+            'sort_order' => 0,
+        ]);
+        $drywall->lines()->create([
+            'name' => 'Sheets',
+            'formula' => '2',
+            'unit' => 'sheet',
+            'whole_units' => true,
+            'sort_order' => 0,
+        ]);
+        $base = RoomAreaAssembly::create([
+            'name' => 'Overlap base',
+            'notes' => null,
+            'sort_order' => 1,
+        ]);
+        $base->lines()->create([
+            'name' => 'Baseboard',
+            'formula' => '3',
+            'unit' => 'lf',
+            'whole_units' => false,
+            'sort_order' => 0,
+        ]);
+        $kitchen->assemblies()->sync([$drywall->id]);
+        $bath->assemblies()->sync([$base->id]);
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'room:'.$kitchen->id,
+            'idempotency_token' => $this->quoteToken($kitchen),
+            'assembly_ids' => [$drywall->id],
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Kitchen first',
+        ])->assertRedirect();
+
+        $quote = StandardQuotation::query()->latest('id')->first();
+        $this->assertNotNull($quote);
+        $this->assertCount(1, $quote->flattenedMaterials());
+        $quoteNumber = $quote->quote_number;
+
+        $this->post(route('admin.utilities.room-area.assemblies.quote.store'), [
+            'layout' => 'project:'.$project->id,
+            'idempotency_token' => $this->quoteTokenForLayout('project:'.$project->id),
+            'assembly_ids' => [$drywall->id, $base->id],
+            'quotation_id' => $quote->id,
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Kitchen first',
+        ])->assertRedirect(route('admin.quotations.standard.edit', $quote))
+            ->assertSessionHas('success', function ($message) use ($quoteNumber) {
+                return is_string($message)
+                    && str_contains($message, 'Skipped')
+                    && str_contains($message, $quoteNumber);
+            });
+
+        $materials = $quote->fresh()->flattenedMaterials();
+        $this->assertCount(2, $materials);
+        $names = collect($materials)->pluck('short_name')->all();
+        $this->assertContains('Sheets', $names);
+        $this->assertContains('Baseboard', $names);
+    }
+
     public function test_expired_quote_token_is_rejected_and_pruned(): void
     {
         $this->actingAsAdmin();

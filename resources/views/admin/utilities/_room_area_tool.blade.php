@@ -42,6 +42,7 @@
     data-room-photo-destroy-template="{{ route('admin.utilities.room-area.rooms.photos.destroy', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
     data-quote-room-template="{{ route('admin.utilities.room-area.quote') }}?layout=room:__ID__"
     data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__"
+    @if (!empty($kitSeedError)) data-ra-kit-seed-error="{{ $kitSeedError }}" @endif
     data-assemblies="{{ json_encode($assembliesJson ?? []) }}"
     data-assemblies-url="{{ route('admin.utilities.room-area.assemblies.index') }}"
     data-assembly-store-url="{{ route('admin.utilities.room-area.assemblies.store') }}"
@@ -52,6 +53,9 @@
     data-assembly-quote-project-template="{{ route('admin.utilities.room-area.assemblies.quote') }}?layout=project:__ID__">
     <script type="application/json" id="ra-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
+    @if (!empty($kitSeedError))
+      <p class="admin-flash admin-flash--error" data-ra-kit-seed-error role="alert">{{ $kitSeedError }}</p>
+    @endif
 
     @if ($fullPage)
       <header class="util-ra-full-header">

@@ -1080,7 +1080,7 @@
   function formulaVariablesFromMetrics(metrics) {
     metrics = metrics || {};
     var floor = Number(metrics.area_sqft != null ? metrics.area_sqft : (metrics.inside_area_sqft != null ? metrics.inside_area_sqft : metrics.floor_sf)) || 0;
-    var inside = Number(metrics.inside_area_sqft != null ? metrics.inside_area_sqft : floor) || 0;
+    var insideArea = Number(metrics.inside_area_sqft != null ? metrics.inside_area_sqft : floor) || 0;
     var netWall = Number(metrics.net_wall_area_sqft != null ? metrics.net_wall_area_sqft : (metrics.wall_area_sqft != null ? metrics.wall_area_sqft : metrics.net_wall_sf)) || 0;
     var ceiling = Number(metrics.ceiling_area_sqft != null ? metrics.ceiling_area_sqft : (metrics.ceiling_sf != null ? metrics.ceiling_sf : floor)) || 0;
     var perimeter = Number(metrics.perimeter_lf != null ? metrics.perimeter_lf : metrics.perimeter) || 0;
@@ -1095,9 +1095,9 @@
     var waste = Number(metrics.flooring_waste_percent != null ? metrics.flooring_waste_percent : metrics.waste);
     if (!isFinite(waste)) waste = 10;
     var outside = Number(metrics.outside_corners != null ? metrics.outside_corners : metrics.outside_corner_count) || 0;
-    var inside = Number(metrics.inside_corners != null ? metrics.inside_corners : metrics.inside_corner_count) || 0;
+    var insideCorners = Number(metrics.inside_corners != null ? metrics.inside_corners : metrics.inside_corner_count) || 0;
     return {
-      floor_sf: floor, floor: floor, area_sqft: floor, inside_area_sqft: inside,
+      floor_sf: floor, floor: floor, area_sqft: floor, inside_area_sqft: insideArea,
       net_wall_sf: netWall, net_wall: netWall, net_wall_area_sqft: netWall, wall_sf: netWall, wall_area_sqft: netWall,
       ceiling_sf: ceiling, ceiling: ceiling, ceiling_area_sqft: ceiling,
       perimeter_lf: perimeter, perimeter: perimeter,
@@ -1110,7 +1110,7 @@
       flooring_boxes: boxes, boxes: boxes,
       flooring_waste_percent: waste, waste: waste,
       outside_corners: outside, outside_corner_count: outside,
-      inside_corners: inside, inside_corner_count: inside
+      inside_corners: insideCorners, inside_corner_count: insideCorners
     };
   }
 

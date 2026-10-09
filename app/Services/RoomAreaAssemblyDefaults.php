@@ -48,16 +48,28 @@ class RoomAreaAssemblyDefaults
         ];
     }
 
-    public function ensure(): void
+    public function ensure(int $lockWaitSeconds = 5, int $attempts = 3): void
     {
         if ($this->hasSeedFlag()) {
             return;
         }
 
         $lockName = 'room_area_kit_seed_'.self::SEED_KEY;
-        $got = DB::selectOne('SELECT GET_LOCK(?, 10) AS got', [$lockName]);
-        if ((int) ($got->got ?? 0) !== 1) {
-            return;
+        $got = false;
+        $tries = max(1, $attempts);
+        $wait = max(0, $lockWaitSeconds);
+        for ($i = 0; $i < $tries; $i++) {
+            $row = DB::selectOne('SELECT GET_LOCK(?, ?) AS got', [$lockName, $wait]);
+            if ((int) ($row->got ?? 0) === 1) {
+                $got = true;
+                break;
+            }
+        }
+        if (! $got) {
+            if ($this->hasSeedFlag() || RoomAreaAssembly::query()->exists()) {
+                return;
+            }
+            throw new RoomAreaKitSeedException('Could not load the default kits. Refresh the page and try again.');
         }
 
         try {

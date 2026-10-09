@@ -27,6 +27,8 @@ function assertCssGeometry() {
   );
   const collapsed = CSS.slice(CSS.indexOf('.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side'));
   assert.ok(/height:\s*auto/.test(collapsed.slice(0, 220)), 'collapsed sheet height is auto');
+  const phoneFeedback = CSS.slice(CSS.lastIndexOf('.util-ra--fullpage .util-ra-feedback'));
+  assert.ok(/position:\s*static/.test(phoneFeedback.slice(0, 220)), '390 feedback stays in flow, not over the canvas');
 }
 
 function resolveKonvaFile() {
@@ -155,6 +157,35 @@ async function zoomAndPan(page) {
     'pan moved the centre: ' + JSON.stringify({ start, after })
   );
   return after;
+}
+
+async function assertExtremePanClamped(page, label) {
+  await page.evaluate(() => {
+    const wrap = document.querySelector('[data-ra-canvas-wrap]');
+    wrap.dispatchEvent(new WheelEvent('wheel', {
+      deltaX: 8000,
+      deltaY: 4000,
+      bubbles: true,
+      cancelable: true,
+    }));
+  });
+  const clamped = await page.evaluate(readCameraScript());
+  assert.ok(clamped, label + ' camera exists after extreme pan');
+  assertRoomStaysOnScreen(clamped, label);
+}
+
+function assertRoomStaysOnScreen(cam, label) {
+  const verts = [{ x: 0, y: 0 }, { x: 144, y: 0 }, { x: 144, y: 120 }, { x: 0, y: 120 }];
+  const xs = verts.map((v) => cam.x + v.x * cam.scale);
+  const ys = verts.map((v) => cam.y + v.y * cam.scale);
+  const minX = Math.min.apply(null, xs);
+  const maxX = Math.max.apply(null, xs);
+  const minY = Math.min.apply(null, ys);
+  const maxY = Math.max.apply(null, ys);
+  assert.ok(
+    maxX > 8 && minX < cam.wrapW - 8 && maxY > 8 && minY < cam.wrapH - 8,
+    label + ' keeps part of the room on screen: ' + JSON.stringify({ cam, minX, maxX, minY, maxY })
+  );
 }
 
 function assertCameraHeld(before, after, label) {
@@ -508,6 +539,7 @@ async function measureViewports() {
     const embedAfterRail = await page.evaluate(readCameraScript());
     assertCameraHeld(embedZoomed, embedAfterRail, 'embedded rail resize');
     assert.ok(embedAfterRail.stageW < embedZoomed.stageW - 20, 'embedded observer resized the stage');
+    await assertExtremePanClamped(page, 'embedded extreme pan');
 
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
     await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
@@ -549,6 +581,7 @@ async function measureViewports() {
     }
     const deskAfterPanel = await page.evaluate(readCameraScript());
     assertCameraHeld(deskZoomed, deskAfterPanel, '1280 panel toggle');
+    await assertExtremePanClamped(page, '1280 extreme pan');
 
     await page.setViewport({ width: 390, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
@@ -586,6 +619,7 @@ async function measureViewports() {
     }
     const phoneAfterSheet = await page.evaluate(readCameraScript());
     assertCameraHeld(phoneZoomed, phoneAfterSheet, '390 bottom sheet');
+    await assertExtremePanClamped(page, '390 extreme pan');
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));

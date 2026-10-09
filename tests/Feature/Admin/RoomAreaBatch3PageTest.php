@@ -211,6 +211,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/ResizeObserver\(function \(\) \{\s*resizeStage\(\);/', $js);
         $this->assertStringNotContainsString('isFullPage() && typeof ResizeObserver', $js);
         $this->assertStringContainsString('userAdjustedViewport', $js);
+        $this->assertStringNotContainsString('if (state.userAdjustedViewport) return;', $js);
         $this->assertStringContainsString("if (/s$/i.test(unit)) return unit;", $js);
         $this->assertStringContainsString("if (/\\bpails\\b/i.test(unit)", $js);
         $this->assertStringContainsString("addEventListener('pageshow'", $js);
@@ -219,6 +220,8 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $lib = file_get_contents(public_path('js/room-area-lib.js'));
         $this->assertStringContainsString('function evaluateFormula(', $lib);
         $this->assertStringContainsString('function applyFormulaRounding(', $lib);
+        $this->assertStringContainsString('var insideArea', $lib);
+        $this->assertStringContainsString('var insideCorners', $lib);
         $this->assertDoesNotMatchRegularExpression('/\beval\s*\(/', $lib);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
@@ -302,6 +305,41 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
                 'unit' => 'ea',
             ]],
         ])->assertStatus(422);
+    }
+
+    public function test_duplicate_kit_name_returns_422_on_create_and_rename(): void
+    {
+        $this->actingAsAdmin();
+        $line = [
+            'name' => 'Sheets',
+            'formula' => '2',
+            'unit' => 'ea',
+            'whole_units' => true,
+        ];
+        $first = $this->postJson(route('admin.utilities.room-area.assemblies.store'), [
+            'name' => 'Shared name kit',
+            'lines' => [$line],
+        ])->assertCreated();
+
+        $this->postJson(route('admin.utilities.room-area.assemblies.store'), [
+            'name' => 'Shared name kit',
+            'lines' => [$line],
+        ])->assertStatus(422)->assertJsonValidationErrors(['name']);
+
+        $secondId = (int) $this->postJson(route('admin.utilities.room-area.assemblies.store'), [
+            'name' => 'Other kit',
+            'lines' => [$line],
+        ])->assertCreated()->json('assembly.id');
+
+        $this->putJson(route('admin.utilities.room-area.assemblies.update', $secondId), [
+            'name' => 'Shared name kit',
+            'lines' => [$line],
+        ])->assertStatus(422)->assertJsonValidationErrors(['name']);
+
+        $this->putJson(route('admin.utilities.room-area.assemblies.update', (int) $first->json('assembly.id')), [
+            'name' => 'Shared name kit',
+            'lines' => [$line],
+        ])->assertOk();
     }
 
     public function test_default_kits_match_evaluator_examples(): void

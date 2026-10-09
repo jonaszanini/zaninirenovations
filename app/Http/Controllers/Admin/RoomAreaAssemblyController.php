@@ -9,6 +9,7 @@ use App\Models\RoomAreaRoom;
 use App\Models\StandardQuotation;
 use App\Services\RoomAreaAssemblyDefaults;
 use App\Services\RoomAreaAssemblyEvaluator;
+use App\Services\RoomAreaKitSeedException;
 use App\Services\RoomAreaFormulaParser;
 use App\Services\RoomAreaLayoutQuoteService;
 use App\Services\RoomAreaQuoteLineInserter;
@@ -16,6 +17,7 @@ use App\Support\MaterialCatalogPickerOptions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class RoomAreaAssemblyController extends Controller
@@ -30,7 +32,15 @@ class RoomAreaAssemblyController extends Controller
 
     public function index()
     {
-        $this->defaults->ensure();
+        try {
+            $this->defaults->ensure();
+        } catch (RoomAreaKitSeedException $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage(),
+                'assemblies' => $this->assembliesPayload(false),
+            ], 503);
+        }
 
         return response()->json([
             'ok' => true,
@@ -57,7 +67,7 @@ class RoomAreaAssemblyController extends Controller
 
     public function update(Request $request, RoomAreaAssembly $room_area_assembly)
     {
-        $data = $this->validatedAssembly($request);
+        $data = $this->validatedAssembly($request, $room_area_assembly);
         $room_area_assembly->update([
             'name' => $data['name'],
             'notes' => $data['notes'] ?? null,
@@ -99,7 +109,14 @@ class RoomAreaAssemblyController extends Controller
     public function evaluate(Request $request)
     {
         $resolved = $this->requireLayout($request);
-        $this->defaults->ensure();
+        try {
+            $this->defaults->ensure();
+        } catch (RoomAreaKitSeedException $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage(),
+            ], 503);
+        }
         $ids = $request->input('assembly_ids');
         $query = RoomAreaAssembly::query()->with('lines.material')->orderBy('sort_order')->orderBy('id');
         if (is_array($ids) && $ids !== []) {
@@ -123,7 +140,13 @@ class RoomAreaAssemblyController extends Controller
     public function quoteShow(Request $request)
     {
         $resolved = $this->requireLayout($request);
-        $this->defaults->ensure();
+        try {
+            $this->defaults->ensure();
+        } catch (RoomAreaKitSeedException $e) {
+            return redirect()
+                ->route('admin.utilities.room-area')
+                ->with('error', $e->getMessage());
+        }
         $option = $resolved['option'];
         $clientProject = $resolved['client_project'];
         $room = $resolved['room'];
@@ -287,14 +310,7 @@ class RoomAreaAssemblyController extends Controller
                 }
             }
             $alreadyOnQuote = $this->assemblyKeysOnQuote($existing);
-            if ($existing && $this->layoutOverlapsQuote($existing, $layoutId, $resolved['project'] ?? null)) {
-                $this->consumeQuoteToken($token, $existing->id);
-
-                return redirect()
-                    ->route('admin.quotations.standard.edit', $existing)
-                    ->with('success', 'Those kit lines are already on '.$existing->quote_number.'.');
-            }
-
+            $skipped = 0;
             $built = [];
             foreach ($qtyLines as $qtyLine) {
                 if (($qtyLine['qty'] ?? 0) <= 0) {
@@ -304,6 +320,11 @@ class RoomAreaAssemblyController extends Controller
                 $assemblyLayoutId = trim((string) ($qtyLine['assembly_layout_id'] ?? $layoutId));
                 $sourceKey = $this->assemblySourceKey($assemblyLineId, $assemblyLayoutId);
                 if ($sourceKey !== null && isset($alreadyOnQuote[$sourceKey])) {
+                    $skipped++;
+                    continue;
+                }
+                if ($this->lineOverlapsQuote($alreadyOnQuote, $assemblyLineId, $assemblyLayoutId, $resolved['project'] ?? null)) {
+                    $skipped++;
                     continue;
                 }
                 $lineId = (string) ($qtyLine['assembly_line_id'] ?? $qtyLine['label']);
@@ -374,6 +395,12 @@ class RoomAreaAssemblyController extends Controller
             $message = $existing
                 ? 'Kit lines added to '.$quote->quote_number.'.'
                 : 'Quotation '.$quote->quote_number.' created from Room Area kits.';
+            if ($skipped > 0) {
+                $message = ($existing
+                    ? 'Added kit lines that were not already on '.$quote->quote_number.'.'
+                    : 'Quotation '.$quote->quote_number.' created from Room Area kits.'
+                ).' Skipped '.$skipped.' line'.($skipped === 1 ? '' : 's').' already on that quote.';
+            }
 
             return redirect()
                 ->route('admin.quotations.standard.edit', $quote)
@@ -384,10 +411,15 @@ class RoomAreaAssemblyController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validatedAssembly(Request $request): array
+    private function validatedAssembly(Request $request, ?RoomAreaAssembly $assembly = null): array
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'name' => [
+                'required',
+                'string',
+                'max:120',
+                Rule::unique('room_area_assemblies', 'name')->ignore($assembly?->id),
+            ],
             'notes' => ['nullable', 'string', 'max:255'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.id' => ['nullable', 'integer'],
@@ -397,6 +429,7 @@ class RoomAreaAssemblyController extends Controller
             'lines.*.whole_units' => ['nullable', 'boolean'],
             'lines.*.material_id' => ['nullable', 'integer', 'exists:materials,id'],
         ], [
+            'name.unique' => 'A kit with that name already exists.',
             'lines.required' => 'Add at least one material line.',
             'lines.min' => 'Add at least one material line.',
         ]);
@@ -461,9 +494,11 @@ class RoomAreaAssemblyController extends Controller
     /**
      * @return list<array<string, mixed>>
      */
-    private function assembliesPayload(): array
+    private function assembliesPayload(bool $ensure = true): array
     {
-        $this->defaults->ensure();
+        if ($ensure) {
+            $this->defaults->ensure();
+        }
 
         return RoomAreaAssembly::query()
             ->with('lines.material')
@@ -569,32 +604,24 @@ class RoomAreaAssemblyController extends Controller
         return $keys;
     }
 
-    private function layoutOverlapsQuote(?StandardQuotation $quote, string $layoutId, $project): bool
+    private function lineOverlapsQuote(array $alreadyOnQuote, int $assemblyLineId, string $layoutId, $project): bool
     {
-        if (! $quote) {
-            return false;
-        }
-        $onQuote = [];
-        foreach ($quote->resolvedWorks() as $work) {
-            foreach (($work['materials'] ?? []) as $row) {
-                $lid = trim((string) ($row['assembly_layout_id'] ?? ''));
-                if ($lid !== '') {
-                    $onQuote[$lid] = true;
-                }
-            }
-        }
-        if ($onQuote === []) {
+        if ($assemblyLineId <= 0 || $alreadyOnQuote === []) {
             return false;
         }
         if (str_starts_with($layoutId, 'project:') && $project) {
             foreach ($project->rooms as $room) {
-                if (isset($onQuote['room:'.$room->id])) {
+                $key = $this->assemblySourceKey($assemblyLineId, 'room:'.$room->id);
+                if ($key !== null && isset($alreadyOnQuote[$key])) {
                     return true;
                 }
             }
         }
-        if (str_starts_with($layoutId, 'room:') && $project && isset($onQuote['project:'.$project->id])) {
-            return true;
+        if (str_starts_with($layoutId, 'room:') && $project) {
+            $key = $this->assemblySourceKey($assemblyLineId, 'project:'.$project->id);
+            if ($key !== null && isset($alreadyOnQuote[$key])) {
+                return true;
+            }
         }
 
         return false;

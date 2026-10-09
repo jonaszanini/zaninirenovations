@@ -44,6 +44,23 @@ class RoomAreaFormulaParserTest extends TestCase
         }
     }
 
+    public function test_inside_area_stays_distinct_from_inside_corners_and_null_height_defaults(): void
+    {
+        $js = file_get_contents(public_path('js/room-area-lib.js'));
+        $this->assertStringContainsString('var insideArea', $js);
+        $this->assertStringContainsString('var insideCorners', $js);
+
+        $vars = RoomAreaFormulaParser::variablesFromMetrics([
+            'area_sqft' => 132,
+            'inside_area_sqft' => 132,
+            'inside_corners' => 4.4,
+            'wall_height_ft' => null,
+        ]);
+        $this->assertSame(132.0, $vars['inside_area_sqft']);
+        $this->assertEqualsWithDelta(4.4, $vars['inside_corners'], 1e-9);
+        $this->assertSame(8.0, $vars['wall_height_ft']);
+    }
+
     public function test_parser_source_does_not_use_eval(): void
     {
         $php = file_get_contents(app_path('Services/RoomAreaFormulaParser.php'));

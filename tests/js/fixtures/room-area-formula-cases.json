@@ -67,7 +67,10 @@
   "overrides": [
     { "formula": "ceil(net_wall_sf * 1.1 / 32)", "variables": { "net_wall_area_sqft": 1600 }, "value": 55 },
     { "formula": "wall_height", "variables": { "wall_height_ft": 0 }, "value": 0 },
-    { "formula": "outside_corners * ceil(wall_height / 8)", "variables": { "outside_corners": 2, "wall_height_ft": 9 }, "value": 4 }
+    { "formula": "outside_corners * ceil(wall_height / 8)", "variables": { "outside_corners": 2, "wall_height_ft": 9 }, "value": 4 },
+    { "formula": "inside_area_sqft", "variables": { "inside_area_sqft": 132, "inside_corners": 4.4 }, "value": 132 },
+    { "formula": "inside_corners", "variables": { "inside_area_sqft": 132, "inside_corners": 4.4 }, "value": 4.4 },
+    { "formula": "wall_height", "variables": { "wall_height_ft": null }, "value": 8 }
   ],
   "round": [
     { "value": 2.1, "whole": true, "qty": 3 },

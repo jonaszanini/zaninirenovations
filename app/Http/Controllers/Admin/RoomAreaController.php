@@ -792,7 +792,12 @@ class RoomAreaController extends Controller
      */
     private function assemblyPageData(): array
     {
-        app(RoomAreaAssemblyDefaults::class)->ensure();
+        $kitSeedError = null;
+        try {
+            app(RoomAreaAssemblyDefaults::class)->ensure();
+        } catch (\App\Services\RoomAreaKitSeedException $e) {
+            $kitSeedError = $e->getMessage();
+        }
 
         return [
             'assembliesJson' => \App\Models\RoomAreaAssembly::query()
@@ -804,6 +809,7 @@ class RoomAreaController extends Controller
                 ->values()
                 ->all(),
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
+            'kitSeedError' => $kitSeedError,
         ];
     }
 

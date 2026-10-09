@@ -39,6 +39,16 @@ cases.errors.forEach(function (row) {
   );
 });
 
+const mixed = lib.formulaVariablesFromMetrics({
+  area_sqft: 132,
+  inside_area_sqft: 132,
+  inside_corners: 4.4,
+  wall_height_ft: null,
+});
+assert.strictEqual(mixed.inside_area_sqft, 132);
+assert.strictEqual(mixed.inside_corners, 4.4);
+assert.strictEqual(mixed.wall_height_ft, 8);
+
 const drywall = lib.evaluateAssemblyLine(
   { formula: 'ceil(net_wall_sf * 1.12 / 32)', whole_units: true, unit: 'sheet' },
   cases.variables

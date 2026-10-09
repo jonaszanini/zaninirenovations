@@ -4454,31 +4454,26 @@
   }
 
   function clampViewportPan() {
-    if (state.userAdjustedViewport) return;
     var s = state.viewport.scale;
     var view = stageViewSize();
     var vw = view.w;
     var vh = view.h;
     var bounds = rawContentBounds();
     if (bounds.hasContent) {
-      var cx = (bounds.minX + bounds.maxX) / 2;
-      var cy = (bounds.minY + bounds.maxY) / 2;
-      var bw = (bounds.maxX - bounds.minX) * s;
-      var bh = (bounds.maxY - bounds.minY) * s;
-      var margin = 8;
-      if (bw <= vw) {
-        state.viewport.x = vw / 2 - cx * s;
-      } else {
-        var minX = vw - margin - bounds.maxX * s;
-        var maxX = margin - bounds.minX * s;
+      var keep = 48;
+      var minX = keep - bounds.maxX * s;
+      var maxX = vw - keep - bounds.minX * s;
+      if (minX <= maxX) {
         state.viewport.x = Math.max(minX, Math.min(maxX, state.viewport.x));
-      }
-      if (bh <= vh) {
-        state.viewport.y = vh / 2 - cy * s;
       } else {
-        var minY = vh - margin - bounds.maxY * s;
-        var maxY = margin - bounds.minY * s;
+        state.viewport.x = (minX + maxX) / 2;
+      }
+      var minY = keep - bounds.maxY * s;
+      var maxY = vh - keep - bounds.minY * s;
+      if (minY <= maxY) {
         state.viewport.y = Math.max(minY, Math.min(maxY, state.viewport.y));
+      } else {
+        state.viewport.y = (minY + maxY) / 2;
       }
       return;
     }
@@ -11539,7 +11534,13 @@
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
       body: JSON.stringify({ name: name, notes: notes || null, lines: lines })
     }).then(function (res) { return RA.readFetchJson(res, 'Could not save that kit.'); })
-      .then(function (data) {
+      .then(function (payload) {
+        var data = payload && payload.data ? payload.data : payload;
+        if (payload && payload.ok === false) {
+          var errors = data && data.errors ? data.errors : {};
+          var first = errors.name && errors.name[0];
+          throw new Error(first || data.message || 'Could not save that kit.');
+        }
         if (data.assemblies) applyAssembliesPayload(data.assemblies);
         closeKitEditor();
         setFeedback('Kit saved.', false);
@@ -11596,6 +11597,8 @@
 
   function bindKits() {
     state.assemblies = parseJson('data-assemblies', []);
+    var seedErr = root.getAttribute('data-ra-kit-seed-error');
+    if (seedErr) setFeedback(seedErr, true);
     renderKits();
     var list = root.querySelector('[data-ra-kit-list]');
     if (list) {

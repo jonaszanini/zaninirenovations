@@ -7343,13 +7343,19 @@ body:has(.util-ra-guide) {
   }
 
   .util-ra--fullpage .util-ra-feedback {
-    position: absolute;
-    top: 3.35rem;
-    left: 0.5rem;
-    right: 0.5rem;
-    z-index: 4;
-    margin: 0;
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    z-index: auto;
+    flex: 0 0 auto;
+    order: 5;
+    margin: 0.25rem 0.5rem 0.35rem;
+    padding: 0.2rem 0.4rem;
     pointer-events: none;
+    background: var(--admin-surface);
+    color: var(--admin-text);
+    border-radius: 6px;
   }
 
   .util-ra--fullpage .util-ra-side {
