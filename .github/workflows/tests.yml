@@ -54,6 +54,17 @@ jobs:
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Room Area JS library (no database)
+        run: |
+          npm ci --no-fund
+          node tests/js/room-area-lib.test.js
+          node tests/js/room-area-phone-geometry.test.js
+
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
 
@@ -191,3 +202,5 @@ jobs:
           php artisan test tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
+          php artisan test tests/Feature/Admin/RoomAreaBatch1PageTest.php
+          php artisan test tests/Unit/Services/RoomAreaTemplatesTest.php

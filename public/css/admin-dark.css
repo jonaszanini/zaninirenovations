@@ -1338,8 +1338,58 @@ html.admin-dark .util-ra-thickness-chip:focus-visible {
 
 html.admin-dark .util-ra-thickness-chip.is-active {
   background: var(--admin-primary);
-  color: #fff;
+  color: #0f172a;
   border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-group-chip__swatch {
+  border-color: #f8fafc;
+  box-shadow: 0 0 0 1px #f8fafc;
+  opacity: 1;
+}
+
+html.admin-dark .util-ra-phone-bar {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra--fullpage .util-ra-phone-bar.is-overflowing::after {
+  background: linear-gradient(to right, transparent, var(--admin-surface));
+}
+
+html.admin-dark .util-ra-more-sheet {
+  background: var(--admin-elevated, var(--admin-surface));
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-more-sheet__title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-more-block__title {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-more-help {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-more-help__summary,
+html.admin-dark .util-ra-more-btn-label {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-sheet-strip {
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-sheet-strip .util-ra-palette__body,
+html.admin-dark .util-ra-sheet-strip .util-ra-walls-panel .util-ra-palette__body {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
 }
 
 html.admin-dark .util-ra-thickness-custom label {
@@ -1502,6 +1552,43 @@ html.admin-dark .util-ra-help-pop {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
+html.admin-dark .util-ra-unit-system {
+  border-color: var(--admin-border);
+  background: var(--admin-input-bg);
+}
+
+html.admin-dark .util-ra-unit-system__btn {
+  color: var(--admin-text);
+  background: transparent;
+}
+
+html.admin-dark .util-ra-unit-system__btn + .util-ra-unit-system__btn {
+  border-left-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-unit-system__btn.is-active {
+  background: var(--admin-primary);
+  color: #0f172a;
+}
+
+html.admin-dark .util-ra-templates-pop {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-templates-pop__hint {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-icon-btn.is-active[data-ra-snap-toggle],
+html.admin-dark .util-ra-icon-toggle:has([data-ra-lock-layers]:checked) {
+  background: var(--admin-primary);
+  color: #0f172a;
+  border-color: var(--admin-primary);
+}
+
 html.admin-dark .util-ra-first-tip {
   border-top-color: var(--admin-border);
 }
@@ -1571,7 +1658,7 @@ html.admin-dark .util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-e
 html.admin-dark .util-ra-side__tab.is-active {
   background: var(--admin-primary);
   border-color: var(--admin-primary);
-  color: #fff;
+  color: #0f172a;
 }
 
 html.admin-dark .util-ra--fullpage .util-ra-canvas-card,

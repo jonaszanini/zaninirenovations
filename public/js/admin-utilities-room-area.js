@@ -3,12 +3,19 @@
   'use strict';
 
   if (typeof Konva === 'undefined') return;
+  var RA = window.RoomAreaLib;
+  if (!RA) return;
 
   var root = document.querySelector('[data-room-area]');
   if (!root) return;
 
   function isFullPage() {
     return root.hasAttribute('data-ra-fullpage');
+  }
+
+  function isPhoneChrome() {
+    return isFullPage() && typeof window.matchMedia === 'function'
+      && window.matchMedia('(max-width: 900px)').matches;
   }
 
   function raAll(sel) {
@@ -24,13 +31,18 @@
   var INCHES_PER_FOOT = 12;
   var SQFT_TO_SQM = 0.092903;
   var FEET_TO_METERS = 0.3048;
-  var MEASURE_UNIT_STORAGE_KEY = 'room-area-measure-unit';
   var FIRST_TIP_STORAGE_KEY = 'zr-room-area-guide-tip-v1';
   var MEASURE_UNITS = {
     meter: 'meter',
     inch: 'inch',
     feet_decimal: 'feet_decimal',
     feet_inch_frac: 'feet_inch_frac'
+  };
+  var DIM_MODES = {
+    all: 'all',
+    main: 'main',
+    area: 'area',
+    off: 'off'
   };
   var MIN_CANVAS_W = 260;
   var MIN_CANVAS_H = 520;
@@ -70,7 +82,14 @@
   var OBJECT_SNAP_PX = 36;
   var OBJECT_MIN_WIDTH_IN = 6;
   var OBJECT_MAX_WIDTH_IN = 240;
-  var DEFAULT_WALL_HEIGHT_FT = 8;
+  var DEFAULT_WALL_HEIGHT_FT = RA.DEFAULT_WALL_HEIGHT_FT || 8;
+  var DEFAULT_EDITOR_PREFS = {
+    layers_locked: false,
+    dimensions_mode: DIM_MODES.all,
+    unit_system: 'imperial',
+    measure_unit: MEASURE_UNITS.feet_inch_frac,
+    angle_snap: true
+  };
   var DEFAULT_DOOR_HEIGHT_IN = 80;
   var DEFAULT_WINDOW_HEIGHT_IN = 36;
   var DEFAULT_TYPED_PPF = 12;
@@ -125,8 +144,8 @@
   }
 
   function canvasTagFill(selected) {
-    if (selected) return 'rgba(249, 168, 37, 0.95)';
-    return isAdminDark() ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255,255,255,0.92)';
+    if (selected) return 'rgba(249, 168, 37, 0.98)';
+    return isAdminDark() ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255,255,255,0.98)';
   }
 
   function canvasBrandStroke() {
@@ -261,6 +280,16 @@
     zoomReset: root.querySelector('[data-ra-zoom-reset]'),
     zoomLabel: root.querySelector('[data-ra-zoom-label]'),
     measureUnit: root.querySelector('[data-ra-measure-unit]'),
+    dimensionsMode: root.querySelector('[data-ra-dimensions-mode]'),
+    lockLayers: root.querySelector('[data-ra-lock-layers]'),
+    snapToggle: root.querySelector('[data-ra-snap-toggle]'),
+    templatesToggle: root.querySelector('[data-ra-templates-toggle]'),
+    templatesPopover: root.querySelector('[data-ra-templates-popover]'),
+    templatesRoot: root.querySelector('[data-ra-templates]'),
+    moreToggle: root.querySelector('[data-ra-more-toggle]'),
+    moreClose: root.querySelector('[data-ra-more-close]'),
+    moreSheet: root.querySelector('[data-ra-more-sheet]'),
+    sheetTotal: root.querySelector('[data-ra-sheet-total]'),
     areaName: root.querySelector('[data-ra-area-name]'),
     areaNameWrap: root.querySelector('[data-ra-area-name-wrap]'),
     palette: root.querySelector('[data-ra-palette]'),
@@ -336,6 +365,14 @@
     nextObjectId: 1,
     selectedObjectId: null,
     showDimensions: true,
+    dimensionsMode: DIM_MODES.all,
+    layersLocked: false,
+    templateKind: null,
+    angleSnap: true,
+    altHeld: false,
+    imperialUnit: MEASURE_UNITS.feet_inch_frac,
+    alignGuides: null,
+    openingHint: null,
     armedCatalogKey: null,
     placingCatalog: null,
     objectGhost: null,
@@ -1032,25 +1069,35 @@
   }
 
   function wallHeightFt() {
-    var n = els.wallHeight ? parseFloat(els.wallHeight.value) : state.wallHeightFt;
+    var n = state.wallHeightFt;
     if (!isFinite(n) || n < 1) return DEFAULT_WALL_HEIGHT_FT;
     if (n > 20) return 20;
     return Math.round(n * 100) / 100;
+  }
+
+  function syncWallHeightInput(force) {
+    if (!els.wallHeight) return;
+    if (!force && document.activeElement === els.wallHeight) return;
+    els.wallHeight.value = RA.wallHeightDisplay(state.wallHeightFt, isMetricDisplay(), fmt);
   }
 
   function setWallHeight(value) {
-    var next = wallHeightFtFromValue(value);
-    state.wallHeightFt = next;
-    if (els.wallHeight && document.activeElement !== els.wallHeight) {
-      els.wallHeight.value = String(next);
-    }
+    var n = parseFloat(value);
+    if (!isFinite(n) || n < 1) n = DEFAULT_WALL_HEIGHT_FT;
+    if (n > 20) n = 20;
+    state.wallHeightFt = Math.round(n * 100) / 100;
+    syncWallHeightInput(true);
   }
 
   function wallHeightFtFromValue(value) {
-    var n = parseFloat(value);
-    if (!isFinite(n) || n < 1) return DEFAULT_WALL_HEIGHT_FT;
-    if (n > 20) return 20;
-    return Math.round(n * 100) / 100;
+    var parsed = RA.parseWallHeight(value, isMetricDisplay());
+    if (parsed && parsed.warning) {
+      setFeedback(parsed.warning, true);
+      return null;
+    }
+    if (!parsed || !isFinite(parsed.feet) || parsed.feet < 1) return DEFAULT_WALL_HEIGHT_FT;
+    if (parsed.feet > 20) return 20;
+    return Math.round(parsed.feet * 100) / 100;
   }
 
   function objectHeightInches(obj, heightFt) {
@@ -1114,6 +1161,7 @@
     if (els.wallsToggle) {
       els.wallsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
+    syncPhoneSheetForDock();
   }
 
   function toggleWallsOpen() {
@@ -1376,6 +1424,10 @@
   }
 
   function deleteActivePolygon() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var group = activeGroup();
     var poly = activePolygon();
     if (!group || !poly) return;
@@ -1441,7 +1493,43 @@
     if (thickness > 0) payload.wall_thickness_in = thickness;
     var bg = captureBackgroundLayoutForSave();
     if (bg) payload.background = bg;
+    payload.editor = serializeEditorPrefs();
     return payload;
+  }
+
+  function defaultEditorPrefs() {
+    return {
+      layers_locked: false,
+      dimensions_mode: DIM_MODES.all,
+      unit_system: 'imperial',
+      measure_unit: MEASURE_UNITS.feet_inch_frac,
+      angle_snap: true
+    };
+  }
+
+  function serializeEditorPrefs() {
+    var editor = {
+      layers_locked: !!state.layersLocked,
+      dimensions_mode: DIM_MODES[state.dimensionsMode] ? state.dimensionsMode : DIM_MODES.all,
+      unit_system: isMetricDisplay() ? 'metric' : 'imperial',
+      measure_unit: state.measureUnit || MEASURE_UNITS.feet_inch_frac,
+      angle_snap: state.angleSnap !== false
+    };
+    if (state.templateKind) editor.template = state.templateKind;
+    return editor;
+  }
+
+  function applyEditorPrefs(editor, silent) {
+    var prefs = Object.assign({}, defaultEditorPrefs(), editor && typeof editor === 'object' ? editor : {});
+    if (prefs.measure_unit && MEASURE_UNITS[prefs.measure_unit]) {
+      setMeasureUnit(prefs.measure_unit, silent);
+    } else if (prefs.unit_system) {
+      setUnitSystem(prefs.unit_system, silent);
+    }
+    setDimensionsMode(prefs.dimensions_mode, silent);
+    setLayersLocked(!!prefs.layers_locked, silent !== false);
+    setAngleSnap(prefs.angle_snap !== false, silent !== false);
+    state.templateKind = prefs.template || null;
   }
 
   function serializeObjects() {
@@ -1557,6 +1645,7 @@
       if (raw.background) out.background = raw.background;
       if (Array.isArray(raw.objects)) out.objects = raw.objects;
       if (raw.wall_thickness_in != null) out.wall_thickness_in = raw.wall_thickness_in;
+      if (raw.editor && typeof raw.editor === 'object') out.editor = raw.editor;
       return out;
     }
     return { v: 2, groups: [] };
@@ -1612,6 +1701,7 @@
     }
     hydrateObjects(data.objects || []);
     setWallThickness(data.wall_thickness_in != null ? data.wall_thickness_in : (activeProject() && activeProject().wall_thickness_in) || 0, true);
+    applyEditorPrefs(data.editor && typeof data.editor === 'object' ? data.editor : defaultEditorPrefs(), true);
   }
 
   function hydrateObjects(rawObjects) {
@@ -1690,7 +1780,7 @@
     if (els.groupChipTotal) {
       var sqft = groupAreaSqFt(group);
       var count = (group.polygons || []).filter(function (p) { return p.closed && p.vertices.length >= 3; }).length;
-      els.groupChipTotal.textContent = fmt(sqft, 2) + ' sq ft' + (count > 1 ? ' (' + count + ' areas)' : '');
+      els.groupChipTotal.textContent = fmtAreaFromSqFt(sqft) + (count > 1 ? ' (' + count + ' areas)' : '');
     }
   }
 
@@ -1964,7 +2054,8 @@
           width: Math.round(state.bgLayout.width * 1000) / 1000,
           height: Math.round(state.bgLayout.height * 1000) / 1000
         }
-        : null
+        : null,
+      editor: serializeEditorPrefs()
     };
   }
 
@@ -2018,6 +2109,14 @@
       }
     }
     return data.message || fallback;
+  }
+
+  function readFetchJson(res, fallbackMessage) {
+    return RA.readFetchJson(res, fallbackMessage);
+  }
+
+  function friendlyNetworkError(err, fallbackMessage) {
+    return RA.friendlyNetworkError(err, fallbackMessage);
   }
 
   function csrf() {
@@ -2119,75 +2218,11 @@
   }
 
   function parseFeetInput(raw) {
-    var s = String(raw).trim();
-    if (!s) throw new Error('Enter a length (e.g. 12\' 6", 12.5, or 150").');
-
-    s = s.replace(/½/g, '1/2').replace(/¼/g, '1/4').replace(/¾/g, '3/4');
-    s = s.replace(/feet|foot/gi, "'");
-    s = s.replace(/\bft\b/gi, "'");
-    s = s.replace(/inches|inch/gi, '"');
-    s = s.replace(/\bin\b/gi, '"');
-    s = s.replace(/\s+/g, ' ').trim();
-
-    var m;
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*([\d.]+)\s+(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) + parseFloat(m[3]) / parseFloat(m[4])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) / parseFloat(m[3])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*([\d.]+)\s*["″]?$/))) {
-      return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*-\s*([\d.]+)$/))) {
-      return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s+([\d.]+)\s+(\d+)\s*\/\s*(\d+)$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) + parseFloat(m[3]) / parseFloat(m[4])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s+(\d+)\s*\/\s*(\d+)$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) / parseFloat(m[3])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s+([\d.]+)$/))) {
-      return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*$/))) {
-      var feetOnly = parseFloat(m[1]);
-      if (isNaN(feetOnly) || feetOnly <= 0) throw new Error('Enter a valid length greater than zero.');
-      return feetOnly;
-    }
-    if ((m = s.match(/^([\d.]+)\s*["″]\s*$/))) {
-      var inchesOnly = parseFloat(m[1]);
-      if (isNaN(inchesOnly) || inchesOnly <= 0) throw new Error('Enter a valid length greater than zero.');
-      return inchesOnly / INCHES_PER_FOOT;
-    }
-
-    if (/^[\d.,]+$/.test(s)) {
-      var n = parseFloat(s.replace(/,/g, ''));
-      if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-      if (s.indexOf('.') !== -1) return n;
-      return n / INCHES_PER_FOOT;
-    }
-
-    if ((m = s.match(/^(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
-      var fracIn = parseFloat(m[1]) / parseFloat(m[2]);
-      if (isNaN(fracIn) || fracIn <= 0) throw new Error('Enter a valid length greater than zero.');
-      return fracIn / INCHES_PER_FOOT;
-    }
-
-    throw new Error('Use 12\' 6", 12.5 ft, or 150" (inches).');
+    return RA.parseLengthInput(raw, MEASURE_UNITS.feet_inch_frac);
   }
 
   function fmt(n, d) {
-    return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d).replace(/\.?0+$/, '');
-  }
-
-  function loadMeasureUnit() {
-    try {
-      var saved = localStorage.getItem(MEASURE_UNIT_STORAGE_KEY);
-      if (saved && MEASURE_UNITS[saved]) return saved;
-    } catch (e) { /* ignore */ }
-    return MEASURE_UNITS.feet_inch_frac;
+    return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d);
   }
 
   function reduceFraction(num, den) {
@@ -2227,7 +2262,7 @@
   }
 
   function fmtFeetDecimal(lenFt) {
-    return fmt(Math.round(lenFt * 1000) / 1000, 3) + ' ft';
+    return fmt(lenFt, 2) + ' ft';
   }
 
   function fmtInchesOnly(lenFt) {
@@ -2237,9 +2272,7 @@
   }
 
   function fmtMeters(lenFt) {
-    var meters = lenFt * FEET_TO_METERS;
-    var decimals = meters >= 10 ? 2 : 3;
-    return fmt(meters, decimals) + ' m';
+    return fmt(lenFt * FEET_TO_METERS, 2) + ' m';
   }
 
   function fmtLengthFromFeet(lenFt) {
@@ -2273,22 +2306,80 @@
   function updateMeasureUnitPlaceholders() {
     var ph = measureUnitPlaceholder();
     if (els.wallLength) els.wallLength.placeholder = ph;
-    if (els.knownLength) els.knownLength.placeholder = ph;
+    raAll('[data-ra-known-length]').forEach(function (el) { el.placeholder = ph; });
+    if (els.typeLength) els.typeLength.placeholder = isMetricDisplay() ? '3.66 m' : (state.measureUnit === MEASURE_UNITS.inch ? '150"' : (state.measureUnit === MEASURE_UNITS.feet_decimal ? '12.5' : "12'6"));
+    if (els.typeRectW) els.typeRectW.placeholder = isMetricDisplay() ? '3.66' : '12';
+    if (els.typeRectL) els.typeRectL.placeholder = isMetricDisplay() ? '3.05' : '10';
+    if (els.wallHeight) els.wallHeight.placeholder = isMetricDisplay() ? '2.44' : '8';
   }
 
-  function setMeasureUnit(unit) {
+  function isMetricDisplay() {
+    return state.measureUnit === MEASURE_UNITS.meter;
+  }
+
+  function setMeasureUnit(unit, silent) {
     if (!MEASURE_UNITS[unit]) return;
+    if (unit !== MEASURE_UNITS.meter) state.imperialUnit = unit;
     state.measureUnit = unit;
-    try { localStorage.setItem(MEASURE_UNIT_STORAGE_KEY, unit); } catch (e) { /* ignore */ }
-    if (els.measureUnit) els.measureUnit.value = unit;
+    raAll('[data-ra-measure-unit]').forEach(function (sel) {
+      if (unit === MEASURE_UNITS.meter) {
+        sel.value = state.imperialUnit || MEASURE_UNITS.feet_inch_frac;
+      } else {
+        sel.value = unit;
+      }
+    });
+    syncUnitSystemUi();
     updateMeasureUnitPlaceholders();
-    redrawLabels();
-    redrawRulers();
-    refreshWallLengthInput();
+    updateLiveUnitLabels();
+    syncWallHeightInput();
+    if (!silent) {
+      redrawLabels();
+      redrawRulers();
+      refreshWallLengthInput();
+      updateLiveArea();
+      renderTypedWallsList();
+    }
     if (state.selectedRulerId !== null && els.rulerLength) {
       var ruler = findRulerById(state.selectedRulerId);
       if (ruler) els.rulerLength.textContent = rulerLengthLabel(ruler);
     }
+  }
+
+  function syncUnitSystemUi() {
+    var metric = isMetricDisplay();
+    raAll('[data-ra-unit-system]').forEach(function (btn) {
+      var want = btn.getAttribute('data-ra-unit-system') === 'metric';
+      var on = want === metric;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function setUnitSystem(system, silent) {
+    if (system === 'metric') {
+      setMeasureUnit(MEASURE_UNITS.meter, silent);
+      return;
+    }
+    setMeasureUnit(state.imperialUnit && state.imperialUnit !== MEASURE_UNITS.meter
+      ? state.imperialUnit
+      : MEASURE_UNITS.feet_inch_frac, silent);
+  }
+
+  function updateLiveUnitLabels() {
+    var area = isMetricDisplay() ? 'm²' : 'sq ft';
+    var linear = isMetricDisplay() ? 'm' : 'lf';
+    raAll('[data-ra-area-unit]').forEach(function (el) { el.textContent = area; });
+    raAll('[data-ra-linear-unit]').forEach(function (el) { el.textContent = linear; });
+    raAll('[data-ra-wall-area-label]').forEach(function (el) {
+      el.textContent = isMetricDisplay() ? 'Wall m²' : 'Wall SF';
+    });
+    if (els.wallHeight) {
+      var unitEl = els.wallHeight.parentNode && els.wallHeight.parentNode.querySelector('.util-ra-live-area__height-unit');
+      if (unitEl) unitEl.textContent = isMetricDisplay() ? 'm' : 'ft';
+    }
+    raAll('[data-ra-measure-unit-wrap]').forEach(function (el) {
+      el.hidden = isMetricDisplay();
+    });
   }
 
   function refreshWallLengthInput() {
@@ -2298,48 +2389,59 @@
   }
 
   function parseMetersInput(raw) {
-    var s = String(raw).trim();
-    var cm = s.match(/^([\d.,]+)\s*cm(s)?$/i);
-    if (cm) {
-      var cmVal = parseFloat(cm[1].replace(/,/g, ''));
-      if (isNaN(cmVal) || cmVal <= 0) throw new Error('Enter a valid length greater than zero.');
-      return (cmVal / 100) / FEET_TO_METERS;
-    }
-    s = s.replace(/\s*m(eters?|etres?)?\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in meters.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return n / FEET_TO_METERS;
+    return RA.parseLengthInput(raw, MEASURE_UNITS.meter);
   }
 
   function parseInchesOnlyInput(raw) {
-    var s = String(raw).trim();
-    s = s.replace(/["″]\s*$/, '').replace(/\s*in(ch(es)?)?\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in inches.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return n / INCHES_PER_FOOT;
+    return RA.parseLengthInput(raw, MEASURE_UNITS.inch);
   }
 
   function parseFeetDecimalInput(raw) {
-    var s = String(raw).trim().replace(/\s*(ft|feet|foot)\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in feet.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return n;
+    return RA.parseLengthInput(raw, MEASURE_UNITS.feet_decimal);
+  }
+
+  function parseMmInput(raw) {
+    return RA.parseLengthInput(raw, 'mm');
+  }
+
+  function detectExplicitLengthUnit(raw) {
+    return RA.detectExplicitUnit(raw);
   }
 
   function parseLengthInput(raw) {
-    switch (state.measureUnit) {
-      case MEASURE_UNITS.meter:
-        return parseMetersInput(raw);
-      case MEASURE_UNITS.inch:
-        return parseInchesOnlyInput(raw);
-      case MEASURE_UNITS.feet_decimal:
-        return parseFeetDecimalInput(raw);
-      default:
-        return parseFeetInput(raw);
-    }
+    return RA.parseLengthInput(raw, state.measureUnit);
+  }
+
+  function geometryLocked() {
+    return !!state.layersLocked;
+  }
+
+  function warnGeometryLocked() {
+    setFeedback('Unlock layers to move walls or corners. Doors, windows, and notes stay editable.', true);
+  }
+
+  function shouldAngleSnap(e) {
+    if (state.altHeld || (e && e.evt && e.evt.altKey)) return false;
+    if (state.angleSnap) return true;
+    return !!(state.shiftHeld || (e && e.evt && e.evt.shiftKey));
+  }
+
+  function fmtAreaFromSqFt(sqft) {
+    if (sqft == null || !isFinite(sqft)) return '—';
+    if (isMetricDisplay()) return fmt(sqft * SQFT_TO_SQM, 2) + ' m²';
+    return fmt(sqft, 2) + ' sq ft';
+  }
+
+  function formatLinearQty(feet) {
+    if (feet == null || !isFinite(feet)) return '—';
+    if (isMetricDisplay()) return fmt(feet * FEET_TO_METERS, 2);
+    return fmt(feet, 2);
+  }
+
+  function formatAreaQty(sqft) {
+    if (sqft == null || !isFinite(sqft)) return '—';
+    if (isMetricDisplay()) return fmt(sqft * SQFT_TO_SQM, 2);
+    return fmt(sqft, 2);
   }
 
   function shoelaceArea(vertices) {
@@ -2539,6 +2641,12 @@
     return d > Math.PI ? Math.PI * 2 - d : d;
   }
 
+  function angleSnapPoint(raw, prev) {
+    if (!prev || !raw) return raw;
+    var mag = snapPointMagnetic(raw, prev, 'incoming');
+    return mag.snapped ? { x: mag.x, y: mag.y } : raw;
+  }
+
   function snapPoint(raw, prev, step) {
     if (!prev || step === undefined) return raw;
     var dx = raw.x - prev.x;
@@ -2638,6 +2746,122 @@
     return clampToCanvas(found ? best : raw);
   }
 
+  function alignmentThreshold() {
+    return Math.max(uiSize(5), 4);
+  }
+
+  function collectAlignmentGuides(idx, raw) {
+    if (!raw || state.altHeld) return { point: raw, guides: [] };
+    var thresh = alignmentThreshold();
+    var xHits = [];
+    var yHits = [];
+    allPolygons().forEach(function (entry) {
+      (entry.polygon.vertices || []).forEach(function (v, vi) {
+        if (entry.polygon.id === (activePolygon() && activePolygon().id) && vi === idx) return;
+        if (Math.abs(v.x - raw.x) <= thresh) xHits.push(v.x);
+        if (Math.abs(v.y - raw.y) <= thresh) yHits.push(v.y);
+      });
+    });
+    var point = { x: raw.x, y: raw.y };
+    var guides = [];
+    if (xHits.length) {
+      xHits.sort(function (a, b) { return Math.abs(a - raw.x) - Math.abs(b - raw.x); });
+      point.x = xHits[0];
+      guides.push({ type: 'v', x: point.x });
+    }
+    if (yHits.length) {
+      yHits.sort(function (a, b) { return Math.abs(a - raw.y) - Math.abs(b - raw.y); });
+      point.y = yHits[0];
+      guides.push({ type: 'h', y: point.y });
+    }
+    return { point: point, guides: guides };
+  }
+
+  function snapVertexToGuides(idx, raw) {
+    var aligned = collectAlignmentGuides(idx, raw);
+    state.alignGuides = aligned.guides;
+    return clampToCanvas(aligned.point);
+  }
+
+  function redrawAlignmentGuides() {
+    var layer = state.layers.preview;
+    if (!layer) return;
+    var guides = state.alignGuides || [];
+    var hint = state.openingHint;
+    if (!guides.length && !hint && !state.drawPreview) {
+      return;
+    }
+    guides.forEach(function (g) {
+      if (g.type === 'v') {
+        layer.add(new Konva.Line({
+          points: [g.x, 0, g.x, canvasH()],
+          stroke: isAdminDark() ? 'rgba(125, 211, 252, 0.55)' : 'rgba(2, 71, 104, 0.35)',
+          strokeWidth: uiSize(1),
+          dash: [uiSize(6), uiSize(4)],
+          listening: false
+        }));
+      } else {
+        layer.add(new Konva.Line({
+          points: [0, g.y, canvasW(), g.y],
+          stroke: isAdminDark() ? 'rgba(125, 211, 252, 0.55)' : 'rgba(2, 71, 104, 0.35)',
+          strokeWidth: uiSize(1),
+          dash: [uiSize(6), uiSize(4)],
+          listening: false
+        }));
+      }
+    });
+    if (hint && hint.point && hint.text) {
+      var kLabel = new Konva.Label({
+        x: hint.point.x,
+        y: hint.point.y,
+        listening: false
+      });
+      kLabel.add(new Konva.Tag({
+        fill: canvasTagFill(true),
+        stroke: '#f57f17',
+        strokeWidth: uiSize(1),
+        cornerRadius: uiSize(4),
+        pointerDirection: 'down',
+        pointerWidth: uiSize(8),
+        pointerHeight: uiSize(6)
+      }));
+      kLabel.add(new Konva.Text({
+        text: hint.text,
+        fontSize: uiSize(11),
+        fontFamily: 'Open Sans, sans-serif',
+        fill: '#5d4037',
+        padding: uiSize(4)
+      }));
+      kLabel.offsetX(kLabel.width() / 2);
+      layer.add(kLabel);
+    }
+  }
+
+  function clearLiveGuides() {
+    state.alignGuides = null;
+    state.openingHint = null;
+    if (state.layers.preview && !state.drawPreview) {
+      state.layers.preview.destroyChildren();
+      flushKonva();
+    }
+  }
+
+  function openingCornerHint(obj) {
+    if (!obj || isFreeObject(obj)) return null;
+    var place = objectPlacement(obj);
+    if (!place || !place.wall) return null;
+    var startIn = Math.max(0, place.offset || 0);
+    var endIn = Math.max(0, place.lengthIn - (place.offset || 0) - (place.width || 0));
+    var fromStart = startIn <= endIn;
+    var inches = fromStart ? startIn : endIn;
+    var corner = fromStart ? place.wall.a : place.wall.b;
+    return {
+      point: { x: place.mid.x, y: place.mid.y },
+      text: fmtLengthFromFeet(inches / INCHES_PER_FOOT) + (fromStart ? ' from start' : ' from end'),
+      corner: corner
+    };
+  }
+
   function fmtFeetInches(lenFt) {
     return fmtLengthFromFeet(lenFt);
   }
@@ -2690,10 +2914,11 @@
   }
 
   function snapVertexPosition(idx, raw) {
-    if (state.shiftHeld) {
-      return snapVertexPositionShift(idx, raw);
+    var next = raw;
+    if (shouldAngleSnap()) {
+      next = snapVertexPositionShift(idx, raw);
     }
-    return clampToCanvas(raw);
+    return snapVertexToGuides(idx, next);
   }
 
   /** Move one or more selected corners; group drags keep relative spacing (uniform delta). */
@@ -2742,6 +2967,10 @@
   }
 
   function deleteSelectedWall() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     var n = activeVertices().length;
     if (wallCount() === 0) return;
@@ -2867,6 +3096,10 @@
   }
 
   function deleteSelectedVertex() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedVertexIndices.length === 0) return;
     if (activeVertices().length - state.selectedVertexIndices.length < 2) {
       setFeedback('Need at least two corners to keep a wall segment.', true);
@@ -2923,12 +3156,14 @@
   }
 
   function canDragWalls() {
-    return wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating
+    return !geometryLocked()
+      && wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating
       && !state.armedCatalogKey && !state.placingCatalog;
   }
 
   function canDragShapes() {
-    return !isDrawingOpenShape()
+    return !geometryLocked()
+      && !isDrawingOpenShape()
       && !isPanOrPinchActive()
       && !state.rulerMode
       && !state.calibrating
@@ -3304,6 +3539,10 @@
   }
 
   function splitSelectedWall() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     var idx = state.selectedWallIndex;
     var a = activeVertices()[idx];
@@ -3386,7 +3625,7 @@
     state.rulerMode = false;
     state.rulerDraft = [];
     state.rulerPreview = null;
-    if (els.rulerToggle) els.rulerToggle.classList.remove('is-active');
+    raAll('[data-ra-ruler-toggle]').forEach(function (btn) { btn.classList.remove('is-active'); });
     redrawRulers();
     redrawWalls();
     redrawLabels();
@@ -3407,7 +3646,7 @@
     state.rulerMode = true;
     state.rulerDraft = [];
     state.rulerPreview = null;
-    if (els.rulerToggle) els.rulerToggle.classList.add('is-active');
+    raAll('[data-ra-ruler-toggle]').forEach(function (btn) { btn.classList.add('is-active'); });
     redrawAll();
     var ppf = pixelsPerFoot();
     if (ppf > 0) {
@@ -3425,8 +3664,7 @@
     var point = pos;
     if (state.rulerDraft.length === 1) {
       var prev = state.rulerDraft[0];
-      if (shiftSnap) point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
-      else point = pos;
+      if (shiftSnap) point = angleSnapPoint(pos, prev);
     }
     point = clampToCanvas(point);
     state.rulerDraft.push(point);
@@ -3485,6 +3723,10 @@
   }
 
   function applyWallLength() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     if (!pixelsPerFoot()) {
       setFeedback('Calibrate scale before editing wall lengths.', true);
@@ -3765,6 +4007,7 @@
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     setWallHeight(DEFAULT_WALL_HEIGHT_FT);
+    applyEditorPrefs(defaultEditorPrefs(), true);
     show(els.liveArea, false);
     if (state.stage) {
       state.lastUiScale = 0;
@@ -4199,6 +4442,11 @@
         updateDrawPreviewFromPointer();
         return;
       }
+      if (e.code === 'AltLeft' || e.code === 'AltRight') {
+        state.altHeld = true;
+        updateDrawPreviewFromPointer();
+        return;
+      }
       if (e.code !== 'Space' || e.repeat) return;
       if (isTypingTarget(e.target)) return;
       e.preventDefault();
@@ -4208,9 +4456,26 @@
       redrawVertices();
     });
 
+    window.addEventListener('blur', function () {
+      state.altHeld = false;
+      state.shiftHeld = false;
+      updateDrawPreviewFromPointer();
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        state.altHeld = false;
+        state.shiftHeld = false;
+      }
+    });
+
     document.addEventListener('keyup', function (e) {
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         state.shiftHeld = false;
+        updateDrawPreviewFromPointer();
+        return;
+      }
+      if (e.code === 'AltLeft' || e.code === 'AltRight') {
+        state.altHeld = false;
         updateDrawPreviewFromPointer();
         return;
       }
@@ -4561,8 +4826,7 @@
       var pos = getPointerPos();
       if (!pos) return;
       var preview = pos;
-      if (state.shiftHeld) preview = snapPoint(pos, state.rulerDraft[0], SHIFT_SNAP_STEP);
-      else preview = pos;
+      if (shouldAngleSnap()) preview = angleSnapPoint(pos, state.rulerDraft[0]);
       state.rulerPreview = clampToCanvas(preview);
       redrawRulers();
     });
@@ -4572,6 +4836,7 @@
       if (state.draggingObject) {
         state.draggingObject = false;
         state.objectPointerDown = null;
+        clearLiveGuides();
         rematchAllObjects();
         redrawAll();
         return;
@@ -4636,10 +4901,14 @@
     show(els.bgDeleteCanvas, hasBg);
     show(els.bgShowWrap, hasBg);
     show(els.bgMoveToggle, hasBg);
+    if (els.bgMoveToggle) {
+      els.bgMoveToggle.disabled = !hasBg || geometryLocked();
+      els.bgMoveToggle.setAttribute('aria-disabled', (!hasBg || geometryLocked()) ? 'true' : 'false');
+    }
     if (els.bgShowImage) {
       els.bgShowImage.checked = state.bgImageVisible;
     }
-    if (!hasBg) stopBgMoveMode();
+    if (!hasBg || geometryLocked()) stopBgMoveMode();
     applyBackgroundImageVisibility();
   }
 
@@ -4733,6 +5002,11 @@
 
   function toggleBgMoveMode() {
     if (!state.bgImage) return;
+    if (geometryLocked()) {
+      stopBgMoveMode();
+      setFeedback('Unlock layers to move the floor plan.', true);
+      return;
+    }
     if (state.bgMoveMode) {
       stopBgMoveMode();
       setFeedback('Image move mode off.', false);
@@ -4880,6 +5154,10 @@
   }
 
   function addAreaSameGroup() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!isActiveClosed()) {
       setFeedback('Close the current shape before adding another area.', true);
       return;
@@ -4891,6 +5169,10 @@
   }
 
   function addAreaNewGroup() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!isActiveClosed()) {
       setFeedback('Close the current shape before starting a new color group.', true);
       return;
@@ -4907,6 +5189,10 @@
   }
 
   function removeLastDrawVertex() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return false;
+    }
     if (!isDrawingOpenShape() || !activeVertices().length) return false;
     pushUndoSnapshot();
     activeVertices().pop();
@@ -4965,7 +5251,7 @@
   function snapDrawPreviewPoint(pos) {
     var prev = lastDrawVertex();
     if (!prev || !pos) return null;
-    var point = state.shiftHeld ? snapPoint(pos, prev, SHIFT_SNAP_STEP) : pos;
+    var point = shouldAngleSnap() ? angleSnapPoint(pos, prev) : pos;
     var verts = activeVertices();
     if (verts.length >= 3) {
       var first = verts[0];
@@ -5003,6 +5289,17 @@
     var pos = getPointerPos();
     if (!pos) return;
     state.drawPreview = snapDrawPreviewPoint(pos);
+    if (state.drawPreview) {
+      var last = lastDrawVertex();
+      var aligned = collectAlignmentGuides(-1, state.drawPreview);
+      state.alignGuides = aligned.guides || [];
+      if (last && shouldAngleSnap()) {
+        var snapped = angleSnapPoint(state.drawPreview, last);
+        if (snapped && (snapped.x !== state.drawPreview.x || snapped.y !== state.drawPreview.y)) {
+          state.drawPreview = snapped;
+        }
+      }
+    }
     redrawDrawPreview();
   }
 
@@ -5014,6 +5311,7 @@
     var prev = lastDrawVertex();
     var dest = state.drawPreview;
     if (!prev || !dest || dist(prev, dest) < 1) {
+      redrawAlignmentGuides();
       flushKonva();
       return;
     }
@@ -5067,6 +5365,7 @@
       layer.add(kLabel);
     }
 
+    redrawAlignmentGuides();
     flushKonva();
   }
 
@@ -5803,7 +6102,7 @@
           stroke: isSelected ? '#f57f17' : '#fff',
           strokeWidth: uiSize(isSelected ? 3 : 2),
           hitStrokeWidth: Math.max(0, (hitR - visualR) * 2),
-          draggable: !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
+          draggable: !geometryLocked() && !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
           listening: !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
           dragDistance: uiSize(3)
         });
@@ -5816,8 +6115,9 @@
           if (state.stage && !state.draggingVertex && !state.draggingWall) updateCanvasCursor();
         });
         circle.on('dragstart', function (e) {
-          if (isPanOrPinchActive()) {
+          if (geometryLocked() || isPanOrPinchActive()) {
             e.target.stopDrag();
+            if (geometryLocked()) warnGeometryLocked();
             return;
           }
           var shiftKey = isShiftKey(e);
@@ -5878,6 +6178,7 @@
           redrawPolygonLine();
           redrawLabels();
           redrawWalls();
+          redrawDrawPreview();
           updateLiveArea();
           if (state.selectedWallIndex !== null && els.wallLength) {
             var lenFt = wallLengthFeet(state.selectedWallIndex);
@@ -5895,6 +6196,7 @@
           state.vertexDragFrom = null;
           state.vertexDragOrigins = null;
           applyVertexGroupDrag(vertexIndex, raw, true);
+          clearLiveGuides();
           if (!isValidShape(activeVertices(), isActiveClosed())) {
             var snap = state.undoStack.length ? state.undoStack[state.undoStack.length - 1] : null;
             if (snap) restoreUndoSnapshot(snap);
@@ -5919,9 +6221,18 @@
     var nameItems = buildAreaNameLabels();
     var occupied = nameItems.map(function (item) { return item.box; });
 
-    if (state.showDimensions) {
-      drawWallDimensionLabels(labelLayer, occupied);
-      drawObjectDimensionLabels(labelLayer, occupied);
+    if (state.dimensionsMode !== DIM_MODES.off) {
+      if (state.dimensionsMode === DIM_MODES.all) {
+        drawWallDimensionLabels(labelLayer, occupied);
+        drawObjectDimensionLabels(labelLayer, occupied);
+        drawOverallDimensionLabel(labelLayer, occupied);
+      } else if (state.dimensionsMode === DIM_MODES.main) {
+        drawOverallDimensionLabel(labelLayer, occupied);
+      } else if (state.dimensionsMode === DIM_MODES.area) {
+        if (!nameItems.length) {
+          drawOverallDimensionLabel(labelLayer, occupied, true);
+        }
+      }
     }
 
     nameItems.forEach(function (item) {
@@ -6135,6 +6446,71 @@
     });
   }
 
+  function drawOverallDimensionLabel(labelLayer, nameBoxes, areaOnly) {
+    var verts = activeVertices();
+    var ppf = pixelsPerFoot();
+    if (!ppf || !isActiveClosed() || verts.length < 3) return;
+    var box = polygonAabbSize(verts);
+    var area = areaSqFt(verts);
+    var text;
+    if (areaOnly) {
+      text = fmtAreaFromSqFt(area);
+    } else {
+      text = RA.overallDimensionText(verts, {
+        width: box.width / ppf,
+        height: box.height / ppf,
+        formatLength: fmtLengthFromFeet,
+        areaLabel: area != null ? fmtAreaFromSqFt(area) : null
+      });
+    }
+    var c = polygonCentroid(verts) || { x: box.width / 2, y: box.height / 2 };
+    var kLabel = new Konva.Label({
+      x: c.x,
+      y: c.y,
+      listening: false
+    });
+    kLabel.add(new Konva.Tag({
+      fill: canvasTagFill(false),
+      stroke: canvasBrandStroke(),
+      strokeWidth: uiSize(1),
+      cornerRadius: uiSize(4),
+      pointerDirection: 'none'
+    }));
+    kLabel.add(new Konva.Text({
+      text: text,
+      fontSize: uiSize(12),
+      fontFamily: 'Open Sans, sans-serif',
+      fontStyle: '700',
+      fill: canvasAreaLabelText(),
+      padding: uiSize(5)
+    }));
+    kLabel.offsetX(kLabel.width() / 2);
+    kLabel.offsetY(kLabel.height() / 2);
+    var boxLabel = konvaLabelBox(kLabel);
+    var offsets = [0, uiSize(22), -uiSize(22), uiSize(40), -uiSize(40)];
+    var placed = false;
+    var i;
+    for (i = 0; i < offsets.length; i++) {
+      kLabel.y(c.y + offsets[i]);
+      kLabel.offsetY(kLabel.height() / 2);
+      boxLabel = konvaLabelBox(kLabel);
+      if (!overlapsAnyBox(boxLabel, nameBoxes, uiSize(2))) {
+        placed = true;
+        break;
+      }
+    }
+    if (!placed && (areaOnly || state.dimensionsMode === DIM_MODES.main || state.dimensionsMode === DIM_MODES.area)) {
+      var aabb = polygonAabbSize(verts);
+      kLabel.y(isFinite(aabb.minY) ? aabb.minY - uiSize(16) : c.y - uiSize(28));
+      kLabel.offsetY(kLabel.height() / 2);
+      boxLabel = konvaLabelBox(kLabel);
+      placed = true;
+    }
+    if (!placed) return;
+    labelLayer.add(kLabel);
+    nameBoxes.push(boxLabel);
+  }
+
   function polygonCentroid(verts) {
     var n = verts.length;
     if (!n) return null;
@@ -6199,7 +6575,14 @@
       if (v.x > maxX) maxX = v.x;
       if (v.y > maxY) maxY = v.y;
     });
-    return { width: Math.max(0, maxX - minX), height: Math.max(0, maxY - minY) };
+    return {
+      width: Math.max(0, maxX - minX),
+      height: Math.max(0, maxY - minY),
+      minX: minX,
+      minY: minY,
+      maxX: maxX,
+      maxY: maxY
+    };
   }
 
   function polygonAxisSpan(origin, verts, axisX, axisY) {
@@ -6225,7 +6608,7 @@
       var lines = [];
       if (name) lines.push(name);
       else if (roomFallback) lines.push(roomFallback);
-      if (sqft != null) lines.push(fmt(sqft, 1) + ' sq ft');
+      if (sqft != null) lines.push(fmtAreaFromSqFt(sqft));
       if (!lines.length) return;
       var center = polygonCentroid(poly.vertices);
       if (!center) return;
@@ -6676,15 +7059,14 @@
       state.calibPoints.push({ x: pos.x, y: pos.y });
       redrawCalib();
       var ready = state.calibPoints.length === 2;
-      els.knownLength.disabled = !ready;
-      els.applyScale.disabled = !ready;
-      if (ready) els.knownLength.focus();
+      raAll('[data-ra-known-length]').forEach(function (el) { el.disabled = !ready; });
+      raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = !ready; });
+      if (ready && els.knownLength) els.knownLength.focus();
       return;
     }
 
     if (state.rulerMode) {
-      var rulerShiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
-      placeRulerPoint(pos, rulerShiftSnap);
+      placeRulerPoint(pos, shouldAngleSnap(e));
       return;
     }
 
@@ -6739,12 +7121,15 @@
         }
       }
 
-      var drawShiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
+      if (geometryLocked()) {
+        warnGeometryLocked();
+        return;
+      }
       var drawPoint = pos;
       if (activeVertices().length > 0) {
         var drawPrev = activeVertices()[activeVertices().length - 1];
-        if (drawShiftSnap) {
-          drawPoint = snapPoint(pos, drawPrev, SHIFT_SNAP_STEP);
+        if (shouldAngleSnap(e)) {
+          drawPoint = angleSnapPoint(pos, drawPrev);
         }
       }
       pushUndoSnapshot();
@@ -6787,14 +7172,15 @@
       }
     }
 
-    var shiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var point = pos;
     if (activeVertices().length > 0) {
       var prev = activeVertices()[activeVertices().length - 1];
-      if (shiftSnap) {
-        point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
-      } else {
-        point = pos;
+      if (shouldAngleSnap(e)) {
+        point = angleSnapPoint(pos, prev);
       }
     }
     pushUndoSnapshot();
@@ -6833,6 +7219,10 @@
   }
 
   function closeShape() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (activeVertices().length < 3) return;
     if (!isSimplePolygon(activeVertices())) {
       setFeedback('Shape crosses itself — adjust corners before closing.', true);
@@ -6883,6 +7273,7 @@
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     setWallHeight(DEFAULT_WALL_HEIGHT_FT);
+    applyEditorPrefs(defaultEditorPrefs(), true);
     show(els.liveArea, false);
     clearDraftLayers();
     resetTypedWalls();
@@ -6893,12 +7284,18 @@
     captureSavedSnapshot();
   }
 
-  function clearShape() {
+  function clearShape(opts) {
+    opts = opts || {};
+    if (!opts.force && geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     resetDraftCanvas();
   }
 
   function beginNewRoom() {
     resetDraftCanvas();
+    applyEditorPrefs(defaultEditorPrefs(), true);
     revokeDraftBackground();
     state.bgLayout = null;
     stopBgMoveMode();
@@ -6937,8 +7334,30 @@
     });
   }
 
+  function snapshotGeometryKey(snap) {
+    var groups = (snap && snap.groups) || [];
+    return JSON.stringify({
+      g: groups.map(function (group) {
+        return (group.polygons || []).map(function (poly) {
+          return { id: poly.id, closed: !!poly.closed, v: poly.vertices };
+        });
+      }),
+      scale: snap ? snap.scalePixelsPerFoot : null,
+      thick: snap ? snap.wallThicknessIn : null
+    });
+  }
+
+  function historyAllowedWhileLocked(snap) {
+    if (!snap) return false;
+    return snapshotGeometryKey(snap) === snapshotGeometryKey(snapshotState());
+  }
+
   function undoVertex() {
     if (!state.undoStack.length) return;
+    if (geometryLocked() && !historyAllowedWhileLocked(state.undoStack[state.undoStack.length - 1])) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.draggingWall) finishWallDrag(getPointerPos());
     state.draggingVertex = false;
     state.vertexDragFrom = null;
@@ -6957,6 +7376,10 @@
 
   function redoAction() {
     if (!state.redoStack.length) return;
+    if (geometryLocked() && !historyAllowedWhileLocked(state.redoStack[state.redoStack.length - 1])) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.draggingWall) finishWallDrag(getPointerPos());
     state.draggingVertex = false;
     state.vertexDragFrom = null;
@@ -6979,6 +7402,7 @@
     if (grandTotal === null) {
       show(els.liveArea, false);
       setSaveDisabled(true);
+      if (els.sheetTotal) els.sheetTotal.textContent = '—';
       updateGroupChip();
       return;
     }
@@ -6993,17 +7417,20 @@
     });
     els.liveArea.classList.toggle('util-ra-live-area--single', closedCount <= 1 && groupsWithAreas <= 1);
     if (els.liveActiveShape) {
-      els.liveActiveShape.textContent = activeSqft !== null ? fmt(activeSqft, 2) : '—';
+      els.liveActiveShape.textContent = activeSqft !== null ? formatAreaQty(activeSqft) : '—';
     }
     if (els.liveGrandTotal) {
-      els.liveGrandTotal.textContent = fmt(grandTotal, 2);
+      els.liveGrandTotal.textContent = formatAreaQty(grandTotal);
     }
     if (els.liveSqft) els.liveSqft.textContent = fmt(grandTotal, 2);
     if (els.liveSqm) els.liveSqm.textContent = fmt(grandTotal * SQFT_TO_SQM, 2);
+    if (els.sheetTotal) els.sheetTotal.textContent = fmtAreaFromSqFt(grandTotal);
+    var alt = root.querySelector('[data-ra-live-sqft-alt]');
+    if (alt) alt.textContent = fmt(grandTotal, 2);
     var metrics = computeWallMetrics();
-    if (els.livePerimeter) els.livePerimeter.textContent = formatMetricQty(metrics.perimeter_lf);
-    if (els.liveBaseboard) els.liveBaseboard.textContent = formatMetricQty(metrics.baseboard_lf);
-    if (els.liveWallArea) els.liveWallArea.textContent = formatMetricQty(metrics.wall_area_sqft);
+    if (els.livePerimeter) els.livePerimeter.textContent = formatLinearQty(metrics.perimeter_lf);
+    if (els.liveBaseboard) els.liveBaseboard.textContent = formatLinearQty(metrics.baseboard_lf);
+    if (els.liveWallArea) els.liveWallArea.textContent = formatAreaQty(metrics.wall_area_sqft);
     if (els.liveCounts) {
       var counts = metrics.door_count + (metrics.door_count === 1 ? ' door' : ' doors') +
         ' · ' + metrics.window_count + (metrics.window_count === 1 ? ' window' : ' windows') +
@@ -7016,19 +7443,19 @@
     if (els.liveFootprint) {
       var showFp = metrics.wall_thickness_in > 0 && Math.abs(metrics.outside_area_sqft - metrics.inside_area_sqft) > 0.009;
       show(els.liveFootprintWrap, showFp);
-      els.liveFootprint.textContent = formatMetricQty(metrics.outside_area_sqft);
+      els.liveFootprint.textContent = formatAreaQty(metrics.outside_area_sqft);
     }
     if (els.liveFraming) {
       var showFr = metrics.shared_wall_lf > 0.009;
       show(els.liveFramingWrap, showFr);
-      els.liveFraming.textContent = formatMetricQty(metrics.framing_lf);
+      els.liveFraming.textContent = formatLinearQty(metrics.framing_lf);
     }
     if (els.liveCabinets) {
       var cab = (metrics.cabinet_base_lf || 0) + (metrics.cabinet_upper_lf || 0);
       show(els.liveCabinetsWrap, cab > 0.009);
       var cabParts = [];
-      if (metrics.cabinet_base_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_base_lf) + ' base');
-      if (metrics.cabinet_upper_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_upper_lf) + ' up');
+      if (metrics.cabinet_base_lf > 0) cabParts.push(formatLinearQty(metrics.cabinet_base_lf) + ' base');
+      if (metrics.cabinet_upper_lf > 0) cabParts.push(formatLinearQty(metrics.cabinet_upper_lf) + ' up');
       els.liveCabinets.textContent = cabParts.join(' · ') || '0';
     }
     syncExportButtons();
@@ -7042,7 +7469,7 @@
         li.innerHTML =
           '<span class="util-ra-live-area-groups__swatch" style="background:' + esc(group.color) + '"></span>' +
           '<span class="util-ra-live-area-groups__label">Group total:</span>' +
-          '<strong>' + fmt(groupAreaSqFt(group), 2) + '</strong> sq ft' +
+          '<strong>' + formatAreaQty(groupAreaSqFt(group)) + '</strong> ' + (isMetricDisplay() ? 'm²' : 'sq ft') +
           (count > 1 ? ' <span class="util-ra-live-area-groups__count">(' + count + ' areas)</span>' : '');
         els.liveGroupList.appendChild(li);
       });
@@ -7058,15 +7485,23 @@
   }
 
   function updateToolbar() {
-    setAllDisabled('[data-ra-undo-vertex]', state.undoStack.length === 0);
-    setAllDisabled('[data-ra-redo]', state.redoStack.length === 0);
+    var undoDisabled = state.undoStack.length === 0;
+    if (!undoDisabled && geometryLocked()) {
+      undoDisabled = !historyAllowedWhileLocked(state.undoStack[state.undoStack.length - 1]);
+    }
+    var redoDisabled = state.redoStack.length === 0;
+    if (!redoDisabled && geometryLocked()) {
+      redoDisabled = !historyAllowedWhileLocked(state.redoStack[state.redoStack.length - 1]);
+    }
+    setAllDisabled('[data-ra-undo-vertex]', undoDisabled);
+    setAllDisabled('[data-ra-redo]', redoDisabled);
     if (els.splitWall) els.splitWall.disabled = state.selectedWallIndex === null;
     setAllDisabled('[data-ra-close-shape]', activeVertices().length < 3 || isActiveClosed());
-    if (els.addArea) els.addArea.disabled = !isActiveClosed();
-    if (els.addAreaNewGroup) els.addAreaNewGroup.disabled = !isActiveClosed();
+    setAllDisabled('[data-ra-add-area]', !isActiveClosed());
+    setAllDisabled('[data-ra-add-area-new-group]', !isActiveClosed());
     if (els.deleteArea) {
       var canDelete = hasAnyClosedPolygon() || activeVertices().length > 0;
-      els.deleteArea.disabled = !canDelete;
+      setAllDisabled('[data-ra-delete-area]', !canDelete);
     }
     if (els.deleteWall) {
       els.deleteWall.disabled = state.selectedWallIndex === null;
@@ -7150,12 +7585,12 @@
   function stopCalibrationMode() {
     state.calibrating = false;
     state.calibPoints = [];
-    if (els.calibrateToggle) els.calibrateToggle.classList.remove('is-active');
-    if (els.knownLength) {
-      els.knownLength.value = '';
-      els.knownLength.disabled = true;
-    }
-    if (els.applyScale) els.applyScale.disabled = true;
+    raAll('[data-ra-calibrate-toggle]').forEach(function (btn) { btn.classList.remove('is-active'); });
+    raAll('[data-ra-known-length]').forEach(function (el) {
+      el.value = '';
+      el.disabled = true;
+    });
+    raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = true; });
     redrawCalib();
     redrawVertices();
   }
@@ -7166,6 +7601,10 @@
       setFeedback('Calibration cancelled.', false);
       return;
     }
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
 
     if (state.rulerMode) stopRulerMode();
     stopBgMoveMode();
@@ -7173,20 +7612,28 @@
 
     state.calibrating = true;
     state.calibPoints = [];
-    if (els.calibrateToggle) els.calibrateToggle.classList.add('is-active');
-    if (els.knownLength) {
-      els.knownLength.disabled = true;
-      els.knownLength.value = '';
-    }
-    if (els.applyScale) els.applyScale.disabled = true;
+    raAll('[data-ra-calibrate-toggle]').forEach(function (btn) { btn.classList.add('is-active'); });
+    raAll('[data-ra-known-length]').forEach(function (el) {
+      el.disabled = true;
+      el.value = '';
+    });
+    raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = true; });
     redrawCalib();
     setFeedback('Click two points on a known wall length.', false);
   }
 
   function applyScale() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.calibPoints.length !== 2) return;
     try {
-      var feet = parseLengthInput(els.knownLength.value);
+      var knownRaw = '';
+      raAll('[data-ra-known-length]').forEach(function (el) {
+        if (el.value) knownRaw = el.value;
+      });
+      var feet = parseLengthInput(knownRaw);
       var pxDist = dist(state.calibPoints[0], state.calibPoints[1]);
       if (pxDist < 5) throw new Error('Points are too close — pick a longer reference.');
       var ppf = pxDist / feet;
@@ -7225,7 +7672,7 @@
             if (idx >= 0) project.rooms[idx] = result.data.room;
             updateScaleUI();
             captureSavedSnapshot();
-            setFeedback('Scale calibrated for this room.', false);
+            setFeedback('Scale calibrated for this room. Parsed as ' + RA.describeParsedLength(feet) + '.', false);
           })
           .catch(function (e) {
             setFeedback(e.message, true);
@@ -7235,7 +7682,7 @@
 
       state.draftScale = ppf;
       setWorkingPixelsPerFoot(ppf);
-      setFeedback('Scale calibrated. Save the room to keep this scale with it.', false);
+      setFeedback('Scale calibrated. Parsed as ' + RA.describeParsedLength(feet) + '. Save the room to keep this scale with it.', false);
     } catch (err) {
       setFeedback(err.message, true);
     }
@@ -7322,7 +7769,7 @@
       if (!currentProject) return;
       var currentRoom = currentProject.rooms.find(function (r) { return r.id === roomId; });
       if (!currentRoom || !roomHasDrawableData(currentRoom)) {
-        clearShape();
+        clearShape({ force: true });
         return;
       }
 
@@ -7352,10 +7799,12 @@
 
   function cancelEdit() {
     if (!state.editingRoomId) return;
-    clearShape();
+    clearShape({ force: true });
+    revokeDraftBackground();
+    state.bgLayout = null;
     loadBackground(null);
     captureSavedSnapshot();
-    setFeedback('Edit cancelled.', false);
+    setFeedback('Left this room. The saved plan is unchanged.', false);
   }
 
   function renderRooms() {
@@ -7530,7 +7979,7 @@
     var projectId = project.id;
     stopRulerMode();
     clearRulerSelection();
-    clearShape();
+    clearShape({ force: true });
     var token = state.editorToken;
     ensureStage();
     loadBackground(null);
@@ -7607,18 +8056,27 @@
       },
       body: JSON.stringify({ client_project_id: clientProjectId ? parseInt(clientProjectId, 10) : null })
     })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (!data.ok) return;
-        project.client_project_id = data.project.client_project_id;
-        project.client_project_name = data.project.client_project_name;
+      .then(function (res) {
+        return readFetchJson(res, 'Could not update project.');
+      })
+      .then(function (result) {
+        if (!result.ok) return;
+        project.client_project_id = result.data.project.client_project_id;
+        project.client_project_name = result.data.project.client_project_name;
         renderLinked();
+      })
+      .catch(function (err) {
+        setFeedback(friendlyNetworkError(err, 'Could not update project. Check your connection and try again.'), true);
       });
   }
 
   function deleteProject() {
     var project = activeProject();
     if (!project) return;
+    if (projectHasLockedRoom(project)) {
+      setFeedback('Unlock layers to delete this project.', true);
+      return;
+    }
 
     confirmAction('Delete this project and all saved rooms?', { title: 'Delete project', danger: true }).then(function (ok) {
       if (!ok) return;
@@ -7632,14 +8090,22 @@
           Accept: 'application/json'
         }
       })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
+        .then(function (res) {
+          return readFetchJson(res, 'Could not delete project.');
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            setFeedback((result.data && result.data.message) || 'Unlock layers to delete this project.', true);
+            return;
+          }
           state.projects = state.projects.filter(function (p) { return p.id !== project.id; });
           state.activeProjectId = null;
           refreshProjectSelect();
           renderWorkspace();
           setFeedback('Project deleted.', false);
+        })
+        .catch(function (err) {
+          setFeedback(friendlyNetworkError(err, 'Could not delete project. Check your connection and try again.'), true);
         });
     });
   }
@@ -7691,11 +8157,7 @@
       })
     })
       .then(function (res) {
-        return res.json().then(function (data) {
-          return { ok: res.ok, status: res.status, data: data };
-        }).catch(function () {
-          return { ok: false, status: res.status, data: { message: 'Could not read server response.' } };
-        });
+        return readFetchJson(res, 'Could not read server response.');
       })
       .then(function (result) {
         if (!result.ok) {
@@ -7705,28 +8167,31 @@
           ));
         }
         var savedRoom = result.data.room;
-        if (!isUpdate && state.draftBackground && state.draftBackground.file) {
-          return uploadRoomBackgroundFile(savedRoom.id, state.draftBackground.file).then(function (bgResult) {
+        if (savedRoom && savedRoom.id && !state.editingRoomId) {
+          state.editingRoomId = savedRoom.id;
+        }
+        var pendingFile = state.draftBackground && state.draftBackground.file;
+        if (pendingFile && savedRoom && savedRoom.id) {
+          return uploadRoomBackgroundFile(savedRoom.id, pendingFile).then(function (bgResult) {
             savedRoom.background_url = bgResult.background_url;
-            return { ok: true, data: { room: savedRoom } };
+            return { ok: true, data: { room: savedRoom }, created: !isUpdate };
+          }).catch(function (err) {
+            throw new Error(RA.planUploadErrorAfterRoomSaved(err));
           });
         }
         return result;
       })
       .then(function (result) {
         setSaveDisabled(false);
-        if (isUpdate) {
-          var idx = project.rooms.findIndex(function (r) { return r.id === result.data.room.id; });
-          if (idx >= 0) {
-            var oldRoom = project.rooms[idx];
-            var newRoom = result.data.room;
-            if (oldRoom && oldRoom.rulers) newRoom.rulers = oldRoom.rulers;
-            project.rooms[idx] = newRoom;
-          }
+        var savedListRoom = result.data.room;
+        var idx = project.rooms.findIndex(function (r) { return r.id === savedListRoom.id; });
+        if (idx >= 0) {
+          var oldRoom = project.rooms[idx];
+          if (oldRoom && oldRoom.rulers) savedListRoom.rulers = oldRoom.rulers;
+          project.rooms[idx] = savedListRoom;
         } else {
-          var newRoom = result.data.room;
           if (state.draftRulers && state.draftRulers.length) {
-            newRoom.rulers = state.draftRulers.map(function (r) {
+            savedListRoom.rulers = state.draftRulers.map(function (r) {
               return {
                 id: r.id,
                 p1: { x: r.p1.x, y: r.p1.y },
@@ -7734,7 +8199,7 @@
               };
             });
           }
-          project.rooms.push(newRoom);
+          project.rooms.push(savedListRoom);
         }
         project.canvas_width = contentW();
         project.canvas_height = contentH();
@@ -7759,7 +8224,28 @@
       });
   }
 
+  function roomLayersLocked(roomId) {
+    if (state.editingRoomId === roomId && geometryLocked()) return true;
+    var project = activeProject();
+    if (!project || !project.rooms) return false;
+    var room = project.rooms.find(function (r) { return r.id === roomId; });
+    if (!room) return false;
+    var canvas = room.canvas || room.vertices;
+    return !!(canvas && canvas.editor && canvas.editor.layers_locked);
+  }
+
+  function projectHasLockedRoom(project) {
+    return !!(project && project.rooms && project.rooms.some(function (room) {
+      var canvas = room.canvas || room.vertices;
+      return !!(canvas && canvas.editor && canvas.editor.layers_locked);
+    }));
+  }
+
   function deleteRoom(roomId) {
+    if (roomLayersLocked(roomId)) {
+      setFeedback('Unlock layers to delete this room.', true);
+      return;
+    }
     confirmAction('Delete this room?', { title: 'Delete room', danger: true }).then(function (ok) {
       if (!ok) return;
 
@@ -7772,20 +8258,28 @@
           Accept: 'application/json'
         }
       })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
+        .then(function (res) {
+          return readFetchJson(res, 'Could not delete room.');
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            setFeedback((result.data && result.data.message) || 'Unlock layers to delete this room.', true);
+            return;
+          }
           var project = activeProject();
           if (project) {
             project.rooms = project.rooms.filter(function (r) { return r.id !== roomId; });
             if (state.editingRoomId === roomId) {
-              clearShape();
+              clearShape({ force: true });
               loadBackground(null);
               renderPhotos();
             }
             renderRooms();
             setFeedback('Room deleted.', false);
           }
+        })
+        .catch(function () {
+          setFeedback('Could not delete room. Check your connection and try again.', true);
         });
     });
   }
@@ -7804,9 +8298,17 @@
       },
       body: fd
     })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (res) {
+        return readFetchJson(res, 'Could not upload the floor plan.');
+      })
       .then(function (result) {
-        if (!result.ok) throw new Error(result.data.message || 'Upload failed.');
+        if (!result.ok) {
+          var err = new Error(saveErrorMessage(result.data, result.status === 413
+            ? 'That file is too large to upload.'
+            : 'Could not upload the floor plan.'));
+          err.status = result.status;
+          throw err;
+        }
         return result.data;
       });
   }
@@ -7818,6 +8320,10 @@
     if (state.editingRoomId) {
       var room = activeRoom();
       if (!room) return;
+      if (room.background_url && geometryLocked()) {
+        setFeedback('Unlock layers to change the floor plan.', true);
+        return;
+      }
 
       uploadRoomBackgroundFile(room.id, file)
         .then(function (data) {
@@ -7826,7 +8332,9 @@
           captureSavedSnapshot();
           setFeedback('Floor plan uploaded for this room.', false);
         })
-        .catch(function (e) { setFeedback(e.message, true); });
+        .catch(function (e) {
+          setFeedback(friendlyNetworkError(e, 'Could not upload the floor plan. Check your connection and try again.'), true);
+        });
       return;
     }
 
@@ -7843,6 +8351,10 @@
     if (state.editingRoomId) {
       var room = activeRoom();
       if (!room || !room.background_url) return;
+      if (geometryLocked() || roomLayersLocked(room.id)) {
+        setFeedback('Unlock layers to change the floor plan.', true);
+        return;
+      }
 
       confirmAction(
         'Delete the floor plan image for this room? The room outline will stay.',
@@ -7859,13 +8371,25 @@
             Accept: 'application/json'
           }
         })
-          .then(function (res) { return res.json(); })
-          .then(function (data) {
-            if (!data.ok) return;
+          .then(function (res) {
+            return res.json().then(function (data) {
+              return { ok: res.ok, data: data };
+            }).catch(function () {
+              return { ok: false, data: { message: 'Could not delete floor plan.' } };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok) {
+              setFeedback((result.data && result.data.message) || 'Unlock layers to change the floor plan.', true);
+              return;
+            }
             room.background_url = null;
             loadBackground(null);
             captureSavedSnapshot();
             setFeedback('Floor plan image deleted for this room.', false);
+          })
+          .catch(function () {
+            setFeedback('Could not delete floor plan. Check your connection and try again.', true);
           });
       });
       return;
@@ -8044,6 +8568,7 @@
     if (els.paletteToggle) {
       els.paletteToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
+    syncPhoneSheetForDock();
   }
 
   function togglePaletteOpen() {
@@ -8454,9 +8979,318 @@
   }
 
   function setShowDimensions(on) {
-    state.showDimensions = !!on;
+    setDimensionsMode(on ? DIM_MODES.all : DIM_MODES.off);
+  }
+
+  function setDimensionsMode(mode, silent) {
+    if (!DIM_MODES[mode]) mode = DIM_MODES.all;
+    state.dimensionsMode = mode;
+    state.showDimensions = mode !== DIM_MODES.off;
+    raAll('[data-ra-dimensions-mode]').forEach(function (sel) { sel.value = mode; });
     if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
-    redrawLabels();
+    if (!silent) redrawLabels();
+  }
+
+  function setLayersLocked(on, silent) {
+    state.layersLocked = !!on;
+    raAll('[data-ra-lock-layers]').forEach(function (box) { box.checked = state.layersLocked; });
+    if (els.canvasWrap) els.canvasWrap.classList.toggle('is-layers-locked', state.layersLocked);
+    if (state.layersLocked) {
+      clearVertexSelection();
+      stopBgMoveMode();
+      // Keep opening selection; only drop vertex/wall edits.
+    }
+    syncBackgroundUI();
+    updateToolbar();
+    redrawVertices();
+    redrawWalls();
+    if (!silent) {
+      setFeedback(state.layersLocked
+        ? 'Wall corners locked. Doors, windows, and notes stay editable.'
+        : 'Wall corners unlocked.', false);
+    }
+  }
+
+  function setAngleSnap(on, silent) {
+    state.angleSnap = !!on;
+    raAll('[data-ra-snap-toggle]').forEach(function (btn) {
+      btn.classList.toggle('is-active', state.angleSnap);
+      btn.setAttribute('aria-pressed', state.angleSnap ? 'true' : 'false');
+    });
+    if (!silent) {
+      setFeedback(state.angleSnap ? 'Angle snap on (45° / 90°). Hold Alt to bypass.' : 'Angle snap off.', false);
+    }
+  }
+
+  function templatesPopoverOpen() {
+    if (isPhoneChrome()) return root.classList.contains('is-more-open');
+    return !!(els.templatesPopover && !els.templatesPopover.hasAttribute('hidden'));
+  }
+
+  function placeObjectDock() {
+    var dock = root.querySelector('.util-ra-object-dock');
+    var card = root.querySelector('.util-ra-canvas-card');
+    var slot = root.querySelector('[data-ra-sheet-dock]');
+    if (!dock || !card) return;
+    if (isPhoneChrome() && slot) {
+      if (dock.parentElement !== slot) slot.appendChild(dock);
+      return;
+    }
+    if (dock.parentElement === card) return;
+    var edit = card.querySelector('.util-ra-edit-dock');
+    var wrap = card.querySelector('.util-ra-canvas-wrap');
+    card.insertBefore(dock, edit || wrap || null);
+  }
+
+  function syncPhoneSheetForDock() {
+    if (!isPhoneChrome()) {
+      root.classList.remove('is-dock-open');
+      return;
+    }
+    var open = (els.palette && els.palette.classList.contains('is-open'))
+      || (els.wallsPanel && els.wallsPanel.classList.contains('is-open'));
+    root.classList.toggle('is-dock-open', !!open);
+    if (open) {
+      root.style.setProperty('--ra-sheet-h', 'min(52vh, 420px)');
+      return;
+    }
+    if (root.classList.contains('is-sheet-expanded')) return;
+    root.style.setProperty('--ra-sheet-h', 'auto');
+  }
+
+  function syncPhoneBarOverflow() {
+    var bar = root.querySelector('[data-ra-phone-bar]');
+    var scroll = root.querySelector('[data-ra-phone-scroll]');
+    if (!bar || !scroll) return;
+    bar.classList.toggle('is-overflowing', scroll.scrollWidth > scroll.clientWidth + 1);
+  }
+
+  var moreLastFocus = null;
+
+  function moreSheetFocusables() {
+    if (!els.moreSheet) return [];
+    return Array.prototype.filter.call(
+      els.moreSheet.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+      function (el) {
+        if (el.disabled || el.hidden) return false;
+        var cs = window.getComputedStyle(el);
+        return cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0;
+      }
+    );
+  }
+
+  function trapMoreFocus(e) {
+    if (!root.classList.contains('is-more-open') || e.key !== 'Tab' || !els.moreSheet) return;
+    var list = moreSheetFocusables();
+    if (!list.length) return;
+    var first = list[0];
+    var last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  function setMoreOpen(open) {
+    var wasOpen = root.classList.contains('is-more-open');
+    root.classList.toggle('is-more-open', !!open);
+    raAll('[data-ra-more-toggle]').forEach(function (btn) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('is-active', !!open);
+    });
+    if (els.moreSheet) {
+      els.moreSheet.setAttribute('aria-modal', open ? 'true' : 'false');
+    }
+    if (isPhoneChrome() && els.templatesPopover) {
+      els.templatesPopover.removeAttribute('hidden');
+    }
+    if (open && isPhoneChrome() && els.moreSheet) {
+      els.moreSheet.scrollTop = 0;
+      if (!wasOpen) moreLastFocus = document.activeElement;
+      requestAnimationFrame(function () {
+        var closeBtn = els.moreSheet.querySelector('[data-ra-more-close]');
+        var list = moreSheetFocusables();
+        (closeBtn || list[0] || els.moreSheet).focus();
+      });
+    } else if (!open && wasOpen) {
+      var toggle = root.querySelector('[data-ra-more-toggle]');
+      if (toggle) toggle.focus();
+      else if (moreLastFocus && moreLastFocus.focus) moreLastFocus.focus();
+    }
+  }
+
+  function scrollMoreToTemplates() {
+    var sec = root.querySelector('[data-ra-more-templates]');
+    if (!sec || !els.moreSheet) return;
+    requestAnimationFrame(function () {
+      var sheetBox = els.moreSheet.getBoundingClientRect();
+      var secBox = sec.getBoundingClientRect();
+      els.moreSheet.scrollTop += (secBox.top - sheetBox.top) - 8;
+    });
+  }
+
+  function setTemplatesPopover(open) {
+    if (isPhoneChrome()) {
+      setMoreOpen(!!open);
+      if (open) scrollMoreToTemplates();
+      raAll('[data-ra-templates-toggle]').forEach(function (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.classList.toggle('is-active', !!open);
+      });
+      return;
+    }
+    if (!els.templatesPopover || !els.templatesToggle) return;
+    show(els.templatesPopover, open);
+    raAll('[data-ra-templates-toggle]').forEach(function (btn) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('is-active', !!open);
+    });
+    if (open) {
+      var r = els.templatesToggle.getBoundingClientRect();
+      var left = Math.max(8, Math.min(r.left, window.innerWidth - 280));
+      els.templatesPopover.style.position = 'fixed';
+      els.templatesPopover.style.top = Math.round(r.bottom + 8) + 'px';
+      els.templatesPopover.style.left = Math.round(left) + 'px';
+      els.templatesPopover.style.right = 'auto';
+      els.templatesPopover.style.zIndex = '80';
+    }
+  }
+
+  function bindTemplatesPopoverFollow() {
+    if (!els.templatesPopover || !els.templatesToggle) return;
+    var reposition = function () {
+      if (isPhoneChrome()) return;
+      if (templatesPopoverOpen()) setTemplatesPopover(true);
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    var toolbar = root.querySelector('.util-ra-canvas-toolbar');
+    if (toolbar) toolbar.addEventListener('scroll', reposition);
+  }
+
+  function toggleTemplatesPopover() {
+    setTemplatesPopover(!templatesPopoverOpen());
+  }
+
+  function closeTemplatesPopover() {
+    setTemplatesPopover(false);
+  }
+
+  function readTemplateSize(fallbackW, fallbackL) {
+    var w = fallbackW;
+    var l = fallbackL;
+    try {
+      if (els.typeRectW && String(els.typeRectW.value).trim()) w = parseLengthInput(els.typeRectW.value);
+    } catch (e) { /* keep fallback */ }
+    try {
+      if (els.typeRectL && String(els.typeRectL.value).trim()) l = parseLengthInput(els.typeRectL.value);
+    } catch (e) { /* keep fallback */ }
+    return { w: w, l: l };
+  }
+
+  function templateRectFeet(w, l) {
+    return RA.rectangle(w, l);
+  }
+
+  function templateLFeet(w, h, rw, rh) {
+    return RA.lShape(w, h, rw, rh);
+  }
+
+  function templateUFeet(w, h, ow, od) {
+    return RA.uShape(w, h, ow, od);
+  }
+
+  function templateTFeet(bw, bh, sw, sh) {
+    return RA.tShape(bw, bh, sw, sh);
+  }
+
+  function feetTemplateToPixels(feetVerts) {
+    var ppf = ensureTypedScale();
+    var start = typedStartPoint();
+    return feetVerts.map(function (v) {
+      return clampToCanvas({ x: start.x + v.x * ppf, y: start.y + v.y * ppf });
+    });
+  }
+
+  function applyRoomTemplate(kind) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
+    ensureInitialCanvas();
+    var size = (kind === 'l' || kind === 'u' || kind === 't')
+      ? readTemplateSize(16, 12)
+      : readTemplateSize(12, 10);
+    var feet = RA.shapeFromKind(kind, size.w, size.l);
+    pushUndoSnapshot();
+    setActiveVertices(feetTemplateToPixels(feet));
+    setActiveClosed(true);
+    rematchAllObjects();
+    syncTypedWallsFromCanvas();
+    renderTypedWallsList();
+    updateTypedCloseBar();
+    closeTemplatesPopover();
+    setMoreOpen(false);
+    state.templateKind = (kind === 'l' || kind === 'u' || kind === 't') ? kind : 'rect';
+    redrawAll();
+    fitViewport();
+    setFeedback((kind === 'l' ? 'L-shape' : kind === 'u' ? 'U-shape' : kind === 't' ? 'T-shape' : 'Rectangle') + ' placed. Type lengths to refine.', false);
+  }
+
+  function insertAlcoveVertices(verts, wallIndex, width, depth, closed) {
+    var next = RA.insertAlcove(verts, wallIndex, width, depth, closed);
+    if (!next || next.length < 3) return null;
+    return next;
+  }
+
+  function longestWallIndex() {
+    var best = 0;
+    var bestLen = -1;
+    var count = wallCount();
+    for (var i = 0; i < count; i++) {
+      var a = activeVertices()[i];
+      var b = activeVertices()[wallEndIndex(i)];
+      var len = dist(a, b);
+      if (len > bestLen) {
+        bestLen = len;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  function addAlcove() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
+    if (wallCount() < 1) {
+      setFeedback('Draw a wall first, then add an alcove.', true);
+      return;
+    }
+    var idx = state.selectedWallIndex != null ? state.selectedWallIndex : longestWallIndex();
+    var ppf = ensureTypedScale();
+    pushUndoSnapshot();
+    var next = insertAlcoveVertices(activeVertices(), idx, 4 * ppf, 2 * ppf, isActiveClosed());
+    if (!next || !isValidShape(next, isActiveClosed())) {
+      discardLastUndoSnapshot();
+      setFeedback('Could not add an alcove on that wall.', true);
+      return;
+    }
+    setActiveVertices(next.map(clampToCanvas));
+    rematchAllObjects();
+    syncTypedWallsFromCanvas();
+    renderTypedWallsList();
+    updateTypedCloseBar();
+    closeTemplatesPopover();
+    setMoreOpen(false);
+    clearWallSelection();
+    state.templateKind = 'alcove';
+    redrawAll();
+    setFeedback('Alcove added. Edit the new wall lengths if needed.', false);
   }
 
   function moveObjectAlongWall(obj, pos) {
@@ -8471,10 +9305,12 @@
     var snap = snapToNearestWall(pos, hitTolerance(OBJECT_SNAP_PX * 2));
     if (!snap) return;
     applySnapToObject(obj, snap);
+    state.openingHint = openingCornerHint(obj);
     redrawPolygonLine();
     redrawObjects();
     redrawLabels();
     redrawWalls();
+    redrawDrawPreview();
     syncObjectPropertiesPanel();
   }
 
@@ -8504,6 +9340,7 @@
   function captureRoomPng(pixelRatio) {
     if (!state.stage) return '';
     var prevShow = state.showDimensions;
+    var prevDimMode = state.dimensionsMode;
     var prevViewport = {
       scale: state.viewport.scale,
       x: state.viewport.x,
@@ -8512,6 +9349,7 @@
     };
     state.exporting = true;
     state.showDimensions = true;
+    state.dimensionsMode = DIM_MODES.all;
     fitViewport();
     redrawAll();
     var bg = new Konva.Rect({
@@ -8534,6 +9372,7 @@
     bg.destroy();
     state.exporting = false;
     state.showDimensions = prevShow;
+    state.dimensionsMode = prevDimMode;
     state.viewport.scale = prevViewport.scale;
     state.viewport.x = prevViewport.x;
     state.viewport.y = prevViewport.y;
@@ -8580,6 +9419,18 @@
   }
 
   function metricRows(metrics) {
+    if (isMetricDisplay()) {
+      return [
+        { label: 'Floor area', value: formatMetricQty(metrics.area_sqft * SQFT_TO_SQM) + ' m²' },
+        { label: 'Perimeter', value: formatMetricQty(metrics.perimeter_lf * FEET_TO_METERS) + ' m' },
+        { label: 'Baseboard', value: formatMetricQty(metrics.baseboard_lf * FEET_TO_METERS) + ' m' },
+        { label: 'Wall height', value: formatMetricQty(metrics.wall_height_ft * FEET_TO_METERS) + ' m' },
+        { label: 'Wall area', value: formatMetricQty(metrics.wall_area_sqft * SQFT_TO_SQM) + ' m²' },
+        { label: 'Doors', value: String(metrics.door_count) },
+        { label: 'Windows', value: String(metrics.window_count) },
+        { label: 'Openings', value: String(metrics.opening_count) }
+      ];
+    }
     return [
       { label: 'Floor area', value: formatMetricQty(metrics.area_sqft) + ' sq ft' },
       { label: 'Perimeter', value: formatMetricQty(metrics.perimeter_lf) + ' lf' },
@@ -8858,6 +9709,10 @@
   }
 
   function addTypedWall() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (isActiveClosed()) {
       setFeedback('Room is closed. Start a new area to type more walls.', true);
       return;
@@ -8893,6 +9748,10 @@
   }
 
   function addTypedRectangle() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var w;
     var l;
     try {
@@ -8932,6 +9791,10 @@
   }
 
   function autoCloseTyped() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var verts = activeVertices().slice();
     if (verts.length < 3) return;
     pushUndoSnapshot();
@@ -8963,6 +9826,11 @@
   }
 
   function editTypedWallLength(index, raw) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      renderTypedWallsList();
+      return;
+    }
     var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
@@ -8980,6 +9848,10 @@
   }
 
   function deleteTypedWall(index) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
@@ -9135,9 +10007,15 @@
       },
       body: fd
     })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (res) {
+        return readFetchJson(res, 'Could not upload photos.');
+      })
       .then(function (result) {
-        if (!result.ok) throw new Error(result.data.message || 'Could not upload photos.');
+        if (!result.ok) {
+          throw new Error(saveErrorMessage(result.data, result.status === 413
+            ? 'That file is too large to upload.'
+            : 'Could not upload photos.'));
+        }
         var room = activeRoom();
         if (room) {
           room.photos = (room.photos || []).concat(result.data.photos || []);
@@ -9148,7 +10026,7 @@
         setFeedback('Photos added.', false);
       })
       .catch(function (err) {
-        setFeedback((err && err.message) || 'Could not upload photos.', true);
+        setFeedback(friendlyNetworkError(err, 'Could not upload photos. Check your connection and try again.'), true);
       });
   }
 
@@ -9165,18 +10043,26 @@
           Accept: 'application/json'
         }
       })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
+        .then(function (res) {
+          return readFetchJson(res, 'Could not delete photo.');
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            setFeedback((result.data && result.data.message) || 'Could not delete photo.', true);
+            return;
+          }
           var room = activeRoom();
           if (room) {
             room.photos = (room.photos || []).filter(function (p) { return p.id !== photoId; });
-            room.photo_count = data.photo_count;
+            room.photo_count = result.data.photo_count;
           }
           renderPhotos();
           renderRooms();
           closeLightbox();
           setFeedback('Photo deleted.', false);
+        })
+        .catch(function (err) {
+          setFeedback(friendlyNetworkError(err, 'Could not delete photo. Check your connection and try again.'), true);
         });
     });
   }
@@ -9305,6 +10191,10 @@
   }
 
   function nudgeSelectedVertices(dx, dy) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!state.selectedVertexIndices.length) return;
     pushUndoSnapshot();
     var orig = activeVertices().map(function (v) { return { x: v.x, y: v.y }; });
@@ -9327,6 +10217,10 @@
   }
 
   function nudgeSelectedWall(dx, dy) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     var idx = state.selectedWallIndex;
     var endIdx = wallEndIndex(idx);
@@ -9359,6 +10253,11 @@
   }
 
   function handleRoomAreaKeydown(e) {
+    if (e.key === 'Escape' && root.classList.contains('is-more-open')) {
+      e.preventDefault();
+      setMoreOpen(false);
+      return;
+    }
     if (isTypingTarget(e.target)) return;
     if (els.lightbox && !els.lightbox.hasAttribute('hidden')) return;
 
@@ -9369,6 +10268,10 @@
       e.preventDefault();
       if (shortcutsPopoverOpen()) {
         closeShortcutsPopover();
+        return;
+      }
+      if (templatesPopoverOpen()) {
+        closeTemplatesPopover();
         return;
       }
       if (state.armedCatalogKey || state.placingCatalog) {
@@ -9490,9 +10393,9 @@
         els.projectSelect.value = newId ? String(newId) : '';
         state.calibrating = false;
         state.calibPoints = [];
-        if (els.calibrateToggle) els.calibrateToggle.classList.remove('is-active');
-        if (els.knownLength) els.knownLength.disabled = true;
-        if (els.applyScale) els.applyScale.disabled = true;
+        raAll('[data-ra-calibrate-toggle]').forEach(function (btn) { btn.classList.remove('is-active'); });
+        raAll('[data-ra-known-length]').forEach(function (el) { el.disabled = true; });
+        raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = true; });
         stopRulerMode();
         clearRulerSelection();
         renderWorkspace();
@@ -9509,11 +10412,15 @@
       updateProjectLink(els.linkClientProject.value);
     });
 
-    if (els.calibrateToggle) els.calibrateToggle.addEventListener('click', toggleCalibrate);
-    if (els.applyScale) els.applyScale.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      applyScale();
+    raAll('[data-ra-calibrate-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', toggleCalibrate);
+    });
+    raAll('[data-ra-apply-scale]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyScale();
+      });
     });
 
     raAll('[data-ra-undo-vertex]').forEach(function (btn) {
@@ -9530,7 +10437,9 @@
         toggleShortcutsPopover();
       });
     }
-    els.closeShape.addEventListener('click', closeShape);
+    raAll('[data-ra-close-shape]').forEach(function (btn) {
+      btn.addEventListener('click', closeShape);
+    });
     if (els.paletteToggle) {
       els.paletteToggle.addEventListener('click', function (e) {
         e.preventDefault();
@@ -9573,10 +10482,18 @@
         }
       });
     }
-    if (els.addArea) els.addArea.addEventListener('click', addAreaSameGroup);
-    if (els.addAreaNewGroup) els.addAreaNewGroup.addEventListener('click', addAreaNewGroup);
-    if (els.deleteArea) els.deleteArea.addEventListener('click', deleteActivePolygon);
-    els.clearShape.addEventListener('click', clearShape);
+    raAll('[data-ra-add-area]').forEach(function (btn) {
+      btn.addEventListener('click', addAreaSameGroup);
+    });
+    raAll('[data-ra-add-area-new-group]').forEach(function (btn) {
+      btn.addEventListener('click', addAreaNewGroup);
+    });
+    raAll('[data-ra-delete-area]').forEach(function (btn) {
+      btn.addEventListener('click', deleteActivePolygon);
+    });
+    raAll('[data-ra-clear-shape]').forEach(function (btn) {
+      btn.addEventListener('click', clearShape);
+    });
     raAll('[data-ra-save-room]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         saveRoom().catch(function () {});
@@ -9593,7 +10510,9 @@
     if (els.deleteWall) els.deleteWall.addEventListener('click', deleteSelectedWall);
     if (els.deleteVertex) els.deleteVertex.addEventListener('click', deleteSelectedVertex);
     if (els.vertexCancel) els.vertexCancel.addEventListener('click', clearVertexSelection);
-    if (els.rulerToggle) els.rulerToggle.addEventListener('click', toggleRulerMode);
+    raAll('[data-ra-ruler-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', toggleRulerMode);
+    });
     if (els.deleteRuler) els.deleteRuler.addEventListener('click', deleteSelectedRuler);
     if (els.rulerCancel) els.rulerCancel.addEventListener('click', clearRulerSelection);
     if (els.objectWidth) {
@@ -9643,14 +10562,76 @@
         setShowDimensions(els.dimensionsToggle.checked);
       });
     }
+    raAll('[data-ra-dimensions-mode]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        setDimensionsMode(sel.value);
+      });
+    });
+    raAll('[data-ra-lock-layers]').forEach(function (box) {
+      box.addEventListener('change', function () {
+        setLayersLocked(box.checked);
+      });
+    });
+    raAll('[data-ra-snap-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setAngleSnap(!state.angleSnap);
+      });
+    });
+    raAll('[data-ra-unit-system]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setUnitSystem(btn.getAttribute('data-ra-unit-system'));
+      });
+    });
+    raAll('[data-ra-templates-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleTemplatesPopover();
+      });
+    });
+    raAll('[data-ra-more-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMoreOpen(!root.classList.contains('is-more-open'));
+      });
+    });
+    raAll('[data-ra-more-close]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setMoreOpen(false);
+      });
+    });
+    raAll('[data-ra-template]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        applyRoomTemplate(btn.getAttribute('data-ra-template'));
+      });
+    });
+    raAll('[data-ra-alcove]').forEach(function (btn) {
+      btn.addEventListener('click', addAlcove);
+    });
     bindAreaNameField();
 
     document.addEventListener('keydown', handleRoomAreaKeydown);
+    document.addEventListener('keydown', trapMoreFocus, true);
 
     document.addEventListener('pointerdown', function (e) {
-      if (!shortcutsPopoverOpen()) return;
-      if (els.shortcuts && els.shortcuts.contains(e.target)) return;
-      closeShortcutsPopover();
+      if (shortcutsPopoverOpen() && !(els.shortcuts && els.shortcuts.contains(e.target))) {
+        closeShortcutsPopover();
+      }
+      if (isPhoneChrome()) {
+        if (root.classList.contains('is-more-open')) {
+          var more = els.moreSheet;
+          var phoneBar = root.querySelector('[data-ra-phone-bar]');
+          if (more && !more.contains(e.target) && !(phoneBar && phoneBar.contains(e.target))) {
+            setMoreOpen(false);
+          }
+        }
+        return;
+      }
+      if (templatesPopoverOpen() && !(els.templatesRoot && els.templatesRoot.contains(e.target))) {
+        closeTemplatesPopover();
+      }
     });
 
     if (els.wallLength) {
@@ -9683,12 +10664,24 @@
     });
 
     if (els.wallHeight) {
-      els.wallHeight.addEventListener('input', function () {
-        state.wallHeightFt = wallHeightFt();
+      els.wallHeight.addEventListener('change', function () {
+        var next = wallHeightFtFromValue(els.wallHeight.value);
+        if (next == null) {
+          syncWallHeightInput(true);
+          return;
+        }
+        setWallHeight(next);
         updateLiveArea();
       });
-      els.wallHeight.addEventListener('change', function () {
-        setWallHeight(els.wallHeight.value);
+      els.wallHeight.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        var next = wallHeightFtFromValue(els.wallHeight.value);
+        if (next == null) {
+          syncWallHeightInput(true);
+          return;
+        }
+        setWallHeight(next);
         updateLiveArea();
       });
     }
@@ -9707,11 +10700,11 @@
       els.roomName.addEventListener('input', updateFullpageTitle);
     }
 
-    if (els.measureUnit) {
-      els.measureUnit.addEventListener('change', function () {
-        setMeasureUnit(els.measureUnit.value);
+    raAll('[data-ra-measure-unit]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        setMeasureUnit(sel.value);
       });
-    }
+    });
 
     if (els.typeDirBtns) {
       els.typeDirBtns.forEach(function (btn) {
@@ -9765,10 +10758,20 @@
 
     window.addEventListener('resize', scheduleStageResize);
 
-    document.addEventListener('admin-theme-change', function () {
+    function redrawForTheme() {
       drawGrid();
       redrawAll();
-    });
+    }
+    document.addEventListener('admin-theme-change', redrawForTheme);
+    var lastHtmlDark = document.documentElement.classList.contains('admin-dark');
+    if (window.MutationObserver) {
+      new MutationObserver(function () {
+        var dark = document.documentElement.classList.contains('admin-dark');
+        if (dark === lastHtmlDark) return;
+        lastHtmlDark = dark;
+        redrawForTheme();
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    }
 
     window.addEventListener('beforeunload', function (e) {
       if (!hasUnsavedChanges()) return;
@@ -9891,9 +10894,16 @@
       return e.clientY;
     }
 
+    function collapsedSheetMin() {
+      var handleH = handle.getBoundingClientRect().height || 44;
+      var strip = root.querySelector('[data-ra-sheet-strip]');
+      var stripH = strip ? strip.getBoundingClientRect().height : 0;
+      return Math.max(44, Math.round(handleH + stripH));
+    }
+
     function clampSheet(height) {
-      var minH = Math.round(Math.min(window.innerHeight * 0.22, 168));
-      var maxH = Math.round(window.innerHeight * 0.55);
+      var minH = isPhoneChrome() ? collapsedSheetMin() : Math.round(Math.min(window.innerHeight * 0.22, 168));
+      var maxH = Math.round(window.innerHeight * (isPhoneChrome() ? 0.7 : 0.55));
       return Math.max(minH, Math.min(maxH, Math.round(height)));
     }
 
@@ -9902,47 +10912,88 @@
       scheduleStageResize();
     }
 
+    var moved = false;
+
+    function toggleSheet() {
+      if (!isPhoneChrome()) return;
+      var expanded = root.classList.toggle('is-sheet-expanded');
+      handle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      root.style.setProperty('--ra-sheet-h', expanded ? 'min(52vh, 360px)' : 'auto');
+      scheduleStageResize();
+    }
+
+    var tapHandled = false;
+
     function onDown(e) {
       if (window.matchMedia('(min-width: 901px)').matches) return;
       dragging = true;
+      moved = false;
+      tapHandled = false;
       startY = eventY(e);
       startH = side.getBoundingClientRect().height;
       if (e.pointerId != null && handle.setPointerCapture) {
         pointerId = e.pointerId;
         try { handle.setPointerCapture(e.pointerId); } catch (err) {}
       }
-      e.preventDefault();
+      if (e.type !== 'touchstart') e.preventDefault();
     }
 
     function onMove(e) {
       if (!dragging) return;
+      if (Math.abs(startY - eventY(e)) > 6) moved = true;
+      if (!moved) return;
       var next = startH + (startY - eventY(e));
       applySheet(next);
+      root.classList.toggle('is-sheet-expanded', clampSheet(next) > collapsedSheetMin() + 16);
+      handle.setAttribute('aria-expanded', root.classList.contains('is-sheet-expanded') ? 'true' : 'false');
       e.preventDefault();
     }
 
-    function onUp() {
+    function onUp(e) {
+      var wasDragging = dragging;
       dragging = false;
       pointerId = null;
+      if (!wasDragging || moved) return;
+      if (e && (e.type === 'touchend' || e.pointerType === 'touch')) {
+        tapHandled = true;
+        toggleSheet();
+      }
     }
 
     handle.addEventListener('pointerdown', onDown);
     handle.addEventListener('pointermove', onMove);
     handle.addEventListener('pointerup', onUp);
     handle.addEventListener('pointercancel', onUp);
-    handle.addEventListener('touchstart', onDown, { passive: false });
+    handle.addEventListener('touchstart', onDown, { passive: true });
     handle.addEventListener('touchmove', onMove, { passive: false });
     handle.addEventListener('touchend', onUp);
+    handle.addEventListener('click', function () {
+      if (tapHandled) {
+        tapHandled = false;
+        return;
+      }
+      if (moved) return;
+      toggleSheet();
+    });
+    handle.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleSheet();
+      }
+    });
   }
 
   function init() {
     state.projects = parseJson('data-projects', []);
-    state.measureUnit = loadMeasureUnit();
-    if (els.measureUnit) els.measureUnit.value = state.measureUnit;
+    applyEditorPrefs(defaultEditorPrefs(), true);
+    raAll('[data-ra-measure-unit]').forEach(function (sel) { sel.value = state.imperialUnit || MEASURE_UNITS.feet_inch_frac; });
     updateMeasureUnitPlaceholders();
     bindEvents();
     bindViewportEvents();
+    bindTemplatesPopoverFollow();
     renderObjectPalette();
+    syncUnitSystemUi();
+    updateLiveUnitLabels();
     if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
     refreshProjectSelect();
     var queryParams = (function () {
@@ -9972,6 +11023,16 @@
         refreshProjectSelect();
       }
     }
+    if (isPhoneChrome()) {
+      root.style.setProperty('--ra-sheet-h', 'auto');
+    }
+    placeObjectDock();
+    window.addEventListener('resize', function () {
+      placeObjectDock();
+      syncPhoneSheetForDock();
+      syncPhoneBarOverflow();
+    });
+    syncPhoneBarOverflow();
     renderWorkspace();
     updateFullpageTitle();
     if (initialRoom) {

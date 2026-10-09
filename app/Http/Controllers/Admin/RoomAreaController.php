@@ -157,6 +157,19 @@ class RoomAreaController extends Controller
             'canvas_height' => ['nullable', 'integer', 'min:1', 'max:20000'],
         ]);
 
+        if (array_key_exists('scale_pixels_per_foot', $data)
+            && (float) $data['scale_pixels_per_foot'] !== (float) $room_area_project->scale_pixels_per_foot) {
+            $room_area_project->loadMissing('rooms');
+            foreach ($room_area_project->rooms as $room) {
+                if (app(RoomAreaCanvasData::class)->isLayersLocked($room->vertices)) {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'Unlock layers to recalibrate scale.',
+                    ], 422);
+                }
+            }
+        }
+
         $room_area_project->fill($data);
         $room_area_project->save();
         $room_area_project->load(['clientProject:id,name', 'rooms']);
@@ -169,6 +182,16 @@ class RoomAreaController extends Controller
 
     public function destroyProject(RoomAreaProject $room_area_project)
     {
+        $canvasData = app(RoomAreaCanvasData::class);
+        foreach ($room_area_project->rooms as $room) {
+            if ($canvasData->isLayersLocked($room->vertices)) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Unlock layers to delete this project.',
+                ], 422);
+            }
+        }
+
         if ($room_area_project->background_path) {
             Storage::disk('local')->delete($room_area_project->background_path);
         }
@@ -212,6 +235,13 @@ class RoomAreaController extends Controller
             'canvas.background.y' => ['required_with:canvas.background', 'numeric'],
             'canvas.background.width' => ['required_with:canvas.background', 'numeric', 'gt:0'],
             'canvas.background.height' => ['required_with:canvas.background', 'numeric', 'gt:0'],
+            'canvas.editor' => ['nullable', 'array'],
+            'canvas.editor.layers_locked' => ['nullable', 'boolean'],
+            'canvas.editor.dimensions_mode' => ['nullable', 'string', 'in:all,main,area,off'],
+            'canvas.editor.unit_system' => ['nullable', 'string', 'in:imperial,metric'],
+            'canvas.editor.measure_unit' => ['nullable', 'string', 'in:meter,inch,feet_decimal,feet_inch_frac'],
+            'canvas.editor.angle_snap' => ['nullable', 'boolean'],
+            'canvas.editor.template' => ['nullable', 'string', 'in:rect,l,u,t,alcove'],
             'vertices' => ['nullable', 'array'],
             'vertices.*.x' => ['required_with:vertices', 'numeric'],
             'vertices.*.y' => ['required_with:vertices', 'numeric'],
@@ -235,7 +265,9 @@ class RoomAreaController extends Controller
             'vertices' => $normalized,
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
-            'scale_pixels_per_foot' => $data['scale_pixels_per_foot'] ?? null,
+            'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
+                ? round((float) $data['scale_pixels_per_foot'], 4)
+                : null,
             'area_sqft' => $validation['area_sqft'],
             'wall_height_ft' => $canvasData->normalizeWallHeight($data['wall_height_ft'] ?? null),
         ]);
@@ -278,6 +310,13 @@ class RoomAreaController extends Controller
             'canvas.background.y' => ['required_with:canvas.background', 'numeric'],
             'canvas.background.width' => ['required_with:canvas.background', 'numeric', 'gt:0'],
             'canvas.background.height' => ['required_with:canvas.background', 'numeric', 'gt:0'],
+            'canvas.editor' => ['nullable', 'array'],
+            'canvas.editor.layers_locked' => ['nullable', 'boolean'],
+            'canvas.editor.dimensions_mode' => ['nullable', 'string', 'in:all,main,area,off'],
+            'canvas.editor.unit_system' => ['nullable', 'string', 'in:imperial,metric'],
+            'canvas.editor.measure_unit' => ['nullable', 'string', 'in:meter,inch,feet_decimal,feet_inch_frac'],
+            'canvas.editor.angle_snap' => ['nullable', 'boolean'],
+            'canvas.editor.template' => ['nullable', 'string', 'in:rect,l,u,t,alcove'],
             'vertices' => ['nullable', 'array'],
             'vertices.*.x' => ['required_with:vertices', 'numeric'],
             'vertices.*.y' => ['required_with:vertices', 'numeric'],
@@ -296,12 +335,39 @@ class RoomAreaController extends Controller
             return response()->json(['ok' => false, 'message' => $validation['message']], 422);
         }
 
+        $existingCanvas = is_array($room_area_room->vertices) ? $room_area_room->vertices : null;
+        $incomingScale = isset($data['scale_pixels_per_foot']) ? (float) $data['scale_pixels_per_foot'] : (
+            $room_area_room->scale_pixels_per_foot !== null ? (float) $room_area_room->scale_pixels_per_foot : null
+        );
+        $existingScale = $room_area_room->scale_pixels_per_foot !== null
+            ? (float) $room_area_room->scale_pixels_per_foot
+            : null;
+        $normalized = $canvasData->preserveEditorLock($normalized, $existingCanvas, $rawCanvas);
+        $normalized = $canvasData->preserveLockedBackground($normalized, $existingCanvas, $existingScale, $incomingScale);
+        $lockMessage = $canvasData->lockedGeometryChangeMessage(
+            $existingCanvas,
+            $normalized,
+            $existingScale,
+            $incomingScale
+        );
+        if ($lockMessage !== null) {
+            return response()->json(['ok' => false, 'message' => $lockMessage], 422);
+        }
+        $normalized = $canvasData->restoreStoredGeometryIfWithinTolerance(
+            $normalized,
+            $existingCanvas,
+            $existingScale,
+            $incomingScale
+        );
+
         $room_area_room->update([
             'name' => $data['name'],
             'vertices' => $normalized,
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
-            'scale_pixels_per_foot' => $data['scale_pixels_per_foot'] ?? $room_area_room->scale_pixels_per_foot,
+            'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
+                ? round((float) $data['scale_pixels_per_foot'], 4)
+                : $room_area_room->scale_pixels_per_foot,
             'area_sqft' => $validation['area_sqft'],
             'wall_height_ft' => array_key_exists('wall_height_ft', $data)
                 ? $canvasData->normalizeWallHeight($data['wall_height_ft'])
@@ -320,6 +386,13 @@ class RoomAreaController extends Controller
 
     public function destroyRoom(RoomAreaRoom $room_area_room)
     {
+        if (app(RoomAreaCanvasData::class)->isLayersLocked($room_area_room->vertices)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Unlock layers to delete this room.',
+            ], 422);
+        }
+
         $this->deleteRoomBackgroundFile($room_area_room);
         $this->deleteRoomPdfFile($room_area_room);
         $this->deleteRoomPhotos($room_area_room);
@@ -540,6 +613,13 @@ class RoomAreaController extends Controller
             'canvas.background.y' => ['required_with:canvas.background', 'numeric'],
             'canvas.background.width' => ['required_with:canvas.background', 'numeric', 'gt:0'],
             'canvas.background.height' => ['required_with:canvas.background', 'numeric', 'gt:0'],
+            'canvas.editor' => ['nullable', 'array'],
+            'canvas.editor.layers_locked' => ['nullable', 'boolean'],
+            'canvas.editor.dimensions_mode' => ['nullable', 'string', 'in:all,main,area,off'],
+            'canvas.editor.unit_system' => ['nullable', 'string', 'in:imperial,metric'],
+            'canvas.editor.measure_unit' => ['nullable', 'string', 'in:meter,inch,feet_decimal,feet_inch_frac'],
+            'canvas.editor.angle_snap' => ['nullable', 'boolean'],
+            'canvas.editor.template' => ['nullable', 'string', 'in:rect,l,u,t,alcove'],
             'vertices' => ['nullable', 'array'],
             'vertices.*.x' => ['required_with:vertices', 'numeric'],
             'vertices.*.y' => ['required_with:vertices', 'numeric'],
@@ -564,6 +644,14 @@ class RoomAreaController extends Controller
 
     public function uploadBackground(Request $request, RoomAreaRoom $room_area_room)
     {
+        if (app(RoomAreaCanvasData::class)->isLayersLocked($room_area_room->vertices)
+            && $room_area_room->background_path) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Unlock layers to change the floor plan.',
+            ], 422);
+        }
+
         $data = $request->validate([
             'background' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
         ]);
@@ -591,6 +679,13 @@ class RoomAreaController extends Controller
 
     public function destroyBackground(RoomAreaRoom $room_area_room)
     {
+        if (app(RoomAreaCanvasData::class)->isLayersLocked($room_area_room->vertices)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Unlock layers to change the floor plan.',
+            ], 422);
+        }
+
         $this->deleteRoomBackgroundFile($room_area_room);
         $room_area_room->save();
 

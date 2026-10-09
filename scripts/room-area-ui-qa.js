@@ -1,11 +1,13 @@
 /**
- * Room Area full-page chrome QA (Batch 0).
+ * Room Area full-page chrome QA (Batch 0 + Batch 1).
  *
  * Checks 390 / 1024 / 1280 (light + dark where specified): no overlapping
  * chrome rects, header-to-toolbar gap ≤ 8px, Help opens the guide, Back
  * returns to the editor. Writes screenshots:
  *   ra-ui-1280-light.png, ra-ui-1024-light.png, ra-ui-390-light.png,
  *   ra-ui-390-dark.png, ra-ui-guide.png
+ *   ra-b1-1280-light.png, ra-b1-1024-light.png, ra-b1-390-light.png,
+ *   ra-b1-390-dark.png
  *
  * Usage:
  *   BASE_URL=http://127.0.0.1:8000 EDITOR_PATH=/admin/client-projects/1/utilities/room-area \
@@ -29,21 +31,38 @@ const shots = [
   { name: 'ra-ui-390-dark', width: 390, height: 844, theme: 'dark' },
 ];
 
+const batch1Shots = [
+  { name: 'ra-b1-1280-light', width: 1280, height: 900, theme: 'light' },
+  { name: 'ra-b1-1024-light', width: 1024, height: 900, theme: 'light' },
+  { name: 'ra-b1-390-light', width: 390, height: 844, theme: 'light' },
+  { name: 'ra-b1-390-dark', width: 390, height: 844, theme: 'dark' },
+];
+
 function visible(el, style, rect) {
   if (!el || el.hasAttribute('hidden') || el.closest('[hidden]')) return false;
   if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
   return rect.width > 0 && rect.height > 0;
 }
 
+async function gotoReady(page, url) {
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+}
+
+async function waitForEditor(page) {
+  await page.waitForSelector('.util-ra--fullpage', { timeout: 20000 });
+  await page.waitForFunction(() => typeof window.Konva !== 'undefined', { timeout: 20000 });
+  await delay(400);
+}
+
 async function login(page) {
-  await page.goto(`${BASE_URL}/admin/login`, { waitUntil: 'networkidle0' });
+  await gotoReady(page, `${BASE_URL}/admin/login`);
   const email = await page.$('input[name="email"]');
   if (!email) throw new Error('Login form not found');
   await page.type('input[name="email"]', EMAIL);
   await page.type('input[name="password"]', PASSWORD);
   await Promise.all([
     page.click('button[type="submit"]'),
-    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 45000 }),
   ]);
 }
 
@@ -61,7 +80,7 @@ async function setTheme(page, theme) {
 
 async function findEditorPath(page) {
   if (EDITOR_PATH) return EDITOR_PATH;
-  await page.goto(`${BASE_URL}/admin/client-projects`, { waitUntil: 'networkidle0' });
+  await gotoReady(page, `${BASE_URL}/admin/client-projects`);
   const href = await page.evaluate(() => {
     const link = document.querySelector('a[href*="/utilities/room-area"]');
     if (link) return link.getAttribute('href');
@@ -70,7 +89,7 @@ async function findEditorPath(page) {
   });
   if (href && href.includes('room-area')) return href;
   if (href) {
-    await page.goto(`${BASE_URL}${href}`, { waitUntil: 'networkidle0' });
+    await gotoReady(page, `${BASE_URL}${href}`);
     const fromProject = await page.evaluate(() => {
       const a = document.querySelector('a[href*="/utilities/room-area"]');
       return a ? a.getAttribute('href') : null;
@@ -147,6 +166,12 @@ async function auditChrome(page) {
 
     const help = editor.querySelector('[data-ra-help-guide]');
     if (!help) issues.push('Help / Guide link missing');
+    if (!editor.querySelector('[data-ra-templates-toggle]')) issues.push('templates control missing');
+    if (!editor.querySelector('[data-ra-lock-layers]')) issues.push('lock layers control missing');
+    if (!editor.querySelector('[data-ra-dimensions-mode]')) issues.push('dimensions mode missing');
+    if (!editor.querySelector('[data-ra-unit-system="metric"]')) issues.push('metric toggle missing');
+    if (!editor.querySelector('[data-ra-snap-toggle]')) issues.push('snap toggle missing');
+    if (editor.querySelector('[data-ra-coming-soon]')) issues.push('coming-soon slot still present');
     const groups = ['Draw / Edit', 'Measure / Units', 'Room tools', 'View'];
     const text = editor.innerText || '';
     groups.forEach((label) => {
@@ -193,12 +218,12 @@ async function main() {
 
   const editorPath = await findEditorPath(page);
   const editorUrl = editorPath.startsWith('http') ? editorPath : `${BASE_URL}${editorPath}`;
-  const report = { editorUrl, shots: [], help: null };
+  const report = { editorUrl, shots: [], batch1: [], help: null };
 
   for (const shot of shots) {
     await page.setViewport({ width: shot.width, height: shot.height, deviceScaleFactor: shot.width <= 400 ? 2 : 1 });
-    await page.goto(editorUrl, { waitUntil: 'networkidle0' });
-    await page.waitForSelector('.util-ra--fullpage', { timeout: 15000 });
+    await gotoReady(page, editorUrl);
+    await waitForEditor(page);
     await setTheme(page, shot.theme);
     await page.evaluate(() => {
       try { localStorage.removeItem('zr-room-area-guide-tip-v1'); } catch (e) {}
@@ -218,11 +243,12 @@ async function main() {
   }
 
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
-  await page.goto(editorUrl, { waitUntil: 'networkidle0' });
+  await gotoReady(page, editorUrl);
+  await waitForEditor(page);
   await page.waitForSelector('[data-ra-help-guide]');
   await Promise.all([
     page.click('[data-ra-help-guide]'),
-    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 45000 }),
   ]);
   const onGuide = await page.evaluate(() => !!document.querySelector('[data-ra-guide]'));
   if (!onGuide) throw new Error('Help did not open the guide');
@@ -230,13 +256,113 @@ async function main() {
   await page.screenshot({ path: guideFile, fullPage: true });
   await Promise.all([
     page.click('[data-ra-guide-back]'),
-    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 45000 }),
   ]);
   const backOnEditor = await page.evaluate(() => !!document.querySelector('.util-ra--fullpage'));
   if (!backOnEditor) throw new Error('Back from guide did not return to the editor');
   report.help = { openedGuide: true, returnedToEditor: true, file: guideFile };
 
-  const failed = report.shots.filter((s) => s.audit.issues.length);
+  async function prepareBatch1(page) {
+    await page.evaluate(() => {
+      try {
+        localStorage.removeItem('zr-room-area-guide-tip-v1');
+        localStorage.setItem('room-area-layers-locked', '0');
+      } catch (e) {}
+      const tip = document.querySelector('[data-ra-first-tip]');
+      if (tip) tip.hidden = true;
+      const w = document.querySelector('[data-ra-type-rect-w]');
+      const l = document.querySelector('[data-ra-type-rect-l]');
+      if (w) w.value = '';
+      if (l) l.value = '';
+      const lock = document.querySelector('[data-ra-lock-layers]');
+      if (lock && lock.checked) {
+        lock.checked = false;
+        lock.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    await delay(80);
+    await page.evaluate(() => {
+      const rect = document.querySelector('[data-ra-template="rect"]');
+      if (rect) rect.click();
+    });
+    await page.waitForFunction(() => {
+      const undo = document.querySelector('[data-ra-undo-vertex]');
+      return undo && !undo.disabled;
+    }, { timeout: 8000 });
+    await page.evaluate(() => {
+      const lock = document.querySelector('[data-ra-lock-layers]');
+      if (lock && !lock.checked) {
+        lock.checked = true;
+        lock.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      const dim = document.querySelector('[data-ra-dimensions-mode]');
+      if (dim) {
+        dim.value = 'all';
+        dim.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      const imperial = document.querySelector('[data-ra-unit-system="imperial"]');
+      if (imperial) imperial.click();
+      const roomTools = document.querySelector('.util-ra-tool-group--room-tools');
+      const toolbar = document.querySelector('.util-ra-canvas-toolbar');
+      const lockWrap = document.querySelector('[data-ra-lock-layers-wrap]');
+      if (toolbar && roomTools) {
+        const t = toolbar.getBoundingClientRect();
+        const r = roomTools.getBoundingClientRect();
+        toolbar.scrollLeft += (r.left - t.left - 8);
+      }
+      if (toolbar && lockWrap) {
+        const t = toolbar.getBoundingClientRect();
+        const l = lockWrap.getBoundingClientRect();
+        if (l.right > t.right - 4) toolbar.scrollLeft += (l.right - t.right + 8);
+      }
+      const tpl = document.querySelector('[data-ra-templates-toggle]');
+      if (tpl) tpl.click();
+    });
+    await delay(250);
+  }
+
+  let batch1Loaded = false;
+  for (const shot of batch1Shots) {
+    await page.setViewport({ width: shot.width, height: shot.height, deviceScaleFactor: shot.width <= 400 ? 2 : 1 });
+    if (!batch1Loaded) {
+      await gotoReady(page, editorUrl);
+      await waitForEditor(page);
+      await page.waitForSelector('[data-ra-template="rect"]', { timeout: 15000 });
+      batch1Loaded = true;
+    } else {
+      await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+      await delay(250);
+    }
+    await setTheme(page, shot.theme);
+    await prepareBatch1(page);
+    const audit = await page.evaluate(() => {
+      const issues = [];
+      const editor = document.querySelector('.util-ra--fullpage');
+      if (!editor) return { issues: ['full-page editor root missing'] };
+      const undo = editor.querySelector('[data-ra-undo-vertex]');
+      if (!undo || undo.disabled) issues.push('undo not enabled after canvas edit');
+      const tpl = editor.querySelector('[data-ra-templates-popover]');
+      if (!tpl || tpl.hasAttribute('hidden')) issues.push('templates menu not open');
+      const dim = editor.querySelector('[data-ra-dimensions-mode]');
+      if (!dim || dim.value !== 'all') issues.push('dimension toggle not on All');
+      const lock = editor.querySelector('[data-ra-lock-layers]');
+      if (!lock || !lock.checked) issues.push('lock layers not on');
+      const ft = editor.querySelector('[data-ra-unit-system="imperial"]');
+      if (!ft || !ft.classList.contains('is-active')) issues.push('imperial units toggle not active');
+      const labels = editor.querySelectorAll('.util-ra-tool-group__label');
+      const text = Array.from(labels).map((el) => el.textContent || '').join(' ');
+      if (text.indexOf('Room tools') === -1) issues.push('Room tools group missing');
+      return { issues };
+    });
+    const file = path.join(OUT, `${shot.name}.png`);
+    await page.screenshot({ path: file, fullPage: false });
+    report.batch1.push({ ...shot, file, audit });
+    if (audit.issues.length) console.error('QA fail', shot.name, audit);
+    else console.log('QA ok', shot.name);
+  }
+
+  const failed = report.shots.filter((s) => s.audit.issues.length)
+    .concat(report.batch1.filter((s) => s.audit.issues.length));
   fs.writeFileSync(path.join(OUT, 'ra-ui-qa-report.json'), JSON.stringify(report, null, 2));
   await browser.close();
   if (failed.length) {

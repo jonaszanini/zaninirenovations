@@ -58,9 +58,11 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             ->assertSee('Measure / Units')
             ->assertSee('Room tools')
             ->assertSee('Objects / Walls')
-            ->assertSee('Coming soon')
-            ->assertSee('data-ra-coming-soon="templates"', false)
-            ->assertSee('data-ra-coming-soon="lock-layers"', false)
+            ->assertSee('data-ra-templates-toggle', false)
+            ->assertSee('data-ra-lock-layers', false)
+            ->assertSee('data-ra-dimensions-mode', false)
+            ->assertSee('data-ra-unit-system="metric"', false)
+            ->assertDontSee('Coming soon')
             ->assertSee(route('admin.client-projects.utilities.room-area.guide', $project, false), false);
     }
 
