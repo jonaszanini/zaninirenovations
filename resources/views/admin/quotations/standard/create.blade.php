@@ -149,11 +149,27 @@
     'linkedCpq' => $linkedCpq ?? null,
     'purchaseListUrl' => $isEdit ? route('admin.quotations.standard.purchase-list', $quotation) : null,
     'purchaseListTitle' => 'Print material list',
+    'showHubLink' => ! $projectForReturn,
+    'hubUrl' => route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []),
+    'grandTotalId' => 'sq-toolbar-grand',
+    'grandTotalValue' => $toolbarGrand,
+    'email' => $isEdit ? [
+      'can' => $canSendEmail,
+      'action' => $sendProject && $linkedCpq
+          ? route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq])
+          : null,
+      'confirm' => $sendEmailConfirm,
+      'disabledTitle' => $sendEmailDisabledTitle,
+    ] : null,
+    'sms' => $isEdit ? [
+      'can' => $canSendSms,
+      'action' => $sendProject && $linkedCpq
+          ? route('admin.client-projects.quotation.sms', [$sendProject, $linkedCpq])
+          : null,
+      'confirm' => $sendSmsConfirm,
+      'disabledTitle' => $sendSmsDisabledTitle,
+    ] : null,
   ])
-  <div class="br-toolbar-grand" id="sq-toolbar-grand" title="Live grand total (incl. HST)">
-    <span class="br-toolbar-grand__label">Grand total</span>
-    <strong class="br-toolbar-grand__amount" id="sq-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
-  </div>
 
   @if ($returnToProject && $projectForReturn)
     <div class="admin-flash admin-flash--info">

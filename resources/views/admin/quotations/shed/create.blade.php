@@ -59,6 +59,7 @@
       'nextId' => 'sh-next',
       'statusId' => 'sh-step-status',
       'count' => $enabledCount,
+      'hidden' => $isEdit,
     ],
   ])
   @include('admin.partials.quotation_editor_more_actions', [

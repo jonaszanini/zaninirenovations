@@ -2,27 +2,27 @@
   Uniform quotation editor header (breadcrumb + actions + optional wizard nav).
 
   Required: $typeLabel, $listUrl
-  Common:   $title, $project, $client, $clientName, $hubUrl, $cancelUrl,
+  Common:   $project, $client, $clientId, $clientName, $hubUrl, $cancelUrl,
             $priceConfigUrl, $formId, $saveId, $draftId, $saveLabel,
             $saveHotkey, $draftHotkey, $wizard
 --}}
 @php
-  $qhTitle = $title ?? '';
   $qhTypeLabel = $typeLabel ?? 'Quotation';
   $qhProject = $project ?? null;
   $qhClient = $client ?? null;
+  $qhClientId = $clientId ?? request()->input('client_id') ?? request()->input('client');
+  if (! $qhClient && filled($qhClientId) && is_numeric($qhClientId)) {
+      $qhClient = \App\Models\Client::query()->find((int) $qhClientId);
+  }
+  if (! $qhClient && $qhProject && ! empty($qhProject->client_id)) {
+      $qhClient = $qhProject->client;
+  }
   $qhClientName = trim((string) ($clientName ?? ''));
   if ($qhClientName === '' && $qhProject) {
       $qhClientName = trim((string) ($qhProject->client_name ?? ''));
   }
   if ($qhClientName === '' && $qhClient) {
       $qhClientName = trim((string) ($qhClient->name ?? ''));
-  }
-  if (! $qhClient && $qhProject && ! empty($qhProject->client_id)) {
-      $qhClient = $qhProject->client;
-  }
-  if (! $qhProject && ! $qhClient && $qhClientName !== '') {
-      $qhClient = \App\Models\Client::query()->where('name', $qhClientName)->first();
   }
 
   $qhHubUrl = $hubUrl ?? route('admin.quotations.index');
@@ -40,13 +40,6 @@
   $qhFormAttr = filled($qhFormId) ? $qhFormId : null;
 
   $qhQuotationsUrl = $qhHubUrl;
-  if (! $qhProject) {
-      if ($qhClient) {
-          $qhQuotationsUrl = route('admin.clients.edit', $qhClient);
-      } else {
-          $qhQuotationsUrl = $qhListUrl;
-      }
-  }
 
   $qhProjectUrl = $qhProject
       ? route('admin.client-projects.show', $qhProject).'#quotation'
@@ -82,10 +75,6 @@
     </ol>
   </nav>
 
-  @if (filled($qhTitle))
-    <p class="qh-title">{{ $qhTitle }}</p>
-  @endif
-
   <div class="qh-actions" role="group" aria-label="Quotation actions">
     <button type="submit"
             class="admin-btn admin-btn--primary admin-btn--sm qh-actions__save"
@@ -111,7 +100,8 @@
     <div class="qh-wizard br-step-nav"
          id="{{ $qhWizard['navId'] }}"
          role="group"
-         aria-label="Wizard steps">
+         aria-label="Wizard steps"
+         @if (! empty($qhWizard['hidden'])) hidden @endif>
       <button type="button"
               class="admin-btn admin-btn--ghost admin-btn--sm"
               id="{{ $qhWizard['prevId'] ?? 'qh-prev' }}"

@@ -89,18 +89,38 @@
     'saveId' => 'br-btn-publish',
     'draftId' => 'br-btn-draft',
     'draftHotkey' => true,
-    'wizard' => [
-      'navId' => 'br-step-nav',
-      'prevId' => 'br-prev',
-      'nextId' => 'br-next',
-      'statusId' => 'br-step-status',
-      'count' => $enabledCount,
-    ],
+    'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
   ])
+  @php
+    $toolbarGrand = (float) (($initialPreview['summary']['grand_total'] ?? 0));
+    $linkedCpq = $linkedCpq ?? null;
+    $sendProject = $isEdit ? ($quotation->project ?? null) : null;
+    $hasPdfContent = $linkedCpq && $linkedCpq->hasContent();
+    $canDeliverByEmail = $sendProject && filled(trim((string) $sendProject->client_email));
+    $canSendEmail = (bool) ($sendProject && $linkedCpq && $hasPdfContent && $canDeliverByEmail);
+    $sendEmailConfirm = $canSendEmail
+        ? 'This will generate a new PDF and email it to '.$sendProject->clientEmailRecipientsLabel().'. Continue?'
+        : '';
+    $sendEmailDisabledTitle = ! $isEdit
+        ? 'Save the quotation first.'
+        : (! $sendProject || ! $linkedCpq
+            ? 'Link this quotation to a project and save before sending.'
+            : (! $hasPdfContent
+                ? 'Save the quotation before sending.'
+                : (! $canDeliverByEmail
+                    ? "Add the client's email address to email this quotation."
+                    : 'Cannot send email yet.')));
+  @endphp
   @include('admin.partials.quotation_editor_more_actions', [
     'isEdit' => $isEdit,
     'quotation' => $quotation ?? null,
     'linkedCpq' => $linkedCpq ?? null,
+    'email' => $isEdit ? [
+      'can' => $canSendEmail,
+      'formId' => 'br-email-quote-form',
+      'confirm' => $sendEmailConfirm,
+      'disabledTitle' => $sendEmailDisabledTitle,
+    ] : null,
   ])
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
@@ -130,26 +150,6 @@
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="br-save-intent" value="publish">
 
-    @php
-      $toolbarGrand = (float) (($initialPreview['summary']['grand_total'] ?? 0));
-      $linkedCpq = $linkedCpq ?? null;
-      $sendProject = $isEdit ? ($quotation->project ?? null) : null;
-      $hasPdfContent = $linkedCpq && $linkedCpq->hasContent();
-      $canDeliverByEmail = $sendProject && filled(trim((string) $sendProject->client_email));
-      $canSendEmail = (bool) ($sendProject && $linkedCpq && $hasPdfContent && $canDeliverByEmail);
-      $sendEmailConfirm = $canSendEmail
-          ? 'This will generate a new PDF and email it to '.$sendProject->clientEmailRecipientsLabel().'. Continue?'
-          : '';
-      $sendEmailDisabledTitle = ! $isEdit
-          ? 'Save the quotation first.'
-          : (! $sendProject || ! $linkedCpq
-              ? 'Link this quotation to a project and save before sending.'
-              : (! $hasPdfContent
-                  ? 'Save the quotation before sending.'
-                  : (! $canDeliverByEmail
-                      ? "Add the client's email address to email this quotation."
-                      : 'Cannot send email yet.')));
-    @endphp
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">
         @php $n = 0; @endphp
@@ -364,7 +364,12 @@
 
     <div class="br-sticky-spacer" aria-hidden="true"></div>
 
-    <div class="br-sticky-total" id="br-sticky-total" aria-label="Running total">
+    <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
+      <div class="br-step-nav" id="br-step-nav">
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>← Back</button>
+        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
+        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">→ Next</button>
+      </div>
       <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
         <span class="br-toolbar-grand__label">Grand total</span>
         <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>

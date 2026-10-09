@@ -3508,3 +3508,8 @@ html.admin-dark .qh-price-gear {
 html.admin-dark .qh-more {
   color: var(--admin-text);
 }
+html.admin-dark .qh-step-errors {
+  border-color: #f87171;
+  background: #3f1d1d;
+  color: var(--admin-text);
+}

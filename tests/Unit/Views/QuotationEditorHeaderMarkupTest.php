@@ -45,5 +45,13 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('if (!validateCurrentStep()) return', $sh);
         $this->assertStringContainsString('if (!validateCurrentStep()) return', $br);
         $this->assertStringContainsString('[data-qh-cancel]', $leave);
+        $this->assertStringContainsString('Discard changes?', $leave);
+        $this->assertDoesNotMatchRegularExpression(
+            '/cancelBtn[\s\S]{0,500}submitLeave\(/',
+            $leave
+        );
+        $this->assertStringContainsString('.qh-wizard[hidden]', file_get_contents(public_path('css/admin.css')));
+        $this->assertStringContainsString('This step is missing required information', $mw);
+        $this->assertStringContainsString('This step is missing required information', $sh);
     }
 }

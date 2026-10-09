@@ -94,6 +94,9 @@
   $projectForReturn = ($isEdit && $quotation->project)
       ? $quotation->project
       : $linkProject;
+  $preservePid = optional($linkProject)->id
+      ?: ($isEdit && $quotation->client_project_id ? (int) $quotation->client_project_id : null)
+      ?: (request()->filled('project') ? (int) request('project') : null);
 @endphp
 
 @section('heading', $title)
@@ -457,14 +460,15 @@
     'typeLabel' => 'Fence',
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
-    'listUrl' => route('admin.quotations.fence.index'),
-    'cancelUrl' => route('admin.quotations.fence.index'),
-    'priceConfigUrl' => route('admin.quotations.fence.config'),
+    'listUrl' => route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.fence.config', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'fq-form',
     'saveId' => 'fq-btn-save',
     'saveLabel' => $isEdit ? 'Save quotation' : 'Save quotation',
     'saveHotkey' => true,
     'showDraft' => false,
+    'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
   ])
   @include('admin.partials.quotation_editor_more_actions', [
     'isEdit' => $isEdit,
@@ -472,6 +476,8 @@
     'linkedCpq' => $linkedCpq ?? null,
     'purchaseListUrl' => $isEdit ? route('admin.quotations.fence.purchase-list', $quotation) : null,
     'purchaseListTitle' => 'Print material list',
+    'showCreateProject' => ! $isEdit,
+    'createProjectFormId' => 'fq-form',
   ])
 
   @if ($isEdit && $quotation->project)

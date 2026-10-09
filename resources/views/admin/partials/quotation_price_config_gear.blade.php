@@ -8,6 +8,5 @@
       <i class="fa fa-cog" aria-hidden="true"></i>
       <span class="qh-price-gear__text">Price configuration</span>
     </a>
-    <x-admin.info-tip label="Price configuration">Labour, material, and productivity rates for this quote type.</x-admin.info-tip>
   </span>
 @endif

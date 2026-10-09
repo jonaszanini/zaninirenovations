@@ -311,17 +311,31 @@
     return true;
   }
 
-  function confirmLeaveUnsaved() {
-    var message = 'This quotation is missing required information and has not been saved. Still want to exit?';
-    var options = {
-      title: 'Quotation not saved yet',
-      confirmLabel: 'Yes, exit',
-      cancelLabel: 'No, stay',
-    };
+  function confirmDialog(message, options) {
     if (window.AdminDialog && typeof window.AdminDialog.confirm === 'function') {
       return window.AdminDialog.confirm(message, options);
     }
     return Promise.resolve(window.confirm(message));
+  }
+
+  function confirmLeaveUnsaved() {
+    return confirmDialog('This quotation is missing required information and has not been saved. Still want to exit?', {
+      title: 'Quotation not saved yet',
+      confirmLabel: 'Yes, exit',
+      cancelLabel: 'No, stay',
+    });
+  }
+
+  function confirmDiscardChanges() {
+    return confirmDialog('Discard changes?', {
+      title: 'Discard changes?',
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep editing',
+    });
+  }
+
+  function isFormDirty(form) {
+    return !!(form && form.getAttribute('data-quotation-user-edited') === '1');
   }
 
   function leaveWithoutSaving(dest) {
@@ -365,7 +379,15 @@
         return;
       }
       e.preventDefault();
-      submitLeave(form, cancelDest, false);
+      if (isFormDirty(form)) {
+        confirmDiscardChanges().then(function (ok) {
+          if (ok) {
+            leaveWithoutSaving(cancelDest);
+          }
+        });
+        return;
+      }
+      leaveWithoutSaving(cancelDest);
       return;
     }
 

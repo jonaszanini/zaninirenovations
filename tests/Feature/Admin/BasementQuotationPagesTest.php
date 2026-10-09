@@ -130,8 +130,10 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertNotFalse($live);
         $this->assertNotFalse($header);
         $this->assertLessThan($context, $header);
-        $this->assertLessThan($context, $next);
+        $this->assertGreaterThan($context, $next);
         $this->assertLessThan($live, $context);
+        $this->assertStringContainsString('id="br-sticky-total"', $html);
+        $this->assertStringContainsString('id="br-step-nav"', $html);
         $this->assertMatchesRegularExpression(
             '/<details class="admin-accordion admin-card cp-project-context-card">/',
             $html

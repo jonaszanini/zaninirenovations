@@ -80,12 +80,20 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
             '/id="'.preg_quote($hotkeyId, '/').'"[^>]*data-hotkey-save|data-hotkey-save[^>]*id="'.preg_quote($hotkeyId, '/').'"/',
             $html
         );
-        if (in_array($type, ['basement', 'millwork', 'shed'], true)) {
+        if (in_array($type, ['millwork', 'shed'], true)) {
             $this->assertStringContainsString('← Back', $html);
             $this->assertStringContainsString('→ Next', $html);
             $this->assertTrue(
                 strpos($html, 'qh-actions') < strpos($html, 'qh-wizard'),
                 "{$type} wizard nav must sit below the action row"
+            );
+        }
+        if ($type === 'basement') {
+            $this->assertStringContainsString('id="br-step-nav"', $html);
+            $this->assertStringContainsString('id="br-next"', $html);
+            $this->assertTrue(
+                strpos($html, 'id="br-sticky-total"') > strpos($html, 'data-qh-header'),
+                'Basement Back/Next must stay in the sticky bottom bar'
             );
         }
     }
@@ -146,6 +154,24 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
         $this->assertStringContainsString('qh-crumb__client', $html);
         $this->assertStringContainsString($client->name, $html);
         $this->assertStringContainsString(route('admin.clients.edit', $client), $html);
+        preg_match('/<a class="qh-crumb__link qh-crumb__quotations"[^>]*href="([^"]+)"/', $html, $m);
+        $this->assertSame(route('admin.quotations.index'), html_entity_decode($m[1] ?? ''));
+    }
+
+    public function test_client_crumb_uses_client_id_not_the_first_matching_name(): void
+    {
+        $this->actingAsAdmin();
+
+        Client::query()->create(['name' => 'Maria Rossi', 'email' => 'maria-one@example.com']);
+        $second = Client::query()->create(['name' => 'Maria Rossi', 'email' => 'maria-two@example.com']);
+
+        $html = $this->get(route('admin.quotations.fence.create', ['client' => $second->id]))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString(route('admin.clients.edit', $second), $html);
+        preg_match('/<a class="qh-crumb__link qh-crumb__quotations"[^>]*href="([^"]+)"/', $html, $m);
+        $this->assertSame(route('admin.quotations.index'), html_entity_decode($m[1] ?? ''));
     }
 
     public function test_header_geometry_at_phone_tablet_and_desktop_in_both_themes(): void
@@ -233,15 +259,20 @@ const pages = [
           const save = header && header.querySelector('.qh-actions__save');
           const cancel = header && header.querySelector('.qh-actions__cancel');
           const crumb = header && header.querySelector('.qh-crumb');
+          const crumbLinks = [...(header ? header.querySelectorAll('.qh-crumb__link') : [])].map((a) => {
+            const r = a.getBoundingClientRect();
+            return Math.round(r.height);
+          });
           const box = header ? header.getBoundingClientRect() : null;
           const buttons = [...(header ? header.querySelectorAll('.qh-actions .admin-btn, .qh-wizard .admin-btn') : [])].map((b) => {
             const r = b.getBoundingClientRect();
-            return { h: Math.round(r.height), w: Math.round(r.width), label: (b.textContent || '').trim() };
+            return { h: Math.round(r.height), w: Math.round(r.width), label: (b.textContent || '').trim(), top: Math.round(r.top) };
           });
           const overflow = !!(box && (box.right > width + 1 || box.left < -1));
           const actionTop = actions ? actions.getBoundingClientRect().top : 0;
           const wizardTop = wizard ? wizard.getBoundingClientRect().top : 0;
           const saveStyle = save ? getComputedStyle(save) : null;
+          const actionTops = buttons.filter((b) => ['Save quotation', 'Save as draft', 'Cancel'].includes(b.label)).map((b) => b.top);
           return {
             hasHeader: !!header,
             hasCrumb: !!crumb,
@@ -252,6 +283,8 @@ const pages = [
             headerPast: box ? Math.round(box.right - width) : 0,
             buttons,
             shortBtn: buttons.filter((b) => b.h < 44 && b.w > 0).map((b) => b.label),
+            shortCrumb: crumbLinks.filter((h) => h < 44),
+            actionWrap: actionTops.length > 1 && (Math.max.apply(null, actionTops) - Math.min.apply(null, actionTops) > 12),
             wizardBelow: !wizard || wizardTop >= actionTop - 1,
             savePrimary: !!(save && save.classList.contains('admin-btn--primary')),
             dark: document.documentElement.classList.contains('admin-dark'),
@@ -261,6 +294,27 @@ const pages = [
       }
     }
   }
+  const posts = [];
+  page.on('request', (req) => {
+    if (['POST', 'PUT', 'PATCH'].includes(req.method())) posts.push(req.url());
+  });
+  await page.setViewport({ width: 1024, height: 900 });
+  await openQuote(base + '/admin/quotations/fence/create');
+  posts.length = 0;
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
+    page.click('[data-qh-cancel]'),
+  ]);
+  out.cancelClean = { posts: posts.slice(), url: page.url() };
+  await openQuote(base + '/admin/quotations/fence/create');
+  const name = await page.$('[name="client_name"]');
+  if (name) await name.type('Dirty Cancel Client');
+  posts.length = 0;
+  await page.click('[data-qh-cancel]');
+  await page.waitForSelector('#admin-dialog:not([hidden]), .admin-dialog-actions', { timeout: 3000 }).catch(() => {});
+  const stay = await page.$('[data-admin-dialog-dismiss], .admin-dialog-actions button:last-child');
+  if (stay) await stay.click();
+  out.cancelDirty = { posts: posts.slice(), url: page.url(), dialog: await page.$eval('#admin-dialog-message, .admin-dialog-message', (el) => el.textContent).catch(() => '') };
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'qh-header-geometry.json'), JSON.stringify(out, null, 2));
   await browser.close();
@@ -287,7 +341,14 @@ JS
         $this->assertIsArray($json, "Geometry JSON missing:\n".implode("\n", $output));
         $this->assertNotEmpty($json);
 
+        $this->assertSame([], $json['cancelClean']['posts'] ?? ['fail'], 'Clean Cancel must not POST');
+        $this->assertSame([], $json['cancelDirty']['posts'] ?? ['fail'], 'Dirty Cancel must not POST');
+        $this->assertStringContainsString('/fence/', (string) ($json['cancelDirty']['url'] ?? ''));
+
         foreach ($json as $key => $row) {
+            if (in_array($key, ['cancelClean', 'cancelDirty'], true)) {
+                continue;
+            }
             $this->assertTrue($row['hasHeader'] ?? false, "Missing header at {$key}");
             $this->assertTrue($row['hasCrumb'] ?? false, "Missing breadcrumb at {$key}");
             $this->assertTrue($row['hasSave'] ?? false, "Missing Save at {$key}");
@@ -295,6 +356,10 @@ JS
             $this->assertTrue($row['savePrimary'] ?? false, "Save must stay primary at {$key}");
             $this->assertTrue($row['wizardBelow'] ?? false, "Wizard row must sit below actions at {$key}");
             $this->assertSame([], $row['shortBtn'] ?? ['fail'], "Buttons shorter than 44px at {$key}");
+            $this->assertSame([], $row['shortCrumb'] ?? ['fail'], "Crumb links shorter than 44px at {$key}");
+            if (str_contains((string) $key, '_390_')) {
+                $this->assertFalse($row['actionWrap'] ?? true, "Cancel wrapped onto a new row at {$key}");
+            }
             $this->assertFalse($row['overflow'] ?? true, "Header overflows the viewport at {$key}");
             $this->assertLessThanOrEqual(1, (int) ($row['headerPast'] ?? 99), "Header wider than the viewport at {$key}");
             if (str_starts_with((string) $key, 'dark_')) {

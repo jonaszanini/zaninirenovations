@@ -4915,6 +4915,10 @@ body.asp-open {
   white-space: nowrap;
 }
 .qh-crumb__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--admin-control-height);
+  padding: 8px 4px;
   color: var(--admin-primary);
   text-decoration: none;
   font-weight: 600;
@@ -4941,13 +4945,23 @@ body.asp-open {
 .qh-actions,
 .qh-wizard {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+}
+.qh-actions[hidden],
+.qh-wizard[hidden] {
+  display: none !important;
 }
 .qh-actions .admin-btn,
 .qh-wizard .admin-btn {
   min-height: var(--admin-control-height);
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+.qh-actions__cancel {
+  flex-shrink: 0;
 }
 .qh-actions__save {
   box-shadow: 0 0 0 2px var(--admin-primary-ring);
@@ -4961,6 +4975,28 @@ body.asp-open {
 }
 .qh-more .admin-btn {
   min-height: var(--admin-control-height);
+}
+.qh-more .br-toolbar-grand {
+  margin-left: auto;
+}
+.qh-step-errors {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-danger, #b91c1c);
+  background: var(--admin-danger-soft, #fef2f2);
+  color: var(--admin-text);
+  border-radius: 8px;
+}
+.qh-step-errors[hidden] {
+  display: none !important;
+}
+.qh-step-errors p {
+  margin: 0;
+  font-weight: 600;
+}
+.qh-step-errors ul {
+  margin: 6px 0 0;
+  padding-left: 1.2rem;
 }
 .qh-wizard__status,
 .qh .br-step-nav__status {
@@ -5014,10 +5050,21 @@ body.asp-open {
   white-space: nowrap;
   border: 0;
 }
+@media (max-width: 700px) {
+  .qh-actions {
+    gap: 4px;
+  }
+  .qh-actions .admin-btn {
+    padding-left: 8px;
+    padding-right: 8px;
+    font-size: 0.8rem;
+  }
+}
 @media (min-width: 768px) {
   .qh-actions,
   .qh-wizard {
     flex-wrap: nowrap;
+    gap: 8px;
   }
   .qh-title {
     font-size: 1.15rem;

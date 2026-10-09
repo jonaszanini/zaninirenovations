@@ -62,6 +62,7 @@
       'nextId' => 'mw-next',
       'statusId' => 'mw-step-status',
       'count' => $enabledCount,
+      'hidden' => $isEdit,
     ],
   ])
   @include('admin.partials.quotation_editor_more_actions', [
@@ -70,6 +71,7 @@
     'linkedCpq' => $linkedCpq ?? null,
     'purchaseListUrl' => $isEdit ? route('admin.quotations.millwork.purchase-list', $quotation) : null,
     'purchaseListTitle' => 'Print material list',
+    'cutListUrl' => $isEdit ? route('admin.quotations.millwork.cut-list', $quotation) : null,
   ])
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])

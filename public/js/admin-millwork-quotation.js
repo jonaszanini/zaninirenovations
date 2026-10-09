@@ -129,27 +129,92 @@
     }
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      submitWizard('publish');
+      var intentEl = document.getElementById('mw-save-intent');
+      submitWizard(intentEl && intentEl.value === 'draft' ? 'draft' : 'publish');
     });
 
-    function validateCurrentStep() {
-      var scopes = [];
-      var step = sectionEl(wizardKeys[currentIndex]);
-      if (step) scopes.push(step);
-      var clientCard = form.querySelector('.mw-client-card');
-      if (clientCard && scopes.indexOf(clientCard) === -1) scopes.push(clientCard);
-      for (var s = 0; s < scopes.length; s++) {
-        var fields = scopes[s].querySelectorAll('input, select, textarea');
-        for (var i = 0; i < fields.length; i++) {
-          var el = fields[i];
-          if (el.disabled || el.readOnly) continue;
-          if (el.closest && el.closest('[hidden]')) continue;
-          if (typeof el.checkValidity === 'function' && !el.checkValidity()) {
-            try { el.focus(); } catch (err) { /* ignore */ }
-            if (typeof el.reportValidity === 'function') el.reportValidity();
-            return false;
-          }
+    function anyNumberAtLeast(selector, min) {
+      var nodes = form.querySelectorAll(selector);
+      for (var i = 0; i < nodes.length; i++) {
+        if ((parseFloat(String(nodes[i].value || '').replace(/,/g, '')) || 0) >= min) {
+          return true;
         }
+      }
+      return false;
+    }
+
+    function showStepErrors(messages) {
+      var host = document.getElementById('mw-step-nav');
+      var box = document.getElementById('mw-step-errors');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'mw-step-errors';
+        box.className = 'qh-step-errors';
+        box.setAttribute('role', 'alert');
+        if (host && host.parentNode) {
+          host.parentNode.insertBefore(box, host.nextSibling);
+        } else {
+          form.insertBefore(box, form.firstChild);
+        }
+      }
+      if (!messages.length) {
+        box.hidden = true;
+        box.innerHTML = '';
+        return;
+      }
+      box.hidden = false;
+      box.innerHTML = '<p>This step is missing required information:</p><ul>'
+        + messages.map(function (m) { return '<li>' + escapeHtml(m) + '</li>'; }).join('')
+        + '</ul>';
+    }
+
+    function collectRequiredLabels(scope) {
+      var missing = [];
+      if (!scope) return missing;
+      var fields = scope.querySelectorAll('input, select, textarea');
+      for (var i = 0; i < fields.length; i++) {
+        var el = fields[i];
+        if (el.disabled || el.readOnly) continue;
+        if (el.closest && el.closest('[hidden]')) continue;
+        if (typeof el.checkValidity === 'function' && !el.checkValidity()) {
+          var label = '';
+          if (el.id) {
+            var lab = form.querySelector('label[for="' + el.id + '"]');
+            if (lab) label = (lab.textContent || '').replace(/\s+/g, ' ').trim();
+          }
+          missing.push(label || el.getAttribute('aria-label') || el.name || 'A required field');
+        }
+      }
+      return missing;
+    }
+
+    function validateCurrentStep() {
+      var missing = [];
+      var key = wizardKeys[currentIndex];
+      var step = sectionEl(key);
+      var clientCard = form.querySelector('.mw-client-card');
+      if (currentIndex === 0 && clientCard) {
+        missing = missing.concat(collectRequiredLabels(clientCard));
+      }
+      missing = missing.concat(collectRequiredLabels(step));
+      if (key === 'pieces') {
+        var hasPieceDims = anyNumberAtLeast('[name^="pieces["][name$="[width]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name$="[length]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name$="[height]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name$="[depth]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name*="[sets]"][name$="[length]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name*="[sets]"][name$="[width]"]', 0.01);
+        if (!hasPieceDims) {
+          missing.push('At least one piece with a length, width, height, or depth');
+        }
+      }
+      showStepErrors(missing);
+      if (missing.length) {
+        var firstInvalid = (step || clientCard || form).querySelector(':invalid');
+        if (firstInvalid) {
+          try { firstInvalid.focus(); } catch (err) { /* ignore */ }
+        }
+        return false;
       }
       return true;
     }
