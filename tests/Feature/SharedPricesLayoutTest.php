@@ -227,18 +227,33 @@ const email = process.env.SP_GEO_EMAIL;
 const password = process.env.SP_GEO_PASSWORD;
 const base = process.env.SP_GEO_BASE;
 (async () => {
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  const browser = await puppeteer.launch({
+    headless: true,
+    protocolTimeout: 30000,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+  });
   const page = await browser.newPage();
+  page.setDefaultNavigationTimeout(20000);
+  page.setDefaultTimeout(20000);
+  async function go(url) {
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body');
+  }
   async function login() {
-    await page.goto(base + '/admin/login', { waitUntil: 'networkidle0' });
+    await go(base + '/admin/login');
     if (page.url().includes('/admin/login')) {
+      await page.waitForSelector('input[name="email"]');
       await page.type('input[name="email"]', email);
       await page.type('input[name="password"]', password);
-      await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.click('button[type="submit"]')]);
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        page.click('button[type="submit"]'),
+      ]);
     }
   }
   async function openPage() {
-    await page.goto(base + '/admin/quotations/shared-prices', { waitUntil: 'networkidle0' });
+    await go(base + '/admin/quotations/shared-prices');
+    await page.waitForSelector('.sp-table tbody tr');
     await page.evaluate(() => document.querySelectorAll('.sp-group').forEach((g) => { g.open = true; }));
   }
   await login();
@@ -410,7 +425,7 @@ JS
             .' && SP_GEO_EMAIL='.escapeshellarg($email)
             .' SP_GEO_PASSWORD='.escapeshellarg('password')
             .' SP_GEO_BASE='.escapeshellarg($base)
-            .' node '.escapeshellarg($script);
+            .' timeout 90s node '.escapeshellarg($script);
         $output = [];
         $code = 0;
         exec($cmd, $output, $code);
