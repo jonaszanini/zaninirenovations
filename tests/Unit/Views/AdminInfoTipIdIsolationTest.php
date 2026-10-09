@@ -19,13 +19,15 @@ class AdminInfoTipIdIsolationTest extends TestCase
     public function test_info_tip_include_does_not_inherit_parent_id_or_label(): void
     {
         $html = Blade::render(
-            '@php $id = "br-area"; $label = "Last loop item"; @endphp'
-            . '@include("admin.partials.info_tip", ["text" => "Room area help"])'
+            '@php $id = "br-area"; $label = "Last loop item"; $text = "LEAKED TEXT"; $html = "<em>LEAKED HTML</em>"; @endphp'
+            . '@include("admin.partials.info_tip", ["tipText" => "Room area help"])'
             . '<input id="br-area" type="number">'
         );
 
         $this->assertStringContainsString('Room area help', $html);
         $this->assertStringNotContainsString('About Last loop item', $html);
+        $this->assertStringNotContainsString('LEAKED TEXT', $html);
+        $this->assertStringNotContainsString('LEAKED HTML', $html);
         $this->assertDoesNotMatchRegularExpression(
             '/id="br-area"[^>]*admin-info-tip__bubble|admin-info-tip__bubble[^>]*id="br-area"/',
             $html
@@ -52,8 +54,23 @@ class AdminInfoTipIdIsolationTest extends TestCase
         ])->render();
 
         $this->assertNoTipStealsInputIds($html);
-        $this->assertInputIdResolvesToControl($html, ['br-area', 'br-dw-wall']);
+        $this->assertInputIdResolvesToControl($html, ['br-area', 'br-dw-wall', 'br-rooms', 'br-owner-rate', 'br-outlets']);
         $this->assertStringContainsString('admin-info-tip', $html);
+        $this->assertStringContainsString('admin-label-with-tip', $html);
+        preg_match_all('/<label\b[^>]*>[\s\S]*?<\/label>/', $html, $labelChunks);
+        foreach ($labelChunks[0] as $labelHtml) {
+            $this->assertStringNotContainsString(
+                'admin-info-tip-wrap',
+                $labelHtml,
+                'Wizard section tips must sit beside labels in the source HTML, not inside them.'
+            );
+        }
+        preg_match_all('/aria-label="About ([^"]+)"/', $html, $abouts);
+        $this->assertNotEmpty($abouts[1]);
+        $this->assertLessThan(3, substr_count($html, 'aria-label="More info"'), 'Wizard tips should use unique About X labels.');
+        $this->assertContains('Finished rooms', $abouts[1]);
+        $this->assertContains('Owner rate (CAD$)', $abouts[1]);
+        $this->assertContains('Material waste (%)', $abouts[1]);
     }
 
     public function test_form_field_with_help_does_not_reuse_the_input_id(): void

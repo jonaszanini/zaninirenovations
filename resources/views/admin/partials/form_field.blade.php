@@ -27,7 +27,7 @@
       @if ($required)<span class="cp-required">*</span>@endif
     </label>
     @if (! empty($help))
-      @include('admin.partials.info_tip', ['text' => $help, 'tipLabel' => $label])
+      @include('admin.partials.info_tip', ['tipText' => $help, 'tipLabel' => $label])
     @endif
   </span>
 

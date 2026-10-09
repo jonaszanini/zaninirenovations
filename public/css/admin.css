@@ -1654,7 +1654,8 @@ a.admin-client-link:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 .admin-form-group > .admin-label-with-tip {
   display: flex;

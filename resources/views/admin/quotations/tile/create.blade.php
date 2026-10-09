@@ -218,10 +218,10 @@
       </div>
 
       <div class="fl-step-card">
-        <h4>2. Measurements</h4>
-        <div class="fl-step-card__hint">
-          Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.
-        </div>
+        <h4 class="admin-label-with-tip">
+          2. Measurements
+          <x-admin.info-tip label="Measurements">Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.</x-admin.info-tip>
+        </h4>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
           <div class="admin-form-group" style="margin-bottom:0;">
             <label class="admin-form-label">Total Area (sqft)</label>

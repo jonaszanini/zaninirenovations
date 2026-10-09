@@ -96,7 +96,10 @@ class AdminInfoTipBehaviourTest extends TestCase
     {
         $js = file_get_contents(public_path('js/admin-info-tip.js'));
 
-        $this->assertStringContainsString("document.addEventListener('scroll', onScroll, { capture: true, passive: true })", $js);
+        $this->assertStringContainsString("document.addEventListener('scroll', onViewportMove, { capture: true, passive: true })", $js);
+        $this->assertStringContainsString("window.addEventListener('resize', onViewportMove)", $js);
+        $this->assertStringContainsString("document.addEventListener('focusout'", $js);
+        $this->assertStringContainsString('function isLinkTarget', $js);
         $this->assertStringContainsString('requestAnimationFrame', $js);
         $this->assertStringContainsString('isIconVisibleInClip', $js);
         $this->assertStringContainsString('idsAlreadyInDocument', $js);
@@ -105,6 +108,7 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('refreshIds: refreshIds', $js);
         $this->assertStringContainsString('btn.focus()', $js);
         $this->assertStringContainsString("e.key !== 'Escape'", $js);
+        $this->assertStringContainsString('flex-wrap: nowrap', file_get_contents(public_path('css/admin.css')));
     }
 
     public function test_clone_sites_refresh_tip_ids(): void
@@ -133,7 +137,9 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('No payment plan yet.', $invoice);
         $this->assertStringContainsString('This will mark <strong id="cp-mark-paid-invoice-label">the invoice</strong>', $invoice);
         $this->assertStringContainsString('PDFs use this legal name/address', $invoice);
+        $this->assertStringContainsString('<strong>Invoice bill-to:</strong>', $invoice);
         $this->assertStringNotContainsString('admin-form-help cp-invoice-bill-to__help', $invoice);
+        $this->assertStringNotContainsString('cp-invoice-bill-to__help', $invoice);
 
         $this->assertDoesNotMatchRegularExpression(
             '/<p class="admin-form-help"[^>]*>\s*(<i class="fa fa-info-circle"><\/i>\s*)?This project is billed by the hour/',
@@ -152,7 +158,9 @@ class AdminInfoTipBehaviourTest extends TestCase
         $piece = file_get_contents(resource_path('views/admin/quotations/millwork/_piece_card.blade.php'));
         $this->assertStringContainsString('Size sets — add groups if you have mixed sizes.', $piece);
         $this->assertStringContainsString('Open-back box: top, bottom, front, and ends.', $piece);
+        $this->assertStringContainsString('mw-piece__sets-title', $piece);
         $this->assertStringNotContainsString('<p class="admin-form-help mw-piece__hint">Size sets', $piece);
+        $this->assertStringNotContainsString('class="mw-piece__hint"', $piece);
         $this->assertStringContainsString('label="Openings"', $piece);
 
         $show = file_get_contents(resource_path('views/admin/client_projects/show.blade.php'));
@@ -183,6 +191,48 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('php artisan materials:sync-prices', $low);
         $this->assertStringContainsString('admin.materials.config', $low);
         $this->assertStringContainsString('serpapi.com/dashboard', $low);
+    }
+
+    public function test_wizard_sections_keep_tips_beside_labels_and_group_legends(): void
+    {
+        $source = file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php'));
+        $this->assertDoesNotMatchRegularExpression(
+            '/<label[^>]*>[^<]*@include\(\'admin\.partials\.info_tip\'/',
+            $source
+        );
+        $this->assertStringContainsString('label="What are you quoting?"', $source);
+        $this->assertStringContainsString('label="Trades to include"', $source);
+        $this->assertStringNotContainsString("'info' => \$tradeInfo[", $source);
+
+        $create = file_get_contents(resource_path('views/admin/quotations/basement/create.blade.php'));
+        $this->assertStringContainsString('label="Client provides materials"', $create);
+        $this->assertStringContainsString('label="Bathroom items"', $create);
+        $this->assertStringNotContainsString("'info' => 'Client supplies the '", $create);
+
+        $standard = file_get_contents(resource_path('views/admin/quotations/standard/create.blade.php'));
+        $this->assertStringContainsString("'tipLabel' => 'Client PDF line items'", $standard);
+        $this->assertStringContainsString('<strong>Combined:</strong>', $standard);
+        $this->assertStringNotContainsString('sq-intro-choice-with-tip', $standard);
+
+        $painting = file_get_contents(resource_path('views/admin/quotations/painting/create.blade.php'));
+        $this->assertStringContainsString('label="Excluded rooms / areas"', $painting);
+        $this->assertStringContainsString('label="Number of top coats"', $painting);
+        $this->assertStringNotContainsString('<p class="pq-hint" style="margin:0 0 10px;">Subtract rooms', $painting);
+        $this->assertStringNotContainsString('<p class="pq-hint">Fixed at', $painting);
+
+        $tile = file_get_contents(resource_path('views/admin/quotations/tile/create.blade.php'));
+        $this->assertStringContainsString('label="Measurements"', $tile);
+        $this->assertStringNotContainsString('<div class="fl-step-card__hint">', $tile);
+
+        $show = file_get_contents(resource_path('views/admin/client_projects/show.blade.php'));
+        $this->assertStringContainsString('label="Reopen project"', $show);
+        $this->assertStringNotContainsString('cp-reopen-form-help', $show);
+
+        $low = file_get_contents(resource_path('views/admin/quotations/low_deck/create.blade.php'));
+        $this->assertStringContainsString('label="Live breakdown"', $low);
+        $this->assertStringContainsString('label="Layout diagrams"', $low);
+        $this->assertStringNotContainsString('admin-form-help cp-breakdown-intro', $low);
+        $this->assertStringNotContainsString('Enter dimensions to generate the foundations, framing, and decking layouts.</p>', $low);
     }
 
     public function test_component_without_label_still_renders_more_info_fallback(): void

@@ -72,7 +72,10 @@
                  value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required>
         </div>
         <div class="admin-form-group">
-          <label for="hours_per_day">@include('admin.partials.info_tip', ['text' => 'Used for calendar-day estimates (1 / 2 / 3 people).']) Hours per working day</label>
+          <span class="admin-label-with-tip">
+  <label for="hours_per_day">Hours per working day</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Used for calendar-day estimates (1 / 2 / 3 people).', 'tipLabel' => 'Hours per working day'])
+</span>
           <input type="number" step="0.25" min="0.5" max="16" class="admin-input" id="hours_per_day" name="hours_per_day"
                  value="{{ old('hours_per_day', $settings->hours_per_day) }}" required>
         </div>
@@ -137,7 +140,7 @@
                 <td data-label="Line item">
                   <div class="br-config-line-wrap">
                     <strong class="br-config-line">
-                      @include('admin.partials.info_tip', ['text' => $infoTip])
+                      @include('admin.partials.info_tip', ['tipText' => $infoTip, 'tipLabel' => $lineLabel])
                       <span>{{ $lineLabel }}</span>
                     </strong>
                     @if ($derivedPlate)

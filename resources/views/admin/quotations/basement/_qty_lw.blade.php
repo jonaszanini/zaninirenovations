@@ -44,7 +44,7 @@
             {{ $label }}
           </label>
           @include('admin.partials.info_tip', [
-            'text' => collect([$info ?? null, $help ?? null])->filter()->implode(' '),
+            'tipText' => collect([$info ?? null, $help ?? null])->filter()->implode(' '),
             'tipLabel' => $label,
           ])
         </span>

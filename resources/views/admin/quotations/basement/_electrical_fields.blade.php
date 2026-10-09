@@ -2,17 +2,26 @@
   <x-admin.info-tip label="Electrical scope">These answers are scope for a qualified electrician — they are not Zanini labour or materials. Type their quote as priced lines below.</x-admin.info-tip>
   <div class="br-qty-grid">
     <div class="admin-form-group">
-      <label for="br-outlets">@include('admin.partials.info_tip', ['text' => $brInfo['outlet_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'outlet_qty', 'filledKeys' => $filledKeys ?? []]) New outlets</label>
+      <span class="admin-label-with-tip">
+  <label for="br-outlets">@include('admin.quotations.basement._client_filled', ['key' => 'outlet_qty', 'filledKeys' => $filledKeys ?? []]) New outlets</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['outlet_qty'], 'tipLabel' => 'New outlets'])
+</span>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-outlets" name="outlet_qty"
              value="{{ $brVal('outlet_qty', 0) }}">
     </div>
     <div class="admin-form-group">
-      <label for="br-switches">@include('admin.partials.info_tip', ['text' => $brInfo['switch_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'switch_qty', 'filledKeys' => $filledKeys ?? []]) Switches</label>
+      <span class="admin-label-with-tip">
+  <label for="br-switches">@include('admin.quotations.basement._client_filled', ['key' => 'switch_qty', 'filledKeys' => $filledKeys ?? []]) Switches</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['switch_qty'], 'tipLabel' => 'Switches'])
+</span>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-switches" name="switch_qty"
              value="{{ $brVal('switch_qty', 0) }}">
     </div>
     <div class="admin-form-group br-field--wide" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
-      <label for="br-lighting-type">@include('admin.partials.info_tip', ['text' => $brInfo['lighting_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'lighting_type', 'filledKeys' => $filledKeys ?? []]) Basement ceiling lighting</label>
+      <span class="admin-label-with-tip">
+  <label for="br-lighting-type">@include('admin.quotations.basement._client_filled', ['key' => 'lighting_type', 'filledKeys' => $filledKeys ?? []]) Basement ceiling lighting</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['lighting_type'], 'tipLabel' => 'Basement ceiling lighting'])
+</span>
       <select class="admin-input br-preview" id="br-lighting-type" name="lighting_type" data-br-lighting-type>
         <option value="fixture" @selected($brVal('lighting_type', 'spot') === 'fixture')>Surface fixtures</option>
         <option value="spot" @selected($brVal('lighting_type', 'spot') === 'spot')>Pot lights</option>
@@ -20,17 +29,26 @@
       </select>
     </div>
     <div class="admin-form-group" id="br-lighting-fixture-qty" data-br-basement-lighting @if($scopePreset === 'bathroom' || $brVal('lighting_type', 'spot') !== 'both') hidden @endif>
-      <label for="br-fixtures">@include('admin.partials.info_tip', ['text' => $brInfo['fixture_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'fixture_qty', 'filledKeys' => $filledKeys ?? []]) Fixtures</label>
+      <span class="admin-label-with-tip">
+  <label for="br-fixtures">@include('admin.quotations.basement._client_filled', ['key' => 'fixture_qty', 'filledKeys' => $filledKeys ?? []]) Fixtures</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['fixture_qty'], 'tipLabel' => 'Fixtures'])
+</span>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-fixtures" name="fixture_qty"
              value="{{ $brVal('fixture_qty', 0) }}">
     </div>
     <div class="admin-form-group" data-br-basement-lighting @if($scopePreset === 'bathroom') hidden @endif>
-      <label for="br-lights">@include('admin.partials.info_tip', ['text' => $brInfo['light_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'light_qty', 'filledKeys' => $filledKeys ?? []]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'Fixtures' : 'Pot lights' }}</span></label>
+      <span class="admin-label-with-tip">
+  <label for="br-lights">@include('admin.quotations.basement._client_filled', ['key' => 'light_qty', 'filledKeys' => $filledKeys ?? []]) <span id="br-lights-label">{{ $brVal('lighting_type', 'spot') === 'fixture' ? 'Fixtures' : 'Pot lights' }}</span></label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['light_qty'], 'tipLabel' => 'Ceiling lights'])
+</span>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-lights" name="light_qty"
              value="{{ $brVal('light_qty', 0) }}">
     </div>
     <div class="admin-form-group">
-      <label for="br-detectors">@include('admin.partials.info_tip', ['text' => $brInfo['detector_qty']]) Smoke / CO</label>
+      <span class="admin-label-with-tip">
+  <label for="br-detectors">Smoke / CO</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['detector_qty'], 'tipLabel' => 'Smoke / CO'])
+</span>
       <input type="number" step="1" min="0" class="admin-input br-preview" id="br-detectors" name="detector_qty"
              value="{{ $brVal('detector_qty', 2) }}"
              title="Ontario typically requires interconnected smoke/CO on each level.">

@@ -192,7 +192,10 @@
         <div class="admin-card fl-step-card br-client-card">
           <div class="br-client-card__row">
             <div class="admin-form-group">
-              <label for="br-client-name">@include('admin.partials.info_tip', ['text' => 'Name printed on the quotation PDF and used when linking this quote to a project.']) Client name</label>
+              <span class="admin-label-with-tip">
+  <label for="br-client-name">Client name</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Name printed on the quotation PDF and used when linking this quote to a project.', 'tipLabel' => 'Client name'])
+</span>
               <input type="text" class="admin-input" id="br-client-name" name="client_name" maxlength="160"
                      value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
             </div>
@@ -242,7 +245,12 @@
             ])
             <div id="br-provide-wrap">
             <fieldset class="br-provide-grid" id="br-provide-sections">
-              <legend>Or client provides materials for specific sections</legend>
+              <legend>
+                <span class="admin-label-with-tip">
+                  <span>Or client provides materials for specific sections</span>
+                  <x-admin.info-tip label="Client provides materials">Check a trade when the client buys those materials; you still carry the labour.</x-admin.info-tip>
+                </span>
+              </legend>
               @foreach ($sectionList as $key => $label)
                 @if ($key === 'overview' || $key === 'bathroom')
                   @continue
@@ -252,7 +260,6 @@
                   'value' => $key,
                   'checked' => in_array($key, $provideSections, true),
                   'label' => $label,
-                  'info' => 'Client buys the materials for '.$label.'; you still carry the labour for that trade.',
                   'inputClass' => 'admin-checkbox__input br-preview',
                   'clientFilled' => $key === 'flooring' && in_array('client_provides_sections', $filledKeys, true),
                 ])
@@ -260,9 +267,10 @@
             </fieldset>
             <fieldset class="br-bath-provide" id="br-provide-bath-items">
               <legend class="br-bath-provide__title">
-                @include('admin.partials.info_tip', ['text' => 'Client buys these fixtures; you still install them. Tile and fan stay on the Bathroom step. Bathroom and living-area lights are electrician scope (priced on Electrical lines).'])
-                @include('admin.quotations.basement._client_filled', ['key' => 'client_provides_bath_items', 'filledKeys' => $filledKeys])
-                Bathroom items
+                <span class="admin-label-with-tip">
+                  <span>@include('admin.quotations.basement._client_filled', ['key' => 'client_provides_bath_items', 'filledKeys' => $filledKeys]) Bathroom items</span>
+                  <x-admin.info-tip label="Bathroom items">Client buys these fixtures; you still install them. Tile and fan stay on the Bathroom step. Bathroom and living-area lights are electrician scope (priced on Electrical lines).</x-admin.info-tip>
+                </span>
               </legend>
               <div class="br-bath-provide__grid">
                 @foreach (\App\Services\BasementQuotationCalculator::clientProvidesBathItemLabels() as $itemKey => $itemLabel)
@@ -271,7 +279,6 @@
                     'value' => $itemKey,
                     'checked' => in_array($itemKey, $provideBathItems, true),
                     'label' => $itemLabel,
-                    'info' => 'Client supplies the '.$itemLabel.'; material cost drops out. Labour stays.',
                     'inputClass' => 'admin-checkbox__input br-preview',
                     'clientFilled' => in_array('client_provides_bath_items', $filledKeys, true) && in_array($itemKey, $provideBathItems, true),
                   ])

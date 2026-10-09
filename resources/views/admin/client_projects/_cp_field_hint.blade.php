@@ -1,7 +1,7 @@
-{{-- Legacy hint include — now the shared info-tip. Pass $text or $html. Never inherit parent $id/$label. --}}
+{{-- Legacy hint include — now the shared info-tip. Pass tipText or tipHtml only. Never inherit parent $id/$label/$text/$html. --}}
 @include('admin.partials.info_tip', [
-  'text' => $text ?? null,
-  'html' => $html ?? null,
+  'tipText' => $tipText ?? null,
+  'tipHtml' => $tipHtml ?? null,
   'tipId' => $tipId ?? null,
   'tipLabel' => $tipLabel ?? null,
 ])

@@ -197,8 +197,10 @@
                    value="{{ old('total_property_sqf', $inputs['total_property_sqf'] ?? '') }}">
           </div>
 
-          <h5 style="margin:16px 0 8px;">Excluded rooms / areas</h5>
-          <p class="pq-hint" style="margin:0 0 10px;">Subtract rooms you are not painting. Use dimensions (L × W) or enter total sq ft.</p>
+          <h5 class="admin-label-with-tip" style="margin:16px 0 8px;">
+            Excluded rooms / areas
+            <x-admin.info-tip label="Excluded rooms / areas">Subtract rooms you are not painting. Use dimensions (L × W) or enter total sq ft.</x-admin.info-tip>
+          </h5>
           <div id="pt-excluded-root">
             @foreach ($excludedRows as $i => $row)
               @php
@@ -261,9 +263,11 @@
               </select>
             </div>
             <div class="admin-form-group">
-              <label>Number of top coats</label>
+              <span class="admin-label-with-tip">
+                <label>Number of top coats</label>
+                <x-admin.info-tip label="Number of top coats">Fixed at {{ PaintingQuotationCalculator::DEFAULT_COATS }} top coats per company standards.</x-admin.info-tip>
+              </span>
               <input type="text" class="admin-input" value="{{ PaintingQuotationCalculator::DEFAULT_COATS }} (company standard)" readonly>
-              <p class="pq-hint">Fixed at {{ PaintingQuotationCalculator::DEFAULT_COATS }} top coats per company standards.</p>
             </div>
           </div>
           <div class="admin-form-group">

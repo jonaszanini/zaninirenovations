@@ -401,4 +401,124 @@ function fire(list, type, event) {
   assert.equal(document.activeElement, btn);
 }
 
+// --- resize is rAF-throttled and repositions ---
+{
+  const { document, body, listeners } = createEnv();
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-resize', 'Owner rate');
+  body.appendChild(wrap);
+  wrap.classList.add('is-open');
+  btn.setAttribute('aria-expanded', 'true');
+  bubble.style.position = 'fixed';
+  bubble.style.top = '10px';
+  btn._rect = { top: 80, bottom: 124, left: 200, right: 244, width: 44, height: 44 };
+  const resize = listeners.window.resize[0];
+  assert.ok(resize, 'resize listener');
+  resize.fn();
+  assert.equal(bubble.style.position, 'fixed');
+  assert.notEqual(bubble.style.top, '10px');
+}
+
+// --- focusout closes the open tip ---
+{
+  const { document, body, listeners } = createEnv();
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-focusout', 'Finished rooms');
+  body.appendChild(wrap);
+  wrap.classList.add('is-open');
+  btn.setAttribute('aria-expanded', 'true');
+  const fo = listeners.document.focusout.find((l) => l.opts === true || (l.opts && l.opts.capture));
+  assert.ok(fo, 'capture-phase focusout listener');
+  fo.fn({
+    target: {
+      closest(sel) {
+        return sel === '.admin-info-tip-wrap' ? wrap : null;
+      },
+    },
+    relatedTarget: null,
+  });
+  assert.equal(wrap.classList.contains('is-open'), false);
+
+  wrap.classList.add('is-open');
+  btn.setAttribute('aria-expanded', 'true');
+  fo.fn({
+    target: {
+      closest(sel) {
+        return sel === '.admin-info-tip-wrap' ? wrap : null;
+      },
+    },
+    relatedTarget: bubble,
+  });
+  assert.equal(wrap.classList.contains('is-open'), true, 'stay open when focus moves into the bubble');
+}
+
+// --- tip inside <summary> does not toggle details; bubble links stay clickable ---
+{
+  const { document, body, listeners } = createEnv();
+  const details = document.createElement('details');
+  const summary = document.createElement('summary');
+  const { wrap, btn, bubble } = makeTip(document, 'admin-info-tip-summary', 'Filters');
+  const link = document.createElement('a');
+  link.setAttribute('href', '/admin/materials/config');
+  bubble.appendChild(link);
+  summary.appendChild(wrap);
+  details.appendChild(summary);
+  body.appendChild(details);
+
+  const click = listeners.document.click.find((l) => l.opts === true || (l.opts && l.opts.capture));
+  assert.ok(click, 'capture-phase click listener');
+
+  let iconPrevented = false;
+  let iconStopped = false;
+  click.fn({
+    target: {
+      closest(sel) {
+        if (sel === '.admin-info-tip') return btn;
+        if (sel === '.admin-info-tip__bubble') return null;
+        if (sel === '.admin-info-tip-wrap') return wrap;
+        if (sel === 'summary') return summary;
+        if (sel === 'a') return null;
+        return null;
+      },
+    },
+    preventDefault() { iconPrevented = true; },
+    stopPropagation() { iconStopped = true; },
+  });
+  assert.equal(wrap.classList.contains('is-open'), true);
+  assert.equal(iconPrevented, true);
+  assert.equal(iconStopped, true);
+
+  let linkPrevented = false;
+  let linkStopped = false;
+  click.fn({
+    target: {
+      closest(sel) {
+        if (sel === '.admin-info-tip__bubble') return bubble;
+        if (sel === '.admin-info-tip-wrap') return wrap;
+        if (sel === 'summary') return summary;
+        if (sel === 'a') return link;
+        if (sel === '.admin-info-tip') return null;
+        return null;
+      },
+    },
+    preventDefault() { linkPrevented = true; },
+    stopPropagation() { linkStopped = true; },
+  });
+  assert.equal(linkPrevented, false, 'links inside a summary bubble stay clickable');
+  assert.equal(linkStopped, true, 'summary does not toggle when clicking a bubble link');
+
+  const down = listeners.document.mousedown.find((l) => l.opts === true || (l.opts && l.opts.capture));
+  assert.ok(down, 'capture-phase mousedown listener');
+  let downPrevented = false;
+  down.fn({
+    target: {
+      closest(sel) {
+        if (sel === '.admin-info-tip-wrap') return wrap;
+        if (sel === 'a') return link;
+        return null;
+      },
+    },
+    preventDefault() { downPrevented = true; },
+  });
+  assert.equal(downPrevented, false, 'mousedown on a bubble link is not cancelled');
+}
+
 console.log('admin-info-tip.test.mjs: ok');

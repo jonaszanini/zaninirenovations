@@ -71,12 +71,13 @@
         </div>
 
         <div class="admin-form-group">
-          <label for="cp-conversation-on" class="cp-label-with-hint">
-            Conversation on
+          <span class="admin-label-with-tip cp-label-with-hint">
+            <label for="cp-conversation-on">Conversation on</label>
             @include('admin.client_projects._cp_field_hint', [
-              'text' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
+              'tipText' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
+              'tipLabel' => 'Conversation on',
             ])
-          </label>
+          </span>
           <select id="cp-conversation-on" name="conversation_on" @class(['admin-input', 'is-invalid' => $errors->has('conversation_on')])>
             <option value="" @selected(old('conversation_on') === null || old('conversation_on') === '')>— Not set —</option>
             @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
@@ -169,7 +170,8 @@
             <h3 style="font-size:1rem;" class="cp-label-with-hint">
               Invoice billing <span class="admin-form-help cp-inline-help">(optional)</span>
               @include('admin.client_projects._cp_field_hint', [
-                'text' => 'When the payer is a company or a different legal entity, enter the name and address that should appear in the Bill to block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.',
+                'tipText' => 'When the payer is a company or a different legal entity, enter the name and address that should appear in the Bill to block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.',
+                'tipLabel' => 'Invoice billing',
               ])
             </h3>
             <div class="admin-form-group">

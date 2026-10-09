@@ -21,16 +21,16 @@
   $slowExpand = $slowExpand ?? false;
   $scheduleHint = 'Optional. Used to show the project on the Project Calendar page and to send an Add to Google Calendar email.';
 @endphp
+<span class="admin-label-with-tip">
 <label class="cp-visit-toggle" for="{{ $scheduleToggleId }}">
   <input type="checkbox"
     id="{{ $scheduleToggleId }}"
     @checked($scheduleChecked)>
   <span class="cp-visit-toggle__control" aria-hidden="true"></span>
-  <span class="cp-visit-toggle__label cp-label-with-hint">
-    Schedule
-    @include('admin.client_projects._cp_field_hint', ['text' => $scheduleHint])
-  </span>
+  <span class="cp-visit-toggle__label">Schedule</span>
 </label>
+@include('admin.client_projects._cp_field_hint', ['tipText' => $scheduleHint, 'tipLabel' => 'Schedule'])
+</span>
 <div id="{{ $expandableId }}"
   class="cp-visit-expandable @if ($slowExpand) cp-visit-expandable--slow @endif @if ($expandOpen) is-open @endif"
   aria-hidden="{{ $expandOpen ? 'false' : 'true' }}">

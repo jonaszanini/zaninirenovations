@@ -57,7 +57,7 @@ class AdminInfoTipTest extends TestCase
     public function test_include_wrapper_uses_the_slot_api(): void
     {
         $html = view('admin.partials.info_tip', [
-            'text' => 'First gate is included in the per-foot rate.',
+            'tipText' => 'First gate is included in the per-foot rate.',
             'tipLabel' => 'Labour rate',
         ])->render();
 
@@ -69,7 +69,19 @@ class AdminInfoTipTest extends TestCase
 
     public function test_empty_text_renders_nothing(): void
     {
-        $html = view('admin.partials.info_tip', ['text' => null])->render();
+        $html = view('admin.partials.info_tip', ['tipText' => null])->render();
+
+        $this->assertSame('', trim($html));
+    }
+
+    public function test_include_wrapper_ignores_inherited_text_and_html(): void
+    {
+        $html = view('admin.partials.info_tip', [
+            'text' => 'Inherited parent text must not render.',
+            'html' => '<em>Inherited parent html</em>',
+            'id' => 'br-area',
+            'label' => 'Last loop item',
+        ])->render();
 
         $this->assertSame('', trim($html));
     }

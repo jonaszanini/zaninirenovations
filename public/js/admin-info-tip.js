@@ -233,12 +233,12 @@
     return true;
   }
 
-  var scrollRaf = 0;
-  function onScroll() {
-    if (scrollRaf) return;
+  var moveRaf = 0;
+  function onViewportMove() {
+    if (moveRaf) return;
     var raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); };
-    scrollRaf = raf(function () {
-      scrollRaf = 0;
+    moveRaf = raf(function () {
+      moveRaf = 0;
       document.querySelectorAll('.admin-info-tip-wrap.' + OPEN).forEach(function (root) {
         var btn = buttonOf(root);
         if (!isIconVisibleInClip(btn)) {
@@ -247,6 +247,38 @@
         }
         positionBubble(btn, bubbleOf(root));
       });
+    });
+  }
+
+  function labelTextNear(wrap) {
+    var row = wrap.closest ? wrap.closest('.admin-label-with-tip') : null;
+    var el = row
+      ? row.querySelector('label, legend, h2, h3, h4, h5, strong, .admin-form-group-label, .mw-piece__sets-title')
+      : null;
+    if (!el) {
+      var prev = wrap.previousElementSibling;
+      if (prev && /^(LABEL|LEGEND|H2|H3|H4|H5|STRONG|SPAN)$/.test(prev.tagName)) {
+        el = prev;
+      }
+    }
+    if (!el) return '';
+    var text = String(el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text.length > 80) {
+      text = text.slice(0, 77) + '…';
+    }
+    return text;
+  }
+
+  function deriveMissingLabels(scope) {
+    wrapsIn(scope).forEach(function (wrap) {
+      var btn = buttonOf(wrap);
+      if (!btn) return;
+      var current = btn.getAttribute('aria-label');
+      if (current && current !== 'More info') return;
+      var text = labelTextNear(wrap);
+      if (text) {
+        btn.setAttribute('aria-label', 'About ' + text);
+      }
     });
   }
 
@@ -274,18 +306,24 @@
       row.appendChild(label);
       row.appendChild(wrap);
     });
+    deriveMissingLabels(root);
   }
 
   function prepareAddedNode(node) {
     if (!node || node.nodeType !== 1) return;
     hoistFromLabels(node);
     refreshDuplicateIds(node);
+    deriveMissingLabels(node);
+  }
+
+  function isLinkTarget(el) {
+    return !!(el && el.closest && el.closest('a'));
   }
 
   document.addEventListener('mousedown', function (e) {
-    if (e.target.closest && e.target.closest('.admin-info-tip-wrap')) {
-      e.preventDefault();
-    }
+    if (!e.target.closest || !e.target.closest('.admin-info-tip-wrap')) return;
+    if (isLinkTarget(e.target)) return;
+    e.preventDefault();
   }, true);
 
   document.addEventListener('click', function (e) {
@@ -297,8 +335,10 @@
     var inSummary = !!(e.target.closest && e.target.closest('summary'));
     if (e.target.closest('.admin-info-tip__bubble')) {
       if (inSummary) {
-        e.preventDefault();
         e.stopPropagation();
+        if (!isLinkTarget(e.target)) {
+          e.preventDefault();
+        }
       }
       return;
     }
@@ -308,6 +348,14 @@
     e.preventDefault();
     e.stopPropagation();
     toggleTip(root);
+  }, true);
+
+  document.addEventListener('focusout', function (e) {
+    var root = rootOf(e.target);
+    if (!root || !root.classList.contains(OPEN)) return;
+    var next = e.relatedTarget;
+    if (next && root.contains(next)) return;
+    closeTip(root);
   }, true);
 
   document.addEventListener('keydown', function (e) {
@@ -323,9 +371,9 @@
     }
   });
 
-  window.addEventListener('resize', repositionOpenTips);
+  window.addEventListener('resize', onViewportMove);
 
-  document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+  document.addEventListener('scroll', onViewportMove, { capture: true, passive: true });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { hoistFromLabels(document); });

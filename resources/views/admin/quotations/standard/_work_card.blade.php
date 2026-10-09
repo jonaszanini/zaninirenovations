@@ -133,7 +133,10 @@
         <div class="sq-labour-head">
           <h3 class="sq-labour-title">
             Labour
-            @include('admin.partials.info_tip', ['text' => 'Labour includes HST (13%) unless you turn it off in Totals. A flat fee is one dollar amount. Otherwise use hourly rate × hours or days (8 h = 1 day).'])
+            @include('admin.partials.info_tip', [
+              'tipText' => 'Labour includes HST (13%) unless you turn it off in Totals. A flat fee is one dollar amount. Otherwise use hourly rate × hours or days (8 h = 1 day).',
+              'tipLabel' => 'Labour',
+            ])
           </h3>
           <input type="hidden" name="works[{{ $workIndex }}][labour_use_fixed]" value="0">
           <label class="admin-checkbox sq-checkbox-label sq-labour-fixed-toggle">
@@ -152,12 +155,17 @@
           </div>
           <div class="sq-labour-hst-field">
             <input type="hidden" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="0">
-            <label class="admin-checkbox sq-checkbox-label">
-              <input type="checkbox" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="1" class="admin-checkbox__input sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
-              <span class="admin-checkbox__mark" aria-hidden="true"></span>
-              <span class="admin-checkbox__text">HST included</span>
-            </label>
-            @include('admin.partials.info_tip', ['text' => 'When checked, the amount is the total with tax. Before-tax labour is calculated the same way as a material with an HST-included price.'])
+            <span class="admin-label-with-tip">
+              <label class="admin-checkbox sq-checkbox-label">
+                <input type="checkbox" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="1" class="admin-checkbox__input sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
+                <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                <span class="admin-checkbox__text">HST included</span>
+              </label>
+              @include('admin.partials.info_tip', [
+                'tipText' => 'When checked, the amount is the total with tax. Before-tax labour is calculated the same way as a material with an HST-included price.',
+                'tipLabel' => 'HST included',
+              ])
+            </span>
           </div>
         </div>
 

@@ -679,8 +679,10 @@
           <form action="{{ route('admin.client-projects.reopen', $project) }}" method="post" class="cp-reopen-form" id="cp-reopen-form">
             @csrf
             <div class="cp-reopen-form-head">
-              <label for="cp-reopen-status" class="cp-reopen-form-label">Reopen project</label>
-              <span class="cp-reopen-form-help">Restore workflow by setting a new status.</span>
+              <span class="admin-label-with-tip">
+                <label for="cp-reopen-status" class="cp-reopen-form-label">Reopen project</label>
+                <x-admin.info-tip label="Reopen project">Restore workflow by setting a new status.</x-admin.info-tip>
+              </span>
             </div>
             <div class="cp-reopen-controls">
               <select id="cp-reopen-status" name="status" class="admin-input cp-reopen-select" required>

@@ -30,15 +30,16 @@
 @if ($project->usesInvoiceBillingOverride())
   <div class="admin-card cp-invoice-bill-to">
     <p class="cp-invoice-bill-to__text">
-      <strong>Invoice bill-to:</strong> {{ $project->invoiceBillToName() }}
+      <span class="admin-label-with-tip">
+        <strong>Invoice bill-to:</strong>
+        <x-admin.info-tip label="Invoice bill-to">
+          PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).
+        </x-admin.info-tip>
+      </span>
+      {{ $project->invoiceBillToName() }}
       @if (filled(trim((string) $project->invoice_billing_address)))
         <span class="admin-form-help cp-invoice-bill-to__address">{{ $project->invoice_billing_address }}</span>
       @endif
-    </p>
-    <p class="cp-invoice-bill-to__help">
-      <x-admin.info-tip label="Invoice bill-to">
-        PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).
-      </x-admin.info-tip>
     </p>
     <a href="{{ route('admin.client-projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-form-group-spaced">Edit project</a>
   </div>

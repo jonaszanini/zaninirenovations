@@ -384,9 +384,12 @@
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
 
-      <h3 class="cp-heading-md">Live breakdown</h3>
-      <p class="admin-form-help cp-breakdown-intro">
-        Preview updates as you type. <span class="ld-badge" id="ld-status-badge">Calculating…</span>
+      <h3 class="cp-heading-md">
+        Live breakdown
+        <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
+      </h3>
+      <p class="cp-breakdown-intro">
+        <span class="ld-badge" id="ld-status-badge">Calculating…</span>
       </p>
 
       <div id="ld-geometry" class="admin-form-help cp-geometry-hint"></div>
@@ -461,7 +464,12 @@
   {{-- ====================== DIAGRAMS ============================= --}}
   <div class="admin-card ld-diagrams-card">
     <div class="ld-diagrams-toolbar no-print">
-      <h3 class="cp-heading-md" style="margin:0;">Layout diagrams</h3>
+      <h3 class="cp-heading-md admin-label-with-tip" style="margin:0;">
+        Layout diagrams
+        <span id="ld-diagrams-hint">
+          <x-admin.info-tip label="Layout diagrams">Enter dimensions to generate the foundations, framing, and decking layouts.</x-admin.info-tip>
+        </span>
+      </h3>
       <div class="ld-diagrams-toolbar-actions">
         @if ($isEdit)
           <a href="{{ route('admin.quotations.low-deck.layout-diagrams', $quotation) }}"
@@ -482,7 +490,6 @@
       @endif
       <span id="ld-diagram-print-dims"></span>
     </div>
-    <p class="admin-form-help cp-form-help-flush no-print" id="ld-diagrams-hint">Enter dimensions to generate the foundations, framing, and decking layouts.</p>
     <div class="ld-diagrams-grid">
       <div class="ld-diagram-panel">
         <h5>1. Foundations</h5>

@@ -87,9 +87,12 @@
       <label for="{{ $id }}-input">{{ $label }}</label>
       @if (! empty($labelHint))
         @php
-          $ssHint = is_array($labelHint) ? $labelHint : ['text' => $labelHint];
-          $ssHint['tipLabel'] = $ssHint['tipLabel'] ?? $ssHint['label'] ?? $label;
-          unset($ssHint['id'], $ssHint['label']);
+          $ssHint = is_array($labelHint) ? $labelHint : ['tipText' => $labelHint];
+          if (isset($ssHint['text']) && empty($ssHint['tipText'])) {
+              $ssHint['tipText'] = $ssHint['text'];
+          }
+          $ssHint['tipLabel'] = $ssHint['tipLabel'] ?? $label;
+          unset($ssHint['id'], $ssHint['label'], $ssHint['text'], $ssHint['html']);
         @endphp
         @include('admin.client_projects._cp_field_hint', $ssHint)
       @endif

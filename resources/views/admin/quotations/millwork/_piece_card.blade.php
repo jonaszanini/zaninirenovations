@@ -245,12 +245,16 @@
   </div>
 
   <div data-mw-show="shelf floating_shelf cabinet_door">
-    <span class="mw-piece__hint">
-      <x-admin.info-tip label="Size sets">Size sets — add groups if you have mixed sizes.</x-admin.info-tip>
-    </span>
-    <span class="mw-piece__hint" data-mw-show="floating_shelf">
-      <x-admin.info-tip label="Open-back box">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</x-admin.info-tip>
-    </span>
+    <div class="mw-piece__sets-head">
+      <span class="admin-label-with-tip">
+        <span class="mw-piece__sets-title">Size sets</span>
+        <x-admin.info-tip label="Size sets">Size sets — add groups if you have mixed sizes.</x-admin.info-tip>
+      </span>
+      <span class="admin-label-with-tip" data-mw-show="floating_shelf">
+        <span class="mw-piece__sets-title">Open-back box</span>
+        <x-admin.info-tip label="Open-back box">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</x-admin.info-tip>
+      </span>
+    </div>
     <div data-mw-set-list>
       @foreach ($sets as $si => $set)
         @include('admin.quotations.millwork._set_row', ['pi' => $pi, 'si' => $si, 'set' => is_array($set) ? $set : [], 'unit' => $unit])
