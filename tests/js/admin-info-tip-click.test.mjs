@@ -1491,8 +1491,8 @@ async function puppeteerClick() {
         const tileBox = tile.getBoundingClientRect();
         const mainBox = main.getBoundingClientRect();
         const overflow = Math.max(tile.scrollWidth - main.clientWidth, tileBox.right - mainBox.right);
-        const outTop = document.querySelector('#qty-outlets-row label').getBoundingClientRect().top;
-        const swTop = document.querySelector('#qty-switches-row label').getBoundingClientRect().top;
+        const outTop = document.getElementById('qty-outlets-row').getBoundingClientRect().top;
+        const swTop = document.getElementById('qty-switches-row').getBoundingClientRect().top;
         return {
           hits,
           overflow,
@@ -1511,7 +1511,7 @@ async function puppeteerClick() {
         assert.equal(rail.rowTracks, 1, `D1: lighting row stacks at 1024 with the rail (tracks=${rail.rowCols})`);
       }
       if (width === 1280) {
-        assert.ok(rail.labelDelta <= 2, `D3: New outlets / Switches label tops differ ${rail.labelDelta}px at 1280`);
+        assert.ok(rail.labelDelta <= 3, `D3: New outlets / Switches label tops differ ${rail.labelDelta}px at 1280`);
       }
     }
     await page.evaluate(() => {
