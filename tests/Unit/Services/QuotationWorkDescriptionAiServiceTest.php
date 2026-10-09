@@ -35,7 +35,7 @@ class QuotationWorkDescriptionAiServiceTest extends TestCase
 
         $text = $service->composeFromQuotation('fence', $this->threeRunFencePayload());
 
-        $this->assertStringContainsString('Fence sections (runs entered on this quote): 3', $captured);
+        $this->assertStringContainsString('Fence runs entered on this quote: 3', $captured);
         $this->assertDoesNotMatchRegularExpression('/\b8\s+sections?\b/i', $captured);
         $this->assertDoesNotMatchRegularExpression('/per section\s*\(\s*8\s*\)/i', $captured);
         $this->assertDoesNotMatchRegularExpression('/\(\s*\d+\s*\/\s*section\s*\)/i', $captured);
@@ -82,7 +82,7 @@ class QuotationWorkDescriptionAiServiceTest extends TestCase
         $leakyInnerText = collect($calc['materials'])->map(function (array $row): string {
             return trim(($row['name'] ?? '').' '.($row['notes'] ?? ''));
         })->implode("\n");
-        $this->assertMatchesRegularExpression('/per section\s*\(\s*8\s*\)/i', $leakyInnerText);
+        $this->assertMatchesRegularExpression('/per panel\s*\(\s*8\s*\)/i', $leakyInnerText);
 
         $captured = '';
         $gemini = $this->createMock(GeminiService::class);
@@ -111,7 +111,7 @@ class QuotationWorkDescriptionAiServiceTest extends TestCase
             'materials_summary' => $leakyInnerText,
         ]);
 
-        $this->assertStringContainsString('Fence sections (runs entered on this quote): 3', $captured);
+        $this->assertStringContainsString('Fence runs entered on this quote: 3', $captured);
         $this->assertDoesNotMatchRegularExpression('/\b8\s+sections?\b/i', $captured);
         $this->assertDoesNotMatchRegularExpression('/per section\s*\(\s*8\s*\)/i', $captured);
         $this->assertDoesNotMatchRegularExpression('/\(\s*\d+\s*\/\s*section\s*\)/i', $captured);
@@ -176,6 +176,7 @@ class QuotationWorkDescriptionAiServiceTest extends TestCase
             $make(FenceMaterial::KEY_NAILS, 100, 1000),
             $make(FenceMaterial::KEY_BRACKET, 3),
             $make(FenceMaterial::KEY_POST_CAP, 5),
+            $make(FenceMaterial::KEY_POST_CAP_6X6, 8),
             $make(FenceMaterial::KEY_GATE_HARDWARE, 25),
         ])->keyBy('key');
 

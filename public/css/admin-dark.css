@@ -1944,6 +1944,13 @@ html.admin-dark .fq-side-card {
   background: var(--admin-surface);
   border-color: var(--admin-border);
 }
+html.admin-dark .fq-total-lf,
+html.admin-dark .fq-gate-warn,
+html.admin-dark .fq-price-banner {
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  background: var(--admin-elevated);
+}
 html.admin-dark .fq-side-card h5,
 html.admin-dark .fq-geometry-summary {
   color: var(--admin-heading);

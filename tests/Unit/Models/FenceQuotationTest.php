@@ -21,7 +21,7 @@ class FenceQuotationTest extends TestCase
         ]);
 
         $this->assertSame(
-            "Pressure treated wood fence 6' high, 6×6 posts — 41.5 linear ft, 1 gate",
+            '6 ft standard board fence, 6×6 posts in concrete, 41.5 linear ft (2 runs), one 4 ft single gate',
             $quote->summaryDescription()
         );
     }

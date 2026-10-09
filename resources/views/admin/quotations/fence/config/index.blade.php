@@ -274,10 +274,25 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-concrete-8">Concrete bags / post — 8' fence</label>
+        <label for="fq-concrete-8">Concrete bags / post — 8' 4×4</label>
         <input id="fq-concrete-8" type="number" min="0" step="0.01" name="concrete_per_post_8ft"
                class="admin-input"
                value="{{ old('concrete_per_post_8ft', (float) $settings->concrete_per_post_8ft) }}">
+      </div>
+
+      <div class="admin-form-group">
+        <label for="fq-concrete-6x6-6">Concrete bags / post — 6' 6×6</label>
+        <input id="fq-concrete-6x6-6" type="number" min="0" step="0.01" name="concrete_per_post_6x6_6ft"
+               class="admin-input"
+               value="{{ old('concrete_per_post_6x6_6ft', (float) ($settings->concrete_per_post_6x6_6ft ?? 2.5)) }}">
+        <p class="admin-form-help">Larger hole than 4×4. Default 2.5 bags (assumption: ~12–14″ hole).</p>
+      </div>
+
+      <div class="admin-form-group">
+        <label for="fq-concrete-6x6-8">Concrete bags / post — 8' 6×6</label>
+        <input id="fq-concrete-6x6-8" type="number" min="0" step="0.01" name="concrete_per_post_6x6_8ft"
+               class="admin-input"
+               value="{{ old('concrete_per_post_6x6_8ft', (float) ($settings->concrete_per_post_6x6_8ft ?? 3.5)) }}">
       </div>
 
       <div class="admin-form-group">
@@ -302,10 +317,48 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="fq-spacing">Max post-to-post spacing (ft)</label>
+        <label for="fq-spacing">Max clear span between posts (ft)</label>
         <input id="fq-spacing" type="number" min="1" step="0.01" name="max_post_spacing_ft"
                class="admin-input"
                value="{{ old('max_post_spacing_ft', (float) $settings->max_post_spacing_ft) }}">
+        <p class="admin-form-help">Clear span, not on-centre. Posts sit outside this span. An 8 ft top board covers the clear span and may not reach post centres at near-max spacing.</p>
+      </div>
+
+      <div class="admin-form-group">
+        <label for="fq-waste-posts">Waste extra posts</label>
+        <input id="fq-waste-posts" type="number" min="0" step="1" name="waste_extra_posts"
+               class="admin-input"
+               value="{{ old('waste_extra_posts', (int) ($settings->waste_extra_posts ?? 1)) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="fq-waste-pickets">Waste pickets per panel</label>
+        <input id="fq-waste-pickets" type="number" min="0" step="1" name="waste_pickets_per_section"
+               class="admin-input"
+               value="{{ old('waste_pickets_per_section', (int) ($settings->waste_pickets_per_section ?? 1)) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="fq-waste-rails">Waste extra rails</label>
+        <input id="fq-waste-rails" type="number" min="0" step="1" name="waste_extra_rails"
+               class="admin-input"
+               value="{{ old('waste_extra_rails', (int) ($settings->waste_extra_rails ?? 3)) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="fq-waste-brackets">Waste extra brackets</label>
+        <input id="fq-waste-brackets" type="number" min="0" step="1" name="waste_extra_brackets"
+               class="admin-input"
+               value="{{ old('waste_extra_brackets', (int) ($settings->waste_extra_brackets ?? 6)) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="fq-waste-caps">Waste extra caps</label>
+        <input id="fq-waste-caps" type="number" min="0" step="1" name="waste_extra_caps"
+               class="admin-input"
+               value="{{ old('waste_extra_caps', (int) ($settings->waste_extra_caps ?? 1)) }}">
+      </div>
+      <div class="admin-form-group">
+        <label for="fq-waste-concrete">Concrete waste: +1 bag per N posts</label>
+        <input id="fq-waste-concrete" type="number" min="1" step="1" name="waste_concrete_posts_per_extra_bag"
+               class="admin-input"
+               value="{{ old('waste_concrete_posts_per_extra_bag', (int) ($settings->waste_concrete_posts_per_extra_bag ?? 3)) }}">
       </div>
 
       <div class="admin-form-group">
@@ -322,6 +375,17 @@
                class="admin-input"
                value="{{ old('overlapping_in', (float) $settings->overlapping_in) }}">
         <p class="admin-form-help">Only used in "overlapping" board style.</p>
+      </div>
+
+      <div class="admin-form-group" style="grid-column: 1 / -1;">
+        <label for="fq-work-description-template">Work description template</label>
+        <textarea id="fq-work-description-template" name="work_description_template" rows="5" maxlength="10000"
+                  class="admin-input">{{ old('work_description_template', $settings->work_description_template ?? '') }}</textarea>
+        <p class="admin-form-help">
+          Placeholders: <code>@{{linear_ft}}</code> <code>@{{height}}</code> <code>@{{style}}</code>
+          <code>@{{runs}}</code> <code>@{{post_size}}</code> <code>@{{gates}}</code> <code>@{{posts}}</code>.
+          Leave blank to use the built-in contractor template.
+        </p>
       </div>
     </div>
   </form>

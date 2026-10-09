@@ -79,4 +79,19 @@ class CatalogMaterialDeliveryTest extends TestCase
         $this->assertSame('flat', $rows[1]['unit']);
         $this->assertEqualsWithDelta(75.0, $rows[1]['subtotal'], 0.01);
     }
+
+    public function test_append_once_per_vendor_keeps_one_delivery_line(): void
+    {
+        $rows = CatalogMaterialDelivery::appendOncePerVendor([
+            ['key' => 'post_10', 'name' => 'Post', 'quantity' => 4, 'unit' => 'ea', 'unit_price' => 40, 'subtotal' => 160],
+            ['key' => 'rail', 'name' => 'Rail', 'quantity' => 8, 'unit' => 'ea', 'unit_price' => 7, 'subtotal' => 56],
+        ], static function (array $row): array {
+            return [40.0, 'Home Depot', 'vendor:1'];
+        });
+
+        $deliveries = array_values(array_filter($rows, fn (array $row): bool => str_ends_with((string) $row['key'], '_delivery')));
+        $this->assertCount(1, $deliveries);
+        $this->assertEqualsWithDelta(40.0, $deliveries[0]['subtotal'], 0.01);
+        $this->assertStringContainsString('Home Depot', $deliveries[0]['name']);
+    }
 }

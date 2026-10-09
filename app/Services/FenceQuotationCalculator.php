@@ -6,34 +6,33 @@ use App\Models\FenceFormulaSetting;
 use App\Models\FenceMaterial;
 use App\Models\FenceQuotation;
 use App\Support\CatalogMaterialDelivery;
+use App\Support\FenceGateSpec;
 
 /**
  * FenceQuotationCalculator — the structural math engine behind the
  * Fence quotation module.
  *
  * Inputs (from the UI):
-     *   - sides          : array<['length_ft' => float, 'already_have_post_left' => bool, 'already_have_post_right' => bool, 'gate_goes_here' => bool]>
+ *   - sides          : array of runs with length, existing posts, gate flags,
+ *                      optional connected_to_previous and gate_preset
  *   - fence_height_ft: 6 or 8
  *   - board_style    : 'standard' | 'overlapping'
- *   - overlap_in     : float (only used when board_style = overlapping)
  *   - gate_count     : int (>= 0)
+ *   - extra_gate_preset: size/type for gates not placed on a run
  *
  * Output (`calculate()`):
  *   {
  *     inputs:      echo of the normalised inputs,
  *     geometry:    { total_linear_ft, sections_total, sides_breakdown },
  *     materials:   [ { key, name, long_name, model, store_sku, quantity, unit, unit_price, subtotal, notes, url } ],
-     *     totals:      { materials_subtotal, hst, labour_subtotal, total, labour_hst, grand_total }
+ *     totals:      { materials_subtotal, hst, labour_subtotal, total, labour_hst, grand_total }
  *   }
  *
- * The output is deliberately JSON-serialisable so it can be stored on
- * `fence_quotations.calculation` verbatim and used by the PDF template
- * without further processing.
+ * The output is JSON-serialisable so it can be stored on
+ * `fence_quotations.calculation` and reused on edit without a PDF of its own.
  */
 class FenceQuotationCalculator
 {
-    /** Typical clear opening width credited off picket runs when a gate is on a side. */
-    private const GATE_OPENING_FT = 4.0;
 
     /** Standard 4×4 post face width (inches). */
     private const POST_WIDTH_IN_4X4 = 3.5;
@@ -53,15 +52,77 @@ class FenceQuotationCalculator
     }
 
     /**
-     * Run the full calculation against the given inputs and return the
-     * shape documented in the class docblock.
+     * Unit prices from a saved calculation snapshot, keyed by material key.
+     *
+     * @param  array<string, mixed>|null  $calculation
+     * @return array<string, float>
      */
-    public function calculate(array $inputs): array
+    public static function frozenUnitPricesFromCalculation(?array $calculation): array
+    {
+        $out = [];
+        foreach ($calculation['materials'] ?? [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $key = (string) ($row['key'] ?? '');
+            if ($key === '') {
+                continue;
+            }
+            $out[$key] = round((float) ($row['unit_price'] ?? 0), 2);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Compare live catalogue prices to a saved snapshot (same quantities).
+     *
+     * @param  array<string, mixed>  $live
+     * @param  array<string, mixed>|null  $saved
+     * @return array{changed: bool, delta: float, saved_materials: float, live_materials: float}
+     */
+    public static function cataloguePriceDelta(array $live, ?array $saved): array
+    {
+        $liveMat = (float) ($live['totals']['materials_subtotal'] ?? 0);
+        $savedMat = (float) ($saved['totals']['materials_subtotal'] ?? 0);
+        $delta = round($liveMat - $savedMat, 2);
+
+        $livePrices = [];
+        foreach ($live['materials'] ?? [] as $row) {
+            if (is_array($row) && ($row['key'] ?? '') !== '') {
+                $livePrices[(string) $row['key']] = round((float) ($row['unit_price'] ?? 0), 2);
+            }
+        }
+        $changed = false;
+        foreach ($saved['materials'] ?? [] as $row) {
+            if (! is_array($row) || ($row['key'] ?? '') === '') {
+                continue;
+            }
+            $key = (string) $row['key'];
+            $savedPrice = round((float) ($row['unit_price'] ?? 0), 2);
+            if (array_key_exists($key, $livePrices) && abs($livePrices[$key] - $savedPrice) > 0.009) {
+                $changed = true;
+                break;
+            }
+        }
+
+        return [
+            'changed' => $changed,
+            'delta' => $delta,
+            'saved_materials' => $savedMat,
+            'live_materials' => $liveMat,
+        ];
+    }
+
+    public function calculate(array $inputs, ?array $frozenUnitPrices = null): array
     {
         $normalised = $this->normaliseInputs($inputs);
         $geometry = $this->computeGeometry($normalised);
         $materials = $this->computeMaterials($normalised, $geometry);
-        $materials = $this->withCatalogDeliveries($materials);
+        if ($frozenUnitPrices) {
+            $materials = $this->applyFrozenUnitPrices($materials, $frozenUnitPrices);
+        }
+        $materials = $this->withCatalogDeliveries($materials, $frozenUnitPrices);
         $totals = $this->computeTotals($materials, $geometry, $normalised);
 
         return [
@@ -69,6 +130,7 @@ class FenceQuotationCalculator
             'geometry' => $geometry,
             'materials' => $materials,
             'totals' => $totals,
+            'price_source' => $frozenUnitPrices ? 'frozen' : 'catalogue',
         ];
     }
 
@@ -80,16 +142,30 @@ class FenceQuotationCalculator
     {
         $rawSides = $inputs['sides'] ?? [];
         $sides = [];
+        $index = 0;
         foreach ($rawSides as $side) {
-            $len = (float) ($side['length_ft'] ?? 0);
-            if ($len > 0) {
-                $sides[] = [
-                    'length_ft' => round($len, 2),
-                    'already_have_post_left' => filter_var($side['already_have_post_left'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                    'already_have_post_right' => filter_var($side['already_have_post_right'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                    'gate_goes_here' => filter_var($side['gate_goes_here'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                ];
+            if (! is_array($side)) {
+                continue;
             }
+            $len = (float) ($side['length_ft'] ?? 0);
+            if ($len <= 0) {
+                continue;
+            }
+            $gateSpec = FenceGateSpec::fromSide($side);
+            $connected = $index === 0
+                ? false
+                : filter_var($side['connected_to_previous'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            $sides[] = [
+                'length_ft' => round($len, 2),
+                'already_have_post_left' => filter_var($side['already_have_post_left'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'already_have_post_right' => filter_var($side['already_have_post_right'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'gate_goes_here' => filter_var($side['gate_goes_here'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'connected_to_previous' => $connected,
+                'gate_preset' => $gateSpec->key,
+                'gate_width_ft' => $gateSpec->widthFt,
+                'gate_type' => $gateSpec->type,
+            ];
+            $index++;
         }
 
         $height = (float) ($inputs['fence_height_ft'] ?? 6);
@@ -120,6 +196,7 @@ class FenceQuotationCalculator
             'labour_rate_per_ft' => round(max(0, (float) ($inputs['labour_rate_per_ft'] ?? $defaultLabour6)), 2),
             'labour_rate_8ft_per_ft' => round(max(0, (float) ($inputs['labour_rate_8ft_per_ft'] ?? $defaultLabour8)), 2),
             'post_size' => $this->normalisePostSize($inputs['post_size'] ?? null),
+            'extra_gate_preset' => FenceGateSpec::fromKey($inputs['extra_gate_preset'] ?? null)->key,
             'include_labour_hst' => array_key_exists('include_labour_hst', $inputs)
                 ? filter_var($inputs['include_labour_hst'], FILTER_VALIDATE_BOOLEAN)
                 : true,
@@ -142,21 +219,26 @@ class FenceQuotationCalculator
         $gatesAssigned = 0;
         $postWidthIn = $this->postWidthInFor($in);
 
+        $gateSpecs = [];
+
         foreach ($in['sides'] as $idx => $side) {
             $sideLengthFt = (float) $side['length_ft'];
             $gateHere = (bool) ($side['gate_goes_here'] ?? false) && $gatesRemaining > 0;
+            $gateSpec = $gateHere ? FenceGateSpec::fromSide($side) : null;
+            $openingFt = $gateSpec?->widthFt ?? 0.0;
             $fenceLengthFt = $gateHere
-                ? max(0.0, $sideLengthFt - self::GATE_OPENING_FT)
+                ? max(0.0, $sideLengthFt - $openingFt)
                 : $sideLengthFt;
 
             $existingLeft = (bool) ($side['already_have_post_left'] ?? false);
             $existingRight = (bool) ($side['already_have_post_right'] ?? false);
+            $connectedToPrevious = $idx === 0
+                ? false
+                : (bool) ($side['connected_to_previous'] ?? true);
 
-            // Gate-side layout model (gate consumes 4 ft at the end of the side):
-            //   [existing left?] — fence run (length − 4 ft) — hinge post — 4 ft opening — latch/right post
-            // "Existing post on right" means the latch/end post after the gate, not the hinge.
-            // The fence run always ends at a hinge post, so never treat the right flag as existing
-            // when computing fence sections on a gate side.
+            // Gate-side layout: gate consumes its opening at the end of the run.
+            //   [existing left?] — fence run (length − opening) — hinge — opening — far post
+            // "Existing post on right" is the far/latch post after the gate, not the hinge.
             $layoutExistingRight = $gateHere ? false : $existingRight;
 
             $layout = $this->computeSideLayout(
@@ -168,17 +250,22 @@ class FenceQuotationCalculator
 
             $sections = $layout['sections'];
             $posts = $layout['posts'];
-            if ($gateHere) {
-                // Fence layout includes the hinge post at the fence/gate junction.
-                // Add the latch/end post on the far side of the gate opening when needed.
-                if (! $existingRight) {
+            if ($gateHere && $gateSpec) {
+                if ($fenceLengthFt <= 0 && ! $existingLeft) {
+                    // Gate-only run: layout(0) returns 0 posts. The hinge is missing
+                    // unless the left end already has a post.
                     $posts += 1;
+                }
+                $farPosts = $gateSpec->isDouble() ? max(0, $gateSpec->hingePostCount() - 1) : 1;
+                if (! $existingRight) {
+                    $posts += $farPosts;
                 }
                 $gatesRemaining--;
                 $gatesAssigned++;
+                $gateSpecs[] = $gateSpec;
             }
 
-            $picketLinearFt += max(0.0, $sideLengthFt - ($gateHere ? self::GATE_OPENING_FT : 0.0));
+            $picketLinearFt += max(0.0, $sideLengthFt - ($gateHere ? $openingFt : 0.0));
 
             $sidesBreakdown[] = [
                 'index' => $idx + 1,
@@ -191,8 +278,11 @@ class FenceQuotationCalculator
                 'max_section_length_ft' => $layout['max_section_length_ft'],
                 'already_have_post_left' => $existingLeft,
                 'already_have_post_right' => $existingRight,
+                'connected_to_previous' => $connectedToPrevious,
                 'gate_goes_here' => $gateHere,
-                'gate_opening_ft' => $gateHere ? self::GATE_OPENING_FT : null,
+                'gate_opening_ft' => $gateHere ? $openingFt : null,
+                'gate_preset' => $gateHere ? $gateSpec?->key : null,
+                'gate_type' => $gateHere ? $gateSpec?->type : null,
             ];
 
             $totalLinearFt += $sideLengthFt;
@@ -202,6 +292,10 @@ class FenceQuotationCalculator
 
         $structuralPosts = array_sum($postsPerSide);
         for ($i = 1; $i < $sideCount; $i++) {
+            $connected = (bool) ($in['sides'][$i]['connected_to_previous'] ?? true);
+            if (! $connected) {
+                continue;
+            }
             $prevRightExisting = (bool) ($in['sides'][$i - 1]['already_have_post_right'] ?? false);
             $currLeftExisting = (bool) ($in['sides'][$i]['already_have_post_left'] ?? false);
             if (! $prevRightExisting && ! $currLeftExisting) {
@@ -210,20 +304,33 @@ class FenceQuotationCalculator
         }
         $structuralPosts = max(0, $structuralPosts);
 
-        // Gate jambs on marked sides are already in structural counts; only add
-        // extra gate posts for gates not assigned to a side.
-        $gatePosts = max(0, (int) $in['gate_count'] - $gatesAssigned);
+        $extraGateCount = max(0, (int) $in['gate_count'] - $gatesAssigned);
+        $extraSpec = FenceGateSpec::fromKey($in['extra_gate_preset'] ?? FenceGateSpec::DEFAULT_KEY);
+        $gatePosts = 0;
+        for ($i = 0; $i < $extraGateCount; $i++) {
+            $gatePosts += $extraSpec->standalonePostCount();
+            $gateSpecs[] = $extraSpec;
+        }
         $postsBeforeWaste = $structuralPosts + $gatePosts;
 
         return [
             'total_linear_ft' => round($totalLinearFt, 2),
             'picket_linear_ft' => round($picketLinearFt, 2),
+            'run_count' => $sideCount,
             'sections_total' => $sectionsTotal,
+            'panels_total' => $sectionsTotal,
             'structural_posts' => $structuralPosts,
             'gate_posts' => $gatePosts,
             'gates_on_sides' => $gatesAssigned,
             'posts_before_waste' => $postsBeforeWaste,
             'sides_breakdown' => $sidesBreakdown,
+            'gates' => array_map(static fn (FenceGateSpec $spec): array => [
+                'preset' => $spec->key,
+                'width_ft' => $spec->widthFt,
+                'type' => $spec->type,
+                'label' => $spec->label,
+                'hardware_sets' => $spec->hardwareSets(),
+            ], $gateSpecs),
         ];
     }
 
@@ -355,10 +462,17 @@ class FenceQuotationCalculator
         $sectionsTotal = (int) $geom['sections_total'];
         $postsBeforeWaste = (int) $geom['posts_before_waste'];
 
+        $postSize = (string) ($in['post_size'] ?? FenceQuotation::POST_SIZE_4X4);
+        $wastePosts = $settings->wasteExtraPosts();
+        $wastePickets = $settings->wastePicketsPerSection();
+        $wasteRails = $settings->wasteExtraRails();
+        $wasteBrackets = $settings->wasteExtraBrackets();
+        $wasteCaps = $settings->wasteExtraCaps();
+        $concreteWasteDivisor = $settings->wasteConcretePostsPerExtraBag();
+
         // -------- POSTS --------------------------------------------------
-        // Waste margin: +1 post per project.
-        $postsTotal = $postsBeforeWaste + ($postsBeforeWaste > 0 ? 1 : 0);
-        $postKey = FenceMaterial::postKeyFor($height, (string) ($in['post_size'] ?? FenceQuotation::POST_SIZE_4X4));
+        $postsTotal = $postsBeforeWaste + ($postsBeforeWaste > 0 ? $wastePosts : 0);
+        $postKey = FenceMaterial::postKeyFor($height, $postSize);
 
         // -------- PICKETS (fence boards along the run) -------------------
         // Effective per-board width depends on style:
@@ -378,8 +492,21 @@ class FenceQuotationCalculator
             ? (int) ceil(($totalFt * 12.0) / $effectiveWidth)
             : 0;
 
-        // Waste: +1 board per section.
-        $picketsTotal = $picketsBeforeWaste + $sectionsTotal;
+        $gateBoardTotal = 0;
+        $gateBoardNotes = [];
+        foreach ($geom['gates'] ?? [] as $gate) {
+            $widthFt = (float) ($gate['width_ft'] ?? 0);
+            $boards = ($effectiveWidth > 0 && $widthFt > 0)
+                ? (int) ceil(($widthFt * 12.0) / $effectiveWidth)
+                : 0;
+            $gateBoardTotal += $boards;
+            if ($boards > 0) {
+                $gateBoardNotes[] = $boards.' for '.($gate['label'] ?? 'gate');
+            }
+        }
+
+        // Waste: +N boards per panel (span), plus explicit gate-leaf boards.
+        $picketsTotal = $picketsBeforeWaste + ($sectionsTotal * $wastePickets) + $gateBoardTotal;
         $picketKey = $height === 8 ? FenceMaterial::KEY_BOARD_8 : FenceMaterial::KEY_BOARD_6;
 
         // -------- TOP BOARDS (one per section, length depends on span) --
@@ -413,16 +540,23 @@ class FenceQuotationCalculator
         // -------- RAILS --------------------------------------------------
         $railsPerSection = $settings->railsPerSectionForHeight($height);
         $structuralRails = $sectionsTotal * $railsPerSection;
-        $gateRails = (int) $in['gate_count'] * (int) $settings->gate_rails;
+        $gateLeafCount = 0;
+        foreach ($geom['gates'] ?? [] as $gate) {
+            $gateLeafCount += (($gate['type'] ?? FenceGateSpec::TYPE_SINGLE) === FenceGateSpec::TYPE_DOUBLE) ? 2 : 1;
+        }
+        if ($gateLeafCount === 0) {
+            $gateLeafCount = (int) $in['gate_count'];
+        }
+        $gateRails = $gateLeafCount * (int) $settings->gate_rails;
         $railsBeforeWaste = $structuralRails + $gateRails;
-        // Waste: +3 rails per project.
-        $railsTotal = $railsBeforeWaste + ($railsBeforeWaste > 0 ? 3 : 0);
+        $railsTotal = $railsBeforeWaste + ($railsBeforeWaste > 0 ? $wasteRails : 0);
 
         // -------- CONCRETE ----------------------------------------------
-        $bagsPerPost = $settings->concretePerPostForHeight($height);
+        $bagsPerPost = $settings->concretePerPostForHeight($height, $postSize);
         $concreteStructural = (float) $postsBeforeWaste * $bagsPerPost;
-        // Waste: +1 bag per 3 posts (rounded up, err on over-ordering).
-        $concreteWaste = $postsBeforeWaste > 0 ? (int) ceil($postsBeforeWaste / 3) : 0;
+        $concreteWaste = $postsBeforeWaste > 0
+            ? (int) ceil($postsBeforeWaste / $concreteWasteDivisor)
+            : 0;
         $concreteTotal = (int) ceil($concreteStructural) + $concreteWaste;
 
         // -------- NAILS --------------------------------------------------
@@ -441,15 +575,20 @@ class FenceQuotationCalculator
         // 2 per fence rail (each end). Gate-frame rails use their own
         // hardware so they don't count here.
         $bracketsBeforeWaste = $structuralRails * 2;
-        // Waste: +6 per project.
-        $bracketsTotal = $bracketsBeforeWaste + ($bracketsBeforeWaste > 0 ? 6 : 0);
+        $bracketsTotal = $bracketsBeforeWaste + ($bracketsBeforeWaste > 0 ? $wasteBrackets : 0);
 
         // -------- POST CAPS ---------------------------------------------
-        // 1 per post (incl. gate posts), +1 waste per project.
-        $postCapsTotal = $postsBeforeWaste + ($postsBeforeWaste > 0 ? 1 : 0);
+        $postCapsTotal = $postsBeforeWaste + ($postsBeforeWaste > 0 ? $wasteCaps : 0);
+        $postCapKey = FenceMaterial::postCapKeyFor($postSize);
 
         // -------- GATE HARDWARE ------------------------------------------
-        $gateHardware = (int) $in['gate_count'];
+        $gateHardware = 0;
+        foreach ($geom['gates'] ?? [] as $gate) {
+            $gateHardware += (int) ($gate['hardware_sets'] ?? 1);
+        }
+        if ($gateHardware === 0) {
+            $gateHardware = (int) $in['gate_count'];
+        }
 
         // -------- ASSEMBLE ROWS -----------------------------------------
         // Posts
@@ -466,7 +605,7 @@ class FenceQuotationCalculator
             $picketKey,
             $picketsTotal,
             'ea',
-            "Pickets: {$picketsBeforeWaste}, +1 per section ({$sectionsTotal}) waste"
+            $this->picketRowNotes($picketsBeforeWaste, $sectionsTotal, $wastePickets, $gateBoardTotal, $gateBoardNotes)
         );
 
         // Top boards — only add rows for sizes actually used.
@@ -475,7 +614,7 @@ class FenceQuotationCalculator
                 FenceMaterial::KEY_BOARD_6,
                 $top6,
                 'ea',
-                "Top board (sections ≤ 6')",
+                "Top board (clear span ≤ 6')",
                 // If picket key was also 6', merge into that row instead
                 // for a cleaner quote. We handle the merge after the loop.
             );
@@ -485,7 +624,7 @@ class FenceQuotationCalculator
                 FenceMaterial::KEY_BOARD_8,
                 $top8,
                 'ea',
-                "Top board (sections > 6')"
+                "Top board (clear span > 6')"
             );
         }
 
@@ -494,7 +633,7 @@ class FenceQuotationCalculator
             FenceMaterial::KEY_RAIL,
             $railsTotal,
             'ea',
-            "Fence: {$structuralRails} ({$railsPerSection}/section), gates: {$gateRails}, +3 waste"
+            "Fence: {$structuralRails} ({$railsPerSection}/panel), gates: {$gateRails}, +{$wasteRails} waste"
         );
 
         // Concrete
@@ -537,15 +676,15 @@ class FenceQuotationCalculator
             FenceMaterial::KEY_BRACKET,
             $bracketsTotal,
             'ea',
-            "2 × {$structuralRails} fence rails + 6 waste"
+            "2 × {$structuralRails} fence rails + {$wasteBrackets} waste"
         );
 
         // Post caps
         $rows[] = $this->row(
-            FenceMaterial::KEY_POST_CAP,
+            $postCapKey,
             $postCapsTotal,
             'ea',
-            "1 per post + 1 waste"
+            "1 per post + {$wasteCaps} waste"
         );
 
         // Gate hardware
@@ -554,7 +693,7 @@ class FenceQuotationCalculator
                 FenceMaterial::KEY_GATE_HARDWARE,
                 $gateHardware,
                 'set',
-                "1 set per gate"
+                $gateHardware === 1 ? '1 set per gate leaf' : $gateHardware.' sets (1 per gate leaf)'
             );
         }
 
@@ -628,28 +767,123 @@ class FenceQuotationCalculator
 
     /**
      * @param  list<array<string, mixed>>  $rows
+     * @param  array<string, float>|null  $frozenUnitPrices
      * @return list<array<string, mixed>>
      */
-    private function withCatalogDeliveries(array $rows): array
+    private function withCatalogDeliveries(array $rows, ?array $frozenUnitPrices = null): array
     {
-        return CatalogMaterialDelivery::appendNamedRows($rows, function (array $row): array {
-            /** @var FenceMaterial|null $mat */
-            $mat = $this->catalogue->get($row['key'] ?? '');
-            $delivery = $mat ? $mat->effectiveDeliveryCad() : 0.0;
-            $name = $mat ? $mat->effectiveName() : (string) ($row['name'] ?? '');
+        return CatalogMaterialDelivery::appendOncePerVendor($rows, function (array $row) use ($frozenUnitPrices): array {
+            $key = (string) ($row['key'] ?? '');
+            $frozenKey = $key !== '' ? $key.'_delivery' : '';
+            if ($frozenUnitPrices && $frozenKey !== '' && array_key_exists($frozenKey, $frozenUnitPrices)) {
+                $delivery = (float) $frozenUnitPrices[$frozenKey];
+            } else {
+                /** @var FenceMaterial|null $mat */
+                $mat = $this->catalogue->get($key);
+                $delivery = $mat ? $mat->effectiveDeliveryCad() : 0.0;
+            }
 
-            return [$delivery, $name];
+            /** @var FenceMaterial|null $mat */
+            $mat = $this->catalogue->get($key);
+            $vendorKey = $this->deliveryVendorKey($mat);
+            $vendorName = $this->deliveryVendorName($mat);
+
+            return [$delivery, $vendorName, $vendorKey];
         });
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @param  array<string, float>  $frozenUnitPrices
+     * @return list<array<string, mixed>>
+     */
+    private function applyFrozenUnitPrices(array $rows, array $frozenUnitPrices): array
+    {
+        foreach ($rows as &$row) {
+            $key = (string) ($row['key'] ?? '');
+            if ($key === '' || ! array_key_exists($key, $frozenUnitPrices)) {
+                continue;
+            }
+            $unit = round((float) $frozenUnitPrices[$key], 2);
+            $qty = (float) ($row['quantity'] ?? 0);
+            $row['unit_price'] = $unit;
+            $row['subtotal'] = round($qty * $unit, 2);
+            $row['price_frozen'] = true;
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    private function deliveryVendorKey(?FenceMaterial $mat): string
+    {
+        $catalog = $mat?->material;
+        if ($catalog === null) {
+            return 'unlinked';
+        }
+        $vendorId = (int) ($catalog->vendor_id ?? 0);
+        if ($vendorId > 0) {
+            return 'vendor:'.$vendorId;
+        }
+        $store = $catalog->storeLinkVendor();
+        if ($store) {
+            return 'store:'.$store;
+        }
+
+        return 'catalog:'.$catalog->id;
+    }
+
+    private function deliveryVendorName(?FenceMaterial $mat): string
+    {
+        $catalog = $mat?->material;
+        if ($catalog === null) {
+            return 'Materials';
+        }
+        $name = trim((string) ($catalog->vendorName() ?? ''));
+        if ($name !== '') {
+            return $name;
+        }
+        $store = $catalog->storeLinkVendor();
+        if ($store === 'home_depot') {
+            return 'Home Depot';
+        }
+        if ($store === 'amazon') {
+            return 'Amazon';
+        }
+
+        return $catalog->displayName();
+    }
+
+    /**
+     * @param  list<string>  $gateBoardNotes
+     */
+    private function picketRowNotes(
+        int $picketsBeforeWaste,
+        int $sectionsTotal,
+        int $wastePickets,
+        int $gateBoardTotal,
+        array $gateBoardNotes,
+    ): string {
+        $note = "Pickets: {$picketsBeforeWaste}, +{$wastePickets} per panel ({$sectionsTotal}) waste";
+        if ($gateBoardTotal > 0) {
+            $note .= '; gate boards: '.$gateBoardTotal;
+            if ($gateBoardNotes !== []) {
+                $note .= ' ('.implode(', ', $gateBoardNotes).')';
+            }
+        }
+
+        return $note;
     }
 
     private function postRowNotes(array $geom, FenceFormulaSetting $settings, int $postsBeforeWaste): string
     {
-        $note = "Structural: {$postsBeforeWaste}, +1 waste. Max {$settings->max_post_spacing_ft}' spacing.";
+        $waste = $settings->wasteExtraPosts();
+        $note = "Structural: {$postsBeforeWaste}, +{$waste} waste. Clear span ≤ {$settings->max_post_spacing_ft}' (posts sit outside this span).";
         $gatesOnSides = (int) ($geom['gates_on_sides'] ?? 0);
         if ($gatesOnSides > 0) {
-            $note .= ' Gate on side'
+            $note .= ' Gate on run'
                 .($gatesOnSides === 1 ? '' : 's')
-                .": {$gatesOnSides} (hinge + latch posts included in structural count).";
+                .": {$gatesOnSides} (hinge and far posts included in structural count).";
         }
 
         return $note;

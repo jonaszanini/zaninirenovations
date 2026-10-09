@@ -50,6 +50,7 @@ class FenceQuotationScenarioTest extends TestCase
             $make(FenceMaterial::KEY_NAILS, 100),
             $make(FenceMaterial::KEY_BRACKET, 3),
             $make(FenceMaterial::KEY_POST_CAP, 5),
+            $make(FenceMaterial::KEY_POST_CAP_6X6, 8),
             $make(FenceMaterial::KEY_GATE_HARDWARE, 25),
         ])->keyBy('key');
 
@@ -203,8 +204,8 @@ class FenceQuotationScenarioTest extends TestCase
 
         $this->assertSame(0, $side['sections']);
         $this->assertSame(0.0, $side['fence_length_ft']);
-        $this->assertSame(1, $side['posts']);
-        $this->assertSame(1, $result['geometry']['structural_posts']);
+        $this->assertSame(2, $side['posts']);
+        $this->assertSame(2, $result['geometry']['structural_posts']);
     }
 
     public function test_gate_side_with_existing_right_counts_hinge_and_skips_latch(): void
