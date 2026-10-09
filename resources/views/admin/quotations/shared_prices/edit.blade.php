@@ -41,7 +41,7 @@
 /* Tighter card padding so Rate / work-item / trailing all fit at 1024. */
 @media (min-width: 901px) {
   details.sp-group.admin-card { padding: 1rem 0.5rem; }
-  .sp-group .admin-table-scroll { overflow-x: hidden; }
+  .sp-group .admin-table-scroll { overflow: visible; }
 }
 .sp-group__summary {
   font-weight: 600;
@@ -62,9 +62,9 @@
 
 /*
  * Desktop rows are CSS grid (not table-layout:fixed) so leftover width
- * goes to the work-item column (~150px at 1024, two-line wrap), Rate is
- * a fixed 5rem (~80px) so 12.9000 still fits, and catalog search / Used-by
- * sit in separate fixed-width columns.
+ * goes to the wrapping work-item column, Rate is a fixed 5rem, Sell and
+ * Mat. price fit 12.9000 / 99,999.9999, Mat. name is 7.5–8rem, and
+ * catalog search / Used-by sit in separate fixed-width columns.
  */
 .sp-table {
   width: 100%;
@@ -83,15 +83,15 @@
   .sp-table tbody tr {
     display: grid;
     grid-template-columns:
-      minmax(9.375rem, 1.45fr)
+      minmax(5rem, 1.15fr)
       5rem
-      minmax(4.4rem, 4.55rem)
-      minmax(2.85rem, 3rem)
-      minmax(4.75rem, 4.9rem)
-      minmax(4.75rem, 1fr)
+      minmax(6.5rem, 6.75rem)
+      minmax(7ch, 8ch)
+      minmax(6.5rem, 6.75rem)
+      minmax(7.5rem, 8rem)
       2.5rem
-      7rem;
-    column-gap: 0.15rem;
+      5.5rem;
+    column-gap: 0.1rem;
     align-items: stretch;
     width: 100%;
   }
@@ -115,12 +115,19 @@
   }
   .sp-table td.sp-col-label,
   .sp-table td.sp-col-rate,
-  .sp-table td.sp-col-sell,
   .sp-table td.sp-col-unit,
   .sp-table td.sp-col-price,
   .sp-table td.sp-col-name {
     display: flex;
     align-items: center;
+    align-self: stretch;
+    vertical-align: middle;
+  }
+  .sp-table td.sp-col-sell {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
     align-self: stretch;
     vertical-align: middle;
   }
@@ -169,6 +176,20 @@
 }
 .sp-col-name .sp-input,
 .sp-mat-name-input { width: 100%; max-width: none; box-sizing: border-box; }
+.sp-col-name { position: relative; }
+.sp-col-name:focus-within {
+  overflow: visible;
+  z-index: 14;
+}
+.sp-mat-name-input:focus {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: max(100%, 16rem);
+  max-width: min(20rem, calc(100vw - 2rem));
+  z-index: 15;
+}
 .sp-col-rate .sp-input,
 .sp-col-sell .sp-input,
 .sp-col-price .sp-input {
@@ -188,6 +209,10 @@
 }
 
 .sp-col-label input[type="hidden"] { display: none !important; }
+.sp-table .sp-work {
+  padding: 0;
+  border-top: 0;
+}
 .sp-work {
   display: flex;
   flex-direction: column;
@@ -229,11 +254,23 @@
 
 .sp-col-sell {
   position: relative;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.1rem;
+}
+.sp-sell-wrap {
+  position: relative;
+  width: 100%;
+  min-width: 0;
 }
 .sp-col-sell .sp-input {
-  padding-right: 1.15rem;
+  padding-right: 0.25rem;
 }
-.sp-col-sell .admin-info-tip {
+.sp-col-sell:has(.admin-info-tip) .sp-input {
+  padding-right: 1.85rem;
+}
+.sp-sell-wrap .admin-info-tip {
   position: absolute;
   top: 50%;
   right: 0;
@@ -242,6 +279,28 @@
   height: 28px;
   margin: 0;
   font-size: 13px;
+  z-index: 6;
+}
+.sp-col-sell .admin-info-tip__bubble {
+  z-index: 80;
+}
+.sp-table tbody tr {
+  position: relative;
+  z-index: 0;
+}
+.sp-table tbody tr:has(.admin-info-tip[aria-expanded="true"]),
+.sp-table tbody tr:has(.sp-search-wrap--hidden:focus-within),
+.sp-table tbody tr:has(.sp-chip--more[aria-expanded="true"]) {
+  z-index: 12;
+}
+.sp-effective {
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: var(--admin-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sp-col-catalog {
@@ -286,35 +345,58 @@
 .sp-search-wrap.sp-search-wrap--hidden {
   position: absolute;
   width: 200px;
-  right: 0;
+  left: 0;
+  right: auto;
   top: 100%;
   z-index: 100;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.1s;
 }
+@media (min-width: 901px) {
+  .sp-search-wrap.sp-search-wrap--hidden {
+    left: auto;
+    right: 0;
+  }
+}
 .sp-search-wrap--hidden:focus-within {
   opacity: 1;
   pointer-events: auto;
 }
 
+.sp-consumers {
+  min-width: 0;
+  width: 100%;
+}
 .sp-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  text-align: center;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.2rem 0.4rem;
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 600;
   line-height: 1;
   background: var(--admin-primary-soft);
   color: var(--admin-primary);
+  border: 1px solid var(--admin-primary);
   border-radius: 3px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-consumers .sp-chip:not(.sp-chip--more) {
+  flex: 1 1 auto;
 }
 .sp-chip--more {
   position: relative;
-  border: 0;
+  flex: 0 0 auto;
+  overflow: visible;
+  max-width: none;
+  min-width: 32px;
+  min-height: 32px;
   cursor: pointer;
   font-family: inherit;
 }
@@ -322,9 +404,11 @@
   display: none;
   position: absolute;
   right: 0;
+  left: auto;
   top: calc(100% + 4px);
-  z-index: 30;
+  z-index: 40;
   min-width: 7.5rem;
+  max-width: min(16rem, calc(100vw - 1.5rem));
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--admin-border);
   border-radius: 5px;
@@ -335,11 +419,11 @@
   line-height: 1.35;
   letter-spacing: 0;
   text-transform: none;
-  white-space: nowrap;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
   box-shadow: var(--admin-shadow-sm);
 }
-.sp-chip--more:hover .sp-chip-more__tip,
-.sp-chip--more:focus .sp-chip-more__tip,
 .sp-chip--more[aria-expanded="true"] .sp-chip-more__tip {
   display: block;
 }
@@ -376,7 +460,7 @@
 /* Mobile: compact stacked cards, no horizontal page overflow */
 @media (max-width: 900px) {
   .sp-group .admin-table-scroll {
-    overflow-x: hidden;
+    overflow: visible;
   }
   .sp-table { display: block; }
   .sp-table thead { display: none; }
@@ -440,9 +524,24 @@
   }
   .sp-col-catalog,
   .sp-col-consumers { min-height: 44px; }
-  .sp-col-sell .admin-info-tip {
+  .sp-col-sell .admin-info-tip,
+  .sp-sell-wrap .admin-info-tip {
     width: 44px;
     height: 44px;
+  }
+  .sp-chip--more {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .sp-chip-more__tip {
+    right: auto;
+    left: 0;
+  }
+  .sp-mat-name-input:focus {
+    position: static;
+    transform: none;
+    width: 100%;
+    max-width: none;
   }
 
   .sp-crew .sp-crew-grid {
@@ -463,6 +562,18 @@
       \App\Models\SharedWork::KIND_HOURS_EACH => 'Hrs each',
       \App\Models\SharedWork::KIND_FLAT => 'Flat',
     ];
+    $formatSharedRate = static function ($value): string {
+      if ($value === null || $value === '') {
+        return '';
+      }
+      $formatted = rtrim(rtrim(number_format((float) $value, 4, '.', ''), '0'), '.');
+      if (! str_contains($formatted, '.')) {
+        return $formatted.'.00';
+      }
+      $frac = substr($formatted, strpos($formatted, '.') + 1);
+
+      return strlen($frac) < 2 ? $formatted.'0' : $formatted;
+    };
   @endphp
 
   <div class="admin-toolbar fq-list-toolbar">
@@ -487,7 +598,10 @@
     <div class="admin-card sp-crew">
       <h3 class="sp-heading">
         Crew rates
-        @include('admin.partials.info_tip', ['text' => 'Used by Basement, Trimming, Shed, and Millwork when a quote does not override them.'])
+        @include('admin.partials.info_tip', [
+          'tipText' => 'Used by Basement, Trimming, Shed, and Millwork when a quote does not override them.',
+          'tipLabel' => 'crew rates',
+        ])
       </h3>
       <div class="sp-crew-grid">
         <div class="sp-crew-field">
@@ -573,23 +687,29 @@
                     @if ($isArea)
                       <span class="sp-rate-empty">—</span>
                     @else
-                      <input type="text" inputmode="decimal" autocomplete="off"
+                      <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                              class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
                              name="works[{{ $work->id }}][rate]"
-                             value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? number_format((float) $work->rate, 2, '.', '') : '') }}"
+                             value="{{ old('works.'.$work->id.'.rate', $work->rate !== null ? $formatSharedRate($work->rate) : '') }}"
                              placeholder="0.00">
                     @endif
                   </td>
                   <td class="sp-col-sell" data-label="Sell rate">
-                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
-                           class="sp-input sp-input--sm cp-money-input" id="sp-flat-{{ $work->id }}"
-                           name="works[{{ $work->id }}][flat_rate]"
-                           value="{{ $isArea ? $areaPrice : old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}"
-                           placeholder="0.0000">
+                    <div class="sp-sell-wrap">
+                      <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                             class="sp-input sp-input--sm cp-money-input" id="sp-flat-{{ $work->id }}"
+                             name="works[{{ $work->id }}][flat_rate]"
+                             value="{{ $isArea ? $areaPrice : old('works.'.$work->id.'.flat_rate', $work->flat_rate !== null ? number_format((float) $work->flat_rate, 4, '.', '') : '') }}"
+                             placeholder="0.0000">
+                      @if ($effective !== null)
+                        @include('admin.partials.info_tip', [
+                          'tipText' => 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Rate.',
+                          'tipLabel' => 'effective sell',
+                        ])
+                      @endif
+                    </div>
                     @if ($effective !== null)
-                      @include('admin.partials.info_tip', [
-                        'text' => 'Effective sell '.\App\Models\ClientProject::formatMoney($effective).'/'.$work->unit,
-                      ])
+                      <small class="sp-effective">{{ \App\Models\ClientProject::formatMoney($effective) }}/{{ $work->unit }}</small>
                     @endif
                   </td>
                   <td class="sp-col-unit" data-label="Unit">
@@ -646,15 +766,17 @@
                   <td class="sp-col-consumers" data-label="Used by">
                     <div class="sp-consumers">
                       @if ($firstConsumer)
-                        <span class="sp-chip">{{ $firstConsumer }}</span>
+                        <span class="sp-chip" title="{{ $firstConsumer }}">{{ $firstConsumer }}</span>
                       @endif
                       @if ($extraConsumerCount > 0)
+                        @php $moreTipId = 'sp-more-'.$work->id; @endphp
                         <button type="button" class="sp-chip sp-chip--more"
                                 aria-expanded="false"
-                                title="{{ implode(', ', $consumerLabels) }}"
-                                aria-label="Also used by {{ implode(', ', array_slice($consumerLabels, 1)) }}">
+                                aria-controls="{{ $moreTipId }}"
+                                aria-describedby="{{ $moreTipId }}"
+                                aria-label="+{{ $extraConsumerCount }} more: {{ implode(', ', $consumerLabels) }}">
                           +{{ $extraConsumerCount }}
-                          <span class="sp-chip-more__tip" role="tooltip">{{ implode(', ', $consumerLabels) }}</span>
+                          <span id="{{ $moreTipId }}" class="sp-chip-more__tip" role="tooltip">{{ implode(', ', $consumerLabels) }}</span>
                         </button>
                       @endif
                     </div>
@@ -673,24 +795,36 @@
       input.addEventListener('input', function() {
         this.title = this.value;
       });
+      input.addEventListener('focus', function() {
+        this.title = this.value;
+      });
     });
+    function closeSpMoreTips(except) {
+      document.querySelectorAll('.sp-chip--more').forEach(function(btn) {
+        if (btn !== except) btn.setAttribute('aria-expanded', 'false');
+      });
+    }
     document.querySelectorAll('.sp-chip--more').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         var open = this.getAttribute('aria-expanded') === 'true';
-        document.querySelectorAll('.sp-chip--more').forEach(function(other) {
-          other.setAttribute('aria-expanded', 'false');
-        });
+        closeSpMoreTips();
         this.setAttribute('aria-expanded', open ? 'false' : 'true');
+        this.focus();
+      });
+      btn.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          this.setAttribute('aria-expanded', 'false');
+          e.preventDefault();
+        }
       });
     });
     document.addEventListener('click', function(e) {
       if (e.target.closest && e.target.closest('.sp-chip--more')) {
         return;
       }
-      document.querySelectorAll('.sp-chip--more').forEach(function(btn) {
-        btn.setAttribute('aria-expanded', 'false');
-      });
+      closeSpMoreTips();
     });
   </script>
 @endsection
