@@ -78,11 +78,13 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('mw-totals-bar', false)
             ->assertSee('Clear coat');
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Waste %');
+        $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Edge waste %');
+        $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Finish waste %');
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Pieces');
-        $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Wood sheet');
         $this->assertAdminInfoTipAriaLabel($create->getContent(), 'Materials & finish');
         $create->assertSee('aria-label="About Pieces"', false);
-        $create->assertSee('aria-label="About Wood sheet"', false);
+        $create->assertDontSee('aria-label="About Wood sheet"', false);
+        $create->assertDontSee('<label for="mw-waste">@include', false);
         $create->assertDontSee('<p class="admin-help">Add each millwork item', false);
 
         $this->get(route('admin.quotations.millwork.price-configuration'))
@@ -332,6 +334,67 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSessionHasErrors('calculation');
     }
 
+    public function test_v1_draft_accepts_stored_scientific_set_value(): void
+    {
+        $this->actingAsAdmin();
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V1-1E2',
+            'client_name' => 'Sci draft',
+            'is_draft' => true,
+            'cut_plan_version' => 1,
+            'inputs' => [
+                'pieces' => [[
+                    'type' => 'shelf',
+                    'sets' => [['qty' => 1, 'length' => 36, 'depth' => '1e2', 'unit' => 'in']],
+                ]],
+            ],
+            'calculation' => [],
+        ]);
+
+        $this->from(route('admin.quotations.millwork.edit', $quote))
+            ->put(route('admin.quotations.millwork.update', $quote), [
+                'save_intent' => 'draft',
+                'client_name' => 'Sci draft',
+                'pieces' => [[
+                    'type' => 'shelf',
+                    'sets' => [['qty' => 1, 'length' => 36, 'depth' => '1e2', 'unit' => 'in']],
+                ]],
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_v2_draft_accepts_dimension_over_limit(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.millwork.create'))
+            ->post(route('admin.quotations.millwork.store'), [
+                'save_intent' => 'draft',
+                'client_name' => 'Tall closet draft',
+                'pieces' => [[
+                    'type' => 'closet',
+                    'qty' => 1,
+                    'width' => 22,
+                    'height' => 8,
+                    'depth' => 2,
+                    'unit' => 'ft',
+                    'include_doors' => 0,
+                ]],
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertNotNull(MillworkQuotation::query()->where('client_name', 'Tall closet draft')->first());
+    }
+
     public function test_draft_save_accepts_stored_zero_size_fields(): void
     {
         $this->actingAsAdmin();
@@ -501,5 +564,9 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('e.persisted', $js);
         $this->assertStringContainsString('setSaveBusy(false)', $js);
         $this->assertStringContainsString('Preview timed out', $js);
+        $this->assertStringContainsString('window.MillworkDimensionParser', $js);
+        $this->assertStringContainsString('applyFieldErrors', $js);
+        $this->assertStringContainsString('is-invalid', $js);
+        $this->assertStringContainsString('field_errors', $js);
     }
 }

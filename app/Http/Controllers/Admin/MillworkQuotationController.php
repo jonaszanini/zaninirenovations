@@ -135,9 +135,11 @@ class MillworkQuotationController extends Controller
         $calc = (new MillworkQuotationCalculator)->calculate($raw, null, $cutPlanVersion);
         $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
         if (json_encode($calc, $jsonFlags) === false) {
+            $errors = is_array($calc['field_errors'] ?? null) ? $calc['field_errors'] : [];
             return response()->json([
                 'error' => 'Preview could not be calculated. Check the sizes and try again.',
                 'summary' => ['grand_total' => 0],
+                'field_errors' => $errors,
                 'cut_plan' => [
                     'layouts' => [],
                     'unplaced' => [],

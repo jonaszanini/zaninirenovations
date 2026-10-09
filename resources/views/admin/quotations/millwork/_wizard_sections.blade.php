@@ -79,10 +79,7 @@
   </summary>
   <div class="br-acc__body">
     <div class="admin-form-group mw-sheet-field">
-      <div class="admin-label-with-tip">
-        <label for="mw-sheet">Wood sheet</label>
-        <x-admin.info-tip label="Wood sheet">Sheet size defaults to 4×8 from Price configuration. Add spare sheets if you want extras on site. The cut plan picks smaller leftover sheets when they fit.</x-admin.info-tip>
-      </div>
+      <label for="mw-sheet">Wood sheet</label>
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
         @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
           <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>
@@ -161,26 +158,26 @@
     </div>
     <div class="mw-short-row">
       <div class="admin-form-group">
-        <label for="mw-waste">@include('admin.partials.info_tip', [
-          'tipText' => 'Extra on linear trim and wainscoting rails. Sheet leftover is already in the cut plan.',
-          'tipLabel' => 'Waste %',
-        ]) Waste %</label>
+        <div class="admin-label-with-tip">
+          <label for="mw-waste">Waste %</label>
+          <x-admin.info-tip label="Waste %">Extra on linear trim and wainscoting rails. Sheet leftover is already in the cut plan.</x-admin.info-tip>
+        </div>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-waste" name="waste_pct"
                value="{{ old('waste_pct', $inputs['waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-edge-waste">@include('admin.partials.info_tip', [
-          'tipText' => 'Extra edge banding beyond the cut-plan length.',
-          'tipLabel' => 'Edge waste %',
-        ]) Edge waste %</label>
+        <div class="admin-label-with-tip">
+          <label for="mw-edge-waste">Edge waste %</label>
+          <x-admin.info-tip label="Edge waste %">Extra edge banding beyond the cut-plan length.</x-admin.info-tip>
+        </div>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-edge-waste" name="edge_waste_pct"
                value="{{ old('edge_waste_pct', $inputs['edge_waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-finish-waste">@include('admin.partials.info_tip', [
-          'tipText' => 'Extra paint or stain beyond the measured faces.',
-          'tipLabel' => 'Finish waste %',
-        ]) Finish waste %</label>
+        <div class="admin-label-with-tip">
+          <label for="mw-finish-waste">Finish waste %</label>
+          <x-admin.info-tip label="Finish waste %">Extra paint or stain beyond the measured faces.</x-admin.info-tip>
+        </div>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-finish-waste" name="finish_waste_pct"
                value="{{ old('finish_waste_pct', $inputs['finish_waste_pct'] ?? 10) }}">
       </div>

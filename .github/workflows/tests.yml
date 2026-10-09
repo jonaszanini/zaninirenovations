@@ -75,6 +75,9 @@ jobs:
       - name: Millwork dimension parser (no database)
         run: php artisan test tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
 
+      - name: Millwork saved-quote fixtures vs main (no database)
+        run: php artisan test tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
+
       - name: Admin dark-theme CSS coverage (no database)
         run: |
           php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php

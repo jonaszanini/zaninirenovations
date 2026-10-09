@@ -1,3 +1,149 @@
+window.MillworkDimensionParser = (function () {
+  var INVALID = 'Enter a valid size (for example 23 1/2, 2 ft, 2\' 6", or 762mm).';
+  var NEGATIVE = 'Dimensions must be greater than zero.';
+  var FRACS = { '½': '1/2', '¼': '1/4', '¾': '3/4', '⅓': '1/3', '⅔': '2/3', '⅛': '1/8', '⅜': '3/8', '⅝': '5/8', '⅞': '7/8' };
+
+  function empty() { return { status: 'empty', inches: 0, message: null }; }
+  function invalid(msg) { return { status: 'invalid', inches: 0, message: msg }; }
+  function ok(inches) {
+    if (!isFinite(inches) || inches <= 0) {
+      return invalid(isFinite(inches) && inches <= 0 ? NEGATIVE : INVALID);
+    }
+    return { status: 'ok', inches: inches, message: null };
+  }
+
+  function toFloat(s) {
+    s = String(s == null ? '' : s).trim();
+    if (!s) return null;
+    if (/[eE]/.test(s)) {
+      if (!/^[+]?\d+(?:\.\d+)?[eE][+\-]?\d+$/.test(s)) return null;
+      var sci = Number(s);
+      return isFinite(sci) && sci >= 0 ? sci : null;
+    }
+    if (s.indexOf('.') !== -1) s = s.replace(/,/g, '');
+    else if (s.indexOf(',') !== -1) {
+      if ((s.match(/,/g) || []).length !== 1) return null;
+      var last = s.lastIndexOf(',');
+      var frac = s.slice(last + 1);
+      if (frac.length >= 3) return null;
+      s = s.slice(0, last).replace(/,/g, '') + '.' + frac;
+    }
+    if (!/^[+]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(s)) return null;
+    var n = Number(s);
+    return isFinite(n) ? n : null;
+  }
+
+  function fraction(num, den) {
+    var n = toFloat(num);
+    var d = toFloat(den);
+    if (n == null || d == null || d === 0) return null;
+    return n / d;
+  }
+
+  function parseAmount(s) {
+    s = String(s || '').trim();
+    if (!s) return null;
+    var m = s.match(/^(\d+(?:[.,]\d+)?)\s*[-\s]\s*(\d+)\s*\/\s*(\d+)$/);
+    if (m) {
+      var whole = toFloat(m[1]);
+      var frac = fraction(m[2], m[3]);
+      if (whole == null || frac == null) return null;
+      return whole + frac;
+    }
+    m = s.match(/^(\d+)\s*\/\s*(\d+)$/);
+    if (m) return fraction(m[1], m[2]);
+    return toFloat(s);
+  }
+
+  function parseFeetAndInches(s) {
+    s = s.replace(/feet|foot/ig, 'ft').replace(/inches|inch/ig, 'in');
+    var m = s.match(/^(.+?)\s*(?:ft|')\s+(.+?)\s+(\d+)\s*\/\s*(\d+)\s*(?:in|")?\s*$/i);
+    if (m) {
+      var ft = parseAmount(m[1]);
+      var whole = parseAmount(m[2]);
+      var frac = fraction(m[3], m[4]);
+      if (ft == null || whole == null || frac == null) return null;
+      return (ft * 12) + whole + frac;
+    }
+    m = s.match(/^(.+?)\s*(?:ft|')\s*(\d+)\s*\/\s*(\d+)\s*(?:in|")?\s*$/i);
+    if (m) {
+      var ft2 = parseAmount(m[1]);
+      var frac2 = fraction(m[2], m[3]);
+      if (ft2 == null || frac2 == null) return null;
+      return (ft2 * 12) + frac2;
+    }
+    m = s.match(/^(.+?)\s*(?:ft|')\s*(.+?)\s*(?:in|")\s*$/i);
+    if (m) {
+      var ft3 = parseAmount(m[1]);
+      var inch = parseAmount(m[2]);
+      if (ft3 == null || inch == null) return null;
+      return (ft3 * 12) + inch;
+    }
+    m = s.match(/^(.+?)\s*(?:ft|')\s+(.+)$/i);
+    if (m) {
+      var ft4 = parseAmount(m[1]);
+      var inch2 = parseAmount(m[2]);
+      if (ft4 == null || inch2 == null) return null;
+      return (ft4 * 12) + inch2;
+    }
+    return null;
+  }
+
+  function parseNormalizedToInches(s, fieldUnit) {
+    var m = s.match(/^(.+?)\s*(?:mm|millimet(?:er|re)s?)$/i);
+    if (m) { var n = parseAmount(m[1]); return n == null ? null : n / 25.4; }
+    m = s.match(/^(.+?)\s*cm(?:s)?$/i);
+    if (m) { var n2 = parseAmount(m[1]); return n2 == null ? null : n2 / 2.54; }
+    m = s.match(/^(.+?)\s*m(?:eters?|etres?)?$/i);
+    if (m && !/[cm]m$/i.test(s)) { var n3 = parseAmount(m[1]); return n3 == null ? null : n3 / 0.0254; }
+    var fi = parseFeetAndInches(s);
+    if (fi != null) return fi;
+    m = s.match(/^(.+?)\s*(?:ft|feet|foot|')\s*$/i);
+    if (m) { var n4 = parseAmount(m[1]); return n4 == null ? null : n4 * 12; }
+    m = s.match(/^(.+?)\s*(?:in(?:ch(?:es)?)?|")\s*$/i);
+    if (m) return parseAmount(m[1]);
+    var n5 = parseAmount(s);
+    if (n5 == null) return null;
+    return String(fieldUnit || 'in').toLowerCase() === 'ft' ? n5 * 12 : n5;
+  }
+
+  function normalizeRaw(raw) {
+    var s = String(raw == null ? '' : raw).trim().replace(/[\u00A0\t]/g, ' ');
+    s = s.replace(/[\u2033\u201D\u201C\u201F]/g, '"').replace(/[\u2032\u2019\u2018\u201B\u00B4]/g, "'");
+    Object.keys(FRACS).forEach(function (glyph) {
+      s = s.replace(new RegExp('(\\d)' + glyph, 'g'), '$1 ' + FRACS[glyph]).replace(glyph, FRACS[glyph]);
+    });
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  function inspect(raw, fieldUnit) {
+    if (raw == null) return empty();
+    if (typeof raw === 'number') {
+      if (!isFinite(raw)) return invalid(INVALID);
+      if (raw < 0) return invalid(NEGATIVE);
+      if (raw === 0) return empty();
+      return ok(String(fieldUnit || 'in').toLowerCase() === 'ft' ? raw * 12 : raw);
+    }
+    var s = normalizeRaw(raw);
+    if (!s || /^[+]?(?:0+)(?:\.0+)?$/.test(s)) return empty();
+    if (s.charAt(0) === '-') return invalid(NEGATIVE);
+    s = s.replace(/^\+/, '');
+    if (!s) return invalid(INVALID);
+    var inches = parseNormalizedToInches(s, fieldUnit || 'in');
+    if (inches == null) return invalid(INVALID);
+    return ok(inches);
+  }
+
+  return {
+    inspect: inspect,
+    STATUS_OK: 'ok',
+    STATUS_EMPTY: 'empty',
+    STATUS_INVALID: 'invalid',
+    INVALID_MESSAGE: INVALID,
+    NEGATIVE_MESSAGE: NEGATIVE
+  };
+})();
+
 (function () {
   var cfg = window.MW_QUOTATION || {};
   var form = document.getElementById('mw-main-form');
@@ -276,13 +422,83 @@
       });
     }
 
+    function inputErrorKey(input) {
+      return String(input.getAttribute('name') || '').replace(/\]\[/g, '.').replace(/\[/g, '.').replace(/\]/g, '');
+    }
+
+    function dimFieldUnit(input) {
+      var wrap = input.closest('.mw-dim');
+      var sel = wrap ? wrap.querySelector('.mw-dim__unit') : null;
+      return sel && String(sel.value).toLowerCase() === 'ft' ? 'ft' : 'in';
+    }
+
+    function dimFieldIsActive(input) {
+      var group = input.closest('.mw-dim-field');
+      if (!group) return true;
+      if (group.hidden || group.hasAttribute('hidden')) return false;
+      var show = group.getAttribute('data-mw-show');
+      if (show && group.style.display === 'none') return false;
+      return true;
+    }
+
+    function setDimInvalid(input, message) {
+      var wrap = input.closest('.mw-dim-field') || input.closest('.admin-form-group');
+      input.classList.toggle('is-invalid', !!message);
+      if (message) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+      if (!wrap) return;
+      var err = wrap.querySelector('.admin-form-error');
+      if (!message) {
+        if (err && err.getAttribute('data-mw-dim-error') === '1') err.remove();
+        return;
+      }
+      if (!err) {
+        err = document.createElement('p');
+        err.className = 'admin-form-error';
+        err.setAttribute('data-mw-dim-error', '1');
+        wrap.appendChild(err);
+      }
+      err.textContent = message;
+    }
+
+    function collectClientDimErrors() {
+      var errors = {};
+      if (!window.MillworkDimensionParser) return errors;
+      form.querySelectorAll('.mw-input--dim').forEach(function (input) {
+        if (!dimFieldIsActive(input)) return;
+        var parsed = window.MillworkDimensionParser.inspect(input.value, dimFieldUnit(input));
+        if (parsed.status === 'invalid') {
+          errors[inputErrorKey(input)] = parsed.message || window.MillworkDimensionParser.INVALID_MESSAGE;
+        }
+      });
+      return errors;
+    }
+
+    function applyFieldErrors(errors) {
+      errors = errors || {};
+      form.querySelectorAll('.mw-input--dim').forEach(function (input) {
+        setDimInvalid(input, errors[inputErrorKey(input)] || '');
+      });
+    }
+
     function runPreview() {
       var seq = ++previewSeq;
+      var clientErrors = collectClientDimErrors();
+      applyFieldErrors(clientErrors);
       setCutPlanLoading(true);
       showPreviewMessage('Updating cut plan…');
       return fetchPreview().then(function (data) {
         if (seq !== previewSeq) return data;
-        if (data) renderPreview(data);
+        var serverErrors = (data && data.field_errors) || {};
+        var merged = Object.assign({}, serverErrors, clientErrors);
+        applyFieldErrors(merged);
+        var skipped = !!(data && data.cut_plan && data.cut_plan.preview_skipped);
+        var hasErrors = Object.keys(merged).length > 0;
+        var keepLast = hasErrors && skipped && lastPreviewData && !(lastPreviewData.cut_plan && lastPreviewData.cut_plan.preview_skipped);
+        if (!keepLast && data) renderPreview(data);
+        else if (keepLast && data && data.cut_plan && data.cut_plan.preview_message) {
+          showPreviewMessage(data.cut_plan.preview_message);
+        }
         return data;
       }).catch(function () {
         if (seq === previewSeq) {
@@ -297,7 +513,7 @@
         }
         if (data && data.cut_plan && data.cut_plan.preview_message) {
           showPreviewMessage(data.cut_plan.preview_message);
-        } else {
+        } else if (!(data && data.field_errors && Object.keys(data.field_errors).length)) {
           showPreviewMessage('');
         }
         return data;
@@ -587,8 +803,18 @@
     function bindPreview(el) {
       if (!el || el.dataset.mwBound === '1') return;
       el.dataset.mwBound = '1';
-      el.addEventListener('input', schedulePreview);
-      el.addEventListener('change', schedulePreview);
+      el.addEventListener('input', function () {
+        if (el.classList.contains('mw-input--dim') || (el.classList && el.classList.contains('mw-dim__unit'))) {
+          applyFieldErrors(collectClientDimErrors());
+        }
+        schedulePreview();
+      });
+      el.addEventListener('change', function () {
+        if (el.classList.contains('mw-input--dim') || (el.classList && el.classList.contains('mw-dim__unit'))) {
+          applyFieldErrors(collectClientDimErrors());
+        }
+        schedulePreview();
+      });
     }
     form.querySelectorAll('.mw-preview').forEach(bindPreview);
 

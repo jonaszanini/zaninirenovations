@@ -447,7 +447,7 @@ class MillworkQuotationCalculator
             $breakdown[] = ['key' => $row['key'], 'label' => $row['label'], 'amount' => $row['amount']];
         }
 
-        return [
+        return $this->withFieldErrors($inputs, [
             'scope' => [
                 'piece_count' => count($this->pieces($inputs)),
                 'piece_summary' => implode('; ', $labels),
@@ -499,7 +499,7 @@ class MillworkQuotationCalculator
                 'trim_lf' => round($trimLfQuoted, 2),
                 'wainscot_lf' => round($wainscotLfQuoted, 2),
             ],
-        ];
+        ]);
     }
 
     /**
@@ -516,6 +516,20 @@ class MillworkQuotationCalculator
             unset($out['cut_plan']['unplaced'], $out['cut_plan']['placed_by_id'], $out['cut_plan']['builder_version']);
             $out['cut_plan']['version'] = 1;
         }
+
+        return $this->withFieldErrors($inputs, $out);
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, mixed>  $out
+     * @return array<string, mixed>
+     */
+    private function withFieldErrors(array $inputs, array $out): array
+    {
+        $errors = [];
+        $this->collectDimensionFieldErrors($inputs, $errors);
+        $out['field_errors'] = $errors;
 
         return $out;
     }
@@ -550,13 +564,13 @@ class MillworkQuotationCalculator
             return $messages;
         }
 
+        if ($draft) {
+            return $messages;
+        }
+
         $limitHint = $this->dimensionLimitHint($inputs);
         if ($limitHint !== null) {
             $messages['calculation'] = $limitHint;
-        }
-
-        if ($draft) {
-            return $messages;
         }
 
         $hasPart = false;
@@ -739,6 +753,9 @@ class MillworkQuotationCalculator
                 return 'Linear footage cannot be more than '.self::MAX_LINEAR_FT.' ft.';
             }
             foreach (['width', 'height', 'depth', 'length', 'thickness'] as $key) {
+                if (MillworkPartBuilder::trimOpeningIsInches($piece, $key)) {
+                    continue;
+                }
                 if (MillworkPartBuilder::dimInches($piece, [$key]) > self::MAX_DIM_IN) {
                     return 'Each width, height, depth, and length must be 240 inches (20 ft) or less.';
                 }

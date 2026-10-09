@@ -306,8 +306,8 @@ class MillworkPartBuilder
             $lf = $len > 0 ? ($len / 12.0) : 0.0;
         }
         $openings = max(0, (int) ($piece['openings'] ?? 0));
-        $openingW = (self::dimInches($piece, ['width']) ?: 32.0) / 12.0;
-        $openingH = (self::dimInches($piece, ['height']) ?: 80.0) / 12.0;
+        $openingW = (self::dimInches(array_merge($piece, ['type' => 'trim']), ['width']) ?: 32.0) / 12.0;
+        $openingH = (self::dimInches(array_merge($piece, ['type' => 'trim']), ['height']) ?: 80.0) / 12.0;
         $casingLf = $openings * ((2 * $openingH) + $openingW);
 
         return round(($lf + $casingLf) * $qty, 1);
@@ -389,16 +389,41 @@ class MillworkPartBuilder
             if (! array_key_exists($key, $row)) {
                 continue;
             }
-            $parsed = MillworkDimensionParser::inspect(
-                $row[$key] ?? null,
-                MillworkDimensionParser::fieldUnitOf($key, $row, $fallbackUnit)
-            );
+            $forceInches = self::trimOpeningIsInches($row, $key);
+            $pieceUnit = $forceInches
+                ? 'in'
+                : (strtolower((string) ($row['unit'] ?? $fallbackUnit ?? 'in')) === 'ft' ? 'ft' : 'in');
+            $fieldUnit = $forceInches
+                ? 'in'
+                : MillworkDimensionParser::fieldUnitOf($key, $row, $fallbackUnit);
+            if (! MillworkDimensionParser::shouldRewriteLegacyDim($row, $key, $pieceUnit)) {
+                $raw = $row[$key];
+                if ($raw === null || $raw === '') {
+                    continue;
+                }
+                $n = (float) $raw;
+                if (! is_finite($n) || $n <= 0) {
+                    continue;
+                }
+
+                return self::toInches($n, $fieldUnit);
+            }
+            $parsed = MillworkDimensionParser::inspect($row[$key] ?? null, $fieldUnit);
             if ($parsed['status'] === MillworkDimensionParser::STATUS_OK && $parsed['inches'] > 0) {
                 return $parsed['inches'];
             }
         }
 
         return 0.0;
+    }
+
+    /**
+     * Main stored leftover trim W/H as inches even when the piece is Ft.
+     */
+    public static function trimOpeningIsInches(array $row, string $key): bool
+    {
+        return self::normalizeType((string) ($row['type'] ?? '')) === 'trim'
+            && in_array($key, ['width', 'height'], true);
     }
 
     /**
@@ -704,7 +729,7 @@ class MillworkPartBuilder
         $qty = max(1, (int) ($piece['qty'] ?? 1));
         $len = self::dimInches($piece, ['length', 'width']);
         $dep = self::dimInches($piece, ['depth']);
-        $h = self::dimInches($piece, ['height']) ?: self::toInches(18, self::dimUnit($piece, 'height'));
+        $h = self::dimInches($piece, ['height']) ?: 18.0;
         if ($len <= 0 || $dep <= 0 || $h <= 0) {
             return [];
         }
@@ -942,8 +967,8 @@ class MillworkPartBuilder
             return [];
         }
         $openings = max(0, (int) ($piece['openings'] ?? 0));
-        $openingW = (self::dimInches($piece, ['width']) ?: 32) / 12.0;
-        $openingH = (self::dimInches($piece, ['height']) ?: 80) / 12.0;
+        $openingW = (self::dimInches(array_merge($piece, ['type' => 'trim']), ['width']) ?: 32) / 12.0;
+        $openingH = (self::dimInches(array_merge($piece, ['type' => 'trim']), ['height']) ?: 80) / 12.0;
         $casingLf = $openings * ((2 * $openingH) + $openingW);
         $totalLf = ($lf + $casingLf) * $qty;
         $profile = self::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));

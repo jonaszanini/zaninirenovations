@@ -174,7 +174,7 @@ class MillworkDimensionParser
         }
         $s = trim((string) $raw);
 
-        return $s !== '' && preg_match('/^[+]?\d+(?:\.\d+)?$/', $s) === 1;
+        return $s !== '' && preg_match('/^[+]?(?:\d+(?:\.\d+)?|\.\d+)$/', $s) === 1;
     }
 
     public static function fieldUnitOf(string $key, array $row, ?string $fallbackUnit = null): string
@@ -338,8 +338,19 @@ class MillworkDimensionParser
     private static function toFloat(string $s): ?float
     {
         $s = trim($s);
-        if ($s === '' || preg_match('/[eE]/', $s)) {
+        if ($s === '') {
             return null;
+        }
+        if (preg_match('/[eE]/', $s)) {
+            if (preg_match('/^[+]?\d+(?:\.\d+)?[eE][+\-]?\d+$/', $s) !== 1) {
+                return null;
+            }
+            $sci = (float) $s;
+            if (! is_finite($sci) || $sci < 0) {
+                return null;
+            }
+
+            return $sci;
         }
         if (str_contains($s, '.')) {
             $s = str_replace(',', '', $s);
@@ -354,7 +365,7 @@ class MillworkDimensionParser
             }
             $s = str_replace(',', '', substr($s, 0, $last)).'.'.$frac;
         }
-        if (! preg_match('/^[+]?\d+(?:\.\d+)?$/', $s)) {
+        if (! preg_match('/^[+]?(?:\d+(?:\.\d+)?|\.\d+)$/', $s)) {
             return null;
         }
         $n = (float) $s;

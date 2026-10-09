@@ -973,6 +973,117 @@ class MillworkCutPlanPlacementTest extends TestCase
         }
     }
 
+    public function test_v1_retyped_size_pdf_scope_uses_converted_inches(): void
+    {
+        $quote = new MillworkQuotation([
+            'cut_plan_version' => 1,
+            'inputs' => [
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'name' => 'Pantry',
+                    'room' => 'Kitchen',
+                    'qty' => 1,
+                    'width' => '23 1/2',
+                    'height' => '2\' 6"',
+                    'depth' => '762mm',
+                    'unit' => 'in',
+                    'width_unit' => 'in',
+                    'include_doors' => false,
+                    'edge_banding' => false,
+                ]],
+                'include_install' => false,
+            ],
+            'calculation' => ['summary' => []],
+        ]);
+        $scope = $quote->scopeDescriptionForPdf();
+        $this->assertStringContainsString('23.5" W', $scope);
+        $this->assertStringContainsString('30" H', $scope);
+        $this->assertStringContainsString('30" D', $scope);
+        $this->assertStringNotContainsString('23" W', $scope);
+        $this->assertStringNotContainsString('2" W', $scope);
+        $this->assertStringNotContainsString('762" D', $scope);
+
+        $ftSelect = new MillworkQuotation([
+            'cut_plan_version' => 1,
+            'inputs' => [
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'name' => 'Pantry',
+                    'qty' => 1,
+                    'width' => 2.5,
+                    'width_unit' => 'ft',
+                    'height' => 34.5,
+                    'depth' => 24,
+                    'unit' => 'in',
+                    'include_doors' => false,
+                ]],
+                'include_install' => false,
+            ],
+            'calculation' => ['summary' => []],
+        ]);
+        $this->assertStringContainsString('30" W', $ftSelect->scopeDescriptionForPdf());
+        $this->assertStringNotContainsString('2.5" W', $ftSelect->scopeDescriptionForPdf());
+    }
+
+    public function test_v2_ft_trim_hidden_openings_stay_inches_like_main(): void
+    {
+        $inputs = [
+            'pieces' => [[
+                'type' => 'trim',
+                'profile' => 'casing',
+                'unit' => 'ft',
+                'linear_ft' => 40,
+                'openings' => 2,
+                'width' => 72,
+                'height' => 84,
+                'qty' => 1,
+                'edge_banding' => false,
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+        ];
+        $out = (new MillworkQuotationCalculator)->calculate($inputs, $this->settings(), 2);
+        $this->assertEqualsWithDelta(670.88, (float) $out['summary']['grand_total'], 0.02);
+        $this->assertNotEquals(4336.71, round((float) $out['summary']['grand_total'], 2));
+        $draft = (new MillworkQuotationCalculator)->validationMessages($inputs, true);
+        $this->assertArrayNotHasKey('calculation', $draft);
+    }
+
+    public function test_v2_leading_dot_thickness_stays_valid(): void
+    {
+        $parsed = MillworkDimensionParser::inspect('.75', 'in');
+        $this->assertSame(MillworkDimensionParser::STATUS_OK, $parsed['status']);
+        $this->assertEqualsWithDelta(0.75, $parsed['inches'], 0.0001);
+
+        $out = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'thickness' => '.75', 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 2);
+        $this->assertFalse((bool) ($out['cut_plan']['preview_skipped'] ?? false));
+        $this->assertGreaterThan(0, (float) $out['summary']['grand_total']);
+    }
+
+    public function test_v2_feet_bench_blank_height_defaults_to_eighteen_inches(): void
+    {
+        $exploded = (new MillworkPartBuilder)->explode([
+            'type' => 'bench',
+            'qty' => 1,
+            'width' => 4,
+            'depth' => 1.5,
+            'unit' => 'ft',
+            'edge_banding' => false,
+        ], 0.75, 0.0);
+        $this->assertNotEmpty($exploded['parts']);
+        $this->assertStringContainsString('18"', implode(' ', $exploded['labels']));
+        $this->assertStringNotContainsString('216"', implode(' ', $exploded['labels']));
+    }
+
     public function test_draft_validation_treats_stored_zero_as_blank(): void
     {
         $draft = (new MillworkQuotationCalculator)->validationMessages([
@@ -1023,7 +1134,7 @@ class MillworkCutPlanPlacementTest extends TestCase
         ], true);
         $this->assertArrayHasKey('pieces.0.width', $sci);
 
-        $over = (new MillworkQuotationCalculator)->validationMessages([
+        $overDraft = (new MillworkQuotationCalculator)->validationMessages([
             'pieces' => [[
                 'type' => 'cabinet',
                 'qty' => 1,
@@ -1033,8 +1144,16 @@ class MillworkCutPlanPlacementTest extends TestCase
                 'unit' => 'in',
             ]],
         ], true);
-        $this->assertNotEmpty($over);
-        $this->assertStringContainsString('240 inches', implode(' ', $over));
+        $this->assertArrayNotHasKey('calculation', $overDraft);
+
+        $sciOk = (new MillworkQuotationCalculator)->validationMessages([
+            'pieces' => [[
+                'type' => 'shelf',
+                'sets' => [['qty' => 1, 'length' => 36, 'depth' => '1e2', 'unit' => 'in']],
+            ]],
+            '_cut_plan_version' => 1,
+        ], true);
+        $this->assertArrayNotHasKey('pieces.0.sets.0.depth', $sciOk);
     }
 
     public function test_publish_validation_rejects_any_unsized_piece(): void

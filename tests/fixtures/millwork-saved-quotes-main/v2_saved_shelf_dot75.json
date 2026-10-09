@@ -1,0 +1,78 @@
+{
+    "version": 2,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "shelf",
+                "edge_banding": true,
+                "sets": [
+                    {
+                        "qty": 2,
+                        "length": 36,
+                        "depth": 12,
+                        "thickness": ".75",
+                        "unit": "in"
+                    }
+                ]
+            }
+        ],
+        "include_install": false,
+        "owner_hourly_rate": 85
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 116.45,
+            "materials_pre_hst": 62.98,
+            "subtotal_pre_hst": 179.43,
+            "hst": 23.33,
+            "grand_total": 202.76
+        },
+        "labor": [
+            {
+                "key": "cut",
+                "label": "Shop — cut / nest sheets",
+                "hours": 0.45,
+                "amount": 38.25
+            },
+            {
+                "key": "shelf",
+                "label": "Shop — simple shelves",
+                "hours": 0.7,
+                "amount": 59.5
+            },
+            {
+                "key": "edge",
+                "label": "Shop — edge banding",
+                "hours": 0.22,
+                "amount": 18.7
+            }
+        ],
+        "materials": [
+            {
+                "key": "sheet_1",
+                "label": "3/4\" cabinet-grade plywood 4×4",
+                "qty": 1,
+                "unit_price": 42,
+                "amount": 42
+            },
+            {
+                "key": "edge",
+                "label": "Iron-on edge banding (50 ft roll)",
+                "qty": 1,
+                "unit_price": 12.48,
+                "amount": 12.48
+            },
+            {
+                "key": "fastener",
+                "label": "1-1/4\" cabinet screws (box of 100)",
+                "qty": 1,
+                "unit_price": 8.5,
+                "amount": 8.5
+            }
+        ],
+        "scope_labels": [
+            "2× Shelf 36\"×12\""
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nSimple shelf. Shelf. Unfinished. Includes supply and shop build."
+    }
+}
