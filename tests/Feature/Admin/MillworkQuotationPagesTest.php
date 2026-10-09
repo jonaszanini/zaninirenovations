@@ -23,7 +23,7 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('New millwork quotation');
 
-        $this->get(route('admin.quotations.millwork.create'))
+        $create = $this->get(route('admin.quotations.millwork.create'))
             ->assertOk()
             ->assertSee('1 of 4')
             ->assertSee('Simple shelf')
@@ -66,8 +66,6 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Extra on linear trim and wainscoting rails.')
             ->assertSee('CA$3.80')
             ->assertSee('CA$6.50')
-            ->assertDontSee('About waste')
-            ->assertDontSee('About Waste')
             ->assertSee('Waste %')
             ->assertDontSee('Waste % (linear)')
             ->assertSee('mw-bar-expand', false)
@@ -77,6 +75,7 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Labour')
             ->assertSee('mw-totals-bar', false)
             ->assertSee('Clear coat');
+        $this->assertInlineParagraphsDoNotContain($create->getContent(), 'About waste');
 
         $this->get(route('admin.quotations.millwork.price-configuration'))
             ->assertOk()
@@ -438,5 +437,20 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('e.persisted', $js);
         $this->assertStringContainsString('setSaveBusy(false)', $js);
         $this->assertStringContainsString('Preview timed out', $js);
+    }
+
+    /**
+     * #54 prefixes tip aria-labels with "About " (e.g. About Waste %).
+     * Only the visible <p> copy must stay free of that wording.
+     */
+    private function assertInlineParagraphsDoNotContain(string $html, string $needle): void
+    {
+        preg_match_all('/<p\b[^>]*>(.*?)<\/p>/si', $html, $matches);
+        $text = html_entity_decode(strip_tags(implode("\n", $matches[1] ?? [])), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $this->assertStringNotContainsStringIgnoringCase(
+            $needle,
+            $text,
+            'Inline paragraph copy must not contain "'.$needle.'" (aria-label is ignored).'
+        );
     }
 }
