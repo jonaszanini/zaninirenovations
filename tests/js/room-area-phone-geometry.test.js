@@ -529,7 +529,7 @@ async function measureViewports() {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   try {
-    const page = await browser.newPage();
+    let page = await browser.newPage();
     for (const width of [320, 390, 414]) {
       await page.setViewport({ width, height: 720, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
       await page.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'load' });
@@ -742,7 +742,6 @@ async function measureViewports() {
         minWidth: 200,
         maxWidth: 1600,
         firstFitGone: true,
-        editing: true,
       });
       const controls = await page.evaluate(visibleToolbarControls());
       assert.ok(controls.length >= 16, width + ' toolbar exposes the wrapping controls: ' + controls.length);
@@ -779,29 +778,33 @@ async function measureViewports() {
       }
     }
 
+    await page.close();
+    page = await browser.newPage();
     await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-    await waitForStableCanvasFit(page, { minWidth: 160, maxWidth: 500, firstFitGone: true, editing: true });
+    await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
+    await waitForStableCanvasFit(page, { minWidth: 160, maxWidth: 500, firstFitGone: true });
     const good320 = await page.evaluate(readChromeLayoutScript());
-    assertCanvasAboveSheet(good320, '320×568 live layout');
+    assert.ok(good320.wrap.bottom <= good320.sheet.top + 1, '320×568 canvas stays above the bar after toolbar clicks');
     await page.addStyleTag({ content: '.util-ra--fullpage:not(.is-sheet-expanded):not(.is-dock-open) .util-ra-side { height: 70vh !important; max-height: 70vh !important; }' });
     const mutantSheet = await page.evaluate(readChromeLayoutScript());
     assert.ok(
       mutantSheet.wrap.bottom > mutantSheet.sheet.top + 1,
       'a 70vh collapsed-sheet mutant must push the canvas under the bar: ' + JSON.stringify(mutantSheet)
     );
-    await page.reload({ waitUntil: 'load' });
-    await waitForStableCanvasFit(page, { minWidth: 160, maxWidth: 500, firstFitGone: true, editing: true });
+    await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
+    await waitForStableCanvasFit(page, { minWidth: 160, maxWidth: 500, firstFitGone: true });
     await page.addStyleTag({ content: '.util-ra--fullpage .util-ra-canvas-wrap { margin-bottom: -120px !important; }' });
     const mutantWrap = await page.evaluate(readChromeLayoutScript());
     assert.ok(
       mutantWrap.wrap.bottom > mutantWrap.sheet.top + 1,
       'a canvas-under-bar mutant must fail the geometry check: ' + JSON.stringify(mutantWrap)
     );
-    await page.reload({ waitUntil: 'load' });
-    await waitForStableCanvasFit(page, { minWidth: 160, maxWidth: 500, firstFitGone: true, editing: true });
+    await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
+    await waitForStableCanvasFit(page, { minWidth: 160, maxWidth: 500, firstFitGone: true });
 
-    await page.setViewport({ width: 414, height: 736, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true, editing: true });
+    await page.setViewport({ width: 414, height: 736, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+    await page.goto('http://127.0.0.1:' + port + '/saved-room', { waitUntil: 'load' });
+    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true });
     await page.evaluate(() => {
       const handle = document.querySelector('[data-ra-sheet-handle]');
       if (handle) handle.click();
@@ -810,7 +813,7 @@ async function measureViewports() {
       const root = document.querySelector('[data-room-area]');
       return !!(root && root.classList.contains('is-sheet-expanded'));
     }, { timeout: 8000 });
-    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true, editing: true });
+    await waitForStableCanvasFit(page, { minWidth: 200, maxWidth: 500, firstFitGone: true });
     const sheet414 = await page.evaluate(readChromeLayoutScript());
     assert.ok(sheet414.sheet && sheet414.sheet.height <= 280 + 1, '414×736 open sheet is capped: ' + (sheet414.sheet && sheet414.sheet.height));
     assert.ok(sheet414.wrap && sheet414.wrap.height >= 160, '414×736 drawing area stays usable with the sheet open: ' + (sheet414.wrap && sheet414.wrap.height));

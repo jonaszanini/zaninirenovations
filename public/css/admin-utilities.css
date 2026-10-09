@@ -6739,6 +6739,10 @@ body:has(.util-ra--fullpage) {
     padding-left: 0.25rem;
   }
 
+  .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-tool-group__label {
+    display: none;
+  }
+
   .util-ra--fullpage .util-ra-canvas-toolbar .util-ra-unit-system__btn {
     padding: 0 0.4rem;
     font-size: 0.72rem;
