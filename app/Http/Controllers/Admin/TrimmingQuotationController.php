@@ -519,6 +519,10 @@ class TrimmingQuotationController extends Controller
 
     protected function syncLineToProjectQuotation(ClientProject $project, TrimmingQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Interior trimming (labor)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
@@ -583,6 +587,10 @@ class TrimmingQuotationController extends Controller
 
     protected function appendLineToProjectQuotation(ClientProject $project, TrimmingQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $this->syncLineToProjectQuotation($project, $quote);
 
         $quote->update(array_merge([

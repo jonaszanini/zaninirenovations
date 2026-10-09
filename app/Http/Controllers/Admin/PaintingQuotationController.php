@@ -474,6 +474,10 @@ class PaintingQuotationController extends Controller
 
     protected function syncPaintingLineToProjectQuotation(ClientProject $project, PaintingQuotation $paintingQuotation): void
     {
+        if ($this->quotationIsDraft($paintingQuotation)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Painting service (labor)',
             'amount' => $paintingQuotation->labourPreTaxAmountForProjectQuotation(),
@@ -537,6 +541,10 @@ class PaintingQuotationController extends Controller
         PaintingQuotation $paintingQuotation,
         string $lineDescription
     ): void {
+        if ($this->quotationIsDraft($paintingQuotation)) {
+            return;
+        }
+
         $this->syncPaintingLineToProjectQuotation($project, $paintingQuotation);
 
         $paintingQuotation->update(array_merge([

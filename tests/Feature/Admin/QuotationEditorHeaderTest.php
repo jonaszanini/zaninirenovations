@@ -72,6 +72,7 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
         );
 
         $this->assertActionOrder($html, $hasDraft);
+        $this->assertHeaderAndStepBarOrder($html, $type);
         $this->assertMatchesRegularExpression(
             '/<(button)[^>]*class="[^"]*qh-actions__cancel[^"]*"[^>]*data-qh-cancel=/',
             $html
@@ -126,6 +127,7 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
             ->getContent();
 
         $this->assertActionOrder($html, $hasDraft);
+        $this->assertHeaderAndStepBarOrder($html, $type);
         $this->assertStringContainsString('id="'.$hotkeyId.'"', $html);
     }
 
@@ -208,6 +210,8 @@ const pages = [
   '/admin/quotations/basement/create?project=' + projectId,
   '/admin/quotations/standard/create?project=' + projectId,
   '/admin/quotations/fence/create?project=' + projectId,
+  '/admin/quotations/millwork/create?project=' + projectId,
+  '/admin/quotations/shed/create?project=' + projectId,
 ];
 (async () => {
   const browser = await puppeteer.launch({
@@ -236,7 +240,7 @@ const pages = [
       page.click('button[type="submit"]'),
     ]);
   }
-  const widths = [390, 1024, 1280];
+  const widths = [390, 768, 1024, 1280];
   const themes = ['light', 'dark'];
   const out = {};
   for (const theme of themes) {
@@ -329,7 +333,7 @@ JS
             .' QH_GEO_BASE='.escapeshellarg($base)
             .' QH_GEO_PROJECT='.escapeshellarg((string) $project->id)
             .' QH_GEO_OUT='.escapeshellarg(storage_path('app'))
-            .' timeout -k 5s 90s node '.escapeshellarg($script);
+            .' timeout -k 5s 180s node '.escapeshellarg($script);
         $output = [];
         $code = 0;
         exec($cmd, $output, $code);
@@ -344,6 +348,13 @@ JS
         $this->assertSame([], $json['cancelClean']['posts'] ?? ['fail'], 'Clean Cancel must not POST');
         $this->assertSame([], $json['cancelDirty']['posts'] ?? ['fail'], 'Dirty Cancel must not POST');
         $this->assertStringContainsString('/fence/', (string) ($json['cancelDirty']['url'] ?? ''));
+
+        $layoutKeys = array_values(array_filter(array_keys($json), function ($key) {
+            return ! in_array($key, ['cancelClean', 'cancelDirty'], true);
+        }));
+        $this->assertNotEmpty(preg_grep('/_768_/', $layoutKeys), 'Layout CI must include a 768px pass');
+        $this->assertNotEmpty(preg_grep('/millwork/', $layoutKeys), 'Layout CI must include millwork create (step bar)');
+        $this->assertNotEmpty(preg_grep('/shed/', $layoutKeys), 'Layout CI must include shed create (step bar)');
 
         foreach ($json as $key => $row) {
             if (in_array($key, ['cancelClean', 'cancelDirty'], true)) {
@@ -366,6 +377,55 @@ JS
                 $this->assertTrue($row['dark'] ?? false, "Dark class missing at {$key}");
             }
         }
+    }
+
+    private function assertHeaderAndStepBarOrder(string $html, string $type): void
+    {
+        $crumb = $this->assertHtmlPos($html, 'class="qh-crumb"', $type.' breadcrumb');
+        $save = $this->assertHtmlPos($html, 'qh-actions__save', $type.' Save quotation');
+        $draft = $this->assertHtmlPos($html, 'qh-actions__draft', $type.' Save as draft');
+        $cancel = $this->assertHtmlPos($html, 'qh-actions__cancel', $type.' Cancel');
+        $this->assertLessThan($save, $crumb, "{$type}: breadcrumb must precede Save quotation");
+        $this->assertLessThan($draft, $save, "{$type}: Save quotation must precede Save as draft");
+        $this->assertLessThan($cancel, $draft, "{$type}: Save as draft must precede Cancel");
+
+        if (in_array($type, ['millwork', 'shed'], true)) {
+            $back = $this->assertHtmlPos($html, '← Back', $type.' Back');
+            $status = $this->assertHtmlPos($html, 'br-step-nav__status', $type.' step counter');
+            $next = $this->assertHtmlPos($html, '→ Next', $type.' Next');
+            $gear = $this->assertHtmlPos($html, 'qh-price-gear', $type.' Price configuration gear');
+            $this->assertLessThan($back, $cancel, "{$type}: Back must sit below the action buttons");
+            $this->assertLessThan($status, $back, "{$type}: step counter must follow Back");
+            $this->assertLessThan($next, $status, "{$type}: Next must follow the step counter");
+            $this->assertLessThan($gear, $next, "{$type}: gear stays after the step bar (not in the header actions)");
+            $this->assertTrue(
+                strpos($html, 'qh-actions') < strpos($html, 'qh-wizard'),
+                "{$type} step bar must render after the button row"
+            );
+        } elseif ($type === 'basement') {
+            $this->assertStringContainsString('id="br-step-nav"', $html);
+            $this->assertStringContainsString('id="br-sticky-total"', $html);
+            $sticky = $this->assertHtmlPos($html, 'id="br-sticky-total"', $type.' sticky bar');
+            $back = $this->assertHtmlPos($html, '← Back', $type.' Back');
+            $status = $this->assertHtmlPos($html, 'id="br-step-status"', $type.' step counter');
+            $next = $this->assertHtmlPos($html, 'id="br-next"', $type.' Next');
+            $gear = $this->assertHtmlPos($html, 'qh-price-gear', $type.' Price configuration gear');
+            $this->assertLessThan($back, $cancel, 'Basement Back/Next stay out of the header button row');
+            $this->assertLessThan($back, $sticky, 'Basement Back must be inside the sticky bar');
+            $this->assertLessThan($status, $back, 'Basement step counter must follow Back');
+            $this->assertLessThan($next, $status, 'Basement Next must follow the step counter');
+            $this->assertNotFalse($gear);
+        } elseif ($type !== 'standard') {
+            $this->assertHtmlPos($html, 'qh-price-gear', $type.' Price configuration gear');
+        }
+    }
+
+    private function assertHtmlPos(string $html, string $needle, string $label): int
+    {
+        $pos = strpos($html, $needle);
+        $this->assertNotFalse($pos, "Missing {$label}");
+
+        return $pos;
     }
 
     private function assertActionOrder(string $html, bool $hasDraft): void

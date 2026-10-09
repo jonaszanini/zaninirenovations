@@ -648,6 +648,10 @@ class BasementQuotationController extends Controller
 
     protected function syncLineToProjectQuotation(ClientProject $project, BasementQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Basement renovation (labour)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
@@ -729,6 +733,10 @@ class BasementQuotationController extends Controller
 
     protected function appendLineToProjectQuotation(ClientProject $project, BasementQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $this->syncLineToProjectQuotation($project, $quote);
 
         $quote->update(array_merge([

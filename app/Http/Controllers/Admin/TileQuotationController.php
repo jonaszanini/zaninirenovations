@@ -159,11 +159,15 @@ class TileQuotationController extends Controller
             $this->syncProjectQuotation($quotation);
         }
 
+        $created = $quotation->is_draft
+            ? 'Tile quotation saved as a draft.'
+            : ($quotation->client_project_id
+                ? 'Tile quotation created and linked.'
+                : 'Tile quotation created.');
+
         return QuotationAfterSaveRedirect::apply($request, redirect()
             ->route('admin.quotations.tile.edit', $quotation)
-            ->with('success', $quotation->client_project_id
-                ? 'Tile quotation created and linked.'
-                : 'Tile quotation created.'));
+            ->with('success', $created));
     }
 
     public function edit(Request $request, TileQuotation $quotation)
@@ -287,7 +291,9 @@ class TileQuotationController extends Controller
 
         return QuotationAfterSaveRedirect::apply($request, redirect()
             ->route('admin.quotations.tile.edit', $quotation)
-            ->with('success', 'Tile quotation updated.'));
+            ->with('success', $quotation->is_draft
+                ? 'Tile quotation saved as a draft.'
+                : 'Tile quotation updated.'));
     }
 
     public function destroy(TileQuotation $quotation)
@@ -458,7 +464,7 @@ class TileQuotationController extends Controller
 
     protected function syncProjectQuotation(TileQuotation $quotation): void
     {
-        if (! $quotation->client_project_id) {
+        if (! $quotation->client_project_id || $this->quotationIsDraft($quotation)) {
             return;
         }
 

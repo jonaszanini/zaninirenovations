@@ -265,6 +265,9 @@ class FenceQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($fence_quotation, $project);
 
+        if ($resp = $this->guardQuotationIsDraft($fence_quotation, 'link')) {
+            return $resp;
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -290,6 +293,9 @@ class FenceQuotationController extends Controller
         ClientProjectStatusService $statusService
     ) {
         if ($resp = $this->guardQuotationAlreadyLinked($fence_quotation, 'fence')) {
+            return $resp;
+        }
+        if ($resp = $this->guardQuotationIsDraft($fence_quotation, 'create-project')) {
             return $resp;
         }
 
@@ -380,6 +386,9 @@ class FenceQuotationController extends Controller
      */
     protected function syncFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
     {
+        if ($this->quotationIsDraft($fence_quotation)) {
+            return;
+        }
         $items = $fence_quotation->projectQuotationLineItems();
         $this->appendCommuteProjectLine($items, $fence_quotation);
         $this->appendDebrisRemovalProjectLine($items, $fence_quotation);
@@ -449,6 +458,10 @@ class FenceQuotationController extends Controller
      */
     protected function appendFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
     {
+        if ($this->quotationIsDraft($fence_quotation)) {
+            return;
+        }
+
         $this->syncFenceLineToProjectQuotation($project, $fence_quotation);
 
         $fence_quotation->update(array_merge([

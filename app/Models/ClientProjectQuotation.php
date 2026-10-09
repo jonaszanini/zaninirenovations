@@ -500,6 +500,18 @@ class ClientProjectQuotation extends Model
         return $class::query()->find($this->source_id);
     }
 
+    public const SOURCE_DRAFT_SHARE_MESSAGE = 'This quotation is still a draft. Publish it (Save quotation) before sharing it with the client.';
+
+    public function isSourceDraft(): bool
+    {
+        $source = $this->sourceQuotationModel();
+        if ($source === null) {
+            return false;
+        }
+
+        return (bool) ($source->is_draft ?? false);
+    }
+
     /** Admin-written note for the client email (HTML), from the linked source quotation. */
     public function clientEmailMessageHtml(): ?string
     {

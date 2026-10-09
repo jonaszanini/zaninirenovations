@@ -162,28 +162,116 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
 
     public function test_programmatic_diff_against_main_toolbars(): void
     {
+        $this->actingAsAdmin();
+
         $map = [
-            'basement/create.blade.php' => ['Email quotation to client'],
-            'standard/create.blade.php' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
-            'fence/create.blade.php' => ['Save &amp; create project', 'after_save', 'create_project'],
-            'low_deck/create.blade.php' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
-            'millwork/create.blade.php' => ['Print cut list'],
+            'basement' => [
+                'file' => 'basement/create.blade.php',
+                'main' => ['Email quotation to client'],
+                'rendered' => fn () => $this->renderedBasementEdit(),
+                'needles' => ['Email quotation to client'],
+            ],
+            'standard' => [
+                'file' => 'standard/create.blade.php',
+                'main' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
+                'rendered' => fn () => $this->get(route('admin.quotations.standard.create'))->assertOk()->getContent()
+                    ."\n".$this->renderedStandardEdit(),
+                'needles' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
+            ],
+            'fence' => [
+                'file' => 'fence/create.blade.php',
+                'main' => ['Save &amp; create project', 'after_save', 'create_project'],
+                'rendered' => fn () => $this->get(route('admin.quotations.fence.create'))->assertOk()->getContent(),
+                'needles' => ['Save &amp; create project', 'after_save', 'create_project'],
+            ],
+            'low_deck' => [
+                'file' => 'low_deck/create.blade.php',
+                'main' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
+                'rendered' => fn () => $this->renderedLowDeckEdit(),
+                'needles' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
+            ],
+            'millwork' => [
+                'file' => 'millwork/create.blade.php',
+                'main' => ['Print cut list'],
+                'rendered' => fn () => $this->renderedMillworkEdit(),
+                'needles' => ['Print cut list'],
+            ],
         ];
-        $more = file_get_contents(resource_path('views/admin/partials/quotation_editor_more_actions.blade.php'));
-        foreach ($map as $file => $needles) {
-            $head = file_get_contents(resource_path('views/admin/quotations/'.$file))."\n".$more;
-            $main = (string) shell_exec('git show origin/main:resources/views/admin/quotations/'.$file.' 2>/dev/null');
+
+        foreach ($map as $type => $spec) {
+            $main = (string) shell_exec('git show origin/main:resources/views/admin/quotations/'.$spec['file'].' 2>/dev/null');
             if ($main === '') {
-                $main = (string) shell_exec('git show main:resources/views/admin/quotations/'.$file.' 2>/dev/null');
+                $main = (string) shell_exec('git show main:resources/views/admin/quotations/'.$spec['file'].' 2>/dev/null');
             }
             if ($main === '') {
                 $this->fail('origin/main (or main) is required for the toolbar inventory diff; CI must fetch it');
             }
-            foreach ($needles as $needle) {
-                $this->assertStringContainsString($needle, $main, "main {$file} no longer has {$needle}");
-                $this->assertStringContainsString($needle, $head, "head {$file} dropped {$needle} from main");
+            foreach ($spec['main'] as $needle) {
+                $this->assertStringContainsString($needle, $main, "main {$spec['file']} no longer has {$needle}");
+            }
+
+            $html = $spec['rendered']();
+            $this->assertNotSame('', trim($html), "{$type} rendered HTML was empty");
+            foreach ($spec['needles'] as $needle) {
+                $this->assertStringContainsString(
+                    $needle,
+                    $html,
+                    "Rendered {$type} editor is missing {$needle} that main still has — do not hide this behind an unused partial"
+                );
             }
         }
+    }
+
+    private function renderedBasementEdit(): string
+    {
+        $quote = BasementQuotation::query()->create([
+            'quote_number' => 'BR-INV-MAIN-1',
+            'client_name' => 'Inventory Main Basement',
+            'is_draft' => true,
+            'inputs' => [],
+            'calculation' => [],
+            'final_quote_total' => 0,
+        ]);
+
+        return $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
+    }
+
+    private function renderedStandardEdit(): string
+    {
+        $quote = StandardQuotation::query()->create([
+            'quote_number' => 'SQ-INV-MAIN-1',
+            'client_name' => 'Inventory Main Standard',
+            'display_title' => 'Kitchen',
+            'materials' => [],
+        ]);
+
+        return $this->get(route('admin.quotations.standard.edit', $quote))->assertOk()->getContent();
+    }
+
+    private function renderedLowDeckEdit(): string
+    {
+        $quote = LowDeckQuotation::query()->create([
+            'quote_number' => 'LD-INV-MAIN-1',
+            'client_name' => 'Inventory Main Deck',
+            'width_ft' => 12,
+            'length_ft' => 16,
+            'calculation' => [],
+        ]);
+
+        return $this->get(route('admin.quotations.low-deck.edit', $quote))->assertOk()->getContent();
+    }
+
+    private function renderedMillworkEdit(): string
+    {
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-INV-MAIN-1',
+            'client_name' => 'Inventory Main Millwork',
+            'is_draft' => true,
+            'inputs' => ['pieces' => []],
+            'calculation' => [],
+        ]);
+
+        return $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent();
     }
 
     public function test_main_toolbar_controls_are_represented_in_shared_partials(): void

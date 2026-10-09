@@ -691,6 +691,10 @@ class MillworkQuotationController extends Controller
 
     protected function syncLineToProjectQuotation(ClientProject $project, MillworkQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Custom millwork (labour)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
@@ -755,6 +759,10 @@ class MillworkQuotationController extends Controller
 
     protected function appendLineToProjectQuotation(ClientProject $project, MillworkQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $this->syncLineToProjectQuotation($project, $quote);
 
         $quote->update(array_merge([

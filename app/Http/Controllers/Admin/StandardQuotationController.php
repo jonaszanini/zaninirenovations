@@ -262,6 +262,9 @@ class StandardQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($standard_quotation, $project);
 
+        if ($resp = $this->guardQuotationIsDraft($standard_quotation, 'link')) {
+            return $resp;
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -288,6 +291,9 @@ class StandardQuotationController extends Controller
         ClientProjectStatusService $statusService
     ) {
         if ($resp = $this->guardQuotationAlreadyLinked($standard_quotation, 'standard')) {
+            return $resp;
+        }
+        if ($resp = $this->guardQuotationIsDraft($standard_quotation, 'create-project')) {
             return $resp;
         }
 
@@ -717,6 +723,10 @@ class StandardQuotationController extends Controller
         StandardQuotation $standardQuotation,
         string $lineDescription
     ): void {
+        if ($this->quotationIsDraft($standardQuotation)) {
+            return;
+        }
+
         $standardQuotation->client_project_id = $project->id;
         $standardQuotation->linked_at = now();
         foreach ($this->quotationLinkClientNameAttributes($project) as $key => $value) {
@@ -741,6 +751,10 @@ class StandardQuotationController extends Controller
         StandardQuotation $standardQuotation,
         ?string $lineDescription = null
     ): void {
+        if ($this->quotationIsDraft($standardQuotation)) {
+            return;
+        }
+
         $taxablePreHst = $this->preHstTaxableForLink($standardQuotation);
         $exemptPreHst = $this->preHstExemptForLink($standardQuotation);
 

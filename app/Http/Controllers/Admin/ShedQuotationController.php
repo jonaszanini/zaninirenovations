@@ -528,6 +528,10 @@ class ShedQuotationController extends Controller
 
     protected function syncLineToProjectQuotation(ClientProject $project, ShedQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Shed construction (labor)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
@@ -592,6 +596,10 @@ class ShedQuotationController extends Controller
 
     protected function appendLineToProjectQuotation(ClientProject $project, ShedQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $this->syncLineToProjectQuotation($project, $quote);
 
         $quote->update(array_merge([

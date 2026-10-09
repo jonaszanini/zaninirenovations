@@ -154,6 +154,15 @@ class ClientProjectQuotationController extends Controller
     /**
      * Client PDF / send must not produce a file while millwork parts are unplaced.
      */
+    protected function rejectDraftSource(ClientProjectQuotation $quotation)
+    {
+        if (! $quotation->isSourceDraft()) {
+            return null;
+        }
+
+        return back()->with('error', ClientProjectQuotation::SOURCE_DRAFT_SHARE_MESSAGE);
+    }
+
     protected function rejectUnplacedMillworkPdf(ClientProjectQuotation $quotation)
     {
         if ($quotation->source_type !== ClientProjectQuotation::SOURCE_MILLWORK) {
@@ -188,6 +197,10 @@ class ClientProjectQuotationController extends Controller
     {
         $this->authorizeQuotation($client_project, $quotation);
 
+        if ($response = $this->rejectDraftSource($quotation)) {
+            return $response;
+        }
+
         if (!$quotation->hasContent()) {
             return back()->with('error', 'There is no quotation to download yet. Please add at least one line item first.');
         }
@@ -207,6 +220,10 @@ class ClientProjectQuotationController extends Controller
     public function guestDownloadQuotationPdf(ClientProject $client_project, ClientProjectQuotation $quotation)
     {
         abort_unless((int) $quotation->client_project_id === (int) $client_project->id, 404);
+
+        if ($quotation->isSourceDraft()) {
+            abort(404, 'Quotation not available.');
+        }
 
         if (!$quotation->hasContent()) {
             abort(404, 'Quotation not available.');
@@ -232,6 +249,10 @@ class ClientProjectQuotationController extends Controller
     )
     {
         $this->authorizeQuotation($client_project, $quotation);
+
+        if ($response = $this->rejectDraftSource($quotation)) {
+            return $response;
+        }
 
         if (!$quotation->hasContent()) {
             return back()->with('error', 'Please add at least one line item before sending the quotation.');
@@ -651,6 +672,10 @@ class ClientProjectQuotationController extends Controller
         MoceanSmsService $mocean,
     ): array {
         $out = [];
+
+        if ($quotation->isSourceDraft()) {
+            $out[] = ClientProjectQuotation::SOURCE_DRAFT_SHARE_MESSAGE;
+        }
 
         if (! $quotation->hasContent()) {
             $out[] = 'Add at least one line item before sending an SMS link.';

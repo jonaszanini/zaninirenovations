@@ -522,6 +522,10 @@ class StairsQuotationController extends Controller
 
     protected function syncStairsLineToProjectQuotation(ClientProject $project, StairsQuotation $stairsQuotation): void
     {
+        if ($this->quotationIsDraft($stairsQuotation)) {
+            return;
+        }
+
         $items = [[
             'description' => $stairsQuotation->summaryDescription(),
             'amount' => $stairsQuotation->labourPreTaxAmountForProjectQuotation(),
@@ -582,6 +586,10 @@ class StairsQuotationController extends Controller
         StairsQuotation $stairsQuotation,
         string $lineDescription
     ): void {
+        if ($this->quotationIsDraft($stairsQuotation)) {
+            return;
+        }
+
         $this->syncStairsLineToProjectQuotation($project, $stairsQuotation);
 
         $stairsQuotation->update(array_merge([

@@ -41,6 +41,25 @@ trait ResolvesQuotationProjectLink
         return null;
     }
 
+    protected function quotationIsDraft(object $quotation): bool
+    {
+        return (bool) ($quotation->is_draft ?? false);
+    }
+
+    /** Drafts must stay off the project's client quotation (link / create-project). */
+    protected function guardQuotationIsDraft(object $quotation, string $action = 'link'): ?RedirectResponse
+    {
+        if (! $this->quotationIsDraft($quotation)) {
+            return null;
+        }
+
+        $message = $action === 'create-project'
+            ? 'Publish the quotation before creating a project.'
+            : 'Publish the quotation (click Save quotation, not Save as draft) before linking.';
+
+        return back()->with('error', $message);
+    }
+
     /** Guard used before linking to an existing project: its status must still accept new quotations. */
     protected function guardProjectClosedToNewQuotations(ClientProject $project): ?RedirectResponse
     {

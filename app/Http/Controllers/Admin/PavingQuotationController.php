@@ -616,6 +616,10 @@ class PavingQuotationController extends Controller
         PavingQuotation $pavingQuotation,
         ?string $lineDescription = null
     ): void {
+        if ($this->quotationIsDraft($pavingQuotation)) {
+            return;
+        }
+
         $lineDescription = trim((string) ($lineDescription ?? ''));
         if ($lineDescription === '') {
             $lineDescription = $pavingQuotation->summaryDescription();

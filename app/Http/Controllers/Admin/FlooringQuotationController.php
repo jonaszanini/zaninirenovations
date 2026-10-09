@@ -498,6 +498,10 @@ class FlooringQuotationController extends Controller
 
     protected function syncFlooringLineToProjectQuotation(ClientProject $project, FlooringQuotation $flooringQuotation): void
     {
+        if ($this->quotationIsDraft($flooringQuotation)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Flooring installation (labor)',
             'amount' => $flooringQuotation->labourPreTaxAmountForProjectQuotation(),
@@ -562,6 +566,10 @@ class FlooringQuotationController extends Controller
 
     protected function appendFlooringLineToProjectQuotation(ClientProject $project, FlooringQuotation $flooringQuotation): void
     {
+        if ($this->quotationIsDraft($flooringQuotation)) {
+            return;
+        }
+
         $this->syncFlooringLineToProjectQuotation($project, $flooringQuotation);
 
         $flooringQuotation->update(array_merge([

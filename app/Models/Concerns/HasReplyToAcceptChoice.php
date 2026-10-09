@@ -43,6 +43,10 @@ trait HasReplyToAcceptChoice
                 return;
             }
 
+            if ((bool) ($model->is_draft ?? false)) {
+                return;
+            }
+
             $cpq = ClientProjectQuotation::findForSource($type, $id);
             if ($cpq === null) {
                 return;

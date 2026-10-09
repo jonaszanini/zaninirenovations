@@ -67,5 +67,6 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString("saveIntentInput.value = draft ? 'draft' : 'publish'", $tile);
         $this->assertStringContainsString("isDraftInput.value = draft ? '1' : '0'", $tile);
         $this->assertStringContainsString("name=\"save_intent\"", $tile);
+        $this->assertStringContainsString("id=\"tl-is-draft\" value=\"{{ \$isEdit && \$quotation->is_draft ? '1' : '0' }}\"", $tile);
     }
 }

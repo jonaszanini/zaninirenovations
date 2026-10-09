@@ -174,7 +174,7 @@
     @csrf
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="tl-save-intent" value="publish">
-    <input type="hidden" name="is_draft" id="tl-is-draft" value="0">
+    <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
     
     <div class="fq-form-toolbar">
       <div class="fq-form-toolbar-right">

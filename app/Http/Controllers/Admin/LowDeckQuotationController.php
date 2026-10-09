@@ -178,6 +178,9 @@ class LowDeckQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($low_deck_quotation, $project);
 
+        if ($resp = $this->guardQuotationIsDraft($low_deck_quotation, 'link')) {
+            return $resp;
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -197,6 +200,9 @@ class LowDeckQuotationController extends Controller
         ClientProjectStatusService $statusService
     ) {
         if ($resp = $this->guardQuotationAlreadyLinked($low_deck_quotation, 'low deck')) {
+            return $resp;
+        }
+        if ($resp = $this->guardQuotationIsDraft($low_deck_quotation, 'create-project')) {
             return $resp;
         }
 
@@ -416,6 +422,9 @@ class LowDeckQuotationController extends Controller
 
     protected function syncLowDeckLineToProjectQuotation(ClientProject $project, LowDeckQuotation $low_deck_quotation): void
     {
+        if ($this->quotationIsDraft($low_deck_quotation)) {
+            return;
+        }
         $items = $low_deck_quotation->projectQuotationLineItems();
         $this->appendCommuteProjectLine($items, $low_deck_quotation);
         $this->appendDebrisRemovalProjectLine($items, $low_deck_quotation);
@@ -478,6 +487,10 @@ class LowDeckQuotationController extends Controller
 
     protected function appendLowDeckLineToProjectQuotation(ClientProject $project, LowDeckQuotation $low_deck_quotation): void
     {
+        if ($this->quotationIsDraft($low_deck_quotation)) {
+            return;
+        }
+
         $this->syncLowDeckLineToProjectQuotation($project, $low_deck_quotation);
 
         $low_deck_quotation->update(array_merge([
