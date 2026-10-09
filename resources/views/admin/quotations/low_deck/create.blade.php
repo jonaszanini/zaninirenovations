@@ -705,6 +705,15 @@
     var boards = g.boards || {};
     var tape = g.joist_tape || {};
 
+    var joistSpacingIn = joists.field_spacing_in || g.joist_spacing_in || '';
+    if (geometryEl) {
+      if (joistSpacingIn) {
+        geometryEl.setAttribute('data-joist-spacing-in', String(joistSpacingIn));
+      } else {
+        geometryEl.removeAttribute('data-joist-spacing-in');
+      }
+    }
+
     geometryEl.innerHTML =
       '<p style="margin:0 0 8px;"><strong>' + (g.area_sq_ft || 0) + ' sq ft</strong> · '
       + ftLabel(g.width_ft) + ' × ' + ftLabel(g.length_ft) + '</p>'

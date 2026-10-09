@@ -274,6 +274,44 @@ class StandardQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(785.62, $computed['materials_subtotal_before_hst'], 0.01);
     }
 
+    public function test_compute_hourly_respects_include_labour_hst_without_a_later_zero(): void
+    {
+        $calc = new StandardQuotationCalculator();
+        $withHst = $calc->compute([], 50, 'hours', 2, false, 0, false, 0.0, false, true);
+        $cash = $calc->compute([], 50, 'hours', 2, false, 0, false, 0.0, false, false);
+
+        $this->assertEqualsWithDelta(100.0, $withHst['labour_total'], 0.01);
+        $this->assertEqualsWithDelta(13.0, $withHst['labour_hst'], 0.01);
+        $this->assertEqualsWithDelta(113.0, $withHst['grand_total'], 0.01);
+        $this->assertEqualsWithDelta(100.0, $withHst['pre_hst_taxable'], 0.01);
+
+        $this->assertEqualsWithDelta(100.0, $cash['labour_total'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $cash['labour_hst'], 0.01);
+        $this->assertEqualsWithDelta(100.0, $cash['grand_total'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $cash['pre_hst_taxable'], 0.01);
+        $this->assertEqualsWithDelta(100.0, $cash['pre_hst_exempt'], 0.01);
+    }
+
+    public function test_compute_works_hourly_cash_totals_match_compute(): void
+    {
+        $works = [[
+            'title' => 'Install',
+            'materials' => [],
+            'labour_use_fixed' => false,
+            'labour_hourly_rate' => 50,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 2,
+        ]];
+
+        $calc = new StandardQuotationCalculator();
+        $direct = $calc->compute([], 50, 'hours', 2, false, 0, false, 0.0, false, false);
+        $worksCash = $calc->computeWorks($works, false, 0, false);
+
+        $this->assertEqualsWithDelta($direct['labour_hst'], $worksCash['labour_hst'], 0.01);
+        $this->assertEqualsWithDelta($direct['grand_total'], $worksCash['grand_total'], 0.01);
+        $this->assertEqualsWithDelta($direct['pre_hst_exempt'], $worksCash['pre_hst_exempt'], 0.01);
+    }
+
     public function test_compute_keeps_saved_catalog_delivery_instead_of_live_overlay(): void
     {
         $computed = (new StandardQuotationCalculator)->compute(

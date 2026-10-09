@@ -347,4 +347,132 @@ class ClientProjectQuotationPdfLineItemsTest extends TestCase
         $this->assertEqualsWithDelta(50.00, $lines[0]['amount'], 0.01);
         $this->assertEqualsWithDelta(50.00, $quote->pdfGrandTotal(), 0.01);
     }
+
+    /**
+     * D1 snapshots frozen against main's fold (commuteLabourLineIndexes
+     * fallback, created Labour apply_hst=false / hst_included=true).
+     *
+     * @dataProvider mainFoldIdentityCases
+     * @param  list<array<string, mixed>>  $items
+     * @param  list<array<string, mixed>>  $expectedLines
+     */
+    public function test_pdf_fold_matches_main_for_old_d1_scenarios(
+        array $items,
+        array $expectedLines,
+        float $expectedHst,
+        float $expectedTotal
+    ): void {
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'items' => $items,
+        ]);
+
+        $lines = array_values(array_map(static function (array $row): array {
+            $out = [
+                'description' => (string) ($row['description'] ?? ''),
+                'amount' => round((float) ($row['amount'] ?? 0), 2),
+                'apply_hst' => (bool) ($row['apply_hst'] ?? false),
+            ];
+            if (! empty($row['hst_included'])) {
+                $out['hst_included'] = true;
+            }
+
+            return $out;
+        }, $quote->pdfLineItems()));
+
+        $this->assertSame($expectedLines, $lines);
+        $this->assertEquals($expectedHst, $quote->pdfHst());
+        $this->assertEquals($expectedTotal, $quote->pdfGrandTotal());
+    }
+
+    /**
+     * @return array<string, array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>, 2: float, 3: float}>
+     */
+    public function mainFoldIdentityCases(): array
+    {
+        $commute = [
+            'description' => 'Commute expense',
+            'amount' => 113.00,
+            'apply_hst' => false,
+            'hst_included' => true,
+        ];
+
+        return [
+            'taxed material + commute folds into material' => [
+                [
+                    ['description' => 'Material', 'amount' => 100.00, 'apply_hst' => true],
+                    $commute,
+                ],
+                [
+                    ['description' => 'Material', 'amount' => 200.00, 'apply_hst' => true],
+                ],
+                26.00,
+                226.00,
+            ],
+            'taxed material + 1.00 commute keeps the one-cent gap' => [
+                [
+                    ['description' => 'Material', 'amount' => 100.00, 'apply_hst' => true],
+                    [
+                        'description' => 'Commute expense',
+                        'amount' => 1.00,
+                        'apply_hst' => false,
+                        'hst_included' => true,
+                    ],
+                ],
+                [
+                    ['description' => 'Material', 'amount' => 100.88, 'apply_hst' => true],
+                ],
+                13.11,
+                113.99,
+            ],
+            'cash labour + commute stays gross and untaxed' => [
+                [
+                    ['description' => 'Labour', 'amount' => 500.00, 'apply_hst' => false],
+                    $commute,
+                ],
+                [
+                    ['description' => 'Labour', 'amount' => 613.00, 'apply_hst' => false],
+                ],
+                0.00,
+                613.00,
+            ],
+            'debris only creates hst-included labour at the gross' => [
+                [
+                    [
+                        'description' => DebrisRemovalExpenseService::LINE_DESCRIPTION,
+                        'amount' => 50.00,
+                        'apply_hst' => false,
+                        'hst_included' => true,
+                    ],
+                ],
+                [
+                    [
+                        'description' => 'Labour',
+                        'amount' => 50.00,
+                        'apply_hst' => false,
+                        'hst_included' => true,
+                    ],
+                ],
+                0.00,
+                50.00,
+            ],
+            'exempt material + commute creates hst-included labour' => [
+                [
+                    ['description' => 'Material — HST exempt', 'amount' => 40.00, 'apply_hst' => false],
+                    $commute,
+                ],
+                [
+                    ['description' => 'Material — HST exempt', 'amount' => 40.00, 'apply_hst' => false],
+                    [
+                        'description' => 'Labour',
+                        'amount' => 113.00,
+                        'apply_hst' => false,
+                        'hst_included' => true,
+                    ],
+                ],
+                0.00,
+                153.00,
+            ],
+        ];
+    }
 }

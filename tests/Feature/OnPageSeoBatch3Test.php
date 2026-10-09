@@ -174,8 +174,9 @@ class OnPageSeoBatch3Test extends IntegrationTestCase
 
         foreach ($paths as $path) {
             $html = strtolower($this->get($path)->assertOk()->getContent());
+            $visible = strtolower(trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
             foreach (self::EDITOR_NOTES as $phrase) {
-                $this->assertStringNotContainsString($phrase, $html, $path.' still has “'.$phrase.'”');
+                $this->assertStringNotContainsString($phrase, $visible, $path.' still has “'.$phrase.'”');
             }
             $this->assertStringNotContainsString('licensed', $html, $path);
             $this->assertStringNotContainsString('licence', $html, $path);

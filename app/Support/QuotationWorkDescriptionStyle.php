@@ -117,14 +117,70 @@ TXT;
         // Drop leftover sales-close clauses without touching earlier facts.
         $text = preg_replace('/\bthat enhances?\b[^.]*\.?/iu', '', $text) ?? $text;
         $text = preg_replace('/\bto deliver a\s*(?:job\s*)?\.?/iu', '.', $text) ?? $text;
-        $text = preg_replace('/\bpremium\s+(?=fence|materials|components)/iu', '', $text) ?? $text;
+        $text = preg_replace('/\bpremium\s+(?=fence|materials|components|pickets|boards)/iu', '', $text) ?? $text;
 
+        return self::strip($text);
+    }
+
+    /**
+     * Grammar / leftover cleanup after phrase replacements. Safe on already
+     * plain contractor wording (no-op besides whitespace).
+     */
+    public static function strip(string $text): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $text = preg_replace('/^```[a-zA-Z0-9_-]*\s*/u', '', $text) ?? $text;
+        $text = preg_replace('/\s*```$/u', '', $text) ?? $text;
+
+        $text = preg_replace('/\b(a|an|the)\s+\1\b(?!-)/iu', '$1', $text) ?? $text;
         $text = preg_replace('/[ \t]+/u', ' ', $text) ?? $text;
         $text = preg_replace('/\s+,/u', ',', $text) ?? $text;
-        $text = preg_replace('/\s+\./u', '.', $text) ?? $text;
-        $text = preg_replace('/\.\s*\./u', '.', $text) ?? $text;
+        $text = preg_replace('/\s+;/u', ';', $text) ?? $text;
+        $text = preg_replace('/,\s*,/u', ',', $text) ?? $text;
+        // Leave spaced decimals ("3 . 5 m") alone.
+        $text = preg_replace('/(?<!\d)\s+\./u', '.', $text) ?? $text;
+        // Collapse doubled periods, but leave ellipses ("posts... then") intact.
+        $text = preg_replace('/(?<!\.)\.\s*\.(?!\.)/u', '.', $text) ?? $text;
+        $text = preg_replace('/(?<!\d)(?:^|\s)\.(?:\s|$)(?!\d)/u', ' ', $text) ?? $text;
         $text = preg_replace('/\s{2,}/u', ' ', $text) ?? $text;
 
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $text = self::recapitalizeSentenceStarts($text);
+
         return trim($text);
+    }
+
+    /**
+     * Capitalize the start of a sentence. Periods that belong to known
+     * abbreviations (sq., ft., in., e.g., i.e., …) are not sentence ends.
+     */
+    private static function recapitalizeSentenceStarts(string $text): string
+    {
+        if (! preg_match_all('/(?:^|[.!?]\s+)(\p{Ll})/u', $text, $matches, PREG_OFFSET_CAPTURE | PREG_SET_ORDER)) {
+            return $text;
+        }
+
+        for ($i = count($matches) - 1; $i >= 0; $i--) {
+            $letter = $matches[$i][1][0];
+            $letterPos = (int) $matches[$i][1][1];
+            $before = substr($text, 0, $letterPos);
+            if (preg_match('/\.{2,}\s*$/u', $before)) {
+                continue;
+            }
+            if (preg_match('/\b(?:sq|ft|in|lin|min|approx|etc|no|vs|oct|e\.g|i\.e)\.\s*$/iu', $before)) {
+                continue;
+            }
+            $text = substr($text, 0, $letterPos).mb_strtoupper($letter).substr($text, $letterPos + strlen($letter));
+        }
+
+        return $text;
     }
 }
