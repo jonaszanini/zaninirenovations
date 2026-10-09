@@ -105,15 +105,15 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             '/function\s+runPreview\s*\(\s*\)\s*\{\s*normalizeLabourRateFields\s*\(/',
             $paving
         );
-        $this->assertMatchesRegularExpression(
-            '/if\s*\(\s*labourRateFieldIsFocused\s*\(\s*el\s*\)\s*\)\s*return/',
-            $paving
-        );
-        $this->assertStringContainsString("el.addEventListener('blur'", $paving);
+        $this->assertStringNotContainsString('normalizeLabourRateField', $paving);
+        $this->assertStringNotContainsString('labourRateFieldIsFocused', $paving);
+        $this->assertDoesNotMatchRegularExpression('/\.replace\(\s*\/,\/g/', $paving);
 
         $fence = file_get_contents(resource_path('views/admin/quotations/fence/create.blade.php'));
         $this->assertIsString($fence);
-        $this->assertStringContainsString('document.activeElement !== gatesInput', $fence);
+        $this->assertStringNotContainsString('document.activeElement !== gatesInput', $fence);
+        $this->assertStringContainsString('lastClearedGateTicks', $fence);
+        $this->assertStringContainsString('Gate goes here', $fence);
 
         $quoteCreates = glob(resource_path('views/admin/quotations/*/create.blade.php')) ?: [];
         foreach ($quoteCreates as $path) {
@@ -133,6 +133,7 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertIsString($harness);
         $this->assertStringNotContainsString('PREVIEW_SETTLE_MS', $harness);
         $this->assertStringContainsString('PREVIEW_FIRE_MS', $harness);
+        $this->assertStringNotContainsString('fenceGateKeypress', $harness);
     }
 
     public function test_flooring_add_type_saves_4_75_and_keeps_existing(): void
@@ -351,6 +352,16 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             $this->assertEqualsWithDelta(120.50, (float) ($savedQuote->inputs['owner_hourly_rate'] ?? 0), 0.0001);
             $this->assertEqualsWithDelta(35.00, (float) ($savedQuote->inputs['helper_hourly_rate'] ?? 0), 0.0001);
         }
+        $this->assertEqualsWithDelta(4.75, (float) str_replace(',', '', (string) ($report['pavingRateMask']['comma']['value'] ?? '')), 0.0001);
+        $this->assertFalse((bool) ($report['pavingRateMask']['comma']['invalid'] ?? true));
+        $this->assertTrue((bool) ($report['pavingRateMask']['negative']['invalid'] ?? false));
+        $this->assertStringContainsString('-', (string) ($report['pavingRateMask']['negative']['value'] ?? ''));
+        $this->assertTrue((bool) ($report['pavingRateMask']['ambiguous']['invalid'] ?? false));
+        $this->assertNotSame('1.23', $report['pavingRateMask']['ambiguous']['value'] ?? '');
+        $this->assertEqualsWithDelta(1.01, (float) ($report['pavingRateMask']['halfUp']['value'] ?? 0), 0.0001);
+        $this->assertSame(1, (int) ($report['fenceGateNotice']['afterTicks'] ?? 0));
+        $this->assertFalse((bool) ($report['fenceGateNotice']['noticeHidden'] ?? true));
+        $this->assertStringContainsString('cleared', strtolower((string) ($report['fenceGateNotice']['notice'] ?? '')));
         $negStandard->refresh();
         $negHourly->refresh();
         $this->assertNegativeLineTotals($negStandard, $negHourly);

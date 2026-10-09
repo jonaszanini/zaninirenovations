@@ -438,13 +438,41 @@ function sleep(ms) {
     return { fields, afterUrl: page.url(), posted, failed: fields.filter((f) => !f.ok).length };
   }
 
-  async function fenceGateCountKeypress() {
+  async function pavingRateMaskChecks() {
+    await go(base + '/admin/quotations/paving/create');
+    await page.waitForSelector('#pq-owner');
+    return page.evaluate(() => {
+      function probe(raw) {
+        const input = document.getElementById('pq-owner');
+        input.focus();
+        input.value = raw;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.blur();
+        input.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+        const submitted = input.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        return {
+          value: input.value,
+          invalid: input.classList.contains('is-invalid') || input.validity.customError,
+          message: String(input.validationMessage || ''),
+          submitAllowed: submitted,
+        };
+      }
+      return {
+        comma: probe('4,75'),
+        negative: probe('-5'),
+        ambiguous: probe('1.234,56'),
+        halfUp: probe('1.005'),
+      };
+    });
+  }
+
+  async function fenceGateLowerNotice() {
     await go(base + '/admin/quotations/fence/create');
     await page.waitForSelector('#fq-gates');
     await page.click('#fq-add-side');
     const lengths = await page.$$('.fq-side-length');
     if (lengths.length < 2) {
-      throw new Error('Fence needs two runs for the gate-count race');
+      throw new Error('Fence needs two runs to lower Gates');
     }
     for (const handle of lengths) {
       await handle.click({ clickCount: 3 });
@@ -452,43 +480,34 @@ function sleep(ms) {
     }
     await page.evaluate(() => {
       const gates = document.getElementById('fq-gates');
-      if (gates) {
-        gates.value = '2';
-        gates.dispatchEvent(new Event('input', { bubbles: true }));
-        gates.dispatchEvent(new Event('change', { bubbles: true }));
-      }
+      gates.value = '2';
+      gates.dispatchEvent(new Event('input', { bubbles: true }));
+      gates.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    const gates = await page.$$('.fq-side-gate-here');
-    for (const handle of gates) {
+    const boxes = await page.$$('.fq-side-gate-here');
+    for (const handle of boxes) {
       const checked = await page.evaluate((el) => el.checked, handle);
       if (!checked) {
         await handle.click();
       }
     }
-    await sleep(PREVIEW_FIRE_MS);
-    const gatesHandle = await page.$('#fq-gates');
-    await gatesHandle.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
-    await gatesHandle.click({ clickCount: 3 });
-    await page.keyboard.press('Backspace');
-    await sleep(PREVIEW_FIRE_MS);
-    const afterClear = await page.evaluate((el) => ({
-      value: el.value || '',
-      focused: document.activeElement === el,
-    }), gatesHandle);
-    await page.keyboard.type('3');
-    await sleep(PREVIEW_FIRE_MS);
-    const afterType = await page.evaluate((el) => ({
-      value: el.value || '',
-      focused: document.activeElement === el,
-    }), gatesHandle);
-    return {
-      afterClear,
-      afterType,
-      ok: afterClear.value === '' && afterClear.focused && afterType.value === '3' && afterType.focused,
-    };
+    return page.evaluate(() => {
+      const gates = document.getElementById('fq-gates');
+      const beforeTicks = document.querySelectorAll('.fq-side-gate-here:checked').length;
+      gates.value = '1';
+      gates.dispatchEvent(new Event('input', { bubbles: true }));
+      gates.dispatchEvent(new Event('change', { bubbles: true }));
+      const warn = document.getElementById('fq-gate-warn');
+      return {
+        beforeTicks,
+        afterTicks: document.querySelectorAll('.fq-side-gate-here:checked').length,
+        notice: warn ? String(warn.textContent || '') : '',
+        noticeHidden: !!(warn && warn.classList.contains('is-hidden')),
+      };
+    });
   }
 
-  const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null, negativeResave: null, labourRateKeypress: null, fenceGateKeypress: null };
+  const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null, negativeResave: null, labourRateKeypress: null, pavingRateMask: null, fenceGateNotice: null };
   try {
     await login();
     report.invoicePreview = await invoiceDiscountPreview();
@@ -536,7 +555,8 @@ function sleep(ms) {
     });
     report.hourlyMaterialsNegative = hourlyMaterialsNegative;
     report.labourRateKeypress = await labourRateKeypressSave();
-    report.fenceGateKeypress = await fenceGateCountKeypress();
+    report.pavingRateMask = await pavingRateMaskChecks();
+    report.fenceGateNotice = await fenceGateLowerNotice();
     for (const url of pages) {
       await go(base + url);
       if (page.url().includes('/admin/login')) {
@@ -720,6 +740,23 @@ function sleep(ms) {
     }
     if (!posted.includes('35.00') && !posted.includes('helper_hourly_rate=35')) {
       throw new Error('Paving draft did not post helper 35: ' + posted.slice(0, 400));
+    }
+    const rates = report.pavingRateMask || {};
+    if (!rates.comma || Math.abs(parseFloat(String(rates.comma.value || '').replace(/,/g, '')) - 4.75) > 0.0001 || rates.comma.invalid) {
+      throw new Error('Paving rate 4,75 should blur to 4.75: ' + JSON.stringify(rates.comma));
+    }
+    if (!rates.negative || !rates.negative.invalid || String(rates.negative.value || '').indexOf('-') === -1 || Math.abs(parseFloat(String(rates.negative.value || '').replace(/,/g, '')) - 0) < 0.0001) {
+      throw new Error('Paving rate -5 must stay visible and error, not become 0: ' + JSON.stringify(rates.negative));
+    }
+    if (!rates.ambiguous || !rates.ambiguous.invalid || String(rates.ambiguous.value) === '1.23') {
+      throw new Error('Paving rate 1.234,56 was mangled: ' + JSON.stringify(rates.ambiguous));
+    }
+    if (!rates.halfUp || Math.abs(parseFloat(String(rates.halfUp.value || '').replace(/,/g, '')) - 1.01) > 0.0001) {
+      throw new Error('Paving rate 1.005 should blur to 1.01: ' + JSON.stringify(rates.halfUp));
+    }
+    const fenceNotice = report.fenceGateNotice || {};
+    if (fenceNotice.beforeTicks < 2 || fenceNotice.afterTicks !== 1 || fenceNotice.noticeHidden || String(fenceNotice.notice || '').toLowerCase().indexOf('cleared') === -1) {
+      throw new Error('Lowering Gates must clear extra ticks and show a notice: ' + JSON.stringify(fenceNotice));
     }
     await browser.close();
     process.exit(0);
