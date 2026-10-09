@@ -179,6 +179,80 @@ class MaterialPriceSyncService
     }
 
     /**
+     * Fetch and parse a Home Depot CA product without writing to the database.
+     *
+     * @return array{status: string, parsed: ?ParsedProductData, error: ?string, unreachable: bool}
+     */
+    public function fetchHomeDepotSku(string $sku): array
+    {
+        $sku = HomeDepotCaUrls::normalizeStoredSku($sku) ?? $sku;
+        $productUrl = HomeDepotCaUrls::productUrl($sku);
+
+        try {
+            $parsed = $this->resolveHomeDepotStorePrice($productUrl);
+            if ($parsed === null) {
+                $html = $this->fetcher->fetch($productUrl);
+                $parsed = $this->homeDepotParser->parse($html, $productUrl);
+            }
+
+            if (! $parsed->isComplete()) {
+                return [
+                    'status' => Material::SCRAPE_FAILED,
+                    'parsed' => $parsed,
+                    'error' => 'Could not extract name and price from page.',
+                    'unreachable' => false,
+                ];
+            }
+
+            return [
+                'status' => Material::SCRAPE_OK,
+                'parsed' => $parsed,
+                'error' => null,
+                'unreachable' => false,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'status' => Material::SCRAPE_FAILED,
+                'parsed' => null,
+                'error' => $e->getMessage(),
+                'unreachable' => self::isUnreachableError($e),
+            ];
+        }
+    }
+
+    public static function isUnreachableError(\Throwable $e): bool
+    {
+        if ($e instanceof \Illuminate\Http\Client\ConnectionException) {
+            return true;
+        }
+
+        $class = $e::class;
+        if (str_contains($class, 'ConnectException') || str_contains($class, 'TransferException')) {
+            $transferMessage = strtolower($e->getMessage());
+            if (str_contains($transferMessage, 'timed out')
+                || str_contains($transferMessage, 'timeout')
+                || str_contains($transferMessage, 'curl error 28')
+                || str_contains($transferMessage, 'curl error 6')
+                || str_contains($transferMessage, 'curl error 7')
+                || str_contains($transferMessage, 'could not resolve')
+                || str_contains($transferMessage, 'failed to connect')) {
+                return true;
+            }
+        }
+
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'timed out')
+            || str_contains($message, 'cURL error 28')
+            || str_contains($message, 'cURL error 6')
+            || str_contains($message, 'cURL error 7')
+            || str_contains($message, 'could not resolve host')
+            || str_contains($message, 'failed to connect')
+            || str_contains($message, 'connection refused')
+            || str_contains($message, 'network is unreachable');
+    }
+
+    /**
      * @return array{status: string, parsed: ?ParsedProductData, error: ?string, old_price: float}
      */
     private function syncHomeDepotMaterial(Material $material, bool $dryRun, float $oldPrice): array

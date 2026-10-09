@@ -110,4 +110,28 @@ class HomeDepotCaUrls
     {
         return $sku !== null && preg_match('/^\d{6,}$/', $sku) === 1;
     }
+
+    /**
+     * Canonical store_sku for persistence: trim; Home Depot item numbers become digits only.
+     * Values with letters (Amazon ASINs, custom codes) are trimmed but otherwise kept.
+     */
+    public static function normalizeStoredSku(?string $sku): ?string
+    {
+        if ($sku === null) {
+            return null;
+        }
+
+        $sku = trim($sku);
+        if ($sku === '') {
+            return null;
+        }
+
+        if (preg_match('/[A-Za-z]/', $sku) === 1) {
+            return $sku;
+        }
+
+        $digits = preg_replace('/\D+/', '', $sku) ?? '';
+
+        return self::isValidSku($digits) ? $digits : $sku;
+    }
 }

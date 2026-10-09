@@ -47,6 +47,7 @@ jobs:
           php artisan test tests/Unit/Views/BladeSyntaxTest.php
           php artisan test tests/Unit/Views/QuotationPdfPageBreakTest.php tests/Unit/BasementQuotationWizardViewTest.php tests/Unit/Models/BasementQuotationScopePdfTest.php
           php artisan test tests/Unit/Support/AdminListFiltersTest.php
+          php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php
 
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php

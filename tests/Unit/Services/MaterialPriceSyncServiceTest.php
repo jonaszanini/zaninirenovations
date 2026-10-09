@@ -82,6 +82,32 @@ class MaterialPriceSyncServiceTest extends TestCase
         $this->assertSame('Old title', $material->name);
     }
 
+    public function test_fetch_home_depot_sku_does_not_write_and_flags_unreachable(): void
+    {
+        $localizedFetcher = Mockery::mock(HomeDepotCaLocalizedPriceFetcher::class);
+        $localizedFetcher->shouldReceive('configuredStoreId')->andReturn('7263');
+        $localizedFetcher->shouldReceive('tryFetch')->andThrow(
+            new \Illuminate\Http\Client\ConnectionException('cURL error 28: Operation timed out')
+        );
+
+        $population = Mockery::mock(MaterialMetadataPopulationService::class);
+        $population->shouldNotReceive('applyToMaterial');
+
+        $service = new MaterialPriceSyncService(
+            Mockery::mock(MaterialPageFetcher::class),
+            new HomeDepotCaProductParser($localizedFetcher),
+            $localizedFetcher,
+            Mockery::mock(AmazonCaSerpApiProductFetcher::class),
+            $population,
+        );
+
+        $result = $service->fetchHomeDepotSku('1001898921');
+
+        $this->assertSame(Material::SCRAPE_FAILED, $result['status']);
+        $this->assertTrue($result['unreachable']);
+        $this->assertNull($result['parsed']);
+    }
+
     private function homeDepotMaterial()
     {
         $material = Mockery::mock(Material::class)->makePartial();

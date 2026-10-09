@@ -51,6 +51,28 @@ class Material extends Model
         'sort_order' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (Material $material) {
+            $material->store_sku = HomeDepotCaUrls::normalizeStoredSku($material->store_sku);
+        });
+    }
+
+    public function isCatalogReady(): bool
+    {
+        if (! $this->is_active) {
+            return false;
+        }
+
+        $name = trim((string) $this->name);
+        $sku = trim((string) ($this->store_sku ?? ''));
+        if ($name === '' || ($sku !== '' && strcasecmp($name, 'HD '.$sku) === 0)) {
+            return false;
+        }
+
+        return is_numeric($this->price_cad);
+    }
+
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(MaterialVendor::class, 'vendor_id');

@@ -464,7 +464,7 @@
           finishHdPull();
           hdError = {
             query: lastQuery || sku,
-            message: "Couldn't find that SKU on Home Depot"
+            message: "Home Depot couldn't be reached, try again"
           };
           render(rows, lastQuery || sku);
         });

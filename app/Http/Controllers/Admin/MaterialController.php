@@ -7,7 +7,7 @@ use App\Models\Material;
 use App\Models\MaterialCategory;
 use App\Models\MaterialVendor;
 use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
-use App\Services\MaterialScraping\HomeDepotCaUrls;
+use App\Services\MaterialScraping\MaterialCatalogHomeDepotPullService;
 use App\Services\MaterialScraping\MaterialPriceSyncService;
 use App\Services\MaterialScraping\MaterialSkuImportService;
 use App\Services\MaterialShortNameAiService;
@@ -471,54 +471,21 @@ class MaterialController extends Controller
 
     public function importFromHomeDepot(
         Request $request,
-        MaterialSkuImportService $importer,
-        MaterialPriceSyncService $syncService,
+        MaterialCatalogHomeDepotPullService $puller,
     ): JsonResponse {
         $data = $request->validate([
             'query' => ['required', 'string', 'max:2000'],
         ]);
 
-        $sku = HomeDepotCaUrls::normalizeSku($data['query']);
-        if ($sku === null) {
-            return response()->json([
-                'message' => 'Enter a Home Depot SKU or product URL.',
-            ], 422);
+        $result = $puller->pull($data['query']);
+        $payload = ['message' => $result['message']];
+
+        if ($result['material'] !== null) {
+            $payload['created'] = $result['created'];
+            $payload['material'] = $this->catalogPickerOption($result['material']);
         }
 
-        $existing = $importer->findBySku($sku);
-        if ($existing !== null && $this->catalogMaterialIsReady($existing)) {
-            return response()->json([
-                'created' => false,
-                'material' => $this->catalogPickerOption($existing),
-            ]);
-        }
-
-        $result = $importer->importSku($sku);
-        $material = Material::query()->with('vendor')->find($result['material_id']);
-
-        if ($material === null) {
-            return response()->json([
-                'message' => "Couldn't find that SKU on Home Depot",
-            ], 422);
-        }
-
-        $syncResult = $syncService->syncOne($material);
-        $material->refresh()->load('vendor');
-
-        if (($syncResult['status'] ?? null) !== Material::SCRAPE_OK) {
-            if (($result['action'] ?? '') === 'created') {
-                $material->delete();
-            }
-
-            return response()->json([
-                'message' => "Couldn't find that SKU on Home Depot",
-            ], 422);
-        }
-
-        return response()->json([
-            'created' => ($result['action'] ?? '') === 'created',
-            'material' => $this->catalogPickerOption($material),
-        ]);
+        return response()->json($payload, $result['status']);
     }
 
     public function bulkImportStart(Request $request, MaterialSkuImportService $importer): JsonResponse
@@ -1128,21 +1095,6 @@ class MaterialController extends Controller
             (int) ($state['failed'] ?? 0),
             $totalMaterials,
         );
-    }
-
-    private function catalogMaterialIsReady(Material $material): bool
-    {
-        if (! $material->is_active) {
-            return false;
-        }
-
-        $name = trim((string) $material->name);
-        $sku = trim((string) ($material->store_sku ?? ''));
-        if ($name === '' || ($sku !== '' && strcasecmp($name, 'HD '.$sku) === 0)) {
-            return false;
-        }
-
-        return is_numeric($material->price_cad);
     }
 
     /**
