@@ -567,6 +567,9 @@ class ClientProjectQuotation extends Model
             if (array_key_exists('hst_taxable_amount', $row)) {
                 $cleanRow['hst_taxable_amount'] = round((float) $row['hst_taxable_amount'], 2);
             }
+            if (array_key_exists('hst_amount', $row)) {
+                $cleanRow['hst_amount'] = round((float) $row['hst_amount'], 2);
+            }
             if (! empty($row['is_heading'])) {
                 $cleanRow['is_heading'] = true;
             }

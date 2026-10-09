@@ -685,10 +685,15 @@ JS;
                 'include_commute' => false,
                 'include_debris_removal' => false,
             ]);
+            $sqLines = $sq->summaryPdfLineItems();
+            $sqHst = 0.0;
+            foreach ($sqLines as $line) {
+                $sqHst += \App\Models\ClientProjectQuotation::lineHstAmount($line);
+            }
             $cpq = new \App\Models\ClientProjectQuotation([
                 'source_type' => \App\Models\ClientProjectQuotation::SOURCE_FENCE,
                 'pdf_fold_version' => 2,
-                'items' => $sq->summaryPdfLineItems(),
+                'items' => $sqLines,
             ]);
 
             $jsHst = 0.0;
@@ -703,6 +708,7 @@ JS;
             if (abs($jsHst - $cpq->pdfHst()) > 0.001 || abs($jsGrand - $cpq->pdfGrandTotal()) > 0.001) {
                 $mismatches++;
             }
+            $this->assertEquals($jsHst, round($sqHst, 2), 'SQ aggregate HST case '.$caseIdx);
             $this->assertEquals($jsHst, $cpq->pdfHst(), 'HST case '.$caseIdx);
             $this->assertEquals($jsGrand, $cpq->pdfGrandTotal(), 'total case '.$caseIdx);
         }
