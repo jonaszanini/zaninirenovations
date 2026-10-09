@@ -216,6 +216,7 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString("if (/\\bpails\\b/i.test(unit)", $js);
         $this->assertStringContainsString("addEventListener('pageshow'", $js);
         $this->assertStringContainsString('var shiftPan', $js);
+        $this->assertStringContainsString('function phoneFeedbackGutter(', $js);
         $this->assertMatchesRegularExpression(
             '/function deleteCurrentKit\([\s\S]*payload\.ok === false[\s\S]*Kit deleted/',
             $js

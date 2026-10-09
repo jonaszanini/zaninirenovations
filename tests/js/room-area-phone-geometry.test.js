@@ -40,6 +40,7 @@ function assertCssGeometry() {
     CSS.includes('.util-ra--fullpage .util-ra-feedback.is-ok { color: var(--admin-success, #2e7d32); }'),
     'phone CSS keeps success status green'
   );
+  assert.ok(CSS.includes('--ra-feedback-gutter: 22px'), '390 reserves a one-line status gutter');
 }
 
 function resolveKonvaFile() {
