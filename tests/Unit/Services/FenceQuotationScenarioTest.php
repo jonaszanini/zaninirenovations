@@ -179,7 +179,7 @@ class FenceQuotationScenarioTest extends TestCase
         ]);
 
         $this->assertSame(0, $result['geometry']['gates_on_sides']);
-        $this->assertSame(1, $result['geometry']['gate_posts']);
+        $this->assertSame(2, $result['geometry']['gate_posts']);
         $this->assertGreaterThan(
             $result['geometry']['structural_posts'],
             $result['geometry']['posts_before_waste']
