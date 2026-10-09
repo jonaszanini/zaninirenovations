@@ -288,7 +288,7 @@
                          name="items[{{ $i }}][amount]"
                          value="{{ $row['amount'] !== '' ? number_format((float) $row['amount'], 2, '.', '') : '' }}"
                          class="admin-input cp-money-input cp-quotation-row-amount"
-                         placeholder="0.00" data-cp-money-entry="direct"@if($allowNegativeAmount) data-cp-money-allow-negative@endif>
+                         placeholder="0.00" data-cp-money-entry="direct"{{ $allowNegativeAmount ? ' data-cp-money-allow-negative' : '' }}>
                 </td>
                 <td class="col-actions">
                   <button type="button"
