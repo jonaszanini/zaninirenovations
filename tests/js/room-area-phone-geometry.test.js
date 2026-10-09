@@ -39,6 +39,10 @@ function assertCssGeometry() {
     /\.util-ra-first-tip\s*\{[^}]*flex:\s*0 0 auto/.test(CSS.replace(/\s+/g, ' ')),
     'first-tip must not grow with flex: 1 0 100%'
   );
+  assert.ok(
+    /\.util-ra-first-tip\s*\{[^}]*width:\s*auto/.test(CSS.replace(/\s+/g, ' ')),
+    'first-tip is an inline toolbar chip, not a full-width strip'
+  );
 }
 
 function downloadFile(url, destPath) {
@@ -381,6 +385,32 @@ async function measureViewports() {
         0,
         'no empty block taller than 4px between toolbar and Project at ' + width + ': ' + JSON.stringify(strip)
       );
+
+      const placed = await page.evaluate(() => {
+        const tools = document.querySelector('.util-ra-full-header__row--tools');
+        const tip = document.querySelector('[data-ra-first-tip]');
+        const bar = document.querySelector('.util-ra-project-bar');
+        if (!tools || !tip || !bar) return { missing: true };
+        tip.hidden = false;
+        const t = tools.getBoundingClientRect();
+        const r = tip.getBoundingClientRect();
+        const b = bar.getBoundingClientRect();
+        return {
+          inToolbar: tools.contains(tip),
+          tipTop: r.top,
+          toolsTop: t.top,
+          toolsBottom: t.bottom,
+          barTop: b.top,
+          display: getComputedStyle(tip).display,
+        };
+      });
+      assert.ok(!placed.missing, 'first-tip exists at ' + width);
+      assert.ok(placed.inToolbar, 'visible first-tip lives in the View toolbar at ' + width);
+      assert.ok(placed.display !== 'none' && placed.tipTop >= placed.toolsTop - 1 && placed.tipTop < placed.barTop, 'first-tip is on the toolbar row at ' + width + ': ' + JSON.stringify(placed));
+      await page.evaluate(() => {
+        const tip = document.querySelector('[data-ra-first-tip]');
+        if (tip) tip.hidden = true;
+      });
     }
   } finally {
     await browser.close();

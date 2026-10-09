@@ -1611,15 +1611,8 @@ html.admin-dark .util-ra-icon-toggle:has([data-ra-lock-layers]:checked) {
 }
 
 html.admin-dark .util-ra-first-tip {
-  border-top-color: var(--admin-border);
-}
-
-html.admin-dark .util-ra-first-tip__text {
-  color: var(--admin-text);
-}
-
-html.admin-dark .util-ra-first-tip__text a {
-  color: var(--admin-primary);
+  background: transparent;
+  border-color: transparent;
 }
 
 html.admin-dark .util-ra-guide {

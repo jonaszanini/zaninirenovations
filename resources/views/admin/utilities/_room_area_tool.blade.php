@@ -135,6 +135,18 @@
                   <span class="util-ra-full-header__panel-label">Panel</span>
                 </button>
               </span>
+              <div class="util-ra-first-tip" data-ra-first-tip hidden>
+                <a href="{{ $guideUrl }}" class="admin-btn admin-btn--ghost util-ra-first-tip__guide">
+                  <i class="fa fa-question-circle" aria-hidden="true"></i>
+                  <span>New here</span>
+                </a>
+                @include('admin.utilities._room_area_help_pop', [
+                  'tipId' => 'first-tip',
+                  'label' => 'About the Room Area guide',
+                  'text' => 'Open the Room Area guide for a short on-site walkthrough. The Guide button in the top row stays after you dismiss this.',
+                ])
+                <button type="button" class="admin-btn admin-btn--primary util-ra-first-tip__dismiss" data-ra-first-tip-dismiss>Got it</button>
+              </div>
               <div class="util-ra-shortcuts" data-ra-shortcuts>
                 <span class="util-ra-tip util-ra-tip--end" data-tooltip="Show keyboard shortcuts for draw, zoom, and pan.">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-shortcuts-toggle aria-label="Keyboard shortcuts" aria-expanded="false" aria-controls="ra-shortcuts-popover">
@@ -160,10 +172,6 @@
               </div>
             </div>
           </div>
-        </div>
-        <div class="util-ra-first-tip" data-ra-first-tip hidden>
-          <p class="util-ra-first-tip__text">New here? Open the <a href="{{ $guideUrl }}">Room Area guide</a> for a short on-site walkthrough.</p>
-          <button type="button" class="admin-btn admin-btn--primary util-ra-first-tip__dismiss" data-ra-first-tip-dismiss>Got it</button>
         </div>
       </header>
     @endif

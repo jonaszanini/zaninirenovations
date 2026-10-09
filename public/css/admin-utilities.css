@@ -5301,15 +5301,16 @@ body:has(.util-ra--fullpage) {
 }
 
 .util-ra-first-tip {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.4rem 0.75rem;
+  gap: 0.2rem;
   flex: 0 0 auto;
-  width: 100%;
+  width: auto;
   margin: 0;
-  padding: 0.25rem 0 0.05rem;
-  border-top: 1px solid var(--admin-border);
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .util-ra-first-tip[hidden],
@@ -5327,17 +5328,11 @@ body:has(.util-ra--fullpage) {
 }
 
 .util-ra-first-tip__text {
-  margin: 0;
-  flex: 1 1 12rem;
-  min-width: 0;
-  font-size: 0.82rem;
-  line-height: 1.35;
-  color: var(--admin-text);
+  display: none;
 }
 
-.util-ra-first-tip__text a {
-  font-weight: 600;
-  color: var(--admin-primary);
+.util-ra-first-tip__guide {
+  flex-shrink: 0;
 }
 
 .util-ra-first-tip__dismiss {
@@ -5931,11 +5926,7 @@ body:has(.util-ra--fullpage) {
   }
 
   .util-ra-first-tip {
-    padding-top: 0.2rem;
-  }
-
-  .util-ra-first-tip__text {
-    font-size: 0.78rem;
+    padding: 0;
   }
 
   .util-ra-object-dock__head .util-ra-tool-group__label {
