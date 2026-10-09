@@ -1316,6 +1316,21 @@ select.admin-input,
   padding-right: 2.5rem;
 }
 
+.admin-body input[type="date"],
+.admin-body input[type="time"],
+.admin-body input[type="datetime-local"] {
+  color-scheme: light;
+}
+
+.admin-body input[type="date"]::-webkit-calendar-picker-indicator,
+.admin-body input[type="time"]::-webkit-calendar-picker-indicator,
+.admin-body input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 .admin-input:focus,
 .admin-form-group input:focus:not(.admin-checkbox__input),
 .admin-form-group select:focus,

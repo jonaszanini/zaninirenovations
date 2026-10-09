@@ -384,6 +384,7 @@
   </div>
 
   <script src="{{ asset('js/admin-theme.js') }}?v={{ @filemtime(public_path('js/admin-theme.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-date-picker.js') }}?v={{ @filemtime(public_path('js/admin-date-picker.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-avif-to-webp.js') }}?v={{ @filemtime(public_path('js/admin-avif-to-webp.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-dialog.js') }}?v={{ @filemtime(public_path('js/admin-dialog.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-info-tip.js') }}?v={{ @filemtime(public_path('js/admin-info-tip.js')) ?: time() }}"></script>
