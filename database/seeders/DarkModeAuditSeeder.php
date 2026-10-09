@@ -365,16 +365,16 @@ class DarkModeAuditSeeder extends Seeder
 
     private function blogListPlaceholderPath(): ?string
     {
-        $relative = 'blog/list-placeholder.jpg';
+        $relative = 'blog/list-placeholder.webp';
         $dest = storage_path('app/public/'.$relative);
         if (! is_dir(dirname($dest)) && ! mkdir(dirname($dest), 0775, true) && ! is_dir(dirname($dest))) {
             return null;
         }
 
         foreach ([
-            public_path('images/gallery_1.jpg'),
-            public_path('images/blog_thumb_1.jpg'),
             public_path('images/services/deck.webp'),
+            public_path('images/services/kitchen-remodel.webp'),
+            public_path('images/about-us/jonas.webp'),
         ] as $src) {
             if (is_file($src) && copy($src, $dest)) {
                 return $relative;

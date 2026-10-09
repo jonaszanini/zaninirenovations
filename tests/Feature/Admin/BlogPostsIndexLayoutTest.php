@@ -151,12 +151,12 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
 
     private function storeListPlaceholderImage(): string
     {
-        $relative = 'blog/test-list-placeholder.jpg';
+        $relative = 'blog/test-list-placeholder.webp';
         $dest = storage_path('app/public/'.$relative);
         if (! is_dir(dirname($dest))) {
             mkdir(dirname($dest), 0775, true);
         }
-        $src = public_path('images/gallery_1.jpg');
+        $src = public_path('images/services/deck.webp');
         $this->assertFileExists($src);
         copy($src, $dest);
         $this->assertFileExists($dest);
