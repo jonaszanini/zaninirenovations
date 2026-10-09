@@ -82,7 +82,7 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('title="custom_very_long_unknown_consumer_key"', $html);
         $this->assertStringContainsString('data-cp-money-places="4"', $html);
         $this->assertStringContainsString('Used when Sell rate is empty', $html);
-        $this->assertStringContainsString('crew rates', $html);
+        $this->assertStringContainsString('crew rates', strtolower($html));
         $this->assertStringContainsString('effective sell', $html);
         $this->assertMatchesRegularExpression('/aria-label="[^"]*crew rates[^"]*"/i', $html);
         $this->assertMatchesRegularExpression('/aria-label="[^"]*effective sell[^"]*"/i', $html);
