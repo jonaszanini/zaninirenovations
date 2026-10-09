@@ -464,7 +464,7 @@ class MillworkPartBuilder
         $innerH = max(0.5, $h - (2 * $mat));
         $bayW = $cols > 0 ? $innerW / $cols : $innerW;
         $parts = [];
-        $parts[] = $this->rect('kx-side', 'Kallax side', $d, $h, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+        $parts[] = $this->rect('kx-side', 'Kallax side', $h, $d, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         $parts[] = $this->rect('kx-tb', 'Kallax top/bottom', $innerW, $d, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         if ($cols > 1) {
             $parts[] = $this->rect('kx-vert', 'Kallax vertical', $d, $innerH, $qty * ($cols - 1), GrainDirection::ANY, false, 0, 'none');
@@ -518,10 +518,10 @@ class MillworkPartBuilder
         $innerW = max(0.5, $w - (($left ? $mat : 0) + ($right ? $mat : 0)));
         $parts = [];
         if ($left) {
-            $parts[] = $this->rect('cab-left', 'Cabinet left', $d, $h, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->rect('cab-left', 'Cabinet left', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         if ($right) {
-            $parts[] = $this->rect('cab-right', 'Cabinet right', $d, $h, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->rect('cab-right', 'Cabinet right', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         $parts[] = $this->rect('cab-top', 'Cabinet top', $innerW, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         $parts[] = $this->rect('cab-bot', 'Cabinet bottom', $innerW, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
@@ -539,7 +539,7 @@ class MillworkPartBuilder
             $gap = $overlay === 'inset' ? 0.125 : ($overlay === 'half' ? 0.375 : 0);
             $doorW = max(4, ($w / $doorCount) - $gap);
             $doorH = max(8, $boxH - $gap);
-            $parts[] = $this->rect('cab-door', 'Cabinet door', $doorW, $doorH, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
+            $parts[] = $this->rect('cab-door', 'Cabinet door', $doorH, $doorW, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
             $hinges = $qty * $doorCount * self::hingesForDoorHeight($doorH);
         }
         $slides = 0;
@@ -604,7 +604,7 @@ class MillworkPartBuilder
             $n++;
             $doors += $qty;
             $hinges += $qty * self::hingesForDoorHeight($h);
-            $parts[] = $this->rect('door-'.$n, 'Door '.$this->fmt($w).'×'.$this->fmt($h), $w, $h, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'all');
+            $parts[] = $this->rect('door-'.$n, 'Door '.$this->fmt($w).'×'.$this->fmt($h), $h, $w, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'all');
             $labels[] = $qty.'× door '.$this->fmt($w).'×'.$this->fmt($h);
             if ($band) {
                 $edgeLf += $qty * (2 * ($w + $h)) / 12.0;
@@ -647,7 +647,7 @@ class MillworkPartBuilder
         $parts[] = $this->rect('bn-seat', 'Bench seat', $len, $dep, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         $parts[] = $this->rect('bn-front', 'Bench front', $len, $h, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         if ($includeSides) {
-            $parts[] = $this->rect('bn-side', 'Bench side', $dep, $h, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->rect('bn-side', 'Bench side', $h, $dep, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         if ($includeBack) {
             $parts[] = $this->rect('bn-back', 'Bench back', $len, $h, $qty, GrainDirection::LENGTHWISE, false, 0, 'none', 'back');
@@ -712,10 +712,10 @@ class MillworkPartBuilder
         $bayW = $cols > 0 ? $innerW / $cols : $innerW;
         $parts = [];
         if ($left) {
-            $parts[] = $this->rect('cl-left', 'Closet left', $d, $h, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->rect('cl-left', 'Closet left', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         if ($right) {
-            $parts[] = $this->rect('cl-right', 'Closet right', $d, $h, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+            $parts[] = $this->rect('cl-right', 'Closet right', $h, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         }
         $parts[] = $this->rect('cl-top', 'Closet top', $innerW, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
         $parts[] = $this->rect('cl-bot', 'Closet bottom', $innerW, $d, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
@@ -733,7 +733,7 @@ class MillworkPartBuilder
             $gap = $overlay === 'inset' ? 0.125 : ($overlay === 'half' ? 0.375 : 0);
             $doorW = max(4, ($w / $doorCount) - $gap);
             $doorH = max(8, $h - $gap);
-            $parts[] = $this->rect('cl-door', 'Closet door', $doorW, $doorH, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
+            $parts[] = $this->rect('cl-door', 'Closet door', $doorH, $doorW, $qty * $doorCount, GrainDirection::LENGTHWISE, $band, $eb, 'all');
             $hinges = $qty * $doorCount * self::hingesForDoorHeight($doorH);
         }
         $slides = 0;

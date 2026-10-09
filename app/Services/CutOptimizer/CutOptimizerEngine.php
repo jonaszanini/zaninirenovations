@@ -208,11 +208,11 @@ class CutOptimizerEngine
             foreach ($sortRules as $sortRule) {
                 $candidate = $parts;
                 usort($candidate, $sortRule);
-                $sheets = $this->packCandidate($candidate, $stock, $kerf, $trim, $minOffcut, $strategy);
-                $score = $this->fitness($sheets, $stock);
+                $packed = $this->packCandidate($candidate, $stock, $kerf, $trim, $minOffcut, $strategy);
+                $score = $this->fitness($packed['sheets'], $stock, count($packed['unplaced']));
                 if ($score < $bestScore) {
                     $bestScore = $score;
-                    $bestSolution = $sheets;
+                    $bestSolution = $packed['sheets'];
                 }
             }
         }
@@ -222,7 +222,7 @@ class CutOptimizerEngine
 
     /**
      * @param  list<Part>  $parts
-     * @return list<GuillotineSheet>
+     * @return array{sheets: list<GuillotineSheet>, unplaced: list<Part>}
      */
     private function packCandidate(
         array $parts,
@@ -233,6 +233,7 @@ class CutOptimizerEngine
         string $strategy
     ): array {
         $sheets = [];
+        $unplaced = [];
         $n = 0;
         foreach ($parts as $part) {
             $placed = false;
@@ -257,21 +258,22 @@ class CutOptimizerEngine
                     $stock->label
                 );
                 if (! $new->insert($part, $strategy)) {
+                    $unplaced[] = $part;
                     continue;
                 }
                 $sheets[] = $new;
             }
         }
 
-        return $sheets;
+        return ['sheets' => $sheets, 'unplaced' => $unplaced];
     }
 
     /**
      * @param  list<GuillotineSheet>  $sheets
      */
-    private function fitness(array $sheets, StockOption $stock): float
+    private function fitness(array $sheets, StockOption $stock, int $unplacedCount = 0): float
     {
-        $sheetPenalty = count($sheets) * 100000.0;
+        $sheetPenalty = ($unplacedCount * 10000000.0) + (count($sheets) * 100000.0);
         $unused = 0.0;
         $largestOffcut = 0.0;
         foreach ($sheets as $sheet) {
@@ -317,7 +319,11 @@ class CutOptimizerEngine
             usort($smaller, function (StockOption $a, StockOption $b): int {
                 return $a->area() <=> $b->area();
             });
+            $currentPrice = $this->stockPriceForSheet($sheet, $stockOptions);
             foreach ($smaller as $opt) {
+                if ($opt->unitPrice + GuillotineSheet::EPS >= $currentPrice) {
+                    continue;
+                }
                 if (! $this->allPartsFitStock($sheetParts, $opt, $kerf, $trim)) {
                     continue;
                 }
@@ -373,5 +379,19 @@ class CutOptimizerEngine
         }
 
         return $area <= ($opt->width * $opt->length) + GuillotineSheet::EPS;
+    }
+
+    /**
+     * @param  list<StockOption>  $stockOptions
+     */
+    private function stockPriceForSheet(GuillotineSheet $sheet, array $stockOptions): float
+    {
+        foreach ($stockOptions as $opt) {
+            if (abs($opt->width - $sheet->width) < 0.2 && abs($opt->length - $sheet->length) < 0.2) {
+                return $opt->unitPrice;
+            }
+        }
+
+        return INF;
     }
 }

@@ -152,6 +152,24 @@
                 <i class="fa fa-print"></i> Print cut list
               </button>
             </div>
+            @php
+              $unplacedParts = is_array($initialPreview['cut_plan']['unplaced'] ?? null) ? $initialPreview['cut_plan']['unplaced'] : [];
+              $cutSeams = is_array($initialPreview['cut_plan']['seams'] ?? null) ? $initialPreview['cut_plan']['seams'] : [];
+            @endphp
+            <div id="mw-unplaced-banner" class="admin-flash admin-flash--error mw-unplaced-banner" role="alert" @if ($unplacedParts === []) hidden @endif>
+              <strong>Parts do not fit on any sheet</strong>
+              <p>These parts are not in the cut plan and are not in the price. Change the size or pick a larger sheet. The client PDF cannot be downloaded until every part fits.</p>
+              <ul id="mw-unplaced-list">
+                @foreach ($unplacedParts as $missing)
+                  <li>{{ $missing['label'] ?? 'Part' }}{{ ! empty($missing['size']) ? ' · '.$missing['size'] : '' }}</li>
+                @endforeach
+              </ul>
+            </div>
+            <div id="mw-cut-seams" class="mw-cut-seams" @if ($cutSeams === []) hidden @endif>
+              @foreach ($cutSeams as $seam)
+                <p>{{ $seam['label'] ?? 'Back' }}: {{ $seam['note'] ?? '' }} ({{ implode(' + ', $seam['panels'] ?? []) }}). Finished sizes still add up to {{ $seam['original'] ?? '' }}.</p>
+              @endforeach
+            </div>
             <p class="admin-form-help" id="mw-cut-meta">
               {{ (int) ($initialPreview['cut_plan']['sheet_count'] ?? 0) }} sheet(s)
               @if (! empty($initialPreview['cut_plan']['yield_pct']))

@@ -73,6 +73,27 @@ class MillworkQuotation extends Model
         return max(0, (int) ($cut['sheet_count'] ?? 0));
     }
 
+    /**
+     * v1 snapshots (no unplaced key) stay downloadable. Live v2 plans with
+     * leftover parts block the client PDF.
+     */
+    public function hasUnplacedCutParts(): bool
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
+        $unplaced = $cut['unplaced'] ?? null;
+
+        return is_array($unplaced) && $unplaced !== [];
+    }
+
+    public function cutPlanVersion(): int
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
+
+        return (int) ($cut['version'] ?? 1);
+    }
+
     public function displayTitle(): string
     {
         return 'Custom Millwork — '.$this->quote_number;

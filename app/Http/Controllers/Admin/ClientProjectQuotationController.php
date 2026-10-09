@@ -152,6 +152,24 @@ class ClientProjectQuotationController extends Controller
     }
 
     /**
+     * Client PDF / send must not produce a file while millwork parts are unplaced.
+     */
+    protected function rejectUnplacedMillworkPdf(ClientProjectQuotation $quotation)
+    {
+        if ($quotation->source_type !== ClientProjectQuotation::SOURCE_MILLWORK) {
+            return null;
+        }
+        $millwork = $quotation->source_id
+            ? MillworkQuotation::query()->find($quotation->source_id)
+            : null;
+        if (! $millwork || ! $millwork->hasUnplacedCutParts()) {
+            return null;
+        }
+
+        abort(422, 'This quotation has parts that do not fit on any sheet. Fix the cut plan before sending or downloading the PDF.');
+    }
+
+    /**
      * Render and stream the PDF inline (so the browser displays it instead
      * of downloading by default). Used by the "Download PDF" button.
      */
@@ -161,6 +179,10 @@ class ClientProjectQuotationController extends Controller
 
         if (!$quotation->hasContent()) {
             return back()->with('error', 'There is no quotation to download yet. Please add at least one line item first.');
+        }
+
+        if ($response = $this->rejectUnplacedMillworkPdf($quotation)) {
+            return $response;
         }
 
         $pdf = $this->renderPdf($client_project, $quotation);
@@ -177,6 +199,10 @@ class ClientProjectQuotationController extends Controller
 
         if (!$quotation->hasContent()) {
             abort(404, 'Quotation not available.');
+        }
+
+        if ($response = $this->rejectUnplacedMillworkPdf($quotation)) {
+            return $response;
         }
 
         $pdf = $this->renderPdf($client_project, $quotation);
@@ -198,6 +224,10 @@ class ClientProjectQuotationController extends Controller
 
         if (!$quotation->hasContent()) {
             return back()->with('error', 'Please add at least one line item before sending the quotation.');
+        }
+
+        if ($response = $this->rejectUnplacedMillworkPdf($quotation)) {
+            return $response;
         }
 
         $emailTo = trim((string) $client_project->client_email);

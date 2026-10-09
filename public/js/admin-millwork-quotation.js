@@ -192,6 +192,7 @@
         return !String(r.key || '').startsWith('extra_');
       }));
       renderCutPlan(data.cut_plan || {});
+      renderUnplacedBanner(data.cut_plan || {});
       var liveGrand = Number(summary.grand_total || 0) > 0
         ? Number(summary.grand_total) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount
         : 0;
@@ -252,6 +253,35 @@
       var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
       html += '<div class="pq-row pq-row--hl"><span>Total</span><span>' + fmt(grand) + '</span></div>';
       body.innerHTML = html;
+    }
+
+    function renderUnplacedBanner(plan) {
+      var banner = document.getElementById('mw-unplaced-banner');
+      var list = document.getElementById('mw-unplaced-list');
+      var seamsRoot = document.getElementById('mw-cut-seams');
+      var unplaced = plan.unplaced || [];
+      var seams = plan.seams || [];
+      if (banner) {
+        banner.hidden = unplaced.length === 0;
+      }
+      if (list) {
+        list.innerHTML = unplaced.map(function (row) {
+          var label = escapeHtml(row.label || 'Part');
+          var size = row.size ? ' · ' + escapeHtml(row.size) : '';
+          return '<li>' + label + size + '</li>';
+        }).join('');
+      }
+      if (seamsRoot) {
+        seamsRoot.hidden = seams.length === 0;
+        seamsRoot.innerHTML = seams.map(function (seam) {
+          var panels = (seam.panels || []).join(' + ');
+          var note = seam.note || '';
+          var original = seam.original || '';
+          return '<p>' + escapeHtml(seam.label || 'Back') + ': ' + escapeHtml(note)
+            + (panels ? ' (' + escapeHtml(panels) + ')' : '')
+            + '. Finished sizes still add up to ' + escapeHtml(original) + '.</p>';
+        }).join('');
+      }
     }
 
     function renderCutPlan(plan) {

@@ -8,6 +8,7 @@ use App\Services\CutOptimizer\CutOptimizerEngine;
 use App\Services\CutOptimizer\Part;
 use App\Services\CutOptimizer\StockOption;
 use App\Services\CutOptimizer\SvgVisualizer;
+use App\Services\Millwork\MillworkPanelSplitter;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Support\QuotationBuildingLabor;
 use App\Support\QuotationHelperLabor;
@@ -22,6 +23,9 @@ class MillworkQuotationCalculator
     ];
 
     public const HST_RATE = MillworkQuotation::HST_RATE;
+
+    /** Stored cut plans without this key (or with a lower value) keep the v1 snapshot. */
+    public const CUT_PLAN_VERSION = 2;
 
     /**
      * @return array<string, mixed>
@@ -272,6 +276,27 @@ class MillworkQuotationCalculator
             (float) ($cut['min_offcut_in'] ?? 2.0)
         );
 
+        if ((int) ($cutPlan['placed_part_count'] ?? 0) === 0 && ($cutPlan['unplaced'] ?? []) !== []) {
+            $shelfUnits = 0;
+            $floatingUnits = 0;
+            $cubeCount = 0;
+            $cabinetBoxSf = 0.0;
+            $doorCount = 0;
+            $benchSf = 0.0;
+            $closetSf = 0.0;
+            $mantelUnits = 0;
+            $wainscotLf = 0.0;
+            $trimLf = 0.0;
+            $boxSf = 0.0;
+            $edgeLf = 0.0;
+            $paintSf = 0.0;
+            $stainSf = 0.0;
+            $fasteners = 0;
+            foreach ($hardware as $k => $_) {
+                $hardware[$k] = 0.0;
+            }
+        }
+
         $edgeLfQuoted = $edgeLf * (1 + ($edgeWastePct / 100));
         $paintSfQuoted = $paintSf * (1 + ($finishWastePct / 100));
         $stainSfQuoted = $stainSf * (1 + ($finishWastePct / 100));
@@ -442,7 +467,7 @@ class MillworkQuotationCalculator
      * @param  array<string, mixed>  $inputs
      * @return list<string>
      */
-    public function validationHints(array $inputs, bool $draft): array
+    public function validationHints(array $inputs, bool $draft, ?MillworkSettings $settings = null): array
     {
         if ($draft) {
             return [];
@@ -483,6 +508,18 @@ class MillworkQuotationCalculator
         }
         if (! $hasPart) {
             $hints[] = 'Add at least one millwork piece with quantity and dimensions.';
+        }
+        if ($hasPart) {
+            $preview = $this->calculate($inputs, $settings);
+            $unplaced = is_array($preview['cut_plan']['unplaced'] ?? null) ? $preview['cut_plan']['unplaced'] : [];
+            if ($unplaced !== []) {
+                $labels = array_values(array_unique(array_filter(array_map(
+                    static fn ($row) => trim((string) ($row['label'] ?? '')),
+                    $unplaced
+                ))));
+                $list = $labels !== [] ? ' ('.implode(', ', $labels).')' : '';
+                $hints[] = 'These parts do not fit on any sheet we stock'.$list.'. Change the size or pick a larger sheet before publishing.';
+            }
         }
 
         return $hints;
@@ -528,42 +565,75 @@ class MillworkQuotationCalculator
     ): array {
         $engine = new CutOptimizerEngine();
         $visual = new SvgVisualizer();
+        $splitter = new MillworkPanelSplitter();
         $layouts = [];
         $sheetCount = 0;
         $usedByStock = [];
+        $unplaced = [];
+        $seams = [];
+        $originalPartCount = $this->partQty($primary) + $this->partQty($backs);
+        $packedPartCount = 0;
 
-        $runGroup = function (array $parts, ?array $preferred, string $group) use ($engine, $visual, $allSheets, $kerf, $trim, $minOffcut, &$layouts, &$sheetCount, &$usedByStock): void {
+        $runGroup = function (array $parts, ?array $preferred, string $group) use (
+            $engine,
+            $visual,
+            $splitter,
+            $allSheets,
+            $kerf,
+            $trim,
+            $minOffcut,
+            &$layouts,
+            &$sheetCount,
+            &$usedByStock,
+            &$unplaced,
+            &$seams,
+            &$packedPartCount
+        ): void {
             if ($parts === []) {
                 return;
             }
             $stocks = $this->stockOptionsFor($preferred, $allSheets);
-            $sheets = $engine->optimize($parts, $stocks, $kerf, $trim, $minOffcut);
+            $split = $splitter->splitOversizedBacks($parts, $stocks);
+            foreach ($split['seams'] as $seam) {
+                $seams[] = $seam;
+            }
+            $toPack = $split['parts'];
+            $sheets = $engine->optimize($toPack, $stocks, $kerf, $trim, $minOffcut);
+            $placedIds = [];
             foreach ($sheets as $packed) {
                 $sheetCount++;
                 $described = $visual->describe($packed);
                 $described['group'] = $group;
                 $layouts[] = $described;
+                $packedPartCount += count($packed->placedParts);
+                foreach ($packed->placedParts as $placed) {
+                    $placedIds[$placed->part->id] = true;
+                }
                 $key = $this->inchKey($packed->width, $packed->length).'|'.$group;
                 if (! isset($usedByStock[$key])) {
+                    $priced = $this->pricePackedSheet($packed, $preferred, $stocks);
                     $usedByStock[$key] = [
-                        'label' => $packed->label !== '' ? $packed->label : $this->inchKey($packed->width, $packed->length),
+                        'label' => $priced['name'],
                         'width' => $packed->width,
                         'length' => $packed->length,
                         'qty' => 0,
-                        'unit_price' => (float) ($preferred['unit_price'] ?? 0),
-                        'catalog_material_id' => $preferred['catalog_material_id'] ?? null,
-                        'name' => $preferred['name'] ?? $packed->label,
+                        'unit_price' => $priced['unit_price'],
+                        'catalog_material_id' => $priced['catalog_material_id'],
+                        'name' => $priced['name'],
                     ];
-                    foreach ($stocks as $opt) {
-                        if (abs($opt->width - $packed->width) < 0.2 && abs($opt->length - $packed->length) < 0.2) {
-                            $usedByStock[$key]['unit_price'] = $opt->unitPrice;
-                            $usedByStock[$key]['catalog_material_id'] = $opt->catalogMaterialId;
-                            $usedByStock[$key]['name'] = $opt->label;
-                            break;
-                        }
-                    }
                 }
                 $usedByStock[$key]['qty']++;
+            }
+            foreach ($engine->flattenParts($toPack) as $part) {
+                if (isset($placedIds[$part->id])) {
+                    continue;
+                }
+                $unplaced[] = [
+                    'id' => $part->id,
+                    'label' => $part->label,
+                    'size' => $this->inchKey($part->width, $part->length),
+                    'reason' => 'Does not fit on any sheet we stock',
+                ];
             }
         };
 
@@ -579,11 +649,16 @@ class MillworkQuotationCalculator
         }
 
         return [
+            'version' => self::CUT_PLAN_VERSION,
             'sheet_count' => $sheetCount,
             'yield_pct' => $totalArea > 0 ? round(100 - ($totalWaste / $totalArea * 100), 1) : 0.0,
             'kerf_in' => $kerf,
             'layouts' => $layouts,
             'stock_used' => array_values($usedByStock),
+            'original_part_count' => $originalPartCount,
+            'placed_part_count' => $packedPartCount,
+            'unplaced' => $unplaced,
+            'seams' => $seams,
         ];
     }
 
@@ -597,22 +672,25 @@ class MillworkQuotationCalculator
         $kind = (string) ($preferred['material_kind'] ?? 'plywood');
         $grade = (string) ($preferred['grade'] ?? 'cabinet');
         $thk = (float) ($preferred['thickness_in'] ?? 0.75);
+        $preferredId = (string) ($preferred['id'] ?? '');
         $options = [];
+        if (is_array($preferred) && $preferred !== []) {
+            $options[] = $this->stockOptionFromRow($preferred);
+        }
         foreach ($allSheets as $row) {
+            if ($preferredId !== '' && (string) ($row['id'] ?? '') === $preferredId) {
+                continue;
+            }
             if (abs((float) ($row['thickness_in'] ?? 0) - $thk) > 0.06) {
                 continue;
             }
             if (($row['material_kind'] ?? '') !== $kind) {
                 continue;
             }
-            $options[] = new StockOption(
-                (string) ($row['id'] ?? uniqid('st')),
-                (string) ($row['name'] ?? 'Sheet'),
-                (float) ($row['width_in'] ?? 48),
-                (float) ($row['length_in'] ?? 96),
-                (float) ($row['unit_price'] ?? 0),
-                isset($row['catalog_material_id']) ? (int) $row['catalog_material_id'] : null
-            );
+            if ((string) ($row['grade'] ?? '') !== $grade) {
+                continue;
+            }
+            $options[] = $this->stockOptionFromRow($row);
         }
         if ($options === []) {
             $w = (float) ($preferred['width_in'] ?? 48);
@@ -626,12 +704,77 @@ class MillworkQuotationCalculator
                 isset($preferred['catalog_material_id']) ? (int) $preferred['catalog_material_id'] : null
             );
             if ($thk >= 0.7) {
-                $options[] = new StockOption('half', '4×4 sheet', 48, 48, round(((float) ($preferred['unit_price'] ?? 0)) * 0.55, 2));
-                $options[] = new StockOption('quarter', '2×4 sheet', 24, 48, round(((float) ($preferred['unit_price'] ?? 0)) * 0.32, 2));
+                $fallbackPrice = (float) ($preferred['unit_price'] ?? 0);
+                $options[] = new StockOption('half', '4×4 sheet', 48, 48, round($fallbackPrice * 0.55, 2));
+                $options[] = new StockOption('quarter', '2×4 sheet', 24, 48, round($fallbackPrice * 0.32, 2));
             }
         }
 
         return $options;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function stockOptionFromRow(array $row): StockOption
+    {
+        return new StockOption(
+            (string) ($row['id'] ?? uniqid('st')),
+            (string) ($row['name'] ?? 'Sheet'),
+            (float) ($row['width_in'] ?? 48),
+            (float) ($row['length_in'] ?? 96),
+            (float) ($row['unit_price'] ?? 0),
+            isset($row['catalog_material_id']) ? (int) $row['catalog_material_id'] : null
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $preferred
+     * @param  list<StockOption>  $stocks
+     * @return array{name: string, unit_price: float, catalog_material_id: int|null}
+     */
+    private function pricePackedSheet($packed, ?array $preferred, array $stocks): array
+    {
+        $name = $packed->label !== '' ? $packed->label : $this->inchKey($packed->width, $packed->length);
+        $price = (float) ($preferred['unit_price'] ?? 0);
+        $catalogId = $preferred['catalog_material_id'] ?? null;
+        $preferredMatches = is_array($preferred)
+            && abs((float) ($preferred['width_in'] ?? 0) - $packed->width) < 0.2
+            && abs((float) ($preferred['length_in'] ?? 0) - $packed->length) < 0.2;
+        if ($preferredMatches) {
+            return [
+                'name' => (string) ($preferred['name'] ?? $name),
+                'unit_price' => (float) ($preferred['unit_price'] ?? 0),
+                'catalog_material_id' => $preferred['catalog_material_id'] ?? null,
+            ];
+        }
+        foreach ($stocks as $opt) {
+            if (abs($opt->width - $packed->width) < 0.2 && abs($opt->length - $packed->length) < 0.2) {
+                $name = $opt->label;
+                $price = $opt->unitPrice;
+                $catalogId = $opt->catalogMaterialId;
+                break;
+            }
+        }
+
+        return [
+            'name' => $name,
+            'unit_price' => $price,
+            'catalog_material_id' => $catalogId,
+        ];
+    }
+
+    /**
+     * @param  list<Part>  $parts
+     */
+    private function partQty(array $parts): int
+    {
+        $n = 0;
+        foreach ($parts as $part) {
+            $n += max(1, (int) $part->quantity);
+        }
+
+        return $n;
     }
 
     /**

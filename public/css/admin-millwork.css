@@ -224,6 +224,37 @@
   align-self: flex-end;
 }
 
+.mw-unplaced-banner {
+  margin: 0 0 12px;
+}
+.mw-unplaced-banner p {
+  margin: 6px 0 8px;
+  font-weight: 400;
+}
+.mw-unplaced-banner ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.mw-unplaced-banner li {
+  margin: 2px 0;
+  font-weight: 400;
+}
+.mw-cut-seams {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+.mw-cut-seams p {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.mw-cut-seams p:last-child {
+  margin-bottom: 0;
+}
+
 .mw-cut-plan {
   display: grid;
   gap: 16px;
