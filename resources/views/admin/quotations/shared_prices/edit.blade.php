@@ -693,11 +693,21 @@
     max-width: none;
   }
 
+  .sp-crew,
+  .sp-crew .sp-crew-grid,
+  .sp-crew .sp-crew-field {
+    min-width: 0;
+    max-width: 100%;
+  }
   .sp-crew .sp-crew-grid {
     flex-direction: column;
     gap: 0.75rem;
   }
-  .sp-crew .sp-crew-field .admin-input { width: 100%; }
+  .sp-crew .sp-crew-field .admin-input {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 }
 </style>
 @endpush
@@ -898,7 +908,7 @@
                     <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
                             title="Search catalog materials"
                             aria-label="Search catalog materials for {{ $work->label }}"
-                            onclick="this.nextElementSibling.querySelector('.admin-search-select__input').focus();">
+                            onclick="event.stopPropagation(); this.nextElementSibling.querySelector('.admin-search-select__input').focus();">
                       <i class="fa fa-search" aria-hidden="true"></i>
                     </button>
                     <div class="sp-search-wrap sp-search-wrap--hidden">

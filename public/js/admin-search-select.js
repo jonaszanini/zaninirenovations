@@ -244,12 +244,19 @@
         left = pad;
       }
       list.style.position = 'fixed';
+      list.style.boxSizing = 'border-box';
+      list.style.minWidth = '0';
       list.style.left = Math.round(left) + 'px';
       list.style.right = 'auto';
       list.style.top = (rect.bottom + 4) + 'px';
       list.style.width = Math.round(width) + 'px';
       list.style.maxWidth = maxW + 'px';
       list.style.zIndex = '200';
+      var placed = list.getBoundingClientRect();
+      if (placed.right > vw - pad || placed.left < pad) {
+        list.style.left = pad + 'px';
+        list.style.width = maxW + 'px';
+      }
     }
 
     function restoreList() {
@@ -261,6 +268,8 @@
       list.style.top = '';
       list.style.width = '';
       list.style.maxWidth = '';
+      list.style.minWidth = '';
+      list.style.boxSizing = '';
       list.style.zIndex = '';
     }
 

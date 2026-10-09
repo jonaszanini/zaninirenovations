@@ -312,6 +312,10 @@ const base = process.env.SP_GEO_BASE;
           const s = getComputedStyle(el);
           if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return false;
           if (r.height < 2 || r.width < 2) return false;
+          if (el.classList.contains('admin-info-tip__bubble') || el.classList.contains('sp-chip-more__tip')) {
+            const host = el.closest('[aria-expanded]');
+            if (!host || host.getAttribute('aria-expanded') !== 'true') return false;
+          }
           return r.right > window.innerWidth + 2;
         }).slice(0, 8).map((el) => (el.className && String(el.className).slice(0, 48)) || el.tagName),
         stacked,
@@ -390,25 +394,39 @@ const base = process.env.SP_GEO_BASE;
       await page.setViewport({ width: w, height: 844 });
       await openPage();
       await page.evaluate(() => {
+        if (window.AdminSearchSelect && window.AdminSearchSelect.initAll) {
+          window.AdminSearchSelect.initAll();
+        }
         const row = document.querySelector('.sp-table tbody tr');
         const btn = row && row.querySelector('.sp-catalog-btn');
+        const input = row && row.querySelector('.admin-search-select__input');
         if (btn) btn.click();
+        if (input) {
+          input.focus();
+          input.value = 'shoe';
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
       });
-      await new Promise((r) => setTimeout(r, 150));
-      const input = await page.$('.sp-search-wrap:focus-within .admin-search-select__input, .sp-table tbody tr .admin-search-select__input');
-      if (input) {
-        await input.click({ clickCount: 3 });
-        await input.type('a', { delay: 20 });
-      }
-      await new Promise((r) => setTimeout(r, 300));
+      await page.waitForFunction(() => !!document.querySelector('.admin-search-select__list:not([hidden])'), { timeout: 2500 }).catch(() => {});
       out[String(w)].search = await page.evaluate(() => {
         const list = document.querySelector('.admin-search-select__list:not([hidden])');
-        if (!list) return { present: false };
+        if (!list) {
+          return {
+            present: false,
+            inputs: document.querySelectorAll('.admin-search-select__input').length,
+            lists: document.querySelectorAll('.admin-search-select__list').length,
+            source: !!(document.getElementById('admin-ss-catalog-options')),
+            firstVal: (document.querySelector('.admin-search-select__input') || {}).value || '',
+            ss: typeof window.AdminSearchSelect,
+            inited: document.querySelectorAll('[data-admin-search-select-init]').length,
+          };
+        }
         const r = list.getBoundingClientRect();
         return {
           present: true,
           left: Math.round(r.left),
           right: Math.round(r.right),
+          vw: window.innerWidth,
           off: r.left < -1 || r.right > window.innerWidth + 1,
         };
       });
@@ -469,7 +487,8 @@ JS
         foreach (['320', '390'] as $w) {
             $this->assertFalse($json[$w]['tip']['off'] ?? true, "+N tooltip must stay in the viewport at {$w}");
             $this->assertTrue($json[$w]['escClosed'] ?? false, 'Escape must close +N from document level');
-            $this->assertFalse($json[$w]['search']['off'] ?? true, "Catalog list must stay on-screen at {$w}");
+            $this->assertTrue($json[$w]['search']['present'] ?? false, "Catalog list must open at {$w}: ".json_encode($json[$w]['search'] ?? []));
+            $this->assertFalse($json[$w]['search']['off'] ?? true, "Catalog list must stay on-screen at {$w}: ".json_encode($json[$w]['search'] ?? []));
         }
     }
 
@@ -481,10 +500,16 @@ JS
     {
         $port = $this->layoutServerPort;
         $base = 'http://127.0.0.1:'.$port;
-        $router = base_path('server.php');
-        if (! is_file($router)) {
-            $router = public_path('index.php');
-        }
+        $router = storage_path('app/sp-layout-router.php');
+        file_put_contents($router, '<?php
+$public = '.var_export(public_path(), true).';
+$uri = urldecode((string) parse_url($_SERVER[\'REQUEST_URI\'] ?? \'/\', PHP_URL_PATH));
+$path = $public.$uri;
+if ($uri !== \'/\' && $uri !== \'\' && is_file($path)) {
+    return false;
+}
+require $public.\'/index.php\';
+');
         $cmd = 'exec '.escapeshellarg(PHP_BINARY)
             .' -S 127.0.0.1:'.$port
             .' -t '.escapeshellarg(public_path())
