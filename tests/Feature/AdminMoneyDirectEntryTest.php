@@ -75,7 +75,17 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertStringNotContainsString('parseHybridCadMoney', $invoiceEdit);
         $this->assertMatchesRegularExpression('/amtRaw\s*=\s*amtInput\s*\?\s*parseAmount\(\s*amtInput\s*\)/', $invoiceEdit);
         $this->assertStringContainsString('data-cp-money-allow-negative', $invoiceEdit);
+        $this->assertStringContainsString('$allowNegativeAmount', $invoiceEdit);
+        $this->assertStringContainsString('syncRowMoneySign', $invoiceEdit);
         $this->assertStringContainsString('moneyAllowsNegative', $js);
+        $this->assertStringContainsString('function roundToPlaces', $js);
+        $calculator = file_get_contents(app_path('Services/Invoice/InvoiceTotalsCalculator.php'));
+        $this->assertIsString($calculator);
+        $this->assertStringContainsString('Materials and gas amounts cannot be negative.', $calculator);
+        $this->assertDoesNotMatchRegularExpression(
+            '/LINE_KIND_GAS\)\s*&&\s*\$amount\s*<\s*0\)\s*\{\s*continue;/',
+            $calculator
+        );
         $this->assertDoesNotMatchRegularExpression(
             '/parsed\.negative[\s\S]{0,160}input\.value\s*=\s*[\'"][\'"]/',
             $js
@@ -235,6 +245,10 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertFalse((bool) ($report['behaviors']['allowNegativeInvalid'] ?? true));
         $this->assertEqualsWithDelta(-200.0, (float) ($report['behaviors']['allowNegativeTypedNum'] ?? 0), 0.0001);
         $this->assertFalse((bool) ($report['behaviors']['allowNegativeTypedInvalid'] ?? true));
+        $this->assertTrue((bool) ($report['behaviors']['oneDashTwoInvalid'] ?? false));
+        $this->assertStringContainsString('valid amount', strtolower((string) ($report['behaviors']['oneDashTwoMessage'] ?? '')));
+        $this->assertStringNotContainsString('negative', strtolower((string) ($report['behaviors']['oneDashTwoMessage'] ?? '')));
+        $this->assertEqualsWithDelta(-30.49, (float) ($report['behaviors']['negHalfRound'] ?? 0), 0.0001);
 
         $this->assertIsArray($report['keypress'] ?? null);
         $this->assertTrue((bool) ($report['keypress']['typedMinus']['invalid'] ?? false));
@@ -247,6 +261,16 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(1.01, $this->parseMoney($report['keypress']['halfUp']['value'] ?? ''), 0.0001);
 
         $this->assertIsArray($report['negativeResave'] ?? null);
+        foreach (['standard', 'hourly'] as $kind) {
+            $posted = (string) ($report['negativeResave'][$kind]['posted'] ?? '');
+            $this->assertTrue(
+                str_contains($posted, '-200.00') || str_contains($posted, '%2D200.00'),
+                $kind.' page JS must post -200.00'
+            );
+        }
+        $this->assertFalse((bool) ($report['hourlyMaterialsNegative']['allowNegative'] ?? true));
+        $this->assertTrue((bool) ($report['hourlyMaterialsNegative']['invalid'] ?? false));
+        $this->assertFalse((bool) ($report['hourlyMaterialsNegative']['submitAllowed'] ?? true));
         $negStandard->refresh();
         $negHourly->refresh();
         $this->assertNegativeLineTotals($negStandard, $negHourly);

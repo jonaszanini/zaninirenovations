@@ -179,6 +179,7 @@ function parseMoney(value) {
           value: input.value,
           num: parseFloat(String(input.value || '').replace(/,/g, '')),
           invalid: input.classList.contains('is-invalid') || input.validity.customError,
+          message: String(input.validationMessage || ''),
           submitAllowed: submitted,
         };
         form.remove();
@@ -196,6 +197,8 @@ function parseMoney(value) {
       const storedNeg = probe('-5.00', { stored: true });
       const allowStored = probe('-200.00', { stored: true, allowNegative: true });
       const allowTyped = probe('-200', { allowNegative: true });
+      const oneDashTwo = probe('1-2', { allowNegative: true });
+      const negHalf = window.cpMoneyMask.round(-30.485, 2);
 
       return {
         untaggedFour: untagged.num,
@@ -226,6 +229,10 @@ function parseMoney(value) {
         allowNegativeTypedShown: allowTyped.value,
         allowNegativeTypedNum: isFinite(allowTyped.num) ? allowTyped.num : 0,
         allowNegativeTypedInvalid: allowTyped.invalid,
+        oneDashTwoInvalid: oneDashTwo.invalid,
+        oneDashTwoMessage: oneDashTwo.message,
+        oneDashTwoShown: oneDashTwo.value,
+        negHalfRound: negHalf,
       };
     });
   }
@@ -298,18 +305,35 @@ function parseMoney(value) {
     await go(base + url);
     await page.waitForSelector('#cp-invoice-form');
     const before = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('#cp-invoice-items .cp-quotation-row-amount')).map((el) => ({
-        name: el.name || '',
-        value: el.value || '',
-        allowNegative: el.hasAttribute('data-cp-money-allow-negative'),
-        invalid: el.classList.contains('is-invalid') || el.validity.customError,
-      }));
+      return Array.from(document.querySelectorAll('#cp-invoice-items .cp-quotation-row')).map((tr) => {
+        const el = tr.querySelector('.cp-quotation-row-amount');
+        const kind = tr.querySelector('select.cp-invoice-line-kind, input[name*="[line_kind]"]');
+        return {
+          name: el ? el.name || '' : '',
+          value: el ? el.value || '' : '',
+          kind: kind ? kind.value || '' : '',
+          allowNegative: !!(el && el.hasAttribute('data-cp-money-allow-negative')),
+          invalid: !!(el && (el.classList.contains('is-invalid') || el.validity.customError)),
+        };
+      });
     });
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
-      page.click('[data-cp-invoice-intent="draft"]'),
-    ]);
-    return { before, afterUrl: page.url() };
+    let posted = '';
+    const onRequest = (req) => {
+      const method = String(req.method() || '').toUpperCase();
+      if (method === 'POST' || method === 'PUT') {
+        posted = req.postData() || posted;
+      }
+    };
+    page.on('request', onRequest);
+    try {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        page.click('[data-cp-invoice-intent="draft"]'),
+      ]);
+    } finally {
+      page.off('request', onRequest);
+    }
+    return { before, afterUrl: page.url(), posted };
   }
 
   const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null, negativeResave: null };
@@ -322,6 +346,32 @@ function parseMoney(value) {
       standard: await resaveInvoiceUntouched(negStandardUrl),
       hourly: await resaveInvoiceUntouched(negHourlyUrl),
     };
+    await go(base + negHourlyUrl);
+    await page.waitForSelector('#cp-invoice-form');
+    await page.click('#cp-invoice-add-row');
+    const hourlyMaterialsNegative = await page.evaluate(() => {
+      const rows = Array.from(document.querySelectorAll('#cp-invoice-items tr.cp-quotation-row'));
+      const tr = rows[rows.length - 1];
+      const kind = tr.querySelector('select.cp-invoice-line-kind');
+      const amt = tr.querySelector('.cp-quotation-row-amount');
+      kind.value = 'materials';
+      kind.dispatchEvent(new Event('change', { bubbles: true }));
+      amt.focus();
+      amt.value = '-50';
+      amt.dispatchEvent(new Event('input', { bubbles: true }));
+      amt.blur();
+      amt.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+      const form = document.getElementById('cp-invoice-form');
+      const submitted = form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      return {
+        allowNegative: amt.hasAttribute('data-cp-money-allow-negative'),
+        value: amt.value,
+        invalid: amt.classList.contains('is-invalid') || amt.validity.customError,
+        message: String(amt.validationMessage || ''),
+        submitAllowed: submitted,
+      };
+    });
+    report.hourlyMaterialsNegative = hourlyMaterialsNegative;
     for (const url of pages) {
       await go(base + url);
       if (page.url().includes('/admin/login')) {
@@ -441,6 +491,16 @@ function parseMoney(value) {
         invalid: b.allowNegativeTypedInvalid,
       }));
     }
+    if (!b.oneDashTwoInvalid || String(b.oneDashTwoMessage || '').toLowerCase().indexOf('valid amount') === -1) {
+      throw new Error('1-2 on an allowed field should say Enter a valid amount: ' + JSON.stringify({
+        shown: b.oneDashTwoShown,
+        message: b.oneDashTwoMessage,
+        invalid: b.oneDashTwoInvalid,
+      }));
+    }
+    if (Math.abs((b.negHalfRound || 0) + 30.49) > 0.0001) {
+      throw new Error('Negative half rounding was ' + b.negHalfRound + ' instead of -30.49');
+    }
     const kp = report.keypress || {};
     if (!kp.typedMinus || !kp.typedMinus.invalid || String(kp.typedMinus.value).indexOf('-') === -1) {
       throw new Error('Typed -5 did not show the inline negative error: ' + JSON.stringify(kp.typedMinus));
@@ -465,7 +525,14 @@ function parseMoney(value) {
       if (!String(row.afterUrl || '').includes('/invoices/')) {
         throw new Error('Untouched ' + kind + ' invoice did not re-save: ' + row.afterUrl);
       }
+      if (!String(row.posted || '').includes('-200.00') && !String(row.posted || '').includes('%2D200.00')) {
+        throw new Error('Page JS did not post -200.00 for ' + kind + ': ' + String(row.posted || '').slice(0, 400));
+      }
     });
+    const mats = report.hourlyMaterialsNegative || {};
+    if (mats.allowNegative || !mats.invalid || mats.submitAllowed || String(mats.value || '').indexOf('-') === -1) {
+      throw new Error('Hourly materials -50 must stay visible, error, and block submit: ' + JSON.stringify(mats));
+    }
     await browser.close();
     process.exit(0);
   } catch (err) {

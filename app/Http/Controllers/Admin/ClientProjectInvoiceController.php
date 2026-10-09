@@ -224,13 +224,6 @@ class ClientProjectInvoiceController extends Controller
                 ? 0.0
                 : round($labour * ClientProjectInvoice::HST_RATE, 2);
             $invoice->total = round($labour + $invoice->hst + $materials, 2);
-            if ($invoice->total < 0.01) {
-                return back()
-                    ->withErrors([
-                        'items' => 'Invoice total must be at least CA$0.01. Reduce the credit or add more billable lines.',
-                    ])
-                    ->withInput();
-            }
             $this->totals->syncHourlyExpenseLinks($client_project, $invoice, $items);
         } else {
             $invoice->items = $items;
@@ -272,6 +265,14 @@ class ClientProjectInvoiceController extends Controller
                     }
                 }
             }
+        }
+
+        if ($invoice->total < 0.01) {
+            return back()
+                ->withErrors([
+                    'items' => 'Invoice total must be at least CA$0.01. Reduce the credit or add more billable lines.',
+                ])
+                ->withInput();
         }
 
         if (! empty($data['due_on'])) {

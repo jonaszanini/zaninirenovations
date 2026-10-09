@@ -84,6 +84,86 @@ class InvoiceNegativeLineResaveTest extends IntegrationTestCase
         $this->assertSame(800.0, $invoice->hourlyLabourTotalFromItems());
     }
 
+    public function test_hourly_negative_materials_line_is_rejected_not_dropped(): void
+    {
+        $this->actingAsAdmin();
+        [$project, $invoice] = $this->makeHourlyInvoiceWithLabourCredit();
+
+        $this->from(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->put(
+                route('admin.client-projects.invoices.update', [$project, $invoice]),
+                [
+                    'intent' => 'draft',
+                    'hst_exempt' => '0',
+                    'manual_description' => 'Hourly work',
+                    'items' => [
+                        ['description' => 'Hours', 'amount' => '1000.00', 'line_kind' => 'labour'],
+                        ['description' => 'Typed line', 'amount' => '-50.00', 'line_kind' => 'materials'],
+                    ],
+                ]
+            )
+            ->assertRedirect(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->assertSessionHasErrors('items');
+
+        $invoice->refresh();
+        $this->assertEqualsWithDelta(904.00, (float) $invoice->total, 0.0001);
+        $this->assertCount(2, $invoice->cleanItems());
+        $this->assertSame(ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT, $invoice->cleanItems()[1]['line_kind']);
+    }
+
+    public function test_hourly_negative_gas_line_is_rejected_not_dropped(): void
+    {
+        $this->actingAsAdmin();
+        [$project, $invoice] = $this->makeHourlyInvoiceWithLabourCredit();
+
+        $this->from(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->put(
+                route('admin.client-projects.invoices.update', [$project, $invoice]),
+                [
+                    'intent' => 'draft',
+                    'hst_exempt' => '0',
+                    'manual_description' => 'Hourly work',
+                    'items' => [
+                        ['description' => 'Hours', 'amount' => '1000.00', 'line_kind' => 'labour'],
+                        ['description' => 'Fuel', 'amount' => '-12.00', 'line_kind' => 'gas'],
+                    ],
+                ]
+            )
+            ->assertRedirect(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->assertSessionHasErrors('items');
+
+        $invoice->refresh();
+        $this->assertEqualsWithDelta(904.00, (float) $invoice->total, 0.0001);
+    }
+
+    public function test_standard_invoice_rejects_negative_total(): void
+    {
+        $this->actingAsAdmin();
+        [$project, $invoice] = $this->makeStandardInvoiceWithDepositCredit();
+
+        $this->from(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->put(
+                route('admin.client-projects.invoices.update', [$project, $invoice]),
+                [
+                    'intent' => 'draft',
+                    'hst_exempt' => '0',
+                    'manual_description' => 'Manual invoice',
+                    'manual_total' => '800.00',
+                    'items' => [
+                        ['description' => 'Labour', 'amount' => '1000.00'],
+                        ['description' => 'Credit', 'amount' => '-1234.50'],
+                    ],
+                ]
+            )
+            ->assertRedirect(route('admin.client-projects.invoices.edit', [$project, $invoice]))
+            ->assertSessionHasErrors('items');
+
+        $invoice->refresh();
+        $this->assertEqualsWithDelta(904.00, (float) $invoice->total, 0.0001);
+        $this->assertEqualsWithDelta(-200.00, (float) ($invoice->cleanItems()[1]['amount'] ?? 0), 0.0001);
+        $this->assertSame(-30.49, round(-234.50 * ClientProjectInvoice::HST_RATE, 2));
+    }
+
     /**
      * @return array{0: ClientProject, 1: ClientProjectInvoice}
      */

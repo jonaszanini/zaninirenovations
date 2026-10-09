@@ -94,7 +94,7 @@
       negative = true;
       s = s.slice(1);
     } else if (s.indexOf('-') !== -1) {
-      return { ok: false, num: NaN, normalized: s, negative: true, error: 'Amount cannot be negative.' };
+      return { ok: false, num: NaN, normalized: s, error: 'Enter a valid amount.' };
     }
     if (negative && !allowNegative) {
       return { ok: false, num: NaN, normalized: '-' + s, negative: true, error: 'Amount cannot be negative.' };
@@ -367,6 +367,10 @@
     parse: function (value, places, opts) {
       var parsed = parseDirectCadMoney(value, places, opts);
       return parsed.ok ? parsed.num : 0;
+    },
+    /** Half away from zero, matching PHP round() (1.005 → 1.01, −30.485 → −30.49). */
+    round: function (num, places) {
+      return roundToPlaces(num, places);
     },
     /** Strip thousands separators on `.cp-money-input` before a programmatic submit. */
     stripFormCommas: stripMoneyCommasOnForm
