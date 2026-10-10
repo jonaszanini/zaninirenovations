@@ -572,6 +572,13 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
             );
             $this->assertSame('', (string) ($posted['pieces'][0]['height'] ?? ''), $name.' height stays the rendered blank');
             $this->assertSame('0', (string) ($posted['pieces'][0]['include_doors'] ?? '0'), $name.' doors render No');
+            if ($name === 'closet-width-24') {
+                $this->assertSame(
+                    '1',
+                    (string) ($posted['pieces'][0]['shelf_count'] ?? ''),
+                    'browser last-wins posts the hidden cabinet shelf_count=1'
+                );
+            }
 
             $this->put(route('admin.quotations.millwork.update', $quote), $posted)
                 ->assertRedirect()

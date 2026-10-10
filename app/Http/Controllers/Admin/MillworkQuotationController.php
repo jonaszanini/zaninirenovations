@@ -553,6 +553,7 @@ class MillworkQuotationController extends Controller
             $omitMissingDefaults = $saved ? $this->missingFieldsEqualRenderedDefaults($piece, $saved) : [
                 'dims' => [],
                 'flags' => [],
+                'counts' => [],
             ];
             if ($convertLegacyEdits && $saved && ! $this->pieceNormalizedSizesEqual($piece, $saved)) {
                 $piece = MillworkDimensionParser::toLegacyInchPiece($piece);
@@ -598,6 +599,10 @@ class MillworkQuotationController extends Controller
             $style = strtolower((string) ($piece['hinge_style'] ?? 'overlay'));
             $row['hinge_style'] = in_array($style, ['overlay', 'inset', 'soft_close'], true) ? $style : 'overlay';
             foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $intKey) {
+                if (in_array($intKey, $omitMissingDefaults['counts'], true)) {
+                    unset($row[$intKey]);
+                    continue;
+                }
                 $row[$intKey] = $this->postedCount($piece[$intKey] ?? ($row[$intKey] ?? 0));
             }
             if (array_key_exists('pull_qty', $piece) && $piece['pull_qty'] !== '' && $piece['pull_qty'] !== null) {
@@ -856,7 +861,7 @@ class MillworkQuotationController extends Controller
      *
      * @param  array<string, mixed>  $posted
      * @param  array<string, mixed>  $saved
-     * @return array{dims: list<string>, flags: list<string>}
+     * @return array{dims: list<string>, flags: list<string>, counts: list<string>}
      */
     private function missingFieldsEqualRenderedDefaults(array $posted, array $saved): array
     {
@@ -874,8 +879,15 @@ class MillworkQuotationController extends Controller
                 $flags[] = $flag;
             }
         }
+        $counts = [];
+        foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $key) {
+            if (! $this->hasStoredSizeField($saved, $key)
+                && $this->postedEqualsRenderedCountDefault($key, $posted[$key] ?? null)) {
+                $counts[] = $key;
+            }
+        }
 
-        return ['dims' => $dims, 'flags' => $flags];
+        return ['dims' => $dims, 'flags' => $flags, 'counts' => $counts];
     }
 
     private function postedEqualsRenderedDefault(string $key, mixed $posted): bool
@@ -896,6 +908,31 @@ class MillworkQuotationController extends Controller
         }
 
         return $bool === false;
+    }
+
+    /**
+     * Form defaults for count inputs, including both shelf_count widgets
+     * (closet 3, cabinet/vanity 1). A browser posts every same-name field;
+     * PHP keeps the last value, so a closet row can arrive as 1.
+     */
+    private function postedEqualsRenderedCountDefault(string $key, mixed $posted): bool
+    {
+        if ($posted === null || $posted === '') {
+            return true;
+        }
+        $n = $this->postedCount($posted);
+        $defaults = [
+            'door_count' => [2],
+            'shelf_count' => [1, 3],
+            'drawer_count' => [0],
+            'division_count' => [2],
+            'columns' => [2],
+            'rows' => [2],
+            'rod_count' => [1],
+            'openings' => [0],
+        ];
+
+        return in_array($n, $defaults[$key] ?? [], true);
     }
 
     private function normalizedDimToken(mixed $value): string
