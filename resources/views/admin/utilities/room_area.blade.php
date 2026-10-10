@@ -14,6 +14,8 @@
     'pageTitle' => 'Room Area',
     'backUrl' => route('admin.utilities.index'),
     'backLabel' => 'All utilities',
+    'assembliesJson' => $assembliesJson ?? [],
+    'catalogPickerOptions' => $catalogPickerOptions ?? [],
   ])
 @endsection
 

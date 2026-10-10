@@ -604,7 +604,7 @@
     if (!val) return;
     var next = val
       .replace(/works\[(?:\d+|__W__)]/g, 'works[' + w + ']')
-      .replace(/materials\[(?:\d+|__I__)]/g, 'materials[' + i + ']')
+      .replace(/\[materials\]\[(?:\d+|__I__)]/g, '[materials][' + i + ']')
       .replace(/sq-mat-catalog-w(?:\d+|__W__)-(?:\d+|__I__)/g, 'sq-mat-catalog-w' + w + '-' + i)
       .replace(/sq-w(?:\d+|__W__)/g, 'sq-w' + w);
     if (next !== val) el.setAttribute(attr, next);

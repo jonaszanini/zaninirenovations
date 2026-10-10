@@ -272,11 +272,15 @@ lib.readFetchJson(okRes, 'fail').then(function (result) {
     objects: []
   }, 12, 8);
   assert.strictEqual(openWalls.length, 2);
+  var bowtieVerts = [{ x: 0, y: 0 }, { x: 120, y: 120 }, { x: 120, y: 0 }, { x: 0, y: 120 }];
   var bowtie = lib.perWallNetAreas({
-    groups: [{ polygons: [{ id: 'bow', vertices: [{ x: 0, y: 0 }, { x: 120, y: 120 }, { x: 120, y: 0 }, { x: 0, y: 120 }] }] }],
+    groups: [{ polygons: [{ id: 'bow', vertices: bowtieVerts }] }],
     objects: []
   }, 12, 8);
   assert.strictEqual(bowtie.length, 0);
+  var bowtieCorners = lib.cornerCounts(bowtieVerts);
+  assert.strictEqual(bowtieCorners.inside, 0);
+  assert.strictEqual(bowtieCorners.outside, 0);
   console.log('room-area-lib tests: ' + process.uptime().toFixed(3) + 's ok');
 }).catch(function (err) {
   console.error(err);

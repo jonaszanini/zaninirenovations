@@ -41,8 +41,21 @@
     data-room-photo-update-template="{{ route('admin.utilities.room-area.rooms.photos.update', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
     data-room-photo-destroy-template="{{ route('admin.utilities.room-area.rooms.photos.destroy', ['room_area_room' => '__RID__', 'photo' => '__PID__']) }}"
     data-quote-room-template="{{ route('admin.utilities.room-area.quote') }}?layout=room:__ID__"
-    data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__">
+    data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__"
+    @if (!empty($kitSeedError)) data-ra-kit-seed-error="{{ $kitSeedError }}" @endif
+    data-assemblies="{{ json_encode($assembliesJson ?? []) }}"
+    data-assemblies-url="{{ route('admin.utilities.room-area.assemblies.index') }}"
+    data-assembly-store-url="{{ route('admin.utilities.room-area.assemblies.store') }}"
+    data-assembly-update-template="{{ route('admin.utilities.room-area.assemblies.update', ['room_area_assembly' => '__ID__']) }}"
+    data-assembly-destroy-template="{{ route('admin.utilities.room-area.assemblies.destroy', ['room_area_assembly' => '__ID__']) }}"
+    data-room-assemblies-template="{{ route('admin.utilities.room-area.rooms.assemblies.sync', ['room_area_room' => '__ID__']) }}"
+    data-assembly-quote-room-template="{{ route('admin.utilities.room-area.assemblies.quote') }}?layout=room:__ID__"
+    data-assembly-quote-project-template="{{ route('admin.utilities.room-area.assemblies.quote') }}?layout=project:__ID__">
+    <script type="application/json" id="ra-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
+    @if (!empty($kitSeedError))
+      <p class="admin-flash admin-flash--error" data-ra-kit-seed-error role="alert">{{ $kitSeedError }}</p>
+    @endif
 
     @if ($fullPage)
       <header class="util-ra-full-header">
@@ -89,11 +102,6 @@
           <div class="util-ra-tool-group util-ra-tool-group--view">
             <div class="util-ra-tool-group__head">
               <span class="util-ra-tool-group__label">View</span>
-              @include('admin.utilities._room_area_help_pop', [
-                'tipId' => 'view',
-                'label' => 'About view tools',
-                'text' => 'Undo and redo last edits. Zoom with +/−, Fit to see the whole room, Panel to show Measure, Math, Photos, and Rooms. Pinch or scroll to zoom around the cursor. Two fingers, empty-canvas drag, or Space+drag to pan. Type wall lengths in the panel if corners are fiddly.',
-              ])
             </div>
             <div class="util-ra-tool-group__actions util-ra-full-header__view-actions">
               <span class="util-ra-tip" data-tooltip="Undo the last drawing or object change.">
@@ -135,6 +143,18 @@
                   <span class="util-ra-full-header__panel-label">Panel</span>
                 </button>
               </span>
+              <div class="util-ra-first-tip" data-ra-first-tip hidden>
+                <a href="{{ $guideUrl }}" class="admin-btn admin-btn--ghost util-ra-first-tip__guide">
+                  <i class="fa fa-question-circle" aria-hidden="true"></i>
+                  <span>New here</span>
+                </a>
+                @include('admin.utilities._room_area_help_pop', [
+                  'tipId' => 'first-tip',
+                  'label' => 'About the Room Area guide',
+                  'text' => 'Open the Room Area guide for a short on-site walkthrough. The Guide button in the top row stays after you dismiss this.',
+                ])
+                <button type="button" class="admin-btn admin-btn--primary util-ra-first-tip__dismiss" data-ra-first-tip-dismiss>Got it</button>
+              </div>
               <div class="util-ra-shortcuts" data-ra-shortcuts>
                 <span class="util-ra-tip util-ra-tip--end" data-tooltip="Show keyboard shortcuts for draw, zoom, and pan.">
                   <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-shortcuts-toggle aria-label="Keyboard shortcuts" aria-expanded="false" aria-controls="ra-shortcuts-popover">
@@ -161,10 +181,6 @@
             </div>
           </div>
         </div>
-        <div class="util-ra-first-tip" data-ra-first-tip hidden>
-          <p class="util-ra-first-tip__text">New here? Open the <a href="{{ $guideUrl }}">Room Area guide</a> for a short on-site walkthrough.</p>
-          <button type="button" class="admin-btn admin-btn--primary util-ra-first-tip__dismiss" data-ra-first-tip-dismiss>Got it</button>
-        </div>
       </header>
     @endif
 
@@ -177,27 +193,34 @@
             <option value="">— Select a project —</option>
           </select>
         </div>
-        <div class="util-ra-linked" data-ra-linked hidden>
-          <div class="admin-form-group util-ra-link-edit">
-            <div class="util-ra-link-edit__label-row">
-              <label for="ra-link-client-project">Link to client project</label>
-              <a href="#" data-ra-linked-link class="util-ra-linked__go" hidden>Go to project</a>
+        <div class="util-ra-project-bar__extras">
+          <button type="button" class="admin-btn admin-btn--ghost util-ra-project-bar__menu-btn" data-ra-project-menu-toggle aria-expanded="false" aria-controls="ra-project-menu" aria-label="Project actions">
+            <i class="fa fa-ellipsis-v" aria-hidden="true"></i>
+          </button>
+          <div class="util-ra-project-bar__menu" id="ra-project-menu" data-ra-project-menu>
+            <div class="util-ra-linked" data-ra-linked hidden>
+              <div class="admin-form-group util-ra-link-edit">
+                <div class="util-ra-link-edit__label-row">
+                  <label for="ra-link-client-project">Link to client project</label>
+                  <a href="#" data-ra-linked-link class="util-ra-linked__go" hidden>Go to project</a>
+                </div>
+                <select class="admin-input" id="ra-link-client-project" data-ra-link-client-project>
+                  <option value="">— None —</option>
+                  @foreach ($clientProjects as $cp)
+                    <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
+                  @endforeach
+                </select>
+              </div>
             </div>
-            <select class="admin-input" id="ra-link-client-project" data-ra-link-client-project>
-              <option value="">— None —</option>
-              @foreach ($clientProjects as $cp)
-                <option value="{{ $cp->id }}">{{ $cp->linkSelectLabel() }}</option>
-              @endforeach
-            </select>
+            <div class="util-ra-project-bar__actions">
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-new-project-toggle>
+                <i class="fa fa-plus"></i> New project
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-delete-project hidden>
+                <i class="fa fa-trash"></i> Delete project
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="util-ra-project-bar__actions">
-          <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-new-project-toggle>
-            <i class="fa fa-plus"></i> New project
-          </button>
-          <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn util-ra-btn--danger-ghost" data-ra-delete-project hidden>
-            <i class="fa fa-trash"></i> Delete project
-          </button>
         </div>
       </div>
 
@@ -378,13 +401,6 @@
             <div class="util-ra-tool-group util-ra-tool-group--draw">
               <div class="util-ra-tool-group__head">
                 <span class="util-ra-tool-group__label">{{ $fullPage ? 'Draw / Edit' : 'Draw' }}</span>
-                @if ($fullPage)
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'draw',
-                  'label' => 'About draw and edit',
-                  'text' => 'Close the outline when the last wall meets the first. Add another area in this color group, or start a new color group for a different finish. Name the active area. Draw a ruler to measure any distance. Clear all areas from this room.',
-                ])
-                @endif
               </div>
               <div class="util-ra-tool-group__actions">
                 @unless($fullPage)
@@ -516,7 +532,7 @@
                 @include('admin.utilities._room_area_help_pop', [
                   'tipId' => 'measure',
                   'label' => 'About scale and units',
-                  'text' => 'Tap calibrate, click two ends of a known wall, then type that length. Or skip the photo and type walls in the Measure panel. Switch ft-in or metres for display; type 12\' 6", 3.81 m, or 3810 mm in any mode. Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win.',
+                  'text' => 'Tap calibrate, click two ends of a known wall, then type that length. Or skip the photo and type walls in the Measure panel. Switch ft-in or metres for display; type 12\' 6", 3.81 m, or 3810 mm in any mode. Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win. Templates use Rect W×L when filled, otherwise 12×10. L is 16×12 with a 6×4 return (152 sq ft). T uses the typed length as overall height. Walls snap to 45° / 90° within about 10°; turn snap off or hold Alt for other angles. Unlock corners to move walls, undo, delete an area, or recalibrate. Scale entire project recalibrates so this wall matches the length you type; all other lengths and areas update proportionally and the shape stays the same.',
                 ])
               </div>
               <div class="util-ra-tool-group__actions">
@@ -578,13 +594,6 @@
             <div class="util-ra-tool-group util-ra-tool-group--plan">
               <div class="util-ra-tool-group__head">
                 <span class="util-ra-tool-group__label">Plan</span>
-                @if ($fullPage)
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'plan',
-                  'label' => 'About the floor plan',
-                  'text' => 'Show or hide the floor-plan photo, reposition it, or remove it from the drawing.',
-                ])
-                @endif
               </div>
               <div class="util-ra-tool-group__actions">
                 <div class="util-ra-more-block util-ra-more-block--plan">
@@ -615,11 +624,6 @@
             <div class="util-ra-tool-group util-ra-tool-group--room-tools">
               <div class="util-ra-tool-group__head">
                 <span class="util-ra-tool-group__label">Room tools</span>
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'room-tools',
-                  'label' => 'About room tools',
-                  'text' => 'Dimension labels: all walls, main size only, area only, or off. When snap is on, walls snap to 45° / 90° if they are within about 10°. Turn snap off to trace 30° or 80° walls. On a keyboard, hold Alt to bypass. Templates start a rectangle, L, U, or T. Uses Rect W×L when filled, otherwise 12×10. L is 16×12 with a 6×4 return (152 sq ft). T uses the typed length as overall height. Alcove cuts a bump into the selected wall. Lock wall corners so doors, windows, and notes stay editable. Unlock to move walls, undo, delete an area, or recalibrate.',
-                ])
               </div>
               <div class="util-ra-tool-group__actions">
                 <div class="util-ra-more-block util-ra-more-block--dims">
@@ -685,11 +689,6 @@
                     <option value="feet_decimal">Decimal ft</option>
                     <option value="inch">Inches</option>
                   </select>
-                  @include('admin.utilities._room_area_help_pop', [
-                    'tipId' => 'units-format',
-                    'label' => 'About number format',
-                    'text' => 'Plain numbers follow this format: 12\' 6 1/2" in feet-inch, 12.5 in decimal feet, or 150 in inches. Typed units like 3.81 m or 3810 mm always win.',
-                  ])
                 </span>
               </div>
             </div>
@@ -762,11 +761,6 @@
         <div class="util-ra-object-dock">
           <div class="util-ra-object-dock__head">
             <span class="util-ra-tool-group__label">Objects / Walls</span>
-            @include('admin.utilities._room_area_help_pop', [
-              'tipId' => 'objects',
-              'label' => 'About objects and walls',
-              'text' => 'Objects: drop doors and windows on walls; stairs, cabinets, and fixtures on the floor. Walls: optional thickness. Quotes always use the inside. Select a wall, corner, object, or ruler to edit it here.',
-            ])
           </div>
           <section class="util-ra-palette" data-ra-palette aria-label="Object library">
             <span class="util-ra-tip util-ra-tip--block" data-tooltip="Open doors, windows, stairs, and fixtures.">
@@ -817,11 +811,6 @@
             <div class="util-ra-palette__body" id="ra-walls-body" data-ra-walls-body>
               <div class="util-ra-palette__head">
                 <h3 class="util-ra-palette__title">Wall thickness</h3>
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'thick-walls',
-                  'label' => 'About wall thickness',
-                  'text' => 'Off keeps drawings as-is. On draws thick walls and shows inside vs footprint. Quotes use inside.',
-                ])
               </div>
               <div class="util-ra-thickness-chips" role="group" aria-label="Wall thickness">
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-thickness-chip is-active" data-ra-thickness="0">Off</button>
@@ -841,11 +830,6 @@
 
         <div class="util-ra-edit-dock" data-ra-edit-dock>
           <div class="util-ra-edit-dock__idle">
-            @include('admin.utilities._room_area_help_pop', [
-              'tipId' => 'edit-idle',
-              'label' => 'About editing',
-              'text' => 'Select a wall, corner, object, or ruler to edit it here.',
-            ])
           </div>
           <div class="util-ra-edit-dock__panels">
             <div class="util-ra-wall-edit util-ra-ruler-edit" data-ra-ruler-edit hidden>
@@ -952,11 +936,6 @@
                   <input type="checkbox" data-ra-wall-scale-project>
                   <span>Scale entire project</span>
                 </label>
-                @include('admin.utilities._room_area_help_pop', [
-                  'tipId' => 'scale-project',
-                  'label' => 'About scaling the project',
-                  'text' => 'Recalibrate scale so this wall matches the value you enter; all other wall lengths and areas update proportionally. The drawing shape stays the same.',
-                ])
                 <button type="button" class="admin-btn admin-btn--primary util-ra-action-btn" data-ra-wall-apply>Apply</button>
                 <button type="button" class="admin-btn admin-btn--ghost util-ra-action-btn" data-ra-split-wall>
                   <i class="fa fa-plus-circle"></i> Split wall
@@ -974,9 +953,8 @@
 
         <div class="util-ra-canvas-wrap" data-ra-canvas-wrap>
           <div id="ra-konva-container" class="util-ra-konva"></div>
+          <p class="util-ra-feedback" data-ra-feedback hidden aria-live="polite"></p>
         </div>
-
-        <p class="util-ra-feedback" data-ra-feedback hidden></p>
       </section>
       </div>{{-- stage__main --}}
 
@@ -1000,6 +978,9 @@
           </span>
           <span class="util-ra-tip util-ra-tip--block" data-tooltip="Add site photos for this room.">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab" data-ra-side-tab="photos" role="tab" aria-selected="false" aria-label="Photos tab">Photos</button>
+          </span>
+          <span class="util-ra-tip util-ra-tip--block" data-tooltip="Reusable kits and live quantities.">
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab" data-ra-side-tab="kits" role="tab" aria-selected="false" aria-label="Kits tab">Kits</button>
           </span>
           <span class="util-ra-tip util-ra-tip--block" data-tooltip="Saved rooms, Quote, and Quote all.">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab" data-ra-side-tab="rooms" role="tab" aria-selected="false" aria-label="Rooms tab">Rooms</button>
@@ -1083,11 +1064,6 @@
         <div class="util-ra-side__pane" data-ra-side-pane="math">
         <div class="util-ra-canvas-footer">
           <div class="util-ra-hint util-ra-hint--inline">
-            @include('admin.utilities._room_area_help_pop', [
-              'tipId' => 'math-draw',
-              'label' => 'About drawing',
-              'text' => 'Click corners to draw. Drag doors onto walls; drop stairs, cabinets, and fixtures on the floor. Pinch or +/− to zoom; two fingers or empty-canvas drag to pan. Press ? for shortcuts. Calibrate scale before saving.',
-            ])
           </div>
           <div class="util-ra-live-area" data-ra-live-area hidden>
             <div class="util-ra-live-area__row util-ra-live-area__row--active">
@@ -1217,17 +1193,91 @@
         </section>
         </div>{{-- pane photos --}}
 
+        <div class="util-ra-side__pane" data-ra-side-pane="kits">
+        <section class="util-ra-kits" data-ra-kits aria-label="Kits">
+          <div class="util-ra-kits__head">
+            <h3 class="util-ra-kits__title">Kits</h3>
+            @include('admin.utilities._room_area_help_pop', [
+              'tipId' => 'kits',
+              'label' => 'About kits',
+              'text' => 'A kit is a reusable takeoff: Drywall wall, LVP floor, Baseboard. Formulas use this room’s numbers (floor sf, net wall sf, ceiling sf, perimeter, casing, door and window counts, wall height). Whole units round up. Link a catalogue item for price. Add to a quote only when you click Add kits to quote.',
+            ])
+            <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" data-ra-kit-new>New kit</button>
+          </div>
+          <p class="util-ra-kits__empty" data-ra-kit-empty hidden>No kits yet. Add Drywall wall, LVP floor, or Baseboard.</p>
+          <ul class="util-ra-kits__list" data-ra-kit-list></ul>
+          <div class="util-ra-kits__project" data-ra-kit-project hidden>
+            <p class="util-ra-kits__project-title">All rooms</p>
+            <ul class="util-ra-kits__project-list" data-ra-kit-project-list></ul>
+          </div>
+          <div class="util-ra-kits__quote">
+            <a class="admin-btn admin-btn--primary" data-ra-kit-quote hidden href="#">Add kits to quote</a>
+          </div>
+          <form class="util-ra-kit-editor" data-ra-kit-editor hidden>
+            <div class="util-ra-kit-editor__head">
+              <p class="util-ra-kit-editor__title" data-ra-kit-editor-title>New kit</p>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-kit-editor-cancel>Close</button>
+            </div>
+            <div class="admin-form-group">
+              <label for="ra-kit-name">Name</label>
+              <input class="admin-input" type="text" id="ra-kit-name" maxlength="120" data-ra-kit-name placeholder="Drywall wall">
+            </div>
+            <div class="admin-form-group">
+              <label for="ra-kit-notes">Notes</label>
+              <input class="admin-input" type="text" id="ra-kit-notes" maxlength="255" data-ra-kit-notes placeholder="Optional">
+            </div>
+            <ul class="util-ra-kit-editor__lines" data-ra-kit-lines></ul>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-kit-add-line>Add line</button>
+            <p class="util-ra-kit-editor__error" data-ra-kit-editor-error hidden></p>
+            <div class="util-ra-kit-editor__actions">
+              <button type="submit" class="admin-btn admin-btn--primary" data-ra-kit-save>Save kit</button>
+              <button type="button" class="admin-btn admin-btn--ghost" data-ra-kit-delete hidden>Delete</button>
+            </div>
+          </form>
+          <template id="ra-kit-line-template">
+            <li class="util-ra-kit-line" data-ra-kit-line>
+              <div class="util-ra-kit-line__row">
+                <div class="admin-form-group">
+                  <label>Item</label>
+                  <input class="admin-input" type="text" data-ra-kit-line-name maxlength="120" placeholder="Drywall sheets">
+                </div>
+                <div class="admin-form-group util-ra-kit-line__unit">
+                  <label>Unit</label>
+                  <input class="admin-input" type="text" data-ra-kit-line-unit maxlength="20" placeholder="sheet">
+                </div>
+              </div>
+              <div class="admin-form-group">
+                <label>Formula</label>
+                <input class="admin-input" type="text" data-ra-kit-line-formula maxlength="200" placeholder="ceil(net_wall_sf * 1.12 / 32)" spellcheck="false">
+              </div>
+              <div class="util-ra-kit-line__row util-ra-kit-line__row--meta">
+                <label class="util-ra-kit-line__whole">
+                  <input type="checkbox" data-ra-kit-line-whole checked>
+                  Round up
+                </label>
+                <div class="admin-search-select util-ra-kit-line__mat" data-admin-search-select data-options-source="ra-catalog-options" data-search-fields='["label","name","sku","model","vendor","store_name"]' data-meta-keys='["sku","price_label"]' data-list-parent="body">
+                  <input type="hidden" class="admin-search-select__value" data-ra-kit-line-material value="">
+                  <div class="admin-search-select__row">
+                    <div class="admin-search-select__control">
+                      <input type="text" class="admin-input admin-search-select__input" placeholder="Catalogue item" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="Catalogue item">
+                      <button type="button" class="admin-search-select__clear" hidden aria-label="Clear selection"><span aria-hidden="true">&times;</span></button>
+                      <ul class="admin-search-select__list" role="listbox" hidden></ul>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-kit-line-remove aria-label="Remove line">Remove</button>
+              </div>
+            </li>
+          </template>
+        </section>
+        </div>{{-- pane kits --}}
+
         <div class="util-ra-side__pane" data-ra-side-pane="rooms">
       {{-- Saved rooms --}}
       <section class="admin-card util-ra-rooms-card">
         <div class="util-ra-rooms-head">
           <div class="util-ra-rooms-head__intro">
             <h3 class="util-ra-card-title">Saved rooms
-              @include('admin.utilities._room_area_help_pop', [
-                'tipId' => 'saved-rooms',
-                'label' => 'About saved rooms',
-                'text' => 'Each room has its own floor plan and outline. Draw, save, then start another room.',
-              ])
             </h3>
           </div>
           <div class="util-ra-rooms-head__actions">
