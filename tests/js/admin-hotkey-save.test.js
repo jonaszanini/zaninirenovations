@@ -1011,12 +1011,12 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   const leave = fs.readFileSync(path.resolve(__dirname, '../../public/js/admin-quotation-leave-save.js'), 'utf8');
   const src = fs.readFileSync(path.resolve(__dirname, '../../public/js/admin-hotkey-save.js'), 'utf8');
   assert.ok(
-    /dispatchEvent\([\s\S]*admin-dialog:cancel|admin-dialog:cancel[\s\S]*dispatchEvent/.test(dialog),
-    'AdminDialog.close dispatches admin-dialog:cancel'
+    /function close\(result\) \{[\s\S]*if\s*\(\s*!result[\s\S]*admin-dialog:cancel/.test(dialog),
+    'AdminDialog.close dispatches admin-dialog:cancel only when result is falsy'
   );
   assert.ok(
-    /dispatchEvent\([\s\S]*admin-hotkey-save:abort|admin-hotkey-save:abort[\s\S]*dispatchEvent/.test(leave),
-    '#82 re-draft cancel dispatches admin-hotkey-save:abort'
+    /if\s*\(\s*!ok\s*\)[\s\S]*admin-hotkey-save:abort/.test(leave),
+    '#82 re-draft cancel dispatches admin-hotkey-save:abort only when the dialog is declined'
   );
   const bindBody = src.match(/function bind\(\) \{[\s\S]*?\n    \}/);
   assert.ok(bindBody, 'bind() is present');

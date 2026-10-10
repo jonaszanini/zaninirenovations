@@ -59,6 +59,12 @@ async function installSubmitProbe(page) {
   await page.evaluate(() => {
     window.__submits = [];
     window.__posts = [];
+    window.__dialogEvents = [];
+    ['admin-dialog:cancel', 'admin-hotkey-save:abort'].forEach((name) => {
+      document.addEventListener(name, () => {
+        window.__dialogEvents.push(name);
+      });
+    });
     const record = function (form, via) {
       const data = {};
       new FormData(form).forEach((value, key) => {
@@ -76,8 +82,11 @@ async function installSubmitProbe(page) {
   });
 }
 
-async function openPage(page, base, order) {
-  const qs = order === 'hotkey-first' ? '?order=hotkey-first' : '';
+async function openPage(page, base, order, opts) {
+  const params = [];
+  if (order === 'hotkey-first') params.push('order=hotkey-first');
+  if (opts && opts.draftType === 'submit') params.push('draft=submit');
+  const qs = params.length ? '?' + params.join('&') : '';
   await page.goto(base + '/quotation-redraft-hotkey-lock.html' + qs, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!(window.AdminDialog && window.AdminHotkeySave && window.AdminQuoteDraftValidation));
   await installSubmitProbe(page);
@@ -112,11 +121,14 @@ async function assertReleased(page, label) {
   const state = await page.evaluate(() => ({
     inflight: !!(window.AdminHotkeySave && window.AdminHotkeySave.instance && window.AdminHotkeySave.instance().isInflight()),
     submits: (window.__submits || []).length,
+    events: window.__dialogEvents || [],
     dialogHidden: document.getElementById('admin-dialog').hidden,
   }));
   assert.strictEqual(state.dialogHidden, true, label + ': dialog closed');
   assert.strictEqual(state.submits, 0, label + ': cancel must not POST');
   assert.strictEqual(state.inflight, false, label + ': save lock must release immediately');
+  assert.ok(state.events.indexOf('admin-dialog:cancel') !== -1, label + ': cancel must emit admin-dialog:cancel');
+  assert.ok(state.events.indexOf('admin-hotkey-save:abort') !== -1, label + ': cancel must emit admin-hotkey-save:abort');
 }
 
 (async () => {
@@ -141,12 +153,27 @@ async function assertReleased(page, label) {
       await acceptDialog(page);
       const accepted = await page.evaluate(() => ({
         submits: window.__submits,
+        events: window.__dialogEvents,
         inflight: !!(window.AdminHotkeySave && window.AdminHotkeySave.instance && window.AdminHotkeySave.instance().isInflight()),
       }));
       assert.strictEqual(accepted.submits.length, 1, order + ' Ctrl+S accept must POST once');
       assert.strictEqual(accepted.submits[0].data.save_intent, 'draft', order + ' Ctrl+S accept must send draft intent');
       assert.strictEqual(accepted.submits[0].data.is_draft, '1', order + ' Ctrl+S accept must set is_draft');
+      assert.deepStrictEqual(accepted.events, [], order + ' Ctrl+S accept must not emit cancel or abort');
     }
+
+    await openPage(page, base, 'leave-first', { draftType: 'submit' });
+    const submitType = await page.evaluate(() => (document.getElementById('st-btn-draft') || {}).type || '');
+    assert.strictEqual(submitType, 'submit', 'submit-type fixture must use type=submit');
+    await pressSave(page);
+    await acceptDialog(page);
+    const submitAccepted = await page.evaluate(() => ({
+      submits: window.__submits,
+      events: window.__dialogEvents,
+    }));
+    assert.strictEqual(submitAccepted.submits.length, 1, 'submit-type draft: fallback must not POST twice when the click already saved');
+    assert.strictEqual(submitAccepted.submits[0].data.save_intent, 'draft', 'submit-type draft accept must send draft intent');
+    assert.deepStrictEqual(submitAccepted.events, [], 'submit-type confirm must not emit cancel or abort');
   } finally {
     await browser.close();
     server.close();
