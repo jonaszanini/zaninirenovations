@@ -160,63 +160,59 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/id="sh-step-nav"[^>]*hidden|hidden[^>]*id="sh-step-nav"/', $shHtml);
     }
 
-    public function test_programmatic_diff_against_main_toolbars(): void
+    /**
+     * True parent of #72 (`84b3b2b2`): the last editors before the toolbar
+     * moved into shared partials. Live `main` is the new layout, so the
+     * inventory must not `git show` it.
+     */
+    private const TOOLBAR_BASELINE = '86e68a3e0185e1af7e4793200d770ffa9b80f923';
+
+    public function test_programmatic_diff_against_pre_header_toolbar_baseline(): void
     {
         $this->actingAsAdmin();
 
         $map = [
             'basement' => [
                 'file' => 'basement/create.blade.php',
-                'main' => ['Email quotation to client'],
+                'baseline' => ['Email quotation to client'],
                 'rendered' => fn () => $this->renderedBasementEdit(),
-                'needles' => ['Email quotation to client'],
+                'needles' => ['Email quotation to client', 'data-qh-email', 'qh-actions__draft'],
             ],
             'standard' => [
                 'file' => 'standard/create.blade.php',
-                'main' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
+                'baseline' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
                 'rendered' => fn () => $this->get(route('admin.quotations.standard.create'))->assertOk()->getContent()
                     ."\n".$this->renderedStandardEdit(),
-                'needles' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
+                'needles' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types', 'qh-actions__draft'],
             ],
             'fence' => [
                 'file' => 'fence/create.blade.php',
-                'main' => ['Save &amp; create project', 'after_save', 'create_project'],
+                'baseline' => ['Save &amp; create project', 'after_save', 'create_project'],
                 'rendered' => fn () => $this->get(route('admin.quotations.fence.create'))->assertOk()->getContent(),
-                'needles' => ['Save &amp; create project', 'after_save', 'create_project'],
+                'needles' => ['Save &amp; create project', 'after_save', 'create_project', 'qh-actions__draft'],
             ],
             'low_deck' => [
                 'file' => 'low_deck/create.blade.php',
-                'main' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
+                'baseline' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
                 'rendered' => fn () => $this->renderedLowDeckEdit(),
-                'needles' => ['Print Layout Diagrams', 'data-qh-layout-diagrams'],
+                'needles' => ['Print Layout Diagrams', 'data-qh-layout-diagrams', 'qh-actions__draft'],
             ],
             'millwork' => [
                 'file' => 'millwork/create.blade.php',
-                'main' => ['Print cut list'],
+                'baseline' => ['Print cut list'],
                 'rendered' => fn () => $this->renderedMillworkEdit(),
-                'needles' => ['Print cut list'],
+                'needles' => ['Print cut list', 'qh-actions__draft'],
             ],
         ];
 
         foreach ($map as $type => $spec) {
-            $mainPaths = [
-                'resources/views/admin/quotations/'.$spec['file'],
-                'resources/views/admin/partials/quotation_editor_header.blade.php',
-                'resources/views/admin/partials/quotation_editor_more_actions.blade.php',
-            ];
-            $main = '';
-            foreach ($mainPaths as $path) {
-                $chunk = (string) shell_exec('git show origin/main:'.$path.' 2>/dev/null');
-                if ($chunk === '') {
-                    $chunk = (string) shell_exec('git show main:'.$path.' 2>/dev/null');
-                }
-                $main .= $chunk;
-            }
-            if (trim($main) === '') {
-                $this->fail('origin/main (or main) is required for the toolbar inventory diff; CI must fetch it');
-            }
-            foreach ($spec['main'] as $needle) {
-                $this->assertStringContainsString($needle, $main, "main {$spec['file']} no longer has {$needle}");
+            $baseline = $this->toolbarBaselineFile($spec['file']);
+            foreach ($spec['baseline'] as $needle) {
+                $this->assertStringContainsString(
+                    $needle,
+                    $baseline,
+                    'Pinned pre-#72 baseline '.self::TOOLBAR_BASELINE.' '.$spec['file'].' is missing '.$needle
+                );
             }
 
             $html = $spec['rendered']();
@@ -225,10 +221,23 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
                 $this->assertStringContainsString(
                     $needle,
                     $html,
-                    "Rendered {$type} editor is missing {$needle} that main still has — do not hide this behind an unused partial"
+                    "Rendered {$type} editor is missing {$needle} that the pre-#72 toolbar had — fix the page, not this test"
                 );
             }
         }
+    }
+
+    private function toolbarBaselineFile(string $relative): string
+    {
+        $path = 'resources/views/admin/quotations/'.$relative;
+        $html = (string) shell_exec('git show '.escapeshellarg(self::TOOLBAR_BASELINE.':'.$path).' 2>/dev/null');
+        $this->assertNotSame(
+            '',
+            $html,
+            'Pinned toolbar baseline '.self::TOOLBAR_BASELINE.' is required'
+        );
+
+        return $html;
     }
 
     private function renderedBasementEdit(): string
