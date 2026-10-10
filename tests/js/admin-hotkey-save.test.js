@@ -967,6 +967,69 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   inst.reset();
 })();
 
+(function redraftBypassClickIsNotSwallowedWhileInflight() {
+  const btn = makeEl('button', { type: 'button', 'data-hotkey-save': '', id: 'st-btn-draft' });
+  const form = makeEl('form', { id: 'quote-form' }, []);
+  const doc = makeDoc([form, btn]);
+  const inst = apiFor(doc);
+  inst.handleKeydown(chord());
+  assert.ok(inst.isInflight(), 'Ctrl+S starts a session before the re-draft confirm');
+  btn.setAttribute('data-qh-draft-bypass', '1');
+  const ev = {
+    target: btn,
+    prevented: false,
+    stopped: false,
+    preventDefault() { this.prevented = true; },
+    stopImmediatePropagation() { this.stopped = true; },
+  };
+  inst.onMarkedClick(ev);
+  assert.strictEqual(ev.prevented, false, 'accepted re-draft bypass must reach the editor click handler');
+  assert.strictEqual(ev.stopped, false, 'accepted re-draft bypass must not stopImmediatePropagation');
+  inst.reset();
+})();
+
+(function bindRegistersAlwaysOnAbortListeners() {
+  const btn = makeEl('button', { type: 'button', 'data-hotkey-save': '', id: 'save' });
+  const doc = makeDoc([btn]);
+  const inst = apiFor(doc);
+  inst.bind();
+  const abort = doc.listeners[hotkey.ABORT_EVENT] || [];
+  const cancel = doc.listeners[hotkey.DIALOG_CANCEL_EVENT] || [];
+  assert.ok(abort.length >= 1, 'bind() always listens for admin-hotkey-save:abort');
+  assert.ok(cancel.length >= 1, 'bind() always listens for admin-dialog:cancel');
+  inst.handleKeydown(chord());
+  assert.ok(inst.isInflight());
+  abort.forEach((fn) => fn());
+  assert.strictEqual(inst.isInflight(), false, 'always-on abort listener releases without the session wrap');
+  inst.reset();
+})();
+
+(function abortEventsAreDispatchedAndListenedInSource() {
+  const fs = require('fs');
+  const path = require('path');
+  const dialog = fs.readFileSync(path.resolve(__dirname, '../../public/js/admin-dialog.js'), 'utf8');
+  const leave = fs.readFileSync(path.resolve(__dirname, '../../public/js/admin-quotation-leave-save.js'), 'utf8');
+  const src = fs.readFileSync(path.resolve(__dirname, '../../public/js/admin-hotkey-save.js'), 'utf8');
+  assert.ok(
+    /function close\(result\) \{[\s\S]*if\s*\(\s*!result[\s\S]*admin-dialog:cancel/.test(dialog),
+    'AdminDialog.close dispatches admin-dialog:cancel only when result is falsy'
+  );
+  assert.ok(
+    /if\s*\(\s*!ok\s*\)[\s\S]*admin-hotkey-save:abort/.test(leave),
+    '#82 re-draft cancel dispatches admin-hotkey-save:abort only when the dialog is declined'
+  );
+  const bindBody = src.match(/function bind\(\) \{[\s\S]*?\n    \}/);
+  assert.ok(bindBody, 'bind() is present');
+  assert.ok(
+    /addEventListener\(\s*ABORT_EVENT/.test(bindBody[0]),
+    'bind() always-on listener for admin-hotkey-save:abort'
+  );
+  assert.ok(
+    /addEventListener\(\s*DIALOG_CANCEL_EVENT/.test(bindBody[0]),
+    'bind() always-on listener for admin-dialog:cancel'
+  );
+})();
+
 (function clickSwallowWhileInflight() {
   const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'save' });
   const form = makeEl('form', { id: 'f' }, [btn]);
