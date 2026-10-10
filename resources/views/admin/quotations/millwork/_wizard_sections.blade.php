@@ -3,6 +3,7 @@
   use App\Services\Millwork\MillworkPartBuilder;
   use App\Services\MillworkQuotationCalculator;
 
+  $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
   $mwVal = function (string $key, $fallback = '') use ($inputs) {
       return old($key, $inputs[$key] ?? $fallback);
   };
@@ -20,6 +21,7 @@
   $needsEdgeBanding = false;
   $needsPaint = false;
   $needsStain = false;
+  $isLegacyQuote = $isLegacyQuote ?? (((int) ($cutPlanVersion ?? $builderVersion ?? 2)) < 2);
 
   foreach ($pieces as $pieceRow) {
       if (! is_array($pieceRow)) {
@@ -58,14 +60,14 @@
   <div class="br-acc__body">
     <div id="mw-piece-list">
       @foreach ($pieces as $pi => $piece)
-        @include('admin.quotations.millwork._piece_card', ['pi' => $pi, 'piece' => is_array($piece) ? $piece : []])
+        @include('admin.quotations.millwork._piece_card', ['pi' => $pi, 'piece' => is_array($piece) ? $piece : [], 'isLegacyQuote' => $isLegacyQuote ?? (((int) ($cutPlanVersion ?? 2)) < 2)])
       @endforeach
     </div>
     <button type="button" class="admin-btn admin-btn--ghost" id="mw-add-piece" style="margin-top:10px;">
       <i class="fa fa-plus"></i> Add another piece
     </button>
     <template id="mw-piece-template">
-      @include('admin.quotations.millwork._piece_card', ['pi' => '__P__', 'piece' => MillworkQuotationCalculator::defaultPiece('shelf')])
+      @include('admin.quotations.millwork._piece_card', ['pi' => '__P__', 'piece' => MillworkQuotationCalculator::defaultPiece('shelf'), 'isLegacyQuote' => $isLegacyQuote ?? (((int) ($cutPlanVersion ?? 2)) < 2)])
     </template>
     <template id="mw-set-template">
       @include('admin.quotations.millwork._set_row', ['pi' => '__P__', 'si' => '__S__', 'set' => ['qty' => 1, 'unit' => 'in']])
@@ -84,9 +86,9 @@
   <div class="br-acc__body">
     <div class="admin-form-group mw-sheet-field">
       <span class="admin-label-with-tip">
-  <label for="mw-sheet">Wood sheet</label>
-  @include('admin.partials.info_tip', ['tipText' => 'Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.', 'tipLabel' => 'Wood sheet'])
-</span>
+        <label for="mw-sheet">Wood sheet</label>
+        <x-admin.info-tip label="Wood sheet">Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.</x-admin.info-tip>
+      </span>
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
         @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
           <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>
@@ -166,26 +168,36 @@
     <div class="mw-short-row">
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
-  <label for="mw-waste">Waste %</label>
-  @include('admin.partials.info_tip', ['tipText' => 'Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.', 'tipLabel' => 'Waste %'])
-</span>
+          <label for="mw-waste">Waste %</label>
+          <x-admin.info-tip label="Waste %">Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.</x-admin.info-tip>
+        </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-waste" name="waste_pct"
                value="{{ old('waste_pct', $inputs['waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-edge-waste">Edge waste %</label>
+        <span class="admin-label-with-tip">
+          <label for="mw-edge-waste">Edge waste %</label>
+          <x-admin.info-tip label="Edge waste %">Extra edge banding beyond the cut-plan length.</x-admin.info-tip>
+        </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-edge-waste" name="edge_waste_pct"
                value="{{ old('edge_waste_pct', $inputs['edge_waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-finish-waste">Finish waste %</label>
+        <span class="admin-label-with-tip">
+          <label for="mw-finish-waste">Finish waste %</label>
+          <x-admin.info-tip label="Finish waste %">Extra paint or stain beyond the measured faces.</x-admin.info-tip>
+        </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-finish-waste" name="finish_waste_pct"
                value="{{ old('finish_waste_pct', $inputs['finish_waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
         <label for="mw-spare">Spare sheets</label>
-        <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" id="mw-spare" name="spare_sheets"
-               value="{{ old('spare_sheets', $inputs['spare_sheets'] ?? 0) }}">
+        <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('spare_sheets') ? ' is-invalid' : '' }}" id="mw-spare" name="spare_sheets"
+               value="{{ old('spare_sheets', $inputs['spare_sheets'] ?? 0) }}"
+               @if ($errors->has('spare_sheets')) aria-invalid="true" @endif>
+        @error('spare_sheets')
+          <p class="admin-form-error">{{ $message }}</p>
+        @enderror
       </div>
       <div class="admin-form-group">
         <label for="mw-markup">Markup %</label>
@@ -208,7 +220,7 @@
           'rateValue' => old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate), 2, '.', '')),
         ])
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" id="mw-delivery-wrap" @if (old('client_provides_all', $inputs['client_provides_all'] ?? false)) hidden @endif>
         <label for="mw-delivery">Delivery</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input mw-preview mw-input--money" id="mw-delivery" name="delivery_amount"
@@ -232,19 +244,27 @@
     <div class="mw-hw-grid">
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-hinge">Hinges</label>
-        <select class="admin-input mw-preview" id="mw-hinge" name="hinge_id">
+        <select class="admin-input mw-preview" id="mw-hinge" name="hinge_id" data-mw-hw-select>
           @foreach ($opt(MillworkSettings::SLOT_HINGES) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('hinge_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
+            @php $hwPrice = (float) ($row['unit_price'] ?? 0); @endphp
+            <option value="{{ $row['id'] }}" data-price="{{ number_format($hwPrice, 2, '.', '') }}" @selected($mwVal('hinge_id') === ($row['id'] ?? ''))>
+              {{ $row['name'] }}@if ($hwPrice > 0) — {{ \App\Models\ClientProject::formatMoney($hwPrice) }}@endif
+            </option>
           @endforeach
         </select>
+        <p class="admin-form-help mw-hw-price" data-mw-hw-price hidden></p>
       </div>
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-pull">Pulls</label>
-        <select class="admin-input mw-preview" id="mw-pull" name="pull_id">
+        <select class="admin-input mw-preview" id="mw-pull" name="pull_id" data-mw-hw-select>
           @foreach ($opt(MillworkSettings::SLOT_PULLS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('pull_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
+            @php $hwPrice = (float) ($row['unit_price'] ?? 0); @endphp
+            <option value="{{ $row['id'] }}" data-price="{{ number_format($hwPrice, 2, '.', '') }}" @selected($mwVal('pull_id') === ($row['id'] ?? ''))>
+              {{ $row['name'] }}@if ($hwPrice > 0) — {{ \App\Models\ClientProject::formatMoney($hwPrice) }}@endif
+            </option>
           @endforeach
         </select>
+        <p class="admin-form-help mw-hw-price" data-mw-hw-price hidden></p>
       </div>
       <div class="admin-form-group">
         <label for="mw-screw">Screws</label>

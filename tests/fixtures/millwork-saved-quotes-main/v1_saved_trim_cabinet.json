@@ -1,0 +1,106 @@
+{
+    "version": 1,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "cabinet",
+                "name": "Pantry",
+                "room": "Kitchen",
+                "qty": 1,
+                "width": 36,
+                "height": 34.5,
+                "depth": 24,
+                "unit": "in",
+                "include_doors": false,
+                "include_back": false,
+                "edge_banding": false,
+                "shelf_count": 0
+            },
+            {
+                "type": "trim",
+                "profile": "casing",
+                "unit": "ft",
+                "length": 20,
+                "openings": 3,
+                "width": 36,
+                "height": 80,
+                "qty": 1,
+                "edge_banding": false
+            }
+        ],
+        "include_install": false,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 899.3,
+            "materials_pre_hst": 295.56,
+            "subtotal_pre_hst": 1194.86,
+            "hst": 155.33,
+            "grand_total": 1350.19
+        },
+        "labor": [
+            {
+                "key": "cut",
+                "label": "Shop — cut / nest sheets",
+                "hours": 0.9,
+                "amount": 76.5
+            },
+            {
+                "key": "cabinet",
+                "label": "Shop — cabinet / vanity boxes",
+                "hours": 5.88,
+                "amount": 499.8
+            },
+            {
+                "key": "trim",
+                "label": "Trim / casing / base",
+                "hours": 3.8,
+                "amount": 323
+            }
+        ],
+        "materials": [
+            {
+                "key": "sheet_1",
+                "label": "3/4\" cabinet-grade plywood 4×8",
+                "qty": 1,
+                "unit_price": 72,
+                "amount": 72
+            },
+            {
+                "key": "sheet_2",
+                "label": "3/4\" cabinet-grade plywood 2×4",
+                "qty": 1,
+                "unit_price": 24,
+                "amount": 24
+            },
+            {
+                "key": "glue",
+                "label": "Wood glue, 16 oz",
+                "qty": 1,
+                "unit_price": 8.9,
+                "amount": 8.9
+            },
+            {
+                "key": "trim",
+                "label": "MDF baseboard",
+                "qty": 75.9,
+                "unit_price": 2.4,
+                "amount": 182.16
+            },
+            {
+                "key": "fastener",
+                "label": "1-1/4\" cabinet screws (box of 100)",
+                "qty": 1,
+                "unit_price": 8.5,
+                "amount": 8.5
+            }
+        ],
+        "scope_labels": [
+            "1× Kitchen / Pantry — cabinet 36\"×34.5\"×24\"",
+            "1× Casing 69 lf"
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nKitchen — Pantry. Base cabinet, 36\" W × 34.5\" H × 24\" D. Unfinished. Includes supply, shop build, and hardware.\nTrim casing, approx. 69 lin. ft. Includes supply, shop build, and hardware."
+    }
+}

@@ -97,6 +97,18 @@ jobs:
       - name: Millwork cut-plan placement (no database)
         run: php artisan test tests/Unit/Services/MillworkCutPlanPlacementTest.php
 
+      - name: Millwork dimension parser (no database)
+        run: php artisan test tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
+
+      - name: Millwork saved-quote fixtures vs main (no database)
+        run: php artisan test tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
+
+      - name: Millwork v3 calc-version gate (no database)
+        run: php artisan test tests/Unit/Services/MillworkCalcVersionGateTest.php
+
+      - name: Millwork v2 3k fuzz invariants (no database)
+        run: php artisan test tests/Unit/Services/MillworkV2FuzzParityTest.php
+
       - name: Admin dark-theme CSS coverage (no database)
         run: |
           php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php
@@ -208,6 +220,7 @@ jobs:
           php artisan test tests/Feature/Admin/QuotationCutListImportTest.php
           php artisan test tests/Unit/Services/MillworkQuotationCalculatorTest.php
           php artisan test tests/Feature/Admin/MillworkQuotationPagesTest.php
+          php artisan test tests/Feature/Admin/MillworkLeaveSaveBrowserTest.php
           php artisan test tests/Feature/Admin/MillworkQuotationRoundTripTest.php
           php artisan test tests/Feature/Admin/MillworkCutPlanPlacementTest.php
           php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php

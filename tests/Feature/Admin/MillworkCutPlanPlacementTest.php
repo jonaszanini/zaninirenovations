@@ -8,6 +8,7 @@ use App\Models\MillworkQuotation;
 use App\Services\MillworkQuotationCalculator;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
+use Tests\Support\AssertsAdminInfoTipAria;
 
 /**
  * Tester PR A acceptance check 5: red banner, PDF 422, no file.
@@ -15,6 +16,7 @@ use Tests\Support\ActsAsAdmin;
 class MillworkCutPlanPlacementTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
+    use AssertsAdminInfoTipAria;
 
     public function test_oversized_shelf_preview_lists_unplaced_parts(): void
     {
@@ -588,6 +590,32 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             ->assertSee('qa-contact', false);
     }
 
+    public function test_saved_v2_quote_shows_recalculate_to_v3(): void
+    {
+        $this->actingAsAdmin();
+        $inputs = [
+            'pieces' => [MillworkQuotationCalculator::defaultPiece('closet')],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+        ];
+        $calc = (new MillworkQuotationCalculator)->calculate($inputs, null, 2);
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V2-RECALC',
+            'client_name' => 'Saved V2',
+            'is_draft' => true,
+            'cut_plan_version' => 2,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => (float) ($calc['summary']['grand_total'] ?? 0),
+        ]);
+
+        $this->get(route('admin.quotations.millwork.edit', $quote))
+            ->assertOk()
+            ->assertSee('Recalculate with new cut plan')
+            ->assertSee('name="_cut_plan_version"', false)
+            ->assertSee('value="2"', false);
+    }
+
     public function test_vehicles_business_contact_help_is_behind_info_tip(): void
     {
         $this->actingAsAdmin();
@@ -595,11 +623,13 @@ class MillworkCutPlanPlacementTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('Business contact')
             ->assertSee('admin-info-tip', false)
-            ->assertSee('Shown to clients on quote accept pages.')
+            ->assertSee('Shown to clients on quote accept pages and the blocked PDF page.')
+            ->assertDontSee('aria-label="About About ', false)
             ->getContent();
+        $this->assertAdminInfoTipAriaLabel($html, 'Business contact');
 
         $this->assertStringNotContainsString(
-            '<p class="admin-form-help">Shown to clients on quote accept pages.</p>',
+            '<p class="admin-form-help">Shown to clients on quote accept pages and the blocked PDF page.</p>',
             $html
         );
     }

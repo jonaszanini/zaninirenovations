@@ -1,0 +1,35 @@
+{
+    "version": 2,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "mantel",
+                "unit": "ft",
+                "length": "",
+                "depth": "",
+                "height": "",
+                "qty": 1,
+                "edge_banding": false
+            }
+        ],
+        "include_install": false,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 0,
+            "materials_pre_hst": 0,
+            "subtotal_pre_hst": 0,
+            "hst": 0,
+            "grand_total": 0
+        },
+        "labor": [],
+        "materials": [],
+        "scope_labels": [
+            "1× mantel 720\"×120\"×96\""
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nMantel. Mantel. Unfinished. Includes supply and shop build.",
+        "preview_skipped": false
+    }
+}

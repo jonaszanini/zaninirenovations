@@ -51,8 +51,8 @@
 
     <div class="admin-card admin-vehicles-contact-card">
       <h3>Business contact @include('admin.partials.info_tip', [
-        'tipText' => 'Shown to clients on quote accept pages.',
-        'tipLabel' => 'About business contact',
+        'tipText' => 'Shown to clients on quote accept pages and the blocked PDF page.',
+        'tipLabel' => 'Business contact',
       ])</h3>
       <form action="{{ route('admin.vehicles.settings.business-contact') }}" method="post">
         @csrf

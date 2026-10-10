@@ -97,7 +97,7 @@
     @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="mw-save-intent" value="publish">
-    <input type="hidden" name="_cut_plan_version" id="mw-cut-plan-version" value="{{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->cutPlanVersion() : 2)) }}">
+    <input type="hidden" name="_cut_plan_version" id="mw-cut-plan-version" value="{{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }}">
     <input type="hidden" name="upgrade_cut_plan" id="mw-upgrade-cut-plan" value="0">
 
     <div class="br-shell">
@@ -148,7 +148,7 @@
             <div class="mw-cut-plan-head">
               <h4 class="br-review-heading">Cut plan</h4>
               <div class="mw-cut-plan-head__actions">
-                @if ($isEdit && $quotation && $quotation->usesLegacyCutBuilder())
+                @if ($isEdit && $quotation && $quotation->canUpgradeCalc())
                   <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-upgrade-cut-plan-btn">
                     Recalculate with new cut plan
                   </button>
@@ -206,6 +206,7 @@
                 </p>
               @endforeach
             </div>
+            <p class="admin-form-help mw-cut-plan__status" id="mw-cut-plan-status" hidden>Updating cut plan…</p>
             <p class="admin-form-help" id="mw-cut-meta">
               {{ (int) ($initialPreview['cut_plan']['sheet_count'] ?? 0) }} sheet(s)
               @if (! empty($initialPreview['cut_plan']['yield_pct']))
@@ -218,7 +219,7 @@
                 · Kerf {{ $kerfLabel }}
               @endif
             </p>
-            <div id="mw-cut-plan" class="mw-cut-plan">
+            <div id="mw-cut-plan" class="mw-cut-plan" aria-busy="false">
               @forelse ($cutLayouts as $layout)
                 @include('admin.quotations.millwork._cut_sheet', ['layout' => $layout])
               @empty
@@ -383,7 +384,8 @@
       ),
       initialPreview: @json($initialPreview ?? null),
       isEdit: @json($isEdit),
-      cutPlanVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->cutPlanVersion() : 2)) }},
+      cutPlanVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }},
+      calcVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }},
       storedTotal: {{ $isEdit && $quotation ? json_encode((float) $quotation->final_quote_total) : '0' }},
       sectionKeys: @json(array_keys($sectionList)),
       quoteNumber: @json($isEdit && $quotation ? ($quotation->quote_number ?? '') : ''),
