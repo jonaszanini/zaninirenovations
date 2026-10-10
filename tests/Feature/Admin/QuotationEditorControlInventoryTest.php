@@ -160,45 +160,60 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/id="sh-step-nav"[^>]*hidden|hidden[^>]*id="sh-step-nav"/', $shHtml);
     }
 
+    /**
+     * True parent of #72 (`84b3b2b2`): the last editors before the toolbar
+     * moved into shared partials. Live `main` is the new layout, so the
+     * inventory must not `git show` it.
+     */
+    private const TOOLBAR_BASELINE = '86e68a3e0185e1af7e4793200d770ffa9b80f923';
+
     public function test_programmatic_diff_against_pre_header_toolbar_baseline(): void
     {
         $this->actingAsAdmin();
 
-        $baseline = require base_path('tests/fixtures/quotation-toolbar-baseline-13c808e7.php');
-        $this->assertIsArray($baseline);
-
         $map = [
             'basement' => [
                 'file' => 'basement/create.blade.php',
+                'baseline' => ['Email quotation to client'],
                 'rendered' => fn () => $this->renderedBasementEdit(),
-                'needles' => ['Email quotation to client', 'data-qh-email'],
+                'needles' => ['Email quotation to client', 'data-qh-email', 'qh-actions__draft'],
             ],
             'standard' => [
                 'file' => 'standard/create.blade.php',
+                'baseline' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
                 'rendered' => fn () => $this->get(route('admin.quotations.standard.create'))->assertOk()->getContent()
                     ."\n".$this->renderedStandardEdit(),
-                'needles' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
+                'needles' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types', 'qh-actions__draft'],
             ],
             'fence' => [
                 'file' => 'fence/create.blade.php',
+                'baseline' => ['Save &amp; create project', 'after_save', 'create_project'],
                 'rendered' => fn () => $this->get(route('admin.quotations.fence.create'))->assertOk()->getContent(),
-                'needles' => ['Save &amp; create project', 'after_save', 'create_project'],
+                'needles' => ['Save &amp; create project', 'after_save', 'create_project', 'qh-actions__draft'],
             ],
             'low_deck' => [
                 'file' => 'low_deck/create.blade.php',
+                'baseline' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
                 'rendered' => fn () => $this->renderedLowDeckEdit(),
-                'needles' => ['Print Layout Diagrams', 'data-qh-layout-diagrams'],
+                'needles' => ['Print Layout Diagrams', 'data-qh-layout-diagrams', 'qh-actions__draft'],
             ],
             'millwork' => [
                 'file' => 'millwork/create.blade.php',
+                'baseline' => ['Print cut list'],
                 'rendered' => fn () => $this->renderedMillworkEdit(),
-                'needles' => ['Print cut list'],
+                'needles' => ['Print cut list', 'qh-actions__draft'],
             ],
         ];
 
         foreach ($map as $type => $spec) {
-            $this->assertArrayHasKey($spec['file'], $baseline, "13c808e7 snapshot missing {$spec['file']}");
-            $this->assertNotEmpty($baseline[$spec['file']], "13c808e7 snapshot for {$spec['file']} is empty");
+            $baseline = $this->toolbarBaselineFile($spec['file']);
+            foreach ($spec['baseline'] as $needle) {
+                $this->assertStringContainsString(
+                    $needle,
+                    $baseline,
+                    'Pinned pre-#72 baseline '.self::TOOLBAR_BASELINE.' '.$spec['file'].' is missing '.$needle
+                );
+            }
 
             $html = $spec['rendered']();
             $this->assertNotSame('', trim($html), "{$type} rendered HTML was empty");
@@ -210,6 +225,19 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
                 );
             }
         }
+    }
+
+    private function toolbarBaselineFile(string $relative): string
+    {
+        $path = 'resources/views/admin/quotations/'.$relative;
+        $html = (string) shell_exec('git show '.escapeshellarg(self::TOOLBAR_BASELINE.':'.$path).' 2>/dev/null');
+        $this->assertNotSame(
+            '',
+            $html,
+            'Pinned toolbar baseline '.self::TOOLBAR_BASELINE.' is required'
+        );
+
+        return $html;
     }
 
     private function renderedBasementEdit(): string
