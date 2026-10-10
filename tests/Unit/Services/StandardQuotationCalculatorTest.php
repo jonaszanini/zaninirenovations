@@ -429,4 +429,32 @@ class StandardQuotationCalculatorTest extends TestCase
             $this->assertGreaterThan(0.01, $amount);
         }
     }
+
+    public function test_grand_total_with_commute_and_debris_matches_editor(): void
+    {
+        $computed = (new StandardQuotationCalculator)->computeWorks(
+            [[
+                'title' => 'Kitchen',
+                'materials' => [[
+                    'short_name' => 'LVP',
+                    'unit_price' => 100,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
+                'labour_use_fixed' => true,
+                'labour_fixed_amount' => 0,
+            ]],
+            false,
+            0,
+            true,
+            false,
+            0
+        );
+
+        $this->assertSame(113.00, (float) $computed['grand_total']);
+        $this->assertSame(
+            323.00,
+            StandardQuotationCalculator::grandTotalWithCommuteAndDebris($computed, 100.00, 110.00)
+        );
+    }
 }

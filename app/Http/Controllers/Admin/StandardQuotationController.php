@@ -757,9 +757,6 @@ class StandardQuotationController extends Controller
             return;
         }
 
-        $taxablePreHst = $this->preHstTaxableForLink($standardQuotation);
-        $exemptPreHst = $this->preHstExemptForLink($standardQuotation);
-
         /** @var ClientProjectQuotation $row */
         $row = ClientProjectQuotation::firstOrNew([
             'client_project_id' => $project->id,
@@ -773,38 +770,7 @@ class StandardQuotationController extends Controller
             $row->exists ? $row : null
         );
 
-        $sqLines = [];
-        if ($exemptPreHst > 0 && $taxablePreHst > 0) {
-            $sqLines[] = [
-                'description' => $lineDescription.' — HST applicable',
-                'amount' => $taxablePreHst,
-                'apply_hst' => true,
-                'source_standard_quotation_id' => $standardQuotation->id,
-            ];
-            $sqLines[] = [
-                'description' => $lineDescription.' — HST exempt',
-                'amount' => $exemptPreHst,
-                'apply_hst' => false,
-                'source_standard_quotation_id' => $standardQuotation->id,
-            ];
-        } elseif ($exemptPreHst > 0) {
-            $sqLines[] = [
-                'description' => $lineDescription,
-                'amount' => $exemptPreHst,
-                'apply_hst' => false,
-                'source_standard_quotation_id' => $standardQuotation->id,
-            ];
-        } else {
-            $sqLines[] = [
-                'description' => $lineDescription,
-                'amount' => $taxablePreHst,
-                'apply_hst' => true,
-                'source_standard_quotation_id' => $standardQuotation->id,
-            ];
-        }
-
-        $this->appendCommuteProjectLine($sqLines, $standardQuotation);
-        $this->appendDebrisRemovalProjectLine($sqLines, $standardQuotation);
+        $sqLines = $standardQuotation->projectQuotationLineItems($lineDescription);
 
         $docType = $standardQuotation->document_type;
         if ($docType !== ClientProjectQuotation::TYPE_QUOTATION

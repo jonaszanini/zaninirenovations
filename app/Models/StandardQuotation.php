@@ -300,6 +300,99 @@ class StandardQuotation extends Model
         );
     }
 
+    /**
+     * Same grand total the Standard editor and PDF use: computeWorks()
+     * (materials, labour, contingency, HST-exempt, building) plus commute
+     * and debris when those extras are on.
+     *
+     * @param  array<string, mixed>|null  $computed
+     */
+    public function editorGrandTotal(?array $computed = null): float
+    {
+        $computed ??= $this->computedTotals();
+        $commute = filter_var($this->include_commute ?? false, FILTER_VALIDATE_BOOLEAN)
+            ? (float) ($this->commute_amount ?? 0)
+            : 0.0;
+        $debris = filter_var($this->include_debris_removal ?? false, FILTER_VALIDATE_BOOLEAN)
+            ? (float) ($this->debris_removal_amount ?? 0)
+            : 0.0;
+
+        return StandardQuotationCalculator::grandTotalWithCommuteAndDebris(
+            $computed,
+            $commute,
+            $debris
+        );
+    }
+
+    /**
+     * Line items synced onto the linked project quotation (editor path):
+     * taxable / HST-exempt pre-HST splits (contingency included) plus
+     * hidden commute and debris extras.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function projectQuotationLineItems(?string $lineDescription = null): array
+    {
+        $computed = $this->computedTotals();
+        $taxablePreHst = round((float) ($computed['pre_hst_taxable'] ?? 0), 2);
+        $exemptPreHst = round((float) ($computed['pre_hst_exempt'] ?? 0), 2);
+        $lineDescription = trim((string) ($lineDescription ?? ''));
+        if ($lineDescription === '') {
+            $lineDescription = $this->pdfSummaryLineDescription();
+        }
+
+        $items = [];
+        if ($exemptPreHst > 0 && $taxablePreHst > 0) {
+            $items[] = [
+                'description' => $lineDescription.' — HST applicable',
+                'amount' => $taxablePreHst,
+                'apply_hst' => true,
+                'source_standard_quotation_id' => $this->id,
+            ];
+            $items[] = [
+                'description' => $lineDescription.' — HST exempt',
+                'amount' => $exemptPreHst,
+                'apply_hst' => false,
+                'source_standard_quotation_id' => $this->id,
+            ];
+        } elseif ($exemptPreHst > 0) {
+            $items[] = [
+                'description' => $lineDescription,
+                'amount' => $exemptPreHst,
+                'apply_hst' => false,
+                'source_standard_quotation_id' => $this->id,
+            ];
+        } else {
+            $items[] = [
+                'description' => $lineDescription,
+                'amount' => $taxablePreHst,
+                'apply_hst' => true,
+                'source_standard_quotation_id' => $this->id,
+            ];
+        }
+
+        if ($this->include_commute && (float) $this->commute_amount > 0) {
+            $commuteLine = \App\Services\CommuteExpenseService::projectLineItem(
+                (float) $this->commute_amount,
+                (int) ($this->commute_estimated_trips ?? 1)
+            );
+            if ($commuteLine !== null) {
+                $items[] = $commuteLine;
+            }
+        }
+
+        if ($this->include_debris_removal && (float) $this->debris_removal_amount > 0) {
+            $debrisLine = \App\Services\DebrisRemovalExpenseService::projectLineItem(
+                (float) $this->debris_removal_amount
+            );
+            if ($debrisLine !== null) {
+                $items[] = $debrisLine;
+            }
+        }
+
+        return $items;
+    }
+
     /** Labour HST is on unless the quote explicitly turns it off (cash). */
     public function chargesLabourHst(): bool
     {

@@ -473,6 +473,21 @@ class StandardQuotationCalculator
     }
 
     /**
+     * Editor / PDF grand total: computeWorks() plus commute and debris
+     * (those extras are HST-inclusive and sit outside the materials+labour fold).
+     */
+    public static function grandTotalWithCommuteAndDebris(
+        array $computed,
+        float $commuteAmount = 0.0,
+        float $debrisAmount = 0.0
+    ): float {
+        return round(
+            (float) ($computed['grand_total'] ?? 0) + $commuteAmount + $debrisAmount,
+            2
+        );
+    }
+
+    /**
      * Overlay catalog delivery onto linked rows (once per line, not × qty).
      * Call only when the user re-picks a catalog item — not on every compute.
      *

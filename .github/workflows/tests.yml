@@ -220,6 +220,8 @@ jobs:
           php artisan test tests/Feature/Quotations/PdfFoldVersionLinkTest.php
           php artisan test tests/Unit/Models/StandardQuotationPdfLineItemsTest.php
           php artisan test tests/Unit/Services/StandardQuotationCalculatorTest.php
+          php artisan test tests/Unit/Services/StandardQuotationKitRewriteAuditorTest.php
+          php artisan test tests/Unit/Models/StandardQuotationEditorTotalTest.php
           php artisan test tests/Feature/Admin/StandardQuotationPurchaseListTest.php
           php artisan test tests/Unit/Views/StandardQuotationEditorJsTest.php
           php artisan test tests/Unit/Services/FenceQuotationCalculatorTest.php
