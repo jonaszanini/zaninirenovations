@@ -1016,41 +1016,22 @@
   }
 
   function gateCountLimit() {
-    var n = parseInt(gatesInput && gatesInput.value, 10);
+    var raw = gatesInput && String(gatesInput.value).trim();
+    if (raw === '') {
+      if (typeof document !== 'undefined' && document.activeElement === gatesInput) {
+        return null;
+      }
+      return 0;
+    }
+    var n = parseInt(raw, 10);
     return isFinite(n) && n > 0 ? n : 0;
   }
 
   var lastClearedGateTicks = 0;
   var lastGateLimitSeen = null;
+  var clearedGateTickIndexes = [];
 
-  function updateGateCheckboxState() {
-    var limit = gateCountLimit();
-    var gateInputs = sidesEl.querySelectorAll('.fq-side-gate-here');
-    var checkedCount = 0;
-
-    gateInputs.forEach(function (input) {
-      if (input.checked) checkedCount++;
-    });
-
-    var cleared = 0;
-    if (checkedCount > limit) {
-      var excess = checkedCount - limit;
-      Array.prototype.slice.call(gateInputs).reverse().forEach(function (input) {
-        if (excess <= 0) return;
-        if (input.checked) {
-          input.checked = false;
-          excess--;
-          cleared++;
-        }
-      });
-      checkedCount = limit;
-      lastClearedGateTicks = cleared;
-    } else if (lastGateLimitSeen !== limit) {
-      lastClearedGateTicks = 0;
-    }
-    lastGateLimitSeen = limit;
-
-    // Keep every box clickable so checking another run moves the gate.
+  function syncGateTickChrome(gateInputs) {
     gateInputs.forEach(function (input) {
       var label = input.closest('label.admin-checkbox');
       input.disabled = false;
@@ -1061,6 +1042,55 @@
         if (size) size.classList.toggle('is-hidden', !input.checked);
       }
     });
+  }
+
+  function updateGateCheckboxState() {
+    var limit = gateCountLimit();
+    var gateInputs = sidesEl.querySelectorAll('.fq-side-gate-here');
+
+    if (limit === null) {
+      syncGateTickChrome(gateInputs);
+      updateGateCountWarning();
+      return;
+    }
+
+    var checkedCount = 0;
+    gateInputs.forEach(function (input) {
+      if (input.checked) checkedCount++;
+    });
+
+    if (checkedCount < limit && clearedGateTickIndexes.length) {
+      clearedGateTickIndexes = clearedGateTickIndexes.filter(function (idx) {
+        var input = gateInputs[idx];
+        if (!input || input.checked) return false;
+        if (checkedCount >= limit) return true;
+        input.checked = true;
+        checkedCount++;
+        return false;
+      });
+    }
+
+    if (checkedCount > limit) {
+      var excess = checkedCount - limit;
+      Array.prototype.slice.call(gateInputs).reverse().forEach(function (input) {
+        if (excess <= 0) return;
+        if (input.checked) {
+          input.checked = false;
+          excess--;
+          var idx = Array.prototype.indexOf.call(gateInputs, input);
+          if (idx >= 0 && clearedGateTickIndexes.indexOf(idx) === -1) {
+            clearedGateTickIndexes.unshift(idx);
+          }
+        }
+      });
+      checkedCount = limit;
+    }
+
+    lastClearedGateTicks = clearedGateTickIndexes.length;
+    lastGateLimitSeen = limit;
+
+    // Keep every box clickable so checking another run moves the gate.
+    syncGateTickChrome(gateInputs);
     updateGateCountWarning();
   }
 
@@ -1107,7 +1137,10 @@
     if (!gateWarnEl || !gatesInput) return;
     var messages = [];
     var ticked = sidesEl.querySelectorAll('.fq-side-gate-here:checked').length;
-    var count = parseInt(gatesInput.value, 10) || 0;
+    var count = parseInt(gatesInput.value, 10);
+    if (!isFinite(count)) {
+      count = lastGateLimitSeen != null ? lastGateLimitSeen : 0;
+    }
     if (lastClearedGateTicks > 0) {
       messages.push(
         'Gates was lowered to ' + count + '. ' + lastClearedGateTicks +
