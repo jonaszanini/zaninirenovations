@@ -270,6 +270,20 @@
     attachPdf: root.querySelector('[data-ra-attach-pdf]'),
     createQuote: root.querySelector('[data-ra-create-quote]'),
     quoteAll: root.querySelector('[data-ra-quote-all]'),
+    planActions: root.querySelector('[data-ra-plan-actions]'),
+    planPdf: root.querySelector('[data-ra-plan-pdf]'),
+    exportCsv: root.querySelector('[data-ra-export-csv]'),
+    exportXlsx: root.querySelector('[data-ra-export-xlsx]'),
+    phases: root.querySelector('[data-ra-phases]'),
+    phaseList: root.querySelector('[data-ra-phase-list]'),
+    phaseName: root.querySelector('[data-ra-phase-name]'),
+    phaseAdd: root.querySelector('[data-ra-phase-add]'),
+    sign: root.querySelector('[data-ra-sign]'),
+    signName: root.querySelector('[data-ra-sign-name]'),
+    signDate: root.querySelector('[data-ra-sign-date]'),
+    signPad: root.querySelector('[data-ra-sign-pad]'),
+    signSave: root.querySelector('[data-ra-sign-save]'),
+    signClear: root.querySelector('[data-ra-sign-clear]'),
     feedback: root.querySelector('[data-ra-feedback]'),
     roomName: root.querySelector('[data-ra-room-name]'),
     saveRoom: root.querySelector('[data-ra-save-room]'),
@@ -8204,11 +8218,22 @@
             ? '<a class="admin-btn admin-btn--primary admin-btn--sm" href="' + esc(quoteRoomUrl(room.id)) + '" title="Create quote from this room"><i class="fa fa-file-text-o"></i><span class="util-ra-rooms-item__action-label">Quote</span></a>'
             : '') +
           '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-delete-room="' + room.id + '" title="Delete"><i class="fa fa-trash"></i><span class="util-ra-rooms-item__action-label">Delete</span></button>' +
+        '</div>' +
+        '<div class="util-ra-rooms-item__phase-row">' +
+          '<label class="util-sr-only" for="ra-room-phase-' + room.id + '">Phase</label>' +
+          '<select class="admin-input util-ra-rooms-item__phase" id="ra-room-phase-' + room.id + '" data-ra-room-phase="' + room.id + '">' +
+            phaseOptionsHtml(room.phase_id) +
+          '</select>' +
         '</div>';
       els.roomsList.appendChild(li);
     });
 
     els.totalSqft.textContent = fmt(total, 2);
+    renderPhases();
+    renderSignature();
+    show(els.planActions, !!(project && rooms.length));
+    show(els.phases, !!project);
+    show(els.sign, !!project);
     if (els.quoteAll) {
       var projectQuoteTpl = root.getAttribute('data-quote-project-template') || '';
       if (project && rooms.length >= 2 && projectQuoteTpl) {
@@ -8238,6 +8263,363 @@
         deleteRoom(parseInt(btn.getAttribute('data-delete-room'), 10));
       });
     });
+    els.roomsList.querySelectorAll('[data-ra-room-phase]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        assignRoomPhase(parseInt(sel.getAttribute('data-ra-room-phase'), 10), sel.value);
+      });
+    });
+  }
+
+  function projectPhases() {
+    var project = activeProject();
+    return project && project.phases ? project.phases : [];
+  }
+
+  function phaseOptionsHtml(selectedId) {
+    var html = '<option value="">Unassigned</option>';
+    projectPhases().forEach(function (phase) {
+      html += '<option value="' + phase.id + '"' + (String(phase.id) === String(selectedId || '') ? ' selected' : '') + '>' + esc(phase.name) + '</option>';
+    });
+    return html;
+  }
+
+  function metricNum(room, key) {
+    if (room && room.metrics && room.metrics[key] != null) return parseFloat(room.metrics[key]) || 0;
+    if (key === 'area_sqft') return parseFloat(room && room.area_sqft) || 0;
+    return 0;
+  }
+
+  function emptyPhaseTotals() {
+    return { area_sqft: 0, perimeter_lf: 0, net_wall_area_sqft: 0, flooring_with_waste_sqft: 0, casing_lf: 0, room_count: 0 };
+  }
+
+  function addRoomToTotals(totals, room) {
+    totals.area_sqft += metricNum(room, 'area_sqft');
+    totals.perimeter_lf += metricNum(room, 'perimeter_lf');
+    totals.net_wall_area_sqft += metricNum(room, 'net_wall_area_sqft');
+    totals.flooring_with_waste_sqft += metricNum(room, 'flooring_with_waste_sqft');
+    totals.casing_lf += metricNum(room, 'casing_lf');
+    totals.room_count += 1;
+    return totals;
+  }
+
+  function formatPhaseTotals(totals) {
+    return fmt(totals.area_sqft, 2) + ' sf · ' +
+      fmt(totals.perimeter_lf, 2) + ' lf · ' +
+      fmt(totals.net_wall_area_sqft, 2) + ' nw · ' +
+      fmt(totals.flooring_with_waste_sqft, 2) + ' fl · ' +
+      fmt(totals.casing_lf, 2) + ' cs';
+  }
+
+  function renderPhases() {
+    if (!els.phaseList) return;
+    var project = activeProject();
+    els.phaseList.innerHTML = '';
+    if (!project) return;
+    var rooms = project.rooms || [];
+    var phases = projectPhases();
+    phases.forEach(function (phase) {
+      var totals = emptyPhaseTotals();
+      rooms.forEach(function (room) {
+        if (String(room.phase_id || '') === String(phase.id)) addRoomToTotals(totals, room);
+      });
+      var li = document.createElement('li');
+      li.className = 'util-ra-phase';
+      li.innerHTML =
+        '<div class="util-ra-phase__main">' +
+          '<strong class="util-ra-phase__name">' + esc(phase.name) + '</strong>' +
+          '<span class="util-ra-phase__totals">' + formatPhaseTotals(totals) + '</span>' +
+        '</div>' +
+        '<div class="util-ra-phase__actions">' +
+          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-phase-rename="' + phase.id + '">Rename</button>' +
+          '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm" data-ra-phase-delete="' + phase.id + '">Delete</button>' +
+        '</div>';
+      els.phaseList.appendChild(li);
+    });
+    var unassigned = emptyPhaseTotals();
+    rooms.forEach(function (room) {
+      if (!room.phase_id) addRoomToTotals(unassigned, room);
+    });
+    if (rooms.length && (phases.length === 0 || unassigned.room_count)) {
+      var leftover = document.createElement('li');
+      leftover.className = 'util-ra-phase util-ra-phase--loose';
+      leftover.innerHTML =
+        '<div class="util-ra-phase__main">' +
+          '<strong class="util-ra-phase__name">' + (phases.length ? 'Unassigned' : 'All rooms') + '</strong>' +
+          '<span class="util-ra-phase__totals">' + formatPhaseTotals(unassigned) + '</span>' +
+        '</div>';
+      els.phaseList.appendChild(leftover);
+    }
+    els.phaseList.querySelectorAll('[data-ra-phase-rename]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        renamePhase(parseInt(btn.getAttribute('data-ra-phase-rename'), 10));
+      });
+    });
+    els.phaseList.querySelectorAll('[data-ra-phase-delete]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        deletePhase(parseInt(btn.getAttribute('data-ra-phase-delete'), 10));
+      });
+    });
+  }
+
+  function applyProjectMeta(payload) {
+    var project = activeProject();
+    if (!project || !payload) return;
+    project.phases = payload.phases || [];
+    project.signer_name = payload.signer_name || '';
+    project.signed_at = payload.signed_at || null;
+    project.has_signature = !!payload.has_signature;
+    if (payload.rooms) {
+      payload.rooms.forEach(function (next) {
+        var room = (project.rooms || []).find(function (r) { return r.id === next.id; });
+        if (room) room.phase_id = next.phase_id;
+      });
+    }
+  }
+
+  function planJson(url, method, body) {
+    var opts = {
+      method: method,
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrf(),
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    };
+    if (body !== undefined) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    return fetch(url, opts).then(function (res) {
+      return RA.readFetchJson(res, 'Could not update the plan.');
+    }).then(function (payload) {
+      var data = payload && payload.data ? payload.data : payload;
+      if (payload && payload.ok === false) {
+        throw new Error((data && data.message) || 'Could not update the plan.');
+      }
+      return data;
+    });
+  }
+
+  function addPhase() {
+    var project = activeProject();
+    if (!project) return;
+    var name = ((els.phaseName && els.phaseName.value) || '').trim();
+    if (!name) {
+      setFeedback('Enter a phase name.', true);
+      return;
+    }
+    planJson(urlFromTemplate(root.getAttribute('data-phase-store-template') || '', project.id), 'POST', { name: name })
+      .then(function (data) {
+        applyProjectMeta(data.project);
+        if (els.phaseName) els.phaseName.value = '';
+        renderRooms();
+        setFeedback('Phase added.', false);
+      })
+      .catch(function (err) {
+        setFeedback(err.message || 'Could not add that phase.', true);
+      });
+  }
+
+  function renamePhase(id) {
+    var project = activeProject();
+    if (!project) return;
+    var phase = projectPhases().find(function (p) { return p.id === id; });
+    var next = window.prompt('Phase name', phase ? phase.name : '');
+    if (next === null) return;
+    next = String(next).trim();
+    if (!next) {
+      setFeedback('Enter a phase name.', true);
+      return;
+    }
+    planJson(urlFromTemplate(root.getAttribute('data-phase-update-template') || '', id), 'PUT', { name: next })
+      .then(function (data) {
+        applyProjectMeta(data.project);
+        renderRooms();
+        setFeedback('Phase renamed.', false);
+      })
+      .catch(function (err) {
+        setFeedback(err.message || 'Could not rename that phase.', true);
+      });
+  }
+
+  function deletePhase(id) {
+    confirmAction('Delete this phase? Rooms stay saved and become unassigned.', { title: 'Delete phase', danger: true }).then(function (ok) {
+      if (!ok) return;
+      planJson(urlFromTemplate(root.getAttribute('data-phase-destroy-template') || '', id), 'DELETE')
+        .then(function (data) {
+          applyProjectMeta(data.project);
+          renderRooms();
+          setFeedback('Phase deleted.', false);
+        })
+        .catch(function (err) {
+          setFeedback(err.message || 'Could not delete that phase.', true);
+        });
+    });
+  }
+
+  function assignRoomPhase(roomId, phaseId) {
+    var project = activeProject();
+    if (!project) return;
+    var room = (project.rooms || []).find(function (r) { return r.id === roomId; });
+    var previous = room ? room.phase_id : null;
+    if (room) room.phase_id = phaseId ? parseInt(phaseId, 10) : null;
+    renderPhases();
+    planJson(urlFromTemplate(root.getAttribute('data-room-phase-template') || '', roomId), 'PATCH', {
+      phase_id: phaseId ? parseInt(phaseId, 10) : null
+    }).then(function (data) {
+      applyProjectMeta(data.project);
+      renderPhases();
+    }).catch(function (err) {
+      if (room) room.phase_id = previous;
+      renderRooms();
+      setFeedback(err.message || 'Could not assign that room.', true);
+    });
+  }
+
+  function openProjectFile(attr, target) {
+    var project = activeProject();
+    if (!project) {
+      setFeedback('Save a project first.', true);
+      return;
+    }
+    var url = urlFromTemplate(root.getAttribute(attr) || '', project.id);
+    if (!url) return;
+    if (target === '_blank') window.open(url, '_blank', 'noopener');
+    else window.location.href = url;
+  }
+
+  function signPadContext() {
+    return els.signPad ? els.signPad.getContext('2d') : null;
+  }
+
+  function resetSignPad() {
+    var ctx = signPadContext();
+    if (!ctx || !els.signPad) return;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, els.signPad.width, els.signPad.height);
+    ctx.strokeStyle = '#024768';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    els.signPad.setAttribute('data-dirty', '0');
+  }
+
+  function signPadHasInk() {
+    if (!els.signPad) return false;
+    return els.signPad.getAttribute('data-dirty') === '1';
+  }
+
+  function renderSignature() {
+    var project = activeProject();
+    if (!project || !els.sign) return;
+    if (els.signName && document.activeElement !== els.signName) {
+      els.signName.value = project.signer_name || '';
+    }
+    if (els.signDate && document.activeElement !== els.signDate) {
+      els.signDate.value = project.signed_at || new Date().toISOString().slice(0, 10);
+    }
+  }
+
+  function saveSignature() {
+    var project = activeProject();
+    if (!project) return;
+    var body = {
+      signer_name: ((els.signName && els.signName.value) || '').trim(),
+      signed_at: (els.signDate && els.signDate.value) || null
+    };
+    if (signPadHasInk() && els.signPad) {
+      body.signature = els.signPad.toDataURL('image/png');
+    }
+    planJson(urlFromTemplate(root.getAttribute('data-signature-template') || '', project.id), 'POST', body)
+      .then(function (data) {
+        applyProjectMeta(data.project);
+        resetSignPad();
+        renderSignature();
+        setFeedback('Signature saved on the plan. Nobody was emailed.', false);
+      })
+      .catch(function (err) {
+        setFeedback(err.message || 'Could not save the signature.', true);
+      });
+  }
+
+  function clearSignature() {
+    var project = activeProject();
+    if (!project) return;
+    planJson(urlFromTemplate(root.getAttribute('data-signature-template') || '', project.id), 'DELETE')
+      .then(function (data) {
+        applyProjectMeta(data.project);
+        if (els.signName) els.signName.value = '';
+        resetSignPad();
+        renderSignature();
+        setFeedback('Signature cleared.', false);
+      })
+      .catch(function (err) {
+        setFeedback(err.message || 'Could not clear the signature.', true);
+      });
+  }
+
+  function bindSignaturePad() {
+    if (!els.signPad) return;
+    resetSignPad();
+    var drawing = false;
+    function point(e) {
+      var src = (e.touches && e.touches[0]) || e;
+      var box = els.signPad.getBoundingClientRect();
+      return {
+        x: (src.clientX - box.left) * (els.signPad.width / Math.max(1, box.width)),
+        y: (src.clientY - box.top) * (els.signPad.height / Math.max(1, box.height))
+      };
+    }
+    function start(e) {
+      e.preventDefault();
+      var ctx = signPadContext();
+      if (!ctx) return;
+      drawing = true;
+      var p = point(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+    }
+    function move(e) {
+      if (!drawing) return;
+      e.preventDefault();
+      var ctx = signPadContext();
+      if (!ctx) return;
+      var p = point(e);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      els.signPad.setAttribute('data-dirty', '1');
+    }
+    function end(e) {
+      if (e) e.preventDefault();
+      drawing = false;
+    }
+    els.signPad.addEventListener('pointerdown', start);
+    els.signPad.addEventListener('pointermove', move);
+    els.signPad.addEventListener('pointerup', end);
+    els.signPad.addEventListener('pointerleave', end);
+    els.signPad.addEventListener('touchstart', start, { passive: false });
+    els.signPad.addEventListener('touchmove', move, { passive: false });
+    els.signPad.addEventListener('touchend', end);
+  }
+
+  function bindPlanActions() {
+    if (els.planPdf) els.planPdf.addEventListener('click', function () { openProjectFile('data-plan-pdf-template', '_blank'); });
+    if (els.exportCsv) els.exportCsv.addEventListener('click', function () { openProjectFile('data-export-csv-template'); });
+    if (els.exportXlsx) els.exportXlsx.addEventListener('click', function () { openProjectFile('data-export-xlsx-template'); });
+    if (els.phaseAdd) els.phaseAdd.addEventListener('click', addPhase);
+    if (els.phaseName) {
+      els.phaseName.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addPhase();
+        }
+      });
+    }
+    if (els.signSave) els.signSave.addEventListener('click', saveSignature);
+    if (els.signClear) els.signClear.addEventListener('click', clearSignature);
+    bindSignaturePad();
   }
 
   function esc(s) {
@@ -11212,6 +11594,7 @@
     bindSidePanel();
     bindHelpPops();
     bindKits();
+    bindPlanActions();
     bindFirstTip();
     if (els.roomName) {
       els.roomName.addEventListener('input', updateFullpageTitle);

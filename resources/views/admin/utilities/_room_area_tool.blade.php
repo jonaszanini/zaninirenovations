@@ -50,7 +50,15 @@
     data-assembly-destroy-template="{{ route('admin.utilities.room-area.assemblies.destroy', ['room_area_assembly' => '__ID__']) }}"
     data-room-assemblies-template="{{ route('admin.utilities.room-area.rooms.assemblies.sync', ['room_area_room' => '__ID__']) }}"
     data-assembly-quote-room-template="{{ route('admin.utilities.room-area.assemblies.quote') }}?layout=room:__ID__"
-    data-assembly-quote-project-template="{{ route('admin.utilities.room-area.assemblies.quote') }}?layout=project:__ID__">
+    data-assembly-quote-project-template="{{ route('admin.utilities.room-area.assemblies.quote') }}?layout=project:__ID__"
+    data-phase-store-template="{{ route('admin.utilities.room-area.projects.phases.store', ['room_area_project' => '__ID__']) }}"
+    data-phase-update-template="{{ route('admin.utilities.room-area.phases.update', ['room_area_phase' => '__ID__']) }}"
+    data-phase-destroy-template="{{ route('admin.utilities.room-area.phases.destroy', ['room_area_phase' => '__ID__']) }}"
+    data-room-phase-template="{{ route('admin.utilities.room-area.rooms.phase', ['room_area_room' => '__ID__']) }}"
+    data-plan-pdf-template="{{ route('admin.utilities.room-area.projects.plan', ['room_area_project' => '__ID__']) }}"
+    data-export-csv-template="{{ route('admin.utilities.room-area.projects.export.csv', ['room_area_project' => '__ID__']) }}"
+    data-export-xlsx-template="{{ route('admin.utilities.room-area.projects.export.xlsx', ['room_area_project' => '__ID__']) }}"
+    data-signature-template="{{ route('admin.utilities.room-area.projects.signature', ['room_area_project' => '__ID__']) }}">
     <script type="application/json" id="ra-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
     @if (!empty($kitSeedError))
@@ -982,7 +990,7 @@
           <span class="util-ra-tip util-ra-tip--block" data-tooltip="Reusable kits and live quantities.">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab" data-ra-side-tab="kits" role="tab" aria-selected="false" aria-label="Kits tab">Kits</button>
           </span>
-          <span class="util-ra-tip util-ra-tip--block" data-tooltip="Saved rooms, Quote, and Quote all.">
+          <span class="util-ra-tip util-ra-tip--block" data-tooltip="Saved rooms, phases, plan PDF, and signature.">
             <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab" data-ra-side-tab="rooms" role="tab" aria-selected="false" aria-label="Rooms tab">Rooms</button>
           </span>
         </div>
@@ -1277,8 +1285,10 @@
       <section class="admin-card util-ra-rooms-card">
         <div class="util-ra-rooms-head">
           <div class="util-ra-rooms-head__intro">
-            <h3 class="util-ra-card-title">Saved rooms
-            </h3>
+            <div class="util-ra-card-title-row">
+              <h3 class="util-ra-card-title">Saved rooms</h3>
+              <x-admin.info-tip label="Saved rooms">Saved rooms stay on this project. Plan PDF, CSV, and Excel use the saved drawings — they do not change quotes.</x-admin.info-tip>
+            </div>
           </div>
           <div class="util-ra-rooms-head__actions">
             <div class="util-ra-total" data-ra-total hidden>
@@ -1286,6 +1296,17 @@
               <span class="util-ra-total__value"><strong data-ra-total-sqft>0</strong> sq ft</span>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-copy-total title="Copy total">
                 <i class="fa fa-copy"></i> Copy
+              </button>
+            </div>
+            <div class="util-ra-plan-actions util-ra-exports" data-ra-plan-actions hidden>
+              <button type="button" class="admin-btn admin-btn--outline admin-btn--sm" data-ra-plan-pdf>
+                <i class="fa fa-file-pdf-o" aria-hidden="true"></i> Plan PDF
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-export-csv>
+                <i class="fa fa-download" aria-hidden="true"></i> CSV
+              </button>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-export-xlsx>
+                <i class="fa fa-file-excel-o" aria-hidden="true"></i> Excel
               </button>
             </div>
             <a class="admin-btn admin-btn--outline admin-btn--sm util-ra-action-btn" data-ra-quote-all hidden href="#">
@@ -1298,6 +1319,44 @@
         </div>
         <p class="util-ra-rooms-empty" data-ra-rooms-empty>No rooms saved yet. Draw a room on the floor plan above, then click Save room.</p>
         <ul class="util-ra-rooms-list" data-ra-rooms-list hidden></ul>
+      </section>
+
+      <section class="admin-card util-ra-phases" data-ra-phases hidden>
+        <div class="util-ra-card-title-row">
+          <h3 class="util-ra-card-title">Install phases</h3>
+          <x-admin.info-tip label="Install phases">Group rooms into install phases. Each phase shows area, perimeter, net wall, flooring, and casing. The same totals print on the plan PDF.</x-admin.info-tip>
+        </div>
+        <div class="util-ra-phases__add">
+          <label class="util-sr-only" for="ra-phase-name">Phase name</label>
+          <input class="admin-input" type="text" id="ra-phase-name" maxlength="80" placeholder="Phase name" data-ra-phase-name>
+          <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" data-ra-phase-add>
+            <i class="fa fa-plus" aria-hidden="true"></i> Add phase
+          </button>
+        </div>
+        <ul class="util-ra-phases__list" data-ra-phase-list></ul>
+      </section>
+
+      <section class="admin-card util-ra-sign" data-ra-sign hidden>
+        <div class="util-ra-card-title-row">
+          <h3 class="util-ra-card-title">Client signature</h3>
+          <x-admin.info-tip label="Client signature">Optional. Adds a name, date, and signature block on the plan PDF. Saving here never emails the client.</x-admin.info-tip>
+        </div>
+        <div class="util-ra-sign__fields">
+          <div class="admin-form-group">
+            <label for="ra-sign-name">Name</label>
+            <input class="admin-input" type="text" id="ra-sign-name" maxlength="120" data-ra-sign-name autocomplete="name">
+          </div>
+          <div class="admin-form-group">
+            <label for="ra-sign-date">Date</label>
+            <input class="admin-input" type="date" id="ra-sign-date" data-ra-sign-date>
+          </div>
+        </div>
+        <label class="util-sr-only" for="ra-sign-pad">Signature</label>
+        <canvas id="ra-sign-pad" class="util-ra-sign__pad" width="560" height="160" data-ra-sign-pad></canvas>
+        <div class="util-ra-sign__actions">
+          <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" data-ra-sign-save>Save signature</button>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-sign-clear>Clear</button>
+        </div>
       </section>
         </div>{{-- pane rooms --}}
         </div>{{-- side body --}}

@@ -16,11 +16,15 @@ class RoomAreaProject extends Model
         'background_path',
         'canvas_width',
         'canvas_height',
+        'signer_name',
+        'signed_at',
+        'signature_path',
     ];
 
     protected $casts = [
         'scale_pixels_per_foot' => 'float',
         'wall_thickness_in' => 'float',
+        'signed_at' => 'date',
     ];
 
     public function clientProject(): BelongsTo
@@ -31,5 +35,10 @@ class RoomAreaProject extends Model
     public function rooms(): HasMany
     {
         return $this->hasMany(RoomAreaRoom::class)->orderBy('id');
+    }
+
+    public function phases(): HasMany
+    {
+        return $this->hasMany(RoomAreaPhase::class)->orderBy('sort_order')->orderBy('id');
     }
 }

@@ -27,7 +27,8 @@ class RoomAreaController extends Controller
             ->with([
                 'rooms.photos',
                 'rooms.assemblies',
-                'clientProject:id,name',
+                'phases',
+                'clientProject:id,name,client_name',
             ])
             ->orderBy('name')
             ->get();
@@ -59,7 +60,8 @@ class RoomAreaController extends Controller
             ->with([
                 'rooms.photos',
                 'rooms.assemblies',
-                'clientProject:id,name',
+                'phases',
+                'clientProject:id,name,client_name',
             ])
             ->orderBy('name')
             ->get();
@@ -69,7 +71,7 @@ class RoomAreaController extends Controller
                 'name' => $client_project->name ?: 'Room plans',
                 'client_project_id' => $client_project->id,
             ]);
-            $created->load(['rooms.photos', 'clientProject:id,name']);
+            $created->load(['rooms.photos', 'phases', 'clientProject:id,name,client_name']);
             $projects = collect([$created]);
         }
 
@@ -143,7 +145,7 @@ class RoomAreaController extends Controller
             'client_project_id' => $data['client_project_id'] ?? null,
         ]);
 
-        $project->load('clientProject:id,name');
+        $project->load(['clientProject:id,name,client_name', 'phases']);
 
         return response()->json([
             'ok' => true,
@@ -177,7 +179,7 @@ class RoomAreaController extends Controller
 
         $room_area_project->fill($data);
         $room_area_project->save();
-        $room_area_project->load(['clientProject:id,name', 'rooms']);
+        $room_area_project->load(['clientProject:id,name,client_name', 'rooms', 'phases']);
 
         return response()->json([
             'ok' => true,
@@ -200,6 +202,7 @@ class RoomAreaController extends Controller
         if ($room_area_project->background_path) {
             Storage::disk('local')->delete($room_area_project->background_path);
         }
+        app(\App\Services\RoomAreaSignatureStorage::class)->delete($room_area_project);
 
         foreach ($room_area_project->rooms as $room) {
             $this->deleteRoomBackgroundFile($room);
@@ -289,7 +292,7 @@ class RoomAreaController extends Controller
         return response()->json([
             'ok' => true,
             'room' => $this->roomPayload($room, $canvasData),
-            'project' => $this->projectPayload($room_area_project->fresh(['clientProject', 'rooms.photos', 'rooms.assemblies'])),
+            'project' => $this->projectPayload($room_area_project->fresh(['clientProject', 'rooms.photos', 'rooms.assemblies', 'phases'])),
         ]);
     }
 
@@ -397,7 +400,7 @@ class RoomAreaController extends Controller
         return response()->json([
             'ok' => true,
             'room' => $this->roomPayload($room_area_room->fresh(), $canvasData),
-            'project' => $this->projectPayload($room_area_room->project->fresh(['clientProject', 'rooms.photos', 'rooms.assemblies'])),
+            'project' => $this->projectPayload($room_area_room->project->fresh(['clientProject', 'rooms.photos', 'rooms.assemblies', 'phases'])),
         ]);
     }
 
@@ -723,17 +726,42 @@ class RoomAreaController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function planProjectPayload(RoomAreaProject $project): array
+    {
+        $project->loadMissing([
+            'clientProject:id,name,client_name',
+            'rooms.photos',
+            'rooms.assemblies',
+            'phases',
+        ]);
+
+        return $this->projectPayload($project);
+    }
+
     private function projectPayload(RoomAreaProject $project): array
     {
+        if (! $project->relationLoaded('phases')) {
+            $project->load('phases');
+        }
+
         return [
             'id' => $project->id,
             'name' => $project->name,
             'client_project_id' => $project->client_project_id,
             'client_project_name' => $project->clientProject?->name,
+            'client_name' => $project->clientProject?->client_name,
             'scale_pixels_per_foot' => $project->scale_pixels_per_foot,
             'wall_thickness_in' => (float) ($project->wall_thickness_in ?? 0),
             'canvas_width' => $project->canvas_width,
             'canvas_height' => $project->canvas_height,
+            'signer_name' => $project->signer_name,
+            'signed_at' => $project->signed_at?->toDateString(),
+            'has_signature' => filled($project->signature_path),
+            'phases' => $project->phases->map(fn (\App\Models\RoomAreaPhase $phase) => [
+                'id' => (int) $phase->id,
+                'name' => (string) $phase->name,
+                'sort_order' => (int) $phase->sort_order,
+            ])->values()->all(),
             'rooms' => $project->rooms->map(fn (RoomAreaRoom $room) => $this->roomPayload($room))->values(),
         ];
     }
@@ -755,6 +783,7 @@ class RoomAreaController extends Controller
 
         return [
             'id' => $room->id,
+            'phase_id' => $room->phase_id,
             'name' => $room->name,
             'vertices' => $room->vertices,
             'canvas' => $canvas,

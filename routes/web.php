@@ -1036,4 +1036,22 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.room-area.assemblies.quote');
     Route::post('utilities/room-area/assemblies/quote', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'quoteStore'])
         ->name('utilities.room-area.assemblies.quote.store');
+    Route::get('utilities/room-area/projects/{room_area_project}/plan.pdf', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'planPdf'])
+        ->name('utilities.room-area.projects.plan');
+    Route::get('utilities/room-area/projects/{room_area_project}/measurements.csv', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'exportCsv'])
+        ->name('utilities.room-area.projects.export.csv');
+    Route::get('utilities/room-area/projects/{room_area_project}/measurements.xlsx', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'exportXlsx'])
+        ->name('utilities.room-area.projects.export.xlsx');
+    Route::post('utilities/room-area/projects/{room_area_project}/phases', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'storePhase'])
+        ->name('utilities.room-area.projects.phases.store');
+    Route::put('utilities/room-area/phases/{room_area_phase}', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'updatePhase'])
+        ->name('utilities.room-area.phases.update');
+    Route::delete('utilities/room-area/phases/{room_area_phase}', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'destroyPhase'])
+        ->name('utilities.room-area.phases.destroy');
+    Route::patch('utilities/room-area/rooms/{room_area_room}/phase', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'assignRoomPhase'])
+        ->name('utilities.room-area.rooms.phase');
+    Route::post('utilities/room-area/projects/{room_area_project}/signature', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'saveSignature'])
+        ->name('utilities.room-area.projects.signature');
+    Route::delete('utilities/room-area/projects/{room_area_project}/signature', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'clearSignature'])
+        ->name('utilities.room-area.projects.signature.destroy');
 });

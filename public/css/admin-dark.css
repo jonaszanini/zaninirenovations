@@ -3626,3 +3626,29 @@ html.admin-dark .qh-step-errors {
   color: var(--admin-text);
 }
 
+html.admin-dark .util-ra-phases,
+html.admin-dark .util-ra-phase,
+html.admin-dark .util-ra-sign,
+html.admin-dark .util-ra-sign__pad,
+html.admin-dark .util-ra-exports {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-phase {
+  background: var(--admin-input-bg);
+}
+
+html.admin-dark .util-ra-phase__name {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-phase__totals {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-sign__pad {
+  background: var(--admin-input-bg);
+}
+

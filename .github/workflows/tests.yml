@@ -170,6 +170,9 @@ jobs:
           php artisan test tests/Feature/Admin/ClientIndexAddressSearchTest.php
           php artisan test tests/Feature/Admin/ClientProjectFiltersAccordionTest.php
           php artisan test tests/Unit/Services/RoomAreaCanvasDataTest.php
+          php artisan test tests/Unit/Services/RoomAreaPhaseTotalsTest.php
+          php artisan test tests/Unit/Services/RoomAreaPlanSvgTest.php
+          php artisan test tests/Unit/Services/RoomAreaMeasurementExportTest.php
           php artisan test tests/Feature/Admin/RoomAreaCanvasObjectsTest.php
           php artisan test tests/Feature/Admin/RoomAreaPdfExportTest.php
           php artisan test tests/Feature/Admin/BasementRoomAreaImportTest.php
@@ -266,6 +269,12 @@ jobs:
           php artisan test tests/Feature/Admin/RoomAreaBatch3PageTest.php
           php artisan test tests/Feature/Admin/RoomAreaKitSeedRaceTest.php
           php artisan test tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
+          php artisan test tests/Unit/Services/RoomAreaPhaseTotalsTest.php
+          php artisan test tests/Unit/Services/RoomAreaPlanSvgTest.php
+          php artisan test tests/Unit/Services/RoomAreaMeasurementExportTest.php
+          php artisan test tests/Feature/Admin/RoomAreaBatch4PageTest.php
+          php artisan test tests/Feature/Admin/RoomAreaPlanPdfTest.php
+          php artisan test tests/Feature/Admin/RoomAreaMeasurementExportHttpTest.php
 
       - name: Room Area live layout geometry
         env:

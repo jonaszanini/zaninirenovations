@@ -13,6 +13,7 @@ class RoomAreaRoom extends Model
 {
     protected $fillable = [
         'room_area_project_id',
+        'phase_id',
         'name',
         'vertices',
         'background_path',
@@ -107,6 +108,11 @@ class RoomAreaRoom extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(RoomAreaProject::class, 'room_area_project_id');
+    }
+
+    public function phase(): BelongsTo
+    {
+        return $this->belongsTo(RoomAreaPhase::class, 'phase_id');
     }
 
     public function photos(): HasMany

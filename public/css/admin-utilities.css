@@ -2872,6 +2872,7 @@
 
 .util-ra-rooms-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.85rem 1.1rem;
@@ -2938,6 +2939,127 @@
   .util-ra-rooms-item__action-label {
     display: none;
   }
+}
+
+.util-ra-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.util-ra-card-title-row .util-ra-card-title {
+  margin: 0;
+}
+
+.util-ra-plan-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.util-ra-plan-actions .admin-btn {
+  min-width: 0;
+  justify-content: center;
+}
+
+.util-ra-rooms-item__phase-row {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.util-ra-rooms-item__phase {
+  width: 100%;
+}
+
+.util-ra-phases,
+.util-ra-sign {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text);
+}
+
+.util-ra-phases__add,
+.util-ra-sign__fields,
+.util-ra-sign__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.util-ra-phases__add .admin-input,
+.util-ra-sign__fields .admin-form-group {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.util-ra-phases__add .admin-btn,
+.util-ra-sign__actions .admin-btn {
+  flex: 0 0 auto;
+  align-self: flex-end;
+}
+
+.util-ra-phases__list {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.util-ra-phase {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.65rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-input-bg);
+}
+
+.util-ra-phase__main {
+  min-width: 0;
+  flex: 1 1 160px;
+}
+
+.util-ra-phase__name {
+  display: block;
+  color: var(--admin-heading);
+  font-size: 0.9rem;
+}
+
+.util-ra-phase__totals {
+  display: block;
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.util-ra-phase__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.util-ra-sign__pad {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 88px;
+  margin-top: 0.55rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-input-bg);
+  touch-action: none;
+  cursor: crosshair;
 }
 
 .util-ra-total {
@@ -6150,7 +6272,9 @@ body:has(.util-ra--fullpage) {
 .util-ra--fullpage .util-ra-type-walls,
 .util-ra--fullpage .util-ra-canvas-footer,
 .util-ra--fullpage .util-ra-photos,
-.util-ra--fullpage .util-ra-rooms-card {
+.util-ra--fullpage .util-ra-rooms-card,
+.util-ra--fullpage .util-ra-phases,
+.util-ra--fullpage .util-ra-sign {
   margin: 0;
   border: 0;
   box-shadow: none;
@@ -6210,7 +6334,7 @@ body:has(.util-ra--fullpage) {
 
 .util-ra--fullpage .util-ra-rooms-item {
   flex-direction: row;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.5rem;
@@ -6251,6 +6375,19 @@ body:has(.util-ra--fullpage) {
   min-width: var(--admin-control-height);
   padding-left: 0.35rem;
   padding-right: 0.35rem;
+}
+
+.util-ra--fullpage .util-ra-rooms-item__phase-row {
+  flex: 1 1 100%;
+}
+
+.util-ra--fullpage .util-ra-plan-actions {
+  grid-column: 1 / -1;
+}
+
+.util-ra--fullpage .util-ra-phases,
+.util-ra--fullpage .util-ra-sign {
+  margin-top: 0.65rem;
 }
 
 .util-ra--fullpage .util-ra-hint--inline {

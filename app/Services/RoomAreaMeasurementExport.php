@@ -1,0 +1,246 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\RoomAreaProject;
+use App\Models\RoomAreaRoom;
+use ZipArchive;
+
+class RoomAreaMeasurementExport
+{
+    public const COLUMNS = [
+        'Phase',
+        'Room',
+        'Area (sq ft)',
+        'Perimeter (lf)',
+        'Net wall (sq ft)',
+        'Flooring with waste (sq ft)',
+        'Casing (lf)',
+        'Ceiling height (ft)',
+        'Flooring waste (%)',
+        'Flooring boxes',
+        'Project',
+        'Client',
+    ];
+
+    private RoomAreaPhaseTotals $totals;
+
+    public function __construct(?RoomAreaPhaseTotals $totals = null)
+    {
+        $this->totals = $totals ?? new RoomAreaPhaseTotals;
+    }
+
+    /**
+     * @return list<list<string|int|float>>
+     */
+    public function rows(RoomAreaProject $project): array
+    {
+        $project->loadMissing(['phases', 'rooms', 'clientProject']);
+        $grouped = $this->totals->grouped($project);
+        $client = (string) ($project->clientProject?->client_name ?: $project->clientProject?->name ?: '');
+        $rows = [];
+        $sections = $grouped['phases'];
+        if ($grouped['unassigned']['rooms']->isNotEmpty() || $sections === []) {
+            $sections[] = $grouped['unassigned'];
+        }
+        foreach ($sections as $section) {
+            foreach ($section['rooms'] as $room) {
+                $rows[] = $this->roomRow($project, $room, (string) $section['name'], $client);
+            }
+        }
+
+        return $rows;
+    }
+
+    public function csv(RoomAreaProject $project): string
+    {
+        $handle = fopen('php://temp', 'r+');
+        fputcsv($handle, self::COLUMNS);
+        foreach ($this->rows($project) as $row) {
+            fputcsv($handle, $row);
+        }
+        foreach ($this->totalRows($project) as $row) {
+            fputcsv($handle, $row);
+        }
+        rewind($handle);
+        $csv = stream_get_contents($handle) ?: '';
+        fclose($handle);
+
+        return $csv;
+    }
+
+    public function xlsx(RoomAreaProject $project): string
+    {
+        $sheetRows = [self::COLUMNS];
+        foreach ($this->rows($project) as $row) {
+            $sheetRows[] = $row;
+        }
+        foreach ($this->totalRows($project) as $row) {
+            $sheetRows[] = $row;
+        }
+
+        $tmp = tempnam(sys_get_temp_dir(), 'ra-xlsx-');
+        if ($tmp === false) {
+            throw new \RuntimeException('Could not create a temporary Excel file.');
+        }
+        $zip = new ZipArchive;
+        if ($zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            @unlink($tmp);
+            throw new \RuntimeException('Could not write the Excel workbook.');
+        }
+        $zip->addFromString('[Content_Types].xml', $this->contentTypes());
+        $zip->addFromString('_rels/.rels', $this->rootRels());
+        $zip->addFromString('xl/workbook.xml', $this->workbook());
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $this->workbookRels());
+        $zip->addFromString('xl/worksheets/sheet1.xml', $this->sheetXml($sheetRows));
+        $zip->close();
+        $binary = file_get_contents($tmp) ?: '';
+        @unlink($tmp);
+
+        return $binary;
+    }
+
+    /**
+     * @return list<list<string|int|float>>
+     */
+    private function totalRows(RoomAreaProject $project): array
+    {
+        $grouped = $this->totals->grouped($project);
+        $rows = [[], ['Phase totals', '', '', '', '', '', '', '', '', '', '', '']];
+        foreach ($grouped['phases'] as $phase) {
+            $rows[] = $this->totalsRow((string) $phase['name'], $phase['totals']);
+        }
+        if ($grouped['unassigned']['rooms']->isNotEmpty()) {
+            $rows[] = $this->totalsRow((string) $grouped['unassigned']['name'], $grouped['unassigned']['totals']);
+        }
+        $rows[] = $this->totalsRow('Project total', $grouped['project']);
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<string, float|int>  $totals
+     * @return list<string|int|float>
+     */
+    private function totalsRow(string $label, array $totals): array
+    {
+        return [
+            $label,
+            '',
+            $totals['area_sqft'] ?? 0,
+            $totals['perimeter_lf'] ?? 0,
+            $totals['net_wall_area_sqft'] ?? 0,
+            $totals['flooring_with_waste_sqft'] ?? 0,
+            $totals['casing_lf'] ?? 0,
+            '',
+            '',
+            '',
+            '',
+            '',
+        ];
+    }
+
+    /**
+     * @return list<string|int|float>
+     */
+    private function roomRow(RoomAreaProject $project, RoomAreaRoom $room, string $phaseName, string $client): array
+    {
+        $metrics = $room->layoutMetrics();
+
+        return [
+            $phaseName,
+            (string) $room->name,
+            (float) ($metrics['area_sqft'] ?? 0),
+            (float) ($metrics['perimeter_lf'] ?? 0),
+            (float) ($metrics['net_wall_area_sqft'] ?? 0),
+            (float) ($metrics['flooring_with_waste_sqft'] ?? 0),
+            (float) ($metrics['casing_lf'] ?? 0),
+            (float) ($metrics['ceiling_height_ft'] ?? 0),
+            (float) ($metrics['flooring_waste_percent'] ?? 0),
+            (int) ($metrics['flooring_boxes'] ?? 0),
+            (string) $project->name,
+            $client,
+        ];
+    }
+
+    /**
+     * @param  list<list<string|int|float>>  $rows
+     */
+    private function sheetXml(array $rows): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            .'<sheetData>';
+        foreach ($rows as $r => $row) {
+            $xml .= '<row r="'.($r + 1).'">';
+            foreach ($row as $c => $value) {
+                $ref = $this->cellRef($c, $r + 1);
+                if ($value === '' || $value === null) {
+                    $xml .= '<c r="'.$ref.'"/>';
+                    continue;
+                }
+                if (is_int($value) || is_float($value)) {
+                    $xml .= '<c r="'.$ref.'" t="n"><v>'.$value.'</v></c>';
+                    continue;
+                }
+                $xml .= '<c r="'.$ref.'" t="inlineStr"><is><t>'.$this->xml((string) $value).'</t></is></c>';
+            }
+            $xml .= '</row>';
+        }
+        $xml .= '</sheetData></worksheet>';
+
+        return $xml;
+    }
+
+    private function cellRef(int $col, int $row): string
+    {
+        $name = '';
+        $n = $col;
+        do {
+            $name = chr(65 + ($n % 26)).$name;
+            $n = intdiv($n, 26) - 1;
+        } while ($n >= 0);
+
+        return $name.$row;
+    }
+
+    private function xml(string $value): string
+    {
+        return htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+    }
+
+    private function contentTypes(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            .'<Default Extension="xml" ContentType="application/xml"/>'
+            .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            .'</Types>';
+    }
+
+    private function rootRels(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            .'</Relationships>';
+    }
+
+    private function workbook(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            .'<sheets><sheet name="Rooms" sheetId="1" r:id="rId1"/></sheets>'
+            .'</workbook>';
+    }
+
+    private function workbookRels(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            .'</Relationships>';
+    }
+}
