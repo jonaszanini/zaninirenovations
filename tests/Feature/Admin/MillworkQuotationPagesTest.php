@@ -635,6 +635,13 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
                     'shelf_count' => 150,
                     'door_count' => 150,
                     'drawer_count' => 150,
+                    'columns' => 150,
+                    'rows' => 150,
+                    'rod_count' => 150,
+                    'division_count' => 150,
+                    'openings' => 150,
+                    'pull_qty' => 150,
+                    'hinge_qty' => 150,
                     'edge_banding' => 0,
                     '_calc_version' => 3,
                 ]],
@@ -652,6 +659,13 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
                 'pieces.0.shelf_count' => 'Shelf count cannot be more than 100.',
                 'pieces.0.door_count' => 'Door count cannot be more than 100.',
                 'pieces.0.drawer_count' => 'Drawer count cannot be more than 100.',
+                'pieces.0.columns' => 'Columns cannot be more than 100.',
+                'pieces.0.rows' => 'Rows cannot be more than 100.',
+                'pieces.0.rod_count' => 'Rod count cannot be more than 100.',
+                'pieces.0.division_count' => 'Division count cannot be more than 100.',
+                'pieces.0.openings' => 'Openings cannot be more than 100.',
+                'pieces.0.pull_qty' => 'Pull quantity cannot be more than 100.',
+                'pieces.0.hinge_qty' => 'Hinge quantity cannot be more than 100.',
             ]);
 
         $this->assertSame(0, MillworkQuotation::query()->where('client_name', 'Cap check')->count());
@@ -665,7 +679,14 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Quantity cannot be more than 200.')
             ->assertSee('Shelf count cannot be more than 100.')
             ->assertSee('Door count cannot be more than 100.')
-            ->assertSee('Drawer count cannot be more than 100.');
+            ->assertSee('Drawer count cannot be more than 100.')
+            ->assertSee('Columns cannot be more than 100.')
+            ->assertSee('Rows cannot be more than 100.')
+            ->assertSee('Rod count cannot be more than 100.')
+            ->assertSee('Division count cannot be more than 100.')
+            ->assertSee('Openings cannot be more than 100.')
+            ->assertSee('Pull quantity cannot be more than 100.')
+            ->assertSee('Hinge quantity cannot be more than 100.');
     }
 
     public function test_reverted_size_does_not_mark_v2_piece_edited(): void

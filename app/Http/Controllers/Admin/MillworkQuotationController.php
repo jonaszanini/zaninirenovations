@@ -722,9 +722,10 @@ class MillworkQuotationController extends Controller
     }
 
     /**
-     * Compare only normalized dimensions. Posted unit dropdowns and default
-     * size-set rows are ignored when the saved piece never stored them, so a
-     * form re-save of an untouched v1 piece is not treated as a retype.
+     * Compare only dimensions the saved row actually stored. Posted defaults
+     * (stock_length_ft=12, unit dropdowns, empty size-set rows) are ignored
+     * when those keys were never saved. A unit dropdown that leaves the
+     * implied legacy unit is unchanged; picking the other unit is an edit.
      *
      * @param  array<string, mixed>  $posted
      * @param  array<string, mixed>  $saved
@@ -733,12 +734,11 @@ class MillworkQuotationController extends Controller
     {
         $dims = ['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'];
         foreach ($dims as $key) {
-            if ($this->normalizedDimToken($posted[$key] ?? '') !== $this->normalizedDimToken($saved[$key] ?? '')) {
+            if ($this->hasStoredSizeField($saved, $key)
+                && $this->normalizedDimToken($posted[$key] ?? '') !== $this->normalizedDimToken($saved[$key] ?? '')) {
                 return false;
             }
-            $unitKey = $key.'_unit';
-            if ($this->hasStoredSizeField($saved, $unitKey)
-                && strtolower((string) ($posted[$unitKey] ?? '')) !== strtolower((string) $saved[$unitKey])) {
+            if (! $this->postedUnitMatchesSaved($posted, $saved, $key)) {
                 return false;
             }
         }
@@ -752,28 +752,75 @@ class MillworkQuotationController extends Controller
         if (count($postedSets) !== count($savedSets)) {
             return false;
         }
+        $setFallback = $this->impliedLegacyUnit($saved, 'width');
         foreach ($savedSets as $i => $set) {
             if (! is_array($set)) {
                 continue;
             }
             $postedSet = is_array($postedSets[$i] ?? null) ? $postedSets[$i] : [];
             foreach (['length', 'width', 'depth', 'height', 'thickness'] as $key) {
-                if ($this->normalizedDimToken($postedSet[$key] ?? '') !== $this->normalizedDimToken($set[$key] ?? '')) {
+                if ($this->hasStoredSizeField($set, $key)
+                    && $this->normalizedDimToken($postedSet[$key] ?? '') !== $this->normalizedDimToken($set[$key] ?? '')) {
                     return false;
                 }
-                $unitKey = $key.'_unit';
-                if ($this->hasStoredSizeField($set, $unitKey)
-                    && strtolower((string) ($postedSet[$unitKey] ?? '')) !== strtolower((string) $set[$unitKey])) {
+                if (! $this->postedUnitMatchesSaved($postedSet, $set, $key, $setFallback)) {
                     return false;
                 }
             }
-            if ($this->hasStoredSizeField($set, 'unit')
-                && strtolower((string) ($postedSet['unit'] ?? '')) !== strtolower((string) $set['unit'])) {
+            $postedSetUnit = $this->normalizePostedUnit($postedSet['unit'] ?? null);
+            if ($this->hasStoredSizeField($set, 'unit')) {
+                if ($postedSetUnit !== $this->normalizePostedUnit($set['unit'])) {
+                    return false;
+                }
+            } elseif ($postedSetUnit !== null && $postedSetUnit !== $setFallback) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $posted
+     * @param  array<string, mixed>  $saved
+     */
+    private function postedUnitMatchesSaved(
+        array $posted,
+        array $saved,
+        string $dimKey,
+        ?string $fallbackUnit = null
+    ): bool {
+        $unitKey = $dimKey.'_unit';
+        $postedUnit = $this->normalizePostedUnit($posted[$unitKey] ?? null);
+        if ($this->hasStoredSizeField($saved, $unitKey)) {
+            return $this->normalizePostedUnit($saved[$unitKey]) === ($postedUnit ?? $this->normalizePostedUnit($saved[$unitKey]));
+        }
+        if ($postedUnit === null) {
+            return true;
+        }
+
+        return $postedUnit === $this->impliedLegacyUnit($saved, $dimKey, $fallbackUnit);
+    }
+
+    /**
+     * @param  array<string, mixed>  $saved
+     */
+    private function impliedLegacyUnit(array $saved, string $key, ?string $fallbackUnit = null): string
+    {
+        if (in_array($key, ['linear_ft', 'stock_length_ft'], true)) {
+            return 'ft';
+        }
+
+        return MillworkPartBuilder::dimUnit($saved, $key, $fallbackUnit ?? (isset($saved['unit']) ? (string) $saved['unit'] : 'in'));
+    }
+
+    private function normalizePostedUnit(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return strtolower((string) $value) === 'ft' ? 'ft' : 'in';
     }
 
     /**
