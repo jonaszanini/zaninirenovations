@@ -52,31 +52,33 @@ class RoomAreaMeasurementExport
         return $rows;
     }
 
+    public const UTF8_BOM = "\xEF\xBB\xBF";
+
     public function csv(RoomAreaProject $project): string
     {
         $handle = fopen('php://temp', 'r+');
-        fputcsv($handle, self::COLUMNS);
+        fputcsv($handle, $this->sanitizeRow(self::COLUMNS));
         foreach ($this->rows($project) as $row) {
-            fputcsv($handle, $row);
+            fputcsv($handle, $this->sanitizeRow($row));
         }
         foreach ($this->totalRows($project) as $row) {
-            fputcsv($handle, $row);
+            fputcsv($handle, $this->sanitizeRow($row));
         }
         rewind($handle);
         $csv = stream_get_contents($handle) ?: '';
         fclose($handle);
 
-        return $csv;
+        return self::UTF8_BOM.$csv;
     }
 
     public function xlsx(RoomAreaProject $project): string
     {
         $sheetRows = [self::COLUMNS];
         foreach ($this->rows($project) as $row) {
-            $sheetRows[] = $row;
+            $sheetRows[] = $this->sanitizeRow($row);
         }
         foreach ($this->totalRows($project) as $row) {
-            $sheetRows[] = $row;
+            $sheetRows[] = $this->sanitizeRow($row);
         }
 
         $tmp = tempnam(sys_get_temp_dir(), 'ra-xlsx-');
@@ -143,6 +145,45 @@ class RoomAreaMeasurementExport
     /**
      * @return list<string|int|float>
      */
+    /**
+     * Prefix formula-like values so spreadsheet apps keep them as text.
+     *
+     * @param  string|int|float|null  $value
+     */
+    public function sanitizeCell($value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+        if (is_int($value) || is_float($value)) {
+            $value = number_format(round((float) $value, 2), 2, '.', '');
+        } else {
+            $value = (string) $value;
+        }
+        if ($value !== '' && preg_match('/^[=+\-@\t\r]/', $value)) {
+            return "'".$value;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  list<string|int|float|null>  $row
+     * @return list<string>
+     */
+    public function sanitizeRow(array $row): array
+    {
+        $out = [];
+        foreach ($row as $cell) {
+            $out[] = $this->sanitizeCell($cell);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<string|int|float>
+     */
     private function roomRow(RoomAreaProject $project, RoomAreaRoom $room, string $phaseName, string $client): array
     {
         $metrics = $room->layoutMetrics();
@@ -150,13 +191,13 @@ class RoomAreaMeasurementExport
         return [
             $phaseName,
             (string) $room->name,
-            (float) ($metrics['area_sqft'] ?? 0),
-            (float) ($metrics['perimeter_lf'] ?? 0),
-            (float) ($metrics['net_wall_area_sqft'] ?? 0),
-            (float) ($metrics['flooring_with_waste_sqft'] ?? 0),
-            (float) ($metrics['casing_lf'] ?? 0),
-            (float) ($metrics['ceiling_height_ft'] ?? 0),
-            (float) ($metrics['flooring_waste_percent'] ?? 0),
+            round((float) ($metrics['area_sqft'] ?? 0), 2),
+            round((float) ($metrics['perimeter_lf'] ?? 0), 2),
+            round((float) ($metrics['net_wall_area_sqft'] ?? 0), 2),
+            round((float) ($metrics['flooring_with_waste_sqft'] ?? 0), 2),
+            round((float) ($metrics['casing_lf'] ?? 0), 2),
+            round((float) ($metrics['ceiling_height_ft'] ?? 0), 2),
+            round((float) ($metrics['flooring_waste_percent'] ?? 0), 2),
             (int) ($metrics['flooring_boxes'] ?? 0),
             (string) $project->name,
             $client,

@@ -3049,6 +3049,15 @@
   gap: 0.3rem;
 }
 
+.util-ra-sign__date {
+  margin: 0;
+  min-height: var(--admin-control-height);
+  display: flex;
+  align-items: center;
+  color: var(--admin-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .util-ra-sign__pad {
   display: block;
   width: 100%;

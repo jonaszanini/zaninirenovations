@@ -281,9 +281,11 @@
     sign: root.querySelector('[data-ra-sign]'),
     signName: root.querySelector('[data-ra-sign-name]'),
     signDate: root.querySelector('[data-ra-sign-date]'),
+    signQuote: root.querySelector('[data-ra-sign-quote]'),
     signPad: root.querySelector('[data-ra-sign-pad]'),
     signSave: root.querySelector('[data-ra-sign-save]'),
     signClear: root.querySelector('[data-ra-sign-clear]'),
+    signVoid: root.querySelector('[data-ra-sign-void]'),
     feedback: root.querySelector('[data-ra-feedback]'),
     roomName: root.querySelector('[data-ra-room-name]'),
     saveRoom: root.querySelector('[data-ra-save-room]'),
@@ -8369,6 +8371,10 @@
     project.signer_name = payload.signer_name || '';
     project.signed_at = payload.signed_at || null;
     project.has_signature = !!payload.has_signature;
+    project.signature_id = payload.signature_id || null;
+    project.quote_id = payload.quote_id || null;
+    project.quote_version = payload.quote_version || null;
+    project.quotes = payload.quotes || [];
     if (payload.rooms) {
       payload.rooms.forEach(function (next) {
         var room = (project.rooms || []).find(function (r) { return r.id === next.id; });
@@ -8514,25 +8520,65 @@
   function renderSignature() {
     var project = activeProject();
     if (!project || !els.sign) return;
+    var locked = !!project.has_signature;
+    if (els.signQuote) {
+      var quotes = project.quotes || [];
+      var current = String(project.quote_id || (els.signQuote.value || ''));
+      els.signQuote.innerHTML = '<option value="">Choose a published quote</option>';
+      quotes.forEach(function (quote) {
+        var opt = document.createElement('option');
+        opt.value = String(quote.id);
+        opt.textContent = quote.quote_number + ' v' + quote.version + (quote.can_sign ? '' : (quote.is_revising ? ' (revising)' : ' (draft)'));
+        opt.disabled = !quote.can_sign;
+        if (String(quote.id) === current) opt.selected = true;
+        els.signQuote.appendChild(opt);
+      });
+      if (!els.signQuote.value) {
+        var first = quotes.find(function (q) { return q.can_sign; });
+        if (first) els.signQuote.value = String(first.id);
+      }
+      els.signQuote.disabled = locked;
+    }
     if (els.signName && document.activeElement !== els.signName) {
       els.signName.value = project.signer_name || '';
     }
-    if (els.signDate && document.activeElement !== els.signDate) {
-      els.signDate.value = project.signed_at || new Date().toISOString().slice(0, 10);
+    if (els.signName) els.signName.disabled = locked;
+    if (els.signDate) {
+      els.signDate.textContent = project.signed_at
+        ? ('Signed ' + project.signed_at)
+        : 'Recorded when you save';
     }
+    if (els.signSave) els.signSave.disabled = locked;
+    if (els.signVoid) els.signVoid.hidden = !locked;
+    if (els.signPad) els.signPad.style.pointerEvents = locked ? 'none' : '';
   }
 
   function saveSignature() {
     var project = activeProject();
     if (!project) return;
-    var body = {
-      signer_name: ((els.signName && els.signName.value) || '').trim(),
-      signed_at: (els.signDate && els.signDate.value) || null
-    };
-    if (signPadHasInk() && els.signPad) {
-      body.signature = els.signPad.toDataURL('image/png');
+    if (project.has_signature) {
+      setFeedback('Void the current signature before signing again.', true);
+      return;
     }
-    planJson(urlFromTemplate(root.getAttribute('data-signature-template') || '', project.id), 'POST', body)
+    var quoteId = els.signQuote && els.signQuote.value;
+    if (!quoteId) {
+      setFeedback('Choose the published quote this signature belongs to.', true);
+      return;
+    }
+    var name = ((els.signName && els.signName.value) || '').trim();
+    if (!name) {
+      setFeedback('Type the signer\'s name.', true);
+      return;
+    }
+    if (!signPadHasInk() || !els.signPad) {
+      setFeedback('Draw the signature on the pad.', true);
+      return;
+    }
+    planJson(urlFromTemplate(root.getAttribute('data-signature-template') || '', project.id), 'POST', {
+      signer_name: name,
+      standard_quotation_id: parseInt(quoteId, 10),
+      signature: els.signPad.toDataURL('image/png')
+    })
       .then(function (data) {
         applyProjectMeta(data.project);
         resetSignPad();
@@ -8544,20 +8590,31 @@
       });
   }
 
-  function clearSignature() {
+  function clearSignaturePad() {
+    resetSignPad();
+  }
+
+  function voidSignature() {
     var project = activeProject();
-    if (!project) return;
-    planJson(urlFromTemplate(root.getAttribute('data-signature-template') || '', project.id), 'DELETE')
-      .then(function (data) {
-        applyProjectMeta(data.project);
-        if (els.signName) els.signName.value = '';
-        resetSignPad();
-        renderSignature();
-        setFeedback('Signature cleared.', false);
-      })
-      .catch(function (err) {
-        setFeedback(err.message || 'Could not clear the signature.', true);
-      });
+    if (!project || !project.has_signature) return;
+    var reason = window.prompt('Reason for voiding this signature');
+    if (reason === null) return;
+    reason = String(reason).trim();
+    if (!reason) {
+      setFeedback('Enter a reason before voiding this signature.', true);
+      return;
+    }
+    planJson(urlFromTemplate(root.getAttribute('data-signature-void-template') || '', project.id), 'POST', {
+      reason: reason
+    }).then(function (data) {
+      applyProjectMeta(data.project);
+      if (els.signName) els.signName.value = '';
+      resetSignPad();
+      renderSignature();
+      setFeedback('Signature voided. Sign again to replace it. History is kept.', false);
+    }).catch(function (err) {
+      setFeedback(err.message || 'Could not void the signature.', true);
+    });
   }
 
   function bindSignaturePad() {
@@ -8565,15 +8622,17 @@
     resetSignPad();
     var drawing = false;
     function point(e) {
-      var src = (e.touches && e.touches[0]) || e;
       var box = els.signPad.getBoundingClientRect();
       return {
-        x: (src.clientX - box.left) * (els.signPad.width / Math.max(1, box.width)),
-        y: (src.clientY - box.top) * (els.signPad.height / Math.max(1, box.height))
+        x: (e.clientX - box.left) * (els.signPad.width / Math.max(1, box.width)),
+        y: (e.clientY - box.top) * (els.signPad.height / Math.max(1, box.height))
       };
     }
     function start(e) {
       e.preventDefault();
+      if (els.signPad.setPointerCapture && e.pointerId != null) {
+        els.signPad.setPointerCapture(e.pointerId);
+      }
       var ctx = signPadContext();
       if (!ctx) return;
       drawing = true;
@@ -8598,10 +8657,7 @@
     els.signPad.addEventListener('pointerdown', start);
     els.signPad.addEventListener('pointermove', move);
     els.signPad.addEventListener('pointerup', end);
-    els.signPad.addEventListener('pointerleave', end);
-    els.signPad.addEventListener('touchstart', start, { passive: false });
-    els.signPad.addEventListener('touchmove', move, { passive: false });
-    els.signPad.addEventListener('touchend', end);
+    els.signPad.addEventListener('pointercancel', end);
   }
 
   function bindPlanActions() {
@@ -8618,7 +8674,8 @@
       });
     }
     if (els.signSave) els.signSave.addEventListener('click', saveSignature);
-    if (els.signClear) els.signClear.addEventListener('click', clearSignature);
+    if (els.signClear) els.signClear.addEventListener('click', clearSignaturePad);
+    if (els.signVoid) els.signVoid.addEventListener('click', voidSignature);
     bindSignaturePad();
   }
 

@@ -104,6 +104,7 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .util-ra-phase',
             'html.admin-dark .util-ra-sign',
             'html.admin-dark .util-ra-sign__pad',
+            'html.admin-dark .util-ra-sign__date',
             'html.admin-dark .admin-filters-accordion .bp-list-filters',
             'html.admin-dark .bp-list-cat__more',
             'html.admin-dark .bp-status-badge',

@@ -6,25 +6,39 @@ use App\Http\Controllers\Controller;
 use App\Models\RoomAreaPhase;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
+use App\Models\User;
 use App\Services\RoomAreaMeasurementExport;
 use App\Services\RoomAreaPlanDocument;
-use App\Services\RoomAreaSignatureStorage;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\RoomAreaSignableQuote;
+use App\Services\RoomAreaSignatureRecorder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class RoomAreaPlanController extends Controller
 {
-    public function planPdf(RoomAreaProject $room_area_project, RoomAreaPlanDocument $document): Response
-    {
-        $data = $document->build($room_area_project);
-        $pdf = Pdf::loadView('admin.utilities.room_area_plan_pdf', $data)
-            ->setPaper('a4', 'portrait')
-            ->setOption('isRemoteEnabled', true)
-            ->setOption('isHtml5ParserEnabled', true);
+    public function planPdf(
+        RoomAreaProject $room_area_project,
+        RoomAreaPlanDocument $document,
+        RoomAreaSignatureRecorder $signatures
+    ): Response {
+        $active = $signatures->active($room_area_project);
+        if ($active) {
+            $frozen = $signatures->frozenPdf($active);
+            if (is_string($frozen) && $frozen !== '') {
+                return response($frozen, 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="'.$this->filename($room_area_project->name, 'plan', 'pdf').'"',
+                ]);
+            }
+        }
 
-        return $pdf->stream($this->filename($room_area_project->name, 'plan', 'pdf'));
+        $pdf = $document->pdfBinary($room_area_project);
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$this->filename($room_area_project->name, 'plan', 'pdf').'"',
+        ]);
     }
 
     public function exportCsv(RoomAreaProject $room_area_project, RoomAreaMeasurementExport $export): Response
@@ -93,16 +107,13 @@ class RoomAreaPlanController extends Controller
     public function assignRoomPhase(Request $request, RoomAreaRoom $room_area_room)
     {
         $data = $request->validate([
-            'phase_id' => ['nullable', 'integer', 'exists:room_area_phases,id'],
+            'phase_id' => ['nullable', 'integer'],
         ]);
         $phaseId = $data['phase_id'] ?? null;
         if ($phaseId) {
-            $phase = RoomAreaPhase::query()->findOrFail($phaseId);
-            if ((int) $phase->room_area_project_id !== (int) $room_area_room->room_area_project_id) {
-                return response()->json([
-                    'ok' => false,
-                    'message' => 'That phase belongs to a different project.',
-                ], 422);
+            $phase = RoomAreaPhase::query()->find($phaseId);
+            if (! $phase || (int) $phase->room_area_project_id !== (int) $room_area_room->room_area_project_id) {
+                abort(404);
             }
         }
         $room_area_room->phase_id = $phaseId;
@@ -121,52 +132,73 @@ class RoomAreaPlanController extends Controller
     public function saveSignature(
         Request $request,
         RoomAreaProject $room_area_project,
-        RoomAreaSignatureStorage $storage
+        RoomAreaSignableQuote $quotes,
+        RoomAreaSignatureRecorder $recorder
     ) {
         $data = $request->validate([
-            'signer_name' => ['nullable', 'string', 'max:120'],
-            'signed_at' => ['nullable', 'date'],
-            'signature' => ['nullable', 'string'],
+            'signer_name' => ['required', 'string', 'max:255'],
+            'standard_quotation_id' => ['required', 'integer'],
+            'signature' => ['required', 'string'],
         ]);
 
-        $path = $room_area_project->signature_path;
-        if (! empty($data['signature'])) {
-            $binary = $storage->decodePngDataUrl((string) $data['signature']);
-            if ($binary === null) {
-                return response()->json([
-                    'ok' => false,
-                    'message' => 'Use a PNG signature image.',
-                ], 422);
-            }
-            $path = $storage->storePng($room_area_project, $binary);
+        $quote = $quotes->findForProject($room_area_project, (int) $data['standard_quotation_id']);
+        $admin = $request->user();
+        if (! $admin instanceof User) {
+            abort(403);
         }
 
-        $room_area_project->fill([
-            'signer_name' => $data['signer_name'] ?? $room_area_project->signer_name,
-            'signed_at' => $data['signed_at'] ?? $room_area_project->signed_at,
-            'signature_path' => $path,
-        ]);
-        $room_area_project->save();
+        try {
+            $signature = $recorder->record(
+                $request,
+                $room_area_project,
+                $admin,
+                $quote,
+                trim((string) $data['signer_name']),
+                (string) $data['signature']
+            );
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode() ?: 422);
+        }
 
         return response()->json([
             'ok' => true,
-            'project' => $this->projectPayload($room_area_project),
+            'signature_id' => $signature->id,
+            'project' => $this->projectPayload($room_area_project->fresh()),
         ]);
     }
 
-    public function clearSignature(RoomAreaProject $room_area_project, RoomAreaSignatureStorage $storage)
-    {
-        $storage->delete($room_area_project);
-        $room_area_project->fill([
-            'signer_name' => null,
-            'signed_at' => null,
-            'signature_path' => null,
+    public function voidSignature(
+        Request $request,
+        RoomAreaProject $room_area_project,
+        RoomAreaSignatureRecorder $recorder
+    ) {
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:255'],
         ]);
-        $room_area_project->save();
+        $active = $recorder->active($room_area_project);
+        if (! $active) {
+            abort(404);
+        }
+        $admin = $request->user();
+        if (! $admin instanceof User) {
+            abort(403);
+        }
+
+        try {
+            $recorder->void($active, $admin, (string) $data['reason']);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode() ?: 422);
+        }
 
         return response()->json([
             'ok' => true,
-            'project' => $this->projectPayload($room_area_project),
+            'project' => $this->projectPayload($room_area_project->fresh()),
         ]);
     }
 

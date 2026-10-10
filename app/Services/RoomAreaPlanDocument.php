@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
+use App\Models\RoomAreaSignature;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class RoomAreaPlanDocument
 {
@@ -23,12 +25,17 @@ class RoomAreaPlanDocument
         $this->signatures = $signatures ?? new RoomAreaSignatureStorage;
     }
 
+    public const PAPER = 'letter';
+
+    public const REMOTE_ENABLED = false;
+
     /**
+     * @param  array{name?: string, date?: string|null, image?: string|null, signed?: bool}|null  $signatureOverride
      * @return array<string, mixed>
      */
-    public function build(RoomAreaProject $project): array
+    public function build(RoomAreaProject $project, ?array $signatureOverride = null): array
     {
-        $project->loadMissing(['phases', 'rooms', 'clientProject']);
+        $project->loadMissing(['phases', 'rooms', 'clientProject', 'signatures']);
         $grouped = $this->totals->grouped($project);
         $sections = [];
         foreach ($grouped['phases'] as $phase) {
@@ -51,13 +58,21 @@ class RoomAreaPlanDocument
             'generated_at' => now()->format('M j, Y g:i A'),
             'totals' => $grouped['project'],
             'sections' => $sections,
-            'signature' => [
-                'name' => (string) ($project->signer_name ?: ''),
-                'date' => $project->signed_at?->format('F j, Y'),
-                'image' => $this->signatures->dataUri($project),
-                'signed' => filled($project->signer_name) || filled($project->signed_at) || filled($project->signature_path),
-            ],
+            'signature' => $signatureOverride ?? $this->signatureFromActive($project),
         ];
+    }
+
+    /**
+     * @param  array{name?: string, date?: string|null, image?: string|null, signed?: bool}|null  $signatureOverride
+     */
+    public function pdfBinary(RoomAreaProject $project, ?array $signatureOverride = null): string
+    {
+        $pdf = Pdf::loadView('admin.utilities.room_area_plan_pdf', $this->build($project, $signatureOverride))
+            ->setPaper(self::PAPER, 'portrait')
+            ->setOption('isRemoteEnabled', self::REMOTE_ENABLED)
+            ->setOption('isHtml5ParserEnabled', true);
+
+        return $pdf->output();
     }
 
     /**
@@ -88,6 +103,29 @@ class RoomAreaPlanDocument
             'name' => $name,
             'totals' => $totals,
             'rooms' => $rows,
+        ];
+    }
+
+    /**
+     * @return array{name: string, date: string|null, image: string|null, signed: bool}
+     */
+    private function signatureFromActive(RoomAreaProject $project): array
+    {
+        $active = $project->activeSignature();
+        if (! $active instanceof RoomAreaSignature) {
+            return [
+                'name' => '',
+                'date' => null,
+                'image' => null,
+                'signed' => false,
+            ];
+        }
+
+        return [
+            'name' => (string) $active->signer_name,
+            'date' => $active->signed_at?->format('F j, Y'),
+            'image' => $this->signatures->dataUriForPath($active->signature_path),
+            'signed' => true,
         ];
     }
 

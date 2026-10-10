@@ -28,6 +28,7 @@ class RoomAreaController extends Controller
                 'rooms.photos',
                 'rooms.assemblies',
                 'phases',
+                'signatures',
                 'clientProject:id,name,client_name',
             ])
             ->orderBy('name')
@@ -61,6 +62,7 @@ class RoomAreaController extends Controller
                 'rooms.photos',
                 'rooms.assemblies',
                 'phases',
+                'signatures',
                 'clientProject:id,name,client_name',
             ])
             ->orderBy('name')
@@ -202,7 +204,6 @@ class RoomAreaController extends Controller
         if ($room_area_project->background_path) {
             Storage::disk('local')->delete($room_area_project->background_path);
         }
-        app(\App\Services\RoomAreaSignatureStorage::class)->delete($room_area_project);
 
         foreach ($room_area_project->rooms as $room) {
             $this->deleteRoomBackgroundFile($room);
@@ -733,6 +734,7 @@ class RoomAreaController extends Controller
             'rooms.photos',
             'rooms.assemblies',
             'phases',
+            'signatures',
         ]);
 
         return $this->projectPayload($project);
@@ -743,6 +745,12 @@ class RoomAreaController extends Controller
         if (! $project->relationLoaded('phases')) {
             $project->load('phases');
         }
+        if (! $project->relationLoaded('signatures')) {
+            $project->load('signatures');
+        }
+
+        $active = $project->activeSignature();
+        $quotes = app(\App\Services\RoomAreaSignableQuote::class)->options($project);
 
         return [
             'id' => $project->id,
@@ -754,9 +762,13 @@ class RoomAreaController extends Controller
             'wall_thickness_in' => (float) ($project->wall_thickness_in ?? 0),
             'canvas_width' => $project->canvas_width,
             'canvas_height' => $project->canvas_height,
-            'signer_name' => $project->signer_name,
-            'signed_at' => $project->signed_at?->toDateString(),
-            'has_signature' => filled($project->signature_path),
+            'signer_name' => $active?->signer_name,
+            'signed_at' => $active?->signed_at?->toDateString(),
+            'has_signature' => $active !== null,
+            'signature_id' => $active?->id,
+            'quote_id' => $active?->standard_quotation_id,
+            'quote_version' => $active?->quote_version,
+            'quotes' => $quotes,
             'phases' => $project->phases->map(fn (\App\Models\RoomAreaPhase $phase) => [
                 'id' => (int) $phase->id,
                 'name' => (string) $phase->name,

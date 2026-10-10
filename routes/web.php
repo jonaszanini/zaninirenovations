@@ -1052,6 +1052,6 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.room-area.rooms.phase');
     Route::post('utilities/room-area/projects/{room_area_project}/signature', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'saveSignature'])
         ->name('utilities.room-area.projects.signature');
-    Route::delete('utilities/room-area/projects/{room_area_project}/signature', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'clearSignature'])
-        ->name('utilities.room-area.projects.signature.destroy');
+    Route::post('utilities/room-area/projects/{room_area_project}/signature/void', [\App\Http\Controllers\Admin\RoomAreaPlanController::class, 'voidSignature'])
+        ->name('utilities.room-area.projects.signature.void');
 });

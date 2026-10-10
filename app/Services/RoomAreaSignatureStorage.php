@@ -4,44 +4,41 @@ namespace App\Services;
 
 use App\Models\RoomAreaProject;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class RoomAreaSignatureStorage
 {
-    public function pathFor(RoomAreaProject $project): string
+    public function uniquePngPath(RoomAreaProject $project): string
     {
-        return 'room-plans/signatures/project-'.$project->id.'.png';
+        return 'room-plans/signatures/'.$project->id.'/'.Str::uuid()->toString().'.png';
     }
 
-    public function storePng(RoomAreaProject $project, string $binary): string
+    public function uniquePdfPath(RoomAreaProject $project): string
     {
-        $path = $this->pathFor($project);
-        if ($project->signature_path && $project->signature_path !== $path) {
-            Storage::disk('local')->delete($project->signature_path);
-        }
+        return 'room-plans/signatures/'.$project->id.'/'.Str::uuid()->toString().'.pdf';
+    }
+
+    public function put(string $path, string $binary): string
+    {
         Storage::disk('local')->put($path, $binary);
 
         return $path;
     }
 
-    public function delete(RoomAreaProject $project): void
+    public function get(string $path): ?string
     {
-        if ($project->signature_path) {
-            Storage::disk('local')->delete($project->signature_path);
-        }
-        $fallback = $this->pathFor($project);
-        if (Storage::disk('local')->exists($fallback)) {
-            Storage::disk('local')->delete($fallback);
-        }
-    }
-
-    public function dataUri(RoomAreaProject $project): ?string
-    {
-        $path = $project->signature_path ?: $this->pathFor($project);
         if (! Storage::disk('local')->exists($path)) {
             return null;
         }
         $binary = Storage::disk('local')->get($path);
-        if (! is_string($binary) || $binary === '') {
+
+        return is_string($binary) && $binary !== '' ? $binary : null;
+    }
+
+    public function dataUriForPath(?string $path): ?string
+    {
+        $binary = $path ? $this->get($path) : null;
+        if ($binary === null) {
             return null;
         }
 

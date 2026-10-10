@@ -275,6 +275,7 @@ jobs:
           php artisan test tests/Feature/Admin/RoomAreaBatch4PageTest.php
           php artisan test tests/Feature/Admin/RoomAreaPlanPdfTest.php
           php artisan test tests/Feature/Admin/RoomAreaMeasurementExportHttpTest.php
+          php artisan test tests/Feature/Admin/RoomAreaPlanAuthTest.php
 
       - name: Room Area live layout geometry
         env:

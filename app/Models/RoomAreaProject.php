@@ -41,4 +41,16 @@ class RoomAreaProject extends Model
     {
         return $this->hasMany(RoomAreaPhase::class)->orderBy('sort_order')->orderBy('id');
     }
+
+    public function signatures(): HasMany
+    {
+        return $this->hasMany(RoomAreaSignature::class)->orderBy('id');
+    }
+
+    public function activeSignature(): ?RoomAreaSignature
+    {
+        $this->loadMissing('signatures');
+
+        return $this->signatures->first(fn (RoomAreaSignature $row) => $row->isActive());
+    }
 }

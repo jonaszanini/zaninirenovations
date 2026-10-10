@@ -2,29 +2,30 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Models\ClientProject;
-use App\Models\RoomAreaPhase;
-use App\Models\RoomAreaProject;
-use App\Models\RoomAreaRoom;
 use App\Services\RoomAreaMeasurementExport;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
+use Tests\Support\MakesRoomAreaPlanFixture;
 use ZipArchive;
 
 class RoomAreaMeasurementExportHttpTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
+    use MakesRoomAreaPlanFixture;
 
-    public function test_csv_lists_rooms_columns_and_phase_totals(): void
+    public function test_csv_lists_rooms_columns_phase_totals_bom_and_two_decimals(): void
     {
         $this->actingAsAdmin();
-        $project = $this->makeProject();
+        $fixture = $this->makePlanFixture();
+        $project = $fixture['project'];
 
         $response = $this->get(route('admin.utilities.room-area.projects.export.csv', $project));
         $response->assertOk();
         $this->assertStringContainsString('text/csv', (string) $response->headers->get('content-type'));
         $csv = $response->getContent();
-        $header = str_getcsv(strtok($csv, "\n"));
+        $this->assertStringStartsWith(RoomAreaMeasurementExport::UTF8_BOM, $csv);
+        $withoutBom = substr($csv, strlen(RoomAreaMeasurementExport::UTF8_BOM));
+        $header = str_getcsv(strtok($withoutBom, "\n"));
         $this->assertSame(RoomAreaMeasurementExport::COLUMNS, $header);
         $this->assertStringContainsString('Kitchen', $csv);
         $this->assertStringContainsString('Bath', $csv);
@@ -33,23 +34,48 @@ class RoomAreaMeasurementExportHttpTest extends IntegrationTestCase
         $this->assertStringContainsString('Project total', $csv);
         $this->assertStringContainsString('Maple kitchen', $csv);
         $this->assertStringContainsString('Pat Owner', $csv);
-        $this->assertMatchesRegularExpression('/Rough-in,Kitchen,120(\.0+)?,44/', $csv);
+        $this->assertMatchesRegularExpression('/Rough-in,Kitchen,120\\.00,44\\.00,332\\.00,132\\.00,32\\.67/', $withoutBom);
+        $this->assertMatchesRegularExpression('/Unassigned,Bath,64\\.00,32\\.00,256\\.00,70\\.40,0\\.00/', $withoutBom);
+        $this->assertMatchesRegularExpression('/"?Project total"?,,184\\.00,76\\.00,588\\.00,202\\.40,32\\.67/', $withoutBom);
 
         $rows = app(RoomAreaMeasurementExport::class)->rows($project);
-        $this->assertSame(RoomAreaMeasurementExport::COLUMNS[0], 'Phase');
         $this->assertSame('Rough-in', $rows[0][0]);
         $this->assertSame('Kitchen', $rows[0][1]);
         $this->assertEquals(120.0, $rows[0][2]);
         $this->assertEquals(44.0, $rows[0][3]);
-        $this->assertGreaterThan(0, $rows[0][4]);
+        $this->assertEquals(332.0, $rows[0][4]);
         $this->assertEquals(132.0, $rows[0][5]);
-        $this->assertGreaterThan(0, $rows[0][6]);
+        $this->assertEquals(32.67, $rows[0][6]);
+    }
+
+    public function test_csv_prefixes_formula_injection_and_keeps_non_ascii_and_long_names(): void
+    {
+        $this->actingAsAdmin();
+        $long = 'José Ñoño '.str_repeat('測', 80);
+        $fixture = $this->makePlanFixture([
+            'name' => '=HYPERLINK("http://evil.example")',
+        ]);
+        $fixture['client']->update(['client_name' => '+2+3+cmd']);
+        $fixture['kitchen']->update(['name' => $long]);
+        $fixture['bath']->update(['name' => "@SUM(A1)\t"]);
+        $fixture['phase']->update(['name' => "-1+1"]);
+
+        $csv = $this->get(route('admin.utilities.room-area.projects.export.csv', $fixture['project']->fresh(['rooms', 'phases', 'clientProject'])))
+            ->assertOk()
+            ->getContent();
+        $this->assertStringStartsWith(RoomAreaMeasurementExport::UTF8_BOM, $csv);
+        $this->assertStringContainsString("'=HYPERLINK", $csv);
+        $this->assertStringContainsString("'+2+3+cmd", $csv);
+        $this->assertStringContainsString("'-1+1", $csv);
+        $this->assertStringContainsString("'@SUM(A1)", $csv);
+        $this->assertStringContainsString($long, $csv);
+        $this->assertStringNotContainsString("\n=HYPERLINK", $csv);
     }
 
     public function test_xlsx_contains_room_sheet_and_headers(): void
     {
         $this->actingAsAdmin();
-        $project = $this->makeProject();
+        $project = $this->makePlanFixture()['project'];
 
         $response = $this->get(route('admin.utilities.room-area.projects.export.xlsx', $project));
         $response->assertOk();
@@ -73,14 +99,16 @@ class RoomAreaMeasurementExportHttpTest extends IntegrationTestCase
         $this->assertStringContainsString('Kitchen', $sheet);
         $this->assertStringContainsString('Rough-in', $sheet);
         $this->assertStringContainsString('Project total', $sheet);
+        $this->assertStringContainsString('332.00', $sheet);
+        $this->assertStringContainsString('32.67', $sheet);
     }
 
     public function test_assigning_a_phase_leaves_room_geometry_unchanged(): void
     {
         $this->actingAsAdmin();
-        $project = $this->makeProject();
-        $bath = $project->rooms->firstWhere('name', 'Bath');
-        $phase = $project->phases->first();
+        $fixture = $this->makePlanFixture();
+        $bath = $fixture['bath'];
+        $phase = $fixture['phase'];
         $vertices = $bath->vertices;
         $area = $bath->area_sqft;
 
@@ -92,70 +120,5 @@ class RoomAreaMeasurementExportHttpTest extends IntegrationTestCase
         $this->assertSame($phase->id, (int) $bath->phase_id);
         $this->assertSame($vertices, $bath->vertices);
         $this->assertEquals($area, (float) $bath->area_sqft);
-    }
-
-    private function makeProject(): RoomAreaProject
-    {
-        $client = ClientProject::factory()->create([
-            'client_name' => 'Pat Owner',
-            'name' => 'Kitchen reno',
-        ]);
-        $project = RoomAreaProject::create([
-            'name' => 'Maple kitchen',
-            'client_project_id' => $client->id,
-            'scale_pixels_per_foot' => 12,
-        ]);
-        $phase = RoomAreaPhase::create([
-            'room_area_project_id' => $project->id,
-            'name' => 'Rough-in',
-            'sort_order' => 1,
-        ]);
-        $this->makeRoom($project, 'Kitchen', 144, 120, $phase->id, [
-            'id' => 'obj_1',
-            'type' => 'door',
-            'subtype' => 'single',
-            'wall_id' => 'wall_p1_0_1',
-            'width' => 36,
-            'offset' => 12,
-        ]);
-        $this->makeRoom($project, 'Bath', 96, 96);
-
-        return $project->fresh(['phases', 'rooms', 'clientProject']);
-    }
-
-    private function makeRoom(
-        RoomAreaProject $project,
-        string $name,
-        float $widthPx,
-        float $heightPx,
-        ?int $phaseId = null,
-        ?array $door = null
-    ): RoomAreaRoom {
-        return RoomAreaRoom::create([
-            'room_area_project_id' => $project->id,
-            'phase_id' => $phaseId,
-            'name' => $name,
-            'scale_pixels_per_foot' => 12,
-            'area_sqft' => ($widthPx / 12) * ($heightPx / 12),
-            'wall_height_ft' => 8,
-            'flooring_waste_percent' => 10,
-            'vertices' => [
-                'v' => 3,
-                'groups' => [[
-                    'id' => 'g1',
-                    'color' => '#024768',
-                    'polygons' => [[
-                        'id' => 'p1',
-                        'vertices' => [
-                            ['x' => 0, 'y' => 0],
-                            ['x' => $widthPx, 'y' => 0],
-                            ['x' => $widthPx, 'y' => $heightPx],
-                            ['x' => 0, 'y' => $heightPx],
-                        ],
-                    ]],
-                ]],
-                'objects' => $door ? [$door] : [],
-            ],
-        ]);
     }
 }

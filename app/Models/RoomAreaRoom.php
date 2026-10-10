@@ -94,15 +94,27 @@ class RoomAreaRoom extends Model
      *   polygon_count: int
      * }
      */
+    /** @var array<string, mixed>|null */
+    private $layoutMetricsCache;
+
     public function layoutMetrics(): array
     {
+        if (is_array($this->layoutMetricsCache)) {
+            return $this->layoutMetricsCache;
+        }
+
         $scale = $this->resolvedScalePixelsPerFoot();
         $height = $this->resolvedWallHeightFt();
         if ($scale <= 0) {
-            return app(RoomAreaCanvasData::class)->emptyLayoutMetrics($height);
+            return $this->layoutMetricsCache = app(RoomAreaCanvasData::class)->emptyLayoutMetrics($height);
         }
 
-        return app(RoomAreaCanvasData::class)->layoutMetrics($this->canvasData(), $scale, $height, $this->finishSettings());
+        return $this->layoutMetricsCache = app(RoomAreaCanvasData::class)->layoutMetrics(
+            $this->canvasData(),
+            $scale,
+            $height,
+            $this->finishSettings()
+        );
     }
 
     public function project(): BelongsTo

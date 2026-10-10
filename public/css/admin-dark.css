@@ -3652,3 +3652,7 @@ html.admin-dark .util-ra-sign__pad {
   background: var(--admin-input-bg);
 }
 
+html.admin-dark .util-ra-sign__date {
+  color: var(--admin-muted);
+}
+

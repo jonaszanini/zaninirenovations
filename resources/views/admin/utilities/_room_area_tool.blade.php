@@ -58,7 +58,8 @@
     data-plan-pdf-template="{{ route('admin.utilities.room-area.projects.plan', ['room_area_project' => '__ID__']) }}"
     data-export-csv-template="{{ route('admin.utilities.room-area.projects.export.csv', ['room_area_project' => '__ID__']) }}"
     data-export-xlsx-template="{{ route('admin.utilities.room-area.projects.export.xlsx', ['room_area_project' => '__ID__']) }}"
-    data-signature-template="{{ route('admin.utilities.room-area.projects.signature', ['room_area_project' => '__ID__']) }}">
+    data-signature-template="{{ route('admin.utilities.room-area.projects.signature', ['room_area_project' => '__ID__']) }}"
+    data-signature-void-template="{{ route('admin.utilities.room-area.projects.signature.void', ['room_area_project' => '__ID__']) }}">
     <script type="application/json" id="ra-catalog-options">@json($catalogPickerOptions ?? [])</script>
     <input type="hidden" id="util-ra-csrf" value="{{ csrf_token() }}">
     @if (!empty($kitSeedError))
@@ -1339,23 +1340,30 @@
       <section class="admin-card util-ra-sign" data-ra-sign hidden>
         <div class="util-ra-card-title-row">
           <h3 class="util-ra-card-title">Client signature</h3>
-          <x-admin.info-tip label="Client signature">Optional. Adds a name, date, and signature block on the plan PDF. Saving here never emails the client.</x-admin.info-tip>
+          <x-admin.info-tip label="Client signature">In-person only on this admin device — no client portal. Ties the signature to a published quote version. The date is recorded by the server. To change a saved signature, void it with a reason and sign again. Nobody is emailed.</x-admin.info-tip>
         </div>
         <div class="util-ra-sign__fields">
           <div class="admin-form-group">
-            <label for="ra-sign-name">Name</label>
-            <input class="admin-input" type="text" id="ra-sign-name" maxlength="120" data-ra-sign-name autocomplete="name">
+            <label for="ra-sign-quote">Quote</label>
+            <select class="admin-input" id="ra-sign-quote" data-ra-sign-quote>
+              <option value="">Choose a published quote</option>
+            </select>
           </div>
           <div class="admin-form-group">
-            <label for="ra-sign-date">Date</label>
-            <input class="admin-input" type="date" id="ra-sign-date" data-ra-sign-date>
+            <label for="ra-sign-name">Name</label>
+            <input class="admin-input" type="text" id="ra-sign-name" maxlength="255" data-ra-sign-name autocomplete="name">
+          </div>
+          <div class="admin-form-group">
+            <span class="admin-form-group-label">Date</span>
+            <p class="util-ra-sign__date" data-ra-sign-date>Recorded when you save</p>
           </div>
         </div>
         <label class="util-sr-only" for="ra-sign-pad">Signature</label>
         <canvas id="ra-sign-pad" class="util-ra-sign__pad" width="560" height="160" data-ra-sign-pad></canvas>
         <div class="util-ra-sign__actions">
           <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" data-ra-sign-save>Save signature</button>
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-sign-clear>Clear</button>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-sign-clear>Clear pad</button>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-sign-void hidden>Void signature</button>
         </div>
       </section>
         </div>{{-- pane rooms --}}

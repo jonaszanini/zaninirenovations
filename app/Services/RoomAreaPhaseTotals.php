@@ -93,16 +93,37 @@ class RoomAreaPhaseTotals
             ];
         }
         $unassigned = $project->rooms->whereNull('phase_id')->values();
+        $unassignedTotals = $this->sum($unassigned);
+        $projectTotals = $this->empty();
+        foreach ($phases as $phase) {
+            $projectTotals = $this->addRounded($projectTotals, $phase['totals']);
+        }
+        $projectTotals = $this->addRounded($projectTotals, $unassignedTotals);
 
         return [
-            'project' => $this->sum($project->rooms),
+            'project' => $projectTotals,
             'phases' => $phases,
             'unassigned' => [
                 'id' => null,
                 'name' => $project->phases->isEmpty() ? 'All rooms' : 'Unassigned',
                 'rooms' => $unassigned,
-                'totals' => $this->sum($unassigned),
+                'totals' => $unassignedTotals,
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, float|int>  $base
+     * @param  array<string, float|int>  $add
+     * @return array<string, float|int>
+     */
+    private function addRounded(array $base, array $add): array
+    {
+        foreach (self::KEYS as $key) {
+            $base[$key] = round(((float) ($base[$key] ?? 0)) + ((float) ($add[$key] ?? 0)), 2);
+        }
+        $base['room_count'] = (int) ($base['room_count'] ?? 0) + (int) ($add['room_count'] ?? 0);
+
+        return $base;
     }
 }
