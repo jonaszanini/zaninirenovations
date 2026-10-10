@@ -780,6 +780,9 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('No confident match', $view);
         $this->assertStringContainsString('<x-admin.info-tip label="No confident match">', $view);
         $this->assertStringContainsString('A recent invoice by itself is not enough', $view);
+        $this->assertStringContainsString('<x-admin.info-tip label="Already paid">', $view);
+        $this->assertStringContainsString('Record disabled — invoice already paid', $view);
+        $this->assertStringContainsString('<x-admin.info-tip label="Ambiguous match">', $view);
         $this->assertStringNotContainsString('No strong match', $view);
         $this->assertStringNotContainsString('admin-form-help', $view);
         $this->assertDoesNotMatchRegularExpression(

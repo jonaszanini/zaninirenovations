@@ -20,6 +20,15 @@ class EtransferNoticeParser
         'notify.payments.interac.ca',
     ];
 
+    /** Line that names the destination inbox, never the payer. */
+    public const DEPOSIT_LINE_PATTERN = '/deposited into your account|(?:ont été déposés|déposés automatiquement)/iu';
+
+    /**
+     * Auto-deposit destination ("…at Scotiabank at address@domain").
+     * Any address on a deposit line is skipped, not only configured own inboxes.
+     */
+    public const DEPOSIT_DESTINATION_EMAIL_PATTERN = '/((?:automatically\s+)?deposited into your account(?:\s+at\s+[^@\n]+?)?\s+at\s+)([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/iu';
+
     /**
      * @return array{
      *   sender_name: ?string,
@@ -113,19 +122,20 @@ class EtransferNoticeParser
 
     private function extractSenderEmail(string $text): ?string
     {
+        $depositEmails = $this->emailsOnDepositLines($text);
         $text = $this->stripDepositDestinationEmails($text);
 
         if (preg_match('/Sender(?:\'s)? e-?mail\s*:\s*([^\s<>]+@[^\s<>]+)/iu', $text, $m)) {
-            return $this->usableSenderEmail($m[1]);
+            return $this->usableSenderEmail($m[1], $depositEmails);
         }
 
         if (preg_match('/Courriel de l\'expéditeur\s*:\s*([^\s<>]+@[^\s<>]+)/iu', $text, $m)) {
-            return $this->usableSenderEmail($m[1]);
+            return $this->usableSenderEmail($m[1], $depositEmails);
         }
 
         if (preg_match_all('/\b([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})\b/i', $text, $matches)) {
             foreach ($matches[1] as $email) {
-                $usable = $this->usableSenderEmail($email);
+                $usable = $this->usableSenderEmail($email, $depositEmails);
                 if ($usable !== null) {
                     return $usable;
                 }
@@ -137,12 +147,12 @@ class EtransferNoticeParser
 
     /**
      * Auto-deposit copy names the destination inbox ("…at Scotiabank at
-     * zaninirenovations@gmail.com"), which is never the payer.
+     * address"), which is never the payer. Every address on that line is skipped.
      */
     private function stripDepositDestinationEmails(string $text): string
     {
         $patterns = [
-            '/((?:automatically\s+)?deposited into your account(?:\s+at\s+[^@\n]+?)?\s+at\s+)([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/iu',
+            self::DEPOSIT_DESTINATION_EMAIL_PATTERN,
             '/((?:ont été déposés|déposés automatiquement)[^@\n]*?(?:compte|banque)[^@\n]*?\s+(?:à|a)\s+)([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/iu',
         ];
 
@@ -153,7 +163,31 @@ class EtransferNoticeParser
         return $text;
     }
 
-    private function usableSenderEmail(string $email): ?string
+    /**
+     * @return list<string>
+     */
+    private function emailsOnDepositLines(string $text): array
+    {
+        $emails = [];
+        foreach (preg_split("/\n/u", $text) ?: [] as $line) {
+            if (preg_match(self::DEPOSIT_LINE_PATTERN, $line) !== 1) {
+                continue;
+            }
+            if (! preg_match_all('/\b([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})\b/i', $line, $matches)) {
+                continue;
+            }
+            foreach ($matches[1] as $email) {
+                $emails[strtolower($email)] = strtolower($email);
+            }
+        }
+
+        return array_values($emails);
+    }
+
+    /**
+     * @param  list<string>  $depositEmails
+     */
+    private function usableSenderEmail(string $email, array $depositEmails = []): ?string
     {
         $email = strtolower(trim($email, " \t\"'<>"));
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -166,6 +200,10 @@ class EtransferNoticeParser
         }
 
         if (in_array($email, $this->ownEmails(), true)) {
+            return null;
+        }
+
+        if (in_array($email, $depositEmails, true)) {
             return null;
         }
 

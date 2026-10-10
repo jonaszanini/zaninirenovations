@@ -132,6 +132,26 @@
   color: var(--admin-warn-tile-text);
 }
 
+.et-card__warning {
+  margin-top: 0.35rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: var(--admin-warn-tile-bg);
+  border: 1px solid var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
+  font-size: 0.85rem;
+}
+
+.et-card__record-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.25rem;
+  width: 100%;
+  font-size: 0.8rem;
+  color: var(--admin-warn-tile-text);
+}
+
 .et-card__actions {
   display: flex;
   flex-direction: column;

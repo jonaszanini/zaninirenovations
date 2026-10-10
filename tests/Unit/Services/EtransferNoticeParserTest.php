@@ -190,4 +190,31 @@ TXT;
         $this->assertNull($this->parser->normalizeSenderEmail(' notify@payments.interac.ca '));
         $this->assertSame('payer@example.com', $this->parser->normalizeSenderEmail('Payer@example.com'));
     }
+
+    public function test_deposit_destination_regex_matches_scotiabank_line(): void
+    {
+        $line = '$379.61 CAD from Malcolm Travis has been automatically deposited into your account at Scotiabank at deposits-inbox@example.net.';
+
+        $this->assertSame(1, preg_match(EtransferNoticeParser::DEPOSIT_DESTINATION_EMAIL_PATTERN, $line));
+        $this->assertSame(1, preg_match(EtransferNoticeParser::DEPOSIT_LINE_PATTERN, $line));
+    }
+
+    public function test_any_email_on_deposit_line_is_skipped_even_if_not_configured(): void
+    {
+        $text = <<<'TXT'
+Your funds have been deposited
+
+$50.00 CAD from Pat Lee has been automatically deposited into your account at Scotiabank at random-deposit@example.net.
+
+Message: thanks
+
+Reference Number: CADEPOSITSKIP1
+TXT;
+
+        $parsed = $this->parser->parse($text);
+
+        $this->assertSame('Pat Lee', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+        $this->assertSame(50.00, $parsed['amount']);
+    }
 }

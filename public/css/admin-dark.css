@@ -3513,6 +3513,16 @@ html.admin-dark .et-chip--paid {
   color: var(--admin-warn-tile-text);
 }
 
+html.admin-dark .et-card__warning {
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .et-card__record-note {
+  color: var(--admin-warn-tile-text);
+}
+
 html.admin-dark .et-card {
   background: var(--admin-surface);
   border-color: var(--admin-border);

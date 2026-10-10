@@ -73,7 +73,7 @@ class EtransferNoticeService
             $existing = EtransferNotice::query()->where('reference_number', $reference)->first();
             if ($existing) {
                 $candidates = $existing->isPending()
-                    ? $this->matcher->rank($existing)
+                    ? $this->matcher->suggest($existing)['candidates']
                     : [];
 
                 return [
@@ -97,14 +97,14 @@ class EtransferNoticeService
             'status' => EtransferNotice::STATUS_PENDING,
         ]);
 
-        $candidates = $this->matcher->rank($notice);
-        $notice->match_score = $candidates[0]['score'] ?? null;
+        $suggestion = $this->matcher->suggest($notice);
+        $notice->match_score = $suggestion['best']['score'] ?? null;
         $notice->save();
 
         return [
             'status' => 'created',
             'notice' => $notice,
-            'candidates' => $candidates,
+            'candidates' => $suggestion['candidates'],
         ];
     }
 

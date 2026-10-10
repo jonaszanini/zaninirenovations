@@ -225,7 +225,7 @@ TXT;
             'sent_at' => now()->subDays(2),
         ]);
 
-        EtransferNotice::factory()->create([
+        $notice = EtransferNotice::factory()->create([
             'sender_name' => 'Zohar Barak',
             'sender_email' => null,
             'amount' => 2260,
@@ -233,17 +233,168 @@ TXT;
             'reference_number' => 'CAZOHAR0257',
         ]);
 
+        $paid = ClientProjectInvoice::query()->where('invoice_number', 'INV-2026-0257')->first();
+        $this->assertNotNull($paid);
+
         $html = $this->get(route('admin.financials.etransfers'))
             ->assertOk()
             ->assertSee('INV-2026-0257')
             ->assertSee('Already paid')
             ->assertSee('et-chip--paid', false)
-            ->assertSee('disabled', false)
+            ->assertSee('Record disabled — invoice already paid', false)
+            ->assertSee('aria-label="About Already paid"', false)
             ->getContent();
 
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*\bdisabled\b[^>]*>\s*Record payment/s',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value=""/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value="'.$paid->id.'"/',
+            $html
+        );
         $this->assertStringNotContainsString('No confident match', $html);
         $this->assertDoesNotMatchRegularExpression(
             '/et-card__match-title">\s*INV-2026-0300/s',
+            $html
+        );
+    }
+
+    public function test_open_cited_amount_match_is_preselected_over_paid_cited_invoice(): void
+    {
+        $this->actingAsAdmin();
+
+        $zohar = ClientProject::factory()->create([
+            'client_name' => 'Zohar Barak',
+            'client_email' => 'zohar@example.test',
+        ]);
+        ClientProjectInvoice::factory()->for($zohar, 'project')->paid()->create([
+            'invoice_number' => 'INV-2026-0257',
+            'subtotal' => 2000,
+            'hst' => 260,
+            'total' => 2260,
+        ]);
+
+        $malcolm = ClientProject::factory()->create([
+            'client_name' => 'Malcolm Travis',
+            'client_email' => 'malcolm@example.test',
+        ]);
+        $open = ClientProjectInvoice::factory()->for($malcolm, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0258',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+
+        $notice = EtransferNotice::factory()->create([
+            'sender_name' => 'Zohar Barak',
+            'amount' => 379.61,
+            'message' => 'INV-2026-0257 and INV-2026-0258',
+            'reference_number' => 'CAD1BOTH0257',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('INV-2026-0258')
+            ->assertSee('Best match')
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value="'.$open->id.'"/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<button[^>]*\bdisabled\b[^>]*>\s*Record payment/s',
+            $html
+        );
+        $this->assertStringNotContainsString('Record disabled — invoice already paid', $html);
+    }
+
+    public function test_short_memo_form_shows_paid_invoice_candidate(): void
+    {
+        $this->actingAsAdmin();
+
+        $zohar = ClientProject::factory()->create([
+            'client_name' => 'Zohar Barak',
+            'client_email' => 'zohar@example.test',
+        ]);
+        ClientProjectInvoice::factory()->for($zohar, 'project')->paid()->create([
+            'invoice_number' => 'INV-2026-0257',
+            'subtotal' => 2000,
+            'hst' => 260,
+            'total' => 2260,
+        ]);
+
+        EtransferNotice::factory()->create([
+            'sender_name' => 'Zohar Barak',
+            'amount' => 2260,
+            'message' => 'invoice #257',
+            'reference_number' => 'CASHORT0257',
+        ]);
+
+        $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('INV-2026-0257')
+            ->assertSee('Already paid')
+            ->assertSee('Record disabled — invoice already paid', false);
+    }
+
+    public function test_amount_tie_is_ambiguous_and_not_preselected(): void
+    {
+        $this->actingAsAdmin();
+
+        $a = ClientProject::factory()->create([
+            'client_name' => 'Alpha Client',
+            'client_email' => 'alpha@example.test',
+        ]);
+        $invoiceA = ClientProjectInvoice::factory()->for($a, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0010',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+        $b = ClientProject::factory()->create([
+            'client_name' => 'Beta Client',
+            'client_email' => 'beta@example.test',
+        ]);
+        $invoiceB = ClientProjectInvoice::factory()->for($b, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0011',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+
+        $notice = EtransferNotice::factory()->create([
+            'sender_name' => 'Unknown Sender',
+            'amount' => 379.61,
+            'message' => 'thanks',
+            'reference_number' => 'CAAMBIG0001',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('Ambiguous match')
+            ->assertSee('Several open invoices match this amount')
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value=""/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value="'.$invoiceA->id.'"/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value="'.$invoiceB->id.'"/',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*\bdisabled\b[^>]*>\s*Record payment/s',
             $html
         );
     }
@@ -313,11 +464,24 @@ TXT;
             'reference_number' => 'CAMALCOLM258',
         ]);
 
-        $this->get(route('admin.financials.etransfers'))
+        $notice = EtransferNotice::query()->where('reference_number', 'CAMALCOLM258')->first();
+        $this->assertNotNull($notice);
+
+        $html = $this->get(route('admin.financials.etransfers'))
             ->assertOk()
             ->assertSee('INV-2026-0258')
             ->assertSee('Malcolm Travis')
             ->assertSee('Best match')
-            ->assertSee((string) $invoice->id);
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value="'.$invoice->id.'"/',
+            $html
+        );
+        $this->assertStringContainsString('INV-2026-0258 · Malcolm Travis', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<button[^>]*\bdisabled\b[^>]*>\s*Record payment/s',
+            $html
+        );
     }
 }

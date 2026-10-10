@@ -23,11 +23,13 @@ return [
     |--------------------------------------------------------------------------
     | Minimum score for a confident invoice suggestion
     |--------------------------------------------------------------------------
-    | Recency alone scores at most 10. Anything at or below this threshold is
-    | listed as "no confident match" instead of becoming the top suggestion.
+    | Score >= this value is a match; strictly below is "no confident match".
+    | Recency alone is 10. Default 15 keeps recency-only invoices out.
+    | A valid configured value is used as-is (5 stays 5 — it is not raised).
+    | Non-numeric or < 1 values fall back to 15.
     */
 
-    'min_match_score' => max(1, (int) env('ETRANSFER_MIN_MATCH_SCORE', 15)),
+    'min_match_score' => env('ETRANSFER_MIN_MATCH_SCORE', 15),
 
     /*
     |--------------------------------------------------------------------------

@@ -114,7 +114,8 @@ find an amount (and none was sent). Example: `{ "message": "...", "errors": { "a
 - **Never auto-records a payment.** Matching is a suggestion only.
 - Unique on `reference` when present, so retries of the same Interac email are idempotent.
 - Candidates are ranked by: invoice number in the memo (strongest), amount equal to the unpaid invoice total or an unpaid deposit/instalment, client name/email vs sender, then recency.
-- If the memo cites an invoice that is already paid, that invoice is still returned first and flagged `Already paid` instead of dropping it for an unrelated open invoice.
-- Recency alone (score 10) is below `ETRANSFER_MIN_MATCH_SCORE` (default 15) and is not a confident suggestion.
-- The auto-deposit destination address (`…deposited into your account at Scotiabank at …`) is never stored as `sender_email`.
+- If the memo cites an invoice that is already paid, that invoice is still returned and flagged `Already paid` instead of dropping it for an unrelated open invoice. An open invoice that is also cited and matches the amount ranks above that paid invoice.
+- Recency alone (score 10) is strictly below `ETRANSFER_MIN_MATCH_SCORE` (default 15) and is not a confident suggestion. A score equal to the minimum is a match. The minimum is not silently raised.
+- Two or more open invoices that match the amount (and are not uniquely cited) are an ambiguous match — nothing is preselected.
+- Any address on the auto-deposit line (`…deposited into your account at Scotiabank at …`) is never stored as `sender_email`.
 - Admin: **Financials → Incoming e-transfers** → Record payment (method e-Transfer) or Ignore.
