@@ -17,8 +17,15 @@
   </form>
   <div class="qh-actions">
     <button type="submit" class="qh-actions__save" form="quote-form">Save quotation</button>
-    <button type="button" class="qh-actions__draft admin-btn" id="st-btn-draft">Save as draft</button>
+    <button type="button" class="qh-actions__draft admin-btn" id="st-btn-draft" form="quote-form">Save as draft</button>
   </div>
+  <script>
+    (function () {
+      if (!/[?&]draft=submit(?:&|$)/.test(location.search)) return;
+      var draft = document.getElementById('st-btn-draft');
+      if (draft) draft.type = 'submit';
+    })();
+  </script>
 
   <div id="admin-dialog" class="admin-dialog" hidden aria-hidden="true">
     <div class="admin-dialog-backdrop" data-admin-dialog-dismiss tabindex="-1" aria-hidden="true"></div>

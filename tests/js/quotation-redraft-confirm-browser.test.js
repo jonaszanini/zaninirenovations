@@ -21,6 +21,10 @@ const EDITORS = [
     name: 'painting',
     types: ['painting'],
   },
+  {
+    name: 'submit-button',
+    types: ['native-submit-draft'],
+  },
 ];
 
 function startServer() {
@@ -81,6 +85,12 @@ async function installSubmitProbe(page) {
       });
       window.__submits.push({ via, data, action: form.getAttribute('action') });
     };
+    window.__dialogEvents = [];
+    ['admin-dialog:cancel', 'admin-hotkey-save:abort'].forEach((name) => {
+      document.addEventListener(name, () => {
+        window.__dialogEvents.push(name);
+      });
+    });
     HTMLFormElement.prototype.submit = function () {
       record(this, 'submit');
     };
@@ -132,6 +142,11 @@ async function attachEditorScript(page, family) {
         if (!savingAsDraft) intent.value = 'publish';
         savingAsDraft = false;
       });
+      return;
+    }
+    if (family === 'submit-button') {
+      // Native type=submit click already POSTs. Do not attach a second saver.
+      return;
     }
   }, family);
 }
@@ -140,7 +155,8 @@ async function openEditor(page, base, family) {
   const errors = [];
   const onError = (err) => errors.push(String(err));
   page.on('pageerror', onError);
-  await page.goto(base + '/quotation-redraft-confirm.html', { waitUntil: 'domcontentloaded' });
+  const qs = family === 'submit-button' ? '?draft=submit' : '';
+  await page.goto(base + '/quotation-redraft-confirm.html' + qs, { waitUntil: 'domcontentloaded' });
   page.off('pageerror', onError);
   assert.deepStrictEqual(errors, [], family + ' fixture must load without page errors');
   await installSubmitProbe(page);
@@ -182,22 +198,37 @@ async function cancelRedraft(page) {
       const confirmed = await page.evaluate(() => ({
         submits: window.__submits,
         errors: window.__pageErrors,
+        events: window.__dialogEvents,
+        draftType: (document.getElementById('st-btn-draft') || {}).type || '',
       }));
       assert.deepStrictEqual(confirmed.errors, [], editor.name + ' confirm must not throw');
       assert.strictEqual(confirmed.submits.length, 1, editor.name + ' confirm must POST once (' + editor.types.join(', ') + ')');
       assert.strictEqual(confirmed.submits[0].data.save_intent, 'draft', editor.name + ' confirm must send draft intent');
       assert.strictEqual(confirmed.submits[0].data.is_draft, '1', editor.name + ' confirm must set is_draft');
+      assert.deepStrictEqual(confirmed.events, [], editor.name + ' confirm must not emit cancel or abort');
+      if (editor.name === 'submit-button') {
+        assert.strictEqual(confirmed.draftType, 'submit', 'submit-button fixture must use type=submit');
+      }
 
       await openEditor(page, base, editor.name);
       await cancelRedraft(page);
       const cancelled = await page.evaluate(() => ({
         submits: window.__submits,
         errors: window.__pageErrors,
+        events: window.__dialogEvents,
         dialogHidden: document.getElementById('admin-dialog').hidden,
       }));
       assert.deepStrictEqual(cancelled.errors, [], editor.name + ' cancel must not throw');
       assert.strictEqual(cancelled.submits.length, 0, editor.name + ' cancel must send nothing');
       assert.strictEqual(cancelled.dialogHidden, true, editor.name + ' cancel must close the dialog');
+      assert.ok(
+        cancelled.events.indexOf('admin-dialog:cancel') !== -1,
+        editor.name + ' cancel must emit admin-dialog:cancel'
+      );
+      assert.ok(
+        cancelled.events.indexOf('admin-hotkey-save:abort') !== -1,
+        editor.name + ' cancel must emit admin-hotkey-save:abort'
+      );
     }
   } finally {
     await browser.close();
