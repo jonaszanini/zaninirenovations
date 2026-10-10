@@ -731,6 +731,202 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   inst.reset();
 })();
 
+(function cancelledRedraftWindowConfirmReleasesImmediately() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'br-btn-draft' });
+  const form = makeEl('form', { id: 'br-form' }, [btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  let confirmCalls = 0;
+  const win = {
+    navigator: { platform: 'Linux' },
+    setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+    clearTimeout() {},
+    confirm() {
+      confirmCalls += 1;
+      return false;
+    },
+  };
+  btn.click = function () {
+    this.clicked += 1;
+    // #82: capture-phase draft click uses window.confirm; cancel must not
+    // leave the 12s watch holding Ctrl+S.
+    if (!win.confirm('This quotation is already with the client. Saving it as a draft will stop their link from working until you publish it again. Continue?')) {
+      this.cancelled = true;
+    }
+  };
+  let errorToast = 0;
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return 21000; },
+    toast: { saved() {}, error() { errorToast += 1; }, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  assert.strictEqual(btn.clicked, 1, 'Ctrl+S still clicks the marked draft button');
+  assert.strictEqual(confirmCalls, 1, 're-draft confirm ran during the click');
+  assert.strictEqual(inst.isInflight(), false, 'cancelled window.confirm releases the lock immediately');
+  assert.strictEqual(errorToast, 0, 'cancel does not show a save error toast');
+  timers.filter((t) => t.ms === 12000 || t.ms === inst.WATCH_MS).forEach((t) => t.fn());
+  assert.strictEqual(inst.isInflight(), false, '12s watch is not what released the lock');
+  inst.reset();
+})();
+
+(function acceptedRedraftConfirmKeepsLock() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'br-btn-draft' });
+  const form = makeEl('form', { id: 'br-form' }, [btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const win = {
+    navigator: { platform: 'Linux' },
+    setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+    clearTimeout() {},
+    confirm() { return true; },
+  };
+  btn.click = function () {
+    this.clicked += 1;
+    if (!win.confirm('Continue?')) return;
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return 22000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  assert.ok(inst.isInflight(), 'accepted confirm keeps the save lock');
+  timers.filter((t) => t.ms === 12000 || t.ms === inst.WATCH_MS).forEach((t) => t.fn());
+  assert.strictEqual(inst.isInflight(), false, 'accepted confirm still ends via the 12s watch when no submit follows');
+  inst.reset();
+})();
+
+(function cancelledAdminDialogConfirmReleasesImmediately() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'mw-btn-draft' });
+  const form = makeEl('form', { id: 'mw-form' }, [btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const confirmCbs = [];
+  const win = {
+    navigator: { platform: 'Linux' },
+    setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+    clearTimeout() {},
+    AdminDialog: {
+      confirm() {
+        return {
+          then(cb) {
+            confirmCbs.push(cb);
+            return this;
+          },
+        };
+      },
+    },
+  };
+  btn.click = function () {
+    this.clicked += 1;
+    win.AdminDialog.confirm('Withdraw the sent quote?').then(function (ok) {
+      btn.ok = ok;
+    });
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return 23000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  assert.ok(inst.isInflight(), 'async AdminDialog confirm holds the lock while open');
+  assert.ok(confirmCbs.length >= 1, 'AdminDialog.confirm was wrapped');
+  confirmCbs.forEach((cb) => cb(false));
+  assert.strictEqual(inst.isInflight(), false, 'AdminDialog cancel releases immediately');
+  timers.filter((t) => t.ms === 12000 || t.ms === inst.WATCH_MS).forEach((t) => t.fn());
+  assert.strictEqual(inst.isInflight(), false, '12s watch is not required after AdminDialog cancel');
+  inst.reset();
+})();
+
+(function abortEventReleasesWaitingLock() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'sh-btn-draft' });
+  const form = makeEl('form', { id: 'sh-form' }, [btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const inst = hotkey.create({
+    document: doc,
+    window: {
+      navigator: { platform: 'Linux' },
+      setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+      clearTimeout() {},
+    },
+    now() { return 24000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  assert.ok(inst.isInflight(), 'Ctrl+S starts a waiting session');
+  const listeners = doc.listeners[hotkey.ABORT_EVENT] || doc.listeners[inst.ABORT_EVENT] || [];
+  assert.ok(listeners.length >= 1, 'session listens for ' + hotkey.ABORT_EVENT);
+  listeners.forEach((fn) => fn());
+  assert.strictEqual(inst.isInflight(), false, 'abort event releases immediately');
+  inst.reset();
+})();
+
+(function abortWaitingDoesNotReleaseFormMode() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'create-save' });
+  const form = makeEl('form', { id: 'cp-create' }, [btn]);
+  const doc = makeDoc([form]);
+  const timers = [];
+  const inst = hotkey.create({
+    document: doc,
+    window: {
+      navigator: { platform: 'Linux' },
+      setTimeout(fn, ms) { timers.push({ fn, ms: ms || 0 }); return timers.length; },
+      clearTimeout() {},
+    },
+    now() { return 25000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  inst.onFormSubmit({ target: form, defaultPrevented: false });
+  timers.filter((t) => t.ms === 0).forEach((t) => t.fn());
+  assert.ok(inst.isInflight(), 'native submit is form-mode');
+  assert.strictEqual(inst.abortWaiting(), false, 'form-mode abort is a no-op');
+  assert.ok(inst.isInflight(), 'form-mode lock stays until pageshow / 204');
+  inst.reset();
+})();
+
+(function cancelledConfirmAllowsNextCtrlS() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'br-btn-draft' });
+  let clicks = 0;
+  let now = 26000;
+  const form = makeEl('form', { id: 'br-form' }, [btn]);
+  const doc = makeDoc([form]);
+  const win = {
+    navigator: { platform: 'Linux' },
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    confirm() { return false; },
+  };
+  btn.click = function () {
+    clicks += 1;
+    win.confirm('Continue?');
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return now; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  assert.strictEqual(clicks, 1);
+  assert.strictEqual(inst.isInflight(), false);
+  now += 800;
+  inst.handleKeydown(chord());
+  assert.strictEqual(clicks, 2, 'after confirm cancel, Ctrl+S clicks Save again');
+  inst.reset();
+})();
+
 (function clickSwallowWhileInflight() {
   const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'save' });
   const form = makeEl('form', { id: 'f' }, [btn]);

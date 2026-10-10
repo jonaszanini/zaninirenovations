@@ -11,6 +11,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
   var DEBOUNCE_MS = 700;
   var WATCH_MS = 12000;
+  var ABORT_EVENT = 'admin-hotkey-save:abort';
   var EXPECT_KEY = 'admin-save-expect';
   var HOTKEY_FIELD = '_hotkey_save';
   var EMAIL_PRIOR_FIELD = '_hotkey_email_prior';
@@ -675,6 +676,67 @@
       }
     }
 
+    /**
+     * #82's re-draft confirm (window.confirm today, AdminDialog later) can
+     * cancel the draft click. Release immediately so the 12s watch does not
+     * keep Ctrl+S locked. No-op once a real form/ajax save has started.
+     */
+    function abortIfWaiting() {
+      if (!session || !session.inflight) return false;
+      if (session.mode === 'form' || session.mode === 'ajax') return false;
+      finishSession();
+      return true;
+    }
+
+    function wrapConfirmHooks() {
+      var win = env.window;
+      var doc = env.document;
+      var origWindowConfirm = null;
+      var origDialogConfirm = null;
+      var dialogHost = null;
+      var abortListener = null;
+
+      if (win && typeof win.confirm === 'function') {
+        origWindowConfirm = win.confirm;
+        win.confirm = function () {
+          var ok = origWindowConfirm.apply(this, arguments);
+          if (!ok) abortIfWaiting();
+          return ok;
+        };
+      }
+
+      dialogHost = (win && win.AdminDialog && typeof win.AdminDialog.confirm === 'function')
+        ? win.AdminDialog
+        : (root.AdminDialog && typeof root.AdminDialog.confirm === 'function' ? root.AdminDialog : null);
+      if (dialogHost) {
+        origDialogConfirm = dialogHost.confirm;
+        dialogHost.confirm = function () {
+          var result = origDialogConfirm.apply(this, arguments);
+          if (result && typeof result.then === 'function') {
+            return result.then(function (ok) {
+              if (!ok) abortIfWaiting();
+              return ok;
+            });
+          }
+          if (!result) abortIfWaiting();
+          return result;
+        };
+      }
+
+      if (doc && typeof doc.addEventListener === 'function') {
+        abortListener = function () { abortIfWaiting(); };
+        doc.addEventListener(ABORT_EVENT, abortListener);
+      }
+
+      return function unwrapConfirms() {
+        if (win && origWindowConfirm) win.confirm = origWindowConfirm;
+        if (dialogHost && origDialogConfirm) dialogHost.confirm = origDialogConfirm;
+        if (doc && abortListener && typeof doc.removeEventListener === 'function') {
+          doc.removeEventListener(ABORT_EVENT, abortListener);
+        }
+      };
+    }
+
     function releaseFormLock() {
       if (!session || session.mode !== 'form') return;
       var form = session.form;
@@ -863,12 +925,15 @@
       }, WATCH_MS);
       if (timer && typeof timer.unref === 'function') timer.unref();
 
+      var unwrapConfirms = wrapConfirmHooks();
+
       unwrap = function () {
         clearFn(timer);
         if (typeof origFetch === 'function') win.fetch = origFetch;
         if (proto && origOpen) proto.open = origOpen;
         if (proto && origSend) proto.send = origSend;
         if (HTMLForm && origFormSubmit) HTMLForm.prototype.submit = origFormSubmit;
+        if (typeof unwrapConfirms === 'function') unwrapConfirms();
       };
     }
 
@@ -1155,6 +1220,7 @@
     return {
       DEBOUNCE_MS: DEBOUNCE_MS,
       WATCH_MS: WATCH_MS,
+      ABORT_EVENT: ABORT_EVENT,
       EXPECT_KEY: EXPECT_KEY,
       HOTKEY_FIELD: HOTKEY_FIELD,
       EMAIL_PRIOR_FIELD: EMAIL_PRIOR_FIELD,
@@ -1188,6 +1254,7 @@
       consumeExpect: function () { return consumeExpect(env); },
       clearExpect: function () { return clearExpect(env); },
       releaseInflight: function () { finishSession(); },
+      abortWaiting: abortIfWaiting,
       bindTiny: bindTiny,
       bind: bind,
       reset: reset,
@@ -1214,6 +1281,7 @@
   return {
     DEBOUNCE_MS: DEBOUNCE_MS,
     WATCH_MS: WATCH_MS,
+    ABORT_EVENT: ABORT_EVENT,
     EXPECT_KEY: EXPECT_KEY,
     SUBMIT_ONCE_FIELD: SUBMIT_ONCE_FIELD,
     create: create,
