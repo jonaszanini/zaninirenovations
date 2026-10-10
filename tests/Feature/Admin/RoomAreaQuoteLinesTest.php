@@ -8,7 +8,10 @@ use App\Models\Material;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Models\StandardQuotation;
+use App\Services\RoomAreaQuoteLineInserter;
 use App\Services\StandardQuotationCalculator;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -162,6 +165,7 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
         $this->assertEquals($savedLabour, (float) $quote->labour_total);
         $this->assertSame(round($savedTotal + 406.80, 2), (float) $quote->grand_total);
         $this->assertSame($quote->editorGrandTotal(), (float) $quote->grand_total);
+        $this->assertPdfClientLinesSumToSavedTotal($quote);
     }
 
     public function test_adding_kit_lines_matches_by_index_before_filtering_and_includes_editor_extras(): void
@@ -233,6 +237,7 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
         $this->assertSame(2819.56, $expected);
         $this->assertSame($expected, (float) $quote->grand_total);
         $this->assertNotSame($savedTotal, (float) $quote->grand_total);
+        $this->assertPdfClientLinesSumToSavedTotal($quote);
     }
 
     public function test_kit_add_project_sync_matches_editor_tax_splits_and_extras(): void
@@ -303,6 +308,177 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
         $this->assertSame(110.00, (float) $debris['amount']);
         $this->assertFalse((bool) ($debris['apply_hst'] ?? true));
         $this->assertSame($quote->editorGrandTotal(), (float) $quote->grand_total);
+        $this->assertPdfClientLinesSumToSavedTotal($quote);
+    }
+
+    public function test_kit_line_urls_are_null_not_empty_string_including_catalog(): void
+    {
+        $this->actingAsAdmin();
+        $room = $this->makeRoom();
+        $blankCatalog = Material::create([
+            'name' => 'No URL plank',
+            'price_cad' => 4.50,
+            'unit' => 'sq ft',
+            'is_active' => true,
+            'product_url' => '',
+            'image_url' => '',
+        ]);
+        $linkedCatalog = Material::create([
+            'name' => 'Linked plank',
+            'price_cad' => 2.00,
+            'unit' => 'linear ft',
+            'is_active' => true,
+            'product_url' => 'https://example.test/mdf',
+            'image_url' => 'https://example.test/mdf.jpg',
+        ]);
+
+        $quote = $this->createSavedQuote('SQ-KEEP-URL', [$this->kitchenWork([$this->inclHstFlooringRow()])]);
+
+        $this->from(route('admin.utilities.room-area.quote', ['layout' => 'room:'.$room->id]))
+            ->post(route('admin.utilities.room-area.quote.store'), [
+                'layout' => 'room:'.$room->id,
+                'quotation_id' => $quote->id,
+                'trades' => ['flooring', 'baseboard'],
+                'waste' => ['flooring' => 0, 'baseboard' => 0],
+                'unit_price' => ['flooring' => 4.50, 'baseboard' => 2.00],
+                'catalog_material_id' => [
+                    'flooring' => $blankCatalog->id,
+                    'baseboard' => $linkedCatalog->id,
+                ],
+                'client_name' => 'Pat Owner',
+                'display_title' => 'Saved kitchen',
+            ])->assertRedirect();
+
+        $quote->refresh();
+        $after = $quote->resolvedWorks()[0]['materials'];
+        $this->assertCount(3, $after);
+
+        $blankLine = $after[1];
+        $linkedLine = $after[2];
+        $this->assertSame($blankCatalog->id, (int) ($blankLine['catalog_material_id'] ?? 0));
+        $this->assertSame($linkedCatalog->id, (int) ($linkedLine['catalog_material_id'] ?? 0));
+        $this->assertFalse(array_key_exists('url', $blankLine) && $blankLine['url'] === '');
+        $this->assertFalse(array_key_exists('image_url', $blankLine) && $blankLine['image_url'] === '');
+        $this->assertSame('https://example.test/mdf', $linkedLine['url'] ?? null);
+        $this->assertSame('https://example.test/mdf.jpg', $linkedLine['image_url'] ?? null);
+
+        $emptyIn = [[
+            'trade' => 'flooring',
+            'label' => 'Flooring',
+            'short_name' => 'Forced empty',
+            'description' => 'Empty URL catalog line',
+            'unit' => 'sq ft',
+            'qty' => 1,
+            'unit_price' => 1,
+            'catalog_material_id' => $blankCatalog->id,
+            'apply_hst' => true,
+            'url' => '',
+            'image_url' => '',
+        ]];
+        $forced = app(RoomAreaQuoteLineInserter::class)->insert(
+            $emptyIn,
+            $quote->fresh(),
+            null,
+            'Pat Owner',
+            'Saved kitchen',
+            'Kitchen'
+        );
+        $forcedRow = $forced->resolvedWorks()[0]['materials'];
+        $last = $forcedRow[array_key_last($forcedRow)];
+        $this->assertFalse(array_key_exists('url', $last) && $last['url'] === '', 'persistMaterial must not store empty-string URLs');
+        $this->assertFalse(array_key_exists('image_url', $last) && $last['image_url'] === '', 'persistMaterial must not store empty-string image URLs');
+        $this->assertPdfClientLinesSumToSavedTotal($forced);
+    }
+
+    public function test_audit_kit_rewrite_command_lists_candidates_and_does_not_write(): void
+    {
+        $this->actingAsAdmin();
+        $project = ClientProject::factory()->create(['name' => 'Hub mismatch job']);
+        $damaged = $this->createSavedQuote('SQ-AUDIT-CMD', [$this->kitchenWork([
+            $this->inclHstFlooringRow(),
+            [
+                'short_name' => '',
+                'description' => StandardQuotation::ELECTRICAL_LINE_DESCRIPTION,
+                'url' => '',
+                'image_url' => '',
+                'unit_price' => 250.0,
+                'quantity' => 1.0,
+                'apply_hst' => true,
+                'hst_includes_unit' => false,
+                'catalog_material_id' => null,
+                'delivery_cad' => 0.0,
+                'entry_mode' => 'manual',
+                'line_kind' => StandardQuotation::LINE_KIND_MATERIAL,
+            ],
+        ])], [
+            'client_project_id' => $project->id,
+            'is_draft' => false,
+        ]);
+        $damaged->grand_total = 1.00;
+        $damaged->save();
+        ClientProjectQuotation::query()->create([
+            'client_project_id' => $project->id,
+            'source_type' => ClientProjectQuotation::SOURCE_STANDARD,
+            'source_id' => $damaged->id,
+            'title' => 'Hub',
+            'status' => ClientProjectQuotation::STATUS_DRAFT,
+            'type' => ClientProjectQuotation::TYPE_QUOTATION,
+            'quotation_number' => 'Q-AUDIT-1',
+            'version' => 1,
+            'items' => [[
+                'description' => 'Labour and material',
+                'amount' => 50.00,
+                'apply_hst' => true,
+            ]],
+        ]);
+
+        $beforeQuotes = StandardQuotation::query()->orderBy('id')->get()->toArray();
+        $beforeHubs = ClientProjectQuotation::query()->orderBy('id')->get()->toArray();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->withoutMockingConsoleOutput();
+        $exit = $this->artisan('quotes:audit-kit-rewrite');
+        $this->assertSame(0, $exit);
+        $output = Artisan::output();
+        $this->assertStringContainsString('Candidates only', $output);
+        $this->assertStringContainsString('SQ-AUDIT-CMD', $output);
+        $this->assertStringContainsString('Hub mismatch job', $output);
+        $this->assertStringContainsString('empty_string_url', $output);
+        $this->assertStringContainsString('electrical_text_as_material', $output);
+        $this->assertStringContainsString('saved_total_mismatch', $output);
+        $this->assertStringContainsString('hub_amount_mismatch', $output);
+
+        $writes = array_values(array_filter(DB::getQueryLog(), static function (array $query) {
+            return (bool) preg_match('/^\s*(insert|update|delete|replace|alter|drop|truncate)/i', $query['query']);
+        }));
+        DB::disableQueryLog();
+        $this->assertSame([], $writes);
+        $this->assertSame($beforeQuotes, StandardQuotation::query()->orderBy('id')->get()->toArray());
+        $this->assertSame($beforeHubs, ClientProjectQuotation::query()->orderBy('id')->get()->toArray());
+
+        $this->assertSame(0, $this->artisan('quotes:audit-kit-rewrite', ['--since' => '2099-01-01 00:00']));
+        $later = Artisan::output();
+        $this->assertStringContainsString('Candidates only', $later);
+        $this->assertStringContainsString('No candidate Standard quotes', $later);
+    }
+
+    private function assertPdfClientLinesSumToSavedTotal(StandardQuotation $quote): void
+    {
+        $sum = 0.0;
+        foreach ($quote->detailedPdfLineItems() as $row) {
+            if (! empty($row['is_heading'])) {
+                continue;
+            }
+            $sum += (float) ($row['amount'] ?? 0);
+            $sum += ClientProjectQuotation::lineHstAmount($row);
+        }
+
+        $this->assertSame(
+            round((float) $quote->grand_total, 2),
+            round($sum, 2),
+            'PDF/client line amounts must independently sum to the saved total'
+        );
     }
 
     /**

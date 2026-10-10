@@ -99,4 +99,11 @@ class StandardQuotationKitRewriteAuditorTest extends TestCase
 
         $this->assertSame([], (new StandardQuotationKitRewriteAuditor)->issuesFor($quote));
     }
+
+    public function test_parse_since_defaults_to_toronto_kit_rewrite_window(): void
+    {
+        $since = StandardQuotationKitRewriteAuditor::parseSince(null);
+        $this->assertSame('2026-10-10 02:07:00', $since->timezone('America/Toronto')->toDateTimeString());
+        $this->assertSame('America/Toronto', $since->timezoneName);
+    }
 }
