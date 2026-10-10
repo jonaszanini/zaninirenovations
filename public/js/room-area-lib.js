@@ -961,6 +961,35 @@
     return Math.round(total * 100) / 100;
   }
 
+  function cornerCounts(verts, minTurnDeg) {
+    var n = verts && verts.length ? verts.length : 0;
+    if (n < 3) return { inside: 0, outside: 0 };
+    if (!isSimplePolygon(verts)) return { inside: 0, outside: 0 };
+    var signed = signedArea2(verts);
+    if (Math.abs(signed) < 1e-9) return { inside: 0, outside: 0 };
+    var positiveWinding = signed > 0;
+    var minTurn = ((minTurnDeg == null ? 20 : minTurnDeg) * Math.PI) / 180;
+    var inside = 0;
+    var outside = 0;
+    for (var i = 0; i < n; i++) {
+      var prev = verts[(i - 1 + n) % n];
+      var curr = verts[i];
+      var next = verts[(i + 1) % n];
+      var inX = curr.x - prev.x;
+      var inY = curr.y - prev.y;
+      var outX = next.x - curr.x;
+      var outY = next.y - curr.y;
+      if (Math.hypot(inX, inY) < 1e-6 || Math.hypot(outX, outY) < 1e-6) continue;
+      var cross = (inX * outY) - (inY * outX);
+      var dot = (inX * outX) + (inY * outY);
+      var angle = Math.atan2(cross, dot);
+      if (Math.abs(angle) < minTurn) continue;
+      if ((cross > 0) === positiveWinding) inside += 1;
+      else outside += 1;
+    }
+    return { inside: inside, outside: outside };
+  }
+
   function signedArea2(verts) {
     var s = 0;
     var n = verts.length;
@@ -1029,6 +1058,301 @@
     return dedupeClose(out);
   }
 
+  var FORMULA_MAX_LENGTH = 200;
+  var FORMULA_MAX_DEPTH = 24;
+  var FORMULA_NAMES = {
+    floor_sf: true, floor: true, area_sqft: true, inside_area_sqft: true,
+    net_wall_sf: true, net_wall: true, net_wall_area_sqft: true, wall_sf: true, wall_area_sqft: true,
+    ceiling_sf: true, ceiling: true, ceiling_area_sqft: true,
+    perimeter_lf: true, perimeter: true,
+    baseboard_lf: true, baseboard: true,
+    casing_lf: true, casing: true,
+    door_count: true, doors: true,
+    window_count: true, windows: true,
+    opening_count: true, openings: true,
+    wall_height_ft: true, wall_height: true, height: true,
+    flooring_boxes: true, boxes: true,
+    flooring_waste_percent: true, waste: true,
+    outside_corners: true, outside_corner_count: true,
+    inside_corners: true, inside_corner_count: true
+  };
+
+  function normalizeNumericString(value) {
+    return String(value).replace(/[\u0000\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF\u0085]+/g, ' ').trim();
+  }
+
+  function isPlainFiniteNumber(value) {
+    if (typeof value === 'boolean' || value == null) return false;
+    if (Array.isArray(value) || (typeof value === 'object')) return false;
+    if (typeof value === 'number') return isFinite(value);
+    if (typeof value !== 'string') return false;
+    var trim = normalizeNumericString(value);
+    if (trim === '' || /^[-+]?0[xob]/i.test(trim)) return false;
+    var n = Number(trim);
+    return isFinite(n);
+  }
+
+  function firstFiniteMetric(metrics, keys, fallback) {
+    metrics = metrics || {};
+    keys = keys || [];
+    for (var i = 0; i < keys.length; i++) {
+      if (!Object.prototype.hasOwnProperty.call(metrics, keys[i])) continue;
+      var value = metrics[keys[i]];
+      if (!isPlainFiniteNumber(value)) continue;
+      return typeof value === 'string' ? Number(normalizeNumericString(value)) : Number(value);
+    }
+    return fallback;
+  }
+
+  function formulaVariablesFromMetrics(metrics) {
+    metrics = metrics || {};
+    var floor = firstFiniteMetric(metrics, ['area_sqft', 'inside_area_sqft', 'floor_sf'], 0);
+    var insideArea = firstFiniteMetric(metrics, ['inside_area_sqft'], floor);
+    var netWall = firstFiniteMetric(metrics, ['net_wall_area_sqft', 'wall_area_sqft', 'net_wall_sf'], 0);
+    var ceiling = firstFiniteMetric(metrics, ['ceiling_area_sqft', 'ceiling_sf'], floor);
+    var perimeter = firstFiniteMetric(metrics, ['perimeter_lf', 'perimeter'], 0);
+    var baseboard = firstFiniteMetric(metrics, ['baseboard_lf', 'baseboard'], perimeter);
+    var casing = firstFiniteMetric(metrics, ['casing_lf', 'casing'], 0);
+    var doors = firstFiniteMetric(metrics, ['door_count', 'doors'], 0);
+    var windows = firstFiniteMetric(metrics, ['window_count', 'windows'], 0);
+    var openings = firstFiniteMetric(metrics, ['opening_count', 'openings'], 0);
+    var height = firstFiniteMetric(metrics, ['wall_height_ft', 'wall_height', 'height'], 8);
+    var boxes = firstFiniteMetric(metrics, ['flooring_boxes', 'boxes'], 0);
+    var waste = firstFiniteMetric(metrics, ['flooring_waste_percent', 'waste'], 10);
+    var outside = firstFiniteMetric(metrics, ['outside_corners', 'outside_corner_count'], 0);
+    var insideCorners = firstFiniteMetric(metrics, ['inside_corners', 'inside_corner_count'], 0);
+    return {
+      floor_sf: floor, floor: floor, area_sqft: floor, inside_area_sqft: insideArea,
+      net_wall_sf: netWall, net_wall: netWall, net_wall_area_sqft: netWall, wall_sf: netWall, wall_area_sqft: netWall,
+      ceiling_sf: ceiling, ceiling: ceiling, ceiling_area_sqft: ceiling,
+      perimeter_lf: perimeter, perimeter: perimeter,
+      baseboard_lf: baseboard, baseboard: baseboard,
+      casing_lf: casing, casing: casing,
+      door_count: doors, doors: doors,
+      window_count: windows, windows: windows,
+      opening_count: openings, openings: openings,
+      wall_height_ft: height, wall_height: height, height: height,
+      flooring_boxes: boxes, boxes: boxes,
+      flooring_waste_percent: waste, waste: waste,
+      outside_corners: outside, outside_corner_count: outside,
+      inside_corners: insideCorners, inside_corner_count: insideCorners
+    };
+  }
+
+  var FORMULA_WHITESPACE = /[\s\u0085\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]/;
+  var FORMULA_WHITESPACE_TRIM = /^[\s\u0085\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]+|[\s\u0085\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]+$/g;
+
+  function formulaChars(raw) {
+    return Array.from(String(raw || ''));
+  }
+
+  function isFormulaWhitespace(ch) {
+    return ch !== '' && FORMULA_WHITESPACE.test(ch);
+  }
+
+  function formulaOperatorType(ch) {
+    if (ch === '+') return '+';
+    if (ch === '-' || ch === '−' || ch === '–') return '-';
+    if (ch === '*' || ch === '×' || ch === '⋅') return '*';
+    if (ch === '/' || ch === '÷') return '/';
+    if (ch === '(' || ch === ')' || ch === ',') return ch;
+    return null;
+  }
+
+  function unexpectedFormulaChar(ch) {
+    var label = ch === '\0' ? 'NUL' : ch;
+    return 'Unexpected “' + label + '”. Use + − × ÷, brackets, and names like floor_sf.';
+  }
+
+  function trimFormula(raw) {
+    return String(raw || '').replace(FORMULA_WHITESPACE_TRIM, '');
+  }
+
+  function tokenizeFormula(raw) {
+    var tokens = [];
+    var chars = formulaChars(raw);
+    var i = 0;
+    var len = chars.length;
+    while (i < len) {
+      var ch = chars[i];
+      if (isFormulaWhitespace(ch)) {
+        i += 1;
+        continue;
+      }
+      var op = formulaOperatorType(ch);
+      if (op) {
+        tokens.push({ type: op, value: op });
+        i += 1;
+        continue;
+      }
+      if (/[0-9]/.test(ch) || (ch === '.' && i + 1 < len && /[0-9]/.test(chars[i + 1]))) {
+        var start = i;
+        var hasDot = ch === '.';
+        if (hasDot) i += 1;
+        while (i < len && /[0-9]/.test(chars[i])) i += 1;
+        if (i < len && chars[i] === '.') {
+          if (hasDot) throw new Error(unexpectedFormulaChar('.'));
+          hasDot = true;
+          i += 1;
+          if (i >= len || !/[0-9]/.test(chars[i])) {
+            throw new Error('Enter a number after the decimal point.');
+          }
+          while (i < len && /[0-9]/.test(chars[i])) i += 1;
+        }
+        if (i < len && chars[i] === '.') {
+          throw new Error(unexpectedFormulaChar('.'));
+        }
+        if (i < len && (chars[i] === 'e' || chars[i] === 'E')) {
+          throw new Error('Scientific notation is not allowed. Write the full number.');
+        }
+        tokens.push({ type: 'number', value: chars.slice(start, i).join('') });
+        continue;
+      }
+      if (/[A-Za-z_]/.test(ch)) {
+        var nameStart = i;
+        i += 1;
+        while (i < len && /[A-Za-z0-9_]/.test(chars[i])) i += 1;
+        tokens.push({ type: 'name', value: chars.slice(nameStart, i).join('').toLowerCase() });
+        continue;
+      }
+      throw new Error(unexpectedFormulaChar(ch));
+    }
+    return tokens;
+  }
+
+  function formulaCall(name, args) {
+    if (name === 'ceil' || name === 'floor' || name === 'abs') {
+      if (args.length !== 1) throw new Error(name + ' needs one number inside the brackets.');
+      if (name === 'ceil') return Math.ceil(roundTo(args[0], 9));
+      if (name === 'floor') return Math.floor(args[0]);
+      return Math.abs(args[0]);
+    }
+    if (name === 'round') {
+      if (args.length < 1 || args.length > 2) {
+        throw new Error('round needs one number, or a number and the digits to keep.');
+      }
+      if (args.length === 2 && (args[1] < 0 || args[1] > 9)) {
+        throw new Error('round digits must be between 0 and 9.');
+      }
+      var digits = args.length === 2 ? Math.round(args[1]) : 0;
+      if (digits < 0 || digits > 9) throw new Error('round digits must be between 0 and 9.');
+      return roundTo(args[0], digits);
+    }
+    if (name === 'min' || name === 'max') {
+      if (args.length < 2) throw new Error(name + ' needs at least two numbers.');
+      return name === 'min' ? Math.min.apply(null, args) : Math.max.apply(null, args);
+    }
+    throw new Error('Unknown function: ' + name + '. Use ceil, floor, round, min, max, or abs.');
+  }
+
+  function evaluateFormula(formula, variables) {
+    var raw = trimFormula(formula);
+    if (!raw) return { ok: false, value: null, error: 'Enter a formula.' };
+    if (formulaChars(raw).length > FORMULA_MAX_LENGTH) return { ok: false, value: null, error: 'Formula is too long.' };
+    try {
+      var tokens = tokenizeFormula(raw);
+      var i = 0;
+      function done() { return i >= tokens.length; }
+      function is(type) { return !done() && tokens[i].type === type; }
+      function take() {
+        if (done()) throw new Error('The formula ended early. Check for a missing number.');
+        var tok = tokens[i];
+        i += 1;
+        return tok;
+      }
+      function parseExpr(depth) {
+        var value = parseTerm(depth);
+        while (is('+') || is('-')) {
+          var op = take().type;
+          var right = parseTerm(depth);
+          value = op === '+' ? value + right : value - right;
+        }
+        return value;
+      }
+      function parseTerm(depth) {
+        var value = parseUnary(depth);
+        while (is('*') || is('/')) {
+          var op = take().type;
+          var right = parseUnary(depth);
+          if (op === '/') {
+            if (Math.abs(right) < 1e-15) throw new Error('Division by zero.');
+            value = value / right;
+          } else {
+            value = value * right;
+          }
+        }
+        return value;
+      }
+      function parseUnary(depth) {
+        if (is('+')) { take(); return parseUnary(depth); }
+        if (is('-')) { take(); return -parseUnary(depth); }
+        return parsePrimary(depth);
+      }
+      function parsePrimary(depth) {
+        if (depth > FORMULA_MAX_DEPTH) throw new Error('Formula is too nested.');
+        if (is('number')) return Number(take().value);
+        if (is('(')) {
+          take();
+          var inner = parseExpr(depth + 1);
+          if (!is(')')) throw new Error('Missing ).');
+          take();
+          return inner;
+        }
+        if (is('name')) {
+          var name = take().value;
+          if (is('(')) {
+            take();
+            var args = [];
+            if (!is(')')) {
+              args.push(parseExpr(depth + 1));
+              while (is(',')) {
+                take();
+                args.push(parseExpr(depth + 1));
+              }
+            }
+            if (!is(')')) throw new Error('Missing ).');
+            take();
+            return formulaCall(name, args);
+          }
+          if (!Object.prototype.hasOwnProperty.call(variables, name)) {
+            throw new Error('Unknown name: ' + name + '. Use floor_sf, net_wall_sf, ceiling_sf, perimeter_lf, casing_lf, door_count, window_count, wall_height, or waste.');
+          }
+          var named = Number(variables[name]);
+          return isFinite(named) ? named : 0;
+        }
+        if (done()) throw new Error('The formula ended early. Check for a missing number.');
+        throw new Error('Use + − × ÷, brackets, and names like floor_sf.');
+      }
+      var value = parseExpr(0);
+      if (!done()) throw new Error('Unexpected text after the formula.');
+      if (!isFinite(value)) throw new Error('The formula did not produce a number.');
+      return { ok: true, value: value, error: null };
+    } catch (err) {
+      return { ok: false, value: null, error: err && err.message ? err.message : 'Could not read that formula.' };
+    }
+  }
+
+  function applyFormulaRounding(value, wholeUnits) {
+    var n = Number(value);
+    if (!isFinite(n)) return 0;
+    if (wholeUnits) return Math.max(0, Math.ceil(n - 1e-12));
+    return Math.max(0, roundTo(n, 2));
+  }
+
+  function evaluateAssemblyLine(line, metrics) {
+    var vars = formulaVariablesFromMetrics(metrics);
+    var result = evaluateFormula(line && line.formula, vars);
+    if (!result.ok) {
+      return { ok: false, qty: null, error: result.error, raw: null };
+    }
+    return {
+      ok: true,
+      qty: applyFormulaRounding(result.value, !!(line && line.whole_units)),
+      error: null,
+      raw: result.value
+    };
+  }
+
   return {
     INCHES_PER_FOOT: INCHES_PER_FOOT,
     FEET_TO_METERS: FEET_TO_METERS,
@@ -1064,6 +1388,7 @@
     shapeFromKind: shapeFromKind,
     insertAlcove: insertAlcove,
     signedArea2: signedArea2,
+    cornerCounts: cornerCounts,
     polygonArea: polygonArea,
     isAxisAlignedRectangle: isAxisAlignedRectangle,
     overallDimensionText: overallDimensionText,
@@ -1104,6 +1429,11 @@
     objectHeightInches: objectHeightInches,
     objectType: objectType,
     normalizeDoorFace: normalizeDoorFace,
-    totalCasingLf: totalCasingLf
+    totalCasingLf: totalCasingLf,
+    evaluateFormula: evaluateFormula,
+    applyFormulaRounding: applyFormulaRounding,
+    formulaVariablesFromMetrics: formulaVariablesFromMetrics,
+    evaluateAssemblyLine: evaluateAssemblyLine,
+    FORMULA_NAMES: FORMULA_NAMES
   };
 }));

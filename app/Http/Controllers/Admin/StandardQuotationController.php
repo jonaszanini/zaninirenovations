@@ -443,6 +443,10 @@ class StandardQuotationController extends Controller
                 StandardQuotation::LINE_KIND_MATERIAL,
                 StandardQuotation::LINE_KIND_ELECTRICAL,
             ])],
+            'assembly_line_id' => ['nullable', 'integer', 'min:1'],
+            'assembly_layout_id' => ['nullable', 'string', 'max:40'],
+            'assembly_covered_layouts' => ['nullable', 'string'],
+            'assembly_quoted_at' => ['nullable', 'string', 'max:40'],
         ];
 
         $data = $request->validate(array_merge([
@@ -470,6 +474,10 @@ class StandardQuotationController extends Controller
             'works.*.materials.*.delivery_cad' => $materialRowRules['delivery_cad'],
             'works.*.materials.*.entry_mode' => $materialRowRules['entry_mode'],
             'works.*.materials.*.line_kind' => $materialRowRules['line_kind'],
+            'works.*.materials.*.assembly_line_id' => $materialRowRules['assembly_line_id'],
+            'works.*.materials.*.assembly_layout_id' => $materialRowRules['assembly_layout_id'],
+            'works.*.materials.*.assembly_covered_layouts' => $materialRowRules['assembly_covered_layouts'],
+            'works.*.materials.*.assembly_quoted_at' => $materialRowRules['assembly_quoted_at'],
             'works.*.labour_use_fixed' => ['nullable'],
             'works.*.labour_fixed_amount' => ['nullable', 'numeric', 'min:0'],
             'works.*.labour_fixed_hst_included' => ['nullable'],
@@ -612,7 +620,7 @@ class StandardQuotationController extends Controller
                 $qty = 1.0;
             }
 
-            return [
+            $mapped = [
                 'short_name' => $isElectrical ? '' : ($m['short_name'] ?? ''),
                 'description' => $description,
                 'url' => $url === '' ? null : $url,
@@ -626,6 +634,27 @@ class StandardQuotationController extends Controller
                 'line_kind' => $lineKind,
                 'entry_mode' => $entryMode,
             ];
+            if (isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0) {
+                $mapped['assembly_line_id'] = (int) $m['assembly_line_id'];
+            }
+            $layoutId = trim((string) ($m['assembly_layout_id'] ?? ''));
+            if ($layoutId !== '') {
+                $mapped['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+            }
+            $covered = $m['assembly_covered_layouts'] ?? '';
+            if (is_array($covered)) {
+                $covered = json_encode(array_values($covered), JSON_UNESCAPED_UNICODE);
+            }
+            $covered = trim((string) $covered);
+            if ($covered !== '') {
+                $mapped['assembly_covered_layouts'] = $covered;
+            }
+            $quotedAt = trim((string) ($m['assembly_quoted_at'] ?? ''));
+            if ($quotedAt !== '') {
+                $mapped['assembly_quoted_at'] = mb_substr($quotedAt, 0, 40);
+            }
+
+            return $mapped;
         };
 
         $worksForStorage = [];

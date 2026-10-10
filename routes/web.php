@@ -1020,4 +1020,20 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.room-area.rooms.photos.update');
     Route::delete('utilities/room-area/rooms/{room_area_room}/photos/{photo}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyPhoto'])
         ->name('utilities.room-area.rooms.photos.destroy');
+    Route::get('utilities/room-area/assemblies', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'index'])
+        ->name('utilities.room-area.assemblies.index');
+    Route::post('utilities/room-area/assemblies', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'store'])
+        ->name('utilities.room-area.assemblies.store');
+    Route::put('utilities/room-area/assemblies/{room_area_assembly}', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'update'])
+        ->name('utilities.room-area.assemblies.update');
+    Route::delete('utilities/room-area/assemblies/{room_area_assembly}', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'destroy'])
+        ->name('utilities.room-area.assemblies.destroy');
+    Route::post('utilities/room-area/rooms/{room_area_room}/assemblies', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'syncRoom'])
+        ->name('utilities.room-area.rooms.assemblies.sync');
+    Route::post('utilities/room-area/assemblies/evaluate', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'evaluate'])
+        ->name('utilities.room-area.assemblies.evaluate');
+    Route::get('utilities/room-area/assemblies/quote', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'quoteShow'])
+        ->name('utilities.room-area.assemblies.quote');
+    Route::post('utilities/room-area/assemblies/quote', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'quoteStore'])
+        ->name('utilities.room-area.assemblies.quote.store');
 });
