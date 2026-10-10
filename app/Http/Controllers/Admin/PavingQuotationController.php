@@ -19,6 +19,7 @@ use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\PavingMarbleCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use App\Services\PavingQuotationCalculator;
 use App\Services\PavingStoneEntryResolver;
 use App\Services\QuotationPaymentSchedule;
@@ -57,7 +58,7 @@ class PavingQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
 
         $quote = PavingQuotation::create(array_merge($calc, [
@@ -88,7 +89,7 @@ class PavingQuotationController extends Controller
 
     public function update(Request $request, PavingQuotation $paving_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $paving_quotation);
 
         $paving_quotation->fill(array_merge($calc, [
@@ -615,6 +616,10 @@ class PavingQuotationController extends Controller
         PavingQuotation $pavingQuotation,
         ?string $lineDescription = null
     ): void {
+        if ($this->quotationIsDraft($pavingQuotation)) {
+            return;
+        }
+
         $lineDescription = trim((string) ($lineDescription ?? ''));
         if ($lineDescription === '') {
             $lineDescription = $pavingQuotation->summaryDescription();

@@ -101,6 +101,7 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .admin-filters-accordion .bp-list-filters',
             'html.admin-dark .bp-list-cat__more',
             'html.admin-dark .bp-status-badge',
+            'html.admin-dark .qh',
             'html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"])',
             'html.admin-dark input[type="date"]',
             'html.admin-dark input[type="time"]',

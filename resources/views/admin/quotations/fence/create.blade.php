@@ -100,6 +100,9 @@
   $projectForReturn = ($isEdit && $quotation->project)
       ? $quotation->project
       : $linkProject;
+  $preservePid = optional($linkProject)->id
+      ?: ($isEdit && $quotation->client_project_id ? (int) $quotation->client_project_id : null)
+      ?: (request()->filled('project') ? (int) request('project') : null);
 @endphp
 
 @section('heading', $title)
@@ -468,37 +471,30 @@
 
 @section('content')
   {{-- Toolbar: Back | Save actions -------------------------------- --}}
-  <div class="fq-form-toolbar">
-    <a href="{{ route('admin.quotations.fence.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to fence quotations
-    </a>
-    <div class="fq-form-toolbar-right">
-      <a href="{{ route('admin.quotations.fence.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-cog"></i> Price configuration
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-      <a href="{{ route('admin.quotations.fence.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-      @if ($isEdit)
-        <a href="{{ route('admin.quotations.fence.purchase-list', $quotation) }}"
-           target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm"
-           data-purchase-list-choice
-           data-purchase-list-title="Print material list">
-          <i class="fa fa-print"></i> Print Material List
-        </a>
-        @include('admin.partials.quotation_view_pdf')
-      @endif
-      @if (! $isEdit)
-        <button type="submit" form="fq-form" name="after_save" value="create_project"
-                class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-folder-plus"></i> Save &amp; create project
-        </button>
-      @endif
-      <button type="submit" form="fq-form" class="admin-btn admin-btn--primary admin-btn--sm">
-        <i class="fa fa-save"></i> {{ $isEdit ? 'Save changes' : 'Save quotation' }}
-      </button>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Fence',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
+    'listUrl' => route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.fence.config', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'fq-form',
+    'saveId' => 'fq-btn-save',
+    'saveLabel' => $isEdit ? 'Save quotation' : 'Save quotation',
+    'saveHotkey' => true,
+    'draftId' => 'fq-btn-draft',
+    'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.fence.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+    'showCreateProject' => ! $isEdit,
+    'createProjectFormId' => 'fq-form',
+  ])
 
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
@@ -538,9 +534,11 @@
   <div class="fq-calc-layout">
     {{-- ====================== LEFT: FORM =========================== --}}
     <div class="fq-left-stack">
-      <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor>
+      <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor
+            data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
         @csrf
         @if ($isEdit) @method('PUT') @endif
+        <input type="hidden" name="save_intent" id="fq-save-intent" value="publish">
         @if ($linkProject)
           <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
         @endif
@@ -738,10 +736,15 @@
     <aside class="admin-card fq-breakdown-card">
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
 
-      <h3 class="cp-heading-md">
-        Live breakdown
-        <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
-      </h3>
+      <div class="qh-priced-head" data-qh-step="2">
+        <h3 class="cp-heading-md">
+          Live breakdown
+          <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
+        </h3>
+        @include('admin.partials.quotation_price_config_gear', [
+          'url' => route('admin.quotations.fence.config'),
+        ])
+      </div>
       <p class="cp-breakdown-intro">
         <span class="fq-badge" id="fq-status-badge">Calculating…</span>
       </p>
@@ -846,6 +849,16 @@
   'use strict';
 
   var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var fqIntent = document.getElementById('fq-save-intent');
+  var fqDraftBtn = document.getElementById('fq-btn-draft');
+  var fqForm = document.getElementById('fq-form');
+  if (fqDraftBtn && fqIntent && fqForm) {
+    fqDraftBtn.addEventListener('click', function () {
+      fqIntent.value = 'draft';
+      if (typeof fqForm.requestSubmit === 'function') fqForm.requestSubmit();
+      else fqForm.submit();
+    });
+  }
 
   var previewUrl = @json(route('admin.quotations.fence.preview'));
   var initialSides = @json($initialSides);

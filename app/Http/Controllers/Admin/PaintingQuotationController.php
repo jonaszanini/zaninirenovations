@@ -18,6 +18,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\PaintingQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +53,7 @@ class PaintingQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
 
         $quote = PaintingQuotation::create(array_merge($calc, [
@@ -83,7 +84,7 @@ class PaintingQuotationController extends Controller
 
     public function update(Request $request, PaintingQuotation $painting_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $painting_quotation);
 
         $painting_quotation->fill(array_merge($calc, [
@@ -473,6 +474,10 @@ class PaintingQuotationController extends Controller
 
     protected function syncPaintingLineToProjectQuotation(ClientProject $project, PaintingQuotation $paintingQuotation): void
     {
+        if ($this->quotationIsDraft($paintingQuotation)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Painting service (labor)',
             'amount' => $paintingQuotation->labourPreTaxAmountForProjectQuotation(),
@@ -536,6 +541,10 @@ class PaintingQuotationController extends Controller
         PaintingQuotation $paintingQuotation,
         string $lineDescription
     ): void {
+        if ($this->quotationIsDraft($paintingQuotation)) {
+            return;
+        }
+
         $this->syncPaintingLineToProjectQuotation($project, $paintingQuotation);
 
         $paintingQuotation->update(array_merge([

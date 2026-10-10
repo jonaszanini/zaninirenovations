@@ -131,86 +131,45 @@
                         ? "Add the client's mobile phone number."
                         : 'Cannot send SMS yet.'))));
   @endphp
-  <div class="br-toolbar sq-toolbar" aria-label="Quotation actions">
-    <div class="admin-toolbar-group">
-      <a href="{{ route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-arrow-left"></i> All standard quotations
-      </a>
-      <a href="{{ route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-th"></i> Quotation types
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-    </div>
-    <div class="pq-sidebar-actions">
-      @if ($isEdit)
-        <a href="{{ route('admin.quotations.standard.purchase-list', $quotation) }}"
-           target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-           data-purchase-list-choice
-           data-purchase-list-title="Print material list"
-           title="Print material list"
-           aria-label="Print material list">
-          <i class="fa fa-print" aria-hidden="true"></i>
-        </a>
-        @include('admin.partials.quotation_view_pdf', ['iconOnly' => true])
-
-        @if ($canSendEmail)
-          <form action="{{ route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq]) }}"
-                method="post" class="cp-inline-form"
-                onsubmit='return confirm(@json($sendEmailConfirm));'>
-            @csrf
-            <button type="submit"
-                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                    title="Email quotation to client"
-                    aria-label="Email quotation to client">
-              <i class="fa fa-paper-plane" aria-hidden="true"></i>
-            </button>
-          </form>
-        @else
-          <button type="button"
-                  class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                  disabled
-                  title="{{ $sendEmailDisabledTitle }}"
-                  aria-label="Email quotation to client">
-            <i class="fa fa-paper-plane" aria-hidden="true"></i>
-          </button>
-        @endif
-
-        @if ($canSendSms)
-          <form action="{{ route('admin.client-projects.quotation.sms', [$sendProject, $linkedCpq]) }}"
-                method="post" class="cp-inline-form"
-                onsubmit='return confirm(@json($sendSmsConfirm));'>
-            @csrf
-            <button type="submit"
-                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                    title="SMS quotation link to client"
-                    aria-label="SMS quotation link to client">
-              <i class="fa fa-comment" aria-hidden="true"></i>
-            </button>
-          </form>
-        @else
-          <button type="button"
-                  class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                  disabled
-                  title="{{ $sendSmsDisabledTitle }}"
-                  aria-label="SMS quotation link to client">
-            <i class="fa fa-comment" aria-hidden="true"></i>
-          </button>
-        @endif
-      @endif
-      <button type="submit"
-              form="sq-standard-form"
-              class="admin-btn admin-btn--primary admin-btn--sm admin-btn--icon"
-              title="Save"
-              aria-label="Save">
-        <i class="fa fa-save" aria-hidden="true"></i>
-      </button>
-      <div class="br-toolbar-grand" id="sq-toolbar-grand" title="Live grand total (incl. HST)">
-        <span class="br-toolbar-grand__label">Grand total</span>
-        <strong class="br-toolbar-grand__amount" id="sq-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
-      </div>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $isEdit ? 'Edit standard quotation '.$quotation->quote_number : 'New standard quotation',
+    'typeLabel' => 'Standard',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
+    'listUrl' => route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'sq-standard-form',
+    'saveId' => 'sq-btn-save',
+    'saveHotkey' => true,
+    'draftId' => 'st-btn-draft',
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.standard.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+    'showHubLink' => ! $projectForReturn,
+    'hubUrl' => route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []),
+    'grandTotalId' => 'sq-toolbar-grand',
+    'grandTotalValue' => $toolbarGrand,
+    'email' => $isEdit ? [
+      'can' => $canSendEmail,
+      'action' => $sendProject && $linkedCpq
+          ? route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq])
+          : null,
+      'confirm' => $sendEmailConfirm,
+      'disabledTitle' => $sendEmailDisabledTitle,
+    ] : null,
+    'sms' => $isEdit ? [
+      'can' => $canSendSms,
+      'action' => $sendProject && $linkedCpq
+          ? route('admin.client-projects.quotation.sms', [$sendProject, $linkedCpq])
+          : null,
+      'confirm' => $sendSmsConfirm,
+      'disabledTitle' => $sendSmsDisabledTitle,
+    ] : null,
+  ])
 
   @if ($returnToProject && $projectForReturn)
     <div class="admin-flash admin-flash--info">
@@ -242,12 +201,14 @@
   @endif
 
   <form action="{{ $formAction }}" method="post" id="sq-standard-form" data-quotation-editor
+        data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
         data-quote-id="{{ $isEdit ? $quotation->id : 'new' }}"
         data-electrical-desc="{{ \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION }}">
     @csrf
     @if ($isEdit)
       @method('PUT')
     @endif
+    <input type="hidden" name="save_intent" id="st-save-intent" value="publish">
     @if ($linkProject)
       <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
     @endif
@@ -584,4 +545,17 @@
 
 @push('scripts')
 <script src="{{ asset('js/admin-standard-quotation.js') }}?v={{ @filemtime(public_path('js/admin-standard-quotation.js')) ?: time() }}"></script>
+<script>
+(function () {
+  var form = document.getElementById('sq-standard-form');
+  var intent = document.getElementById('st-save-intent');
+  var draftBtn = document.getElementById('st-btn-draft');
+  if (!form || !intent || !draftBtn) return;
+  draftBtn.addEventListener('click', function () {
+    intent.value = 'draft';
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else form.submit();
+  });
+})();
+</script>
 @endpush

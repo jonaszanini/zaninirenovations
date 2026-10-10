@@ -89,16 +89,18 @@ class ShedQuotationPagesTest extends IntegrationTestCase
 
         $price = strpos($html, 'Price configuration');
         $context = strpos($html, 'Project Context');
-        $next = strpos($html, '>Next</button>');
+        $next = strpos($html, '→ Next');
         $live = strpos($html, 'Live breakdown');
+        $header = strpos($html, 'data-qh-header');
 
         $this->assertNotFalse($price);
         $this->assertNotFalse($context);
         $this->assertNotFalse($next);
         $this->assertNotFalse($live);
-        $this->assertLessThan($price, $context);
-        $this->assertLessThan($next, $context);
-        $this->assertLessThan($live, $next);
+        $this->assertNotFalse($header);
+        $this->assertLessThan($context, $header);
+        $this->assertLessThan($context, $next);
+        $this->assertLessThan($live, $context);
     }
 
     public function test_preview_returns_live_totals(): void
@@ -256,7 +258,8 @@ class ShedQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.shed.create', ['project' => $project->id]))
             ->assertOk()
-            ->assertSee('Back to project');
+            ->assertSee($project->name)
+            ->assertSee('qh-crumb__project', false);
 
         $store = $this->post(route('admin.quotations.shed.store', ['project' => $project->id]), [
             'save_intent' => 'publish',
@@ -281,6 +284,6 @@ class ShedQuotationPagesTest extends IntegrationTestCase
         $this->get(route('admin.quotations.shed.edit', [
             'shed_quotation' => $quote,
             'project' => $project->id,
-        ]))->assertOk()->assertSee('Back to project');
+        ]))->assertOk()->assertSee($project->name)->assertSee('qh-crumb__project', false);
     }
 }

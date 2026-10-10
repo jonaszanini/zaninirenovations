@@ -38,6 +38,7 @@ class FenceQuotation extends Model
         'client_project_id',
         'quote_number',
         'client_name',
+        'is_draft',
         'work_description',
         'payment_installments',
         'payment_percentages',
@@ -69,6 +70,7 @@ class FenceQuotation extends Model
     ];
 
     protected $casts = [
+        'is_draft' => 'boolean',
         'sides' => 'array',
         'calculation' => 'array',
         'fence_height_ft' => 'decimal:2',

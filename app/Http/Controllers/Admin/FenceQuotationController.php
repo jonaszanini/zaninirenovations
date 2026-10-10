@@ -23,6 +23,7 @@ use App\Support\FenceGateSpec;
 use App\Support\FenceWorkDescriptionGenerator;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -100,6 +101,7 @@ class FenceQuotationController extends Controller
         $calc = (new FenceQuotationCalculator())->calculate($data);
         $persistence = $this->fencePersistenceFromCalc($request, $calc, $data);
 
+        $intent = QuotationSaveIntent::fromRequest($request);
         $quote = FenceQuotation::create(array_merge($persistence, [
             'quote_number' => FenceQuotation::generateNumber(),
             'version' => 1,
@@ -117,9 +119,13 @@ class FenceQuotationController extends Controller
 
         $resp = redirect()
             ->to($editUrl)
-            ->with('success', $linkedNow
-                ? 'Fence quotation '.$quote->quote_number.' saved and linked to this project.'
-                : 'Fence quotation '.$quote->quote_number.' saved.');
+            ->with('success', $intent === QuotationSaveIntent::DRAFT
+                ? ($linkedNow
+                    ? 'Fence quotation saved as draft and linked.'
+                    : 'Fence quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Fence quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Fence quotation '.$quote->quote_number.' saved.'));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -259,6 +265,9 @@ class FenceQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($fence_quotation, $project);
 
+        if ($resp = $this->guardQuotationIsDraft($fence_quotation, 'link')) {
+            return $resp;
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -284,6 +293,9 @@ class FenceQuotationController extends Controller
         ClientProjectStatusService $statusService
     ) {
         if ($resp = $this->guardQuotationAlreadyLinked($fence_quotation, 'fence')) {
+            return $resp;
+        }
+        if ($resp = $this->guardQuotationIsDraft($fence_quotation, 'create-project')) {
             return $resp;
         }
 
@@ -332,7 +344,7 @@ class FenceQuotationController extends Controller
 
     protected function autoLinkFenceIfRequested(FenceQuotation $fq, Request $request, array &$warnings): bool
     {
-        if ($fq->isLinked()) {
+        if ($fq->isLinked() || ($fq->is_draft ?? false)) {
             return false;
         }
 
@@ -374,6 +386,9 @@ class FenceQuotationController extends Controller
      */
     protected function syncFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
     {
+        if ($this->quotationIsDraft($fence_quotation)) {
+            return;
+        }
         $items = $fence_quotation->projectQuotationLineItems();
         $this->appendCommuteProjectLine($items, $fence_quotation);
         $this->appendDebrisRemovalProjectLine($items, $fence_quotation);
@@ -443,6 +458,10 @@ class FenceQuotationController extends Controller
      */
     protected function appendFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
     {
+        if ($this->quotationIsDraft($fence_quotation)) {
+            return;
+        }
+
         $this->syncFenceLineToProjectQuotation($project, $fence_quotation);
 
         $fence_quotation->update(array_merge([
@@ -765,6 +784,7 @@ class FenceQuotationController extends Controller
             $rules['work_description'] = ['nullable', 'string', 'max:20000'];
             $rules['reprice'] = ['nullable', 'boolean'];
             $rules['after_save'] = ['nullable', 'string', 'max:40'];
+            $rules['save_intent'] = ['nullable', 'in:draft,publish'];
         }
 
         return $rules;
@@ -804,6 +824,7 @@ class FenceQuotationController extends Controller
     ): array {
         $base = array_merge([
             'client_name' => $data['client_name'],
+            'is_draft' => QuotationSaveIntent::isDraft($request),
             'work_description' => \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null),
             'fence_height_ft' => $calc['inputs']['fence_height_ft'],
             'post_size' => $calc['inputs']['post_size'],

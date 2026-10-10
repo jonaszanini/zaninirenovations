@@ -41,8 +41,13 @@
   </div>
 </details>
 
-<details class="br-acc admin-card" data-br-step="size">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Size</summary>
+<details class="br-acc admin-card" data-br-step="size" data-qh-step="2">
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">{{ ++$step }}</span> Size
+    @include('admin.partials.quotation_price_config_gear', [
+      'url' => route('admin.quotations.shed.price-configuration', request()->filled('project') ? ['project' => (int) request('project')] : []),
+    ])
+  </summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">

@@ -71,6 +71,10 @@ class QuoteAcceptanceService
             return self::STATUS_INVALID_STATE;
         }
 
+        if ($quotation->isSourceDraft()) {
+            return self::STATUS_INVALID_STATE;
+        }
+
         if ($quotation->source_type === ClientProjectQuotation::SOURCE_MILLWORK && $quotation->source_id) {
             $millwork = \App\Models\MillworkQuotation::query()->find($quotation->source_id);
             if ($millwork && $millwork->hasUnplacedCutParts()) {

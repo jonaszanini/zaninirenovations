@@ -44,6 +44,35 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Millwork',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.millwork.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'mw-main-form',
+    'saveId' => 'mw-btn-publish',
+    'draftId' => 'mw-btn-draft',
+    'draftHotkey' => true,
+    'wizard' => [
+      'navId' => 'mw-step-nav',
+      'prevId' => 'mw-prev',
+      'nextId' => 'mw-next',
+      'statusId' => 'mw-step-status',
+      'count' => $enabledCount,
+      'hidden' => $isEdit,
+    ],
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.millwork.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+    'cutListUrl' => $isEdit ? route('admin.quotations.millwork.cut-list', $quotation) : null,
+  ])
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
@@ -68,43 +97,6 @@
     <input type="hidden" name="save_intent" id="mw-save-intent" value="publish">
     <input type="hidden" name="_cut_plan_version" id="mw-cut-plan-version" value="{{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->cutPlanVersion() : 2)) }}">
     <input type="hidden" name="upgrade_cut_plan" id="mw-upgrade-cut-plan" value="0">
-
-    <div class="br-toolbar" aria-label="Quotation actions">
-      <div class="pq-sidebar-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="mw-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-btn-draft">Save as draft</button>
-        <a href="{{ route('admin.quotations.millwork.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @if ($isEdit)
-          <a href="{{ route('admin.quotations.millwork.cut-list', $quotation) }}"
-             target="_blank" rel="noopener noreferrer"
-             class="admin-btn admin-btn--ghost admin-btn--sm">
-            <i class="fa fa-print"></i> Print cut list
-          </a>
-          <a href="{{ route('admin.quotations.millwork.purchase-list', $quotation) }}"
-             target="_blank" rel="noopener noreferrer"
-             class="admin-btn admin-btn--ghost admin-btn--sm"
-             data-purchase-list-choice
-             data-purchase-list-title="Print material list">
-            <i class="fa fa-print"></i> Print material list
-          </a>
-        @endif
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-nav="{{ route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []) }}">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-nav="{{ route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []) }}">Cancel</button>
-        @include('admin.partials.quotation_view_pdf')
-      </div>
-      <div class="br-step-nav" id="mw-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="mw-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="mw-next">Next</button>
-      </div>
-    </div>
 
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">
@@ -333,7 +325,9 @@
 
     <aside class="br-aside">
       <div class="pq-summary-card">
-        <h4>Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="mw-live-root">
           <p class="admin-form-help" id="mw-live-empty">Add piece dimensions to see the cut plan.</p>
           <div id="mw-live-body"></div>

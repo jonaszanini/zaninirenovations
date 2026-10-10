@@ -27,12 +27,20 @@ trait MakesAcceptableQuotations
         $ask = array_key_exists('ask_reply_to_accept', $quoteOverrides)
             ? $quoteOverrides['ask_reply_to_accept']
             : 1;
+        $payment = array_key_exists('payment_installments', $quoteOverrides)
+            ? $quoteOverrides['payment_installments']
+            : 3;
+        $debris = array_key_exists('include_debris_removal', $quoteOverrides)
+            ? $quoteOverrides['include_debris_removal']
+            : 0;
 
         $standard = StandardQuotation::query()->create([
             'quote_number' => $quoteNumber,
             'client_name' => $project->client_name,
             'display_title' => 'Kitchen work',
             'ask_reply_to_accept' => $ask,
+            'payment_installments' => $payment,
+            'include_debris_removal' => $debris,
             'materials' => [],
             'grand_total' => 1130,
         ]);
