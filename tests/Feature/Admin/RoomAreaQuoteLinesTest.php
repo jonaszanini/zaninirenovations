@@ -284,7 +284,7 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
         $this->assertNotNull($hub);
 
         $expectedItems = $quote->projectQuotationLineItems($quote->pdfSummaryLineDescription());
-        $this->assertSame(json_encode($expectedItems), json_encode($hub->items));
+        $this->assertEquals($expectedItems, $hub->items);
 
         $taxable = collect($hub->items)->first(fn ($row) => ! empty($row['apply_hst']));
         $exempt = collect($hub->items)->first(fn ($row) => ($row['apply_hst'] ?? true) === false
