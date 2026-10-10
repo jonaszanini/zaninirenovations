@@ -90,6 +90,7 @@ class PavingQuotationController extends Controller
 
     public function update(Request $request, PavingQuotation $paving_quotation)
     {
+        $wasDraft = (bool) $paving_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $paving_quotation);
 
@@ -113,7 +114,7 @@ class PavingQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.paving.edit', $paving_quotation)
-            ->with('success', QuotationDraftFlash::updated('Paving', $paving_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Paving', $paving_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

@@ -61,11 +61,6 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('Quotation not saved yet', $leave);
         $this->assertStringContainsString('data-qh-client-share', $leave);
         $this->assertStringContainsString('stop their link from working until you publish it again', $leave);
-        $this->assertStringContainsString('AdminDialog.confirm', $leave);
-        $this->assertDoesNotMatchRegularExpression(
-            '/data-qh-client-share[\s\S]{0,500}window\.confirm\s*\(/',
-            $leave
-        );
         $canAutosave = preg_match('/function canAutosave\(form\) \{([\s\S]*?)\n  function /', $leave, $m)
             ? ($m[1] ?? '')
             : '';

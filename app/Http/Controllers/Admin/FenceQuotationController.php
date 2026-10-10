@@ -177,6 +177,7 @@ class FenceQuotationController extends Controller
      */
     public function update(Request $request, FenceQuotation $fence_quotation)
     {
+        $wasDraft = (bool) $fence_quotation->is_draft;
         $data = $this->validateFenceInputs($request, $fence_quotation);
 
         $frozen = $request->boolean('reprice')
@@ -207,7 +208,7 @@ class FenceQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.fence.edit', $fence_quotation)
-            ->with('success', QuotationDraftFlash::updated('Fence', $fence_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Fence', $fence_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

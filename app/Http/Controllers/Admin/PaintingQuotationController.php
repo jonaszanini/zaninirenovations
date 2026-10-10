@@ -85,6 +85,7 @@ class PaintingQuotationController extends Controller
 
     public function update(Request $request, PaintingQuotation $painting_quotation)
     {
+        $wasDraft = (bool) $painting_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $painting_quotation);
 
@@ -108,7 +109,7 @@ class PaintingQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.painting.edit', $painting_quotation)
-            ->with('success', QuotationDraftFlash::updated('Painting', $painting_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Painting', $painting_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

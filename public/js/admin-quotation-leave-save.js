@@ -89,11 +89,7 @@
         draftBtn.setAttribute('data-qh-draft-bypass', '1');
         setCanonicalIntent(form, true);
         relaxPublishOnlyRequired(form);
-        if (typeof form.requestSubmit === 'function') {
-          form.requestSubmit(draftBtn);
-        } else {
-          draftBtn.click();
-        }
+        draftBtn.click();
         draftBtn.removeAttribute('data-qh-draft-bypass');
         setTimeout(function () {
           restorePublishOnlyRequired(form);

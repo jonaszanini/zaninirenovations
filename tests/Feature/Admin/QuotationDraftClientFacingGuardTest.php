@@ -75,6 +75,15 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
             ->assertOk()
             ->getContent();
         $this->assertStringContainsString('data-qh-client-share="0"', $html);
+
+        $this->from(route('admin.quotations.'.$type.'.edit', $quote->fresh()))
+            ->put($updateRoute, $this->draftUpdatePayload($type, $quote->fresh(), $payload))
+            ->assertRedirect()
+            ->assertSessionHas(
+                'success',
+                $this->quoteTypeLabel($type).' quotation saved as a draft.'
+            );
+        $this->assertStringNotContainsString('paused', (string) session('success'));
     }
 
     /**

@@ -84,6 +84,7 @@ class FlooringQuotationController extends Controller
 
     public function update(Request $request, FlooringQuotation $flooring_quotation)
     {
+        $wasDraft = (bool) $flooring_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $flooring_quotation);
 
@@ -107,7 +108,7 @@ class FlooringQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.flooring.edit', $flooring_quotation)
-            ->with('success', QuotationDraftFlash::updated('Flooring', $flooring_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Flooring', $flooring_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

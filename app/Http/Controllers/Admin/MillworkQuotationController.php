@@ -90,6 +90,7 @@ class MillworkQuotationController extends Controller
 
     public function update(Request $request, MillworkQuotation $millwork_quotation)
     {
+        $wasDraft = (bool) $millwork_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $millwork_quotation);
 
@@ -118,7 +119,7 @@ class MillworkQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.millwork.edit', $millwork_quotation)
-            ->with('success', QuotationDraftFlash::updated('Millwork', $millwork_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Millwork', $millwork_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

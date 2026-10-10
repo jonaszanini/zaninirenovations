@@ -26,7 +26,11 @@ class QuotationDraftFlashTest extends TestCase
         ];
         $this->assertSame(
             'Basement quotation saved as a draft. The client\'s link is paused until you publish again.',
-            QuotationDraftFlash::updated('Basement', $paused)
+            QuotationDraftFlash::updated('Basement', $paused, false, false)
+        );
+        $this->assertSame(
+            'Basement quotation saved as a draft.',
+            QuotationDraftFlash::updated('Basement', $paused, false, true)
         );
     }
 

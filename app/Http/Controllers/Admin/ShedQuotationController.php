@@ -86,6 +86,7 @@ class ShedQuotationController extends Controller
 
     public function update(Request $request, ShedQuotation $shed_quotation)
     {
+        $wasDraft = (bool) $shed_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $shed_quotation);
 
@@ -109,7 +110,7 @@ class ShedQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.shed.edit', $shed_quotation)
-            ->with('success', QuotationDraftFlash::updated('Shed', $shed_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Shed', $shed_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

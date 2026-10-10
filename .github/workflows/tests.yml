@@ -79,6 +79,7 @@ jobs:
           node tests/js/room-area-phone-geometry.test.js
           node tests/js/shared-prices-effective.test.js
           node tests/js/admin-date-picker-browser.test.js
+          node tests/js/quotation-redraft-confirm-browser.test.js
 
       - name: Admin info-tip JS behaviour (no database)
         run: |

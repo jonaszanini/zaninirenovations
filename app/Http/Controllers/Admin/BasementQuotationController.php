@@ -88,6 +88,7 @@ class BasementQuotationController extends Controller
 
     public function update(Request $request, BasementQuotation $basement_quotation)
     {
+        $wasDraft = (bool) $basement_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $basement_quotation);
 
@@ -111,7 +112,7 @@ class BasementQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.basement.edit', $basement_quotation)
-            ->with('success', QuotationDraftFlash::updated('Basement', $basement_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Basement', $basement_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

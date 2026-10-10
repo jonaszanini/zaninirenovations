@@ -87,6 +87,7 @@ class StairsQuotationController extends Controller
 
     public function update(Request $request, StairsQuotation $stairs_quotation)
     {
+        $wasDraft = (bool) $stairs_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $stairs_quotation);
 
@@ -110,7 +111,7 @@ class StairsQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.stairs.edit', $stairs_quotation)
-            ->with('success', QuotationDraftFlash::updated('Stairs', $stairs_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Stairs', $stairs_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

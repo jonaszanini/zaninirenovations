@@ -86,6 +86,7 @@ class TrimmingQuotationController extends Controller
 
     public function update(Request $request, TrimmingQuotation $trimming_quotation)
     {
+        $wasDraft = (bool) $trimming_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $trimming_quotation);
 
@@ -109,7 +110,7 @@ class TrimmingQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.trimming.edit', $trimming_quotation)
-            ->with('success', QuotationDraftFlash::updated('Trimming', $trimming_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Trimming', $trimming_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

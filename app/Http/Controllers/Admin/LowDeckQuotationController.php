@@ -100,6 +100,7 @@ class LowDeckQuotationController extends Controller
 
     public function update(Request $request, LowDeckQuotation $low_deck_quotation)
     {
+        $wasDraft = (bool) $low_deck_quotation->is_draft;
         $data = $this->validateLowDeckInputs($request);
 
         $calc = (new LowDeckQuotationCalculator())->calculate($data);
@@ -125,7 +126,7 @@ class LowDeckQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.low-deck.edit', $low_deck_quotation)
-            ->with('success', QuotationDraftFlash::updated('Low deck', $low_deck_quotation, $linkedNow));
+            ->with('success', QuotationDraftFlash::updated('Low deck', $low_deck_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
