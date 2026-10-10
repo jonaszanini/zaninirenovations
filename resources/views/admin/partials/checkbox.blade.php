@@ -4,7 +4,9 @@
 
   @param string       $name            Input name (required unless this is a JS-only toggle)
   @param string|null  $id              Input id (derived from $name when omitted + $info is set)
-  @param string       $value           Input value (default: 1)
+  @param string       $checkboxValue   Input value (default: 1). Named this way so a
+                                      parent @foreach ($rows as $value => $label) cannot leak
+                                      its loop key into the posted checkbox value.
   @param bool         $checked
   @param string|null  $label           Label HTML (right of checkbox)
   @param string|null  $info            Optional explanation shown on the info icon
@@ -16,7 +18,11 @@
 --}}
 @php
   $name = $name ?? '';
-  $value = $value ?? '1';
+  // Never read $value here. Parent views often do @foreach ($options as $value => $label),
+  // and that key stays in scope for later @includes. Using it made this checkbox post
+  // "whatsapp" (the last Contact via option) instead of "1", which fails boolean validation
+  // even when the box is checked.
+  $checkboxValue = (isset($checkboxValue) && $checkboxValue !== '') ? $checkboxValue : '1';
   $checked = $checked ?? false;
   $extraClass = trim((string) ($class ?? ''));
   $class = trim('admin-checkbox '.$extraClass);
@@ -48,7 +54,7 @@
   @endif
   <input type="checkbox"
          @if ($name !== '') name="{{ $name }}" @endif
-         value="{{ $value }}"
+         value="{{ $checkboxValue }}"
          @if (! empty($id)) id="{{ $id }}" @endif
          class="{{ $inputClass }}"
          @checked($checked)

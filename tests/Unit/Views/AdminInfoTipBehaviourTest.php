@@ -59,6 +59,28 @@ class AdminInfoTipBehaviourTest extends TestCase
         );
     }
 
+    public function test_checkbox_value_stays_1_when_a_parent_foreach_leaks_value(): void
+    {
+        $html = Blade::render(<<<'BLADE'
+@foreach (['whatsapp' => 'WhatsApp'] as $value => $label)
+@endforeach
+@include('admin.partials.checkbox', [
+  'name' => 'sync_client_directory',
+  'hiddenFallback' => true,
+  'checked' => true,
+  'label' => 'Update central client record when saving',
+  'info' => 'When checked, changes are saved to the client directory.',
+])
+BLADE);
+
+        $this->assertMatchesRegularExpression(
+            '/<input type="checkbox"[^>]*name="sync_client_directory"[^>]*value="1"/',
+            $html
+        );
+        $this->assertStringNotContainsString('value="whatsapp"', $html);
+        $this->assertStringContainsString('name="sync_client_directory" value="0"', $html);
+    }
+
     public function test_checkbox_derives_rewriteable_id_from_name_not_uniqid(): void
     {
         $html = view('admin.partials.checkbox', [
