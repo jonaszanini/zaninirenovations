@@ -27,6 +27,10 @@
   $imageUrl = $sourceMode === 'electrical' ? '' : trim((string) ($row['image_url'] ?? ''));
 @endphp
 <div class="sq-material-card sq-material-row{{ $sourceMode === 'electrical' ? ' sq-material-row--electrical' : '' }}">
+  <input type="hidden" name="{{ $namePrefix }}[assembly_line_id]" value="{{ $row['assembly_line_id'] ?? '' }}">
+  <input type="hidden" name="{{ $namePrefix }}[assembly_layout_id]" value="{{ $row['assembly_layout_id'] ?? '' }}">
+  <input type="hidden" name="{{ $namePrefix }}[assembly_covered_layouts]" value="{{ $row['assembly_covered_layouts'] ?? '' }}">
+  <input type="hidden" name="{{ $namePrefix }}[assembly_quoted_at]" value="{{ $row['assembly_quoted_at'] ?? '' }}">
   <div class="sq-mat-fields">
     <div class="sq-mat-toolbar">
       <div class="sq-mat-toolbar-start">

@@ -70,7 +70,8 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         );
         preg_match('/function resizeStage\(\) \{([\s\S]*?)\n  function /', $js, $resizeStage);
         $this->assertArrayHasKey(1, $resizeStage);
-        $this->assertStringNotContainsString('fitViewport', $resizeStage[1]);
+        $this->assertStringContainsString('userAdjustedViewport', $resizeStage[1]);
+        $this->assertStringContainsString('fitViewport', $resizeStage[1]);
         $this->assertStringNotContainsString("friendlyNetworkError(err, 'Could not upload the floor plan. Check your connection and try again.')", $js);
         $this->assertStringNotContainsString("friendlyNetworkError(e, 'Could not upload the floor plan. Check your connection and try again.')", $js);
 

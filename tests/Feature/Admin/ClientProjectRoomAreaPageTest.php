@@ -212,6 +212,8 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('.admin-app:has(.util-ra-guide) .admin-sidebar', $css);
         $this->assertStringContainsString('.util-ra-help-pop', $css);
         $this->assertStringContainsString('.util-ra-first-tip', $css);
+        $this->assertStringContainsString('.util-ra-first-tip[hidden]', $css);
+        $this->assertStringContainsString('.util-ra-first-tip:empty', $css);
         $this->assertStringContainsString('.util-ra-tip[data-tooltip]::after', $css);
         $this->assertStringContainsString('(hover: hover) and (pointer: fine)', $css);
         $this->assertStringContainsString('.util-ra-tool-group--measure', $css);
@@ -234,10 +236,26 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('data-ra-help-guide', $html);
         $this->assertStringContainsString('util-ra-full-header__help', $html);
         $this->assertStringContainsString('Guide', $html);
-        $this->assertStringContainsString('data-ra-help-pop="view"', $html);
         $this->assertStringContainsString('data-ra-help-pop="measure"', $html);
-        $this->assertStringContainsString('data-ra-help-pop="objects"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="type-walls"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="finish"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="kits"', $html);
+        $this->assertStringContainsString('data-ra-help-pop="first-tip"', $html);
+        $this->assertStringNotContainsString('data-ra-help-pop="view"', $html);
+        $this->assertStringNotContainsString('data-ra-help-pop="objects"', $html);
+        $this->assertLessThanOrEqual(6, substr_count($html, 'class="util-ra-help-q"'));
         $this->assertStringContainsString('data-ra-first-tip-dismiss', $html);
+        $this->assertStringContainsString('util-ra-first-tip__guide', $html);
+        $this->assertStringContainsString('New here', $html);
+        $toolsAt = strpos($html, 'util-ra-full-header__row--tools');
+        $tipAt = strpos($html, 'data-ra-first-tip');
+        $projectAt = strpos($html, 'util-ra-project-bar');
+        $this->assertNotFalse($toolsAt);
+        $this->assertNotFalse($tipAt);
+        $this->assertNotFalse($projectAt);
+        $this->assertTrue($toolsAt < $tipAt && $tipAt < $projectAt, 'first-tip sits in the View toolbar, not as a strip above Project');
+        $this->assertStringContainsString('data-ra-project-menu-toggle', $html);
+        $this->assertStringContainsString('data-ra-project-menu', $html);
         $guideUrl = route('admin.client-projects.utilities.room-area.guide', [
             'client_project' => $project,
             'room_area_room' => $room,

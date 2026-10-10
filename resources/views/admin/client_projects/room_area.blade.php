@@ -17,6 +17,8 @@
     'initialRoomId' => $initialRoomId,
     'lockClientProjectId' => $clientProject->id,
     'clientProject' => $clientProject,
+    'assembliesJson' => $assembliesJson ?? [],
+    'catalogPickerOptions' => $catalogPickerOptions ?? [],
   ])
 @endsection
 
