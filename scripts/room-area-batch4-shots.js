@@ -13,7 +13,9 @@ const { execSync } = require('child_process');
 const GIT_SHA = (process.env.GIT_SHA || execSync('git rev-parse --short HEAD', { cwd: path.resolve(__dirname, '..') }).toString().trim());
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:8000';
-const EDITOR_PATH = process.env.EDITOR_PATH || '/admin/client-projects/1/utilities/room-area?ra_room=1';
+const PROJECT_ID = process.env.RA_PROJECT_ID || '1';
+const ROOM_ID = process.env.RA_ROOM_ID || '1';
+const EDITOR_PATH = process.env.EDITOR_PATH || `/admin/client-projects/${process.env.RA_CLIENT_ID || '1'}/utilities/room-area?ra_room=${ROOM_ID}`;
 const EMAIL = process.env.ADMIN_EMAIL;
 const PASSWORD = process.env.ADMIN_PASSWORD;
 if (!EMAIL || !PASSWORD) {
@@ -59,8 +61,9 @@ async function setTheme(page, mode) {
   await delay(200);
 }
 
-async function showRooms(page) {
-  await page.evaluate(() => {
+async function showRooms(page, opts) {
+  opts = opts || {};
+  await page.evaluate((scrollTo) => {
     try { localStorage.removeItem('zr-room-area-guide-tip-v1'); } catch (e) {}
     const tip = document.querySelector('[data-ra-first-tip]');
     if (tip) tip.hidden = true;
@@ -69,9 +72,13 @@ async function showRooms(page) {
     const root = document.querySelector('[data-room-area]');
     if (root && window.matchMedia('(max-width: 900px)').matches) {
       root.classList.add('is-sheet-expanded');
-      root.style.setProperty('--ra-sheet-h', 'min(72vh, 560px)');
+      root.style.setProperty('--ra-sheet-h', 'min(78vh, 640px)');
     }
-  });
+    const target = scrollTo === 'phases'
+      ? document.querySelector('[data-ra-phases]')
+      : document.querySelector('[data-ra-plan-actions]');
+    if (target) target.scrollIntoView({ block: 'nearest' });
+  }, opts.scrollTo || 'exports');
   await page.waitForFunction(() => {
     const pane = document.querySelector('[data-ra-side-pane="rooms"]');
     const phases = document.querySelector('[data-ra-phases]');
@@ -97,7 +104,7 @@ async function main() {
   await login(page);
   const editorUrl = EDITOR_PATH.startsWith('http') ? EDITOR_PATH : `${BASE_URL}${EDITOR_PATH}`;
 
-  const utilitiesUrl = `${BASE_URL}/admin/utilities/room-area?ra_project=1&ra_room=1`;
+  const utilitiesUrl = `${BASE_URL}/admin/utilities/room-area?ra_project=${PROJECT_ID}&ra_room=${ROOM_ID}`;
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await gotoReady(page, utilitiesUrl);
   await waitForEditor(page);
@@ -117,12 +124,16 @@ async function main() {
   await gotoReady(phone, editorUrl);
   await waitForEditor(phone);
   await setTheme(phone, 'light');
-  await showRooms(phone);
+  await showRooms(phone, { scrollTo: 'exports' });
   await shot(phone, `ra-b4-390-light-${GIT_SHA}`);
+  await showRooms(phone, { scrollTo: 'phases' });
+  await shot(phone, `ra-b4-390-light-phases-${GIT_SHA}`);
 
   await setTheme(phone, 'dark');
-  await showRooms(phone);
+  await showRooms(phone, { scrollTo: 'exports' });
   await shot(phone, `ra-b4-390-dark-${GIT_SHA}`);
+  await showRooms(phone, { scrollTo: 'phases' });
+  await shot(phone, `ra-b4-390-dark-phases-${GIT_SHA}`);
   await phone.close();
 
   await browser.close();
