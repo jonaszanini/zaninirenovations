@@ -33,6 +33,10 @@ class CategoryController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:32767'],
         ]);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $slug = $this->uniqueSlug(Str::slug($validated['name']));
 
         ProjectCategory::create([
@@ -40,6 +44,7 @@ class CategoryController extends Controller
             'slug' => $slug,
             'sort_order' => $validated['sort_order'] ?? 0,
         ]);
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()
             ->route('admin.categories.index')

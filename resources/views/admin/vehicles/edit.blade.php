@@ -13,7 +13,7 @@
       @method('PUT')
       @include('admin.vehicles._form', ['vehicle' => $vehicle])
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save changes</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save changes</button>
         <a href="{{ route('admin.vehicles.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

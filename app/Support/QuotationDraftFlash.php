@@ -9,7 +9,7 @@ namespace App\Support;
  */
 class QuotationDraftFlash
 {
-    public static function updated(string $typeLabel, object $quote, bool $linkedNow = false, bool $wasDraftBeforeSave = true): string
+    public static function updated(string $typeLabel, object $quote, bool $linkedNow, bool $wasDraftBeforeSave): string
     {
         if ((bool) ($quote->is_draft ?? false)) {
             $message = $typeLabel.' quotation saved as a draft.';

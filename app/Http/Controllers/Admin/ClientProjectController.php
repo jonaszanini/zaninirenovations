@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * CRUD for ClientProject (full lifecycle management). The model's show view
@@ -195,35 +196,42 @@ class ClientProjectController extends Controller
 
         $contactedViaKeys = array_keys(ClientProject::contactedViaOptions());
 
-        $data = $request->validate(array_merge([
-            'name' => ['required', 'string', 'max:255'],
-            'contacted_via' => ['required', Rule::in($contactedViaKeys)],
-            'conversation_on' => ['nullable', Rule::in($contactedViaKeys)],
-            'client_id' => ['nullable', 'integer', 'exists:clients,id'],
-            'client_name' => ['required_without:client_id', 'nullable', 'string', 'max:255'],
-            'client_email' => ['nullable', 'email', 'max:255'],
-            'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
-            'client_phone' => ['nullable', 'digits:10'],
-            'client_address' => ['nullable', 'string', 'max:500'],
-            'client_address_place_id' => ['nullable', 'string', 'max:255'],
-            'client_address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'client_address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'invoice_billing_name' => ['nullable', 'string', 'max:255'],
-            'invoice_billing_address' => ['nullable', 'string', 'max:2000'],
-            'notes' => ['nullable', 'string', 'max:5000'],
-            'billing_type' => ['required', \Illuminate\Validation\Rule::in([
-                ClientProject::BILLING_FIXED,
-                ClientProject::BILLING_HOURLY,
-            ])],
-            'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
-            'send_client_email' => ['nullable', 'boolean'],
-            'sync_client_directory' => ['nullable', 'boolean'],
-            'visit_required' => ['nullable', 'boolean'],
-            'visit_date' => ['nullable', 'date'],
-            'visit_time' => ['nullable', 'date_format:H:i'],
-            'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-        ], ClientProjectPhotoStorage::uploadValidationRules(), $this->documentLinkValidationRules()), $this->clientProjectValidationMessages());
+        try {
+            $data = $request->validate(array_merge([
+                'name' => ['required', 'string', 'max:255'],
+                'contacted_via' => ['required', Rule::in($contactedViaKeys)],
+                'conversation_on' => ['nullable', Rule::in($contactedViaKeys)],
+                'client_id' => ['nullable', 'integer', 'exists:clients,id'],
+                'client_name' => ['required_without:client_id', 'nullable', 'string', 'max:255'],
+                'client_email' => ['nullable', 'email', 'max:255'],
+                'client_email_secondary' => ['nullable', 'email', 'max:255', 'different:client_email'],
+                'client_phone' => ['nullable', 'digits:10'],
+                'client_address' => ['nullable', 'string', 'max:500'],
+                'client_address_place_id' => ['nullable', 'string', 'max:255'],
+                'client_address_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+                'client_address_longitude' => ['nullable', 'numeric', 'between:-180,180'],
+                'invoice_billing_name' => ['nullable', 'string', 'max:255'],
+                'invoice_billing_address' => ['nullable', 'string', 'max:2000'],
+                'notes' => ['nullable', 'string', 'max:5000'],
+                'billing_type' => ['required', \Illuminate\Validation\Rule::in([
+                    ClientProject::BILLING_FIXED,
+                    ClientProject::BILLING_HOURLY,
+                ])],
+                'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
+                'send_client_email' => ['nullable', 'boolean'],
+                'sync_client_directory' => ['nullable', 'boolean'],
+                'visit_required' => ['nullable', 'boolean'],
+                'visit_date' => ['nullable', 'date'],
+                'visit_time' => ['nullable', 'date_format:H:i'],
+                'start_date' => ['nullable', 'date'],
+                'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            ], ClientProjectPhotoStorage::uploadValidationRules(), $this->documentLinkValidationRules()), $this->clientProjectValidationMessages());
+        } catch (ValidationException $e) {
+            $this->restoreHotkeyEmailChoiceOnRequest($request);
+            $request->request->remove('_hotkey_save');
+            $request->request->remove('_hotkey_email_prior');
+            throw $e;
+        }
 
         // Normalise hourly_rate so fixed projects don't carry a stray rate.
         if ($data['billing_type'] !== ClientProject::BILLING_HOURLY) {
@@ -234,15 +242,25 @@ class ClientProjectController extends Controller
             $duplicates = $this->duplicateProjectCandidates($data);
             if ($duplicates->isNotEmpty()) {
                 return back()
-                    ->withInput($request->except(['confirm_duplicate_project', 'photos']))
+                    ->withInput($this->inputForRedirect($request, ['confirm_duplicate_project', 'photos']))
                     ->with('duplicate_project_candidates', $duplicates)
                     ->with('warning', 'A similar project already exists for this client or address. Open it below, or click "Create anyway" if this is a separate job.');
             }
         }
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         // Pulled out before array_merge below because it isn't a column
         // on the projects table — it controls the onCreated side-effect.
-        $sendClientEmail = (bool) ($data['send_client_email'] ?? true);
+        // An explicit send_client_email=1 always wins (e.g. leftover
+        // _hotkey_save after a failed Ctrl+S). Ctrl+S only skips when
+        // the box is absent or 0.
+        $sendClientEmail = $this->shouldSendClientEmail(
+            $request,
+            (bool) ($data['send_client_email'] ?? true)
+        );
         $syncDirectory = (bool) ($data['sync_client_directory'] ?? true);
         unset($data['send_client_email'], $data['sync_client_directory'], $data['photos'], $data['document_links']);
 
@@ -292,6 +310,7 @@ class ClientProjectController extends Controller
             return $project;
         });
 
+        $this->rememberSubmitSucceeded($request);
         $service->onCreated($project, $sendClientEmail);
 
         if ($isHourly) {
@@ -567,18 +586,19 @@ class ClientProjectController extends Controller
         $validator = Validator::make($request->all(), $rules, $this->clientProjectValidationMessages());
 
         if ($validator->fails()) {
+            $input = $this->inputForRedirect($request);
             if ($request->has('billing_type')) {
                 return redirect()
                     ->route('admin.client-projects.edit', $client_project)
                     ->withErrors($validator)
-                    ->withInput();
+                    ->withInput($input);
             }
 
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
                 ->withFragment('schedule')
                 ->withErrors($validator)
-                ->withInput();
+                ->withInput($input);
         }
 
         $data = $validator->validated();
@@ -645,7 +665,7 @@ class ClientProjectController extends Controller
                 ->route('admin.client-projects.show', $client_project)
                 ->withFragment('schedule')
                 ->withErrors($validator)
-                ->withInput();
+                ->withInput($this->inputForRedirect($request));
         }
 
         $data = $validator->validated();
@@ -711,11 +731,16 @@ class ClientProjectController extends Controller
         }
 
         $scheduleClientWarning = null;
-        $fixedSched = $service->maybeSendFixedScheduleConfirmationToClient($client_project->fresh());
-        if ($fixedSched === 'sent') {
-            $successMessage .= ' Schedule confirmation emailed to the client.';
-        } elseif ($fixedSched === 'failed') {
-            $scheduleClientWarning = 'The client schedule confirmation email failed to send. Check logs.';
+        $freshForSchedule = $client_project->fresh();
+        if ($this->shouldSendClientEmail(request(), true)) {
+            $fixedSched = $service->maybeSendFixedScheduleConfirmationToClient($freshForSchedule);
+            if ($fixedSched === 'sent') {
+                $successMessage .= ' Schedule confirmation emailed to the client.';
+            } elseif ($fixedSched === 'failed') {
+                $scheduleClientWarning = 'The client schedule confirmation email failed to send. Check logs.';
+            }
+        } elseif ($this->fixedScheduleConfirmationIsPending($freshForSchedule)) {
+            $successMessage .= ' Schedule confirmation not sent (Ctrl+S).';
         }
 
         $redirect = redirect()
@@ -1234,6 +1259,68 @@ class ClientProjectController extends Controller
         if ($merge !== []) {
             $request->merge($merge);
         }
+    }
+
+    /**
+     * Ctrl+S posts a neutralized send_client_email=0. Put the user's last
+     * checkbox choice back on the request so Laravel flashes it on a bounce.
+     */
+    private function restoreHotkeyEmailChoiceOnRequest(Request $request): void
+    {
+        if (! $request->boolean('_hotkey_save') || ! $request->exists('_hotkey_email_prior')) {
+            return;
+        }
+
+        $request->merge([
+            'send_client_email' => $request->boolean('_hotkey_email_prior') ? '1' : '0',
+        ]);
+    }
+
+    /**
+     * Old input for a validation redirect. Drops leftover hotkey flags and
+     * restores the email-box choice after a Ctrl+S bounce.
+     *
+     * @param  list<string>  $except
+     * @return array<string, mixed>
+     */
+    private function inputForRedirect(Request $request, array $except = []): array
+    {
+        $this->restoreHotkeyEmailChoiceOnRequest($request);
+
+        if ($request->boolean('_hotkey_save')) {
+            $except[] = '_hotkey_save';
+            $except[] = '_hotkey_email_prior';
+        }
+
+        return $request->except(array_values(array_unique($except)));
+    }
+
+    /**
+     * An explicit send_client_email=1 always wins. Ctrl+S (_hotkey_save)
+     * only skips the client email when the box is absent or 0.
+     */
+    private function shouldSendClientEmail(Request $request, bool $default): bool
+    {
+        if ($request->boolean('send_client_email')) {
+            return true;
+        }
+        if ($request->boolean('_hotkey_save')) {
+            return false;
+        }
+        if ($request->has('send_client_email')) {
+            return $request->boolean('send_client_email');
+        }
+
+        return $default;
+    }
+
+    private function fixedScheduleConfirmationIsPending(ClientProject $project): bool
+    {
+        return ! $project->isHourly()
+            && $project->hasSchedule()
+            && $project->firstInstallmentPaid()
+            && ! $project->fixed_schedule_confirmation_sent_at
+            && $project->hasClientContactInfo();
     }
 
     /** @return array<string, mixed>|null */

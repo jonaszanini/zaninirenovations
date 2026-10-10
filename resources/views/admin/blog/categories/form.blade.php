@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form method="post" action="{{ $category->exists ? route('admin.blog.categories.update', $category) : route('admin.blog.categories.store') }}">
       @csrf
+      @include('admin.partials.once_submit')
       @if ($category->exists) @method('PUT') @endif
       <div class="admin-form-group">
         <label for="bc-name">Name</label>
@@ -20,7 +21,7 @@
         <textarea id="bc-desc" name="description" rows="4" class="admin-input">{{ old('description', $category->description) }}</textarea>
       </div>
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save</button>
         <a href="{{ route('admin.blog.categories.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

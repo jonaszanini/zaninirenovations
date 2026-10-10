@@ -80,6 +80,9 @@
       if (editor || editorStarting) return editorStarting || Promise.resolve(editor);
       var isDark = document.documentElement.classList.contains('admin-dark');
       editorStarting = loadTinymce().then(function (tinymce) {
+        if (window.AdminHotkeySave && window.AdminHotkeySave.instance) {
+          try { window.AdminHotkeySave.instance().bindTiny(); } catch (err) { /* ignore */ }
+        }
         if (!looksLikeHtml(textarea.value) && String(textarea.value || '').trim() !== '') {
           textarea.value = String(textarea.value).split(/\n{2,}/).map(function (b) {
             return '<p>' + escapeHtml(b).replace(/\n/g, '<br>') + '</p>';
@@ -100,11 +103,19 @@
           content_style: isDark
             ? 'body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #e2e8f0; background: #0f172a; line-height: 1.5; padding: 8px; } p { margin: 0 0 0.6em; } a { color: #38bdf8; }'
             : 'body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #1f2937; line-height: 1.5; padding: 8px; } p { margin: 0 0 0.6em; }',
+          init_instance_callback: function () {
+            if (window.AdminHotkeySave && window.AdminHotkeySave.instance) {
+              try { window.AdminHotkeySave.instance().bindTiny(); } catch (err) { /* ignore */ }
+            }
+          },
           setup: function (ed) {
             ed.on('change keyup undo redo SetContent', function () { ed.save(); });
           },
         }).then(function (editors) {
           editor = editors && editors[0] ? editors[0] : null;
+          if (window.AdminHotkeySave && window.AdminHotkeySave.instance) {
+            try { window.AdminHotkeySave.instance().bindTiny(); } catch (err) { /* ignore */ }
+          }
           return editor;
         });
       }).catch(function (err) {

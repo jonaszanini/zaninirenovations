@@ -71,10 +71,15 @@ class ClientController extends Controller
             }
         }
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $tagIds = $data['tags'] ?? [];
         unset($data['tags']);
 
         $client = Client::create($data);
+        $this->rememberSubmitSucceeded($request);
         $client->tags()->sync($tagIds);
 
         return redirect()

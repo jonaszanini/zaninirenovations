@@ -48,6 +48,7 @@
         <button type="button" class="cp-modal-close" data-cp-modal-close aria-label="Close">&times;</button>
       </div>
       <form id="cp-personal-event-form" novalidate>
+        @include('admin.partials.once_submit')
         <div class="cp-modal-body">
           <div class="admin-form-group">
             <label for="cp-personal-event-title-input">Title <span class="cp-required">*</span></label>
@@ -74,7 +75,7 @@
             Delete
           </button>
           <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-modal-close>Cancel</button>
-          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-personal-event-save">
+          <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="cp-personal-event-save" data-hotkey-save>
             <i class="fa fa-check"></i> Save
           </button>
         </div>
@@ -180,11 +181,13 @@
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         showError('');
+        var tokenInput = form.querySelector('[name="_submit_once"]');
         var payload = {
           title: titleInput.value.trim(),
           description: descInput.value.trim() || null,
           start_date: startInput.value,
           end_date: endInput.value,
+          _submit_once: tokenInput ? tokenInput.value : '',
         };
         if (!payload.title || !payload.start_date || !payload.end_date) {
           showError('Title and both dates are required.');
@@ -222,6 +225,15 @@
               editingFcEvent.remove();
             }
             calendar.addEvent(data.event);
+            if (tokenInput) {
+              var bytes = new Uint8Array(16);
+              if (window.crypto && window.crypto.getRandomValues) {
+                window.crypto.getRandomValues(bytes);
+                tokenInput.value = Array.prototype.map.call(bytes, function (b) {
+                  return ('0' + b.toString(16)).slice(-2);
+                }).join('');
+              }
+            }
             closeModal();
           })
           .catch(function (err) {

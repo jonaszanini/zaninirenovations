@@ -84,6 +84,7 @@
 
   <form method="post" action="{{ $formAction }}" id="tm-main-form" class="tm-layout" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}" data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="tm-save-intent" value="publish">
     @if ($linkProject)

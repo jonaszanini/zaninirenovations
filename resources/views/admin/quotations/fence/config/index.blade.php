@@ -63,7 +63,7 @@
             ({{ number_format($linkedSyncCount) }} syncable).
           @endif
         </x-admin.info-tip>
-        <button type="submit" class="admin-btn admin-btn--primary">
+        <button type="submit" id="fq-btn-save-links" class="admin-btn admin-btn--primary" data-hotkey-save>
           <i class="fa fa-save"></i> Save links
         </button>
       </div>
@@ -231,7 +231,7 @@
           <x-admin.info-tip label="Formula parameters">Structural assumptions used by the calculator. Labour rates below are defaults for new fence quotations (editable per quote).</x-admin.info-tip>
         </h3>
       </div>
-      <button type="submit" class="admin-btn admin-btn--primary">
+      <button type="submit" id="fq-btn-save-formula" class="admin-btn admin-btn--primary" data-hotkey-save>
         <i class="fa fa-save"></i> Save formula
       </button>
     </div>

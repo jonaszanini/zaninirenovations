@@ -45,6 +45,10 @@ class BlogCategoryController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
         ]);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $slug = filled($data['slug'] ?? null)
             ? $data['slug']
             : BlogCategory::uniqueSlug($data['name']);
@@ -54,6 +58,7 @@ class BlogCategoryController extends Controller
             'slug' => $slug,
             'description' => $data['description'] ?? null,
         ]);
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()->route('admin.blog.categories.index')->with('success', 'Category created.');
     }

@@ -99,6 +99,10 @@ class FenceQuotationController extends Controller
     {
         $data = $this->validateFenceInputs($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $calc = (new FenceQuotationCalculator())->calculate($data);
         $persistence = $this->fencePersistenceFromCalc($request, $calc, $data);
 
@@ -107,6 +111,7 @@ class FenceQuotationController extends Controller
             'quote_number' => FenceQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

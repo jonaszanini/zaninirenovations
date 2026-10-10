@@ -66,6 +66,10 @@ class LowDeckQuotationController extends Controller
     {
         $data = $this->validateLowDeckInputs($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $calc = (new LowDeckQuotationCalculator())->calculate($data);
         $persistence = $this->lowDeckPersistenceFromCalc($request, $calc, $data);
 
@@ -73,6 +77,7 @@ class LowDeckQuotationController extends Controller
             'quote_number' => LowDeckQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);

@@ -84,6 +84,11 @@
         }
       ).then(function (ok) {
         if (!ok) {
+          if (document && typeof document.dispatchEvent === 'function') {
+            try {
+              document.dispatchEvent(new CustomEvent('admin-hotkey-save:abort', { bubbles: true }));
+            } catch (err) { /* ignore */ }
+          }
           return;
         }
         draftBtn.setAttribute('data-qh-draft-bypass', '1');

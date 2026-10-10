@@ -72,10 +72,15 @@ class StandardQuotationController extends Controller
     {
         $calc = $this->validatedSnapshot($request, new StandardQuotationCalculator());
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $quote = StandardQuotation::create(array_merge($calc['persistence'], [
             'quote_number' => StandardQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
