@@ -532,7 +532,7 @@ function sleep(ms) {
         await handle.click();
       }
     }
-    return page.evaluate(() => {
+    const afterLower = await page.evaluate(() => {
       const gates = document.getElementById('fq-gates');
       const beforeTicks = document.querySelectorAll('.fq-side-gate-here:checked').length;
       gates.value = '1';
@@ -546,6 +546,21 @@ function sleep(ms) {
         noticeHidden: !!(warn && warn.classList.contains('is-hidden')),
       };
     });
+    const gatesHandle = await page.$('#fq-gates');
+    await gatesHandle.click({ clickCount: 3 });
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type('3');
+    await page.keyboard.press('Tab');
+    const afterRetype = await page.evaluate(() => {
+      const warn = document.getElementById('fq-gate-warn');
+      return {
+        gates: document.getElementById('fq-gates').value,
+        ticks: document.querySelectorAll('.fq-side-gate-here:checked').length,
+        notice: warn ? String(warn.textContent || '') : '',
+        noticeHidden: !!(warn && warn.classList.contains('is-hidden')),
+      };
+    });
+    return Object.assign({}, afterLower, { afterRetype });
   }
 
   const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null, negativeResave: null, labourRateKeypress: null, pavingRateMask: null, fenceGateNotice: null };
@@ -787,6 +802,10 @@ function sleep(ms) {
     const fenceNotice = report.fenceGateNotice || {};
     if ((fenceNotice.afterTicks || 0) !== 1 || fenceNotice.noticeHidden || !String(fenceNotice.notice || '').toLowerCase().includes('cleared')) {
       throw new Error('Fence gate-lower notice failed: ' + JSON.stringify(fenceNotice));
+    }
+    const afterRetype = fenceNotice.afterRetype || {};
+    if (String(afterRetype.gates || '') !== '3' || (afterRetype.ticks || 0) !== 2 || String(afterRetype.notice || '').toLowerCase().includes('cleared')) {
+      throw new Error('Fence Gates Backspace+3 did not restore ticks: ' + JSON.stringify(afterRetype));
     }
     const neg = report.negativeResave || {};
     ['standard', 'hourly'].forEach((kind) => {

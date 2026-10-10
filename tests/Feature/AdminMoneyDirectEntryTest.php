@@ -129,6 +129,7 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertIsString($fence);
         $this->assertStringContainsString('document.activeElement !== gatesInput', $fence);
         $this->assertStringContainsString('lastClearedGateTicks', $fence);
+        $this->assertStringContainsString('clearedGateTickIndexes', $fence);
         $this->assertStringContainsString('Gate goes here', $fence);
 
         $quoteCreates = glob(resource_path('views/admin/quotations/*/create.blade.php')) ?: [];
@@ -369,6 +370,9 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertSame(1, (int) ($report['fenceGateNotice']['afterTicks'] ?? 0));
         $this->assertFalse((bool) ($report['fenceGateNotice']['noticeHidden'] ?? true));
         $this->assertStringContainsString('cleared', strtolower((string) ($report['fenceGateNotice']['notice'] ?? '')));
+        $this->assertSame('3', (string) ($report['fenceGateNotice']['afterRetype']['gates'] ?? ''));
+        $this->assertSame(2, (int) ($report['fenceGateNotice']['afterRetype']['ticks'] ?? 0));
+        $this->assertStringNotContainsString('cleared', strtolower((string) ($report['fenceGateNotice']['afterRetype']['notice'] ?? '')));
 
         $this->assertIsArray($report['negativeResave'] ?? null);
         foreach (['standard', 'hourly'] as $kind) {
