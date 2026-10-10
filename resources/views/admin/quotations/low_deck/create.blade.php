@@ -230,7 +230,8 @@
     {{-- ====================== LEFT: FORM =========================== --}}
     <div class="ld-left-stack">
       <form id="ld-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor
-            data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
+            data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
+            data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
         @csrf
         @include('admin.partials.once_submit')
         @if ($isEdit) @method('PUT') @endif

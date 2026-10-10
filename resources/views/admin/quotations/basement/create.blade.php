@@ -145,7 +145,8 @@
   <form method="post" action="{{ $formAction }}" id="br-main-form" class="pq-layout br-layout {{ $isEdit ? 'br-layout--edit' : 'br-layout--create' }}"
         data-br-mode="{{ $isEdit ? 'edit' : 'create' }}"
         data-quotation-editor
-        data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
+        data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
+        data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
     @csrf
     @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif

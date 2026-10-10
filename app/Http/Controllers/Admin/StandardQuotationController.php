@@ -19,6 +19,7 @@ use App\Services\StandardQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use App\Support\StandardQuotationValidationMessages;
@@ -216,6 +217,7 @@ class StandardQuotationController extends Controller
 
     public function update(Request $request, StandardQuotation $standard_quotation)
     {
+        $wasDraft = (bool) $standard_quotation->is_draft;
         $calc = $this->validatedSnapshot($request, new StandardQuotationCalculator(), $standard_quotation);
 
         $standard_quotation->fill(array_merge($calc['persistence'], [
@@ -241,7 +243,7 @@ class StandardQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.standard.edit', $standard_quotation)
-            ->with('success', 'Standard quotation '.$standard_quotation->quote_number.' updated (v'.$standard_quotation->version.').')
+            ->with('success', QuotationDraftFlash::updated('Standard', $standard_quotation, false, $wasDraft))
             ->with('standard_flash', 'saved');
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));

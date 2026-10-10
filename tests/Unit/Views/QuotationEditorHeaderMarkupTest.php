@@ -61,6 +61,8 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('function restorePublishOnlyRequired', $leave);
         $this->assertStringContainsString('window.allowUnload = true', $leave);
         $this->assertStringContainsString('Quotation not saved yet', $leave);
+        $this->assertStringContainsString('data-qh-client-share', $leave);
+        $this->assertStringContainsString('stop their link from working until you publish it again', $leave);
         $canAutosave = preg_match('/function canAutosave\(form\) \{([\s\S]*?)\n  function /', $leave, $m)
             ? ($m[1] ?? '')
             : '';
@@ -128,6 +130,24 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $standard = file_get_contents(resource_path('views/admin/quotations/standard/create.blade.php'));
         $this->assertStringNotContainsString('quotation_price_config_gear', $standard);
         $this->assertStringNotContainsString('qh-price-gear', $standard);
+
+        foreach ([
+            'standard/create.blade.php',
+            'basement/create.blade.php',
+            'millwork/create.blade.php',
+            'flooring/create.blade.php',
+            'trimming/create.blade.php',
+            'painting/create.blade.php',
+            'shed/create.blade.php',
+            'tile/create.blade.php',
+            'fence/create.blade.php',
+            'paving/create.blade.php',
+            'stairs/create.blade.php',
+            'low_deck/create.blade.php',
+        ] as $file) {
+            $blade = file_get_contents(resource_path('views/admin/quotations/'.$file));
+            $this->assertStringContainsString('data-qh-client-share', $blade, $file.' must mark sent/published quotes for the draft confirm');
+        }
     }
 
     public function test_header_hotkey_follows_new_draft_and_published_state(): void

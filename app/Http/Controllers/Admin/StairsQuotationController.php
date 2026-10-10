@@ -19,6 +19,7 @@ use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use App\Services\StairsQuotationCalculator;
 use Illuminate\Http\Request;
@@ -91,6 +92,7 @@ class StairsQuotationController extends Controller
 
     public function update(Request $request, StairsQuotation $stairs_quotation)
     {
+        $wasDraft = (bool) $stairs_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $stairs_quotation);
 
@@ -114,9 +116,7 @@ class StairsQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.stairs.edit', $stairs_quotation)
-            ->with('success', $linkedNow
-                ? 'Stairs quotation '.$stairs_quotation->quote_number.' updated and linked.'
-                : 'Stairs quotation '.$stairs_quotation->quote_number.' updated (v'.$stairs_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Stairs', $stairs_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

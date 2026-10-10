@@ -20,6 +20,7 @@ use App\Services\QuotationPaymentSchedule;
 use App\Services\ShedQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +91,7 @@ class ShedQuotationController extends Controller
 
     public function update(Request $request, ShedQuotation $shed_quotation)
     {
+        $wasDraft = (bool) $shed_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $shed_quotation);
 
@@ -113,9 +115,7 @@ class ShedQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.shed.edit', $shed_quotation)
-            ->with('success', $linkedNow
-                ? 'Shed quotation '.$shed_quotation->quote_number.' updated and linked.'
-                : 'Shed quotation '.$shed_quotation->quote_number.' updated (v'.$shed_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Shed', $shed_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

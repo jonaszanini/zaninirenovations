@@ -222,7 +222,7 @@
 
   <div class="pq-layout">
       <div>
-        <form id="sq-main-form" method="post" action="{{ $formAction }}" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
+        <form id="sq-main-form" method="post" action="{{ $formAction }}" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}" data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
           @csrf
           @include('admin.partials.once_submit')
           @if ($isEdit)

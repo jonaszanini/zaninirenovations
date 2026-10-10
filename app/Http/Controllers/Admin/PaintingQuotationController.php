@@ -18,6 +18,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\PaintingQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
@@ -89,6 +90,7 @@ class PaintingQuotationController extends Controller
 
     public function update(Request $request, PaintingQuotation $painting_quotation)
     {
+        $wasDraft = (bool) $painting_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $painting_quotation);
 
@@ -112,9 +114,7 @@ class PaintingQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.painting.edit', $painting_quotation)
-            ->with('success', $linkedNow
-                ? 'Painting quotation '.$painting_quotation->quote_number.' updated and linked.'
-                : 'Painting quotation '.$painting_quotation->quote_number.' updated (v'.$painting_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Painting', $painting_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

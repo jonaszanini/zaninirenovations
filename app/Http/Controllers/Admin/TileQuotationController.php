@@ -21,6 +21,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TileQuotationCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
@@ -211,6 +212,7 @@ class TileQuotationController extends Controller
 
     public function update(Request $request, TileQuotation $quotation, TileQuotationCalculator $calculator)
     {
+        $wasDraft = (bool) $quotation->is_draft;
         $this->prepareAdditionalCostMoneyOnRequest($request);
         $this->prepareDebrisRemovalMoneyOnRequest($request);
 
@@ -297,7 +299,7 @@ class TileQuotationController extends Controller
         return QuotationAfterSaveRedirect::apply($request, redirect()
             ->route('admin.quotations.tile.edit', $quotation)
             ->with('success', $quotation->is_draft
-                ? 'Tile quotation saved as a draft.'
+                ? QuotationDraftFlash::updated('Tile', $quotation, false, $wasDraft)
                 : 'Tile quotation updated.'));
     }
 

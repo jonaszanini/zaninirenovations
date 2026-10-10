@@ -55,6 +55,7 @@ jobs:
           php artisan test tests/Unit/Support/CadMoneyTest.php
           php artisan test tests/Unit/Support/AdminOnceSubmitTokenTest.php
           php artisan test tests/Unit/Support/QuotationSaveIntentTest.php
+          php artisan test tests/Unit/Support/QuotationDraftFlashTest.php
           php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
@@ -81,6 +82,7 @@ jobs:
           node tests/js/admin-hotkey-save.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js
+          node tests/js/quotation-redraft-confirm-browser.test.js
 
       - name: Admin info-tip JS behaviour (no database)
         run: |

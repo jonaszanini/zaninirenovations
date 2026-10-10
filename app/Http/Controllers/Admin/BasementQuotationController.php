@@ -21,6 +21,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +93,7 @@ class BasementQuotationController extends Controller
 
     public function update(Request $request, BasementQuotation $basement_quotation)
     {
+        $wasDraft = (bool) $basement_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $basement_quotation);
 
@@ -115,9 +117,7 @@ class BasementQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.basement.edit', $basement_quotation)
-            ->with('success', $linkedNow
-                ? 'Basement quotation '.$basement_quotation->quote_number.' updated and linked.'
-                : 'Basement quotation '.$basement_quotation->quote_number.' updated (v'.$basement_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Basement', $basement_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
