@@ -38,6 +38,15 @@ function sleep(ms) {
   page.setDefaultTimeout(20000);
 
   async function go(url) {
+    try {
+      await page.evaluate(() => {
+        window.allowUnload = true;
+        window.AdminQuoteAllowUnload = true;
+        window.onbeforeunload = null;
+      });
+    } catch (err) {
+      /* first navigation has no document yet */
+    }
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body');
   }

@@ -248,6 +248,8 @@ window.MillworkDimensionParser = (function () {
 
     function allowFormUnload() {
       allowUnload = true;
+      window.allowUnload = true;
+      window.AdminQuoteAllowUnload = true;
     }
 
     function submitWizard(intent) {
@@ -309,7 +311,7 @@ window.MillworkDimensionParser = (function () {
       if (beforeUnloadBound) return;
       beforeUnloadBound = true;
       window.addEventListener('beforeunload', function (e) {
-        if (allowUnload || saving) return;
+        if (allowUnload || saving || window.allowUnload || window.AdminQuoteAllowUnload) return;
         if (form.getAttribute('data-quotation-user-edited') !== '1') return;
         e.preventDefault();
         e.returnValue = '';

@@ -619,6 +619,8 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('setSaveBusy(false)', $js);
         $this->assertStringContainsString('function bindBeforeUnload', $js);
         $this->assertStringContainsString("form.getAttribute('data-quotation-user-edited') === '1'", $js);
+        $this->assertStringContainsString('window.allowUnload', $js);
+        $this->assertStringContainsString('window.AdminQuoteAllowUnload', $js);
         $this->assertStringContainsString('Preview timed out', $js);
         $this->assertStringContainsString('window.MillworkDimensionParser', $js);
         $this->assertStringContainsString('applyFieldErrors', $js);
