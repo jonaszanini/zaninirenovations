@@ -890,12 +890,32 @@ class MillworkCutPlanPlacementTest extends TestCase
             'owner_hourly_rate' => 85,
         ], $this->settings(), 1);
 
+        $this->assertNotEquals(
+            round((float) $plain['summary']['grand_total'], 2),
+            round((float) $retyped['summary']['grand_total'], 2),
+            'v1 must not convert text sizes inside the legacy calculator (762mm reprice)'
+        );
+
+        $converted = (new MillworkQuotationCalculator)->calculate([
+            'pieces' => [MillworkDimensionParser::toLegacyInchPiece(array_merge($base, [
+                'width' => '3',
+                'width_unit' => 'ft',
+                'height' => '34 1/2',
+                'height_unit' => 'in',
+                'depth' => '2 ft',
+                'depth_unit' => 'in',
+                'unit' => 'in',
+            ]))],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+        ], $this->settings(), 1);
+
         $this->assertEqualsWithDelta(
             (float) $plain['summary']['grand_total'],
-            (float) $retyped['summary']['grand_total'],
+            (float) $converted['summary']['grand_total'],
             0.02
         );
-        $this->assertGreaterThan(0, (float) $retyped['summary']['grand_total']);
+        $this->assertGreaterThan(0, (float) $converted['summary']['grand_total']);
     }
 
     public function test_v1_stored_trim_in_feet_matches_main_total(): void
