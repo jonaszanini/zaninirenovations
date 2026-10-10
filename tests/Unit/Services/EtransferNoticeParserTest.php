@@ -283,4 +283,57 @@ TXT;
         $this->assertSame('Malcolm Travis', $parsed['sender_name']);
         $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
     }
+
+    public function test_french_quoted_and_outlook_forwarded_headers_are_stripped(): void
+    {
+        $text = <<<'TXT'
+De : Alias Desk <alias@forwarded.example>
+À : inbox@forwarded.example
+> From: quoted@forwarded.example
+*From:* outlook@forwarded.example
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAFWDVAR001
+TXT;
+
+        $stripped = $this->parser->stripForwardedHeaderLines($text);
+        $this->assertStringNotContainsString('alias@forwarded.example', $stripped);
+        $this->assertStringNotContainsString('inbox@forwarded.example', $stripped);
+        $this->assertStringNotContainsString('quoted@forwarded.example', $stripped);
+        $this->assertStringNotContainsString('outlook@forwarded.example', $stripped);
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_reply_to_payer_email_is_used_when_it_is_the_only_address(): void
+    {
+        $text = <<<'TXT'
+From: Zanini Renovations <zaninirenovations@gmail.com>
+To: zaninirenovations@gmail.com
+Reply-To: malcolm.travis@example.com
+Malcolm Travis sent you $379.61 CAD
+Reference Number: CAREPLYTO001
+TXT;
+
+        $this->assertSame(['malcolm.travis@example.com'], $this->parser->replyToEmails($text));
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
+    }
+
+    public function test_own_reply_to_is_not_stored_as_sender_email(): void
+    {
+        $text = <<<'TXT'
+From: notify@payments.interac.ca
+Reply-To: zaninirenovations@gmail.com
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAREPLYOWN001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
 }

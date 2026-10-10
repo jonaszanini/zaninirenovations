@@ -562,9 +562,12 @@ class EtransferInvoiceMatcher
     }
 
     /**
+     * Tokens used for the cited-invoice LIKE lookup. Phone digits are masked
+     * first so a number like 647-834-0258 never becomes a lookup token.
+     *
      * @return list<string>
      */
-    private function mentionLookupTokens(string $haystack): array
+    public function mentionLookupTokens(string $haystack): array
     {
         if ($haystack === '') {
             return [];

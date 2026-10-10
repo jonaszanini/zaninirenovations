@@ -30,6 +30,15 @@ class EtransferNoticeParser
     public const DEPOSIT_DESTINATION_EMAIL_PATTERN = '/((?:automatically\s+)?deposited into your account(?:\s+at\s+[^@\n]+?)?\s+at\s+)([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/iu';
 
     /**
+     * Forwarded header lines: English, French (De / À), quoted "> From:",
+     * and Outlook bold "*From:*". Reply-To is stripped from the body scan
+     * after its address is collected separately.
+     */
+    public const FORWARDED_HEADER_LINE_PATTERN = '/^(?:>+\s*)?\*{0,2}\s*(?:From|To|Cc|De|À|A|Delivered-To|X-Original-To|Reply-To)\s*\*{0,2}\s*:/iu';
+
+    public const REPLY_TO_HEADER_LINE_PATTERN = '/^(?:>+\s*)?\*{0,2}\s*Reply-To\s*\*{0,2}\s*:/iu';
+
+    /**
      * @return array{
      *   sender_name: ?string,
      *   sender_email: ?string,
@@ -154,11 +163,9 @@ class EtransferNoticeParser
 
     private function extractSenderEmail(string $text): ?string
     {
+        $replyTo = $this->replyToEmails($text);
         $text = $this->stripForwardedHeaderLines($text);
-        $skip = array_values(array_unique(array_merge(
-            $this->destinationPatternEmails($text),
-            $this->depositLineEmails($text)
-        )));
+        $skip = $this->depositLineEmails($text);
         $text = $this->stripDepositDestinationEmails($text);
 
         if (preg_match('/Sender(?:\'s)? e-?mail\s*:\s*([^\s<>]+@[^\s<>]+)/iu', $text, $m)) {
@@ -175,6 +182,13 @@ class EtransferNoticeParser
                 if ($usable !== null) {
                     return $usable;
                 }
+            }
+        }
+
+        foreach ($replyTo as $email) {
+            $usable = $this->usableSenderEmail($email, $skip);
+            if ($usable !== null) {
+                return $usable;
             }
         }
 
@@ -201,19 +215,42 @@ class EtransferNoticeParser
     }
 
     /**
-     * Forwarded From:/To:/Cc: lines are never a payer address.
+     * Forwarded From:/To:/Cc:/De:/À: lines are never a payer address.
      */
     public function stripForwardedHeaderLines(string $text): string
     {
         $kept = [];
         foreach (preg_split("/\n/u", $text) ?: [] as $line) {
-            if (preg_match('/^(?:From|To|Cc|Delivered-To|X-Original-To|Reply-To)\s*:/iu', $line) === 1) {
+            if (preg_match(self::FORWARDED_HEADER_LINE_PATTERN, $line) === 1) {
                 continue;
             }
             $kept[] = $line;
         }
 
         return implode("\n", $kept);
+    }
+
+    /**
+     * Addresses on Reply-To lines (plain, quoted, or Outlook-bold).
+     *
+     * @return list<string>
+     */
+    public function replyToEmails(string $text): array
+    {
+        $emails = [];
+        foreach (preg_split("/\n/u", $text) ?: [] as $line) {
+            if (preg_match(self::REPLY_TO_HEADER_LINE_PATTERN, $line) !== 1) {
+                continue;
+            }
+            if (! preg_match_all('/\b([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})\b/i', $line, $matches)) {
+                continue;
+            }
+            foreach ($matches[1] as $email) {
+                $emails[strtolower($email)] = strtolower($email);
+            }
+        }
+
+        return array_values($emails);
     }
 
     /**

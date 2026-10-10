@@ -406,6 +406,33 @@ class EtransferInvoiceMatcherTest extends TestCase
         $this->assertSame('Malcolm Travis', $suggestion['ambiguous_labels'][1]['client_name']);
     }
 
+    public function test_phone_masking_excludes_digits_from_lookup_tokens(): void
+    {
+        $this->assertSame([], $this->matcher->mentionLookupTokens('call 647-834-0258'));
+        $this->assertSame([], $this->matcher->mentionLookupTokens('please call inv 647-834-0258'));
+        $this->assertContains('257', $this->matcher->mentionLookupTokens('invoice #257'));
+        $this->assertContains('INV-2026-0258', $this->matcher->mentionLookupTokens('please apply INV-2026-0258'));
+    }
+
+    public function test_short_form_same_client_without_amount_is_accepted(): void
+    {
+        $paid = $this->makeInvoice(257, 'INV-2026-0257', 2260.00, 'Zohar Barak', 'zohar@example.test');
+        $paid->status = ClientProjectInvoice::STATUS_PAID;
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Z. Barak',
+            'amount' => 100.00,
+            'message' => 'invoice #257',
+        ]);
+
+        $ranked = $this->matcher->rank($notice, collect([$paid]));
+        $this->assertNotEmpty($ranked);
+        $this->assertSame('INV-2026-0257', $ranked[0]['invoice_number']);
+        $this->assertSame(EtransferInvoiceMatcher::CITATION_SHORT, $ranked[0]['citation']);
+        $this->assertContains('Name similar', $ranked[0]['reasons']);
+        $this->assertNotContains('Amount matches', $ranked[0]['reasons']);
+    }
+
     public function test_phone_masking_stops_invoice_keyword_from_eating_phone_digits(): void
     {
         $invoice = $this->makeInvoice(647, 'INV-2026-0647', 900.00, 'Other Client', 'other@example.test');
