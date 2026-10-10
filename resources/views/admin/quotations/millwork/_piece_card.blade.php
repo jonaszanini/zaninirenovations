@@ -60,7 +60,11 @@
     <input type="hidden" name="pieces[{{ $pi }}][unit]" value="{{ $unit }}" data-mw-unit>
     <div class="admin-form-group mw-field--qty" data-mw-show="kallax cabinet vanity closet bench mantel">
       <label>How many</label>
-      <input type="number" min="1" max="200" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][qty]" value="{{ $piece['qty'] ?? 1 }}">
+      <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.qty') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][qty]" value="{{ $piece['qty'] ?? 1 }}"
+             @if ($errors->has('pieces.'.$pi.'.qty')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.qty')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     @include('admin.quotations.millwork._dim_field', [
       'pi' => $pi,
@@ -145,7 +149,11 @@
     </div>
     <div class="admin-form-group" data-mw-show="closet">
       <label>Shelves / sec.</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? 3 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.shelf_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? 3 }}"
+             @if ($errors->has('pieces.'.$pi.'.shelf_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.shelf_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group" data-mw-show="closet">
       <label>Rods</label>
@@ -175,7 +183,11 @@
     </div>
     <div class="admin-form-group" data-mw-show="cabinet vanity">
       <label>Shelves</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? 1 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.shelf_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? 1 }}"
+             @if ($errors->has('pieces.'.$pi.'.shelf_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.shelf_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group" data-mw-show="cabinet vanity closet">
       <label>Drawers</label>
@@ -199,13 +211,13 @@
         <span data-mw-show="cabinet vanity closet">Hinges (per unit)</span>
         <span data-mw-show="cabinet_door">Hinges (total)</span>
       </label>
-      <input type="number" min="0" max="100" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][hinge_qty]"
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][hinge_qty]"
              placeholder="Auto" value="{{ $piece['hinge_qty'] ?? '' }}">
     </div>
     @endunless
     <div class="admin-form-group">
       <label>Pulls</label>
-      <input type="number" min="0" max="100" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][pull_qty]"
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][pull_qty]"
              placeholder="Auto" value="{{ $piece['pull_qty'] ?? '' }}">
     </div>
   </div>

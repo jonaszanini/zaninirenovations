@@ -500,7 +500,6 @@ class MillworkQuotationController extends Controller
     {
         $defaults = MillworkQuotationCalculator::defaultInputs();
         $out = $defaults;
-        $clampQuote = $this->resolveCalcVersion($request, $existing) >= MillworkQuotationCalculator::CALC_VERSION;
         $out['owner_hourly_rate'] = round(max(0, (float) $request->input('owner_hourly_rate', $defaults['owner_hourly_rate'])), 4);
         $out['helper_hourly_rate'] = round(max(0, (float) $request->input('helper_hourly_rate', $defaults['helper_hourly_rate'])), 4);
         $out['include_install'] = $request->boolean('include_install');
@@ -511,11 +510,7 @@ class MillworkQuotationController extends Controller
         $out['finish_waste_pct'] = $this->boundedPct($request->input('finish_waste_pct', $defaults['finish_waste_pct']));
         $out['markup_pct'] = $this->boundedPct($request->input('markup_pct', $defaults['markup_pct']));
         $out['delivery_amount'] = round(max(0, (float) $request->input('delivery_amount', $defaults['delivery_amount'])), 2);
-        $out['spare_sheets'] = $this->boundedCount(
-            $request->input('spare_sheets', $defaults['spare_sheets']),
-            MillworkQuotationCalculator::MAX_SPARE_SHEETS,
-            $clampQuote
-        );
+        $out['spare_sheets'] = $this->postedCount($request->input('spare_sheets', $defaults['spare_sheets']));
         foreach ([
             'sheet_id', 'back_sheet_id', 'edge_banding_id', 'paint_id', 'stain_id',
             'hinge_id', 'pull_id', 'screw_id', 'nail_id', 'slide_id', 'glue_id',
@@ -523,7 +518,10 @@ class MillworkQuotationController extends Controller
         ] as $key) {
             $out[$key] = trim((string) $request->input($key, $defaults[$key] ?? ''));
         }
-        $out['pieces'] = $this->piecesFromRequest($request, $clampQuote);
+        $existingPieces = is_array($existing?->inputs['pieces'] ?? null)
+            ? $existing->inputs['pieces']
+            : [];
+        $out['pieces'] = $this->piecesFromRequest($request, $existingPieces);
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
@@ -532,27 +530,24 @@ class MillworkQuotationController extends Controller
     }
 
     /**
+     * @param  list<array<string, mixed>>  $existingPieces
      * @return list<array<string, mixed>>
      */
-    private function piecesFromRequest(Request $request, bool $clampQuote = false): array
+    private function piecesFromRequest(Request $request, array $existingPieces = []): array
     {
         $raw = $request->input('pieces', []);
         if (! is_array($raw) || $raw === []) {
             return MillworkQuotationCalculator::defaultInputs()['pieces'];
         }
         $out = [];
-        foreach ($raw as $piece) {
+        foreach (array_values($raw) as $index => $piece) {
             if (! is_array($piece)) {
                 continue;
             }
             $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
             $row = MillworkQuotationCalculator::defaultPiece($type);
             $row['type'] = $type;
-            $clampPiece = $clampQuote || (
-                isset($piece['_calc_version']) && is_numeric($piece['_calc_version'])
-                && (int) $piece['_calc_version'] >= MillworkQuotationCalculator::CALC_VERSION
-            );
-            $row['qty'] = $this->boundedCount($piece['qty'] ?? 1, MillworkQuotationCalculator::MAX_QTY, $clampPiece);
+            $row['qty'] = $this->postedCount($piece['qty'] ?? 1);
             $row['unit'] = strtolower((string) ($piece['unit'] ?? 'in')) === 'ft' ? 'ft' : 'in';
             $row['name'] = trim((string) ($piece['name'] ?? ''));
             $row['room'] = trim((string) ($piece['room'] ?? ''));
@@ -582,19 +577,15 @@ class MillworkQuotationController extends Controller
             $style = strtolower((string) ($piece['hinge_style'] ?? 'overlay'));
             $row['hinge_style'] = in_array($style, ['overlay', 'inset', 'soft_close'], true) ? $style : 'overlay';
             foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $intKey) {
-                $row[$intKey] = $this->boundedCount(
-                    $piece[$intKey] ?? ($row[$intKey] ?? 0),
-                    MillworkQuotationCalculator::MAX_COUNT,
-                    $clampPiece
-                );
+                $row[$intKey] = $this->postedCount($piece[$intKey] ?? ($row[$intKey] ?? 0));
             }
             if (array_key_exists('pull_qty', $piece) && $piece['pull_qty'] !== '' && $piece['pull_qty'] !== null) {
-                $row['pull_qty'] = $this->boundedCount($piece['pull_qty'], MillworkQuotationCalculator::MAX_COUNT, $clampPiece);
+                $row['pull_qty'] = $this->postedCount($piece['pull_qty']);
             } else {
                 unset($row['pull_qty']);
             }
             if (array_key_exists('hinge_qty', $piece) && $piece['hinge_qty'] !== '' && $piece['hinge_qty'] !== null) {
-                $row['hinge_qty'] = $this->boundedCount($piece['hinge_qty'], MillworkQuotationCalculator::MAX_COUNT, $clampPiece);
+                $row['hinge_qty'] = $this->postedCount($piece['hinge_qty']);
             } else {
                 unset($row['hinge_qty']);
             }
@@ -604,7 +595,7 @@ class MillworkQuotationController extends Controller
                     continue;
                 }
                 $setRow = [
-                    'qty' => $this->boundedCount($set['qty'] ?? 0, MillworkQuotationCalculator::MAX_QTY, $clampPiece),
+                    'qty' => $this->postedCount($set['qty'] ?? 0),
                     'length' => $this->postedDimension($set['length'] ?? ''),
                     'width' => $this->postedDimension($set['width'] ?? ''),
                     'depth' => $this->postedDimension($set['depth'] ?? ''),
@@ -621,7 +612,19 @@ class MillworkQuotationController extends Controller
                 $sets[] = $setRow;
             }
             $row['sets'] = $sets !== [] ? $sets : $row['sets'];
-            if (isset($piece['_calc_version']) && is_numeric($piece['_calc_version']) && (int) $piece['_calc_version'] >= MillworkQuotationCalculator::CALC_VERSION) {
+            $postedEdited = isset($piece['_calc_version']) && is_numeric($piece['_calc_version'])
+                && (int) $piece['_calc_version'] >= MillworkQuotationCalculator::CALC_VERSION;
+            $saved = is_array($existingPieces[$index] ?? null) ? $existingPieces[$index] : null;
+            if ($postedEdited && $saved && $this->pieceNormalizedSizesEqual($piece, $saved)) {
+                if (isset($saved['_calc_version']) && is_numeric($saved['_calc_version'])) {
+                    $savedVersion = (int) $saved['_calc_version'];
+                    if ($savedVersion >= MillworkQuotationCalculator::CALC_VERSION) {
+                        $row['_calc_version'] = MillworkQuotationCalculator::CALC_VERSION;
+                    } elseif ($savedVersion > 0) {
+                        $row['_calc_version'] = $savedVersion;
+                    }
+                }
+            } elseif ($postedEdited) {
                 $row['_calc_version'] = MillworkQuotationCalculator::CALC_VERSION;
             }
             $out[] = $row;
@@ -702,14 +705,71 @@ class MillworkQuotationController extends Controller
     }
 
     /**
-     * Caps apply only to v3 / newly edited input. Stored v2 qty, counts, and
-     * spare sheets pass through so a re-save does not silently reprice.
+     * Coerce a posted count. Never silently cap — over-max values stay so
+     * validation can show an inline error.
      */
-    private function boundedCount(mixed $value, int $max, bool $clamp): int
+    private function postedCount(mixed $value): int
     {
-        $n = max(0, (int) $value);
+        return max(0, (int) $value);
+    }
 
-        return $clamp ? min($max, $n) : $n;
+    /**
+     * @param  array<string, mixed>  $posted
+     * @param  array<string, mixed>  $saved
+     */
+    private function pieceNormalizedSizesEqual(array $posted, array $saved): bool
+    {
+        return $this->pieceSizeFingerprint($posted) === $this->pieceSizeFingerprint($saved);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function pieceSizeFingerprint(array $row): string
+    {
+        $dims = ['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'];
+        $parts = [];
+        foreach ($dims as $key) {
+            $parts[] = $key.'='.$this->normalizedDimToken($row[$key] ?? '');
+            $unitKey = $key.'_unit';
+            if (isset($row[$unitKey]) && $row[$unitKey] !== '' && $row[$unitKey] !== null) {
+                $parts[] = $unitKey.'='.strtolower((string) $row[$unitKey]);
+            }
+        }
+        foreach (is_array($row['sets'] ?? null) ? $row['sets'] : [] as $i => $set) {
+            if (! is_array($set)) {
+                continue;
+            }
+            foreach (['length', 'width', 'depth', 'height', 'thickness'] as $key) {
+                $parts[] = 'set'.$i.'.'.$key.'='.$this->normalizedDimToken($set[$key] ?? '');
+                $unitKey = $key.'_unit';
+                if (isset($set[$unitKey]) && $set[$unitKey] !== '' && $set[$unitKey] !== null) {
+                    $parts[] = 'set'.$i.'.'.$unitKey.'='.strtolower((string) $set[$unitKey]);
+                }
+            }
+            if (isset($set['unit']) && $set['unit'] !== '') {
+                $parts[] = 'set'.$i.'.unit='.strtolower((string) $set['unit']);
+            }
+        }
+
+        return implode('|', $parts);
+    }
+
+    private function normalizedDimToken(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+        if (is_int($value) || is_float($value) || (is_string($value) && is_numeric($value))) {
+            $n = (float) $value;
+            if (abs($n - round($n)) < 0.0000001) {
+                return (string) (int) round($n);
+            }
+
+            return rtrim(rtrim(sprintf('%.4F', $n), '0'), '.');
+        }
+
+        return strtolower(trim(preg_replace('/\s+/', ' ', (string) $value) ?? (string) $value));
     }
 
     /**

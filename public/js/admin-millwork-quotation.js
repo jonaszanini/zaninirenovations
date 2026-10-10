@@ -585,15 +585,91 @@ window.MillworkDimensionParser = (function () {
       return flag && Number(flag.value) >= 3;
     }
 
+    function normalizeSizeToken(value) {
+      return String(value == null ? '' : value).replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
+    function pieceSizeFingerprint(card) {
+      var parts = [];
+      card.querySelectorAll('.mw-input--dim, .mw-dim__unit').forEach(function (el) {
+        var name = String(el.getAttribute('name') || '');
+        var key = name.replace(/^.*\[/, '').replace(/\]$/, '');
+        parts.push(key + '=' + normalizeSizeToken(el.value));
+      });
+      return parts.join('|');
+    }
+
+    function snapshotPieceSizes(card, opts) {
+      if (!card) return;
+      opts = opts || {};
+      var flag = card.querySelector('[data-mw-calc-version]');
+      if (opts.asNew) {
+        if (flag) flag.value = '3';
+        card.setAttribute('data-mw-saved-fingerprint', '');
+        card.setAttribute('data-mw-saved-calc-version', '3');
+        return;
+      }
+      if (card.getAttribute('data-mw-saved-fingerprint') == null) {
+        card.setAttribute('data-mw-saved-fingerprint', pieceSizeFingerprint(card));
+        card.setAttribute('data-mw-saved-calc-version', flag ? String(flag.value || '0') : '0');
+      }
+    }
+
     function markPieceEdited(input) {
       var card = input.closest('[data-mw-piece]');
       if (!card) return;
       var flag = card.querySelector('[data-mw-calc-version]');
-      if (flag) flag.value = '3';
+      if (!flag) return;
+      snapshotPieceSizes(card);
+      var saved = card.getAttribute('data-mw-saved-fingerprint');
+      if (saved !== '' && pieceSizeFingerprint(card) === saved) {
+        flag.value = card.getAttribute('data-mw-saved-calc-version') || '0';
+        return;
+      }
+      flag.value = '3';
+    }
+
+    function collectClientCountErrors() {
+      var errors = {};
+      var countLabels = {
+        qty: 'Quantity',
+        door_count: 'Door count',
+        shelf_count: 'Shelf count',
+        drawer_count: 'Drawer count',
+        division_count: 'Division count',
+        columns: 'Columns',
+        rows: 'Rows',
+        rod_count: 'Rod count',
+        openings: 'Openings',
+        pull_qty: 'Pull quantity',
+        hinge_qty: 'Hinge quantity'
+      };
+      var spare = document.getElementById('mw-spare');
+      if (spare && (quoteUsesNewParsing() || document.querySelector('[data-mw-calc-version][value="3"]')) && Number(spare.value) > 50) {
+        errors.spare_sheets = 'Spare sheets cannot be more than 50.';
+      }
+      form.querySelectorAll('#mw-piece-list [data-mw-piece]').forEach(function (card) {
+        var probe = card.querySelector('.mw-input--qty, .mw-input--dim, [data-mw-calc-version]');
+        if (!probe || !pieceUsesNewParsing(probe)) return;
+        card.querySelectorAll('.mw-input--qty').forEach(function (input) {
+          var key = inputErrorKey(input);
+          if (!key) return;
+          var n = Number(input.value);
+          if (!isFinite(n)) return;
+          var field = key.split('.').pop();
+          var label = countLabels[field] || (/\.qty$/.test(key) ? 'Quantity' : 'Count');
+          if (/\.qty$/.test(key) && n > 200) {
+            errors[key] = label + ' cannot be more than 200.';
+          } else if (!/\.qty$/.test(key) && n > 100) {
+            errors[key] = label + ' cannot be more than 100.';
+          }
+        });
+      });
+      return errors;
     }
 
     function collectClientDimErrors() {
-      var errors = {};
+      var errors = collectClientCountErrors();
       if (!window.MillworkDimensionParser) return errors;
       form.querySelectorAll('.mw-input--dim').forEach(function (input) {
         if (!dimFieldIsActive(input)) return;
@@ -608,7 +684,7 @@ window.MillworkDimensionParser = (function () {
 
     function applyFieldErrors(errors) {
       errors = errors || {};
-      form.querySelectorAll('.mw-input--dim').forEach(function (input) {
+      form.querySelectorAll('.mw-input--dim, .mw-input--qty, #mw-spare').forEach(function (input) {
         setDimInvalid(input, errors[inputErrorKey(input)] || '');
       });
     }
@@ -938,6 +1014,8 @@ window.MillworkDimensionParser = (function () {
       el.addEventListener('input', function () {
         if (el.classList.contains('mw-input--dim') || (el.classList && el.classList.contains('mw-dim__unit'))) {
           markPieceEdited(el);
+        }
+        if (el.classList.contains('mw-input--dim') || el.classList.contains('mw-input--qty') || el.id === 'mw-spare' || (el.classList && el.classList.contains('mw-dim__unit'))) {
           applyFieldErrors(collectClientDimErrors());
         }
         schedulePreview();
@@ -945,6 +1023,8 @@ window.MillworkDimensionParser = (function () {
       el.addEventListener('change', function () {
         if (el.classList.contains('mw-input--dim') || (el.classList && el.classList.contains('mw-dim__unit'))) {
           markPieceEdited(el);
+        }
+        if (el.classList.contains('mw-input--dim') || el.classList.contains('mw-input--qty') || el.id === 'mw-spare' || (el.classList && el.classList.contains('mw-dim__unit'))) {
           applyFieldErrors(collectClientDimErrors());
         }
         schedulePreview();
@@ -1191,11 +1271,14 @@ window.MillworkDimensionParser = (function () {
           clone.querySelectorAll('.mw-preview').forEach(function (el) {
             delete el.dataset.mwBound;
           });
+          clone.removeAttribute('data-mw-saved-fingerprint');
+          clone.removeAttribute('data-mw-saved-calc-version');
           list.insertBefore(clone, piece.nextSibling);
           reindexPieces();
           var refreshClone = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
           if (refreshClone) refreshClone(clone);
           initPiece(clone);
+          snapshotPieceSizes(clone, { asNew: true });
           schedulePreview();
         });
       }
@@ -1219,6 +1302,7 @@ window.MillworkDimensionParser = (function () {
         });
       }
       piece.querySelectorAll('[data-mw-set-row]').forEach(bindSetRemove);
+      snapshotPieceSizes(piece);
     }
 
     function bindSetRemove(row) {
@@ -1249,6 +1333,7 @@ window.MillworkDimensionParser = (function () {
         var refreshPiece = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
         if (refreshPiece) refreshPiece(piece);
         initPiece(piece);
+        snapshotPieceSizes(piece, { asNew: true });
         if (window.cpMoneyMask) window.cpMoneyMask.wire(piece.querySelectorAll('.cp-money-input'));
         schedulePreview();
       });

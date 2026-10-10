@@ -37,16 +37,11 @@ function sleep(ms) {
   page.setDefaultNavigationTimeout(30000);
   page.setDefaultTimeout(20000);
 
+  page.on('dialog', async (dialog) => {
+    await dialog.accept().catch(() => {});
+  });
+
   async function go(url) {
-    try {
-      await page.evaluate(() => {
-        window.allowUnload = true;
-        window.AdminQuoteAllowUnload = true;
-        window.onbeforeunload = null;
-      });
-    } catch (err) {
-      /* first navigation has no document yet */
-    }
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body');
   }

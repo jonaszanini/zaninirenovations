@@ -3,6 +3,7 @@
   use App\Services\Millwork\MillworkPartBuilder;
   use App\Services\MillworkQuotationCalculator;
 
+  $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
   $mwVal = function (string $key, $fallback = '') use ($inputs) {
       return old($key, $inputs[$key] ?? $fallback);
   };
@@ -86,7 +87,7 @@
     <div class="admin-form-group mw-sheet-field">
       <span class="admin-label-with-tip">
         <label for="mw-sheet">Wood sheet</label>
-        @include('admin.partials.info_tip', ['tipText' => 'Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.', 'tipLabel' => 'Wood sheet'])
+        <x-admin.info-tip label="Wood sheet">Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.</x-admin.info-tip>
       </span>
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
         @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
@@ -168,7 +169,7 @@
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
           <label for="mw-waste">Waste %</label>
-          @include('admin.partials.info_tip', ['tipText' => 'Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.', 'tipLabel' => 'Waste %'])
+          <x-admin.info-tip label="Waste %">Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.</x-admin.info-tip>
         </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-waste" name="waste_pct"
                value="{{ old('waste_pct', $inputs['waste_pct'] ?? 10) }}">
@@ -191,8 +192,12 @@
       </div>
       <div class="admin-form-group">
         <label for="mw-spare">Spare sheets</label>
-        <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" id="mw-spare" name="spare_sheets"
-               value="{{ old('spare_sheets', $inputs['spare_sheets'] ?? 0) }}">
+        <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('spare_sheets') ? ' is-invalid' : '' }}" id="mw-spare" name="spare_sheets"
+               value="{{ old('spare_sheets', $inputs['spare_sheets'] ?? 0) }}"
+               @if ($errors->has('spare_sheets')) aria-invalid="true" @endif>
+        @error('spare_sheets')
+          <p class="admin-form-error">{{ $message }}</p>
+        @enderror
       </div>
       <div class="admin-form-group">
         <label for="mw-markup">Markup %</label>

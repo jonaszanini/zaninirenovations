@@ -740,6 +740,60 @@ class MillworkQuotationCalculator
                 );
             }
         }
+        $this->collectCountFieldErrors($inputs, $messages);
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, string>  $messages
+     */
+    private function collectCountFieldErrors(array $inputs, array &$messages): void
+    {
+        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::CALC_VERSION;
+        if ($quoteIsV3 || self::hasEditedPiece($inputs)) {
+            if ((int) ($inputs['spare_sheets'] ?? 0) > self::MAX_SPARE_SHEETS) {
+                $messages['spare_sheets'] = 'Spare sheets cannot be more than '.self::MAX_SPARE_SHEETS.'.';
+            }
+        }
+
+        $labels = [
+            'qty' => 'Quantity',
+            'door_count' => 'Door count',
+            'shelf_count' => 'Shelf count',
+            'drawer_count' => 'Drawer count',
+            'division_count' => 'Division count',
+            'columns' => 'Columns',
+            'rows' => 'Rows',
+            'rod_count' => 'Rod count',
+            'openings' => 'Openings',
+            'pull_qty' => 'Pull quantity',
+            'hinge_qty' => 'Hinge quantity',
+        ];
+
+        foreach ($this->pieces($inputs) as $pi => $piece) {
+            if (! $quoteIsV3 && ! MillworkPartBuilder::usesNewParsing($piece)) {
+                continue;
+            }
+            if ((int) ($piece['qty'] ?? 0) > self::MAX_QTY) {
+                $messages['pieces.'.$pi.'.qty'] = $labels['qty'].' cannot be more than '.self::MAX_QTY.'.';
+            }
+            foreach ($labels as $key => $label) {
+                if ($key === 'qty') {
+                    continue;
+                }
+                if (! array_key_exists($key, $piece)) {
+                    continue;
+                }
+                if ((int) $piece[$key] > self::MAX_COUNT) {
+                    $messages['pieces.'.$pi.'.'.$key] = $label.' cannot be more than '.self::MAX_COUNT.'.';
+                }
+            }
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $si => $set) {
+                if (is_array($set) && (int) ($set['qty'] ?? 0) > self::MAX_QTY) {
+                    $messages['pieces.'.$pi.'.sets.'.$si.'.qty'] = $labels['qty'].' cannot be more than '.self::MAX_QTY.'.';
+                }
+            }
+        }
     }
 
     /**
@@ -869,6 +923,11 @@ class MillworkQuotationCalculator
      */
     private function shouldSkipCutPlanPreview(array $inputs): bool
     {
+        $countErrors = [];
+        $this->collectCountFieldErrors($inputs, $countErrors);
+        if ($countErrors !== []) {
+            return true;
+        }
         foreach ($this->pieces($inputs) as $piece) {
             if (! MillworkPartBuilder::usesNewParsing($piece)) {
                 continue;
@@ -894,15 +953,21 @@ class MillworkQuotationCalculator
      */
     private function dimensionLimitHint(array $inputs): ?string
     {
-        if ((int) ($inputs['spare_sheets'] ?? 0) > self::MAX_SPARE_SHEETS) {
+        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::CALC_VERSION;
+        if (($quoteIsV3 || self::hasEditedPiece($inputs)) && (int) ($inputs['spare_sheets'] ?? 0) > self::MAX_SPARE_SHEETS) {
             return 'Spare sheets cannot be more than '.self::MAX_SPARE_SHEETS.'.';
         }
         foreach ($this->pieces($inputs) as $piece) {
-            if (! MillworkPartBuilder::usesNewParsing($piece)) {
+            if (! $quoteIsV3 && ! MillworkPartBuilder::usesNewParsing($piece)) {
                 continue;
             }
             if ((int) ($piece['qty'] ?? 0) > self::MAX_QTY) {
                 return 'Quantity cannot be more than '.self::MAX_QTY.'.';
+            }
+            foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings', 'pull_qty', 'hinge_qty'] as $countKey) {
+                if (array_key_exists($countKey, $piece) && (int) $piece[$countKey] > self::MAX_COUNT) {
+                    return 'Count cannot be more than '.self::MAX_COUNT.'.';
+                }
             }
             $linearFt = MillworkPartBuilder::positiveDim($piece, ['linear_ft']);
             if ($linearFt > self::MAX_LINEAR_FT) {

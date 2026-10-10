@@ -4,13 +4,19 @@
   $set = $set ?? [];
   $unit = $set['unit'] ?? $unit ?? 'in';
   $prefix = 'pieces['.$pi.'][sets]['.$si.']';
+  $qtyErrorKey = 'pieces.'.$pi.'.sets.'.$si.'.qty';
+  $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
 @endphp
 <div class="mw-set-row admin-form-grid-2" data-mw-set-row>
   <input type="hidden" name="{{ $prefix }}[unit]" value="{{ $unit }}">
   <div class="admin-form-group">
     <label>Qty</label>
-    <input type="number" min="0" max="200" step="1" class="admin-input mw-preview" name="{{ $prefix }}[qty]"
-           value="{{ $set['qty'] ?? 1 }}">
+    <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has($qtyErrorKey) ? ' is-invalid' : '' }}" name="{{ $prefix }}[qty]"
+           value="{{ $set['qty'] ?? 1 }}"
+           @if ($errors->has($qtyErrorKey)) aria-invalid="true" @endif>
+    @error($qtyErrorKey)
+      <p class="admin-form-error">{{ $message }}</p>
+    @enderror
   </div>
   @include('admin.quotations.millwork._dim_field', [
     'namePrefix' => $prefix,

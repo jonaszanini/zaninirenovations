@@ -610,6 +610,111 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertDontSee('name="pieces[0][hinge_qty]"', false);
     }
 
+    public function test_v3_over_max_counts_show_inline_errors_and_are_not_clamped(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.millwork.create'))
+            ->post(route('admin.quotations.millwork.store'), [
+                'save_intent' => 'draft',
+                'client_name' => 'Cap check',
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'qty' => 500,
+                    'width' => 36,
+                    'height' => 34.5,
+                    'depth' => 24,
+                    'unit' => 'in',
+                    'shelf_count' => 150,
+                    'edge_banding' => 0,
+                    '_calc_version' => 3,
+                ]],
+                'spare_sheets' => 75,
+                'include_install' => 0,
+                'owner_hourly_rate' => 85,
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasErrors([
+                'spare_sheets' => 'Spare sheets cannot be more than 50.',
+                'pieces.0.qty' => 'Quantity cannot be more than 200.',
+                'pieces.0.shelf_count' => 'Shelf count cannot be more than 100.',
+            ]);
+
+        $this->assertSame(0, MillworkQuotation::query()->where('client_name', 'Cap check')->count());
+
+        $this->get(route('admin.quotations.millwork.create'))
+            ->assertOk()
+            ->assertSee('value="500"', false)
+            ->assertSee('value="150"', false)
+            ->assertSee('value="75"', false)
+            ->assertSee('Spare sheets cannot be more than 50.')
+            ->assertSee('Quantity cannot be more than 200.')
+            ->assertSee('Shelf count cannot be more than 100.');
+    }
+
+    public function test_reverted_size_does_not_mark_v2_piece_edited(): void
+    {
+        $this->actingAsAdmin();
+
+        $inputs = [
+            'pieces' => [[
+                'type' => 'bench',
+                'unit' => 'in',
+                'length' => 48,
+                'depth' => 16,
+                'height' => '',
+                'qty' => 1,
+                'edge_banding' => false,
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+        ];
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V2-REVERT',
+            'client_name' => 'Revert size',
+            'is_draft' => true,
+            'cut_plan_version' => 2,
+            'inputs' => $inputs,
+            'calculation' => [],
+        ]);
+
+        $this->from(route('admin.quotations.millwork.edit', $quote))
+            ->put(route('admin.quotations.millwork.update', $quote), [
+                'save_intent' => 'draft',
+                'client_name' => 'Revert size',
+                'pieces' => [[
+                    'type' => 'bench',
+                    'unit' => 'in',
+                    'length' => 48,
+                    'depth' => 16,
+                    'height' => '',
+                    'qty' => 1,
+                    'edge_banding' => 0,
+                    '_calc_version' => 3,
+                ]],
+                'include_install' => 0,
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $quote->refresh();
+        $this->assertSame(2, (int) $quote->cut_plan_version);
+        $this->assertSame(2, (int) ($quote->inputs['_cut_plan_version'] ?? 2));
+        $this->assertTrue(
+            ! isset($quote->inputs['pieces'][0]['_calc_version'])
+            || (int) $quote->inputs['pieces'][0]['_calc_version'] < 3
+        );
+    }
+
     public function test_script_clears_busy_state_on_persisted_pageshow(): void
     {
         $js = file_get_contents(public_path('js/admin-millwork-quotation.js'));
@@ -617,10 +722,9 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString("addEventListener('pageshow'", $js);
         $this->assertStringContainsString('e.persisted', $js);
         $this->assertStringContainsString('setSaveBusy(false)', $js);
-        $this->assertStringContainsString('function bindBeforeUnload', $js);
-        $this->assertStringContainsString("form.getAttribute('data-quotation-user-edited') === '1'", $js);
-        $this->assertStringContainsString('window.allowUnload', $js);
-        $this->assertStringContainsString('window.AdminQuoteAllowUnload', $js);
+        $this->assertStringContainsString('function markPieceEdited', $js);
+        $this->assertStringContainsString('pieceSizeFingerprint', $js);
+        $this->assertStringContainsString('collectClientCountErrors', $js);
         $this->assertStringContainsString('Preview timed out', $js);
         $this->assertStringContainsString('window.MillworkDimensionParser', $js);
         $this->assertStringContainsString('applyFieldErrors', $js);
