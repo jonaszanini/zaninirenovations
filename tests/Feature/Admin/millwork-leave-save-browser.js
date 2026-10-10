@@ -129,20 +129,14 @@ const outPath = process.env.MW_OUT || path.join(process.cwd(), 'storage/app/mill
     report.invalid = await page.evaluate(() => {
       return Array.from(document.querySelectorAll('#mw-main-form :invalid')).map((el) => el.name || el.id || el.tagName);
     });
-    await page.evaluate(() => {
-      window.__mwDraftClicks = 0;
-      const btn = document.getElementById('mw-btn-draft');
-      if (btn) {
-        btn.addEventListener('click', function () { window.__mwDraftClicks++; }, true);
-      }
-    });
+    const savedUrl = /millwork\/\d+|millwork\/[^/]+\/edit/;
+    const nav = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => null);
     await page.keyboard.down('Control');
     await page.keyboard.press('KeyS');
     await page.keyboard.up('Control');
-    await page.waitForFunction(() => (window.__mwDraftClicks || 0) > 0, { timeout: 3000 }).catch(() => {});
-    report.ctrlSClicked = await page.evaluate(() => (window.__mwDraftClicks || 0) > 0);
-    await page.waitForFunction(() => !window.location.pathname.endsWith('/millwork/create'), { timeout: 15000 }).catch(() => {});
+    await nav;
     report.afterUrl = page.url();
+    report.ctrlSClicked = savedUrl.test(report.afterUrl);
 
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
