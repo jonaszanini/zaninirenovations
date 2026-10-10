@@ -38,6 +38,7 @@ class FenceQuotation extends Model
         'client_project_id',
         'quote_number',
         'client_name',
+        'is_draft',
         'work_description',
         'payment_installments',
         'payment_percentages',
@@ -47,6 +48,7 @@ class FenceQuotation extends Model
         'gate_count',
         'labour_rate_per_ft',
         'labour_rate_8ft_per_ft',
+        'existing_post_labour_credit',
         'sides',
         'calculation',
         'materials_subtotal',
@@ -68,12 +70,14 @@ class FenceQuotation extends Model
     ];
 
     protected $casts = [
+        'is_draft' => 'boolean',
         'sides' => 'array',
         'calculation' => 'array',
         'fence_height_ft' => 'decimal:2',
         'gate_count' => 'integer',
         'labour_rate_per_ft' => 'decimal:2',
         'labour_rate_8ft_per_ft' => 'decimal:2',
+        'existing_post_labour_credit' => 'decimal:2',
         'materials_subtotal' => 'decimal:2',
         'hst' => 'decimal:2',
         'labour_total' => 'decimal:2',

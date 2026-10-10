@@ -310,6 +310,26 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Paving',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'pq-main-form',
+    'saveId' => 'pq-btn-publish',
+    'draftId' => 'pq-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.paving.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+  ])
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
       <i class="fa fa-link"></i>
@@ -365,7 +385,7 @@
                     <label for="pq-owner">Owner hourly rate ($/hr)</label>
                     <input type="text" id="pq-owner" name="owner_hourly_rate" class="admin-input pq-calc-in cp-money-input"
                            inputmode="decimal" autocomplete="off" placeholder="0.00"
-                           value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}">
+                           value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
                   </div>
                   <div class="admin-form-group">
                     @include('admin.quotations._include_helper', [
@@ -459,7 +479,7 @@
               <label for="pq-manual">Manual price override (CAD)</label>
               <input type="text" id="pq-manual" name="manual_price_override" class="admin-input pq-calc-in cp-money-input"
                      inputmode="decimal" autocomplete="off" placeholder="Blank = use built-up suggested total"
-                     value="{{ old('manual_price_override', isset($inputs['manual_price_override']) && $inputs['manual_price_override'] !== null && $inputs['manual_price_override'] !== '' ? number_format((float) $inputs['manual_price_override'], 2, '.', '') : '') }}">
+                     value="{{ old('manual_price_override', isset($inputs['manual_price_override']) && $inputs['manual_price_override'] !== null && $inputs['manual_price_override'] !== '' ? number_format((float) $inputs['manual_price_override'], 2, '.', '') : '') }}" data-cp-money-entry="direct">
               <p class="pq-hint">Leave blank to use the formula suggested total. Enter a dollar amount to override the final quote.</p>
             </div>
           </div>
@@ -482,35 +502,16 @@
       </div>
 
       <aside class="pq-sticky">
-        <div class="pq-sidebar-actions">
-          <button type="submit" form="pq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="pq-btn-publish">
-            <i class="fa fa-save"></i> Save quotation
-          </button>
-          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pq-btn-draft">Save as draft</button>
-          <a href="{{ route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-            <i class="fa fa-cog"></i> Price configuration
-          </a>
-          @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-          <a href="{{ route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-            <i class="fa fa-arrow-left"></i> Back to list
-          </a>
-          @if ($isEdit)
-            <a href="{{ route('admin.quotations.paving.purchase-list', $quotation) }}"
-               target="_blank" rel="noopener noreferrer"
-               class="admin-btn admin-btn--ghost admin-btn--sm"
-               data-purchase-list-choice
-               data-purchase-list-title="Print material list">
-              <i class="fa fa-print"></i> Print Material List
-            </a>
-            @include('admin.partials.quotation_view_pdf')
-          @endif
-          <a href="{{ route('admin.quotations.paving.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        </div>
         @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
         @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'pq-main-form'])
         @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'pq-main-form'])
         <div class="pq-summary-card">
-          <h4 class="cp-form-help-spaced">Live summary</h4>
+          <div class="qh-priced-head" data-qh-step="2">
+            <h4>Live summary</h4>
+            @include('admin.partials.quotation_price_config_gear', [
+              'url' => route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+            ])
+          </div>
           <div id="pq-live-root">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>
           </div>
@@ -527,21 +528,6 @@
       var form = document.getElementById('pq-main-form');
       var intent = document.getElementById('pq-save-intent');
 
-      function normalizeLabourRateField(id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        var raw = (el.value || '').trim().replace(/,/g, '');
-        var n = raw === '' ? 0 : (window.cpMoneyMask ? window.cpMoneyMask.parse(raw) : parseFloat(raw));
-        if (!isFinite(n) || n < 0) n = 0;
-        el.value = n.toFixed(2);
-      }
-
-      function normalizeLabourRateFields() {
-        normalizeLabourRateField('pq-helper');
-        normalizeLabourRateField('pq-owner');
-      }
-
-      form.addEventListener('submit', normalizeLabourRateFields);
       document.getElementById('pq-btn-draft').addEventListener('click', function () {
         intent.value = 'draft';
         form.querySelector('#pq-client').removeAttribute('required');
@@ -1116,7 +1102,6 @@
       }
 
       function runPreview() {
-        normalizeLabourRateFields();
         var missing = collectMissingPreviewInputs();
         if (missing.length) {
           renderMissingSummary(missing);

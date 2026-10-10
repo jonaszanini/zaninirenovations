@@ -54,8 +54,10 @@
 @if ($isHourly)
   {{-- HOURLY BILLING — RATE FORM ---------------------------------------- --}}
   <div class="admin-card">
-    <h3>Hourly billing</h3>
-    <p class="admin-form-help">This project is billed by the hour. The amount earned is calculated from the rate × hours logged in the Time Tracking tab.</p>
+    <h3>
+      Hourly billing
+      <x-admin.info-tip label="Hourly billing">This project is billed by the hour. The amount earned is calculated from the rate × hours logged in the Time Tracking tab.</x-admin.info-tip>
+    </h3>
 
     <form action="{{ route('admin.client-projects.update', $project) }}" method="post">
       @csrf
@@ -80,7 +82,7 @@
                  autocomplete="off"
                 
                  placeholder="0.00"
-                 value="{{ $hourlyRateConfigured> 0 ? number_format($hourlyRateConfigured, 2, '.', '') : '' }}">
+                 value="{{ $hourlyRateConfigured> 0 ? number_format($hourlyRateConfigured, 2, '.', '') : '' }}" data-cp-money-entry="direct">
           @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group">
@@ -188,7 +190,7 @@
           <i class="fa fa-refresh" aria-hidden="true"></i>
           Recalculate Remaining Installments
         </button>
-        <span class="admin-form-help">Use this if you updated accepted quotations and need to refresh unpaid installments.</span>
+        <x-admin.info-tip label="Recalculate Remaining Installments">Use this if you updated accepted quotations and need to refresh unpaid installments.</x-admin.info-tip>
       </div>
     @endif
 
@@ -228,9 +230,10 @@
           @endif
         </div>
         <div class="admin-form-group">
-          <label for="cp-plan">Payment schedule
-            <span class="cp-hint" title="Choose how the client will pay. With 2/3/4 installments, each row below takes a percentage — the dollar amount is calculated for you.">?</span>
-          </label>
+          <span class="admin-label-with-tip">
+            <label for="cp-plan">Payment schedule</label>
+            <x-admin.info-tip label="Payment schedule">Choose how the client will pay. With 2/3/4 installments, each row below takes a percentage — the dollar amount is calculated for you.</x-admin.info-tip>
+          </span>
           <select class="admin-input" id="cp-plan" name="payment_plan" @disabled($planIsLocked)>
             <option value="1" @selected($paymentPlan === 1)>Pay in full at the end</option>
             <option value="2" @selected($paymentPlan === 2)>2 installments</option>
@@ -390,16 +393,18 @@
                autocomplete="off"
               
                placeholder="0.00"
-               value="{{ old('amount') }}">
+               value="{{ old('amount') }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group cp-finance-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add expense</button>
       </div>
     </div>
     <div class="admin-form-group cp-expense-receipt-field">
-      <label for="cp-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
+      <span class="admin-label-with-tip">
+        <label for="cp-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
+        <x-admin.info-tip label="Receipt (new expense)">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
+      </span>
       <input class="admin-input" type="file" id="cp-expense-receipt" name="receipt" accept="image/*,application/pdf" capture="environment">
-      <p class="admin-form-help">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</p>
     </div>
     @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -490,24 +495,26 @@
                                inputmode="decimal"
                                autocomplete="off"
                               
-                               value="{{ old('amount', number_format((float) $expense->amount, 2, '.', '')) }}">
+                               value="{{ old('amount', number_format((float) $expense->amount, 2, '.', '')) }}" data-cp-money-entry="direct">
                       </div>
                     </div>
                   @endif
                   <div class="admin-form-group cp-expense-receipt-field">
-                    <label for="cp-expense-edit-receipt-{{ $expense->id }}">
-                      @if ($expenseOnInvoice)
-                        Receipt
+                    <span class="admin-label-with-tip">
+                      <label for="cp-expense-edit-receipt-{{ $expense->id }}">
+                        @if ($expenseOnInvoice)
+                          Receipt
+                        @else
+                          Receipt <span class="cp-hint">(optional)</span>
+                        @endif
+                      </label>
+                      @if (! $expenseOnInvoice)
+                        <x-admin.info-tip :label="'Receipt '.$expense->expense_ref.(filled($expense->description) ? ' — '.$expense->description : '')">Leave blank to keep the current receipt. Add or replace with an image (stored as WebP) or a PDF — filename <strong>Receipt-{{ $expense->expense_ref }}</strong> with the matching extension.</x-admin.info-tip>
                       @else
-                        Receipt <span class="cp-hint">(optional)</span>
+                        <x-admin.info-tip :label="'Receipt '.$expense->expense_ref.(filled($expense->description) ? ' — '.$expense->description : '')">Image (JPEG, PNG, WebP, AVIF) or PDF — stored as WebP or PDF named <strong>Receipt-{{ $expense->expense_ref }}</strong>.</x-admin.info-tip>
                       @endif
-                    </label>
+                    </span>
                     <input class="admin-input" type="file" id="cp-expense-edit-receipt-{{ $expense->id }}" name="receipt" accept="image/*,application/pdf" @if ($expenseOnInvoice) required @endif>
-                    @if (! $expenseOnInvoice)
-                      <p class="admin-form-help">Leave blank to keep the current receipt. Add or replace with an image (stored as WebP) or a PDF — filename <strong>Receipt-{{ $expense->expense_ref }}</strong> with the matching extension.</p>
-                    @else
-                      <p class="admin-form-help">Image (JPEG, PNG, WebP, AVIF) or PDF — stored as WebP or PDF named <strong>Receipt-{{ $expense->expense_ref }}</strong>.</p>
-                    @endif
                   </div>
                   @if ($errors->any() && $expenseEditOpen)
                     @error('occurred_on') <p class="admin-form-error">{{ $message }}</p> @enderror
@@ -536,11 +543,13 @@
     </div>
 
     <div class="cp-expenses-send-email">
-      <h4 class="cp-expenses-send-heading">Send to client</h4>
-      <p class="admin-form-help">
-        Email the client a table of every expense, any returns/credits, and the <strong>net materials total</strong> (expenses minus returns). Receipt files are attached as WebP or PDF named <strong>Receipt-#</strong> to match the # column when present.
-        {{ $project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : '' }}
-      </p>
+      <h4 class="cp-expenses-send-heading cp-form-help-flush">
+        Send to client
+        <x-admin.info-tip label="Send to client">
+          Email the client a table of every expense, any returns/credits, and the <strong>net materials total</strong> (expenses minus returns). Receipt files are attached as WebP or PDF named <strong>Receipt-#</strong> to match the # column when present.
+          {{ $project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : '' }}
+        </x-admin.info-tip>
+      </h4>
       @if (! $expenseSendHasClient)
         <p class="admin-form-help" style="color:#b45309;">
           <i class="fa fa-exclamation-triangle"></i>
@@ -567,7 +576,10 @@
 
 {{-- RETURNS / CREDITS --------------------------------------------------- --}}
 <div class="admin-card">
-  <h3>Returns / Credits <span class="cp-hint" title="Money returned from suppliers or credits. These are subtracted from expenses to compute Total Spent.">?</span></h3>
+  <h3 class="cp-form-help-flush">
+    Returns / Credits
+    <x-admin.info-tip label="Returns / Credits">Money returned from suppliers or credits. These are subtracted from expenses to compute Total Spent.</x-admin.info-tip>
+  </h3>
   <form action="{{ route('admin.client-projects.returns.store', $project) }}" method="post" class="cp-finance-form">
     @csrf
     <div class="cp-finance-form-grid">
@@ -586,7 +598,7 @@
                inputmode="decimal"
                autocomplete="off"
               
-               placeholder="0.00">
+               placeholder="0.00" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group cp-finance-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add return</button>
@@ -630,10 +642,16 @@
 
 {{-- PROFIT / HST SUMMARY ---------------------------------------------- --}}
 <div class="admin-card cp-profit-card">
-  <h3>Profit summary
-    <span class="cp-hint" title="{{ $isHourly
-      ? 'Revenue = rate × logged hours (pre-tax labour). Expenses on Financials track materials reimbursed by the client—they are shown as cash tracked but do not reduce gross/net profit below. HST set aside = 13% of labour revenue.'
-      : 'Revenue = sum of pre-tax installment amounts for paid rows. When you mark an installment invoice paid, each row’s amount is updated to match that invoice’s billed subtotal (after discount), so this matches actual billed pre-tax revenue. HST set aside = 13% of the labour share of that paid revenue (materials HST is already paid at the store). If a quotation has no labour split, the full paid amount is treated as labour. With closed hours on Time Tracking, Effective hourly rate = net profit after HST ÷ those hours.' }}">?</span></h3>
+  <h3 class="cp-form-help-flush">
+    Profit summary
+    <x-admin.info-tip label="Profit summary">
+      @if ($isHourly)
+        Revenue = rate × logged hours (pre-tax labour). Expenses on Financials track materials reimbursed by the client—they are shown as cash tracked but do not reduce gross/net profit below. HST set aside = 13% of labour revenue.
+      @else
+        Revenue = sum of pre-tax installment amounts for paid rows. When you mark an installment invoice paid, each row’s amount is updated to match that invoice’s billed subtotal (after discount), so this matches actual billed pre-tax revenue. HST set aside = 13% of the labour share of that paid revenue (materials HST is already paid at the store). If a quotation has no labour split, the full paid amount is treated as labour. With closed hours on Time Tracking, Effective hourly rate = net profit after HST ÷ those hours.
+      @endif
+    </x-admin.info-tip>
+  </h3>
   @php
     $revenue = $project->totalRevenueCollected();
     $spent = $project->totalSpent();
@@ -651,9 +669,7 @@
       @if ($isHourly)
         <div class="cp-profit-label">Total spent (tracked)</div>
         <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($spent) }}</div>
-        <p class="admin-form-help" style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#6b7280;">
-          Materials reimbursed on client invoices—not deducted from gross or net profit below.
-        </p>
+        <x-admin.info-tip label="Total spent (tracked)">Materials reimbursed on client invoices—not deducted from gross or net profit below.</x-admin.info-tip>
       @else
         <div class="cp-profit-label">Total spent (expenses − returns)</div>
         <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($spent) }}</div>
@@ -677,9 +693,7 @@
         <div class="cp-profit-value {{ $effectiveHourlyFromTime>= 0 ? 'is-positive' : 'is-negative' }}">
           {{ \App\Models\ClientProject::formatMoney($effectiveHourlyFromTime) }} / h
         </div>
-        <p class="admin-form-help" style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#6b7280;">
-          Net profit after HST divided by closed hours from Time Tracking.
-        </p>
+        <x-admin.info-tip label="Effective hourly rate">Net profit after HST divided by closed hours from Time Tracking.</x-admin.info-tip>
       </div>
     @endif
   </div>

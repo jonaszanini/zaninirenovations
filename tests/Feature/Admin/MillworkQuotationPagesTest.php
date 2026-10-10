@@ -64,8 +64,8 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('mw-delivery-wrap', false)
             ->assertSee('mw-cut-plan-status', false)
             ->assertSee('Sheet size defaults to 4×8 from Price configuration.')
-            ->assertDontSee('Waste % is applied to edge banding')
-            ->assertSee('Extra on linear trim and wainscoting rails.')
+            ->assertSee('Waste % is applied to edge banding')
+            ->assertSee('Applied to linear trim and wainscoting rails.')
             ->assertSee('CA$3.80')
             ->assertSee('CA$6.50')
             ->assertSee('Waste %')
@@ -128,16 +128,18 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
 
         $price = strpos($html, 'Price configuration');
         $context = strpos($html, 'Project Context');
-        $next = strpos($html, '>Next</button>');
+        $next = strpos($html, '→ Next');
         $live = strpos($html, 'Live breakdown');
+        $header = strpos($html, 'data-qh-header');
 
         $this->assertNotFalse($price);
         $this->assertNotFalse($context);
         $this->assertNotFalse($next);
         $this->assertNotFalse($live);
-        $this->assertLessThan($price, $context);
-        $this->assertLessThan($next, $context);
-        $this->assertLessThan($live, $next);
+        $this->assertNotFalse($header);
+        $this->assertLessThan($context, $header);
+        $this->assertLessThan($context, $next);
+        $this->assertLessThan($live, $context);
     }
 
     public function test_preview_returns_cut_plan_and_totals(): void

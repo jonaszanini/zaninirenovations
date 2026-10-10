@@ -23,6 +23,7 @@ use App\Services\QuotationPaymentSchedule;
 use App\Support\LowDeckWorkDescriptionGenerator;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 /**
@@ -77,11 +78,16 @@ class LowDeckQuotationController extends Controller
         $newlyLinked = $this->autoLinkLowDeckIfRequested($quote->fresh(), $request, $warnings);
         $linkedNow = $newlyLinked && $hubProjectRequested;
 
+        $intent = QuotationSaveIntent::fromRequest($request);
         $resp = redirect()
             ->route('admin.quotations.low-deck.edit', $quote->fresh())
-            ->with('success', $linkedNow
-                ? 'Low deck quotation '.$quote->quote_number.' saved and linked to this project.'
-                : 'Low deck quotation '.$quote->quote_number.' saved.');
+            ->with('success', $intent === QuotationSaveIntent::DRAFT
+                ? ($linkedNow
+                    ? 'Low deck quotation saved as draft and linked.'
+                    : 'Low deck quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Low deck quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Low deck quotation '.$quote->quote_number.' saved.'));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -172,6 +178,9 @@ class LowDeckQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($low_deck_quotation, $project);
 
+        if ($resp = $this->guardQuotationIsDraft($low_deck_quotation, 'link')) {
+            return $resp;
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -191,6 +200,9 @@ class LowDeckQuotationController extends Controller
         ClientProjectStatusService $statusService
     ) {
         if ($resp = $this->guardQuotationAlreadyLinked($low_deck_quotation, 'low deck')) {
+            return $resp;
+        }
+        if ($resp = $this->guardQuotationIsDraft($low_deck_quotation, 'create-project')) {
             return $resp;
         }
 
@@ -373,7 +385,7 @@ class LowDeckQuotationController extends Controller
 
     protected function autoLinkLowDeckIfRequested(LowDeckQuotation $ld, Request $request, array &$warnings): bool
     {
-        if ($ld->isLinked()) {
+        if ($ld->isLinked() || ($ld->is_draft ?? false)) {
             return false;
         }
 
@@ -410,6 +422,9 @@ class LowDeckQuotationController extends Controller
 
     protected function syncLowDeckLineToProjectQuotation(ClientProject $project, LowDeckQuotation $low_deck_quotation): void
     {
+        if ($this->quotationIsDraft($low_deck_quotation)) {
+            return;
+        }
         $items = $low_deck_quotation->projectQuotationLineItems();
         $this->appendCommuteProjectLine($items, $low_deck_quotation);
         $this->appendDebrisRemovalProjectLine($items, $low_deck_quotation);
@@ -472,6 +487,10 @@ class LowDeckQuotationController extends Controller
 
     protected function appendLowDeckLineToProjectQuotation(ClientProject $project, LowDeckQuotation $low_deck_quotation): void
     {
+        if ($this->quotationIsDraft($low_deck_quotation)) {
+            return;
+        }
+
         $this->syncLowDeckLineToProjectQuotation($project, $low_deck_quotation);
 
         $low_deck_quotation->update(array_merge([
@@ -489,6 +508,7 @@ class LowDeckQuotationController extends Controller
         $maxArea = (float) $settings->max_area_sq_ft;
 
         $rules = array_merge([
+            'save_intent' => ['nullable', 'in:draft,publish'],
             'client_name' => ['required', 'string', 'max:160'],
             'work_description' => ['nullable', 'string', 'max:20000'],
             'width_ft' => ['required', 'numeric', 'min:1', 'max:500'],
@@ -558,6 +578,7 @@ class LowDeckQuotationController extends Controller
     ): array {
         $base = array_merge([
             'client_name' => $data['client_name'],
+            'is_draft' => QuotationSaveIntent::isDraft($request),
             'work_description' => \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null),
             'width_ft' => $calc['inputs']['width_ft'],
             'length_ft' => $calc['inputs']['length_ft'],

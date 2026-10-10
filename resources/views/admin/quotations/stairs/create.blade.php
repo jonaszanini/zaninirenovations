@@ -187,23 +187,24 @@
 
 @section('content')
   @include('admin.partials.room_area_prefill_banner')
-  <div class="fq-form-toolbar">
-    <a href="{{ route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to list
-    </a>
-    <div class="fq-form-toolbar-right">
-      <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        Price configuration
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-      <a href="{{ route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-      @include('admin.partials.quotation_view_pdf')
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sq-btn-draft">Save as draft</button>
-      <button type="submit" form="sq-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="sq-btn-publish">
-        <i class="fa fa-save"></i> Save quotation
-      </button>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Stairs',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'sq-main-form',
+    'saveId' => 'sq-btn-publish',
+    'draftId' => 'sq-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
 
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
@@ -247,8 +248,13 @@
             </div>
           </div>
 
-          <div class="admin-card">
-            <h3 style="margin:0 0 14px;">Step 2 — Carpet removal</h3>
+          <div class="admin-card" data-qh-step="2">
+            <h3 class="qh-priced-head" style="margin:0 0 14px;">
+              Step 2 — Carpet removal
+              @include('admin.partials.quotation_price_config_gear', [
+                'url' => route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+              ])
+            </h3>
             <label class="admin-checkbox admin-checkbox--block">
               <input type="checkbox" name="carpet_removal" value="1" class="admin-checkbox__input sq-calc-in" id="sq-carpet"
                 @checked(old('carpet_removal', $inputs['carpet_removal'] ?? false))>
@@ -319,7 +325,7 @@
             <div class="admin-form-group">
               <label for="sq-material-price">Materials price (pre-tax)</label>
               <input type="text" id="sq-material-price" name="material_price" class="admin-input sq-calc-in cp-money-input" inputmode="decimal" autocomplete="off"
-                     value="{{ old('material_price', number_format((float) ($inputs['material_price'] ?? 0), 2, '.', '')) }}">
+                     value="{{ old('material_price', number_format((float) ($inputs['material_price'] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
               <p class="pq-hint">Leave at 0.00 when quoting <strong>labour only</strong>. Enter an amount when you are also supplying materials — the client PDF will say “material and labour”.</p>
             </div>
           </div>
@@ -363,7 +369,9 @@
         @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'sq-main-form'])
         
         <div class="pq-summary-card">
-          <h4 class="cp-form-help-spaced">Live summary</h4>
+          <div class="qh-priced-head">
+            <h4>Live summary</h4>
+          </div>
           <div id="sq-live-root">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>
           </div>

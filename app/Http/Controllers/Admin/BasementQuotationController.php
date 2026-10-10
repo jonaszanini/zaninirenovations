@@ -21,6 +21,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -55,7 +56,7 @@ class BasementQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
 
         $quote = BasementQuotation::create(array_merge($calc, [
@@ -86,7 +87,7 @@ class BasementQuotationController extends Controller
 
     public function update(Request $request, BasementQuotation $basement_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $basement_quotation);
 
         $basement_quotation->fill(array_merge($calc, [
@@ -647,6 +648,10 @@ class BasementQuotationController extends Controller
 
     protected function syncLineToProjectQuotation(ClientProject $project, BasementQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Basement renovation (labour)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
@@ -728,6 +733,10 @@ class BasementQuotationController extends Controller
 
     protected function appendLineToProjectQuotation(ClientProject $project, BasementQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $this->syncLineToProjectQuotation($project, $quote);
 
         $quote->update(array_merge([

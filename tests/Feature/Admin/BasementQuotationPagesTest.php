@@ -59,7 +59,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Material waste')
             ->assertSee('id="br-step-status"', false)
             ->assertSee('class="br-step-nav__status"', false)
-            ->assertDontSee('data-cp-money-entry="direct"', false)
+            ->assertSee('data-cp-money-entry="direct"', false)
             ->assertSee('Optional extras (rentals, extra labour, etc.)', false)
             ->assertDontSee('Optional extras (permits, rentals')
             ->assertSee('placeholder="e.g. Dumpster"', false);
@@ -120,16 +120,20 @@ class BasementQuotationPagesTest extends IntegrationTestCase
 
         $price = strpos($html, 'Price configuration');
         $context = strpos($html, 'Project Context');
-        $next = strpos($html, '>Next</button>');
+        $next = strpos($html, '→ Next');
         $live = strpos($html, 'Live breakdown');
+        $header = strpos($html, 'data-qh-header');
 
         $this->assertNotFalse($price);
         $this->assertNotFalse($context);
         $this->assertNotFalse($next);
         $this->assertNotFalse($live);
-        $this->assertLessThan($price, $context);
-        $this->assertLessThan($next, $context);
-        $this->assertLessThan($next, $live);
+        $this->assertNotFalse($header);
+        $this->assertLessThan($context, $header);
+        $this->assertGreaterThan($context, $next);
+        $this->assertLessThan($live, $context);
+        $this->assertStringContainsString('id="br-sticky-total"', $html);
+        $this->assertStringContainsString('id="br-step-nav"', $html);
         $this->assertMatchesRegularExpression(
             '/<details class="admin-accordion admin-card cp-project-context-card">/',
             $html
@@ -317,7 +321,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.basement.create', ['project' => $project->id]))
             ->assertOk()
-            ->assertSee('Back to project', false);
+            ->assertSee($project->name, false)
+            ->assertSee('qh-crumb__project', false);
 
         $payload = [
             'save_intent' => 'publish',
@@ -345,7 +350,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'return' => 'project',
         ]))
             ->assertOk()
-            ->assertSee('Back to project', false)
+            ->assertSee($project->name, false)
+            ->assertSee('qh-crumb__project', false)
             ->assertSee('#quotation', false);
 
         $this->put(route('admin.quotations.basement.update', [

@@ -30,12 +30,17 @@
 @if ($project->usesInvoiceBillingOverride())
   <div class="admin-card cp-invoice-bill-to">
     <p class="cp-invoice-bill-to__text">
-      <strong>Invoice bill-to:</strong> {{ $project->invoiceBillToName() }}
+      <span class="admin-label-with-tip">
+        <strong>Invoice bill-to:</strong>
+        <x-admin.info-tip label="Invoice bill-to">
+          PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).
+        </x-admin.info-tip>
+      </span>
+      {{ $project->invoiceBillToName() }}
       @if (filled(trim((string) $project->invoice_billing_address)))
         <span class="admin-form-help cp-invoice-bill-to__address">{{ $project->invoice_billing_address }}</span>
       @endif
     </p>
-    <p class="admin-form-help cp-invoice-bill-to__help">PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).</p>
     <a href="{{ route('admin.client-projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-form-group-spaced">Edit project</a>
   </div>
 @endif
@@ -154,15 +159,17 @@
   <div class="admin-card cp-contract-card">
     <div class="cp-contract-header">
       <div class="cp-contract-meta">
-        <h3>Invoices</h3>
-        <p class="admin-form-help" style="margin:6px 0 0;">
-          This project is billed by the hour. Log time on the
-          <a href="#time" data-cp-jump-tab="time">Time Tracking</a> tab, then create
-          an invoice here whenever you're ready to bill the client for unbilled hours.
-          You can also raise a manual invoice for anything not tied to tracked time
-          (e.g. materials, delivery fees). Once you mark an invoice as paid, a receipt
-          is generated and emailed to the client automatically.
-        </p>
+        <h3>
+          Invoices
+          <x-admin.info-tip label="Invoices">
+            This project is billed by the hour. Log time on the
+            <a href="#time" data-cp-jump-tab="time">Time Tracking</a> tab, then create
+            an invoice here whenever you're ready to bill the client for unbilled hours.
+            You can also raise a manual invoice for anything not tied to tracked time
+            (e.g. materials, delivery fees). Once you mark an invoice as paid, a receipt
+            is generated and emailed to the client automatically.
+          </x-admin.info-tip>
+        </h3>
       </div>
 
       <div class="cp-contract-actions">
@@ -227,10 +234,12 @@
         to snapshot the unbilled entries into a draft, then review and send.
       </p>
     @else
-      <p class="admin-form-help" style="margin-top:14px; margin-bottom:6px;">
-        <i class="fa fa-info-circle"></i>
-        HST (13%) is added to each invoice once, on top of the pre-tax subtotal.
-      </p>
+      <h4 class="cp-heading-md">
+        Hourly invoices
+        <x-admin.info-tip label="HST on hourly invoices">
+          HST (13%) is added to each invoice once, on top of the pre-tax subtotal.
+        </x-admin.info-tip>
+      </h4>
       <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">
           <thead>
@@ -326,14 +335,16 @@
   <div class="admin-card cp-contract-card">
     <div class="cp-contract-header">
       <div class="cp-contract-meta">
-        <h3>Invoices</h3>
-        <p class="admin-form-help" style="margin:6px 0 0;">
-          One invoice per installment from your <a href="#financials" data-cp-jump-tab="financials">Payment plan</a>.
-          When you mark an invoice as paid, a receipt is generated and emailed to the client automatically,
-          and the matching installment on the Financials tab is marked paid for you.
-          Unpaid sent invoices get a payment reminder each day after the due date — use <strong>Stop daily reminders</strong> on a row to pause that without deleting the invoice.
-          Deleting an unpaid invoice removes only the invoice, not the payment-plan line.
-        </p>
+        <h3>
+          Invoices
+          <x-admin.info-tip label="Invoices">
+            One invoice per installment from your <a href="#financials" data-cp-jump-tab="financials">Payment plan</a>.
+            When you mark an invoice as paid, a receipt is generated and emailed to the client automatically,
+            and the matching installment on the Financials tab is marked paid for you.
+            Unpaid sent invoices get a payment reminder each day after the due date — use <strong>Stop daily reminders</strong> on a row to pause that without deleting the invoice.
+            Deleting an unpaid invoice removes only the invoice, not the payment-plan line.
+          </x-admin.info-tip>
+        </h3>
       </div>
 
       <div class="cp-contract-actions">
@@ -385,17 +396,19 @@
            + Total (incl. HST), so it's visually obvious that HST is
            applied exactly once on top of the pre-tax installment.
            ================================================================ --}}
-      <p class="admin-form-help" style="margin:10px 0 6px;">
-        <i class="fa fa-info-circle"></i>
-        Subtotal comes from the pre-tax installment amount on the
-        <a href="#financials" data-cp-jump-tab="financials">Financials payment plan</a>.
-        HST is applied once at invoice time, sliced proportionally from the
-        quotation's actual HST — so HST-exempt quotation lines (e.g. supplied
-        material) never get re-taxed here.
-        Existing draft / sent invoices are updated when you save a new payment
-        plan on Financials (paid invoices stay as-is). Installments that do not
-        have an invoice yet will use the new amounts when you create them.
-      </p>
+      <h4 class="cp-heading-md">
+        Installment invoices
+        <x-admin.info-tip label="Installment subtotal and HST">
+          Subtotal comes from the pre-tax installment amount on the
+          <a href="#financials" data-cp-jump-tab="financials">Financials payment plan</a>.
+          HST is applied once at invoice time, sliced proportionally from the
+          quotation's actual HST — so HST-exempt quotation lines (e.g. supplied
+          material) never get re-taxed here.
+          Existing draft / sent invoices are updated when you save a new payment
+          plan on Financials (paid invoices stay as-is). Installments that do not
+          have an invoice yet will use the new amounts when you create them.
+        </x-admin.info-tip>
+      </h4>
       <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">
           <thead>
@@ -504,11 +517,12 @@
          Manual / ad-hoc invoices (no installment link)
          ================================================================ --}}
     @if ($manualInvoices->isNotEmpty())
-      <h4 style="margin:24px 0 6px;">Manual invoices</h4>
-      <p class="admin-form-help cp-heading-md">
-        <i class="fa fa-info-circle"></i>
-        HST (13%) is added to the manual invoice subtotal once — these invoices are not tied to the quotation, so the breakdown below is the only HST applied.
-      </p>
+      <h4 style="margin:24px 0 6px;">
+        Manual invoices
+        <x-admin.info-tip label="HST on manual invoices">
+          HST (13%) is added to the manual invoice subtotal once — these invoices are not tied to the quotation, so the breakdown below is the only HST applied.
+        </x-admin.info-tip>
+      </h4>
       <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">
           <thead>
@@ -630,7 +644,7 @@
                      autocomplete="off"
                     
                      placeholder="0.00"
-                     required>
+                     required data-cp-money-entry="direct">
             </div>
           </div>
           <div class="admin-form-group cp-mark-paid-method">

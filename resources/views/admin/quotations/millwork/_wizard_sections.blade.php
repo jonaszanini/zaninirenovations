@@ -52,7 +52,8 @@
 @endphp
 
 <details class="br-acc admin-card is-active" data-br-step="pieces" open>
-  <summary class="br-acc__summary"><span class="br-acc__num">1</span> Pieces
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">1</span> Pieces
     <x-admin.info-tip label="Pieces">Add each millwork item — cabinets, closets, vanities, trim, and more. Duplicate a piece to copy its sizes.</x-admin.info-tip>
   </summary>
   <div class="br-acc__body">
@@ -73,16 +74,20 @@
   </div>
 </details>
 
-<details class="br-acc admin-card" data-br-step="materials">
-  <summary class="br-acc__summary"><span class="br-acc__num">2</span> Materials &amp; finish
-    <x-admin.info-tip label="Materials & finish">Sheet size defaults to 4×8 from Price configuration. Add spare sheets if you want extras on site.</x-admin.info-tip>
+<details class="br-acc admin-card" data-br-step="materials" data-qh-step="2">
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">2</span> Materials &amp; finish
+    <x-admin.info-tip label="Materials & finish">Sheet size defaults to 4×8 from Price configuration. Waste % is applied to edge banding, finish, and linear trim. Nesting leftover is already in the cut plan — add spare sheets if you want extras.</x-admin.info-tip>
+    @include('admin.partials.quotation_price_config_gear', [
+      'url' => route('admin.quotations.millwork.price-configuration', request()->filled('project') ? ['project' => (int) request('project')] : []),
+    ])
   </summary>
   <div class="br-acc__body">
     <div class="admin-form-group mw-sheet-field">
-      <div class="admin-label-with-tip">
+      <span class="admin-label-with-tip">
         <label for="mw-sheet">Wood sheet</label>
-        <x-admin.info-tip label="Wood sheet">Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.</x-admin.info-tip>
-      </div>
+        @include('admin.partials.info_tip', ['tipText' => 'Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.', 'tipLabel' => 'Wood sheet'])
+      </span>
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
         @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
           <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>
@@ -161,10 +166,10 @@
     </div>
     <div class="mw-short-row">
       <div class="admin-form-group">
-        <div class="admin-label-with-tip">
+        <span class="admin-label-with-tip">
           <label for="mw-waste">Waste %</label>
-          <x-admin.info-tip label="Waste %">Extra on linear trim and wainscoting rails. Sheet leftover is already in the cut plan.</x-admin.info-tip>
-        </div>
+          @include('admin.partials.info_tip', ['tipText' => 'Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.', 'tipLabel' => 'Waste %'])
+        </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-waste" name="waste_pct"
                value="{{ old('waste_pct', $inputs['waste_pct'] ?? 10) }}">
       </div>
@@ -200,7 +205,7 @@
         <label for="mw-owner-rate">Owner rate</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input mw-preview mw-input--money" id="mw-owner-rate" name="owner_hourly_rate"
-               value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate), 2, '.', '')) }}">
+               value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate), 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         @include('admin.quotations._include_helper', [
@@ -214,7 +219,7 @@
         <label for="mw-delivery">Delivery</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input mw-preview mw-input--money" id="mw-delivery" name="delivery_amount"
-               value="{{ old('delivery_amount', number_format((float) ($inputs['delivery_amount'] ?? 0), 2, '.', '')) }}">
+               value="{{ old('delivery_amount', number_format((float) ($inputs['delivery_amount'] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
     </div>
     @include('admin.partials.checkbox', [

@@ -141,13 +141,18 @@
         </div>
 
         <div class="admin-form-group">
-          <label for="cp-invoice-due">Due date <span class="cp-required">*</span></label>
+          <span class="admin-label-with-tip">
+            <label for="cp-invoice-due">Due date</label>
+            <span class="admin-label-with-tip__end">
+              <span class="cp-required">*</span>
+              <x-admin.info-tip label="Due date">Required before the invoice can be sent to the client.</x-admin.info-tip>
+            </span>
+          </span>
           <input type="date"
                  id="cp-invoice-due"
                  name="due_on"
                  class="admin-input"
                  value="{{ $dueOn }}">
-          <p class="admin-form-help admin-form-help--tight">Required before the invoice can be sent to the client.</p>
         </div>
       </div>
 
@@ -179,7 +184,7 @@
                      inputmode="decimal"
                      autocomplete="off"
                      placeholder="0.00"
-                     value="{{ $manualTotal }}">
+                     value="{{ $manualTotal }}" data-cp-money-entry="direct">
               <p class="admin-form-help admin-form-help--tight">
                 If you itemise the work below, the sum of the line items will be used instead.
               </p>
@@ -247,6 +252,7 @@
                     $lk = 'labour';
                 }
                 $expenseId = $row['expense_id'] ?? null;
+                $allowNegativeAmount = ! $isHourlyManual || in_array($lk, ['labour', 'labour_credit'], true);
               @endphp
               <tr class="cp-quotation-row">
                 <td class="col-description">
@@ -287,7 +293,7 @@
                          name="items[{{ $i }}][amount]"
                          value="{{ $row['amount'] !== '' ? number_format((float) $row['amount'], 2, '.', '') : '' }}"
                          class="admin-input cp-money-input cp-quotation-row-amount"
-                         placeholder="0.00">
+                         placeholder="0.00" data-cp-money-entry="direct"{{ $allowNegativeAmount ? ' data-cp-money-allow-negative' : '' }}>
                 </td>
                 <td class="col-actions">
                   <button type="button"
@@ -373,7 +379,6 @@
                          id="cp-invoice-discount-amt"
                          class="admin-input cp-money-input cp-input-amount"
                          data-cp-money-entry="direct"
-                         data-cp-money-hybrid="1"
                          value="{{ $discountAmount }}"
                          placeholder="0.00"
                          autocomplete="off">
@@ -474,7 +479,7 @@
                  autocomplete="off"
                  name="items[__INDEX__][amount]"
                  class="admin-input cp-money-input cp-quotation-row-amount"
-                 placeholder="0.00">
+                 placeholder="0.00" data-cp-money-entry="direct">
         </td>
         <td class="col-actions">
           <button type="button"
@@ -508,7 +513,7 @@
                  autocomplete="off"
                  name="items[__INDEX__][amount]"
                  class="admin-input cp-money-input cp-quotation-row-amount"
-                 placeholder="0.00">
+                 placeholder="0.00" data-cp-money-entry="direct" data-cp-money-allow-negative>
         </td>
         <td class="col-actions">
           <button type="button"
@@ -591,10 +596,40 @@
         return 'CA$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       }
 
+      /** Half away from zero, matching PHP round() / cpMoneyMask.round. */
+      function roundCad(n) {
+        if (window.cpMoneyMask && typeof window.cpMoneyMask.round === 'function') {
+          return window.cpMoneyMask.round(n, 2);
+        }
+        var sign = n < 0 ? -1 : 1;
+        return sign * Math.round(Math.abs(n) * 100) / 100;
+      }
+
+      function lineKindAllowsNegative(kind) {
+        return kind === 'labour' || kind === 'labour_credit';
+      }
+
+      function syncRowMoneySign(tr) {
+        var input = tr && tr.querySelector ? tr.querySelector('.cp-quotation-row-amount') : null;
+        if (!input) return;
+        if (!HOURLY_MANUAL || lineKindAllowsNegative(rowLineKind(tr))) {
+          input.setAttribute('data-cp-money-allow-negative', '');
+        } else {
+          input.removeAttribute('data-cp-money-allow-negative');
+        }
+        if (window.cpMoneyMask && typeof window.cpMoneyMask.refresh === 'function') {
+          window.cpMoneyMask.refresh(input);
+        } else if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
+          window.cpMoneyMask.wire(input);
+        }
+      }
+
       function parseAmount(input) {
         if (!input) return 0;
         if (window.cpMoneyMask && typeof window.cpMoneyMask.parse === 'function') {
-          return window.cpMoneyMask.parse(input.value);
+          return window.cpMoneyMask.parse(input.value, undefined, {
+            allowNegative: input.hasAttribute('data-cp-money-allow-negative')
+          });
         }
         var n = parseFloat(String(input.value).replace(/,/g, ''));
         return isFinite(n) ? n : 0;
@@ -635,13 +670,13 @@
               labour += amt;
             }
           });
-          labour = Math.round(labour * 100) / 100;
-          materials = Math.round(materials * 100) / 100;
-          var hst = exempt ? 0 : Math.round(labour * HST_RATE * 100) / 100;
+          labour = roundCad(labour);
+          materials = roundCad(materials);
+          var hst = exempt ? 0 : roundCad(labour * HST_RATE);
           if (labourEl) labourEl.textContent = formatMoney(labour);
           if (materialsEl) materialsEl.textContent = formatMoney(materials);
           if (hstEl) hstEl.textContent = formatMoney(hst);
-          if (grandEl) grandEl.textContent = formatMoney(Math.round((labour + hst + materials) * 100) / 100);
+          if (grandEl) grandEl.textContent = formatMoney(roundCad(labour + hst + materials));
           return;
         }
 
@@ -650,46 +685,39 @@
         inputs.forEach(function (input) {
           gross += parseAmount(input);
         });
-        gross = Math.round(gross * 100) / 100;
+        gross = roundCad(gross);
 
         if (INSTALLMENT_EDITOR) {
           var pctInput = document.getElementById('cp-invoice-discount-pct');
           var amtInput = document.getElementById('cp-invoice-discount-amt');
           var pct = pctInput ? parsePlainDecimal(pctInput) : 0;
-          var amtRaw = 0;
-          if (amtInput) {
-            if (window.cpMoneyMask && typeof window.cpMoneyMask.parseHybridCadMoney === 'function') {
-              amtRaw = window.cpMoneyMask.parseHybridCadMoney(amtInput.value, 2);
-            } else {
-              amtRaw = parseAmount(amtInput);
-            }
-          }
+          var amtRaw = amtInput ? parseAmount(amtInput) : 0;
           var discount = 0;
           if (pct> 0.00001) {
-            discount = Math.round(Math.min(gross * pct / 100, gross) * 100) / 100;
+            discount = roundCad(Math.min(gross * pct / 100, gross));
           } else if (amtRaw> 0.00001) {
-            discount = Math.round(Math.min(amtRaw, gross) * 100) / 100;
+            discount = roundCad(Math.min(amtRaw, gross));
           }
-          var net = Math.round(Math.max(0, gross - discount) * 100) / 100;
+          var net = roundCad(Math.max(0, gross - discount));
 
           var hstInst;
           if (exempt) {
             hstInst = 0;
           } else if (LOCKED_SUBTOTAL !== null && LOCKED_HST !== null && LOCKED_SUBTOTAL> 0.00001) {
-            hstInst = Math.round(LOCKED_HST * (net / LOCKED_SUBTOTAL) * 100) / 100;
+            hstInst = roundCad(LOCKED_HST * (net / LOCKED_SUBTOTAL));
           } else if (LOCKED_HST !== null) {
             hstInst = LOCKED_HST;
           } else {
-            hstInst = Math.round(net * HST_RATE * 100) / 100;
+            hstInst = roundCad(net * HST_RATE);
           }
 
           if (lineSubtotalEl) lineSubtotalEl.textContent = formatMoney(gross);
           if (netSubtotalEl) netSubtotalEl.textContent = formatMoney(net);
           if (hstEl) hstEl.textContent = formatMoney(hstInst);
-          if (grandEl) grandEl.textContent = formatMoney(Math.round((net + hstInst) * 100) / 100);
+          if (grandEl) grandEl.textContent = formatMoney(roundCad(net + hstInst));
 
           if (LOCKED_SUBTOTAL !== null && planDiffEl && diffEl) {
-            var diff = Math.round((net - LOCKED_SUBTOTAL) * 100) / 100;
+            var diff = roundCad(net - LOCKED_SUBTOTAL);
             if (Math.abs(diff)> 0.01) {
               planDiffEl.classList.remove('is-hidden');
               diffEl.textContent = (diff> 0 ? '+' : '') + formatMoney(diff);
@@ -706,12 +734,12 @@
         } else if (LOCKED_HST !== null) {
           hst = LOCKED_HST;
         } else {
-          hst = Math.round(gross * HST_RATE * 100) / 100;
+          hst = roundCad(gross * HST_RATE);
         }
 
         if (subtotalEl) subtotalEl.textContent = formatMoney(gross);
         if (hstEl) hstEl.textContent = formatMoney(hst);
-        if (grandEl) grandEl.textContent = formatMoney(Math.round((gross + hst) * 100) / 100);
+        if (grandEl) grandEl.textContent = formatMoney(roundCad(gross + hst));
       }
 
       function reindex() {
@@ -737,6 +765,7 @@
         if (sel && lineKindPreset) {
           sel.value = lineKindPreset;
         }
+        syncRowMoneySign(newRow);
         var desc = newRow.querySelector('.cp-quotation-row-desc');
         if (desc) {
           if (lineKindPreset === 'labour_credit') {
@@ -780,7 +809,10 @@
       });
 
       tbody.addEventListener('change', function (e) {
-        if (e.target.classList.contains('cp-invoice-line-kind')) recalc();
+        if (e.target.classList.contains('cp-invoice-line-kind')) {
+          syncRowMoneySign(e.target.closest('tr'));
+          recalc();
+        }
       });
 
       var discountPctEl = document.getElementById('cp-invoice-discount-pct');
@@ -808,6 +840,7 @@
         });
       });
 
+      tbody.querySelectorAll('tr.cp-quotation-row').forEach(syncRowMoneySign);
       recalc();
 
       document.addEventListener('DOMContentLoaded', function () {

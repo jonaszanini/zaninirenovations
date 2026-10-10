@@ -80,8 +80,10 @@
 
 @section('content')
   <div class="admin-card">
-    <h3>Quick expense entry</h3>
-    <p class="admin-form-help" style="margin: 0 0 12px;">Add an expense to any active project. On mobile, tap the camera button to snap a receipt photo.</p>
+    <h3>
+      Quick expense entry
+      <x-admin.info-tip label="Quick expense entry">Add an expense to any active project. On mobile, tap the camera button to snap a receipt photo.</x-admin.info-tip>
+    </h3>
     <form action="{{ route('admin.financials.expenses.store') }}" method="post" enctype="multipart/form-data" id="gf-quick-expense-form">
       @csrf
       <div class="gf-quick-expense-form">
@@ -109,7 +111,7 @@
         </div>
         <div class="admin-form-group admin-form-group--amount">
           <label for="gf-expense-amount">Amount <span class="cp-required">*</span></label>
-          <input type="text" id="gf-expense-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+          <input type="text" id="gf-expense-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00" required data-cp-money-entry="direct">
           @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group admin-form-group--submit">
@@ -119,11 +121,11 @@
         </div>
       </div>
       <div class="admin-form-group gf-quick-expense-receipt">
-        <label for="gf-expense-receipt">
-          <i class="fa fa-camera"></i> Receipt (optional)
-        </label>
+        <span class="admin-label-with-tip">
+          <label for="gf-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
+          <x-admin.info-tip label="Receipt">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
+        </span>
         <input type="file" id="gf-expense-receipt" name="receipt" class="admin-input" accept="image/*,application/pdf" capture="environment">
-        <p class="admin-form-help">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</p>
         @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
     </form>

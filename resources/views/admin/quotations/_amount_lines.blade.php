@@ -237,10 +237,14 @@
   @if($cardTitle !== '' || $intro !== '')
     <div class="q-additional-costs-card__head">
       @if($cardTitle !== '')
-        <h3 class="q-additional-costs-card__title">{{ $cardTitle }}</h3>
-      @endif
-      @if($intro !== '')
-        <p class="admin-form-help q-additional-costs-card__intro">{!! $intro !!}</p>
+        <h3 class="q-additional-costs-card__title">
+          {{ $cardTitle }}
+          @if($intro !== '')
+            <x-admin.info-tip :label="$cardTitle">{!! $intro !!}</x-admin.info-tip>
+          @endif
+        </h3>
+      @elseif($intro !== '')
+        <x-admin.info-tip label="Additional costs">{!! $intro !!}</x-admin.info-tip>
       @endif
     </div>
   @endif
@@ -270,7 +274,7 @@
                 
                  placeholder="0.00"
                  value="{{ $row['amount'] }}"
-                 data-ac-amount>
+                 data-ac-amount data-cp-money-entry="direct">
         </div>
         @if ($showCategory)
           <div class="admin-form-group q-ac-row__category">

@@ -93,6 +93,18 @@
 .mw-piece__hint {
   margin: 2px 0 6px;
 }
+.mw-piece__sets-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  margin: 2px 0 6px;
+}
+.mw-piece__sets-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-heading);
+}
 .mw-piece__more {
   margin-top: 4px;
 }

@@ -17,7 +17,12 @@
   <fieldset class="cp-reply-to-accept__fieldset">
     <legend class="cp-reply-to-accept__legend">
       Ask client to reply “I accept” to this email
-      <span class="cp-required">*</span>
+      <span class="admin-label-with-tip__end">
+        <span class="cp-required">*</span>
+        <x-admin.info-tip label="Ask client to reply I accept">
+          Required. Pick Yes or No before saving or emailing. When Yes, the email asks the client to reply “I accept”.
+        </x-admin.info-tip>
+      </span>
     </legend>
     <div class="cp-reply-to-accept__choices">
       <label class="cp-checkbox-row cp-reply-to-accept__choice">
@@ -39,10 +44,6 @@
     </div>
     @if ($hasError)
       <p class="admin-form-error" role="alert">{{ $errors->first($field) }}</p>
-    @else
-      <p class="admin-form-help cp-reply-to-accept__help">
-        Required. Pick Yes or No before saving or emailing. When Yes, the email asks the client to reply “I accept”.
-      </p>
     @endif
   </fieldset>
 </div>

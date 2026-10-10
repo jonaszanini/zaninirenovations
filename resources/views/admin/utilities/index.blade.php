@@ -1,13 +1,11 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Utilities')
+@section('heading')
+  Utilities
+  <x-admin.info-tip label="Utilities">A growing toolbox of quick calculators for day-to-day jobs. Pick a tool below to get started.</x-admin.info-tip>
+@endsection
 
 @section('content')
-  <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      A growing toolbox of quick calculators for day-to-day jobs. Pick a tool below to get started.
-    </p>
-  </div>
 
   <div class="ic-model-grid">
     @foreach ($tools as $tool)

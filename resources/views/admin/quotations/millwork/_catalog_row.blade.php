@@ -32,7 +32,7 @@
   <td class="mw-col-price" data-label="Price">
     <input type="text" inputmode="decimal" autocomplete="off" data-mw-cat-price
            class="admin-input cp-money-input" name="{{ $prefix }}[unit_price]"
-           value="{{ isset($row['unit_price']) ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}">
+           value="{{ isset($row['unit_price']) ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}" data-cp-money-entry="direct">
   </td>
   @if ($slot === MillworkSettings::SLOT_WOOD_SHEETS)
     <td class="mw-col-thickness" data-label="Thickness">

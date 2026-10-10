@@ -27,6 +27,7 @@
        target="_blank"
        rel="noopener noreferrer"
        class="{{ $pdfBtnClass }}"
+       data-qh-view-pdf
        title="{{ $pdfLabel }}"
        @if ($iconOnly) aria-label="{{ $pdfLabel }}" @endif>
       <i class="fa fa-file-pdf-o" aria-hidden="true"></i>@unless ($iconOnly) {{ $pdfLabel }}@endunless
@@ -35,6 +36,7 @@
     <button type="button"
             class="{{ $pdfBtnClass }}"
             disabled
+            data-qh-view-pdf
             title="{{ $pdfDisabledTitle }}"
             @if ($iconOnly) aria-label="{{ $pdfLabel }}" @endif>
       <i class="fa fa-file-pdf-o" aria-hidden="true"></i>@unless ($iconOnly) {{ $pdfLabel }}@endunless

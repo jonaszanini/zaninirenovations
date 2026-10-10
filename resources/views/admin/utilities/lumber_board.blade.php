@@ -1,6 +1,8 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Lumber / Board Material Calculator')
+@section('heading')
+  Lumber / Board Material <span class="admin-heading-copy">Calculator <x-admin.info-tip label="Lumber / Board Material Calculator">Plan how many boards to buy for a job. Add one or more board types (2×4, 2×6, decking, etc.), enter required pieces for each, and see cutting layouts with waste and cost estimates.</x-admin.info-tip></span>
+@endsection
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-utilities.css') }}?v={{ @filemtime(public_path('css/admin-utilities.css')) ?: time() }}">
@@ -8,10 +10,6 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Plan how many boards to buy for a job. Add one or more board types (2×4, 2×6, decking, etc.),
-      enter required pieces for each, and see cutting layouts with waste and cost estimates.
-    </p>
     <div class="admin-toolbar-actions">
       <a href="{{ route('admin.utilities.offcuts.index') }}" class="admin-btn admin-btn--ghost">
         <i class="fa fa-cubes"></i> Offcut inventory

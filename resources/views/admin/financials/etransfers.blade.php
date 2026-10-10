@@ -154,7 +154,7 @@
             <div class="et-paste-fields">
               <div class="admin-form-group">
                 <label for="et-amount">Amount</label>
-                <input type="text" id="et-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" value="{{ old('amount') }}" placeholder="0.00">
+                <input type="text" id="et-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" value="{{ old('amount') }}" placeholder="0.00" data-cp-money-entry="direct">
               </div>
               <div class="admin-form-group">
                 <label for="et-ref">Reference</label>

@@ -134,7 +134,7 @@
                 <label class="admin-sr-only" for="rq-price-{{ $key }}">{{ $trade['label'] }} unit price</label>
                 <input class="admin-input cp-money-input util-rq-money" type="text" inputmode="decimal" autocomplete="off"
                        id="rq-price-{{ $key }}" name="unit_price[{{ $key }}]"
-                       value="{{ old('unit_price.'.$key) }}" data-rq-price>
+                       value="{{ old('unit_price.'.$key) }}" data-rq-price data-cp-money-entry="direct">
               </div>
             </div>
           @endforeach

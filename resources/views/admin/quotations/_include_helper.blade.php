@@ -31,5 +31,5 @@
   <label for="{{ $rateId }}">Helper hourly rate (CAD$)</label>
   <input type="text" inputmode="decimal" autocomplete="off"
          class="admin-input cp-money-input {{ $previewClass }}" id="{{ $rateId }}" name="{{ $rateName }}"
-         value="{{ $rateValue }}">
+         value="{{ $rateValue }}" data-cp-money-entry="direct">
 </div>

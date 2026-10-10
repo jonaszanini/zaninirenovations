@@ -27,16 +27,23 @@
   <div class="mat-form-hero__fields">
     <div class="mat-form-grid-names">
       <div class="admin-form-group">
-        <label for="mat-name">Store name <span class="cp-required">*</span></label>
+        <span class="admin-label-with-tip">
+          <label for="mat-name">Store name</label>
+          <span class="admin-label-with-tip__end">
+            <span class="cp-required">*</span>
+            <x-admin.info-tip label="Store name">Full product title from the store — updated when you sync prices.</x-admin.info-tip>
+          </span>
+        </span>
         <input @class(['admin-input', 'is-invalid' => $errors->has('name')]) type="text" id="mat-name" name="name" value="{{ old('name', $m?->name) }}" required maxlength="255">
-        <p class="admin-form-help">Full product title from the store — updated when you sync prices.</p>
         @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
       <div class="admin-form-group">
-        <label for="mat-short-name">Short name</label>
+        <span class="admin-label-with-tip">
+          <label for="mat-short-name">Short name</label>
+          <x-admin.info-tip label="Short name">Shown in lists and pickers. Leave blank to use the store name.</x-admin.info-tip>
+        </span>
         <input @class(['admin-input', 'is-invalid' => $errors->has('short_name')]) type="text" id="mat-short-name" name="short_name" value="{{ old('short_name', $m?->short_name) }}" maxlength="120"
                placeholder="e.g. 2x4x8 Stud">
-        <p class="admin-form-help">Shown in lists and pickers. Leave blank to use the store name.</p>
         @error('short_name') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
     </div>
@@ -82,10 +89,12 @@
     <p class="admin-form-help"><a href="{{ route('admin.materials.config') }}" class="admin-text-link">Materials config</a></p>
   </div>
   <div class="admin-form-group">
-    <label for="mat-sku">Store SKU / ASIN</label>
-    <input @class(['admin-input', 'is-invalid' => $errors->has('store_sku')]) type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
+        <span class="admin-label-with-tip">
+          <label for="mat-sku">Store SKU / ASIN</label>
+          <x-admin.info-tip label="Store SKU / ASIN">Leave blank for other suppliers. Needed only to sync Home Depot or Amazon prices.</x-admin.info-tip>
+        </span>
+        <input @class(['admin-input', 'is-invalid' => $errors->has('store_sku')]) type="text" id="mat-sku" name="store_sku" value="{{ old('store_sku', $m?->store_sku) }}" maxlength="160"
            placeholder="Optional — HD SKU or Amazon ASIN">
-    <p class="admin-form-help">Leave blank for other suppliers. Needed only to sync Home Depot or Amazon prices.</p>
     @error('store_sku') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
@@ -97,15 +106,17 @@
     <label for="mat-price">Price (CAD)</label>
     <input @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('price_cad')]) type="text" id="mat-price" name="price_cad"
            value="{{ old('price_cad', (isset($m) && (float) $m->price_cad > 0) ? number_format((float) $m->price_cad, 2, '.', '') : '') }}"
-           inputmode="decimal" autocomplete="off" placeholder="0.00">
+           inputmode="decimal" autocomplete="off" placeholder="0.00" data-cp-money-entry="direct">
     @error('price_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
-    <label for="mat-delivery">Delivery (CAD)</label>
-    <input @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('delivery_cad')]) type="text" id="mat-delivery" name="delivery_cad"
+        <span class="admin-label-with-tip">
+          <label for="mat-delivery">Delivery (CAD)</label>
+          <x-admin.info-tip label="Delivery">Added once on quotations that link this product.</x-admin.info-tip>
+        </span>
+        <input @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('delivery_cad')]) type="text" id="mat-delivery" name="delivery_cad"
            value="{{ old('delivery_cad', (isset($m) && (float) $m->delivery_cad > 0) ? number_format((float) $m->delivery_cad, 2, '.', '') : '') }}"
-           inputmode="decimal" autocomplete="off" placeholder="0.00">
-    <p class="admin-form-help">Added once on quotations that link this product.</p>
+           inputmode="decimal" autocomplete="off" placeholder="0.00" data-cp-money-entry="direct">
     @error('delivery_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
   </div>
   <div class="admin-form-group">
@@ -139,7 +150,10 @@
 <div class="mat-url-fields">
   <h3 class="mat-form-section-title">Store links &amp; sync</h3>
   <div class="mat-form-url-row">
-    <label class="mat-form-url-row__label" for="mat-product-url">Product URL</label>
+    <span class="admin-label-with-tip">
+      <label class="mat-form-url-row__label" for="mat-product-url">Product URL</label>
+      <x-admin.info-tip label="Product URL">Any supplier URL is fine. Automatic price sync still only runs for Home Depot and Amazon items with a SKU/ASIN or store URL.</x-admin.info-tip>
+    </span>
     <label class="mat-form-url-row__label" for="mat-image-url">Image URL</label>
     <div class="mat-form-url-row__active-head">
       <span class="mat-form-url-row__label">Active</span>
@@ -175,8 +189,6 @@
     @error('image_url') <p class="admin-form-error mat-form-url-row__error">{{ $message }}</p> @enderror
     @error('is_active') <p class="admin-form-error mat-form-url-row__error">{{ $message }}</p> @enderror
   </div>
-  <p class="admin-form-help">Any supplier URL is fine. Automatic price sync still only runs for Home Depot and Amazon items with a SKU/ASIN or store URL.</p>
-
   @if ($m && filled($m->last_scrape_error))
     <p class="mat-form-sync-error mat-scrape-meta__error" role="alert">{{ $m->last_scrape_error }}</p>
   @endif

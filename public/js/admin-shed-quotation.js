@@ -193,14 +193,99 @@
       }
       var prev = document.getElementById('sh-prev');
       var next = document.getElementById('sh-next');
-      if (prev) prev.disabled = currentIndex === 0;
-      if (next) next.textContent = key === 'review' ? 'Review' : (currentIndex === sectionKeys.length - 1 ? 'Review' : 'Next');
-      if (next && key === 'review') next.disabled = true;
-      else if (next) next.disabled = false;
+      if (prev) {
+        prev.disabled = currentIndex === 0;
+        prev.textContent = '← Back';
+      }
+      if (next) {
+        next.textContent = key === 'review' ? 'Review' : (currentIndex === sectionKeys.length - 1 ? 'Review' : '→ Next');
+        next.disabled = key === 'review';
+      }
       if (scroll && !isEdit) {
         var el = sectionEl(key);
         if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+    }
+
+    function fieldNumber(name) {
+      var el = form.querySelector('[name="' + name + '"]');
+      if (!el) return 0;
+      return parseFloat(String(el.value || '').replace(/,/g, '')) || 0;
+    }
+
+    function showStepErrors(messages) {
+      var host = document.getElementById('sh-step-nav');
+      var box = document.getElementById('sh-step-errors');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'sh-step-errors';
+        box.className = 'qh-step-errors';
+        box.setAttribute('role', 'alert');
+        if (host && host.parentNode) {
+          host.parentNode.insertBefore(box, host.nextSibling);
+        } else {
+          form.insertBefore(box, form.firstChild);
+        }
+      }
+      if (!messages.length) {
+        box.hidden = true;
+        box.innerHTML = '';
+        return;
+      }
+      box.hidden = false;
+      box.innerHTML = '<p>This step is missing required information:</p><ul>'
+        + messages.map(function (m) {
+          return '<li>' + String(m).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>';
+        }).join('')
+        + '</ul>';
+    }
+
+    function collectRequiredLabels(scope) {
+      var missing = [];
+      if (!scope) return missing;
+      var fields = scope.querySelectorAll('input, select, textarea');
+      for (var i = 0; i < fields.length; i++) {
+        var el = fields[i];
+        if (el.disabled || el.readOnly) continue;
+        if (el.closest && el.closest('[hidden]')) continue;
+        if (typeof el.checkValidity === 'function' && !el.checkValidity()) {
+          var label = '';
+          if (el.id) {
+            var lab = form.querySelector('label[for="' + el.id + '"]');
+            if (lab) label = (lab.textContent || '').replace(/\s+/g, ' ').trim();
+          }
+          missing.push(label || el.getAttribute('aria-label') || el.name || 'A required field');
+        }
+      }
+      return missing;
+    }
+
+    function validateCurrentStep() {
+      var missing = [];
+      var key = wizardKeys[currentIndex];
+      var step = sectionEl(key);
+      var clientCard = form.querySelector('.fl-step-card, .sh-client-card');
+      if (currentIndex === 0 && clientCard) {
+        missing = missing.concat(collectRequiredLabels(clientCard));
+      }
+      missing = missing.concat(collectRequiredLabels(step));
+      if (key === 'type' && !form.querySelector('[name="shed_type"]:checked')) {
+        missing.push('Shed type');
+      }
+      if (key === 'size') {
+        if (fieldNumber('length_ft') <= 0) missing.push('Shed length');
+        if (fieldNumber('width_ft') <= 0) missing.push('Shed width');
+        if (fieldNumber('wall_height_ft') <= 0) missing.push('Wall height');
+      }
+      showStepErrors(missing);
+      if (missing.length) {
+        var firstInvalid = (step || clientCard || form).querySelector(':invalid');
+        if (firstInvalid) {
+          try { firstInvalid.focus(); } catch (err) { /* ignore */ }
+        }
+        return false;
+      }
+      return true;
     }
 
     if (!isEdit) {
@@ -208,7 +293,10 @@
       var prevBtn = document.getElementById('sh-prev');
       var nextBtn = document.getElementById('sh-next');
       if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
-      if (nextBtn) nextBtn.addEventListener('click', function () { setWizardStep(currentIndex + 1, true); });
+      if (nextBtn) nextBtn.addEventListener('click', function () {
+        if (!validateCurrentStep()) return;
+        setWizardStep(currentIndex + 1, true);
+      });
     } else {
       var nav = document.getElementById('sh-step-nav');
       if (nav) nav.hidden = true;
@@ -389,6 +477,8 @@
         wrap.innerHTML = extraTpl.innerHTML.replace(/__I__/g, String(i)).trim();
         var row = wrap.firstElementChild;
         extraList.appendChild(row);
+        var refreshExtra = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+        if (refreshExtra) refreshExtra(row);
         initExtraRow(row);
         schedulePreview();
       });

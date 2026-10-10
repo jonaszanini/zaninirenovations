@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Email / SMS log')
+@section('heading')
+  Email / SMS log
+  <x-admin.info-tip label="Email / SMS log">Audit trail of every email and SMS sent by the system.</x-admin.info-tip>
+@endsection
 
 @push('head')
 <style>
@@ -59,12 +62,6 @@
 @endpush
 
 @section('content')
-  <div class="admin-toolbar">
-    <p class="admin-toolbar-lede" style="font-size:0.9rem;">
-      Audit trail of every email and SMS sent by the system.
-    </p>
-  </div>
-
   @php
     $activeFilterCount = \App\Support\AdminListFilters::activeCount([
         'q' => $filters['q'] ?? '',

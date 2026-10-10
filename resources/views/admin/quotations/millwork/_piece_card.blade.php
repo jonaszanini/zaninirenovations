@@ -8,6 +8,10 @@
   $style = MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
   $profile = MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
   $isLegacyQuote = $isLegacyQuote ?? (((int) ($cutPlanVersion ?? $builderVersion ?? 2)) < 2);
+  $unitSuffix = $unit === 'ft' ? 'ft' : 'in';
+  $pieceN = is_numeric($pi) ? ((int) $pi + 1) : 1;
+  $pieceTipName = trim((string) ($piece['name'] ?? ''));
+  $pieceTipLabel = $pieceTipName !== '' ? $pieceTipName : ('piece '.$pieceN);
 @endphp
 <article class="mw-piece admin-card" data-mw-piece data-mw-type="{{ $type }}" data-mw-below="{{ (($piece['below'] ?? 'divisions') === 'drawers') ? 'drawers' : 'divisions' }}">
   <input type="hidden" name="pieces[{{ $pi }}][_calc_version]" value="{{ (int) ($piece['_calc_version'] ?? 0) }}" data-mw-calc-version>
@@ -25,7 +29,10 @@
 
   <div class="mw-piece__row mw-piece__row--id">
     <div class="admin-form-group mw-field--type">
-      <label>@include('admin.partials.info_tip', ['text' => 'Pick the millwork type. Fields below change to match.']) Type</label>
+      <span class="admin-label-with-tip">
+        <label>Type</label>
+        <x-admin.info-tip :label="'Type — '.$pieceTipLabel">Pick the millwork type. Fields below change to match.</x-admin.info-tip>
+      </span>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][type]" data-mw-type-input>
         @foreach (MillworkPartBuilder::TYPE_GROUPS as $group => $keys)
           <optgroup label="{{ $group }}">
@@ -116,7 +123,10 @@
 
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="kallax closet">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Sections across. Vertical partitions = columns − 1.']) Columns</label>
+      <span class="admin-label-with-tip">
+        <label>Columns</label>
+        <x-admin.info-tip :label="'Columns — '.$pieceTipLabel">Sections across. Vertical partitions = columns − 1.</x-admin.info-tip>
+      </span>
       <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][columns]" value="{{ $piece['columns'] ?? 2 }}">
     </div>
     <div class="admin-form-group" data-mw-show="kallax">
@@ -243,7 +253,10 @@
       </select>
     </div>
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Each opening adds 2 × height + width of casing (defaults 80" × 32").']) Openings</label>
+      <span class="admin-label-with-tip">
+        <label>Openings</label>
+        <x-admin.info-tip :label="'Openings — '.$pieceTipLabel">Each opening adds 2 × height + width of casing (defaults 80" × 32").</x-admin.info-tip>
+      </span>
       <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][openings]" value="{{ $piece['openings'] ?? 0 }}">
     </div>
     <div class="admin-form-group">
@@ -275,8 +288,16 @@
   </div>
 
   <div data-mw-show="shelf floating_shelf cabinet_door">
-    <p class="admin-form-help mw-piece__hint">Size sets — add groups if you have mixed sizes.</p>
-    <p class="admin-form-help mw-piece__hint" data-mw-show="floating_shelf">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</p>
+    <div class="mw-piece__sets-head">
+      <span class="admin-label-with-tip">
+        <span class="mw-piece__sets-title">Size sets</span>
+        <x-admin.info-tip :label="'Size sets — '.$pieceTipLabel">Size sets — add groups if you have mixed sizes.</x-admin.info-tip>
+      </span>
+      <span class="admin-label-with-tip" data-mw-show="floating_shelf">
+        <span class="mw-piece__sets-title">Open-back box</span>
+        <x-admin.info-tip :label="'Open-back box — '.$pieceTipLabel">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</x-admin.info-tip>
+      </span>
+    </div>
     <div data-mw-set-list>
       @foreach ($sets as $si => $set)
         @include('admin.quotations.millwork._set_row', ['pi' => $pi, 'si' => $si, 'set' => is_array($set) ? $set : [], 'unit' => $unit])

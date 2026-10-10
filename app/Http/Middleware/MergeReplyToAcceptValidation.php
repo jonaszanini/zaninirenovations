@@ -22,6 +22,10 @@ class MergeReplyToAcceptValidation
             return $next($request);
         }
 
+        if (\App\Support\QuotationSaveIntent::isDraft($request)) {
+            return $next($request);
+        }
+
         $unset = QuotationReplyToAccept::parse($request->input(QuotationReplyToAccept::FIELD)) === null;
 
         try {

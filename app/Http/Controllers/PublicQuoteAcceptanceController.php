@@ -76,6 +76,9 @@ class PublicQuoteAcceptanceController extends Controller
         if ($project === null || $project->isClosed() || $quotation->isRejected() || $quotation->isSuperseded()) {
             return QuoteAcceptanceService::STATUS_INVALID_STATE;
         }
+        if ($quotation->isSourceDraft()) {
+            return QuoteAcceptanceService::STATUS_INVALID_STATE;
+        }
         if ($quotation->source_type === \App\Models\ClientProjectQuotation::SOURCE_MILLWORK && $quotation->source_id) {
             $millwork = \App\Models\MillworkQuotation::query()->find($quotation->source_id);
             if ($millwork && $millwork->hasUnplacedCutParts()) {
