@@ -298,6 +298,120 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
         }
     }
 
+    public function test_untouched_v1_text_size_resave_keeps_exact_price(): void
+    {
+        $this->actingAsAdmin();
+
+        $cases = [
+            '23 1/2' => [
+                'width' => '23 1/2',
+                'height' => 34.5,
+                'depth' => 24,
+            ],
+            '2 ft' => [
+                'width' => '2 ft',
+                'height' => 34.5,
+                'depth' => 24,
+            ],
+            '762mm' => [
+                'width' => 36,
+                'height' => 34.5,
+                'depth' => '762mm',
+            ],
+        ];
+
+        foreach ($cases as $name => $dims) {
+            $piece = array_merge([
+                'type' => 'cabinet',
+                'qty' => 1,
+                'unit' => 'in',
+                'include_doors' => false,
+                'include_back' => false,
+                'include_toe_kick' => false,
+                'edge_banding' => false,
+                'shelf_count' => 0,
+            ], $dims);
+            $inputs = [
+                'pieces' => [$piece],
+                'include_install' => false,
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+            ];
+            $calc = (new MillworkQuotationCalculator)->calculate($inputs, null, 1);
+            $total = round((float) $calc['summary']['grand_total'], 2);
+            $this->assertGreaterThan(0, $total, $name);
+
+            $quote = MillworkQuotation::query()->create([
+                'quote_number' => 'MW-V1-TEXT-'.preg_replace('/[^A-Za-z0-9]+/', '-', $name),
+                'client_name' => 'V1 text '.$name,
+                'is_draft' => false,
+                'cut_plan_version' => 1,
+                'inputs' => $inputs,
+                'calculation' => $calc,
+                'final_quote_total' => $total,
+            ]);
+
+            $posted = array_merge($piece, [
+                'width_unit' => 'in',
+                'height_unit' => 'in',
+                'depth_unit' => 'in',
+                'length_unit' => 'in',
+                'thickness_unit' => 'in',
+                'sets' => [[
+                    'qty' => 1,
+                    'length' => '',
+                    'width' => '',
+                    'depth' => '',
+                    'height' => '',
+                    'thickness' => '',
+                    'unit' => 'in',
+                    'length_unit' => 'in',
+                    'width_unit' => 'in',
+                    'depth_unit' => 'in',
+                    'height_unit' => 'in',
+                    'thickness_unit' => 'in',
+                ]],
+            ]);
+
+            $preview = $this->post(route('admin.quotations.millwork.calculate-existing', $quote), [
+                'pieces' => [$posted],
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+                'include_install' => 0,
+            ]);
+            $preview->assertOk();
+            $this->assertSame(
+                $total,
+                round((float) $preview->json('summary.grand_total'), 2),
+                $name.' live preview must keep the stored text-size price'
+            );
+
+            $this->put(route('admin.quotations.millwork.update', $quote), [
+                'save_intent' => 'publish',
+                'client_name' => 'V1 text '.$name,
+                '_cut_plan_version' => 1,
+                'pieces' => [$posted],
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+                'include_install' => 0,
+                'payment_installments' => 3,
+                'include_debris_removal' => 0,
+                'include_commute' => 0,
+                'ask_reply_to_accept' => '0',
+            ])->assertRedirect()->assertSessionHasNoErrors();
+
+            $fresh = $quote->fresh();
+            $this->assertSame(1, (int) $fresh->cut_plan_version, $name);
+            $this->assertEquals($piece['width'] ?? null, $fresh->inputs['pieces'][0]['width'] ?? null, $name.' width');
+            $this->assertEquals($piece['depth'] ?? null, $fresh->inputs['pieces'][0]['depth'] ?? null, $name.' depth');
+            $this->assertSame(
+                $total,
+                round((float) $fresh->final_quote_total, 2),
+                $name.' re-save must keep the exact stored price'
+            );
+        }
+    }
+
     public function test_project_pdf_totals_match_calculator(): void
     {
         $this->actingAsAdmin();

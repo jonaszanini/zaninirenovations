@@ -179,7 +179,11 @@
     </div>
     <div class="admin-form-group">
       <label>Door #</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][door_count]" value="{{ $piece['door_count'] ?? 2 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.door_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][door_count]" value="{{ $piece['door_count'] ?? 2 }}"
+             @if ($errors->has('pieces.'.$pi.'.door_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.door_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group" data-mw-show="cabinet vanity">
       <label>Shelves</label>
@@ -191,7 +195,11 @@
     </div>
     <div class="admin-form-group" data-mw-show="cabinet vanity closet">
       <label>Drawers</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.drawer_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}"
+             @if ($errors->has('pieces.'.$pi.'.drawer_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.drawer_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group mw-field--finish">
       <label>Finish</label>
@@ -243,7 +251,11 @@
     </div>
     <div class="admin-form-group" data-mw-show="bench-drawers">
       <label>Drawers</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.drawer_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}"
+             @if ($errors->has('pieces.'.$pi.'.drawer_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.drawer_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group mw-field--finish">
       <label>Finish</label>

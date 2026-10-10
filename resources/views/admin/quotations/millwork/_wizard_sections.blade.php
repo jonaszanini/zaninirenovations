@@ -175,18 +175,18 @@
                value="{{ old('waste_pct', $inputs['waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <div class="admin-label-with-tip">
+        <span class="admin-label-with-tip">
           <label for="mw-edge-waste">Edge waste %</label>
           <x-admin.info-tip label="Edge waste %">Extra edge banding beyond the cut-plan length.</x-admin.info-tip>
-        </div>
+        </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-edge-waste" name="edge_waste_pct"
                value="{{ old('edge_waste_pct', $inputs['edge_waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <div class="admin-label-with-tip">
+        <span class="admin-label-with-tip">
           <label for="mw-finish-waste">Finish waste %</label>
           <x-admin.info-tip label="Finish waste %">Extra paint or stain beyond the measured faces.</x-admin.info-tip>
-        </div>
+        </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-finish-waste" name="finish_waste_pct"
                value="{{ old('finish_waste_pct', $inputs['finish_waste_pct'] ?? 10) }}">
       </div>

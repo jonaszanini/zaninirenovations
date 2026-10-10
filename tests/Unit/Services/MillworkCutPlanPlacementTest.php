@@ -993,7 +993,7 @@ class MillworkCutPlanPlacementTest extends TestCase
         }
     }
 
-    public function test_v1_retyped_size_pdf_scope_uses_converted_inches(): void
+    public function test_v1_pdf_scope_uses_legacy_float_cast_like_main(): void
     {
         $quote = new MillworkQuotation([
             'cut_plan_version' => 1,
@@ -1016,12 +1016,12 @@ class MillworkCutPlanPlacementTest extends TestCase
             'calculation' => ['summary' => []],
         ]);
         $scope = $quote->scopeDescriptionForPdf();
-        $this->assertStringContainsString('23.5" W', $scope);
-        $this->assertStringContainsString('30" H', $scope);
-        $this->assertStringContainsString('30" D', $scope);
-        $this->assertStringNotContainsString('23" W', $scope);
-        $this->assertStringNotContainsString('2" W', $scope);
-        $this->assertStringNotContainsString('762" D', $scope);
+        $this->assertStringContainsString('23" W', $scope);
+        $this->assertStringContainsString('2" H', $scope);
+        $this->assertStringContainsString('762" D', $scope);
+        $this->assertStringNotContainsString('23.5" W', $scope);
+        $this->assertStringNotContainsString('30" H', $scope);
+        $this->assertStringNotContainsString('30" D', $scope);
 
         $ftSelect = new MillworkQuotation([
             'cut_plan_version' => 1,
@@ -1041,8 +1041,28 @@ class MillworkCutPlanPlacementTest extends TestCase
             ],
             'calculation' => ['summary' => []],
         ]);
-        $this->assertStringContainsString('30" W', $ftSelect->scopeDescriptionForPdf());
-        $this->assertStringNotContainsString('2.5" W', $ftSelect->scopeDescriptionForPdf());
+        $this->assertStringContainsString('2.5" W', $ftSelect->scopeDescriptionForPdf());
+        $this->assertStringNotContainsString('30" W', $ftSelect->scopeDescriptionForPdf());
+
+        $twoFt = new MillworkQuotation([
+            'cut_plan_version' => 1,
+            'inputs' => [
+                'pieces' => [[
+                    'type' => 'cabinet',
+                    'name' => 'Pantry',
+                    'qty' => 1,
+                    'width' => '2 ft',
+                    'height' => 34.5,
+                    'depth' => 24,
+                    'unit' => 'in',
+                    'include_doors' => false,
+                ]],
+                'include_install' => false,
+            ],
+            'calculation' => ['summary' => []],
+        ]);
+        $this->assertStringContainsString('2" W', $twoFt->scopeDescriptionForPdf());
+        $this->assertStringNotContainsString('24" W', $twoFt->scopeDescriptionForPdf());
     }
 
     public function test_v2_ft_trim_hidden_openings_stay_inches_like_main(): void

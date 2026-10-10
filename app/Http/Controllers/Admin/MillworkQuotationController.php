@@ -722,45 +722,66 @@ class MillworkQuotationController extends Controller
     }
 
     /**
+     * Compare only normalized dimensions. Posted unit dropdowns and default
+     * size-set rows are ignored when the saved piece never stored them, so a
+     * form re-save of an untouched v1 piece is not treated as a retype.
+     *
      * @param  array<string, mixed>  $posted
      * @param  array<string, mixed>  $saved
      */
     private function pieceNormalizedSizesEqual(array $posted, array $saved): bool
     {
-        return $this->pieceSizeFingerprint($posted) === $this->pieceSizeFingerprint($saved);
+        $dims = ['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'];
+        foreach ($dims as $key) {
+            if ($this->normalizedDimToken($posted[$key] ?? '') !== $this->normalizedDimToken($saved[$key] ?? '')) {
+                return false;
+            }
+            $unitKey = $key.'_unit';
+            if ($this->hasStoredSizeField($saved, $unitKey)
+                && strtolower((string) ($posted[$unitKey] ?? '')) !== strtolower((string) $saved[$unitKey])) {
+                return false;
+            }
+        }
+
+        $savedSets = is_array($saved['sets'] ?? null) ? $saved['sets'] : [];
+        if ($savedSets === []) {
+            return true;
+        }
+
+        $postedSets = is_array($posted['sets'] ?? null) ? $posted['sets'] : [];
+        if (count($postedSets) !== count($savedSets)) {
+            return false;
+        }
+        foreach ($savedSets as $i => $set) {
+            if (! is_array($set)) {
+                continue;
+            }
+            $postedSet = is_array($postedSets[$i] ?? null) ? $postedSets[$i] : [];
+            foreach (['length', 'width', 'depth', 'height', 'thickness'] as $key) {
+                if ($this->normalizedDimToken($postedSet[$key] ?? '') !== $this->normalizedDimToken($set[$key] ?? '')) {
+                    return false;
+                }
+                $unitKey = $key.'_unit';
+                if ($this->hasStoredSizeField($set, $unitKey)
+                    && strtolower((string) ($postedSet[$unitKey] ?? '')) !== strtolower((string) $set[$unitKey])) {
+                    return false;
+                }
+            }
+            if ($this->hasStoredSizeField($set, 'unit')
+                && strtolower((string) ($postedSet['unit'] ?? '')) !== strtolower((string) $set['unit'])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
      * @param  array<string, mixed>  $row
      */
-    private function pieceSizeFingerprint(array $row): string
+    private function hasStoredSizeField(array $row, string $key): bool
     {
-        $dims = ['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'];
-        $parts = [];
-        foreach ($dims as $key) {
-            $parts[] = $key.'='.$this->normalizedDimToken($row[$key] ?? '');
-            $unitKey = $key.'_unit';
-            if (isset($row[$unitKey]) && $row[$unitKey] !== '' && $row[$unitKey] !== null) {
-                $parts[] = $unitKey.'='.strtolower((string) $row[$unitKey]);
-            }
-        }
-        foreach (is_array($row['sets'] ?? null) ? $row['sets'] : [] as $i => $set) {
-            if (! is_array($set)) {
-                continue;
-            }
-            foreach (['length', 'width', 'depth', 'height', 'thickness'] as $key) {
-                $parts[] = 'set'.$i.'.'.$key.'='.$this->normalizedDimToken($set[$key] ?? '');
-                $unitKey = $key.'_unit';
-                if (isset($set[$unitKey]) && $set[$unitKey] !== '' && $set[$unitKey] !== null) {
-                    $parts[] = 'set'.$i.'.'.$unitKey.'='.strtolower((string) $set[$unitKey]);
-                }
-            }
-            if (isset($set['unit']) && $set['unit'] !== '') {
-                $parts[] = 'set'.$i.'.unit='.strtolower((string) $set['unit']);
-            }
-        }
-
-        return implode('|', $parts);
+        return array_key_exists($key, $row) && $row[$key] !== '' && $row[$key] !== null;
     }
 
     private function normalizedDimToken(mixed $value): string

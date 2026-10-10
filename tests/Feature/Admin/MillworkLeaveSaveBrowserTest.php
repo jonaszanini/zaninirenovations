@@ -51,6 +51,7 @@ class MillworkLeaveSaveBrowserTest extends IntegrationTestCase
         $this->assertGreaterThanOrEqual(1, (int) ($report['dirtyDialogs'] ?? 0));
         $this->assertTrue(! empty($report['ctrlSClicked']));
         $this->assertMatchesRegularExpression('/millwork\/\d+|millwork\/[^\/]+\/edit/', (string) ($report['afterUrl'] ?? ''));
+        $this->assertSame(0, (int) ($report['afterSaveDialogs'] ?? -1));
     }
 
     private function startServer(): string

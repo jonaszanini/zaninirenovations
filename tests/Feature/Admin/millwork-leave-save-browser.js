@@ -138,6 +138,10 @@ const outPath = process.env.MW_OUT || path.join(process.cwd(), 'storage/app/mill
     report.afterUrl = page.url();
     report.ctrlSClicked = savedUrl.test(report.afterUrl);
 
+    const beforeAfterSaveLeave = dialogs.length;
+    await go(base + leaveUrl);
+    report.afterSaveDialogs = dialogs.length - beforeAfterSaveLeave;
+
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
     if (report.cleanDialogs !== 0) {
@@ -151,6 +155,9 @@ const outPath = process.env.MW_OUT || path.join(process.cwd(), 'storage/app/mill
     }
     if (!/millwork\/\d+|millwork\/[^/]+\/edit/.test(report.afterUrl)) {
       throw new Error('Ctrl+S on a dirty millwork form must save: ' + report.afterUrl);
+    }
+    if (report.afterSaveDialogs !== 0) {
+      throw new Error('Ctrl+S save must clear the leave prompt, got ' + report.afterSaveDialogs);
     }
     await browser.close();
   } catch (err) {

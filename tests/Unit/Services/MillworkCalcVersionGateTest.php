@@ -397,7 +397,7 @@ class MillworkCalcVersionGateTest extends TestCase
         $this->assertStringContainsString('240 inches', $messages['calculation']);
     }
 
-    public function test_v1_retyped_pdf_uses_converted_inches(): void
+    public function test_v1_pdf_uses_legacy_float_cast_not_converted_inches(): void
     {
         $calc = (new MillworkQuotationCalculator)->calculate([
             'pieces' => [[
@@ -437,8 +437,25 @@ class MillworkCalcVersionGateTest extends TestCase
             'calculation' => $calc,
         ]);
         $pdf = $quote->scopeDescriptionForPdf();
-        $this->assertStringContainsString('23.5" W', $pdf);
+        $this->assertStringContainsString('23" W', $pdf);
+        $this->assertStringNotContainsString('23.5" W', $pdf);
         $this->assertStringNotContainsString('23 1/2" W', $pdf);
+    }
+
+    public function test_edited_v2_bench_calculator_price_is_336_34(): void
+    {
+        $edited = $this->total([
+            'type' => 'bench',
+            'unit' => 'in',
+            'length' => 48,
+            'depth' => 16,
+            'height' => '',
+            'qty' => 1,
+            'edge_banding' => false,
+            '_calc_version' => 3,
+        ], 2);
+        $this->assertEquals(336.34, round($edited, 2));
+        $this->assertNotEquals(0.0, $edited);
     }
 
     /**

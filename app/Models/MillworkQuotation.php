@@ -247,9 +247,7 @@ class MillworkQuotation extends Model
                 $piece['_calc_version'] = $this->calcVersion();
             }
             $line = $legacyQuote
-                ? \App\Services\Millwork\LegacyMillworkPartBuilder::clientScopeLine(
-                    \App\Services\Millwork\MillworkDimensionParser::toLegacyInchPiece($piece)
-                )
+                ? \App\Services\Millwork\LegacyMillworkPartBuilder::clientScopeLine($piece)
                 : \App\Services\Millwork\MillworkPartBuilder::clientScopeLine($piece);
             if ($line === '') {
                 continue;

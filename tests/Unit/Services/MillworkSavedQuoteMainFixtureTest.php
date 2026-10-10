@@ -65,7 +65,8 @@ class MillworkSavedQuoteMainFixtureTest extends TestCase
             );
         }
         if ($name === 'v1_retyped_fraction_pdf') {
-            $this->assertStringContainsString('23.5" W', $actual['pdf_scope']);
+            $this->assertStringContainsString('23" W', $actual['pdf_scope']);
+            $this->assertStringNotContainsString('23.5" W', $actual['pdf_scope']);
             $this->assertStringNotContainsString('23 1/2" W', $actual['pdf_scope']);
         }
         if ($name === 'v2_wainscot_300in_run') {
