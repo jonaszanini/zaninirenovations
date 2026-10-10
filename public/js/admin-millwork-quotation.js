@@ -673,7 +673,6 @@ window.MillworkDimensionParser = (function () {
       if (!window.MillworkDimensionParser) return errors;
       form.querySelectorAll('.mw-input--dim').forEach(function (input) {
         if (!dimFieldIsActive(input)) return;
-        if (!pieceUsesNewParsing(input)) return;
         var parsed = window.MillworkDimensionParser.inspect(input.value, dimFieldUnit(input));
         if (parsed.status === 'invalid') {
           errors[inputErrorKey(input)] = parsed.message || window.MillworkDimensionParser.INVALID_MESSAGE;

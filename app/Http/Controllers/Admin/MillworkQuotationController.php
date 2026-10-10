@@ -550,11 +550,13 @@ class MillworkQuotationController extends Controller
                 continue;
             }
             $saved = is_array($existingPieces[$index] ?? null) ? $existingPieces[$index] : null;
-            $omitMissingDefaults = $saved ? $this->missingFieldsEqualRenderedDefaults($piece, $saved) : [
-                'dims' => [],
-                'flags' => [],
-                'counts' => [],
-            ];
+            $omitMissingDefaults = ($convertLegacyEdits && $saved)
+                ? $this->missingFieldsEqualRenderedDefaults($piece, $saved)
+                : [
+                    'dims' => [],
+                    'flags' => [],
+                    'counts' => [],
+                ];
             if ($convertLegacyEdits && $saved && ! $this->pieceNormalizedSizesEqual($piece, $saved)) {
                 $piece = MillworkDimensionParser::toLegacyInchPiece($piece);
             }
@@ -751,7 +753,7 @@ class MillworkQuotationController extends Controller
     {
         $dims = ['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'];
         foreach ($dims as $key) {
-            if ($this->hasStoredSizeField($saved, $key)) {
+            if ($this->keyIsPresent($saved, $key)) {
                 if ($this->normalizedDimToken($posted[$key] ?? '') !== $this->normalizedDimToken($saved[$key] ?? '')) {
                     return false;
                 }
@@ -779,7 +781,7 @@ class MillworkQuotationController extends Controller
             }
             $postedSet = is_array($postedSets[$i] ?? null) ? $postedSets[$i] : [];
             foreach (['length', 'width', 'depth', 'height', 'thickness'] as $key) {
-                if ($this->hasStoredSizeField($set, $key)) {
+                if ($this->keyIsPresent($set, $key)) {
                     if ($this->normalizedDimToken($postedSet[$key] ?? '') !== $this->normalizedDimToken($set[$key] ?? '')) {
                         return false;
                     }
@@ -855,9 +857,20 @@ class MillworkQuotationController extends Controller
     }
 
     /**
-     * Fields a sparse saved row never stored, whose posted values still match
-     * the edit-form defaults. Those must stay unset so calculate() can merge
-     * calculator defaults (cabinet height 34.5, doors/toe on, etc.).
+     * True when the stored row has the key, including an explicit blank ('').
+     * Only a missing key is "never stored".
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function keyIsPresent(array $row, string $key): bool
+    {
+        return array_key_exists($key, $row);
+    }
+
+    /**
+     * v1 only: fields the saved row never stored (key absent), whose posted
+     * values still match the rendered default. Those stay unset so calculate()
+     * can merge calculator defaults. An explicit stored '' stays ''.
      *
      * @param  array<string, mixed>  $posted
      * @param  array<string, mixed>  $saved
@@ -867,22 +880,23 @@ class MillworkQuotationController extends Controller
     {
         $dims = [];
         foreach (['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'] as $key) {
-            if (! $this->hasStoredSizeField($saved, $key)
+            if (! $this->keyIsPresent($saved, $key)
                 && $this->postedEqualsRenderedDefault($key, $posted[$key] ?? '')) {
                 $dims[] = $key;
             }
         }
+        $type = MillworkPartBuilder::normalizeType((string) ($saved['type'] ?? $posted['type'] ?? 'shelf'));
         $flags = [];
         foreach (['edge_banding', 'include_back', 'include_doors', 'include_toe_kick'] as $flag) {
-            if (! $this->hasStoredSizeField($saved, $flag)
-                && $this->postedEqualsRenderedFlagDefault($flag, $posted[$flag] ?? null)) {
+            if (! $this->keyIsPresent($saved, $flag)
+                && $this->postedEqualsRenderedFlagDefault($flag, $posted[$flag] ?? null, $type)) {
                 $flags[] = $flag;
             }
         }
         $counts = [];
         foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $key) {
-            if (! $this->hasStoredSizeField($saved, $key)
-                && $this->postedEqualsRenderedCountDefault($key, $posted[$key] ?? null)) {
+            if (! $this->keyIsPresent($saved, $key)
+                && $this->postedEqualsRenderedCountDefault($key, $posted[$key] ?? null, $type)) {
                 $counts[] = $key;
             }
         }
@@ -900,39 +914,23 @@ class MillworkQuotationController extends Controller
         return $token === '';
     }
 
-    private function postedEqualsRenderedFlagDefault(string $flag, mixed $posted): bool
+    private function postedEqualsRenderedFlagDefault(string $flag, mixed $posted, string $type): bool
     {
         $bool = filter_var($posted ?? false, FILTER_VALIDATE_BOOLEAN);
-        if ($flag === 'edge_banding') {
-            return $bool === true;
-        }
+        $defaults = MillworkQuotationCalculator::defaultPiece($type);
+        $effective = filter_var($defaults[$flag] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        return $bool === false;
+        return $bool === $effective;
     }
 
-    /**
-     * Form defaults for count inputs, including both shelf_count widgets
-     * (closet 3, cabinet/vanity 1). A browser posts every same-name field;
-     * PHP keeps the last value, so a closet row can arrive as 1.
-     */
-    private function postedEqualsRenderedCountDefault(string $key, mixed $posted): bool
+    private function postedEqualsRenderedCountDefault(string $key, mixed $posted, string $type): bool
     {
         if ($posted === null || $posted === '') {
             return true;
         }
-        $n = $this->postedCount($posted);
-        $defaults = [
-            'door_count' => [2],
-            'shelf_count' => [1, 3],
-            'drawer_count' => [0],
-            'division_count' => [2],
-            'columns' => [2],
-            'rows' => [2],
-            'rod_count' => [1],
-            'openings' => [0],
-        ];
+        $defaults = MillworkQuotationCalculator::defaultPiece($type);
 
-        return in_array($n, $defaults[$key] ?? [], true);
+        return $this->postedCount($posted) === (int) ($defaults[$key] ?? 0);
     }
 
     private function normalizedDimToken(mixed $value): string

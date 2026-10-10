@@ -1,5 +1,6 @@
 @php
   use App\Services\Millwork\MillworkPartBuilder;
+  use App\Services\MillworkQuotationCalculator;
   $pi = $pi ?? 0;
   $piece = is_array($piece ?? null) ? $piece : [];
   $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
@@ -8,6 +9,7 @@
   $style = MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
   $profile = MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
   $isLegacyQuote = $isLegacyQuote ?? (((int) ($cutPlanVersion ?? $builderVersion ?? 2)) < 2);
+  $piece = MillworkQuotationCalculator::withEffectiveFormDefaults($piece, $isLegacyQuote);
   $unitSuffix = $unit === 'ft' ? 'ft' : 'in';
   $pieceN = is_numeric($pi) ? ((int) $pi + 1) : 1;
   $pieceTipName = trim((string) ($piece['name'] ?? ''));

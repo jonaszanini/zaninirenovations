@@ -164,6 +164,32 @@ class MillworkQuotationCalculator
     }
 
     /**
+     * Fill flags and counts a v1 row never stored with the values calculate()
+     * already uses, so the edit form shows the priced defaults.
+     *
+     * @param  array<string, mixed>  $piece
+     * @return array<string, mixed>
+     */
+    public static function withEffectiveFormDefaults(array $piece, bool $forLegacyQuote): array
+    {
+        if (! $forLegacyQuote) {
+            return $piece;
+        }
+        $defaults = self::defaultPiece((string) ($piece['type'] ?? 'shelf'));
+        foreach ([
+            'include_doors', 'include_toe_kick', 'include_back', 'edge_banding',
+            'door_count', 'shelf_count', 'drawer_count', 'division_count',
+            'columns', 'rows', 'rod_count', 'openings',
+        ] as $key) {
+            if (! array_key_exists($key, $piece) && array_key_exists($key, $defaults)) {
+                $piece[$key] = $defaults[$key];
+            }
+        }
+
+        return $piece;
+    }
+
+    /**
      * 1 = legacy cut plan, 2 = main v2 builder, 3 = new parsing / defaults / limits.
      *
      * @param  array<string, mixed>  $inputs
@@ -722,10 +748,7 @@ class MillworkQuotationCalculator
     private function collectDimensionFieldErrors(array $inputs, array &$messages): void
     {
         foreach ($this->pieces($inputs) as $pi => $piece) {
-            if (! MillworkPartBuilder::usesNewParsing($piece)) {
-                continue;
-            }
-            $this->collectRowDimensionErrors($piece, 'pieces.'.$pi, $messages, null, $this->usedParseKeys($piece));
+            $this->collectRowDimensionErrors($piece, 'pieces.'.$pi, $messages, null, null);
             foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $si => $set) {
                 if (! is_array($set)) {
                     continue;
@@ -736,7 +759,7 @@ class MillworkQuotationCalculator
                     'pieces.'.$pi.'.sets.'.$si,
                     $messages,
                     (string) ($piece['unit'] ?? 'in'),
-                    $this->usedSetLimitKeys($piece)
+                    null
                 );
             }
         }
