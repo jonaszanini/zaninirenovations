@@ -75,6 +75,45 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertIsString($invoiceEdit);
         $this->assertStringNotContainsString('parseHybridCadMoney', $invoiceEdit);
         $this->assertMatchesRegularExpression('/amtRaw\s*=\s*amtInput\s*\?\s*parseAmount\(\s*amtInput\s*\)/', $invoiceEdit);
+        $this->assertStringContainsString('data-cp-money-allow-negative', $invoiceEdit);
+        $this->assertStringContainsString('$allowNegativeAmount', $invoiceEdit);
+        $this->assertStringContainsString('syncRowMoneySign', $invoiceEdit);
+        $this->assertStringContainsString('cpMoneyMask.refresh', $invoiceEdit);
+        $this->assertStringContainsString('refresh: function', $js);
+        $this->assertStringContainsString('moneyAllowsNegative', $js);
+        $this->assertStringContainsString('function roundToPlaces', $js);
+        $calculator = file_get_contents(app_path('Services/Invoice/InvoiceTotalsCalculator.php'));
+        $this->assertIsString($calculator);
+        $this->assertStringContainsString('Materials and gas amounts cannot be negative.', $calculator);
+        $controller = file_get_contents(app_path('Http/Controllers/Admin/ClientProjectInvoiceController.php'));
+        $this->assertIsString($controller);
+        $this->assertStringContainsString('Invoice total cannot be negative.', $controller);
+        $this->assertStringContainsString('DB::transaction', $controller);
+        $this->assertDoesNotMatchRegularExpression('/total\s*<\s*0\.01/', $controller);
+        $this->assertDoesNotMatchRegularExpression(
+            '/LINE_KIND_GAS\)\s*&&\s*\$amount\s*<\s*0\)\s*\{\s*continue;/',
+            $calculator
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/parsed\.negative[\s\S]{0,160}input\.value\s*=\s*[\'"][\'"]/',
+            $js
+        );
+        $this->assertStringNotContainsString("var cur = input.value.replace(/,/g, '');", $js);
+        $this->assertStringContainsString("if (remaining.indexOf('.') !== -1)", $js);
+        $this->assertDoesNotMatchRegularExpression(
+            "/places > 0 && \(ev\.key === '\.' \|\| ev\.key === ','\)/",
+            $js
+        );
+        $harness = file_get_contents(base_path('tests/Feature/Admin/money-direct-entry.js'));
+        $this->assertIsString($harness);
+        $this->assertStringContainsString("keyboard.type('1.234,56'", $harness);
+        $this->assertStringContainsString("keyboard.type('1,234,567.89'", $harness);
+        $this->assertStringContainsString("keyboard.type('12,345,678'", $harness);
+        $this->assertStringContainsString("keyboard.type('1,2,3'", $harness);
+        $this->assertDoesNotMatchRegularExpression(
+            "/cp-kp-mixed[\s\S]{0,240}input\.value\s*=\s*['\"]1\.234,56['\"]/",
+            $harness
+        );
 
         $paving = file_get_contents(resource_path('views/admin/quotations/paving/create.blade.php'));
         $this->assertIsString($paving);
@@ -111,13 +150,11 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             );
         }
 
-        $harness = file_get_contents(base_path('tests/Feature/Admin/money-direct-entry.js'));
-        $this->assertIsString($harness);
         $this->assertStringNotContainsString('PREVIEW_SETTLE_MS', $harness);
         $this->assertStringContainsString('PREVIEW_FIRE_MS', $harness);
         $this->assertStringNotContainsString('fenceGateKeypress', $harness);
-        $this->assertStringNotContainsString("halfUp: probe('1.005')", $harness);
-        $this->assertStringNotContainsString("negative: probe('-5')", $harness);
+        $this->assertStringContainsString("halfUp: probe('1.005')", $harness);
+        $this->assertStringContainsString("negative: probe('-5')", $harness);
     }
 
     public function test_flooring_add_type_saves_4_75_and_keeps_existing(): void
@@ -182,6 +219,8 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->actingAs($user);
         ClientProject::factory()->create(['name' => 'Money sweep project']);
         $invoiceUrl = $this->makeInstallmentInvoiceEditUrl();
+        [$negStandard, $negStandardUrl] = $this->makeNegativeLineInvoice('standard');
+        [$negHourly, $negHourlyUrl] = $this->makeNegativeLineInvoice('hourly');
 
         $this->assertTrue(is_dir(base_path('node_modules/puppeteer')), 'Puppeteer must be installed');
         $pages = $this->moneySweepPages();
@@ -189,6 +228,8 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             $this->get($url)->assertOk();
         }
         $this->get($invoiceUrl)->assertOk();
+        $this->get($negStandardUrl)->assertOk();
+        $this->get($negHourlyUrl)->assertOk();
 
         $existing = FlooringType::query()->orderBy('id')->get()
             ->mapWithKeys(fn (FlooringType $t) => [$t->id => (float) $t->installation_price_per_sqft])
@@ -205,6 +246,8 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             .' MONEY_BASE='.escapeshellarg($base)
             .' MONEY_PAGES='.escapeshellarg(json_encode($pages))
             .' MONEY_INVOICE_URL='.escapeshellarg($invoiceUrl)
+            .' MONEY_NEG_STANDARD_URL='.escapeshellarg($negStandardUrl)
+            .' MONEY_NEG_HOURLY_URL='.escapeshellarg($negHourlyUrl)
             .' MONEY_OUT='.escapeshellarg($out)
             .' node '.escapeshellarg($script);
         $output = [];
@@ -252,7 +295,51 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertTrue((bool) ($report['behaviors']['negativeInvalid'] ?? false));
         $this->assertNotEquals(5.0, (float) ($report['behaviors']['negativeValue'] ?? 0));
         $this->assertEqualsWithDelta(4.76, (float) ($report['behaviors']['rounded'] ?? 0), 0.0001);
+        $this->assertEqualsWithDelta(1.01, (float) ($report['behaviors']['halfUp'] ?? 0), 0.0001);
         $this->assertTrue((bool) ($report['behaviors']['loneDotBlocked'] ?? false));
+        $this->assertTrue((bool) ($report['behaviors']['gasCommaInvalid'] ?? false));
+        $this->assertSame('1,459', $report['behaviors']['gasCommaShown'] ?? '');
+        $this->assertNotSame('1,459.000', $report['behaviors']['gasCommaShown'] ?? '');
+        $this->assertNotSame('1459.000', $report['behaviors']['gasCommaShown'] ?? '');
+        $this->assertFalse((bool) ($report['behaviors']['storedNegativeBlank'] ?? true));
+        $this->assertStringContainsString('-', (string) ($report['behaviors']['storedNegativeShown'] ?? ''));
+        $this->assertFalse((bool) ($report['behaviors']['storedNegativeSubmitAllowed'] ?? true));
+        $this->assertTrue((bool) ($report['behaviors']['storedNegativeInvalid'] ?? false));
+        $this->assertEqualsWithDelta(-200.0, (float) ($report['behaviors']['allowNegativeNum'] ?? 0), 0.0001);
+        $this->assertTrue((bool) ($report['behaviors']['allowNegativeSubmitAllowed'] ?? false));
+        $this->assertFalse((bool) ($report['behaviors']['allowNegativeInvalid'] ?? true));
+        $this->assertEqualsWithDelta(-200.0, (float) ($report['behaviors']['allowNegativeTypedNum'] ?? 0), 0.0001);
+        $this->assertFalse((bool) ($report['behaviors']['allowNegativeTypedInvalid'] ?? true));
+        $this->assertTrue((bool) ($report['behaviors']['oneDashTwoInvalid'] ?? false));
+        $this->assertStringContainsString('valid amount', strtolower((string) ($report['behaviors']['oneDashTwoMessage'] ?? '')));
+        $this->assertStringNotContainsString('negative', strtolower((string) ($report['behaviors']['oneDashTwoMessage'] ?? '')));
+        $this->assertEqualsWithDelta(-30.49, (float) ($report['behaviors']['negHalfRound'] ?? 0), 0.0001);
+
+        $this->assertIsArray($report['keypress'] ?? null);
+        $this->assertTrue((bool) ($report['keypress']['typedMinus']['invalid'] ?? false));
+        $this->assertStringContainsString('-', (string) ($report['keypress']['typedMinus']['value'] ?? ''));
+        $this->assertStringContainsString('negative', strtolower((string) ($report['keypress']['typedMinus']['message'] ?? '')));
+        $this->assertFalse((bool) ($report['keypress']['allowMinus']['invalid'] ?? true));
+        $this->assertEqualsWithDelta(-200.0, (float) str_replace(',', '', (string) ($report['keypress']['allowMinus']['value'] ?? '')), 0.0001);
+        $this->assertTrue((bool) ($report['keypress']['gasComma']['invalid'] ?? false));
+        $this->assertNotSame('1459.000', $report['keypress']['gasComma']['value'] ?? '');
+        $this->assertEqualsWithDelta(1.01, $this->parseMoney($report['keypress']['halfUp']['value'] ?? ''), 0.0001);
+        $this->assertSame('1.234,56', $report['keypress']['mixedTyped']['value'] ?? '');
+        $this->assertSame('1.234,56', $report['keypress']['mixedBlur']['value'] ?? '');
+        $this->assertNotSame('1.23', $report['keypress']['mixedBlur']['value'] ?? '');
+        $this->assertTrue((bool) ($report['keypress']['mixedBlur']['invalid'] ?? false));
+        $this->assertFalse((bool) ($report['keypress']['mixedSubmit'] ?? true));
+        $this->assertFalse((bool) ($report['keypress']['usThousands']['invalid'] ?? true));
+        $this->assertEqualsWithDelta(1234.56, $this->parseMoney($report['keypress']['usThousands']['value'] ?? ''), 0.0001);
+        $this->assertFalse((bool) ($report['keypress']['usMillions']['invalid'] ?? true));
+        $this->assertEqualsWithDelta(1234567.89, $this->parseMoney($report['keypress']['usMillions']['value'] ?? ''), 0.0001);
+        $this->assertFalse((bool) ($report['keypress']['usInteger']['invalid'] ?? true));
+        $this->assertEqualsWithDelta(12345678.0, $this->parseMoney($report['keypress']['usInteger']['value'] ?? ''), 0.0001);
+        $this->assertSame('1,2,3', $report['keypress']['ambigCommasTyped']['value'] ?? '');
+        $this->assertSame('1,2,3', $report['keypress']['ambigCommasBlur']['value'] ?? '');
+        $this->assertNotSame('1.23', $report['keypress']['ambigCommasBlur']['value'] ?? '');
+        $this->assertTrue((bool) ($report['keypress']['ambigCommasBlur']['invalid'] ?? false));
+        $this->assertFalse((bool) ($report['keypress']['ambigCommasSubmit'] ?? true));
 
         $this->assertIsArray($report['labourRateKeypress'] ?? null);
         $this->assertSame(0, (int) ($report['labourRateKeypress']['failed'] ?? 1));
@@ -263,24 +350,14 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             $this->assertSame($expectedLabour[$i], $field['typed'] ?? '');
             $this->assertSame($expectedLabour[$i], $field['focusedValue'] ?? '');
             $this->assertSame($expectedLabour[$i], $field['posted'] ?? '');
-            $this->assertNotSame('6.00', $field['focusedValue'] ?? '');
             $this->assertNotSame('6.01', $field['focusedValue'] ?? '');
-            $this->assertNotSame('3.00', $field['focusedValue'] ?? '');
-            $this->assertNotSame('1.00', $field['focusedValue'] ?? '');
             foreach ($field['snapshots'] ?? [] as $snap) {
                 $this->assertSame($snap['typedSoFar'] ?? null, $snap['value'] ?? '', ($field['name'] ?? 'labour').' rewritten mid-type');
                 $this->assertTrue((bool) ($snap['focused'] ?? false), ($field['name'] ?? 'labour').' lost focus mid-type');
             }
         }
         $labourPosted = (string) ($report['labourRateKeypress']['posted'] ?? '');
-        $this->assertTrue(
-            str_contains($labourPosted, '120.50'),
-            'paving draft must post owner 120.50'
-        );
-        $this->assertTrue(
-            str_contains($labourPosted, '35.00') || str_contains($labourPosted, 'helper_hourly_rate=35'),
-            'paving draft must post helper 35'
-        );
+        $this->assertTrue(str_contains($labourPosted, '120.50'), 'paving draft must post owner 120.50');
         $savedQuote = PavingQuotation::query()->latest('id')->first();
         if ($savedQuote) {
             $this->assertTrue((bool) $savedQuote->is_draft);
@@ -289,10 +366,11 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         }
         $this->assertEqualsWithDelta(4.75, (float) str_replace(',', '', (string) ($report['pavingRateMask']['comma']['value'] ?? '')), 0.0001);
         $this->assertFalse((bool) ($report['pavingRateMask']['comma']['invalid'] ?? true));
+        $this->assertTrue((bool) ($report['pavingRateMask']['negative']['invalid'] ?? false));
+        $this->assertStringContainsString('-', (string) ($report['pavingRateMask']['negative']['value'] ?? ''));
         $this->assertTrue((bool) ($report['pavingRateMask']['ambiguous']['invalid'] ?? false));
         $this->assertNotSame('1.23', $report['pavingRateMask']['ambiguous']['value'] ?? '');
-        $this->assertArrayNotHasKey('negative', $report['pavingRateMask'] ?? []);
-        $this->assertArrayNotHasKey('halfUp', $report['pavingRateMask'] ?? []);
+        $this->assertEqualsWithDelta(1.01, (float) ($report['pavingRateMask']['halfUp']['value'] ?? 0), 0.0001);
         $this->assertSame(1, (int) ($report['fenceGateNotice']['afterTicks'] ?? 0));
         $this->assertFalse((bool) ($report['fenceGateNotice']['noticeHidden'] ?? true));
         $this->assertStringContainsString('cleared', strtolower((string) ($report['fenceGateNotice']['notice'] ?? '')));
@@ -307,6 +385,24 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertNotSame('', (string) ($removedIds[2] ?? ''));
         $this->assertContains((string) $removedIds[0], $restoredIds);
         $this->assertContains((string) $removedIds[2], $restoredIds);
+
+        $this->assertIsArray($report['negativeResave'] ?? null);
+        foreach (['standard', 'hourly'] as $kind) {
+            $posted = (string) ($report['negativeResave'][$kind]['posted'] ?? '');
+            $this->assertTrue(
+                str_contains($posted, '-200.00') || str_contains($posted, '%2D200.00'),
+                $kind.' page JS must post -200.00'
+            );
+        }
+        $this->assertFalse((bool) ($report['hourlyMaterialsNegative']['allowNegative'] ?? true));
+        $this->assertTrue((bool) ($report['hourlyMaterialsNegative']['invalid'] ?? false));
+        $this->assertFalse((bool) ($report['hourlyMaterialsNegative']['submitAllowed'] ?? true));
+        $this->assertTrue((bool) ($report['hourlyMaterialsNegative']['afterKindChange']['allowNegative'] ?? false));
+        $this->assertFalse((bool) ($report['hourlyMaterialsNegative']['afterKindChange']['invalid'] ?? true));
+        $this->assertStringContainsString('-', (string) ($report['hourlyMaterialsNegative']['afterKindChange']['value'] ?? ''));
+        $negStandard->refresh();
+        $negHourly->refresh();
+        $this->assertNegativeLineTotals($negStandard, $negHourly);
 
         $created = FlooringType::query()->where('name', 'Direct entry oak')->first();
         $this->assertNotNull($created, 'browser save must create the add-type row');
@@ -355,6 +451,60 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         ]);
 
         return parse_url(route('admin.client-projects.invoices.edit', [$project, $invoice]), PHP_URL_PATH);
+    }
+
+    /**
+     * @return array{0: ClientProjectInvoice, 1: string}
+     */
+    private function makeNegativeLineInvoice(string $kind): array
+    {
+        $hourly = $kind === 'hourly';
+        $project = ClientProject::factory()->create([
+            'name' => $hourly ? 'Hourly credit invoice' : 'Standard credit invoice',
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+            'billing_type' => $hourly ? ClientProject::BILLING_HOURLY : ClientProject::BILLING_FIXED,
+            'hourly_rate' => $hourly ? 50 : null,
+            'payment_plan' => 1,
+            'total_amount' => $hourly ? null : 1000,
+        ]);
+        $items = $hourly
+            ? [
+                ['description' => 'Hours', 'amount' => 1000.00, 'line_kind' => ClientProjectInvoice::LINE_KIND_LABOUR],
+                ['description' => 'Prepaid labour credit', 'amount' => -200.00, 'line_kind' => ClientProjectInvoice::LINE_KIND_LABOUR_CREDIT],
+            ]
+            : [
+                ['description' => 'Labour', 'amount' => 1000.00, 'line_kind' => ClientProjectInvoice::LINE_KIND_LABOUR],
+                ['description' => 'Deposit credit', 'amount' => -200.00],
+            ];
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->create([
+            'installment_number' => null,
+            'installment_description' => $hourly ? 'Hourly work' : 'Manual invoice',
+            'items' => $items,
+            'subtotal' => 800.00,
+            'hst' => 104.00,
+            'total' => 904.00,
+            'hst_exempt' => false,
+            'status' => ClientProjectInvoice::STATUS_DRAFT,
+        ]);
+
+        return [
+            $invoice,
+            parse_url(route('admin.client-projects.invoices.edit', [$project, $invoice]), PHP_URL_PATH),
+        ];
+    }
+
+    private function assertNegativeLineTotals(ClientProjectInvoice $standard, ClientProjectInvoice $hourly): void
+    {
+        $this->assertEqualsWithDelta(800.00, (float) $standard->subtotal, 0.0001);
+        $this->assertEqualsWithDelta(104.00, (float) $standard->hst, 0.0001);
+        $this->assertEqualsWithDelta(904.00, (float) $standard->total, 0.0001);
+        $standardCredit = collect($standard->cleanItems())->firstWhere('description', 'Deposit credit');
+        $this->assertNotNull($standardCredit);
+        $this->assertEqualsWithDelta(-200.00, (float) $standardCredit['amount'], 0.0001);
+
+        $this->assertEqualsWithDelta(800.00, (float) $hourly->subtotal, 0.0001);
+        $this->assertEqualsWithDelta(104.00, (float) $hourly->hst, 0.0001);
+        $this->assertEqualsWithDelta(904.00, (float) $hourly->total, 0.0001);
     }
 
     /**

@@ -13,9 +13,13 @@
  *   - Entry is always direct decimals: type 4.75 and the field stays 4.75.
  *   - A lone comma followed by 1–2 digits is the decimal point (4,75 → 4.75).
  *     US thousands (1,234.56) stay valid. Mixed/ambiguous forms (1.234,56)
- *     show an inline error instead of guessing.
- *   - Extra fractional digits round on blur (4.756 → 4.76). Negatives and
- *     a lone "." are rejected and block submit.
+ *     show an inline error instead of guessing. On 3+ decimal fields,
+ *     `1,459` is flagged (not read as 1459).
+ *   - Extra fractional digits use decimal-safe rounding on blur (1.005 → 1.01).
+ *     Typed/pasted negatives show an inline error unless the field has
+ *     `data-cp-money-allow-negative` (invoice line amounts). A stored
+ *     negative is never blanked.
+ *   - A lone "." is rejected and blocks submit.
  *   - Thousand separators are applied on blur and stripped on submit so
  *     server-side numeric validation works. This also runs for native
  *     `HTMLFormElement.submit()` (used by basement / millwork wizards).
@@ -44,26 +48,40 @@
     return p;
   }
 
+  function moneyAllowsNegative(input) {
+    return !!(input && input.hasAttribute && input.hasAttribute('data-cp-money-allow-negative'));
+  }
+
+  function moneyParseOpts(input) {
+    return { allowNegative: moneyAllowsNegative(input) };
+  }
+
   /** minorUnits = amount × 10^places (integer). */
   function formatMinorUnits(minorUnits, places) {
     var divisor = Math.pow(10, places);
-    var whole = Math.floor(minorUnits / divisor);
-    var frac = minorUnits % divisor;
+    var sign = minorUnits < 0 ? '-' : '';
+    var abs = Math.abs(minorUnits);
+    var whole = Math.floor(abs / divisor);
+    var frac = abs % divisor;
     var wholeStr = whole.toLocaleString('en-US');
     if (places < 1) {
-      return wholeStr;
+      return sign + wholeStr;
     }
     var fracStr = String(frac).padStart(places, '0');
-    return wholeStr + '.' + fracStr;
+    return sign + wholeStr + '.' + fracStr;
   }
 
   /**
    * Parse a typed CAD string.
    * Lone comma + 1–2 digits → decimal (4,75 → 4.75).
-   * US thousands (1,234 / 1,234.56) → strip grouping.
+   * US thousands (1,234 / 1,234.56) → strip grouping on 2-place fields.
+   * On 3+ place fields, a grouping comma without a decimal (1,459) is flagged.
    * Mixed EU (1.234,56) and other ambiguous forms → error.
    */
-  function parseDirectCadMoney(value) {
+  function parseDirectCadMoney(value, places, opts) {
+    places = places || 2;
+    opts = opts || {};
+    var allowNegative = !!opts.allowNegative;
     if (value == null) {
       return { ok: true, num: 0, normalized: '', empty: true };
     }
@@ -71,11 +89,18 @@
     if (s === '') {
       return { ok: true, num: 0, normalized: '', empty: true };
     }
-    if (s.indexOf('-') !== -1) {
-      return { ok: false, num: NaN, normalized: s, error: 'Amount cannot be negative.' };
-    }
-    if (s === '.' || s === ',') {
+    var negative = false;
+    if (s.charAt(0) === '-') {
+      negative = true;
+      s = s.slice(1);
+    } else if (s.indexOf('-') !== -1) {
       return { ok: false, num: NaN, normalized: s, error: 'Enter a valid amount.' };
+    }
+    if (negative && !allowNegative) {
+      return { ok: false, num: NaN, normalized: '-' + s, negative: true, error: 'Amount cannot be negative.' };
+    }
+    if (s === '' || s === '.' || s === ',') {
+      return { ok: false, num: NaN, normalized: (negative ? '-' : '') + s, error: 'Enter a valid amount.' };
     }
 
     var hasComma = s.indexOf(',') !== -1;
@@ -86,6 +111,9 @@
       if (/^\d+,\d{1,2}$/.test(s)) {
         normalized = s.replace(',', '.');
       } else if (/^\d{1,3}(,\d{3})+$/.test(s)) {
+        if (places > 2) {
+          return { ok: false, num: NaN, normalized: s, error: 'Enter a valid amount (e.g. 1.459 or 1,459.000).' };
+        }
         normalized = s.replace(/,/g, '');
       } else if (/^\d+,$/.test(s)) {
         normalized = s.slice(0, -1);
@@ -110,7 +138,29 @@
     if (!isFinite(num)) {
       return { ok: false, num: NaN, normalized: normalized, error: 'Enter a valid amount.' };
     }
+    if (negative) {
+      num = -num;
+      normalized = '-' + normalized;
+    }
     return { ok: true, num: num, normalized: normalized };
+  }
+
+  /** Half-up rounding that survives binary float (1.005 → 1.01). */
+  function roundToPlaces(num, places) {
+    places = places || 2;
+    var n = Number(num);
+    if (!isFinite(n)) return NaN;
+    var sign = n < 0 ? -1 : 1;
+    var shifted = Number(Math.abs(n) + 'e' + places);
+    if (!isFinite(shifted)) {
+      shifted = Math.abs(n) * Math.pow(10, places);
+    }
+    return sign * Number(Math.round(shifted) + 'e-' + places);
+  }
+
+  function toMinorUnits(num, places) {
+    var rounded = roundToPlaces(num, places);
+    return Math.round(Number(Math.abs(rounded) + 'e' + places)) * (rounded < 0 ? -1 : 1);
   }
 
   function moneyErrorHost(input) {
@@ -149,8 +199,8 @@
   }
 
   function roundedNormalized(num, places) {
-    var factor = Math.pow(10, places || 2);
-    return (Math.round(num * factor) / factor).toFixed(places || 2);
+    places = places || 2;
+    return roundToPlaces(num, places).toFixed(places);
   }
 
   function formHasInvalidMoney(form) {
@@ -162,7 +212,7 @@
         clearMoneyFieldError(input);
         return;
       }
-      var parsed = parseDirectCadMoney(raw);
+      var parsed = parseDirectCadMoney(raw, moneyPlaces(input), moneyParseOpts(input));
       if (!parsed.ok) {
         setMoneyFieldError(input, parsed.error);
         invalid = true;
@@ -174,7 +224,7 @@
   function stripMoneyCommasOnForm(form) {
     if (!form || !form.querySelectorAll) return;
     form.querySelectorAll('.cp-money-input').forEach(function (input) {
-      var parsed = parseDirectCadMoney(input.value);
+      var parsed = parseDirectCadMoney(input.value, moneyPlaces(input), moneyParseOpts(input));
       if (!parsed.ok || parsed.empty) {
         if (parsed && parsed.empty) input.value = '';
         return;
@@ -215,7 +265,7 @@
       clearMoneyFieldError(input);
       return;
     }
-    var parsed = parseDirectCadMoney(raw);
+    var parsed = parseDirectCadMoney(raw, places, moneyParseOpts(input));
     if (!parsed.ok) {
       setMoneyFieldError(input, parsed.error);
       return;
@@ -224,8 +274,7 @@
     if (parsed.empty) {
       return;
     }
-    var minor = Math.round(parsed.num * Math.pow(10, places));
-    input.value = formatMinorUnits(minor, places);
+    input.value = formatMinorUnits(toMinorUnits(parsed.num, places), places);
   }
 
   /**
@@ -262,11 +311,19 @@
       }
       if (ev.key.length === 1) {
         if (/\d/.test(ev.key)) return;
-        if (places > 0 && (ev.key === '.' || ev.key === ',')) {
-          var cur = input.value.replace(/,/g, '');
-          if (cur.indexOf('.') !== -1) {
+        if (ev.key === '-') {
+          return;
+        }
+        if (places > 0 && ev.key === '.') {
+          var start = input.selectionStart == null ? input.value.length : input.selectionStart;
+          var end = input.selectionEnd == null ? start : input.selectionEnd;
+          var remaining = input.value.slice(0, start) + input.value.slice(end);
+          if (remaining.indexOf('.') !== -1) {
             ev.preventDefault();
           }
+          return;
+        }
+        if (places > 0 && ev.key === ',') {
           return;
         }
         ev.preventDefault();
@@ -275,12 +332,8 @@
 
     input.addEventListener('input', function () {
       var raw = input.value;
-      if (raw.indexOf('-') !== -1) {
-        setMoneyFieldError(input, 'Amount cannot be negative.');
-        return;
-      }
-      var parsed = parseDirectCadMoney(raw);
-      if (!parsed.ok && raw.trim() !== '' && raw.trim() !== '.' && raw.trim() !== ',') {
+      var parsed = parseDirectCadMoney(raw, places, moneyParseOpts(input));
+      if (!parsed.ok && raw.trim() !== '' && raw.trim() !== '.' && raw.trim() !== ',' && raw.trim() !== '-') {
         setMoneyFieldError(input, parsed.error);
         return;
       }
@@ -316,12 +369,22 @@
       }
     },
     /** Parse a masked value ("1,234.56" or "4,75") into a Number. NaN/empty/invalid → 0. */
-    parse: function (value) {
-      var parsed = parseDirectCadMoney(value);
+    parse: function (value, places, opts) {
+      var parsed = parseDirectCadMoney(value, places, opts);
       return parsed.ok ? parsed.num : 0;
     },
+    /** Half away from zero, matching PHP round() (1.005 → 1.01, −30.485 → −30.49). */
+    round: function (num, places) {
+      return roundToPlaces(num, places);
+    },
     /** Strip thousands separators on `.cp-money-input` before a programmatic submit. */
-    stripFormCommas: stripMoneyCommasOnForm
+    stripFormCommas: stripMoneyCommasOnForm,
+    /** Re-read allow-negative / places and clear or reset the visible error. */
+    refresh: function (input) {
+      if (!input) return;
+      clearMoneyFieldError(input);
+      wireMoneyInput(input);
+    }
   };
 
   // --- Time-entry form: start/end → hours -----------------------------

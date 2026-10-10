@@ -13,6 +13,8 @@ const password = process.env.MONEY_PASSWORD;
 const base = process.env.MONEY_BASE;
 const pages = JSON.parse(process.env.MONEY_PAGES || '[]');
 const invoiceUrl = process.env.MONEY_INVOICE_URL || '';
+const negStandardUrl = process.env.MONEY_NEG_STANDARD_URL || '';
+const negHourlyUrl = process.env.MONEY_NEG_HOURLY_URL || '';
 const outPath = process.env.MONEY_OUT || path.join(process.cwd(), 'storage/app/money-direct-entry.json');
 const PREVIEW_FIRE_MS = 280;
 
@@ -155,25 +157,34 @@ function sleep(ms) {
         const form = document.createElement('form');
         const input = document.createElement('input');
         input.className = 'cp-money-input';
-        input.setAttribute('data-cp-money-places', '2');
+        input.setAttribute('data-cp-money-places', String(opts.places || 2));
         if (opts.direct) {
           input.setAttribute('data-cp-money-entry', 'direct');
+        }
+        if (opts.allowNegative) {
+          input.setAttribute('data-cp-money-allow-negative', '');
+        }
+        if (opts.stored) {
+          input.value = raw;
         }
         form.appendChild(input);
         document.body.appendChild(form);
         window.cpMoneyMask.wire(input);
-        input.focus();
-        input.value = raw;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        if (!opts.skipBlur) {
-          input.blur();
-          input.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+        if (!opts.stored) {
+          input.focus();
+          input.value = raw;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          if (!opts.skipBlur) {
+            input.blur();
+            input.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+          }
         }
         const submitted = form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
         const result = {
           value: input.value,
           num: parseFloat(String(input.value || '').replace(/,/g, '')),
           invalid: input.classList.contains('is-invalid') || input.validity.customError,
+          message: String(input.validationMessage || ''),
           submitAllowed: submitted,
         };
         form.remove();
@@ -185,7 +196,14 @@ function sleep(ms) {
       const ambiguous = probe('1.234,56');
       const negative = probe('-5');
       const rounded = probe('4.756');
+      const halfUp = probe('1.005');
       const loneDot = probe('.', { skipBlur: true });
+      const gasComma = probe('1,459', { places: 3 });
+      const storedNeg = probe('-5.00', { stored: true });
+      const allowStored = probe('-200.00', { stored: true, allowNegative: true });
+      const allowTyped = probe('-200', { allowNegative: true });
+      const oneDashTwo = probe('1-2', { allowNegative: true });
+      const negHalf = window.cpMoneyMask.round(-30.485, 2);
 
       return {
         untaggedFour: untagged.num,
@@ -199,9 +217,171 @@ function sleep(ms) {
         negativeShown: negative.value,
         negativeValue: isFinite(negative.num) ? negative.num : 0,
         rounded: rounded.num,
+        halfUp: halfUp.num,
+        halfUpShown: halfUp.value,
         loneDotBlocked: loneDot.invalid && !loneDot.submitAllowed,
+        gasCommaInvalid: gasComma.invalid,
+        gasCommaShown: gasComma.value,
+        gasCommaNum: isFinite(gasComma.num) ? gasComma.num : 0,
+        storedNegativeBlank: storedNeg.value === '',
+        storedNegativeShown: storedNeg.value,
+        storedNegativeSubmitAllowed: storedNeg.submitAllowed,
+        storedNegativeInvalid: storedNeg.invalid,
+        allowNegativeShown: allowStored.value,
+        allowNegativeNum: isFinite(allowStored.num) ? allowStored.num : 0,
+        allowNegativeSubmitAllowed: allowStored.submitAllowed,
+        allowNegativeInvalid: allowStored.invalid,
+        allowNegativeTypedShown: allowTyped.value,
+        allowNegativeTypedNum: isFinite(allowTyped.num) ? allowTyped.num : 0,
+        allowNegativeTypedInvalid: allowTyped.invalid,
+        oneDashTwoInvalid: oneDashTwo.invalid,
+        oneDashTwoMessage: oneDashTwo.message,
+        oneDashTwoShown: oneDashTwo.value,
+        negHalfRound: negHalf,
       };
     });
+  }
+
+  async function mountKeypressField(id, places, allowNegative) {
+    await page.evaluate((fieldId, fieldPlaces, allowNeg) => {
+      const existing = document.getElementById(fieldId);
+      if (existing && existing.closest('form')) {
+        existing.closest('form').remove();
+      }
+      const form = document.createElement('form');
+      const input = document.createElement('input');
+      input.id = fieldId;
+      input.className = 'cp-money-input admin-input';
+      input.setAttribute('data-cp-money-places', String(fieldPlaces));
+      input.setAttribute('data-cp-money-entry', 'direct');
+      if (allowNeg) {
+        input.setAttribute('data-cp-money-allow-negative', '');
+      }
+      input.style.width = '220px';
+      input.style.height = '44px';
+      form.appendChild(input);
+      document.body.appendChild(form);
+      window.cpMoneyMask.wire(input);
+    }, id, places, !!allowNegative);
+  }
+
+  async function readKeypressField(id) {
+    return page.evaluate((fieldId) => {
+      const el = document.getElementById(fieldId);
+      return {
+        value: el ? el.value : '',
+        invalid: !!(el && (el.classList.contains('is-invalid') || el.validity.customError)),
+        message: el ? String(el.validationMessage || '') : '',
+      };
+    }, id);
+  }
+
+  async function keypressChecks() {
+    await mountKeypressField('cp-kp-minus', 2);
+    await page.click('#cp-kp-minus');
+    await page.keyboard.type('-5', { delay: 20 });
+    const typedMinus = await readKeypressField('cp-kp-minus');
+
+    await mountKeypressField('cp-kp-gas', 3);
+    await page.click('#cp-kp-gas');
+    await page.keyboard.type('1,459', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const gasComma = await readKeypressField('cp-kp-gas');
+
+    await mountKeypressField('cp-kp-round', 2);
+    await page.click('#cp-kp-round');
+    await page.keyboard.type('1.005', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const halfUp = await readKeypressField('cp-kp-round');
+
+    await mountKeypressField('cp-kp-allow-neg', 2, true);
+    await page.click('#cp-kp-allow-neg');
+    await page.keyboard.type('-200', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const allowMinus = await readKeypressField('cp-kp-allow-neg');
+
+    await mountKeypressField('cp-kp-mixed', 2);
+    await page.click('#cp-kp-mixed');
+    await page.keyboard.type('1.234,56', { delay: 20 });
+    const mixedTyped = await readKeypressField('cp-kp-mixed');
+    await page.keyboard.press('Tab');
+    const mixedBlur = await readKeypressField('cp-kp-mixed');
+    const mixedSubmit = await page.evaluate(() => {
+      const el = document.getElementById('cp-kp-mixed');
+      return !!(el && el.form && el.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    });
+
+    await mountKeypressField('cp-kp-us', 2);
+    await page.click('#cp-kp-us');
+    await page.keyboard.type('1,234.56', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const usThousands = await readKeypressField('cp-kp-us');
+
+    await mountKeypressField('cp-kp-us-long', 2);
+    await page.click('#cp-kp-us-long');
+    await page.keyboard.type('1,234,567.89', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const usMillions = await readKeypressField('cp-kp-us-long');
+
+    await mountKeypressField('cp-kp-us-int', 2);
+    await page.click('#cp-kp-us-int');
+    await page.keyboard.type('12,345,678', { delay: 20 });
+    await page.keyboard.press('Tab');
+    const usInteger = await readKeypressField('cp-kp-us-int');
+
+    await mountKeypressField('cp-kp-ambig-commas', 2);
+    await page.click('#cp-kp-ambig-commas');
+    await page.keyboard.type('1,2,3', { delay: 20 });
+    const ambigCommasTyped = await readKeypressField('cp-kp-ambig-commas');
+    await page.keyboard.press('Tab');
+    const ambigCommasBlur = await readKeypressField('cp-kp-ambig-commas');
+    const ambigCommasSubmit = await page.evaluate(() => {
+      const el = document.getElementById('cp-kp-ambig-commas');
+      return !!(el && el.form && el.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    });
+
+    return {
+      typedMinus, gasComma, halfUp, allowMinus, mixedTyped, mixedBlur, mixedSubmit, usThousands,
+      usMillions, usInteger, ambigCommasTyped, ambigCommasBlur, ambigCommasSubmit,
+    };
+  }
+
+  async function resaveInvoiceUntouched(url) {
+    if (!url) {
+      throw new Error('Negative invoice URL missing');
+    }
+    await go(base + url);
+    await page.waitForSelector('#cp-invoice-form');
+    const before = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('#cp-invoice-items .cp-quotation-row')).map((tr) => {
+        const el = tr.querySelector('.cp-quotation-row-amount');
+        const kind = tr.querySelector('select.cp-invoice-line-kind, input[name*="[line_kind]"]');
+        return {
+          name: el ? el.name || '' : '',
+          value: el ? el.value || '' : '',
+          kind: kind ? kind.value || '' : '',
+          allowNegative: !!(el && el.hasAttribute('data-cp-money-allow-negative')),
+          invalid: !!(el && (el.classList.contains('is-invalid') || el.validity.customError)),
+        };
+      });
+    });
+    let posted = '';
+    const onRequest = (req) => {
+      const method = String(req.method() || '').toUpperCase();
+      if (method === 'POST' || method === 'PUT') {
+        posted = req.postData() || posted;
+      }
+    };
+    page.on('request', onRequest);
+    try {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        page.click('[data-cp-invoice-intent="draft"]'),
+      ]);
+    } finally {
+      page.off('request', onRequest);
+    }
+    return { before, afterUrl: page.url(), posted };
   }
 
   async function revealPavingLabourRates() {
@@ -320,7 +500,9 @@ function sleep(ms) {
       }
       return {
         comma: probe('4,75'),
+        negative: probe('-5'),
         ambiguous: probe('1.234,56'),
+        halfUp: probe('1.005'),
       };
     });
   }
@@ -433,14 +615,56 @@ function sleep(ms) {
     return Object.assign({}, afterLower, { afterRetype, afterRemove });
   }
 
-  const report = { pages: [], save: null, invoicePreview: null, behaviors: null, labourRateKeypress: null, pavingRateMask: null, fenceGateNotice: null };
+  const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null, negativeResave: null, labourRateKeypress: null, pavingRateMask: null, fenceGateNotice: null };
   try {
     await login();
     report.invoicePreview = await invoiceDiscountPreview();
     report.behaviors = await behaviorChecks();
+    report.keypress = await keypressChecks();
     report.labourRateKeypress = await labourRateKeypressSave();
     report.pavingRateMask = await pavingRateMaskChecks();
     report.fenceGateNotice = await fenceGateLowerNotice();
+    report.negativeResave = {
+      standard: await resaveInvoiceUntouched(negStandardUrl),
+      hourly: await resaveInvoiceUntouched(negHourlyUrl),
+    };
+    await go(base + negHourlyUrl);
+    await page.waitForSelector('#cp-invoice-form');
+    await page.click('#cp-invoice-add-row');
+    const hourlyMaterialsNegative = await page.evaluate(() => {
+      const rows = Array.from(document.querySelectorAll('#cp-invoice-items tr.cp-quotation-row'));
+      const tr = rows[rows.length - 1];
+      const kind = tr.querySelector('select.cp-invoice-line-kind');
+      const amt = tr.querySelector('.cp-quotation-row-amount');
+      kind.value = 'materials';
+      kind.dispatchEvent(new Event('change', { bubbles: true }));
+      amt.focus();
+      amt.value = '-50';
+      amt.dispatchEvent(new Event('input', { bubbles: true }));
+      amt.blur();
+      amt.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+      const form = document.getElementById('cp-invoice-form');
+      const submitted = form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      const materials = {
+        allowNegative: amt.hasAttribute('data-cp-money-allow-negative'),
+        value: amt.value,
+        invalid: amt.classList.contains('is-invalid') || amt.validity.customError,
+        message: String(amt.validationMessage || ''),
+        submitAllowed: submitted,
+      };
+      kind.value = 'labour';
+      kind.dispatchEvent(new Event('change', { bubbles: true }));
+      return {
+        ...materials,
+        afterKindChange: {
+          allowNegative: amt.hasAttribute('data-cp-money-allow-negative'),
+          value: amt.value,
+          invalid: amt.classList.contains('is-invalid') || amt.validity.customError,
+          message: String(amt.validationMessage || ''),
+        },
+      };
+    });
+    report.hourlyMaterialsNegative = hourlyMaterialsNegative;
     for (const url of pages) {
       await go(base + url);
       if (page.url().includes('/admin/login')) {
@@ -526,8 +750,89 @@ function sleep(ms) {
     if (Math.abs((b.rounded || 0) - 4.76) > 0.0001) {
       throw new Error('4.756 rounded to ' + b.rounded + ' instead of 4.76');
     }
+    if (Math.abs((b.halfUp || 0) - 1.01) > 0.0001) {
+      throw new Error('1.005 rounded to ' + b.halfUpShown + ' instead of 1.01');
+    }
     if (!b.loneDotBlocked) {
       throw new Error('Lone "." was submittable');
+    }
+    if (!b.gasCommaInvalid || String(b.gasCommaShown) === '1,459.000' || String(b.gasCommaShown) === '1459.000') {
+      throw new Error('1,459 on a 3-place field was read as ' + b.gasCommaShown);
+    }
+    if (b.storedNegativeBlank || String(b.storedNegativeShown) === '') {
+      throw new Error('Stored negative was blanked: ' + b.storedNegativeShown);
+    }
+    if (!b.storedNegativeInvalid || b.storedNegativeSubmitAllowed) {
+      throw new Error('Stored negative on a default field must stay visible and block submit: ' + JSON.stringify({
+        shown: b.storedNegativeShown,
+        submit: b.storedNegativeSubmitAllowed,
+        invalid: b.storedNegativeInvalid,
+      }));
+    }
+    if (Math.abs((b.allowNegativeNum || 0) + 200) > 0.0001 || b.allowNegativeInvalid || !b.allowNegativeSubmitAllowed) {
+      throw new Error('Allow-negative stored -200.00 failed: ' + JSON.stringify({
+        shown: b.allowNegativeShown,
+        num: b.allowNegativeNum,
+        submit: b.allowNegativeSubmitAllowed,
+        invalid: b.allowNegativeInvalid,
+      }));
+    }
+    if (Math.abs((b.allowNegativeTypedNum || 0) + 200) > 0.0001 || b.allowNegativeTypedInvalid) {
+      throw new Error('Allow-negative typed -200 failed: ' + JSON.stringify({
+        shown: b.allowNegativeTypedShown,
+        num: b.allowNegativeTypedNum,
+        invalid: b.allowNegativeTypedInvalid,
+      }));
+    }
+    if (!b.oneDashTwoInvalid || String(b.oneDashTwoMessage || '').toLowerCase().indexOf('valid amount') === -1) {
+      throw new Error('1-2 on an allowed field should say Enter a valid amount: ' + JSON.stringify({
+        shown: b.oneDashTwoShown,
+        message: b.oneDashTwoMessage,
+        invalid: b.oneDashTwoInvalid,
+      }));
+    }
+    if (Math.abs((b.negHalfRound || 0) + 30.49) > 0.0001) {
+      throw new Error('Negative half rounding was ' + b.negHalfRound + ' instead of -30.49');
+    }
+    const kp = report.keypress || {};
+    if (!kp.typedMinus || !kp.typedMinus.invalid || String(kp.typedMinus.value).indexOf('-') === -1) {
+      throw new Error('Typed -5 did not show the inline negative error: ' + JSON.stringify(kp.typedMinus));
+    }
+    if (!kp.allowMinus || kp.allowMinus.invalid || Math.abs(parseFloat(String(kp.allowMinus.value || '').replace(/,/g, '')) + 200) > 0.0001) {
+      throw new Error('Allow-negative keypress -200 failed: ' + JSON.stringify(kp.allowMinus));
+    }
+    if (!kp.gasComma || !kp.gasComma.invalid || String(kp.gasComma.value) === '1,459.000' || String(kp.gasComma.value) === '1459.000') {
+      throw new Error('Keypress 1,459 on 3-place was not flagged: ' + JSON.stringify(kp.gasComma));
+    }
+    if (!kp.halfUp || Math.abs(parseFloat(String(kp.halfUp.value || '').replace(/,/g, '')) - 1.01) > 0.0001) {
+      throw new Error('Keypress 1.005 did not round to 1.01: ' + JSON.stringify(kp.halfUp));
+    }
+    if (!kp.mixedTyped || String(kp.mixedTyped.value) !== '1.234,56') {
+      throw new Error('Keypress 1.234,56 dropped the comma: ' + JSON.stringify(kp.mixedTyped));
+    }
+    if (!kp.mixedBlur || !kp.mixedBlur.invalid || String(kp.mixedBlur.value) !== '1.234,56' || String(kp.mixedBlur.value) === '1.23') {
+      throw new Error('Typed 1.234,56 was rewritten on blur: ' + JSON.stringify(kp.mixedBlur));
+    }
+    if (kp.mixedSubmit) {
+      throw new Error('Typed 1.234,56 was submittable');
+    }
+    if (!kp.usThousands || kp.usThousands.invalid || Math.abs(parseFloat(String(kp.usThousands.value || '').replace(/,/g, '')) - 1234.56) > 0.0001) {
+      throw new Error('Keypress 1,234.56 failed: ' + JSON.stringify(kp.usThousands));
+    }
+    if (!kp.usMillions || kp.usMillions.invalid || Math.abs(parseFloat(String(kp.usMillions.value || '').replace(/,/g, '')) - 1234567.89) > 0.0001) {
+      throw new Error('Keypress 1,234,567.89 failed: ' + JSON.stringify(kp.usMillions));
+    }
+    if (!kp.usInteger || kp.usInteger.invalid || Math.abs(parseFloat(String(kp.usInteger.value || '').replace(/,/g, '')) - 12345678) > 0.0001) {
+      throw new Error('Keypress 12,345,678 failed: ' + JSON.stringify(kp.usInteger));
+    }
+    if (!kp.ambigCommasTyped || String(kp.ambigCommasTyped.value) !== '1,2,3') {
+      throw new Error('Keypress 1,2,3 dropped a comma: ' + JSON.stringify(kp.ambigCommasTyped));
+    }
+    if (!kp.ambigCommasBlur || !kp.ambigCommasBlur.invalid || String(kp.ambigCommasBlur.value) !== '1,2,3' || String(kp.ambigCommasBlur.value) === '1.23') {
+      throw new Error('Typed 1,2,3 was rewritten or silently saved: ' + JSON.stringify(kp.ambigCommasBlur));
+    }
+    if (kp.ambigCommasSubmit) {
+      throw new Error('Typed 1,2,3 was submittable');
     }
     const labour = report.labourRateKeypress || {};
     if ((labour.failed || 0) > 0) {
@@ -537,8 +842,14 @@ function sleep(ms) {
     if (Math.abs(parseMoney((rates.comma && rates.comma.value) || '') - 4.75) > 0.0001 || (rates.comma && rates.comma.invalid)) {
       throw new Error('Paving 4,75 mask failed: ' + JSON.stringify(rates.comma));
     }
+    if (!rates.negative || !rates.negative.invalid || String(rates.negative.value || '').indexOf('-') === -1) {
+      throw new Error('Paving -5 mask failed: ' + JSON.stringify(rates.negative));
+    }
     if (!rates.ambiguous || !rates.ambiguous.invalid || String(rates.ambiguous.value) === '1.23') {
       throw new Error('Paving 1.234,56 was not rejected: ' + JSON.stringify(rates.ambiguous));
+    }
+    if (!rates.halfUp || Math.abs(parseMoney((rates.halfUp && rates.halfUp.value) || '') - 1.01) > 0.0001) {
+      throw new Error('Paving 1.005 did not round to 1.01: ' + JSON.stringify(rates.halfUp));
     }
     const fenceNotice = report.fenceGateNotice || {};
     if ((fenceNotice.afterTicks || 0) !== 1 || fenceNotice.noticeHidden || !String(fenceNotice.notice || '').toLowerCase().includes('cleared')) {
@@ -559,6 +870,29 @@ function sleep(ms) {
       || restoredIds.indexOf(removedIds[2]) === -1
     ) {
       throw new Error('Fence gate restore keyed the wrong run after remove: ' + JSON.stringify(afterRemove));
+    }
+    const neg = report.negativeResave || {};
+    ['standard', 'hourly'].forEach((kind) => {
+      const row = neg[kind] || {};
+      const fields = row.before || [];
+      const credit = fields.find((f) => String(f.value || '').indexOf('-200') !== -1);
+      if (!credit || credit.invalid || !credit.allowNegative) {
+        throw new Error('Untouched ' + kind + ' -200 line was not ready to save: ' + JSON.stringify(row));
+      }
+      if (!String(row.afterUrl || '').includes('/invoices/')) {
+        throw new Error('Untouched ' + kind + ' invoice did not re-save: ' + row.afterUrl);
+      }
+      if (!String(row.posted || '').includes('-200.00') && !String(row.posted || '').includes('%2D200.00')) {
+        throw new Error('Page JS did not post -200.00 for ' + kind + ': ' + String(row.posted || '').slice(0, 400));
+      }
+    });
+    const mats = report.hourlyMaterialsNegative || {};
+    if (mats.allowNegative || !mats.invalid || mats.submitAllowed || String(mats.value || '').indexOf('-') === -1) {
+      throw new Error('Hourly materials -50 must stay visible, error, and block submit: ' + JSON.stringify(mats));
+    }
+    const afterKind = mats.afterKindChange || {};
+    if (!afterKind.allowNegative || afterKind.invalid || String(afterKind.value || '').indexOf('-') === -1) {
+      throw new Error('Changing materials to labour must clear the stale minus error: ' + JSON.stringify(afterKind));
     }
     await browser.close();
     process.exit(0);
