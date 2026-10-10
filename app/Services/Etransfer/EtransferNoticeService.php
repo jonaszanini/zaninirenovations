@@ -37,7 +37,9 @@ class EtransferNoticeService
         ];
 
         $senderName = $this->firstFilled($input['sender_name'] ?? null, $parsed['sender_name'] ?? null) ?? 'Unknown sender';
-        $senderEmail = $this->firstFilled($input['sender_email'] ?? null, $parsed['sender_email'] ?? null);
+        $senderEmail = $this->parser->normalizeSenderEmail(
+            $this->firstFilled($input['sender_email'] ?? null, $parsed['sender_email'] ?? null)
+        );
         $reference = $this->firstFilled($input['reference'] ?? null, $input['reference_number'] ?? null, $parsed['reference_number'] ?? null);
         $message = $this->firstFilled($input['message'] ?? null, $parsed['message'] ?? null);
         $currency = strtoupper($this->firstFilled($input['currency'] ?? null, $parsed['currency'] ?? null) ?? EtransferNotice::CURRENCY_CAD);
@@ -71,7 +73,7 @@ class EtransferNoticeService
             $existing = EtransferNotice::query()->where('reference_number', $reference)->first();
             if ($existing) {
                 $candidates = $existing->isPending()
-                    ? $this->matcher->rank($existing)
+                    ? $this->matcher->suggest($existing)['candidates']
                     : [];
 
                 return [
@@ -95,14 +97,14 @@ class EtransferNoticeService
             'status' => EtransferNotice::STATUS_PENDING,
         ]);
 
-        $candidates = $this->matcher->rank($notice);
-        $notice->match_score = $candidates[0]['score'] ?? null;
+        $suggestion = $this->matcher->suggest($notice);
+        $notice->match_score = $suggestion['best']['score'] ?? null;
         $notice->save();
 
         return [
             'status' => 'created',
             'notice' => $notice,
-            'candidates' => $candidates,
+            'candidates' => $suggestion['candidates'],
         ];
     }
 

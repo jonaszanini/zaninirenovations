@@ -45,14 +45,30 @@ class EtransferNoticeController extends Controller
             : collect();
 
         $rows = $notices->map(function (EtransferNotice $notice) use ($openInvoices, $status) {
-            $candidates = $status === EtransferNotice::STATUS_PENDING
-                ? $this->matcher->rank($notice, $openInvoices)
-                : [];
+            if ($status !== EtransferNotice::STATUS_PENDING) {
+                return [
+                    'notice' => $notice,
+                    'candidates' => [],
+                    'best' => null,
+                    'bestRecordable' => false,
+                    'ambiguous' => false,
+                    'ambiguousReason' => null,
+                    'ambiguousLabels' => [],
+                    'alreadyPaid' => false,
+                ];
+            }
+
+            $suggestion = $this->matcher->suggest($notice, $openInvoices);
 
             return [
                 'notice' => $notice,
-                'candidates' => $candidates,
-                'best' => $candidates[0] ?? null,
+                'candidates' => $suggestion['candidates'],
+                'best' => $suggestion['best'],
+                'bestRecordable' => $suggestion['recordable'],
+                'ambiguous' => $suggestion['ambiguous'],
+                'ambiguousReason' => $suggestion['ambiguous_reason'] ?? null,
+                'ambiguousLabels' => $suggestion['ambiguous_labels'] ?? [],
+                'alreadyPaid' => $suggestion['already_paid'],
             ];
         });
 

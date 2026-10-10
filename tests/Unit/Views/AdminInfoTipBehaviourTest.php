@@ -772,4 +772,30 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString("wall: 'Basement area (sq ft, optional)'", $basementJs);
         $this->assertStringContainsString('AdminInfoTip.setLabelText', $basementJs);
     }
+
+    public function test_etransfer_no_confident_match_help_lives_in_info_tip(): void
+    {
+        $view = file_get_contents(resource_path('views/admin/financials/etransfers.blade.php'));
+
+        $this->assertStringContainsString('No confident match', $view);
+        $this->assertStringContainsString('<x-admin.info-tip label="No confident match">', $view);
+        $this->assertStringContainsString('A recent invoice by itself is not enough', $view);
+        $this->assertStringContainsString('<x-admin.info-tip label="Already paid">', $view);
+        $this->assertStringContainsString('Record disabled — invoice already paid', $view);
+        $this->assertStringContainsString('data-et-record-note', $view);
+        $this->assertStringContainsString('<x-admin.info-tip label="Ambiguous match">', $view);
+        $this->assertStringContainsString('This payment may cover more than one', $view);
+        $this->assertStringContainsString('the sender and amount also match', $view);
+
+        $js = file_get_contents(public_path('js/admin-etransfers.js'));
+        $this->assertNotFalse($js);
+        $this->assertStringContainsString("querySelector('[data-et-record-note]')", $js);
+        $this->assertStringContainsString('note.hidden = !!id', $js);
+        $this->assertStringNotContainsString('No strong match', $view);
+        $this->assertStringNotContainsString('admin-form-help', $view);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<p[^>]*>\s*No confident match/i',
+            $view
+        );
+    }
 }
