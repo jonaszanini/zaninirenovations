@@ -550,6 +550,10 @@ class MillworkQuotationController extends Controller
                 continue;
             }
             $saved = is_array($existingPieces[$index] ?? null) ? $existingPieces[$index] : null;
+            $omitMissingDefaults = $saved ? $this->missingFieldsEqualRenderedDefaults($piece, $saved) : [
+                'dims' => [],
+                'flags' => [],
+            ];
             if ($convertLegacyEdits && $saved && ! $this->pieceNormalizedSizesEqual($piece, $saved)) {
                 $piece = MillworkDimensionParser::toLegacyInchPiece($piece);
             }
@@ -565,6 +569,10 @@ class MillworkQuotationController extends Controller
             foreach ([
                 'width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft',
             ] as $dim) {
+                if (in_array($dim, $omitMissingDefaults['dims'], true)) {
+                    unset($row[$dim]);
+                    continue;
+                }
                 $row[$dim] = $this->postedDimension($piece[$dim] ?? '');
                 $unitKey = $dim.'_unit';
                 if (array_key_exists($unitKey, $piece) && $piece[$unitKey] !== '' && $piece[$unitKey] !== null) {
@@ -574,6 +582,10 @@ class MillworkQuotationController extends Controller
             foreach ([
                 'edge_banding', 'include_back', 'include_doors', 'include_toe_kick', 'same_size',
             ] as $flag) {
+                if (in_array($flag, $omitMissingDefaults['flags'], true)) {
+                    unset($row[$flag]);
+                    continue;
+                }
                 $row[$flag] = filter_var($piece[$flag] ?? false, FILTER_VALIDATE_BOOLEAN);
             }
             $row['finish'] = MillworkPartBuilder::normalizeFinish((string) ($piece['finish'] ?? 'none'));
@@ -722,10 +734,10 @@ class MillworkQuotationController extends Controller
     }
 
     /**
-     * Compare only dimensions the saved row actually stored. Posted defaults
-     * (stock_length_ft=12, unit dropdowns, empty size-set rows) are ignored
-     * when those keys were never saved. A unit dropdown that leaves the
-     * implied legacy unit is unchanged; picking the other unit is an edit.
+     * Compare stored sizes, and treat a newly typed missing field as an edit.
+     * Skip a field the row never stored only when the posted value still
+     * equals the rendered default ('' or 12 for stock_length_ft). Unit
+     * dropdowns that leave the implied legacy unit stay unchanged.
      *
      * @param  array<string, mixed>  $posted
      * @param  array<string, mixed>  $saved
@@ -734,8 +746,11 @@ class MillworkQuotationController extends Controller
     {
         $dims = ['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'];
         foreach ($dims as $key) {
-            if ($this->hasStoredSizeField($saved, $key)
-                && $this->normalizedDimToken($posted[$key] ?? '') !== $this->normalizedDimToken($saved[$key] ?? '')) {
+            if ($this->hasStoredSizeField($saved, $key)) {
+                if ($this->normalizedDimToken($posted[$key] ?? '') !== $this->normalizedDimToken($saved[$key] ?? '')) {
+                    return false;
+                }
+            } elseif (! $this->postedEqualsRenderedDefault($key, $posted[$key] ?? '')) {
                 return false;
             }
             if (! $this->postedUnitMatchesSaved($posted, $saved, $key)) {
@@ -759,8 +774,11 @@ class MillworkQuotationController extends Controller
             }
             $postedSet = is_array($postedSets[$i] ?? null) ? $postedSets[$i] : [];
             foreach (['length', 'width', 'depth', 'height', 'thickness'] as $key) {
-                if ($this->hasStoredSizeField($set, $key)
-                    && $this->normalizedDimToken($postedSet[$key] ?? '') !== $this->normalizedDimToken($set[$key] ?? '')) {
+                if ($this->hasStoredSizeField($set, $key)) {
+                    if ($this->normalizedDimToken($postedSet[$key] ?? '') !== $this->normalizedDimToken($set[$key] ?? '')) {
+                        return false;
+                    }
+                } elseif (! $this->postedEqualsRenderedDefault($key, $postedSet[$key] ?? '')) {
                     return false;
                 }
                 if (! $this->postedUnitMatchesSaved($postedSet, $set, $key, $setFallback)) {
@@ -829,6 +847,55 @@ class MillworkQuotationController extends Controller
     private function hasStoredSizeField(array $row, string $key): bool
     {
         return array_key_exists($key, $row) && $row[$key] !== '' && $row[$key] !== null;
+    }
+
+    /**
+     * Fields a sparse saved row never stored, whose posted values still match
+     * the edit-form defaults. Those must stay unset so calculate() can merge
+     * calculator defaults (cabinet height 34.5, doors/toe on, etc.).
+     *
+     * @param  array<string, mixed>  $posted
+     * @param  array<string, mixed>  $saved
+     * @return array{dims: list<string>, flags: list<string>}
+     */
+    private function missingFieldsEqualRenderedDefaults(array $posted, array $saved): array
+    {
+        $dims = [];
+        foreach (['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'] as $key) {
+            if (! $this->hasStoredSizeField($saved, $key)
+                && $this->postedEqualsRenderedDefault($key, $posted[$key] ?? '')) {
+                $dims[] = $key;
+            }
+        }
+        $flags = [];
+        foreach (['edge_banding', 'include_back', 'include_doors', 'include_toe_kick'] as $flag) {
+            if (! $this->hasStoredSizeField($saved, $flag)
+                && $this->postedEqualsRenderedFlagDefault($flag, $posted[$flag] ?? null)) {
+                $flags[] = $flag;
+            }
+        }
+
+        return ['dims' => $dims, 'flags' => $flags];
+    }
+
+    private function postedEqualsRenderedDefault(string $key, mixed $posted): bool
+    {
+        $token = $this->normalizedDimToken($posted);
+        if ($key === 'stock_length_ft') {
+            return $token === '12' || $token === '';
+        }
+
+        return $token === '';
+    }
+
+    private function postedEqualsRenderedFlagDefault(string $flag, mixed $posted): bool
+    {
+        $bool = filter_var($posted ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($flag === 'edge_banding') {
+            return $bool === true;
+        }
+
+        return $bool === false;
     }
 
     private function normalizedDimToken(mixed $value): string

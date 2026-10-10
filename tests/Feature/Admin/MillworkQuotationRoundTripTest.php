@@ -451,6 +451,142 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
         $this->assertNotEquals($total, round((float) $flipped->final_quote_total, 2));
     }
 
+    public function test_sparse_v1_blank_depth_typed_as_ft_reprices_as_inches(): void
+    {
+        $this->actingAsAdmin();
+
+        $piece = [
+            'type' => 'cabinet',
+            'qty' => 1,
+            'unit' => 'in',
+            'width' => 36,
+            'height' => 34.5,
+        ];
+        $this->assertArrayNotHasKey('depth', $piece);
+
+        $inputs = [
+            'pieces' => [$piece],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+        ];
+        $calc = (new MillworkQuotationCalculator)->calculate($inputs, null, 1);
+        $stored = round((float) $calc['summary']['grand_total'], 2);
+        $this->assertGreaterThan(0, $stored);
+
+        $inchInputs = $inputs;
+        $inchInputs['pieces'][0]['depth'] = 24;
+        $inchTotal = round((float) (new MillworkQuotationCalculator)->calculate($inchInputs, null, 1)['summary']['grand_total'], 2);
+        $rawTwoInch = $inputs;
+        $rawTwoInch['pieces'][0]['depth'] = 2;
+        $rawTwoTotal = round((float) (new MillworkQuotationCalculator)->calculate($rawTwoInch, null, 1)['summary']['grand_total'], 2);
+        $this->assertSame($stored, $inchTotal);
+        $this->assertNotEquals($inchTotal, $rawTwoTotal);
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V1-R9-DEPTH',
+            'client_name' => 'V1 typed depth',
+            'is_draft' => false,
+            'cut_plan_version' => 1,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => $stored,
+            'payment_installments' => 3,
+            'include_debris_removal' => false,
+            'include_commute' => false,
+            'ask_reply_to_accept' => false,
+        ]);
+
+        $posted = $this->formValuesFromHtml(
+            $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent()
+        );
+        $this->assertSame('', (string) ($posted['pieces'][0]['depth'] ?? ''), 'blank depth is the rendered default');
+        $posted['pieces'][0]['depth'] = '2 ft';
+
+        $this->put(route('admin.quotations.millwork.update', $quote), $posted)
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $fresh = $quote->fresh();
+        $this->assertSame(1, (int) $fresh->cut_plan_version);
+        $this->assertEquals(24, $fresh->inputs['pieces'][0]['depth'] ?? null);
+        $this->assertSame(
+            $inchTotal,
+            round((float) $fresh->final_quote_total, 2),
+            'typing 2 ft into a blank depth must reprice as 24", not 2"'
+        );
+        $this->assertNotEquals($rawTwoTotal, round((float) $fresh->final_quote_total, 2));
+    }
+
+    public function test_sparse_v1_cabinet_and_closet_untouched_resave_keeps_exact_price(): void
+    {
+        $this->actingAsAdmin();
+
+        $cases = [
+            'cabinet-width-24' => [
+                'type' => 'cabinet',
+                'qty' => 1,
+                'unit' => 'in',
+                'width' => 24,
+            ],
+            'closet-width-24' => [
+                'type' => 'closet',
+                'qty' => 1,
+                'unit' => 'in',
+                'width' => 24,
+            ],
+        ];
+
+        foreach ($cases as $name => $piece) {
+            $this->assertArrayNotHasKey('height', $piece, $name);
+            $this->assertArrayNotHasKey('include_doors', $piece, $name);
+            $this->assertArrayNotHasKey('include_toe_kick', $piece, $name);
+            $this->assertArrayNotHasKey('edge_banding', $piece, $name);
+
+            $inputs = [
+                'pieces' => [$piece],
+                'include_install' => false,
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+            ];
+            $calc = (new MillworkQuotationCalculator)->calculate($inputs, null, 1);
+            $total = round((float) $calc['summary']['grand_total'], 2);
+            $this->assertGreaterThan(0, $total, $name);
+
+            $quote = MillworkQuotation::query()->create([
+                'quote_number' => 'MW-V1-SPARSE-'.preg_replace('/[^A-Za-z0-9]+/', '-', $name),
+                'client_name' => 'V1 sparse '.$name,
+                'is_draft' => false,
+                'cut_plan_version' => 1,
+                'inputs' => $inputs,
+                'calculation' => $calc,
+                'final_quote_total' => $total,
+                'payment_installments' => 3,
+                'include_debris_removal' => false,
+                'include_commute' => false,
+                'ask_reply_to_accept' => false,
+            ]);
+
+            $posted = $this->formValuesFromHtml(
+                $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent()
+            );
+            $this->assertSame('', (string) ($posted['pieces'][0]['height'] ?? ''), $name.' height stays the rendered blank');
+            $this->assertSame('0', (string) ($posted['pieces'][0]['include_doors'] ?? '0'), $name.' doors render No');
+
+            $this->put(route('admin.quotations.millwork.update', $quote), $posted)
+                ->assertRedirect()
+                ->assertSessionHasNoErrors();
+
+            $fresh = $quote->fresh();
+            $this->assertSame(1, (int) $fresh->cut_plan_version, $name);
+            $this->assertSame(
+                $total,
+                round((float) $fresh->final_quote_total, 2),
+                $name.' untouched re-save must keep the exact stored price'
+            );
+        }
+    }
+
     public function test_project_pdf_totals_match_calculator(): void
     {
         $this->actingAsAdmin();
@@ -613,6 +749,7 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
     /**
      * Fields a browser would submit from the millwork edit page, including
      * controls associated with #mw-main-form via the form="" attribute.
+     * Disabled controls are omitted, matching a real form POST.
      *
      * @return array<string, mixed>
      */
@@ -626,6 +763,9 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
             }
             $name = $node->getAttribute('name');
             if ($name === '' || $name === '_token' || $name === '_method') {
+                continue;
+            }
+            if ($node->hasAttribute('disabled')) {
                 continue;
             }
             $tag = strtolower($node->nodeName);
