@@ -3528,6 +3528,49 @@ html.admin-dark .util-lb-min-offcut > label {
   color: var(--admin-muted);
 }
 
+html.admin-dark .admin-toast__card {
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  box-shadow: var(--admin-shadow-md);
+  opacity: 1;
+}
+
+html.admin-dark .admin-toast--success {
+  background: #14532d;
+  color: #bbf7d0;
+  border-color: #166534;
+  opacity: 1;
+}
+
+html.admin-dark .admin-toast--error {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-color: #991b1b;
+  opacity: 1;
+}
+
+html.admin-dark .admin-toast--warning {
+  background: #7c2d12;
+  color: #fed7aa;
+  border-color: #9a3412;
+  opacity: 1;
+}
+
+html.admin-dark .admin-toast__close:hover,
+html.admin-dark .admin-toast__close:focus-visible {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .admin-input.admin-field-invalid,
+html.admin-dark input.admin-field-invalid,
+html.admin-dark textarea.admin-field-invalid,
+html.admin-dark select.admin-field-invalid,
+html.admin-dark [contenteditable].admin-field-invalid {
+  border-color: var(--admin-danger);
+  box-shadow: 0 0 0 3px var(--admin-danger-soft);
+}
+
 html.admin-dark .qh {
   background: var(--admin-surface);
   border-color: var(--admin-border);
@@ -3554,3 +3597,4 @@ html.admin-dark .qh-step-errors {
   background: #3f1d1d;
   color: var(--admin-text);
 }
+

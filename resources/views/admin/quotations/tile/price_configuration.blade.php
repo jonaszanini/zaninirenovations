@@ -282,7 +282,7 @@
 
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <a href="{{ $qpid ? route('admin.quotations.tile.create', ['project' => $qpid]) : route('admin.quotations.index') }}" class="admin-btn admin-btn--ghost">Back</a>
-      <button type="submit" class="admin-btn admin-btn--primary"><i class="fa fa-save"></i> Save Configuration</button>
+      <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save><i class="fa fa-save"></i> Save Configuration</button>
     </div>
   </form>
 

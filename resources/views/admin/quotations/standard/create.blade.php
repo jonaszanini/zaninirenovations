@@ -202,9 +202,11 @@
 
   <form action="{{ $formAction }}" method="post" id="sq-standard-form" data-quotation-editor
         data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
+        data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}"
         data-quote-id="{{ $isEdit ? $quotation->id : 'new' }}"
         data-electrical-desc="{{ \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit)
       @method('PUT')
     @endif

@@ -32,7 +32,7 @@
         @enderror
       </div>
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save changes</button>
+        <button type="submit" id="ai-btn-save" class="admin-btn admin-btn--primary" data-hotkey-save>Save changes</button>
         <a href="{{ route('admin.ai-instructions.index') }}" class="admin-btn admin-btn--ghost">Back to list</a>
       </div>
     </form>

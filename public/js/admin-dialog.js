@@ -113,6 +113,11 @@
       try { lastFocus.focus(); } catch (err) { /* ignore */ }
     }
     if (cb) cb(result);
+    if (!result && typeof document !== 'undefined' && document.dispatchEvent) {
+      try {
+        document.dispatchEvent(new CustomEvent('admin-dialog:cancel', { bubbles: true }));
+      } catch (err) { /* ignore */ }
+    }
   }
 
   function makeBtn(label, className, onClick) {

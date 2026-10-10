@@ -12,6 +12,8 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertNotFalse($partial);
         $this->assertStringContainsString('data-qh-header', $partial);
         $this->assertStringContainsString('data-hotkey-save', $partial);
+        $this->assertStringContainsString('is_draft', $partial);
+        $this->assertStringContainsString('$qhIsPublished', $partial);
         $this->assertStringContainsString('data-qh-cancel', $partial);
         $this->assertStringContainsString('qh-actions__save', $partial);
         $this->assertStringContainsString('qh-actions__draft', $partial);
@@ -59,6 +61,8 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('function restorePublishOnlyRequired', $leave);
         $this->assertStringContainsString('window.allowUnload = true', $leave);
         $this->assertStringContainsString('Quotation not saved yet', $leave);
+        $this->assertStringContainsString('data-qh-client-share', $leave);
+        $this->assertStringContainsString('stop their link from working until you publish it again', $leave);
         $canAutosave = preg_match('/function canAutosave\(form\) \{([\s\S]*?)\n  function /', $leave, $m)
             ? ($m[1] ?? '')
             : '';
@@ -126,5 +130,52 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $standard = file_get_contents(resource_path('views/admin/quotations/standard/create.blade.php'));
         $this->assertStringNotContainsString('quotation_price_config_gear', $standard);
         $this->assertStringNotContainsString('qh-price-gear', $standard);
+
+        foreach ([
+            'standard/create.blade.php',
+            'basement/create.blade.php',
+            'millwork/create.blade.php',
+            'flooring/create.blade.php',
+            'trimming/create.blade.php',
+            'painting/create.blade.php',
+            'shed/create.blade.php',
+            'tile/create.blade.php',
+            'fence/create.blade.php',
+            'paving/create.blade.php',
+            'stairs/create.blade.php',
+            'low_deck/create.blade.php',
+        ] as $file) {
+            $blade = file_get_contents(resource_path('views/admin/quotations/'.$file));
+            $this->assertStringContainsString('data-qh-client-share', $blade, $file.' must mark sent/published quotes for the draft confirm');
+        }
+    }
+
+    public function test_header_hotkey_follows_new_draft_and_published_state(): void
+    {
+        $base = [
+            'typeLabel' => 'Standard',
+            'listUrl' => '/admin/quotations',
+            'saveId' => 'sq-btn-save',
+            'draftId' => 'st-btn-draft',
+            'formId' => 'sq-standard-form',
+        ];
+
+        $new = view('admin.partials.quotation_editor_header', $base + ['isEdit' => false])->render();
+        $this->assertMatchesRegularExpression('/id="st-btn-draft"[^>]*data-hotkey-save/', $new);
+        $this->assertDoesNotMatchRegularExpression('/id="sq-btn-save"[^>]*data-hotkey-save/', $new);
+
+        $draft = view('admin.partials.quotation_editor_header', $base + [
+            'isEdit' => true,
+            'quotation' => (object) ['is_draft' => true],
+        ])->render();
+        $this->assertMatchesRegularExpression('/id="st-btn-draft"[^>]*data-hotkey-save/', $draft);
+        $this->assertDoesNotMatchRegularExpression('/id="sq-btn-save"[^>]*data-hotkey-save/', $draft);
+
+        $published = view('admin.partials.quotation_editor_header', $base + [
+            'isEdit' => true,
+            'quotation' => (object) ['is_draft' => false],
+        ])->render();
+        $this->assertMatchesRegularExpression('/id="sq-btn-save"[^>]*data-hotkey-save/', $published);
+        $this->assertDoesNotMatchRegularExpression('/id="st-btn-draft"[^>]*data-hotkey-save/', $published);
     }
 }

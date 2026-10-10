@@ -5124,6 +5124,140 @@ body.asp-open {
   }
 }
 
+/* Shared save toast — keep off Save buttons and the focused field */
+.admin-toast {
+  position: fixed;
+  z-index: 10200;
+  max-width: min(26rem, calc(100vw - 1.5rem));
+  pointer-events: none;
+}
+.admin-toast[hidden] {
+  display: none !important;
+}
+.admin-toast--bottom-center {
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+}
+.admin-toast--top-center {
+  left: 50%;
+  top: 1.25rem;
+  transform: translateX(-50%);
+}
+.admin-toast--bottom-left {
+  left: 1rem;
+  bottom: 1.25rem;
+}
+.admin-toast--bottom-right {
+  right: 1rem;
+  bottom: 1.25rem;
+}
+.admin-toast--top-left {
+  left: 1rem;
+  top: 1.25rem;
+}
+.admin-toast--top-right {
+  right: 1rem;
+  top: 1.25rem;
+}
+.admin-toast__card {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-border);
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+  box-shadow: var(--admin-shadow-md);
+  opacity: 1;
+}
+.admin-toast--success {
+  background: #dcfce7;
+  color: #14532d;
+  border-color: #86efac;
+}
+.admin-toast--error {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-color: #fca5a5;
+}
+.admin-toast--warning {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+.admin-toast__icon {
+  margin-top: 0.15rem;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+.admin-toast__body {
+  min-width: 0;
+  flex: 1;
+}
+.admin-toast__title {
+  font-weight: 650;
+  line-height: 1.3;
+}
+.admin-toast__message {
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.admin-toast__fields {
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-toast__field {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+.admin-toast__field-link {
+  color: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+}
+.admin-toast__field-link:hover,
+.admin-toast__field-link:focus-visible {
+  text-decoration-thickness: 2px;
+}
+.admin-toast__close {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin: -0.35rem -0.25rem -0.35rem 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.admin-toast__close:hover,
+.admin-toast__close:focus-visible {
+  background: rgba(0, 0, 0, 0.06);
+}
+.admin-input.admin-field-invalid,
+input.admin-field-invalid,
+textarea.admin-field-invalid,
+select.admin-field-invalid,
+[contenteditable].admin-field-invalid {
+  border-color: var(--admin-danger);
+  box-shadow: 0 0 0 3px var(--admin-danger-soft);
+}
+@media (max-width: 700px) {
+  .admin-toast--bottom-center,
+  .admin-toast--top-center {
+    left: 0.75rem;
+    right: 0.75rem;
+    transform: none;
+    max-width: none;
+  }
+}
+
 /* Uniform quotation editor header */
 .qh {
   display: flex;

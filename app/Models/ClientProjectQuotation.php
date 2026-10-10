@@ -506,6 +506,17 @@ class ClientProjectQuotation extends Model
 
     public const SOURCE_DRAFT_SHARE_MESSAGE = 'This quotation is still a draft. Publish it (Save quotation) before sharing it with the client.';
 
+    public const SOURCE_REVISING_MESSAGE = 'We\'re updating this quote and will send you the new version shortly.';
+
+    public static function revisingClientResponse(): \Illuminate\Http\Response
+    {
+        return response()
+            ->view('site.quotations.revising', [
+                'message' => self::SOURCE_REVISING_MESSAGE,
+            ], 409)
+            ->header('Cache-Control', 'no-store');
+    }
+
     public function isSourceDraft(): bool
     {
         $source = $this->sourceQuotationModel();

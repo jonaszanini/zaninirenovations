@@ -13,6 +13,7 @@
     <div class="admin-card admin-card--narrow cp-edit-project-form-card">
     <form id="portfolio-create-form" action="{{ route('admin.portfolio.store') }}" method="post" enctype="multipart/form-data">
       @csrf
+      @include('admin.partials.once_submit')
       <input type="hidden" name="portfolio_ai_history_key" value="{{ $portfolioAiHistoryKey }}">
       <div class="admin-form-group">
         <label for="title">Title</label>
@@ -94,7 +95,7 @@
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Portfolio form actions">
-      <button type="submit" form="portfolio-create-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="portfolio-create-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-check"></i> Save project
       </button>
       <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>

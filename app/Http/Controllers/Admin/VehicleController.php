@@ -35,11 +35,16 @@ class VehicleController extends Controller
     {
         $data = $this->validateVehicle($request);
 
-        DB::transaction(function () use ($data) {
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
+        DB::transaction(function () use ($data, $request) {
             $shouldActivate = (bool) ($data['is_active'] ?? false);
             unset($data['is_active']);
 
             $vehicle = Vehicle::create($data + ['is_active' => false]);
+            $this->rememberSubmitSucceeded($request);
 
             if ($shouldActivate || Vehicle::query()->where('is_active', true)->doesntExist()) {
                 $vehicle->activate();

@@ -40,6 +40,7 @@
         data-upload-url="{{ route('admin.blog.posts.upload-image') }}"
         data-site-host="zaninirenovations.ca">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="intent" id="bp-intent" value="save">
 
@@ -123,7 +124,7 @@
             </div>
           </div>
           <div class="bp-form-actions" id="bp-form-actions">
-            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-save" data-intent="save">Save draft</button>
+            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-save" data-intent="save" data-hotkey-save>Save draft</button>
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-publish" data-intent="publish">Publish</button>
             <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-btn-unpublish" data-intent="draft" hidden>Unpublish</button>
             @if ($isEdit)

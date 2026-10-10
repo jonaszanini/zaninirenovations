@@ -23,6 +23,7 @@ use App\Services\QuotationPaymentSchedule;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
@@ -61,10 +62,15 @@ class MillworkQuotationController extends Controller
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $quote = MillworkQuotation::create(array_merge($calc, [
             'quote_number' => MillworkQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -89,6 +95,7 @@ class MillworkQuotationController extends Controller
 
     public function update(Request $request, MillworkQuotation $millwork_quotation)
     {
+        $wasDraft = (bool) $millwork_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $millwork_quotation);
 
@@ -117,9 +124,7 @@ class MillworkQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.millwork.edit', $millwork_quotation)
-            ->with('success', $linkedNow
-                ? 'Millwork quotation '.$millwork_quotation->quote_number.' updated and linked.'
-                : 'Millwork quotation '.$millwork_quotation->quote_number.' updated (v'.$millwork_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Millwork', $millwork_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

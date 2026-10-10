@@ -23,6 +23,7 @@ use App\Support\FenceGateSpec;
 use App\Support\FenceWorkDescriptionGenerator;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -98,6 +99,10 @@ class FenceQuotationController extends Controller
     {
         $data = $this->validateFenceInputs($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $calc = (new FenceQuotationCalculator())->calculate($data);
         $persistence = $this->fencePersistenceFromCalc($request, $calc, $data);
 
@@ -106,6 +111,7 @@ class FenceQuotationController extends Controller
             'quote_number' => FenceQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -176,6 +182,7 @@ class FenceQuotationController extends Controller
      */
     public function update(Request $request, FenceQuotation $fence_quotation)
     {
+        $wasDraft = (bool) $fence_quotation->is_draft;
         $data = $this->validateFenceInputs($request, $fence_quotation);
 
         $frozen = $request->boolean('reprice')
@@ -206,9 +213,7 @@ class FenceQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.fence.edit', $fence_quotation)
-            ->with('success', $linkedNow
-                ? 'Fence quotation '.$fence_quotation->quote_number.' updated and linked.'
-                : 'Fence quotation '.$fence_quotation->quote_number.' updated (v'.$fence_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Fence', $fence_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

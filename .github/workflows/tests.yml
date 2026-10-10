@@ -53,7 +53,9 @@ jobs:
           php artisan test tests/Unit/Models/BasementQuotationScopePdfTest.php
           php artisan test tests/Unit/Support/AdminListFiltersTest.php
           php artisan test tests/Unit/Support/CadMoneyTest.php
+          php artisan test tests/Unit/Support/AdminOnceSubmitTokenTest.php
           php artisan test tests/Unit/Support/QuotationSaveIntentTest.php
+          php artisan test tests/Unit/Support/QuotationDraftFlashTest.php
           php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
@@ -77,7 +79,11 @@ jobs:
           node tests/js/room-area-lib.test.js
           node tests/js/room-area-phone-geometry.test.js
           node tests/js/shared-prices-effective.test.js
+          node tests/js/admin-hotkey-save.test.js
+          node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js
+          node tests/js/quotation-redraft-confirm-browser.test.js
+          node tests/js/quotation-redraft-hotkey-lock-browser.test.js
 
       - name: Admin info-tip JS behaviour (no database)
         run: |
@@ -114,6 +120,7 @@ jobs:
         run: |
           php artisan test tests/Unit/Views/PublicCssLightOnlyTest.php
           php artisan test tests/Unit/Views/PublicMobileNavDropdownTest.php
+          php artisan test tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
           php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
           php artisan test tests/Unit/Views/HomeKitchenTileImageTest.php
 
@@ -180,6 +187,7 @@ jobs:
           php artisan test tests/Feature/Admin/BasementQuotationMathRoundTripTest.php
           php artisan test tests/Feature/Admin/BasementQuotationPagesTest.php
           php artisan test tests/Feature/Admin/QuotationEditorHeaderTest.php
+          php artisan test tests/Feature/Admin/QuotationHotkeySaveStateTest.php
           php artisan test tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php
           php artisan test tests/Feature/Admin/QuotationDraftClientFacingGuardTest.php
           php artisan test tests/Feature/Admin/QuotationEditorControlInventoryTest.php
@@ -251,6 +259,9 @@ jobs:
           php artisan test tests/Unit/Services/RoomAreaTemplatesTest.php
           php artisan test tests/Unit/Models/BlogPostListHelpersTest.php
           php artisan test tests/Feature/Admin/BlogPostsIndexLayoutTest.php
+          php artisan test tests/Feature/Admin/AdminHotkeySaveMarkerTest.php
+          php artisan test tests/Feature/Admin/AdminOnceSubmitReplayTest.php
+          php artisan test tests/Feature/Admin/AdminHotkeySaveMarkupTest.php
           php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
           php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
           php artisan test tests/Feature/SharedPricesLayoutTest.php
