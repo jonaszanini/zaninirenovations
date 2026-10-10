@@ -12,6 +12,7 @@
   $pieceN = is_numeric($pi) ? ((int) $pi + 1) : 1;
   $pieceTipName = trim((string) ($piece['name'] ?? ''));
   $pieceTipLabel = $pieceTipName !== '' ? $pieceTipName : ('piece '.$pieceN);
+  $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
 @endphp
 <article class="mw-piece admin-card" data-mw-piece data-mw-type="{{ $type }}" data-mw-below="{{ (($piece['below'] ?? 'divisions') === 'drawers') ? 'drawers' : 'divisions' }}">
   <input type="hidden" name="pieces[{{ $pi }}][_calc_version]" value="{{ (int) ($piece['_calc_version'] ?? 0) }}" data-mw-calc-version>

@@ -9,6 +9,7 @@
   $unit = (($row[$dimName.'_unit'] ?? $row['unit'] ?? $fallbackUnit ?? 'in') === 'ft') ? 'ft' : 'in';
   $setField = $setField ?? null;
   $errorKey = trim(str_replace(['[', ']'], ['.', ''], $prefix), '.').'.'.$dimName;
+  $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
   $dimInvalid = $errors->has($errorKey);
 @endphp
 <div class="admin-form-group mw-field--{{ $dimField }} mw-dim-field"
