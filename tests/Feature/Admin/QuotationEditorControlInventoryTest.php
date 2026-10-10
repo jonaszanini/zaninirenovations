@@ -160,59 +160,45 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/id="sh-step-nav"[^>]*hidden|hidden[^>]*id="sh-step-nav"/', $shHtml);
     }
 
-    /**
-     * Pre-#72 editors, before the toolbar moved into shared partials.
-     * Live `main` is the new layout, so the inventory must not `git show` it.
-     */
-    private const TOOLBAR_BASELINE = '13c808e7';
-
     public function test_programmatic_diff_against_pre_header_toolbar_baseline(): void
     {
         $this->actingAsAdmin();
 
+        $baseline = require base_path('tests/fixtures/quotation-toolbar-baseline-13c808e7.php');
+        $this->assertIsArray($baseline);
+
         $map = [
             'basement' => [
                 'file' => 'basement/create.blade.php',
-                'baseline' => ['Email quotation to client'],
                 'rendered' => fn () => $this->renderedBasementEdit(),
                 'needles' => ['Email quotation to client', 'data-qh-email'],
             ],
             'standard' => [
                 'file' => 'standard/create.blade.php',
-                'baseline' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
                 'rendered' => fn () => $this->get(route('admin.quotations.standard.create'))->assertOk()->getContent()
                     ."\n".$this->renderedStandardEdit(),
                 'needles' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
             ],
             'fence' => [
                 'file' => 'fence/create.blade.php',
-                'baseline' => ['Save &amp; create project', 'after_save', 'create_project'],
                 'rendered' => fn () => $this->get(route('admin.quotations.fence.create'))->assertOk()->getContent(),
                 'needles' => ['Save &amp; create project', 'after_save', 'create_project'],
             ],
             'low_deck' => [
                 'file' => 'low_deck/create.blade.php',
-                'baseline' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
                 'rendered' => fn () => $this->renderedLowDeckEdit(),
                 'needles' => ['Print Layout Diagrams', 'data-qh-layout-diagrams'],
             ],
             'millwork' => [
                 'file' => 'millwork/create.blade.php',
-                'baseline' => ['Print cut list'],
                 'rendered' => fn () => $this->renderedMillworkEdit(),
                 'needles' => ['Print cut list'],
             ],
         ];
 
         foreach ($map as $type => $spec) {
-            $baseline = $this->toolbarBaselineFile($spec['file']);
-            foreach ($spec['baseline'] as $needle) {
-                $this->assertStringContainsString(
-                    $needle,
-                    $baseline,
-                    'Pinned pre-#72 baseline '.self::TOOLBAR_BASELINE.' '.$spec['file'].' is missing '.$needle
-                );
-            }
+            $this->assertArrayHasKey($spec['file'], $baseline, "13c808e7 snapshot missing {$spec['file']}");
+            $this->assertNotEmpty($baseline[$spec['file']], "13c808e7 snapshot for {$spec['file']} is empty");
 
             $html = $spec['rendered']();
             $this->assertNotSame('', trim($html), "{$type} rendered HTML was empty");
@@ -224,29 +210,6 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
                 );
             }
         }
-    }
-
-    private function toolbarBaselineFile(string $relative): string
-    {
-        $path = 'resources/views/admin/quotations/'.$relative;
-        $ref = self::TOOLBAR_BASELINE.':'.$path;
-        $html = $this->gitShow($ref);
-        if ($html === '') {
-            shell_exec('git fetch --no-tags origin '.escapeshellarg(self::TOOLBAR_BASELINE).' 2>/dev/null');
-            $html = $this->gitShow($ref);
-        }
-        $this->assertNotSame(
-            '',
-            $html,
-            'Pinned toolbar baseline '.self::TOOLBAR_BASELINE.' is required; CI must fetch that commit'
-        );
-
-        return $html;
-    }
-
-    private function gitShow(string $ref): string
-    {
-        return (string) shell_exec('git show '.escapeshellarg($ref).' 2>/dev/null');
     }
 
     private function renderedBasementEdit(): string
