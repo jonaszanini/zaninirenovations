@@ -89,6 +89,15 @@ async function pressSave(page) {
   await page.keyboard.up('Control');
 }
 
+async function acceptDialog(page) {
+  await page.waitForSelector('#admin-dialog:not([hidden])');
+  await page.waitForFunction(() => {
+    return !!document.querySelector('#admin-dialog .admin-dialog-actions .admin-btn--danger, #admin-dialog .admin-dialog-actions .admin-btn--primary');
+  });
+  await page.click('#admin-dialog .admin-dialog-actions .admin-btn--danger, #admin-dialog .admin-dialog-actions .admin-btn--primary');
+  await page.waitForFunction(() => (window.__submits || []).length > 0);
+}
+
 async function cancelDialog(page) {
   await page.waitForSelector('#admin-dialog:not([hidden])');
   await page.waitForFunction(() => !!document.querySelector('#admin-dialog .admin-dialog-actions .admin-btn--ghost'));
@@ -126,6 +135,17 @@ async function assertReleased(page, label) {
       await page.click('#st-btn-draft');
       await cancelDialog(page);
       await assertReleased(page, order + ' manual Save as draft cancel');
+
+      await openPage(page, base, order);
+      await pressSave(page);
+      await acceptDialog(page);
+      const accepted = await page.evaluate(() => ({
+        submits: window.__submits,
+        inflight: !!(window.AdminHotkeySave && window.AdminHotkeySave.instance && window.AdminHotkeySave.instance().isInflight()),
+      }));
+      assert.strictEqual(accepted.submits.length, 1, order + ' Ctrl+S accept must POST once');
+      assert.strictEqual(accepted.submits[0].data.save_intent, 'draft', order + ' Ctrl+S accept must send draft intent');
+      assert.strictEqual(accepted.submits[0].data.is_draft, '1', order + ' Ctrl+S accept must set is_draft');
     }
   } finally {
     await browser.close();
