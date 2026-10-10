@@ -27,9 +27,7 @@ return new class extends Migration
         });
 
         Schema::table('room_area_projects', function (Blueprint $table) {
-            $table->string('signer_name', 120)->nullable()->after('canvas_height');
-            $table->date('signed_at')->nullable()->after('signer_name');
-            $table->string('signature_path')->nullable()->after('signed_at');
+            $table->softDeletes();
         });
     }
 
@@ -40,7 +38,7 @@ return new class extends Migration
         });
 
         Schema::table('room_area_projects', function (Blueprint $table) {
-            $table->dropColumn(['signer_name', 'signed_at', 'signature_path']);
+            $table->dropSoftDeletes();
         });
 
         Schema::dropIfExists('room_area_phases');

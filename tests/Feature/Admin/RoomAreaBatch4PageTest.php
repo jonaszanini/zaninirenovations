@@ -57,6 +57,9 @@ class RoomAreaBatch4PageTest extends IntegrationTestCase
         $this->assertStringContainsString('Nobody was emailed', $js);
         $this->assertStringContainsString('data-ra-room-phase', $js);
         $this->assertStringContainsString('standard_quotation_id', $js);
+        $this->assertStringContainsString('quote_version', $js);
+        $this->assertStringContainsString('els.signSave.disabled = true', $js);
+        $this->assertStringContainsString('(replaced)', $js);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
         $this->assertStringContainsString('.util-ra-phases', $css);

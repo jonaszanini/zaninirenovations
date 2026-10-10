@@ -89,6 +89,7 @@ class RoomAreaPhaseTotals
                 'name' => (string) $phase->name,
                 'sort_order' => (int) $phase->sort_order,
                 'rooms' => $rooms,
+                'room_metrics' => $this->allocateRoomMetrics($rooms),
                 'totals' => $this->sum($rooms),
             ];
         }
@@ -107,9 +108,53 @@ class RoomAreaPhaseTotals
                 'id' => null,
                 'name' => $project->phases->isEmpty() ? 'All rooms' : 'Unassigned',
                 'rooms' => $unassigned,
+                'room_metrics' => $this->allocateRoomMetrics($unassigned),
                 'totals' => $unassignedTotals,
             ],
         ];
+    }
+
+    /**
+     * Round each room to 2 decimals, then put the leftover pennies on the last
+     * room so the displayed rows sum to the rounded phase total.
+     *
+     * @param  iterable<int, RoomAreaRoom|array<string, mixed>>  $rooms
+     * @return list<array<string, float|int>>
+     */
+    public function allocateRoomMetrics(iterable $rooms): array
+    {
+        $items = [];
+        foreach ($rooms as $room) {
+            $metrics = $room instanceof RoomAreaRoom
+                ? $room->layoutMetrics()
+                : (is_array($room) ? ($room['metrics'] ?? $room) : []);
+            if (! is_array($metrics)) {
+                continue;
+            }
+            $row = [];
+            foreach (self::KEYS as $key) {
+                $row[$key] = round((float) ($metrics[$key] ?? 0), 2);
+            }
+            $items[] = $row;
+        }
+        if ($items === []) {
+            return [];
+        }
+
+        $target = $this->sum($rooms);
+        foreach (self::KEYS as $key) {
+            $shown = 0.0;
+            foreach ($items as $row) {
+                $shown += (float) $row[$key];
+            }
+            $diff = round((float) $target[$key] - round($shown, 2), 2);
+            if (abs($diff) >= 0.005) {
+                $last = count($items) - 1;
+                $items[$last][$key] = round((float) $items[$last][$key] + $diff, 2);
+            }
+        }
+
+        return $items;
     }
 
     /**

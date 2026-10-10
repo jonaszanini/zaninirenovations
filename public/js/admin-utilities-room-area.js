@@ -8528,7 +8528,7 @@
       quotes.forEach(function (quote) {
         var opt = document.createElement('option');
         opt.value = String(quote.id);
-        opt.textContent = quote.quote_number + ' v' + quote.version + (quote.can_sign ? '' : (quote.is_revising ? ' (revising)' : ' (draft)'));
+        opt.textContent = quote.quote_number + ' v' + quote.version + (quote.can_sign ? '' : (quote.is_superseded ? ' (replaced)' : (quote.is_revising ? ' (revising)' : ' (draft)')));
         opt.disabled = !quote.can_sign;
         if (String(quote.id) === current) opt.selected = true;
         els.signQuote.appendChild(opt);
@@ -8574,9 +8574,12 @@
       setFeedback('Draw the signature on the pad.', true);
       return;
     }
+    var selected = (project.quotes || []).find(function (q) { return String(q.id) === String(quoteId); });
+    if (els.signSave) els.signSave.disabled = true;
     planJson(urlFromTemplate(root.getAttribute('data-signature-template') || '', project.id), 'POST', {
       signer_name: name,
       standard_quotation_id: parseInt(quoteId, 10),
+      quote_version: selected ? parseInt(selected.version, 10) : null,
       signature: els.signPad.toDataURL('image/png')
     })
       .then(function (data) {
@@ -8586,6 +8589,7 @@
         setFeedback('Signature saved on the plan. Nobody was emailed.', false);
       })
       .catch(function (err) {
+        if (els.signSave) els.signSave.disabled = false;
         setFeedback(err.message || 'Could not save the signature.', true);
       });
   }
@@ -8888,7 +8892,7 @@
           state.activeProjectId = null;
           refreshProjectSelect();
           renderWorkspace();
-          setFeedback('Project deleted.', false);
+          setFeedback((result.data && result.data.message) || 'Project deleted.', false);
         })
         .catch(function (err) {
           setFeedback(friendlyNetworkError(err, 'Could not delete project. Check your connection and try again.'), true);

@@ -101,6 +101,30 @@ class RoomAreaMeasurementExportHttpTest extends IntegrationTestCase
         $this->assertStringContainsString('Project total', $sheet);
         $this->assertStringContainsString('332.00', $sheet);
         $this->assertStringContainsString('32.67', $sheet);
+        $this->assertStringContainsString('t="n"><v>120.00</v>', $sheet);
+        $this->assertStringContainsString('t="n"><v>332.00</v>', $sheet);
+        $this->assertStringContainsString('t="inlineStr"', $sheet);
+    }
+
+    public function test_xlsx_keeps_formula_text_as_strings_without_apostrophe(): void
+    {
+        $this->actingAsAdmin();
+        $fixture = $this->makePlanFixture(['name' => '=HYPERLINK("http://evil.example")']);
+        $fixture['kitchen']->update(['name' => '+2+3']);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'ra-xlsx-inj-');
+        file_put_contents($tmp, $this->get(route('admin.utilities.room-area.projects.export.xlsx', $fixture['project']->fresh(['rooms', 'phases', 'clientProject'])))->getContent());
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($tmp) === true);
+        $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        @unlink($tmp);
+
+        $this->assertStringContainsString('t="inlineStr"><is><t>=HYPERLINK', $sheet);
+        $this->assertStringContainsString('t="inlineStr"><is><t>+2+3</t>', $sheet);
+        $this->assertStringNotContainsString("'=HYPERLINK", $sheet);
+        $this->assertStringNotContainsString("'+2+3", $sheet);
+        $this->assertStringContainsString('t="n"><v>', $sheet);
     }
 
     public function test_assigning_a_phase_leaves_room_geometry_unchanged(): void

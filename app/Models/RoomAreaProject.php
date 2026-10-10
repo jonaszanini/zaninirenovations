@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RoomAreaProject extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'name',
         'client_project_id',
@@ -16,15 +19,11 @@ class RoomAreaProject extends Model
         'background_path',
         'canvas_width',
         'canvas_height',
-        'signer_name',
-        'signed_at',
-        'signature_path',
     ];
 
     protected $casts = [
         'scale_pixels_per_foot' => 'float',
         'wall_thickness_in' => 'float',
-        'signed_at' => 'date',
     ];
 
     public function clientProject(): BelongsTo

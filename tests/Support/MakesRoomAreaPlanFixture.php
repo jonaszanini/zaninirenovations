@@ -134,4 +134,17 @@ trait MakesRoomAreaPlanFixture
 
         return $quote->fresh();
     }
+
+    /**
+     * @return array{signer_name: string, standard_quotation_id: int, quote_version: int, signature: string}
+     */
+    protected function signaturePayload(StandardQuotation $quote, string $name = 'Pat Owner', ?string $png = null): array
+    {
+        return [
+            'signer_name' => $name,
+            'standard_quotation_id' => $quote->id,
+            'quote_version' => (int) ($quote->version ?: 1),
+            'signature' => $png ?? 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        ];
+    }
 }

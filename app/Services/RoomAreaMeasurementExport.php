@@ -44,8 +44,15 @@ class RoomAreaMeasurementExport
             $sections[] = $grouped['unassigned'];
         }
         foreach ($sections as $section) {
-            foreach ($section['rooms'] as $room) {
-                $rows[] = $this->roomRow($project, $room, (string) $section['name'], $client);
+            $allocated = $section['room_metrics'] ?? [];
+            foreach ($section['rooms'] as $index => $room) {
+                $rows[] = $this->roomRow(
+                    $project,
+                    $room,
+                    (string) $section['name'],
+                    $client,
+                    $allocated[$index] ?? null
+                );
             }
         }
 
@@ -75,10 +82,10 @@ class RoomAreaMeasurementExport
     {
         $sheetRows = [self::COLUMNS];
         foreach ($this->rows($project) as $row) {
-            $sheetRows[] = $this->sanitizeRow($row);
+            $sheetRows[] = $this->excelRow($row);
         }
         foreach ($this->totalRows($project) as $row) {
-            $sheetRows[] = $this->sanitizeRow($row);
+            $sheetRows[] = $this->excelRow($row);
         }
 
         $tmp = tempnam(sys_get_temp_dir(), 'ra-xlsx-');
@@ -143,9 +150,6 @@ class RoomAreaMeasurementExport
     }
 
     /**
-     * @return list<string|int|float>
-     */
-    /**
      * Prefix formula-like values so spreadsheet apps keep them as text.
      *
      * @param  string|int|float|null  $value
@@ -182,11 +186,67 @@ class RoomAreaMeasurementExport
     }
 
     /**
+     * Keep numbers numeric (including negatives) and text as plain strings.
+     * Formula-looking text is NOT apostrophe-prefixed here — CSV keeps that guard.
+     *
+     * @param  list<string|int|float|null>  $row
      * @return list<string|int|float>
      */
-    private function roomRow(RoomAreaProject $project, RoomAreaRoom $room, string $phaseName, string $client): array
+    public function excelRow(array $row): array
     {
-        $metrics = $room->layoutMetrics();
+        $out = [];
+        foreach ($row as $cell) {
+            if ($cell === null || $cell === '') {
+                $out[] = '';
+                continue;
+            }
+            if (is_int($cell) || is_float($cell)) {
+                $out[] = is_int($cell) ? $cell : round((float) $cell, 2);
+                continue;
+            }
+            $out[] = (string) $cell;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<list<string|int|float|null>>  $rows
+     */
+    public function sheetXml(array $rows): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            .'<sheetData>';
+        foreach ($rows as $r => $row) {
+            $xml .= '<row r="'.($r + 1).'">';
+            foreach ($row as $c => $value) {
+                $ref = $this->cellRef($c, $r + 1);
+                if ($value === '' || $value === null) {
+                    $xml .= '<c r="'.$ref.'"/>';
+                    continue;
+                }
+                if (is_int($value) || is_float($value)) {
+                    $numeric = is_int($value) ? (string) $value : number_format((float) $value, 2, '.', '');
+                    $xml .= '<c r="'.$ref.'" t="n"><v>'.$numeric.'</v></c>';
+                    continue;
+                }
+                $xml .= '<c r="'.$ref.'" t="inlineStr"><is><t>'.$this->xml((string) $value).'</t></is></c>';
+            }
+            $xml .= '</row>';
+        }
+        $xml .= '</sheetData></worksheet>';
+
+        return $xml;
+    }
+
+    /**
+     * @param  array<string, float|int>|null  $allocated
+     * @return list<string|int|float>
+     */
+    private function roomRow(RoomAreaProject $project, RoomAreaRoom $room, string $phaseName, string $client, ?array $allocated = null): array
+    {
+        $metrics = $allocated ?? $room->layoutMetrics();
 
         return [
             $phaseName,
@@ -202,35 +262,6 @@ class RoomAreaMeasurementExport
             (string) $project->name,
             $client,
         ];
-    }
-
-    /**
-     * @param  list<list<string|int|float>>  $rows
-     */
-    private function sheetXml(array $rows): string
-    {
-        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            .'<sheetData>';
-        foreach ($rows as $r => $row) {
-            $xml .= '<row r="'.($r + 1).'">';
-            foreach ($row as $c => $value) {
-                $ref = $this->cellRef($c, $r + 1);
-                if ($value === '' || $value === null) {
-                    $xml .= '<c r="'.$ref.'"/>';
-                    continue;
-                }
-                if (is_int($value) || is_float($value)) {
-                    $xml .= '<c r="'.$ref.'" t="n"><v>'.$value.'</v></c>';
-                    continue;
-                }
-                $xml .= '<c r="'.$ref.'" t="inlineStr"><is><t>'.$this->xml((string) $value).'</t></is></c>';
-            }
-            $xml .= '</row>';
-        }
-        $xml .= '</sheetData></worksheet>';
-
-        return $xml;
     }
 
     private function cellRef(int $col, int $row): string

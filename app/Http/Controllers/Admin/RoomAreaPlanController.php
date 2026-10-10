@@ -25,12 +25,16 @@ class RoomAreaPlanController extends Controller
         $active = $signatures->active($room_area_project);
         if ($active) {
             $frozen = $signatures->frozenPdf($active);
-            if (is_string($frozen) && $frozen !== '') {
-                return response($frozen, 200, [
-                    'Content-Type' => 'application/pdf',
-                    'Content-Disposition' => 'inline; filename="'.$this->filename($room_area_project->name, 'plan', 'pdf').'"',
+            if (! is_string($frozen) || $frozen === '') {
+                return response(RoomAreaSignatureRecorder::MISSING_FROZEN_PDF_MESSAGE, 409, [
+                    'Content-Type' => 'text/plain; charset=UTF-8',
                 ]);
             }
+
+            return response($frozen, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$this->filename($room_area_project->name, 'plan', 'pdf').'"',
+            ]);
         }
 
         $pdf = $document->pdfBinary($room_area_project);
@@ -138,6 +142,7 @@ class RoomAreaPlanController extends Controller
         $data = $request->validate([
             'signer_name' => ['required', 'string', 'max:255'],
             'standard_quotation_id' => ['required', 'integer'],
+            'quote_version' => ['required', 'integer'],
             'signature' => ['required', 'string'],
         ]);
 
@@ -154,7 +159,8 @@ class RoomAreaPlanController extends Controller
                 $admin,
                 $quote,
                 trim((string) $data['signer_name']),
-                (string) $data['signature']
+                (string) $data['signature'],
+                (int) $data['quote_version']
             );
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             return response()->json([

@@ -41,4 +41,21 @@ class RoomAreaMeasurementExportTest extends TestCase
         $this->assertSame('70.40', $export->sanitizeCell(70.4));
         $this->assertSame(RoomAreaMeasurementExport::UTF8_BOM, "\xEF\xBB\xBF");
     }
+
+    public function test_excel_writes_numbers_including_negatives_and_plain_text_strings(): void
+    {
+        $export = new RoomAreaMeasurementExport;
+        $this->assertSame(-12.5, $export->excelRow(['=CMD', -12.5, 120, ''])[1]);
+        $this->assertSame('=CMD', $export->excelRow(['=CMD', -12.5])[0]);
+        $this->assertSame("'=CMD", $export->sanitizeCell('=CMD'));
+
+        $xml = $export->sheetXml([
+            ['Phase', -12.5, '=SUM(A1)', 120.00],
+        ]);
+        $this->assertStringContainsString('t="n"><v>-12.50</v>', $xml);
+        $this->assertStringContainsString('t="n"><v>120.00</v>', $xml);
+        $this->assertStringContainsString('t="inlineStr"><is><t>=SUM(A1)</t></is></c>', $xml);
+        $this->assertStringNotContainsString("'=SUM", $xml);
+        $this->assertStringNotContainsString("'=-12", $xml);
+    }
 }

@@ -39,13 +39,14 @@ class RoomAreaPlanDocument
         $grouped = $this->totals->grouped($project);
         $sections = [];
         foreach ($grouped['phases'] as $phase) {
-            $sections[] = $this->section($phase['name'], $phase['totals'], $phase['rooms']);
+            $sections[] = $this->section($phase['name'], $phase['totals'], $phase['rooms'], $phase['room_metrics'] ?? []);
         }
         if ($grouped['unassigned']['rooms']->isNotEmpty() || $sections === []) {
             $sections[] = $this->section(
                 (string) $grouped['unassigned']['name'],
                 $grouped['unassigned']['totals'],
-                $grouped['unassigned']['rooms']
+                $grouped['unassigned']['rooms'],
+                $grouped['unassigned']['room_metrics'] ?? []
             );
         }
 
@@ -78,13 +79,16 @@ class RoomAreaPlanDocument
     /**
      * @param  array<string, float|int>  $totals
      * @param  iterable<int, RoomAreaRoom>  $rooms
+     * @param  list<array<string, float|int>>  $allocated
      * @return array{name: string, totals: array<string, float|int>, rooms: list<array<string, mixed>>}
      */
-    private function section(string $name, array $totals, iterable $rooms): array
+    private function section(string $name, array $totals, iterable $rooms, array $allocated = []): array
     {
         $rows = [];
+        $index = 0;
         foreach ($rooms as $room) {
-            $metrics = $room->layoutMetrics();
+            $metrics = $allocated[$index] ?? $room->layoutMetrics();
+            $index++;
             $rows[] = [
                 'name' => (string) $room->name,
                 'svg' => $this->svg->forRoom($room),

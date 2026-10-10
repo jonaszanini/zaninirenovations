@@ -189,6 +189,8 @@ class RoomAreaController extends Controller
         ]);
     }
 
+    public const ARCHIVED_FOR_SIGNATURES_MESSAGE = 'This project has signature history, so it was archived. Active and voided signatures and their PNG and PDF files stay on file.';
+
     public function destroyProject(RoomAreaProject $room_area_project)
     {
         $canvasData = app(RoomAreaCanvasData::class);
@@ -201,6 +203,17 @@ class RoomAreaController extends Controller
             }
         }
 
+        $room_area_project->loadMissing('signatures');
+        if ($room_area_project->signatures->isNotEmpty()) {
+            $room_area_project->delete();
+
+            return response()->json([
+                'ok' => true,
+                'archived' => true,
+                'message' => self::ARCHIVED_FOR_SIGNATURES_MESSAGE,
+            ]);
+        }
+
         if ($room_area_project->background_path) {
             Storage::disk('local')->delete($room_area_project->background_path);
         }
@@ -211,7 +224,7 @@ class RoomAreaController extends Controller
             $this->deleteRoomPhotos($room);
         }
 
-        $room_area_project->delete();
+        $room_area_project->forceDelete();
 
         return response()->json(['ok' => true]);
     }

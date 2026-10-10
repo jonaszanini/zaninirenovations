@@ -12,6 +12,7 @@ class RoomAreaSignature extends Model
         'room_area_project_id',
         'standard_quotation_id',
         'quote_version',
+        'active_slot',
         'signer_name',
         'signed_at',
         'admin_user_id',
@@ -27,6 +28,7 @@ class RoomAreaSignature extends Model
 
     protected $casts = [
         'quote_version' => 'integer',
+        'active_slot' => 'integer',
         'signed_at' => 'datetime',
         'voided_at' => 'datetime',
     ];

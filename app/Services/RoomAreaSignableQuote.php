@@ -16,6 +16,8 @@ class RoomAreaSignableQuote
 
     public const MISSING_QUOTE_MESSAGE = 'Choose the published quote version this signature belongs to.';
 
+    public const SUPERSEDED_MESSAGE = 'This quote version has been replaced. Sign the current published version.';
+
     /**
      * @return list<array{id: int, quote_number: string, version: int, is_draft: bool, is_revising: bool, can_sign: bool}>
      */
@@ -35,6 +37,7 @@ class RoomAreaSignableQuote
         return $quotes->map(function (StandardQuotation $quote) use ($revisingIds) {
             $revising = $revisingIds->contains((int) $quote->id);
             $draft = (bool) $quote->is_draft;
+            $superseded = $this->isSuperseded($quote);
 
             return [
                 'id' => (int) $quote->id,
@@ -42,7 +45,8 @@ class RoomAreaSignableQuote
                 'version' => (int) ($quote->version ?: 1),
                 'is_draft' => $draft,
                 'is_revising' => $revising,
-                'can_sign' => ! $draft && ! $revising,
+                'is_superseded' => $superseded,
+                'can_sign' => ! $draft && ! $revising && ! $superseded,
             ];
         })->values()->all();
     }
@@ -61,14 +65,29 @@ class RoomAreaSignableQuote
         return $quote;
     }
 
-    public function assertSignable(StandardQuotation $quote): void
+    public function assertSignable(StandardQuotation $quote, ?int $expectedVersion = null): void
     {
+        if ($expectedVersion !== null && (int) ($quote->version ?: 1) !== $expectedVersion) {
+            throw new HttpException(422, self::SUPERSEDED_MESSAGE);
+        }
+        if ($this->isSuperseded($quote)) {
+            throw new HttpException(422, self::SUPERSEDED_MESSAGE);
+        }
         if ($this->isRevising($quote)) {
             throw new HttpException(422, self::REVISING_MESSAGE);
         }
         if ($quote->is_draft) {
             throw new HttpException(422, self::DRAFT_MESSAGE);
         }
+    }
+
+    public function isSuperseded(StandardQuotation $quote): bool
+    {
+        return StandardQuotation::query()
+            ->where('quote_number', $quote->quote_number)
+            ->where('id', '!=', $quote->id)
+            ->where('version', '>', (int) ($quote->version ?: 1))
+            ->exists();
     }
 
     public function isRevising(StandardQuotation $quote): bool

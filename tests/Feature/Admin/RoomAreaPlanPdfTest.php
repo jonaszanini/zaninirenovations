@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\Admin\RoomAreaController;
+use App\Models\RoomAreaProject;
 use App\Models\RoomAreaSignature;
+use Illuminate\Support\Facades\Schema;
 use App\Services\RoomAreaPlanDocument;
 use App\Services\RoomAreaSignableQuote;
 use App\Services\RoomAreaSignatureRecorder;
@@ -19,6 +22,14 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
     use MakesRoomAreaPlanFixture;
 
     private const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    public function test_projects_table_has_no_unused_signature_columns(): void
+    {
+        $this->assertFalse(Schema::hasColumn('room_area_projects', 'signer_name'));
+        $this->assertFalse(Schema::hasColumn('room_area_projects', 'signed_at'));
+        $this->assertFalse(Schema::hasColumn('room_area_projects', 'signature_path'));
+        $this->assertTrue(Schema::hasColumn('room_area_projects', 'deleted_at'));
+    }
 
     public function test_plan_pdf_uses_letter_paper_without_remote_fetching(): void
     {
@@ -110,12 +121,10 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
 
         $this->withHeaders(['User-Agent' => 'RoomAreaTester/1.0'])
             ->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
-            ->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), [
-                'signer_name' => 'Pat Owner',
-                'signed_at' => '1999-01-01',
-                'standard_quotation_id' => $quote->id,
-                'signature' => self::TINY_PNG,
-            ])->assertOk()->assertJsonPath('ok', true);
+            ->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), array_merge(
+                $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG),
+                ['signed_at' => '1999-01-01']
+            ))->assertOk()->assertJsonPath('ok', true);
 
         Mail::assertNothingSent();
         $this->assertSame($quoteSnap, $quote->fresh()->toArray());
@@ -144,11 +153,8 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         $fixture = $this->makePlanFixture();
         $quote = $this->makeDraftQuote($fixture['client']);
 
-        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), [
-            'signer_name' => 'Pat Owner',
-            'standard_quotation_id' => $quote->id,
-            'signature' => self::TINY_PNG,
-        ])->assertStatus(422)->assertJsonPath('message', RoomAreaSignableQuote::DRAFT_MESSAGE);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertStatus(422)->assertJsonPath('message', RoomAreaSignableQuote::DRAFT_MESSAGE);
 
         $this->assertSame(0, RoomAreaSignature::query()->count());
     }
@@ -160,11 +166,8 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         $fixture = $this->makePlanFixture();
         $quote = $this->makeRevisingQuote($fixture['client']);
 
-        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), [
-            'signer_name' => 'Pat Owner',
-            'standard_quotation_id' => $quote->id,
-            'signature' => self::TINY_PNG,
-        ])->assertStatus(422)->assertJsonPath('message', RoomAreaSignableQuote::REVISING_MESSAGE);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertStatus(422)->assertJsonPath('message', RoomAreaSignableQuote::REVISING_MESSAGE);
 
         $this->assertSame(0, RoomAreaSignature::query()->count());
     }
@@ -176,21 +179,15 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         $fixture = $this->makePlanFixture();
         $quote = $this->makePublishedQuote($fixture['client']);
 
-        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), [
-            'signer_name' => 'Pat Owner',
-            'standard_quotation_id' => $quote->id,
-            'signature' => self::TINY_PNG,
-        ])->assertOk();
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertOk();
 
         $first = RoomAreaSignature::query()->first();
         $hash = $first->snapshot_hash;
         $path = $first->pdf_path;
 
-        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), [
-            'signer_name' => 'Someone Else',
-            'standard_quotation_id' => $quote->id,
-            'signature' => self::TINY_PNG,
-        ])->assertStatus(409)->assertJsonPath('message', RoomAreaSignatureRecorder::ACTIVE_EXISTS_MESSAGE);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Someone Else', self::TINY_PNG))
+            ->assertStatus(409)->assertJsonPath('message', RoomAreaSignatureRecorder::ACTIVE_EXISTS_MESSAGE);
 
         $this->assertSame(1, RoomAreaSignature::query()->count());
         $this->assertSame($hash, $first->fresh()->snapshot_hash);
@@ -209,11 +206,8 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         $this->assertSame('Client initialed the wrong sheet', $first->void_reason);
         $this->assertSame($hash, $first->snapshot_hash);
 
-        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), [
-            'signer_name' => 'Pat Owner Jr',
-            'standard_quotation_id' => $quote->id,
-            'signature' => self::TINY_PNG,
-        ])->assertOk();
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner Jr', self::TINY_PNG))
+            ->assertOk();
 
         $this->assertSame(2, RoomAreaSignature::query()->count());
         $this->assertNotNull(RoomAreaSignature::query()->whereNull('voided_at')->first());
@@ -227,11 +221,8 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         $fixture = $this->makePlanFixture();
         $quote = $this->makePublishedQuote($fixture['client']);
 
-        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), [
-            'signer_name' => 'Alex Client',
-            'standard_quotation_id' => $quote->id,
-            'signature' => self::TINY_PNG,
-        ])->assertOk();
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Alex Client', self::TINY_PNG))
+            ->assertOk();
 
         $signature = RoomAreaSignature::query()->first();
         $before = $this->get(route('admin.utilities.room-area.projects.plan', $fixture['project']))->assertOk()->getContent();
@@ -281,11 +272,8 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         $quote = $this->makePublishedQuote($fixture['client']);
         $name = 'José García-Ñoño '.str_repeat('Å', 180);
 
-        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), [
-            'signer_name' => $name,
-            'standard_quotation_id' => $quote->id,
-            'signature' => self::TINY_PNG,
-        ])->assertOk();
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, $name, self::TINY_PNG))
+            ->assertOk();
 
         $signature = RoomAreaSignature::query()->first();
         $this->assertSame($name, $signature->signer_name);
@@ -298,11 +286,160 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         $other = $this->makePlanFixture(['name' => 'Other layout']);
         $quote = $this->makePublishedQuote($other['client']);
 
-        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), [
-            'signer_name' => 'Pat Owner',
-            'standard_quotation_id' => $quote->id,
-            'signature' => self::TINY_PNG,
-        ])->assertNotFound();
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertNotFound();
+    }
+
+    public function test_missing_frozen_pdf_returns_error_instead_of_live_rebuild(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client']);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Alex Client', self::TINY_PNG))
+            ->assertOk();
+
+        $signature = RoomAreaSignature::query()->first();
+        Storage::disk('local')->delete($signature->pdf_path);
+        $fixture['kitchen']->update(['name' => 'Should not appear live']);
+
+        $response = $this->get(route('admin.utilities.room-area.projects.plan', $fixture['project']));
+        $response->assertStatus(409);
+        $body = $response->getContent();
+        $this->assertStringContainsString(RoomAreaSignatureRecorder::MISSING_FROZEN_PDF_MESSAGE, $body);
+        $this->assertStringNotContainsString('%PDF', $body);
+        $this->assertStringNotContainsString('Should not appear live', $body);
+    }
+
+    public function test_superseded_quote_version_cannot_be_signed(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client'], ['version' => 1]);
+
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), array_merge(
+            $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG),
+            ['quote_version' => 1]
+        ))->assertOk();
+        $this->postJson(route('admin.utilities.room-area.projects.signature.void', $fixture['project']), [
+            'reason' => 'Quote was revised',
+        ])->assertOk();
+
+        $quote->update(['version' => 2]);
+
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), array_merge(
+            $this->signaturePayload($quote->fresh(), 'Pat Owner', self::TINY_PNG),
+            ['quote_version' => 1]
+        ))->assertStatus(422)->assertJsonPath('message', RoomAreaSignableQuote::SUPERSEDED_MESSAGE);
+
+        $this->assertSame(0, RoomAreaSignature::query()->whereNull('voided_at')->count());
+    }
+
+    public function test_stale_quote_version_cannot_be_signed_after_publish_bump(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client'], ['version' => 1]);
+
+        $options = app(RoomAreaSignableQuote::class)->options($fixture['project']->fresh());
+        $option = collect($options)->firstWhere('id', $quote->id);
+        $this->assertNotNull($option);
+        $this->assertFalse($option['is_superseded']);
+        $this->assertTrue($option['can_sign']);
+
+        $quote->update(['version' => 2]);
+
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), array_merge(
+            $this->signaturePayload($quote->fresh(), 'Pat Owner', self::TINY_PNG),
+            ['quote_version' => 1]
+        ))->assertStatus(422)->assertJsonPath('message', RoomAreaSignableQuote::SUPERSEDED_MESSAGE);
+
+        $this->assertSame(0, RoomAreaSignature::query()->count());
+
+        $this->postJson(
+            route('admin.utilities.room-area.projects.signature', $fixture['project']),
+            $this->signaturePayload($quote->fresh(), 'Pat Owner', self::TINY_PNG)
+        )->assertOk();
+        $this->assertSame(1, RoomAreaSignature::query()->whereNull('voided_at')->count());
+        $this->assertSame(2, (int) RoomAreaSignature::query()->first()->quote_version);
+    }
+
+    public function test_deleting_a_signed_project_archives_it_and_keeps_signature_files(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client']);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertOk();
+        $this->postJson(route('admin.utilities.room-area.projects.signature.void', $fixture['project']), [
+            'reason' => 'Redo',
+        ])->assertOk();
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertOk();
+
+        $rows = RoomAreaSignature::query()->where('room_area_project_id', $fixture['project']->id)->get();
+        $this->assertCount(2, $rows);
+        $paths = $rows->flatMap(fn (RoomAreaSignature $row) => [$row->pdf_path, $row->signature_path])->all();
+        foreach ($paths as $path) {
+            $this->assertTrue(Storage::disk('local')->exists($path));
+        }
+
+        $this->deleteJson(route('admin.utilities.room-area.projects.destroy', $fixture['project']))
+            ->assertOk()
+            ->assertJsonPath('archived', true)
+            ->assertJsonPath('message', RoomAreaController::ARCHIVED_FOR_SIGNATURES_MESSAGE);
+
+        $this->assertNotNull(RoomAreaProject::withTrashed()->find($fixture['project']->id));
+        $this->assertNull(RoomAreaProject::query()->find($fixture['project']->id));
+        $this->assertSame(2, RoomAreaSignature::query()->where('room_area_project_id', $fixture['project']->id)->count());
+        foreach ($paths as $path) {
+            $this->assertTrue(Storage::disk('local')->exists($path));
+        }
+    }
+
+    public function test_unsigned_project_still_deletes(): void
+    {
+        $this->actingAsAdmin();
+        $fixture = $this->makePlanFixture();
+
+        $this->deleteJson(route('admin.utilities.room-area.projects.destroy', $fixture['project']))
+            ->assertOk();
+
+        $this->assertNull(RoomAreaProject::withTrashed()->find($fixture['project']->id));
+        $this->assertSame(0, RoomAreaSignature::query()->count());
+    }
+
+    public function test_unique_active_slot_blocks_a_second_active_row(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client']);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertOk();
+
+        $first = RoomAreaSignature::query()->first();
+        try {
+            RoomAreaSignature::query()->create([
+                'room_area_project_id' => $first->room_area_project_id,
+                'standard_quotation_id' => $first->standard_quotation_id,
+                'quote_version' => $first->quote_version,
+                'active_slot' => 1,
+                'signer_name' => 'Double Tap',
+                'signed_at' => now(),
+                'admin_user_id' => $first->admin_user_id,
+                'snapshot_hash' => str_repeat('a', 64),
+                'pdf_path' => 'room-plans/signatures/dup.pdf',
+                'signature_path' => 'room-plans/signatures/dup.png',
+            ]);
+            $this->fail('Expected a unique constraint on the active signature per quote version.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            $this->assertSame(1062, (int) ($e->errorInfo[1] ?? 0));
+        }
+        $this->assertSame(1, RoomAreaSignature::query()->whereNull('voided_at')->count());
     }
 
     private function pdfText(string $pdf): string

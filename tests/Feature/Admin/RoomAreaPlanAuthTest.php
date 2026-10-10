@@ -36,6 +36,7 @@ class RoomAreaPlanAuthTest extends IntegrationTestCase
         $this->post(route('admin.utilities.room-area.projects.signature', $project), [
             'signer_name' => 'Pat',
             'standard_quotation_id' => 1,
+            'quote_version' => 1,
             'signature' => 'x',
         ])->assertRedirect();
         $this->post(route('admin.utilities.room-area.projects.signature.void', $project), [
@@ -55,6 +56,7 @@ class RoomAreaPlanAuthTest extends IntegrationTestCase
         $this->postJson('/admin/utilities/room-area/projects/'.$missing.'/signature', [
             'signer_name' => 'Pat',
             'standard_quotation_id' => 1,
+            'quote_version' => 1,
             'signature' => 'x',
         ])->assertNotFound();
         $this->postJson('/admin/utilities/room-area/projects/'.$missing.'/signature/void', [
