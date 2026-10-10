@@ -1,0 +1,33 @@
+{
+    "version": 2,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "bench",
+                "unit": "in",
+                "length": 48,
+                "depth": 16,
+                "height": "",
+                "qty": 1,
+                "edge_banding": false
+            }
+        ],
+        "include_install": false,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 0,
+            "materials_pre_hst": 0,
+            "subtotal_pre_hst": 0,
+            "hst": 0,
+            "grand_total": 0
+        },
+        "labor": [],
+        "materials": [],
+        "scope_labels": [],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nBench seating. Bench, 48\" L × 16\" D. Unfinished. Includes supply, shop build, and hardware.",
+        "preview_skipped": false
+    }
+}

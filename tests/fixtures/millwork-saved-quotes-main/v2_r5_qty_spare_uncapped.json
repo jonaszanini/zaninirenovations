@@ -1,0 +1,68 @@
+{
+    "version": 2,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "shelf",
+                "qty": 1,
+                "edge_banding": false,
+                "sets": [
+                    {
+                        "qty": 250,
+                        "length": 36,
+                        "depth": 12,
+                        "unit": "in"
+                    }
+                ]
+            }
+        ],
+        "spare_sheets": 60,
+        "include_install": false,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 9044,
+            "materials_pre_hst": 7429,
+            "subtotal_pre_hst": 16473,
+            "hst": 2141.49,
+            "grand_total": 18614.49
+        },
+        "labor": [
+            {
+                "key": "cut",
+                "label": "Shop — cut / nest sheets",
+                "hours": 18.9,
+                "amount": 1606.5
+            },
+            {
+                "key": "shelf",
+                "label": "Shop — simple shelves",
+                "hours": 87.5,
+                "amount": 7437.5
+            }
+        ],
+        "materials": [
+            {
+                "key": "sheet_1",
+                "label": "3/4\" cabinet-grade plywood 4×8",
+                "qty": 102,
+                "unit_price": 72,
+                "amount": 7344
+            },
+            {
+                "key": "fastener",
+                "label": "1-1/4\" cabinet screws (box of 100)",
+                "qty": 10,
+                "unit_price": 8.5,
+                "amount": 85
+            }
+        ],
+        "scope_labels": [
+            "250× Shelf 36\"×12\""
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nSimple shelf. Shelf. Unfinished. Includes supply and shop build.",
+        "preview_skipped": false
+    }
+}

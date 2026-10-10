@@ -98,23 +98,48 @@ class MillworkQuotation extends Model
         return is_array($unplaced) && $unplaced !== [];
     }
 
-    public function cutPlanVersion(): int
+    public function calcVersion(): int
     {
         if ($this->cut_plan_version !== null && $this->cut_plan_version !== '') {
-            return ((int) $this->cut_plan_version) >= 2 ? 2 : 1;
+            $raw = (int) $this->cut_plan_version;
+            if ($raw >= \App\Services\MillworkQuotationCalculator::CALC_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::CALC_VERSION;
+            }
+            if ($raw >= \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
+            }
+
+            return 1;
         }
 
         return 1;
     }
 
+    public function cutPlanVersion(): int
+    {
+        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION
+            ? \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION
+            : 1;
+    }
+
     public function builderVersion(): int
     {
-        return $this->cutPlanVersion();
+        return $this->calcVersion();
     }
 
     public function usesLegacyCutBuilder(): bool
     {
         return $this->cutPlanVersion() < \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
+    }
+
+    public function usesNewCalc(): bool
+    {
+        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::CALC_VERSION;
+    }
+
+    public function canUpgradeCalc(): bool
+    {
+        return $this->calcVersion() < \App\Services\MillworkQuotationCalculator::CALC_VERSION;
     }
 
     public function displayTitle(): string
@@ -199,7 +224,13 @@ class MillworkQuotation extends Model
         if ($hasFinish) {
             $included[] = 'finishing';
         }
-        if ((float) ($summary['delivery_amount'] ?? $inputs['delivery_amount'] ?? 0) > 0) {
+        $deliveryStored = (float) ($summary['delivery_amount'] ?? $inputs['delivery_amount'] ?? 0);
+        $legacyQuote = $this->usesLegacyCutBuilder();
+        if ($this->usesNewCalc()) {
+            if ($deliveryStored > 0 && empty($inputs['client_provides_all'])) {
+                $included[] = 'delivery';
+            }
+        } elseif ($deliveryStored > 0) {
             $included[] = 'delivery';
         }
         if (! array_key_exists('include_install', $inputs) || ! empty($inputs['include_install'])) {
@@ -212,7 +243,12 @@ class MillworkQuotation extends Model
             if (! is_array($piece)) {
                 continue;
             }
-            $line = \App\Services\Millwork\MillworkPartBuilder::clientScopeLine($piece);
+            if (! isset($piece['_calc_version'])) {
+                $piece['_calc_version'] = $this->calcVersion();
+            }
+            $line = $legacyQuote
+                ? \App\Services\Millwork\LegacyMillworkPartBuilder::clientScopeLine($piece)
+                : \App\Services\Millwork\MillworkPartBuilder::clientScopeLine($piece);
             if ($line === '') {
                 continue;
             }

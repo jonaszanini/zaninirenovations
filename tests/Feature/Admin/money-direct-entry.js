@@ -37,6 +37,10 @@ function sleep(ms) {
   page.setDefaultNavigationTimeout(30000);
   page.setDefaultTimeout(20000);
 
+  page.on('dialog', async (dialog) => {
+    await dialog.accept().catch(() => {});
+  });
+
   async function go(url) {
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body');
