@@ -7,6 +7,7 @@ use App\Models\ClientProjectInstallment;
 use App\Models\ClientProjectInvoice;
 use App\Models\EtransferNotice;
 use App\Services\Etransfer\EtransferInvoiceMatcher;
+use App\Services\Etransfer\EtransferNoticeParser;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Tests\TestCase;
@@ -404,6 +405,31 @@ class EtransferInvoiceMatcherTest extends TestCase
         $this->assertSame('Zohar Barak', $suggestion['ambiguous_labels'][0]['client_name']);
         $this->assertSame('INV-2026-0258', $suggestion['ambiguous_labels'][1]['invoice_number']);
         $this->assertSame('Malcolm Travis', $suggestion['ambiguous_labels'][1]['client_name']);
+    }
+
+    public function test_own_domain_reply_to_is_not_a_sender_email_match(): void
+    {
+        $parsed = (new EtransferNoticeParser)->parse(<<<'TXT'
+From: notify@payments.interac.ca
+Reply-To: jonas@zaninirenovations.ca
+Someone Else sent you $50.00 CAD
+Reference Number: CAMATCHOWN001
+TXT);
+
+        $this->assertNull($parsed['sender_email']);
+
+        $invoice = $this->makeInvoice(410, 'INV-2026-0410', 500.00, 'Jonas Zanini', 'jonas@zaninirenovations.ca');
+        $notice = new EtransferNotice([
+            'sender_name' => 'Someone Else',
+            'sender_email' => $parsed['sender_email'],
+            'amount' => 50.00,
+            'message' => 'thanks',
+        ]);
+
+        $ranked = $this->matcher->rank($notice, collect([$invoice]));
+        foreach ($ranked as $row) {
+            $this->assertNotContains('Sender email', $row['reasons']);
+        }
     }
 
     public function test_phone_masking_excludes_digits_from_lookup_tokens(): void
