@@ -484,4 +484,224 @@ TXT;
             $html
         );
     }
+
+    public function test_unit_hash_does_not_preselect_other_clients_invoice_over_malcolm(): void
+    {
+        $this->actingAsAdmin();
+
+        $malcolm = ClientProject::factory()->create([
+            'client_name' => 'Malcolm Travis',
+            'client_email' => 'malcolm@example.test',
+        ]);
+        $invoice = ClientProjectInvoice::factory()->for($malcolm, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0258',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+        $other = ClientProject::factory()->create([
+            'client_name' => 'Other Client',
+            'client_email' => 'other@example.test',
+        ]);
+        ClientProjectInvoice::factory()->for($other, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0305',
+            'subtotal' => 796.46,
+            'hst' => 103.54,
+            'total' => 900,
+        ]);
+
+        $notice = EtransferNotice::factory()->create([
+            'sender_name' => 'Malcolm Travis',
+            'amount' => 379.61,
+            'message' => 'Unit #305 bathroom',
+            'reference_number' => 'CAUNIT305',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('INV-2026-0258')
+            ->assertSee('Best match')
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value="'.$invoice->id.'"/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/et-card__match-title">\s*INV-2026-0305/s',
+            $html
+        );
+        $this->assertStringNotContainsString('Ambiguous match', $html);
+    }
+
+    public function test_phone_digits_do_not_preselect_invoice(): void
+    {
+        $this->actingAsAdmin();
+
+        $malcolm = ClientProject::factory()->create([
+            'client_name' => 'Malcolm Travis',
+            'client_email' => 'malcolm@example.test',
+        ]);
+        $invoice = ClientProjectInvoice::factory()->for($malcolm, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0258',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+
+        $notice = EtransferNotice::factory()->create([
+            'sender_name' => 'Malcolm Travis',
+            'amount' => 379.61,
+            'message' => 'Call 647-834-0258',
+            'reference_number' => 'CAPHONE0258',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value="'.$invoice->id.'"/',
+            $html
+        );
+    }
+
+    public function test_old_paid_unit_hash_does_not_hide_malcolm_amount_match(): void
+    {
+        $this->actingAsAdmin();
+
+        $other = ClientProject::factory()->create([
+            'client_name' => 'Other Client',
+            'client_email' => 'other@example.test',
+        ]);
+        ClientProjectInvoice::factory()->for($other, 'project')->paid()->create([
+            'invoice_number' => 'INV-2025-0305',
+            'subtotal' => 796.46,
+            'hst' => 103.54,
+            'total' => 900,
+        ]);
+        $malcolm = ClientProject::factory()->create([
+            'client_name' => 'Malcolm Travis',
+            'client_email' => 'malcolm@example.test',
+        ]);
+        $invoice = ClientProjectInvoice::factory()->for($malcolm, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0258',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+
+        $notice = EtransferNotice::factory()->create([
+            'sender_name' => 'Malcolm Travis',
+            'amount' => 379.61,
+            'message' => 'unit #305',
+            'reference_number' => 'CAOLD305',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('INV-2026-0258')
+            ->assertDontSee('Already paid')
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value="'.$invoice->id.'"/',
+            $html
+        );
+        $this->assertStringNotContainsString('INV-2025-0305', $html);
+    }
+
+    public function test_two_open_invoices_cited_in_memo_show_cited_ambiguous_warning(): void
+    {
+        $this->actingAsAdmin();
+
+        $a = ClientProject::factory()->create(['client_name' => 'Zohar Barak']);
+        ClientProjectInvoice::factory()->for($a, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0257',
+            'subtotal' => 442.48,
+            'hst' => 57.52,
+            'total' => 500,
+        ]);
+        $b = ClientProject::factory()->create(['client_name' => 'Malcolm Travis']);
+        ClientProjectInvoice::factory()->for($b, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0258',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+
+        $notice = EtransferNotice::factory()->create([
+            'sender_name' => 'Someone Else',
+            'amount' => 379.61,
+            'message' => 'INV-2026-0257 and INV-2026-0258',
+            'reference_number' => 'CACITED2',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('Ambiguous match')
+            ->assertSee('This payment may cover more than one')
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value=""/',
+            $html
+        );
+    }
+
+    public function test_bare_hash_does_not_surface_paid_invoice_from_any_year(): void
+    {
+        $this->actingAsAdmin();
+
+        ClientProjectInvoice::factory()->for(
+            ClientProject::factory()->create(['client_name' => 'Zohar Barak']),
+            'project'
+        )->paid()->create([
+            'invoice_number' => 'INV-2025-0257',
+            'subtotal' => 2000,
+            'hst' => 260,
+            'total' => 2260,
+        ]);
+
+        EtransferNotice::factory()->create([
+            'sender_name' => 'Someone Else',
+            'amount' => 50,
+            'message' => '#257',
+            'reference_number' => 'CABAREHASH257',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('INV-2025-0257', $html);
+        $this->assertStringNotContainsString('Already paid', $html);
+        $this->assertStringNotContainsString('Record disabled — invoice already paid', $html);
+    }
+
+    public function test_four_digit_memo_is_not_treated_as_invoice_citation(): void
+    {
+        $this->actingAsAdmin();
+
+        ClientProjectInvoice::factory()->for(
+            ClientProject::factory()->create(['client_name' => 'Other Client']),
+            'project'
+        )->paid()->create([
+            'invoice_number' => 'INV-2026-0305',
+            'subtotal' => 796.46,
+            'hst' => 103.54,
+            'total' => 900,
+        ]);
+
+        EtransferNotice::factory()->create([
+            'sender_name' => 'Someone Else',
+            'amount' => 50,
+            'message' => '0305',
+            'reference_number' => 'CAFOUR0305',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('INV-2026-0305', $html);
+        $this->assertStringNotContainsString('Already paid', $html);
+    }
 }

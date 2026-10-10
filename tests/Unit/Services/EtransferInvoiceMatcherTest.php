@@ -203,28 +203,193 @@ class EtransferInvoiceMatcherTest extends TestCase
         $this->assertContains(EtransferInvoiceMatcher::REASON_ALREADY_PAID, $suggestion['best']['reasons']);
     }
 
-    public function test_short_memo_forms_match_paid_invoice_sequence(): void
+    public function test_short_memo_forms_require_invoice_keyword(): void
     {
         $paid = $this->makeInvoice(257, 'INV-2026-0257', 2260.00, 'Zohar Barak', 'zohar@example.test');
         $paid->status = ClientProjectInvoice::STATUS_PAID;
 
-        foreach (['#257', '0257', 'invoice 257', 'inv 257', 'invoice #257'] as $memo) {
+        foreach (['#257', '0257', 'Unit #257 bathroom'] as $memo) {
+            $this->assertFalse(
+                $this->matcher->invoiceNumberAppears('INV-2026-0257', mb_strtolower($memo)),
+                'Bare or unit form should not cite INV-2026-0257: '.$memo
+            );
             $notice = new EtransferNotice([
                 'sender_name' => 'Zohar Barak',
                 'amount' => 100.00,
                 'message' => $memo,
             ]);
+            $this->assertSame([], $this->matcher->rank($notice, collect([$paid])), 'Memo '.$memo);
+        }
 
+        foreach (['invoice 257', 'inv 257', 'invoice #257', 'inv#257'] as $memo) {
             $this->assertTrue(
-                $this->matcher->invoiceNumberAppears('INV-2026-0257', mb_strtolower($memo)),
+                $this->matcher->shortInvoiceSequenceAppears('INV-2026-0257', mb_strtolower($memo)),
                 'Expected '.$memo.' to cite INV-2026-0257'
             );
 
+            $notice = new EtransferNotice([
+                'sender_name' => 'Zohar Barak',
+                'amount' => 100.00,
+                'message' => $memo,
+            ]);
             $ranked = $this->matcher->rank($notice, collect([$paid]));
             $this->assertNotEmpty($ranked, 'Expected a candidate for memo '.$memo);
             $this->assertSame('INV-2026-0257', $ranked[0]['invoice_number']);
             $this->assertTrue($ranked[0]['already_paid']);
+            $this->assertSame(EtransferInvoiceMatcher::CITATION_SHORT, $ranked[0]['citation']);
         }
+    }
+
+    public function test_unit_hash_does_not_outrank_malcolm_amount_match(): void
+    {
+        $malcolm = $this->makeInvoice(258, 'INV-2026-0258', 379.61, 'Malcolm Travis', 'malcolm@example.test');
+        $other = $this->makeInvoice(305, 'INV-2026-0305', 900.00, 'Other Client', 'other@example.test');
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Malcolm Travis',
+            'amount' => 379.61,
+            'message' => 'Unit #305 bathroom',
+        ]);
+
+        $this->assertFalse($this->matcher->invoiceNumberAppears('INV-2026-0305', 'unit #305 bathroom'));
+
+        $suggestion = $this->matcher->suggest($notice, collect([$other, $malcolm]));
+        $this->assertSame(258, $suggestion['best']['invoice_id']);
+        $this->assertSame('INV-2026-0258', $suggestion['best']['invoice_number']);
+        $this->assertTrue($suggestion['recordable']);
+        $this->assertFalse($suggestion['ambiguous']);
+    }
+
+    public function test_phone_number_ending_in_invoice_digits_is_not_a_citation(): void
+    {
+        $malcolm = $this->makeInvoice(258, 'INV-2026-0258', 379.61, 'Malcolm Travis', 'malcolm@example.test');
+        $other = $this->makeInvoice(259, 'INV-2026-0259', 900.00, 'Other Client', 'other@example.test');
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Malcolm Travis',
+            'amount' => 379.61,
+            'message' => 'Call 647-834-0258',
+        ]);
+
+        $this->assertFalse($this->matcher->invoiceNumberAppears('INV-2026-0258', 'call 647-834-0258'));
+        $this->assertStringNotContainsString('0258', $this->matcher->maskPhoneNumbers('call 647-834-0258'));
+
+        $suggestion = $this->matcher->suggest($notice, collect([$other, $malcolm]));
+        $this->assertSame('INV-2026-0258', $suggestion['best']['invoice_number']);
+        $this->assertContains('Amount matches', $suggestion['best']['reasons']);
+        $this->assertNull($suggestion['best']['citation']);
+    }
+
+    public function test_bare_hash_does_not_match_invoice_from_any_year(): void
+    {
+        $paid = $this->makeInvoice(257, 'INV-2025-0257', 2260.00, 'Zohar Barak', 'zohar@example.test');
+        $paid->status = ClientProjectInvoice::STATUS_PAID;
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Someone Else',
+            'amount' => 50.00,
+            'message' => '#257',
+        ]);
+
+        $this->assertFalse($this->matcher->invoiceNumberAppears('INV-2025-0257', '#257'));
+        $this->assertSame([], $this->matcher->rank($notice, collect([$paid])));
+    }
+
+    public function test_short_form_without_same_client_or_amount_is_ignored(): void
+    {
+        $other = $this->makeInvoice(305, 'INV-2026-0305', 900.00, 'Other Client', 'other@example.test');
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Unrelated Person',
+            'amount' => 50.00,
+            'message' => 'invoice #305',
+        ]);
+
+        $this->assertTrue($this->matcher->shortInvoiceSequenceAppears('INV-2026-0305', 'invoice #305'));
+        $this->assertSame([], $this->matcher->rank($notice, collect([$other])));
+    }
+
+    public function test_four_digit_token_is_not_a_citation(): void
+    {
+        $invoice = $this->makeInvoice(305, 'INV-2026-0305', 900.00, 'Other Client', 'other@example.test');
+        $invoice->status = ClientProjectInvoice::STATUS_PAID;
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Other Client',
+            'amount' => 900.00,
+            'message' => '0305',
+        ]);
+
+        $this->assertFalse($this->matcher->invoiceNumberAppears('INV-2026-0305', '0305'));
+        $this->assertSame([], $this->matcher->rank($notice, collect([$invoice])));
+    }
+
+    public function test_full_invoice_number_is_accepted_anywhere_in_the_memo(): void
+    {
+        $target = $this->makeInvoice(42, 'INV-2026-0042', 500.00, 'Other Person', 'other@example.test');
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Someone Else',
+            'amount' => 12.00,
+            'message' => 'Thanks — please apply leftover to INV-2026-0042 after the tile.',
+        ]);
+
+        $this->assertTrue($this->matcher->fullInvoiceNumberAppears('INV-2026-0042', mb_strtolower((string) $notice->message)));
+        $ranked = $this->matcher->rank($notice, collect([$target]));
+        $this->assertSame('INV-2026-0042', $ranked[0]['invoice_number']);
+        $this->assertSame(EtransferInvoiceMatcher::CITATION_FULL, $ranked[0]['citation']);
+    }
+
+    public function test_short_form_never_outranks_amount_match(): void
+    {
+        $malcolm = $this->makeInvoice(258, 'INV-2026-0258', 379.61, 'Malcolm Travis', 'malcolm@example.test');
+        $other = $this->makeInvoice(305, 'INV-2026-0305', 900.00, 'Other Client', 'other@example.test');
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Other Client',
+            'amount' => 379.61,
+            'message' => 'invoice #305',
+        ]);
+
+        $suggestion = $this->matcher->suggest($notice, collect([$other, $malcolm]));
+        $this->assertSame('INV-2026-0258', $suggestion['best']['invoice_number']);
+        $this->assertContains('Amount matches', $suggestion['best']['reasons']);
+    }
+
+    public function test_old_paid_loose_hash_does_not_hide_amount_match(): void
+    {
+        $paid = $this->makeInvoice(305, 'INV-2025-0305', 900.00, 'Other Client', 'other@example.test');
+        $paid->status = ClientProjectInvoice::STATUS_PAID;
+        $malcolm = $this->makeInvoice(258, 'INV-2026-0258', 379.61, 'Malcolm Travis', 'malcolm@example.test');
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Malcolm Travis',
+            'amount' => 379.61,
+            'message' => 'unit #305',
+        ]);
+
+        $suggestion = $this->matcher->suggest($notice, collect([$paid, $malcolm]));
+        $this->assertSame('INV-2026-0258', $suggestion['best']['invoice_number']);
+        $this->assertFalse($suggestion['already_paid']);
+        $this->assertTrue($suggestion['recordable']);
+    }
+
+    public function test_two_open_invoices_cited_in_memo_are_ambiguous(): void
+    {
+        $one = $this->makeInvoice(257, 'INV-2026-0257', 500.00, 'Zohar Barak', 'zohar@example.test');
+        $two = $this->makeInvoice(258, 'INV-2026-0258', 379.61, 'Malcolm Travis', 'malcolm@example.test');
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Someone Else',
+            'amount' => 379.61,
+            'message' => 'INV-2026-0257 and INV-2026-0258',
+        ]);
+
+        $suggestion = $this->matcher->suggest($notice, collect([$one, $two]));
+        $this->assertTrue($suggestion['ambiguous']);
+        $this->assertSame('cited', $suggestion['ambiguous_reason']);
+        $this->assertNull($suggestion['best']);
+        $this->assertFalse($suggestion['recordable']);
     }
 
     public function test_amount_tie_among_open_invoices_is_ambiguous(): void

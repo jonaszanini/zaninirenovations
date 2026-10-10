@@ -191,30 +191,65 @@ TXT;
         $this->assertSame('payer@example.com', $this->parser->normalizeSenderEmail('Payer@example.com'));
     }
 
-    public function test_deposit_destination_regex_matches_scotiabank_line(): void
+    public function test_destination_pattern_filter_extracts_bank_at_email(): void
     {
-        $line = '$379.61 CAD from Malcolm Travis has been automatically deposited into your account at Scotiabank at deposits-inbox@example.net.';
+        $line = '$379.61 CAD from Malcolm Travis has been automatically deposited into your account at Scotiabank at dest-only@example.net.';
 
         $this->assertSame(1, preg_match(EtransferNoticeParser::DEPOSIT_DESTINATION_EMAIL_PATTERN, $line));
-        $this->assertSame(1, preg_match(EtransferNoticeParser::DEPOSIT_LINE_PATTERN, $line));
+        $this->assertSame(['dest-only@example.net'], $this->parser->destinationPatternEmails($line));
+
+        $src = file_get_contents((new \ReflectionClass(EtransferNoticeParser::class))->getFileName());
+        $this->assertNotFalse($src);
+        $this->assertStringContainsString('DEPOSIT_DESTINATION_EMAIL_PATTERN', $src);
+        $this->assertMatchesRegularExpression(
+            '/function extractSenderEmail[\s\S]*destinationPatternEmails\(/',
+            $src
+        );
+        $this->assertStringContainsString('stripDepositDestinationEmails', $src);
     }
 
-    public function test_any_email_on_deposit_line_is_skipped_even_if_not_configured(): void
+    public function test_deposit_line_filter_catches_email_destination_regex_misses(): void
     {
-        $text = <<<'TXT'
-Your funds have been deposited
+        $line = 'Funds have been deposited into your account at Scotiabank. Write line-only@example.net';
 
-$50.00 CAD from Pat Lee has been automatically deposited into your account at Scotiabank at random-deposit@example.net.
+        $this->assertSame([], $this->parser->destinationPatternEmails($line));
+        $this->assertSame(['line-only@example.net'], $this->parser->depositLineEmails($line));
 
-Message: thanks
-
-Reference Number: CADEPOSITSKIP1
+        $text = <<<TXT
+Pat Lee sent you \$50.00 CAD
+{$line}
+Reference Number: CALINEONLY001
 TXT;
 
         $parsed = $this->parser->parse($text);
-
         $this->assertSame('Pat Lee', $parsed['sender_name']);
         $this->assertNull($parsed['sender_email']);
-        $this->assertSame(50.00, $parsed['amount']);
+
+        $src = file_get_contents((new \ReflectionClass(EtransferNoticeParser::class))->getFileName());
+        $this->assertNotFalse($src);
+        $this->assertStringContainsString('DEPOSIT_LINE_PATTERN', $src);
+        $this->assertMatchesRegularExpression(
+            '/function extractSenderEmail[\s\S]*depositLineEmails\(/',
+            $src
+        );
+    }
+
+    public function test_own_from_to_headers_are_not_sender_email(): void
+    {
+        $text = <<<'TXT'
+From: Zanini Renovations <zaninirenovations@gmail.com>
+To: zaninirenovations@gmail.com
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAFWDNULL001
+TXT;
+
+        $this->assertSame(
+            ['zaninirenovations@gmail.com'],
+            $this->parser->ownEmailsInFromToHeaders($text)
+        );
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
     }
 }

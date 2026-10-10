@@ -12,8 +12,11 @@ use Illuminate\Support\Facades\Log;
  * Rank invoices against an incoming Interac notice.
  *
  * Scoring (highest first):
- *  - invoice number appears in the memo / raw text (full INV-YYYY-NNNN or
- *    short forms: #257, 0257, "invoice 257" / "inv 257")
+ *  - a full INV-YYYY-NNNN anywhere in the memo / raw text
+ *  - a short number only directly after inv / invoice / inv# / invoice #
+ *    (bare #NNN or a 4-digit token is not a citation; phone digits are ignored).
+ *    A short-form hit also needs the same client or an amount match, and it
+ *    never outranks an amount match.
  *  - amount equals the invoice outstanding total, or an unpaid deposit/instalment
  *  - sender email / name similar to the client
  *  - recency of the invoice
@@ -32,6 +35,9 @@ class EtransferInvoiceMatcher
     public const MAX_RESULTS = 5;
 
     public const SCORE_INVOICE_NUMBER = 100;
+
+    /** Below an outstanding-amount match so a short citation cannot outrank it. */
+    public const SCORE_SHORT_INVOICE_NUMBER = 15;
 
     public const SCORE_AMOUNT_OUTSTANDING = 40;
 
@@ -57,6 +63,16 @@ class EtransferInvoiceMatcher
 
     public const REASON_INSTALLMENT = 'Instalment amount';
 
+    public const CITATION_FULL = 'full';
+
+    public const CITATION_SHORT = 'short';
+
+    /** Full INV-YYYY-NNNN (optional spaces/dashes). */
+    public const FULL_INVOICE_NUMBER_PATTERN = '/\binv[-\s]?\d{4}[-\s]?\d+\b/iu';
+
+    /** Short sequence only directly after inv / invoice / inv# / invoice #. */
+    public const SHORT_INVOICE_CITATION_PATTERN = '/\b(?:invoice|inv)(?:\s*#|\s+|#)(\d{3,6})\b/iu';
+
     /** @var list<string> */
     public const AMOUNT_REASONS = [
         self::REASON_AMOUNT,
@@ -76,6 +92,7 @@ class EtransferInvoiceMatcher
      *   status: string,
      *   score: int,
      *   already_paid: bool,
+     *   citation: ?string,
      *   reasons: list<string>
      * }>
      */
@@ -98,34 +115,52 @@ class EtransferInvoiceMatcher
                 continue;
             }
 
-            $mentioned = $this->invoiceNumberAppears((string) $invoice->invoice_number, $haystack);
-            $alreadyPaid = $invoice->isPaid();
-            if ($alreadyPaid && ! $mentioned) {
-                continue;
-            }
-
             $project = $invoice->relationLoaded('project') ? $invoice->project : $invoice->project;
             if (! $project instanceof ClientProject) {
                 continue;
             }
 
+            $clientName = trim((string) ($project->invoiceBillToName() ?: $project->client_name));
+            $alreadyPaid = $invoice->isPaid();
+            $outstanding = $this->outstandingBalance($invoice);
+            $amountMatched = ! $alreadyPaid && (
+                $this->amountsMatch($amount, $outstanding)
+                || $this->matchesUnpaidInstallment($project, $invoice, $amount)
+            );
+            $nameScore = $this->nameSimilarity($senderName, $clientName);
+            $sameClient = $nameScore >= self::NAME_SIMILARITY_THRESHOLD;
+
+            $fullCited = $this->fullInvoiceNumberAppears((string) $invoice->invoice_number, $haystack);
+            $shortCited = ! $fullCited && $this->shortInvoiceSequenceAppears((string) $invoice->invoice_number, $haystack);
+            $shortConfirmed = $shortCited && ($sameClient || $amountMatched);
+            $mentioned = $fullCited || $shortConfirmed;
+
+            if ($alreadyPaid && ! $mentioned) {
+                continue;
+            }
+
             $score = 0;
             $reasons = [];
+            $citation = null;
 
             if ($alreadyPaid) {
                 $reasons[] = self::REASON_ALREADY_PAID;
             }
 
-            if ($mentioned) {
+            if ($fullCited) {
                 $score += self::SCORE_INVOICE_NUMBER;
                 $reasons[] = self::REASON_INVOICE_NUMBER;
+                $citation = self::CITATION_FULL;
+            } elseif ($shortConfirmed) {
+                $score += self::SCORE_SHORT_INVOICE_NUMBER;
+                $reasons[] = self::REASON_INVOICE_NUMBER;
+                $citation = self::CITATION_SHORT;
             }
 
-            $outstanding = $this->outstandingBalance($invoice);
-            if (! $alreadyPaid && $this->amountsMatch($amount, $outstanding)) {
+            if ($amountMatched && $this->amountsMatch($amount, $outstanding)) {
                 $score += self::SCORE_AMOUNT_OUTSTANDING;
                 $reasons[] = self::REASON_AMOUNT;
-            } elseif (! $alreadyPaid && $this->matchesUnpaidInstallment($project, $invoice, $amount)) {
+            } elseif ($amountMatched) {
                 $score += self::SCORE_AMOUNT_INSTALLMENT;
                 $reasons[] = $invoice->installment_number === 1 ? self::REASON_DEPOSIT : self::REASON_INSTALLMENT;
             }
@@ -136,9 +171,7 @@ class EtransferInvoiceMatcher
                 $reasons[] = 'Sender email';
             }
 
-            $clientName = trim((string) ($project->invoiceBillToName() ?: $project->client_name));
-            $nameScore = $this->nameSimilarity($senderName, $clientName);
-            if ($nameScore >= self::NAME_SIMILARITY_THRESHOLD) {
+            if ($sameClient) {
                 $score += (int) round(self::SCORE_NAME_MAX * $nameScore);
                 $reasons[] = 'Name similar';
             }
@@ -170,6 +203,7 @@ class EtransferInvoiceMatcher
                 'status' => (string) $invoice->status,
                 'score' => $score,
                 'already_paid' => $alreadyPaid,
+                'citation' => $citation,
                 'reasons' => $reasons,
             ];
         }
@@ -196,22 +230,31 @@ class EtransferInvoiceMatcher
      *   best: ?array<string, mixed>,
      *   recordable: bool,
      *   ambiguous: bool,
-     *   already_paid: bool
+     *   already_paid: bool,
+     *   ambiguous_reason: ?string
      * }
      */
     public function interpret(array $ranked): array
     {
         $open = array_values(array_filter($ranked, fn (array $row) => empty($row['already_paid'])));
-        $citedOpen = array_values(array_filter($open, fn (array $row) => $this->hasReason($row, self::REASON_INVOICE_NUMBER)));
+        $openFull = array_values(array_filter($open, fn (array $row) => ($row['citation'] ?? null) === self::CITATION_FULL));
+        $openShort = array_values(array_filter($open, fn (array $row) => ($row['citation'] ?? null) === self::CITATION_SHORT));
         $amountOpen = array_values(array_filter($open, fn (array $row) => $this->hasAmountReason($row)));
-        $citedPaid = array_values(array_filter($ranked, fn (array $row) => ! empty($row['already_paid'])));
+        $citedPaid = array_values(array_filter(
+            $ranked,
+            fn (array $row) => ! empty($row['already_paid']) && ($row['citation'] ?? null) === self::CITATION_FULL
+        ));
+        $shortPaid = array_values(array_filter(
+            $ranked,
+            fn (array $row) => ! empty($row['already_paid']) && ($row['citation'] ?? null) === self::CITATION_SHORT
+        ));
 
-        if (count($citedOpen) === 1) {
-            return $this->decision($citedOpen[0], true, false);
+        if (count($openFull) > 1) {
+            return $this->decision(null, false, true, 'cited');
         }
 
-        if (count($citedOpen) > 1) {
-            return $this->decision($citedOpen[0], true, false);
+        if (count($openFull) === 1) {
+            return $this->decision($openFull[0], true, false);
         }
 
         if ($citedPaid !== []) {
@@ -219,11 +262,27 @@ class EtransferInvoiceMatcher
         }
 
         if (count($amountOpen) >= 2) {
-            return $this->decision(null, false, true);
+            return $this->decision(null, false, true, 'amount');
+        }
+
+        if (count($amountOpen) === 1) {
+            return $this->decision($amountOpen[0], true, false);
+        }
+
+        if (count($openShort) > 1) {
+            return $this->decision(null, false, true, 'cited');
+        }
+
+        if (count($openShort) === 1) {
+            return $this->decision($openShort[0], true, false);
         }
 
         if ($open !== []) {
             return $this->decision($open[0], true, false);
+        }
+
+        if ($shortPaid !== []) {
+            return $this->decision($shortPaid[0], false, false);
         }
 
         return $this->decision(null, false, false);
@@ -235,7 +294,8 @@ class EtransferInvoiceMatcher
      *   best: ?array<string, mixed>,
      *   recordable: bool,
      *   ambiguous: bool,
-     *   already_paid: bool
+     *   already_paid: bool,
+     *   ambiguous_reason: ?string
      * }
      */
     public function suggest(EtransferNotice $notice, ?Collection $invoices = null): array
@@ -326,15 +386,16 @@ class EtransferInvoiceMatcher
 
     /**
      * @param  array<string, mixed>|null  $best
-     * @return array{best: ?array<string, mixed>, recordable: bool, ambiguous: bool, already_paid: bool}
+     * @return array{best: ?array<string, mixed>, recordable: bool, ambiguous: bool, already_paid: bool, ambiguous_reason: ?string}
      */
-    private function decision(?array $best, bool $recordable, bool $ambiguous): array
+    private function decision(?array $best, bool $recordable, bool $ambiguous, ?string $ambiguousReason = null): array
     {
         return [
             'best' => $best,
             'recordable' => $recordable,
             'ambiguous' => $ambiguous,
             'already_paid' => $best !== null && ! empty($best['already_paid']),
+            'ambiguous_reason' => $ambiguous ? $ambiguousReason : null,
         ];
     }
 
@@ -435,28 +496,15 @@ class EtransferInvoiceMatcher
         }
 
         $tokens = [];
+        $safe = $this->maskPhoneNumbers($haystack);
 
-        if (preg_match_all('/\binv[-\s]?\d{4}[-\s]?\d+\b/iu', $haystack, $matches)) {
+        if (preg_match_all(self::FULL_INVOICE_NUMBER_PATTERN, $safe, $matches)) {
             foreach ($matches[0] as $raw) {
                 $tokens[] = strtoupper(preg_replace('/\s+/u', '-', trim($raw)) ?? trim($raw));
             }
         }
 
-        if (preg_match_all('/#(\d{3,6})\b/u', $haystack, $matches)) {
-            foreach ($matches[1] as $digits) {
-                $tokens[] = $digits;
-                $tokens[] = ltrim($digits, '0') ?: $digits;
-            }
-        }
-
-        if (preg_match_all('/\b(?:invoice|inv)\b[\s#:.\-]*(\d{3,6})\b/iu', $haystack, $matches)) {
-            foreach ($matches[1] as $digits) {
-                $tokens[] = $digits;
-                $tokens[] = ltrim($digits, '0') ?: $digits;
-            }
-        }
-
-        if (preg_match_all('/\b(0\d{3,5})\b/u', $haystack, $matches)) {
+        if (preg_match_all(self::SHORT_INVOICE_CITATION_PATTERN, $safe, $matches)) {
             foreach ($matches[1] as $digits) {
                 $tokens[] = $digits;
                 $tokens[] = ltrim($digits, '0') ?: $digits;
@@ -483,22 +531,40 @@ class EtransferInvoiceMatcher
 
     public function invoiceNumberAppears(string $invoiceNumber, string $haystack): bool
     {
+        return $this->fullInvoiceNumberAppears($invoiceNumber, $haystack)
+            || $this->shortInvoiceSequenceAppears($invoiceNumber, $haystack);
+    }
+
+    public function fullInvoiceNumberAppears(string $invoiceNumber, string $haystack): bool
+    {
         $invoiceNumber = trim($invoiceNumber);
         if ($invoiceNumber === '' || $haystack === '') {
             return false;
         }
 
         $haystack = mb_strtolower($haystack);
-        $compactHay = $this->compactInvoiceNumber($haystack);
-        $compactInv = $this->compactInvoiceNumber($invoiceNumber);
-
-        if (str_contains($haystack, mb_strtolower($invoiceNumber))
-            || ($compactInv !== '' && str_contains($compactHay, $compactInv))) {
+        if (str_contains($haystack, mb_strtolower($invoiceNumber))) {
             return true;
         }
 
+        $want = $this->compactInvoiceNumber($invoiceNumber);
+        if ($want === '' || ! preg_match_all(self::FULL_INVOICE_NUMBER_PATTERN, $haystack, $matches)) {
+            return false;
+        }
+
+        foreach ($matches[0] as $raw) {
+            if ($this->compactInvoiceNumber($raw) === $want) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function shortInvoiceSequenceAppears(string $invoiceNumber, string $haystack): bool
+    {
         $sequence = $this->invoiceSequence($invoiceNumber);
-        if ($sequence === '') {
+        if ($sequence === '' || $haystack === '') {
             return false;
         }
 
@@ -506,18 +572,37 @@ class EtransferInvoiceMatcher
         if ($unpadded === '') {
             $unpadded = '0';
         }
-        $unpaddedQuoted = preg_quote($unpadded, '/');
-        $sequenceQuoted = preg_quote($sequence, '/');
 
-        if (preg_match('/#0*'.$unpaddedQuoted.'\b/u', $haystack) === 1) {
-            return true;
+        $safe = $this->maskPhoneNumbers(mb_strtolower($haystack));
+        if (! preg_match_all(self::SHORT_INVOICE_CITATION_PATTERN, $safe, $matches)) {
+            return false;
         }
 
-        if (strlen($sequence) >= 4 && preg_match('/\b'.$sequenceQuoted.'\b/u', $haystack) === 1) {
-            return true;
+        foreach ($matches[1] as $digits) {
+            $got = ltrim((string) $digits, '0');
+            if ($got === '') {
+                $got = '0';
+            }
+            if ($got === $unpadded) {
+                return true;
+            }
         }
 
-        return preg_match('/\b(?:invoice|inv)\b[\s#:.\-]*0*'.$unpaddedQuoted.'\b/u', $haystack) === 1;
+        return false;
+    }
+
+    public function maskPhoneNumbers(string $text): string
+    {
+        $patterns = [
+            '/\+?1?[\s.\-]*(?:\(?\d{3}\)?[\s.\-]*)\d{3}[\s.\-]*\d{4}\b/u',
+            '/\b\d{10,11}\b/u',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $text = preg_replace($pattern, ' ', $text) ?? $text;
+        }
+
+        return $text;
     }
 
     private function invoiceSequence(string $invoiceNumber): string

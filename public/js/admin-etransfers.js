@@ -49,5 +49,10 @@
     if (!btn) return;
     var id = e.detail && e.detail.id;
     btn.disabled = !id;
+    var card = form.closest('.et-card');
+    var note = card ? card.querySelector('[data-et-record-note]') : null;
+    if (note) {
+      note.hidden = !!id;
+    }
   });
 })();

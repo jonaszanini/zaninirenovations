@@ -51,6 +51,7 @@
           $bestRecordable = ! empty($row['bestRecordable']);
           $alreadyPaid = ! empty($row['alreadyPaid']) || ! empty($best['already_paid']);
           $ambiguous = ! empty($row['ambiguous']);
+          $ambiguousReason = $row['ambiguousReason'] ?? null;
         @endphp
         <article class="et-card">
           <div class="et-card__meta">
@@ -78,10 +79,20 @@
                 <div class="et-card__match-label">
                   Ambiguous match
                   <x-admin.info-tip label="Ambiguous match">
-                    Two or more open invoices have this amount. Choose one below — nothing is preselected.
+                    @if ($ambiguousReason === 'cited')
+                      The memo cites more than one open invoice. Choose which one this payment should cover.
+                    @else
+                      Two or more open invoices have this amount. Choose one below — nothing is preselected.
+                    @endif
                   </x-admin.info-tip>
                 </div>
-                <div class="et-card__warning" role="status">Several open invoices match this amount. Choose one to record.</div>
+                <div class="et-card__warning" role="status">
+                  @if ($ambiguousReason === 'cited')
+                    The memo cites several open invoices. This payment may cover more than one — choose which to record.
+                  @else
+                    Several open invoices match this amount. Choose one to record.
+                  @endif
+                </div>
               @elseif ($best)
                 <div class="et-card__match-label">{{ $alreadyPaid ? 'Invoice in memo' : 'Best match' }}</div>
                 <div class="et-card__match-title">
@@ -147,7 +158,7 @@
                 </form>
               </div>
               @if ($alreadyPaid)
-                <div class="et-card__record-note">
+                <div class="et-card__record-note" data-et-record-note>
                   Record disabled — invoice already paid
                   <x-admin.info-tip label="Already paid">
                     This invoice is already marked paid, so Record payment stays off until you pick a different open invoice.

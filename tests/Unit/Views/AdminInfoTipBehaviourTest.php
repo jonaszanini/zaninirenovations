@@ -782,7 +782,14 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('A recent invoice by itself is not enough', $view);
         $this->assertStringContainsString('<x-admin.info-tip label="Already paid">', $view);
         $this->assertStringContainsString('Record disabled — invoice already paid', $view);
+        $this->assertStringContainsString('data-et-record-note', $view);
         $this->assertStringContainsString('<x-admin.info-tip label="Ambiguous match">', $view);
+        $this->assertStringContainsString('This payment may cover more than one', $view);
+
+        $js = file_get_contents(public_path('js/admin-etransfers.js'));
+        $this->assertNotFalse($js);
+        $this->assertStringContainsString("querySelector('[data-et-record-note]')", $js);
+        $this->assertStringContainsString('note.hidden = !!id', $js);
         $this->assertStringNotContainsString('No strong match', $view);
         $this->assertStringNotContainsString('admin-form-help', $view);
         $this->assertDoesNotMatchRegularExpression(

@@ -113,9 +113,9 @@ find an amount (and none was sent). Example: `{ "message": "...", "errors": { "a
 
 - **Never auto-records a payment.** Matching is a suggestion only.
 - Unique on `reference` when present, so retries of the same Interac email are idempotent.
-- Candidates are ranked by: invoice number in the memo (strongest), amount equal to the unpaid invoice total or an unpaid deposit/instalment, client name/email vs sender, then recency.
+- Candidates are ranked by: a full `INV-YYYY-NNNN` anywhere in the memo (strongest); a short number only directly after `inv` / `invoice` / `inv#` / `invoice #` (and only when the client or amount also matches — a short hit never outranks an amount match); amount equal to the unpaid invoice total or an unpaid deposit/instalment; client name/email vs sender; then recency. A bare `#NNN`, a 4-digit token, or digits inside a phone number is not a citation.
 - If the memo cites an invoice that is already paid, that invoice is still returned and flagged `Already paid` instead of dropping it for an unrelated open invoice. An open invoice that is also cited and matches the amount ranks above that paid invoice.
 - Recency alone (score 10) is strictly below `ETRANSFER_MIN_MATCH_SCORE` (default 15) and is not a confident suggestion. A score equal to the minimum is a match. The minimum is not silently raised.
-- Two or more open invoices that match the amount (and are not uniquely cited) are an ambiguous match — nothing is preselected.
-- Any address on the auto-deposit line (`…deposited into your account at Scotiabank at …`) is never stored as `sender_email`.
+- Two or more open invoices cited in the memo, or two or more open invoices that match the amount, are an ambiguous match — nothing is preselected.
+- Any address on the auto-deposit line (`…deposited into your account at Scotiabank at …`), plus our own addresses in forwarded From:/To: headers, is never stored as `sender_email`. When no payer address remains, it stays null.
 - Admin: **Financials → Incoming e-transfers** → Record payment (method e-Transfer) or Ignore.

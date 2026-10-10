@@ -52,6 +52,7 @@ class EtransferNoticeController extends Controller
                     'best' => null,
                     'bestRecordable' => false,
                     'ambiguous' => false,
+                    'ambiguousReason' => null,
                     'alreadyPaid' => false,
                 ];
             }
@@ -64,6 +65,7 @@ class EtransferNoticeController extends Controller
                 'best' => $suggestion['best'],
                 'bestRecordable' => $suggestion['recordable'],
                 'ambiguous' => $suggestion['ambiguous'],
+                'ambiguousReason' => $suggestion['ambiguous_reason'] ?? null,
                 'alreadyPaid' => $suggestion['already_paid'],
             ];
         });
