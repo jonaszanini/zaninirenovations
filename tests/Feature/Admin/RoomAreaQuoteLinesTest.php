@@ -7,6 +7,7 @@ use App\Models\Material;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Models\StandardQuotation;
+use App\Services\StandardQuotationCalculator;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -118,6 +119,106 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
         $this->assertNotNull($quote);
         $line = $quote->flattenedMaterials()[0];
         $this->assertEquals(80.0, (float) $line['quantity']);
+    }
+
+    public function test_adding_kit_lines_to_saved_quote_leaves_existing_lines_and_total_unchanged(): void
+    {
+        $this->actingAsAdmin();
+        $room = $this->makeRoom();
+
+        $works = [[
+            'title' => 'Kitchen',
+            'materials' => [
+                [
+                    'short_name' => 'LVP',
+                    'description' => 'Price incl. HST flooring',
+                    'url' => 'https://example.test/lvp',
+                    'image_url' => null,
+                    'unit_price' => 113.0,
+                    'quantity' => 10.0,
+                    'apply_hst' => true,
+                    'hst_includes_unit' => true,
+                    'catalog_material_id' => null,
+                    'delivery_cad' => 0.0,
+                    'entry_mode' => 'manual',
+                    'line_kind' => StandardQuotation::LINE_KIND_MATERIAL,
+                ],
+                [
+                    'short_name' => '',
+                    'description' => StandardQuotation::ELECTRICAL_LINE_DESCRIPTION,
+                    'url' => null,
+                    'image_url' => '',
+                    'unit_price' => 250.0,
+                    'quantity' => 1.0,
+                    'apply_hst' => true,
+                    'hst_includes_unit' => false,
+                    'catalog_material_id' => null,
+                    'delivery_cad' => 0.0,
+                    'entry_mode' => 'electrical',
+                    'line_kind' => StandardQuotation::LINE_KIND_ELECTRICAL,
+                ],
+            ],
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 400.0,
+            'labour_fixed_hst_included' => false,
+            'labour_hourly_rate' => 0.0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0.0,
+        ]];
+
+        $computed = app(StandardQuotationCalculator::class)->computeWorks($works, false, 0, true, false, 0);
+        $quote = StandardQuotation::query()->create([
+            'quote_number' => 'SQ-KEEP-1',
+            'client_name' => 'Pat Owner',
+            'display_title' => 'Saved kitchen',
+            'includes_material' => true,
+            'includes_labour' => true,
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 400.0,
+            'materials' => $works[0]['materials'],
+            'works' => $works,
+            'materials_subtotal_before_hst' => $computed['materials_subtotal_before_hst'],
+            'materials_hst' => $computed['materials_hst'],
+            'materials_with_hst' => $computed['materials_with_hst'],
+            'labour_total' => $computed['labour_total'],
+            'labour_hst' => $computed['labour_hst'],
+            'grand_total' => $computed['grand_total'],
+            'include_labour_hst' => true,
+            'contingency_enabled' => false,
+            'contingency_percent' => 0,
+        ]);
+        $quote->refresh();
+
+        $savedWork = $quote->resolvedWorks()[0];
+        $savedLines = $savedWork['materials'];
+        $savedTotal = (float) $quote->grand_total;
+        $savedLabour = (float) $quote->labour_total;
+        $this->assertTrue((bool) ($savedLines[0]['hst_includes_unit'] ?? false));
+        $this->assertSame(StandardQuotation::LINE_KIND_ELECTRICAL, $savedLines[1]['line_kind'] ?? null);
+
+        $this->from(route('admin.utilities.room-area.quote', ['layout' => 'room:'.$room->id]))
+            ->post(route('admin.utilities.room-area.quote.store'), [
+                'layout' => 'room:'.$room->id,
+                'quotation_id' => $quote->id,
+                'trades' => ['flooring'],
+                'waste' => ['flooring' => 0],
+                'unit_price' => ['flooring' => 0],
+                'client_name' => 'Pat Owner',
+                'display_title' => 'Saved kitchen',
+            ])->assertRedirect();
+
+        $quote->refresh();
+        $afterWork = $quote->resolvedWorks()[0];
+        $afterLines = $afterWork['materials'];
+        $this->assertCount(count($savedLines) + 1, $afterLines);
+        $this->assertEquals($savedLines, array_slice($afterLines, 0, count($savedLines)));
+        $this->assertTrue((bool) ($afterLines[0]['hst_includes_unit'] ?? false));
+        $this->assertSame(StandardQuotation::LINE_KIND_ELECTRICAL, $afterLines[1]['line_kind'] ?? null);
+        $this->assertSame(StandardQuotation::LINE_KIND_MATERIAL, $afterLines[2]['line_kind'] ?? null);
+        $this->assertSame($savedWork['labour_use_fixed'], $afterWork['labour_use_fixed']);
+        $this->assertEquals($savedWork['labour_fixed_amount'], $afterWork['labour_fixed_amount']);
+        $this->assertEquals($savedLabour, (float) $quote->labour_total);
+        $this->assertEquals($savedTotal, (float) $quote->grand_total);
     }
 
     private function makeRoom(?ClientProject $clientProject = null): RoomAreaRoom

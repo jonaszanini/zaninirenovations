@@ -47,6 +47,7 @@ class RoomAreaQuoteLineInserter
 
         return DB::transaction(function () use ($lines, $existing, $clientProject, $clientName, $displayTitle, $jobTitle) {
             $materialRows = array_map(fn (array $line) => $this->materialRow($line), $lines);
+            $preservedWorks = $existing ? $existing->resolvedWorks() : [];
 
             if ($existing) {
                 $works = $existing->resolvedWorks();
@@ -107,13 +108,29 @@ class RoomAreaQuoteLineInserter
             $materialsForStorage = [];
             foreach ($computed['works'] as $i => $job) {
                 $posted = $works[$i] ?? [];
-                $jobMaterials = array_map(
-                    fn (array $m) => $this->persistMaterial($m),
-                    is_array($job['materials'] ?? null) ? $job['materials'] : []
-                );
+                $preserved = $preservedWorks[$i] ?? null;
+                $preservedMats = is_array($preserved['materials'] ?? null) ? $preserved['materials'] : [];
+                $keep = count($preservedMats);
+                $computedMats = is_array($job['materials'] ?? null) ? $job['materials'] : [];
+
+                $jobMaterials = [];
+                foreach ($computedMats as $idx => $m) {
+                    $jobMaterials[] = ($idx < $keep && is_array($preservedMats[$idx] ?? null))
+                        ? $preservedMats[$idx]
+                        : $this->persistMaterial($m);
+                }
                 foreach ($jobMaterials as $row) {
                     $materialsForStorage[] = $row;
                 }
+
+                if (is_array($preserved)) {
+                    $workRow = $preserved;
+                    $workRow['materials'] = $jobMaterials;
+                    $worksForStorage[] = $workRow;
+
+                    continue;
+                }
+
                 $useFixed = filter_var($posted['labour_use_fixed'] ?? true, FILTER_VALIDATE_BOOLEAN);
                 $worksForStorage[] = [
                     'title' => trim((string) ($posted['title'] ?? '')),
@@ -128,26 +145,27 @@ class RoomAreaQuoteLineInserter
                 ];
             }
 
-            $quote->fill([
+            $fill = [
                 'client_name' => $clientName,
                 'display_title' => $displayTitle,
                 'includes_material' => true,
                 'materials' => $materialsForStorage,
                 'works' => $worksForStorage,
-                'labour_use_fixed' => true,
+                'labour_use_fixed' => $existing ? (bool) ($quote->labour_use_fixed ?? true) : true,
                 'labour_fixed_amount' => (float) $computed['labour_total'],
                 'labour_hours' => $computed['labour_hours'],
                 'labour_total' => $computed['labour_total'],
                 'labour_hst' => $computed['labour_hst'],
                 'materials_subtotal_before_hst' => $computed['materials_subtotal_before_hst'],
-                'materials_hst' => $computed['materials_hst'],
                 'materials_with_hst' => $computed['materials_with_hst'],
+                'materials_hst' => $computed['materials_hst'],
                 'contingency_enabled' => $computed['contingency_enabled'],
                 'contingency_percent' => $computed['contingency_percent'],
                 'contingency_amount' => $computed['contingency_amount'],
                 'contingency_hst' => $computed['contingency_hst'],
                 'grand_total' => $computed['grand_total'],
-            ]);
+            ];
+            $quote->fill($fill);
 
             if ($clientProject && $this->projectAllowsLink($clientProject)) {
                 $quote->client_project_id = $clientProject->id;
