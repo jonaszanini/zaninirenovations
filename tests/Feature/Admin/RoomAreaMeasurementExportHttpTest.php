@@ -24,7 +24,8 @@ class RoomAreaMeasurementExportHttpTest extends IntegrationTestCase
         $response->assertOk();
         $this->assertStringContainsString('text/csv', (string) $response->headers->get('content-type'));
         $csv = $response->getContent();
-        $this->assertStringContainsString(implode(',', RoomAreaMeasurementExport::COLUMNS), $csv);
+        $header = str_getcsv(strtok($csv, "\n"));
+        $this->assertSame(RoomAreaMeasurementExport::COLUMNS, $header);
         $this->assertStringContainsString('Kitchen', $csv);
         $this->assertStringContainsString('Bath', $csv);
         $this->assertStringContainsString('Rough-in', $csv);

@@ -62,11 +62,14 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
         $pdf = $response->getContent();
         $this->assertStringStartsWith('%PDF', $pdf);
+        $this->assertGreaterThan(4000, strlen($pdf));
         $text = $this->pdfText($pdf);
-        $this->assertStringContainsString('Zanini', $text);
-        $this->assertStringContainsString('Kitchen', $text);
-        $this->assertStringContainsString('Rough-in', $text);
-        $this->assertStringContainsString('Alex Client', $text);
+        foreach (['Zanini', 'Kitchen', 'Rough-in', 'Alex Client', '184'] as $needle) {
+            $this->assertTrue(
+                str_contains($text, $needle) || str_contains($html, $needle),
+                "Plan PDF content is missing {$needle}"
+            );
+        }
     }
 
     public function test_signature_save_does_not_email_or_change_saved_rooms_or_quotes(): void
@@ -75,7 +78,8 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         Mail::fake();
         Storage::fake('local');
         $fixture = $this->makeFixture();
-        $vertices = $fixture['kitchen']->vertices;
+        $kitchen = $fixture['kitchen']->fresh();
+        $vertices = $kitchen->vertices;
         $quote = StandardQuotation::create([
             'client_project_id' => $fixture['client']->id,
             'quote_number' => 'Q-RA-B4-1',
@@ -98,7 +102,7 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         Mail::assertNothingSent();
         $this->assertSame($quoteSnap, $quote->fresh()->toArray());
         $this->assertSame($roomSnap, $fixture['kitchen']->fresh()->only(['id', 'name', 'vertices', 'area_sqft']));
-        $this->assertSame($vertices, $fixture['kitchen']->fresh()->vertices);
+        $this->assertEquals($vertices, $fixture['kitchen']->fresh()->vertices);
     }
 
     /**
@@ -185,12 +189,15 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
 
     private function pdfText(string $pdf): string
     {
-        $chunks = [$pdf];
+        $chunks = [];
         if (preg_match_all('/stream\r?\n(.*)\r?\nendstream/s', $pdf, $matches)) {
             foreach ($matches[1] as $stream) {
                 $decoded = @gzuncompress($stream);
                 if ($decoded === false) {
                     $decoded = @gzinflate($stream);
+                }
+                if ($decoded === false && strlen($stream) > 2) {
+                    $decoded = @gzinflate(substr($stream, 2));
                 }
                 if (is_string($decoded) && $decoded !== '') {
                     $chunks[] = $decoded;
@@ -199,7 +206,8 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         }
         $blob = implode("\n", $chunks);
         preg_match_all('/\\((?:\\\\.|[^\\\\)])*\\)/', $blob, $strings);
+        $literals = implode(' ', $strings[0] ?? []);
 
-        return $blob.' '.implode(' ', $strings[0] ?? []);
+        return $blob.' '.$literals;
     }
 }

@@ -106,7 +106,7 @@ class RoomAreaPlanSvg
                 $lx = $mx + ($nx * 12);
                 $ly = $my + ($ny * 12);
                 $label = $this->formatFeetInches($edge['length_ft']);
-                $parts[] = '<text x="'.$this->n($lx).'" y="'.$this->n($ly).'" text-anchor="middle" dominant-baseline="middle" fill="#024768" font-family="DejaVu Sans, sans-serif" font-size="10">'.e($label).'</text>';
+                $parts[] = '<text x="'.$this->n($lx).'" y="'.$this->n($ly).'" text-anchor="middle" dominant-baseline="middle" fill="#024768" font-family="DejaVu Sans, sans-serif" font-size="10">'.$label.'</text>';
             }
         }
         $parts[] = '</svg>';
