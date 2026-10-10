@@ -191,21 +191,41 @@ TXT;
         $this->assertSame('payer@example.com', $this->parser->normalizeSenderEmail('Payer@example.com'));
     }
 
-    public function test_destination_pattern_filter_extracts_bank_at_email(): void
+    public function test_destination_pattern_filter_skips_bank_at_email(): void
     {
         $line = '$379.61 CAD from Malcolm Travis has been automatically deposited into your account at Scotiabank at dest-only@example.net.';
 
-        $this->assertSame(1, preg_match(EtransferNoticeParser::DEPOSIT_DESTINATION_EMAIL_PATTERN, $line));
         $this->assertSame(['dest-only@example.net'], $this->parser->destinationPatternEmails($line));
 
-        $src = file_get_contents((new \ReflectionClass(EtransferNoticeParser::class))->getFileName());
-        $this->assertNotFalse($src);
-        $this->assertStringContainsString('DEPOSIT_DESTINATION_EMAIL_PATTERN', $src);
-        $this->assertMatchesRegularExpression(
-            '/function extractSenderEmail[\s\S]*destinationPatternEmails\(/',
-            $src
+        $text = <<<TXT
+Malcolm Travis sent you \$379.61 CAD
+{$line}
+Reference Number: CADESTONLY001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_deposit_address_strip_removes_destination_email(): void
+    {
+        $text = <<<'TXT'
+Pat Lee sent you $50.00 CAD
+Credit posted to your account at Scotiabank at strip-only@example.net.
+Reference Number: CASTRIPONLY001
+TXT;
+
+        $this->assertSame([], $this->parser->destinationPatternEmails($text));
+        $this->assertSame([], $this->parser->depositLineEmails($text));
+        $this->assertStringNotContainsString(
+            'strip-only@example.net',
+            $this->parser->stripDepositDestinationEmails($text)
         );
-        $this->assertStringContainsString('stripDepositDestinationEmails', $src);
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Pat Lee', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
     }
 
     public function test_deposit_line_filter_catches_email_destination_regex_misses(): void
@@ -224,32 +244,43 @@ TXT;
         $parsed = $this->parser->parse($text);
         $this->assertSame('Pat Lee', $parsed['sender_name']);
         $this->assertNull($parsed['sender_email']);
-
-        $src = file_get_contents((new \ReflectionClass(EtransferNoticeParser::class))->getFileName());
-        $this->assertNotFalse($src);
-        $this->assertStringContainsString('DEPOSIT_LINE_PATTERN', $src);
-        $this->assertMatchesRegularExpression(
-            '/function extractSenderEmail[\s\S]*depositLineEmails\(/',
-            $src
-        );
     }
 
-    public function test_own_from_to_headers_are_not_sender_email(): void
+    public function test_forwarded_unconfigured_alias_is_not_sender_email(): void
     {
         $text = <<<'TXT'
-From: Zanini Renovations <zaninirenovations@gmail.com>
-To: zaninirenovations@gmail.com
+From: Forward Desk <alias@forwarded.example>
+To: inbox@forwarded.example
 Jane Citizen sent you $50.00 CAD
-Reference Number: CAFWDNULL001
+Reference Number: CAFWDALIAS001
 TXT;
 
-        $this->assertSame(
-            ['zaninirenovations@gmail.com'],
-            $this->parser->ownEmailsInFromToHeaders($text)
+        $this->assertStringNotContainsString(
+            'alias@forwarded.example',
+            $this->parser->stripForwardedHeaderLines($text)
+        );
+        $this->assertStringNotContainsString(
+            'inbox@forwarded.example',
+            $this->parser->stripForwardedHeaderLines($text)
         );
 
         $parsed = $this->parser->parse($text);
         $this->assertSame('Jane Citizen', $parsed['sender_name']);
         $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_payer_email_is_kept_when_forwarded_headers_are_present(): void
+    {
+        $text = <<<'TXT'
+From: alias@forwarded.example
+To: inbox@forwarded.example
+Malcolm Travis sent you $379.61 CAD
+Sender's email: malcolm.travis@example.com
+Reference Number: CAFWDPAYER001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
     }
 }

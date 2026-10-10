@@ -352,8 +352,75 @@ class EtransferInvoiceMatcherTest extends TestCase
         ]);
 
         $suggestion = $this->matcher->suggest($notice, collect([$other, $malcolm]));
-        $this->assertSame('INV-2026-0258', $suggestion['best']['invoice_number']);
-        $this->assertContains('Amount matches', $suggestion['best']['reasons']);
+        $this->assertTrue($suggestion['ambiguous']);
+        $this->assertSame('conflict', $suggestion['ambiguous_reason']);
+        $this->assertNull($suggestion['best']);
+        $this->assertFalse($suggestion['recordable']);
+        $this->assertSame('INV-2026-0305', $suggestion['ambiguous_labels'][0]['invoice_number']);
+        $this->assertSame('Other Client', $suggestion['ambiguous_labels'][0]['client_name']);
+        $this->assertSame('INV-2026-0258', $suggestion['ambiguous_labels'][1]['invoice_number']);
+        $this->assertSame('Malcolm Travis', $suggestion['ambiguous_labels'][1]['client_name']);
+    }
+
+    public function test_cited_other_client_conflicts_with_sender_amount_name_match(): void
+    {
+        $malcolm = $this->makeInvoice(258, 'INV-2026-0258', 379.61, 'Malcolm Travis', 'malcolm@example.test');
+        $zohar = $this->makeInvoice(400, 'INV-2026-0400', 500.00, 'Zohar Barak', 'zohar@example.test');
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Zohar Barak',
+            'amount' => 500.00,
+            'message' => 'INV-2026-0258',
+        ]);
+
+        $suggestion = $this->matcher->suggest($notice, collect([$malcolm, $zohar]));
+        $this->assertTrue($suggestion['ambiguous']);
+        $this->assertSame('conflict', $suggestion['ambiguous_reason']);
+        $this->assertNull($suggestion['best']);
+        $this->assertFalse($suggestion['recordable']);
+        $this->assertSame('INV-2026-0258', $suggestion['ambiguous_labels'][0]['invoice_number']);
+        $this->assertSame('Malcolm Travis', $suggestion['ambiguous_labels'][0]['client_name']);
+        $this->assertSame('INV-2026-0400', $suggestion['ambiguous_labels'][1]['invoice_number']);
+        $this->assertSame('Zohar Barak', $suggestion['ambiguous_labels'][1]['client_name']);
+    }
+
+    public function test_cited_zohar_invoice_conflicts_with_malcolm_amount_name_match(): void
+    {
+        $malcolm = $this->makeInvoice(258, 'INV-2026-0258', 379.61, 'Malcolm Travis', 'malcolm@example.test');
+        $zohar = $this->makeInvoice(400, 'INV-2026-0400', 500.00, 'Zohar Barak', 'zohar@example.test');
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Malcolm Travis',
+            'amount' => 379.61,
+            'message' => 'INV-2026-0400',
+        ]);
+
+        $suggestion = $this->matcher->suggest($notice, collect([$malcolm, $zohar]));
+        $this->assertTrue($suggestion['ambiguous']);
+        $this->assertSame('conflict', $suggestion['ambiguous_reason']);
+        $this->assertNull($suggestion['best']);
+        $this->assertFalse($suggestion['recordable']);
+        $this->assertSame('INV-2026-0400', $suggestion['ambiguous_labels'][0]['invoice_number']);
+        $this->assertSame('Zohar Barak', $suggestion['ambiguous_labels'][0]['client_name']);
+        $this->assertSame('INV-2026-0258', $suggestion['ambiguous_labels'][1]['invoice_number']);
+        $this->assertSame('Malcolm Travis', $suggestion['ambiguous_labels'][1]['client_name']);
+    }
+
+    public function test_phone_masking_stops_invoice_keyword_from_eating_phone_digits(): void
+    {
+        $invoice = $this->makeInvoice(647, 'INV-2026-0647', 900.00, 'Other Client', 'other@example.test');
+        $memo = 'please call inv 647-834-0258';
+
+        $this->assertFalse($this->matcher->shortInvoiceSequenceAppears('INV-2026-0647', $memo));
+        $this->assertFalse($this->matcher->invoiceNumberAppears('INV-2026-0647', $memo));
+        $this->assertStringNotContainsString('647', $this->matcher->maskPhoneNumbers($memo));
+
+        $notice = new EtransferNotice([
+            'sender_name' => 'Unrelated Person',
+            'amount' => 12.00,
+            'message' => $memo,
+        ]);
+        $this->assertSame([], $this->matcher->rank($notice, collect([$invoice])));
     }
 
     public function test_old_paid_loose_hash_does_not_hide_amount_match(): void

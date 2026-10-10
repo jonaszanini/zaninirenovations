@@ -704,4 +704,90 @@ TXT;
         $this->assertStringNotContainsString('INV-2026-0305', $html);
         $this->assertStringNotContainsString('Already paid', $html);
     }
+
+    public function test_cited_other_client_and_sender_amount_match_are_ambiguous(): void
+    {
+        $this->actingAsAdmin();
+
+        ClientProjectInvoice::factory()->for(
+            ClientProject::factory()->create(['client_name' => 'Malcolm Travis']),
+            'project'
+        )->sent()->create([
+            'invoice_number' => 'INV-2026-0258',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+        ClientProjectInvoice::factory()->for(
+            ClientProject::factory()->create(['client_name' => 'Zohar Barak']),
+            'project'
+        )->sent()->create([
+            'invoice_number' => 'INV-2026-0400',
+            'subtotal' => 442.48,
+            'hst' => 57.52,
+            'total' => 500,
+        ]);
+
+        $notice = EtransferNotice::factory()->create([
+            'sender_name' => 'Zohar Barak',
+            'amount' => 500,
+            'message' => 'INV-2026-0258',
+            'reference_number' => 'CACONFLICT1',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('Ambiguous match')
+            ->assertSee('INV-2026-0258 (Malcolm Travis)', false)
+            ->assertSee('INV-2026-0400 (Zohar Barak)', false)
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value=""/',
+            $html
+        );
+    }
+
+    public function test_cited_zohar_invoice_and_malcolm_amount_match_are_ambiguous(): void
+    {
+        $this->actingAsAdmin();
+
+        ClientProjectInvoice::factory()->for(
+            ClientProject::factory()->create(['client_name' => 'Malcolm Travis']),
+            'project'
+        )->sent()->create([
+            'invoice_number' => 'INV-2026-0258',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+        ClientProjectInvoice::factory()->for(
+            ClientProject::factory()->create(['client_name' => 'Zohar Barak']),
+            'project'
+        )->sent()->create([
+            'invoice_number' => 'INV-2026-0400',
+            'subtotal' => 442.48,
+            'hst' => 57.52,
+            'total' => 500,
+        ]);
+
+        $notice = EtransferNotice::factory()->create([
+            'sender_name' => 'Malcolm Travis',
+            'amount' => 379.61,
+            'message' => 'INV-2026-0400',
+            'reference_number' => 'CACONFLICT2',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('Ambiguous match')
+            ->assertSee('INV-2026-0400 (Zohar Barak)', false)
+            ->assertSee('INV-2026-0258 (Malcolm Travis)', false)
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="et-inv-'.$notice->id.'-value"[^>]*value=""/',
+            $html
+        );
+    }
 }

@@ -785,6 +785,7 @@ class AdminInfoTipBehaviourTest extends TestCase
         $this->assertStringContainsString('data-et-record-note', $view);
         $this->assertStringContainsString('<x-admin.info-tip label="Ambiguous match">', $view);
         $this->assertStringContainsString('This payment may cover more than one', $view);
+        $this->assertStringContainsString('the sender and amount also match', $view);
 
         $js = file_get_contents(public_path('js/admin-etransfers.js'));
         $this->assertNotFalse($js);

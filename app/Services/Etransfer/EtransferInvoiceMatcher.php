@@ -231,7 +231,8 @@ class EtransferInvoiceMatcher
      *   recordable: bool,
      *   ambiguous: bool,
      *   already_paid: bool,
-     *   ambiguous_reason: ?string
+     *   ambiguous_reason: ?string,
+     *   ambiguous_labels: list<array{invoice_number: string, client_name: string}>
      * }
      */
     public function interpret(array $ranked): array
@@ -240,6 +241,8 @@ class EtransferInvoiceMatcher
         $openFull = array_values(array_filter($open, fn (array $row) => ($row['citation'] ?? null) === self::CITATION_FULL));
         $openShort = array_values(array_filter($open, fn (array $row) => ($row['citation'] ?? null) === self::CITATION_SHORT));
         $amountOpen = array_values(array_filter($open, fn (array $row) => $this->hasAmountReason($row)));
+        $citedOpen = array_values(array_filter($open, fn (array $row) => ($row['citation'] ?? null) !== null));
+        $identityOpen = array_values(array_filter($open, fn (array $row) => $this->hasIdentityReason($row)));
         $citedPaid = array_values(array_filter(
             $ranked,
             fn (array $row) => ! empty($row['already_paid']) && ($row['citation'] ?? null) === self::CITATION_FULL
@@ -251,6 +254,11 @@ class EtransferInvoiceMatcher
 
         if (count($openFull) > 1) {
             return $this->decision(null, false, true, 'cited');
+        }
+
+        $conflict = $this->citationIdentityConflict($citedOpen, $identityOpen);
+        if ($conflict !== null) {
+            return $this->decision(null, false, true, 'conflict', $conflict);
         }
 
         if (count($openFull) === 1) {
@@ -295,7 +303,8 @@ class EtransferInvoiceMatcher
      *   recordable: bool,
      *   ambiguous: bool,
      *   already_paid: bool,
-     *   ambiguous_reason: ?string
+     *   ambiguous_reason: ?string,
+     *   ambiguous_labels: list<array{invoice_number: string, client_name: string}>
      * }
      */
     public function suggest(EtransferNotice $notice, ?Collection $invoices = null): array
@@ -386,17 +395,83 @@ class EtransferInvoiceMatcher
 
     /**
      * @param  array<string, mixed>|null  $best
-     * @return array{best: ?array<string, mixed>, recordable: bool, ambiguous: bool, already_paid: bool, ambiguous_reason: ?string}
+     * @param  list<array<string, mixed>>  $ambiguousPair
+     * @return array{
+     *   best: ?array<string, mixed>,
+     *   recordable: bool,
+     *   ambiguous: bool,
+     *   already_paid: bool,
+     *   ambiguous_reason: ?string,
+     *   ambiguous_labels: list<array{invoice_number: string, client_name: string}>
+     * }
      */
-    private function decision(?array $best, bool $recordable, bool $ambiguous, ?string $ambiguousReason = null): array
+    private function decision(?array $best, bool $recordable, bool $ambiguous, ?string $ambiguousReason = null, array $ambiguousPair = []): array
     {
+        $labels = [];
+        foreach ($ambiguousPair as $row) {
+            $labels[] = [
+                'invoice_number' => (string) ($row['invoice_number'] ?? ''),
+                'client_name' => (string) ($row['client_name'] ?? ''),
+            ];
+        }
+
         return [
             'best' => $best,
             'recordable' => $recordable,
             'ambiguous' => $ambiguous,
             'already_paid' => $best !== null && ! empty($best['already_paid']),
             'ambiguous_reason' => $ambiguous ? $ambiguousReason : null,
+            'ambiguous_labels' => $ambiguous ? $labels : [],
         ];
+    }
+
+    /**
+     * Cited open invoice for one client vs amount/name match for another.
+     *
+     * @param  list<array<string, mixed>>  $citedOpen
+     * @param  list<array<string, mixed>>  $identityOpen
+     * @return list<array<string, mixed>>|null
+     */
+    private function citationIdentityConflict(array $citedOpen, array $identityOpen): ?array
+    {
+        foreach ($citedOpen as $cited) {
+            foreach ($identityOpen as $identity) {
+                if ((int) ($cited['invoice_id'] ?? 0) === (int) ($identity['invoice_id'] ?? 0)) {
+                    continue;
+                }
+                if ($this->sameClientRow($cited, $identity)) {
+                    continue;
+                }
+
+                return [$cited, $identity];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $a
+     * @param  array<string, mixed>  $b
+     */
+    private function sameClientRow(array $a, array $b): bool
+    {
+        $left = $this->normalizeName((string) ($a['client_name'] ?? ''));
+        $right = $this->normalizeName((string) ($b['client_name'] ?? ''));
+
+        return $left !== '' && $left === $right;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function hasIdentityReason(array $row): bool
+    {
+        if ($this->hasAmountReason($row)) {
+            return true;
+        }
+
+        return $this->hasReason($row, 'Name similar') || $this->hasReason($row, 'Sender email');
     }
 
     /**

@@ -52,6 +52,9 @@
           $alreadyPaid = ! empty($row['alreadyPaid']) || ! empty($best['already_paid']);
           $ambiguous = ! empty($row['ambiguous']);
           $ambiguousReason = $row['ambiguousReason'] ?? null;
+          $ambiguousLabels = $row['ambiguousLabels'] ?? [];
+          $conflictCited = $ambiguousLabels[0] ?? null;
+          $conflictIdentity = $ambiguousLabels[1] ?? null;
         @endphp
         <article class="et-card">
           <div class="et-card__meta">
@@ -81,6 +84,8 @@
                   <x-admin.info-tip label="Ambiguous match">
                     @if ($ambiguousReason === 'cited')
                       The memo cites more than one open invoice. Choose which one this payment should cover.
+                    @elseif ($ambiguousReason === 'conflict' && $conflictCited && $conflictIdentity)
+                      The memo cites {{ $conflictCited['invoice_number'] }} ({{ $conflictCited['client_name'] }}) but the sender and amount also match {{ $conflictIdentity['invoice_number'] }} ({{ $conflictIdentity['client_name'] }}). Choose which to record.
                     @else
                       Two or more open invoices have this amount. Choose one below — nothing is preselected.
                     @endif
@@ -89,6 +94,8 @@
                 <div class="et-card__warning" role="status">
                   @if ($ambiguousReason === 'cited')
                     The memo cites several open invoices. This payment may cover more than one — choose which to record.
+                  @elseif ($ambiguousReason === 'conflict' && $conflictCited && $conflictIdentity)
+                    The memo cites {{ $conflictCited['invoice_number'] }} ({{ $conflictCited['client_name'] }}) but the sender and amount also match {{ $conflictIdentity['invoice_number'] }} ({{ $conflictIdentity['client_name'] }}). Choose which to record.
                   @else
                     Several open invoices match this amount. Choose one to record.
                   @endif

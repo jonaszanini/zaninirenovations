@@ -154,10 +154,10 @@ class EtransferNoticeParser
 
     private function extractSenderEmail(string $text): ?string
     {
+        $text = $this->stripForwardedHeaderLines($text);
         $skip = array_values(array_unique(array_merge(
             $this->destinationPatternEmails($text),
-            $this->depositLineEmails($text),
-            $this->ownEmailsInFromToHeaders($text)
+            $this->depositLineEmails($text)
         )));
         $text = $this->stripDepositDestinationEmails($text);
 
@@ -185,11 +185,12 @@ class EtransferNoticeParser
      * Auto-deposit copy names the destination inbox ("…at Scotiabank at
      * address"), which is never the payer. Every address on that line is skipped.
      */
-    private function stripDepositDestinationEmails(string $text): string
+    public function stripDepositDestinationEmails(string $text): string
     {
         $patterns = [
             self::DEPOSIT_DESTINATION_EMAIL_PATTERN,
             '/((?:ont été déposés|déposés automatiquement)[^@\n]*?(?:compte|banque)[^@\n]*?\s+(?:à|a)\s+)([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/iu',
+            '/((?:your\s+)?account\s+at\s+[^@\n]+?\s+at\s+)([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/iu',
         ];
 
         foreach ($patterns as $pattern) {
@@ -197,6 +198,22 @@ class EtransferNoticeParser
         }
 
         return $text;
+    }
+
+    /**
+     * Forwarded From:/To:/Cc: lines are never a payer address.
+     */
+    public function stripForwardedHeaderLines(string $text): string
+    {
+        $kept = [];
+        foreach (preg_split("/\n/u", $text) ?: [] as $line) {
+            if (preg_match('/^(?:From|To|Cc|Delivered-To|X-Original-To|Reply-To)\s*:/iu', $line) === 1) {
+                continue;
+            }
+            $kept[] = $line;
+        }
+
+        return implode("\n", $kept);
     }
 
     /**
@@ -218,33 +235,6 @@ class EtransferNoticeParser
         }
 
         return array_values($emails);
-    }
-
-    /**
-     * Our addresses appearing in forwarded From:/To:/Cc: headers.
-     *
-     * @return list<string>
-     */
-    public function ownEmailsInFromToHeaders(string $text): array
-    {
-        $own = $this->ownEmails();
-        $found = [];
-        foreach (preg_split("/\n/u", $text) ?: [] as $line) {
-            if (preg_match('/^(?:From|To|Cc|Delivered-To|X-Original-To|Reply-To)\s*:/iu', $line) !== 1) {
-                continue;
-            }
-            if (! preg_match_all('/\b([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})\b/i', $line, $matches)) {
-                continue;
-            }
-            foreach ($matches[1] as $email) {
-                $email = strtolower($email);
-                if (in_array($email, $own, true)) {
-                    $found[$email] = $email;
-                }
-            }
-        }
-
-        return array_values($found);
     }
 
     /**
