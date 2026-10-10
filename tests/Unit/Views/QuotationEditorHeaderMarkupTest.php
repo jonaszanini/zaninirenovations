@@ -63,6 +63,22 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('Quotation not saved yet', $leave);
         $this->assertStringContainsString('data-qh-client-share', $leave);
         $this->assertStringContainsString('stop their link from working until you publish it again', $leave);
+        $this->assertStringContainsString('admin-hotkey-save:abort', $leave);
+        $this->assertStringContainsString('runDraftSave', $leave);
+        $this->assertStringContainsString('submitEditorForm', $leave);
+        $this->assertStringContainsString('window.AdminDialog.confirm', $leave);
+        $dialog = file_get_contents(public_path('js/admin-dialog.js'));
+        $this->assertStringContainsString('admin-dialog:cancel', $dialog);
+        $hotkey = file_get_contents(public_path('js/admin-hotkey-save.js'));
+        $this->assertMatchesRegularExpression(
+            '/function bind\(\)\s*\{[\s\S]*addEventListener\(\s*ABORT_EVENT/',
+            $hotkey
+        );
+        $this->assertMatchesRegularExpression(
+            '/function bind\(\)\s*\{[\s\S]*addEventListener\(\s*DIALOG_CANCEL_EVENT/',
+            $hotkey
+        );
+        $this->assertStringContainsString("data-qh-draft-bypass", $hotkey);
         $canAutosave = preg_match('/function canAutosave\(form\) \{([\s\S]*?)\n  function /', $leave, $m)
             ? ($m[1] ?? '')
             : '';

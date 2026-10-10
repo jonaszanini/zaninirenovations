@@ -992,6 +992,7 @@
     function onMarkedClick(e) {
       var btn = e && e.target && e.target.closest ? e.target.closest('[data-hotkey-save]') : null;
       if (!btn) return;
+      if (btn.getAttribute && btn.getAttribute('data-qh-draft-bypass') === '1') return;
       if (session && session.inflight) {
         if (session.fromHotkey) return;
         if (e.preventDefault) e.preventDefault();
