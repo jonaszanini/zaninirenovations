@@ -29,8 +29,6 @@
                 Quote accepted
               @elseif ($status === QuoteAcceptanceService::STATUS_ALREADY_ACCEPTED)
                 Already accepted
-              @elseif ($status === QuoteAcceptanceService::STATUS_REVISING)
-                This quote is being revised
               @elseif ($status === QuoteAcceptanceService::STATUS_INVALID_STATE || $status === QuoteAcceptanceService::STATUS_INCOMPLETE)
                 This quote cannot be accepted
               @else
@@ -57,8 +55,6 @@
               <p class="qa-message">Thank you. This quote is now accepted. We will be in touch with next steps.</p>
             @elseif ($status === QuoteAcceptanceService::STATUS_ALREADY_ACCEPTED)
               <p class="qa-message">This quote is already accepted. No further action is needed.</p>
-            @elseif ($status === QuoteAcceptanceService::STATUS_REVISING)
-              <p class="qa-message">{{ \App\Models\ClientProjectQuotation::SOURCE_REVISING_MESSAGE }}</p>
             @elseif ($status === QuoteAcceptanceService::STATUS_INCOMPLETE)
               <p class="qa-message">This quote is being updated and cannot be accepted yet. Please contact us if you have questions.</p>
             @elseif ($status === QuoteAcceptanceService::STATUS_INVALID_STATE)

@@ -222,10 +222,7 @@ class ClientProjectQuotationController extends Controller
         abort_unless((int) $quotation->client_project_id === (int) $client_project->id, 404);
 
         if ($quotation->isSourceDraft()) {
-            return response()->view('site.quotations.revising', [
-                'message' => ClientProjectQuotation::SOURCE_REVISING_MESSAGE,
-                'quotation' => $quotation,
-            ]);
+            return ClientProjectQuotation::revisingClientResponse();
         }
 
         if (!$quotation->hasContent()) {

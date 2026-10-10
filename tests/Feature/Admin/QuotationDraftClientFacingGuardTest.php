@@ -9,7 +9,6 @@ use App\Models\LowDeckQuotation;
 use App\Models\StandardQuotation;
 use App\Models\TileQuotation;
 use App\Services\QuoteAcceptanceService;
-use App\Support\QuotationDraftFlash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Tests\Feature\QuoteAcceptance\MakesAcceptableQuotations;
@@ -67,10 +66,10 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
         $this->from(route('admin.quotations.'.$type.'.edit', $quote))
             ->put($updateRoute, $this->draftUpdatePayload($type, $quote, $payload))
             ->assertRedirect()
-            ->assertSessionHas('success', QuotationDraftFlash::updated(
-                $this->quoteTypeLabel($type),
-                (object) ['is_draft' => true]
-            ));
+            ->assertSessionHas(
+                'success',
+                $this->quoteTypeLabel($type).' quotation saved as a draft. The client\'s link is paused until you publish again.'
+            );
 
         $html = $this->get(route('admin.quotations.'.$type.'.edit', $quote->fresh()))
             ->assertOk()
@@ -178,23 +177,18 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
             ->assertRedirect()
             ->assertSessionHas('error', ClientProjectQuotation::SOURCE_DRAFT_SHARE_MESSAGE);
 
-        $this->get(URL::signedRoute('public.client-project.quotation-pdf', [
-            'client_project' => $project,
-            'quotation' => $quotation,
-        ]))->assertOk()
-            ->assertSee('This quote is being revised', false)
-            ->assertSee(ClientProjectQuotation::SOURCE_REVISING_MESSAGE, false);
+        $this->assertRevisingClientPage(
+            $this->get(URL::signedRoute('public.client-project.quotation-pdf', [
+                'client_project' => $project,
+                'quotation' => $quotation,
+            ])),
+            $project,
+            $quotation
+        );
 
         $acceptUrl = $quotation->signedAcceptUrl();
-        $this->get($acceptUrl)
-            ->assertOk()
-            ->assertViewHas('status', QuoteAcceptanceService::STATUS_REVISING)
-            ->assertSee('This quote is being revised', false)
-            ->assertSee(ClientProjectQuotation::SOURCE_REVISING_MESSAGE, false);
-        $this->post($acceptUrl)
-            ->assertOk()
-            ->assertViewHas('status', QuoteAcceptanceService::STATUS_REVISING)
-            ->assertSee('This quote is being revised', false);
+        $this->assertRevisingClientPage($this->get($acceptUrl), $project, $quotation);
+        $this->assertRevisingClientPage($this->post($acceptUrl), $project, $quotation);
         $this->assertFalse($quotation->fresh()->isAccepted());
 
         config(['quote_accept.api_token' => 'test-quote-accept-token']);
@@ -236,6 +230,29 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
             ->assertSessionHas('success', 'Tile quotation saved as a draft.');
 
         $this->assertTrue((bool) $quote->fresh()->is_draft);
+    }
+
+    private function assertRevisingClientPage($response, ClientProject $project, ClientProjectQuotation $quotation): void
+    {
+        $quotation->loadMissing('project');
+        $html = $response->assertStatus(409)
+            ->assertViewIs('site.quotations.revising')
+            ->assertSee(ClientProjectQuotation::SOURCE_REVISING_MESSAGE)
+            ->assertDontSee('Accept quote')
+            ->assertDontSee('Total incl. HST')
+            ->assertDontSee('qa-summary')
+            ->getContent();
+
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+        $this->assertStringNotContainsString('once it is published', $html);
+        $this->assertStringNotContainsString($project->name, $html, "{$project->name} must not appear on the revising page");
+        $this->assertStringNotContainsString($project->referenceCode(), $html, 'Project reference must not appear on the revising page');
+        $this->assertStringNotContainsString($quotation->displayQuoteNumber(), $html, 'Quote number must not appear on the revising page');
+        $this->assertStringNotContainsString(
+            ClientProject::formatMoney((float) $quotation->grandTotal()),
+            $html,
+            'Total incl. HST must not appear on the revising page'
+        );
     }
 
     private function makeUnlinkedDraft(string $type): FenceQuotation|LowDeckQuotation|StandardQuotation

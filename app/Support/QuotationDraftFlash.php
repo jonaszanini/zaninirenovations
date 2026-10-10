@@ -12,7 +12,12 @@ class QuotationDraftFlash
     public static function updated(string $typeLabel, object $quote, bool $linkedNow = false): string
     {
         if ((bool) ($quote->is_draft ?? false)) {
-            return $typeLabel.' quotation saved as a draft.';
+            $message = $typeLabel.' quotation saved as a draft.';
+            if (self::clientLinkPaused($quote)) {
+                $message .= ' The client\'s link is paused until you publish again.';
+            }
+
+            return $message;
         }
 
         $number = trim((string) ($quote->quote_number ?? ''));
@@ -21,5 +26,14 @@ class QuotationDraftFlash
         }
 
         return $typeLabel.' quotation '.$number.' updated (v'.(int) ($quote->version ?? 0).').';
+    }
+
+    private static function clientLinkPaused(object $quote): bool
+    {
+        if (method_exists($quote, 'isLinked')) {
+            return (bool) $quote->isLinked();
+        }
+
+        return (bool) ($quote->client_share_paused ?? false);
     }
 }
