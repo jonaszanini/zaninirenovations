@@ -29,9 +29,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch main for quote toolbar inventory
-        run: git fetch origin main
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
