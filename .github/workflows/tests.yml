@@ -172,6 +172,7 @@ jobs:
           php artisan test tests/Feature/Admin/BasementQuotationMathRoundTripTest.php
           php artisan test tests/Feature/Admin/BasementQuotationPagesTest.php
           php artisan test tests/Feature/Admin/QuotationEditorHeaderTest.php
+          php artisan test tests/Feature/Admin/QuotationHotkeySaveStateTest.php
           php artisan test tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php
           php artisan test tests/Feature/Admin/QuotationDraftClientFacingGuardTest.php
           php artisan test tests/Feature/Admin/QuotationEditorControlInventoryTest.php

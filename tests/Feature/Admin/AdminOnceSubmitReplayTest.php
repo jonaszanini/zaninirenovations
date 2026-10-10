@@ -154,6 +154,37 @@ class AdminOnceSubmitReplayTest extends IntegrationTestCase
         $this->assertSame(0, \App\Models\ClientProject::query()->where('name', 'Replay typed name')->count());
     }
 
+    public function test_replay_reject_restores_the_users_email_box_choice(): void
+    {
+        $this->actingAsAdmin();
+
+        $token = bin2hex(random_bytes(16));
+        $first = [
+            'name' => 'Replay email first',
+            'contacted_via' => 'email',
+            'client_name' => 'Pat Client',
+            'billing_type' => 'fixed',
+            'send_client_email' => '0',
+            'confirm_duplicate_project' => '1',
+            '_hotkey_save' => '1',
+            '_hotkey_email_prior' => '1',
+            AdminOnceSubmitToken::FIELD => $token,
+        ];
+
+        $this->post(route('admin.client-projects.store'), $first)
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->from(route('admin.client-projects.create'))
+            ->post(route('admin.client-projects.store'), $first)
+            ->assertRedirect(route('admin.client-projects.create'))
+            ->assertSessionHas('warning');
+
+        $this->assertSame('1', (string) session()->getOldInput('send_client_email'));
+        $this->assertNull(session()->getOldInput('_hotkey_save'));
+        $this->assertNull(session()->getOldInput('_hotkey_email_prior'));
+    }
+
     /**
      * @return array<string, array{route: string, from?: string, model: class-string, column: string, first: string, replay: string, payload: callable}>
      */

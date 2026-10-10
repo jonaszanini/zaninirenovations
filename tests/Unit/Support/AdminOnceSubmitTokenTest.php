@@ -94,15 +94,28 @@ class AdminOnceSubmitTokenTest extends TestCase
             '_token' => 'csrf-token',
             'name' => 'Kept client name',
             'client_name' => 'Pat',
+            'send_client_email' => '0',
         ]);
 
         $input = AdminOnceSubmitToken::inputForReplay($request);
 
         $this->assertSame('Kept client name', $input['name']);
         $this->assertSame('Pat', $input['client_name']);
+        $this->assertSame('0', $input['send_client_email']);
         $this->assertArrayNotHasKey(AdminOnceSubmitToken::FIELD, $input);
         $this->assertArrayNotHasKey('_hotkey_save', $input);
         $this->assertArrayNotHasKey('_hotkey_email_prior', $input);
         $this->assertArrayNotHasKey('_token', $input);
+
+        $ticked = Request::create('/', 'POST', [
+            AdminOnceSubmitToken::FIELD => bin2hex(random_bytes(16)),
+            '_hotkey_save' => '1',
+            '_hotkey_email_prior' => '1',
+            'send_client_email' => '0',
+            'name' => 'Ticked',
+        ]);
+        $restored = AdminOnceSubmitToken::inputForReplay($ticked);
+        $this->assertSame('1', $restored['send_client_email'], 'replay restores the ticked email box');
+        $this->assertSame('Ticked', $restored['name']);
     }
 }

@@ -25,7 +25,8 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
             ->getContent();
 
         $this->assertStringContainsString('data-hotkey-save', $html);
-        $this->assertMatchesRegularExpression('/form="sq-standard-form"[^>]*data-hotkey-save/', $html);
+        $this->assertMatchesRegularExpression('/id="st-btn-draft"[^>]*data-hotkey-save|data-hotkey-save[^>]*id="st-btn-draft"/', $html);
+        $this->assertDoesNotMatchRegularExpression('/id="sq-btn-save"[^>]*data-hotkey-save/', $html);
         $this->assertStringContainsString('admin-hotkey-save.js', $html);
         $this->assertStringContainsString('admin-toast.js', $html);
         $this->assertStringContainsString('id="admin-toast-flash"', $html);
@@ -38,7 +39,8 @@ class AdminHotkeySaveMarkerTest extends IntegrationTestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertMatchesRegularExpression('/form="fq-form"[^>]*data-hotkey-save/', $html);
+        $this->assertMatchesRegularExpression('/id="fq-btn-draft"[^>]*data-hotkey-save|data-hotkey-save[^>]*id="fq-btn-draft"/', $html);
+        $this->assertDoesNotMatchRegularExpression('/id="fq-btn-save"[^>]*data-hotkey-save/', $html);
         $this->assertStringNotContainsString('name="after_save" value="create_project"'."\n".'                class="admin-btn admin-btn--ghost admin-btn--sm" data-hotkey-save', $html);
         $this->assertDoesNotMatchRegularExpression('/after_save"[^>]*data-hotkey-save/', $html);
     }

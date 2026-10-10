@@ -18,13 +18,13 @@ class AdminHotkeySaveMarkupTest extends IntegrationTestCase
         $this->actingAsAdmin();
 
         $this->assertButtonMarked(route('admin.quotations.standard.create'), [
-            'form="sq-standard-form"',
+            'id="st-btn-draft"',
             'data-hotkey-save',
-        ]);
+        ], 'Save as draft');
         $this->assertButtonMarked(route('admin.quotations.fence.create'), [
-            'form="fq-form"',
+            'id="fq-btn-draft"',
             'data-hotkey-save',
-        ]);
+        ], 'Save as draft');
         $this->assertButtonMarked(route('admin.quotations.basement.create'), [
             'id="br-btn-draft"',
             'data-hotkey-save',
@@ -110,6 +110,9 @@ class AdminHotkeySaveMarkupTest extends IntegrationTestCase
             [route('admin.quotations.basement.create'), 'br-btn-publish'],
             [route('admin.quotations.millwork.create'), 'mw-btn-publish'],
             [route('admin.quotations.shed.create'), 'sh-btn-publish'],
+            [route('admin.quotations.standard.create'), 'sq-btn-save'],
+            [route('admin.quotations.fence.create'), 'fq-btn-save'],
+            [route('admin.quotations.low-deck.create'), 'ld-btn-save'],
             [route('admin.blog.posts.create'), 'bp-btn-publish'],
         ];
 

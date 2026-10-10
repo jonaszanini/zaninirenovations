@@ -95,12 +95,18 @@ class AdminOnceSubmitToken
      */
     public static function inputForReplay(Request $request): array
     {
-        return $request->except([
+        $input = $request->except([
             self::FIELD,
             '_hotkey_save',
             '_hotkey_email_prior',
             '_token',
         ]);
+
+        if ($request->boolean('_hotkey_save') && $request->exists('_hotkey_email_prior')) {
+            $input['send_client_email'] = $request->boolean('_hotkey_email_prior') ? '1' : '0';
+        }
+
+        return $input;
     }
 
     private static function tokenFrom(Request $request): string
