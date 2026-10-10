@@ -44,4 +44,20 @@ assert.strictEqual(
   'custom rows without a built-in default still use Cost'
 );
 
+assert.strictEqual(
+  lib.effectiveUnitPrice(Object.assign({}, baseboardBlank, { price: 15.3, matUnit: 'lf' })),
+  4.75,
+  'material must not be added on the built-in default path'
+);
+assert.notStrictEqual(
+  lib.effectiveUnitPrice(Object.assign({}, baseboardBlank, { price: 15.3, matUnit: 'lf' })),
+  20.05,
+  'blankSell 4.75 + material 15.30 must not become 20.05'
+);
+assert.strictEqual(
+  lib.effectiveUnitPrice(Object.assign({}, baseboardBlank, { price: 15.3, matUnit: 'stick_8ft' })),
+  4.75,
+  'stick material must not be added on the built-in default path'
+);
+
 console.log('shared-prices-effective.test.js ok');

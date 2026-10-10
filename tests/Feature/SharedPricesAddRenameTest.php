@@ -11,7 +11,9 @@ use App\Models\SharedWork;
 use App\Models\User;
 use App\Services\FlooringQuotationCalculator;
 use App\Services\SharedWorkCatalog;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Hash;
+use PDOException;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -1043,6 +1045,87 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
         ], 4);
         $this->assertSame(1, preg_match('/_(\d+)_([0-9a-f]{4})(?:_\d+)?$/', $work->key, $created));
         $this->assertSame('4', $created[1]);
+
+        $harness = new class extends SharedPriceLibraryController
+        {
+            /** @var list<int> */
+            public array $jitters = [];
+
+            public int $failuresLeft = 1;
+
+            public function runRetry(array $data): void
+            {
+                $this->saveLibraryWithKeyRetry($data);
+            }
+
+            protected function persistLibrary(array $data, int $keyJitter = 0): void
+            {
+                $this->jitters[] = $keyJitter;
+                if ($this->failuresLeft > 0) {
+                    $this->failuresLeft--;
+                    $pdo = new PDOException('SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry');
+                    $pdo->errorInfo = [
+                        '23000',
+                        1062,
+                        "Duplicate entry 'custom_retry_jitter_loop' for key 'shared_works_key_unique'",
+                    ];
+                    throw new QueryException('insert into `shared_works` (`key`) values (?)', ['custom_retry_jitter_loop'], $pdo);
+                }
+                parent::persistLibrary($data, $keyJitter);
+            }
+        };
+        $harness->runRetry($this->basePayload([
+            'new_works' => [
+                'flooring' => [
+                    [
+                        'label' => 'Retry jitter loop',
+                        'unit' => 'each',
+                        'rate' => '1.0000',
+                        'flat_rate' => '10.0000',
+                        'consumers' => ['flooring'],
+                    ],
+                ],
+            ],
+        ]));
+        $this->assertSame([0, 1], $harness->jitters, 'retry must persist with $attempts, not a hardcoded 0');
+        $retried = SharedWork::query()->where('label', 'Retry jitter loop')->first();
+        $this->assertNotNull($retried);
+        $this->assertSame(1, preg_match('/_(\d+)_([0-9a-f]{4})(?:_\d+)?$/', $retried->key, $loop), $retried->key);
+        $this->assertSame('1', $loop[1], 'passing 0 instead of $attempts must fail: '.$retried->key);
+    }
+
+    public function test_template_passes_built_in_default_into_price_helper(): void
+    {
+        $this->actingAsAdmin();
+        $blade = file_get_contents(resource_path('views/admin/quotations/shared_prices/edit.blade.php'));
+        $this->assertStringContainsString('SharedWorkCatalog::definition($work->key)', $blade);
+        $this->assertMatchesRegularExpression(
+            '/\$blankSell\s*=\s*\(float\)\s*\$def\[\'flat_rate\'\]/',
+            $blade
+        );
+        $this->assertStringContainsString(
+            'data-sp-blank-sell="{{ $blankSell !== null ? number_format($blankSell, 4, \'.\', \'\') : \'\' }}"',
+            $blade
+        );
+        $this->assertMatchesRegularExpression(
+            '/effectiveUnitPrice\(\s*\{[\s\S]*?blankSell:\s*row\.getAttribute\(\'data-sp-blank-sell\'\)/',
+            $blade
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\$blankSell\s*=\s*.*displayUnitPrice/',
+            $blade
+        );
+
+        $def = SharedWorkCatalog::definition('baseboard');
+        $this->assertIsArray($def);
+        $this->assertEqualsWithDelta(4.75, (float) $def['flat_rate'], 0.0001);
+
+        $html = $this->get(route('admin.quotations.shared-prices.edit'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<tr[^>]*id="work-baseboard"[^>]*data-sp-blank-sell="4\.7500"/',
+            $html
+        );
+        $this->assertStringContainsString("blankSell: row.getAttribute('data-sp-blank-sell') || ''", $html);
     }
 
     public function test_area_cost_input_stays_visible_after_empty_sell_save(): void

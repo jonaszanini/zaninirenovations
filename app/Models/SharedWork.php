@@ -144,6 +144,8 @@ class SharedWork extends Model
     /**
      * Fold accents to ASCII. Prefer intl Transliterator; fall back to iconv
      * and a static Latin map when intl is missing (or $forceFallback).
+     * Apostrophes, quotes, and combining marks are stripped on both paths
+     * so slugs stay identical (Rock'n → rockn, leftover marks never become _).
      */
     public static function asciiFold(string $s, bool $forceFallback = false): string
     {
@@ -152,21 +154,36 @@ class SharedWork extends Model
             if ($transliterator) {
                 $converted = $transliterator->transliterate($s);
                 if (is_string($converted) && $converted !== '') {
-                    return $converted;
+                    return self::stripFoldMarks($converted);
                 }
             }
         }
-        $s = strtr($s, self::asciiFoldMap());
+        $s = self::stripFoldMarks(strtr($s, self::asciiFoldMap()));
         if (function_exists('iconv')) {
             $converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
             if (is_string($converted) && $converted !== '') {
                 $s = $converted;
             }
         }
-        $s = str_replace(["'", '`', '^', '~', '"', "\u{00B4}", "\u{02CB}", "\u{02C6}", "\u{02DC}", "\u{00A8}"], '', $s);
-        $s = preg_replace('/\p{M}+/u', '', $s) ?? $s;
 
-        return $s;
+        return self::stripFoldMarks($s);
+    }
+
+    /**
+     * Drop apostrophes/quotes and combining marks so TRANSLIT leftovers
+     * cannot become `_` in the slug (Café → cafe, Rock'n → rockn).
+     */
+    private static function stripFoldMarks(string $s): string
+    {
+        $s = str_replace([
+            "'", '`', '^', '~', '"',
+            "\u{00B4}", "\u{02CB}", "\u{02C6}", "\u{02DC}", "\u{00A8}",
+            "\u{2018}", "\u{2019}", "\u{201A}", "\u{201B}",
+            "\u{201C}", "\u{201D}", "\u{201E}",
+            "\u{2032}", "\u{2033}", "\u{02BC}", "\u{02B9}",
+        ], '', $s);
+
+        return preg_replace('/\p{M}+/u', '', $s) ?? $s;
     }
 
     /**
