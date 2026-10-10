@@ -442,6 +442,84 @@ class MillworkCalcVersionGateTest extends TestCase
         $this->assertStringNotContainsString('23 1/2" W', $pdf);
     }
 
+    public function test_additional_labour_30_percent_is_inside_the_grand_total(): void
+    {
+        $piece = [
+            'type' => 'bench',
+            'unit' => 'in',
+            'length' => 48,
+            'depth' => 16,
+            'height' => 18,
+            'qty' => 1,
+            'edge_banding' => false,
+            '_calc_version' => 3,
+        ];
+        $baseInputs = [
+            'pieces' => [$piece],
+            'include_install' => true,
+            'include_building' => false,
+            'building_labor_percent' => 30,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            '_calc_version' => 3,
+        ];
+        $off = (new MillworkQuotationCalculator)->calculate($baseInputs, $this->settings(), 3);
+        $on = (new MillworkQuotationCalculator)->calculate(array_merge($baseInputs, [
+            'include_building' => true,
+        ]), $this->settings(), 3);
+
+        $baseLabour = (float) $off['summary']['labor_pre_hst'];
+        $this->assertGreaterThan(0, $baseLabour);
+        $surcharge = round($baseLabour * 0.30, 2);
+        $this->assertEqualsWithDelta($surcharge, (float) $on['summary']['building_labor_surcharge'], 0.001);
+        $this->assertEqualsWithDelta($baseLabour + $surcharge, (float) $on['summary']['labor_pre_hst'], 0.001);
+        $this->assertEqualsWithDelta(
+            (float) $off['summary']['materials_goods_pre_hst'],
+            (float) $on['summary']['materials_goods_pre_hst'],
+            0.001,
+            'Additional labour must not change the material price'
+        );
+
+        $labourDelta = (float) $on['summary']['labor_pre_hst'] - $baseLabour;
+        $hstDelta = (float) $on['summary']['hst'] - (float) $off['summary']['hst'];
+        $grandDelta = (float) $on['summary']['grand_total'] - (float) $off['summary']['grand_total'];
+        $this->assertEqualsWithDelta($labourDelta + $hstDelta, $grandDelta, 0.001);
+        $this->assertGreaterThan($surcharge, $grandDelta, 'Grand total must include the surcharge and the HST on it');
+
+        $lines = (float) $on['summary']['labor_pre_hst']
+            + (float) $on['summary']['materials_pre_hst']
+            + (float) $on['summary']['markup_amount']
+            + (float) $on['summary']['hst'];
+        $this->assertEqualsWithDelta($lines, (float) $on['summary']['grand_total'], 0.02);
+        $this->assertEqualsWithDelta((float) $on['summary']['grand_total'], (float) $on['summary']['final_quote_total'], 0.001);
+    }
+
+    public function test_same_inputs_keep_the_same_material_price(): void
+    {
+        $inputs = [
+            'pieces' => [[
+                'type' => 'bench',
+                'unit' => 'in',
+                'length' => 48,
+                'depth' => 16,
+                'height' => 18,
+                'qty' => 1,
+                'edge_banding' => false,
+            ]],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+            '_calc_version' => 3,
+        ];
+        $calc = new MillworkQuotationCalculator;
+        $first = $calc->calculate($inputs, $this->settings(), 3);
+        $second = $calc->calculate($inputs, $this->settings(), 3);
+        $this->assertSame(
+            (float) $first['summary']['materials_goods_pre_hst'],
+            (float) $second['summary']['materials_goods_pre_hst']
+        );
+        $this->assertGreaterThan(0, (float) $first['summary']['materials_goods_pre_hst']);
+    }
+
     public function test_edited_v2_bench_calculator_price_is_336_34(): void
     {
         $edited = $this->total([

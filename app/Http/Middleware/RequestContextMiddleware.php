@@ -28,6 +28,12 @@ final class RequestContextMiddleware
 
         $request->attributes->set('request_id', $requestId);
 
+        // Live previews are XHR. They must not eat the one-time success
+        // flash that a Ctrl+S redirect is carrying to the next full page.
+        if (($request->ajax() || $request->expectsJson()) && $request->hasSession()) {
+            $request->session()->reflash();
+        }
+
         $start = hrtime(true);
 
         try {

@@ -256,6 +256,10 @@ window.MillworkDimensionParser = (function () {
       if (saving) return;
       var intentEl = document.getElementById('mw-save-intent');
       if (intentEl) intentEl.value = intent;
+      if (window.AdminQuoteDraftValidation) {
+        if (intent === 'draft') window.AdminQuoteDraftValidation.relax(form);
+        else window.AdminQuoteDraftValidation.restore(form);
+      }
       if (!isEdit) {
         form.querySelectorAll('.br-acc').forEach(function (el) {
           el.classList.add('is-active');
@@ -271,11 +275,6 @@ window.MillworkDimensionParser = (function () {
           if (idx < 0) idx = 0;
           setWizardStep(idx, true);
         }
-        setTimeout(function () {
-          if (!invalid) return;
-          try { invalid.focus(); } catch (err) { /* ignore */ }
-          if (typeof invalid.reportValidity === 'function') invalid.reportValidity();
-        }, 80);
         return;
       }
       allowFormUnload();
@@ -515,13 +514,32 @@ window.MillworkDimensionParser = (function () {
       status.textContent = text || 'Updating cut plan…';
     }
 
+    function previewFormData() {
+      // Inactive wizard steps use the hidden attribute, which drops their
+      // controls from FormData. The sheet, hardware, pieces, and additional
+      // labour would then be missing from the preview and the total would
+      // change just by moving steps. Unhide only for the snapshot.
+      var hiddenSteps = [];
+      form.querySelectorAll('.br-acc[hidden]').forEach(function (el) {
+        hiddenSteps.push(el);
+        el.hidden = false;
+      });
+      var body;
+      try {
+        body = new FormData(form);
+      } finally {
+        hiddenSteps.forEach(function (el) { el.hidden = true; });
+      }
+      body.delete('_method');
+      return body;
+    }
+
     function fetchPreview() {
       if (!previewUrl) return Promise.resolve(null);
       if (previewAbort) previewAbort.abort();
       previewAbort = new AbortController();
       var timer = setTimeout(function () { previewAbort.abort(); }, PREVIEW_TIMEOUT_MS);
-      var body = new FormData(form);
-      body.delete('_method');
+      var body = previewFormData();
       return fetch(previewUrl, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -878,18 +896,40 @@ window.MillworkDimensionParser = (function () {
       }
       root.innerHTML = layouts.map(function (layout) {
         var stats = layout.stats || {};
-        var legend = (layout.legend || []).map(function (row) {
-          return '<li><span class="mw-cut-legend__n">' + escapeHtml(row.n || '') + '</span>'
-            + '<span>' + escapeHtml(row.label || 'Part') + ' · ' + escapeHtml(row.size || '')
-            + (row.rotated ? ' · rotated' : '') + '</span></li>';
-        }).join('');
         return '<div class="mw-cut-sheet">'
           + '<div class="mw-cut-sheet__stats"><strong>' + escapeHtml(stats.label || 'Sheet') + '</strong>'
           + '<span>Used ' + escapeHtml(stats.used_pct || 0) + '% · waste ' + escapeHtml(stats.waste_pct || 0) + '%</span></div>'
           + '<div class="mw-cut-svg-wrap">' + (layout.svg || '') + '</div>'
-          + (legend ? '<ul class="mw-cut-legend">' + legend + '</ul>' : '')
           + '</div>';
+      }).join('') + combinedPartsTable(layouts);
+    }
+
+    function combinedPartsTable(layouts) {
+      var groups = {};
+      var order = [];
+      (layouts || []).forEach(function (layout) {
+        (layout.legend || []).forEach(function (row) {
+          var part = String(row.label || 'Part');
+          var size = String(row.size || '');
+          var material = String(row.material || (layout.stats && layout.stats.label) || '');
+          var edge = String(row.edge || 'None');
+          var key = [part, size, material, edge].join('|');
+          if (!groups[key]) {
+            groups[key] = { part: part, size: size, qty: 0, material: material, edge: edge };
+            order.push(key);
+          }
+          groups[key].qty += Math.max(1, Number(row.qty || 1));
+        });
+      });
+      if (!order.length) return '';
+      var body = order.map(function (key) {
+        var row = groups[key];
+        return '<tr><td>' + escapeHtml(row.part) + '</td><td>' + escapeHtml(row.size) + '</td><td>'
+          + row.qty + '</td><td>' + escapeHtml(row.material) + '</td><td>' + escapeHtml(row.edge) + '</td></tr>';
       }).join('');
+      return '<div class="mw-parts-list admin-table-scroll"><table class="admin-table">'
+        + '<thead><tr><th>Part</th><th>Size</th><th>Qty</th><th>Material</th><th>Edge banding</th></tr></thead>'
+        + '<tbody>' + body + '</tbody></table></div>';
     }
 
     function printCutList() {
@@ -1081,8 +1121,31 @@ window.MillworkDimensionParser = (function () {
       piece.setAttribute('data-mw-below', (below && below.value === 'drawers') ? 'drawers' : 'divisions');
       syncUnitLabels(piece);
       syncFinishFields(piece);
+      syncHiddenPieceFields(piece);
+      syncShelfStructure(piece);
       syncHardwareCatalog();
       syncMaterialsCatalog();
+    }
+
+    function syncHiddenPieceFields(piece) {
+      piece.querySelectorAll('[data-mw-show]').forEach(function (node) {
+        var hidden = false;
+        if (node.hidden || node.hasAttribute('hidden')) hidden = true;
+        else if (window.getComputedStyle(node).display === 'none') hidden = true;
+        node.querySelectorAll('input, select, textarea').forEach(function (el) {
+          if ((el.type || '') === 'hidden') return;
+          el.disabled = hidden;
+        });
+      });
+    }
+
+    function syncShelfStructure(piece) {
+      if (pieceTypeOf(piece) !== 'shelf') return;
+      var height = piece.querySelector('input[name$="[height]"]');
+      var open = !!(height && String(height.value || '').trim() !== '');
+      piece.querySelectorAll('[data-mw-show="shelf"] input').forEach(function (el) {
+        if (/\[(columns|shelf_count)\]$/.test(el.name || '')) el.disabled = !open;
+      });
     }
 
     function syncUnitLabels(piece) {
@@ -1238,6 +1301,10 @@ window.MillworkDimensionParser = (function () {
           schedulePreview();
         });
       });
+      var shelfHeight = piece.querySelector('input[name$="[height]"]');
+      if (shelfHeight) {
+        shelfHeight.addEventListener('input', function () { syncShelfStructure(piece); });
+      }
       var below = piece.querySelector('select[name$="[below]"]');
       if (below) {
         below.addEventListener('change', function () {

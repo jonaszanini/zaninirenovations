@@ -217,9 +217,13 @@ class CommuteExpenseService
     /** @return array<string, mixed> */
     public static function commuteValidationRules(): array
     {
+        $presence = \App\Support\QuotationSaveIntent::isDraft()
+            ? 'nullable'
+            : 'required';
+
         return [
-            // Explicit Yes/No required (radio) — do not default-include without a choice.
-            'include_commute' => ['required', 'in:0,1'],
+            // Publish needs an explicit Yes/No. Drafts may leave it unanswered.
+            'include_commute' => [$presence, 'in:0,1'],
             'commute_trip_percent' => ['nullable', 'numeric', 'min:0', 'max:999'],
             'commute_estimated_trips' => ['nullable', 'integer', 'min:1', 'max:999'],
             'commute_round_trip_cost' => ['nullable', 'numeric', 'min:0'],

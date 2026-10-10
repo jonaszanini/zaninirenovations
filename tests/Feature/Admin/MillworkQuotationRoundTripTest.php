@@ -1116,6 +1116,79 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
         $this->assertEqualsWithDelta((float) $summary['materials_pre_hst'], (float) $live['summary']['materials_pre_hst'], 0.001);
     }
 
+    public function test_additional_labour_30_percent_is_in_the_grand_total_and_pdf(): void
+    {
+        $this->actingAsAdmin();
+        $project = ClientProject::factory()->create(['client_name' => 'Labour Surcharge']);
+        $payload = $this->samplePayload('Labour Surcharge');
+        $payload['link_client_project_id'] = $project->id;
+        $payload['include_building'] = 1;
+        $payload['building_labor_percent'] = 30;
+
+        $without = $payload;
+        $without['include_building'] = 0;
+
+        $this->post(route('admin.quotations.millwork.store'), $payload)->assertRedirect();
+        $quote = MillworkQuotation::query()->where('client_name', 'Labour Surcharge')->first();
+        $this->assertNotNull($quote);
+
+        $on = (new MillworkQuotationCalculator)->calculate($quote->inputs);
+        $offInputs = $quote->inputs;
+        $offInputs['include_building'] = false;
+        $off = (new MillworkQuotationCalculator)->calculate($offInputs);
+
+        $surcharge = round((float) $off['summary']['labor_pre_hst'] * 0.30, 2);
+        $this->assertEqualsWithDelta($surcharge, (float) $on['summary']['building_labor_surcharge'], 0.05);
+        $this->assertGreaterThan(
+            (float) $off['summary']['grand_total'] + $surcharge,
+            (float) $on['summary']['grand_total']
+        );
+        $this->assertEqualsWithDelta(
+            (float) $off['summary']['materials_goods_pre_hst'],
+            (float) $on['summary']['materials_goods_pre_hst'],
+            0.001
+        );
+        $this->assertEqualsWithDelta((float) $on['summary']['grand_total'], (float) $quote->final_quote_total, 0.05);
+
+        $cpq = ClientProjectQuotation::findForSource(ClientProjectQuotation::SOURCE_MILLWORK, (int) $quote->id);
+        $this->assertNotNull($cpq);
+        $this->assertEqualsWithDelta((float) $quote->final_quote_total, $cpq->pdfGrandTotal(), 0.05);
+    }
+
+    public function test_draft_save_skips_payment_commute_debris_and_accept(): void
+    {
+        $this->actingAsAdmin();
+        $payload = $this->samplePayload('Draft Without Answers');
+        $payload['save_intent'] = 'draft';
+        $payload['client_name'] = '';
+        $payload['work_description'] = 'Draft skip answers marker';
+        unset(
+            $payload['payment_installments'],
+            $payload['include_commute'],
+            $payload['include_debris_removal'],
+            $payload['ask_reply_to_accept']
+        );
+
+        $this->post(route('admin.quotations.millwork.store'), $payload)->assertRedirect();
+        $quote = MillworkQuotation::query()->where('work_description', 'like', '%Draft skip answers marker%')->first();
+        $this->assertNotNull($quote);
+        $this->assertTrue((bool) $quote->is_draft);
+
+        $publish = $this->samplePayload('Publish Needs Answers');
+        unset(
+            $publish['payment_installments'],
+            $publish['include_commute'],
+            $publish['include_debris_removal'],
+            $publish['ask_reply_to_accept']
+        );
+        $this->post(route('admin.quotations.millwork.store'), $publish)->assertSessionHasErrors([
+            'payment_installments',
+            'include_commute',
+            'include_debris_removal',
+            'ask_reply_to_accept',
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */

@@ -963,16 +963,33 @@
       }, 0);
     }
 
-    function beginSession(btn, fromHotkey) {
-      if (session && session.inflight) return false;
-      var focus = activeEditable(env);
-      commitPendingValue(focus, env);
-      var form = buttonForm(btn, env);
-      if (form && typeof form.checkValidity === 'function' && !form.checkValidity()) {
-        showValidation(collectInvalidFields(form, env));
-        restoreFocus(focus);
-        return false;
-      }
+  function isDraftSaveButton(btn) {
+    if (!btn) return false;
+    if (btn.classList && btn.classList.contains('qh-actions__draft')) return true;
+    if (/-btn-draft$/.test(String(btn.id || ''))) return true;
+    var intent = String((btn.getAttribute && (btn.getAttribute('data-intent') || btn.getAttribute('data-cp-invoice-intent'))) || '').toLowerCase();
+    return intent === 'draft';
+  }
+
+  function beginSession(btn, fromHotkey) {
+    if (session && session.inflight) return false;
+    var focus = activeEditable(env);
+    commitPendingValue(focus, env);
+    var form = buttonForm(btn, env);
+    var draftSave = isDraftSaveButton(btn);
+    var draftApi = root.AdminQuoteDraftValidation;
+    if (draftSave && form && draftApi && typeof draftApi.relax === 'function') {
+      draftApi.relax(form);
+    }
+    if (form && typeof form.checkValidity === 'function' && !form.checkValidity()) {
+      showValidation(collectInvalidFields(form, env));
+      if (draftSave && draftApi && typeof draftApi.restore === 'function') draftApi.restore(form);
+      restoreFocus(focus);
+      return false;
+    }
+    if (draftSave && form && draftApi && typeof draftApi.setCanonicalIntent === 'function') {
+      draftApi.setCanonicalIntent(form, true);
+    }
       if (fromHotkey && form) {
         rememberEmailUndo(form, neutralizeEmail(form, env));
       }
