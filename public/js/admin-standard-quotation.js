@@ -635,6 +635,9 @@
       });
       var num = card.querySelector('.sq-work-number-val');
       if (num) num.textContent = String(w + 1);
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshRepeatLabels === 'function') {
+        window.AdminInfoTip.refreshRepeatLabels(card);
+      }
       reindexMaterialNames(card, w);
       syncFixedLabourUI(card);
     });
@@ -678,6 +681,8 @@
     var wrap = document.createElement('div');
     wrap.innerHTML = html.trim();
     var newRow = wrap.firstElementChild;
+    var refreshRow = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+    if (refreshRow) refreshRow(newRow);
     list.appendChild(newRow);
     reindexMaterialNames(card, w);
     if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
@@ -692,6 +697,8 @@
     var wrap = document.createElement('div');
     wrap.innerHTML = html.trim();
     var card = wrap.querySelector('.sq-work-card') || wrap.firstElementChild;
+    var refreshCard = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+    if (refreshCard) refreshCard(card);
     worksRoot.appendChild(card);
     workCards().forEach(function (c) {
       if (c !== card) {

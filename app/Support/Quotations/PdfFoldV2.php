@@ -23,7 +23,7 @@ final class PdfFoldV2
     public function pdfLineItems(): array
     {
         $quote = $this->quote;
-        if ($quote->source_type === ClientProjectQuotation::SOURCE_STANDARD && $quote->source_id) {
+        if ($quote->source_type === ClientProjectQuotation::SOURCE_STANDARD && $quote->source_id && ! $quote->isSourceDraft()) {
             $sq = StandardQuotation::query()->find($quote->source_id);
             if ($sq) {
                 if ($sq->usesDetailedPdf()) {

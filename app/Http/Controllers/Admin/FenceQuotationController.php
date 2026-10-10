@@ -23,6 +23,7 @@ use App\Support\FenceGateSpec;
 use App\Support\FenceWorkDescriptionGenerator;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -100,6 +101,7 @@ class FenceQuotationController extends Controller
         $calc = (new FenceQuotationCalculator())->calculate($data);
         $persistence = $this->fencePersistenceFromCalc($request, $calc, $data);
 
+        $intent = QuotationSaveIntent::fromRequest($request);
         $quote = FenceQuotation::create(array_merge($persistence, [
             'quote_number' => FenceQuotation::generateNumber(),
             'version' => 1,
@@ -117,9 +119,13 @@ class FenceQuotationController extends Controller
 
         $resp = redirect()
             ->to($editUrl)
-            ->with('success', $linkedNow
-                ? 'Fence quotation '.$quote->quote_number.' saved and linked to this project.'
-                : 'Fence quotation '.$quote->quote_number.' saved.');
+            ->with('success', $intent === QuotationSaveIntent::DRAFT
+                ? ($linkedNow
+                    ? 'Fence quotation saved as draft and linked.'
+                    : 'Fence quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Fence quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Fence quotation '.$quote->quote_number.' saved.'));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -170,7 +176,7 @@ class FenceQuotationController extends Controller
      */
     public function update(Request $request, FenceQuotation $fence_quotation)
     {
-        $data = $this->validateFenceInputs($request);
+        $data = $this->validateFenceInputs($request, $fence_quotation);
 
         $frozen = $request->boolean('reprice')
             ? null
@@ -228,6 +234,8 @@ class FenceQuotationController extends Controller
             }
         }
 
+        unset($data['fence_quotation_id']);
+
         $calc = (new FenceQuotationCalculator())->calculate($data, $frozen ?: null);
         $calc['suggested_work_description'] = FenceWorkDescriptionGenerator::generate($calc);
 
@@ -257,6 +265,9 @@ class FenceQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($fence_quotation, $project);
 
+        if ($resp = $this->guardQuotationIsDraft($fence_quotation, 'link')) {
+            return $resp;
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -282,6 +293,9 @@ class FenceQuotationController extends Controller
         ClientProjectStatusService $statusService
     ) {
         if ($resp = $this->guardQuotationAlreadyLinked($fence_quotation, 'fence')) {
+            return $resp;
+        }
+        if ($resp = $this->guardQuotationIsDraft($fence_quotation, 'create-project')) {
             return $resp;
         }
 
@@ -330,7 +344,7 @@ class FenceQuotationController extends Controller
 
     protected function autoLinkFenceIfRequested(FenceQuotation $fq, Request $request, array &$warnings): bool
     {
-        if ($fq->isLinked()) {
+        if ($fq->isLinked() || ($fq->is_draft ?? false)) {
             return false;
         }
 
@@ -372,6 +386,9 @@ class FenceQuotationController extends Controller
      */
     protected function syncFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
     {
+        if ($this->quotationIsDraft($fence_quotation)) {
+            return;
+        }
         $items = $fence_quotation->projectQuotationLineItems();
         $this->appendCommuteProjectLine($items, $fence_quotation);
         $this->appendDebrisRemovalProjectLine($items, $fence_quotation);
@@ -387,6 +404,7 @@ class FenceQuotationController extends Controller
             'gate_count',
             'labour_rate_per_ft',
             'labour_rate_8ft_per_ft',
+            'existing_post_labour_credit',
             'sides',
             'calculation',
             'materials_subtotal',
@@ -440,6 +458,10 @@ class FenceQuotationController extends Controller
      */
     protected function appendFenceLineToProjectQuotation(ClientProject $project, FenceQuotation $fence_quotation): void
     {
+        if ($this->quotationIsDraft($fence_quotation)) {
+            return;
+        }
+
         $this->syncFenceLineToProjectQuotation($project, $fence_quotation);
 
         $fence_quotation->update(array_merge([
@@ -615,10 +637,11 @@ class FenceQuotationController extends Controller
     }
 
     /** Shared validation rules for store() and update(). */
-    protected function validateFenceInputs(Request $request): array
+    protected function validateFenceInputs(Request $request, ?FenceQuotation $existing = null): array
     {
         $this->prepareAdditionalCostMoneyOnRequest($request);
         $this->prepareDebrisRemovalMoneyOnRequest($request);
+        $this->prepareExistingPostLabourCreditOnRequest($request, $existing);
 
         $rules = array_merge(
             $this->fenceGeometryRules(requiredClient: true),
@@ -656,10 +679,70 @@ class FenceQuotationController extends Controller
      */
     protected function validateFencePreviewInputs(Request $request): array
     {
-        $data = $request->validate($this->fenceGeometryRules(requiredClient: false));
+        $quote = null;
+        $quoteId = $request->input('fence_quotation_id');
+        if (is_numeric($quoteId) && (int) $quoteId > 0) {
+            $quote = FenceQuotation::query()->find((int) $quoteId);
+        }
+        $this->prepareExistingPostLabourCreditOnRequest($request, $quote);
+
+        $data = $request->validate(array_merge($this->fenceGeometryRules(requiredClient: false), [
+            'fence_quotation_id' => ['nullable', 'integer', 'exists:fence_quotations,id'],
+            'reprice' => ['nullable', 'boolean'],
+        ]));
         $data['sides'] = $this->dropBlankFenceRuns($data['sides'] ?? []);
 
         return $data;
+    }
+
+    /**
+     * Blank and missing credit fields use the same fallback as save:
+     * posted value (including "0") always wins — even during re-price;
+     * else re-price → config; else stored quote; else config for new quotes.
+     */
+    protected function prepareExistingPostLabourCreditOnRequest(Request $request, ?FenceQuotation $quote = null): void
+    {
+        $raw = $request->input('existing_post_labour_credit');
+        $missing = $raw === null || $raw === '';
+        if (! $missing) {
+            return;
+        }
+
+        $request->merge([
+            'existing_post_labour_credit' => $this->resolveExistingPostLabourCredit(
+                $request->all(),
+                $quote,
+                $request->boolean('reprice')
+            ),
+        ]);
+    }
+
+    /**
+     * Posted credit (including the string "0") always wins, including
+     * when `reprice` is set. Re-price only supplies the current config
+     * when the field is missing or blank. Re-price still means live
+     * catalogue prices on update().
+     */
+    protected function resolveExistingPostLabourCredit(
+        array $data,
+        ?FenceQuotation $quote = null,
+        bool $reprice = false
+    ): float {
+        if (array_key_exists('existing_post_labour_credit', $data)
+            && $data['existing_post_labour_credit'] !== null
+            && $data['existing_post_labour_credit'] !== '') {
+            return round(max(0, (float) $data['existing_post_labour_credit']), 2);
+        }
+
+        if ($reprice) {
+            return FenceFormulaSetting::current()->existingPostLabourCredit();
+        }
+
+        if ($quote !== null && $quote->existing_post_labour_credit !== null) {
+            return round(max(0, (float) $quote->existing_post_labour_credit), 2);
+        }
+
+        return FenceFormulaSetting::current()->existingPostLabourCredit();
     }
 
     /**
@@ -692,6 +775,7 @@ class FenceQuotationController extends Controller
             'extra_gate_preset' => ['nullable', Rule::in($gateKeys)],
             'labour_rate_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'labour_rate_8ft_per_ft' => ['required', 'numeric', 'min:0', 'max:9999.99'],
+            'existing_post_labour_credit' => ['required', 'numeric', 'min:0', 'max:9999.99'],
             'include_labour_hst' => ['nullable', 'boolean'],
         ];
 
@@ -700,6 +784,7 @@ class FenceQuotationController extends Controller
             $rules['work_description'] = ['nullable', 'string', 'max:20000'];
             $rules['reprice'] = ['nullable', 'boolean'];
             $rules['after_save'] = ['nullable', 'string', 'max:40'];
+            $rules['save_intent'] = ['nullable', 'in:draft,publish'];
         }
 
         return $rules;
@@ -739,6 +824,7 @@ class FenceQuotationController extends Controller
     ): array {
         $base = array_merge([
             'client_name' => $data['client_name'],
+            'is_draft' => QuotationSaveIntent::isDraft($request),
             'work_description' => \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null),
             'fence_height_ft' => $calc['inputs']['fence_height_ft'],
             'post_size' => $calc['inputs']['post_size'],
@@ -746,6 +832,7 @@ class FenceQuotationController extends Controller
             'gate_count' => $calc['inputs']['gate_count'],
             'labour_rate_per_ft' => $data['labour_rate_per_ft'],
             'labour_rate_8ft_per_ft' => $data['labour_rate_8ft_per_ft'],
+            'existing_post_labour_credit' => $calc['inputs']['existing_post_labour_credit'],
             'sides' => $calc['inputs']['sides'],
             'calculation' => $calc,
             'materials_subtotal' => $calc['totals']['materials_subtotal'],

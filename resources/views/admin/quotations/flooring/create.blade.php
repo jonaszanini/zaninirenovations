@@ -175,6 +175,24 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Flooring',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.flooring.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'fl-main-form',
+    'saveId' => 'fl-btn-publish',
+    'draftId' => 'fl-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
   @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
     <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
@@ -200,7 +218,10 @@
                  value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
         </div>
         <div class="admin-form-group quotation-work-desc">
-          <label for="fl-work-description">Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
+          <span class="admin-label-with-tip">
+            <label for="fl-work-description">Project description</label>
+            <x-admin.info-tip label="Project description">Optional — appears on the client PDF. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+          </span>
           <textarea class="admin-input" id="fl-work-description" name="work_description" rows="8"
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
@@ -208,12 +229,16 @@
               'aiContextFormId' => 'fl-main-form',
               'aiQuotationType' => 'flooring',
           ])
-          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 
-      <div class="admin-card fl-step-card">
-        <h4>Core measurements</h4>
+      <div class="admin-card fl-step-card" data-qh-step="2">
+        <h4 class="qh-priced-head">
+          Core measurements
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.flooring.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
+        </h4>
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label for="fl-flooring-type">Flooring type</label>
@@ -259,8 +284,10 @@
       </div>
 
       <div class="admin-card fl-step-card">
-        <h4>Optional add-ons</h4>
-        <p class="admin-form-help" style="margin:0 0 14px;">Rates from <a href="{{ route('admin.quotations.flooring.price-configuration') }}">price configuration</a>.</p>
+        <h4>
+          Optional add-ons
+          <x-admin.info-tip label="Optional add-ons">Rates from <a href="{{ route('admin.quotations.flooring.price-configuration') }}">price configuration</a>.</x-admin.info-tip>
+        </h4>
 
         <div class="fl-addon-row">
           <label class="admin-checkbox">
@@ -427,26 +454,13 @@
     </div>
 
     <aside class="pq-sticky">
-      <div class="pq-sidebar-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="fl-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fl-btn-draft">Save as draft</button>
-        <a href="{{ route('admin.quotations.flooring.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </a>
-        <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        @include('admin.partials.quotation_view_pdf')
-      </div>
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'fl-main-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'fl-main-form'])
       <div class="pq-summary-card">
-        <h4 style="margin:0 0 10px;">Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="fl-live-root">
           <p class="admin-form-help" id="fl-live-empty">Enter measurements to see totals.</p>
           <div id="fl-live-body" hidden></div>

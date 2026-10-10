@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -51,9 +53,18 @@ jobs:
           php artisan test tests/Unit/Models/BasementQuotationScopePdfTest.php
           php artisan test tests/Unit/Support/AdminListFiltersTest.php
           php artisan test tests/Unit/Support/CadMoneyTest.php
+          php artisan test tests/Unit/Support/QuotationSaveIntentTest.php
           php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
+
+      - name: Admin info-tip unit tests (no database)
+        run: |
+          php artisan test tests/Unit/Views/AdminInfoTipTest.php
+          php artisan test tests/Unit/Views/AdminInfoTipBehaviourTest.php
+          php artisan test tests/Unit/Views/AdminInfoTipIdIsolationTest.php
+          php artisan test tests/Unit/Views/AdminInfoTipCallerContractTest.php
+          php artisan test tests/Unit/Views/FencePriceBannerTipTest.php
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -67,6 +78,12 @@ jobs:
           node tests/js/room-area-formula.test.js
           node tests/js/room-area-phone-geometry.test.js
           node tests/js/shared-prices-effective.test.js
+          node tests/js/admin-date-picker-browser.test.js
+
+      - name: Admin info-tip JS behaviour (no database)
+        run: |
+          node tests/js/admin-info-tip.test.mjs
+          node tests/js/admin-info-tip-click.test.mjs
 
       - name: Cut optimizer unit tests (no database)
         run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
@@ -77,8 +94,10 @@ jobs:
       - name: Admin dark-theme CSS coverage (no database)
         run: |
           php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php
+          php artisan test tests/Unit/Views/AdminDatePickerThemeTest.php
           php artisan test tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
           php artisan test tests/Unit/Views/QuotationExpensePairLayoutTest.php
+          php artisan test tests/Unit/Views/QuotationEditorHeaderMarkupTest.php
 
       - name: Public CSS light-only (no database)
         run: |
@@ -149,6 +168,10 @@ jobs:
           php artisan test tests/Feature/Admin/BasementRoomAreaImportTest.php
           php artisan test tests/Feature/Admin/BasementQuotationMathRoundTripTest.php
           php artisan test tests/Feature/Admin/BasementQuotationPagesTest.php
+          php artisan test tests/Feature/Admin/QuotationEditorHeaderTest.php
+          php artisan test tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php
+          php artisan test tests/Feature/Admin/QuotationDraftClientFacingGuardTest.php
+          php artisan test tests/Feature/Admin/QuotationEditorControlInventoryTest.php
           php artisan test tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php
           php artisan test tests/Feature/Admin/RoomAreaQuoteLinesTest.php
           php artisan test tests/Unit/Services/RoomAreaQuotePrefillTest.php
@@ -208,7 +231,8 @@ jobs:
           php artisan test tests/Unit/Support/FenceSideFlagsTest.php
           php artisan test tests/Unit/Views/FenceQuotationFormRestoreTest.php
           php artisan test tests/Feature/Admin/FenceQuotationFormRestoreTest.php
-          php artisan test tests/Unit/Views/FencePriceBannerTipTest.php
+          php artisan test tests/Feature/Admin/FenceQuotationInfoTipTest.php
+          php artisan test tests/Feature/Admin/FenceExistingPostLabourCreditTest.php
           php artisan test tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php

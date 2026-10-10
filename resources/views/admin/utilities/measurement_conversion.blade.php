@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Measurement Conversion')
+@section('heading')
+  Measurement Conversion
+  <x-admin.info-tip label="Measurement Conversion">Convert a single measurement into every common construction format. Organise rows by job-site project and optionally link a project to a real client job.</x-admin.info-tip>
+@endsection
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-utilities.css') }}?v={{ @filemtime(public_path('css/admin-utilities.css')) ?: time() }}">
@@ -8,10 +11,6 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Convert a single measurement into every common construction format. Organise rows by job-site project
-      and optionally link a project to a real client job.
-    </p>
     <a href="{{ route('admin.utilities.index') }}" class="admin-btn admin-btn--ghost">
       <i class="fa fa-arrow-left"></i> All utilities
     </a>

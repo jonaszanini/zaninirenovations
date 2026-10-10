@@ -103,6 +103,8 @@
       'light_qty' => 'Recessed pot / spot lights in the basement rooms. Optional extra pots. Bathroom spots are on the Bathroom step. Used as electrician scope, not Zanini labour.',
       'detector_qty' => 'Interconnected smoke/CO units. Ontario typically wants one on this level. Used as electrician scope, not Zanini labour.',
       'panel_upgrade' => 'Note that the electrician should upgrade or add capacity in the electrical panel when the new circuits will not fit. Used as electrician scope, not Zanini labour.',
+      'electrical_scope' => 'These answers are scope for a qualified electrician — they are not Zanini labour or materials. Type their quote as priced lines below.',
+      'plumbing_scope' => 'These answers are scope for a qualified plumber — they are not Zanini labour or materials. Type their quote as priced lines below.',
       'include_plumbing' => 'Turns on plumbing scope questions to send to a qualified plumber. Priced plumbing lines sit below.',
       'bath_rough_in' => 'New drain, vent, and hot/cold supply for a basement bathroom.',
       'sink_laundry' => 'Water and drain for a laundry tub or washer hookup, not a full bathroom.',
@@ -189,7 +191,17 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Project Overview</summary>
   <div class="br-acc__body">
     <fieldset class="br-scope-presets">
-      <legend>@include('admin.partials.info_tip', ['text' => $brInfo['scope_preset']]) What are you quoting?</legend>
+      <legend>
+        <span class="admin-label-with-tip">
+          <span>What are you quoting?</span>
+          <x-admin.info-tip label="What are you quoting?">
+            {{ $brInfo['scope_preset'] }}
+            @foreach (\App\Services\BasementQuotationCalculator::SCOPE_PRESETS as $presetKey => $presetLabel)
+              <br><strong>{{ $presetLabel }}:</strong> {{ $presetHelp[$presetKey] }}
+            @endforeach
+          </x-admin.info-tip>
+        </span>
+      </legend>
       <div class="br-scope-presets__grid">
         @foreach (\App\Services\BasementQuotationCalculator::SCOPE_PRESETS as $presetKey => $presetLabel)
           <label class="br-scope-option">
@@ -198,7 +210,6 @@
                    @checked($scopePreset === $presetKey)>
             <span class="br-scope-option__body">
               <strong>{{ $presetLabel }}</strong>
-              <span class="admin-form-help">{{ $presetHelp[$presetKey] }}</span>
             </span>
           </label>
         @endforeach
@@ -207,7 +218,12 @@
 
     <input type="hidden" name="enabled_sections[]" value="overview">
     <fieldset class="br-scope-trades" id="br-enabled-sections">
-      <legend>Trades to include</legend>
+      <legend>
+        <span class="admin-label-with-tip">
+          <span>Trades to include</span>
+          <x-admin.info-tip label="Trades to include">Tick the trades this quote covers. Each selected trade gets its own step with quantities and priced lines.</x-admin.info-tip>
+        </span>
+      </legend>
       <div class="br-check-grid">
         @foreach (\App\Services\BasementQuotationCalculator::tradeSections() as $tradeKey => $tradeLabel)
           @include('admin.partials.checkbox', [
@@ -215,7 +231,6 @@
             'value' => $tradeKey,
             'checked' => in_array($tradeKey, $enabledNow, true),
             'label' => $tradeLabel,
-            'info' => $tradeInfo[$tradeKey] ?? null,
             'inputClass' => 'admin-checkbox__input br-preview',
             'class' => ($bathNestTrades && in_array($tradeKey, ['electrical', 'plumbing', 'framing'], true)) ? 'br-trade-nested' : '',
             'attrs' => ['data-br-enabled-section' => $tradeKey],
@@ -258,13 +273,24 @@
     </div>
     <div class="br-qty-grid">
       <div class="admin-form-group" data-br-hide-on-wall @if($wallPreset) hidden @endif>
-        <label for="br-rooms">@include('admin.partials.info_tip', ['text' => $brInfo['room_count']]) @include('admin.quotations.basement._client_filled', ['key' => 'room_count', 'filledKeys' => $filledKeys]) Finished rooms</label>
+        @include('admin.partials.tipped_label', [
+          'label' => 'Finished rooms',
+          'for' => 'br-rooms',
+          'tipText' => $brInfo['room_count'],
+          'tipLabel' => 'Finished rooms',
+          'prefixHtml' => view('admin.quotations.basement._client_filled', ['key' => 'room_count', 'filledKeys' => $filledKeys])->render(),
+        ])
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-rooms" name="room_count"
                value="{{ $brVal('room_count', 1) }}"
                title="Count rooms as they will exist when the work is done, including new dividing walls. Not the current open basement.">
       </div>
       <div class="admin-form-group">
-        <label for="br-owner-rate">@include('admin.partials.info_tip', ['text' => $brInfo['owner_hourly_rate']]) Owner rate (CAD$)</label>
+        @include('admin.partials.tipped_label', [
+          'label' => 'Owner rate (CAD$)',
+          'for' => 'br-owner-rate',
+          'tipText' => $brInfo['owner_hourly_rate'],
+          'tipLabel' => 'Owner rate (CAD$)',
+        ])
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input br-preview" id="br-owner-rate" name="owner_hourly_rate"
                value="{{ number_format((float) $brVal('owner_hourly_rate', $settings->owner_hourly_rate), 2, '.', '') }}" data-cp-money-entry="direct">
@@ -278,17 +304,22 @@
         ])
       </div>
       <div class="admin-form-group">
-        <label for="br-material-waste">
-          @include('admin.partials.info_tip', ['text' => $brInfo['material_waste_percent']])
-          Material waste (%)
-        </label>
+        @include('admin.partials.tipped_label', [
+          'label' => 'Material waste (%)',
+          'for' => 'br-material-waste',
+          'tipText' => $brInfo['material_waste_percent'],
+          'tipLabel' => 'Material waste (%)',
+        ])
         <input type="number" step="0.1" min="0" max="100" class="admin-input br-preview br-input--narrow" id="br-material-waste"
                name="material_waste_percent"
                value="{{ old('material_waste_percent', $inputs['material_waste_percent'] ?? 10) }}">
       </div>
     </div>
     <div class="admin-form-group br-notes-field">
-      <label for="br-notes">@include('admin.partials.info_tip', ['text' => $brInfo['existing_notes']]) Existing condition notes</label>
+      <span class="admin-label-with-tip">
+  <label for="br-notes">Existing condition notes</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['existing_notes'], 'tipLabel' => 'Existing condition notes'])
+</span>
       <textarea class="admin-input br-preview" id="br-notes" name="existing_notes" rows="2" maxlength="2000"
                 placeholder="Moisture, headroom, existing bath">{{ $brVal('existing_notes') }}</textarea>
     </div>
@@ -297,14 +328,19 @@
 
 {{-- 2. Demolition --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="demolition" @unless(in_array('demolition', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Demolition &amp; Preparation</summary>
+<details class="br-acc admin-card" data-br-step="demolition" data-qh-step="2" @unless(in_array('demolition', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Demolition &amp; Preparation
+    @include('admin.partials.quotation_price_config_gear', [
+      'url' => route('admin.quotations.basement.price-configuration', request()->filled('project') ? ['project' => (int) request('project')] : []),
+    ])
+  </summary>
   <div class="br-acc__body">
     @include('admin.partials.checkbox', [
       'name' => 'include_demolition',
       'hiddenFallback' => true,
       'checked' => $brOn('include_demolition'),
-      'label' => 'Include demolition &amp; debris',
+      'label' => 'Include demolition & debris',
       'info' => $brInfo['include_demolition'],
       'inputClass' => 'admin-checkbox__input br-preview',
       'attrs' => ['data-br-reveal' => 'br-demo-fields'],
@@ -357,7 +393,10 @@
           ])
           <div id="br-demo-studs-fields" class="br-toggle-qty__fields" @unless($brOn('demo_include_studs')) hidden @endunless>
             <div class="admin-form-group">
-              <label for="br-demo-studs">@include('admin.partials.info_tip', ['text' => $brInfo['demo_studs_lf']]) Existing studs (lf)</label>
+              <span class="admin-label-with-tip">
+  <label for="br-demo-studs">Existing studs (lf)</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['demo_studs_lf'], 'tipLabel' => 'Existing studs (lf)'])
+</span>
               <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-demo-studs" name="demo_studs_lf"
                      value="{{ $brQty('demo_studs_lf') }}" placeholder="Auto">
             </div>
@@ -404,7 +443,10 @@
           ])
           <div id="br-demo-base-fields" class="br-toggle-qty__fields" @unless($brOn('demo_include_baseboard')) hidden @endunless>
             <div class="admin-form-group">
-              <label for="br-demo-base">@include('admin.partials.info_tip', ['text' => $brInfo['demo_baseboard_lf']]) Existing baseboard (lf)</label>
+              <span class="admin-label-with-tip">
+  <label for="br-demo-base">Existing baseboard (lf)</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['demo_baseboard_lf'], 'tipLabel' => 'Existing baseboard (lf)'])
+</span>
               <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-demo-base" name="demo_baseboard_lf"
                      value="{{ $brQty('demo_baseboard_lf') }}" placeholder="Auto">
             </div>
@@ -412,7 +454,10 @@
         </div>
       </div>
       <div class="admin-form-group br-demo-bins">
-        <label for="br-bins">@include('admin.partials.info_tip', ['text' => $brInfo['demo_bin_qty']]) Debris bins</label>
+        <span class="admin-label-with-tip">
+  <label for="br-bins">Debris bins</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['demo_bin_qty'], 'tipLabel' => 'Debris bins'])
+</span>
         <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bins" name="demo_bin_qty"
                value="{{ $brVal('demo_bin_qty', 1) }}"
                title="Dumpster / bin count. Price comes from the basement materials database.">
@@ -534,7 +579,10 @@
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group br-field--wide">
-        <label for="br-ceil-type">@include('admin.partials.info_tip', ['text' => $brInfo['ceiling_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'ceiling_type', 'filledKeys' => $filledKeys]) Ceiling type</label>
+        <span class="admin-label-with-tip">
+  <label for="br-ceil-type">@include('admin.quotations.basement._client_filled', ['key' => 'ceiling_type', 'filledKeys' => $filledKeys]) Ceiling type</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['ceiling_type'], 'tipLabel' => 'Ceiling type'])
+</span>
         <select class="admin-input br-preview" id="br-ceil-type" name="ceiling_type">
           <option value="drywall" @selected($brVal('ceiling_type', 'drywall') === 'drywall')>Drywall ceiling</option>
           <option value="paint" @selected($brVal('ceiling_type') === 'paint')>Paint-grade drywall</option>
@@ -572,7 +620,10 @@
       <input type="hidden" name="perimeter_lf" id="br-perimeter-lf" class="br-preview" value="{{ $layoutPerimeter }}">
       <input type="hidden" name="room_area_import_label" id="br-layout-import-label" value="{{ $layoutImportLabel }}">
       <div class="admin-form-group br-layout-import__field">
-        <label for="br-layout-import-input">@include('admin.partials.info_tip', ['text' => $brInfo['room_area_import']]) Import layout</label>
+        <span class="admin-label-with-tip">
+  <label for="br-layout-import-input">Import layout</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['room_area_import'], 'tipLabel' => 'Import layout'])
+</span>
         @include('admin.partials.search_select', [
           'id' => 'br-layout-import',
           'name' => 'room_area_import_id',
@@ -598,7 +649,12 @@
       </p>
     </div>
     <fieldset class="br-sheet-size">
-      <legend>@include('admin.partials.info_tip', ['text' => $brInfo['drywall_sheet_size']]) Drywall sheet size</legend>
+      <legend>
+        <span class="admin-label-with-tip">
+          <span>Drywall sheet size</span>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_sheet_size'], 'tipLabel' => 'Drywall sheet size'])
+        </span>
+      </legend>
       <div class="br-sheet-size__grid">
         @foreach (\App\Services\BasementQuotationCalculator::SHEET_SIZES as $sizeKey => $sizeLabel)
           <label class="br-sheet-size__option">
@@ -641,37 +697,55 @@
       ])
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-door-open">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_door_openings']]) Door openings</label>
+        <span class="admin-label-with-tip">
+          <label for="br-dw-door-open">Door openings</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_door_openings'], 'tipLabel' => 'Door openings'])
+        </span>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-door-open" name="drywall_door_openings"
                value="{{ $brVal('drywall_door_openings', 0) }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-window-open">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_window_openings']]) Window openings</label>
+        <span class="admin-label-with-tip">
+          <label for="br-dw-window-open">Window openings</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_window_openings'], 'tipLabel' => 'Window openings'])
+        </span>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-window-open" name="drywall_window_openings"
                value="{{ $brVal('drywall_window_openings', 0) }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-open">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_openings']]) Other openings</label>
+        <span class="admin-label-with-tip">
+          <label for="br-dw-open">Other openings</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_openings'], 'tipLabel' => 'Other openings'])
+        </span>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-open" name="drywall_openings"
                value="{{ $brVal('drywall_openings', 0) }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-opening-sf">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_opening_sf']]) Opening area</label>
+        <span class="admin-label-with-tip">
+  <label for="br-dw-opening-sf">Opening area</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_opening_sf'], 'tipLabel' => 'Opening area'])
+</span>
         <input type="number" step="0.01" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-opening-sf" name="drywall_opening_sf"
                value="{{ $brQty('drywall_opening_sf') }}" placeholder="Auto">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-corners">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_corners']]) Outside corners</label>
+        <label for="br-dw-corners">Outside corners</label>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-corners" name="drywall_corners"
                value="{{ $brVal('drywall_corners', 0) }}">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-inside-corners">@include('admin.partials.info_tip', ['text' => $brInfo['drywall_inside_corners']]) Inside corners</label>
+        <span class="admin-label-with-tip">
+          <label for="br-dw-inside-corners">Inside corners</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_inside_corners'], 'tipLabel' => 'Inside corners'])
+        </span>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-inside-corners" name="drywall_inside_corners"
                value="{{ $brVal('drywall_inside_corners', 0) }}">
       </div>
       <div class="admin-form-group br-finish-field">
-        <label for="br-finish">@include('admin.partials.info_tip', ['text' => $brInfo['finish_level']]) Level of finish</label>
+        <span class="admin-label-with-tip">
+  <label for="br-finish">Level of finish</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['finish_level'], 'tipLabel' => 'Level of finish'])
+</span>
         <select class="admin-input br-preview" id="br-finish" name="finish_level">
           @foreach (\App\Services\BasementQuotationCalculator::FINISH_LEVELS as $lvl => $lbl)
             <option value="{{ $lvl }}" @selected((int) $brVal('finish_level', 4) === $lvl)>{{ $lbl }}</option>
@@ -690,7 +764,10 @@
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group br-field--wide">
-        <label for="br-fl-type">@include('admin.partials.info_tip', ['text' => $brInfo['flooring_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'flooring_type', 'filledKeys' => $filledKeys]) Final flooring type</label>
+        <span class="admin-label-with-tip">
+  <label for="br-fl-type">@include('admin.quotations.basement._client_filled', ['key' => 'flooring_type', 'filledKeys' => $filledKeys]) Final flooring type</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['flooring_type'], 'tipLabel' => 'Final flooring type'])
+</span>
         <select class="admin-input br-preview" id="br-fl-type" name="flooring_type">
           <option value="lvp" @selected($brVal('flooring_type', 'lvp') === 'lvp')>LVP</option>
           <option value="laminate" @selected($brVal('flooring_type') === 'laminate')>Laminate</option>
@@ -888,14 +965,20 @@
         ])
       </div>
       <div class="admin-form-group">
-        <label for="br-colors">@include('admin.partials.info_tip', ['text' => $brInfo['paint_colors']]) @include('admin.quotations.basement._client_filled', ['key' => 'paint_colors', 'filledKeys' => $filledKeys]) Wall / ceiling colors</label>
+        <span class="admin-label-with-tip">
+  <label for="br-colors">@include('admin.quotations.basement._client_filled', ['key' => 'paint_colors', 'filledKeys' => $filledKeys]) Wall / ceiling colors</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['paint_colors'], 'tipLabel' => 'Wall / ceiling colors'])
+</span>
         <select class="admin-input br-preview" id="br-colors" name="paint_colors">
           <option value="1" @selected((int) $brVal('paint_colors', 1) === 1)>One color</option>
           <option value="2" @selected((int) $brVal('paint_colors', 1) === 2)>Two colors</option>
         </select>
       </div>
       <div class="admin-form-group">
-        <label for="br-coats">@include('admin.partials.info_tip', ['text' => $brInfo['paint_coats']]) Number of coats</label>
+        <span class="admin-label-with-tip">
+  <label for="br-coats">Number of coats</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['paint_coats'], 'tipLabel' => 'Number of coats'])
+</span>
         <input type="number" step="1" min="1" class="admin-input br-preview" id="br-coats" name="paint_coats"
                value="{{ $brVal('paint_coats', 2) }}">
       </div>
@@ -924,7 +1007,10 @@
       <div class="br-bath-block">
         <div class="br-bath-top">
           <div class="admin-form-group">
-            <label for="br-bath-type">@include('admin.partials.info_tip', ['text' => $brInfo['bath_type']]) @include('admin.quotations.basement._client_filled', ['key' => 'bath_type', 'filledKeys' => $filledKeys]) Bathroom type</label>
+            <span class="admin-label-with-tip">
+  <label for="br-bath-type">@include('admin.quotations.basement._client_filled', ['key' => 'bath_type', 'filledKeys' => $filledKeys]) Bathroom type</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_type'], 'tipLabel' => 'Bathroom type'])
+</span>
             <select class="admin-input br-preview" id="br-bath-type" name="bath_type">
               <option value="full" @selected($brVal('bath_type', 'full') === 'full')>Full bath</option>
               <option value="half" @selected($brVal('bath_type') === 'half')>Half bath</option>
@@ -973,7 +1059,10 @@
             }
           @endphp
           <div class="admin-form-group" id="br-bath-sink-qty" @unless($showBathSinkQty) hidden @endunless>
-            <label for="br-bath-sink-qty-select">@include('admin.partials.info_tip', ['text' => $brInfo['bath_sink_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'bath_sink_qty', 'filledKeys' => $filledKeys]) How many sinks?</label>
+            <span class="admin-label-with-tip">
+  <label for="br-bath-sink-qty-select">@include('admin.quotations.basement._client_filled', ['key' => 'bath_sink_qty', 'filledKeys' => $filledKeys]) How many sinks?</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_sink_qty'], 'tipLabel' => 'How many sinks?'])
+</span>
             <select class="admin-input br-preview" id="br-bath-sink-qty-select" name="bath_sink_qty">
               <option value="1" @selected($bathSinkQty === 1)>1</option>
               <option value="2" @selected($bathSinkQty === 2)>2</option>
@@ -986,26 +1075,20 @@
         </div>
       </div>
       <div class="br-nested-trade" id="br-plumbing-slot-bath" @unless($bathNestTrades) hidden @endunless>
-        <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title">Plumbing</span>
-        </div>
         @if($bathNestTrades)
           @include('admin.quotations.basement._plumbing_fields')
         @endif
       </div>
       <div class="br-nested-trade" id="br-electrical-slot-bath" @unless($bathNestTrades) hidden @endunless>
-        <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title">Electrical</span>
-        </div>
         @if($bathNestTrades)
           @include('admin.quotations.basement._electrical_fields')
         @endif
       </div>
       <div class="br-bath-lighting">
         <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title">
-            @include('admin.partials.info_tip', ['text' => 'Bathroom ceiling lights only — scope for the electrician, priced on Electrical lines. You can check a light fixture, a spot light, or both. Living-area lights stay on the Electrical step when quoting a full basement.'])
-            Bathroom lighting
+          <span class="br-tile-areas__title admin-label-with-tip">
+            <span>Bathroom lighting</span>
+            @include('admin.partials.info_tip', ['tipText' => 'Bathroom ceiling lights only — scope for the electrician, priced on Electrical lines. You can check a light fixture, a spot light, or both. Living-area lights stay on the Electrical step when quoting a full basement.', 'tipLabel' => 'Bathroom lighting'])
           </span>
         </div>
         <div class="br-bath-light-grid">
@@ -1022,7 +1105,7 @@
               'clientFilled' => $brFilled('include_bath_fixture'),
             ])
             <div class="admin-form-group" id="br-bath-fixture-qty-wrap" @unless($brOn('include_bath_fixture')) hidden @endunless>
-              <label for="br-bath-fixture-qty">@include('admin.partials.info_tip', ['text' => $brInfo['bath_fixture_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'bath_fixture_qty', 'filledKeys' => $filledKeys]) How many</label>
+              <label for="br-bath-fixture-qty">@include('admin.quotations.basement._client_filled', ['key' => 'bath_fixture_qty', 'filledKeys' => $filledKeys]) How many</label>
               <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-fixture-qty" name="bath_fixture_qty"
                      value="{{ $brVal('bath_fixture_qty', 1) }}">
             </div>
@@ -1040,7 +1123,7 @@
               'clientFilled' => $brFilled('include_bath_spot'),
             ])
             <div class="admin-form-group" id="br-bath-spot-qty-wrap" @unless($brOn('include_bath_spot')) hidden @endunless>
-              <label for="br-bath-spot-qty">@include('admin.partials.info_tip', ['text' => $brInfo['bath_spot_qty']]) @include('admin.quotations.basement._client_filled', ['key' => 'bath_spot_qty', 'filledKeys' => $filledKeys]) How many</label>
+              <label for="br-bath-spot-qty">@include('admin.quotations.basement._client_filled', ['key' => 'bath_spot_qty', 'filledKeys' => $filledKeys]) How many</label>
               <input type="number" step="1" min="0" class="admin-input br-preview" id="br-bath-spot-qty" name="bath_spot_qty"
                      value="{{ $brVal('bath_spot_qty', 0) }}">
             </div>
@@ -1070,10 +1153,10 @@
       @endphp
       <div class="br-tile-areas">
         <div class="br-tile-areas__head">
-          <span class="br-tile-areas__title">
-            @include('admin.partials.info_tip', ['text' => $brInfo['bath_tile_sf']])
+          <span class="br-tile-areas__title admin-label-with-tip">
             @include('admin.quotations.basement._client_filled', ['key' => 'bath_tile_areas', 'filledKeys' => $filledKeys])
             Tile / vinyl
+            @include('admin.partials.info_tip', ['tipText' => $brInfo['bath_tile_sf'], 'tipLabel' => 'Tile / vinyl'])
           </span>
           <span class="admin-form-help" data-br-tile-total>Combined: {{ $tileTotal > 0 ? rtrim(rtrim(number_format($tileTotal, 2, '.', ''), '0'), '.').' sq ft' : '0 sq ft' }}</span>
         </div>
@@ -1101,7 +1184,10 @@
     <div class="br-finishing">
       <div class="br-finishing-row">
         <div class="admin-form-group br-hw-field">
-          <label for="br-hw">@include('admin.partials.info_tip', ['text' => $brInfo['hardware_sets']]) Extra hardware sets</label>
+          <span class="admin-label-with-tip">
+  <label for="br-hw">Extra hardware sets</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['hardware_sets'], 'tipLabel' => 'Extra hardware sets'])
+</span>
           <input type="number" step="1" min="0" class="admin-input br-preview br-input--hardware" id="br-hw" name="hardware_sets"
                  value="{{ $brVal('hardware_sets', 0) }}">
         </div>
@@ -1122,7 +1208,10 @@
           'attrs' => ['data-br-reveal' => 'br-permit-fields'],
         ])
         <div id="br-permit-fields" class="admin-form-group br-permit-amount" @unless($brOn('include_building_permit')) hidden @endunless>
-          <label for="br-permit-amount">@include('admin.partials.info_tip', ['text' => $brInfo['building_permit_amount']]) Permit amount (CAD$)</label>
+          <span class="admin-label-with-tip">
+  <label for="br-permit-amount">Permit amount (CAD$)</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['building_permit_amount'], 'tipLabel' => 'Permit amount (CAD$)'])
+</span>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input br-preview br-input--permit" id="br-permit-amount" name="building_permit_amount"
                  value="{{ number_format((float) $brVal('building_permit_amount', 0), 2, '.', '') }}" data-cp-money-entry="direct">

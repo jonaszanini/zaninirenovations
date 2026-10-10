@@ -179,7 +179,7 @@ class RoomAreaQuoteLineInserter
 
         $quote->save();
 
-        if ($quote->client_project_id && $clientProject && (int) $quote->client_project_id === (int) $clientProject->id) {
+        if ($quote->client_project_id && $clientProject && (int) $quote->client_project_id === (int) $clientProject->id && ! ($quote->is_draft ?? false)) {
             $this->syncProjectQuotation($clientProject, $quote->fresh());
         }
 

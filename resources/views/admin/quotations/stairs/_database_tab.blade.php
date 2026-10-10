@@ -4,9 +4,11 @@
 @endphp
 <div class="pq-db-wrap admin-card">
   @unless ($hideDatabaseHeading ?? false)
-  <h3 class="cp-form-help-spaced">Stairs price database</h3>
+  <h3 class="cp-form-help-spaced">
+    Stairs price database
+    <x-admin.info-tip label="Stairs price database">Set per-step rates (before HST). Carpet removal, stain, and clear coat are global — one price for all materials. Other fields are per material type.</x-admin.info-tip>
+  </h3>
   @endunless
-  <p class="admin-form-help">Set per-step rates (before HST). Carpet removal, stain, and clear coat are global — one price for all materials. Other fields are per material type.</p>
 
   <form method="post" action="{{ route('admin.quotations.stairs.database.update') }}" enctype="multipart/form-data" class="sq-db-form">
     @csrf
@@ -30,8 +32,10 @@
     </div>
 
     <div class="admin-card sq-db-nosing-photos" style="margin-bottom:20px;background:#f1f5f9;border:1px solid #e2e8f0;">
-      <h4 style="margin:0 0 8px;font-size:14px;">Nosing option photos (quotation picker)</h4>
-      <p class="admin-form-help" style="margin:0 0 14px;">These images appear when quoting <strong>Vinyl without nosing</strong> (materials where nosing is an add-on). Same image format as material photos.</p>
+      <h4 style="margin:0 0 8px;font-size:14px;">
+        Nosing option photos (quotation picker)
+        <x-admin.info-tip label="Nosing option photos (quotation picker)">These images appear when quoting <strong>Vinyl without nosing</strong> (materials where nosing is an add-on). Same image format as material photos.</x-admin.info-tip>
+      </h4>
       <div class="pq-form-grid">
         @foreach (\App\Models\StairsMaterialType::nosingChoiceLabels() as $nk => $nLabel)
           <div class="admin-form-group cp-label-flush">

@@ -1,12 +1,11 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Team & roles')
+@section('heading')
+  Team &amp; roles
+  <x-admin.info-tip label="Team & roles">Admins have full access, including deleting records. Staff accounts can use the CRM day-to-day but are blocked from delete actions.</x-admin.info-tip>
+@endsection
 
 @section('content')
-  <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">Admins have full access, including deleting records. Staff accounts can use the CRM day-to-day but are blocked from delete actions.</p>
-  </div>
-
   <div class="admin-card">
     <div class="admin-table-scroll">
       <table class="admin-table">

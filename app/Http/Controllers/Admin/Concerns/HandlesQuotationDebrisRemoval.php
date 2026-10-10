@@ -16,7 +16,7 @@ trait HandlesQuotationDebrisRemoval
     }
 
     /**
-     * @return array{include_debris_removal: bool, debris_removal_amount: float}|array{}
+     * @return array{include_debris_removal: bool|null, debris_removal_amount: float}|array{}
      */
     protected function debrisRemovalPersistenceFromRequest(
         Request $request,

@@ -37,8 +37,12 @@ class DebrisRemovalExpenseService
     /** @return array<string, mixed> */
     public static function validationRules(): array
     {
+        $presence = \App\Support\QuotationSaveIntent::isDraft()
+            ? 'nullable'
+            : 'required';
+
         return [
-            'include_debris_removal' => ['required', 'in:0,1'],
+            'include_debris_removal' => [$presence, 'in:0,1'],
             'debris_removal_amount' => ['nullable', 'numeric', 'min:0', 'max:999999'],
         ];
     }
@@ -55,19 +59,21 @@ class DebrisRemovalExpenseService
     }
 
     /**
-     * @return array{include_debris_removal: bool, debris_removal_amount: float}
+     * @return array{include_debris_removal: bool|null, debris_removal_amount: float}
      */
     public function persistenceFromRequest(Request $request): array
     {
         $includeRaw = $request->input('include_debris_removal');
-        if ($request->has('include_debris_removal')) {
-            if (is_array($includeRaw)) {
-                $include = in_array('1', $includeRaw, true) || in_array(1, $includeRaw, true);
-            } else {
-                $include = $includeRaw === true || $includeRaw === 1 || $includeRaw === '1';
-            }
+        if (! $request->has('include_debris_removal') || $includeRaw === null || $includeRaw === '') {
+            return [
+                'include_debris_removal' => null,
+                'debris_removal_amount' => 0.0,
+            ];
+        }
+        if (is_array($includeRaw)) {
+            $include = in_array('1', $includeRaw, true) || in_array(1, $includeRaw, true);
         } else {
-            $include = false;
+            $include = $includeRaw === true || $includeRaw === 1 || $includeRaw === '1';
         }
 
         $parsed = CadMoney::parse($request->input('debris_removal_amount', 0));

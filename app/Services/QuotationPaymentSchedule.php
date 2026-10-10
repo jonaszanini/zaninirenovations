@@ -135,8 +135,12 @@ class QuotationPaymentSchedule
     /** @return array<string, mixed> */
     public static function validationRules(): array
     {
+        $presence = \App\Support\QuotationSaveIntent::isDraft()
+            ? 'nullable'
+            : 'required';
+
         return [
-            'payment_installments' => ['required', 'integer', 'in:'.implode(',', self::ALLOWED)],
+            'payment_installments' => [$presence, 'integer', 'in:'.implode(',', self::ALLOWED)],
             'payment_percentages' => ['nullable', 'array'],
             'payment_percentages.*' => ['nullable', 'array'],
             'payment_percentages.*.*' => ['nullable', 'numeric', 'min:0.01', 'max:100'],

@@ -71,10 +71,13 @@
       if (status) status.textContent = (idx + 1) + ' of ' + wizardKeys.length;
       var prevBtn = document.getElementById('mw-prev');
       var nextBtn = document.getElementById('mw-next');
-      if (prevBtn) prevBtn.disabled = idx === 0;
+      if (prevBtn) {
+        prevBtn.disabled = idx === 0;
+        prevBtn.textContent = '← Back';
+      }
       if (nextBtn) {
         nextBtn.disabled = false;
-        nextBtn.textContent = idx === wizardKeys.length - 1 ? 'Review' : 'Next';
+        nextBtn.textContent = idx === wizardKeys.length - 1 ? 'Review' : '→ Next';
       }
       if (scroll) {
         var el = sectionEl(wizardKeys[idx]);
@@ -126,15 +129,105 @@
     }
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      submitWizard('publish');
+      var intentEl = document.getElementById('mw-save-intent');
+      submitWizard(intentEl && intentEl.value === 'draft' ? 'draft' : 'publish');
     });
+
+    function anyNumberAtLeast(selector, min) {
+      var nodes = form.querySelectorAll(selector);
+      for (var i = 0; i < nodes.length; i++) {
+        if ((parseFloat(String(nodes[i].value || '').replace(/,/g, '')) || 0) >= min) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function showStepErrors(messages) {
+      var host = document.getElementById('mw-step-nav');
+      var box = document.getElementById('mw-step-errors');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'mw-step-errors';
+        box.className = 'qh-step-errors';
+        box.setAttribute('role', 'alert');
+        if (host && host.parentNode) {
+          host.parentNode.insertBefore(box, host.nextSibling);
+        } else {
+          form.insertBefore(box, form.firstChild);
+        }
+      }
+      if (!messages.length) {
+        box.hidden = true;
+        box.innerHTML = '';
+        return;
+      }
+      box.hidden = false;
+      box.innerHTML = '<p>This step is missing required information:</p><ul>'
+        + messages.map(function (m) { return '<li>' + escapeHtml(m) + '</li>'; }).join('')
+        + '</ul>';
+    }
+
+    function collectRequiredLabels(scope) {
+      var missing = [];
+      if (!scope) return missing;
+      var fields = scope.querySelectorAll('input, select, textarea');
+      for (var i = 0; i < fields.length; i++) {
+        var el = fields[i];
+        if (el.disabled || el.readOnly) continue;
+        if (el.closest && el.closest('[hidden]')) continue;
+        if (typeof el.checkValidity === 'function' && !el.checkValidity()) {
+          var label = '';
+          if (el.id) {
+            var lab = form.querySelector('label[for="' + el.id + '"]');
+            if (lab) label = (lab.textContent || '').replace(/\s+/g, ' ').trim();
+          }
+          missing.push(label || el.getAttribute('aria-label') || el.name || 'A required field');
+        }
+      }
+      return missing;
+    }
+
+    function validateCurrentStep() {
+      var missing = [];
+      var key = wizardKeys[currentIndex];
+      var step = sectionEl(key);
+      var clientCard = form.querySelector('.mw-client-card');
+      if (currentIndex === 0 && clientCard) {
+        missing = missing.concat(collectRequiredLabels(clientCard));
+      }
+      missing = missing.concat(collectRequiredLabels(step));
+      if (key === 'pieces') {
+        var hasPieceDims = anyNumberAtLeast('[name^="pieces["][name$="[width]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name$="[length]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name$="[height]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name$="[depth]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name*="[sets]"][name$="[length]"]', 0.01)
+          || anyNumberAtLeast('[name^="pieces["][name*="[sets]"][name$="[width]"]', 0.01);
+        if (!hasPieceDims) {
+          missing.push('At least one piece with a length, width, height, or depth');
+        }
+      }
+      showStepErrors(missing);
+      if (missing.length) {
+        var firstInvalid = (step || clientCard || form).querySelector(':invalid');
+        if (firstInvalid) {
+          try { firstInvalid.focus(); } catch (err) { /* ignore */ }
+        }
+        return false;
+      }
+      return true;
+    }
 
     if (!isEdit) {
       setWizardStep(0, false);
       var prevBtn = document.getElementById('mw-prev');
       var nextBtn = document.getElementById('mw-next');
       if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
-      if (nextBtn) nextBtn.addEventListener('click', function () { setWizardStep(currentIndex + 1, true); });
+      if (nextBtn) nextBtn.addEventListener('click', function () {
+        if (!validateCurrentStep()) return;
+        setWizardStep(currentIndex + 1, true);
+      });
     } else {
       var nav = document.getElementById('mw-step-nav');
       if (nav) nav.hidden = true;
@@ -598,9 +691,19 @@
       form.querySelectorAll('[data-mw-piece]').forEach(function (piece, i) {
         var n = piece.querySelector('[data-mw-piece-n]');
         if (n) n.textContent = String(i + 1);
+        if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshRepeatLabels === 'function') {
+          window.AdminInfoTip.refreshRepeatLabels(piece);
+        }
         piece.querySelectorAll('[name]').forEach(function (input) {
           input.name = input.name.replace(/pieces\[\d+\]/, 'pieces[' + i + ']');
           if (input.id) input.id = input.id.replace(/pieces-\d+/, 'pieces-' + i);
+        });
+        piece.querySelectorAll('label[for]').forEach(function (lab) {
+          var current = lab.getAttribute('for') || lab.htmlFor || '';
+          if (!current) return;
+          var next = current.replace(/pieces-\d+/, 'pieces-' + i);
+          lab.setAttribute('for', next);
+          lab.htmlFor = next;
         });
       });
     }
@@ -705,6 +808,8 @@
           });
           list.insertBefore(clone, piece.nextSibling);
           reindexPieces();
+          var refreshClone = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+          if (refreshClone) refreshClone(clone);
           initPiece(clone);
           schedulePreview();
         });
@@ -721,6 +826,8 @@
           wrap.innerHTML = tpl.innerHTML.replace(/__P__/g, String(pIndex)).replace(/__S__/g, String(sIndex)).trim();
           var row = wrap.firstElementChild;
           list.appendChild(row);
+          var refreshSet = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+          if (refreshSet) refreshSet(row);
           row.querySelectorAll('.mw-preview').forEach(bindPreview);
           bindSetRemove(row);
           schedulePreview();
@@ -753,8 +860,10 @@
         wrap.innerHTML = pieceTpl.innerHTML.replace(/__P__/g, String(i)).trim();
         var piece = wrap.firstElementChild;
         pieceList.appendChild(piece);
-        initPiece(piece);
         reindexPieces();
+        var refreshPiece = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+        if (refreshPiece) refreshPiece(piece);
+        initPiece(piece);
         if (window.cpMoneyMask) window.cpMoneyMask.wire(piece.querySelectorAll('.cp-money-input'));
         schedulePreview();
       });
@@ -799,6 +908,8 @@
         wrap.innerHTML = extraTpl.innerHTML.replace(/__I__/g, String(i)).trim();
         var row = wrap.firstElementChild;
         extraList.appendChild(row);
+        var refreshExtra = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+        if (refreshExtra) refreshExtra(row);
         initExtraRow(row);
         schedulePreview();
       });
