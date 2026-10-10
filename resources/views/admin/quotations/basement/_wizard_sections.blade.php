@@ -328,8 +328,13 @@
 
 {{-- 2. Demolition --}}
 @php $step++; @endphp
-<details class="br-acc admin-card" data-br-step="demolition" @unless(in_array('demolition', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Demolition &amp; Preparation</summary>
+<details class="br-acc admin-card" data-br-step="demolition" data-qh-step="2" @unless(in_array('demolition', $enabledNow, true)) hidden @endunless>
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Demolition &amp; Preparation
+    @include('admin.partials.quotation_price_config_gear', [
+      'url' => route('admin.quotations.basement.price-configuration', request()->filled('project') ? ['project' => (int) request('project')] : []),
+    ])
+  </summary>
   <div class="br-acc__body">
     @include('admin.partials.checkbox', [
       'name' => 'include_demolition',

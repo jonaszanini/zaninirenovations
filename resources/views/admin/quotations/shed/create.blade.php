@@ -257,9 +257,6 @@
       <div class="pq-summary-card">
         <div class="qh-priced-head">
           <h4>Live breakdown</h4>
-          @include('admin.partials.quotation_price_config_gear', [
-            'url' => route('admin.quotations.shed.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-          ])
         </div>
         <div id="sh-live-root">
           <p class="admin-form-help" id="sh-live-empty">Enter length and width to see totals.</p>

@@ -736,7 +736,7 @@
     <aside class="admin-card fq-breakdown-card">
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
 
-      <div class="qh-priced-head">
+      <div class="qh-priced-head" data-qh-step="2">
         <h3 class="cp-heading-md">
           Live breakdown
           <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>

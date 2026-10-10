@@ -209,9 +209,6 @@
       <div class="fl-step-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h4 style="margin:0;">1. General Details</h4>
-            @include('admin.partials.quotation_price_config_gear', [
-              'url' => route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-            ])
         </div>
         
         @if (! $isEdit || ! $quotation->isLinked())
@@ -236,10 +233,13 @@
         </div>
       </div>
 
-      <div class="fl-step-card">
-        <h4 class="admin-label-with-tip">
+      <div class="fl-step-card" data-qh-step="2">
+        <h4 class="admin-label-with-tip qh-priced-head">
           2. Measurements
           <x-admin.info-tip label="Measurements">Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.</x-admin.info-tip>
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
         </h4>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
           <div class="admin-form-group" style="margin-bottom:0;">
@@ -422,9 +422,6 @@
       <div class="pq-summary-card">
         <div class="qh-priced-head">
           <h4>Live breakdown</h4>
-          @include('admin.partials.quotation_price_config_gear', [
-            'url' => route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-          ])
         </div>
         <div id="tl-live-root">
           <p class="admin-form-help" id="tl-live-empty">Enter measurements to see totals.</p>

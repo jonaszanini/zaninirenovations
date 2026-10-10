@@ -232,8 +232,13 @@
         </div>
       </div>
 
-      <div class="admin-card fl-step-card">
-        <h4>Core measurements</h4>
+      <div class="admin-card fl-step-card" data-qh-step="2">
+        <h4 class="qh-priced-head">
+          Core measurements
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.flooring.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
+        </h4>
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label for="fl-flooring-type">Flooring type</label>
@@ -455,9 +460,6 @@
       <div class="pq-summary-card">
         <div class="qh-priced-head">
           <h4>Live breakdown</h4>
-          @include('admin.partials.quotation_price_config_gear', [
-            'url' => route('admin.quotations.flooring.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-          ])
         </div>
         <div id="fl-live-root">
           <p class="admin-form-help" id="fl-live-empty">Enter measurements to see totals.</p>

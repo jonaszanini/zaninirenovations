@@ -268,8 +268,13 @@
           </div>
         </div>
 
-        <div class="pt-step-card">
-          <h4>Step 2 — Specifications</h4>
+        <div class="pt-step-card" data-qh-step="2">
+          <h4 class="qh-priced-head">
+            Step 2 — Specifications
+            @include('admin.partials.quotation_price_config_gear', [
+              'url' => route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+            ])
+          </h4>
           <div class="pq-form-grid">
             <div class="admin-form-group">
               <label for="paint_line_id">Paint brand / line</label>
@@ -351,9 +356,6 @@
       <div class="pq-summary-card">
         <div class="qh-priced-head">
           <h4>Live breakdown</h4>
-          @include('admin.partials.quotation_price_config_gear', [
-            'url' => route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-          ])
         </div>
         <div id="pt-live-root">
           <div id="pt-readiness-root" aria-live="polite"></div>

@@ -248,8 +248,13 @@
             </div>
           </div>
 
-          <div class="admin-card">
-            <h3 style="margin:0 0 14px;">Step 2 — Carpet removal</h3>
+          <div class="admin-card" data-qh-step="2">
+            <h3 class="qh-priced-head" style="margin:0 0 14px;">
+              Step 2 — Carpet removal
+              @include('admin.partials.quotation_price_config_gear', [
+                'url' => route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+              ])
+            </h3>
             <label class="admin-checkbox admin-checkbox--block">
               <input type="checkbox" name="carpet_removal" value="1" class="admin-checkbox__input sq-calc-in" id="sq-carpet"
                 @checked(old('carpet_removal', $inputs['carpet_removal'] ?? false))>
@@ -366,9 +371,6 @@
         <div class="pq-summary-card">
           <div class="qh-priced-head">
             <h4>Live summary</h4>
-            @include('admin.partials.quotation_price_config_gear', [
-              'url' => route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-            ])
           </div>
           <div id="sq-live-root">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>

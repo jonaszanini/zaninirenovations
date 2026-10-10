@@ -327,9 +327,6 @@
       <div class="pq-summary-card">
         <div class="qh-priced-head">
           <h4>Live breakdown</h4>
-          @include('admin.partials.quotation_price_config_gear', [
-            'url' => route('admin.quotations.millwork.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-          ])
         </div>
         <div id="mw-live-root">
           <p class="admin-form-help" id="mw-live-empty">Add piece dimensions to see the cut plan.</p>

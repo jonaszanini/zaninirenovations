@@ -378,7 +378,7 @@
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
 
-      <div class="qh-priced-head">
+      <div class="qh-priced-head" data-qh-step="2">
         <h3 class="cp-heading-md">
           Live breakdown
           <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>

@@ -506,7 +506,7 @@
         @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'pq-main-form'])
         @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'pq-main-form'])
         <div class="pq-summary-card">
-          <div class="qh-priced-head">
+          <div class="qh-priced-head" data-qh-step="2">
             <h4>Live summary</h4>
             @include('admin.partials.quotation_price_config_gear', [
               'url' => route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []),

@@ -393,15 +393,14 @@ JS
             $back = $this->assertHtmlPos($html, '← Back', $type.' Back');
             $status = $this->assertHtmlPos($html, 'br-step-nav__status', $type.' step counter');
             $next = $this->assertHtmlPos($html, '→ Next', $type.' Next');
-            $gear = $this->assertHtmlPos($html, 'qh-price-gear', $type.' Price configuration gear');
             $this->assertLessThan($back, $cancel, "{$type}: Back must sit below the action buttons");
             $this->assertLessThan($status, $back, "{$type}: step counter must follow Back");
             $this->assertLessThan($next, $status, "{$type}: Next must follow the step counter");
-            $this->assertLessThan($gear, $next, "{$type}: gear stays after the step bar (not in the header actions)");
             $this->assertTrue(
                 strpos($html, 'qh-actions') < strpos($html, 'qh-wizard'),
                 "{$type} step bar must render after the button row"
             );
+            $this->assertPriceGearInStep2($html, $type);
         } elseif ($type === 'basement') {
             $this->assertStringContainsString('id="br-step-nav"', $html);
             $this->assertStringContainsString('id="br-sticky-total"', $html);
@@ -409,15 +408,45 @@ JS
             $back = $this->assertHtmlPos($html, '← Back', $type.' Back');
             $status = $this->assertHtmlPos($html, 'id="br-step-status"', $type.' step counter');
             $next = $this->assertHtmlPos($html, 'id="br-next"', $type.' Next');
-            $gear = $this->assertHtmlPos($html, 'qh-price-gear', $type.' Price configuration gear');
             $this->assertLessThan($back, $cancel, 'Basement Back/Next stay out of the header button row');
             $this->assertLessThan($back, $sticky, 'Basement Back must be inside the sticky bar');
             $this->assertLessThan($status, $back, 'Basement step counter must follow Back');
             $this->assertLessThan($next, $status, 'Basement Next must follow the step counter');
-            $this->assertNotFalse($gear);
+            $this->assertPriceGearInStep2($html, $type);
         } elseif ($type !== 'standard') {
-            $this->assertHtmlPos($html, 'qh-price-gear', $type.' Price configuration gear');
+            $this->assertPriceGearInStep2($html, $type);
+        } else {
+            $this->assertFalse(strpos($html, 'qh-price-gear'), 'Standard has no Price configuration gear');
         }
+    }
+
+    private function assertPriceGearInStep2(string $html, string $type): void
+    {
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $dom->loadHTML($html);
+        libxml_clear_errors();
+        $xpath = new \DOMXPath($dom);
+        $gearClass = 'contains(concat(" ", normalize-space(@class), " "), " qh-price-gear ")';
+        $headerClass = 'contains(concat(" ", normalize-space(@class), " "), " qh-actions ")'
+            .' or contains(concat(" ", normalize-space(@class), " "), " qh-wizard ")';
+
+        $inChrome = $xpath->query('//*['.$headerClass.']//*['.$gearClass.']');
+        $this->assertSame(
+            0,
+            $inChrome->length,
+            "{$type}: Price configuration gear must not sit in Save/Draft/Cancel or the Back/counter/Next bar"
+        );
+
+        $inStep2 = $xpath->query('//*[@data-qh-step="2"]//*['.$gearClass.']');
+        $this->assertGreaterThan(
+            0,
+            $inStep2->length,
+            "{$type}: Price configuration gear must sit inside [data-qh-step=\"2\"]"
+        );
+
+        $all = $xpath->query('//*['.$gearClass.']');
+        $this->assertSame(1, $all->length, "{$type}: exactly one Price configuration gear");
     }
 
     private function assertHtmlPos(string $html, string $needle, string $label): int

@@ -133,8 +133,13 @@
         </div>
       </div>
 
-      <div class="admin-card tm-card">
-        <h4>Doors &amp; windows</h4>
+      <div class="admin-card tm-card" data-qh-step="2">
+        <h4 class="qh-priced-head">
+          Doors &amp; windows
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
+        </h4>
         <label class="admin-checkbox tm-family-toggle">
           <input type="checkbox" class="admin-checkbox__input tm-preview" name="enabled_families[]" value="doors_windows"
                  data-tm-family="doors_windows" @checked($familyOn('doors_windows'))>
@@ -564,9 +569,6 @@
       <div class="pq-summary-card">
         <div class="qh-priced-head">
           <h4>Live breakdown</h4>
-          @include('admin.partials.quotation_price_config_gear', [
-            'url' => route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-          ])
         </div>
         <div id="tm-live-root">
           <p class="admin-form-help" id="tm-live-empty">Turn on a family and enter quantities.</p>

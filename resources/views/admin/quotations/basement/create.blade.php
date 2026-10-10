@@ -363,9 +363,6 @@
       <div class="pq-summary-card">
         <div class="qh-priced-head">
           <h4>Live breakdown</h4>
-          @include('admin.partials.quotation_price_config_gear', [
-            'url' => route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []),
-          ])
         </div>
         <div id="br-live-root">
           <p class="admin-form-help" id="br-live-empty">Enter the basement area to see totals.</p>

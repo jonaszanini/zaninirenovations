@@ -5275,6 +5275,10 @@ body.asp-open {
   align-items: center;
   gap: 0;
 }
+.br-acc__summary > .qh-priced-gear {
+  margin-left: auto;
+  flex-shrink: 0;
+}
 .qh-price-gear {
   display: inline-flex;
   align-items: center;

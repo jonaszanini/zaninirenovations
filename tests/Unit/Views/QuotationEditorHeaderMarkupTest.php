@@ -69,4 +69,62 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString("name=\"save_intent\"", $tile);
         $this->assertStringContainsString("id=\"tl-is-draft\" value=\"{{ \$isEdit && \$quotation->is_draft ? '1' : '0' }}\"", $tile);
     }
+
+    public function test_action_row_then_step_bar_and_gear_in_step_two(): void
+    {
+        $header = file_get_contents(resource_path('views/admin/partials/quotation_editor_header.blade.php'));
+        $this->assertNotFalse($header);
+        $save = strpos($header, 'qh-actions__save');
+        $draft = strpos($header, 'qh-actions__draft');
+        $cancel = strpos($header, 'qh-actions__cancel');
+        $wizard = strpos($header, 'qh-wizard');
+        $back = strpos($header, '← Back');
+        $status = strpos($header, 'br-step-nav__status');
+        $next = strpos($header, '→ Next');
+        $this->assertNotFalse($save);
+        $this->assertNotFalse($draft);
+        $this->assertNotFalse($cancel);
+        $this->assertNotFalse($wizard);
+        $this->assertNotFalse($back);
+        $this->assertNotFalse($status);
+        $this->assertNotFalse($next);
+        $this->assertLessThan($draft, $save, 'Save quotation must precede Save as draft');
+        $this->assertLessThan($cancel, $draft, 'Save as draft must precede Cancel');
+        $this->assertLessThan($wizard, $cancel, 'Step bar must follow Cancel');
+        $this->assertLessThan($back, $wizard, 'Back must be inside the step bar');
+        $this->assertLessThan($status, $back, 'Step counter must follow Back');
+        $this->assertLessThan($next, $status, 'Next must follow the step counter');
+        $this->assertFalse(strpos($header, 'qh-price-gear'), 'Gear must not live in the shared header');
+
+        $step2Sources = [
+            'basement/_wizard_sections.blade.php',
+            'millwork/_wizard_sections.blade.php',
+            'shed/_wizard_sections.blade.php',
+            'flooring/create.blade.php',
+            'trimming/create.blade.php',
+            'painting/create.blade.php',
+            'tile/create.blade.php',
+            'fence/create.blade.php',
+            'paving/create.blade.php',
+            'stairs/create.blade.php',
+            'low_deck/create.blade.php',
+        ];
+        foreach ($step2Sources as $file) {
+            $blade = file_get_contents(resource_path('views/admin/quotations/'.$file));
+            $this->assertNotFalse($blade, $file.' missing');
+            $step = strpos($blade, 'data-qh-step="2"');
+            $gear = strpos($blade, 'quotation_price_config_gear');
+            $this->assertNotFalse($step, "{$file} must mark step 2");
+            $this->assertNotFalse($gear, "{$file} must include the Price configuration gear");
+            $this->assertLessThan(
+                $gear,
+                $step,
+                "{$file}: gear must sit after the step-2 marker (inside that block)"
+            );
+        }
+
+        $standard = file_get_contents(resource_path('views/admin/quotations/standard/create.blade.php'));
+        $this->assertStringNotContainsString('quotation_price_config_gear', $standard);
+        $this->assertStringNotContainsString('qh-price-gear', $standard);
+    }
 }
