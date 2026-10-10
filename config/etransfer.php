@@ -45,4 +45,19 @@ return [
         explode(',', (string) env('ETRANSFER_OWN_EMAILS', ''))
     ))),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Own domains (Reply-To is never a payer on these)
+    |--------------------------------------------------------------------------
+    | zaninirenovations.ca is always included. Extra company domains via
+    | ETRANSFER_OWN_DOMAINS (comma-separated). Do not list public mailbox
+    | hosts (gmail.com, outlook.com, hotmail.com, yahoo.com, icloud.com, …):
+    | those own inboxes are matched by exact address only.
+    */
+
+    'own_domains' => array_values(array_filter(array_map(
+        static fn (string $domain): string => strtolower(trim($domain)),
+        explode(',', (string) env('ETRANSFER_OWN_DOMAINS', ''))
+    ))),
+
 ];

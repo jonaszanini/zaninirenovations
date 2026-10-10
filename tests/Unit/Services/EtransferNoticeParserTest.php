@@ -326,6 +326,8 @@ TXT;
 
     public function test_own_reply_to_is_not_stored_as_sender_email(): void
     {
+        $this->assertNotContains('gmail.com', $this->parser->ownDomains());
+
         $text = <<<'TXT'
 From: notify@payments.interac.ca
 Reply-To: zaninirenovations@gmail.com
@@ -338,9 +340,27 @@ TXT;
         $this->assertNull($parsed['sender_email']);
     }
 
+    public function test_public_gmail_reply_to_payer_is_kept(): void
+    {
+        $this->assertNotContains('gmail.com', $this->parser->ownDomains());
+
+        $text = <<<'TXT'
+From: notify@payments.interac.ca
+To: zaninirenovations@gmail.com
+Reply-To: jane@gmail.com
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAREPLYGMAIL001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertSame('jane@gmail.com', $parsed['sender_email']);
+    }
+
     public function test_unconfigured_own_domain_reply_to_is_not_stored(): void
     {
         $this->assertContains('zaninirenovations.ca', $this->parser->ownDomains());
+        $this->assertNotContains('gmail.com', $this->parser->ownDomains());
 
         $text = <<<'TXT'
 From: notify@payments.interac.ca

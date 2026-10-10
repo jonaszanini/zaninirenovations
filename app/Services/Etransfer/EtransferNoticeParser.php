@@ -281,17 +281,15 @@ class EtransferNoticeParser
      */
     public function ownDomains(): array
     {
-        $domains = ['zaninirenovations.ca'];
-        foreach ($this->ownEmails() as $email) {
-            $domain = substr(strrchr($email, '@') ?: '', 1);
-            if (is_string($domain) && $domain !== '') {
-                $domains[] = $domain;
-            }
-        }
+        $configured = config('etransfer.own_domains', []);
+        $fromConfig = is_array($configured) ? $configured : [];
 
         $unique = [];
-        foreach ($domains as $domain) {
-            $domain = strtolower(preg_replace('/^www\./', '', $domain) ?? $domain);
+        foreach (array_merge(['zaninirenovations.ca'], $fromConfig) as $domain) {
+            if (! is_string($domain) && ! is_numeric($domain)) {
+                continue;
+            }
+            $domain = strtolower(preg_replace('/^www\./', '', trim((string) $domain)) ?? '');
             if ($domain !== '') {
                 $unique[$domain] = $domain;
             }
