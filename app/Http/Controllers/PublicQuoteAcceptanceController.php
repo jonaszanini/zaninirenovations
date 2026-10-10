@@ -77,7 +77,7 @@ class PublicQuoteAcceptanceController extends Controller
             return QuoteAcceptanceService::STATUS_INVALID_STATE;
         }
         if ($quotation->isSourceDraft()) {
-            return QuoteAcceptanceService::STATUS_INVALID_STATE;
+            return QuoteAcceptanceService::STATUS_REVISING;
         }
         if ($quotation->source_type === \App\Models\ClientProjectQuotation::SOURCE_MILLWORK && $quotation->source_id) {
             $millwork = \App\Models\MillworkQuotation::query()->find($quotation->source_id);

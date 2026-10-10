@@ -19,6 +19,7 @@ use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\PavingMarbleCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use App\Services\PavingQuotationCalculator;
 use App\Services\PavingStoneEntryResolver;
@@ -112,9 +113,7 @@ class PavingQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.paving.edit', $paving_quotation)
-            ->with('success', $linkedNow
-                ? 'Paving quotation '.$paving_quotation->quote_number.' updated and linked.'
-                : 'Paving quotation '.$paving_quotation->quote_number.' updated (v'.$paving_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Paving', $paving_quotation, $linkedNow));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

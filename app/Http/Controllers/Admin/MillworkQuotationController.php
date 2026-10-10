@@ -23,6 +23,7 @@ use App\Services\QuotationPaymentSchedule;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
@@ -117,9 +118,7 @@ class MillworkQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.millwork.edit', $millwork_quotation)
-            ->with('success', $linkedNow
-                ? 'Millwork quotation '.$millwork_quotation->quote_number.' updated and linked.'
-                : 'Millwork quotation '.$millwork_quotation->quote_number.' updated (v'.$millwork_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Millwork', $millwork_quotation, $linkedNow));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

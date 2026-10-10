@@ -17,6 +17,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\FlooringQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use App\Support\SafeOutboundHttp;
@@ -106,9 +107,7 @@ class FlooringQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.flooring.edit', $flooring_quotation)
-            ->with('success', $linkedNow
-                ? 'Flooring quotation '.$flooring_quotation->quote_number.' updated and linked.'
-                : 'Flooring quotation '.$flooring_quotation->quote_number.' updated (v'.$flooring_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Flooring', $flooring_quotation, $linkedNow));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

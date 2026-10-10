@@ -54,6 +54,7 @@ jobs:
           php artisan test tests/Unit/Support/AdminListFiltersTest.php
           php artisan test tests/Unit/Support/CadMoneyTest.php
           php artisan test tests/Unit/Support/QuotationSaveIntentTest.php
+          php artisan test tests/Unit/Support/QuotationDraftFlashTest.php
           php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php

@@ -19,6 +19,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TrimmingQuotationCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
@@ -108,9 +109,7 @@ class TrimmingQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.trimming.edit', $trimming_quotation)
-            ->with('success', $linkedNow
-                ? 'Trimming quotation '.$trimming_quotation->quote_number.' updated and linked.'
-                : 'Trimming quotation '.$trimming_quotation->quote_number.' updated (v'.$trimming_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Trimming', $trimming_quotation, $linkedNow));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }

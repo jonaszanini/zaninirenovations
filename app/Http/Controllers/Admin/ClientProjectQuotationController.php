@@ -222,7 +222,10 @@ class ClientProjectQuotationController extends Controller
         abort_unless((int) $quotation->client_project_id === (int) $client_project->id, 404);
 
         if ($quotation->isSourceDraft()) {
-            abort(404, 'Quotation not available.');
+            return response()->view('site.quotations.revising', [
+                'message' => ClientProjectQuotation::SOURCE_REVISING_MESSAGE,
+                'quotation' => $quotation,
+            ]);
         }
 
         if (!$quotation->hasContent()) {
@@ -481,13 +484,16 @@ class ClientProjectQuotationController extends Controller
             );
 
             if ($result === \App\Services\QuoteAcceptanceService::STATUS_INVALID_STATE
-                || $result === \App\Services\QuoteAcceptanceService::STATUS_INCOMPLETE) {
+                || $result === \App\Services\QuoteAcceptanceService::STATUS_INCOMPLETE
+                || $result === \App\Services\QuoteAcceptanceService::STATUS_REVISING) {
                 return redirect()
                     ->route('admin.client-projects.show', $client_project)
                     ->withFragment('quotation')
                     ->with('error', $result === \App\Services\QuoteAcceptanceService::STATUS_INCOMPLETE
                         ? MillworkQuotation::unplacedAdminMessage()
-                        : 'This quotation cannot be accepted in its current state.');
+                        : ($result === \App\Services\QuoteAcceptanceService::STATUS_REVISING
+                            ? ClientProjectQuotation::SOURCE_REVISING_MESSAGE
+                            : 'This quotation cannot be accepted in its current state.'));
             }
 
             return redirect()

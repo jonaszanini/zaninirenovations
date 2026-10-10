@@ -71,6 +71,16 @@
     if (!draftBtn) {
       return;
     }
+    if (form && form.getAttribute('data-qh-client-share') === '1') {
+      var withdrawOk = window.confirm(
+        "This quotation is already with the client. Saving it as a draft will stop their link from working until you publish it again. Continue?"
+      );
+      if (!withdrawOk) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
+    }
     if (form) {
       setCanonicalIntent(form, true);
       relaxPublishOnlyRequired(form);

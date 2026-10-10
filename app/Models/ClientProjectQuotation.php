@@ -506,6 +506,8 @@ class ClientProjectQuotation extends Model
 
     public const SOURCE_DRAFT_SHARE_MESSAGE = 'This quotation is still a draft. Publish it (Save quotation) before sharing it with the client.';
 
+    public const SOURCE_REVISING_MESSAGE = 'This quote is being revised. The updated quotation will be available again once it is published.';
+
     public function isSourceDraft(): bool
     {
         $source = $this->sourceQuotationModel();

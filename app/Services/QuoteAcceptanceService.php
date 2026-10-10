@@ -23,6 +23,8 @@ class QuoteAcceptanceService
 
     public const STATUS_INCOMPLETE = 'incomplete';
 
+    public const STATUS_REVISING = 'revising';
+
     public function __construct(
         private ClientProjectStatusService $statusService,
     ) {
@@ -72,7 +74,7 @@ class QuoteAcceptanceService
         }
 
         if ($quotation->isSourceDraft()) {
-            return self::STATUS_INVALID_STATE;
+            return self::STATUS_REVISING;
         }
 
         if ($quotation->source_type === ClientProjectQuotation::SOURCE_MILLWORK && $quotation->source_id) {
