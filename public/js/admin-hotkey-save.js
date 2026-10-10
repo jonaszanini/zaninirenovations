@@ -12,6 +12,7 @@
   var DEBOUNCE_MS = 700;
   var WATCH_MS = 12000;
   var ABORT_EVENT = 'admin-hotkey-save:abort';
+  var DIALOG_CANCEL_EVENT = 'admin-dialog:cancel';
   var EXPECT_KEY = 'admin-save-expect';
   var HOTKEY_FIELD = '_hotkey_save';
   var EMAIL_PRIOR_FIELD = '_hotkey_email_prior';
@@ -726,6 +727,7 @@
       if (doc && typeof doc.addEventListener === 'function') {
         abortListener = function () { abortIfWaiting(); };
         doc.addEventListener(ABORT_EVENT, abortListener);
+        doc.addEventListener(DIALOG_CANCEL_EVENT, abortListener);
       }
 
       return function unwrapConfirms() {
@@ -733,6 +735,7 @@
         if (dialogHost && origDialogConfirm) dialogHost.confirm = origDialogConfirm;
         if (doc && abortListener && typeof doc.removeEventListener === 'function') {
           doc.removeEventListener(ABORT_EVENT, abortListener);
+          doc.removeEventListener(DIALOG_CANCEL_EVENT, abortListener);
         }
       };
     }
@@ -1193,6 +1196,8 @@
       doc.addEventListener('keydown', handleKeydown, true);
       doc.addEventListener('click', onMarkedClick, true);
       doc.addEventListener('submit', onFormSubmit, true);
+      doc.addEventListener(ABORT_EVENT, function () { abortIfWaiting(); });
+      doc.addEventListener(DIALOG_CANCEL_EVENT, function () { abortIfWaiting(); });
       if (env.window && env.window.addEventListener) {
         env.window.addEventListener('pagehide', onPageHide);
         env.window.addEventListener('pageshow', onPageShow);
@@ -1221,6 +1226,7 @@
       DEBOUNCE_MS: DEBOUNCE_MS,
       WATCH_MS: WATCH_MS,
       ABORT_EVENT: ABORT_EVENT,
+      DIALOG_CANCEL_EVENT: DIALOG_CANCEL_EVENT,
       EXPECT_KEY: EXPECT_KEY,
       HOTKEY_FIELD: HOTKEY_FIELD,
       EMAIL_PRIOR_FIELD: EMAIL_PRIOR_FIELD,
@@ -1282,6 +1288,7 @@
     DEBOUNCE_MS: DEBOUNCE_MS,
     WATCH_MS: WATCH_MS,
     ABORT_EVENT: ABORT_EVENT,
+    DIALOG_CANCEL_EVENT: DIALOG_CANCEL_EVENT,
     EXPECT_KEY: EXPECT_KEY,
     SUBMIT_ONCE_FIELD: SUBMIT_ONCE_FIELD,
     create: create,

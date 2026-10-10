@@ -845,6 +845,46 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   inst.reset();
 })();
 
+(function dialogCancelReleasesEvenIfConfirmWasCaptured() {
+  const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'br-btn-draft' });
+  const form = makeEl('form', { id: 'br-form' }, [btn]);
+  const doc = makeDoc([form]);
+  const capturedCbs = [];
+  const capturedConfirm = function () {
+    return {
+      then(cb) {
+        capturedCbs.push(cb);
+        return this;
+      },
+    };
+  };
+  const win = {
+    navigator: { platform: 'Linux' },
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    AdminDialog: { confirm: capturedConfirm },
+  };
+  btn.click = function () {
+    this.clicked += 1;
+    // #82 captured AdminDialog.confirm before #69 wrapped it.
+    capturedConfirm('Pause the client link?').then(function () {});
+  };
+  const inst = hotkey.create({
+    document: doc,
+    window: win,
+    now() { return 27000; },
+    toast: { saved() {}, error() {}, validation() {} },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.handleKeydown(chord());
+  assert.ok(inst.isInflight(), 'captured confirm still leaves the lock held');
+  const cancelListeners = doc.listeners[hotkey.DIALOG_CANCEL_EVENT] || doc.listeners['admin-dialog:cancel'] || [];
+  assert.ok(cancelListeners.length >= 1, 'session listens for admin-dialog:cancel');
+  cancelListeners.forEach((fn) => fn());
+  assert.strictEqual(inst.isInflight(), false, 'dialog-cancel releases without the confirm wrap');
+  inst.reset();
+})();
+
 (function abortEventReleasesWaitingLock() {
   const btn = makeEl('button', { type: 'submit', 'data-hotkey-save': '', id: 'sh-btn-draft' });
   const form = makeEl('form', { id: 'sh-form' }, [btn]);

@@ -83,6 +83,7 @@ jobs:
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js
           node tests/js/quotation-redraft-confirm-browser.test.js
+          node tests/js/quotation-redraft-hotkey-lock-browser.test.js
 
       - name: Admin info-tip JS behaviour (no database)
         run: |
