@@ -278,7 +278,14 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
             'calculation' => [],
         ]);
 
-        return $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent();
+        $html = $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent();
+        $this->assertStringContainsString(
+            route('admin.quotations.millwork.cut-list', $quote),
+            $html,
+            'Rendered millwork edit must keep the cut-list URL'
+        );
+
+        return $html;
     }
 
     public function test_main_toolbar_controls_are_represented_in_shared_partials(): void
