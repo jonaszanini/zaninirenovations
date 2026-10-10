@@ -8,13 +8,20 @@ use App\Models\EtransferNotice;
 use Illuminate\Support\Collection;
 
 /**
- * Rank unpaid invoices against an incoming Interac notice.
+ * Rank invoices against an incoming Interac notice.
  *
  * Scoring (highest first):
  *  - invoice number appears in the memo / raw text
  *  - amount equals the invoice outstanding total, or an unpaid deposit/instalment
  *  - sender email / name similar to the client
  *  - recency of the invoice
+ *
+ * Paid invoices are skipped unless the memo cites their number — then they
+ * are kept, flagged "Already paid", and ranked first so we do not suggest
+ * an unrelated open invoice.
+ *
+ * A score at or below the configured minimum (recency alone is 10) is not
+ * a confident suggestion.
  */
 class EtransferInvoiceMatcher
 {
@@ -32,7 +39,11 @@ class EtransferInvoiceMatcher
 
     public const SCORE_RECENCY_MAX = 10;
 
+    public const DEFAULT_MIN_MATCH_SCORE = 15;
+
     public const NAME_SIMILARITY_THRESHOLD = 0.55;
+
+    public const REASON_ALREADY_PAID = 'Already paid';
 
     /**
      * @return list<array{
@@ -45,16 +56,18 @@ class EtransferInvoiceMatcher
      *   outstanding: float,
      *   status: string,
      *   score: int,
+     *   already_paid: bool,
      *   reasons: list<string>
      * }>
      */
     public function rank(EtransferNotice $notice, ?Collection $invoices = null): array
     {
-        $invoices ??= $this->openInvoices();
+        $invoices = $this->mergeMentionedInvoices($notice, $invoices ?? $this->openInvoices());
         $haystack = $this->haystack($notice);
         $amount = round((float) $notice->amount, 2);
         $senderName = trim((string) $notice->sender_name);
         $senderEmail = strtolower(trim((string) $notice->sender_email));
+        $minScore = $this->minMatchScore();
 
         $ranked = [];
 
@@ -62,7 +75,13 @@ class EtransferInvoiceMatcher
             if (! $invoice instanceof ClientProjectInvoice) {
                 continue;
             }
-            if ($invoice->isPaid() || (float) $invoice->total <= 0) {
+            if ((float) $invoice->total <= 0) {
+                continue;
+            }
+
+            $mentioned = $this->invoiceNumberAppears((string) $invoice->invoice_number, $haystack);
+            $alreadyPaid = $invoice->isPaid();
+            if ($alreadyPaid && ! $mentioned) {
                 continue;
             }
 
@@ -74,16 +93,20 @@ class EtransferInvoiceMatcher
             $score = 0;
             $reasons = [];
 
-            if ($this->invoiceNumberAppears((string) $invoice->invoice_number, $haystack)) {
+            if ($alreadyPaid) {
+                $reasons[] = self::REASON_ALREADY_PAID;
+            }
+
+            if ($mentioned) {
                 $score += self::SCORE_INVOICE_NUMBER;
                 $reasons[] = 'Invoice number';
             }
 
             $outstanding = $this->outstandingBalance($invoice);
-            if ($this->amountsMatch($amount, $outstanding)) {
+            if (! $alreadyPaid && $this->amountsMatch($amount, $outstanding)) {
                 $score += self::SCORE_AMOUNT_OUTSTANDING;
                 $reasons[] = 'Amount matches';
-            } elseif ($this->matchesUnpaidInstallment($project, $invoice, $amount)) {
+            } elseif (! $alreadyPaid && $this->matchesUnpaidInstallment($project, $invoice, $amount)) {
                 $score += self::SCORE_AMOUNT_INSTALLMENT;
                 $reasons[] = $invoice->installment_number === 1 ? 'Deposit amount' : 'Instalment amount';
             }
@@ -109,7 +132,11 @@ class EtransferInvoiceMatcher
                 }
             }
 
-            if ($score <= 0) {
+            if ($score <= 0 && ! $alreadyPaid) {
+                continue;
+            }
+
+            if (! $alreadyPaid && $score < $minScore) {
                 continue;
             }
 
@@ -123,11 +150,15 @@ class EtransferInvoiceMatcher
                 'outstanding' => $outstanding,
                 'status' => (string) $invoice->status,
                 'score' => $score,
+                'already_paid' => $alreadyPaid,
                 'reasons' => $reasons,
             ];
         }
 
         usort($ranked, function (array $a, array $b): int {
+            if ($a['already_paid'] !== $b['already_paid']) {
+                return $b['already_paid'] <=> $a['already_paid'];
+            }
             if ($a['score'] !== $b['score']) {
                 return $b['score'] <=> $a['score'];
             }
@@ -136,6 +167,18 @@ class EtransferInvoiceMatcher
         });
 
         return array_slice($ranked, 0, self::MAX_RESULTS);
+    }
+
+    /**
+     * Lowest score that may be offered as a suggestion. Recency alone (10)
+     * must stay below this so a recent unrelated invoice is never "best".
+     */
+    public function minMatchScore(): int
+    {
+        $configured = config('etransfer.min_match_score', self::DEFAULT_MIN_MATCH_SCORE);
+        $score = is_numeric($configured) ? (int) $configured : self::DEFAULT_MIN_MATCH_SCORE;
+
+        return max(self::SCORE_RECENCY_MAX + 1, $score);
     }
 
     /**
@@ -192,6 +235,88 @@ class EtransferInvoiceMatcher
         return round($ratio, 3);
     }
 
+    /**
+     * Pull invoices cited in the memo (including paid) into the candidate set.
+     *
+     * @param  Collection<int, mixed>  $invoices
+     * @return Collection<int, mixed>
+     */
+    private function mergeMentionedInvoices(EtransferNotice $notice, Collection $invoices): Collection
+    {
+        $mentioned = $this->extractInvoiceNumbers($this->haystack($notice));
+        if ($mentioned === []) {
+            return $invoices;
+        }
+
+        $present = [];
+        foreach ($invoices as $invoice) {
+            if (! $invoice instanceof ClientProjectInvoice) {
+                continue;
+            }
+            $present[$this->compactInvoiceNumber((string) $invoice->invoice_number)] = true;
+        }
+
+        $missing = [];
+        foreach ($mentioned as $number) {
+            $compact = $this->compactInvoiceNumber($number);
+            if ($compact !== '' && ! isset($present[$compact])) {
+                $missing[] = $number;
+            }
+        }
+
+        if ($missing === []) {
+            return $invoices;
+        }
+
+        try {
+            $found = ClientProjectInvoice::query()
+                ->with(['project.client', 'project.installments'])
+                ->where(function ($query) use ($missing) {
+                    foreach ($missing as $number) {
+                        $compact = $this->compactInvoiceNumber($number);
+                        $query->orWhere('invoice_number', $number);
+                        if ($compact !== '') {
+                            $query->orWhereRaw('LOWER(REPLACE(invoice_number, "-", "")) = ?', [$compact]);
+                        }
+                    }
+                })
+                ->get();
+        } catch (\Throwable) {
+            return $invoices;
+        }
+
+        return $invoices->concat($found)->unique(fn ($invoice) => $invoice->id ?? spl_object_id($invoice))->values();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function extractInvoiceNumbers(string $haystack): array
+    {
+        if ($haystack === '') {
+            return [];
+        }
+
+        if (! preg_match_all('/\bINV[-\s]?\d{4}[-\s]?\d+\b/iu', $haystack, $matches)) {
+            return [];
+        }
+
+        $numbers = [];
+        foreach ($matches[0] as $raw) {
+            $normalized = strtoupper(preg_replace('/\s+/u', '-', trim($raw)) ?? trim($raw));
+            if ($normalized !== '') {
+                $numbers[$this->compactInvoiceNumber($normalized)] = $normalized;
+            }
+        }
+
+        return array_values($numbers);
+    }
+
+    private function compactInvoiceNumber(string $invoiceNumber): string
+    {
+        return preg_replace('/[\s\-]+/u', '', mb_strtolower(trim($invoiceNumber))) ?? '';
+    }
+
     private function haystack(EtransferNotice $notice): string
     {
         return mb_strtolower(trim(
@@ -206,8 +331,8 @@ class EtransferInvoiceMatcher
             return false;
         }
 
-        $compactHay = preg_replace('/[\s\-]+/u', '', mb_strtolower($haystack)) ?? $haystack;
-        $compactInv = preg_replace('/[\s\-]+/u', '', mb_strtolower($invoiceNumber)) ?? $invoiceNumber;
+        $compactHay = $this->compactInvoiceNumber($haystack);
+        $compactInv = $this->compactInvoiceNumber($invoiceNumber);
 
         return str_contains(mb_strtolower($haystack), mb_strtolower($invoiceNumber))
             || ($compactInv !== '' && str_contains($compactHay, $compactInv));

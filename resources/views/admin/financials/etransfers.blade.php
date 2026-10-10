@@ -48,6 +48,8 @@
           /** @var \App\Models\EtransferNotice $notice */
           $notice = $row['notice'];
           $best = $row['best'];
+          $bestRecordable = ! empty($row['bestRecordable']);
+          $alreadyPaid = ! empty($best['already_paid']);
         @endphp
         <article class="et-card">
           <div class="et-card__meta">
@@ -71,17 +73,25 @@
 
           <div class="et-card__match">
             @if ($status === EtransferNotice::STATUS_PENDING)
-              <div class="et-card__match-label">Best match</div>
               @if ($best)
-                <div class="et-card__match-title">{{ $best['invoice_number'] }} · {{ ClientProject::formatMoney($best['outstanding']) }}</div>
+                <div class="et-card__match-label">{{ $alreadyPaid ? 'Invoice in memo' : 'Best match' }}</div>
+                <div class="et-card__match-title">
+                  {{ $best['invoice_number'] }}
+                  · {{ $alreadyPaid ? 'Already paid' : ClientProject::formatMoney($best['outstanding']) }}
+                </div>
                 <div class="et-card__match-sub">{{ $best['client_name'] }} · {{ $best['project_name'] }}</div>
                 <div class="et-chips">
                   @foreach ($best['reasons'] as $reason)
-                    <span class="et-chip">{{ $reason }}</span>
+                    <span class="et-chip {{ $reason === 'Already paid' ? 'et-chip--paid' : '' }}">{{ $reason }}</span>
                   @endforeach
                 </div>
               @else
-                <div class="et-card__match-sub">No strong match. Pick an invoice below.</div>
+                <div class="et-card__match-label">
+                  No confident match
+                  <x-admin.info-tip label="No confident match">
+                    A recent invoice by itself is not enough. We need an invoice number in the memo, a matching amount, or a matching client name or email before suggesting one.
+                  </x-admin.info-tip>
+                </div>
               @endif
             @elseif ($notice->invoice)
               <div class="et-card__match-label">Recorded on</div>
@@ -106,11 +116,11 @@
                     'placeholder' => 'Choose a different invoice…',
                     'searchUrl' => route('admin.financials.etransfers.invoices.search'),
                     'optionsSource' => 'et-invoice-options',
-                    'selectedOption' => $best ? [
+                    'selectedOption' => $bestRecordable ? [
                       'id' => $best['invoice_id'],
                       'name' => trim($best['invoice_number'].' · '.$best['client_name']),
                     ] : null,
-                    'value' => $best['invoice_id'] ?? '',
+                    'value' => $bestRecordable ? ($best['invoice_id'] ?? '') : '',
                     'metaKeys' => [],
                     'listParent' => 'body',
                     'emptyMessage' => 'No open invoices',
@@ -119,7 +129,7 @@
                 </div>
               </form>
               <div class="et-card__btns">
-                <button type="submit" form="et-record-{{ $notice->id }}" class="admin-btn admin-btn--primary" @disabled(empty($best['invoice_id'] ?? null))>
+                <button type="submit" form="et-record-{{ $notice->id }}" class="admin-btn admin-btn--primary" @disabled(! $bestRecordable)>
                   Record payment
                 </button>
                 <form method="post" action="{{ route('admin.financials.etransfers.ignore', $notice) }}" class="et-ignore-form">

@@ -195,4 +195,129 @@ TXT;
             ->assertSee('incoming e-transfer')
             ->assertSee('Review e-transfers');
     }
+
+    public function test_zohar_barak_paid_invoice_in_memo_is_shown_already_paid(): void
+    {
+        $this->actingAsAdmin();
+
+        $zohar = ClientProject::factory()->create([
+            'name' => 'Zohar kitchen',
+            'client_name' => 'Zohar Barak',
+            'client_email' => 'zohar@example.test',
+        ]);
+        ClientProjectInvoice::factory()->for($zohar, 'project')->paid()->create([
+            'invoice_number' => 'INV-2026-0257',
+            'subtotal' => 2000,
+            'hst' => 260,
+            'total' => 2260,
+        ]);
+
+        $other = ClientProject::factory()->create([
+            'name' => 'Unrelated deck',
+            'client_name' => 'Recent Client',
+            'client_email' => 'recent@example.test',
+        ]);
+        ClientProjectInvoice::factory()->for($other, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0300',
+            'subtotal' => 442.48,
+            'hst' => 57.52,
+            'total' => 500,
+            'sent_at' => now()->subDays(2),
+        ]);
+
+        EtransferNotice::factory()->create([
+            'sender_name' => 'Zohar Barak',
+            'sender_email' => null,
+            'amount' => 2260,
+            'message' => 'invoice #INV-2026-0257',
+            'reference_number' => 'CAZOHAR0257',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('INV-2026-0257')
+            ->assertSee('Already paid')
+            ->assertSee('et-chip--paid', false)
+            ->assertSee('disabled', false)
+            ->getContent();
+
+        $this->assertStringNotContainsString('No confident match', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/et-card__match-title">\s*INV-2026-0300/s',
+            $html
+        );
+    }
+
+    public function test_recency_only_shows_no_confident_match_with_info_tip(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'client_name' => 'Unrelated Person',
+            'client_email' => 'unrelated@example.test',
+        ]);
+        ClientProjectInvoice::factory()->for($project, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0400',
+            'subtotal' => 1592.92,
+            'hst' => 207.08,
+            'total' => 1800,
+            'sent_at' => now()->subDays(1),
+        ]);
+
+        EtransferNotice::factory()->create([
+            'sender_name' => 'Someone Else',
+            'sender_email' => 'nobody@example.test',
+            'amount' => 55.55,
+            'message' => 'thanks',
+            'reference_number' => 'CATHRESH0001',
+        ]);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('No confident match')
+            ->assertSee('admin-info-tip', false)
+            ->assertSee('aria-label="About No confident match"', false)
+            ->assertDontSee('No strong match', false)
+            ->assertSee('disabled', false)
+            ->getContent();
+
+        $this->assertStringNotContainsString('<p class="et-card__match-sub">No confident match', $html);
+        $this->assertStringNotContainsString('<p class="admin-form-help"', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/et-card__match-title">\s*INV-2026-0400/s',
+            $html
+        );
+    }
+
+    public function test_malcolm_travis_name_and_amount_preselects_invoice(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Malcolm bathroom',
+            'client_name' => 'Malcolm Travis',
+            'client_email' => 'malcolm@example.test',
+        ]);
+        $invoice = ClientProjectInvoice::factory()->for($project, 'project')->sent()->create([
+            'invoice_number' => 'INV-2026-0258',
+            'subtotal' => 335.94,
+            'hst' => 43.67,
+            'total' => 379.61,
+        ]);
+
+        EtransferNotice::factory()->create([
+            'sender_name' => 'Malcolm Travis',
+            'sender_email' => null,
+            'amount' => 379.61,
+            'message' => null,
+            'reference_number' => 'CAMALCOLM258',
+        ]);
+
+        $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->assertSee('INV-2026-0258')
+            ->assertSee('Malcolm Travis')
+            ->assertSee('Best match')
+            ->assertSee((string) $invoice->id);
+    }
 }

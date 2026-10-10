@@ -82,6 +82,35 @@ class ApiEtransferNoticeTest extends IntegrationTestCase
         $this->assertFalse($invoice->fresh()->isPaid());
     }
 
+    public function test_scotiabank_own_address_is_not_stored_as_sender_email(): void
+    {
+        $text = <<<'TXT'
+Your funds have been deposited
+
+$379.61 CAD from Malcolm Travis has been automatically deposited into your account at Scotiabank at zaninirenovations@gmail.com.
+
+Message: kitchen balance
+
+Reference Number: CAOWNADDR001
+
+October 8, 2026
+TXT;
+
+        $this->postJson('/api/etransfers', [
+            'raw_text' => $text,
+        ], $this->authHeaders())
+            ->assertCreated()
+            ->assertJsonPath('status', 'created')
+            ->assertJsonPath('notice.sender_name', 'Malcolm Travis')
+            ->assertJsonPath('notice.sender_email', null)
+            ->assertJsonPath('notice.amount', 379.61);
+
+        $this->assertDatabaseHas('etransfer_notices', [
+            'reference_number' => 'CAOWNADDR001',
+            'sender_email' => null,
+        ]);
+    }
+
     public function test_raw_text_is_parsed(): void
     {
         $text = <<<'TXT'

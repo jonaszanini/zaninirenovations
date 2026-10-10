@@ -2,6 +2,7 @@
 
 namespace App\Services\Etransfer;
 
+use App\Support\BusinessContact;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
@@ -36,7 +37,7 @@ class EtransferNoticeParser
 
         return [
             'sender_name' => $this->extractSenderName($text),
-            'sender_email' => $this->extractSenderEmail($text),
+            'sender_email' => $this->normalizeSenderEmail($this->extractSenderEmail($text)),
             'amount' => $this->extractAmount($text),
             'currency' => 'CAD',
             'reference_number' => $this->extractReference($text),
@@ -97,8 +98,23 @@ class EtransferNoticeParser
         return $name;
     }
 
+    /**
+     * Drop Interac notify addresses and our own deposit inbox.
+     * Leave null when the only address in the email is the business's.
+     */
+    public function normalizeSenderEmail(?string $email): ?string
+    {
+        if ($email === null) {
+            return null;
+        }
+
+        return $this->usableSenderEmail($email);
+    }
+
     private function extractSenderEmail(string $text): ?string
     {
+        $text = $this->stripDepositDestinationEmails($text);
+
         if (preg_match('/Sender(?:\'s)? e-?mail\s*:\s*([^\s<>]+@[^\s<>]+)/iu', $text, $m)) {
             return $this->usableSenderEmail($m[1]);
         }
@@ -119,6 +135,24 @@ class EtransferNoticeParser
         return null;
     }
 
+    /**
+     * Auto-deposit copy names the destination inbox ("…at Scotiabank at
+     * zaninirenovations@gmail.com"), which is never the payer.
+     */
+    private function stripDepositDestinationEmails(string $text): string
+    {
+        $patterns = [
+            '/((?:automatically\s+)?deposited into your account(?:\s+at\s+[^@\n]+?)?\s+at\s+)([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/iu',
+            '/((?:ont été déposés|déposés automatiquement)[^@\n]*?(?:compte|banque)[^@\n]*?\s+(?:à|a)\s+)([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $text = preg_replace($pattern, '$1', $text) ?? $text;
+        }
+
+        return $text;
+    }
+
     private function usableSenderEmail(string $email): ?string
     {
         $email = strtolower(trim($email, " \t\"'<>"));
@@ -131,7 +165,40 @@ class EtransferNoticeParser
             return null;
         }
 
+        if (in_array($email, $this->ownEmails(), true)) {
+            return null;
+        }
+
         return $email;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function ownEmails(): array
+    {
+        $configured = config('etransfer.own_emails', []);
+        $fromConfig = is_array($configured) ? $configured : [];
+
+        $candidates = array_merge($fromConfig, [
+            BusinessContact::DEFAULT_EMAIL,
+            BusinessContact::email(),
+            config('mail.from.address'),
+            config('mail.contact_to'),
+        ]);
+
+        $emails = [];
+        foreach ($candidates as $candidate) {
+            if (! is_string($candidate) && ! is_numeric($candidate)) {
+                continue;
+            }
+            $email = strtolower(trim((string) $candidate));
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $emails[$email] = $email;
+            }
+        }
+
+        return array_values($emails);
     }
 
     private function extractAmount(string $text): ?float

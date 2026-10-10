@@ -37,7 +37,9 @@ class EtransferNoticeService
         ];
 
         $senderName = $this->firstFilled($input['sender_name'] ?? null, $parsed['sender_name'] ?? null) ?? 'Unknown sender';
-        $senderEmail = $this->firstFilled($input['sender_email'] ?? null, $parsed['sender_email'] ?? null);
+        $senderEmail = $this->parser->normalizeSenderEmail(
+            $this->firstFilled($input['sender_email'] ?? null, $parsed['sender_email'] ?? null)
+        );
         $reference = $this->firstFilled($input['reference'] ?? null, $input['reference_number'] ?? null, $parsed['reference_number'] ?? null);
         $message = $this->firstFilled($input['message'] ?? null, $parsed['message'] ?? null);
         $currency = strtoupper($this->firstFilled($input['currency'] ?? null, $parsed['currency'] ?? null) ?? EtransferNotice::CURRENCY_CAD);

@@ -140,4 +140,54 @@ TXT;
         $this->assertNull($parsed['message']);
         $this->assertSame(100.00, $parsed['amount']);
     }
+
+    public function test_scotiabank_deposit_own_address_is_not_sender_email(): void
+    {
+        $text = <<<'TXT'
+Your funds have been deposited
+
+$2,260.00 CAD from Zohar Barak has been automatically deposited into your account at Scotiabank at zaninirenovations@gmail.com.
+
+Message: invoice #INV-2026-0257
+
+Reference Number: CAZOHAROWN001
+
+October 8, 2026
+TXT;
+
+        $parsed = $this->parser->parse($text);
+
+        $this->assertSame('Zohar Barak', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+        $this->assertSame(2260.00, $parsed['amount']);
+        $this->assertSame('invoice #INV-2026-0257', $parsed['message']);
+    }
+
+    public function test_payer_email_is_kept_when_own_deposit_address_is_also_present(): void
+    {
+        $text = <<<'TXT'
+Malcolm Travis sent you $379.61 CAD
+
+The money has been automatically deposited into your account at Scotiabank at zaninirenovations@gmail.com.
+
+Sender's email: malcolm.travis@example.com
+
+Message: kitchen balance
+
+Reference Number: CAMALCOLM001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
+        $this->assertSame(379.61, $parsed['amount']);
+    }
+
+    public function test_normalize_sender_email_rejects_business_inbox(): void
+    {
+        $this->assertNull($this->parser->normalizeSenderEmail('zaninirenovations@gmail.com'));
+        $this->assertNull($this->parser->normalizeSenderEmail(' notify@payments.interac.ca '));
+        $this->assertSame('payer@example.com', $this->parser->normalizeSenderEmail('Payer@example.com'));
+    }
 }

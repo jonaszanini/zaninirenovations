@@ -55,7 +55,7 @@ Minimum accepted payloads:
 | `sender_name` | if no `raw_text` | Display name from the email |
 | `amount` | if no parseable amount in `raw_text` | Number or CAD string (`1130`, `1,130.00`) |
 | `currency` | no | Defaults to `CAD` |
-| `sender_email` | no | Ignored if it is an `@interac.ca` address |
+| `sender_email` | no | Ignored if it is an `@interac.ca` address or one of our own deposit/business addresses |
 | `reference` | no | Interac confirmation / reference number. Alias: `reference_number` |
 | `message` | no | Memo the sender typed |
 | `received_at` | no | ISO-8601 or any Carbon-parseable datetime. Defaults to now (or the date parsed from the email) |
@@ -114,4 +114,7 @@ find an amount (and none was sent). Example: `{ "message": "...", "errors": { "a
 - **Never auto-records a payment.** Matching is a suggestion only.
 - Unique on `reference` when present, so retries of the same Interac email are idempotent.
 - Candidates are ranked by: invoice number in the memo (strongest), amount equal to the unpaid invoice total or an unpaid deposit/instalment, client name/email vs sender, then recency.
+- If the memo cites an invoice that is already paid, that invoice is still returned first and flagged `Already paid` instead of dropping it for an unrelated open invoice.
+- Recency alone (score 10) is below `ETRANSFER_MIN_MATCH_SCORE` (default 15) and is not a confident suggestion.
+- The auto-deposit destination address (`…deposited into your account at Scotiabank at …`) is never stored as `sender_email`.
 - Admin: **Financials → Incoming e-transfers** → Record payment (method e-Transfer) or Ignore.

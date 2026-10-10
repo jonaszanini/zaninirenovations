@@ -72,6 +72,7 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .gf-total-tile__value--success',
             'html.admin-dark .admin-btn--success',
             'html.admin-dark .et-chip',
+            'html.admin-dark .et-chip--paid',
             'html.admin-dark .et-card',
             'html.admin-dark .et-paste-advanced',
             'html.admin-dark .et-paste-advanced > summary',

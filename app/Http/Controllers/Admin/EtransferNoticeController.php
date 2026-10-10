@@ -49,10 +49,14 @@ class EtransferNoticeController extends Controller
                 ? $this->matcher->rank($notice, $openInvoices)
                 : [];
 
+            $best = $candidates[0] ?? null;
+            $bestRecordable = $best && empty($best['already_paid']);
+
             return [
                 'notice' => $notice,
                 'candidates' => $candidates,
-                'best' => $candidates[0] ?? null,
+                'best' => $best,
+                'bestRecordable' => $bestRecordable,
             ];
         });
 
