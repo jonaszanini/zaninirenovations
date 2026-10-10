@@ -5,10 +5,13 @@ namespace Tests\Feature\Admin;
 use App\Http\Controllers\Admin\RoomAreaController;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaSignature;
+use App\Models\User;
 use Illuminate\Support\Facades\Schema;
 use App\Services\RoomAreaPlanDocument;
 use App\Services\RoomAreaSignableQuote;
 use App\Services\RoomAreaSignatureRecorder;
+use App\Services\RoomAreaSignatureRetention;
+use App\Services\RoomAreaSignatureStorage;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -412,7 +415,7 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
         $this->assertSame(0, RoomAreaSignature::query()->count());
     }
 
-    public function test_unique_active_slot_blocks_a_second_active_row(): void
+    public function test_unique_active_column_blocks_a_second_active_row(): void
     {
         $this->actingAsAdmin();
         Storage::fake('local');
@@ -422,12 +425,13 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
             ->assertOk();
 
         $first = RoomAreaSignature::query()->first();
+        $this->assertSame(1, (int) $first->active);
         try {
             RoomAreaSignature::query()->create([
                 'room_area_project_id' => $first->room_area_project_id,
                 'standard_quotation_id' => $first->standard_quotation_id,
-                'quote_version' => $first->quote_version,
-                'active_slot' => 1,
+                'quote_version' => ((int) $first->quote_version) + 1,
+                'active' => 1,
                 'signer_name' => 'Double Tap',
                 'signed_at' => now(),
                 'admin_user_id' => $first->admin_user_id,
@@ -435,11 +439,143 @@ class RoomAreaPlanPdfTest extends IntegrationTestCase
                 'pdf_path' => 'room-plans/signatures/dup.pdf',
                 'signature_path' => 'room-plans/signatures/dup.png',
             ]);
-            $this->fail('Expected a unique constraint on the active signature per quote version.');
+            $this->fail('Expected a unique constraint on the active signature per project.');
         } catch (\Illuminate\Database\QueryException $e) {
             $this->assertSame(1062, (int) ($e->errorInfo[1] ?? 0));
         }
         $this->assertSame(1, RoomAreaSignature::query()->whereNull('voided_at')->count());
+    }
+
+    public function test_deleting_a_signed_quote_returns_a_friendly_error(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client']);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertOk();
+
+        $this->delete(route('admin.quotations.standard.destroy', $quote))
+            ->assertRedirect(route('admin.quotations.standard.index'))
+            ->assertSessionHas('error', RoomAreaSignatureRetention::QUOTE_DELETE_MESSAGE);
+
+        $this->assertNotNull($quote->fresh());
+        $this->assertSame(1, RoomAreaSignature::query()->count());
+    }
+
+    public function test_deleting_a_quote_with_only_voided_signatures_is_blocked(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client']);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertOk();
+        $this->postJson(route('admin.utilities.room-area.projects.signature.void', $fixture['project']), [
+            'reason' => 'Redo',
+        ])->assertOk();
+
+        $this->delete(route('admin.quotations.standard.destroy', $quote))
+            ->assertRedirect(route('admin.quotations.standard.index'))
+            ->assertSessionHas('error', RoomAreaSignatureRetention::QUOTE_DELETE_MESSAGE)
+            ->assertSessionMissing('success');
+
+        $this->assertNotNull($quote->fresh());
+        $this->assertSame(1, RoomAreaSignature::query()->count());
+    }
+
+    public function test_unsigned_quote_still_deletes(): void
+    {
+        $this->actingAsAdmin();
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client']);
+
+        $this->delete(route('admin.quotations.standard.destroy', $quote))
+            ->assertRedirect(route('admin.quotations.standard.index'))
+            ->assertSessionHas('success');
+
+        $this->assertNull($quote->fresh());
+    }
+
+    public function test_deleting_an_admin_who_signed_returns_a_friendly_error(): void
+    {
+        $admin = $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client']);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertOk();
+
+        try {
+            $admin->delete();
+            $this->fail('Expected signer delete to be blocked.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $this->assertSame(409, $e->getStatusCode());
+            $this->assertSame(RoomAreaSignatureRetention::USER_DELETE_MESSAGE, $e->getMessage());
+        }
+        $this->assertNotNull(User::query()->find($admin->id));
+        $this->assertSame(1, RoomAreaSignature::query()->count());
+    }
+
+    public function test_bumped_quote_version_flags_stale_signature_and_blocks_old_version(): void
+    {
+        $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client'], ['version' => 1]);
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), $this->signaturePayload($quote, 'Pat Owner', self::TINY_PNG))
+            ->assertOk();
+
+        $quote->update(['version' => 2]);
+        $payload = app(RoomAreaController::class)->planProjectPayload(
+            $fixture['project']->fresh(['signatures', 'phases', 'rooms', 'clientProject'])
+        );
+        $this->assertTrue($payload['signature_version_stale']);
+        $this->assertSame(RoomAreaSignatureRetention::STALE_SIGNATURE_MESSAGE, $payload['signature_stale_message']);
+        $this->assertSame(1, $payload['quote_version']);
+        $this->assertSame(2, $payload['quote_current_version']);
+
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), array_merge(
+            $this->signaturePayload($quote->fresh(), 'Pat Owner', self::TINY_PNG),
+            ['quote_version' => 2]
+        ))->assertStatus(409)->assertJsonPath('message', RoomAreaSignatureRecorder::ACTIVE_EXISTS_MESSAGE);
+
+        $this->postJson(route('admin.utilities.room-area.projects.signature.void', $fixture['project']), [
+            'reason' => 'Quote was revised',
+        ])->assertOk();
+
+        $this->postJson(route('admin.utilities.room-area.projects.signature', $fixture['project']), array_merge(
+            $this->signaturePayload($quote->fresh(), 'Pat Owner', self::TINY_PNG),
+            ['quote_version' => 1]
+        ))->assertStatus(422)->assertJsonPath('message', RoomAreaSignableQuote::SUPERSEDED_MESSAGE);
+
+        $this->postJson(
+            route('admin.utilities.room-area.projects.signature', $fixture['project']),
+            $this->signaturePayload($quote->fresh(), 'Pat Owner', self::TINY_PNG)
+        )->assertOk();
+        $this->assertSame(2, (int) RoomAreaSignature::query()->whereNull('voided_at')->first()->quote_version);
+    }
+
+    public function test_failed_signature_cleans_up_written_files(): void
+    {
+        $admin = $this->actingAsAdmin();
+        Storage::fake('local');
+        $fixture = $this->makePlanFixture();
+        $quote = $this->makePublishedQuote($fixture['client']);
+        $document = $this->createMock(RoomAreaPlanDocument::class);
+        $document->method('pdfBinary')->willThrowException(new \RuntimeException('pdf failed'));
+        $recorder = new RoomAreaSignatureRecorder(null, new RoomAreaSignatureStorage, $document);
+        $request = \Illuminate\Http\Request::create('/admin', 'POST');
+
+        try {
+            $recorder->record($request, $fixture['project'], $admin, $quote, 'Pat Owner', self::TINY_PNG, 1);
+            $this->fail('Expected PDF generation to fail.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('pdf failed', $e->getMessage());
+        }
+
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        $this->assertSame(0, RoomAreaSignature::query()->count());
     }
 
     private function pdfText(string $pdf): string

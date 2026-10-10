@@ -64,8 +64,9 @@ class RoomAreaSignatureRecorder
             throw new HttpException(422, self::PNG_MESSAGE);
         }
 
+        $written = [];
         try {
-            return DB::transaction(function () use ($request, $project, $admin, $quote, $signerName, $png, $expectedVersion) {
+            return DB::transaction(function () use ($request, $project, $admin, $quote, $signerName, $png, $expectedVersion, &$written) {
                 $locked = RoomAreaProject::query()->whereKey($project->id)->lockForUpdate()->first();
                 if (! $locked) {
                     abort(404);
@@ -80,6 +81,7 @@ class RoomAreaSignatureRecorder
 
                 $signedAt = now();
                 $pngPath = $this->storage->put($this->storage->uniquePngPath($locked), $png);
+                $written[] = $pngPath;
                 $pdf = $this->document->pdfBinary($locked, [
                     'name' => $signerName,
                     'date' => $signedAt->format('F j, Y'),
@@ -87,12 +89,13 @@ class RoomAreaSignatureRecorder
                     'signed' => true,
                 ]);
                 $pdfPath = $this->storage->put($this->storage->uniquePdfPath($locked), $pdf);
+                $written[] = $pdfPath;
 
                 return RoomAreaSignature::query()->create([
                     'room_area_project_id' => $locked->id,
                     'standard_quotation_id' => $quote->id,
                     'quote_version' => (int) ($quote->version ?: 1),
-                    'active_slot' => 1,
+                    'active' => 1,
                     'signer_name' => $signerName,
                     'signed_at' => $signedAt,
                     'admin_user_id' => $admin->id,
@@ -104,10 +107,14 @@ class RoomAreaSignatureRecorder
                 ]);
             });
         } catch (QueryException $e) {
+            $this->storage->deleteMany($written);
             if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
                 throw new HttpException(409, self::ACTIVE_EXISTS_MESSAGE);
             }
 
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->storage->deleteMany($written);
             throw $e;
         }
     }
@@ -130,7 +137,7 @@ class RoomAreaSignatureRecorder
             $locked->voided_at = now();
             $locked->void_reason = $reason;
             $locked->voided_by = $admin->id;
-            $locked->active_slot = null;
+            $locked->active = null;
             $locked->save();
 
             return $locked->fresh();

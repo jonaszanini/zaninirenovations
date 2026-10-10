@@ -18,6 +18,7 @@ class StandardQuotation extends Model
     use \App\Models\Concerns\HasClientEmailMessage;
     use \App\Models\Concerns\HasPdfFoldVersion;
     use \App\Models\Concerns\HasReplyToAcceptChoice;
+    use \App\Models\Concerns\ProtectsRoomAreaSignatures;
 
     public const HST_RATE = 0.13;
 

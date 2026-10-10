@@ -3058,6 +3058,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+.util-ra-sign__stale {
+  margin: 0.55rem 0 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-input-bg);
+  color: var(--admin-heading);
+  font-size: 0.85rem;
+}
+
 .util-ra-sign__pad {
   display: block;
   width: 100%;

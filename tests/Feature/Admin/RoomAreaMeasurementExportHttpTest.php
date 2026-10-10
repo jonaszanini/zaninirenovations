@@ -127,6 +127,25 @@ class RoomAreaMeasurementExportHttpTest extends IntegrationTestCase
         $this->assertStringContainsString('t="n"><v>', $sheet);
     }
 
+    public function test_xlsx_escapes_xml_special_characters_in_names(): void
+    {
+        $this->actingAsAdmin();
+        $fixture = $this->makePlanFixture(['name' => 'A & B <C> "D"']);
+        $fixture['kitchen']->update(['name' => "Kitchen 'E'"]);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'ra-xlsx-xml-');
+        file_put_contents($tmp, $this->get(route('admin.utilities.room-area.projects.export.xlsx', $fixture['project']->fresh(['rooms', 'phases', 'clientProject'])))->getContent());
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($tmp) === true);
+        $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        @unlink($tmp);
+
+        $this->assertStringContainsString('A &amp; B &lt;C&gt; &quot;D&quot;', $sheet);
+        $this->assertStringContainsString('Kitchen &apos;E&apos;', $sheet);
+        $this->assertStringNotContainsString('A & B <C>', $sheet);
+    }
+
     public function test_assigning_a_phase_leaves_room_geometry_unchanged(): void
     {
         $this->actingAsAdmin();

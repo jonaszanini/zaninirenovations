@@ -2,6 +2,8 @@
 
 namespace App\Exceptions;
 
+use App\Services\RoomAreaSignatureRetention;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 
@@ -43,7 +45,17 @@ class Handler extends ExceptionHandler
      */
     public function register()
     {
-        //
+        $this->renderable(function (QueryException $e, $request) {
+            $message = app(RoomAreaSignatureRetention::class)->messageFromQueryException($e);
+            if ($message === null) {
+                return null;
+            }
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $message], 409);
+            }
+
+            return redirect()->back()->with('error', $message);
+        });
     }
 
     /**

@@ -635,7 +635,18 @@ class ClientProjectQuotationController extends Controller
         }
 
         $number = $quotation->quotation_number;
-        ClientProjectQuotation::deleteWithLinkedCalculatorSource($quotation);
+        try {
+            if ($quotation->source_type === ClientProjectQuotation::SOURCE_STANDARD && $quotation->source_id) {
+                app(\App\Services\RoomAreaSignatureRetention::class)
+                    ->assertQuoteDeletable((int) $quotation->source_id);
+            }
+            ClientProjectQuotation::deleteWithLinkedCalculatorSource($quotation);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('quotation')
+                ->with('error', $e->getMessage());
+        }
 
         return redirect()
             ->route('admin.client-projects.show', $client_project)

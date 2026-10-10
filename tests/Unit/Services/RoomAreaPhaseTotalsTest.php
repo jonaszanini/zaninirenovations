@@ -95,8 +95,8 @@ class RoomAreaPhaseTotalsTest extends TestCase
         $allocated = $totals->allocateRoomMetrics($rooms);
 
         $this->assertEquals(20.01, $phase['area_sqft']);
-        $this->assertEquals(10.00, $allocated[0]['area_sqft']);
-        $this->assertEquals(10.01, $allocated[1]['area_sqft']);
+        $this->assertEquals(10.01, $allocated[0]['area_sqft']);
+        $this->assertEquals(10.00, $allocated[1]['area_sqft']);
         $this->assertEquals(
             $phase['area_sqft'],
             round($allocated[0]['area_sqft'] + $allocated[1]['area_sqft'], 2)
@@ -109,6 +109,58 @@ class RoomAreaPhaseTotalsTest extends TestCase
             $phase['perimeter_lf'],
             round($allocated[0]['perimeter_lf'] + $allocated[1]['perimeter_lf'], 2)
         );
+    }
+
+    public function test_largest_remainder_keeps_identical_rooms_equal_when_possible(): void
+    {
+        $rooms = [
+            ['metrics' => [
+                'area_sqft' => 10.001,
+                'perimeter_lf' => 0,
+                'net_wall_area_sqft' => 0,
+                'flooring_with_waste_sqft' => 0,
+                'casing_lf' => 0,
+            ]],
+            ['metrics' => [
+                'area_sqft' => 10.001,
+                'perimeter_lf' => 0,
+                'net_wall_area_sqft' => 0,
+                'flooring_with_waste_sqft' => 0,
+                'casing_lf' => 0,
+            ]],
+        ];
+        $totals = new RoomAreaPhaseTotals;
+        $allocated = $totals->allocateRoomMetrics($rooms);
+
+        $this->assertEquals(10.00, $allocated[0]['area_sqft']);
+        $this->assertEquals(10.00, $allocated[1]['area_sqft']);
+        $this->assertEquals(20.00, $totals->sum($rooms)['area_sqft']);
+    }
+
+    public function test_largest_remainder_gives_pennies_to_larger_fractions(): void
+    {
+        $rooms = [
+            ['metrics' => [
+                'area_sqft' => 10.009,
+                'perimeter_lf' => 0,
+                'net_wall_area_sqft' => 0,
+                'flooring_with_waste_sqft' => 0,
+                'casing_lf' => 0,
+            ]],
+            ['metrics' => [
+                'area_sqft' => 10.001,
+                'perimeter_lf' => 0,
+                'net_wall_area_sqft' => 0,
+                'flooring_with_waste_sqft' => 0,
+                'casing_lf' => 0,
+            ]],
+        ];
+        $totals = new RoomAreaPhaseTotals;
+        $allocated = $totals->allocateRoomMetrics($rooms);
+
+        $this->assertEquals(10.01, $allocated[0]['area_sqft']);
+        $this->assertEquals(10.00, $allocated[1]['area_sqft']);
+        $this->assertEquals(20.01, $totals->sum($rooms)['area_sqft']);
     }
 
     public function test_empty_sum_is_zero(): void

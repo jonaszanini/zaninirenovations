@@ -115,15 +115,17 @@ class RoomAreaPhaseTotals
     }
 
     /**
-     * Round each room to 2 decimals, then put the leftover pennies on the last
-     * room so the displayed rows sum to the rounded phase total.
+     * Largest-remainder allocation: floor each room to 2 decimals, then give
+     * leftover cents to the rooms with the biggest unused fractions so the
+     * displayed rows sum to the rounded phase total. Identical rooms stay
+     * identical when the leftover can be shared evenly.
      *
      * @param  iterable<int, RoomAreaRoom|array<string, mixed>>  $rooms
      * @return list<array<string, float|int>>
      */
     public function allocateRoomMetrics(iterable $rooms): array
     {
-        $items = [];
+        $raws = [];
         foreach ($rooms as $room) {
             $metrics = $room instanceof RoomAreaRoom
                 ? $room->layoutMetrics()
@@ -131,26 +133,53 @@ class RoomAreaPhaseTotals
             if (! is_array($metrics)) {
                 continue;
             }
-            $row = [];
+            $raw = [];
             foreach (self::KEYS as $key) {
-                $row[$key] = round((float) ($metrics[$key] ?? 0), 2);
+                $raw[$key] = (float) ($metrics[$key] ?? 0);
             }
-            $items[] = $row;
+            $raws[] = $raw;
         }
-        if ($items === []) {
+        if ($raws === []) {
             return [];
         }
 
         $target = $this->sum($rooms);
-        foreach (self::KEYS as $key) {
-            $shown = 0.0;
-            foreach ($items as $row) {
-                $shown += (float) $row[$key];
+        $items = [];
+        $frac = [];
+        foreach ($raws as $i => $raw) {
+            $row = [];
+            foreach (self::KEYS as $key) {
+                $cents = (int) floor($raw[$key] * 100 + 1e-8);
+                $row[$key] = $cents / 100;
+                $frac[$key][$i] = ($raw[$key] * 100) - $cents;
             }
-            $diff = round((float) $target[$key] - round($shown, 2), 2);
-            if (abs($diff) >= 0.005) {
-                $last = count($items) - 1;
-                $items[$last][$key] = round((float) $items[$last][$key] + $diff, 2);
+            $items[] = $row;
+        }
+
+        $count = count($items);
+        foreach (self::KEYS as $key) {
+            $shownCents = 0;
+            foreach ($items as $row) {
+                $shownCents += (int) round(((float) $row[$key]) * 100);
+            }
+            $need = (int) round(((float) $target[$key]) * 100) - $shownCents;
+            if ($need === 0) {
+                continue;
+            }
+            $order = range(0, $count - 1);
+            usort($order, function ($a, $b) use ($frac, $key) {
+                $cmp = $frac[$key][$b] <=> $frac[$key][$a];
+
+                return $cmp !== 0 ? $cmp : ($a <=> $b);
+            });
+            $step = $need > 0 ? 1 : -1;
+            $left = abs($need);
+            foreach ($order as $i) {
+                if ($left === 0) {
+                    break;
+                }
+                $items[$i][$key] = round(((float) $items[$i][$key]) + ($step / 100), 2);
+                $left--;
             }
         }
 

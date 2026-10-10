@@ -13,6 +13,7 @@ class User extends Authenticatable
     use HasApiTokens;
     use HasFactory;
     use Notifiable;
+    use \App\Models\Concerns\ProtectsRoomAreaSignatures;
 
     public const ROLE_ADMIN = 'admin';
     public const ROLE_STAFF = 'staff';

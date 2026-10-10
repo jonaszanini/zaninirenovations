@@ -759,11 +759,16 @@ class RoomAreaController extends Controller
             $project->load('phases');
         }
         if (! $project->relationLoaded('signatures')) {
-            $project->load('signatures');
+            $project->load('signatures.quotation');
+        } elseif ($project->signatures->isNotEmpty() && ! $project->signatures->first()->relationLoaded('quotation')) {
+            $project->load('signatures.quotation');
         }
 
         $active = $project->activeSignature();
-        $quotes = app(\App\Services\RoomAreaSignableQuote::class)->options($project);
+        $quotesService = app(\App\Services\RoomAreaSignableQuote::class);
+        $quotes = $quotesService->options($project);
+        $signedQuote = $active?->quotation;
+        $signatureVersionStale = $quotesService->signatureIsForOlderVersion($active, $signedQuote);
 
         return [
             'id' => $project->id,
@@ -781,6 +786,11 @@ class RoomAreaController extends Controller
             'signature_id' => $active?->id,
             'quote_id' => $active?->standard_quotation_id,
             'quote_version' => $active?->quote_version,
+            'quote_current_version' => $signedQuote ? (int) ($signedQuote->version ?: 1) : null,
+            'signature_version_stale' => $signatureVersionStale,
+            'signature_stale_message' => $signatureVersionStale
+                ? \App\Services\RoomAreaSignatureRetention::STALE_SIGNATURE_MESSAGE
+                : null,
             'quotes' => $quotes,
             'phases' => $project->phases->map(fn (\App\Models\RoomAreaPhase $phase) => [
                 'id' => (int) $phase->id,

@@ -359,15 +359,24 @@ class StandardQuotationController extends Controller
 
     public function destroy(StandardQuotation $standard_quotation)
     {
-        $cpq = ClientProjectQuotation::query()
-            ->where('source_type', ClientProjectQuotation::SOURCE_STANDARD)
-            ->where('source_id', $standard_quotation->id)
-            ->first();
+        try {
+            app(\App\Services\RoomAreaSignatureRetention::class)
+                ->assertQuoteDeletable((int) $standard_quotation->id);
 
-        if ($cpq) {
-            ClientProjectQuotation::deleteWithLinkedCalculatorSource($cpq);
-        } else {
-            $standard_quotation->delete();
+            $cpq = ClientProjectQuotation::query()
+                ->where('source_type', ClientProjectQuotation::SOURCE_STANDARD)
+                ->where('source_id', $standard_quotation->id)
+                ->first();
+
+            if ($cpq) {
+                ClientProjectQuotation::deleteWithLinkedCalculatorSource($cpq);
+            } else {
+                $standard_quotation->delete();
+            }
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return redirect()
+                ->route('admin.quotations.standard.index')
+                ->with('error', $e->getMessage());
         }
 
         return redirect()

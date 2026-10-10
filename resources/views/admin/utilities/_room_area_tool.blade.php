@@ -1358,6 +1358,7 @@
             <p class="util-ra-sign__date" data-ra-sign-date>Recorded when you save</p>
           </div>
         </div>
+        <p class="util-ra-sign__stale" data-ra-sign-stale hidden role="status"></p>
         <label class="util-sr-only" for="ra-sign-pad">Signature</label>
         <canvas id="ra-sign-pad" class="util-ra-sign__pad" width="560" height="160" data-ra-sign-pad></canvas>
         <div class="util-ra-sign__actions">

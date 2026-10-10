@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ClientProjectQuotation;
 use App\Models\RoomAreaProject;
+use App\Models\RoomAreaSignature;
 use App\Models\StandardQuotation;
 use Illuminate\Support\Collection;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -37,7 +38,7 @@ class RoomAreaSignableQuote
         return $quotes->map(function (StandardQuotation $quote) use ($revisingIds) {
             $revising = $revisingIds->contains((int) $quote->id);
             $draft = (bool) $quote->is_draft;
-            $superseded = $this->isSuperseded($quote);
+            $superseded = false;
 
             return [
                 'id' => (int) $quote->id,
@@ -67,10 +68,7 @@ class RoomAreaSignableQuote
 
     public function assertSignable(StandardQuotation $quote, ?int $expectedVersion = null): void
     {
-        if ($expectedVersion !== null && (int) ($quote->version ?: 1) !== $expectedVersion) {
-            throw new HttpException(422, self::SUPERSEDED_MESSAGE);
-        }
-        if ($this->isSuperseded($quote)) {
+        if ($this->isSuperseded($quote, $expectedVersion)) {
             throw new HttpException(422, self::SUPERSEDED_MESSAGE);
         }
         if ($this->isRevising($quote)) {
@@ -81,13 +79,26 @@ class RoomAreaSignableQuote
         }
     }
 
-    public function isSuperseded(StandardQuotation $quote): bool
+    /**
+     * Quotes keep one row and bump `version` on that row. A requested
+     * version is replaced when it does not match the current published version.
+     */
+    public function isSuperseded(StandardQuotation $quote, ?int $requestedVersion = null): bool
     {
-        return StandardQuotation::query()
-            ->where('quote_number', $quote->quote_number)
-            ->where('id', '!=', $quote->id)
-            ->where('version', '>', (int) ($quote->version ?: 1))
-            ->exists();
+        if ($requestedVersion === null) {
+            return false;
+        }
+
+        return (int) ($quote->version ?: 1) !== $requestedVersion;
+    }
+
+    public function signatureIsForOlderVersion(?RoomAreaSignature $signature, ?StandardQuotation $quote): bool
+    {
+        if (! $signature || ! $signature->isActive() || ! $quote) {
+            return false;
+        }
+
+        return (int) $signature->quote_version !== (int) ($quote->version ?: 1);
     }
 
     public function isRevising(StandardQuotation $quote): bool

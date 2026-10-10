@@ -160,10 +160,9 @@ class RoomAreaMeasurementExport
             return '';
         }
         if (is_int($value) || is_float($value)) {
-            $value = number_format(round((float) $value, 2), 2, '.', '');
-        } else {
-            $value = (string) $value;
+            return number_format(round((float) $value, 2), 2, '.', '');
         }
+        $value = (string) $value;
         if ($value !== '' && preg_match('/^[=+\-@\t\r]/', $value)) {
             return "'".$value;
         }

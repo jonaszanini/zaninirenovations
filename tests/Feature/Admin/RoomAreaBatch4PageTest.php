@@ -26,6 +26,7 @@ class RoomAreaBatch4PageTest extends IntegrationTestCase
             ->assertSee('data-ra-sign-clear', false)
             ->assertSee('data-ra-sign-void', false)
             ->assertSee('data-ra-sign-quote', false)
+            ->assertSee('data-ra-sign-stale', false)
             ->assertSee('Plan PDF')
             ->assertSee('Add phase')
             ->assertSee('Save signature')
@@ -60,11 +61,13 @@ class RoomAreaBatch4PageTest extends IntegrationTestCase
         $this->assertStringContainsString('quote_version', $js);
         $this->assertStringContainsString('els.signSave.disabled = true', $js);
         $this->assertStringContainsString('(replaced)', $js);
+        $this->assertStringContainsString('signature_version_stale', $js);
 
         $css = file_get_contents(public_path('css/admin-utilities.css'));
         $this->assertStringContainsString('.util-ra-phases', $css);
         $this->assertStringContainsString('.util-ra-sign__pad', $css);
         $this->assertStringContainsString('.util-ra-sign__date', $css);
+        $this->assertStringContainsString('.util-ra-sign__stale', $css);
         $this->assertStringContainsString('.util-ra-plan-actions', $css);
         $this->assertStringContainsString('touch-action: none', $css);
 
@@ -74,5 +77,6 @@ class RoomAreaBatch4PageTest extends IntegrationTestCase
         $this->assertStringContainsString('html.admin-dark .util-ra-sign', $dark);
         $this->assertStringContainsString('html.admin-dark .util-ra-sign__pad', $dark);
         $this->assertStringContainsString('html.admin-dark .util-ra-sign__date', $dark);
+        $this->assertStringContainsString('html.admin-dark .util-ra-sign__stale', $dark);
     }
 }

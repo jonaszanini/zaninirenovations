@@ -286,6 +286,7 @@
     signSave: root.querySelector('[data-ra-sign-save]'),
     signClear: root.querySelector('[data-ra-sign-clear]'),
     signVoid: root.querySelector('[data-ra-sign-void]'),
+    signStale: root.querySelector('[data-ra-sign-stale]'),
     feedback: root.querySelector('[data-ra-feedback]'),
     roomName: root.querySelector('[data-ra-room-name]'),
     saveRoom: root.querySelector('[data-ra-save-room]'),
@@ -8374,6 +8375,9 @@
     project.signature_id = payload.signature_id || null;
     project.quote_id = payload.quote_id || null;
     project.quote_version = payload.quote_version || null;
+    project.quote_current_version = payload.quote_current_version || null;
+    project.signature_version_stale = !!payload.signature_version_stale;
+    project.signature_stale_message = payload.signature_stale_message || '';
     project.quotes = payload.quotes || [];
     if (payload.rooms) {
       payload.rooms.forEach(function (next) {
@@ -8551,6 +8555,13 @@
     if (els.signSave) els.signSave.disabled = locked;
     if (els.signVoid) els.signVoid.hidden = !locked;
     if (els.signPad) els.signPad.style.pointerEvents = locked ? 'none' : '';
+    if (els.signStale) {
+      var stale = !!project.signature_version_stale;
+      els.signStale.hidden = !stale;
+      els.signStale.textContent = stale
+        ? (project.signature_stale_message || 'This signature is for an older quote version. Void it before signing the current published version.')
+        : '';
+    }
   }
 
   function saveSignature() {

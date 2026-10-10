@@ -45,6 +45,24 @@ class RoomAreaSignatureStorage
         return 'data:image/png;base64,'.base64_encode($binary);
     }
 
+    public function delete(?string $path): void
+    {
+        if (! $path) {
+            return;
+        }
+        Storage::disk('local')->delete($path);
+    }
+
+    /**
+     * @param  list<string|null>  $paths
+     */
+    public function deleteMany(array $paths): void
+    {
+        foreach ($paths as $path) {
+            $this->delete($path);
+        }
+    }
+
     public function decodePngDataUrl(string $dataUrl): ?string
     {
         if (! str_starts_with($dataUrl, 'data:image/png;base64,')) {

@@ -17,7 +17,7 @@ return new class extends Migration
                 ->constrained('standard_quotations')
                 ->restrictOnDelete();
             $table->unsignedInteger('quote_version');
-            $table->unsignedTinyInteger('active_slot')->nullable();
+            $table->unsignedTinyInteger('active')->nullable();
             $table->string('signer_name', 255);
             $table->timestamp('signed_at');
             $table->foreignId('admin_user_id')
@@ -38,8 +38,8 @@ return new class extends Migration
 
             $table->index(['room_area_project_id', 'voided_at']);
             $table->unique(
-                ['room_area_project_id', 'standard_quotation_id', 'quote_version', 'active_slot'],
-                'room_area_signatures_active_quote_version_unique'
+                ['room_area_project_id', 'active'],
+                'room_area_signatures_active_per_project_unique'
             );
         });
     }

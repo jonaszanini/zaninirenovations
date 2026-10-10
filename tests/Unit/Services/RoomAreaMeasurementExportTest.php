@@ -39,7 +39,17 @@ class RoomAreaMeasurementExportTest extends TestCase
         $this->assertSame('120.00', $export->sanitizeCell(120));
         $this->assertSame('32.67', $export->sanitizeCell(32.666));
         $this->assertSame('70.40', $export->sanitizeCell(70.4));
+        $this->assertSame('-12.50', $export->sanitizeCell(-12.5));
+        $this->assertSame('-12.50', $export->sanitizeCell(-12.50));
         $this->assertSame(RoomAreaMeasurementExport::UTF8_BOM, "\xEF\xBB\xBF");
+    }
+
+    public function test_excel_xml_escapes_special_characters_in_names(): void
+    {
+        $export = new RoomAreaMeasurementExport;
+        $xml = $export->sheetXml([['A & B <C> "D" \'E\'']]);
+        $this->assertStringContainsString('A &amp; B &lt;C&gt; &quot;D&quot; &apos;E&apos;', $xml);
+        $this->assertStringNotContainsString('A & B <C>', $xml);
     }
 
     public function test_excel_writes_numbers_including_negatives_and_plain_text_strings(): void
