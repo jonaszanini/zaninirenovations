@@ -929,19 +929,37 @@
   }
 
   var nextRunId = 1;
-  function sideRunId(side) {
-    if (side && side.run_id != null && String(side.run_id) !== '') {
-      var n = parseInt(String(side.run_id), 10);
-      if (isFinite(n) && n >= nextRunId) nextRunId = n + 1;
-      return String(side.run_id);
-    }
+
+  function existingRunId(value) {
+    return value != null && String(value) !== '' ? String(value) : '';
+  }
+
+  function bumpNextRunId(runId) {
+    var n = parseInt(String(runId), 10);
+    if (isFinite(n) && n >= nextRunId) nextRunId = n + 1;
+  }
+
+  function mintRunId() {
     return String(nextRunId++);
   }
 
+  // Scan known ids first so a missing first-run id cannot collide with a later one.
+  function ensureSideRunIds(sides) {
+    (sides || []).forEach(function (side) {
+      var id = existingRunId(side && side.run_id);
+      if (id) bumpNextRunId(id);
+    });
+    (sides || []).forEach(function (side) {
+      if (!side) return;
+      side.run_id = existingRunId(side.run_id) || mintRunId();
+    });
+  }
+
   function renderSides(sides) {
+    ensureSideRunIds(sides);
     sidesEl.innerHTML = '';
     sides.forEach(function (side, i) {
-      var runId = sideRunId(side);
+      var runId = String(side.run_id);
       var leftChecked = !!(side && flagOn(side.already_have_post_left));
       var rightChecked = !!(side && flagOn(side.already_have_post_right));
       var gateChecked = !!(side && flagOn(side.gate_goes_here));
@@ -1044,8 +1062,29 @@
   var lastGateLimitSeen = null;
   var clearedGateTickIds = [];
 
+  function readGateRunId(input) {
+    if (!input) return '';
+    var card = input.closest ? input.closest('.fq-side-card') : null;
+    return existingRunId(input.getAttribute('data-run-id'))
+      || existingRunId(card && card.getAttribute('data-run-id'));
+  }
+
+  function ensureGateInputRunId(input) {
+    var id = readGateRunId(input);
+    if (id) {
+      if (input && !input.getAttribute('data-run-id')) input.setAttribute('data-run-id', id);
+      return id;
+    }
+    if (!input) return '';
+    id = mintRunId();
+    input.setAttribute('data-run-id', id);
+    var card = input.closest ? input.closest('.fq-side-card') : null;
+    if (card) card.setAttribute('data-run-id', id);
+    return id;
+  }
+
   function gateInputRunId(input) {
-    return input ? String(input.getAttribute('data-run-id') || '') : '';
+    return readGateRunId(input);
   }
 
   function findGateInputByRunId(gateInputs, runId) {
@@ -1100,7 +1139,7 @@
         if (input.checked) {
           input.checked = false;
           excess--;
-          var runId = gateInputRunId(input);
+          var runId = ensureGateInputRunId(input);
           if (runId && clearedGateTickIds.indexOf(runId) === -1) {
             clearedGateTickIds.unshift(runId);
           }
@@ -1250,7 +1289,11 @@
         var connectedInput = card.querySelector('.fq-side-connected');
         var presetInput = card.querySelector('.fq-side-gate-preset');
         var gateChecked = !!(gateInput && gateInput.checked);
-        var runId = card.getAttribute('data-run-id') || (gateInput && gateInput.getAttribute('data-run-id')) || '';
+        var runId = existingRunId(card.getAttribute('data-run-id'))
+          || existingRunId(gateInput && gateInput.getAttribute('data-run-id'))
+          || mintRunId();
+        card.setAttribute('data-run-id', runId);
+        if (gateInput) gateInput.setAttribute('data-run-id', runId);
         return {
           length_ft: isFinite(v) ? v : null,
           already_have_post_left: !!(leftInput && leftInput.checked),
@@ -1258,7 +1301,7 @@
           gate_goes_here: gateChecked,
           connected_to_previous: connectedInput ? !!connectedInput.checked : false,
           gate_preset: presetInput ? presetInput.value : '4_single',
-          run_id: runId || null,
+          run_id: runId,
         };
       }
     );

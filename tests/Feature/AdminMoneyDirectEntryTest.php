@@ -93,6 +93,8 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertStringContainsString('clearedGateTickIds', $fence);
         $this->assertStringNotContainsString('clearedGateTickIndexes', $fence);
         $this->assertStringContainsString('data-run-id', $fence);
+        $this->assertStringContainsString('function ensureSideRunIds', $fence);
+        $this->assertStringContainsString('a missing first-run id cannot collide', $fence);
         $this->assertStringContainsString('Gate goes here', $fence);
 
         $quoteCreates = glob(resource_path('views/admin/quotations/*/create.blade.php')) ?: [];

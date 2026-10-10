@@ -328,6 +328,10 @@ function sleep(ms) {
   async function fenceGateLowerNotice() {
     await go(base + '/admin/quotations/fence/create');
     await page.waitForSelector('#fq-gates');
+    const firstRunId = await page.$eval('.fq-side-card', (el) => String(el.getAttribute('data-run-id') || ''));
+    if (!firstRunId) {
+      throw new Error('First fence run has no run id');
+    }
     await page.click('#fq-add-side');
     const lengths = await page.$$('.fq-side-length');
     if (lengths.length < 2) {
