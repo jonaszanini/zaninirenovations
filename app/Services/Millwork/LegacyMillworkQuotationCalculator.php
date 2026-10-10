@@ -208,7 +208,6 @@ class LegacyMillworkQuotationCalculator
         $spareSheets = max(0, (int) ($inputs['spare_sheets'] ?? 0));
 
         foreach ($this->pieces($inputs) as $idx => $piece) {
-            $piece = MillworkDimensionParser::toLegacyInchPiece($piece);
             $exploded = $builder->explode($piece, $thickness, ! empty($piece['edge_banding']) ? $ebThick : 0.0);
             foreach ($exploded['parts'] as $part) {
                 if ($part->materialKey === 'back') {
@@ -503,9 +502,7 @@ class LegacyMillworkQuotationCalculator
         $out = [];
         foreach ($raw as $piece) {
             if (is_array($piece)) {
-                $out[] = MillworkDimensionParser::toLegacyInchPiece(
-                    array_merge(self::defaultPiece((string) ($piece['type'] ?? 'shelf')), $piece)
-                );
+                $out[] = array_merge(self::defaultPiece((string) ($piece['type'] ?? 'shelf')), $piece);
             }
         }
 

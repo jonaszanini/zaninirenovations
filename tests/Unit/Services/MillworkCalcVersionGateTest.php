@@ -4,12 +4,121 @@ namespace Tests\Unit\Services;
 
 use App\Models\MillworkQuotation;
 use App\Models\MillworkSettings;
+use App\Services\Millwork\Frozen\V2MillworkPartBuilder;
+use App\Services\Millwork\LegacyMillworkPartBuilder;
+use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Services\MillworkQuotationCalculator;
 use Tests\TestCase;
 
 class MillworkCalcVersionGateTest extends TestCase
 {
+    public function test_legacy_calculator_file_hash_matches_main(): void
+    {
+        $relative = 'app/Services/Millwork/LegacyMillworkQuotationCalculator.php';
+        $ours = hash_file('sha256', base_path($relative));
+        $this->assertSame(
+            'fc1e540f1050344445db0068d23eabf7d1902d85de17b9990bc5c51c39a79332',
+            $ours,
+            'LegacyMillworkQuotationCalculator.php must stay byte-for-byte identical to main'
+        );
+
+        $mainSrc = (string) shell_exec('git show origin/main:'.escapeshellarg($relative).' 2>/dev/null');
+        if ($mainSrc !== '') {
+            $this->assertSame(hash('sha256', $mainSrc), $ours);
+        }
+    }
+
+    public function test_v1_text_size_762mm_does_not_reprice_on_open(): void
+    {
+        $piece = [
+            'type' => 'cabinet',
+            'qty' => 1,
+            'width' => 36,
+            'height' => 34.5,
+            'depth' => '762mm',
+            'unit' => 'in',
+            'include_doors' => false,
+            'include_back' => false,
+            'edge_banding' => false,
+            'shelf_count' => 0,
+        ];
+        $stored = $this->total($piece, 1);
+        $converted = $this->total(MillworkDimensionParser::toLegacyInchPiece($piece), 1);
+        $this->assertGreaterThan(1000, $stored);
+        $this->assertNotEquals(round($converted, 2), round($stored, 2));
+        $this->assertEqualsWithDelta($stored, $this->total($piece, 1), 0.01);
+    }
+
+    public function test_edited_piece_never_stays_on_v2(): void
+    {
+        $edited = [
+            'type' => 'shelf',
+            'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            '_calc_version' => 3,
+        ];
+        $this->assertTrue(MillworkPartBuilder::usesNewParsing($edited));
+        $this->assertSame(3, MillworkPartBuilder::pieceCalcVersion($edited, 2));
+        $this->assertFalse(MillworkPartBuilder::usesNewParsing([
+            'type' => 'shelf',
+            '_calc_version' => 2,
+        ], 2));
+
+        $blankEdited = (new MillworkPartBuilder(2))->explode([
+            'type' => 'bench',
+            'unit' => 'in',
+            'length' => 48,
+            'depth' => 16,
+            'height' => '',
+            'qty' => 1,
+            'edge_banding' => false,
+            '_calc_version' => 3,
+        ], 0.75, 0.0);
+        $frozen = (new V2MillworkPartBuilder)->explode([
+            'type' => 'bench',
+            'unit' => 'in',
+            'length' => 48,
+            'depth' => 16,
+            'height' => '',
+            'qty' => 1,
+            'edge_banding' => false,
+        ], 0.75, 0.0);
+        $this->assertStringContainsString('18"', implode(' ', $blankEdited['labels']));
+        $this->assertStringNotContainsString('18"', implode(' ', $frozen['labels']));
+    }
+
+    public function test_frozen_v2_trim_default_matches_legacy_main(): void
+    {
+        $piece = [
+            'type' => 'trim',
+            'profile' => 'baseboard',
+            'linear_ft' => 24,
+            'qty' => 1,
+            'edge_banding' => false,
+        ];
+        $frozen = (new V2MillworkPartBuilder)->explode($piece, 0.75, 0.0);
+        $legacy = (new LegacyMillworkPartBuilder)->explode($piece, 0.75, 0.0);
+        $this->assertSame($legacy['labels'], $frozen['labels']);
+        $this->assertNotSame([], $frozen['labels']);
+
+        $total = $this->total([
+            'type' => 'trim',
+            'profile' => 'baseboard',
+            'linear_ft' => 24,
+            'qty' => 1,
+            'edge_banding' => false,
+        ], 2);
+        $this->assertGreaterThan(0, $total);
+        $this->assertEqualsWithDelta($total, $this->total([
+            'type' => 'trim',
+            'profile' => 'baseboard',
+            'linear_ft' => 24,
+            'qty' => 1,
+            'edge_banding' => false,
+            'stock_length_ft' => 12,
+        ], 2), 0.02);
+    }
+
     public function test_new_quotes_default_to_calc_version_three(): void
     {
         $this->assertSame(3, MillworkQuotationCalculator::CALC_VERSION);
