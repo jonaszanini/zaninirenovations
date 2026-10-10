@@ -470,6 +470,7 @@ class MillworkQuotationController extends Controller
         }
 
         $calc = (new MillworkQuotationCalculator)->calculate($rawInputs, null, $cutPlanVersion);
+        unset($rawInputs['_existing_pieces']);
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
         $workDescription = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage(
             $request->input('work_description')
@@ -527,6 +528,7 @@ class MillworkQuotationController extends Controller
             $existingPieces,
             $existing !== null && $existing->cutPlanVersion() < 2
         );
+        $out['_existing_pieces'] = $existingPieces;
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);

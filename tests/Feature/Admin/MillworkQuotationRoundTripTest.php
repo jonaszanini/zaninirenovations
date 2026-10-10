@@ -872,7 +872,8 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
         $this->from(route('admin.quotations.millwork.edit', $quote))
             ->put(route('admin.quotations.millwork.update', $quote), $posted)
             ->assertRedirect(route('admin.quotations.millwork.edit', $quote))
-            ->assertSessionHasErrors('pieces.0.width');
+            ->assertSessionHasErrors('pieces.0.width')
+            ->assertSessionDoesntHaveErrors('pieces.0.length');
 
         $fresh = $quote->fresh();
         $this->assertSame(36, $fresh->inputs['pieces'][0]['width'] ?? null);
@@ -881,6 +882,155 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
             'Enter a valid size',
             session('errors')->first('pieces.0.width')
         );
+
+        $html = $this->get(route('admin.quotations.millwork.edit', $quote))
+            ->assertOk()
+            ->getContent();
+        $crawler = new Crawler($html);
+        $width = $crawler->filter('input[name="pieces[0][width]"]');
+        $this->assertGreaterThan(0, $width->count(), 'visible width input must be on the form');
+        $this->assertStringContainsString(
+            'is-invalid',
+            (string) $width->attr('class'),
+            'invalid used-field error must render on the visible width input'
+        );
+        $widthWrap = $width->closest('.mw-dim-field');
+        $this->assertGreaterThan(0, $widthWrap->count());
+        $this->assertStringContainsString('Enter a valid size', $widthWrap->text());
+        $length = $crawler->filter('input[name="pieces[0][length]"]');
+        $this->assertGreaterThan(0, $length->count());
+        $this->assertStringNotContainsString(
+            'is-invalid',
+            (string) $length->attr('class'),
+            'hidden length must not carry the invalid-size error'
+        );
+    }
+
+    public function test_untouched_legacy_text_sizes_resave_keeps_exact_price(): void
+    {
+        $this->actingAsAdmin();
+
+        $piece = [
+            'type' => 'cabinet',
+            'qty' => 1,
+            'unit' => 'in',
+            'width' => '36in.',
+            'height' => 34.5,
+            'depth' => "24''",
+            'length' => 'n/a',
+        ];
+        $inputs = [
+            'pieces' => [$piece],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+        ];
+        $calc = (new MillworkQuotationCalculator)->calculate($inputs, null, 1);
+        $total = round((float) $calc['summary']['grand_total'], 2);
+        $this->assertGreaterThan(0, $total);
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V1-LEGACY-TEXT',
+            'client_name' => 'V1 legacy text sizes',
+            'is_draft' => false,
+            'cut_plan_version' => 1,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => $total,
+            'payment_installments' => 3,
+            'include_debris_removal' => false,
+            'include_commute' => false,
+            'ask_reply_to_accept' => false,
+        ]);
+
+        $posted = $this->formValuesFromHtml(
+            $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent()
+        );
+        $this->assertSame('36in.', (string) ($posted['pieces'][0]['width'] ?? ''));
+        $this->assertSame("24''", (string) ($posted['pieces'][0]['depth'] ?? ''));
+        $this->assertSame('n/a', (string) ($posted['pieces'][0]['length'] ?? ''));
+
+        $this->put(route('admin.quotations.millwork.update', $quote), $posted)
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->from(route('admin.quotations.millwork.edit', $quote))
+            ->put(route('admin.quotations.millwork.update', $quote), array_merge($posted, ['save_intent' => 'draft']))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $fresh = $quote->fresh();
+        $this->assertSame('36in.', $fresh->inputs['pieces'][0]['width'] ?? null);
+        $this->assertSame("24''", $fresh->inputs['pieces'][0]['depth'] ?? null);
+        $this->assertSame('n/a', $fresh->inputs['pieces'][0]['length'] ?? null);
+        $this->assertArrayNotHasKey('_existing_pieces', $fresh->inputs);
+        $this->assertSame($total, round((float) $fresh->final_quote_total, 2));
+    }
+
+    public function test_legacy_text_row_typing_2_ft_in_blank_depth_reprices_as_24_inches(): void
+    {
+        $this->actingAsAdmin();
+
+        $piece = [
+            'type' => 'cabinet',
+            'qty' => 1,
+            'unit' => 'in',
+            'width' => '36in.',
+            'height' => 34.5,
+            'length' => 'n/a',
+        ];
+        $this->assertArrayNotHasKey('depth', $piece);
+
+        $inputs = [
+            'pieces' => [$piece],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+        ];
+        $storedCalc = (new MillworkQuotationCalculator)->calculate($inputs, null, 1);
+        $stored = round((float) $storedCalc['summary']['grand_total'], 2);
+        $inch = $inputs;
+        $inch['pieces'][0]['width'] = 36;
+        $inch['pieces'][0]['depth'] = 24;
+        unset($inch['pieces'][0]['length']);
+        $inchTotal = round((float) (new MillworkQuotationCalculator)->calculate($inch, null, 1)['summary']['grand_total'], 2);
+        $twoInch = $inch;
+        $twoInch['pieces'][0]['depth'] = 2;
+        $twoTotal = round((float) (new MillworkQuotationCalculator)->calculate($twoInch, null, 1)['summary']['grand_total'], 2);
+        $this->assertSame($stored, $inchTotal);
+        $this->assertNotEquals($inchTotal, $twoTotal);
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-V1-2FT-MUTANT',
+            'client_name' => 'V1 2 ft mutant',
+            'is_draft' => false,
+            'cut_plan_version' => 1,
+            'inputs' => $inputs,
+            'calculation' => $storedCalc,
+            'final_quote_total' => $stored,
+            'payment_installments' => 3,
+            'include_debris_removal' => false,
+            'include_commute' => false,
+            'ask_reply_to_accept' => false,
+        ]);
+
+        $posted = $this->formValuesFromHtml(
+            $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent()
+        );
+        $this->assertSame('', (string) ($posted['pieces'][0]['depth'] ?? ''));
+        $this->assertSame('36in.', (string) ($posted['pieces'][0]['width'] ?? ''));
+        $posted['pieces'][0]['depth'] = '2 ft';
+        $posted['pieces'][0]['_calc_version'] = 3;
+
+        $this->put(route('admin.quotations.millwork.update', $quote), $posted)
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $fresh = $quote->fresh();
+        $this->assertSame('36in.', $fresh->inputs['pieces'][0]['width'] ?? null);
+        $this->assertEquals(24, $fresh->inputs['pieces'][0]['depth'] ?? null);
+        $this->assertSame($inchTotal, round((float) $fresh->final_quote_total, 2));
+        $this->assertNotEquals($twoTotal, round((float) $fresh->final_quote_total, 2));
     }
 
     public function test_project_pdf_totals_match_calculator(): void

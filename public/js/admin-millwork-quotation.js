@@ -548,7 +548,7 @@ window.MillworkDimensionParser = (function () {
       if (!group) return true;
       if (group.hidden || group.hasAttribute('hidden')) return false;
       var show = group.getAttribute('data-mw-show');
-      if (show && group.style.display === 'none') return false;
+      if (show && window.getComputedStyle(group).display === 'none') return false;
       return true;
     }
 
@@ -602,6 +602,11 @@ window.MillworkDimensionParser = (function () {
     function snapshotPieceSizes(card, opts) {
       if (!card) return;
       opts = opts || {};
+      card.querySelectorAll('.mw-input--dim').forEach(function (el) {
+        if (opts.asNew || !el.hasAttribute('data-mw-initial-dim')) {
+          el.setAttribute('data-mw-initial-dim', el.value);
+        }
+      });
       var flag = card.querySelector('[data-mw-calc-version]');
       if (opts.asNew) {
         if (flag) flag.value = '3';
@@ -673,6 +678,11 @@ window.MillworkDimensionParser = (function () {
       if (!window.MillworkDimensionParser) return errors;
       form.querySelectorAll('.mw-input--dim').forEach(function (input) {
         if (!dimFieldIsActive(input)) return;
+        var card = input.closest('[data-mw-piece]');
+        var existing = card && card.getAttribute('data-mw-saved-fingerprint') !== '';
+        if (!quoteUsesNewParsing() && existing && input.getAttribute('data-mw-initial-dim') === String(input.value)) {
+          return;
+        }
         var parsed = window.MillworkDimensionParser.inspect(input.value, dimFieldUnit(input));
         if (parsed.status === 'invalid') {
           errors[inputErrorKey(input)] = parsed.message || window.MillworkDimensionParser.INVALID_MESSAGE;

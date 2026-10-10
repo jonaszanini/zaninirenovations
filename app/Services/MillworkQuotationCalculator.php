@@ -747,23 +747,90 @@ class MillworkQuotationCalculator
      */
     private function collectDimensionFieldErrors(array $inputs, array &$messages): void
     {
-        foreach ($this->pieces($inputs) as $pi => $piece) {
-            $this->collectRowDimensionErrors($piece, 'pieces.'.$pi, $messages, null, null);
+        $rawPieces = is_array($inputs['pieces'] ?? null) ? array_values($inputs['pieces']) : [];
+        $savedPieces = is_array($inputs['_existing_pieces'] ?? null) ? array_values($inputs['_existing_pieces']) : [];
+        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::CALC_VERSION;
+
+        foreach ($rawPieces as $pi => $piece) {
+            if (! is_array($piece)) {
+                continue;
+            }
+            $saved = is_array($savedPieces[$pi] ?? null) ? $savedPieces[$pi] : [];
+            $used = $this->usedParseKeys($piece);
+            $only = $this->keysToValidateForRow($piece, $saved, $used, $quoteIsV3);
+            $this->collectRowDimensionErrors($piece, 'pieces.'.$pi, $messages, null, $only);
+            $savedSets = is_array($saved['sets'] ?? null) ? array_values($saved['sets']) : [];
             foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $si => $set) {
                 if (! is_array($set)) {
                     continue;
                 }
                 $set['_calc_version'] = $piece['_calc_version'] ?? $set['_calc_version'] ?? null;
+                $savedSet = is_array($savedSets[$si] ?? null) ? $savedSets[$si] : [];
+                $setUsed = $this->usedSetLimitKeys($piece);
+                $setOnly = $this->keysToValidateForRow($set, $savedSet, $setUsed, $quoteIsV3);
                 $this->collectRowDimensionErrors(
                     $set,
                     'pieces.'.$pi.'.sets.'.$si,
                     $messages,
                     (string) ($piece['unit'] ?? 'in'),
-                    null
+                    $setOnly
                 );
             }
         }
         $this->collectCountFieldErrors($inputs, $messages);
+    }
+
+    /**
+     * v3 quotes check every used field. v1/v2 only check used fields whose
+     * posted value changed from the stored row, even after JS marks the
+     * piece v3, so leftover text like 36in. or n/a does not block a save
+     * or land on a hidden unused input.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $saved
+     * @param  list<string>  $used
+     * @return list<string>
+     */
+    private function keysToValidateForRow(array $row, array $saved, array $used, bool $validateUnchanged): array
+    {
+        if ($used === []) {
+            return [];
+        }
+        if ($validateUnchanged || $saved === []) {
+            return $used;
+        }
+        $changed = [];
+        foreach ($used as $key) {
+            if ($this->dimensionValueChanged($row, $saved, $key)) {
+                $changed[] = $key;
+            }
+        }
+
+        return $changed;
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $saved
+     */
+    private function dimensionValueChanged(array $current, array $saved, string $key): bool
+    {
+        if (! array_key_exists($key, $saved)) {
+            $cur = $current[$key] ?? '';
+
+            return $cur !== '' && $cur !== null;
+        }
+
+        return $this->dimensionCompareToken($current[$key] ?? '') !== $this->dimensionCompareToken($saved[$key] ?? '');
+    }
+
+    private function dimensionCompareToken(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        return strtolower(trim(preg_replace('/\s+/', ' ', (string) $value) ?? (string) $value));
     }
 
     /**
