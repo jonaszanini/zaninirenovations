@@ -26,6 +26,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main for quote toolbar inventory
+        run: git fetch origin main
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -52,6 +57,7 @@ jobs:
           php artisan test tests/Unit/Support/AdminListFiltersTest.php
           php artisan test tests/Unit/Support/CadMoneyTest.php
           php artisan test tests/Unit/Support/AdminOnceSubmitTokenTest.php
+          php artisan test tests/Unit/Support/QuotationSaveIntentTest.php
           php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php
           php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
           php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
@@ -96,6 +102,7 @@ jobs:
           php artisan test tests/Unit/Views/AdminDatePickerThemeTest.php
           php artisan test tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
           php artisan test tests/Unit/Views/QuotationExpensePairLayoutTest.php
+          php artisan test tests/Unit/Views/QuotationEditorHeaderMarkupTest.php
 
       - name: Public CSS light-only (no database)
         run: |
@@ -167,6 +174,10 @@ jobs:
           php artisan test tests/Feature/Admin/BasementRoomAreaImportTest.php
           php artisan test tests/Feature/Admin/BasementQuotationMathRoundTripTest.php
           php artisan test tests/Feature/Admin/BasementQuotationPagesTest.php
+          php artisan test tests/Feature/Admin/QuotationEditorHeaderTest.php
+          php artisan test tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php
+          php artisan test tests/Feature/Admin/QuotationDraftClientFacingGuardTest.php
+          php artisan test tests/Feature/Admin/QuotationEditorControlInventoryTest.php
           php artisan test tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php
           php artisan test tests/Feature/Admin/RoomAreaQuoteLinesTest.php
           php artisan test tests/Unit/Services/RoomAreaQuotePrefillTest.php

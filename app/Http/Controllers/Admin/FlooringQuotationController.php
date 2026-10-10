@@ -17,6 +17,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\FlooringQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use App\Support\SafeOutboundHttp;
 use Illuminate\Http\Request;
@@ -51,7 +52,7 @@ class FlooringQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
 
         if ($replay = $this->rejectReplaySubmit($request)) {
@@ -87,7 +88,7 @@ class FlooringQuotationController extends Controller
 
     public function update(Request $request, FlooringQuotation $flooring_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $flooring_quotation);
 
         $flooring_quotation->fill(array_merge($calc, [
@@ -502,6 +503,10 @@ class FlooringQuotationController extends Controller
 
     protected function syncFlooringLineToProjectQuotation(ClientProject $project, FlooringQuotation $flooringQuotation): void
     {
+        if ($this->quotationIsDraft($flooringQuotation)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Flooring installation (labor)',
             'amount' => $flooringQuotation->labourPreTaxAmountForProjectQuotation(),
@@ -566,6 +571,10 @@ class FlooringQuotationController extends Controller
 
     protected function appendFlooringLineToProjectQuotation(ClientProject $project, FlooringQuotation $flooringQuotation): void
     {
+        if ($this->quotationIsDraft($flooringQuotation)) {
+            return;
+        }
+
         $this->syncFlooringLineToProjectQuotation($project, $flooringQuotation);
 
         $flooringQuotation->update(array_merge([

@@ -100,6 +100,9 @@
   $projectForReturn = ($isEdit && $quotation->project)
       ? $quotation->project
       : $linkProject;
+  $preservePid = optional($linkProject)->id
+      ?: ($isEdit && $quotation->client_project_id ? (int) $quotation->client_project_id : null)
+      ?: (request()->filled('project') ? (int) request('project') : null);
 @endphp
 
 @section('heading', $title)
@@ -468,37 +471,30 @@
 
 @section('content')
   {{-- Toolbar: Back | Save actions -------------------------------- --}}
-  <div class="fq-form-toolbar">
-    <a href="{{ route('admin.quotations.fence.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to fence quotations
-    </a>
-    <div class="fq-form-toolbar-right">
-      <a href="{{ route('admin.quotations.fence.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-cog"></i> Price configuration
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-      <a href="{{ route('admin.quotations.fence.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-      @if ($isEdit)
-        <a href="{{ route('admin.quotations.fence.purchase-list', $quotation) }}"
-           target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm"
-           data-purchase-list-choice
-           data-purchase-list-title="Print material list">
-          <i class="fa fa-print"></i> Print Material List
-        </a>
-        @include('admin.partials.quotation_view_pdf')
-      @endif
-      @if (! $isEdit)
-        <button type="submit" form="fq-form" name="after_save" value="create_project"
-                class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-folder-plus"></i> Save &amp; create project
-        </button>
-      @endif
-      <button type="submit" form="fq-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
-        <i class="fa fa-save"></i> {{ $isEdit ? 'Save changes' : 'Save quotation' }}
-      </button>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Fence',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
+    'listUrl' => route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.fence.config', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'fq-form',
+    'saveId' => 'fq-btn-save',
+    'saveLabel' => $isEdit ? 'Save quotation' : 'Save quotation',
+    'saveHotkey' => true,
+    'draftId' => 'fq-btn-draft',
+    'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.fence.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+    'showCreateProject' => ! $isEdit,
+    'createProjectFormId' => 'fq-form',
+  ])
 
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
@@ -538,10 +534,12 @@
   <div class="fq-calc-layout">
     {{-- ====================== LEFT: FORM =========================== --}}
     <div class="fq-left-stack">
-      <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor>
+      <form id="fq-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor
+            data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
         @csrf
         @include('admin.partials.once_submit')
         @if ($isEdit) @method('PUT') @endif
+        <input type="hidden" name="save_intent" id="fq-save-intent" value="publish">
         @if ($linkProject)
           <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
         @endif
@@ -739,10 +737,15 @@
     <aside class="admin-card fq-breakdown-card">
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
 
-      <h3 class="cp-heading-md">
-        Live breakdown
-        <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
-      </h3>
+      <div class="qh-priced-head" data-qh-step="2">
+        <h3 class="cp-heading-md">
+          Live breakdown
+          <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
+        </h3>
+        @include('admin.partials.quotation_price_config_gear', [
+          'url' => route('admin.quotations.fence.config'),
+        ])
+      </div>
       <p class="cp-breakdown-intro">
         <span class="fq-badge" id="fq-status-badge">Calculating…</span>
       </p>
@@ -847,6 +850,16 @@
   'use strict';
 
   var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var fqIntent = document.getElementById('fq-save-intent');
+  var fqDraftBtn = document.getElementById('fq-btn-draft');
+  var fqForm = document.getElementById('fq-form');
+  if (fqDraftBtn && fqIntent && fqForm) {
+    fqDraftBtn.addEventListener('click', function () {
+      fqIntent.value = 'draft';
+      if (typeof fqForm.requestSubmit === 'function') fqForm.requestSubmit();
+      else fqForm.submit();
+    });
+  }
 
   var previewUrl = @json(route('admin.quotations.fence.preview'));
   var initialSides = @json($initialSides);
@@ -929,9 +942,38 @@
     return flagOn(value);
   }
 
+  var nextRunId = 1;
+
+  function existingRunId(value) {
+    return value != null && String(value) !== '' ? String(value) : '';
+  }
+
+  function bumpNextRunId(runId) {
+    var n = parseInt(String(runId), 10);
+    if (isFinite(n) && n >= nextRunId) nextRunId = n + 1;
+  }
+
+  function mintRunId() {
+    return String(nextRunId++);
+  }
+
+  // Scan known ids first so a missing first-run id cannot collide with a later one.
+  function ensureSideRunIds(sides) {
+    (sides || []).forEach(function (side) {
+      var id = existingRunId(side && side.run_id);
+      if (id) bumpNextRunId(id);
+    });
+    (sides || []).forEach(function (side) {
+      if (!side) return;
+      side.run_id = existingRunId(side.run_id) || mintRunId();
+    });
+  }
+
   function renderSides(sides) {
+    ensureSideRunIds(sides);
     sidesEl.innerHTML = '';
     sides.forEach(function (side, i) {
+      var runId = String(side.run_id);
       var leftChecked = !!(side && flagOn(side.already_have_post_left));
       var rightChecked = !!(side && flagOn(side.already_have_post_right));
       var gateChecked = !!(side && flagOn(side.gate_goes_here));
@@ -939,6 +981,7 @@
       var preset = (side && side.gate_preset) ? side.gate_preset : '4_single';
       var card = document.createElement('div');
       card.className = 'fq-side-card';
+      card.setAttribute('data-run-id', runId);
       card.innerHTML = [
         '<div class="fq-side-card__head">',
         '  <h5>Run ' + (i + 1) + '</h5>',
@@ -984,6 +1027,7 @@
         '    <input type="hidden" name="sides[' + i + '][gate_goes_here]" value="0">',
         '    <input type="checkbox" class="admin-checkbox__input fq-side-gate-here"',
         '           name="sides[' + i + '][gate_goes_here]" value="1"',
+        '           data-run-id="' + runId + '"',
         (gateChecked ? ' checked' : '') + '>',
         '    <span class="admin-checkbox__mark" aria-hidden="true"></span>',
         '    <span class="admin-checkbox__text">Gate goes here</span>',
@@ -1017,32 +1061,53 @@
   }
 
   function gateCountLimit() {
-    var n = parseInt(gatesInput && gatesInput.value, 10);
+    var raw = gatesInput && String(gatesInput.value).trim();
+    if (raw === '') {
+      if (typeof document !== 'undefined' && document.activeElement === gatesInput) {
+        return null;
+      }
+      return 0;
+    }
+    var n = parseInt(raw, 10);
     return isFinite(n) && n > 0 ? n : 0;
   }
 
-  function updateGateCheckboxState() {
-    var limit = gateCountLimit();
-    var gateInputs = sidesEl.querySelectorAll('.fq-side-gate-here');
-    var checkedCount = 0;
+  var lastClearedGateTicks = 0;
+  var lastGateLimitSeen = null;
+  var clearedGateTickIds = [];
 
-    gateInputs.forEach(function (input) {
-      if (input.checked) checkedCount++;
-    });
+  function readGateRunId(input) {
+    if (!input) return '';
+    var card = input.closest ? input.closest('.fq-side-card') : null;
+    return existingRunId(input.getAttribute('data-run-id'))
+      || existingRunId(card && card.getAttribute('data-run-id'));
+  }
 
-    if (checkedCount > limit) {
-      var excess = checkedCount - limit;
-      Array.prototype.slice.call(gateInputs).reverse().forEach(function (input) {
-        if (excess <= 0) return;
-        if (input.checked) {
-          input.checked = false;
-          excess--;
-        }
-      });
-      checkedCount = limit;
+  function ensureGateInputRunId(input) {
+    var id = readGateRunId(input);
+    if (id) {
+      if (input && !input.getAttribute('data-run-id')) input.setAttribute('data-run-id', id);
+      return id;
     }
+    if (!input) return '';
+    id = mintRunId();
+    input.setAttribute('data-run-id', id);
+    var card = input.closest ? input.closest('.fq-side-card') : null;
+    if (card) card.setAttribute('data-run-id', id);
+    return id;
+  }
 
-    // Keep every box clickable so checking another run moves the gate.
+  function gateInputRunId(input) {
+    return readGateRunId(input);
+  }
+
+  function findGateInputByRunId(gateInputs, runId) {
+    return Array.prototype.find.call(gateInputs, function (input) {
+      return gateInputRunId(input) === String(runId);
+    }) || null;
+  }
+
+  function syncGateTickChrome(gateInputs) {
     gateInputs.forEach(function (input) {
       var label = input.closest('label.admin-checkbox');
       input.disabled = false;
@@ -1053,6 +1118,55 @@
         if (size) size.classList.toggle('is-hidden', !input.checked);
       }
     });
+  }
+
+  function updateGateCheckboxState() {
+    var limit = gateCountLimit();
+    var gateInputs = sidesEl.querySelectorAll('.fq-side-gate-here');
+
+    if (limit === null) {
+      syncGateTickChrome(gateInputs);
+      updateGateCountWarning();
+      return;
+    }
+
+    var checkedCount = 0;
+    gateInputs.forEach(function (input) {
+      if (input.checked) checkedCount++;
+    });
+
+    if (checkedCount < limit && clearedGateTickIds.length) {
+      clearedGateTickIds = clearedGateTickIds.filter(function (runId) {
+        var input = findGateInputByRunId(gateInputs, runId);
+        if (!input || input.checked) return false;
+        if (checkedCount >= limit) return true;
+        input.checked = true;
+        checkedCount++;
+        return false;
+      });
+    }
+
+    if (checkedCount > limit) {
+      var excess = checkedCount - limit;
+      Array.prototype.slice.call(gateInputs).reverse().forEach(function (input) {
+        if (excess <= 0) return;
+        if (input.checked) {
+          input.checked = false;
+          excess--;
+          var runId = ensureGateInputRunId(input);
+          if (runId && clearedGateTickIds.indexOf(runId) === -1) {
+            clearedGateTickIds.unshift(runId);
+          }
+        }
+      });
+      checkedCount = limit;
+    }
+
+    lastClearedGateTicks = clearedGateTickIds.length;
+    lastGateLimitSeen = limit;
+
+    // Keep every box clickable so checking another run moves the gate.
+    syncGateTickChrome(gateInputs);
     updateGateCountWarning();
   }
 
@@ -1099,7 +1213,17 @@
     if (!gateWarnEl || !gatesInput) return;
     var messages = [];
     var ticked = sidesEl.querySelectorAll('.fq-side-gate-here:checked').length;
-    var count = parseInt(gatesInput.value, 10) || 0;
+    var count = parseInt(gatesInput.value, 10);
+    if (!isFinite(count)) {
+      count = lastGateLimitSeen != null ? lastGateLimitSeen : 0;
+    }
+    if (lastClearedGateTicks > 0) {
+      messages.push(
+        'Gates was lowered to ' + count + '. ' + lastClearedGateTicks +
+        (lastClearedGateTicks === 1 ? ' “Gate goes here” tick was' : ' “Gate goes here” ticks were') +
+        ' cleared.'
+      );
+    }
     if (count > ticked) {
       messages.push('Gates (' + count + ') is higher than ticked runs (' + ticked + '). Extra gates use Extra gate size (' + extraGateLabel() + ').');
     }
@@ -1149,7 +1273,8 @@
       already_have_post_right: false,
       gate_goes_here: false,
       connected_to_previous: true,
-      gate_preset: '4_single'
+      gate_preset: '4_single',
+      run_id: String(nextRunId++)
     });
     renderSides(current);
     schedulePreview();
@@ -1178,6 +1303,11 @@
         var connectedInput = card.querySelector('.fq-side-connected');
         var presetInput = card.querySelector('.fq-side-gate-preset');
         var gateChecked = !!(gateInput && gateInput.checked);
+        var runId = existingRunId(card.getAttribute('data-run-id'))
+          || existingRunId(gateInput && gateInput.getAttribute('data-run-id'))
+          || mintRunId();
+        card.setAttribute('data-run-id', runId);
+        if (gateInput) gateInput.setAttribute('data-run-id', runId);
         return {
           length_ft: isFinite(v) ? v : null,
           already_have_post_left: !!(leftInput && leftInput.checked),
@@ -1185,6 +1315,7 @@
           gate_goes_here: gateChecked,
           connected_to_previous: connectedInput ? !!connectedInput.checked : false,
           gate_preset: presetInput ? presetInput.value : '4_single',
+          run_id: runId,
         };
       }
     );
@@ -1203,7 +1334,9 @@
     var gateCount = parseInt(gatesInput.value, 10) || 0;
     if (gateSides > gateCount) {
       gateCount = gateSides;
-      gatesInput.value = String(gateCount);
+      if (typeof document === 'undefined' || document.activeElement !== gatesInput) {
+        gatesInput.value = String(gateCount);
+      }
     }
     var payload = {
       sides: sides,

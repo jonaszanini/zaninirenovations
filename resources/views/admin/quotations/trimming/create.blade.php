@@ -51,23 +51,24 @@
 @section('heading', $title)
 
 @section('content')
-  <div class="fq-form-toolbar">
-    <a href="{{ route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to list
-    </a>
-    <a href="{{ route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-    <div class="fq-form-toolbar-right">
-      <a href="{{ route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-cog"></i> Price configuration
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tm-btn-draft" data-hotkey-save>Save as draft</button>
-      @include('admin.partials.quotation_view_pdf')
-      <button type="submit" form="tm-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="tm-btn-publish">
-        <i class="fa fa-save"></i> Save quotation
-      </button>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Trim',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'tm-main-form',
+    'saveId' => 'tm-btn-publish',
+    'draftId' => 'tm-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
 
   @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
@@ -133,8 +134,13 @@
         </div>
       </div>
 
-      <div class="admin-card tm-card">
-        <h4>Doors &amp; windows</h4>
+      <div class="admin-card tm-card" data-qh-step="2">
+        <h4 class="qh-priced-head">
+          Doors &amp; windows
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
+        </h4>
         <label class="admin-checkbox tm-family-toggle">
           <input type="checkbox" class="admin-checkbox__input tm-preview" name="enabled_families[]" value="doors_windows"
                  data-tm-family="doors_windows" @checked($familyOn('doors_windows'))>
@@ -562,7 +568,9 @@
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'tm-main-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'tm-main-form'])
       <div class="pq-summary-card">
-        <h4 class="cp-form-help-spaced">Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="tm-live-root">
           <p class="admin-form-help" id="tm-live-empty">Turn on a family and enter quantities.</p>
           <div id="tm-live-body" hidden></div>

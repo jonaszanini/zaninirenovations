@@ -19,6 +19,7 @@ use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use App\Services\StairsQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -54,7 +55,7 @@ class StairsQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
 
         if ($replay = $this->rejectReplaySubmit($request)) {
@@ -90,7 +91,7 @@ class StairsQuotationController extends Controller
 
     public function update(Request $request, StairsQuotation $stairs_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $stairs_quotation);
 
         $stairs_quotation->fill(array_merge($calc, [
@@ -526,6 +527,10 @@ class StairsQuotationController extends Controller
 
     protected function syncStairsLineToProjectQuotation(ClientProject $project, StairsQuotation $stairsQuotation): void
     {
+        if ($this->quotationIsDraft($stairsQuotation)) {
+            return;
+        }
+
         $items = [[
             'description' => $stairsQuotation->summaryDescription(),
             'amount' => $stairsQuotation->labourPreTaxAmountForProjectQuotation(),
@@ -586,6 +591,10 @@ class StairsQuotationController extends Controller
         StairsQuotation $stairsQuotation,
         string $lineDescription
     ): void {
+        if ($this->quotationIsDraft($stairsQuotation)) {
+            return;
+        }
+
         $this->syncStairsLineToProjectQuotation($project, $stairsQuotation);
 
         $stairsQuotation->update(array_merge([

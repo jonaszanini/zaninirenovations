@@ -143,6 +143,24 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Tile',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'tl-form',
+    'saveId' => 'tl-btn-publish',
+    'draftId' => 'tl-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
   @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->isLinked())
     <div class="admin-banner admin-banner--info" style="margin-bottom:16px;">
@@ -156,7 +174,8 @@
     @csrf
     @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
-    <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ old('is_draft', $isEdit && $quotation->is_draft ? '1' : '0') }}">
+    <input type="hidden" name="save_intent" id="tl-save-intent" value="publish">
+    <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
     
     <div class="fq-form-toolbar">
       <div class="fq-form-toolbar-right">
@@ -191,9 +210,6 @@
       <div class="fl-step-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h4 style="margin:0;">1. General Details</h4>
-            <a href="{{ route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-                <i class="fa fa-cog"></i> Config
-            </a>
         </div>
         
         @if (! $isEdit || ! $quotation->isLinked())
@@ -218,10 +234,13 @@
         </div>
       </div>
 
-      <div class="fl-step-card">
-        <h4 class="admin-label-with-tip">
+      <div class="fl-step-card" data-qh-step="2">
+        <h4 class="admin-label-with-tip qh-priced-head">
           2. Measurements
           <x-admin.info-tip label="Measurements">Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.</x-admin.info-tip>
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
         </h4>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
           <div class="admin-form-group" style="margin-bottom:0;">
@@ -396,28 +415,15 @@
     </div>
 
     <aside class="pq-sticky">
-      <div class="pq-sidebar-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="tl-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tl-btn-draft" data-hotkey-save>Save as draft</button>
-        <a href="{{ route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </a>
-        <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        @include('admin.partials.quotation_view_pdf')
-      </div>
       
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'tl-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'tl-form'])
       
       <div class="pq-summary-card">
-        <h4>Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="tl-live-root">
           <p class="admin-form-help" id="tl-live-empty">Enter measurements to see totals.</p>
           <div id="tl-live-body" hidden></div>
@@ -448,7 +454,9 @@
 document.addEventListener('DOMContentLoaded', function () {
     var form = document.getElementById('tl-form');
     var isDraftInput = document.getElementById('tl-is-draft');
+    var saveIntentInput = document.getElementById('tl-save-intent');
     var btnDraft = document.getElementById('tl-btn-draft');
+    var btnPublish = document.getElementById('tl-btn-publish');
     var liveEmpty = document.getElementById('tl-live-empty');
     var liveBody = document.getElementById('tl-live-body');
     var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -594,10 +602,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function setTileIntent(draft) {
+        if (saveIntentInput) {
+            saveIntentInput.value = draft ? 'draft' : 'publish';
+        }
+        if (isDraftInput) {
+            isDraftInput.value = draft ? '1' : '0';
+        }
+    }
     if (btnDraft) {
         btnDraft.addEventListener('click', function () {
-            isDraftInput.value = '1';
-            form.submit();
+            setTileIntent(true);
+            if (typeof form.requestSubmit === 'function') form.requestSubmit();
+            else form.submit();
+        });
+    }
+    if (btnPublish) {
+        btnPublish.addEventListener('click', function () {
+            setTileIntent(false);
         });
     }
 

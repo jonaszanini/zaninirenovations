@@ -41,6 +41,32 @@
 @section('heading', $title)
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Shed',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.shed.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'sh-main-form',
+    'saveId' => 'sh-btn-publish',
+    'draftId' => 'sh-btn-draft',
+    'draftHotkey' => true,
+    'wizard' => [
+      'navId' => 'sh-step-nav',
+      'prevId' => 'sh-prev',
+      'nextId' => 'sh-next',
+      'statusId' => 'sh-step-status',
+      'count' => $enabledCount,
+      'hidden' => $isEdit,
+    ],
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
@@ -67,29 +93,6 @@
     @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="sh-save-intent" value="publish">
-
-    <div class="br-toolbar" aria-label="Quotation actions">
-      <div class="pq-sidebar-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="sh-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sh-btn-draft" data-hotkey-save>Save as draft</button>
-        <a href="{{ route('admin.quotations.shed.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <a href="{{ route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </a>
-        <a href="{{ route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        @include('admin.partials.quotation_view_pdf')
-      </div>
-      <div class="br-step-nav" id="sh-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sh-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="sh-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="sh-next">Next</button>
-      </div>
-    </div>
 
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">
@@ -253,7 +256,9 @@
 
     <aside class="br-aside">
       <div class="pq-summary-card">
-        <h4 style="margin:0 0 10px;">Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="sh-live-root">
           <p class="admin-form-help" id="sh-live-empty">Enter length and width to see totals.</p>
           <div id="sh-live-body" hidden></div>

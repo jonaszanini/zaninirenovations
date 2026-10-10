@@ -3563,3 +3563,31 @@ html.admin-dark [contenteditable].admin-field-invalid {
   border-color: var(--admin-danger);
   box-shadow: 0 0 0 3px var(--admin-danger-soft);
 }
+
+html.admin-dark .qh {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .qh-title,
+html.admin-dark .qh-crumb__current,
+html.admin-dark .qh-wizard__status,
+html.admin-dark .qh .br-step-nav__status {
+  color: var(--admin-heading);
+}
+html.admin-dark .qh-crumb__link,
+html.admin-dark .qh-price-gear:hover,
+html.admin-dark .qh-price-gear:focus-visible {
+  color: var(--admin-primary);
+}
+html.admin-dark .qh-price-gear {
+  color: var(--admin-muted);
+}
+html.admin-dark .qh-more {
+  color: var(--admin-text);
+}
+html.admin-dark .qh-step-errors {
+  border-color: #f87171;
+  background: #3f1d1d;
+  color: var(--admin-text);
+}
+

@@ -159,6 +159,24 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Painting',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'pt-main-form',
+    'saveId' => 'pt-btn-publish',
+    'draftId' => 'pt-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
   @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
@@ -251,8 +269,13 @@
           </div>
         </div>
 
-        <div class="pt-step-card">
-          <h4>Step 2 — Specifications</h4>
+        <div class="pt-step-card" data-qh-step="2">
+          <h4 class="qh-priced-head">
+            Step 2 — Specifications
+            @include('admin.partials.quotation_price_config_gear', [
+              'url' => route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+            ])
+          </h4>
           <div class="pq-form-grid">
             <div class="admin-form-group">
               <label for="paint_line_id">Paint brand / line</label>
@@ -315,21 +338,6 @@
     </div>
 
     <aside class="pq-sticky">
-      <div class="pq-sidebar-actions">
-        <button type="submit" form="pt-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="pt-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pt-btn-draft" data-hotkey-save>Save as draft</button>
-        <a href="{{ route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <a href="{{ route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </a>
-        <a href="{{ route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        @include('admin.partials.quotation_view_pdf')
-      </div>
       @if ($isEdit && $linkedCpq && $quotation->project && ! $quotation->is_draft)
         @php
           $paintingSendConfirm = 'This will generate a new PDF and email it to '.$quotation->project->clientEmailRecipientsLabel().'. Continue?';
@@ -347,7 +355,9 @@
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'pt-main-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'pt-main-form'])
       <div class="pq-summary-card">
-        <h4 class="cp-form-help-spaced">Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="pt-live-root">
           <div id="pt-readiness-root" aria-live="polite"></div>
           <div id="pt-breakdown-root" class="pt-breakdown is-empty"></div>

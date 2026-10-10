@@ -175,6 +175,24 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Flooring',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.flooring.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'fl-main-form',
+    'saveId' => 'fl-btn-publish',
+    'draftId' => 'fl-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
   @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
     <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
@@ -215,8 +233,13 @@
         </div>
       </div>
 
-      <div class="admin-card fl-step-card">
-        <h4>Core measurements</h4>
+      <div class="admin-card fl-step-card" data-qh-step="2">
+        <h4 class="qh-priced-head">
+          Core measurements
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.flooring.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
+        </h4>
         <div class="admin-form-grid-2">
           <div class="admin-form-group">
             <label for="fl-flooring-type">Flooring type</label>
@@ -432,26 +455,13 @@
     </div>
 
     <aside class="pq-sticky">
-      <div class="pq-sidebar-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="fl-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="fl-btn-draft" data-hotkey-save>Save as draft</button>
-        <a href="{{ route('admin.quotations.flooring.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </a>
-        <a href="{{ route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        @include('admin.partials.quotation_view_pdf')
-      </div>
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'fl-main-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'fl-main-form'])
       <div class="pq-summary-card">
-        <h4 style="margin:0 0 10px;">Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="fl-live-root">
           <p class="admin-form-help" id="fl-live-empty">Enter measurements to see totals.</p>
           <div id="fl-live-body" hidden></div>

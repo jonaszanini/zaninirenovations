@@ -10,11 +10,18 @@ use Illuminate\Http\Request;
 trait HandlesQuotationPaymentSchedule
 {
     /**
-     * @return array{payment_installments: int, payment_percentages: list<float>|null}
+     * @return array{payment_installments: int|null, payment_percentages: list<float>|null}
      */
     protected function paymentScheduleFromRequest(Request $request): array
     {
-        $installments = (int) $request->input('payment_installments');
+        $raw = $request->input('payment_installments');
+        if ($raw === null || $raw === '') {
+            return [
+                'payment_installments' => null,
+                'payment_percentages' => null,
+            ];
+        }
+        $installments = (int) $raw;
         $percentagesRaw = $request->input('payment_percentages');
         $percentages = null;
 

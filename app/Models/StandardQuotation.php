@@ -48,6 +48,7 @@ class StandardQuotation extends Model
         'document_type',
         'quote_number',
         'client_name',
+        'is_draft',
         'display_title',
         'work_description',
         'payment_installments',
@@ -89,6 +90,7 @@ class StandardQuotation extends Model
     ];
 
     protected $casts = [
+        'is_draft' => 'boolean',
         'includes_material' => 'boolean',
         'includes_labour' => 'boolean',
         'materials' => 'array',

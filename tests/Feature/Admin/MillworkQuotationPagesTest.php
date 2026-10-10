@@ -104,16 +104,18 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
 
         $price = strpos($html, 'Price configuration');
         $context = strpos($html, 'Project Context');
-        $next = strpos($html, '>Next</button>');
+        $next = strpos($html, '→ Next');
         $live = strpos($html, 'Live breakdown');
+        $header = strpos($html, 'data-qh-header');
 
         $this->assertNotFalse($price);
         $this->assertNotFalse($context);
         $this->assertNotFalse($next);
         $this->assertNotFalse($live);
-        $this->assertLessThan($price, $context);
-        $this->assertLessThan($next, $context);
-        $this->assertLessThan($live, $next);
+        $this->assertNotFalse($header);
+        $this->assertLessThan($context, $header);
+        $this->assertLessThan($context, $next);
+        $this->assertLessThan($live, $context);
     }
 
     public function test_preview_returns_cut_plan_and_totals(): void

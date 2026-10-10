@@ -21,6 +21,7 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TileQuotationCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 
@@ -97,6 +98,7 @@ class TileQuotationController extends Controller
             'edge_lf' => ['nullable', 'numeric', 'min:0'],
 
             'is_draft' => ['nullable', 'string'],
+            'save_intent' => ['nullable', 'in:draft,publish'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
             CommuteExpenseService::commuteValidationMessages(),
@@ -118,7 +120,7 @@ class TileQuotationController extends Controller
         $quotation->client_project_id = empty($data['client_project_id']) ? null : (int) $data['client_project_id'];
         $quotation->quote_number = TileQuotation::generateNumber();
         $quotation->client_name = $data['client_name'] ?? null;
-        $quotation->is_draft = $request->input('is_draft') === '1';
+        $quotation->is_draft = QuotationSaveIntent::isDraft($request);
         $quotation->work_description = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null);
         $schedule = $this->paymentScheduleFromRequest($request);
         $quotation->payment_installments = $schedule['payment_installments'];
@@ -162,11 +164,15 @@ class TileQuotationController extends Controller
             $this->syncProjectQuotation($quotation);
         }
 
+        $created = $quotation->is_draft
+            ? 'Tile quotation saved as a draft.'
+            : ($quotation->client_project_id
+                ? 'Tile quotation created and linked.'
+                : 'Tile quotation created.');
+
         return QuotationAfterSaveRedirect::apply($request, redirect()
             ->route('admin.quotations.tile.edit', $quotation)
-            ->with('success', $quotation->client_project_id
-                ? 'Tile quotation created and linked.'
-                : 'Tile quotation created.'));
+            ->with('success', $created));
     }
 
     public function edit(Request $request, TileQuotation $quotation)
@@ -230,6 +236,7 @@ class TileQuotationController extends Controller
             'tile_edge_id' => ['nullable', 'integer', 'exists:tile_edges,id'],
             'edge_lf' => ['nullable', 'numeric', 'min:0'],
             'is_draft' => ['nullable', 'string'],
+            'save_intent' => ['nullable', 'in:draft,publish'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), AdditionalCostsService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge(
             QuotationPaymentSchedule::validationMessages(),
             CommuteExpenseService::commuteValidationMessages(),
@@ -246,7 +253,7 @@ class TileQuotationController extends Controller
         if (! $quotation->isLinked()) {
             $quotation->client_name = $data['client_name'] ?? null;
         }
-        $quotation->is_draft = $request->input('is_draft') === '1';
+        $quotation->is_draft = QuotationSaveIntent::isDraft($request);
         $quotation->work_description = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($data['work_description'] ?? null);
         $schedule = $this->paymentScheduleFromRequest($request);
         $quotation->payment_installments = $schedule['payment_installments'];
@@ -289,7 +296,9 @@ class TileQuotationController extends Controller
 
         return QuotationAfterSaveRedirect::apply($request, redirect()
             ->route('admin.quotations.tile.edit', $quotation)
-            ->with('success', 'Tile quotation updated.'));
+            ->with('success', $quotation->is_draft
+                ? 'Tile quotation saved as a draft.'
+                : 'Tile quotation updated.'));
     }
 
     public function destroy(TileQuotation $quotation)
@@ -460,7 +469,7 @@ class TileQuotationController extends Controller
 
     protected function syncProjectQuotation(TileQuotation $quotation): void
     {
-        if (! $quotation->client_project_id) {
+        if (! $quotation->client_project_id || $this->quotationIsDraft($quotation)) {
             return;
         }
 

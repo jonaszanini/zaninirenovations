@@ -7,6 +7,7 @@ use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInvoice;
 use App\Support\CadMoney;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Pure invoice math: locked (installment-derived) subtotal/HST/total,
@@ -220,7 +221,9 @@ class InvoiceTotalsCalculator
                 }
             }
             if (($kind === ClientProjectInvoice::LINE_KIND_MATERIALS || $kind === ClientProjectInvoice::LINE_KIND_GAS) && $amount < 0) {
-                continue;
+                throw ValidationException::withMessages([
+                    'items' => 'Materials and gas amounts cannot be negative.',
+                ]);
             }
 
             $out = [

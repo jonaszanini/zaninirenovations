@@ -389,6 +389,10 @@ class ClientProjectQuotation extends Model
      */
     public function workDescriptionForPdf(): string
     {
+        if ($this->isSourceDraft()) {
+            return trim((string) ($this->work_description ?? ''));
+        }
+
         if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
             $sq = StandardQuotation::query()->find($this->source_id);
             if ($sq) {
@@ -500,6 +504,28 @@ class ClientProjectQuotation extends Model
         return $class::query()->find($this->source_id);
     }
 
+    public const SOURCE_DRAFT_SHARE_MESSAGE = 'This quotation is still a draft. Publish it (Save quotation) before sharing it with the client.';
+
+    public function isSourceDraft(): bool
+    {
+        $source = $this->sourceQuotationModel();
+        if ($source === null) {
+            return false;
+        }
+
+        return (bool) ($source->is_draft ?? false);
+    }
+
+    /** Live calculator row only when it is published — drafts must not drive the client PDF. */
+    public function publishedSourceQuotationModel(): ?Model
+    {
+        if ($this->isSourceDraft()) {
+            return null;
+        }
+
+        return $this->sourceQuotationModel();
+    }
+
     /** Admin-written note for the client email (HTML), from the linked source quotation. */
     public function clientEmailMessageHtml(): ?string
     {
@@ -608,7 +634,7 @@ class ClientProjectQuotation extends Model
             return (new PdfFoldV2($this))->pdfLineItems();
         }
 
-        if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
+        if ($this->source_type === self::SOURCE_STANDARD && $this->source_id && ! $this->isSourceDraft()) {
             $sq = StandardQuotation::query()->find($this->source_id);
             if ($sq) {
                 if ($sq->usesDetailedPdf()) {
@@ -2199,6 +2225,47 @@ class ClientProjectQuotation extends Model
     public function hasReplyToAcceptChoice(): bool
     {
         return $this->askReplyToAccept() !== null;
+    }
+
+    public function hasPaymentScheduleChoice(): bool
+    {
+        $source = $this->sourceQuotationModel();
+        $raw = $source
+            ? $source->getRawOriginal('payment_installments')
+            : $this->getRawOriginal('payment_installments');
+
+        return in_array((int) $raw, QuotationPaymentSchedule::ALLOWED, true)
+            && $raw !== null
+            && $raw !== '';
+    }
+
+    public function hasDebrisRemovalChoice(): bool
+    {
+        $source = $this->sourceQuotationModel();
+        $raw = $source
+            ? $source->getRawOriginal('include_debris_removal')
+            : $this->getRawOriginal('include_debris_removal');
+
+        return $raw !== null && $raw !== '';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function missingPublishOnlyChoices(): array
+    {
+        $out = [];
+        if (! $this->hasPaymentScheduleChoice()) {
+            $out[] = QuotationPaymentSchedule::validationMessages()['payment_installments.required'];
+        }
+        if (! $this->hasDebrisRemovalChoice()) {
+            $out[] = DebrisRemovalExpenseService::validationMessages()['include_debris_removal.required'];
+        }
+        if (! $this->hasReplyToAcceptChoice()) {
+            $out[] = QuotationReplyToAccept::MESSAGE;
+        }
+
+        return $out;
     }
 
     public function asksClientToReplyIAccept(): bool
