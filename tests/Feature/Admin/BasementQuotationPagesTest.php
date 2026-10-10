@@ -214,7 +214,12 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('Pedestal sink + faucet', $html);
         $this->assertStringContainsString('name="include_pedestal_sink"', $html);
         $this->assertStringContainsString('Pedestal sink', $html);
-        $this->assertStringContainsString('value="pedestal_sink"', $html);
+        $this->assertStringContainsString('id="br-include-pedestal"', $html);
+        $this->assertMatchesRegularExpression(
+            '/name="include_pedestal_sink"[^>]*value="1"/s',
+            $html
+        );
+        $this->assertStringNotContainsString('value="pedestal_sink"', $html);
         $this->assertStringContainsString('id="br-plumbing-slot-bath"', $html);
         $this->assertStringContainsString('id="br-framing-slot-bath"', $html);
         $this->assertStringContainsString('Walls &amp; ducts', $html);
