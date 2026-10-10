@@ -160,54 +160,58 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/id="sh-step-nav"[^>]*hidden|hidden[^>]*id="sh-step-nav"/', $shHtml);
     }
 
-    public function test_programmatic_diff_against_main_toolbars(): void
+    /**
+     * Pre-#72 editors, before the toolbar moved into shared partials.
+     * Live `main` is the new layout, so the inventory must not `git show` it.
+     */
+    private const TOOLBAR_BASELINE = '13c808e7';
+
+    public function test_programmatic_diff_against_pre_header_toolbar_baseline(): void
     {
         $this->actingAsAdmin();
 
         $map = [
             'basement' => [
                 'file' => 'basement/create.blade.php',
-                'main' => ['Email quotation to client'],
+                'baseline' => ['Email quotation to client'],
                 'rendered' => fn () => $this->renderedBasementEdit(),
-                'needles' => ['Email quotation to client'],
+                'needles' => ['Email quotation to client', 'data-qh-email'],
             ],
             'standard' => [
                 'file' => 'standard/create.blade.php',
-                'main' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
+                'baseline' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
                 'rendered' => fn () => $this->get(route('admin.quotations.standard.create'))->assertOk()->getContent()
                     ."\n".$this->renderedStandardEdit(),
                 'needles' => ['Email quotation to client', 'SMS quotation link to client', 'Quotation types'],
             ],
             'fence' => [
                 'file' => 'fence/create.blade.php',
-                'main' => ['Save &amp; create project', 'after_save', 'create_project'],
+                'baseline' => ['Save &amp; create project', 'after_save', 'create_project'],
                 'rendered' => fn () => $this->get(route('admin.quotations.fence.create'))->assertOk()->getContent(),
                 'needles' => ['Save &amp; create project', 'after_save', 'create_project'],
             ],
             'low_deck' => [
                 'file' => 'low_deck/create.blade.php',
-                'main' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
+                'baseline' => ['Print Layout Diagrams', 'low-deck.layout-diagrams'],
                 'rendered' => fn () => $this->renderedLowDeckEdit(),
                 'needles' => ['Print Layout Diagrams', 'data-qh-layout-diagrams'],
             ],
             'millwork' => [
                 'file' => 'millwork/create.blade.php',
-                'main' => ['Print cut list'],
+                'baseline' => ['Print cut list'],
                 'rendered' => fn () => $this->renderedMillworkEdit(),
                 'needles' => ['Print cut list'],
             ],
         ];
 
         foreach ($map as $type => $spec) {
-            $main = (string) shell_exec('git show origin/main:resources/views/admin/quotations/'.$spec['file'].' 2>/dev/null');
-            if ($main === '') {
-                $main = (string) shell_exec('git show main:resources/views/admin/quotations/'.$spec['file'].' 2>/dev/null');
-            }
-            if ($main === '') {
-                $this->fail('origin/main (or main) is required for the toolbar inventory diff; CI must fetch it');
-            }
-            foreach ($spec['main'] as $needle) {
-                $this->assertStringContainsString($needle, $main, "main {$spec['file']} no longer has {$needle}");
+            $baseline = $this->toolbarBaselineFile($spec['file']);
+            foreach ($spec['baseline'] as $needle) {
+                $this->assertStringContainsString(
+                    $needle,
+                    $baseline,
+                    'Pinned pre-#72 baseline '.self::TOOLBAR_BASELINE.' '.$spec['file'].' is missing '.$needle
+                );
             }
 
             $html = $spec['rendered']();
@@ -216,10 +220,33 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
                 $this->assertStringContainsString(
                     $needle,
                     $html,
-                    "Rendered {$type} editor is missing {$needle} that main still has — do not hide this behind an unused partial"
+                    "Rendered {$type} editor is missing {$needle} that the pre-#72 toolbar had — fix the page, not this test"
                 );
             }
         }
+    }
+
+    private function toolbarBaselineFile(string $relative): string
+    {
+        $path = 'resources/views/admin/quotations/'.$relative;
+        $ref = self::TOOLBAR_BASELINE.':'.$path;
+        $html = $this->gitShow($ref);
+        if ($html === '') {
+            shell_exec('git fetch --no-tags origin '.escapeshellarg(self::TOOLBAR_BASELINE).' 2>/dev/null');
+            $html = $this->gitShow($ref);
+        }
+        $this->assertNotSame(
+            '',
+            $html,
+            'Pinned toolbar baseline '.self::TOOLBAR_BASELINE.' is required; CI must fetch that commit'
+        );
+
+        return $html;
+    }
+
+    private function gitShow(string $ref): string
+    {
+        return (string) shell_exec('git show '.escapeshellarg($ref).' 2>/dev/null');
     }
 
     private function renderedBasementEdit(): string
