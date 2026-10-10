@@ -26,6 +26,7 @@
   <div class="admin-card">
     <form action="{{ route('admin.clients.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       @if (session('duplicate_candidates'))
         <input type="hidden" name="confirm_duplicate" value="1">
       @endif
@@ -96,7 +97,7 @@
       </div>
 
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
           <i class="fa fa-check"></i> {{ session('duplicate_candidates') ? 'Save anyway' : 'Save client' }}
         </button>
         <a href="{{ route('admin.clients.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>

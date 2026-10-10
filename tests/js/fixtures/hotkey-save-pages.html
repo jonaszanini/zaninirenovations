@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin hotkey save fixtures</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    .toolbar { display: flex; justify-content: flex-end; padding: 12px; }
+    .pad { padding: 16px; }
+    #canvas-controls { position: absolute; right: 12px; top: 72px; }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="page-quotation" class="pad">
+    <form id="sq-standard-form">
+      <label for="sq-title">Title</label>
+      <input id="sq-title" class="admin-input" name="title" value="Deck">
+      <div class="toolbar admin-toolbar-actions">
+        <button type="button" id="sq-email">Email client</button>
+        <button type="button" id="sq-save" class="admin-btn admin-btn--primary" data-hotkey-save data-ajax-save>Save</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="page-room-area" class="pad" hidden>
+    <header class="util-ra-full-header" style="display:flex;justify-content:flex-end;gap:8px;padding:8px;">
+      <button type="button" class="admin-btn admin-btn--primary util-ra-full-header__save" data-ra-save-room data-hotkey-save id="ra-save">Save</button>
+    </header>
+    <div id="canvas-controls">
+      <button type="button" data-ra-zoom-in id="ra-zoom">+</button>
+    </div>
+    <label for="ra-room-name">Room name</label>
+    <input id="ra-room-name" class="admin-input" name="name" value="">
+  </div>
+
+  <div id="page-toast-layout" class="pad" hidden>
+    <button type="button" id="layout-save" class="admin-btn admin-btn--primary" data-hotkey-save style="position:fixed;top:12px;right:12px;">Save</button>
+    <label for="layout-field">Name</label>
+    <input id="layout-field" class="admin-input" required>
+    <div class="br-sticky-total" id="br-sticky-total" style="position:fixed;left:0;right:0;bottom:0;height:56px;background:#024768;color:#fff;">
+      <div class="br-step-nav" id="br-step-nav">
+        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-vehicles" class="pad" hidden>
+    <form id="home-form" action="/save/home" method="post">
+      <input id="home-address" name="home_address" value="1 Main">
+      <button type="button" id="save-home" data-hotkey-save>Save home address</button>
+    </form>
+    <form id="contact-form" action="/save/contact" method="post">
+      <input id="company-contact-phone" name="contact_phone" value="6478347570">
+      <button type="button" id="save-contact" data-hotkey-save>Save business contact</button>
+    </form>
+    <form id="gas-form" action="/save/gas" method="post">
+      <input id="company-gas-price" name="gas_price_per_liter" value="1.450">
+      <button type="button" id="save-gas" data-hotkey-save>Save gas price</button>
+    </form>
+  </div>
+
+  <div id="page-email" class="pad" hidden>
+    <form id="cp-create-project-form" action="/save/project" method="post">
+      <input type="hidden" name="send_client_email" value="0">
+      <input type="checkbox" id="cp-send-client-email" name="send_client_email" value="1" checked>
+      <button type="button" id="cp-create-save" data-hotkey-save>Create project</button>
+    </form>
+  </div>
+
+  <div id="page-preview" class="pad" hidden>
+    <form id="br-main-form">
+      <input id="br-rooms" name="room_count" value="2">
+      <button type="button" id="br-btn-draft" data-hotkey-save>Save as draft</button>
+    </form>
+  </div>
+
+  <div id="page-cancelled" class="pad" hidden>
+    <form id="cp-date-form" action="/save/dates" method="post">
+      <input id="start-date" name="start_date" value="2026-11-10">
+      <input id="end-date" name="end_date" value="2026-11-05">
+      <button type="submit" id="date-save" data-hotkey-save>Create project</button>
+    </form>
+  </div>
+
+  <div id="admin-search-palette" class="asp" hidden>
+    <input type="text" id="asp-input" class="asp__input" value="">
+  </div>
+
+  <div id="page-tinymce" class="pad" hidden>
+    <form id="contract-form">
+      <textarea id="contract-body" name="body">Hello</textarea>
+      <button type="button" id="contract-save" data-hotkey-save data-ajax-save>Save</button>
+    </form>
+  </div>
+
+  <script src="/js/admin-toast.js"></script>
+  <script src="/js/admin-hotkey-save.js"></script>
+  <script>
+    window.__saves = [];
+    window.__fetches = [];
+    function mockSave(kind) {
+      window.__saves.push(kind);
+      return fetch('/save/' + kind, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: kind, value: (document.activeElement && document.activeElement.value) || '' })
+      });
+    }
+    document.getElementById('sq-save').addEventListener('click', function (e) {
+      e.preventDefault();
+      mockSave('quotation');
+    });
+    document.getElementById('ra-save').addEventListener('click', function () {
+      mockSave('room');
+    });
+    document.getElementById('sq-standard-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+    });
+    function postForm(form, kind) {
+      window.__saves.push(kind);
+      var body = new URLSearchParams(new FormData(form)).toString();
+      return fetch('/save/' + kind, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+      });
+    }
+    document.getElementById('save-home').addEventListener('click', function () {
+      postForm(document.getElementById('home-form'), 'home');
+    });
+    document.getElementById('save-contact').addEventListener('click', function () {
+      postForm(document.getElementById('contact-form'), 'contact');
+    });
+    document.getElementById('save-gas').addEventListener('click', function () {
+      postForm(document.getElementById('gas-form'), 'gas');
+    });
+    document.getElementById('cp-create-save').addEventListener('click', function () {
+      postForm(document.getElementById('cp-create-project-form'), 'project');
+    });
+    document.getElementById('br-btn-draft').addEventListener('click', function () {
+      window.__fetches.push('calculate');
+      fetch('/admin/quotations/basement-calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preview: true })
+      });
+      mockSave('basement');
+    });
+    document.getElementById('contract-save').addEventListener('click', function (e) {
+      e.preventDefault();
+      mockSave('contract');
+    });
+    document.getElementById('cp-date-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      window.__dateWarned = true;
+    });
+    window.tinymce = {
+      editors: [],
+      _addEditor: null,
+      on: function (name, fn) {
+        if (name === 'AddEditor') this._addEditor = fn;
+      },
+      triggerSave: function () { window.__tinySaved = true; },
+      activeEditor: {
+        getElement: function () { return document.getElementById('contract-body'); },
+        hasFocus: function () { return false; },
+        on: function (name, fn) {
+          window.__tinyKeydown = fn;
+        }
+      }
+    };
+    window.tinymce.editors.push(window.tinymce.activeEditor);
+  </script>
+</body>
+</html>

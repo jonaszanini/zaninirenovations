@@ -114,7 +114,7 @@
     </div>
 
     <div style="margin-top:20px;">
-      <button type="submit" class="admin-btn admin-btn--primary">
+      <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
         <i class="fa fa-save"></i> Save configuration
       </button>
     </div>

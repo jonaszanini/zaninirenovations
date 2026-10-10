@@ -172,6 +172,7 @@
 
   <form action="{{ $formAction }}" method="POST" id="tl-form" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}" data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="tl-save-intent" value="publish">
     <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">

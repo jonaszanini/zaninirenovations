@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Room Area chrome geometry</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-utilities.css">
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #edf0f2;
+    }
+    .util-ra--fullpage {
+      height: 100%;
+    }
+    .fa {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      flex: 0 0 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="util-ra util-ra--fullpage util-ra--chrome-v2" data-room-area data-ra-fullpage="1" data-ra-chrome="1">
+    <header class="util-ra-full-header">
+      <div class="util-ra-full-header__row util-ra-full-header__row--primary">
+        <a class="admin-btn admin-btn--ghost util-ra-full-header__back" href="#">All utilities</a>
+        <div class="util-ra-full-header__titles">
+          <input class="admin-input util-ra-full-header__name" value="Kitchen">
+          <p class="util-ra-full-header__sub" data-ra-full-sub></p>
+        </div>
+        <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__help">Guide</button>
+        <button type="button" class="admin-btn admin-btn--primary util-ra-full-header__save">Save</button>
+      </div>
+      <div class="util-ra-full-header__row util-ra-full-header__row--tools">
+        <div class="util-ra-tool-group util-ra-tool-group--view">
+          <div class="util-ra-tool-group__head">
+            <span class="util-ra-tool-group__label">View</span>
+          </div>
+          <div class="util-ra-tool-group__actions util-ra-full-header__view-actions">
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" aria-label="Undo">U</button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" aria-label="Redo">R</button>
+            <div class="util-ra-zoom-controls util-ra-full-header__zoom">
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" aria-label="Zoom out">-</button>
+              <span class="util-ra-zoom-label">100%</span>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" aria-label="Zoom in">+</button>
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" aria-label="Reset zoom to 100%">Z</button>
+            </div>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__fit">Fit</button>
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-full-header__panel">Panel</button>
+            <div class="util-ra-first-tip" data-ra-first-tip hidden>
+              <a class="admin-btn admin-btn--ghost util-ra-first-tip__guide" href="/guide">New here</a>
+              <button type="button" class="admin-btn admin-btn--primary util-ra-first-tip__dismiss">Got it</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <button type="button" class="util-ra-sheet-handle" data-ra-sheet-handle aria-label="Expand or collapse panel" aria-expanded="false">
+      <span class="util-ra-sheet-handle__bar" aria-hidden="true"></span>
+    </button>
+    <p class="util-ra-feedback" data-ra-feedback hidden></p>
+    <section class="admin-card util-ra-project-bar">
+      <div class="util-ra-project-bar__row">
+        <div class="admin-form-group util-ra-project-select">
+          <label for="ra-project-select">Project</label>
+          <select class="admin-input" id="ra-project-select">
+            <option>Kitchen rooms</option>
+          </select>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

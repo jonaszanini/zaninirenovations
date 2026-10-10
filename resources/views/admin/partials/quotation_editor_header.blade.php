@@ -34,8 +34,21 @@
   $qhDraftId = $draftId ?? null;
   $qhShowDraft = isset($showDraft) ? (bool) $showDraft : filled($qhDraftId);
   $qhSaveLabel = $saveLabel ?? 'Save quotation';
-  $qhSaveHotkey = (bool) ($saveHotkey ?? false);
-  $qhDraftHotkey = (bool) ($draftHotkey ?? false);
+  $qhQuote = $quotation ?? null;
+  $qhIsEdit = isset($isEdit) ? (bool) $isEdit : filled($qhQuote);
+  $qhIsPublished = $qhIsEdit && $qhQuote && empty($qhQuote->is_draft);
+  // Ctrl+S keeps the quote's current state on every type: new/draft →
+  // Save as draft (never publish); published → Save quotation (never re-draft).
+  if ($qhIsPublished) {
+      $qhSaveHotkey = true;
+      $qhDraftHotkey = false;
+  } elseif ($qhShowDraft) {
+      $qhSaveHotkey = false;
+      $qhDraftHotkey = true;
+  } else {
+      $qhSaveHotkey = true;
+      $qhDraftHotkey = false;
+  }
   $qhWizard = $wizard ?? null;
   $qhFormAttr = filled($qhFormId) ? $qhFormId : null;
 

@@ -108,6 +108,10 @@ class TileQuotationController extends Controller
             QuotationBuildingLabor::validationMessages()
         ));
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $includeTile = filter_var($data['include_tile_material'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $includeEdge = filter_var($data['include_edge'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
@@ -155,6 +159,7 @@ class TileQuotationController extends Controller
             $quotation->linked_at = now();
         }
         $quotation->save();
+        $this->rememberSubmitSucceeded($request);
 
         if ($quotation->client_project_id) {
             $this->syncProjectQuotation($quotation);

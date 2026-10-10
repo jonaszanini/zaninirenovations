@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form action="{{ route('admin.categories.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
           <label for="name">Name</label>
@@ -27,7 +28,7 @@
         @enderror
       </div>
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save category</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save category</button>
         <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

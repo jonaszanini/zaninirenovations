@@ -42,6 +42,10 @@ class BlogTagController extends Controller
             'slug' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'unique:blog_tags,slug'],
         ]);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $slug = filled($data['slug'] ?? null)
             ? $data['slug']
             : BlogTag::uniqueSlug($data['name']);
@@ -50,6 +54,7 @@ class BlogTagController extends Controller
             'name' => $data['name'],
             'slug' => $slug,
         ]);
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()->route('admin.blog.tags.index')->with('success', 'Tag created.');
     }

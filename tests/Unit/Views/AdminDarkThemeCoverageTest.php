@@ -98,17 +98,37 @@ class AdminDarkThemeCoverageTest extends TestCase
             'html.admin-dark .util-ra-guide__body',
             'html.admin-dark .util-ra-guide__samples',
             'html.admin-dark .util-ra-finish',
+            'html.admin-dark .util-ra-kits',
+            'html.admin-dark .util-ra-kit',
             'html.admin-dark .admin-filters-accordion .bp-list-filters',
             'html.admin-dark .bp-list-cat__more',
             'html.admin-dark .bp-status-badge',
             'html.admin-dark .qh',
             'html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"])',
+            'html.admin-dark .admin-toast__card',
+            'html.admin-dark .admin-toast--success',
+            'html.admin-dark .admin-toast--error',
+            'html.admin-dark .admin-toast--warning',
             'html.admin-dark input[type="date"]',
             'html.admin-dark input[type="time"]',
             'html.admin-dark input[type="datetime-local"]',
         ] as $selector) {
             $this->assertStringContainsString($selector, $dark, "Missing dark rule {$selector}");
         }
+
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-toast__card\s*\{[^}]*opacity:\s*1/s',
+            $dark,
+            'Dark toast card must be opaque'
+        );
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-toast--success\s*\{[^}]*opacity:\s*1/s',
+            $dark
+        );
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-toast--error\s*\{[^}]*opacity:\s*1/s',
+            $dark
+        );
 
         $this->assertStringNotContainsString(
             'html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]) {',

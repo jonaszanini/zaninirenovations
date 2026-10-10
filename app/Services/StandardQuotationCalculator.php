@@ -171,7 +171,7 @@ class StandardQuotationCalculator
 
             $lineKind = StandardQuotation::normalizeMaterialLineKind($row);
 
-            $cleanMaterials[] = [
+            $clean = [
                 'short_name' => $shortName,
                 'description' => $desc,
                 'url' => $url,
@@ -190,6 +190,26 @@ class StandardQuotationCalculator
                 'line_hst' => $b['line_hst'],
                 'line_total_with_hst' => $b['line_total_with_hst'],
             ];
+            if (isset($row['assembly_line_id']) && (int) $row['assembly_line_id'] > 0) {
+                $clean['assembly_line_id'] = (int) $row['assembly_line_id'];
+            }
+            $layoutId = trim((string) ($row['assembly_layout_id'] ?? ''));
+            if ($layoutId !== '') {
+                $clean['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+            }
+            $covered = $row['assembly_covered_layouts'] ?? '';
+            if (is_array($covered)) {
+                $covered = json_encode(array_values($covered), JSON_UNESCAPED_UNICODE);
+            }
+            $covered = trim((string) $covered);
+            if ($covered !== '') {
+                $clean['assembly_covered_layouts'] = $covered;
+            }
+            $quotedAt = trim((string) ($row['assembly_quoted_at'] ?? ''));
+            if ($quotedAt !== '') {
+                $clean['assembly_quoted_at'] = mb_substr($quotedAt, 0, 40);
+            }
+            $cleanMaterials[] = $clean;
         }
 
         $subBefore = round($subBefore, 2);

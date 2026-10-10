@@ -48,6 +48,7 @@
       <form id="cp-create-project-form" action="{{ route('admin.client-projects.store') }}" method="post" enctype="multipart/form-data"
             data-cp-duplicate-check="{{ $duplicateCheckUrl ?? route('admin.client-projects.duplicate-check') }}">
         @csrf
+        @include('admin.partials.once_submit')
         @if ($hasDuplicateProjects)
           <input type="hidden" name="confirm_duplicate_project" value="1">
         @endif
@@ -265,7 +266,7 @@
         </div>
 
         <div class="admin-form-actions">
-          <button type="submit" class="admin-btn admin-btn--primary">
+          <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
             <i class="fa fa-check"></i> Create project
           </button>
           <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
@@ -292,7 +293,7 @@
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Project form actions">
-      <button type="submit" form="cp-create-project-form" class="admin-btn admin-btn--primary admin-btn--sm" data-cp-create-submit>
+      <button type="submit" form="cp-create-project-form" class="admin-btn admin-btn--primary admin-btn--sm" data-cp-create-submit data-hotkey-save>
         <i class="fa fa-check"></i> {{ $hasDuplicateProjects ? 'Create anyway' : 'Create project' }}
       </button>
       <a href="{{ route('admin.client-projects.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>

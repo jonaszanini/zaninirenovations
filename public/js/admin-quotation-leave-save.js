@@ -84,12 +84,22 @@
         }
       ).then(function (ok) {
         if (!ok) {
+          if (document && typeof document.dispatchEvent === 'function') {
+            try {
+              document.dispatchEvent(new CustomEvent('admin-hotkey-save:abort', { bubbles: true }));
+            } catch (err) { /* ignore */ }
+          }
           return;
         }
         draftBtn.setAttribute('data-qh-draft-bypass', '1');
         setCanonicalIntent(form, true);
         relaxPublishOnlyRequired(form);
-        draftBtn.click();
+        var saved = runDraftSave(form, function () {
+          draftBtn.click();
+        });
+        if (!saved) {
+          submitEditorForm(form);
+        }
         draftBtn.removeAttribute('data-qh-draft-bypass');
         setTimeout(function () {
           restorePublishOnlyRequired(form);
@@ -374,6 +384,42 @@
 
     // Standard quotation: HTML required client + title is enough to persist.
     return true;
+  }
+
+  function submitEditorForm(form) {
+    if (!form) return;
+    if (typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+      return;
+    }
+    if (window.HTMLFormElement && HTMLFormElement.prototype && HTMLFormElement.prototype.submit) {
+      HTMLFormElement.prototype.submit.call(form);
+    }
+  }
+
+  function runDraftSave(form, trigger) {
+    var saved = false;
+    var onSubmit = function () { saved = true; };
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('submit', onSubmit, true);
+    }
+    var proto = (typeof HTMLFormElement !== 'undefined' && HTMLFormElement.prototype) || null;
+    var origSubmit = proto && proto.submit;
+    if (origSubmit) {
+      proto.submit = function () {
+        saved = true;
+        return origSubmit.apply(this, arguments);
+      };
+    }
+    try {
+      trigger();
+    } finally {
+      if (typeof document !== 'undefined' && document.removeEventListener) {
+        document.removeEventListener('submit', onSubmit, true);
+      }
+      if (proto && origSubmit) proto.submit = origSubmit;
+    }
+    return saved;
   }
 
   function confirmDialog(message, options) {

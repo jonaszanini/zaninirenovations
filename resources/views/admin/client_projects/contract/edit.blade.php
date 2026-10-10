@@ -38,7 +38,8 @@
         <button type="submit"
                 form="cp-contract-form"
                 class="admin-btn admin-btn--ghost admin-btn--sm"
-                data-cp-contract-intent="draft">
+                data-cp-contract-intent="draft"
+                data-hotkey-save>
           Save Draft
         </button>
         <button type="submit"
@@ -82,7 +83,8 @@
         </a>
         <button type="submit"
                 class="admin-btn admin-btn--ghost"
-                data-cp-contract-intent="draft">
+                data-cp-contract-intent="draft"
+                data-hotkey-save>
           Save Draft
         </button>
         <button type="submit"

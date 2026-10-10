@@ -13,9 +13,15 @@ class AdminCalendarEventController extends Controller
     {
         $data = $this->validated($request);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $event = AdminCalendarEvent::create($data);
+        $this->rememberSubmitSucceeded($request);
 
         return response()->json([
+            'ok' => true,
             'event' => $event->toFullCalendarEvent(),
         ], 201);
     }
@@ -27,6 +33,7 @@ class AdminCalendarEventController extends Controller
         $admin_calendar_event->update($data);
 
         return response()->json([
+            'ok' => true,
             'event' => $admin_calendar_event->fresh()->toFullCalendarEvent(),
         ]);
     }

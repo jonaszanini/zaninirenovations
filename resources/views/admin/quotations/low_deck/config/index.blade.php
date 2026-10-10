@@ -59,7 +59,7 @@
             and the <a href="https://serpapi.com/dashboard" target="_blank" rel="noopener noreferrer" class="admin-text-link">SerpApi dashboard</a>.
           </x-admin.info-tip>
         @endif
-        <button type="submit" class="admin-btn admin-btn--primary">
+        <button type="submit" id="ld-btn-save-links" class="admin-btn admin-btn--primary" data-hotkey-save>
           <i class="fa fa-save"></i> Save links
         </button>
       </div>
@@ -202,7 +202,7 @@
           <x-admin.info-tip label="Formula parameters">Structural and retail assumptions used by the calculator. The labour rate and dump fee are prefilled onto each quotation.</x-admin.info-tip>
         </h3>
       </div>
-      <button type="submit" class="admin-btn admin-btn--primary">
+      <button type="submit" id="ld-btn-save-formula" class="admin-btn admin-btn--primary" data-hotkey-save>
         <i class="fa fa-save"></i> Save formula
       </button>
     </div>

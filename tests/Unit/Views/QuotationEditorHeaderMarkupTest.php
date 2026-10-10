@@ -12,6 +12,8 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertNotFalse($partial);
         $this->assertStringContainsString('data-qh-header', $partial);
         $this->assertStringContainsString('data-hotkey-save', $partial);
+        $this->assertStringContainsString('is_draft', $partial);
+        $this->assertStringContainsString('$qhIsPublished', $partial);
         $this->assertStringContainsString('data-qh-cancel', $partial);
         $this->assertStringContainsString('qh-actions__save', $partial);
         $this->assertStringContainsString('qh-actions__draft', $partial);
@@ -61,6 +63,22 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('Quotation not saved yet', $leave);
         $this->assertStringContainsString('data-qh-client-share', $leave);
         $this->assertStringContainsString('stop their link from working until you publish it again', $leave);
+        $this->assertStringContainsString('admin-hotkey-save:abort', $leave);
+        $this->assertStringContainsString('runDraftSave', $leave);
+        $this->assertStringContainsString('submitEditorForm', $leave);
+        $this->assertStringContainsString('window.AdminDialog.confirm', $leave);
+        $dialog = file_get_contents(public_path('js/admin-dialog.js'));
+        $this->assertStringContainsString('admin-dialog:cancel', $dialog);
+        $hotkey = file_get_contents(public_path('js/admin-hotkey-save.js'));
+        $this->assertMatchesRegularExpression(
+            '/function bind\(\)\s*\{[\s\S]*addEventListener\(\s*ABORT_EVENT/',
+            $hotkey
+        );
+        $this->assertMatchesRegularExpression(
+            '/function bind\(\)\s*\{[\s\S]*addEventListener\(\s*DIALOG_CANCEL_EVENT/',
+            $hotkey
+        );
+        $this->assertStringContainsString("data-qh-draft-bypass", $hotkey);
         $canAutosave = preg_match('/function canAutosave\(form\) \{([\s\S]*?)\n  function /', $leave, $m)
             ? ($m[1] ?? '')
             : '';
@@ -146,5 +164,34 @@ class QuotationEditorHeaderMarkupTest extends TestCase
             $blade = file_get_contents(resource_path('views/admin/quotations/'.$file));
             $this->assertStringContainsString('data-qh-client-share', $blade, $file.' must mark sent/published quotes for the draft confirm');
         }
+    }
+
+    public function test_header_hotkey_follows_new_draft_and_published_state(): void
+    {
+        $base = [
+            'typeLabel' => 'Standard',
+            'listUrl' => '/admin/quotations',
+            'saveId' => 'sq-btn-save',
+            'draftId' => 'st-btn-draft',
+            'formId' => 'sq-standard-form',
+        ];
+
+        $new = view('admin.partials.quotation_editor_header', $base + ['isEdit' => false])->render();
+        $this->assertMatchesRegularExpression('/id="st-btn-draft"[^>]*data-hotkey-save/', $new);
+        $this->assertDoesNotMatchRegularExpression('/id="sq-btn-save"[^>]*data-hotkey-save/', $new);
+
+        $draft = view('admin.partials.quotation_editor_header', $base + [
+            'isEdit' => true,
+            'quotation' => (object) ['is_draft' => true],
+        ])->render();
+        $this->assertMatchesRegularExpression('/id="st-btn-draft"[^>]*data-hotkey-save/', $draft);
+        $this->assertDoesNotMatchRegularExpression('/id="sq-btn-save"[^>]*data-hotkey-save/', $draft);
+
+        $published = view('admin.partials.quotation_editor_header', $base + [
+            'isEdit' => true,
+            'quotation' => (object) ['is_draft' => false],
+        ])->render();
+        $this->assertMatchesRegularExpression('/id="sq-btn-save"[^>]*data-hotkey-save/', $published);
+        $this->assertDoesNotMatchRegularExpression('/id="st-btn-draft"[^>]*data-hotkey-save/', $published);
     }
 }

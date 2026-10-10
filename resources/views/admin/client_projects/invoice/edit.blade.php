@@ -66,7 +66,8 @@
         <button type="submit"
                 form="cp-invoice-form"
                 class="admin-btn admin-btn--ghost admin-btn--sm"
-                data-cp-invoice-intent="draft">
+                data-cp-invoice-intent="draft"
+                data-hotkey-save>
           Save Draft
         </button>
         <button type="submit"
@@ -442,7 +443,8 @@
         </a>
         <button type="submit"
                 class="admin-btn admin-btn--ghost"
-                data-cp-invoice-intent="draft">
+                data-cp-invoice-intent="draft"
+                data-hotkey-save>
           Save Draft
         </button>
         <button type="submit"

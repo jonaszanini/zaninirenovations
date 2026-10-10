@@ -338,6 +338,10 @@ class ProjectController extends Controller
                 ->withInput();
         }
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $converter = new ProjectPhotoWebpStorage;
         $savedPaths = [];
 
@@ -396,6 +400,7 @@ class ProjectController extends Controller
         }
 
         $draftPhotos->clear();
+        $this->rememberSubmitSucceeded($request);
 
         return redirect()
             ->route('admin.portfolio.index')
