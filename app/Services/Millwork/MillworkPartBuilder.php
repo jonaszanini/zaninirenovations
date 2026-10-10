@@ -572,6 +572,23 @@ class MillworkPartBuilder
             $labels[] = $qty.'× '.$label;
             $parts[] = $this->rect('shelf-'.$n, $label, $len, $dep, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
             $edgeLf += $band ? ($qty * ($len / 12.0)) : 0;
+            $height = self::dimInches($piece, ['height']);
+            if ($height > 0) {
+                $prefix = $this->piecePrefix($piece).'Shelf '.$n.' ';
+                $parts[] = $this->rect('shelf-'.$n.'-side-l', $prefix.'side', $height, $dep, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+                $cols = max(0, (int) ($piece['columns'] ?? 0));
+                if ($cols > 1) {
+                    $parts[] = $this->rect('shelf-'.$n.'-div', $prefix.'divider', $height, $dep, $qty * ($cols - 1), GrainDirection::LENGTHWISE, false, $eb, 'front');
+                }
+                $extra = max(0, (int) ($piece['shelf_count'] ?? 0));
+                if ($extra > 0) {
+                    $parts[] = $this->rect('shelf-'.$n.'-extra', $prefix.'shelf', $len, $dep, $qty * $extra, GrainDirection::LENGTHWISE, $band, $eb, 'front');
+                    $edgeLf += $band ? ($qty * $extra * ($len / 12.0)) : 0;
+                }
+                if (! empty($piece['include_back'])) {
+                    $parts[] = $this->rect('shelf-'.$n.'-back', $prefix.'back', $len, $height, $qty, GrainDirection::LENGTHWISE, false, 0, 'front', 'back');
+                }
+            }
         }
 
         return [

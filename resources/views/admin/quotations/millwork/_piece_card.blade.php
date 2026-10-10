@@ -58,7 +58,7 @@
     </div>
   </div>
 
-  <div class="mw-piece__row mw-piece__row--dims" data-mw-show="kallax cabinet vanity closet bench mantel wainscoting trim">
+  <div class="mw-piece__row mw-piece__row--dims" data-mw-show="shelf kallax cabinet vanity closet bench mantel wainscoting trim">
     <input type="hidden" name="pieces[{{ $pi }}][unit]" value="{{ $unit }}" data-mw-unit>
     <div class="admin-form-group mw-field--qty" data-mw-show="kallax cabinet vanity closet bench mantel">
       <label>How many</label>
@@ -110,8 +110,8 @@
       'dimName' => 'height',
       'dimLabel' => 'H',
       'dimField' => 'h',
-      'dimShow' => 'kallax cabinet vanity closet bench mantel wainscoting',
-      'dimPlaceholder' => in_array($type, ['closet'], true) ? '84' : ($type === 'wainscoting' ? '36' : '34.5'),
+      'dimShow' => 'shelf kallax cabinet vanity closet bench mantel wainscoting',
+      'dimPlaceholder' => $type === 'shelf' ? '72' : (in_array($type, ['closet'], true) ? '84' : ($type === 'wainscoting' ? '36' : '34.5')),
       'setField' => null,
     ])
     @include('admin.quotations.millwork._dim_field', [
@@ -141,7 +141,10 @@
       @enderror
     </div>
     <div class="admin-form-group" data-mw-show="kallax">
-      <label>Rows</label>
+      <span class="admin-label-with-tip">
+        <label>Rows</label>
+        <x-admin.info-tip :label="'Rows — '.$pieceTipLabel">Rows stack the cubes. Horizontal partitions = rows − 1.</x-admin.info-tip>
+      </span>
       <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.rows') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][rows]" value="{{ $piece['rows'] ?? 2 }}"
              @if ($errors->has('pieces.'.$pi.'.rows')) aria-invalid="true" @endif>
       @error('pieces.'.$pi.'.rows')
@@ -342,6 +345,23 @@
     </div>
   </div>
 
+  <div class="mw-piece__row mw-piece__row--pack" data-mw-show="shelf">
+    <div class="admin-form-group">
+      <span class="admin-label-with-tip">
+        <label>Columns</label>
+        <x-admin.info-tip :label="'Columns — '.$pieceTipLabel">Used with height. Vertical dividers = columns − 1. Leave height blank to price each size set as one board.</x-admin.info-tip>
+      </span>
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][columns]" value="{{ $type === 'shelf' && ($piece['height'] ?? '') !== '' && ($piece['height'] ?? null) !== null ? ($piece['columns'] ?? '') : '' }}" placeholder="1" @disabled($type !== 'shelf' || ($piece['height'] ?? '') === '' || ($piece['height'] ?? null) === null)>
+    </div>
+    <div class="admin-form-group">
+      <span class="admin-label-with-tip">
+        <label>Shelves</label>
+        <x-admin.info-tip :label="'Shelves — '.$pieceTipLabel">Extra boards when height is set, in addition to the size-set board.</x-admin.info-tip>
+      </span>
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][shelf_count]" value="{{ $type === 'shelf' && ($piece['height'] ?? '') !== '' && ($piece['height'] ?? null) !== null ? ($piece['shelf_count'] ?? '') : '' }}" placeholder="0" @disabled($type !== 'shelf' || ($piece['height'] ?? '') === '' || ($piece['height'] ?? null) === null)>
+    </div>
+  </div>
+
   <div data-mw-show="shelf floating_shelf cabinet_door">
     <div class="mw-piece__sets-head">
       <span class="admin-label-with-tip">
@@ -361,6 +381,17 @@
     <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-add-set>
       <i class="fa fa-plus"></i> Add size set
     </button>
+  </div>
+
+  <div class="mw-piece__flags" data-mw-show="shelf floating_shelf kallax cabinet vanity closet bench mantel">
+    @include('admin.partials.checkbox', [
+      'name' => 'pieces['.$pi.'][include_back]',
+      'hiddenFallback' => true,
+      'checked' => ! empty($piece['include_back']),
+      'label' => $type === 'mantel' ? 'Include bottom panel' : 'Include 1/4" back',
+      'info' => 'Adds a back panel on the 1/4" sheet. Leave it off for an open shelf.',
+      'inputClass' => 'admin-checkbox__input mw-preview',
+    ])
   </div>
 
   <details class="mw-piece__more">
@@ -415,15 +446,6 @@
         'info' => 'Shrinks the raw cut so the finished size matches after banding.',
         'inputClass' => 'admin-checkbox__input mw-preview',
       ])
-      <div data-mw-show="floating_shelf kallax cabinet vanity closet bench mantel">
-        @include('admin.partials.checkbox', [
-          'name' => 'pieces['.$pi.'][include_back]',
-          'hiddenFallback' => true,
-          'checked' => ! empty($piece['include_back']),
-          'label' => $type === 'mantel' ? 'Include bottom panel' : 'Include 1/4" back',
-          'inputClass' => 'admin-checkbox__input mw-preview',
-        ])
-      </div>
       <div data-mw-show="cabinet vanity">
         @include('admin.partials.checkbox', [
           'name' => 'pieces['.$pi.'][include_toe_kick]',

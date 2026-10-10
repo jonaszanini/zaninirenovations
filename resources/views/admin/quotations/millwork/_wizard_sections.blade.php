@@ -89,9 +89,21 @@
         <label for="mw-sheet">Wood sheet</label>
         <x-admin.info-tip label="Wood sheet">Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.</x-admin.info-tip>
       </span>
+      @php
+        $sheetSelected = (string) $mwVal('sheet_id');
+        $preselectThreeQuarter = ! ($isEdit ?? false) && $sheetSelected === '';
+        if ($preselectThreeQuarter) {
+            foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row) {
+                if (abs((float) ($row['thickness_in'] ?? 0) - 0.75) < 0.06) {
+                    $sheetSelected = (string) ($row['id'] ?? '');
+                    break;
+                }
+            }
+        }
+      @endphp
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
         @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
-          <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>
+          <option value="{{ $row['id'] }}" @selected($sheetSelected === (string) ($row['id'] ?? ''))>
             {{ trim((string) ($row['name'] ?? 'Sheet')) }}
           </option>
         @endforeach
