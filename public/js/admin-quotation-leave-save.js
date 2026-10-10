@@ -71,6 +71,32 @@
     if (!draftBtn) {
       return;
     }
+    if (form && form.getAttribute('data-qh-client-share') === '1' && draftBtn.getAttribute('data-qh-draft-bypass') !== '1') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      confirmDialog(
+        "This quotation is already with the client. Saving it as a draft will stop their link from working until you publish it again. Continue?",
+        {
+          title: 'Pause the client link?',
+          danger: true,
+          confirmLabel: 'Save as draft',
+          cancelLabel: 'Cancel',
+        }
+      ).then(function (ok) {
+        if (!ok) {
+          return;
+        }
+        draftBtn.setAttribute('data-qh-draft-bypass', '1');
+        setCanonicalIntent(form, true);
+        relaxPublishOnlyRequired(form);
+        draftBtn.click();
+        draftBtn.removeAttribute('data-qh-draft-bypass');
+        setTimeout(function () {
+          restorePublishOnlyRequired(form);
+        }, 0);
+      });
+      return;
+    }
     if (form) {
       setCanonicalIntent(form, true);
       relaxPublishOnlyRequired(form);

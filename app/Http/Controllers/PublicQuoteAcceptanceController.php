@@ -6,6 +6,7 @@ use App\Models\ClientProjectQuotation;
 use App\Services\QuoteAcceptanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class PublicQuoteAcceptanceController extends Controller
@@ -14,7 +15,7 @@ class PublicQuoteAcceptanceController extends Controller
         Request $request,
         ClientProjectQuotation $quotation,
         QuoteAcceptanceService $acceptance,
-    ): View|RedirectResponse {
+    ): View|RedirectResponse|Response {
         if ($request->isMethod('post')) {
             return $this->store($request, $quotation, $acceptance);
         }
@@ -22,7 +23,7 @@ class PublicQuoteAcceptanceController extends Controller
         return $this->show($request, $quotation);
     }
 
-    public function show(Request $request, ClientProjectQuotation $quotation): View
+    public function show(Request $request, ClientProjectQuotation $quotation): View|Response
     {
         return $this->page($request, $quotation, null);
     }
@@ -31,7 +32,7 @@ class PublicQuoteAcceptanceController extends Controller
         Request $request,
         ClientProjectQuotation $quotation,
         QuoteAcceptanceService $acceptance,
-    ): View|RedirectResponse {
+    ): View|RedirectResponse|Response {
         $status = $acceptance->accept(
             $quotation,
             ClientProjectQuotation::ACCEPTED_VIA_LINK,
@@ -50,7 +51,7 @@ class PublicQuoteAcceptanceController extends Controller
         return $this->page($request, $quotation, $status);
     }
 
-    private function page(Request $request, ClientProjectQuotation $quotation, ?string $postStatus): View
+    private function page(Request $request, ClientProjectQuotation $quotation, ?string $postStatus): View|Response
     {
         $quotation->loadMissing('project');
         $project = $quotation->project;
@@ -59,6 +60,10 @@ class PublicQuoteAcceptanceController extends Controller
         $status = $postStatus
             ?? ($flashStatus ? (string) $flashStatus : null)
             ?? $this->pageStatus($quotation, $project);
+
+        if ($status === QuoteAcceptanceService::STATUS_REVISING) {
+            return ClientProjectQuotation::revisingClientResponse();
+        }
 
         return view('site.quote_accept.show', [
             'quotation' => $quotation,
@@ -77,7 +82,7 @@ class PublicQuoteAcceptanceController extends Controller
             return QuoteAcceptanceService::STATUS_INVALID_STATE;
         }
         if ($quotation->isSourceDraft()) {
-            return QuoteAcceptanceService::STATUS_INVALID_STATE;
+            return QuoteAcceptanceService::STATUS_REVISING;
         }
         if ($quotation->source_type === \App\Models\ClientProjectQuotation::SOURCE_MILLWORK && $quotation->source_id) {
             $millwork = \App\Models\MillworkQuotation::query()->find($quotation->source_id);
