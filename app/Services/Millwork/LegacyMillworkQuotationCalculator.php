@@ -152,10 +152,7 @@ class LegacyMillworkQuotationCalculator
         $inputs = array_merge(self::defaultInputs(), $inputs);
         $prod = $settings->resolvedProductivity();
         $cut = $settings->resolvedCutSettings();
-        $catalog = $this->catalogWithoutSpecies(MillworkCatalog::mergeSnapshot(
-            $settings->resolvedCatalog(),
-            is_array($inputs['_catalog_snapshot'] ?? null) ? $inputs['_catalog_snapshot'] : []
-        ));
+        $catalog = $this->catalogWithoutSpecies($settings->resolvedCatalog());
         $ownerRate = round(max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate)), 2);
         $helperRate = round(max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate)), 2);
         $includeHelper = QuotationHelperLabor::enabled($inputs);

@@ -562,6 +562,7 @@ class MillworkQuotationCalculator
      */
     private function calculateLegacy(array $inputs, ?MillworkSettings $settings): array
     {
+        $settings = $this->settingsWithCatalogSnapshot($inputs, $settings);
         $out = (new LegacyMillworkQuotationCalculator)->calculate($inputs, $settings);
         if (isset($out['cut_plan']) && is_array($out['cut_plan'])) {
             unset($out['cut_plan']['unplaced'], $out['cut_plan']['placed_by_id'], $out['cut_plan']['builder_version']);
@@ -579,7 +580,27 @@ class MillworkQuotationCalculator
      */
     private function calculateFrozenV2(array $inputs, ?MillworkSettings $settings): array
     {
-        return (new V2MillworkQuotationCalculator)->calculate($inputs, $settings, 2);
+        return (new V2MillworkQuotationCalculator)->calculate(
+            $inputs,
+            $this->settingsWithCatalogSnapshot($inputs, $settings),
+            2
+        );
+    }
+
+    /**
+     * Apply a saved catalog snapshot without editing the frozen v1/v2 files.
+     */
+    private function settingsWithCatalogSnapshot(array $inputs, ?MillworkSettings $settings): MillworkSettings
+    {
+        $settings = $settings ?? MillworkSettings::current();
+        $snapshot = is_array($inputs['_catalog_snapshot'] ?? null) ? $inputs['_catalog_snapshot'] : [];
+        if ($snapshot === []) {
+            return $settings;
+        }
+        $merged = clone $settings;
+        $merged->catalog = MillworkCatalog::mergeSnapshot($settings->resolvedCatalog(true), $snapshot);
+
+        return $merged;
     }
 
     /**
