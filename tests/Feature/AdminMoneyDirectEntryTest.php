@@ -129,7 +129,11 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertIsString($fence);
         $this->assertStringContainsString('document.activeElement !== gatesInput', $fence);
         $this->assertStringContainsString('lastClearedGateTicks', $fence);
-        $this->assertStringContainsString('clearedGateTickIndexes', $fence);
+        $this->assertStringContainsString('clearedGateTickIds', $fence);
+        $this->assertStringNotContainsString('clearedGateTickIndexes', $fence);
+        $this->assertStringContainsString('data-run-id', $fence);
+        $this->assertStringContainsString('function ensureSideRunIds', $fence);
+        $this->assertStringContainsString('a missing first-run id cannot collide', $fence);
         $this->assertStringContainsString('Gate goes here', $fence);
 
         $quoteCreates = glob(resource_path('views/admin/quotations/*/create.blade.php')) ?: [];
@@ -373,6 +377,14 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
         $this->assertSame('3', (string) ($report['fenceGateNotice']['afterRetype']['gates'] ?? ''));
         $this->assertSame(2, (int) ($report['fenceGateNotice']['afterRetype']['ticks'] ?? 0));
         $this->assertStringNotContainsString('cleared', strtolower((string) ($report['fenceGateNotice']['afterRetype']['notice'] ?? '')));
+        $afterRemove = $report['fenceGateNotice']['afterRemove'] ?? [];
+        $this->assertSame(2, (int) ($afterRemove['ticks'] ?? 0));
+        $removedIds = $afterRemove['ids'] ?? [];
+        $restoredIds = $afterRemove['tickedIds'] ?? [];
+        $this->assertNotSame('', (string) ($removedIds[0] ?? ''));
+        $this->assertNotSame('', (string) ($removedIds[2] ?? ''));
+        $this->assertContains((string) $removedIds[0], $restoredIds);
+        $this->assertContains((string) $removedIds[2], $restoredIds);
 
         $this->assertIsArray($report['negativeResave'] ?? null);
         foreach (['standard', 'hourly'] as $kind) {

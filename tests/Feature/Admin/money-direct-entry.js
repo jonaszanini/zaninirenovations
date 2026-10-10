@@ -510,6 +510,10 @@ function sleep(ms) {
   async function fenceGateLowerNotice() {
     await go(base + '/admin/quotations/fence/create');
     await page.waitForSelector('#fq-gates');
+    const firstRunId = await page.$eval('.fq-side-card', (el) => String(el.getAttribute('data-run-id') || ''));
+    if (!firstRunId) {
+      throw new Error('First fence run has no run id');
+    }
     await page.click('#fq-add-side');
     const lengths = await page.$$('.fq-side-length');
     if (lengths.length < 2) {
@@ -560,7 +564,55 @@ function sleep(ms) {
         noticeHidden: !!(warn && warn.classList.contains('is-hidden')),
       };
     });
-    return Object.assign({}, afterLower, { afterRetype });
+
+    await page.click('#fq-add-side');
+    const lengthsAfterAdd = await page.$$('.fq-side-length');
+    if (lengthsAfterAdd.length < 3) {
+      throw new Error('Fence needs three runs to test restore after add/remove');
+    }
+    await lengthsAfterAdd[2].click({ clickCount: 3 });
+    await page.keyboard.type('20');
+    const afterRemove = await page.evaluate(() => {
+      const cards = Array.from(document.querySelectorAll('.fq-side-card'));
+      if (cards.length < 3) {
+        return { error: 'expected three runs' };
+      }
+      const ids = cards.map((card) => String(card.getAttribute('data-run-id') || ''));
+      const boxes = document.querySelectorAll('.fq-side-gate-here');
+      boxes.forEach((box, i) => {
+        box.checked = i === 0 || i === 2;
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      const gates = document.getElementById('fq-gates');
+      gates.value = '2';
+      gates.dispatchEvent(new Event('input', { bubbles: true }));
+      gates.dispatchEvent(new Event('change', { bubbles: true }));
+      const beforeRemoveTicked = Array.from(document.querySelectorAll('.fq-side-gate-here:checked'))
+        .map((el) => String(el.getAttribute('data-run-id') || ''));
+      gates.value = '1';
+      gates.dispatchEvent(new Event('input', { bubbles: true }));
+      gates.dispatchEvent(new Event('change', { bubbles: true }));
+      const afterLowerTicked = Array.from(document.querySelectorAll('.fq-side-gate-here:checked'))
+        .map((el) => String(el.getAttribute('data-run-id') || ''));
+      const removeBtn = document.querySelector('[data-remove-run="1"]');
+      if (removeBtn) removeBtn.click();
+      gates.value = '2';
+      gates.dispatchEvent(new Event('input', { bubbles: true }));
+      gates.dispatchEvent(new Event('change', { bubbles: true }));
+      const afterIds = Array.from(document.querySelectorAll('.fq-side-card'))
+        .map((card) => String(card.getAttribute('data-run-id') || ''));
+      const tickedIds = Array.from(document.querySelectorAll('.fq-side-gate-here:checked'))
+        .map((el) => String(el.getAttribute('data-run-id') || ''));
+      return {
+        ids,
+        beforeRemoveTicked,
+        afterLowerTicked,
+        afterIds,
+        tickedIds,
+        ticks: tickedIds.length,
+      };
+    });
+    return Object.assign({}, afterLower, { afterRetype, afterRemove });
   }
 
   const report = { pages: [], save: null, invoicePreview: null, behaviors: null, keypress: null, negativeResave: null, labourRateKeypress: null, pavingRateMask: null, fenceGateNotice: null };
@@ -806,6 +858,18 @@ function sleep(ms) {
     const afterRetype = fenceNotice.afterRetype || {};
     if (String(afterRetype.gates || '') !== '3' || (afterRetype.ticks || 0) !== 2 || String(afterRetype.notice || '').toLowerCase().includes('cleared')) {
       throw new Error('Fence Gates Backspace+3 did not restore ticks: ' + JSON.stringify(afterRetype));
+    }
+    const afterRemove = fenceNotice.afterRemove || {};
+    const removedIds = afterRemove.ids || [];
+    const restoredIds = afterRemove.tickedIds || [];
+    if (
+      (afterRemove.ticks || 0) !== 2
+      || restoredIds.length !== 2
+      || !removedIds[0] || !removedIds[2]
+      || restoredIds.indexOf(removedIds[0]) === -1
+      || restoredIds.indexOf(removedIds[2]) === -1
+    ) {
+      throw new Error('Fence gate restore keyed the wrong run after remove: ' + JSON.stringify(afterRemove));
     }
     const neg = report.negativeResave || {};
     ['standard', 'hourly'].forEach((kind) => {

@@ -928,9 +928,38 @@
     return flagOn(value);
   }
 
+  var nextRunId = 1;
+
+  function existingRunId(value) {
+    return value != null && String(value) !== '' ? String(value) : '';
+  }
+
+  function bumpNextRunId(runId) {
+    var n = parseInt(String(runId), 10);
+    if (isFinite(n) && n >= nextRunId) nextRunId = n + 1;
+  }
+
+  function mintRunId() {
+    return String(nextRunId++);
+  }
+
+  // Scan known ids first so a missing first-run id cannot collide with a later one.
+  function ensureSideRunIds(sides) {
+    (sides || []).forEach(function (side) {
+      var id = existingRunId(side && side.run_id);
+      if (id) bumpNextRunId(id);
+    });
+    (sides || []).forEach(function (side) {
+      if (!side) return;
+      side.run_id = existingRunId(side.run_id) || mintRunId();
+    });
+  }
+
   function renderSides(sides) {
+    ensureSideRunIds(sides);
     sidesEl.innerHTML = '';
     sides.forEach(function (side, i) {
+      var runId = String(side.run_id);
       var leftChecked = !!(side && flagOn(side.already_have_post_left));
       var rightChecked = !!(side && flagOn(side.already_have_post_right));
       var gateChecked = !!(side && flagOn(side.gate_goes_here));
@@ -938,6 +967,7 @@
       var preset = (side && side.gate_preset) ? side.gate_preset : '4_single';
       var card = document.createElement('div');
       card.className = 'fq-side-card';
+      card.setAttribute('data-run-id', runId);
       card.innerHTML = [
         '<div class="fq-side-card__head">',
         '  <h5>Run ' + (i + 1) + '</h5>',
@@ -983,6 +1013,7 @@
         '    <input type="hidden" name="sides[' + i + '][gate_goes_here]" value="0">',
         '    <input type="checkbox" class="admin-checkbox__input fq-side-gate-here"',
         '           name="sides[' + i + '][gate_goes_here]" value="1"',
+        '           data-run-id="' + runId + '"',
         (gateChecked ? ' checked' : '') + '>',
         '    <span class="admin-checkbox__mark" aria-hidden="true"></span>',
         '    <span class="admin-checkbox__text">Gate goes here</span>',
@@ -1029,7 +1060,38 @@
 
   var lastClearedGateTicks = 0;
   var lastGateLimitSeen = null;
-  var clearedGateTickIndexes = [];
+  var clearedGateTickIds = [];
+
+  function readGateRunId(input) {
+    if (!input) return '';
+    var card = input.closest ? input.closest('.fq-side-card') : null;
+    return existingRunId(input.getAttribute('data-run-id'))
+      || existingRunId(card && card.getAttribute('data-run-id'));
+  }
+
+  function ensureGateInputRunId(input) {
+    var id = readGateRunId(input);
+    if (id) {
+      if (input && !input.getAttribute('data-run-id')) input.setAttribute('data-run-id', id);
+      return id;
+    }
+    if (!input) return '';
+    id = mintRunId();
+    input.setAttribute('data-run-id', id);
+    var card = input.closest ? input.closest('.fq-side-card') : null;
+    if (card) card.setAttribute('data-run-id', id);
+    return id;
+  }
+
+  function gateInputRunId(input) {
+    return readGateRunId(input);
+  }
+
+  function findGateInputByRunId(gateInputs, runId) {
+    return Array.prototype.find.call(gateInputs, function (input) {
+      return gateInputRunId(input) === String(runId);
+    }) || null;
+  }
 
   function syncGateTickChrome(gateInputs) {
     gateInputs.forEach(function (input) {
@@ -1059,9 +1121,9 @@
       if (input.checked) checkedCount++;
     });
 
-    if (checkedCount < limit && clearedGateTickIndexes.length) {
-      clearedGateTickIndexes = clearedGateTickIndexes.filter(function (idx) {
-        var input = gateInputs[idx];
+    if (checkedCount < limit && clearedGateTickIds.length) {
+      clearedGateTickIds = clearedGateTickIds.filter(function (runId) {
+        var input = findGateInputByRunId(gateInputs, runId);
         if (!input || input.checked) return false;
         if (checkedCount >= limit) return true;
         input.checked = true;
@@ -1077,16 +1139,16 @@
         if (input.checked) {
           input.checked = false;
           excess--;
-          var idx = Array.prototype.indexOf.call(gateInputs, input);
-          if (idx >= 0 && clearedGateTickIndexes.indexOf(idx) === -1) {
-            clearedGateTickIndexes.unshift(idx);
+          var runId = ensureGateInputRunId(input);
+          if (runId && clearedGateTickIds.indexOf(runId) === -1) {
+            clearedGateTickIds.unshift(runId);
           }
         }
       });
       checkedCount = limit;
     }
 
-    lastClearedGateTicks = clearedGateTickIndexes.length;
+    lastClearedGateTicks = clearedGateTickIds.length;
     lastGateLimitSeen = limit;
 
     // Keep every box clickable so checking another run moves the gate.
@@ -1197,7 +1259,8 @@
       already_have_post_right: false,
       gate_goes_here: false,
       connected_to_previous: true,
-      gate_preset: '4_single'
+      gate_preset: '4_single',
+      run_id: String(nextRunId++)
     });
     renderSides(current);
     schedulePreview();
@@ -1226,6 +1289,11 @@
         var connectedInput = card.querySelector('.fq-side-connected');
         var presetInput = card.querySelector('.fq-side-gate-preset');
         var gateChecked = !!(gateInput && gateInput.checked);
+        var runId = existingRunId(card.getAttribute('data-run-id'))
+          || existingRunId(gateInput && gateInput.getAttribute('data-run-id'))
+          || mintRunId();
+        card.setAttribute('data-run-id', runId);
+        if (gateInput) gateInput.setAttribute('data-run-id', runId);
         return {
           length_ft: isFinite(v) ? v : null,
           already_have_post_left: !!(leftInput && leftInput.checked),
@@ -1233,6 +1301,7 @@
           gate_goes_here: gateChecked,
           connected_to_previous: connectedInput ? !!connectedInput.checked : false,
           gate_preset: presetInput ? presetInput.value : '4_single',
+          run_id: runId,
         };
       }
     );
