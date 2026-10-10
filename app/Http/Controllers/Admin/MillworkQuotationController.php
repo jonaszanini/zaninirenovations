@@ -17,6 +17,7 @@ use App\Services\AdditionalCostsService;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
+use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Services\MillworkQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
@@ -521,7 +522,11 @@ class MillworkQuotationController extends Controller
         $existingPieces = is_array($existing?->inputs['pieces'] ?? null)
             ? $existing->inputs['pieces']
             : [];
-        $out['pieces'] = $this->piecesFromRequest($request, $existingPieces);
+        $out['pieces'] = $this->piecesFromRequest(
+            $request,
+            $existingPieces,
+            $existing !== null && $existing->cutPlanVersion() < 2
+        );
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
@@ -533,7 +538,7 @@ class MillworkQuotationController extends Controller
      * @param  list<array<string, mixed>>  $existingPieces
      * @return list<array<string, mixed>>
      */
-    private function piecesFromRequest(Request $request, array $existingPieces = []): array
+    private function piecesFromRequest(Request $request, array $existingPieces = [], bool $convertLegacyEdits = false): array
     {
         $raw = $request->input('pieces', []);
         if (! is_array($raw) || $raw === []) {
@@ -543,6 +548,10 @@ class MillworkQuotationController extends Controller
         foreach (array_values($raw) as $index => $piece) {
             if (! is_array($piece)) {
                 continue;
+            }
+            $saved = is_array($existingPieces[$index] ?? null) ? $existingPieces[$index] : null;
+            if ($convertLegacyEdits && $saved && ! $this->pieceNormalizedSizesEqual($piece, $saved)) {
+                $piece = MillworkDimensionParser::toLegacyInchPiece($piece);
             }
             $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
             $row = MillworkQuotationCalculator::defaultPiece($type);
@@ -614,7 +623,6 @@ class MillworkQuotationController extends Controller
             $row['sets'] = $sets !== [] ? $sets : $row['sets'];
             $postedEdited = isset($piece['_calc_version']) && is_numeric($piece['_calc_version'])
                 && (int) $piece['_calc_version'] >= MillworkQuotationCalculator::CALC_VERSION;
-            $saved = is_array($existingPieces[$index] ?? null) ? $existingPieces[$index] : null;
             if ($postedEdited && $saved && $this->pieceNormalizedSizesEqual($piece, $saved)) {
                 if (isset($saved['_calc_version']) && is_numeric($saved['_calc_version'])) {
                     $savedVersion = (int) $saved['_calc_version'];
