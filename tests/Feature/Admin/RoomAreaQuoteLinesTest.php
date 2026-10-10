@@ -153,8 +153,8 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
         $this->assertTrue((bool) ($afterLines[0]['hst_includes_unit'] ?? false));
         $this->assertSame(StandardQuotation::LINE_KIND_ELECTRICAL, $afterLines[1]['line_kind'] ?? null);
         $this->assertSame(StandardQuotation::LINE_KIND_MATERIAL, $afterLines[2]['line_kind'] ?? null);
-        $this->assertNull($afterLines[2]['url'] ?? 'missing');
-        $this->assertNull($afterLines[2]['image_url'] ?? 'missing');
+        $this->assertNull($afterLines[2]['url'] ?? null);
+        $this->assertNull($afterLines[2]['image_url'] ?? null);
         $this->assertEquals(4.50, (float) $afterLines[2]['unit_price']);
         $this->assertEquals(80.0, (float) $afterLines[2]['quantity']);
         $this->assertSame($savedWork['labour_use_fixed'], $afterWork['labour_use_fixed']);
@@ -222,8 +222,8 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
         $this->assertSame(StandardQuotation::LINE_KIND_ELECTRICAL, $afterJob0[2]['line_kind'] ?? null);
         $this->assertSame(StandardQuotation::LINE_KIND_MATERIAL, $afterJob0[3]['line_kind'] ?? null);
         $this->assertSame(StandardQuotation::LINE_KIND_MATERIAL, $afterJob0[4]['line_kind'] ?? null);
-        $this->assertNull($afterJob0[3]['url'] ?? 'missing');
-        $this->assertNull($afterJob0[4]['url'] ?? 'missing');
+        $this->assertNull($afterJob0[3]['url'] ?? null);
+        $this->assertNull($afterJob0[4]['url'] ?? null);
         $this->assertEquals(4.50, (float) $afterJob0[3]['unit_price']);
         $this->assertEquals(2.00, (float) $afterJob0[4]['unit_price']);
         $this->assertEquals(80.0, (float) $afterJob0[3]['quantity']);
