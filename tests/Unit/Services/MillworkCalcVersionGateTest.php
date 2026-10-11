@@ -119,12 +119,86 @@ class MillworkCalcVersionGateTest extends TestCase
         ], 2), 0.02);
     }
 
-    public function test_new_quotes_default_to_calc_version_three(): void
+    public function test_new_quotes_default_to_calc_version_four_and_saved_v3_stays_v3(): void
     {
-        $this->assertSame(3, MillworkQuotationCalculator::CALC_VERSION);
-        $this->assertSame(3, MillworkQuotationCalculator::resolveCalcVersion([]));
+        $this->assertSame(4, MillworkQuotationCalculator::CALC_VERSION);
+        $this->assertSame(3, MillworkQuotationCalculator::PARSING_VERSION);
+        $this->assertSame(MillworkQuotationCalculator::CALC_VERSION, MillworkPartBuilder::CALC_VERSION);
+        $this->assertSame(MillworkQuotationCalculator::PARSING_VERSION, MillworkPartBuilder::PARSING_VERSION);
+        $this->assertSame(4, MillworkQuotationCalculator::resolveCalcVersion([]));
+        $this->assertSame(3, MillworkQuotationCalculator::resolveCalcVersion(['_calc_version' => 3]));
+        $this->assertSame(3, MillworkQuotationCalculator::resolveCalcVersion(['_cut_plan_version' => 3]));
         $this->assertSame(2, MillworkQuotationCalculator::resolveCalcVersion(['_cut_plan_version' => 2]));
         $this->assertSame(2, MillworkQuotationCalculator::resolveCutPlanVersion(['_cut_plan_version' => 3]));
+        $this->assertSame(2, MillworkQuotationCalculator::resolveCutPlanVersion(['_cut_plan_version' => 4]));
+
+        $saved = new MillworkQuotation(['cut_plan_version' => 3]);
+        $this->assertSame(3, $saved->calcVersion());
+        $this->assertTrue($saved->usesNewCalc());
+        $this->assertFalse($saved->canUpgradeCalc());
+    }
+
+    public function test_saved_v3_shelf_with_height_keeps_the_board_price(): void
+    {
+        $piece = [
+            'type' => 'shelf',
+            'qty' => 1,
+            'height' => 72,
+            'columns' => 2,
+            'shelf_count' => 1,
+            'include_back' => true,
+            'edge_banding' => false,
+            'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+        ];
+        $board = $piece;
+        $board['height'] = '';
+        $board['columns'] = 0;
+        $board['shelf_count'] = 0;
+        $board['include_back'] = false;
+
+        $v3 = (new MillworkPartBuilder(3))->explode($piece, 0.75, 0.0);
+        $plain = (new MillworkPartBuilder(3))->explode($board, 0.75, 0.0);
+        $this->assertSame($plain['labels'], $v3['labels']);
+        $this->assertCount(count($plain['parts']), $v3['parts']);
+
+        $v4 = (new MillworkPartBuilder(4))->explode($piece, 0.75, 0.0);
+        $this->assertGreaterThan(count($v3['parts']), count($v4['parts']));
+        $this->assertEqualsWithDelta($this->total($board, 3), $this->total($piece, 3), 0.02);
+        $this->assertGreaterThan($this->total($piece, 3) + 50, $this->total($piece, 4));
+    }
+
+    public function test_blank_sheet_id_still_prices_the_first_catalog_sheet(): void
+    {
+        $settings = $this->settings();
+        $catalog = $settings->catalog;
+        array_unshift($catalog[MillworkSettings::SLOT_WOOD_SHEETS], [
+            'id' => 'ws_cheap_half',
+            'catalog_material_id' => null,
+            'name' => '1/2" utility plywood 4×8',
+            'unit' => 'sheet',
+            'unit_price' => 38,
+            'thickness_in' => 0.5,
+            'width_in' => 48,
+            'length_in' => 96,
+            'material_kind' => 'plywood',
+            'grade' => 'utility',
+        ]);
+        $settings->catalog = $catalog;
+        $inputs = [
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+        ];
+        $calc = new MillworkQuotationCalculator;
+        $blank = $calc->calculate(array_merge($inputs, ['sheet_id' => '']), $settings, 3);
+        $named = $calc->calculate(array_merge($inputs, ['sheet_id' => 'ws_cheap_half']), $settings, 3);
+        $thick = $calc->calculate(array_merge($inputs, ['sheet_id' => 'ws_ply_34_cab_48x96']), $settings, 3);
+        $blankMats = (float) $blank['summary']['materials_goods_pre_hst'];
+        $this->assertEqualsWithDelta((float) $named['summary']['materials_goods_pre_hst'], $blankMats, 0.02);
+        $this->assertNotEquals(round($blankMats, 2), round((float) $thick['summary']['materials_goods_pre_hst'], 2));
     }
 
     public function test_v2_bench_blank_height_stays_zero_like_main(): void

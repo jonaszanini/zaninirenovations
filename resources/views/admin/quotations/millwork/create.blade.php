@@ -386,6 +386,7 @@
       isEdit: @json($isEdit),
       cutPlanVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }},
       calcVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }},
+      latestCalcVersion: {{ (int) \App\Services\MillworkQuotationCalculator::CALC_VERSION }},
       storedTotal: {{ $isEdit && $quotation ? json_encode((float) $quotation->final_quote_total) : '0' }},
       sectionKeys: @json(array_keys($sectionList)),
       quoteNumber: @json($isEdit && $quotation ? ($quotation->quote_number ?? '') : ''),

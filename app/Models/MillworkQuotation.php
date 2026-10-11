@@ -105,6 +105,9 @@ class MillworkQuotation extends Model
             if ($raw >= \App\Services\MillworkQuotationCalculator::CALC_VERSION) {
                 return \App\Services\MillworkQuotationCalculator::CALC_VERSION;
             }
+            if ($raw >= \App\Services\MillworkQuotationCalculator::PARSING_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::PARSING_VERSION;
+            }
             if ($raw >= \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION) {
                 return \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
             }
@@ -134,12 +137,12 @@ class MillworkQuotation extends Model
 
     public function usesNewCalc(): bool
     {
-        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::CALC_VERSION;
+        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::PARSING_VERSION;
     }
 
     public function canUpgradeCalc(): bool
     {
-        return $this->calcVersion() < \App\Services\MillworkQuotationCalculator::CALC_VERSION;
+        return $this->calcVersion() < \App\Services\MillworkQuotationCalculator::PARSING_VERSION;
     }
 
     public function displayTitle(): string

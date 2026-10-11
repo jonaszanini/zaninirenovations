@@ -414,6 +414,17 @@ class MillworkQuotationController extends Controller
         $cutPlanVersion = $quotation
             ? $quotation->calcVersion()
             : MillworkQuotationCalculator::CALC_VERSION;
+        if (! $quotation && trim((string) ($previewInputs['sheet_id'] ?? '')) === '') {
+            foreach ($settings->resolvedCatalog()[MillworkSettings::SLOT_WOOD_SHEETS] ?? [] as $sheetRow) {
+                if (! is_array($sheetRow)) {
+                    continue;
+                }
+                if (abs((float) ($sheetRow['thickness_in'] ?? 0) - 0.75) < 0.06) {
+                    $previewInputs['sheet_id'] = (string) ($sheetRow['id'] ?? '');
+                    break;
+                }
+            }
+        }
         $previewInputs['_cut_plan_version'] = $cutPlanVersion;
         $previewInputs['_calc_version'] = $cutPlanVersion;
         $initialPreview = (new MillworkQuotationCalculator)->calculate(
@@ -570,12 +581,24 @@ class MillworkQuotationController extends Controller
             $row['name'] = trim((string) ($piece['name'] ?? ''));
             $row['room'] = trim((string) ($piece['room'] ?? ''));
             $row['style'] = \App\Services\Millwork\MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
-            $row['profile'] = \App\Services\Millwork\MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
+            if (! array_key_exists('profile', $piece) && $saved && array_key_exists('profile', $saved)) {
+                $row['profile'] = \App\Services\Millwork\MillworkPartBuilder::normalizeTrimProfile((string) $saved['profile']);
+            } else {
+                $row['profile'] = \App\Services\Millwork\MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
+            }
             foreach ([
                 'width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft',
             ] as $dim) {
                 if (in_array($dim, $omitMissingDefaults['dims'], true)) {
                     unset($row[$dim]);
+                    continue;
+                }
+                if (! array_key_exists($dim, $piece) && $saved && array_key_exists($dim, $saved)) {
+                    $row[$dim] = $saved[$dim];
+                    $savedUnit = $dim.'_unit';
+                    if (array_key_exists($savedUnit, $saved)) {
+                        $row[$savedUnit] = $saved[$savedUnit];
+                    }
                     continue;
                 }
                 $row[$dim] = $this->postedDimension($piece[$dim] ?? '');
@@ -605,6 +628,10 @@ class MillworkQuotationController extends Controller
             foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $intKey) {
                 if (in_array($intKey, $omitMissingDefaults['counts'], true)) {
                     unset($row[$intKey]);
+                    continue;
+                }
+                if (! array_key_exists($intKey, $piece) && $saved && array_key_exists($intKey, $saved)) {
+                    $row[$intKey] = $saved[$intKey];
                     continue;
                 }
                 $row[$intKey] = $this->postedCount($piece[$intKey] ?? ($row[$intKey] ?? 0));
@@ -642,19 +669,17 @@ class MillworkQuotationController extends Controller
                 $sets[] = $setRow;
             }
             $row['sets'] = $sets !== [] ? $sets : $row['sets'];
-            $postedEdited = isset($piece['_calc_version']) && is_numeric($piece['_calc_version'])
-                && (int) $piece['_calc_version'] >= MillworkQuotationCalculator::CALC_VERSION;
-            if ($postedEdited && $saved && $this->pieceNormalizedSizesEqual($piece, $saved)) {
-                if (isset($saved['_calc_version']) && is_numeric($saved['_calc_version'])) {
-                    $savedVersion = (int) $saved['_calc_version'];
-                    if ($savedVersion >= MillworkQuotationCalculator::CALC_VERSION) {
-                        $row['_calc_version'] = MillworkQuotationCalculator::CALC_VERSION;
-                    } elseif ($savedVersion > 0) {
-                        $row['_calc_version'] = $savedVersion;
-                    }
+            $postedVersion = (isset($piece['_calc_version']) && is_numeric($piece['_calc_version']))
+                ? (int) $piece['_calc_version'] : 0;
+            $savedVersion = ($saved && isset($saved['_calc_version']) && is_numeric($saved['_calc_version']))
+                ? (int) $saved['_calc_version'] : 0;
+            $sizesMatch = $saved && $this->pieceNormalizedSizesEqual($piece, $saved);
+            if ($sizesMatch) {
+                if ($savedVersion > 0) {
+                    $row['_calc_version'] = min($savedVersion, MillworkQuotationCalculator::CALC_VERSION);
                 }
-            } elseif ($postedEdited) {
-                $row['_calc_version'] = MillworkQuotationCalculator::CALC_VERSION;
+            } elseif ($postedVersion >= MillworkQuotationCalculator::PARSING_VERSION) {
+                $row['_calc_version'] = min($postedVersion, MillworkQuotationCalculator::CALC_VERSION);
             }
             $out[] = $row;
         }

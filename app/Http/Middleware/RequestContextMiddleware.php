@@ -28,11 +28,7 @@ final class RequestContextMiddleware
 
         $request->attributes->set('request_id', $requestId);
 
-        // Live previews are XHR. They must not eat the one-time success
-        // flash that a Ctrl+S redirect is carrying to the next full page.
-        if (($request->ajax() || $request->expectsJson()) && $request->hasSession()) {
-            $request->session()->reflash();
-        }
+        $this->skipSessionWriteForPreview($request);
 
         $start = hrtime(true);
 
@@ -58,5 +54,36 @@ final class RequestContextMiddleware
         RequestContext::clear();
 
         return $response;
+    }
+
+    /**
+     * Preview posts must not persist the session. A write ages one-time
+     * messages, and reflash() would keep errors and old input for a later page.
+     */
+    private function skipSessionWriteForPreview(Request $request): void
+    {
+        $name = optional($request->route())->getName();
+        if (! is_string($name) || ! $this->isQuotationPreviewRoute($name) || ! $request->hasSession()) {
+            return;
+        }
+        $session = $request->session();
+        $handlerProp = new \ReflectionProperty($session, 'handler');
+        $handlerProp->setAccessible(true);
+        $handler = $handlerProp->getValue($session);
+        if ($handler instanceof \SessionHandlerInterface && ! $handler instanceof ReadOnlySessionHandler) {
+            $handlerProp->setValue($session, new ReadOnlySessionHandler($handler));
+        }
+    }
+
+    private function isQuotationPreviewRoute(string $name): bool
+    {
+        if (! str_starts_with($name, 'admin.quotations.')) {
+            return false;
+        }
+
+        return str_ends_with($name, '.calculate')
+            || str_ends_with($name, '.calculate-existing')
+            || str_ends_with($name, '.preview')
+            || str_ends_with($name, '.live');
     }
 }

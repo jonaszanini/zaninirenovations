@@ -69,7 +69,11 @@ class MillworkPartBuilder
     /** v1 keeps the pre-PR-A L/W order so saved quotes do not silently change. */
     public const BUILDER_VERSION = 2;
 
-    public const CALC_VERSION = 3;
+    /** New parsing and used-field limits. Saved v2 stays on the frozen builder. */
+    public const PARSING_VERSION = 3;
+
+    /** Simple-shelf sides, dividers, extra shelves, and back. New quotes only. */
+    public const CALC_VERSION = 4;
 
     private int $version;
 
@@ -82,9 +86,7 @@ class MillworkPartBuilder
     public function __construct(int $version = self::CALC_VERSION)
     {
         $this->version = $version >= 2 ? self::BUILDER_VERSION : 1;
-        $this->calcVersion = $version >= self::CALC_VERSION
-            ? self::CALC_VERSION
-            : ($version >= 2 ? self::BUILDER_VERSION : 1);
+        $this->calcVersion = self::pieceCalcVersion(['_calc_version' => $version], 1);
     }
 
     public function version(): int
@@ -103,23 +105,24 @@ class MillworkPartBuilder
     public static function pieceCalcVersion(array $row, ?int $fallback = null): int
     {
         $raw = $row['_calc_version'] ?? null;
-        if ($raw !== null && $raw !== '' && is_numeric($raw)) {
-            $v = (int) $raw;
-            if ($v >= self::CALC_VERSION) {
-                return self::CALC_VERSION;
-            }
-            if ($v >= 2) {
-                return 2;
-            }
-
-            return 1;
+        if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+            $raw = $fallback;
         }
-
-        if ($fallback === null) {
+        if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+            return 2;
+        }
+        $v = (int) $raw;
+        if ($v >= self::CALC_VERSION) {
+            return self::CALC_VERSION;
+        }
+        if ($v >= self::PARSING_VERSION) {
+            return self::PARSING_VERSION;
+        }
+        if ($v >= 2) {
             return 2;
         }
 
-        return $fallback >= self::CALC_VERSION ? self::CALC_VERSION : ($fallback >= 2 ? 2 : 1);
+        return 1;
     }
 
     /**
@@ -127,7 +130,7 @@ class MillworkPartBuilder
      */
     public static function usesNewParsing(array $row, ?int $fallback = null): bool
     {
-        return self::pieceCalcVersion($row, $fallback) >= self::CALC_VERSION;
+        return self::pieceCalcVersion($row, $fallback) >= self::PARSING_VERSION;
     }
 
     /**
@@ -573,7 +576,7 @@ class MillworkPartBuilder
             $parts[] = $this->rect('shelf-'.$n, $label, $len, $dep, $qty, GrainDirection::LENGTHWISE, $band, $eb, 'front');
             $edgeLf += $band ? ($qty * ($len / 12.0)) : 0;
             $height = self::dimInches($piece, ['height']);
-            if ($height > 0) {
+            if ($height > 0 && $this->calcVersion >= self::CALC_VERSION) {
                 $prefix = $this->piecePrefix($piece).'Shelf '.$n.' ';
                 $parts[] = $this->rect('shelf-'.$n.'-side-l', $prefix.'side', $height, $dep, $qty * 2, GrainDirection::LENGTHWISE, $band, $eb, 'front');
                 $cols = max(0, (int) ($piece['columns'] ?? 0));

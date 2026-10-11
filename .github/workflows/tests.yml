@@ -221,6 +221,8 @@ jobs:
           php artisan test tests/Unit/Services/MillworkQuotationCalculatorTest.php
           php artisan test tests/Feature/Admin/MillworkQuotationPagesTest.php
           php artisan test tests/Feature/Admin/MillworkLeaveSaveBrowserTest.php
+          php artisan test tests/Feature/Admin/MillworkCreateBrowserTest.php
+          php artisan test tests/Feature/Admin/MillworkResaveBrowserTest.php
           php artisan test tests/Feature/Admin/MillworkQuotationRoundTripTest.php
           php artisan test tests/Feature/Admin/MillworkCutPlanPlacementTest.php
           php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
