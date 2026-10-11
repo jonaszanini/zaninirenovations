@@ -9,6 +9,7 @@
   $style = MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
   $profile = MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
   $isLegacyQuote = $isLegacyQuote ?? (((int) ($cutPlanVersion ?? $builderVersion ?? 2)) < 2);
+  $shelfStructureVersion = ((int) ($cutPlanVersion ?? $builderVersion ?? 0)) >= MillworkQuotationCalculator::CALC_VERSION;
   $piece = MillworkQuotationCalculator::withEffectiveFormDefaults($piece, $isLegacyQuote);
   $shelfHeightRaw = $piece['height'] ?? '';
   $shelfStructureOpen = $type === 'shelf' && trim((string) $shelfHeightRaw) !== '';
@@ -114,7 +115,7 @@
       'dimName' => 'height',
       'dimLabel' => 'H',
       'dimField' => 'h',
-      'dimShow' => 'shelf kallax cabinet vanity closet bench mantel wainscoting',
+      'dimShow' => ($shelfStructureVersion ? 'shelf ' : '').'kallax cabinet vanity closet bench mantel wainscoting',
       'dimPlaceholder' => $type === 'shelf' ? '72' : (in_array($type, ['closet'], true) ? '84' : ($type === 'wainscoting' ? '36' : '34.5')),
       'setField' => null,
     ])
@@ -349,22 +350,24 @@
     </div>
   </div>
 
+  @if ($shelfStructureVersion)
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="shelf">
     <div class="admin-form-group">
       <span class="admin-label-with-tip">
         <label>Columns</label>
         <x-admin.info-tip :label="'Columns — '.$pieceTipLabel">Used with height. Vertical dividers = columns − 1. Leave height blank to price each size set as one board.</x-admin.info-tip>
       </span>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" @if ($namedColumns === 'shelf') name="pieces[{{ $pi }}][columns]" @endif data-mw-field="columns" data-mw-owner="shelf" data-mw-name="pieces[{{ $pi }}][columns]" value="{{ $piece['columns'] ?? '' }}" placeholder="1">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" @if ($namedColumns === 'shelf') name="pieces[{{ $pi }}][columns]" @endif data-mw-field="columns" data-mw-owner="shelf" data-mw-name="pieces[{{ $pi }}][columns]" value="{{ $shelfStructureOpen ? ($piece['columns'] ?? '') : '' }}" placeholder="1">
     </div>
     <div class="admin-form-group">
       <span class="admin-label-with-tip">
         <label>Shelves</label>
         <x-admin.info-tip :label="'Shelves — '.$pieceTipLabel">Extra boards when height is set, in addition to the size-set board.</x-admin.info-tip>
       </span>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" @if ($namedShelfCount === 'shelf') name="pieces[{{ $pi }}][shelf_count]" @endif data-mw-field="shelf_count" data-mw-owner="shelf" data-mw-name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? '' }}" placeholder="0">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" @if ($namedShelfCount === 'shelf') name="pieces[{{ $pi }}][shelf_count]" @endif data-mw-field="shelf_count" data-mw-owner="shelf" data-mw-name="pieces[{{ $pi }}][shelf_count]" value="{{ $shelfStructureOpen ? ($piece['shelf_count'] ?? '') : '' }}" placeholder="0">
     </div>
   </div>
+  @endif
 
   <div data-mw-show="shelf floating_shelf cabinet_door">
     <div class="mw-piece__sets-head">
@@ -387,7 +390,7 @@
     </button>
   </div>
 
-  <div class="mw-piece__flags" data-mw-show="shelf floating_shelf kallax cabinet vanity closet bench mantel">
+  <div class="mw-piece__flags" data-mw-show="{{ ($shelfStructureVersion ? 'shelf ' : '').'floating_shelf kallax cabinet vanity closet bench mantel' }}">
     @include('admin.partials.checkbox', [
       'name' => 'pieces['.$pi.'][include_back]',
       'hiddenFallback' => true,

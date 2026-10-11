@@ -593,7 +593,13 @@ class MillworkQuotationController extends Controller
                     unset($row[$dim]);
                     continue;
                 }
-                if (! array_key_exists($dim, $piece) && $saved && array_key_exists($dim, $saved)) {
+                // Thickness has no piece-level input, so a missing key is an empty
+                // post (main writes ''). Keeping a stored thickness beside the
+                // blank dimensions the form does send builds a row that was never saved.
+                if ($dim !== 'thickness'
+                    && ! array_key_exists($dim, $piece)
+                    && $saved
+                    && array_key_exists($dim, $saved)) {
                     $row[$dim] = $saved[$dim];
                     $savedUnit = $dim.'_unit';
                     if (array_key_exists($savedUnit, $saved)) {

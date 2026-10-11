@@ -1265,6 +1265,93 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
         ];
     }
 
+    public function test_v2_and_v3_piece_thickness_without_height_resaves_at_the_open_total(): void
+    {
+        $this->actingAsAdmin();
+
+        $create = $this->get(route('admin.quotations.millwork.create'))->assertOk();
+        $this->assertStringContainsString('data-mw-owner="shelf"', $create->getContent());
+        $this->assertMatchesRegularExpression('/data-mw-owner="shelf"[^>]*value=""/', $create->getContent());
+        $this->assertStringContainsString('data-mw-show="shelf kallax cabinet vanity closet bench mantel wainscoting"', $create->getContent());
+
+        foreach ([2 => 'v2', 3 => 'v3'] as $version => $label) {
+            $priced = [
+                'type' => 'floating_shelf',
+                'qty' => 1,
+                'unit' => 'in',
+                'edge_banding' => true,
+                'sets' => [[
+                    'qty' => 1,
+                    'length' => 36,
+                    'depth' => 12,
+                    'thickness' => '',
+                    'unit' => 'in',
+                ]],
+            ];
+            $this->assertArrayNotHasKey('height', $priced, $label);
+            $this->assertArrayNotHasKey('thickness', $priced, $label);
+
+            $inputs = [
+                'pieces' => [$priced],
+                'include_install' => false,
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+                '_cut_plan_version' => $version,
+                '_calc_version' => $version,
+            ];
+            $open = (new MillworkQuotationCalculator)->calculate($inputs, null, $version);
+            $openTotal = round((float) $open['summary']['grand_total'], 2);
+            $this->assertGreaterThan(0, $openTotal, $label);
+
+            $stored = $priced;
+            $stored['thickness'] = 0.75;
+            $stuck = $stored;
+            foreach (['width', 'height', 'depth', 'length'] as $dim) {
+                $stuck[$dim] = '';
+            }
+            $stuckInputs = $inputs;
+            $stuckInputs['pieces'] = [$stuck];
+            $stuckTotal = round((float) (new MillworkQuotationCalculator)->calculate($stuckInputs, null, $version)['summary']['grand_total'], 2);
+            $this->assertNotEquals($openTotal, $stuckTotal, $label.' keeping piece thickness must be a different row');
+
+            $storedInputs = $inputs;
+            $storedInputs['pieces'] = [$stored];
+            $quote = MillworkQuotation::query()->create([
+                'quote_number' => 'MW-THK-'.$label,
+                'client_name' => 'Thickness '.$label,
+                'is_draft' => true,
+                'cut_plan_version' => $version,
+                'inputs' => $storedInputs,
+                'calculation' => $open,
+                'final_quote_total' => $openTotal,
+                'payment_installments' => 3,
+                'include_debris_removal' => false,
+                'include_commute' => false,
+                'ask_reply_to_accept' => false,
+            ]);
+
+            $html = $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent();
+            $this->assertStringNotContainsString('data-mw-owner="shelf"', $html, $label.' shelf structure stays off older quotes');
+            $posted = $this->formValuesFromHtml($html);
+            $posted['pieces'] = array_values(array_filter(
+                $posted['pieces'] ?? [],
+                static fn ($piece, $key): bool => is_numeric($key) && is_array($piece),
+                ARRAY_FILTER_USE_BOTH
+            ));
+            $this->assertArrayNotHasKey('thickness', $posted['pieces'][0] ?? [], $label.' form has no piece thickness control');
+            $this->assertArrayNotHasKey('height', $stored);
+
+            $this->put(route('admin.quotations.millwork.update', $quote), $posted)
+                ->assertRedirect()
+                ->assertSessionHasNoErrors();
+
+            $fresh = $quote->fresh();
+            $this->assertSame('', $fresh->inputs['pieces'][0]['thickness'] ?? null, $label);
+            $this->assertEqualsWithDelta($openTotal, (float) $fresh->final_quote_total, 0.02, $label);
+            $this->assertSame($version, (int) $fresh->cut_plan_version, $label);
+        }
+    }
+
     /**
      * Fields a browser would submit from the millwork edit page, including
      * controls associated with #mw-main-form via the form="" attribute.
