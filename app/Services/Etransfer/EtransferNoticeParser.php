@@ -30,6 +30,15 @@ class EtransferNoticeParser
     public const DEPOSIT_DESTINATION_EMAIL_PATTERN = '/((?:automatically\s+)?deposited into your account(?:\s+at\s+[^@\n]+?)?\s+at\s+)([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/iu';
 
     /**
+     * Forwarded header lines: English, French (De / À), quoted "> From:",
+     * and Outlook bold "*From:*". Reply-To is stripped from the body scan
+     * after its address is collected separately.
+     */
+    public const FORWARDED_HEADER_LINE_PATTERN = '/^(?:>+\s*)?\*{0,2}\s*(?:From|To|Cc|De|À|A|Delivered-To|X-Original-To|Reply-To)\s*\*{0,2}\s*:/iu';
+
+    public const REPLY_TO_HEADER_LINE_PATTERN = '/^(?:>+\s*)?\*{0,2}\s*Reply-To\s*\*{0,2}\s*:/iu';
+
+    /**
      * @return array{
      *   sender_name: ?string,
      *   sender_email: ?string,
@@ -154,11 +163,9 @@ class EtransferNoticeParser
 
     private function extractSenderEmail(string $text): ?string
     {
+        $replyTo = $this->interacReplyToEmails($text);
         $text = $this->stripForwardedHeaderLines($text);
-        $skip = array_values(array_unique(array_merge(
-            $this->destinationPatternEmails($text),
-            $this->depositLineEmails($text)
-        )));
+        $skip = $this->depositLineEmails($text);
         $text = $this->stripDepositDestinationEmails($text);
 
         if (preg_match('/Sender(?:\'s)? e-?mail\s*:\s*([^\s<>]+@[^\s<>]+)/iu', $text, $m)) {
@@ -175,6 +182,13 @@ class EtransferNoticeParser
                 if ($usable !== null) {
                     return $usable;
                 }
+            }
+        }
+
+        foreach ($replyTo as $email) {
+            $usable = $this->usableReplyToEmail($email, $skip);
+            if ($usable !== null) {
+                return $usable;
             }
         }
 
@@ -201,19 +215,184 @@ class EtransferNoticeParser
     }
 
     /**
-     * Forwarded From:/To:/Cc: lines are never a payer address.
+     * Forwarded From:/To:/Cc:/De:/À: lines are never a payer address.
      */
     public function stripForwardedHeaderLines(string $text): string
     {
         $kept = [];
         foreach (preg_split("/\n/u", $text) ?: [] as $line) {
-            if (preg_match('/^(?:From|To|Cc|Delivered-To|X-Original-To|Reply-To)\s*:/iu', $line) === 1) {
+            if (preg_match(self::FORWARDED_HEADER_LINE_PATTERN, $line) === 1) {
                 continue;
             }
             $kept[] = $line;
         }
 
         return implode("\n", $kept);
+    }
+
+    /**
+     * Addresses on Reply-To lines (plain, quoted, or Outlook-bold).
+     *
+     * @return list<string>
+     */
+    public function replyToEmails(string $text): array
+    {
+        $emails = [];
+        foreach (preg_split("/\n/u", $text) ?: [] as $line) {
+            if (preg_match(self::REPLY_TO_HEADER_LINE_PATTERN, $line) !== 1) {
+                continue;
+            }
+            foreach ($this->emailsInLine($line) as $email) {
+                $emails[$email] = $email;
+            }
+        }
+
+        return array_values($emails);
+    }
+
+    /**
+     * Reply-To addresses that belong to the Interac notification itself
+     * (same header block as an Interac From), not a wrapping forward.
+     *
+     * @return list<string>
+     */
+    public function interacReplyToEmails(string $text): array
+    {
+        $emails = [];
+        foreach ($this->forwardedHeaderBlocks($text) as $block) {
+            if (! $this->headerBlockIsInterac($block)) {
+                continue;
+            }
+            foreach ($block as $line) {
+                if (preg_match(self::REPLY_TO_HEADER_LINE_PATTERN, $line) !== 1) {
+                    continue;
+                }
+                foreach ($this->emailsInLine($line) as $email) {
+                    $emails[$email] = $email;
+                }
+            }
+        }
+
+        return array_values($emails);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function ownDomains(): array
+    {
+        $configured = config('etransfer.own_domains', []);
+        $fromConfig = is_array($configured) ? $configured : [];
+
+        $unique = [];
+        foreach (array_merge(['zaninirenovations.ca'], $fromConfig) as $domain) {
+            if (! is_string($domain) && ! is_numeric($domain)) {
+                continue;
+            }
+            $domain = strtolower(preg_replace('/^www\./', '', trim((string) $domain)) ?? '');
+            if ($domain !== '') {
+                $unique[$domain] = $domain;
+            }
+        }
+
+        return array_values($unique);
+    }
+
+    /**
+     * @param  list<string>  $depositEmails
+     */
+    private function usableReplyToEmail(string $email, array $depositEmails = []): ?string
+    {
+        $usable = $this->usableSenderEmail($email, $depositEmails);
+        if ($usable === null) {
+            return null;
+        }
+
+        $domain = substr(strrchr($usable, '@') ?: '', 1);
+        $domain = strtolower(preg_replace('/^www\./', '', (string) $domain) ?? (string) $domain);
+        if ($domain !== '' && in_array($domain, $this->ownDomains(), true)) {
+            return null;
+        }
+
+        return $usable;
+    }
+
+    /**
+     * Consecutive forwarded-header lines that share the same quote prefix.
+     *
+     * @return list<list<string>>
+     */
+    private function forwardedHeaderBlocks(string $text): array
+    {
+        $blocks = [];
+        $current = [];
+        $currentPrefix = null;
+
+        foreach (preg_split("/\n/u", $text) ?: [] as $line) {
+            if (preg_match(self::FORWARDED_HEADER_LINE_PATTERN, $line) !== 1) {
+                if ($current !== []) {
+                    $blocks[] = $current;
+                    $current = [];
+                    $currentPrefix = null;
+                }
+                continue;
+            }
+
+            preg_match('/^(>+)?/', $line, $prefixMatch);
+            $prefix = $prefixMatch[1] ?? '';
+            if ($current !== [] && $prefix !== $currentPrefix) {
+                $blocks[] = $current;
+                $current = [];
+            }
+            $current[] = $line;
+            $currentPrefix = $prefix;
+        }
+
+        if ($current !== []) {
+            $blocks[] = $current;
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * @param  list<string>  $block
+     */
+    private function headerBlockIsInterac(array $block): bool
+    {
+        foreach ($block as $line) {
+            if (preg_match('/(?:From|De)\s*\*{0,2}\s*:/iu', $line) !== 1) {
+                continue;
+            }
+            foreach ($this->emailsInLine($line) as $email) {
+                $domain = substr(strrchr($email, '@') ?: '', 1);
+                if (in_array($domain, self::INTERAC_EMAIL_DOMAINS, true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function emailsInLine(string $line): array
+    {
+        if (! preg_match_all('/\b([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})\b/i', $line, $matches)) {
+            return [];
+        }
+
+        $emails = [];
+        foreach ($matches[1] as $email) {
+            $email = strtolower(trim($email, " \t\"'<>"));
+            if ($email !== '') {
+                $emails[$email] = $email;
+            }
+        }
+
+        return array_values($emails);
     }
 
     /**

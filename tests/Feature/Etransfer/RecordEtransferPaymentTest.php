@@ -5,6 +5,7 @@ namespace Tests\Feature\Etransfer;
 use App\Models\ClientProject;
 use App\Models\ClientProjectInvoice;
 use App\Models\EtransferNotice;
+use App\Services\Etransfer\EtransferInvoiceMatcher;
 use Illuminate\Support\Facades\Storage;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
@@ -789,5 +790,39 @@ TXT;
             '/id="et-inv-'.$notice->id.'-value"[^>]*value=""/',
             $html
         );
+    }
+
+    public function test_phone_digits_do_not_lookup_paid_invoice_from_database(): void
+    {
+        $this->actingAsAdmin();
+
+        ClientProjectInvoice::factory()->for(
+            ClientProject::factory()->create(['client_name' => 'Other Client']),
+            'project'
+        )->paid()->create([
+            'invoice_number' => 'INV-2026-0647',
+            'subtotal' => 796.46,
+            'hst' => 103.54,
+            'total' => 900,
+        ]);
+
+        $notice = EtransferNotice::factory()->create([
+            'sender_name' => 'Unrelated Person',
+            'amount' => 50,
+            'message' => 'please call inv 647-834-0258',
+            'reference_number' => 'CALOOKUP647',
+        ]);
+
+        $tokens = (new EtransferInvoiceMatcher)->mentionLookupTokens(
+            (string) $notice->message
+        );
+        $this->assertSame([], $tokens);
+
+        $html = $this->get(route('admin.financials.etransfers'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('INV-2026-0647', $html);
+        $this->assertStringNotContainsString('Already paid', $html);
     }
 }
