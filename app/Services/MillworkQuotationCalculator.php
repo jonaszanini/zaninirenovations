@@ -30,8 +30,11 @@ class MillworkQuotationCalculator
     /** Stored cut plans without this key (or with a lower value) keep the v1 snapshot. */
     public const CUT_PLAN_VERSION = 2;
 
-    /** New parsing, inch defaults, and 240" used-field limits. Saved v2 stays on main. */
-    public const CALC_VERSION = 3;
+    /** New parsing, inch defaults, and 240" used-field limits. Saved v2 stays on the frozen builder. */
+    public const PARSING_VERSION = 3;
+
+    /** Simple-shelf structure when a row has a height. New quotes only; saved v3 stays on the board price. */
+    public const CALC_VERSION = 4;
 
     public const MAX_QTY = 200;
 
@@ -190,7 +193,7 @@ class MillworkQuotationCalculator
     }
 
     /**
-     * 1 = legacy cut plan, 2 = main v2 builder, 3 = new parsing / defaults / limits.
+     * 1 = legacy cut plan, 2 = frozen v2 builder, 3 = new parsing, 4 = shelf structure.
      *
      * @param  array<string, mixed>  $inputs
      */
@@ -211,6 +214,9 @@ class MillworkQuotationCalculator
         }
         if ($raw >= self::CALC_VERSION) {
             return self::CALC_VERSION;
+        }
+        if ($raw >= self::PARSING_VERSION) {
+            return self::PARSING_VERSION;
         }
         if ($raw >= self::CUT_PLAN_VERSION) {
             return self::CUT_PLAN_VERSION;
@@ -257,7 +263,7 @@ class MillworkQuotationCalculator
         if ($cutPlanVersion < self::CUT_PLAN_VERSION) {
             return $this->calculateLegacy($inputs, $settings);
         }
-        if ($calcVersion < self::CALC_VERSION && ! self::hasEditedPiece($inputs)) {
+        if ($calcVersion < self::PARSING_VERSION && ! self::hasEditedPiece($inputs)) {
             return $this->calculateFrozenV2($inputs, $settings);
         }
         $inputs = array_merge(self::defaultInputs(), $inputs);
@@ -653,7 +659,7 @@ class MillworkQuotationCalculator
             return $messages;
         }
 
-        if ($calcVersion < self::CALC_VERSION) {
+        if ($calcVersion < self::PARSING_VERSION) {
             $messages = $this->mainV2ValidationMessages($inputs, $settings, $messages);
             $limitHint = $this->dimensionLimitHint($inputs);
             if ($limitHint !== null) {
@@ -749,7 +755,7 @@ class MillworkQuotationCalculator
     {
         $rawPieces = is_array($inputs['pieces'] ?? null) ? array_values($inputs['pieces']) : [];
         $savedPieces = is_array($inputs['_existing_pieces'] ?? null) ? array_values($inputs['_existing_pieces']) : [];
-        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::CALC_VERSION;
+        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::PARSING_VERSION;
 
         foreach ($rawPieces as $pi => $piece) {
             if (! is_array($piece)) {
@@ -839,7 +845,7 @@ class MillworkQuotationCalculator
      */
     private function collectCountFieldErrors(array $inputs, array &$messages): void
     {
-        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::CALC_VERSION;
+        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::PARSING_VERSION;
         if ($quoteIsV3 || self::hasEditedPiece($inputs)) {
             if ((int) ($inputs['spare_sheets'] ?? 0) > self::MAX_SPARE_SHEETS) {
                 $messages['spare_sheets'] = 'Spare sheets cannot be more than '.self::MAX_SPARE_SHEETS.'.';
@@ -1043,7 +1049,7 @@ class MillworkQuotationCalculator
      */
     private function dimensionLimitHint(array $inputs): ?string
     {
-        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::CALC_VERSION;
+        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::PARSING_VERSION;
         if (($quoteIsV3 || self::hasEditedPiece($inputs)) && (int) ($inputs['spare_sheets'] ?? 0) > self::MAX_SPARE_SHEETS) {
             return 'Spare sheets cannot be more than '.self::MAX_SPARE_SHEETS.'.';
         }

@@ -4,6 +4,8 @@ namespace Tests\Feature\Admin;
 
 use App\Models\ClientProject;
 use App\Models\MillworkQuotation;
+use App\Models\MillworkSettings;
+use App\Services\MillworkQuotationCalculator;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 use Tests\Support\AssertsAdminInfoTipAria;
@@ -764,5 +766,275 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
         $this->assertStringContainsString('applyFieldErrors', $js);
         $this->assertStringContainsString('is-invalid', $js);
         $this->assertStringContainsString('field_errors', $js);
+        $this->assertStringNotContainsString('el.disabled = hidden', $js);
+    }
+
+    public function test_new_quote_initial_preview_uses_three_quarter_sheet_when_catalog_starts_cheaper(): void
+    {
+        $this->actingAsAdmin();
+        $settings = MillworkSettings::current();
+        $catalog = MillworkSettings::defaultCatalog();
+        array_unshift($catalog[MillworkSettings::SLOT_WOOD_SHEETS], [
+            'id' => 'ws_cheap_half',
+            'catalog_material_id' => null,
+            'name' => '1/2" utility plywood 4×8',
+            'unit' => 'sheet',
+            'unit_price' => 38,
+            'thickness_in' => 0.5,
+            'width_in' => 48,
+            'length_in' => 96,
+            'material_kind' => 'plywood',
+            'grade' => 'utility',
+        ]);
+        $settings->catalog = $catalog;
+        $settings->save();
+
+        $fresh = $settings->fresh();
+        $sized = [
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+            'owner_hourly_rate' => (float) $settings->owner_hourly_rate,
+            'helper_hourly_rate' => (float) $settings->helper_hourly_rate,
+        ];
+        $calc = new MillworkQuotationCalculator;
+        $cheap = $calc->calculate(array_merge($sized, ['sheet_id' => '']), $fresh, MillworkQuotationCalculator::CALC_VERSION);
+        $thick = $calc->calculate(array_merge($sized, ['sheet_id' => 'ws_ply_34_cab_48x96']), $fresh, MillworkQuotationCalculator::CALC_VERSION);
+        $this->assertNotEquals(
+            round((float) $cheap['summary']['materials_goods_pre_hst'], 2),
+            round((float) $thick['summary']['materials_goods_pre_hst'], 2)
+        );
+        $this->assertSame('ws_cheap_half', (string) ($cheap['sheet']['id'] ?? ''));
+        $this->assertSame('ws_ply_34_cab_48x96', (string) ($thick['sheet']['id'] ?? ''));
+
+        $html = $this->get(route('admin.quotations.millwork.create'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<option value="ws_ply_34_cab_48x96"[^>]*selected/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<option value="ws_cheap_half"[^>]*selected/',
+            $html
+        );
+        $preview = $this->initialPreviewFromHtml($html);
+        $this->assertSame('ws_ply_34_cab_48x96', (string) ($preview['sheet']['id'] ?? ''));
+    }
+
+    public function test_saved_quote_with_a_blank_sheet_does_not_switch_to_three_quarter(): void
+    {
+        $this->actingAsAdmin();
+        $settings = MillworkSettings::current();
+        $catalog = MillworkSettings::defaultCatalog();
+        array_unshift($catalog[MillworkSettings::SLOT_WOOD_SHEETS], [
+            'id' => 'ws_cheap_half',
+            'catalog_material_id' => null,
+            'name' => '1/2" utility plywood 4×8',
+            'unit' => 'sheet',
+            'unit_price' => 38,
+            'thickness_in' => 0.5,
+            'width_in' => 48,
+            'length_in' => 96,
+            'material_kind' => 'plywood',
+            'grade' => 'utility',
+        ]);
+        $settings->catalog = $catalog;
+        $settings->save();
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-BLANK-SHEET',
+            'client_name' => 'Blank sheet quote',
+            'is_draft' => true,
+            'cut_plan_version' => 3,
+            'inputs' => [
+                'sheet_id' => '',
+                'pieces' => [[
+                    'type' => 'shelf',
+                    'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+                ]],
+            ],
+            'calculation' => ['summary' => ['grand_total' => 1]],
+            'final_quote_total' => 1,
+        ]);
+
+        $html = $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent();
+        $this->assertDoesNotMatchRegularExpression(
+            '/<option value="ws_ply_34_cab_48x96"[^>]*selected/',
+            $html
+        );
+        $preview = $this->initialPreviewFromHtml($html);
+        $calc = new MillworkQuotationCalculator;
+        $expected = $calc->calculate([
+            'sheet_id' => '',
+            'pieces' => $quote->inputs['pieces'],
+            'include_install' => true,
+        ], $settings->fresh(), 3);
+        $this->assertEqualsWithDelta(
+            (float) $expected['summary']['materials_goods_pre_hst'],
+            (float) $preview['summary']['materials_goods_pre_hst'],
+            0.02
+        );
+    }
+
+    public function test_omitted_piece_fields_survive_a_resave(): void
+    {
+        $this->actingAsAdmin();
+        $piece = [
+            'type' => 'trim',
+            'profile' => 'casing',
+            'unit' => 'ft',
+            'qty' => 1,
+            'length' => 20,
+            'linear_ft' => '',
+            'stock_length_ft' => 8,
+            'columns' => 4,
+            'rows' => 5,
+            'edge_banding' => false,
+        ];
+        $inputs = [
+            'pieces' => [$piece],
+            'include_install' => false,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            '_cut_plan_version' => 2,
+            '_calc_version' => 2,
+        ];
+        $calc = (new MillworkQuotationCalculator)->calculate($inputs, null, 2);
+        $total = round((float) ($calc['summary']['grand_total'] ?? 0), 2);
+        $this->assertGreaterThan(0, $total);
+
+        $quote = MillworkQuotation::query()->create([
+            'quote_number' => 'MW-OMIT-TRIM',
+            'client_name' => 'Omit trim fields',
+            'is_draft' => true,
+            'cut_plan_version' => 2,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => $total,
+        ]);
+
+        $this->put(route('admin.quotations.millwork.update', $quote), [
+            'save_intent' => 'draft',
+            'client_name' => 'Omit trim fields',
+            '_cut_plan_version' => 2,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            'include_install' => 0,
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'include_commute' => 0,
+            'ask_reply_to_accept' => '0',
+            'pieces' => [[
+                'type' => 'trim',
+                'unit' => 'ft',
+                'qty' => 1,
+                'linear_ft' => '',
+                'edge_banding' => 0,
+            ]],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $fresh = $quote->fresh();
+        $saved = $fresh->inputs['pieces'][0];
+        $this->assertSame('casing', $saved['profile']);
+        $this->assertEquals(20, $saved['length']);
+        $this->assertEquals(8, $saved['stock_length_ft']);
+        $this->assertSame(4, (int) $saved['columns']);
+        $this->assertSame(5, (int) $saved['rows']);
+        $this->assertEqualsWithDelta($total, (float) $fresh->final_quote_total, 0.02);
+        $this->assertSame(2, (int) $fresh->cut_plan_version);
+    }
+
+    public function test_preview_does_not_consume_or_rewrite_the_session_flash(): void
+    {
+        $this->actingAsAdmin();
+        $this->post(route('admin.quotations.millwork.store'), [
+            'save_intent' => 'draft',
+            'client_name' => 'Flash Keep',
+            'pieces' => [[
+                'type' => 'shelf',
+                'sets' => [['qty' => 1, 'length' => 24, 'depth' => 10, 'unit' => 'in']],
+            ]],
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'include_commute' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
+        ])->assertRedirect()->assertSessionHas('success', 'Millwork quotation saved as draft.');
+
+        $quote = MillworkQuotation::query()->where('client_name', 'Flash Keep')->first();
+        $this->assertNotNull($quote);
+        $sessionId = session()->getId();
+
+        $this->disableCookieEncryption();
+        $this->withUnencryptedCookie((string) config('session.cookie'), $sessionId);
+        $this->withCredentials()->postJson(route('admin.quotations.millwork.calculate-existing', $quote), [
+            'pieces' => [[
+                'type' => 'shelf',
+                'sets' => [['qty' => 1, 'length' => 24, 'depth' => 10, 'unit' => 'in']],
+            ]],
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ])->assertOk();
+
+        $stored = $this->sessionPayload($sessionId);
+        $this->assertSame('Millwork quotation saved as draft.', $stored['success'] ?? null);
+        $this->assertStringNotContainsString('millwork-calculate', (string) ($stored['_previous']['url'] ?? ''));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sessionPayload(string $sessionId): array
+    {
+        $session = $this->app['session.store'];
+        $handlerProp = new \ReflectionProperty($session, 'handler');
+        $handlerProp->setAccessible(true);
+        $handler = $handlerProp->getValue($session);
+        if ($handler instanceof \App\Http\Middleware\ReadOnlySessionHandler) {
+            $innerProp = new \ReflectionProperty($handler, 'inner');
+            $innerProp->setAccessible(true);
+            $handler = $innerProp->getValue($handler);
+        }
+        $storageProp = new \ReflectionProperty($handler, 'storage');
+        $storageProp->setAccessible(true);
+        $storage = $storageProp->getValue($handler);
+        $raw = is_array($storage) ? ($storage[$sessionId]['data'] ?? '') : '';
+        $decoded = is_string($raw) && $raw !== '' ? @unserialize($raw) : [];
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function initialPreviewFromHtml(string $html): array
+    {
+        $start = strpos($html, 'initialPreview: ');
+        $this->assertNotFalse($start);
+        $jsonStart = strpos($html, '{', $start);
+        $this->assertNotFalse($jsonStart);
+        $depth = 0;
+        $end = null;
+        $len = strlen($html);
+        for ($i = $jsonStart; $i < $len; $i++) {
+            $ch = $html[$i];
+            if ($ch === '{') {
+                $depth++;
+            } elseif ($ch === '}') {
+                $depth--;
+                if ($depth === 0) {
+                    $end = $i;
+                    break;
+                }
+            }
+        }
+        $this->assertNotNull($end);
+        $preview = json_decode(substr($html, $jsonStart, $end - $jsonStart + 1), true);
+        $this->assertIsArray($preview);
+
+        return $preview;
     }
 }

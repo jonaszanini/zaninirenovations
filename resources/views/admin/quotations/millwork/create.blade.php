@@ -77,8 +77,6 @@
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
   @include('admin.partials.room_area_prefill_banner')
-  @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
-  @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
 
   @if ($isEdit && $quotation->project)
     <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
@@ -310,6 +308,8 @@
               ])
             </div>
 
+            @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
+            @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
             @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
             @include('admin.quotations._commute_debris_row')
             @include('admin.quotations._building', ['quotation' => $quotation, 'inputs' => $inputs ?? [], 'previewClass' => 'mw-preview'])
@@ -386,6 +386,7 @@
       isEdit: @json($isEdit),
       cutPlanVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }},
       calcVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }},
+      latestCalcVersion: {{ (int) \App\Services\MillworkQuotationCalculator::CALC_VERSION }},
       storedTotal: {{ $isEdit && $quotation ? json_encode((float) $quotation->final_quote_total) : '0' }},
       sectionKeys: @json(array_keys($sectionList)),
       quoteNumber: @json($isEdit && $quotation ? ($quotation->quote_number ?? '') : ''),

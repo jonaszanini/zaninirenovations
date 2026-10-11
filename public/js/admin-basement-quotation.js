@@ -54,6 +54,10 @@
   function submitWizard(intent) {
     var intentEl = document.getElementById('br-save-intent');
     if (intentEl) intentEl.value = intent;
+    if (window.AdminQuoteDraftValidation) {
+      if (intent === 'draft') window.AdminQuoteDraftValidation.relax(form);
+      else window.AdminQuoteDraftValidation.restore(form);
+    }
 
     if (!isEdit) {
       form.querySelectorAll('.br-acc').forEach(function (el) {
@@ -72,13 +76,6 @@
         if (idx < 0) idx = 0;
         setWizardStep(idx, true);
       }
-      setTimeout(function () {
-        if (!invalid) return;
-        try { invalid.focus(); } catch (err) { /* ignore */ }
-        if (typeof invalid.reportValidity === 'function') {
-          invalid.reportValidity();
-        }
-      }, 80);
       return;
     }
 

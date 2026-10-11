@@ -254,8 +254,17 @@ window.MillworkDimensionParser = (function () {
 
     function submitWizard(intent) {
       if (saving) return;
+      if (previewAbort) {
+        previewAbort.abort();
+        previewAbort = null;
+      }
+      clearTimeout(debounceTimer);
       var intentEl = document.getElementById('mw-save-intent');
       if (intentEl) intentEl.value = intent;
+      if (window.AdminQuoteDraftValidation) {
+        if (intent === 'draft') window.AdminQuoteDraftValidation.relax(form);
+        else window.AdminQuoteDraftValidation.restore(form);
+      }
       if (!isEdit) {
         form.querySelectorAll('.br-acc').forEach(function (el) {
           el.classList.add('is-active');
@@ -271,11 +280,6 @@ window.MillworkDimensionParser = (function () {
           if (idx < 0) idx = 0;
           setWizardStep(idx, true);
         }
-        setTimeout(function () {
-          if (!invalid) return;
-          try { invalid.focus(); } catch (err) { /* ignore */ }
-          if (typeof invalid.reportValidity === 'function') invalid.reportValidity();
-        }, 80);
         return;
       }
       allowFormUnload();
@@ -515,13 +519,18 @@ window.MillworkDimensionParser = (function () {
       status.textContent = text || 'Updating cut plan…';
     }
 
+    function previewFormData() {
+      var body = new FormData(form);
+      body.delete('_method');
+      return body;
+    }
+
     function fetchPreview() {
       if (!previewUrl) return Promise.resolve(null);
       if (previewAbort) previewAbort.abort();
       previewAbort = new AbortController();
       var timer = setTimeout(function () { previewAbort.abort(); }, PREVIEW_TIMEOUT_MS);
-      var body = new FormData(form);
-      body.delete('_method');
+      var body = previewFormData();
       return fetch(previewUrl, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -609,9 +618,9 @@ window.MillworkDimensionParser = (function () {
       });
       var flag = card.querySelector('[data-mw-calc-version]');
       if (opts.asNew) {
-        if (flag) flag.value = '3';
+        if (flag) flag.value = latestCalcVersion();
         card.setAttribute('data-mw-saved-fingerprint', '');
-        card.setAttribute('data-mw-saved-calc-version', '3');
+        card.setAttribute('data-mw-saved-calc-version', latestCalcVersion());
         return;
       }
       if (card.getAttribute('data-mw-saved-fingerprint') == null) {
@@ -631,7 +640,11 @@ window.MillworkDimensionParser = (function () {
         flag.value = card.getAttribute('data-mw-saved-calc-version') || '0';
         return;
       }
-      flag.value = '3';
+      flag.value = latestCalcVersion();
+    }
+
+    function latestCalcVersion() {
+      return String(cfg.latestCalcVersion || cfg.calcVersion || 4);
     }
 
     function collectClientCountErrors() {
@@ -878,18 +891,40 @@ window.MillworkDimensionParser = (function () {
       }
       root.innerHTML = layouts.map(function (layout) {
         var stats = layout.stats || {};
-        var legend = (layout.legend || []).map(function (row) {
-          return '<li><span class="mw-cut-legend__n">' + escapeHtml(row.n || '') + '</span>'
-            + '<span>' + escapeHtml(row.label || 'Part') + ' · ' + escapeHtml(row.size || '')
-            + (row.rotated ? ' · rotated' : '') + '</span></li>';
-        }).join('');
         return '<div class="mw-cut-sheet">'
           + '<div class="mw-cut-sheet__stats"><strong>' + escapeHtml(stats.label || 'Sheet') + '</strong>'
           + '<span>Used ' + escapeHtml(stats.used_pct || 0) + '% · waste ' + escapeHtml(stats.waste_pct || 0) + '%</span></div>'
           + '<div class="mw-cut-svg-wrap">' + (layout.svg || '') + '</div>'
-          + (legend ? '<ul class="mw-cut-legend">' + legend + '</ul>' : '')
           + '</div>';
+      }).join('') + combinedPartsTable(layouts);
+    }
+
+    function combinedPartsTable(layouts) {
+      var groups = {};
+      var order = [];
+      (layouts || []).forEach(function (layout) {
+        (layout.legend || []).forEach(function (row) {
+          var part = String(row.label || 'Part');
+          var size = String(row.size || '');
+          var material = String(row.material || (layout.stats && layout.stats.label) || '');
+          var edge = String(row.edge || 'None');
+          var key = [part, size, material, edge].join('|');
+          if (!groups[key]) {
+            groups[key] = { part: part, size: size, qty: 0, material: material, edge: edge };
+            order.push(key);
+          }
+          groups[key].qty += Math.max(1, Number(row.qty || 1));
+        });
+      });
+      if (!order.length) return '';
+      var body = order.map(function (key) {
+        var row = groups[key];
+        return '<tr><td>' + escapeHtml(row.part) + '</td><td>' + escapeHtml(row.size) + '</td><td>'
+          + row.qty + '</td><td>' + escapeHtml(row.material) + '</td><td>' + escapeHtml(row.edge) + '</td></tr>';
       }).join('');
+      return '<div class="mw-parts-list admin-table-scroll"><table class="admin-table">'
+        + '<thead><tr><th>Part</th><th>Size</th><th>Qty</th><th>Material</th><th>Edge banding</th></tr></thead>'
+        + '<tbody>' + body + '</tbody></table></div>';
     }
 
     function printCutList() {
@@ -1056,10 +1091,6 @@ window.MillworkDimensionParser = (function () {
       if (!selects.length) return;
       var current = '';
       selects.forEach(function (sel) {
-        if (!sel.disabled) current = sel.value;
-      });
-      if (!current) current = selects[0].value;
-      selects.forEach(function (sel) {
         var hide = false;
         var node = sel.parentElement;
         while (node && node !== piece) {
@@ -1069,7 +1100,11 @@ window.MillworkDimensionParser = (function () {
           }
           node = node.parentElement;
         }
-        sel.disabled = hide;
+        if (!hide) current = sel.value;
+      });
+      if (!current) current = selects[0].value;
+      selects.forEach(function (sel) {
+        sel.disabled = false;
         sel.value = current;
       });
     }
@@ -1081,8 +1116,45 @@ window.MillworkDimensionParser = (function () {
       piece.setAttribute('data-mw-below', (below && below.value === 'drawers') ? 'drawers' : 'divisions');
       syncUnitLabels(piece);
       syncFinishFields(piece);
+      syncPieceFieldNames(piece);
       syncHardwareCatalog();
       syncMaterialsCatalog();
+    }
+
+    function setPieceFieldName(el, on) {
+      if (!el) return;
+      var stored = el.getAttribute('data-mw-name');
+      if (!stored) return;
+      if (on) el.setAttribute('name', stored);
+      else el.removeAttribute('name');
+    }
+
+    function pieceHeightInput(piece) {
+      var inputs = piece.querySelectorAll('input[name$="[height]"], input[data-mw-name$="[height]"]');
+      for (var i = 0; i < inputs.length; i++) {
+        var name = inputs[i].getAttribute('name') || inputs[i].getAttribute('data-mw-name') || '';
+        if (/\[height\]$/.test(name) && name.indexOf('[sets]') === -1) return inputs[i];
+      }
+      return null;
+    }
+
+    function syncPieceFieldNames(piece) {
+      var type = pieceTypeOf(piece);
+      var height = pieceHeightInput(piece);
+      var open = type === 'shelf' && !!(height && String(height.value || '').trim() !== '');
+      piece.querySelectorAll('[data-mw-field]').forEach(function (el) {
+        var field = el.getAttribute('data-mw-field');
+        var owner = el.getAttribute('data-mw-owner');
+        var on = false;
+        if (field === 'columns') {
+          on = open ? owner === 'shelf' : owner === 'pack';
+        } else if (field === 'shelf_count') {
+          if (type === 'closet') on = owner === 'closet';
+          else if (open) on = owner === 'shelf';
+          else on = owner === 'cabinet';
+        }
+        setPieceFieldName(el, on);
+      });
     }
 
     function syncUnitLabels(piece) {
@@ -1238,6 +1310,10 @@ window.MillworkDimensionParser = (function () {
           schedulePreview();
         });
       });
+      var shelfHeight = piece.querySelector('input[name$="[height]"]');
+      if (shelfHeight) {
+        shelfHeight.addEventListener('input', function () { syncPieceFieldNames(piece); });
+      }
       var below = piece.querySelector('select[name$="[below]"]');
       if (below) {
         below.addEventListener('change', function () {
@@ -1497,7 +1573,7 @@ window.MillworkDimensionParser = (function () {
       var flag = document.getElementById('mw-upgrade-cut-plan');
       var ver = document.getElementById('mw-cut-plan-version');
       if (flag) flag.value = on ? '1' : '0';
-      if (ver) ver.value = on ? '3' : legacyVersion;
+      if (ver) ver.value = on ? latestCalcVersion() : legacyVersion;
     }
 
     function setUpgradeUi(on) {

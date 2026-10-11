@@ -100,6 +100,7 @@
       <button type="button"
               class="admin-btn admin-btn--ghost admin-btn--sm qh-actions__draft"
               @if ($qhDraftId) id="{{ $qhDraftId }}" @endif
+              @if ($qhFormAttr) form="{{ $qhFormAttr }}" @endif
               @if ($qhDraftHotkey) data-hotkey-save @endif>
         Save as draft
       </button>

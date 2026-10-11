@@ -1116,6 +1116,79 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
         $this->assertEqualsWithDelta((float) $summary['materials_pre_hst'], (float) $live['summary']['materials_pre_hst'], 0.001);
     }
 
+    public function test_additional_labour_30_percent_is_in_the_grand_total_and_pdf(): void
+    {
+        $this->actingAsAdmin();
+        $project = ClientProject::factory()->create(['client_name' => 'Labour Surcharge']);
+        $payload = $this->samplePayload('Labour Surcharge');
+        $payload['link_client_project_id'] = $project->id;
+        $payload['include_building'] = 1;
+        $payload['building_labor_percent'] = 30;
+
+        $without = $payload;
+        $without['include_building'] = 0;
+
+        $this->post(route('admin.quotations.millwork.store'), $payload)->assertRedirect();
+        $quote = MillworkQuotation::query()->where('client_name', 'Labour Surcharge')->first();
+        $this->assertNotNull($quote);
+
+        $on = (new MillworkQuotationCalculator)->calculate($quote->inputs);
+        $offInputs = $quote->inputs;
+        $offInputs['include_building'] = false;
+        $off = (new MillworkQuotationCalculator)->calculate($offInputs);
+
+        $surcharge = round((float) $off['summary']['labor_pre_hst'] * 0.30, 2);
+        $this->assertEqualsWithDelta($surcharge, (float) $on['summary']['building_labor_surcharge'], 0.05);
+        $this->assertGreaterThan(
+            (float) $off['summary']['grand_total'] + $surcharge,
+            (float) $on['summary']['grand_total']
+        );
+        $this->assertEqualsWithDelta(
+            (float) $off['summary']['materials_goods_pre_hst'],
+            (float) $on['summary']['materials_goods_pre_hst'],
+            0.001
+        );
+        $this->assertEqualsWithDelta((float) $on['summary']['grand_total'], (float) $quote->final_quote_total, 0.05);
+
+        $cpq = ClientProjectQuotation::findForSource(ClientProjectQuotation::SOURCE_MILLWORK, (int) $quote->id);
+        $this->assertNotNull($cpq);
+        $this->assertEqualsWithDelta((float) $quote->final_quote_total, $cpq->pdfGrandTotal(), 0.05);
+    }
+
+    public function test_draft_save_skips_payment_commute_debris_and_accept(): void
+    {
+        $this->actingAsAdmin();
+        $payload = $this->samplePayload('Draft Without Answers');
+        $payload['save_intent'] = 'draft';
+        $payload['client_name'] = '';
+        $payload['work_description'] = 'Draft skip answers marker';
+        unset(
+            $payload['payment_installments'],
+            $payload['include_commute'],
+            $payload['include_debris_removal'],
+            $payload['ask_reply_to_accept']
+        );
+
+        $this->post(route('admin.quotations.millwork.store'), $payload)->assertRedirect();
+        $quote = MillworkQuotation::query()->where('work_description', 'like', '%Draft skip answers marker%')->first();
+        $this->assertNotNull($quote);
+        $this->assertTrue((bool) $quote->is_draft);
+
+        $publish = $this->samplePayload('Publish Needs Answers');
+        unset(
+            $publish['payment_installments'],
+            $publish['include_commute'],
+            $publish['include_debris_removal'],
+            $publish['ask_reply_to_accept']
+        );
+        $this->post(route('admin.quotations.millwork.store'), $publish)->assertSessionHasErrors([
+            'payment_installments',
+            'include_commute',
+            'include_debris_removal',
+            'ask_reply_to_accept',
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -1190,6 +1263,93 @@ class MillworkQuotationRoundTripTest extends IntegrationTestCase
             'include_commute' => 0,
             'ask_reply_to_accept' => '0',
         ];
+    }
+
+    public function test_v2_and_v3_piece_thickness_without_height_resaves_at_the_open_total(): void
+    {
+        $this->actingAsAdmin();
+
+        $create = $this->get(route('admin.quotations.millwork.create'))->assertOk();
+        $this->assertStringContainsString('data-mw-owner="shelf"', $create->getContent());
+        $this->assertMatchesRegularExpression('/data-mw-owner="shelf"[^>]*value=""/', $create->getContent());
+        $this->assertStringContainsString('data-mw-show="shelf kallax cabinet vanity closet bench mantel wainscoting"', $create->getContent());
+
+        foreach ([2 => 'v2', 3 => 'v3'] as $version => $label) {
+            $priced = [
+                'type' => 'floating_shelf',
+                'qty' => 1,
+                'unit' => 'in',
+                'edge_banding' => true,
+                'sets' => [[
+                    'qty' => 1,
+                    'length' => 36,
+                    'depth' => 12,
+                    'thickness' => '',
+                    'unit' => 'in',
+                ]],
+            ];
+            $this->assertArrayNotHasKey('height', $priced, $label);
+            $this->assertArrayNotHasKey('thickness', $priced, $label);
+
+            $inputs = [
+                'pieces' => [$priced],
+                'include_install' => false,
+                'owner_hourly_rate' => 85,
+                'helper_hourly_rate' => 45,
+                '_cut_plan_version' => $version,
+                '_calc_version' => $version,
+            ];
+            $open = (new MillworkQuotationCalculator)->calculate($inputs, null, $version);
+            $openTotal = round((float) $open['summary']['grand_total'], 2);
+            $this->assertGreaterThan(0, $openTotal, $label);
+
+            $stored = $priced;
+            $stored['thickness'] = 0.75;
+            $stuck = $stored;
+            foreach (['width', 'height', 'depth', 'length'] as $dim) {
+                $stuck[$dim] = '';
+            }
+            $stuckInputs = $inputs;
+            $stuckInputs['pieces'] = [$stuck];
+            $stuckTotal = round((float) (new MillworkQuotationCalculator)->calculate($stuckInputs, null, $version)['summary']['grand_total'], 2);
+            $this->assertNotEquals($openTotal, $stuckTotal, $label.' keeping piece thickness must be a different row');
+
+            $storedInputs = $inputs;
+            $storedInputs['pieces'] = [$stored];
+            $quote = MillworkQuotation::query()->create([
+                'quote_number' => 'MW-THK-'.$label,
+                'client_name' => 'Thickness '.$label,
+                'is_draft' => true,
+                'cut_plan_version' => $version,
+                'inputs' => $storedInputs,
+                'calculation' => $open,
+                'final_quote_total' => $openTotal,
+                'payment_installments' => 3,
+                'include_debris_removal' => false,
+                'include_commute' => false,
+                'ask_reply_to_accept' => false,
+            ]);
+
+            $html = $this->get(route('admin.quotations.millwork.edit', $quote))->assertOk()->getContent();
+            $this->assertStringNotContainsString('data-mw-owner="shelf"', $html, $label.' shelf structure stays off older quotes');
+            $posted = $this->formValuesFromHtml($html);
+            $posted['pieces'] = array_values(array_filter(
+                $posted['pieces'] ?? [],
+                static fn ($piece, $key): bool => is_numeric($key) && is_array($piece),
+                ARRAY_FILTER_USE_BOTH
+            ));
+            $this->assertArrayNotHasKey('thickness', $posted['pieces'][0] ?? [], $label.' form has no piece thickness control');
+            $this->assertArrayNotHasKey('height', $stored);
+
+            $this->put(route('admin.quotations.millwork.update', $quote), $posted)
+                ->assertRedirect()
+                ->assertSessionHasNoErrors();
+
+            $fresh = $quote->fresh();
+            $this->assertSame('', $fresh->inputs['pieces'][0]['thickness'] ?? null, $label);
+            $this->assertEqualsWithDelta($openTotal, (float) $fresh->final_quote_total, 0.02, $label);
+            $this->assertSame($version, (int) $fresh->cut_plan_version, $label);
+        }
     }
 
     /**

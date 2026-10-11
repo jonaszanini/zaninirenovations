@@ -119,12 +119,86 @@ class MillworkCalcVersionGateTest extends TestCase
         ], 2), 0.02);
     }
 
-    public function test_new_quotes_default_to_calc_version_three(): void
+    public function test_new_quotes_default_to_calc_version_four_and_saved_v3_stays_v3(): void
     {
-        $this->assertSame(3, MillworkQuotationCalculator::CALC_VERSION);
-        $this->assertSame(3, MillworkQuotationCalculator::resolveCalcVersion([]));
+        $this->assertSame(4, MillworkQuotationCalculator::CALC_VERSION);
+        $this->assertSame(3, MillworkQuotationCalculator::PARSING_VERSION);
+        $this->assertSame(MillworkQuotationCalculator::CALC_VERSION, MillworkPartBuilder::CALC_VERSION);
+        $this->assertSame(MillworkQuotationCalculator::PARSING_VERSION, MillworkPartBuilder::PARSING_VERSION);
+        $this->assertSame(4, MillworkQuotationCalculator::resolveCalcVersion([]));
+        $this->assertSame(3, MillworkQuotationCalculator::resolveCalcVersion(['_calc_version' => 3]));
+        $this->assertSame(3, MillworkQuotationCalculator::resolveCalcVersion(['_cut_plan_version' => 3]));
         $this->assertSame(2, MillworkQuotationCalculator::resolveCalcVersion(['_cut_plan_version' => 2]));
         $this->assertSame(2, MillworkQuotationCalculator::resolveCutPlanVersion(['_cut_plan_version' => 3]));
+        $this->assertSame(2, MillworkQuotationCalculator::resolveCutPlanVersion(['_cut_plan_version' => 4]));
+
+        $saved = new MillworkQuotation(['cut_plan_version' => 3]);
+        $this->assertSame(3, $saved->calcVersion());
+        $this->assertTrue($saved->usesNewCalc());
+        $this->assertFalse($saved->canUpgradeCalc());
+    }
+
+    public function test_saved_v3_shelf_with_height_keeps_the_board_price(): void
+    {
+        $piece = [
+            'type' => 'shelf',
+            'qty' => 1,
+            'height' => 72,
+            'columns' => 2,
+            'shelf_count' => 1,
+            'include_back' => true,
+            'edge_banding' => false,
+            'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+        ];
+        $board = $piece;
+        $board['height'] = '';
+        $board['columns'] = 0;
+        $board['shelf_count'] = 0;
+        $board['include_back'] = false;
+
+        $v3 = (new MillworkPartBuilder(3))->explode($piece, 0.75, 0.0);
+        $plain = (new MillworkPartBuilder(3))->explode($board, 0.75, 0.0);
+        $this->assertSame($plain['labels'], $v3['labels']);
+        $this->assertCount(count($plain['parts']), $v3['parts']);
+
+        $v4 = (new MillworkPartBuilder(4))->explode($piece, 0.75, 0.0);
+        $this->assertGreaterThan(count($v3['parts']), count($v4['parts']));
+        $this->assertEqualsWithDelta($this->total($board, 3), $this->total($piece, 3), 0.02);
+        $this->assertGreaterThan($this->total($piece, 3) + 50, $this->total($piece, 4));
+    }
+
+    public function test_blank_sheet_id_still_prices_the_first_catalog_sheet(): void
+    {
+        $settings = $this->settings();
+        $catalog = $settings->catalog;
+        array_unshift($catalog[MillworkSettings::SLOT_WOOD_SHEETS], [
+            'id' => 'ws_cheap_half',
+            'catalog_material_id' => null,
+            'name' => '1/2" utility plywood 4×8',
+            'unit' => 'sheet',
+            'unit_price' => 38,
+            'thickness_in' => 0.5,
+            'width_in' => 48,
+            'length_in' => 96,
+            'material_kind' => 'plywood',
+            'grade' => 'utility',
+        ]);
+        $settings->catalog = $catalog;
+        $inputs = [
+            'pieces' => [[
+                'type' => 'shelf',
+                'edge_banding' => false,
+                'sets' => [['qty' => 1, 'length' => 36, 'depth' => 12, 'unit' => 'in']],
+            ]],
+            'include_install' => false,
+        ];
+        $calc = new MillworkQuotationCalculator;
+        $blank = $calc->calculate(array_merge($inputs, ['sheet_id' => '']), $settings, 3);
+        $named = $calc->calculate(array_merge($inputs, ['sheet_id' => 'ws_cheap_half']), $settings, 3);
+        $thick = $calc->calculate(array_merge($inputs, ['sheet_id' => 'ws_ply_34_cab_48x96']), $settings, 3);
+        $blankMats = (float) $blank['summary']['materials_goods_pre_hst'];
+        $this->assertEqualsWithDelta((float) $named['summary']['materials_goods_pre_hst'], $blankMats, 0.02);
+        $this->assertNotEquals(round($blankMats, 2), round((float) $thick['summary']['materials_goods_pre_hst'], 2));
     }
 
     public function test_v2_bench_blank_height_stays_zero_like_main(): void
@@ -440,6 +514,84 @@ class MillworkCalcVersionGateTest extends TestCase
         $this->assertStringContainsString('23" W', $pdf);
         $this->assertStringNotContainsString('23.5" W', $pdf);
         $this->assertStringNotContainsString('23 1/2" W', $pdf);
+    }
+
+    public function test_additional_labour_30_percent_is_inside_the_grand_total(): void
+    {
+        $piece = [
+            'type' => 'bench',
+            'unit' => 'in',
+            'length' => 48,
+            'depth' => 16,
+            'height' => 18,
+            'qty' => 1,
+            'edge_banding' => false,
+            '_calc_version' => 3,
+        ];
+        $baseInputs = [
+            'pieces' => [$piece],
+            'include_install' => true,
+            'include_building' => false,
+            'building_labor_percent' => 30,
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            '_calc_version' => 3,
+        ];
+        $off = (new MillworkQuotationCalculator)->calculate($baseInputs, $this->settings(), 3);
+        $on = (new MillworkQuotationCalculator)->calculate(array_merge($baseInputs, [
+            'include_building' => true,
+        ]), $this->settings(), 3);
+
+        $baseLabour = (float) $off['summary']['labor_pre_hst'];
+        $this->assertGreaterThan(0, $baseLabour);
+        $surcharge = round($baseLabour * 0.30, 2);
+        $this->assertEqualsWithDelta($surcharge, (float) $on['summary']['building_labor_surcharge'], 0.001);
+        $this->assertEqualsWithDelta($baseLabour + $surcharge, (float) $on['summary']['labor_pre_hst'], 0.001);
+        $this->assertEqualsWithDelta(
+            (float) $off['summary']['materials_goods_pre_hst'],
+            (float) $on['summary']['materials_goods_pre_hst'],
+            0.001,
+            'Additional labour must not change the material price'
+        );
+
+        $labourDelta = (float) $on['summary']['labor_pre_hst'] - $baseLabour;
+        $hstDelta = (float) $on['summary']['hst'] - (float) $off['summary']['hst'];
+        $grandDelta = (float) $on['summary']['grand_total'] - (float) $off['summary']['grand_total'];
+        $this->assertEqualsWithDelta($labourDelta + $hstDelta, $grandDelta, 0.001);
+        $this->assertGreaterThan($surcharge, $grandDelta, 'Grand total must include the surcharge and the HST on it');
+
+        $lines = (float) $on['summary']['labor_pre_hst']
+            + (float) $on['summary']['materials_pre_hst']
+            + (float) $on['summary']['markup_amount']
+            + (float) $on['summary']['hst'];
+        $this->assertEqualsWithDelta($lines, (float) $on['summary']['grand_total'], 0.02);
+        $this->assertEqualsWithDelta((float) $on['summary']['grand_total'], (float) $on['summary']['final_quote_total'], 0.001);
+    }
+
+    public function test_same_inputs_keep_the_same_material_price(): void
+    {
+        $inputs = [
+            'pieces' => [[
+                'type' => 'bench',
+                'unit' => 'in',
+                'length' => 48,
+                'depth' => 16,
+                'height' => 18,
+                'qty' => 1,
+                'edge_banding' => false,
+            ]],
+            'include_install' => true,
+            'owner_hourly_rate' => 85,
+            '_calc_version' => 3,
+        ];
+        $calc = new MillworkQuotationCalculator;
+        $first = $calc->calculate($inputs, $this->settings(), 3);
+        $second = $calc->calculate($inputs, $this->settings(), 3);
+        $this->assertSame(
+            (float) $first['summary']['materials_goods_pre_hst'],
+            (float) $second['summary']['materials_goods_pre_hst']
+        );
+        $this->assertGreaterThan(0, (float) $first['summary']['materials_goods_pre_hst']);
     }
 
     public function test_edited_v2_bench_calculator_price_is_336_34(): void

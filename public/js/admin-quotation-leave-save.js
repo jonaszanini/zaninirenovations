@@ -1,5 +1,13 @@
 (function () {
-  var PUBLISH_ONLY_REQUIRED = 'input[name="payment_installments"], input[name="include_debris_removal"], input[name="debris_removal_amount"], input[name="ask_reply_to_accept"]';
+  var PUBLISH_ONLY_REQUIRED = [
+    'input[name="payment_installments"]',
+    'select[name="payment_installments"]',
+    'input[name="include_debris_removal"]',
+    'input[name="debris_removal_amount"]',
+    'input[name="include_commute"]',
+    'input[name="ask_reply_to_accept"]',
+    'input[name="client_name"]'
+  ].join(', ');
 
   function relaxPublishOnlyRequired(form) {
     if (!form || !form.querySelectorAll) {
@@ -46,12 +54,43 @@
     return !!(isDraft && (isDraft.value === '1' || isDraft.value === 'true'));
   }
 
+  function reportInvalid(form) {
+    var fields = [];
+    if (window.AdminHotkeySave && typeof window.AdminHotkeySave.instance === 'function') {
+      try {
+        fields = window.AdminHotkeySave.instance().collectInvalidFields(form) || [];
+      } catch (err) { /* ignore */ }
+    }
+    if (window.AdminToast && typeof window.AdminToast.validation === 'function') {
+      window.AdminToast.validation(fields);
+      return;
+    }
+    var first = fields[0] && fields[0].el;
+    if (first && typeof first.reportValidity === 'function') first.reportValidity();
+  }
+
   window.AdminQuoteDraftValidation = {
     relax: relaxPublishOnlyRequired,
     restore: restorePublishOnlyRequired,
     isDraftSubmit: isDraftSubmit,
     setCanonicalIntent: setCanonicalIntent,
+    reportInvalid: reportInvalid,
   };
+
+  var saveInvalidTimer = null;
+
+  document.addEventListener('invalid', function (e) {
+    var el = e.target;
+    var form = el && el.form;
+    if (!form || !form.hasAttribute || !form.hasAttribute('data-quotation-editor')) return;
+    if (form.getAttribute('data-qh-save-attempt') !== '1') return;
+    if (e.preventDefault) e.preventDefault();
+    clearTimeout(saveInvalidTimer);
+    saveInvalidTimer = setTimeout(function () {
+      form.removeAttribute('data-qh-save-attempt');
+      reportInvalid(form);
+    }, 0);
+  }, true);
 
   document.addEventListener('click', function (e) {
     var saveBtn = e.target.closest && e.target.closest('.qh-actions__save, [id$="-btn-publish"], [id$="-btn-save"]');
@@ -63,6 +102,9 @@
           : null)
         || editorForm())
       : null;
+    if ((saveBtn || draftBtn) && form) {
+      form.setAttribute('data-qh-save-attempt', '1');
+    }
     if (saveBtn && form) {
       setCanonicalIntent(form, false);
       restorePublishOnlyRequired(form);
