@@ -101,7 +101,27 @@
 
 <style>
   .q-building-card { margin-bottom: 16px; }
-  .q-building-card .cp-visit-toggle { min-height: 44px; }
+  .q-building-card > .admin-label-with-tip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    column-gap: 2px;
+    max-width: 100%;
+    min-height: 44px;
+  }
+  .q-building-card .admin-label-with-tip > label.cp-visit-toggle {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 1 auto;
+    min-width: 0;
+    min-height: 44px;
+  }
+  .q-building-card .cp-visit-toggle__control {
+    flex: 0 0 44px;
+  }
+  .q-building-card .cp-visit-toggle__label {
+    min-width: 0;
+  }
   .q-building-card .cp-visit-expandable.is-open.is-settled .cp-visit-expandable__inner { overflow: visible; }
   .q-building-percent-wrap {
     display: flex;
