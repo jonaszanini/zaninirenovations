@@ -30,9 +30,9 @@
            value="{{ $row['name'] ?? '' }}" placeholder="Display name">
   </td>
   <td class="mw-col-price" data-label="Price">
-    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-mw-cat-price
+    <input type="text" inputmode="decimal" autocomplete="off" data-mw-cat-price
            class="admin-input cp-money-input" name="{{ $prefix }}[unit_price]"
-           value="{{ isset($row['unit_price']) ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}">
+           value="{{ isset($row['unit_price']) ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}" data-cp-money-entry="direct">
   </td>
   @if ($slot === MillworkSettings::SLOT_WOOD_SHEETS)
     <td class="mw-col-thickness" data-label="Thickness">
@@ -82,7 +82,7 @@
     <td>
       <input type="hidden" name="{{ $prefix }}[unit]" value="{{ $row['unit'] ?? 'roll' }}">
     </td>
-  @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS], true))
+  @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS, MillworkSettings::SLOT_SHELF_PINS], true))
     <td class="mw-col-pack" data-label="Per pack">
       <input type="number" min="1" class="admin-input" name="{{ $prefix }}[qty_per_pack]" value="{{ $row['qty_per_pack'] ?? 100 }}">
     </td>

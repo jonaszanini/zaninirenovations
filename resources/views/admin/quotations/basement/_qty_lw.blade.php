@@ -36,13 +36,16 @@
   <div class="br-lw__fields">
     <div class="br-lw__primary">
       <div class="br-lw__head">
-        <label for="{{ $id }}" @if(! empty($labelId)) id="{{ $labelId }}" @endif>
-          @include('admin.partials.info_tip', ['text' => $info ?? null])
-          @if (! empty($clientFilled))
-            @include('admin.quotations.basement._client_filled', ['force' => true])
-          @endif
-          {{ $label }}
-        </label>
+        @include('admin.partials.tipped_label', [
+          'label' => $label,
+          'for' => $id,
+          'labelId' => $labelId ?? null,
+          'tipText' => collect([$info ?? null, $help ?? null])->filter()->implode(' '),
+          'tipLabel' => $label,
+          'prefixHtml' => ! empty($clientFilled)
+            ? view('admin.quotations.basement._client_filled', ['force' => true])->render()
+            : '',
+        ])
         <div class="br-lw-segment" role="radiogroup" aria-label="{{ $label }} entry">
           <label class="br-lw-segment__item">
             <input type="radio" class="br-preview" name="{{ $modeName }}" value="sqft"
@@ -96,9 +99,6 @@
   </div>
 
   <p class="admin-form-help br-lw__computed" data-br-lw-computed @if($mode !== 'dimensions') hidden @endif>{{ $computed }}</p>
-  @if (! empty($help))
-    <p class="admin-form-help br-lw__help">{{ $help }}</p>
-  @endif
   @if (filled($rate ?? null))
     <p class="sq-qty__rate">{{ $rate }}</p>
   @endif

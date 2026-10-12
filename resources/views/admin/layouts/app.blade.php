@@ -66,6 +66,10 @@
         $isQuotation = request()->routeIs('admin.quotations.*');
         $isMaterials = request()->routeIs('admin.materials.*');
         $isVehicles = request()->routeIs('admin.vehicles.*');
+        $isFinancialsInvoices = request()->routeIs('admin.financials.invoices');
+        $isFinancialsExpenses = request()->routeIs('admin.financials.expenses*');
+        $isFinancialsEtransfers = request()->routeIs('admin.financials.etransfers*');
+        $isFinancials = $isVehicles || $isFinancialsInvoices || $isFinancialsExpenses || $isFinancialsEtransfers;
         $isComms = request()->routeIs('admin.communications.*');
         $isUtilities = request()->routeIs('admin.utilities.*')
             || request()->routeIs('admin.ai-instructions.*')
@@ -158,6 +162,9 @@
                 <a href="{{ route('admin.blog.comments.index') }}" class="{{ request()->routeIs('admin.blog.comments.*') ? 'is-active' : '' }}">
                   <i class="fa fa-comments"></i>
                   Comments
+                  @if (($sidebarPendingCommentCount ?? 0) > 0)
+                    <span class="admin-nav-badge">{{ $sidebarPendingCommentCount }}</span>
+                  @endif
                 </a>
               </li>
             </ul>
@@ -196,13 +203,37 @@
         </li>
 
         <li class="admin-nav-group">
-          <details class="admin-nav-details" {{ $isVehicles ? 'open' : '' }}>
-            <summary class="admin-nav-parent {{ $isVehicles ? 'is-active' : '' }}">
+          <details class="admin-nav-details" {{ $isFinancials ? 'open' : '' }}>
+            <summary class="admin-nav-parent {{ $isFinancials ? 'is-active' : '' }}">
               <i class="fa fa-money"></i>
               <span class="admin-nav-parent__label">Financials</span>
+              @if (($sidebarPendingEtransferCount ?? 0) > 0)
+                <span class="admin-nav-badge">{{ $sidebarPendingEtransferCount }}</span>
+              @endif
               <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
             </summary>
             <ul class="admin-subnav">
+              <li>
+                <a href="{{ route('admin.financials.invoices') }}" class="{{ $isFinancialsInvoices ? 'is-active' : '' }}">
+                  <i class="fa fa-file-text-o"></i>
+                  Invoices
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.financials.etransfers') }}" class="{{ $isFinancialsEtransfers ? 'is-active' : '' }}">
+                  <i class="fa fa-exchange"></i>
+                  Incoming e-transfers
+                  @if (($sidebarPendingEtransferCount ?? 0) > 0)
+                    <span class="admin-nav-badge">{{ $sidebarPendingEtransferCount }}</span>
+                  @endif
+                </a>
+              </li>
+              <li>
+                <a href="{{ route('admin.financials.expenses') }}" class="{{ $isFinancialsExpenses ? 'is-active' : '' }}">
+                  <i class="fa fa-credit-card"></i>
+                  Expenses
+                </a>
+              </li>
               <li>
                 <a href="{{ route('admin.vehicles.index') }}" class="{{ $isVehicles ? 'is-active' : '' }}">
                   <i class="fa fa-car"></i>
@@ -308,26 +339,25 @@
             <i class="fa fa-times admin-menu-icon-close" aria-hidden="true"></i>
           </button>
           <h1>@yield('heading')</h1>
-          <form action="{{ route('admin.search.index') }}" method="get" class="admin-global-search" role="search">
-            <label for="admin-global-search-input" class="sr-only">Search clients, projects, quotations</label>
+          <button type="button" class="admin-global-search-btn" onclick="AdminSearchPalette.open()" title="Search (Ctrl+K or Cmd+K)">
             <i class="fa fa-search admin-global-search__icon" aria-hidden="true"></i>
-            <input type="search" id="admin-global-search-input" name="q" class="admin-input admin-global-search__input"
-                   placeholder="Search clients, projects, quotations…" value="{{ request('q') }}" minlength="2">
-          </form>
+            <span class="admin-global-search__text">Search…</span>
+            <kbd class="admin-global-search__kbd">⌘K</kbd>
+          </button>
         </div>
       </header>
       <main class="admin-content">
         @if (session('success'))
-          <div class="admin-flash admin-flash--success">{{ session('success') }}</div>
+          <div class="admin-flash admin-flash--success" data-admin-flash="success">{{ session('success') }}</div>
         @endif
         @if (session('warning'))
-          <div class="admin-flash admin-flash--warning">{{ session('warning') }}</div>
+          <div class="admin-flash admin-flash--warning" data-admin-flash="warning">{{ session('warning') }}</div>
         @endif
         @if (session('error'))
-          <div class="admin-flash admin-flash--error">{{ session('error') }}</div>
+          <div class="admin-flash admin-flash--error" data-admin-flash="error">{{ session('error') }}</div>
         @endif
         @if ($errors->any())
-          <div class="admin-flash admin-flash--error" role="alert">
+          <div class="admin-flash admin-flash--error" data-admin-flash="error" role="alert">
             <strong>Please fix the following:</strong>
             <ul style="margin:8px 0 0 18px;">
               @foreach ($errors->all() as $message)
@@ -354,9 +384,12 @@
   </div>
 
   <script src="{{ asset('js/admin-theme.js') }}?v={{ @filemtime(public_path('js/admin-theme.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-date-picker.js') }}?v={{ @filemtime(public_path('js/admin-date-picker.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-avif-to-webp.js') }}?v={{ @filemtime(public_path('js/admin-avif-to-webp.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-dialog.js') }}?v={{ @filemtime(public_path('js/admin-dialog.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-info-tip.js') }}?v={{ @filemtime(public_path('js/admin-info-tip.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-search-select.js') }}?v={{ @filemtime(public_path('js/admin-search-select.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-filters-accordion.js') }}?v={{ @filemtime(public_path('js/admin-filters-accordion.js')) ?: time() }}"></script>
   <script>
     (function () {
       var app = document.getElementById('admin-app');
@@ -440,13 +473,204 @@
           window.AdminDialog.alert('Could not disconnect Google Photos. Try again.');
         });
     });
+
   </script>
+  <script src="{{ asset('js/admin-actions-dropdown.js') }}?v={{ @filemtime(public_path('js/admin-actions-dropdown.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-client-projects.js') }}?v={{ @filemtime(public_path('js/admin-client-projects.js')) ?: time() }}"></script>
   @if (request()->routeIs('admin.quotations.*'))
   <script src="{{ asset('js/admin-quotation-link-project.js') }}?v={{ @filemtime(public_path('js/admin-quotation-link-project.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-purchase-list-choice.js') }}?v={{ @filemtime(public_path('js/admin-purchase-list-choice.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-quotation-leave-save.js') }}?v={{ @filemtime(public_path('js/admin-quotation-leave-save.js')) ?: time() }}"></script>
   @endif
+
+  {{-- Shared save toast + Ctrl/Cmd+S (admin only) --}}
+  @php
+    $adminToastFields = [];
+    if ($errors->any()) {
+        foreach ($errors->messages() as $fieldName => $messages) {
+            $adminToastFields[] = [
+                'name' => $fieldName,
+                'message' => $messages[0] ?? 'is invalid',
+            ];
+        }
+    }
+    $adminToastFlash = [
+        'success' => session('success'),
+        'error' => session('error'),
+        'warning' => session('warning'),
+        'fields' => $adminToastFields,
+    ];
+  @endphp
+  <script type="application/json" id="admin-toast-flash">{!! json_encode($adminToastFlash, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
+  <script src="{{ asset('js/admin-toast.js') }}?v={{ @filemtime(public_path('js/admin-toast.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-hotkey-save.js') }}?v={{ @filemtime(public_path('js/admin-hotkey-save.js')) ?: time() }}"></script>
+
+  {{-- Global search palette (Ctrl+K / Cmd+K) --}}
+  <div id="admin-search-palette" class="asp" hidden>
+    <div class="asp__backdrop" onclick="AdminSearchPalette.close()"></div>
+    <div class="asp__panel">
+      <div class="asp__input-wrap">
+        <i class="fa fa-search asp__icon" aria-hidden="true"></i>
+        <input type="text" id="asp-input" class="asp__input" placeholder="Search projects, clients…" autocomplete="off">
+        <kbd class="asp__kbd">ESC</kbd>
+      </div>
+      <div id="asp-results" class="asp__results"></div>
+      <div class="asp__footer">
+        <span class="asp__hint"><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+        <span class="asp__hint"><kbd>Enter</kbd> open</span>
+        <span class="asp__hint"><kbd>ESC</kbd> close</span>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function() {
+    var palette = document.getElementById('admin-search-palette');
+    var input = document.getElementById('asp-input');
+    var results = document.getElementById('asp-results');
+    var searchUrl = @json(route('admin.search.api'));
+    var debounceTimer = null;
+    var selectedIndex = -1;
+    var items = [];
+
+    window.AdminSearchPalette = {
+      open: function() {
+        palette.hidden = false;
+        document.body.classList.add('asp-open');
+        input.value = '';
+        results.innerHTML = '';
+        selectedIndex = -1;
+        items = [];
+        setTimeout(function() { input.focus(); }, 50);
+      },
+      close: function() {
+        palette.hidden = true;
+        document.body.classList.remove('asp-open');
+      },
+      isOpen: function() {
+        return !palette.hidden;
+      }
+    };
+
+    function renderResults(data) {
+      if (!data.results || data.results.length === 0) {
+        results.innerHTML = '<div class="asp__empty">No results found</div>';
+        items = [];
+        selectedIndex = -1;
+        return;
+      }
+      var html = '';
+      items = [];
+      data.results.forEach(function(group) {
+        html += '<div class="asp__group">';
+        html += '<div class="asp__group-label">' + escapeHtml(group.label) + '</div>';
+        group.items.forEach(function(item, idx) {
+          var globalIdx = items.length;
+          items.push(item);
+          html += '<a href="' + escapeHtml(item.url) + '" class="asp__item" data-idx="' + globalIdx + '">';
+          html += '<i class="fa fa-' + escapeHtml(item.icon || 'file') + ' asp__item-icon"></i>';
+          html += '<div class="asp__item-text">';
+          html += '<div class="asp__item-title">' + escapeHtml(item.title) + '</div>';
+          if (item.subtitle) {
+            html += '<div class="asp__item-sub">' + escapeHtml(item.subtitle) + '</div>';
+          }
+          html += '</div>';
+          if (item.status) {
+            html += '<span class="asp__item-badge" style="background:' + escapeHtml(item.status_color || '#6b7280') + '20;color:' + escapeHtml(item.status_color || '#6b7280') + ';">' + escapeHtml(item.status) + '</span>';
+          }
+          html += '</a>';
+        });
+        html += '</div>';
+      });
+      results.innerHTML = html;
+      selectedIndex = -1;
+      updateSelection();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+      });
+    }
+
+    function updateSelection() {
+      var els = results.querySelectorAll('.asp__item');
+      els.forEach(function(el, i) {
+        el.classList.toggle('is-selected', i === selectedIndex);
+      });
+      if (selectedIndex >= 0 && els[selectedIndex]) {
+        els[selectedIndex].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function doSearch() {
+      var q = input.value.trim();
+      if (q.length < 2) {
+        results.innerHTML = '<div class="asp__empty">Type at least 2 characters</div>';
+        items = [];
+        selectedIndex = -1;
+        return;
+      }
+      results.innerHTML = '<div class="asp__loading"><i class="fa fa-spinner fa-spin"></i> Searching…</div>';
+      fetch(searchUrl + '?q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(renderResults)
+        .catch(function() {
+          results.innerHTML = '<div class="asp__empty">Search failed</div>';
+        });
+    }
+
+    input.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(doSearch, 200);
+    });
+
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (items.length > 0) {
+          selectedIndex = (selectedIndex + 1) % items.length;
+          updateSelection();
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (items.length > 0) {
+          selectedIndex = selectedIndex <= 0 ? items.length - 1 : selectedIndex - 1;
+          updateSelection();
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedIndex >= 0 && items[selectedIndex]) {
+          window.location.href = items[selectedIndex].url;
+        }
+      } else if (e.key === 'Escape') {
+        AdminSearchPalette.close();
+      }
+    });
+
+    results.addEventListener('mouseover', function(e) {
+      var item = e.target.closest('.asp__item');
+      if (item) {
+        selectedIndex = parseInt(item.dataset.idx, 10);
+        updateSelection();
+      }
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        if (AdminSearchPalette.isOpen()) {
+          AdminSearchPalette.close();
+        } else {
+          AdminSearchPalette.open();
+        }
+      }
+      if (e.key === 'Escape' && AdminSearchPalette.isOpen()) {
+        AdminSearchPalette.close();
+      }
+    });
+  })();
+  </script>
   @stack('scripts')
 </body>
 </html>

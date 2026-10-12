@@ -41,7 +41,7 @@ class ClientProjectLinkedUtilitiesService
             'lumber' => $lumber,
             'pillar' => $pillar,
             'tool_links' => [
-                'room_area' => route('admin.utilities.room-area'),
+                'room_area' => route('admin.client-projects.utilities.room-area', $project),
                 'measurement' => route('admin.utilities.measurement-conversion'),
                 'lumber' => route('admin.utilities.lumber-board', ['project' => $project->id]),
                 'pillar' => route('admin.utilities.pillar-spindle'),
@@ -56,10 +56,10 @@ class ClientProjectLinkedUtilitiesService
     private function roomAreaItems(ClientProject $project): array
     {
         return $project->roomAreaProjects()
-            ->with('rooms')
+            ->with(['rooms' => fn ($q) => $q->withCount('photos')])
             ->orderBy('name')
             ->get()
-            ->map(function (RoomAreaProject $utilityProject) {
+            ->map(function (RoomAreaProject $utilityProject) use ($project) {
                 $rooms = $utilityProject->rooms;
                 $totalSqft = round((float) $rooms->sum('area_sqft'), 2);
 
@@ -72,13 +72,22 @@ class ClientProjectLinkedUtilitiesService
                         ? rtrim(rtrim(number_format($totalSqft, 2, '.', ''), '0'), '.').' sq ft'
                         : null,
                     'rooms' => $rooms->map(fn ($room) => [
+                        'id' => $room->id,
                         'name' => $room->name,
                         'area_sqft' => (float) $room->area_sqft,
                         'area_label' => $room->area_sqft
                             ? rtrim(rtrim(number_format((float) $room->area_sqft, 2, '.', ''), '0'), '.').' sq ft'
                             : '—',
+                        'photo_count' => (int) ($room->photos_count ?? 0),
+                        'open_url' => route('admin.client-projects.utilities.room-area', [
+                            'client_project' => $project,
+                            'room_area_room' => $room,
+                        ]),
+                        'pdf_url' => $room->pdf_path
+                            ? route('admin.utilities.room-area.rooms.pdf', $room)
+                            : null,
                     ])->values()->all(),
-                    'open_url' => route('admin.utilities.room-area', ['ra_project' => $utilityProject->id]),
+                    'open_url' => route('admin.client-projects.utilities.room-area', $project),
                     'updated_label' => $utilityProject->updated_at?->format('M j, Y'),
                 ];
             })

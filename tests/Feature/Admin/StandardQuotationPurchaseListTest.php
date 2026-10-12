@@ -134,6 +134,41 @@ class StandardQuotationPurchaseListTest extends IntegrationTestCase
         $response->assertSee('CA$8.50', false);
     }
 
+    public function test_purchase_list_omits_blank_zero_dollar_rows(): void
+    {
+        $this->actingAsAdmin();
+        $quote = $this->makeQuote();
+        $materials = $quote->materials;
+        $materials[] = [
+            'short_name' => '',
+            'description' => '',
+            'unit_price' => 0,
+            'quantity' => 1,
+            'apply_hst' => true,
+        ];
+        $quote->materials = $materials;
+        $quote->works = [[
+            'title' => 'Job one',
+            'materials' => $materials,
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 100,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'labour_hourly_rate' => 0,
+        ]];
+        $quote->save();
+
+        $response = $this->get(route('admin.quotations.standard.purchase-list', [
+            'standard_quotation' => $quote,
+            'prices' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Black aluminium spindle', false);
+        $this->assertSame(1, preg_match_all('/class="item-name"/', $response->getContent()));
+        $this->assertStringNotContainsString('>CA$0.00<', $response->getContent());
+    }
+
     private function makeQuote(): StandardQuotation
     {
         $catalog = Material::create([

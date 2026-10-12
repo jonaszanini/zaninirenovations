@@ -7,6 +7,12 @@ use Tests\TestCase;
 
 class StandardQuotationMaterialRowViewTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+    }
+
     public function test_electrical_mode_hides_short_name_and_prefills_description(): void
     {
         $html = view('admin.quotations.standard._material_row', [
@@ -64,10 +70,40 @@ class StandardQuotationMaterialRowViewTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/sq-mat-thumb"[^>]*\bhidden\b/', $html);
     }
 
+    public function test_description_error_is_shown_on_the_material_field(): void
+    {
+        $message = 'Under Materials on Job 1: the Description is 612 characters. Shorten that Description field to 500 characters or fewer, then save again.';
+        $errors = new \Illuminate\Support\ViewErrorBag;
+        $errors->put('default', new \Illuminate\Support\MessageBag([
+            'works.0.materials.0.description' => [$message],
+        ]));
+        view()->share('errors', $errors);
+
+        $html = view('admin.quotations.standard._material_row', [
+            'workIndex' => 0,
+            'i' => 0,
+            'row' => [
+                'short_name' => 'Oak tread',
+                'description' => 'Too long',
+                'url' => '',
+                'image_url' => '',
+                'unit_price' => '10.00',
+                'quantity' => '1',
+                'apply_hst' => true,
+                'hst_includes_unit' => false,
+                'catalog_material_id' => null,
+                'delivery_cad' => 0,
+            ],
+        ])->render();
+
+        $this->assertStringContainsString('is-invalid', $html);
+        $this->assertStringContainsString('aria-invalid="true"', $html);
+        $this->assertStringContainsString($message, $html);
+        $this->assertStringNotContainsString('works.0.materials.0.description', $html);
+    }
+
     public function test_work_card_nests_material_and_labour_fields(): void
     {
-        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
-
         $html = view('admin.quotations.standard._work_card', [
             'workIndex' => 0,
             'workCount' => 1,

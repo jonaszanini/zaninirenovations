@@ -1,12 +1,22 @@
 @extends('site.layouts.public')
 
-@section('page_title', $post->title.' — Zanini Renovations')
-@section('meta_description', $post->meta_description ?: $post->displayExcerpt(300))
+@php
+  $isPreview = ! empty($isPreview);
+  $cta = $cta ?? \App\Support\BlogPublicContent::cta($post);
+  $relatedProjects = $relatedProjects ?? collect();
+  $featuredDims = $post->featuredImageDimensions();
+  $bodyHtml = $htmlProcessor->addLazyLoadToImages($post->html_content ?? '');
+  $ctaHtml = view('site.blog.partials.cta', compact('post', 'cta'))->render();
+  $bodyHtml = \App\Support\BlogPublicContent::insertAfterIntro($bodyHtml, $ctaHtml);
+@endphp
+
+@section('page_title', $post->documentTitle())
+@section('meta_description', $post->seoDescription())
 @section('canonical', $post->publicUrl())
 @section('og_type', 'article')
-@if ($post->featuredImageUrl())
-  @section('og_image', $post->featuredImageUrl())
-@endif
+@section('meta_robots', $isPreview ? 'noindex, nofollow' : ($post->noindex ? 'noindex, follow' : 'index,follow'))
+@section('og_image_alt', $post->featuredImageAlt())
+@section('og_image', $post->featuredImageUrl() ?: '')
 
 @push('jsonld')
 <script type="application/ld+json">{!! \App\Support\SeoStructuredData::toJsonLd(\App\Support\SeoStructuredData::blogPosting($post)) !!}</script>
@@ -17,42 +27,54 @@
 @endpush
 
 @section('content')
-  <section class="page-header page-header--blog">
-    <div class="container">
-      <div class="row">
-        <div class="col-sm-12 text-center">
-          <h1>{{ $post->title }}</h1>
-          <p class="page-breadcrumb">
-            <a href="{{ url('/') }}">Home</a> /
-            <a href="{{ route('blog.index') }}">Blog</a> /
-            {{ Str::limit($post->title, 40) }}
-          </p>
-        </div>
+  @if ($isPreview)
+    <div class="blog-preview-banner">
+      <div class="container">
+        <strong>Draft preview</strong>
+        — only signed-in staff can see this page. Search engines are told not to index it.
+        <a href="{{ route('admin.blog.posts.edit', $post) }}">Back to editor</a>
       </div>
+    </div>
+  @endif
+  <section class="page-header page-header--blog page-header--slim">
+    <div class="container">
+      <p class="page-breadcrumb">
+        <a href="{{ url('/') }}">Home</a> /
+        <a href="{{ route('blog.index') }}">Blog</a> /
+        {{ Str::limit($post->title, 40) }}
+      </p>
     </div>
   </section>
 
-  <section class="section-content-block">
+  <section class="section-content-block blog-article-wrap">
     <div class="container">
       <div class="row">
         <div class="col-md-8 col-sm-12">
           <article class="post single-post-inner">
             @if ($post->featuredImageUrl())
               <div class="post-inner-featured-content">
-                <img src="{{ $post->featuredImageUrl() }}" alt="{{ $post->title }}" loading="eager">
+                <img src="{{ $post->featuredImageUrl() }}"
+                     alt="{{ $post->featuredImageAlt() }}"
+                     @if ($featuredDims)
+                       width="{{ $featuredDims['width'] }}"
+                       height="{{ $featuredDims['height'] }}"
+                     @endif
+                     loading="eager"
+                     decoding="async"
+                     sizes="(max-width: 767px) 100vw, 720px">
               </div>
             @endif
             <div class="single-post-inner-title">
-              <p class="single-post-inner-title__heading">{{ $post->title }}</p>
+              <h1 class="single-post-inner-title__heading">{{ $post->title }}</h1>
               <p class="single-post-meta">
                 <i class="fa fa-user"></i> {{ $post->author_name }}
-                &nbsp;<i class="fa fa-calendar"></i> {{ $post->displayDate() }}
+                &nbsp;<i class="fa fa-calendar"></i> {{ $post->displayDateLong() }}
                 &nbsp;<i class="fa fa-clock-o"></i> {{ $post->readTimeMinutes() }} min read
                 &nbsp;<i class="fa fa-comments"></i> {{ $post->approvedCommentsCount() }} comments
               </p>
             </div>
             <div class="single-post-inner-content blog-post-body">
-              {!! $htmlProcessor->addLazyLoadToImages($post->html_content ?? '') !!}
+              {!! $bodyHtml !!}
             </div>
             @if ($post->tags->isNotEmpty())
               <div class="single-post-inner-meta">
@@ -64,6 +86,8 @@
               </div>
             @endif
           </article>
+
+          @include('site.blog.partials.author', ['post' => $post])
 
           <div class="blog-share clearfix">
             <span>Share:</span>
@@ -84,20 +108,37 @@
             </div>
           @endif
 
-          @if ($relatedPosts->isNotEmpty())
-            <div class="related-post">
-              <div class="topic-bold-header clearfix"><h4>Related posts</h4></div>
-              <ul>
-                @foreach ($relatedPosts as $rel)
-                  <li><a href="{{ route('blog.show', $rel) }}">{{ $rel->title }}</a></li>
-                @endforeach
-              </ul>
+          @if ($relatedPosts->isNotEmpty() || $relatedProjects->isNotEmpty())
+            <div class="related-post blog-related">
+              @if ($relatedPosts->isNotEmpty())
+                <div class="topic-bold-header clearfix"><h2>Related posts</h2></div>
+                <ul>
+                  @foreach ($relatedPosts as $rel)
+                    <li><a href="{{ route('blog.show', $rel) }}">{{ $rel->title }}</a></li>
+                  @endforeach
+                </ul>
+              @endif
+              @if ($relatedProjects->isNotEmpty())
+                <div class="topic-bold-header clearfix"><h2>Related projects</h2></div>
+                <ul>
+                  @foreach ($relatedProjects as $project)
+                    <li><a href="{{ $project->publicUrl() }}">{{ $project->title }}</a></li>
+                  @endforeach
+                </ul>
+              @endif
+              <p class="blog-related__service">
+                <a href="{{ $cta['service_url'] }}">See {{ $cta['service_label'] }}</a>
+              </p>
             </div>
+          @else
+            <p class="blog-related__service">
+              <a href="{{ $cta['service_url'] }}">See {{ $cta['service_label'] }}</a>
+            </p>
           @endif
 
           <div class="comments-area" id="comments">
             <div class="topic-bold-header clearfix">
-              <h4>{{ $post->approvedCommentsCount() }} comment(s)</h4>
+              <h2>{{ $post->approvedCommentsCount() }} comment(s)</h2>
             </div>
 
             @if (session('success'))
@@ -115,7 +156,7 @@
               </ol>
             @endif
 
-            <div class="topic-bold-header clearfix" style="margin-top:24px;"><h4>Leave a comment</h4></div>
+            <div class="topic-bold-header clearfix" style="margin-top:24px;"><h2>Leave a comment</h2></div>
             <form action="{{ route('blog.comments.store', $post) }}" method="post" class="blog-comment-form">
               @csrf
               <div class="row">
@@ -127,14 +168,8 @@
                 </div>
               </div>
               <textarea name="body" class="form-control" rows="5" placeholder="Your comment" required maxlength="5000">{{ old('body') }}</textarea>
-              @if ($captchaMode === 'math' && $captchaChallenge)
-                <p class="blog-captcha">
-                  <label>What is {{ $captchaChallenge['a'] }} + {{ $captchaChallenge['b'] }}?</label>
-                  <input type="number" name="captcha_answer" class="form-control" required style="max-width:120px;display:inline-block;">
-                  <input type="hidden" name="captcha_token" value="{{ $captchaChallenge['token'] }}">
-                </p>
-              @elseif ($captchaMode === 'recaptcha_v2' && filled(config('blog.recaptcha_site_key')))
-                <div class="g-recaptcha" data-sitekey="{{ config('blog.recaptcha_site_key') }}"></div>
+              @include('site.blog.partials.captcha', ['captchaAnswerId' => 'captcha-answer'])
+              @if ($captchaMode === 'recaptcha_v2' && filled(config('blog.recaptcha_site_key')))
                 @push('scripts')
                   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
                 @endpush

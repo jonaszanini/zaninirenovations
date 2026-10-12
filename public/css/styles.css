@@ -1838,9 +1838,40 @@ a.nav-btn-highlight:hover {
   background: #edf0f2 !important;
 }
 
+.section-core-services .service-block-2 figure {
+  aspect-ratio: 800 / 237;
+  overflow: hidden;
+}
+
 .section-core-services .service-block-2 figure img {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.section-core-services .service-block-2 h3 {
+  top: 50%;
+  left: 50%;
+  width: calc(100% - 16px);
+  margin: 0;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  hyphens: none;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+@media (max-width: 767px) {
+  .section-core-services .service-block-2 h3 {
+    font-size: 18px;
+  }
 }
 
 .section-primary-bg {
@@ -6318,6 +6349,8 @@ ul.pagination li:last-child {
   width: 100%;
   height: auto;
   display: block;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
 }
 
 /* Latest projects: Load More button row */
@@ -6342,6 +6375,16 @@ ul.pagination li:last-child {
 .js-latest-project-item .portfolio-light-box .portfolio-info-box br,
 .js-latest-project-item .portfolio-light-box .portfolio-info-box p {
   display: none !important;
+}
+
+.portfolio-container .portfolio-card-town {
+  display: block;
+  margin: 0.4rem 0 0;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #5a6570;
+  text-align: center;
 }
 
 .portfolio-carousel {
@@ -6619,6 +6662,21 @@ ul.pagination li:last-child {
   box-shadow: inset 0 0 0 0 rgba(0, 0, 0, 0.2);
   border: 0px;
   border-bottom: 1px solid #919191;
+}
+
+#contact-form span.error {
+  display: block;
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 400;
+  font-style: normal;
+  color: #c0392b;
+  margin: 4px 0 12px;
+  padding: 0;
+}
+#contact-form .form-group input.form-control:has(+ span.error),
+#contact-form .form-group textarea.form-control:has(+ span.error) {
+  margin-bottom: 0;
 }
 
 /* Home contact section — Zanini palette (#024768, #3a4856, light blue-greys) */
@@ -8659,26 +8717,48 @@ footer .social-icons a:hover {
   max-width: 960px;
 }
 
+.project-gallery-modal .modal-content {
+  background-color: #fff;
+}
+
 @media (max-width: 767px) {
+  /* Full-screen opaque sheet so the project hero photo cannot show
+     through the transparent modal overlay / Bootstrap backdrop. */
+  .project-gallery-modal.modal {
+    padding: 0;
+    background-color: #fff;
+  }
+
   .project-gallery-modal .modal-dialog {
     margin: 0;
     width: 100%;
+    max-width: none;
     height: 100%;
+    min-height: 100%;
   }
 
   .project-gallery-modal .modal-content {
     border-radius: 0;
     border: 0;
-    min-height: 100vh;
+    height: 100%;
+    min-height: 100%;
     box-shadow: none;
     display: flex;
     flex-direction: column;
+    background-color: #fff;
   }
 
   .project-gallery-modal .modal-body {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+  }
+
+  .project-gallery-viewport {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
     min-height: 0;
   }
 }
@@ -8696,6 +8776,8 @@ footer .social-icons a:hover {
   text-shadow: none;
   padding: 4px 8px;
   margin-top: -4px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .project-gallery-modal .close.project-gallery-close:hover,
@@ -9027,7 +9109,87 @@ button,
     background: #d6dee6;
   }
 
+  /* Bootstrap 3 `.dropdown-menu` (Services) — open inline inside the
+     hamburger and stay readable on the light mobile bar. Template
+     `.drop-down` rules above do not apply to this markup. */
+  .main-header-2 .navbar-default .navbar-collapse,
+  .navbar-default .navbar-collapse {
+    overflow: visible;
+  }
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu,
+  .navbar-default .navbar-nav .dropdown-menu {
+    position: static;
+    float: none;
+    width: 100%;
+    margin: 0;
+    padding: 0 0 8px;
+    background: #f4f6f8;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu > li > a,
+  .navbar-default .navbar-nav .dropdown-menu > li > a {
+    color: #024768;
+    background: transparent;
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 20px 12px 36px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu > li > a:hover,
+  .navbar-default .navbar-nav .dropdown-menu > li > a:hover,
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu > li > a:focus,
+  .navbar-default .navbar-nav .dropdown-menu > li > a:focus,
+  .main-header-2 .navbar-default .navbar-nav .dropdown-menu > li > a:active,
+  .navbar-default .navbar-nav .dropdown-menu > li > a:active {
+    color: #024768;
+    background: #d6dee6;
+  }
+
   /* The mobile floating bar (#zr-mobile-fb) is built and styled
      entirely from inline JS (see public-header.blade.php). No
      stylesheet rules are needed for it here. */
+
+  /* Clip Owl clones / next-slide peek so the page does not grow a
+     horizontal scrollbar. Use `clip` (not `hidden`) so overflow-y
+     stays visible and position:fixed overlays (gallery modal) are
+     not turned into a scroll container. Sticky header is already
+     disabled below 768px. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+  .owl-carousel,
+  .owl-carousel .owl-stage-outer {
+    overflow: hidden;
+  }
+  .main-header-2 .navbar-default .navbar-toggle,
+  .navbar-default .navbar-toggle,
+  .blog-site-menu-toggle {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .footer-social-icons a {
+    width: 44px;
+    height: 44px;
+    line-height: 42px;
+  }
+  .faq-layout .faq-box .panel-title > a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .team-layout-1 .team-info .team-social-share a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

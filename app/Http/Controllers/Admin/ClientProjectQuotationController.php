@@ -27,6 +27,7 @@ use App\Services\MoceanSmsService;
 use App\Support\SignedPublicLink;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -151,6 +152,44 @@ class ClientProjectQuotationController extends Controller
     }
 
     /**
+     * Client PDF / send must not produce a file while millwork parts are unplaced.
+     */
+    protected function rejectDraftSource(ClientProjectQuotation $quotation)
+    {
+        if (! $quotation->isSourceDraft()) {
+            return null;
+        }
+
+        return back()->with('error', ClientProjectQuotation::SOURCE_DRAFT_SHARE_MESSAGE);
+    }
+
+    protected function rejectUnplacedMillworkPdf(ClientProjectQuotation $quotation)
+    {
+        if ($quotation->source_type !== ClientProjectQuotation::SOURCE_MILLWORK) {
+            return null;
+        }
+        $millwork = $quotation->source_id
+            ? MillworkQuotation::query()->find($quotation->source_id)
+            : null;
+        if (! $millwork || ! $millwork->hasUnplacedCutParts()) {
+            return null;
+        }
+
+        $isAdmin = auth()->check();
+        $message = $isAdmin
+            ? MillworkQuotation::unplacedAdminMessage()
+            : MillworkQuotation::unplacedClientMessage();
+        $view = $isAdmin
+            ? 'admin.quotations.millwork.unplaced_blocked'
+            : 'site.quotations.unplaced_blocked';
+
+        return response()->view($view, [
+            'message' => $message,
+            'quotation' => $quotation,
+        ], 422);
+    }
+
+    /**
      * Render and stream the PDF inline (so the browser displays it instead
      * of downloading by default). Used by the "Download PDF" button.
      */
@@ -158,8 +197,16 @@ class ClientProjectQuotationController extends Controller
     {
         $this->authorizeQuotation($client_project, $quotation);
 
+        if ($response = $this->rejectDraftSource($quotation)) {
+            return $response;
+        }
+
         if (!$quotation->hasContent()) {
             return back()->with('error', 'There is no quotation to download yet. Please add at least one line item first.');
+        }
+
+        if ($response = $this->rejectUnplacedMillworkPdf($quotation)) {
+            return $response;
         }
 
         $pdf = $this->renderPdf($client_project, $quotation);
@@ -174,8 +221,16 @@ class ClientProjectQuotationController extends Controller
     {
         abort_unless((int) $quotation->client_project_id === (int) $client_project->id, 404);
 
+        if ($quotation->isSourceDraft()) {
+            return ClientProjectQuotation::revisingClientResponse();
+        }
+
         if (!$quotation->hasContent()) {
             abort(404, 'Quotation not available.');
+        }
+
+        if ($response = $this->rejectUnplacedMillworkPdf($quotation)) {
+            return $response;
         }
 
         $pdf = $this->renderPdf($client_project, $quotation);
@@ -195,13 +250,26 @@ class ClientProjectQuotationController extends Controller
     {
         $this->authorizeQuotation($client_project, $quotation);
 
+        if ($response = $this->rejectDraftSource($quotation)) {
+            return $response;
+        }
+
         if (!$quotation->hasContent()) {
             return back()->with('error', 'Please add at least one line item before sending the quotation.');
+        }
+
+        if ($this->millworkHasUnplacedParts($quotation)) {
+            return back()->with('error', MillworkQuotation::unplacedAdminMessage());
         }
 
         $emailTo = trim((string) $client_project->client_email);
         if ($emailTo === '') {
             return back()->with('error', "Cannot email the {$quotation->typeLabel()} — add the client's email address first.");
+        }
+
+        $publishOnly = $quotation->missingPublishOnlyChoices();
+        if ($publishOnly !== []) {
+            return back()->with('error', $publishOnly[0]);
         }
 
         // If the quotation has already been sent at least once, the next save
@@ -229,7 +297,7 @@ class ClientProjectQuotationController extends Controller
         }
         $quotation->save();
 
-        $quoteSubject = "{$quotation->typeLabel()} {$quotation->quotation_number} from Zanini Renovations";
+        $quoteSubject = ClientProjectQuotationClient::subjectFor($client_project, $quotation);
         $quoteDescription = "{$quotation->typeLabel()} {$quotation->quotation_number} v{$quotation->version} — total "
             .ClientProject::formatMoney((float) $quotation->grandTotal());
         $cc = $client_project->secondaryClientEmail();
@@ -393,45 +461,49 @@ class ClientProjectQuotationController extends Controller
                     ClientProjectQuotation::STATUS_SENT,
                     ClientProjectQuotation::STATUS_ACCEPTED,
                     ClientProjectQuotation::STATUS_REJECTED,
+                    ClientProjectQuotation::STATUS_SUPERSEDED,
                 ]),
             ],
         ]);
+
+        if ($data['status'] === ClientProjectQuotation::STATUS_ACCEPTED) {
+            if ($this->millworkHasUnplacedParts($quotation)) {
+                return redirect()
+                    ->route('admin.client-projects.show', $client_project)
+                    ->withFragment('quotation')
+                    ->with('error', MillworkQuotation::unplacedAdminMessage());
+            }
+            $result = app(\App\Services\QuoteAcceptanceService::class)->accept(
+                $quotation,
+                ClientProjectQuotation::ACCEPTED_VIA_ADMIN,
+                $request->ip(),
+                optional($request->user())->email,
+            );
+
+            if ($result === \App\Services\QuoteAcceptanceService::STATUS_INVALID_STATE
+                || $result === \App\Services\QuoteAcceptanceService::STATUS_INCOMPLETE
+                || $result === \App\Services\QuoteAcceptanceService::STATUS_REVISING) {
+                return redirect()
+                    ->route('admin.client-projects.show', $client_project)
+                    ->withFragment('quotation')
+                    ->with('error', $result === \App\Services\QuoteAcceptanceService::STATUS_INCOMPLETE
+                        ? MillworkQuotation::unplacedAdminMessage()
+                        : ($result === \App\Services\QuoteAcceptanceService::STATUS_REVISING
+                            ? ClientProjectQuotation::SOURCE_REVISING_MESSAGE
+                            : 'This quotation cannot be accepted in its current state.'));
+            }
+
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('quotation')
+                ->with('success', 'Quotation status updated.');
+        }
 
         $quotation->status = $data['status'];
         $quotation->save();
 
         $client_project->refresh();
         $client_project->syncFixedContractTotalsFromQuotation();
-
-        if ($data['status'] === ClientProjectQuotation::STATUS_ACCEPTED) {
-            $acceptNote = "{$quotation->typeLabel()} {$quotation->quotation_number} marked accepted.";
-
-            if ($client_project->canPromoteToProposalAcceptedFromQuotation()) {
-                try {
-                    $statusService->transition(
-                        $client_project,
-                        ClientProject::STATUS_PROPOSAL_ACCEPTED,
-                        $acceptNote,
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to auto-transition project to Proposal Accepted', [
-                        'project_id' => $client_project->id,
-                        'quotation_id' => $quotation->id,
-                        'exception' => $e->getMessage(),
-                    ]);
-                }
-            } else {
-                try {
-                    $statusService->recordEvent($client_project, $acceptNote);
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to record quotation-accepted history entry', [
-                        'project_id' => $client_project->id,
-                        'quotation_id' => $quotation->id,
-                        'exception' => $e->getMessage(),
-                    ]);
-                }
-            }
-        }
 
         return redirect()
             ->route('admin.client-projects.show', $client_project)
@@ -604,8 +676,15 @@ class ClientProjectQuotationController extends Controller
     ): array {
         $out = [];
 
+        if ($quotation->isSourceDraft()) {
+            $out[] = ClientProjectQuotation::SOURCE_DRAFT_SHARE_MESSAGE;
+        }
+
         if (! $quotation->hasContent()) {
             $out[] = 'Add at least one line item before sending an SMS link.';
+        }
+        if ($this->millworkHasUnplacedParts($quotation)) {
+            $out[] = MillworkQuotation::unplacedAdminMessage();
         }
 
         if (! $mocean->isConfigured()) {
@@ -614,6 +693,10 @@ class ClientProjectQuotationController extends Controller
 
         if (ClientProject::phoneDigitsForSms($project->client_phone) === null) {
             $out[] = 'Add a mobile phone number the client uses for texting (save on Edit project).';
+        }
+
+        foreach ($quotation->missingPublishOnlyChoices() as $message) {
+            $out[] = $message;
         }
 
         return $out;
@@ -625,6 +708,7 @@ class ClientProjectQuotationController extends Controller
             'project' => $project,
             'quotation' => $quotation,
             'pdfPhotos' => $quotation->pdfPhotosForRendering($project),
+            'acceptUrl' => $quotation->signedAcceptUrl(),
         ])
             ->setPaper('a4')
             ->setOption('isRemoteEnabled', true)
@@ -673,5 +757,179 @@ class ClientProjectQuotationController extends Controller
         $type = strtolower($quotation->typeLabel());
 
         return "{$type}-{$quotation->quotation_number}-{$slug}.pdf";
+    }
+
+    /**
+     * Duplicate a quotation as a new draft, optionally on a different project.
+     */
+    public function duplicate(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectQuotation $quotation,
+    ) {
+        $this->authorizeQuotation($client_project, $quotation);
+
+        if ($quotation->isLegacyManualSource()) {
+            return back()->with('error', 'Legacy manual documents cannot be duplicated.');
+        }
+
+        $targetProjectId = $request->input('target_project_id');
+        $targetProject = $targetProjectId
+            ? ClientProject::find($targetProjectId)
+            : $client_project;
+
+        if (! $targetProject) {
+            return back()->with('error', 'Target project not found.');
+        }
+
+        if (in_array($targetProject->status, ClientProject::statusesClosedToNewQuotations(), true)) {
+            return back()->with('error', 'The target project no longer accepts new quotations.');
+        }
+
+        $newQuotation = DB::transaction(function () use ($quotation, $targetProject) {
+            $newSourceId = null;
+            $sourceType = $quotation->source_type;
+
+            if ($quotation->source_id && $sourceType) {
+                $newSourceId = $this->duplicateCalculatorSource($quotation, $targetProject);
+            }
+
+            $newNumber = ClientProjectQuotation::generateNumber($quotation->type);
+
+            $newQuotation = new ClientProjectQuotation();
+            $newQuotation->fill([
+                'client_project_id' => $targetProject->id,
+                'title' => $quotation->title,
+                'status' => ClientProjectQuotation::STATUS_DRAFT,
+                'source_type' => $sourceType,
+                'source_id' => $newSourceId,
+                'source_snapshot' => $quotation->source_snapshot,
+                'type' => $quotation->type,
+                'labour' => $quotation->labour,
+                'material' => $quotation->material,
+                'items' => $quotation->items,
+                'work_description' => $quotation->work_description,
+                'payment_installments' => $quotation->payment_installments,
+                'payment_percentages' => $quotation->payment_percentages,
+                'quotation_number' => $newNumber,
+                'version' => 1,
+                'pdf_fold_version' => $quotation->pdf_fold_version ?? 1,
+            ]);
+            $newQuotation->save();
+
+            return $newQuotation;
+        });
+
+        $message = "Duplicated as {$newQuotation->quotation_number}";
+        if ($targetProject->id !== $client_project->id) {
+            $message .= " on project \"{$targetProject->name}\"";
+        }
+        $message .= '.';
+
+        return redirect()
+            ->route('admin.client-projects.show', $targetProject)
+            ->withFragment('quotation')
+            ->with('success', $message);
+    }
+
+    /**
+     * Search projects for the duplicate modal picker.
+     */
+    public function searchProjectsForDuplicate(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $q = trim((string) $request->input('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $closedStatuses = ClientProject::statusesClosedToNewQuotations();
+
+        $projects = ClientProject::query()
+            ->whereNotIn('status', $closedStatuses)
+            ->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', '%' . $q . '%')
+                    ->orWhere('client_name', 'like', '%' . $q . '%');
+            })
+            ->orderByDesc('updated_at')
+            ->limit(20)
+            ->get(['id', 'name', 'client_name']);
+
+        return response()->json($projects->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'label' => $p->client_name . ' — ' . $p->name,
+        ])->values());
+    }
+
+    /**
+     * Duplicate the linked calculator source record for a new quotation.
+     */
+    protected function duplicateCalculatorSource(
+        ClientProjectQuotation $quotation,
+        ClientProject $targetProject,
+    ): ?int {
+        $sourceType = $quotation->source_type;
+        $sourceId = $quotation->source_id;
+
+        if (! $sourceId) {
+            return null;
+        }
+
+        $sourceModel = $quotation->sourceQuotationModel();
+        if (! $sourceModel) {
+            return null;
+        }
+
+        $newData = $sourceModel->toArray();
+        unset($newData['id'], $newData['created_at'], $newData['updated_at']);
+        $newData['client_project_id'] = $targetProject->id;
+
+        if (isset($newData['quotation_number'])) {
+            $newData['quotation_number'] = $this->generateCalculatorNumber($sourceType);
+        }
+
+        $class = get_class($sourceModel);
+        $newSource = new $class();
+        $newSource->fill($newData);
+        $newSource->save();
+
+        return $newSource->id;
+    }
+
+    /**
+     * Generate a new quotation number for a calculator source type.
+     */
+    protected function generateCalculatorNumber(string $sourceType): string
+    {
+        $prefix = match ($sourceType) {
+            ClientProjectQuotation::SOURCE_FENCE => 'FN',
+            ClientProjectQuotation::SOURCE_PAVING => 'PV',
+            ClientProjectQuotation::SOURCE_STANDARD => 'SQ',
+            ClientProjectQuotation::SOURCE_STAIRS => 'ST',
+            ClientProjectQuotation::SOURCE_PAINTING => 'PT',
+            ClientProjectQuotation::SOURCE_FLOORING => 'FL',
+            ClientProjectQuotation::SOURCE_TILE => 'TL',
+            ClientProjectQuotation::SOURCE_LOW_DECK => 'LD',
+            ClientProjectQuotation::SOURCE_BASEMENT => 'BR',
+            ClientProjectQuotation::SOURCE_SHED => 'SH',
+            ClientProjectQuotation::SOURCE_TRIMMING => 'TR',
+            ClientProjectQuotation::SOURCE_MILLWORK => 'MW',
+            default => 'QT',
+        };
+
+        $year = (int) date('Y');
+        $next = random_int(1, 9999);
+
+        return sprintf('%s-%d-%04d', $prefix, $year, $next);
+    }
+
+    protected function millworkHasUnplacedParts(ClientProjectQuotation $quotation): bool
+    {
+        if ($quotation->source_type !== ClientProjectQuotation::SOURCE_MILLWORK || ! $quotation->source_id) {
+            return false;
+        }
+        $millwork = MillworkQuotation::query()->find($quotation->source_id);
+
+        return $millwork?->hasUnplacedCutParts() ?? false;
     }
 }

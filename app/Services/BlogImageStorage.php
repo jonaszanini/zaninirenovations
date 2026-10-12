@@ -298,4 +298,22 @@ class BlogImageStorage
 
         return Storage::disk('public')->url($relativePath);
     }
+
+    public function deleteOrphansOlderThan(int $hours): int
+    {
+        $cutoff = now()->subHours(max(1, $hours))->getTimestamp();
+        $deleted = 0;
+
+        foreach (['blog-featured/0', 'blog-inline-temp/0'] as $folder) {
+            foreach (Storage::disk('public')->files($folder) as $file) {
+                $modified = Storage::disk('public')->lastModified($file);
+                if ($modified !== false && $modified < $cutoff) {
+                    $this->delete($file);
+                    $deleted++;
+                }
+            }
+        }
+
+        return $deleted;
+    }
 }

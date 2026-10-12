@@ -48,6 +48,7 @@ class PortfolioController extends Controller
         $categoryIds = $project->categories->pluck('id');
         $related = Project::query()
             ->where('id', '!=', $project->id)
+            ->when($project->isInServiceArea(), fn ($query) => $query->inServiceArea())
             ->when($categoryIds->isNotEmpty(), function ($query) use ($categoryIds) {
                 $query->whereHas(
                     'categories',
@@ -65,6 +66,7 @@ class PortfolioController extends Controller
         if ($related->isEmpty()) {
             $related = Project::query()
                 ->where('id', '!=', $project->id)
+                ->when($project->isInServiceArea(), fn ($query) => $query->inServiceArea())
                 ->with([
                     'photos' => fn ($q) => $q->orderBy('sort_order'),
                     'categories',

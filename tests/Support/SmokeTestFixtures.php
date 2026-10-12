@@ -13,7 +13,10 @@ use App\Models\ClientProjectQuotation;
 use App\Models\FenceQuotation;
 use App\Models\Helper;
 use App\Models\Material;
+use App\Models\Offcut;
 use App\Models\PavingQuotation;
+use App\Models\RoomAreaProject;
+use App\Models\RoomAreaRoom;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\StairsMaterialType;
@@ -53,6 +56,8 @@ final class SmokeTestFixtures
             'ai_instruction' => $this->aiInstructionKey(),
             'ai_generated_image' => $this->aiGeneratedImage()->id,
             'stairs_material_type' => $this->stairsMaterialType()->id,
+            'offcut' => $this->offcut()->id,
+            'room_area_room' => $this->roomAreaRoom()->id,
             'format' => 'webp',
             'key' => 'luxury_vinyl_flush',
             'sessionId' => 'smoke-test-session',
@@ -124,6 +129,10 @@ final class SmokeTestFixtures
 
     public function slugForRoute(Route $route): string
     {
+        if ($route->getName() === 'service-areas.show') {
+            return 'carleton-place';
+        }
+
         if ($route->getName() === 'portfolio.show') {
             return $this->portfolioProject()->slug;
         }
@@ -275,6 +284,60 @@ final class SmokeTestFixtures
         return $image ??= AiGeneratedImage::query()->create([
             'mode' => AiGeneratedImage::MODE_CREATE,
             'prompt' => 'Smoke test image',
+        ]);
+    }
+
+    public function offcut(): Offcut
+    {
+        static $offcut;
+
+        return $offcut ??= Offcut::query()->create([
+            'material_key' => '2x4',
+            'thickness_in' => 1.5,
+            'length_in' => 36,
+            'qty' => 1,
+            'notes' => 'Smoke leftover',
+        ]);
+    }
+
+    public function roomAreaRoom(): RoomAreaRoom
+    {
+        static $room;
+
+        if ($room) {
+            return $room;
+        }
+
+        $layout = RoomAreaProject::query()->create([
+            'name' => 'Smoke Room Area',
+            'client_project_id' => $this->clientProject()->id,
+            'scale_pixels_per_foot' => 10,
+        ]);
+
+        return $room = RoomAreaRoom::query()->create([
+            'room_area_project_id' => $layout->id,
+            'name' => 'Smoke living room',
+            'scale_pixels_per_foot' => 10,
+            'area_sqft' => 96,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'v' => 3,
+                'groups' => [[
+                    'id' => 'g1',
+                    'color' => '#024768',
+                    'polygons' => [[
+                        'id' => 'p1',
+                        'name' => 'Living',
+                        'vertices' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 120, 'y' => 0],
+                            ['x' => 120, 'y' => 80],
+                            ['x' => 0, 'y' => 80],
+                        ],
+                    ]],
+                ]],
+                'objects' => [],
+            ],
         ]);
     }
 

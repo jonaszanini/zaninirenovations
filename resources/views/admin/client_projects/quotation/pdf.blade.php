@@ -215,6 +215,7 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: #024768;
+      page-break-after: avoid;
     }
     .quote-work-description-body {
       margin: 0;
@@ -244,6 +245,7 @@
       color: #024768;
       font-weight: 700;
       line-height: 1.3;
+      page-break-after: avoid;
     }
     .quote-work-description-body--rich h1 { font-size: 13pt; }
     .quote-work-description-body--rich h2 { font-size: 12pt; }
@@ -262,6 +264,38 @@
       border: 1pt solid #d8dee4;
       padding: 3pt 5pt;
       vertical-align: top;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols,
+    .quote-work-description-body--rich table.br-pdf-scope-cols td {
+      border: none;
+      padding: 0;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols {
+      page-break-inside: auto;
+      break-inside: auto;
+      margin: 0;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols tr {
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols td {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols p,
+    .quote-work-description-body--rich table.br-pdf-scope-cols li {
+      margin: 0;
+      line-height: 1.2;
+    }
+    .quote-work-description-body--rich table.br-pdf-scope-cols ul {
+      margin: 0 0 3pt 11pt;
+      padding: 0;
+      line-height: 1.2;
+    }
+    .quote-work-description-body--rich .br-pdf-scope-group {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     /* Table wrapper: DomPDF ignores page-break-inside on divs. */
@@ -291,6 +325,7 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: #92400e;
+      page-break-after: avoid;
     }
     .quote-material-selection-table {
       width: 100%;
@@ -330,6 +365,7 @@
       font-size: 10.5pt;
       font-weight: 700;
       color: #024768;
+      page-break-after: avoid;
     }
     .quote-payment-schedule ul {
       margin: 0;
@@ -363,18 +399,34 @@
       line-height: 1.45;
     }
 
-    /* Items table — keep Description/Amount + totals on one page when they fit;
-       DomPDF still splits only if the table is taller than a full page. */
+    /* Items table — allow the price table to start under the scope and
+       continue on the next page. Forcing page-break-inside:avoid on the
+       whole table made DomPDF push it (and sometimes the scope) to page 2
+       whenever the remaining page-1 space was shorter than the table. */
     .items {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 12pt;
-      page-break-inside: avoid;
-      break-inside: avoid;
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    .items thead {
+      display: table-header-group;
     }
     .items tr {
       page-break-inside: avoid;
       break-inside: avoid;
+    }
+    .items tbody tr.items-heading {
+      page-break-after: avoid;
+    }
+    .items tbody tr.items-last {
+      page-break-after: avoid;
+    }
+    .items tbody tr.items-totals {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
     }
     .items th, .items td {
       border: 1pt solid #d8dee4;
@@ -404,10 +456,6 @@
     .items td.hst {
       color: #4b5563;
     }
-    .items tfoot td.hst {
-      color: #4b5563;
-      font-weight: 400;
-    }
     .items tbody tr:nth-child(even) td {
       background: #f9fafb;
     }
@@ -428,23 +476,23 @@
       font-style: italic;
       margin-top: 2pt;
     }
-    .items tfoot td {
+    .items tbody tr.items-totals td {
       background: #ffffff;
       border: 0 none transparent;
       border-top: 1pt solid #d8dee4;
       font-size: 11pt;
       padding: 4pt 9pt;
     }
-    .items tfoot td.totals-label {
+    .items tbody tr.items-totals td.totals-label {
       text-align: right;
       color: #4b5563;
       font-weight: 400;
     }
-    .items tfoot td.amount {
+    .items tbody tr.items-totals td.amount {
       font-weight: 700;
       color: #1f2937;
     }
-    .items tfoot tr.grand td {
+    .items tbody tr.items-totals.grand td {
       border-top: 2pt solid #024768;
       font-size: 13pt;
       font-weight: 700;
@@ -473,6 +521,19 @@
     .closing .signoff {
       margin-top: 14pt;
     }
+    .quote-accept-cta {
+      margin: 14pt 0 12pt;
+    }
+    .quote-accept-cta a {
+      display: inline-block;
+      background: #024768;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 11pt;
+      text-decoration: none;
+      padding: 8pt 14pt;
+      border-radius: 4pt;
+    }
 
     .pdf-photos-section {
       margin: 16pt 0 18pt;
@@ -483,6 +544,7 @@
       font-weight: 700;
       color: #024768;
       margin: 0 0 6pt;
+      page-break-after: avoid;
     }
     .pdf-photos-intro {
       font-size: 10pt;
@@ -697,11 +759,11 @@
     <tbody>
       @foreach ($items as $row)
         @if (!empty($row['is_heading']))
-          <tr class="items-heading">
+          <tr class="items-heading{{ $loop->last ? ' items-last' : '' }}">
             <td colspan="3">{{ $row['description'] }}</td>
           </tr>
         @else
-        <tr class="{{ ! empty($row['is_standalone']) ? 'items-standalone' : '' }}">
+        <tr class="{{ trim((! empty($row['is_standalone']) ? 'items-standalone ' : '').($loop->last ? 'items-last' : '')) }}">
           @php
             $desc = e($row['description']);
             $note = 'Note: Material price is subject to change depending on store price at the time of purchase.';
@@ -720,21 +782,19 @@
         </tr>
         @endif
       @endforeach
-    </tbody>
-    <tfoot>
-      <tr>
+      <tr class="items-totals">
         <td class="totals-label" colspan="2">Subtotal (before HST)</td>
         <td class="amount">{{ $fmt($subtotal) }}</td>
       </tr>
-      <tr>
+      <tr class="items-totals">
         <td class="totals-label" colspan="2">HST (13% on lines marked 13%)</td>
         <td class="amount">{{ $fmt($hst) }}</td>
       </tr>
-      <tr class="grand">
+      <tr class="items-totals grand">
         <td class="totals-label" colspan="2">Total with HST</td>
         <td class="amount">{{ $fmt($grand) }}</td>
       </tr>
-    </tfoot>
+    </tbody>
   </table>
   @if ($quotation->hasSubtotalOverrideActive())
     <p style="font-size:9.5pt;color:#4b5563;margin:8pt 0 0;">
@@ -822,13 +882,18 @@
   <div class="closing">
     <ul>
       <li>Prices are firm for 10 days.</li>
-      <li>Zanini Renovations carries a liability insurance.</li>
-      <li>Warrantee on workmanship: 1 year.</li>
-      <li>Warrantee on workmanship: damages caused by external forces (&ldquo;Act of God&rdquo;) such as weather are not covered under warrantee.</li>
+      <li>Zanini Renovations is fully insured.</li>
+      <li>Warranty on workmanship: 1 year.</li>
+      <li>Warranty on workmanship: damages caused by external forces (&ldquo;Act of God&rdquo;) such as weather are not covered under warranty.</li>
       <li>If you have any questions, please do not hesitate to call.</li>
     </ul>
 
     <p>We trust this quote meets with your approval and we are favoured with your order.</p>
+
+    @php $acceptUrl = $acceptUrl ?? $quotation->signedAcceptUrl(); @endphp
+    <p class="quote-accept-cta">
+      <a href="{{ $acceptUrl }}">Accept this quote</a>
+    </p>
 
     <div class="signoff">
       <p>Best regards,</p>

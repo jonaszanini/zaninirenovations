@@ -2,6 +2,22 @@
 
 @section('heading', 'Edit project')
 
+@push('head')
+<style>
+/* Edit project: two-column layout on desktop */
+.cp-edit-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.cp-edit-form-grid > .admin-form-group { margin-bottom: 14px; }
+.cp-edit-form-grid > .cp-edit-form-full { grid-column: 1 / -1; }
+@media (max-width: 700px) {
+  .cp-edit-form-grid { grid-template-columns: 1fr; }
+}
+</style>
+@endpush
+
 @section('content')
   <div class="cp-edit-project-layout">
     <div class="admin-card admin-card--narrow cp-edit-project-form-card">
@@ -9,40 +25,43 @@
         @csrf
         @method('PUT')
 
-      <div class="admin-form-group">
-        <label for="cp-name">Project name <span class="cp-required">*</span></label>
-        <input class="admin-input" type="text" id="cp-name" name="name" value="{{ old('name', $project->name) }}" required maxlength="255"
-               @class(['admin-input', 'is-invalid' => $errors->has('name')])>
-        @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
+      <div class="cp-edit-form-grid">
+        <div class="admin-form-group">
+          <label for="cp-name">Project name <span class="cp-required">*</span></label>
+          <input class="admin-input" type="text" id="cp-name" name="name" value="{{ old('name', $project->name) }}" required maxlength="255"
+                 @class(['admin-input', 'is-invalid' => $errors->has('name')])>
+          @error('name') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
 
-      <div class="admin-form-group">
-        <label for="cp-contacted-via">Contact via <span class="cp-required">*</span></label>
-        <select id="cp-contacted-via" name="contacted_via" required @class(['admin-input', 'is-invalid' => $errors->has('contacted_via')])>
-          @if (old('contacted_via', $project->contacted_via) === null || old('contacted_via', $project->contacted_via) === '')
-            <option value="" disabled selected>Select…</option>
-          @endif
-          @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
-            <option value="{{ $value }}" @selected(old('contacted_via', $project->contacted_via) === $value)>{{ $label }}</option>
-          @endforeach
-        </select>
-        @error('contacted_via') <p class="admin-form-error">{{ $message }}</p> @enderror
-      </div>
+        <div class="admin-form-group">
+          <label for="cp-contacted-via">Contact via <span class="cp-required">*</span></label>
+          <select id="cp-contacted-via" name="contacted_via" required @class(['admin-input', 'is-invalid' => $errors->has('contacted_via')])>
+            @if (old('contacted_via', $project->contacted_via) === null || old('contacted_via', $project->contacted_via) === '')
+              <option value="" disabled selected>Select…</option>
+            @endif
+            @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
+              <option value="{{ $value }}" @selected(old('contacted_via', $project->contacted_via) === $value)>{{ $label }}</option>
+            @endforeach
+          </select>
+          @error('contacted_via') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
 
-      <div class="admin-form-group">
-        <label for="cp-conversation-on" class="cp-label-with-hint">
-          Conversation on
-          @include('admin.client_projects._cp_field_hint', [
-            'text' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
-          ])
-        </label>
-        <select id="cp-conversation-on" name="conversation_on" @class(['admin-input', 'is-invalid' => $errors->has('conversation_on')])>
-          <option value="" @selected(old('conversation_on', $project->conversation_on) === null || old('conversation_on', $project->conversation_on) === '')>— Not set —</option>
-          @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
-            <option value="{{ $value }}" @selected(old('conversation_on', $project->conversation_on) === $value)>{{ $label }}</option>
-          @endforeach
-        </select>
-        @error('conversation_on') <p class="admin-form-error">{{ $message }}</p> @enderror
+        <div class="admin-form-group">
+          <span class="admin-label-with-tip cp-label-with-hint">
+            <label for="cp-conversation-on">Conversation on</label>
+            @include('admin.client_projects._cp_field_hint', [
+              'tipText' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
+              'tipLabel' => 'Conversation on',
+            ])
+          </span>
+          <select id="cp-conversation-on" name="conversation_on" @class(['admin-input', 'is-invalid' => $errors->has('conversation_on')])>
+            <option value="" @selected(old('conversation_on', $project->conversation_on) === null || old('conversation_on', $project->conversation_on) === '')>— Not set —</option>
+            @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
+              <option value="{{ $value }}" @selected(old('conversation_on', $project->conversation_on) === $value)>{{ $label }}</option>
+            @endforeach
+          </select>
+          @error('conversation_on') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
       </div>
 
       <div class="admin-form-section">
@@ -59,16 +78,25 @@
 
         @include('admin.client_projects._client_directory_sync', ['project' => $project, 'clientFieldsLocked' => $clientFieldsLocked])
 
-        <div class="admin-form-group">
-          <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
-          {{-- No HTML required: directory client_id is enough (server hydrates name). --}}
-          <input class="admin-input" type="text" id="cp-client-name" name="client_name" value="{{ old('client_name', $project->client_name) }}" maxlength="255"
-                 data-cp-client-name
-                 @class(['admin-input', 'is-invalid' => $errors->has('client_name')]) @disabled($clientFieldsLocked)>
-          @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
-        </div>
-
-        <div class="admin-form-grid-2">
+        <div class="cp-edit-form-grid">
+          <div class="admin-form-group">
+            <label for="cp-client-name">Client name <span class="cp-required">*</span></label>
+            <input class="admin-input" type="text" id="cp-client-name" name="client_name" value="{{ old('client_name', $project->client_name) }}" maxlength="255"
+                   data-cp-client-name
+                   @class(['admin-input', 'is-invalid' => $errors->has('client_name')]) @disabled($clientFieldsLocked)>
+            @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+          <div class="admin-form-group">
+            <span class="admin-label-with-tip">
+              <label for="cp-client-email-secondary">Secondary email</label>
+              <x-admin.info-tip label="Secondary email">Optional — CC'd on every client email.</x-admin.info-tip>
+            </span>
+            <input class="admin-input" type="email" id="cp-client-email-secondary" name="client_email_secondary"
+                   value="{{ old('client_email_secondary', $project->client_email_secondary) }}" maxlength="255"
+                   placeholder="spouse@example.com"
+                   @class(['admin-input', 'is-invalid' => $errors->has('client_email_secondary')]) @disabled($clientFieldsLocked)>
+            @error('client_email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
           <div class="admin-form-group">
             <label for="cp-client-email">Email</label>
             <input class="admin-input" type="email" id="cp-client-email" name="client_email" value="{{ old('client_email', $project->client_email) }}" maxlength="255"
@@ -91,15 +119,6 @@
           </div>
         </div>
 
-        <div class="admin-form-group">
-          <label for="cp-client-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(optional — CC'd on every client email)</small></label>
-          <input class="admin-input" type="email" id="cp-client-email-secondary" name="client_email_secondary"
-                 value="{{ old('client_email_secondary', $project->client_email_secondary) }}" maxlength="255"
-                 placeholder="spouse@example.com"
-                 @class(['admin-input', 'is-invalid' => $errors->has('client_email_secondary')]) @disabled($clientFieldsLocked)>
-          @error('client_email_secondary') <p class="admin-form-error">{{ $message }}</p> @enderror
-        </div>
-
         @include('admin.partials.places_address_field', [
           'inputId' => 'cp-client-address',
           'addressName' => 'client_address',
@@ -119,7 +138,8 @@
           <h3 style="font-size:1rem;" class="cp-label-with-hint">
             Invoice billing <span class="admin-form-help cp-inline-help">(optional)</span>
             @include('admin.client_projects._cp_field_hint', [
-              'text' => 'When the payer is a company or a different legal entity, enter the name and address that should appear in the Bill to block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.',
+              'tipText' => 'When the payer is a company or a different legal entity, enter the name and address that should appear in the Bill to block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.',
+              'tipLabel' => 'Invoice billing',
             ])
           </h3>
           <div class="admin-form-group">
@@ -131,22 +151,26 @@
             @error('invoice_billing_name') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
-            <label for="cp-invoice-billing-address">Billing address</label>
+            <span class="admin-label-with-tip">
+              <label for="cp-invoice-billing-address">Billing address</label>
+              <x-admin.info-tip label="Billing address">Leave blank to use the client address above on PDFs.</x-admin.info-tip>
+            </span>
               <textarea id="cp-invoice-billing-address" name="invoice_billing_address" rows="3" maxlength="2000"
                         class="admin-input" placeholder="Registered office or mailing address for AP"
                         @disabled($clientFieldsLocked)>{{ old('invoice_billing_address', $project->invoice_billing_address) }}</textarea>
             @error('invoice_billing_address') <p class="admin-form-error">{{ $message }}</p> @enderror
-            <p class="admin-form-help">Leave blank to use the client address above on PDFs.</p>
           </div>
         </div>
       </div>
 
       @php
         $cpEditVisitDateVal = old('visit_date', optional($project->visit_date)?->toDateString());
+        $cpEditVisitTimeVal = old('visit_time', $project->visitTimeForInput());
         $cpEditVisitExpandOpen = (bool) old('visit_required', $project->visit_required)
           || (bool) old('visit_done', $project->visit_done)
           || filled($cpEditVisitDateVal)
-          || $errors->has('visit_date');
+          || $errors->has('visit_date')
+          || $errors->has('visit_time');
       @endphp
       <div class="admin-form-section cp-visit-section">
         @include('admin.client_projects._visit_required_toggle', [
@@ -155,6 +179,8 @@
           'expandableId' => 'cp-edit-visit-expandable',
           'visitDateId' => 'cp-edit-visit-date',
           'visitDateValue' => $cpEditVisitDateVal,
+          'visitTimeId' => 'cp-edit-visit-time',
+          'visitTimeValue' => $cpEditVisitTimeVal,
           'expandOpen' => $cpEditVisitExpandOpen,
           'showVisitDone' => true,
           'visitDoneId' => 'cp-edit-visit-done',
@@ -213,8 +239,9 @@
                  class="admin-input cp-money-input"
                  inputmode="decimal"
                  autocomplete="off"
+                
                  placeholder="0.00"
-                 value="{{ old('hourly_rate', $project->hourly_rate ? number_format((float) $project->hourly_rate, 2, '.', '') : '') }}">
+                 value="{{ old('hourly_rate', $project->hourly_rate ? number_format((float) $project->hourly_rate, 2, '.', '') : '') }}" data-cp-money-entry="direct">
           @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
       </div>
@@ -226,14 +253,14 @@
       </div>
 
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary"><i class="fa fa-check"></i> Save changes</button>
+        <button type="submit" id="cp-btn-save" class="admin-btn admin-btn--primary" data-hotkey-save><i class="fa fa-check"></i> Save changes</button>
         <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Project form actions">
-      <button type="submit" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" id="cp-btn-save-aside" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-check"></i> Save changes
       </button>
       <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
@@ -289,6 +316,7 @@
       if (!form) return;
       var visitCb = document.getElementById('cp-edit-visit-required');
       var visitDate = document.getElementById('cp-edit-visit-date');
+      var visitTime = document.getElementById('cp-edit-visit-time');
       var visitDoneCb = document.getElementById('cp-edit-visit-done');
       var visitExpand = document.getElementById('cp-edit-visit-expandable');
 
@@ -307,10 +335,16 @@
         var done = visitDoneCb ? visitDoneCb.checked : false;
         if (!required && !done) {
           visitDate.value = '';
+          if (visitTime) visitTime.value = '';
         }
         visitDate.readOnly = !!done;
         visitDate.disabled = !done && !required;
         visitDate.classList.toggle('cp-visit-date-input--locked', !!done || !required);
+        if (visitTime) {
+          visitTime.readOnly = !!done;
+          visitTime.disabled = !done && !required;
+          visitTime.classList.toggle('cp-visit-time-input--locked', !!done || !required);
+        }
         syncEditVisitExpandable();
       }
 
@@ -325,6 +359,11 @@
           visitDate.disabled = false;
           visitDate.readOnly = false;
           visitDate.value = '';
+          if (visitTime) {
+            visitTime.disabled = false;
+            visitTime.readOnly = false;
+            visitTime.value = '';
+          }
         }
       });
     })();

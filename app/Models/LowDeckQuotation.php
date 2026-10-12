@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class LowDeckQuotation extends Model
 {
     use \App\Models\Concerns\HasClientEmailMessage;
+    use \App\Models\Concerns\HasPdfFoldVersion;
+    use \App\Models\Concerns\HasReplyToAcceptChoice;
 
     public const HST_RATE = 0.13;
 
@@ -27,6 +29,7 @@ class LowDeckQuotation extends Model
         'client_project_id',
         'quote_number',
         'client_name',
+        'is_draft',
         'work_description',
         'payment_installments',
         'payment_percentages',
@@ -56,6 +59,7 @@ class LowDeckQuotation extends Model
     ];
 
     protected $casts = [
+        'is_draft' => 'boolean',
         'width_ft' => 'decimal:2',
         'length_ft' => 'decimal:2',
         'joist_spacing_in' => 'integer',

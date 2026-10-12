@@ -1,5 +1,12 @@
 {
+  "scripts": {
+    "dark-mode:audit": "node dark-mode-audit.js",
+    "screenshots": "node screenshot-all.js"
+  },
   "dependencies": {
-    "puppeteer": "^24.43.1"
+    "puppeteer": "24.43.1"
+  },
+  "devDependencies": {
+    "konva": "9.3.22"
   }
 }

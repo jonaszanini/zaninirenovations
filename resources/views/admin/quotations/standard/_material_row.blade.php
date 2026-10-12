@@ -27,6 +27,10 @@
   $imageUrl = $sourceMode === 'electrical' ? '' : trim((string) ($row['image_url'] ?? ''));
 @endphp
 <div class="sq-material-card sq-material-row{{ $sourceMode === 'electrical' ? ' sq-material-row--electrical' : '' }}">
+  <input type="hidden" name="{{ $namePrefix }}[assembly_line_id]" value="{{ $row['assembly_line_id'] ?? '' }}">
+  <input type="hidden" name="{{ $namePrefix }}[assembly_layout_id]" value="{{ $row['assembly_layout_id'] ?? '' }}">
+  <input type="hidden" name="{{ $namePrefix }}[assembly_covered_layouts]" value="{{ $row['assembly_covered_layouts'] ?? '' }}">
+  <input type="hidden" name="{{ $namePrefix }}[assembly_quoted_at]" value="{{ $row['assembly_quoted_at'] ?? '' }}">
   <div class="sq-mat-fields">
     <div class="sq-mat-toolbar">
       <div class="sq-mat-toolbar-start">
@@ -87,15 +91,19 @@
         </div>
         <div class="sq-mat-field sq-mat-field--description">
           <label>Description</label>
-          <input type="text" name="{{ $namePrefix }}[description]" class="admin-input sq-mat-desc"
+          <input type="text" name="{{ $namePrefix }}[description]" class="admin-input sq-mat-desc @error($oldDot.'.description') is-invalid @enderror"
                  maxlength="500" placeholder="{{ $sourceMode === 'electrical' ? \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION : 'Material or item' }}"
-                 value="{{ $descriptionValue }}">
+                 value="{{ $descriptionValue }}"
+                 @error($oldDot.'.description') aria-invalid="true" aria-describedby="{{ $catalogId }}-desc-error" @enderror>
+          @error($oldDot.'.description')
+            <p class="admin-form-error" id="{{ $catalogId }}-desc-error">{{ $message }}</p>
+          @enderror
         </div>
         <div class="sq-mat-field sq-mat-field--unit">
           <label>Unit price ($)</label>
           <input type="text" inputmode="decimal" autocomplete="off" name="{{ $namePrefix }}[unit_price]"
                  class="admin-input cp-money-input sq-mat-unit" placeholder="0.00"
-                 value="{{ isset($row['unit_price']) && $row['unit_price'] !== '' ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}">
+                 value="{{ isset($row['unit_price']) && $row['unit_price'] !== '' ? number_format((float) $row['unit_price'], 2, '.', '') : '' }}" data-cp-money-entry="direct">
           <input type="hidden" name="{{ $namePrefix }}[delivery_cad]" class="sq-mat-delivery"
                  value="{{ isset($row['delivery_cad']) && $row['delivery_cad'] !== '' ? number_format((float) $row['delivery_cad'], 2, '.', '') : '0.00' }}">
         </div>

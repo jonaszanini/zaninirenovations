@@ -6,10 +6,31 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Support\PlainTextLimiter;
 use Illuminate\Support\Str;
 
 class Project extends Model
 {
+    /** Short public Town labels (no ward or neighbourhood). */
+    public const APPROVED_TOWNS = [
+        'Almonte',
+        'Alta Vista',
+        'Ashton',
+        'Barrhaven',
+        'Carleton Place',
+        'Gatineau, QC',
+        'Kanata',
+        'Nepean',
+        'Perth',
+        'Riverside South',
+        'South Keys',
+        'Stittsville',
+        'Toronto',
+        'West Carleton',
+    ];
+
+    public const OUT_OF_MARKET_TOWN = 'Toronto';
+
     protected $fillable = [
         'title',
         'slug',
@@ -17,6 +38,7 @@ class Project extends Model
         'meta_title',
         'meta_description',
         'completed_on',
+        'town',
     ];
 
     protected $casts = [
@@ -120,6 +142,44 @@ class Project extends Model
         return route('portfolio.show', ['slug' => $this->slug]);
     }
 
+    public function townLabel(): string
+    {
+        return trim((string) $this->town);
+    }
+
+    public function isOutOfMarket(): bool
+    {
+        return strcasecmp($this->townLabel(), self::OUT_OF_MARKET_TOWN) === 0;
+    }
+
+    public function isInServiceArea(): bool
+    {
+        return ! $this->isOutOfMarket();
+    }
+
+    /**
+     * In-market portfolio examples. Toronto jobs are never local examples.
+     */
+    public function scopeInServiceArea($query)
+    {
+        return $query->where(function ($inner) {
+            $inner->whereNull('town')
+                ->orWhere('town', '')
+                ->orWhereRaw('LOWER(town) <> ?', [strtolower(self::OUT_OF_MARKET_TOWN)]);
+        });
+    }
+
+    /**
+     * Projects in a named town that may be linked from local / "near X" context.
+     * Toronto always yields an empty set.
+     */
+    public function scopeNearTown($query, string $town)
+    {
+        $town = trim($town);
+
+        return $query->inServiceArea()->where('town', $town);
+    }
+
     public function seoTitle(): string
     {
         $custom = trim((string) $this->meta_title);
@@ -136,10 +196,10 @@ class Project extends Model
     {
         $custom = trim((string) $this->meta_description);
         if ($custom !== '') {
-            return Str::limit($custom, 300, '');
+            return PlainTextLimiter::trimToLength($custom, 155);
         }
 
-        $plain = $this->plainDescription(160);
+        $plain = $this->plainDescription(155);
         if ($plain !== '') {
             return $plain;
         }
@@ -156,7 +216,7 @@ class Project extends Model
     {
         $plain = trim(preg_replace('/\s+/', ' ', strip_tags((string) $this->description)) ?? '');
 
-        return Str::limit($plain, $limit, '');
+        return PlainTextLimiter::trimToLength($plain, $limit);
     }
 
     public function coverImageUrl(): ?string

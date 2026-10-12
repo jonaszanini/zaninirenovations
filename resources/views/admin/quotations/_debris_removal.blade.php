@@ -14,7 +14,10 @@
           || old('include_debris_removal') === 1
           || old('include_debris_removal') === true;
   } elseif ($isEdit) {
-      $includeDebrisChoice = (bool) ($quotation->include_debris_removal ?? false);
+      $rawDebris = $quotation->getRawOriginal('include_debris_removal');
+      if ($rawDebris !== null && $rawDebris !== '') {
+          $includeDebrisChoice = (int) $rawDebris === 1;
+      }
   }
 
   $debrisAmount = old('debris_removal_amount');
@@ -47,18 +50,24 @@
 
   <div class="q-debris-card__body" data-cp-debris-body @if ($includeDebrisChoice !== true) hidden @endif>
     <div class="admin-form-group q-debris-amount-group">
-      <label for="q-debris-amount">Amount to charge <span class="cp-required">*</span></label>
+      <span class="admin-label-with-tip">
+        <label for="q-debris-amount">Amount to charge</label>
+        <span class="admin-label-with-tip__end">
+          <span class="cp-required">*</span>
+          <x-admin.info-tip label="Amount to charge">Incl. HST — folded into Labour on the client PDF (not shown as its own line).</x-admin.info-tip>
+        </span>
+      </span>
       <input type="text"
              id="q-debris-amount"
              name="debris_removal_amount"
              @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('debris_removal_amount')])
              inputmode="decimal"
              autocomplete="off"
+            
              placeholder="0.00"
              value="{{ $debrisAmount }}"
              data-cp-debris-amount
-             @if ($includeDebrisChoice === true) required @endif>
-      <p class="admin-form-help">Incl. HST — listed as its own line on the client PDF.</p>
+             @if ($includeDebrisChoice === true) required @endif data-cp-money-entry="direct">
       @error('debris_removal_amount')
         <p class="admin-form-error">{{ $message }}</p>
       @enderror
@@ -87,8 +96,5 @@
   .q-debris-amount-group { margin-bottom: 0; }
   .q-debris-amount-group .cp-money-input {
     max-width: 200px;
-  }
-  .q-expense-pair .q-debris-amount-group .cp-money-input {
-    max-width: none;
   }
 </style>

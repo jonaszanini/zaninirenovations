@@ -34,6 +34,7 @@ class RunDailyAutomations extends Command
         'client-projects:send-past-due-invoice-reminders',
         'client-projects:notify-commencement-eve',
         'client-projects:start-due-today',
+        'blog:cleanup-orphans',
     ];
 
     public function handle(): int

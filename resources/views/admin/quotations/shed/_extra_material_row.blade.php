@@ -51,9 +51,9 @@
   </div>
   <div class="admin-form-group">
     <label class="visually-hidden">Unit price</label>
-    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" data-sh-extra-price
+    <input type="text" inputmode="decimal" autocomplete="off" data-sh-extra-price
            class="admin-input cp-money-input sh-preview" name="extra_materials[{{ $i }}][unit_price]"
-           placeholder="0.00" value="{{ $price }}">
+           placeholder="0.00" value="{{ $price }}" data-cp-money-entry="direct">
     <input type="hidden" name="extra_materials[{{ $i }}][delivery_cad]" data-sh-extra-delivery
            value="{{ isset($row['delivery_cad']) ? number_format((float) $row['delivery_cad'], 2, '.', '') : '0.00' }}">
   </div>

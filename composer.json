@@ -7,6 +7,7 @@
     "require": {
         "php": "^8.0",
         "barryvdh/laravel-dompdf": "2.0",
+        "ezyang/htmlpurifier": "^4.17",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^9.0",
         "laravel/sanctum": "^3.0",
@@ -41,9 +42,11 @@
     },
     "scripts": {
         "test:blade": "php artisan test tests/Unit/Views/BladeSyntaxTest.php",
+        "test:dark-theme": "php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php",
         "test:smoke": "php artisan test tests/Feature/Smoke",
         "test:pre-push": [
             "@test:blade",
+            "@test:dark-theme",
             "@test:smoke"
         ],
         "hooks:install": "@php scripts/install-git-hooks.php",

@@ -8,7 +8,7 @@
     $name            Hidden input name (omit if the value should not post)
     $value           Selected id
     $label           Visible field label (omit or empty to hide)
-    $labelHint       Optional hint array/text for _cp_field_hint
+    $labelHint       Optional hint (string or [tipText|tipHtml, tipLabel]) for _cp_field_hint
     $placeholder
     $ariaLabel
     $required        bool
@@ -31,6 +31,7 @@
     $maxOptions
     $listParent      "body" to portal the list (tables / overflow-clipped parents)
     $trailing         Optional HTML after the input (e.g. a manage-clients button)
+    $homeDepotPull   bool — offer “Pull SKU from Home Depot” for catalog pickers
 --}}
 @php
   $id = $id ?? 'admin-ss-'.substr(uniqid(), -6);
@@ -54,6 +55,9 @@
   $metaKeys = $metaKeys ?? ['email', 'phone_display', 'sku', 'price_label'];
   $attrs = $attrs ?? [];
   $trailing = $trailing ?? '';
+  $homeDepotPull = isset($homeDepotPull)
+    ? ! empty($homeDepotPull)
+    : (! empty($optionsSource) && str_contains((string) $optionsSource, 'catalog'));
 @endphp
 
 <div class="{{ $hideLabel ? '' : 'admin-form-group' }} {{ $wrapperClass }}"
@@ -72,18 +76,30 @@
      @if (! empty($emptyQueryMessage)) data-empty-query-message="{{ $emptyQueryMessage }}" @endif
      @if (! empty($maxOptions)) data-max-options="{{ (int) $maxOptions }}" @endif
      @if (! empty($listParent)) data-list-parent="{{ $listParent }}" @endif
+     @if ($homeDepotPull) data-hd-import-url="{{ route('admin.materials.import-from-home-depot') }}" @endif
      @if (is_array($selectedOption) && ($selectedOption['id'] ?? null)) data-initial='@json($selectedOption)' @endif
      @foreach ($attrs as $attrName => $attrValue)
        {{ $attrName }}="{{ $attrValue }}"
      @endforeach
   >
   @unless ($hideLabel)
-    <label for="{{ $id }}-input" class="{{ ! empty($labelHint) ? 'cp-label-with-hint' : '' }}">
-      {{ $label }}
+    <span class="admin-label-with-tip{{ ! empty($labelHint) ? ' cp-label-with-hint' : '' }}">
+      <label for="{{ $id }}-input">{{ $label }}</label>
       @if (! empty($labelHint))
-        @include('admin.client_projects._cp_field_hint', is_array($labelHint) ? $labelHint : ['text' => $labelHint])
+        @php
+          $ssHint = is_array($labelHint) ? $labelHint : ['tipText' => $labelHint];
+          if (isset($ssHint['text']) && empty($ssHint['tipText'])) {
+              $ssHint['tipText'] = $ssHint['text'];
+          }
+          if (isset($ssHint['html']) && empty($ssHint['tipHtml'])) {
+              $ssHint['tipHtml'] = $ssHint['html'];
+          }
+          $ssHint['tipLabel'] = $ssHint['tipLabel'] ?? $label;
+          unset($ssHint['id'], $ssHint['label'], $ssHint['text'], $ssHint['html']);
+        @endphp
+        @include('admin.client_projects._cp_field_hint', $ssHint)
       @endif
-    </label>
+    </span>
   @endunless
 
   <input type="hidden"

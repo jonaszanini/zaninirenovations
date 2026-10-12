@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class BasementQuotation extends Model
 {
     use \App\Models\Concerns\HasClientEmailMessage;
+    use \App\Models\Concerns\HasPdfFoldVersion;
+    use \App\Models\Concerns\HasReplyToAcceptChoice;
 
     public const HST_RATE = 0.13;
 
@@ -182,17 +184,41 @@ class BasementQuotation extends Model
         return max(0, round((float) ($summary['labor_pre_hst'] ?? 0), 2));
     }
 
+    public function permitPreTaxAmountForProjectQuotation(): float
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
+        if (array_key_exists('permit_pre_hst', $summary)) {
+            return max(0, round((float) $summary['permit_pre_hst'], 2));
+        }
+
+        foreach ($calc['materials'] ?? [] as $row) {
+            if (! is_array($row) || ($row['key'] ?? '') !== 'building_permit') {
+                continue;
+            }
+
+            return max(0, round((float) ($row['amount'] ?? 0), 2));
+        }
+
+        return 0.0;
+    }
+
     public function materialsPreTaxAmountForProjectQuotation(): float
     {
         $calc = is_array($this->calculation) ? $this->calculation : [];
         $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
+        $materials = max(0, round((float) ($summary['materials_pre_hst'] ?? 0), 2));
+        if (! array_key_exists('permit_pre_hst', $summary)) {
+            $materials = max(0, round($materials - $this->permitPreTaxAmountForProjectQuotation(), 2));
+        }
 
-        return max(0, round((float) ($summary['materials_pre_hst'] ?? 0), 2));
+        return $materials;
     }
 
     public function includesMaterialCharge(): bool
     {
-        return $this->materialsPreTaxAmountForProjectQuotation() > 0;
+        return $this->materialsPreTaxAmountForProjectQuotation() > 0
+            || $this->permitPreTaxAmountForProjectQuotation() > 0;
     }
 
     public function summaryDescription(): string
@@ -215,40 +241,59 @@ class BasementQuotation extends Model
 
     public function scopeDescriptionForPdf(): string
     {
+        $html = $this->scopeHtmlForPdf();
+        $work = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage($this->work_description);
+        if ($work === null) {
+            return $html;
+        }
+        if (! \App\Support\QuotationWorkDescriptionHtml::isHtml($work)) {
+            return $html.'<p>'.nl2br(e($work), false).'</p>';
+        }
+
+        return $html.$work;
+    }
+
+    /**
+     * Grouped two-column scope block (DomPDF-safe table).
+     * Trades follow work sequence and flow left-to-right, row by row.
+     * Page breaks are allowed between rows, not inside a trade group.
+     */
+    protected function scopeHtmlForPdf(): string
+    {
         $inputs = is_array($this->inputs) ? $this->inputs : [];
         $calc = is_array($this->calculation) ? $this->calculation : [];
         $scope = is_array($calc['scope'] ?? null) ? $calc['scope'] : [];
 
-        $lines = [];
+        $intro = [];
         $area = round((float) ($scope['area_sqft'] ?? $inputs['area_sqft'] ?? 0), 0);
         $height = round((float) ($scope['ceiling_height_ft'] ?? $inputs['ceiling_height_ft'] ?? 0), 2);
         $rooms = (int) ($inputs['room_count'] ?? 0);
 
-        $lines[] = 'Basement renovation'.($area > 0 ? ' — '.number_format($area, 0).' sq ft' : '');
+        $intro[] = 'Basement renovation'.($area > 0 ? ' — '.number_format($area, 0).' sq ft' : '');
         if ($height > 0) {
-            $lines[] = 'Ceiling height: '.$height.' ft';
+            $intro[] = 'Ceiling height: '.$height.' ft';
         }
         if ($rooms > 0) {
-            $lines[] = 'Finished rooms / zones: '.$rooms;
+            $intro[] = 'Finished rooms / zones: '.$rooms;
         }
         if (! empty($inputs['include_bathroom'])) {
             $type = ($inputs['bath_type'] ?? '') === 'half' ? 'Half bath' : 'Full bath';
-            $lines[] = 'Bathroom: '.$type;
+            $intro[] = 'Bathroom: '.$type;
+        }
+        $notes = trim((string) ($inputs['existing_notes'] ?? ''));
+        if ($notes !== '') {
+            $intro[] = 'Existing conditions: '.$notes;
         }
 
+        $groups = [];
         foreach (['electrical_lines' => 'Electrical', 'plumbing_lines' => 'Plumbing'] as $key => $heading) {
             $rows = AdditionalCostsService::normalizeRows($inputs[$key] ?? [], $heading.' work');
             foreach ($rows as $row) {
                 $label = trim((string) ($row['description'] ?? ''));
                 if ($label !== '') {
-                    $lines[] = '  • '.$heading.': '.$label;
+                    $groups[$heading][] = $label;
                 }
             }
-        }
-
-        $notes = trim((string) ($inputs['existing_notes'] ?? ''));
-        if ($notes !== '') {
-            $lines[] = 'Existing conditions: '.$notes;
         }
 
         foreach ($calc['labor'] ?? [] as $row) {
@@ -256,15 +301,65 @@ class BasementQuotation extends Model
                 continue;
             }
             $label = trim((string) ($row['label'] ?? ''));
-            if ($label !== '') {
-                $lines[] = '  • '.$label;
+            if ($label === '') {
+                continue;
             }
+            $section = (string) ($row['section'] ?? 'finishing');
+            $heading = BasementQuotationCalculator::SECTIONS[$section] ?? ucfirst(str_replace('_', ' ', $section));
+            $groups[$heading][] = $label;
         }
 
-        return \App\Support\QuotationWorkDescriptionHtml::combineAutoScopeWithWork(
-            $lines,
-            $this->work_description
-        );
+        if (! empty($inputs['include_building_permit'])) {
+            $groups['Final Details & Cleanup'][] = 'Building permit (optional, extra charge)';
+        }
+
+        $ordered = [];
+        foreach (BasementQuotationCalculator::SECTIONS as $heading) {
+            if (! empty($groups[$heading])) {
+                $ordered[$heading] = $groups[$heading];
+                unset($groups[$heading]);
+            }
+        }
+        foreach ($groups as $heading => $items) {
+            $ordered[$heading] = $items;
+        }
+        $groups = $ordered;
+
+        $introHtml = '';
+        foreach ($intro as $line) {
+            $introHtml .= '<p style="margin:0 0 2pt;line-height:1.25;">'.e($line).'</p>';
+        }
+
+        if ($groups === []) {
+            return $introHtml;
+        }
+
+        $blocks = [];
+        foreach ($groups as $heading => $items) {
+            $block = '<div class="br-pdf-scope-group" style="page-break-inside:avoid;break-inside:avoid;">';
+            $block .= '<p style="margin:0 0 1pt;font-weight:700;line-height:1.2;">'.e($heading).'</p>';
+            $block .= '<ul style="margin:0 0 3pt 11pt;padding:0;line-height:1.2;">';
+            foreach ($items as $item) {
+                $block .= '<li style="margin:0;padding:0;line-height:1.2;">'.e($item).'</li>';
+            }
+            $block .= '</ul></div>';
+            $blocks[] = $block;
+        }
+
+        // Consecutive pairs so reading order is work sequence across two columns.
+        // Breaks are allowed between rows; each group stays together.
+        $html = $introHtml;
+        $html .= '<table class="br-pdf-scope-cols" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:none;margin:0;border-collapse:collapse;page-break-inside:auto;">';
+        $count = count($blocks);
+        for ($i = 0; $i < $count; $i += 2) {
+            $html .= '<tr style="page-break-inside:auto;">';
+            $html .= '<td width="50%" valign="top" style="border:none;padding:0 8pt 2pt 0;vertical-align:top;page-break-inside:avoid;">'.($blocks[$i] ?? '').'</td>';
+            $html .= '<td width="50%" valign="top" style="border:none;padding:0 0 2pt 4pt;vertical-align:top;page-break-inside:avoid;">'.($blocks[$i + 1] ?? '').'</td>';
+            $html .= '</tr>';
+        }
+        $html .= '</table>';
+
+        return $html;
     }
 
     public static function generateNumber(): string

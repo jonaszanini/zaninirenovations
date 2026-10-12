@@ -89,16 +89,18 @@ class ShedQuotationPagesTest extends IntegrationTestCase
 
         $price = strpos($html, 'Price configuration');
         $context = strpos($html, 'Project Context');
-        $next = strpos($html, '>Next</button>');
+        $next = strpos($html, '→ Next');
         $live = strpos($html, 'Live breakdown');
+        $header = strpos($html, 'data-qh-header');
 
         $this->assertNotFalse($price);
         $this->assertNotFalse($context);
         $this->assertNotFalse($next);
         $this->assertNotFalse($live);
-        $this->assertLessThan($price, $context);
-        $this->assertLessThan($next, $context);
-        $this->assertLessThan($live, $next);
+        $this->assertNotFalse($header);
+        $this->assertLessThan($context, $header);
+        $this->assertLessThan($context, $next);
+        $this->assertLessThan($live, $context);
     }
 
     public function test_preview_returns_live_totals(): void
@@ -112,6 +114,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'shed_type' => 'gable',
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ])->assertOk()
             ->assertJsonPath('scope.area_sqft', 120)
             ->assertJsonPath('eta.scenarios.0.crew', 1);
@@ -134,6 +137,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ]);
 
         $quote = ShedQuotation::query()->where('client_name', 'Live Preview Client')->first();
@@ -147,6 +151,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'foundation' => 'skids',
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ])->assertOk()
             ->assertJsonPath('scope.area_sqft', 39);
 
@@ -174,6 +179,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ]);
 
         $quote = ShedQuotation::query()->where('client_name', 'Shed Test Client')->first();
@@ -202,6 +208,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
             'after_save_url' => '/admin/quotations/shed/price-configuration',
             'after_save_attach_return' => '1',
         ]);
@@ -232,6 +239,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
             'after_save_url' => 'https://evil.example/admin/quotations',
         ]);
 
@@ -250,7 +258,8 @@ class ShedQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.shed.create', ['project' => $project->id]))
             ->assertOk()
-            ->assertSee('Back to project');
+            ->assertSee($project->name)
+            ->assertSee('qh-crumb__project', false);
 
         $store = $this->post(route('admin.quotations.shed.store', ['project' => $project->id]), [
             'save_intent' => 'publish',
@@ -264,6 +273,7 @@ class ShedQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
             'link_client_project_id' => $project->id,
         ]);
 
@@ -274,6 +284,6 @@ class ShedQuotationPagesTest extends IntegrationTestCase
         $this->get(route('admin.quotations.shed.edit', [
             'shed_quotation' => $quote,
             'project' => $project->id,
-        ]))->assertOk()->assertSee('Back to project');
+        ]))->assertOk()->assertSee($project->name)->assertSee('qh-crumb__project', false);
     }
 }

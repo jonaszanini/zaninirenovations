@@ -1,0 +1,69 @@
+{
+    "version": 2,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "wainscoting",
+                "unit": "in",
+                "length": 300,
+                "height": 36,
+                "qty": 1,
+                "edge_banding": false
+            }
+        ],
+        "include_install": false,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 1228.25,
+            "materials_pre_hst": 313.9,
+            "subtotal_pre_hst": 1542.15,
+            "hst": 200.48,
+            "grand_total": 1742.63
+        },
+        "labor": [
+            {
+                "key": "cut",
+                "label": "Shop — cut / nest sheets",
+                "hours": 1.8,
+                "amount": 153
+            },
+            {
+                "key": "wainscot",
+                "label": "Wainscoting",
+                "hours": 12.65,
+                "amount": 1075.25
+            }
+        ],
+        "materials": [
+            {
+                "key": "sheet_1",
+                "label": "3/4\" cabinet-grade plywood 4×8",
+                "qty": 4,
+                "unit_price": 72,
+                "amount": 288
+            },
+            {
+                "key": "glue",
+                "label": "Wood glue, 16 oz",
+                "qty": 1,
+                "unit_price": 8.9,
+                "amount": 8.9
+            },
+            {
+                "key": "fastener",
+                "label": "1-1/4\" cabinet screws (box of 100)",
+                "qty": 2,
+                "unit_price": 8.5,
+                "amount": 17
+            }
+        ],
+        "scope_labels": [
+            "1× wainscoting 300\" × 36\""
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nWainscoting. Wainscoting, approx. 25 lin. ft × 36\" H. Unfinished. Includes supply and shop build.",
+        "preview_skipped": false
+    }
+}

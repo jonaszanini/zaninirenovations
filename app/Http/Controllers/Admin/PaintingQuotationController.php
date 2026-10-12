@@ -18,6 +18,8 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\PaintingQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,13 +54,18 @@ class PaintingQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
+
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
 
         $quote = PaintingQuotation::create(array_merge($calc, [
             'quote_number' => PaintingQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -83,7 +90,8 @@ class PaintingQuotationController extends Controller
 
     public function update(Request $request, PaintingQuotation $painting_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $wasDraft = (bool) $painting_quotation->is_draft;
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $painting_quotation);
 
         $painting_quotation->fill(array_merge($calc, [
@@ -106,9 +114,7 @@ class PaintingQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.painting.edit', $painting_quotation)
-            ->with('success', $linkedNow
-                ? 'Painting quotation '.$painting_quotation->quote_number.' updated and linked.'
-                : 'Painting quotation '.$painting_quotation->quote_number.' updated (v'.$painting_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Painting', $painting_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -253,10 +259,13 @@ class PaintingQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
-        $linkProject = $this->quotationLinkCandidateProject($request);
-        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
-            $linkProject = null;
-        }
+        $roomAreaImport = ! $quotation
+            ? app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'painting')
+            : null;
+        $linkProject = $this->mergeRoomAreaLinkProject(
+            $this->quotationLinkCandidateProject($request),
+            $roomAreaImport
+        );
 
         $linkedCpq = null;
         if ($quotation) {
@@ -273,6 +282,7 @@ class PaintingQuotationController extends Controller
             'linkableProjects' => $linkableProjects,
             'linkProject' => $linkProject,
             'linkedCpq' => $linkedCpq,
+            'roomAreaImport' => $roomAreaImport,
         ]);
     }
 
@@ -469,6 +479,10 @@ class PaintingQuotationController extends Controller
 
     protected function syncPaintingLineToProjectQuotation(ClientProject $project, PaintingQuotation $paintingQuotation): void
     {
+        if ($this->quotationIsDraft($paintingQuotation)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Painting service (labor)',
             'amount' => $paintingQuotation->labourPreTaxAmountForProjectQuotation(),
@@ -532,6 +546,10 @@ class PaintingQuotationController extends Controller
         PaintingQuotation $paintingQuotation,
         string $lineDescription
     ): void {
+        if ($this->quotationIsDraft($paintingQuotation)) {
+            return;
+        }
+
         $this->syncPaintingLineToProjectQuotation($project, $paintingQuotation);
 
         $paintingQuotation->update(array_merge([

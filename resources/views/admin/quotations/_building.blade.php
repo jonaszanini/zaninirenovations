@@ -42,20 +42,23 @@
 
 <div class="admin-card q-building-card" id="q-building">
   <input type="hidden" name="include_building" value="0">
-  <label class="cp-visit-toggle" for="q-building-include">
-    <input type="checkbox"
-           name="include_building"
-           value="1"
-           id="q-building-include"
-           class="{{ $previewClass }}"
-           aria-controls="q-building-expandable"
-           @checked($checked)>
-    <span class="cp-visit-toggle__control" aria-hidden="true"></span>
-    <span class="cp-visit-toggle__label cp-label-with-hint">
-      Building extra labour
-      @include('admin.partials.info_tip', ['text' => 'For condominiums and multi-unit residential or commercial buildings. Adds a labour surcharge for elevator, parking, and loading-bay access. Hidden from the client PDF — folded into labour.'])
-    </span>
-  </label>
+  <span class="admin-label-with-tip">
+    <label class="cp-visit-toggle" for="q-building-include">
+      <input type="checkbox"
+             name="include_building"
+             value="1"
+             id="q-building-include"
+             class="{{ $previewClass }}"
+             aria-controls="q-building-expandable"
+             @checked($checked)>
+      <span class="cp-visit-toggle__control" aria-hidden="true"></span>
+      <span class="cp-visit-toggle__label">Building extra labour</span>
+    </label>
+    @include('admin.partials.info_tip', [
+      'tipText' => 'For condominiums and multi-unit residential or commercial buildings. Adds a labour surcharge for elevator, parking, and loading-bay access. Hidden from the client PDF — folded into labour.',
+      'tipLabel' => 'Building extra labour',
+    ])
+  </span>
 
   <div id="q-building-expandable"
        class="cp-visit-expandable @if ($checked) is-open @endif"
@@ -64,7 +67,10 @@
     <div class="cp-visit-expandable__inner">
       <div class="q-building-percent-wrap" id="q-building-percent-wrap">
         <div class="admin-form-group q-building-field">
-          <label for="q-building-percent">@include('admin.partials.info_tip', ['text' => 'Default 30%. Applies to labour only — not materials.']) Additional labour</label>
+          <span class="admin-label-with-tip">
+  <label for="q-building-percent">Additional labour</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Default 30%. Applies to labour only — not materials.', 'tipLabel' => 'Additional labour'])
+</span>
           <div class="q-building-percent-row">
             <input type="number"
                    id="q-building-percent"
@@ -96,11 +102,6 @@
 <style>
   .q-building-card { margin-bottom: 16px; }
   .q-building-card .cp-visit-toggle { min-height: 44px; }
-  .q-building-card .cp-visit-toggle__label .admin-info-tip {
-    margin: -10px -6px -10px 0;
-    text-transform: none;
-    letter-spacing: normal;
-  }
   .q-building-card .cp-visit-expandable.is-open.is-settled .cp-visit-expandable__inner { overflow: visible; }
   .q-building-percent-wrap {
     display: flex;

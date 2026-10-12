@@ -35,6 +35,7 @@
       }
   }
   $jobNumber = is_numeric($workIndex) ? ((int) $workIndex + 1) : 1;
+  $jobTipLabel = filled($title) ? $title : ('job '.$jobNumber);
   $idBase = 'sq-w'.$workIndex;
   $includeContingency = (bool) ($includeContingency ?? false);
   $contingencyEnabled = (bool) ($contingencyEnabled ?? true);
@@ -65,13 +66,15 @@
     <div class="sq-layout">
       <div class="sq-panel sq-panel--nested">
         <div class="sq-panel-head">
-          <h3 class="cp-form-help-flush">Materials</h3>
+          <h3 class="cp-form-help-flush">
+            Materials
+            <x-admin.info-tip :label="'Materials — '.$jobTipLabel">
+              Each row: <strong>Type manually</strong>, <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>),
+              or <strong>Electrical work</strong> (its own line on the client PDF).
+              Unit price is before tax unless you check <strong>Price incl. HST</strong>.
+            </x-admin.info-tip>
+          </h3>
         </div>
-        <p class="admin-form-help sq-materials-intro">
-          Each row: <strong>Type manually</strong>, <strong>From Materials DB</strong> (<a href="{{ route('admin.materials.index') }}" class="admin-text-link">catalog</a>),
-          or <strong>Electrical work</strong> (its own line on the client PDF).
-          Unit price is before tax unless you check <strong>Price incl. HST</strong>.
-        </p>
 
         <div class="sq-materials-list">
           @foreach ($matRows as $i => $row)
@@ -107,7 +110,7 @@
                 </div>
                 <p class="sq-contingency-added" id="sq-contingency-added" aria-live="polite" @unless($contingencyEnabled) hidden @endunless>
                   Adds <strong id="sq-contingency-added-amount">CA$0.00</strong>
-                  <span id="sq-contingency-added-detail">(10% of materials before HST)</span>
+                  <span id="sq-contingency-added-detail">(10% of materials before HST, not electrical work)</span>
                 </p>
                 @error('contingency_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
               </div>
@@ -131,7 +134,10 @@
         <div class="sq-labour-head">
           <h3 class="sq-labour-title">
             Labour
-            @include('admin.partials.info_tip', ['text' => 'Labour includes HST (13%) unless you turn it off in Totals. A flat fee is one dollar amount. Otherwise use hourly rate × hours or days (8 h = 1 day).'])
+            @include('admin.partials.info_tip', [
+              'tipText' => 'Labour includes HST (13%) unless you turn it off in Totals. A flat fee is one dollar amount. Otherwise use hourly rate × hours or days (8 h = 1 day).',
+              'tipLabel' => 'Labour — '.$jobTipLabel,
+            ])
           </h3>
           <input type="hidden" name="works[{{ $workIndex }}][labour_use_fixed]" value="0">
           <label class="admin-checkbox sq-checkbox-label sq-labour-fixed-toggle">
@@ -145,25 +151,27 @@
           <div class="admin-form-group">
             <label for="{{ $idBase }}-labour-fixed-amount">Amount (CAD)</label>
             <input type="text" inputmode="decimal" autocomplete="off" id="{{ $idBase }}-labour-fixed-amount" name="works[{{ $workIndex }}][labour_fixed_amount]"
-                   class="admin-input cp-money-input sq-labour-fixed-amount" placeholder="0.00" value="{{ $labourFixedAmount }}">
+                   class="admin-input cp-money-input sq-labour-fixed-amount" placeholder="0.00" value="{{ $labourFixedAmount }}" data-cp-money-entry="direct">
             @error('works.'.$workIndex.'.labour_fixed_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="sq-labour-hst-field">
-            <input type="hidden" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="0">
-            <label class="admin-checkbox sq-checkbox-label">
-              <input type="checkbox" name="works[{{ $workIndex }}][labour_fixed_hst_included]" value="1" class="admin-checkbox__input sq-labour-fixed-hst-inc-cb" @checked($labourFixedHstInc)>
-              <span class="admin-checkbox__mark" aria-hidden="true"></span>
-              <span class="admin-checkbox__text">HST included</span>
-            </label>
-            @include('admin.partials.info_tip', ['text' => 'When checked, the amount is the total with tax. Before-tax labour is calculated the same way as a material with an HST-included price.'])
+            @include('admin.partials.checkbox', [
+              'name' => 'works['.$workIndex.'][labour_fixed_hst_included]',
+              'hiddenFallback' => true,
+              'checked' => $labourFixedHstInc,
+              'label' => 'HST included',
+              'info' => 'When checked, the amount is the total with tax. Before-tax labour is calculated the same way as a material with an HST-included price.',
+              'class' => 'sq-checkbox-label',
+              'inputClass' => 'admin-checkbox__input sq-labour-fixed-hst-inc-cb',
+            ])
           </div>
         </div>
 
         <div class="sq-labour-rate-fields" @if($labourUseFixed) hidden @endif>
           <div class="admin-form-group sq-labour-rate-group">
             <label for="{{ $idBase }}-labour-rate">Hourly rate (CAD) @unless($labourUseFixed)<span class="cp-required">*</span>@endunless</label>
-            <input type="text" inputmode="decimal" id="{{ $idBase }}-labour-rate" name="works[{{ $workIndex }}][labour_hourly_rate]" class="admin-input cp-money-input sq-labour-rate"
-                   @unless($labourUseFixed) required @endunless placeholder="65.00" value="{{ $labourRate }}">
+            <input type="text" inputmode="decimal" autocomplete="off" id="{{ $idBase }}-labour-rate" name="works[{{ $workIndex }}][labour_hourly_rate]" class="admin-input cp-money-input sq-labour-rate"
+                   @unless($labourUseFixed) required @endunless placeholder="65.00" value="{{ $labourRate }}" data-cp-money-entry="direct">
             @error('works.'.$workIndex.'.labour_hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
 

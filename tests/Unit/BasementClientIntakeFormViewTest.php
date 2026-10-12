@@ -63,8 +63,8 @@ class BasementClientIntakeFormViewTest extends TestCase
         $this->assertStringContainsString('Nothing is pre-selected', $html);
         $this->assertStringContainsString('Bathroom type', $html);
         $this->assertStringContainsString('How many sinks?', $html);
-        $this->assertStringContainsString('licensed electrician', $html);
-        $this->assertStringContainsString('licensed plumber', $html);
+        $this->assertStringContainsString('qualified, certified electrician', $html);
+        $this->assertStringContainsString('qualified, certified plumber', $html);
     }
 
     public function test_restored_answers_check_the_chosen_option(): void

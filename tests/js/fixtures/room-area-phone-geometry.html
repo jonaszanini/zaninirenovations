@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Room Area phone geometry</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-utilities.css">
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #edf0f2;
+    }
+    .util-ra--fullpage {
+      height: 100%;
+    }
+    .geom-stage {
+      flex: 1 1 auto;
+      min-height: 80px;
+    }
+    .fa {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      flex: 0 0 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="util-ra util-ra--fullpage is-more-open" data-room-area data-ra-fullpage="1">
+    <div class="geom-stage"></div>
+    <div class="util-ra-more-sheet" data-ra-more-sheet>
+      <div class="util-ra-more-sheet__chrome">
+        <div class="util-ra-more-sheet__head">
+          <p class="util-ra-more-sheet__title" id="ra-more-sheet-title">More</p>
+          <button type="button" class="admin-btn admin-btn--ghost util-ra-icon-btn" data-ra-more-close aria-label="Close more tools">
+            <i class="fa fa-times" aria-hidden="true"></i>
+            <span class="util-ra-more-btn-label">Close</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <aside class="util-ra-side" data-ra-side>
+      <button type="button" class="util-ra-sheet-handle" data-ra-sheet-handle aria-label="Expand or collapse panel" aria-expanded="false">
+        <span class="util-ra-sheet-handle__bar" aria-hidden="true"></span>
+      </button>
+      <div class="util-ra-sheet-strip" data-ra-sheet-strip>
+        <div class="util-ra-sheet-strip__dock" data-ra-sheet-dock>
+          <div class="util-ra-object-dock">
+            <button type="button" class="admin-btn admin-btn--ghost util-ra-palette__toggle" data-ra-palette-toggle>Objects</button>
+            <section class="util-ra-walls-panel">
+              <button type="button" class="admin-btn admin-btn--ghost util-ra-palette__toggle" data-ra-walls-toggle>Walls</button>
+            </section>
+          </div>
+        </div>
+        <div class="util-ra-sheet-strip__total">
+          <span class="util-ra-sheet-strip__label">Area</span>
+          <strong data-ra-sheet-total>152 sq ft</strong>
+        </div>
+      </div>
+      <div class="util-ra-side__tabs" data-ra-side-tabs>
+        <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab is-active">Measure</button>
+        <button type="button" class="admin-btn admin-btn--ghost util-ra-side__tab">Math</button>
+      </div>
+      <div class="util-ra-side__body">
+        <p>Type walls and extra panel content that must stay clipped when the sheet is collapsed.</p>
+        <p>More collapsed-panel filler so height:auto cannot swallow the canvas.</p>
+        <div class="util-ra-finish" data-ra-finish>
+          <div class="util-ra-finish__head">
+            <p class="util-ra-finish__title">Finish</p>
+            <button type="button" class="util-ra-help-q" data-ra-help-pop="finish" aria-label="About finish takeoffs">i</button>
+          </div>
+          <div class="util-ra-finish__grid">
+            <div class="admin-form-group util-ra-live-area__height">
+              <label for="ra-wall-height">Wall ht</label>
+              <input class="admin-input" id="ra-wall-height" value="8" data-ra-wall-height>
+            </div>
+            <div class="admin-form-group util-ra-live-area__height">
+              <label for="ra-ceiling-height">Ceiling</label>
+              <input class="admin-input" id="ra-ceiling-height" value="8" data-ra-ceiling-height>
+            </div>
+            <div class="admin-form-group util-ra-live-area__height">
+              <label for="ra-floor-waste">Waste</label>
+              <input class="admin-input" id="ra-floor-waste" value="10" data-ra-floor-waste>
+            </div>
+            <div class="admin-form-group util-ra-live-area__height">
+              <label for="ra-floor-box">Box</label>
+              <input class="admin-input" id="ra-floor-box" value="20" data-ra-floor-box>
+            </div>
+          </div>
+          <div class="util-ra-finish__dir">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm is-active" data-ra-floor-dir="0">Length</button>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-floor-dir="90">Width</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

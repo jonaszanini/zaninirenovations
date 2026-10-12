@@ -24,7 +24,7 @@
       </a>
     </div>
     <div class="admin-toolbar-group admin-toolbar-actions">
-      <button type="submit" form="mw-config-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="mw-config-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-save"></i> Save configuration
       </button>
     </div>
@@ -57,19 +57,19 @@
 
     <section class="cp-tab-panel{{ $startTab === 'rates' ? ' is-active' : '' }}"
              data-panel="rates" id="mw-config-rates" role="tabpanel" aria-labelledby="mw-tab-rates">
-      <h3 class="br-config-heading">This quote only — labor rates</h3>
+      <h3 class="br-config-heading">This quote only — labour rates</h3>
       <div class="admin-form-grid-4">
         <div class="admin-form-group">
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+          <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
-                 value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="admin-form-group">
           <label for="helper_hourly_rate">Helper hourly rate (CAD$)</label>
-          <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct"
+          <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
-                 value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="admin-form-group">
           <label for="hours_per_day">Hours per working day</label>
@@ -86,8 +86,10 @@
 
     <section class="cp-tab-panel{{ $startTab === 'catalog' ? ' is-active' : '' }}"
              data-panel="catalog" id="mw-config-catalog" role="tabpanel" aria-labelledby="mw-tab-catalog">
-      <h3 class="br-config-heading">Millwork-only catalog</h3>
-      <p class="admin-form-help">Imported Materials DB items are available only on Custom Millwork quotations.</p>
+      <h3 class="br-config-heading">
+        Millwork-only catalog
+        <x-admin.info-tip label="Millwork-only catalog">Imported Materials DB items are available only on Custom Millwork quotations.</x-admin.info-tip>
+      </h3>
       @foreach (MillworkSettings::catalogSlots() as $slot => $label)
         <h4 class="br-review-heading">{{ $label }}</h4>
         <div class="admin-table-scroll">
@@ -112,7 +114,7 @@
                   <th class="mw-col-thickness">Thickness (in)</th>
                   <th class="mw-col-coverage-lf">Coverage (LF)</th>
                   <th></th>
-                @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS], true))
+                @elseif (in_array($slot, [MillworkSettings::SLOT_SCREWS, MillworkSettings::SLOT_NAILS, MillworkSettings::SLOT_SHELF_PINS], true))
                   <th class="mw-col-pack">Qty / pack</th>
                   <th colspan="2"></th>
                 @else
@@ -146,10 +148,12 @@
       <h3 class="br-config-heading">Guillotine cut settings</h3>
       <div class="admin-form-grid-4">
         <div class="admin-form-group">
-          <label for="kerf_in">Blade kerf (in)</label>
+          <span class="admin-label-with-tip">
+            <label for="kerf_in">Blade kerf (in)</label>
+            <x-admin.info-tip label="Blade kerf">0.125 = 1/8″. Reserved between every saw cut on the cut plan.</x-admin.info-tip>
+          </span>
           <input type="number" step="0.001" min="0" class="admin-input" id="kerf_in" name="cut_settings[kerf_in]"
                  value="{{ old('cut_settings.kerf_in', $cutSettings['kerf_in'] ?? 0.125) }}">
-          <p class="admin-form-help">0.125 = 1/8″. Reserved between every saw cut on the cut plan.</p>
         </div>
         <div class="admin-form-group">
           <label for="trim_in">Factory trim each edge (in)</label>
@@ -170,7 +174,7 @@
     </section>
 
     <div class="admin-form-actions">
-      <button type="submit" class="admin-btn admin-btn--primary">
+      <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
         <i class="fa fa-save"></i> Save configuration
       </button>
     </div>

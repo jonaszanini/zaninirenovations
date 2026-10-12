@@ -2,11 +2,17 @@
 
 namespace App\Providers;
 
+use App\Models\BlogComment;
+use App\Models\EtransferNotice;
 use App\Models\Task;
+use App\Support\AdminInfoTipInclude;
 use App\Support\Logging\RequestContext;
 use App\Support\ProductionDatabaseGuard;
+use App\View\IsolatingFactory;
+use Illuminate\View\Factory as ViewFactory;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -22,7 +28,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->extend('view', function ($factory) {
+            if (! $factory instanceof ViewFactory) {
+                return $factory;
+            }
+
+            return IsolatingFactory::decorate($factory);
+        });
     }
 
     /**
@@ -32,6 +44,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        Blade::precompiler(function (string $value) {
+            return AdminInfoTipInclude::rewriteBlade($value);
+        });
+
         if ($this->app->environment('production')) {
             $root = rtrim((string) config('app.url'), '/');
             if ($root !== '') {
@@ -63,6 +79,12 @@ class AppServiceProvider extends ServiceProvider
         // (single indexed COUNT), avoids a dedicated middleware just for this.
         View::composer('admin.layouts.app', function ($view): void {
             $view->with('sidebarOpenTaskCount', auth()->check() ? Task::query()->open()->count() : 0);
+            $view->with('sidebarPendingCommentCount', auth()->check()
+                ? BlogComment::query()->where('is_approved', false)->count()
+                : 0);
+            $view->with('sidebarPendingEtransferCount', auth()->check()
+                ? EtransferNotice::query()->pending()->count()
+                : 0);
         });
     }
 }

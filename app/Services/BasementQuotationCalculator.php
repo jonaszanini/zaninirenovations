@@ -19,15 +19,24 @@ class BasementQuotationCalculator
         'framing' => 'Framing',
         'electrical' => 'Electrical',
         'plumbing' => 'Plumbing',
-        'insulation' => 'Insulation & Vapor Barrier',
-        'drywall' => 'Drywall / Mud / Tape / Sand',
+        'insulation' => 'Insulation & Vapour Barrier',
         'ceiling' => 'Ceiling Options',
+        'drywall' => 'Drywall / Mud / Tape / Sand',
         'flooring' => 'Flooring',
         'doors_trim' => 'Doors, Trim & Baseboards',
         'painting' => 'Painting',
         'bathroom' => 'Bathroom',
         'finishing' => 'Final Details & Cleanup',
     ];
+
+    /** Drywall sheet sizes offered on the Drywall step. */
+    public const SHEET_SIZES = [
+        '4x8' => '4×8 (32 sq ft)',
+        '4x12' => '4×12 (48 sq ft)',
+    ];
+
+    /** Allowed stud on-centre spacing (inches). */
+    public const STUD_SPACINGS = [12, 16, 24];
 
     public const SCOPE_PRESETS = [
         'full' => 'Full basement',
@@ -38,11 +47,11 @@ class BasementQuotationCalculator
 
     /** Gypsum finish levels. Level 0 is hang only — no tape, mud, or sand. */
     public const FINISH_LEVELS = [
-        0 => 'Level 0 — hang only (no tape)',
+        0 => 'Level 0 — hang only',
         1 => 'Level 1 — fire tape',
         2 => 'Level 2 — tape + coat',
-        3 => 'Level 3 — paint-ready economy',
-        4 => 'Level 4 — standard paint-ready',
+        3 => 'Level 3 — economy',
+        4 => 'Level 4 — paint-ready',
     ];
 
     /**
@@ -67,7 +76,7 @@ class BasementQuotationCalculator
 
         return match ($preset) {
             // Electrical, plumbing, and framing stay enabled; electrical/plumbing
-            // are licensed-trade scope plus priced lines. The wizard nests those
+            // are qualified-trade scope plus priced lines. The wizard nests those
             // fields inside the Bathroom step for this preset.
             'bathroom' => ['overview', 'framing', 'plumbing', 'electrical', 'drywall', 'painting', 'bathroom', 'finishing'],
             'wall' => ['overview', 'framing', 'drywall', 'doors_trim', 'painting', 'finishing'],
@@ -91,6 +100,74 @@ class BasementQuotationCalculator
         $level = (int) $level;
 
         return array_key_exists($level, self::FINISH_LEVELS) ? $level : $default;
+    }
+
+    public static function normalizeSheetSize(mixed $size): string
+    {
+        return strtolower(trim((string) $size)) === '4x12' ? '4x12' : '4x8';
+    }
+
+    public static function drywallSheetSf(mixed $size): float
+    {
+        return self::normalizeSheetSize($size) === '4x12'
+            ? (float) BasementSettings::PANEL_SF_4X12
+            : (float) BasementSettings::PANEL_SF;
+    }
+
+    public static function drywallSheetCatalogKey(mixed $size): string
+    {
+        return self::normalizeSheetSize($size) === '4x12' ? 'drywall_sheet_4x12' : 'drywall_sheet';
+    }
+
+    public static function normalizeStudSpacing(mixed $inches): int
+    {
+        $n = (int) $inches;
+
+        return in_array($n, self::STUD_SPACINGS, true) ? $n : BasementSettings::STUD_SPACING_DEFAULT;
+    }
+
+    /**
+     * Door / window / archway SF to take out of wall drywall.
+     *
+     * An explicit drywall_opening_sf (including 0) wins. Otherwise doors are
+     * 21 sf, windows 12 sf, and leftover drywall_openings count as 21 sf each
+     * so existing quotes that only stored a combined count still deduct.
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function drywallOpeningSf(array $inputs): float
+    {
+        if (array_key_exists('drywall_opening_sf', $inputs)
+            && $inputs['drywall_opening_sf'] !== null
+            && $inputs['drywall_opening_sf'] !== '') {
+            return round(max(0, (float) $inputs['drywall_opening_sf']), 2);
+        }
+
+        $doors = max(0, (int) ($inputs['drywall_door_openings'] ?? 0));
+        $windows = max(0, (int) ($inputs['drywall_window_openings'] ?? 0));
+        $listed = max(0, (int) ($inputs['drywall_openings'] ?? 0));
+        $extra = max(0, $listed - $doors - $windows);
+
+        return round(
+            ($doors * BasementSettings::DRYWALL_DOOR_SF)
+            + ($windows * BasementSettings::DRYWALL_WINDOW_SF)
+            + ($extra * BasementSettings::DRYWALL_GENERIC_OPENING_SF),
+            2
+        );
+    }
+
+    /**
+     * Cut-and-finish opening count (labor). Uses the listed total when present.
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function drywallOpeningCount(array $inputs): int
+    {
+        $listed = max(0, (int) ($inputs['drywall_openings'] ?? 0));
+        $split = max(0, (int) ($inputs['drywall_door_openings'] ?? 0))
+            + max(0, (int) ($inputs['drywall_window_openings'] ?? 0));
+
+        return max($listed, $split);
     }
 
     /**
@@ -518,6 +595,7 @@ class BasementQuotationCalculator
             'bulkhead_lf' => 0,
             'header_qty' => 0,
             'framing_door_openings' => 0,
+            'stud_spacing_in' => BasementSettings::STUD_SPACING_DEFAULT,
             'outlet_qty' => 0,
             'switch_qty' => 0,
             'light_qty' => 0,
@@ -548,6 +626,10 @@ class BasementQuotationCalculator
             'drywall_corners' => 0,
             'drywall_inside_corners' => 0,
             'drywall_openings' => 0,
+            'drywall_door_openings' => 0,
+            'drywall_window_openings' => 0,
+            'drywall_opening_sf' => null,
+            'drywall_sheet_size' => '4x8',
             'finish_level' => 4,
             'ceiling_type' => 'drywall',
             'ceiling_sf' => null,
@@ -581,6 +663,8 @@ class BasementQuotationCalculator
             'hardware_sets' => 0,
             'include_cleaning' => true,
             'include_touchups' => true,
+            'include_building_permit' => false,
+            'building_permit_amount' => 0,
             'material_waste_percent' => 10,
             'client_provides_all' => false,
             'client_provides_sections' => [],
@@ -640,7 +724,17 @@ class BasementQuotationCalculator
         $matCatalog = $this->resolveMaterialCatalog($settings);
         $inputs = array_merge(self::defaultInputs(), $inputs);
         $inputs['scope_preset'] = self::normalizePreset($inputs['scope_preset'] ?? null);
+        $inputs['stud_spacing_in'] = self::normalizeStudSpacing($inputs['stud_spacing_in'] ?? BasementSettings::STUD_SPACING_DEFAULT);
+        $inputs['drywall_sheet_size'] = self::normalizeSheetSize($inputs['drywall_sheet_size'] ?? '4x8');
         $inputs = self::applyAreaEntry($inputs);
+        $permitAmt = round(max(0, (float) ($inputs['building_permit_amount'] ?? 0)), 2);
+        if (! empty($inputs['include_building_permit']) && $permitAmt > 0) {
+            $override = is_array($inputs['materials_override'] ?? null) ? $inputs['materials_override'] : [];
+            if (! isset($override['building_permit']['unit_price']) || ! is_numeric($override['building_permit']['unit_price'])) {
+                $override['building_permit']['unit_price'] = $permitAmt;
+            }
+            $inputs['materials_override'] = $override;
+        }
 
         $area = round(max(0, (float) $inputs['area_sqft']), 2);
         $height = round(max(0, (float) $inputs['ceiling_height_ft']), 2) ?: 8;
@@ -806,13 +900,15 @@ class BasementQuotationCalculator
         // --- Framing ---
         $headers = max(0, (int) $inputs['header_qty']);
         $frameDoors = max(0, (int) $inputs['framing_door_openings']);
+        $studSpacing = self::normalizeStudSpacing($inputs['stud_spacing_in'] ?? BasementSettings::STUD_SPACING_DEFAULT);
+        $inputs['stud_spacing_in'] = $studSpacing;
         if ($on('framing')) {
-            $addLabor('framing_walls', 'framing', 'Partition wall framing', number_format($partitionLf, 0).' lf × '.$height.' ft', $perHr($partitionLf, (float) $prod['framing_lf_per_hr']));
+            $addLabor('framing_walls', 'framing', 'Partition wall framing', number_format($partitionLf, 0).' lf × '.$height.' ft, '.$studSpacing.'" o.c.', $perHr($partitionLf, (float) $prod['framing_lf_per_hr']));
             $addLabor('framing_bulkheads', 'framing', 'Bulkheads / duct boxing', number_format($bulkheadLf, 0).' lf', $perHr($bulkheadLf, (float) $prod['bulkhead_lf_per_hr']));
             $addLabor('framing_headers', 'framing', 'Headers / beams', $headers.' opening(s)', $headers * (float) $prod['header_hours_each']);
             $addLabor('framing_doors', 'framing', 'Door openings', $frameDoors.' opening(s)', $frameDoors * (float) $prod['door_opening_hours_each']);
             if ($partitionLf > 0) {
-                $studs = max(1, (int) ceil($this->withMaterialWaste(($partitionLf * 12 / 16) + 2, $inputs)));
+                $studs = max(1, (int) ceil($this->withMaterialWaste(($partitionLf * 12 / $studSpacing) + 2, $inputs)));
                 $plates = round($this->withMaterialWaste($partitionLf * 3, $inputs), 0);
                 $addMat('stud_2x4', 'framing', $studs, 'stud_2x4');
                 $addMat('plate_2x4', 'framing', $plates, 'plate_2x4');
@@ -821,10 +917,10 @@ class BasementQuotationCalculator
 
         // --- Electrical ---
         // Scope questions (outlets, switches, lights, panel) stay on the form
-        // for a licensed electrician. Pricing is the description/amount lines.
+        // for a qualified electrician. Pricing is the description/amount lines.
 
         // --- Plumbing ---
-        // Scope questions stay for a licensed plumber. Pricing is the lines.
+        // Scope questions stay for a qualified plumber. Pricing is the lines.
 
         // --- Insulation ---
         if ($on('insulation')) {
@@ -832,7 +928,7 @@ class BasementQuotationCalculator
             $insCeil = $this->qtyOr($inputs['insulation_ceiling_sf'], ! empty($inputs['insulate_ceiling']) ? $area : 0);
             $insSlab = $this->qtyOr($inputs['underslab_sf'], ! empty($inputs['underslab']) ? $area : 0);
             if (! empty($inputs['insulate_walls'])) {
-                $addLabor('ins_walls', 'insulation', 'Wall insulation + vapor barrier', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
+                $addLabor('ins_walls', 'insulation', 'Wall insulation + vapour barrier', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
                 $addMat('insulation_batt', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
                 $addMat('vapor_barrier', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::VAPOR_SF_PER_ROLL), 'vapor_barrier');
             }
@@ -847,8 +943,14 @@ class BasementQuotationCalculator
         }
 
         // --- Drywall ---
+        $sheetSize = self::normalizeSheetSize($inputs['drywall_sheet_size'] ?? '4x8');
+        $inputs['drywall_sheet_size'] = $sheetSize;
+        $openingSf = 0.0;
+        $dwWallGross = 0.0;
         if ($on('drywall')) {
-            $dwWall = $this->qtyOr($inputs['drywall_wall_sf'], $dwWallFallback);
+            $dwWallGross = $this->qtyOr($inputs['drywall_wall_sf'], $dwWallFallback);
+            $openingSf = self::drywallOpeningSf($inputs);
+            $dwWall = round(max(0, $dwWallGross - $openingSf), 2);
             $skipCeilingFinish = $inputs['scope_preset'] === 'wall' && ! $on('ceiling');
             $dwCeil = $skipCeilingFinish ? 0.0 : $this->qtyOr(
                 $inputs['drywall_ceiling_sf'],
@@ -857,7 +959,11 @@ class BasementQuotationCalculator
             $dwSf = $dwWall + $dwCeil;
             $level = self::normalizeFinishLevel($inputs['finish_level'] ?? 4);
             $hangOnly = $level === 0;
-            $addLabor('dw_hang', 'drywall', 'Hang drywall', number_format($dwSf, 0).' sq ft', $perHr($dwSf, (float) $prod['drywall_hang_sf_per_hr']));
+            $hangDetail = number_format($dwSf, 0).' sq ft';
+            if ($openingSf > 0) {
+                $hangDetail .= ' ('.number_format($openingSf, 0).' sf openings deducted)';
+            }
+            $addLabor('dw_hang', 'drywall', 'Hang drywall', $hangDetail, $perHr($dwSf, (float) $prod['drywall_hang_sf_per_hr']));
             if (! $hangOnly) {
                 $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
                 $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
@@ -869,11 +975,24 @@ class BasementQuotationCalculator
                 $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
             }
             $dwOrderSf = $this->withMaterialWaste($dwSf, $inputs);
-            $sheets = $dwOrderSf > 0 ? max(1, (int) ceil($dwOrderSf / BasementSettings::PANEL_SF)) : 0;
-            $addMat('drywall_sheet', 'drywall', $sheets, 'drywall_sheet');
+            $sheetSf = self::drywallSheetSf($sheetSize);
+            $sheetKey = self::drywallSheetCatalogKey($sheetSize);
+            $sheets = $dwOrderSf > 0 ? max(1, (int) ceil($dwOrderSf / $sheetSf)) : 0;
+            $addMat($sheetKey, 'drywall', $sheets, $sheetKey);
+            if ($sheets > 0) {
+                $screwsEach = $sheetSize === '4x12'
+                    ? BasementSettings::DRYWALL_SCREWS_PER_4X12
+                    : BasementSettings::DRYWALL_SCREWS_PER_4X8;
+                $addMat(
+                    'drywall_screws',
+                    'drywall',
+                    $this->packages($sheets * $screwsEach, BasementSettings::DRYWALL_SCREWS_PER_BOX),
+                    'drywall_screws'
+                );
+            }
             $corners = max(0, (int) $inputs['drywall_corners']);
             $insideCorners = max(0, (int) ($inputs['drywall_inside_corners'] ?? 0));
-            $openings = max(0, (int) $inputs['drywall_openings']);
+            $openings = self::drywallOpeningCount($inputs);
             if (! $hangOnly) {
                 $addMat('joint_compound', 'drywall', $this->packages($dwOrderSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
                 $addMat('drywall_tape', 'drywall', $this->packages($dwOrderSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
@@ -1115,6 +1234,9 @@ class BasementQuotationCalculator
             if (! empty($inputs['include_touchups'])) {
                 $addLabor('fin_touch', 'finishing', 'Touch-ups', 'Walkthrough punch list', (float) $prod['touchup_hours']);
             }
+            if (! empty($inputs['include_building_permit']) && $permitAmt > 0) {
+                $addMat('building_permit', 'finishing', 1, 'building_permit', 'Building permit');
+            }
         }
 
         $extraMaterials = [];
@@ -1181,18 +1303,26 @@ class BasementQuotationCalculator
         $totalHours = round($totalHours, 2);
         $laborPre = round(QuotationHelperLabor::amount($totalHours, $ownerRate, $helperRate, $includeHelper), 2);
 
-        $matPre = 0.0;
+        $matAll = 0.0;
+        $permitPre = 0.0;
         foreach ($materials as $row) {
-            $matPre += (float) $row['amount'];
+            $amount = (float) $row['amount'];
+            $matAll += $amount;
+            if (($row['key'] ?? '') === 'building_permit') {
+                $permitPre += $amount;
+            }
         }
         foreach ($extraMaterials as $row) {
-            $matPre += (float) $row['amount'];
+            $matAll += (float) $row['amount'];
         }
-        $matPre = round($matPre, 2);
+        $matAll = round($matAll, 2);
+        $permitPre = round($permitPre, 2);
+        $matPre = round($matAll - $permitPre, 2);
         $matHst = round($matPre * BasementQuotation::HST_RATE, 2);
+        $permitHst = round($permitPre * BasementQuotation::HST_RATE, 2);
         $laborHst = round($laborPre * BasementQuotation::HST_RATE, 2);
-        $subtotal = round($laborPre + $matPre, 2);
-        $hst = round($laborHst + $matHst, 2);
+        $subtotal = round($laborPre + $matPre + $permitPre, 2);
+        $hst = round($laborHst + $matHst + $permitHst, 2);
         $trade = $this->tradeLineSummary($inputs);
         $grand = round($subtotal + $hst + $trade['tax_in'], 2);
         $wastePercent = $this->materialWastePercent($inputs);
@@ -1244,6 +1374,12 @@ class BasementQuotationCalculator
                 'finish_label' => $finishLabel,
                 'ceiling_type' => $ceilingType,
                 'flooring_type' => $flType,
+                'stud_spacing_in' => $studSpacing,
+                'drywall_sheet_size' => $sheetSize,
+                'drywall_sheet_sf' => self::drywallSheetSf($sheetSize),
+                'drywall_opening_sf' => $openingSf,
+                'drywall_wall_gross_sf' => $dwWallGross,
+                'drywall_wall_net_sf' => $dwWall,
             ],
             'labor' => $labor,
             'materials' => $materials,
@@ -1261,6 +1397,9 @@ class BasementQuotationCalculator
                 'materials_pre_hst' => $matPre,
                 'materials_hst' => $matHst,
                 'materials_after_hst' => round($matPre + $matHst, 2),
+                'permit_pre_hst' => $permitPre,
+                'permit_hst' => $permitHst,
+                'permit_after_hst' => round($permitPre + $permitHst, 2),
                 'material_waste_percent' => $wastePercent,
                 'subtotal_pre_hst' => $subtotal,
                 'hst' => $hst,

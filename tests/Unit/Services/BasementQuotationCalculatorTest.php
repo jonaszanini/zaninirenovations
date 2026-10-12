@@ -81,7 +81,12 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertGreaterThan(0, $calc['summary']['labor_pre_hst']);
         $this->assertGreaterThan(0, $calc['summary']['materials_pre_hst']);
         $this->assertEqualsWithDelta(
-            round($calc['summary']['labor_pre_hst'] + $calc['summary']['materials_pre_hst'], 2),
+            round(
+                $calc['summary']['labor_pre_hst']
+                + $calc['summary']['materials_pre_hst']
+                + ($calc['summary']['permit_pre_hst'] ?? 0),
+                2
+            ),
             $calc['summary']['subtotal_pre_hst'],
             0.01
         );
@@ -108,7 +113,9 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertEquals(
             $calc['summary']['grand_total'],
             round(
-                $calc['summary']['labor_after_hst'] + $calc['summary']['materials_after_hst'],
+                $calc['summary']['labor_after_hst']
+                + $calc['summary']['materials_after_hst']
+                + ($calc['summary']['permit_after_hst'] ?? 0),
                 2
             )
         );
@@ -489,6 +496,7 @@ class BasementQuotationCalculatorTest extends TestCase
             'paint_trim_lf' => 0,
             'baseboard_lf' => 0,
             'partition_lf' => 40,
+            'material_waste_percent' => 0,
             'owner_hourly_rate' => 80,
             'materials_override' => [
                 'plate_2x4' => ['unit_price' => 50],
@@ -523,6 +531,7 @@ class BasementQuotationCalculatorTest extends TestCase
             'paint_trim_lf' => 0,
             'baseboard_lf' => 0,
             'partition_lf' => 40,
+            'material_waste_percent' => 0,
             'owner_hourly_rate' => 80,
             'materials_override' => [
                 'stud_2x4' => ['unit_price' => 16],
@@ -573,6 +582,8 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertNotNull($vapor);
         $this->assertSame('roll', $vapor['unit']);
         $this->assertSame(1.0, $vapor['qty']);
+        $this->assertStringContainsString('vapour', strtolower((string) $vapor['label']));
+        $this->assertStringContainsString('vapour barrier', strtolower((string) collect($calc['labor'])->firstWhere('key', 'ins_walls')['label']));
 
         $this->assertNull(collect($calc['materials'])->firstWhere('key', 'nm_cable'));
 
@@ -584,7 +595,7 @@ class BasementQuotationCalculatorTest extends TestCase
         $mud = collect($calc['materials'])->firstWhere('key', 'joint_compound');
         $this->assertNotNull($mud);
         $this->assertSame('pail', $mud['unit']);
-        $this->assertSame(2.0, $mud['qty']);
+        $this->assertSame(3.0, $mud['qty']);
         $this->assertStringContainsString('17 L', $mud['label']);
     }
 
@@ -607,6 +618,7 @@ class BasementQuotationCalculatorTest extends TestCase
             'paint_coats' => 1,
             'paint_colors' => 1,
             'baseboard_lf' => 0,
+            'material_waste_percent' => 0,
             'owner_hourly_rate' => 80,
         ], $this->settings());
 
@@ -637,6 +649,7 @@ class BasementQuotationCalculatorTest extends TestCase
             'paint_coats' => 1,
             'paint_colors' => 1,
             'baseboard_lf' => 0,
+            'material_waste_percent' => 0,
             'owner_hourly_rate' => 80,
         ], $this->settings());
 
@@ -1250,7 +1263,7 @@ class BasementQuotationCalculatorTest extends TestCase
         $vinylMat = collect($calc['materials'])->firstWhere('key', 'bath_vinyl');
         $this->assertNotNull($vinylMat);
         $this->assertSame('Bathroom vinyl flooring', $vinylMat['label']);
-        $this->assertEqualsWithDelta(43.2, $vinylMat['qty'], 0.01);
+        $this->assertEqualsWithDelta(44.0, $vinylMat['qty'], 0.01);
         $this->assertEqualsWithDelta(3.50, $vinylMat['unit_price'], 0.01);
 
         $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'thinset_grout'));
@@ -1531,6 +1544,210 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertEqualsWithDelta($expectedWith, (float) $withHelper['summary']['labor_pre_hst'], 0.01);
         $this->assertFalse($withoutHelper['summary']['include_helper']);
         $this->assertTrue($withHelper['summary']['include_helper']);
+    }
+
+    public function test_drywall_openings_subtract_from_wall_area_and_sheet_count(): void
+    {
+        $base = [
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'material_waste_percent' => 0,
+            'owner_hourly_rate' => 80,
+        ];
+
+        $gross = (new BasementQuotationCalculator)->calculate($base, $this->settings());
+        $net = (new BasementQuotationCalculator)->calculate(array_merge($base, [
+            'drywall_door_openings' => 1,
+            'drywall_window_openings' => 1,
+        ]), $this->settings());
+
+        $this->assertEqualsWithDelta(400.0, $gross['scope']['drywall_wall_net_sf'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $gross['scope']['drywall_opening_sf'], 0.01);
+        $this->assertEqualsWithDelta(33.0, $net['scope']['drywall_opening_sf'], 0.01);
+        $this->assertEqualsWithDelta(367.0, $net['scope']['drywall_wall_net_sf'], 0.01);
+
+        $grossSheets = collect($gross['materials'])->firstWhere('key', 'drywall_sheet');
+        $netSheets = collect($net['materials'])->firstWhere('key', 'drywall_sheet');
+        $this->assertSame(13.0, (float) $grossSheets['qty']);
+        $this->assertSame(12.0, (float) $netSheets['qty']);
+        $this->assertStringContainsString('367', collect($net['labor'])->firstWhere('key', 'dw_hang')['detail']);
+        $this->assertStringContainsString('openings deducted', collect($net['labor'])->firstWhere('key', 'dw_hang')['detail']);
+    }
+
+    public function test_legacy_opening_count_still_subtracts_door_sized_openings(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 0,
+            'drywall_openings' => 2,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'material_waste_percent' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertEqualsWithDelta(42.0, $calc['scope']['drywall_opening_sf'], 0.01);
+        $this->assertEqualsWithDelta(358.0, $calc['scope']['drywall_wall_net_sf'], 0.01);
+    }
+
+    public function test_explicit_zero_opening_sf_skips_subtraction(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 0,
+            'drywall_door_openings' => 2,
+            'drywall_opening_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'material_waste_percent' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $this->assertSame(0.0, $calc['scope']['drywall_opening_sf']);
+        $this->assertEqualsWithDelta(400.0, $calc['scope']['drywall_wall_net_sf'], 0.01);
+    }
+
+    public function test_four_by_twelve_sheets_reduce_count_and_follow_waste(): void
+    {
+        $base = [
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'owner_hourly_rate' => 80,
+        ];
+
+        $fourByEight = (new BasementQuotationCalculator)->calculate(array_merge($base, [
+            'drywall_sheet_size' => '4x8',
+            'material_waste_percent' => 10,
+        ]), $this->settings());
+        $fourByTwelve = (new BasementQuotationCalculator)->calculate(array_merge($base, [
+            'drywall_sheet_size' => '4x12',
+            'material_waste_percent' => 10,
+        ]), $this->settings());
+        $noWaste = (new BasementQuotationCalculator)->calculate(array_merge($base, [
+            'drywall_sheet_size' => '4x12',
+            'material_waste_percent' => 0,
+        ]), $this->settings());
+
+        $this->assertSame('4x8', $fourByEight['scope']['drywall_sheet_size']);
+        $this->assertSame(32.0, $fourByEight['scope']['drywall_sheet_sf']);
+        $this->assertSame(48.0, $fourByTwelve['scope']['drywall_sheet_sf']);
+        $this->assertSame(14.0, (float) collect($fourByEight['materials'])->firstWhere('key', 'drywall_sheet')['qty']);
+        $this->assertSame(10.0, (float) collect($fourByTwelve['materials'])->firstWhere('key', 'drywall_sheet_4x12')['qty']);
+        $this->assertSame(9.0, (float) collect($noWaste['materials'])->firstWhere('key', 'drywall_sheet_4x12')['qty']);
+        $this->assertNull(collect($fourByTwelve['materials'])->firstWhere('key', 'drywall_sheet'));
+        $this->assertNotNull(collect($fourByTwelve['materials'])->firstWhere('key', 'drywall_screws'));
+    }
+
+    public function test_stud_spacing_changes_stud_count(): void
+    {
+        $base = [
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'partition_lf' => 40,
+            'material_waste_percent' => 0,
+            'owner_hourly_rate' => 80,
+        ];
+
+        $sixteen = (new BasementQuotationCalculator)->calculate(array_merge($base, [
+            'stud_spacing_in' => 16,
+        ]), $this->settings());
+        $twentyFour = (new BasementQuotationCalculator)->calculate(array_merge($base, [
+            'stud_spacing_in' => 24,
+        ]), $this->settings());
+
+        $this->assertSame(32.0, (float) collect($sixteen['materials'])->firstWhere('key', 'stud_2x4')['qty']);
+        $this->assertSame(22.0, (float) collect($twentyFour['materials'])->firstWhere('key', 'stud_2x4')['qty']);
+        $this->assertStringContainsString('16" o.c.', collect($sixteen['labor'])->firstWhere('key', 'framing_walls')['detail']);
+    }
+
+    public function test_building_permit_adds_priced_line(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'include_building_permit' => true,
+            'building_permit_amount' => 250,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+
+        $permit = collect($calc['materials'])->firstWhere('key', 'building_permit');
+        $this->assertNotNull($permit);
+        $this->assertSame('Building permit', $permit['label']);
+        $this->assertEqualsWithDelta(250.0, $permit['amount'], 0.01);
+        $this->assertEqualsWithDelta(250.0, $calc['summary']['permit_pre_hst'], 0.01);
+        $this->assertEqualsWithDelta(
+            round($calc['summary']['materials_pre_hst'] + $calc['summary']['permit_pre_hst'], 2),
+            round($calc['summary']['subtotal_pre_hst'] - $calc['summary']['labor_pre_hst'], 2),
+            0.01
+        );
     }
 
     private function settings(?array $materials = null): BasementSettings

@@ -10,7 +10,7 @@ class BlogRssController extends Controller
     public function index(): Response
     {
         $posts = BlogPost::query()
-            ->published()
+            ->indexable()
             ->orderByDesc('published_at')
             ->limit(20)
             ->get();

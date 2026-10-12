@@ -19,6 +19,8 @@ use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\PavingMarbleCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
+use App\Support\QuotationSaveIntent;
 use App\Services\PavingQuotationCalculator;
 use App\Services\PavingStoneEntryResolver;
 use App\Services\QuotationPaymentSchedule;
@@ -57,13 +59,18 @@ class PavingQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
+
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
 
         $quote = PavingQuotation::create(array_merge($calc, [
             'quote_number' => PavingQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -88,7 +95,8 @@ class PavingQuotationController extends Controller
 
     public function update(Request $request, PavingQuotation $paving_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $wasDraft = (bool) $paving_quotation->is_draft;
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $paving_quotation);
 
         $paving_quotation->fill(array_merge($calc, [
@@ -111,9 +119,7 @@ class PavingQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.paving.edit', $paving_quotation)
-            ->with('success', $linkedNow
-                ? 'Paving quotation '.$paving_quotation->quote_number.' updated and linked.'
-                : 'Paving quotation '.$paving_quotation->quote_number.' updated (v'.$paving_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Paving', $paving_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -615,6 +621,10 @@ class PavingQuotationController extends Controller
         PavingQuotation $pavingQuotation,
         ?string $lineDescription = null
     ): void {
+        if ($this->quotationIsDraft($pavingQuotation)) {
+            return;
+        }
+
         $lineDescription = trim((string) ($lineDescription ?? ''));
         if ($lineDescription === '') {
             $lineDescription = $pavingQuotation->summaryDescription();

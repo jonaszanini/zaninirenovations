@@ -19,7 +19,10 @@ use App\Services\StandardQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
+use App\Support\StandardQuotationValidationMessages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -69,10 +72,15 @@ class StandardQuotationController extends Controller
     {
         $calc = $this->validatedSnapshot($request, new StandardQuotationCalculator());
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $quote = StandardQuotation::create(array_merge($calc['persistence'], [
             'quote_number' => StandardQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -80,11 +88,16 @@ class StandardQuotationController extends Controller
 
         $linkedNow = $newlyLinked && $hubProjectRequested;
 
+        $intent = QuotationSaveIntent::fromRequest($request);
         $resp = redirect()
             ->route('admin.quotations.standard.edit', $quote)
-            ->with('success', $linkedNow
-                ? 'Standard quotation '.$quote->quote_number.' saved and linked to this project.'
-                : 'Standard quotation '.$quote->quote_number.' saved.')
+            ->with('success', $intent === QuotationSaveIntent::DRAFT
+                ? ($linkedNow
+                    ? 'Standard quotation saved as draft and linked.'
+                    : 'Standard quotation saved as draft.')
+                : ($linkedNow
+                    ? 'Standard quotation '.$quote->quote_number.' saved and linked to this project.'
+                    : 'Standard quotation '.$quote->quote_number.' saved.'))
             ->with('standard_flash', $linkedNow ? 'linked' : 'saved');
 
         if ($warnings !== []) {
@@ -162,11 +175,14 @@ class StandardQuotationController extends Controller
             if ($name === '' && $catalog) {
                 $name = $catalog->displayName();
             }
+
+            $unitPrice = round((float) ($row['unit_price'] ?? 0), 2);
+            if ($name === '' && $unitPrice == 0.0 && ! $catalog) {
+                continue;
+            }
             if ($name === '') {
                 $name = 'Material';
             }
-
-            $unitPrice = round((float) ($row['unit_price'] ?? 0), 2);
             $url = trim((string) ($row['url'] ?? ''));
             if ($url === '' && $catalog) {
                 $url = (string) ($catalog->storeProductUrl() ?? '');
@@ -201,6 +217,7 @@ class StandardQuotationController extends Controller
 
     public function update(Request $request, StandardQuotation $standard_quotation)
     {
+        $wasDraft = (bool) $standard_quotation->is_draft;
         $calc = $this->validatedSnapshot($request, new StandardQuotationCalculator(), $standard_quotation);
 
         $standard_quotation->fill(array_merge($calc['persistence'], [
@@ -226,7 +243,7 @@ class StandardQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.standard.edit', $standard_quotation)
-            ->with('success', 'Standard quotation '.$standard_quotation->quote_number.' updated (v'.$standard_quotation->version.').')
+            ->with('success', QuotationDraftFlash::updated('Standard', $standard_quotation, false, $wasDraft))
             ->with('standard_flash', 'saved');
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
@@ -252,6 +269,9 @@ class StandardQuotationController extends Controller
         $project = ClientProject::query()->findOrFail($data['client_project_id']);
         $this->prepareQuotationForProjectLink($standard_quotation, $project);
 
+        if ($resp = $this->guardQuotationIsDraft($standard_quotation, 'link')) {
+            return $resp;
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -278,6 +298,9 @@ class StandardQuotationController extends Controller
         ClientProjectStatusService $statusService
     ) {
         if ($resp = $this->guardQuotationAlreadyLinked($standard_quotation, 'standard')) {
+            return $resp;
+        }
+        if ($resp = $this->guardQuotationIsDraft($standard_quotation, 'create-project')) {
             return $resp;
         }
 
@@ -358,7 +381,7 @@ class StandardQuotationController extends Controller
      */
     protected function autoLinkStandardIfRequested(StandardQuotation $sq, Request $request, array &$warnings): bool
     {
-        if ($sq->isLinked()) {
+        if ($sq->isLinked() || ($sq->is_draft ?? false)) {
             return false;
         }
 
@@ -420,9 +443,14 @@ class StandardQuotationController extends Controller
                 StandardQuotation::LINE_KIND_MATERIAL,
                 StandardQuotation::LINE_KIND_ELECTRICAL,
             ])],
+            'assembly_line_id' => ['nullable', 'integer', 'min:1'],
+            'assembly_layout_id' => ['nullable', 'string', 'max:40'],
+            'assembly_covered_layouts' => ['nullable', 'string'],
+            'assembly_quoted_at' => ['nullable', 'string', 'max:40'],
         ];
 
         $data = $request->validate(array_merge([
+            'save_intent' => ['nullable', 'in:draft,publish'],
             'client_name' => ['required', 'string', 'max:160'],
             'display_title' => ['required', 'string', 'max:255'],
             'document_type' => ['required', Rule::in([
@@ -446,6 +474,10 @@ class StandardQuotationController extends Controller
             'works.*.materials.*.delivery_cad' => $materialRowRules['delivery_cad'],
             'works.*.materials.*.entry_mode' => $materialRowRules['entry_mode'],
             'works.*.materials.*.line_kind' => $materialRowRules['line_kind'],
+            'works.*.materials.*.assembly_line_id' => $materialRowRules['assembly_line_id'],
+            'works.*.materials.*.assembly_layout_id' => $materialRowRules['assembly_layout_id'],
+            'works.*.materials.*.assembly_covered_layouts' => $materialRowRules['assembly_covered_layouts'],
+            'works.*.materials.*.assembly_quoted_at' => $materialRowRules['assembly_quoted_at'],
             'works.*.labour_use_fixed' => ['nullable'],
             'works.*.labour_fixed_amount' => ['nullable', 'numeric', 'min:0'],
             'works.*.labour_fixed_hst_included' => ['nullable'],
@@ -459,13 +491,16 @@ class StandardQuotationController extends Controller
             'contingency_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], QuotationPaymentSchedule::validationRules(), CommuteExpenseService::commuteValidationRules(), DebrisRemovalExpenseService::validationRules(), QuotationBuildingLabor::validationRules()), array_merge([
             'client_name.required' => 'Client name is required.',
+            'client_name.max' => 'Client name is too long. Keep it to 160 characters or fewer.',
             'display_title.required' => 'Enter a title — it appears at the top of the client PDF.',
+            'display_title.max' => 'Title is too long. Keep it to 255 characters or fewer.',
             'document_type.required' => 'Pick whether this is a quotation or an estimate.',
+            'work_description.max' => 'Description of the work is too long. Shorten that box and save again.',
             'works.required' => 'Add at least one job.',
             'works.min' => 'Add at least one job.',
             'contingency_percent.numeric' => 'Contingency percent must be a number.',
             'contingency_percent.max' => 'Contingency percent cannot exceed 100.',
-        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), QuotationBuildingLabor::validationMessages()));
+        ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), QuotationBuildingLabor::validationMessages(), StandardQuotationValidationMessages::forWorks($request->input('works'))));
 
         $includesMaterial = $request->boolean('includes_material');
         $includesLabour = $request->boolean('includes_labour');
@@ -551,7 +586,9 @@ class StandardQuotationController extends Controller
             (float) $contingencyPercent,
             $includeLabourHst,
             $building['include_building'],
-            $building['building_labor_percent']
+            $building['building_labor_percent'],
+            // Remainder-to-labour-jobs is v3-only; saved v2 keeps last-job leftover.
+            $existing ? $existing->usesCurrentPdfFold() : true
         );
 
         $materialMapper = static function (array $m): array {
@@ -583,7 +620,7 @@ class StandardQuotationController extends Controller
                 $qty = 1.0;
             }
 
-            return [
+            $mapped = [
                 'short_name' => $isElectrical ? '' : ($m['short_name'] ?? ''),
                 'description' => $description,
                 'url' => $url === '' ? null : $url,
@@ -597,6 +634,27 @@ class StandardQuotationController extends Controller
                 'line_kind' => $lineKind,
                 'entry_mode' => $entryMode,
             ];
+            if (isset($m['assembly_line_id']) && (int) $m['assembly_line_id'] > 0) {
+                $mapped['assembly_line_id'] = (int) $m['assembly_line_id'];
+            }
+            $layoutId = trim((string) ($m['assembly_layout_id'] ?? ''));
+            if ($layoutId !== '') {
+                $mapped['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+            }
+            $covered = $m['assembly_covered_layouts'] ?? '';
+            if (is_array($covered)) {
+                $covered = json_encode(array_values($covered), JSON_UNESCAPED_UNICODE);
+            }
+            $covered = trim((string) $covered);
+            if ($covered !== '') {
+                $mapped['assembly_covered_layouts'] = $covered;
+            }
+            $quotedAt = trim((string) ($m['assembly_quoted_at'] ?? ''));
+            if ($quotedAt !== '') {
+                $mapped['assembly_quoted_at'] = mb_substr($quotedAt, 0, 40);
+            }
+
+            return $mapped;
         };
 
         $worksForStorage = [];
@@ -631,6 +689,7 @@ class StandardQuotationController extends Controller
         $persistence = [
             'persistence' => [
                 'client_name' => trim($data['client_name']),
+                'is_draft' => QuotationSaveIntent::isDraft($request),
                 'display_title' => \Illuminate\Support\Str::limit($data['display_title'], 255, ''),
                 'document_type' => $data['document_type'],
                 'includes_material' => $includesMaterial,
@@ -700,11 +759,16 @@ class StandardQuotationController extends Controller
         StandardQuotation $standardQuotation,
         string $lineDescription
     ): void {
+        if ($this->quotationIsDraft($standardQuotation)) {
+            return;
+        }
+
         $standardQuotation->client_project_id = $project->id;
         $standardQuotation->linked_at = now();
         foreach ($this->quotationLinkClientNameAttributes($project) as $key => $value) {
             $standardQuotation->{$key} = $value;
         }
+        $this->refreshLinkedCommuteExpense($standardQuotation, $project);
         $standardQuotation->save();
 
         $this->syncStandardLinesIntoProjectQuotation(
@@ -723,48 +787,9 @@ class StandardQuotationController extends Controller
         StandardQuotation $standardQuotation,
         ?string $lineDescription = null
     ): void {
-        $lineDescription = $lineDescription !== null
-            ? trim($lineDescription)
-            : '';
-        if ($lineDescription === '') {
-            $lineDescription = $standardQuotation->pdfSummaryLineDescription();
+        if ($this->quotationIsDraft($standardQuotation)) {
+            return;
         }
-
-        $taxablePreHst = $this->preHstTaxableForLink($standardQuotation);
-        $exemptPreHst = $this->preHstExemptForLink($standardQuotation);
-
-        $sqLines = [];
-        if ($exemptPreHst > 0 && $taxablePreHst > 0) {
-            $sqLines[] = [
-                'description' => $lineDescription.' — HST applicable',
-                'amount' => $taxablePreHst,
-                'apply_hst' => true,
-                'source_standard_quotation_id' => $standardQuotation->id,
-            ];
-            $sqLines[] = [
-                'description' => $lineDescription.' — HST exempt',
-                'amount' => $exemptPreHst,
-                'apply_hst' => false,
-                'source_standard_quotation_id' => $standardQuotation->id,
-            ];
-        } elseif ($exemptPreHst > 0) {
-            $sqLines[] = [
-                'description' => $lineDescription,
-                'amount' => $exemptPreHst,
-                'apply_hst' => false,
-                'source_standard_quotation_id' => $standardQuotation->id,
-            ];
-        } else {
-            $sqLines[] = [
-                'description' => $lineDescription,
-                'amount' => $taxablePreHst,
-                'apply_hst' => true,
-                'source_standard_quotation_id' => $standardQuotation->id,
-            ];
-        }
-
-        $this->appendCommuteProjectLine($sqLines, $standardQuotation);
-        $this->appendDebrisRemovalProjectLine($sqLines, $standardQuotation);
 
         /** @var ClientProjectQuotation $row */
         $row = ClientProjectQuotation::firstOrNew([
@@ -773,14 +798,24 @@ class StandardQuotationController extends Controller
             'source_id' => $standardQuotation->id,
         ]);
 
+        $lineDescription = $this->resolveStandardLinkLineDescription(
+            $standardQuotation,
+            $lineDescription,
+            $row->exists ? $row : null
+        );
+
+        $sqLines = $standardQuotation->projectQuotationLineItems($lineDescription);
+
         $docType = $standardQuotation->document_type;
         if ($docType !== ClientProjectQuotation::TYPE_QUOTATION
             && $docType !== ClientProjectQuotation::TYPE_ESTIMATE) {
             $docType = ClientProjectQuotation::TYPE_QUOTATION;
         }
 
-        $includeLabour = (bool) $standardQuotation->includes_labour;
-        $includeMaterial = (bool) $standardQuotation->includes_material;
+        $includeLabour = (bool) $standardQuotation->includes_labour
+            || $standardQuotation->chargedLabourPreTax() > 0;
+        $includeMaterial = (bool) $standardQuotation->includes_material
+            || $standardQuotation->chargedMaterialsPreTax() > 0;
 
         if (! $row->exists) {
             $row->fill([
@@ -815,6 +850,24 @@ class StandardQuotationController extends Controller
         $project->syncFixedContractTotalsFromQuotation();
     }
 
+    protected function resolveStandardLinkLineDescription(
+        StandardQuotation $standardQuotation,
+        ?string $lineDescription,
+        ?ClientProjectQuotation $existing = null
+    ): string {
+        $lineDescription = trim((string) ($lineDescription ?? ''));
+        if ($lineDescription !== '') {
+            return $lineDescription;
+        }
+
+        $existingTitle = $existing ? trim((string) ($existing->title ?? '')) : '';
+        if ($existingTitle !== '') {
+            return $existingTitle;
+        }
+
+        return $standardQuotation->pdfSummaryLineDescription();
+    }
+
     /**
      * Pre-HST amount (materials taxable subtotal + taxable share of
      * contingency + labour total) that should be linked into the project
@@ -822,11 +875,7 @@ class StandardQuotationController extends Controller
      */
     protected function preHstTaxableForLink(StandardQuotation $sq): float
     {
-        [$taxableSub, $exemptSub] = $this->materialsTaxableExemptSplit($sq);
-        $contingencyTaxable = $this->contingencyTaxableShare($sq, $taxableSub, $exemptSub);
-        $labourTaxable = $sq->chargesLabourHst() ? (float) $sq->labour_total : 0.0;
-
-        return round($taxableSub + $contingencyTaxable + $labourTaxable, 2);
+        return round((float) ($sq->computedTotals()['pre_hst_taxable'] ?? 0), 2);
     }
 
     /**
@@ -836,52 +885,7 @@ class StandardQuotationController extends Controller
      */
     protected function preHstExemptForLink(StandardQuotation $sq): float
     {
-        [$taxableSub, $exemptSub] = $this->materialsTaxableExemptSplit($sq);
-        $contingencyExempt = (float) $sq->contingency_amount
-            - $this->contingencyTaxableShare($sq, $taxableSub, $exemptSub);
-        $labourExempt = $sq->chargesLabourHst() ? 0.0 : (float) $sq->labour_total;
-
-        return round($exemptSub + max(0.0, $contingencyExempt) + $labourExempt, 2);
-    }
-
-    /**
-     * @return array{0: float, 1: float} [taxableSubtotal, exemptSubtotal]
-     */
-    protected function materialsTaxableExemptSplit(StandardQuotation $sq): array
-    {
-        $taxable = 0.0;
-        $exempt = 0.0;
-        $materials = StandardQuotationCalculator::withLiveCatalogDelivery(
-            is_array($sq->materials) ? $sq->materials : []
-        );
-
-        foreach ($materials as $m) {
-            $b = StandardQuotationCalculator::breakdownMaterialRow($m);
-            if ($b === null) {
-                continue;
-            }
-            $taxable += $b['taxable_pre'];
-            $exempt += $b['exempt_pre'];
-        }
-
-        return [round($taxable, 2), round($exempt, 2)];
-    }
-
-    protected function contingencyTaxableShare(
-        StandardQuotation $sq,
-        float $taxableSub,
-        float $exemptSub
-    ): float {
-        $contingency = (float) $sq->contingency_amount;
-        if ($contingency <= 0) {
-            return 0.0;
-        }
-        $matSub = $taxableSub + $exemptSub;
-        if ($matSub <= 0) {
-            return 0.0;
-        }
-
-        return round($contingency * ($taxableSub / $matSub), 2);
+        return round((float) ($sq->computedTotals()['pre_hst_exempt'] ?? 0), 2);
     }
 
     protected function purchaseListCellHtml(string $value): string

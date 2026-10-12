@@ -22,12 +22,14 @@
               <div class="col-lg-10 col-lg-offset-1 col-md-12 col-sm-12 col-xs-12">
 
                 <figure>
-                  <img src="{{ url('images/logo-footer.webp') }}" alt="Zanini Renovations" loading="lazy" decoding="async">
+                  <img src="{{ url('images/logo-footer.webp') }}" alt="Zanini Renovations" loading="lazy" decoding="async" width="254" height="63">
                 </figure>
                 <p class="margin-top-24">
-
-                Zanini Renovations is Ontario’s trusted expert for general carpentry and complete renovations. From custom trim to full builds, we provide residential and commercial excellence with superior warranties and the best professional pricing.
-
+                Zanini Renovations is a carpentry and renovation business based in Carleton Place, in business since 2020, handling residential and commercial work, including kitchen remodels.
+                </p>
+                <p class="margin-top-24">
+                  <a href="{{ route('service-areas.index') }}">Areas we serve</a>
+                  — Carleton Place, Kanata &amp; Stittsville, Barrhaven, and across Lanark County and west Ottawa.
                 </p>
                 <div class="footer-social-icons">
 
@@ -82,7 +84,7 @@
                   <div class="footer-contact-body">
                     <p>
                       Carleton Place, ON<br>
-                      <a href="{{ config('seo.google_business_url') }}" target="_blank" rel="noopener noreferrer">Google Maps</a>
+                      <a href="{{ \App\Support\SeoStructuredData::googleBusinessUrl() }}" target="_blank" rel="noopener noreferrer">Google Maps</a>
                     </p>
                   </div>
                 </div>
@@ -117,43 +119,47 @@
                 <ul class="footer-useful-links clearfix">
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Fencing
+                    <a href="{{ url('/services/fences-gates') }}">Fencing</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Decks
+                    <a href="{{ url('/services/decks') }}">Decks</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Basement Reno
+                    <a href="{{ url('/services/basement-finishing') }}">Basement Reno</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Kitchen Remodel
+                    <a href="{{ url('/services/kitchen-remodel') }}">Kitchen Remodel</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Trim &amp; Moulding
+                    <a href="{{ url('/services/finish-carpentry-trim') }}">Trim &amp; Moulding</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Shelving
+                    <a href="{{ url('/services/custom-built-ins-closets') }}">Shelving</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Flooring
+                    <a href="{{ url('/services/flooring-installation') }}">Flooring</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Tile
+                    <a href="{{ url('/services/flooring-installation') }}">Tile</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Accent Walls
+                    <a href="{{ url('/services/finish-carpentry-trim') }}">Accent Walls</a>
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
-                    Stairs
+                    <a href="{{ url('/services/staircases') }}">Stairs</a>
+                  </li>
+                  <li>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    <a href="{{ url('/services/drywall') }}">Drywall</a>
                   </li>
                 </ul>
 

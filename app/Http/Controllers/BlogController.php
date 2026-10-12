@@ -7,6 +7,7 @@ use App\Models\BlogPost;
 use App\Models\BlogTag;
 use App\Services\BlogCommentCaptcha;
 use App\Services\BlogHtmlContentProcessor;
+use App\Support\BlogPublicContent;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -40,6 +41,13 @@ class BlogController extends Controller
 
         $posts = $postsQuery->paginate(9)->withQueryString();
 
+        if ($posts->currentPage() > max(1, $posts->lastPage())) {
+            abort(404);
+        }
+        if (($categorySlug !== '' || $tagSlug !== '') && $posts->total() === 0) {
+            abort(404);
+        }
+
         $featuredPost = BlogPost::query()
             ->published()
             ->with(['categories', 'tags'])
@@ -72,6 +80,15 @@ class BlogController extends Controller
             ->limit(20)
             ->get();
 
+        $publishedCount = BlogPost::query()->published()->count();
+        $minPosts = max(1, (int) config('seo.blog_filter_index_min_posts', 8));
+        $isSearch = $q !== '';
+        $isTaxonomyFilter = $categorySlug !== '' || $tagSlug !== '';
+        $blogRobots = 'index,follow';
+        if ($isSearch || ($isTaxonomyFilter && $publishedCount < $minPosts)) {
+            $blogRobots = 'noindex, follow';
+        }
+
         return view('site.blog.index', compact(
             'posts',
             'featuredPost',
@@ -82,7 +99,8 @@ class BlogController extends Controller
             'q',
             'categorySlug',
             'tagSlug',
-            'htmlProcessor'
+            'htmlProcessor',
+            'blogRobots'
         ));
     }
 
@@ -133,16 +151,23 @@ class BlogController extends Controller
         $captchaMode = $captcha->mode();
         $captchaChallenge = $captchaMode === 'math' ? $captcha->generateMathChallenge() : null;
 
+        $isPreview = false;
+        $relatedProjects = BlogPublicContent::relatedProjects($post);
+        $cta = BlogPublicContent::cta($post);
+
         return view('site.blog.show', compact(
             'post',
             'approvedComments',
             'relatedPosts',
+            'relatedProjects',
+            'cta',
             'prevPost',
             'nextPost',
             'recentPosts',
             'htmlProcessor',
             'captchaMode',
-            'captchaChallenge'
+            'captchaChallenge',
+            'isPreview'
         ));
     }
 }

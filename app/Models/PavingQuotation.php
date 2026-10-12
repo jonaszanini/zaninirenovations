@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PavingQuotation extends Model
 {
     use \App\Models\Concerns\HasClientEmailMessage;
+    use \App\Models\Concerns\HasPdfFoldVersion;
+    use \App\Models\Concerns\HasReplyToAcceptChoice;
 
     protected $fillable = [
         'client_project_id',

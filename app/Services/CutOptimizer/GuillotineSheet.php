@@ -19,6 +19,9 @@ class GuillotineSheet
     /** @var list<array<string, mixed>> */
     public array $cutLog = [];
 
+    /** Inventory offcut this sheet was packed onto, if any. */
+    public ?int $offcutId = null;
+
     public function __construct(
         public string $id,
         public float $width,
@@ -40,6 +43,23 @@ class GuillotineSheet
             $this->usableWidth,
             $this->usableLength
         );
+    }
+
+    /**
+     * Free rectangles large enough to keep as leftover inventory.
+     *
+     * @return list<Rectangle>
+     */
+    public function leftoverRectangles(float $minSize): array
+    {
+        $out = [];
+        foreach ($this->freeRectangles as $rect) {
+            if ($rect->width + self::EPS >= $minSize && $rect->height + self::EPS >= $minSize) {
+                $out[] = $rect;
+            }
+        }
+
+        return $out;
     }
 
     public function insert(Part $part, string $splitStrategy): bool

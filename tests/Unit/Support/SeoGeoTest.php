@@ -29,7 +29,7 @@ class SeoGeoTest extends TestCase
         $txt = LlmsTxtGenerator::generate(collect(), collect());
 
         $this->assertStringContainsString('# Zanini Renovations', $txt);
-        $this->assertStringContainsString('$3 million', $txt);
+        $this->assertStringContainsString('Fully insured', $txt);
         $this->assertStringContainsString('(647) 834-7570', $txt);
         $this->assertStringContainsString('/warranty', $txt);
         $this->assertStringNotContainsString('/admin', $txt);
@@ -85,8 +85,9 @@ class SeoGeoTest extends TestCase
         $this->assertNotContains('Red Seal carpentry', $business['knowsAbout']);
         $this->assertArrayNotHasKey('aggregateRating', $business);
         $this->assertArrayNotHasKey('review', $business);
-        $this->assertEqualsWithDelta(45.120446, $business['geo']['latitude'], 0.000001);
-        $this->assertEqualsWithDelta(-76.0081985, $business['geo']['longitude'], 0.000001);
+        $this->assertArrayNotHasKey('geo', $business, 'Geo coordinates should not be published for a service-area business');
+        $this->assertSame('2020', $business['foundingDate']);
+        $this->assertSame(config('seo.area_served'), $business['areaServed']);
         $this->assertContains(
             'https://maps.google.com/?cid=7676669856408637146',
             $business['sameAs']
@@ -95,7 +96,7 @@ class SeoGeoTest extends TestCase
             fn ($node) => ($node['@type'] ?? '') === 'WebPage'
         );
         $this->assertSame((string) config('seo.home_title'), $webpage['name']);
-        $this->assertStringContainsString('$3 million', $business['description']);
+        $this->assertStringContainsString('fully insured', strtolower((string) $business['description']));
         $encoded = SeoStructuredData::toJsonLd($graph);
         $this->assertStringNotContainsString('$2M', $encoded);
         $this->assertStringNotContainsString('aggregateRating', $encoded);

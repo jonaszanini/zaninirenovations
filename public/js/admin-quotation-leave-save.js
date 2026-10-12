@@ -1,4 +1,173 @@
 (function () {
+  var PUBLISH_ONLY_REQUIRED = [
+    'input[name="payment_installments"]',
+    'select[name="payment_installments"]',
+    'input[name="include_debris_removal"]',
+    'input[name="debris_removal_amount"]',
+    'input[name="include_commute"]',
+    'input[name="ask_reply_to_accept"]',
+    'input[name="client_name"]'
+  ].join(', ');
+
+  function relaxPublishOnlyRequired(form) {
+    if (!form || !form.querySelectorAll) {
+      return;
+    }
+    form.querySelectorAll(PUBLISH_ONLY_REQUIRED).forEach(function (el) {
+      if (el.required) {
+        el.setAttribute('data-qh-publish-required', '1');
+        el.required = false;
+      }
+    });
+  }
+
+  function restorePublishOnlyRequired(form) {
+    if (!form || !form.querySelectorAll) {
+      return;
+    }
+    form.querySelectorAll('[data-qh-publish-required]').forEach(function (el) {
+      el.required = true;
+      el.removeAttribute('data-qh-publish-required');
+    });
+  }
+
+  function setCanonicalIntent(form, draft) {
+    if (!form) {
+      return;
+    }
+    var intent = form.querySelector('input[name="save_intent"]');
+    if (intent) {
+      intent.value = draft ? 'draft' : 'publish';
+    }
+    var isDraft = form.querySelector('input[name="is_draft"]');
+    if (isDraft) {
+      isDraft.value = draft ? '1' : '0';
+    }
+  }
+
+  function isDraftSubmit(form) {
+    var intent = form.querySelector('input[name="save_intent"]');
+    if (intent && intent.value === 'draft') {
+      return true;
+    }
+    var isDraft = form.querySelector('input[name="is_draft"]');
+    return !!(isDraft && (isDraft.value === '1' || isDraft.value === 'true'));
+  }
+
+  function reportInvalid(form) {
+    var fields = [];
+    if (window.AdminHotkeySave && typeof window.AdminHotkeySave.instance === 'function') {
+      try {
+        fields = window.AdminHotkeySave.instance().collectInvalidFields(form) || [];
+      } catch (err) { /* ignore */ }
+    }
+    if (window.AdminToast && typeof window.AdminToast.validation === 'function') {
+      window.AdminToast.validation(fields);
+      return;
+    }
+    var first = fields[0] && fields[0].el;
+    if (first && typeof first.reportValidity === 'function') first.reportValidity();
+  }
+
+  window.AdminQuoteDraftValidation = {
+    relax: relaxPublishOnlyRequired,
+    restore: restorePublishOnlyRequired,
+    isDraftSubmit: isDraftSubmit,
+    setCanonicalIntent: setCanonicalIntent,
+    reportInvalid: reportInvalid,
+  };
+
+  var saveInvalidTimer = null;
+
+  document.addEventListener('invalid', function (e) {
+    var el = e.target;
+    var form = el && el.form;
+    if (!form || !form.hasAttribute || !form.hasAttribute('data-quotation-editor')) return;
+    if (form.getAttribute('data-qh-save-attempt') !== '1') return;
+    if (e.preventDefault) e.preventDefault();
+    clearTimeout(saveInvalidTimer);
+    saveInvalidTimer = setTimeout(function () {
+      form.removeAttribute('data-qh-save-attempt');
+      reportInvalid(form);
+    }, 0);
+  }, true);
+
+  document.addEventListener('click', function (e) {
+    var saveBtn = e.target.closest && e.target.closest('.qh-actions__save, [id$="-btn-publish"], [id$="-btn-save"]');
+    var draftBtn = e.target.closest && e.target.closest('.qh-actions__draft, [id$="-btn-draft"]');
+    var form = (saveBtn || draftBtn)
+      ? ((saveBtn || draftBtn).form
+        || ((saveBtn || draftBtn).getAttribute('form')
+          ? document.getElementById((saveBtn || draftBtn).getAttribute('form'))
+          : null)
+        || editorForm())
+      : null;
+    if ((saveBtn || draftBtn) && form) {
+      form.setAttribute('data-qh-save-attempt', '1');
+    }
+    if (saveBtn && form) {
+      setCanonicalIntent(form, false);
+      restorePublishOnlyRequired(form);
+      return;
+    }
+    if (!draftBtn) {
+      return;
+    }
+    if (form && form.getAttribute('data-qh-client-share') === '1' && draftBtn.getAttribute('data-qh-draft-bypass') !== '1') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      confirmDialog(
+        "This quotation is already with the client. Saving it as a draft will stop their link from working until you publish it again. Continue?",
+        {
+          title: 'Pause the client link?',
+          danger: true,
+          confirmLabel: 'Save as draft',
+          cancelLabel: 'Cancel',
+        }
+      ).then(function (ok) {
+        if (!ok) {
+          if (document && typeof document.dispatchEvent === 'function') {
+            try {
+              document.dispatchEvent(new CustomEvent('admin-hotkey-save:abort', { bubbles: true }));
+            } catch (err) { /* ignore */ }
+          }
+          return;
+        }
+        draftBtn.setAttribute('data-qh-draft-bypass', '1');
+        setCanonicalIntent(form, true);
+        relaxPublishOnlyRequired(form);
+        var saved = runDraftSave(form, function () {
+          draftBtn.click();
+        });
+        if (!saved) {
+          submitEditorForm(form);
+        }
+        draftBtn.removeAttribute('data-qh-draft-bypass');
+        setTimeout(function () {
+          restorePublishOnlyRequired(form);
+        }, 0);
+      });
+      return;
+    }
+    if (form) {
+      setCanonicalIntent(form, true);
+      relaxPublishOnlyRequired(form);
+      setTimeout(function () {
+        restorePublishOnlyRequired(form);
+      }, 0);
+    }
+  }, true);
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form || !form.matches || !form.matches('form[data-quotation-editor]')) {
+      return;
+    }
+    if (isDraftSubmit(form)) {
+      relaxPublishOnlyRequired(form);
+    }
+  }, true);
+
   function editorForm() {
     return document.querySelector('form[data-quotation-editor]');
   }
@@ -131,8 +300,10 @@
   }
 
   function canAutosave(form) {
-    if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
-      return false;
+    if (typeof form.checkValidity === 'function') {
+      if (!form.checkValidity()) {
+        return false;
+      }
     }
 
     // Untouched new quotes (including ones prefilled from a project) should not
@@ -257,20 +428,82 @@
     return true;
   }
 
-  function confirmLeaveUnsaved() {
-    var message = 'This quotation is missing required information and has not been saved. Still want to exit?';
-    var options = {
-      title: 'Quotation not saved yet',
-      confirmLabel: 'Yes, exit',
-      cancelLabel: 'No, stay',
-    };
+  function submitEditorForm(form) {
+    if (!form) return;
+    if (typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+      return;
+    }
+    if (window.HTMLFormElement && HTMLFormElement.prototype && HTMLFormElement.prototype.submit) {
+      HTMLFormElement.prototype.submit.call(form);
+    }
+  }
+
+  function runDraftSave(form, trigger) {
+    var saved = false;
+    var onSubmit = function () { saved = true; };
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('submit', onSubmit, true);
+    }
+    var proto = (typeof HTMLFormElement !== 'undefined' && HTMLFormElement.prototype) || null;
+    var origSubmit = proto && proto.submit;
+    if (origSubmit) {
+      proto.submit = function () {
+        saved = true;
+        return origSubmit.apply(this, arguments);
+      };
+    }
+    try {
+      trigger();
+    } finally {
+      if (typeof document !== 'undefined' && document.removeEventListener) {
+        document.removeEventListener('submit', onSubmit, true);
+      }
+      if (proto && origSubmit) proto.submit = origSubmit;
+    }
+    return saved;
+  }
+
+  function confirmDialog(message, options) {
     if (window.AdminDialog && typeof window.AdminDialog.confirm === 'function') {
       return window.AdminDialog.confirm(message, options);
     }
     return Promise.resolve(window.confirm(message));
   }
 
+  function confirmLeaveUnsaved() {
+    return confirmDialog('This quotation is missing required information and has not been saved. Still want to exit?', {
+      title: 'Quotation not saved yet',
+      confirmLabel: 'Yes, exit',
+      cancelLabel: 'No, stay',
+    });
+  }
+
+  function confirmDiscardChanges() {
+    return confirmDialog('Discard changes?', {
+      title: 'Discard changes?',
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep editing',
+    });
+  }
+
+  function isFormDirty(form) {
+    return !!(form && form.getAttribute('data-quotation-user-edited') === '1');
+  }
+
+  function suppressBeforeUnload() {
+    window.AdminQuoteAllowUnload = true;
+    window.allowUnload = true;
+    window.onbeforeunload = null;
+  }
+
   function leaveWithoutSaving(dest) {
+    suppressBeforeUnload();
+    var form = editorForm();
+    if (form) {
+      form.removeAttribute('data-quotation-user-edited');
+      form.setAttribute('data-quotation-allow-unload', '1');
+    }
     window.location.assign(dest.href);
   }
 
@@ -287,6 +520,7 @@
       tinymce.triggerSave();
     }
     preserveDraft(form);
+    relaxPublishOnlyRequired(form);
     hiddenInput(form, 'after_save_url', dest.pathname + dest.search + dest.hash);
     hiddenInput(form, 'after_save_attach_return', attachReturn ? '1' : '0');
     if (typeof form.requestSubmit === 'function') {
@@ -299,6 +533,26 @@
   document.addEventListener('click', function (e) {
     var form = editorForm();
     if (!form) {
+      return;
+    }
+
+    var cancelBtn = e.target.closest('[data-qh-cancel]');
+    if (cancelBtn) {
+      var cancelHref = cancelBtn.getAttribute('data-qh-cancel');
+      var cancelDest = destination(cancelHref);
+      if (!cancelDest) {
+        return;
+      }
+      e.preventDefault();
+      if (isFormDirty(form)) {
+        confirmDiscardChanges().then(function (ok) {
+          if (ok) {
+            leaveWithoutSaving(cancelDest);
+          }
+        });
+        return;
+      }
+      leaveWithoutSaving(cancelDest);
       return;
     }
 

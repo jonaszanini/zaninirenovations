@@ -25,7 +25,10 @@
          @if ($hasValue || $errors->has('client_email_message')) open @endif>
   <summary class="admin-accordion__summary">
     <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
-    <span class="admin-accordion__title">Client Email Message</span>
+    <span class="admin-accordion__title">
+      Client Email Message
+      <x-admin.info-tip label="Client Email Message">Optional. When filled in, this opens the client email after the greeting. The usual “pleasure discussing” line is left out, and the PDF sentence follows your message. Not shown on the PDF.</x-admin.info-tip>
+    </span>
     @if ($hasValue)
       <span class="cp-client-email-card__badge" title="A message will be added to the client email">
         <i class="fa fa-envelope" aria-hidden="true"></i>
@@ -33,9 +36,6 @@
     @endif
   </summary>
   <div class="admin-accordion__panel">
-    <p class="admin-form-help cp-client-email-card__help">
-      Optional. When filled in, this opens the client email after the greeting. The usual “pleasure discussing” line is left out, and the PDF sentence follows your message. Not shown on the PDF.
-    </p>
     <textarea class="admin-input cp-client-email-card__input"
               id="{{ $fieldId }}"
               name="client_email_message"
@@ -48,17 +48,16 @@
     @enderror
 
     <div class="cp-client-email-card__actions">
-      <div class="admin-ai-action-group">
-        @include('admin.partials.ai_instruction_edit_link', [
-          'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_CLIENT_EMAIL_MESSAGE,
-          'instructionLabel' => 'Edit client email message prompt',
-        ])
+      @component('admin.partials.ai_action_group', [
+        'instructionKey' => \App\Models\AiInstruction::KEY_QUOTATION_CLIENT_EMAIL_MESSAGE,
+        'instructionLabel' => 'Edit client email message prompt',
+        'showHistory' => true,
+      ])
         <button type="button" class="admin-btn admin-btn--primary" data-client-email-ai>
           <i class="fa fa-magic" aria-hidden="true"></i>
           <span>Improve with AI</span>
         </button>
-        <span class="admin-ai-text-history-mount" data-history-mount></span>
-      </div>
+      @endcomponent
       <span class="nb2-loading cp-client-email-card__loading" data-client-email-loading hidden aria-live="polite">
         <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
         <span>Refining…</span>

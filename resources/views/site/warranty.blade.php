@@ -1,7 +1,7 @@
 @extends('site.layouts.public')
 
 @section('page_title', 'Workmanship Warranty & Insurance | Zanini Renovations')
-@section('meta_description', 'Zanini Renovations warranty: O.Reg. 332/12 compliant workmanship, WSIB clearance, $3 million general liability insurance, Part 9 housing. Carleton Place and Ottawa.')
+@section('meta_description', 'One-year workmanship warranty and fully insured coverage, explained. Renovate with confidence in Lanark County and Ottawa.')
 @section('canonical', url('/warranty'))
 
 @push('jsonld')
@@ -28,7 +28,7 @@
               Warranty &amp; Protection
             </h1>
             <p class="page-warranty-hero-lead text-light-color">
-              Craftsmanship you can trust — backed by clear warranty terms, strong insurance, and full regulatory compliance.
+              Craftsmanship you can trust — backed by clear warranty terms and strong insurance.
             </p>
           </div>
         </div>
@@ -70,10 +70,7 @@
             </p>
             <ul class="warranty-list warranty-list--spaced">
               <li>
-                <strong>$3,000,000 Liability Insurance:</strong> While many contractors carry a standard $2M policy, we maintain $3 million in Comprehensive General Liability insurance. This ensures that even the most complex projects are fully protected against any unforeseen property damage or third-party injury.
-              </li>
-              <li>
-                <strong>WSIB Compliance:</strong> We are fully compliant with the Workplace Safety and Insurance Board, ensuring all on-site activities are handled legally, safely, and responsibly.
+                <strong>Liability insurance:</strong> We are fully insured with Comprehensive General Liability coverage. This ensures that even the most complex projects are fully protected against any unforeseen property damage or third-party injury.
               </li>
             </ul>
 
@@ -82,7 +79,7 @@
               If you have questions about our warranty or would like to see our certificate of insurance before starting your project, please contact us. We are committed to making sure you are 100% satisfied with the final result.
             </p>
             <p class="text-center margin-top-32 margin-bottom-0 warranty-cta-buttons">
-              <a href="{{ $home }}#contact-location" class="btn btn-theme btn-square nav_menu">Get in touch</a>
+              <a href="{{ url('/contact') }}" class="btn btn-theme btn-square">Get in touch</a>
             </p>
 
           </div>

@@ -10,7 +10,9 @@ class StockOption
         public float $width,
         public float $length,
         public float $unitPrice = 0.0,
-        public ?int $catalogMaterialId = null
+        public ?int $catalogMaterialId = null,
+        public ?int $offcutId = null,
+        public int $quantity = 1
     ) {
     }
 

@@ -1,7 +1,10 @@
 <div id="br-plumbing-fields" class="br-plumbing-fields">
-  <p class="admin-form-help br-trade-scope-hint">
-    These answers are scope for a licensed plumber — they are not Zanini labor or materials. Type their quote as priced lines below.
-  </p>
+  <div class="br-tile-areas__head br-trade-scope-head">
+    <span class="br-tile-areas__title admin-label-with-tip">
+      <span>Plumbing scope</span>
+      @include('admin.partials.info_tip', ['tipText' => $brInfo['plumbing_scope'], 'tipLabel' => 'Plumbing scope'])
+    </span>
+  </div>
   @include('admin.partials.checkbox', [
     'name' => 'include_plumbing',
     'hiddenFallback' => true,
@@ -22,9 +25,10 @@
   @include('admin.quotations._amount_lines', [
     'field' => 'plumbing_lines',
     'idPrefix' => 'br-plumb-line',
-    'intro' => 'Priced plumbing work from the licensed plumber. Each filled line appears on the client quotation.',
+    'cardTitle' => "Plumber's quote",
+    'intro' => 'Priced plumbing work from the qualified plumber. Each filled line appears on the client quotation.',
     'addLabel' => 'Add line',
-    'placeholder' => 'e.g. Bathroom rough-in, laundry hookup',
+    'placeholder' => 'e.g. Bath rough-in, laundry',
     'rows' => is_array($inputs['plumbing_lines'] ?? null) ? $inputs['plumbing_lines'] : [],
     'inputClass' => 'br-preview',
     'eventName' => 'trade-lines:change',

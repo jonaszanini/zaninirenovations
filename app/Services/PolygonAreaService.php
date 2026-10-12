@@ -123,6 +123,121 @@ class PolygonAreaService
     }
 
     /**
+     * Ray-cast point-in-polygon. Boundary points count as inside.
+     *
+     * @param  array{x: float|int, y: float|int}  $point
+     * @param  list<array{x: float|int, y: float|int}>  $vertices
+     */
+    public function pointInPolygon(array $point, array $vertices): bool
+    {
+        $count = count($vertices);
+        if ($count < 3) {
+            return false;
+        }
+
+        $x = (float) $point['x'];
+        $y = (float) $point['y'];
+        $inside = false;
+
+        for ($i = 0, $j = $count - 1; $i < $count; $j = $i++) {
+            $xi = (float) $vertices[$i]['x'];
+            $yi = (float) $vertices[$i]['y'];
+            $xj = (float) $vertices[$j]['x'];
+            $yj = (float) $vertices[$j]['y'];
+            if (abs($xj - $xi) < 1e-12 && abs($yj - $yi) < 1e-12) {
+                continue;
+            }
+            $onSegment = abs(($x - $xi) * ($yj - $yi) - ($y - $yi) * ($xj - $xi)) < 1e-6
+                && $x >= min($xi, $xj) - 1e-9
+                && $x <= max($xi, $xj) + 1e-9
+                && $y >= min($yi, $yj) - 1e-9
+                && $y <= max($yi, $yj) + 1e-9;
+            if ($onSegment) {
+                return true;
+            }
+            $intersect = (($yi > $y) !== ($yj > $y))
+                && ($x < (($xj - $xi) * ($y - $yi)) / (($yj - $yi) + 1e-12) + $xi);
+            if ($intersect) {
+                $inside = ! $inside;
+            }
+        }
+
+        return $inside;
+    }
+
+    /**
+     * Offset a simple polygon outward by $distancePx (miter joins).
+     *
+     * @param  list<array{x: float|int, y: float|int}>  $vertices
+     * @return list<array{x: float, y: float}>
+     */
+    public function offsetPolygonOutward(array $vertices, float $distancePx): array
+    {
+        $count = count($vertices);
+        if ($count < 3 || $distancePx <= 0) {
+            return array_map(fn (array $v) => [
+                'x' => (float) $v['x'],
+                'y' => (float) $v['y'],
+            ], $vertices);
+        }
+
+        $out = [];
+        for ($i = 0; $i < $count; $i++) {
+            $prev = $vertices[($i - 1 + $count) % $count];
+            $curr = $vertices[$i];
+            $next = $vertices[($i + 1) % $count];
+            $n1 = $this->outwardUnitNormal($prev, $curr, $vertices);
+            $n2 = $this->outwardUnitNormal($curr, $next, $vertices);
+            $dot = $n1['x'] * $n2['x'] + $n1['y'] * $n2['y'];
+            $denom = 1.0 + $dot;
+            if (abs($denom) < 0.12) {
+                $ox = $n1['x'] * $distancePx;
+                $oy = $n1['y'] * $distancePx;
+            } else {
+                $ox = ($n1['x'] + $n2['x']) * $distancePx / $denom;
+                $oy = ($n1['y'] + $n2['y']) * $distancePx / $denom;
+            }
+            $miter = hypot($ox, $oy);
+            $maxMiter = $distancePx * 4.0;
+            if ($miter > $maxMiter && $miter > 0) {
+                $ox *= $maxMiter / $miter;
+                $oy *= $maxMiter / $miter;
+            }
+            $out[] = [
+                'x' => round((float) $curr['x'] + $ox, 3),
+                'y' => round((float) $curr['y'] + $oy, 3),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array{x: float|int, y: float|int}  $a
+     * @param  array{x: float|int, y: float|int}  $b
+     * @param  list<array{x: float|int, y: float|int}>  $polygon
+     * @return array{x: float, y: float}
+     */
+    private function outwardUnitNormal(array $a, array $b, array $polygon): array
+    {
+        $dx = (float) $b['x'] - (float) $a['x'];
+        $dy = (float) $b['y'] - (float) $a['y'];
+        $len = hypot($dx, $dy) ?: 1.0;
+        $nx = -$dy / $len;
+        $ny = $dx / $len;
+        $probe = [
+            'x' => ((float) $a['x'] + (float) $b['x']) / 2 + $nx * 6,
+            'y' => ((float) $a['y'] + (float) $b['y']) / 2 + $ny * 6,
+        ];
+        if ($this->pointInPolygon($probe, $polygon)) {
+            $nx = -$nx;
+            $ny = -$ny;
+        }
+
+        return ['x' => $nx, 'y' => $ny];
+    }
+
+    /**
      * @param  list<array{x: float|int, y: float|int}>  $vertices
      */
     public function isSimplePolygon(array $vertices): bool

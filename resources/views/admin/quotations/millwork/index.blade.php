@@ -4,6 +4,17 @@
 
 @section('content')
   @php $qpid = request('project'); @endphp
+  <nav class="qh-crumb" aria-label="Breadcrumb">
+    <ol class="qh-crumb__list">
+      <li class="qh-crumb__item">
+        <a class="qh-crumb__link qh-crumb__quotations" href="{{ route('admin.quotations.index', $qpid ? ['project' => $qpid] : []) }}">Quotations</a>
+      </li>
+      <li class="qh-crumb__item" aria-hidden="true"><span class="qh-crumb__sep">›</span></li>
+      <li class="qh-crumb__item">
+        <span class="qh-crumb__current" aria-current="page">Millwork</span>
+      </li>
+    </ol>
+  </nav>
   <div class="admin-toolbar fq-list-toolbar">
     <div class="admin-toolbar-group">
       <a href="{{ route('admin.quotations.index', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">

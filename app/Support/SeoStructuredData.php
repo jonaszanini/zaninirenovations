@@ -5,6 +5,27 @@ namespace App\Support;
 class SeoStructuredData
 {
     /**
+     * Canonical Google Business Profile CID URL.
+     * Always use this instead of long /maps/place/ URLs that expose coordinates.
+     */
+    public const GOOGLE_BUSINESS_CID = 'https://maps.google.com/?cid=7676669856408637146';
+
+    /**
+     * Return the canonical GBP URL, ignoring any /maps/place/ URL from env.
+     * This prevents accidental publication of exact coordinates.
+     */
+    public static function googleBusinessUrl(): string
+    {
+        $configured = trim((string) config('seo.google_business_url', ''));
+
+        if ($configured === '' || str_contains($configured, '/maps/place/') || str_contains($configured, '/@')) {
+            return self::GOOGLE_BUSINESS_CID;
+        }
+
+        return $configured;
+    }
+
+    /**
      * JSON-LD output safe on PHP 8.0+ (JSON_INVALID_UTF8_IGNORE exists from PHP 8.3).
      */
     public static function toJsonLd(array $data): string
@@ -24,11 +45,11 @@ class SeoStructuredData
         $areas = config('seo.area_served', []);
         $fb = (string) config('social.facebook_url', '');
         $ig = (string) config('social.instagram_url', '');
-        $googleBiz = (string) config('seo.google_business_url', '');
+        $googleBiz = self::googleBusinessUrl();
         $sameAs = array_values(array_filter([$fb, $ig, $googleBiz], static fn ($u) => is_string($u) && str_starts_with($u, 'http')));
         $homeSummary = trim((string) config('seo.home_summary', ''));
         if ($homeSummary === '') {
-            $homeSummary = 'Licensed carpenter and renovation contractor in Carleton Place and Ottawa, Ontario.';
+            $homeSummary = 'Fully insured carpentry and renovation business in Carleton Place since 2020.';
         }
         $ogRel = ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
         $ogAbs = $url.'/'.$ogRel;
@@ -68,17 +89,13 @@ class SeoStructuredData
             'knowsAbout' => $knowsAbout,
             'telephone' => '+1-647-834-7570',
             'email' => (string) config('mail.from.address', ''),
+            'foundingDate' => '2020',
             'priceRange' => '$$',
             'address' => [
                 '@type' => 'PostalAddress',
                 'addressLocality' => 'Carleton Place',
                 'addressRegion' => 'ON',
                 'addressCountry' => 'CA',
-            ],
-            'geo' => [
-                '@type' => 'GeoCoordinates',
-                'latitude' => (float) config('seo.latitude', 45.120446),
-                'longitude' => (float) config('seo.longitude', -76.0081985),
             ],
             'areaServed' => $areas,
             'openingHoursSpecification' => [
@@ -99,37 +116,24 @@ class SeoStructuredData
             $business['sameAs'] = $sameAs;
         }
 
-        $services = [
-            'Residential Fencing Services',
-            'Professional Deck Builder Ottawa',
-            'Basement Framing Contractors',
-            'Interior Trim Installation Ottawa',
-            'Custom Built-in Shelving Ottawa',
-            'Hardwood Flooring Installation Ottawa',
-            'Drywall Installation and Taping',
-            'Accent wall carpentry',
-            'Wood Staircase Refinishing',
-        ];
-
-        $itemList = [
-            '@type' => 'ItemList',
-            '@id' => $url.'/#services-list',
-            'name' => 'Carpentry & renovation services',
-            'itemListElement' => [],
-        ];
-        $n = 1;
-        foreach ($services as $name) {
-            $itemList['itemListElement'][] = [
-                '@type' => 'ListItem',
-                'position' => $n,
-                'item' => [
+        $offers = [];
+        foreach (PublicServices::offerCatalogItems() as $item) {
+            $offers[] = [
+                '@type' => 'Offer',
+                'itemOffered' => [
                     '@type' => 'Service',
-                    'name' => $name,
-                    'provider' => ['@id' => $url.'/#business'],
-                    'areaServed' => ['Ottawa', 'Carleton Place'],
+                    'name' => $item['name'],
+                    'serviceType' => $item['service_type'],
+                    'url' => $item['url'],
                 ],
             ];
-            $n++;
+        }
+        if ($offers !== []) {
+            $business['hasOfferCatalog'] = [
+                '@type' => 'OfferCatalog',
+                'name' => 'Carpentry and renovation services',
+                'itemListElement' => $offers,
+            ];
         }
 
         $graph = [
@@ -155,7 +159,6 @@ class SeoStructuredData
             $personMayara,
             $primaryImage,
             $business,
-            $itemList,
         ];
 
         $faq = self::homeFaqPage($url);
@@ -169,11 +172,45 @@ class SeoStructuredData
         ];
     }
 
+    /**
+     * Homepage FAQ rows with service-area answers resolved from config.
+     *
+     * @return list<array{question: string, answer: string}>
+     */
+    public static function homeFaqItems(): array
+    {
+        $faqItems = config('seo.home_faq', []);
+        if (! is_array($faqItems)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($faqItems as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $question = trim((string) ($row['question'] ?? ''));
+            $answer = trim((string) ($row['answer'] ?? ''));
+            if (($row['answer_from'] ?? '') === 'service_area_text') {
+                $answer = trim((string) config('seo.service_area_text', ''));
+            }
+            if ($question === '' || $answer === '') {
+                continue;
+            }
+            $out[] = [
+                'question' => $question,
+                'answer' => $answer,
+            ];
+        }
+
+        return $out;
+    }
+
     /** @return array<string, mixed>|null */
     public static function homeFaqPage(string $baseUrl): ?array
     {
-        $faqItems = config('seo.home_faq', []);
-        if (! is_array($faqItems) || $faqItems === []) {
+        $faqItems = self::homeFaqItems();
+        if ($faqItems === []) {
             return null;
         }
 
@@ -242,7 +279,7 @@ class SeoStructuredData
     {
         $base = rtrim((string) config('app.url'), '/');
         $url = $post->publicUrl();
-        $description = trim((string) ($post->meta_description ?: $post->displayExcerpt(300)));
+        $description = $post->seoDescription();
         $published = $post->published_at ?? $post->created_at;
         $modified = $post->updated_at ?? $published;
         $authorName = trim((string) ($post->author_name ?: 'Jonas Zanini'));
@@ -255,9 +292,17 @@ class SeoStructuredData
             $author['jobTitle'] = 'Owner & Contractor';
         }
 
-        $image = $post->featuredImageUrl();
-        if (! is_string($image) || $image === '') {
-            $image = $base.'/'.ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
+        $imageUrl = $post->featuredImageUrl();
+        if (! is_string($imageUrl) || $imageUrl === '') {
+            $imageUrl = $base.'/'.ltrim((string) config('seo.og_image', 'images/home_1_slider_1.webp'), '/');
+        }
+        $image = [
+            '@type' => 'ImageObject',
+            'url' => $imageUrl,
+        ];
+        $alt = method_exists($post, 'featuredImageAlt') ? $post->featuredImageAlt() : '';
+        if ($alt !== '') {
+            $image['caption'] = $alt;
         }
 
         $article = [
@@ -436,6 +481,16 @@ class SeoStructuredData
             $gallery['keywords'] = implode(', ', $keywords);
         }
 
+        $location = null;
+        $town = $project->townLabel();
+        if ($town !== '' && $project->isInServiceArea()) {
+            $location = [
+                '@type' => 'Place',
+                'name' => $town,
+            ];
+            $gallery['contentLocation'] = $location;
+        }
+
         $page = [
             '@type' => 'WebPage',
             '@id' => $url.'#webpage',
@@ -449,6 +504,9 @@ class SeoStructuredData
         if ($images !== []) {
             $page['primaryImageOfPage'] = $images[0];
         }
+        if ($location !== null) {
+            $page['contentLocation'] = $location;
+        }
 
         return [
             '@context' => 'https://schema.org',
@@ -460,6 +518,389 @@ class SeoStructuredData
                 ]),
                 $page,
                 $gallery,
+            ],
+        ];
+    }
+
+    /**
+     * JSON-LD for /service-areas hub.
+     *
+     * @param  array<string, mixed>  $hub
+     * @return array<string, mixed>
+     */
+    public static function serviceAreaHub(array $hub): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $url = $base.'/service-areas';
+        $name = (string) ($hub['title'] ?? 'Service areas');
+        $description = (string) ($hub['meta_description'] ?? '');
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'Service areas', 'url' => $url],
+                ]),
+                [
+                    '@type' => 'WebPage',
+                    '@id' => $url.'#webpage',
+                    'url' => $url,
+                    'name' => $name,
+                    'description' => $description,
+                    'inLanguage' => 'en-CA',
+                    'isPartOf' => ['@id' => $base.'/#website'],
+                    'about' => ['@id' => $base.'/#business'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * JSON-LD for a published town page: LocalBusiness + Service + WebPage + FAQ.
+     *
+     * @param  array<string, mixed>  $page
+     * @return array<string, mixed>
+     */
+    public static function serviceAreaTown(array $page): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $slug = (string) ($page['slug'] ?? '');
+        $url = $base.'/service-areas/'.$slug;
+        $title = (string) ($page['title'] ?? '');
+        $description = (string) ($page['meta_description'] ?? '');
+        $h1 = (string) ($page['h1'] ?? $title);
+        $crumbName = (string) ($page['breadcrumb_name'] ?? $page['name'] ?? $h1);
+        $areas = $page['area_served'] ?? [];
+        if (! is_array($areas) || $areas === []) {
+            $areas = [['@type' => 'Place', 'name' => (string) ($page['name'] ?? 'Ottawa')]];
+        }
+
+        $business = [
+            '@type' => ['LocalBusiness', 'HomeAndConstructionBusiness'],
+            '@id' => $url.'#localbusiness',
+            'name' => 'Zanini Renovations',
+            'url' => $url,
+            'description' => $description,
+            'telephone' => '+1-647-834-7570',
+            'email' => (string) config('mail.from.address', ''),
+            'foundingDate' => '2020',
+            'address' => [
+                '@type' => 'PostalAddress',
+                'addressLocality' => 'Carleton Place',
+                'addressRegion' => 'ON',
+                'addressCountry' => 'CA',
+            ],
+            'areaServed' => $areas,
+            'founder' => [
+                '@type' => 'Person',
+                'name' => 'Jonas Zanini',
+            ],
+            'parentOrganization' => ['@id' => $base.'/#business'],
+        ];
+
+        $service = [
+            '@type' => 'Service',
+            '@id' => $url.'#service',
+            'name' => $h1,
+            'serviceType' => 'Carpentry and renovation',
+            'description' => $description,
+            'url' => $url,
+            'provider' => ['@id' => $url.'#localbusiness'],
+            'areaServed' => $areas,
+        ];
+
+        $graph = [
+            self::breadcrumb([
+                ['name' => 'Home', 'url' => $base.'/'],
+                ['name' => 'Service areas', 'url' => $base.'/service-areas'],
+                ['name' => $crumbName, 'url' => $url],
+            ]),
+            [
+                '@type' => 'WebPage',
+                '@id' => $url.'#webpage',
+                'url' => $url,
+                'name' => $title,
+                'description' => $description,
+                'inLanguage' => 'en-CA',
+                'isPartOf' => ['@id' => $base.'/#website'],
+                'about' => ['@id' => $url.'#service'],
+            ],
+            $business,
+            $service,
+        ];
+
+        $faqItems = [];
+        foreach ((array) ($page['faqs'] ?? []) as $faq) {
+            $question = trim((string) ($faq['question'] ?? ''));
+            $answer = trim((string) ($faq['answer'] ?? ''));
+            if ($question === '' || $answer === '') {
+                continue;
+            }
+            $faqItems[] = [
+                '@type' => 'Question',
+                'name' => $question,
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => $answer,
+                ],
+            ];
+        }
+        if ($faqItems !== []) {
+            $graph[] = [
+                '@type' => 'FAQPage',
+                '@id' => $url.'#faq',
+                'mainEntity' => $faqItems,
+            ];
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => $graph,
+        ];
+    }
+
+    /**
+     * JSON-LD for the /services hub.
+     *
+     * @param  array<string, mixed>  $hub
+     * @return array<string, mixed>
+     */
+    public static function servicesHub(array $hub): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $url = $base.'/services';
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'Services', 'url' => $url],
+                ]),
+                [
+                    '@type' => 'CollectionPage',
+                    '@id' => $url.'#webpage',
+                    'url' => $url,
+                    'name' => (string) ($hub['title'] ?? 'Services'),
+                    'description' => (string) ($hub['meta_description'] ?? ''),
+                    'inLanguage' => 'en-CA',
+                    'isPartOf' => ['@id' => $base.'/#website'],
+                    'about' => ['@id' => $base.'/#business'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * JSON-LD for a public service landing page.
+     *
+     * @param  array<string, mixed>  $page
+     * @return array<string, mixed>
+     */
+    public static function servicePage(array $page): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $slug = (string) ($page['slug'] ?? '');
+        $url = $base.'/services/'.$slug;
+        $title = (string) ($page['title'] ?? '');
+        $description = (string) ($page['meta_description'] ?? '');
+        $h1 = (string) ($page['h1'] ?? $title);
+        $crumbName = (string) ($page['breadcrumb_name'] ?? $h1);
+        $serviceType = (string) ($page['service_type'] ?? $crumbName);
+
+        $service = [
+            '@type' => 'Service',
+            '@id' => $url.'#service',
+            'name' => $h1,
+            'serviceType' => $serviceType,
+            'description' => $description,
+            'url' => $url,
+            'provider' => ['@id' => $base.'/#business'],
+            'areaServed' => config('seo.area_served', []),
+        ];
+
+        $graph = [
+            self::breadcrumb([
+                ['name' => 'Home', 'url' => $base.'/'],
+                ['name' => 'Services', 'url' => $base.'/services'],
+                ['name' => $crumbName, 'url' => $url],
+            ]),
+            [
+                '@type' => 'WebPage',
+                '@id' => $url.'#webpage',
+                'url' => $url,
+                'name' => $title,
+                'description' => $description,
+                'inLanguage' => 'en-CA',
+                'isPartOf' => ['@id' => $base.'/#website'],
+                'about' => ['@id' => $url.'#service'],
+            ],
+            $service,
+        ];
+
+        $faqItems = [];
+        foreach ((array) ($page['faqs'] ?? []) as $faq) {
+            $question = trim((string) ($faq['question'] ?? ''));
+            $answer = trim((string) ($faq['answer'] ?? ''));
+            if ($question === '' || $answer === '') {
+                continue;
+            }
+            $faqItems[] = [
+                '@type' => 'Question',
+                'name' => $question,
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => $answer,
+                ],
+            ];
+        }
+        if ($faqItems !== []) {
+            $graph[] = [
+                '@type' => 'FAQPage',
+                '@id' => $url.'#faq',
+                'mainEntity' => $faqItems,
+            ];
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => $graph,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $page
+     * @return array<string, mixed>
+     */
+    public static function aboutPage(array $page): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $url = $base.'/about';
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'About', 'url' => $url],
+                ]),
+                [
+                    '@type' => 'AboutPage',
+                    '@id' => $url.'#webpage',
+                    'url' => $url,
+                    'name' => (string) ($page['title'] ?? 'About'),
+                    'description' => (string) ($page['meta_description'] ?? ''),
+                    'inLanguage' => 'en-CA',
+                    'isPartOf' => ['@id' => $base.'/#website'],
+                    'mainEntity' => ['@id' => $base.'/#person-jonas'],
+                    'about' => ['@id' => $base.'/#business'],
+                ],
+                [
+                    '@type' => 'Person',
+                    '@id' => $base.'/#person-jonas',
+                    'name' => 'Jonas Zanini',
+                    'jobTitle' => 'Owner & Contractor',
+                    'description' => 'Contractor and owner of Zanini Renovations in Carleton Place, Ontario.',
+                    'worksFor' => ['@id' => $base.'/#business'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Reviews page: visible quotes stay plain HTML; schema uses real Google reviews.
+     *
+     * @param  array<string, mixed>  $page
+     * @return array<string, mixed>
+     */
+    public static function reviewsPage(array $page): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $url = $base.'/reviews';
+        $reviews = [];
+        foreach (GoogleReviews::textualReviews() as $row) {
+            $reviews[] = [
+                '@type' => 'Review',
+                'author' => [
+                    '@type' => 'Person',
+                    'name' => (string) $row['author'],
+                ],
+                'reviewBody' => (string) $row['text'],
+                'reviewRating' => [
+                    '@type' => 'Rating',
+                    'ratingValue' => '5',
+                    'bestRating' => '5',
+                ],
+                'itemReviewed' => ['@id' => $base.'/#business'],
+            ];
+        }
+
+        $pageNode = [
+            '@type' => 'WebPage',
+            '@id' => $url.'#webpage',
+            'url' => $url,
+            'name' => (string) ($page['title'] ?? 'Reviews'),
+            'description' => (string) ($page['meta_description'] ?? ''),
+            'inLanguage' => 'en-CA',
+            'isPartOf' => ['@id' => $base.'/#website'],
+            'about' => ['@id' => $base.'/#business'],
+        ];
+
+        if ($reviews !== []) {
+            $pageNode['mainEntity'] = [
+                '@type' => 'LocalBusiness',
+                '@id' => $base.'/#business',
+                'name' => 'Zanini Renovations',
+                'aggregateRating' => [
+                    '@type' => 'AggregateRating',
+                    'ratingValue' => GoogleReviews::ratingValue(),
+                    'reviewCount' => (string) GoogleReviews::reviewCount(),
+                    'bestRating' => '5',
+                    'worstRating' => '1',
+                ],
+                'review' => $reviews,
+            ];
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'Reviews', 'url' => $url],
+                ]),
+                $pageNode,
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $page
+     * @return array<string, mixed>
+     */
+    public static function contactPage(array $page): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $url = $base.'/contact';
+
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                self::breadcrumb([
+                    ['name' => 'Home', 'url' => $base.'/'],
+                    ['name' => 'Contact', 'url' => $url],
+                ]),
+                [
+                    '@type' => 'ContactPage',
+                    '@id' => $url.'#webpage',
+                    'url' => $url,
+                    'name' => (string) ($page['title'] ?? 'Contact'),
+                    'description' => (string) ($page['meta_description'] ?? ''),
+                    'inLanguage' => 'en-CA',
+                    'isPartOf' => ['@id' => $base.'/#website'],
+                    'about' => ['@id' => $base.'/#business'],
+                ],
             ],
         ];
     }

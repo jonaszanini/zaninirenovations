@@ -1,6 +1,8 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Lumber / Board Material Calculator')
+@section('heading')
+  Lumber / Board Material <span class="admin-heading-copy">Calculator <x-admin.info-tip label="Lumber / Board Material Calculator">Plan how many boards to buy for a job. Add one or more board types (2×4, 2×6, decking, etc.), enter required pieces for each, and see cutting layouts with waste and cost estimates.</x-admin.info-tip></span>
+@endsection
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-utilities.css') }}?v={{ @filemtime(public_path('css/admin-utilities.css')) ?: time() }}">
@@ -8,13 +10,14 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Plan how many boards to buy for a job. Add one or more board types (2×4, 2×6, decking, etc.),
-      enter required pieces for each, and see cutting layouts with waste and cost estimates.
-    </p>
-    <a href="{{ route('admin.utilities.index') }}" class="admin-btn admin-btn--ghost">
-      <i class="fa fa-arrow-left"></i> All utilities
-    </a>
+    <div class="admin-toolbar-actions">
+      <a href="{{ route('admin.utilities.offcuts.index') }}" class="admin-btn admin-btn--ghost">
+        <i class="fa fa-cubes"></i> Offcut inventory
+      </a>
+      <a href="{{ route('admin.utilities.index') }}" class="admin-btn admin-btn--ghost">
+        <i class="fa fa-arrow-left"></i> All utilities
+      </a>
+    </div>
   </div>
 
   <div
@@ -25,6 +28,12 @@
     data-pdf-url="{{ route('admin.utilities.lumber-board.pdf') }}"
     data-destroy-template="{{ route('admin.utilities.calculations.destroy', ['utility_calculation' => '__ID__']) }}"
     data-project-url-template="{{ route('admin.client-projects.show', ['client_project' => '__ID__']) }}"
+    data-import-search-url="{{ route('admin.utilities.cut-list.quotations.search') }}"
+    data-import-url="{{ route('admin.utilities.cut-list.import') }}"
+    data-offcuts-url="{{ route('admin.utilities.offcuts.available') }}"
+    data-save-leftovers-url="{{ route('admin.utilities.offcuts.save-leftovers') }}"
+    data-consume-url="{{ route('admin.utilities.offcuts.consume') }}"
+    data-optimize-sheets-url="{{ route('admin.utilities.lumber-board.optimize-sheets') }}"
     data-link-project-id="{{ $linkProject?->id }}"
     data-saved="{{ json_encode($savedCalculations->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'client_project_id' => $c->client_project_id, 'client_project_name' => $c->clientProject?->linkSelectLabel(), 'payload' => $c->payload, 'created_label' => optional($c->created_at)->format('M j, Y g:i A'), 'saved_label' => optional($c->updated_at)->format('M j, Y g:i A')])) }}">
     <input type="hidden" id="util-lb-csrf" value="{{ csrf_token() }}">
@@ -32,6 +41,20 @@
     <div class="util-lb-grid">
       <section class="admin-card util-lb-inputs">
         <h3 class="util-lb-card-title">Board types</h3>
+
+        <div class="util-lb-import">
+          @include('admin.partials.search_select', [
+            'id' => 'lb-import-quote',
+            'name' => 'lb_import_quote_id',
+            'label' => 'Import from quotation',
+            'placeholder' => 'Search client or quote #…',
+            'searchUrl' => route('admin.utilities.cut-list.quotations.search'),
+            'metaKeys' => ['type_label', 'quote_number'],
+            'emptyQueryMessage' => 'Recent quotations',
+            'emptyMessage' => 'No matching quotations',
+          ])
+          <p class="util-lb-hint util-lb-import-hint" data-lb-import-status hidden></p>
+        </div>
 
         <label class="admin-checkbox admin-checkbox--sm util-lb-check">
           <input type="checkbox" class="admin-checkbox__input" id="lb-round-up" data-lb-round-up>
@@ -44,6 +67,20 @@
           <span class="admin-checkbox__mark" aria-hidden="true"></span>
           <span class="admin-checkbox__text">Include 1/8″ kerf between cuts</span>
         </label>
+
+        <label class="admin-checkbox admin-checkbox--sm util-lb-check">
+          <input type="checkbox" class="admin-checkbox__input" id="lb-use-offcuts" data-lb-use-offcuts>
+          <span class="admin-checkbox__mark" aria-hidden="true"></span>
+          <span class="admin-checkbox__text">Use offcuts first</span>
+        </label>
+
+        <div class="util-lb-min-offcut">
+          <label for="lb-min-offcut">Min leftover to keep</label>
+          <div class="util-lb-min-offcut__row">
+            <input class="admin-input" type="number" id="lb-min-offcut" min="0" step="any" inputmode="decimal" value="12" data-lb-min-offcut>
+            <span class="util-lb-unit-tag">in</span>
+          </div>
+        </div>
 
         <div class="util-lb-board-types" data-lb-board-types></div>
 
@@ -65,7 +102,7 @@
                 <i class="fa fa-save"></i> Save
               </button>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-print>
-                <i class="fa fa-print"></i> Print list
+                <i class="fa fa-print"></i> Print
               </button>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-copy>
                 <i class="fa fa-copy"></i> Copy
@@ -80,6 +117,14 @@
           </div>
 
           <div class="util-lb-type-results" data-lb-type-results hidden></div>
+
+          <div class="util-lb-offcut-used" data-lb-offcut-used hidden></div>
+          <div class="util-lb-save-leftovers" data-lb-save-leftovers-wrap hidden>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-save-leftovers>
+              <i class="fa fa-cubes"></i> Save leftovers to inventory
+            </button>
+            <p class="util-lb-hint" data-lb-leftovers-feedback hidden></p>
+          </div>
 
           <div class="admin-card util-lb-global-summary" data-lb-global-summary hidden>
             <h3 class="util-lb-card-title">Grand total</h3>
@@ -124,6 +169,27 @@
             </div>
           </div>
           <p class="util-lb-save-feedback" data-lb-save-feedback hidden></p>
+        </div>
+
+        <div class="admin-card util-lb-sheet-card" data-lb-sheet-card hidden>
+          <h3 class="util-lb-card-title">Sheet goods (millwork)</h3>
+          <p class="util-lb-hint">Imported plywood/OSB parts pack on 4×8 (and leftovers) using the millwork cut optimizer.</p>
+          <label class="admin-checkbox admin-checkbox--sm util-lb-check">
+            <input type="checkbox" class="admin-checkbox__input" id="lb-sheet-use-offcuts" data-lb-sheet-use-offcuts>
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text">Use offcuts first</span>
+          </label>
+          <div class="util-lb-sheet-groups" data-lb-sheet-groups></div>
+          <div class="util-lb-sheet-actions">
+            <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" data-lb-run-sheets>
+              <i class="fa fa-play"></i> Run sheet optimizer
+            </button>
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-lb-save-sheet-leftovers hidden>
+              <i class="fa fa-cubes"></i> Save leftovers to inventory
+            </button>
+          </div>
+          <div class="util-lb-sheet-used" data-lb-sheet-used hidden></div>
+          <div class="util-lb-sheet-layouts" data-lb-sheet-layouts></div>
         </div>
 
         <div class="admin-card util-lb-diagram-card" data-lb-diagram-card hidden>

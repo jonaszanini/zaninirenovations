@@ -13,6 +13,9 @@
   $formAction = ($isEdit ? route('admin.quotations.tile.update', $quotation) : route('admin.quotations.tile.store')).$formQuery;
   $inputs = $isEdit ? ($quotation->inputs ?? []) : [];
 
+  if (! $isEdit && ! empty($roomAreaImport['inputs']) && is_array($roomAreaImport['inputs'])) {
+      $inputs = array_merge($inputs, $roomAreaImport['inputs']);
+  }
   $total_area_sqft = old('total_area_sqft', $inputs['total_area_sqft'] ?? '');
   $length_ft = old('length_ft', $inputs['length_ft'] ?? '');
   $width_ft = old('width_ft', $inputs['width_ft'] ?? '');
@@ -25,7 +28,7 @@
   $grout_type_id = old('grout_type_id', $inputs['grout_type_id'] ?? '');
   $labor_rate = old('labor_rate', $inputs['labor_rate'] ?? \App\Services\SharedWorkCatalog::flatRate('tile_install', 12));
   $work_description = old('work_description', $isEdit ? $quotation->work_description : '');
-  $client_name = old('client_name', $isEdit ? $quotation->client_name : '');
+  $client_name = old('client_name', $isEdit ? $quotation->client_name : optional($linkProject)->client_name);
   
   $include_demolition = old('include_demolition', $inputs['include_demolition'] ?? false);
   $demolition_complexity = old('demolition_complexity', $inputs['demolition_complexity'] ?? 'standard');
@@ -140,6 +143,25 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Tile',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'tl-form',
+    'saveId' => 'tl-btn-publish',
+    'draftId' => 'tl-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
+  @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->isLinked())
     <div class="admin-banner admin-banner--info" style="margin-bottom:16px;">
       <i class="fa fa-info-circle"></i>
@@ -148,10 +170,12 @@
     </div>
   @endif
 
-  <form action="{{ $formAction }}" method="POST" id="tl-form" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
+  <form action="{{ $formAction }}" method="POST" id="tl-form" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}" data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
-    <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ old('is_draft', $isEdit && $quotation->is_draft ? '1' : '0') }}">
+    <input type="hidden" name="save_intent" id="tl-save-intent" value="publish">
+    <input type="hidden" name="is_draft" id="tl-is-draft" value="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
     
     <div class="fq-form-toolbar">
       <div class="fq-form-toolbar-right">
@@ -186,9 +210,6 @@
       <div class="fl-step-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h4 style="margin:0;">1. General Details</h4>
-            <a href="{{ route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-                <i class="fa fa-cog"></i> Config
-            </a>
         </div>
         
         @if (! $isEdit || ! $quotation->isLinked())
@@ -199,7 +220,10 @@
         @endif
 
         <div class="admin-form-group quotation-work-desc">
-          <label class="admin-form-label" for="tl-work-description">Work Description (Appears on PDF)</label>
+          <span class="admin-label-with-tip">
+            <label class="admin-form-label" for="tl-work-description">Work Description (Appears on PDF)</label>
+            <x-admin.info-tip label="Work Description">Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+          </span>
           <textarea id="tl-work-description" name="work_description" class="admin-input" rows="8"
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ $work_description }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
@@ -207,15 +231,17 @@
               'aiContextFormId' => 'tl-form',
               'aiQuotationType' => 'tile',
           ])
-          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 
-      <div class="fl-step-card">
-        <h4>2. Measurements</h4>
-        <div class="fl-step-card__hint">
-          Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.
-        </div>
+      <div class="fl-step-card" data-qh-step="2">
+        <h4 class="admin-label-with-tip qh-priced-head">
+          2. Measurements
+          <x-admin.info-tip label="Measurements">Enter the <strong>Total Area</strong> directly, OR enter both <strong>Length and Width</strong>.</x-admin.info-tip>
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
+        </h4>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
           <div class="admin-form-group" style="margin-bottom:0;">
             <label class="admin-form-label">Total Area (sqft)</label>
@@ -237,8 +263,8 @@
             </div>
             <div class="admin-form-group">
                 <label class="admin-form-label">Labor Rate per sqft ($) <span class="admin-text-danger">*</span></label>
-                <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" name="labor_rate"
-                       class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $labor_rate }}" required>
+                <input type="text" inputmode="decimal" autocomplete="off" name="labor_rate"
+                       class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $labor_rate }}" required data-cp-money-entry="direct">
             </div>
         </div>
       </div>
@@ -265,8 +291,8 @@
             </div>
             <div class="admin-form-group" id="tl-custom-demo-rate-group" style="{{ $demolition_complexity === 'custom' ? '' : 'display:none;' }}">
               <label class="admin-form-label">Custom Rate ($ / sq ft)</label>
-              <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" name="custom_demolition_rate" id="tl-custom-demo-rate"
-                     class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $custom_demolition_rate }}">
+              <input type="text" inputmode="decimal" autocomplete="off" name="custom_demolition_rate" id="tl-custom-demo-rate"
+                     class="admin-input cp-money-input tl-live-trigger" placeholder="0.00" value="{{ $custom_demolition_rate }}" data-cp-money-entry="direct">
             </div>
           </div>
           
@@ -360,7 +386,10 @@
         <div id="tl-edge-details" style="display:{{ $include_edge ? 'block' : 'none' }};">
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
-              <label class="admin-form-label" for="tl-tile-edge-id">Edge product</label>
+              <span class="admin-label-with-tip">
+                <label class="admin-form-label" for="tl-tile-edge-id">Edge product</label>
+                <x-admin.info-tip label="Edge product">Sold in 8 ft pieces; LF is rounded up to whole pieces.</x-admin.info-tip>
+              </span>
               <select name="tile_edge_id" id="tl-tile-edge-id" class="admin-input tl-live-trigger">
                 <option value="">-- Select edge --</option>
                 @foreach ($edges as $edge)
@@ -369,7 +398,6 @@
                   </option>
                 @endforeach
               </select>
-              <p class="admin-form-help">Sold in 8&nbsp;ft pieces; LF is rounded up to whole pieces.</p>
             </div>
             <div class="admin-form-group">
               <label class="admin-form-label" for="tl-edge-lf">Linear feet (LF)</label>
@@ -387,27 +415,15 @@
     </div>
 
     <aside class="pq-sticky">
-      <div class="pq-sidebar-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="tl-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tl-btn-draft">Save as draft</button>
-        <a href="{{ route('admin.quotations.tile.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </a>
-        <a href="{{ route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        @include('admin.partials.quotation_view_pdf')
-      </div>
       
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'tl-form'])
+      @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'tl-form'])
       
       <div class="pq-summary-card">
-        <h4>Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="tl-live-root">
           <p class="admin-form-help" id="tl-live-empty">Enter measurements to see totals.</p>
           <div id="tl-live-body" hidden></div>
@@ -438,7 +454,9 @@
 document.addEventListener('DOMContentLoaded', function () {
     var form = document.getElementById('tl-form');
     var isDraftInput = document.getElementById('tl-is-draft');
+    var saveIntentInput = document.getElementById('tl-save-intent');
     var btnDraft = document.getElementById('tl-btn-draft');
+    var btnPublish = document.getElementById('tl-btn-publish');
     var liveEmpty = document.getElementById('tl-live-empty');
     var liveBody = document.getElementById('tl-live-body');
     var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -584,10 +602,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function setTileIntent(draft) {
+        if (saveIntentInput) {
+            saveIntentInput.value = draft ? 'draft' : 'publish';
+        }
+        if (isDraftInput) {
+            isDraftInput.value = draft ? '1' : '0';
+        }
+    }
     if (btnDraft) {
         btnDraft.addEventListener('click', function () {
-            isDraftInput.value = '1';
-            form.submit();
+            setTileIntent(true);
+            if (typeof form.requestSubmit === 'function') form.requestSubmit();
+            else form.submit();
+        });
+    }
+    if (btnPublish) {
+        btnPublish.addEventListener('click', function () {
+            setTileIntent(false);
         });
     }
 

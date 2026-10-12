@@ -5,7 +5,9 @@ namespace App\Services\Invoice;
 use App\Models\ClientProject;
 use App\Models\ClientProjectExpense;
 use App\Models\ClientProjectInvoice;
+use App\Support\CadMoney;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Pure invoice math: locked (installment-derived) subtotal/HST/total,
@@ -137,41 +139,17 @@ class InvoiceTotalsCalculator
     }
 
     /**
-     * Matches JS cpMoneyMask.parseHybridCadMoney: no "." → digits are minor units / 100;
-     * includes "." → plain decimal dollars.
+     * Discount CAD is typed as dollars (4.75 stays 4.75). Never treat
+     * digit-only strings as minor units / 100.
      */
     public function parseHybridDiscountCadInput(mixed $raw, float $grossLineSubtotal): float
     {
-        if ($raw === null || $raw === '') {
+        $parsed = CadMoney::parse($raw);
+        if ($parsed === null || $parsed <= 0) {
             return 0.0;
         }
 
-        $s = preg_replace('/\s+/u', '', str_replace(',', '', trim((string) $raw)));
-        if ($s === '') {
-            return 0.0;
-        }
-
-        if (str_contains($s, '.')) {
-            if (! is_numeric($s)) {
-                return 0.0;
-            }
-
-            return round(min(max(0.0, (float) $s), $grossLineSubtotal), 2);
-        }
-
-        $digits = preg_replace('/\D+/', '', $s);
-        if ($digits === '') {
-            return 0.0;
-        }
-
-        $digits = ltrim($digits, '0');
-        if ($digits === '') {
-            $digits = '0';
-        }
-
-        $minor = (int) $digits;
-
-        return round(min($minor / 100.0, $grossLineSubtotal), 2);
+        return round(min($parsed, $grossLineSubtotal), 2);
     }
 
     public function normaliseItems(array $rows): array
@@ -243,7 +221,9 @@ class InvoiceTotalsCalculator
                 }
             }
             if (($kind === ClientProjectInvoice::LINE_KIND_MATERIALS || $kind === ClientProjectInvoice::LINE_KIND_GAS) && $amount < 0) {
-                continue;
+                throw ValidationException::withMessages([
+                    'items' => 'Materials and gas amounts cannot be negative.',
+                ]);
             }
 
             $out = [

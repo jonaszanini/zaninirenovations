@@ -67,16 +67,19 @@ class TrimmingQuotationPagesTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('Project Context')
             ->assertSee('Trim around the living-room windows.')
-            ->assertSee('Back to project')
+            ->assertSee($project->name)
+            ->assertSee('qh-crumb__project', false)
             ->getContent();
 
         $price = strpos($html, 'Price configuration');
         $context = strpos($html, 'Project Context');
         $live = strpos($html, 'Live breakdown');
+        $header = strpos($html, 'data-qh-header');
 
         $this->assertNotFalse($price);
         $this->assertNotFalse($context);
         $this->assertNotFalse($live);
+        $this->assertNotFalse($header);
     }
 
     public function test_preview_returns_live_totals(): void
@@ -122,7 +125,8 @@ class TrimmingQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.trimming.create', ['project' => $project->id]))
             ->assertOk()
-            ->assertSee('Back to project');
+            ->assertSee($project->name)
+            ->assertSee('qh-crumb__project', false);
 
         $store = $this->post(route('admin.quotations.trimming.store', ['project' => $project->id]), $this->publishPayload([
             'client_name' => $project->client_name,
@@ -138,7 +142,7 @@ class TrimmingQuotationPagesTest extends IntegrationTestCase
         $this->get(route('admin.quotations.trimming.edit', [
             'trimming_quotation' => $quote,
             'project' => $project->id,
-        ]))->assertOk()->assertSee('Back to project');
+        ]))->assertOk()->assertSee($project->name)->assertSee('qh-crumb__project', false);
     }
 
     /**
@@ -160,6 +164,7 @@ class TrimmingQuotationPagesTest extends IntegrationTestCase
             'include_commute' => 0,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
         ], $overrides);
     }
 }

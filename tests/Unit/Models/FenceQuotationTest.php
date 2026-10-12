@@ -21,7 +21,7 @@ class FenceQuotationTest extends TestCase
         ]);
 
         $this->assertSame(
-            "Pressure treated wood fence 6' high, 6×6 posts — 41.5 linear ft, 1 gate",
+            '6 ft standard board fence, 6×6 posts in concrete, 41.5 linear ft (2 runs), one 4 ft single gate',
             $quote->summaryDescription()
         );
     }
@@ -42,5 +42,15 @@ class FenceQuotationTest extends TestCase
 
         $this->assertSame(FenceQuotation::POST_SIZE_4X4, $quote->resolvedPostSize());
         $this->assertStringContainsString('4×4 posts', $quote->summaryDescription());
+    }
+
+    public function test_existing_post_labour_credit_is_fillable_and_cast(): void
+    {
+        $quote = new FenceQuotation([
+            'existing_post_labour_credit' => '30.00',
+        ]);
+
+        $this->assertContains('existing_post_labour_credit', $quote->getFillable());
+        $this->assertSame('30.00', $quote->existing_post_labour_credit);
     }
 }

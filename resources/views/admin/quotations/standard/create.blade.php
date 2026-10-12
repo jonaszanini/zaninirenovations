@@ -131,86 +131,45 @@
                         ? "Add the client's mobile phone number."
                         : 'Cannot send SMS yet.'))));
   @endphp
-  <div class="br-toolbar sq-toolbar" aria-label="Quotation actions">
-    <div class="admin-toolbar-group">
-      <a href="{{ route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-arrow-left"></i> All standard quotations
-      </a>
-      <a href="{{ route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-th"></i> Quotation types
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-    </div>
-    <div class="pq-sidebar-actions">
-      @if ($isEdit)
-        <a href="{{ route('admin.quotations.standard.purchase-list', $quotation) }}"
-           target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-           data-purchase-list-choice
-           data-purchase-list-title="Print material list"
-           title="Print material list"
-           aria-label="Print material list">
-          <i class="fa fa-print" aria-hidden="true"></i>
-        </a>
-        @include('admin.partials.quotation_view_pdf', ['iconOnly' => true])
-
-        @if ($canSendEmail)
-          <form action="{{ route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq]) }}"
-                method="post" class="cp-inline-form"
-                onsubmit='return confirm(@json($sendEmailConfirm));'>
-            @csrf
-            <button type="submit"
-                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                    title="Email quotation to client"
-                    aria-label="Email quotation to client">
-              <i class="fa fa-paper-plane" aria-hidden="true"></i>
-            </button>
-          </form>
-        @else
-          <button type="button"
-                  class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                  disabled
-                  title="{{ $sendEmailDisabledTitle }}"
-                  aria-label="Email quotation to client">
-            <i class="fa fa-paper-plane" aria-hidden="true"></i>
-          </button>
-        @endif
-
-        @if ($canSendSms)
-          <form action="{{ route('admin.client-projects.quotation.sms', [$sendProject, $linkedCpq]) }}"
-                method="post" class="cp-inline-form"
-                onsubmit='return confirm(@json($sendSmsConfirm));'>
-            @csrf
-            <button type="submit"
-                    class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                    title="SMS quotation link to client"
-                    aria-label="SMS quotation link to client">
-              <i class="fa fa-comment" aria-hidden="true"></i>
-            </button>
-          </form>
-        @else
-          <button type="button"
-                  class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--icon"
-                  disabled
-                  title="{{ $sendSmsDisabledTitle }}"
-                  aria-label="SMS quotation link to client">
-            <i class="fa fa-comment" aria-hidden="true"></i>
-          </button>
-        @endif
-      @endif
-      <button type="submit"
-              form="sq-standard-form"
-              class="admin-btn admin-btn--primary admin-btn--sm admin-btn--icon"
-              title="Save"
-              aria-label="Save">
-        <i class="fa fa-save" aria-hidden="true"></i>
-      </button>
-      <div class="br-toolbar-grand" id="sq-toolbar-grand" title="Live grand total (incl. HST)">
-        <span class="br-toolbar-grand__label">Grand total</span>
-        <strong class="br-toolbar-grand__amount" id="sq-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
-      </div>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $isEdit ? 'Edit standard quotation '.$quotation->quote_number : 'New standard quotation',
+    'typeLabel' => 'Standard',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
+    'listUrl' => route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'sq-standard-form',
+    'saveId' => 'sq-btn-save',
+    'saveHotkey' => true,
+    'draftId' => 'st-btn-draft',
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.standard.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+    'showHubLink' => ! $projectForReturn,
+    'hubUrl' => route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []),
+    'grandTotalId' => 'sq-toolbar-grand',
+    'grandTotalValue' => $toolbarGrand,
+    'email' => $isEdit ? [
+      'can' => $canSendEmail,
+      'action' => $sendProject && $linkedCpq
+          ? route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq])
+          : null,
+      'confirm' => $sendEmailConfirm,
+      'disabledTitle' => $sendEmailDisabledTitle,
+    ] : null,
+    'sms' => $isEdit ? [
+      'can' => $canSendSms,
+      'action' => $sendProject && $linkedCpq
+          ? route('admin.client-projects.quotation.sms', [$sendProject, $linkedCpq])
+          : null,
+      'confirm' => $sendSmsConfirm,
+      'disabledTitle' => $sendSmsDisabledTitle,
+    ] : null,
+  ])
 
   @if ($returnToProject && $projectForReturn)
     <div class="admin-flash admin-flash--info">
@@ -242,17 +201,23 @@
   @endif
 
   <form action="{{ $formAction }}" method="post" id="sq-standard-form" data-quotation-editor
+        data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
+        data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}"
+        data-quote-id="{{ $isEdit ? $quotation->id : 'new' }}"
         data-electrical-desc="{{ \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit)
       @method('PUT')
     @endif
+    <input type="hidden" name="save_intent" id="st-save-intent" value="publish">
     @if ($linkProject)
       <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
     @endif
 
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
     @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'sq-standard-form'])
+    @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'sq-standard-form'])
 
     <div class="admin-card sq-intro-card">
       <div class="sq-intro-sections">
@@ -284,7 +249,10 @@
             <div class="sq-intro-option-block">
               <h5 class="sq-intro-option-title">
                 Document type
-                @include('admin.partials.info_tip', ['text' => 'You can switch between quotation and estimate at any time; the document number prefix updates when you save.'])
+                @include('admin.partials.info_tip', [
+                  'tipText' => 'You can switch between quotation and estimate at any time; the document number prefix updates when you save.',
+                  'tipLabel' => 'Document type',
+                ])
               </h5>
               @php $docSel = old('document_type', $defaultDocType); @endphp
               <div class="sq-intro-choice-row">
@@ -303,33 +271,27 @@
             <div class="sq-intro-option-block" id="sq-pdf-detail-block">
               <h5 class="sq-intro-option-title">
                 Client PDF line items
-                @include('admin.partials.info_tip', ['text' => 'Controls how material and labour appear on the client PDF.'])
+                @include('admin.partials.info_tip', [
+                  'tipHtml' => 'Controls how material and labour appear on the client PDF.<br><strong>Combined:</strong> Material and labour as one line (one line per job when there are several).<br><strong>Summary:</strong> Two lines for the whole quotation: Material and Labour.<br><strong>Detailed:</strong> Separate Material and Labour lines per job (not each SKU).',
+                  'tipLabel' => 'Client PDF line items',
+                ])
               </h5>
               <div class="sq-intro-choice-row sq-intro-choice-row--pdf-detail" id="sq-pdf-detail-choices">
-                <div class="sq-intro-choice-with-tip">
-                  <label class="cp-checkbox-row">
-                    <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_COMBINED }}"
-                      @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_COMBINED)>
-                    <span>Combined</span>
-                  </label>
-                  @include('admin.partials.info_tip', ['text' => 'Material and labour as one line (one line per job when there are several).'])
-                </div>
-                <div class="sq-intro-choice-with-tip">
-                  <label class="cp-checkbox-row">
-                    <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
-                      @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
-                    <span>Summary</span>
-                  </label>
-                  @include('admin.partials.info_tip', ['text' => 'Two lines for the whole quotation: Material and Labour.'])
-                </div>
-                <div class="sq-intro-choice-with-tip">
-                  <label class="cp-checkbox-row">
-                    <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
-                      @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
-                    <span>Detailed</span>
-                  </label>
-                  @include('admin.partials.info_tip', ['text' => 'Separate Material and Labour lines per job (not each SKU).'])
-                </div>
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_COMBINED }}"
+                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_COMBINED)>
+                  <span>Combined</span>
+                </label>
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
+                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
+                  <span>Summary</span>
+                </label>
+                <label class="cp-checkbox-row">
+                  <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
+                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
+                  <span>Detailed</span>
+                </label>
               </div>
               @error('pdf_detail_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
@@ -337,7 +299,10 @@
             <div class="sq-intro-option-block">
               <h5 class="sq-intro-option-title">
                 Includes (PDF wording)
-                @include('admin.partials.info_tip', ['text' => 'Controls the summary line on the client PDF (e.g. Labour and material or Labour).'])
+                @include('admin.partials.info_tip', [
+                  'tipText' => 'Controls the summary line on the client PDF (e.g. Labour and material or Labour).',
+                  'tipLabel' => 'Includes (PDF wording)',
+                ])
               </h5>
               @php
                 $matDef = $isEdit ? (($quotation->includes_material ?? true) ? '1' : '0') : '1';
@@ -363,7 +328,10 @@
         </section>
 
         <section class="sq-field-box">
-          <h4 class="sq-field-box-title">Description of the work</h4>
+          <h4 class="sq-field-box-title">
+            Description of the work
+            <x-admin.info-tip label="Description of the work">Shown on the client PDF beneath the priced line items. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+          </h4>
           <div class="admin-form-group sq-intro-work-desc quotation-work-desc">
             <label for="sq-work-description" class="visually-hidden">Description of the work</label>
             <textarea id="sq-work-description" name="work_description" rows="8"
@@ -374,7 +342,6 @@
                 'aiContextFormId' => 'sq-standard-form',
                 'aiQuotationType' => 'standard',
             ])
-            <p class="admin-form-help sq-intro-option-help">Shown on the client PDF beneath the priced line items. Formatting (bold, lists, headings) is preserved.</p>
             @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </section>
@@ -390,7 +357,7 @@
           'workIndex' => $w,
           'work' => $work,
           'workCount' => $workCount,
-          'isOpen' => $w === $workCount - 1,
+          'isOpen' => $w === $workCount - 1 || $errors->has('works.'.$w.'.*'),
           'includeContingency' => $w === $workCount - 1,
         ])
       @endforeach
@@ -519,7 +486,7 @@
             'label' => 'Line description on project quotation',
             'value' => old('link_line_description', 'Standard quotation'),
             'placeholder' => 'Standard quotation',
-            'help' => 'Shown as the line item text (quote number is appended automatically).',
+            'help' => 'Shown as the line item text on the project quotation. Saved as you type it.',
         ],
     ])
   @endif
@@ -580,4 +547,17 @@
 
 @push('scripts')
 <script src="{{ asset('js/admin-standard-quotation.js') }}?v={{ @filemtime(public_path('js/admin-standard-quotation.js')) ?: time() }}"></script>
+<script>
+(function () {
+  var form = document.getElementById('sq-standard-form');
+  var intent = document.getElementById('st-save-intent');
+  var draftBtn = document.getElementById('st-btn-draft');
+  if (!form || !intent || !draftBtn) return;
+  draftBtn.addEventListener('click', function () {
+    intent.value = 'draft';
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else form.submit();
+  });
+})();
+</script>
 @endpush

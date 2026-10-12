@@ -9,7 +9,8 @@ use App\Support\QuotationBuildingLabor;
 /**
  * Computes totals for a Standard standalone quotation from material rows
  * (unit price × qty, optional 13% HST per row, or tax-included unit pricing)
- * plus untaxed labour (hourly rate × hours).
+ * plus labour (hourly rate × hours, or a flat fee). Labour HST is optional
+ * (cash). Catalog delivery is frozen at pick/save — not refreshed live.
  */
 class StandardQuotationCalculator
 {
@@ -39,7 +40,9 @@ class StandardQuotationCalculator
         $qty = (float) ($row['quantity'] ?? 0);
         $delivery = round(max(0.0, (float) ($row['delivery_cad'] ?? 0)), 2);
 
-        if ($shortName === '' && $desc === '' && $unit == 0.0 && $delivery == 0.0 && ($qty == 0.0 || $qty === 0.0)) {
+        // Blank default rows ship with qty=1. Treat "no text and no money"
+        // as empty regardless of qty so they are not saved as "$0 Material".
+        if ($shortName === '' && $desc === '' && $unit == 0.0 && $delivery == 0.0) {
             return null;
         }
 
@@ -125,7 +128,8 @@ class StandardQuotationCalculator
         float $contingencyPercent = 10.0,
         bool $labourUseFixed = false,
         float $labourFixedAmount = 0.0,
-        bool $labourFixedHstIncluded = false
+        bool $labourFixedHstIncluded = false,
+        bool $includeLabourHst = true
     ): array {
         $cleanMaterials = [];
         $subBefore = 0.0;
@@ -133,8 +137,8 @@ class StandardQuotationCalculator
         $subExempt = 0.0;
         $hstSum = 0.0;
         $withHstSum = 0.0;
-
-        $materialRows = self::withLiveCatalogDelivery($materialRows);
+        $contingencyBase = 0.0;
+        $contingencyBaseTaxable = 0.0;
 
         foreach ($materialRows as $row) {
             $b = self::breakdownMaterialRow($row);
@@ -156,13 +160,18 @@ class StandardQuotationCalculator
             $hstSum += $b['line_hst'];
             $withHstSum += $b['line_total_with_hst'];
 
+            if (! StandardQuotation::isElectricalMaterialRow($row)) {
+                $contingencyBase += $b['line_subtotal'];
+                $contingencyBaseTaxable += $b['taxable_pre'];
+            }
+
             $catalogId = isset($row['catalog_material_id']) && $row['catalog_material_id'] !== ''
                 ? (int) $row['catalog_material_id']
                 : null;
 
             $lineKind = StandardQuotation::normalizeMaterialLineKind($row);
 
-            $cleanMaterials[] = [
+            $clean = [
                 'short_name' => $shortName,
                 'description' => $desc,
                 'url' => $url,
@@ -181,6 +190,26 @@ class StandardQuotationCalculator
                 'line_hst' => $b['line_hst'],
                 'line_total_with_hst' => $b['line_total_with_hst'],
             ];
+            if (isset($row['assembly_line_id']) && (int) $row['assembly_line_id'] > 0) {
+                $clean['assembly_line_id'] = (int) $row['assembly_line_id'];
+            }
+            $layoutId = trim((string) ($row['assembly_layout_id'] ?? ''));
+            if ($layoutId !== '') {
+                $clean['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+            }
+            $covered = $row['assembly_covered_layouts'] ?? '';
+            if (is_array($covered)) {
+                $covered = json_encode(array_values($covered), JSON_UNESCAPED_UNICODE);
+            }
+            $covered = trim((string) $covered);
+            if ($covered !== '') {
+                $clean['assembly_covered_layouts'] = $covered;
+            }
+            $quotedAt = trim((string) ($row['assembly_quoted_at'] ?? ''));
+            if ($quotedAt !== '') {
+                $clean['assembly_quoted_at'] = mb_substr($quotedAt, 0, 40);
+            }
+            $cleanMaterials[] = $clean;
         }
 
         $subBefore = round($subBefore, 2);
@@ -188,26 +217,23 @@ class StandardQuotationCalculator
         $subExempt = round($subExempt, 2);
         $hstSum = round($hstSum, 2);
         $withHstSum = round($withHstSum, 2);
+        $contingencyBase = round($contingencyBase, 2);
+        $contingencyBaseTaxable = round($contingencyBaseTaxable, 2);
 
-        // Contingency allowance: a buffer % applied on top of the materials
-        // pre-HST subtotal. To stay consistent with the per-row HST toggles,
-        // HST on the contingency mirrors the effective HST rate of the
-        // materials it represents (so an all-exempt materials list yields
-        // an exempt contingency, an all-taxed list yields full 13%, mixed
-        // yields the prorated effective rate). The contingency is also
-        // split into taxable / exempt portions for downstream linking.
+        // Contingency allowance: a buffer % on regular materials only
+        // (electrical lump sums are excluded so they do not inflate the
+        // client-facing Material line). HST on the contingency mirrors the
+        // effective HST rate of those materials.
         $contingencyPercent = max(0.0, $contingencyPercent);
-        if (!$contingencyEnabled || $subBefore <= 0 || $contingencyPercent <= 0) {
+        if (!$contingencyEnabled || $contingencyBase <= 0 || $contingencyPercent <= 0) {
             $contingencyAmount = 0.0;
             $contingencyAmountTaxable = 0.0;
             $contingencyAmountExempt = 0.0;
             $contingencyHst = 0.0;
         } else {
-            $contingencyAmount = round($subBefore * ($contingencyPercent / 100.0), 2);
-            $taxableRatio = $subBefore > 0 ? ($subTaxable / $subBefore) : 0.0;
+            $contingencyAmount = round($contingencyBase * ($contingencyPercent / 100.0), 2);
+            $taxableRatio = $contingencyBase > 0 ? ($contingencyBaseTaxable / $contingencyBase) : 0.0;
             $contingencyAmountTaxable = round($contingencyAmount * $taxableRatio, 2);
-            // Make the split sum exactly equal to the contingency total so
-            // we don't lose a cent to rounding.
             $contingencyAmountExempt = round($contingencyAmount - $contingencyAmountTaxable, 2);
             $contingencyHst = round($contingencyAmountTaxable * self::HST_RATE, 2);
         }
@@ -225,12 +251,14 @@ class StandardQuotationCalculator
             $labourHours = 0.0;
             if ($labourFixedAmount > 0.00001) {
                 $fixedGross = round(max(0.0, $labourFixedAmount), 2);
-                if ($labourFixedHstIncluded) {
+                // "HST included" only applies when labour HST is on. Cash
+                // labour charges the number typed.
+                if ($labourFixedHstIncluded && $includeLabourHst) {
                     $labourTotal = round($fixedGross / (1 + self::HST_RATE), 2);
                     $labourHst = round($fixedGross - $labourTotal, 2);
                 } else {
                     $labourTotal = $fixedGross;
-                    $labourHst = round($labourTotal * self::HST_RATE, 2);
+                    $labourHst = $this->labourHstAmount($labourTotal, $includeLabourHst);
                 }
             } else {
                 $labourTotal = 0.0;
@@ -242,16 +270,20 @@ class StandardQuotationCalculator
                 : round($qty, 2);
 
             $labourTotal = round(max(0.0, $hourlyRate) * $labourHours, 2);
-
-            // Labour is HST-taxable at 13% when priced from rate × time.
-            $labourHst = round($labourTotal * self::HST_RATE, 2);
+            $labourHst = $this->labourHstAmount($labourTotal, $includeLabourHst);
         }
 
         // Pre-HST splits used by the linking flow to push one or two line
         // items into the project quotation: a taxable line (apply_hst=true)
         // and, if needed, a separate exempt line (apply_hst=false).
-        $preHstTaxable = round($subTaxable + $contingencyAmountTaxable + $labourTotal, 2);
-        $preHstExempt = round($subExempt + $contingencyAmountExempt, 2);
+        // Cash labour stays off the taxable line so HST is not added later.
+        if ($includeLabourHst) {
+            $preHstTaxable = round($subTaxable + $contingencyAmountTaxable + $labourTotal, 2);
+            $preHstExempt = round($subExempt + $contingencyAmountExempt, 2);
+        } else {
+            $preHstTaxable = round($subTaxable + $contingencyAmountTaxable, 2);
+            $preHstExempt = round($subExempt + $contingencyAmountExempt + $labourTotal, 2);
+        }
 
         $totalHst = round($hstSumWithCont + $labourHst, 2);
         $grand = round($withHstWithCont + $labourTotal + $labourHst, 2);
@@ -292,7 +324,8 @@ class StandardQuotationCalculator
         float $contingencyPercent = 10.0,
         bool $includeLabourHst = true,
         bool $includeBuilding = false,
-        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT
+        float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT,
+        bool $assignSurchargeRemainderToLabourJobs = false
     ): array {
         if ($works === []) {
             $works = [[
@@ -327,7 +360,8 @@ class StandardQuotationCalculator
                 0.0,
                 filter_var($work['labour_use_fixed'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 (float) ($work['labour_fixed_amount'] ?? 0),
-                filter_var($work['labour_fixed_hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                filter_var($work['labour_fixed_hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                $includeLabourHst
             );
 
             $jobResults[] = array_merge($job, [
@@ -360,13 +394,25 @@ class StandardQuotationCalculator
         $buildingSurcharge = QuotationBuildingLabor::surchargeAmount($labourTotal, $buildingInputs);
         if ($buildingSurcharge > 0) {
             $baseLabour = $labourTotal;
+            $labourJobIndexes = [];
+            foreach ($jobResults as $idx => $jobRow) {
+                if ((float) ($jobRow['labour_total'] ?? 0) > 0) {
+                    $labourJobIndexes[] = $idx;
+                }
+            }
+            $remainderIdx = $assignSurchargeRemainderToLabourJobs && $labourJobIndexes !== []
+                ? (int) end($labourJobIndexes)
+                : array_key_last($jobResults);
             $allocated = 0.0;
-            $lastIdx = array_key_last($jobResults);
             foreach ($jobResults as $idx => &$jobRow) {
                 $jobLab = (float) ($jobRow['labour_total'] ?? 0);
-                $share = $idx === $lastIdx
+                if ($assignSurchargeRemainderToLabourJobs && $jobLab <= 0 && $idx !== $remainderIdx) {
+                    $jobRow['building_labor_surcharge'] = 0.0;
+                    continue;
+                }
+                $share = $idx === $remainderIdx
                     ? round($buildingSurcharge - $allocated, 2)
-                    : round($buildingSurcharge * ($jobLab / $baseLabour), 2);
+                    : ($baseLabour > 0 ? round($buildingSurcharge * ($jobLab / $baseLabour), 2) : 0.0);
                 $allocated += $share;
                 $jobRow['building_labor_surcharge'] = $share;
                 $jobRow['labour_total'] = round($jobLab + $share, 2);
@@ -433,7 +479,37 @@ class StandardQuotationCalculator
     }
 
     /**
-     * Overlay live catalog delivery onto linked rows (once per line, not × qty).
+     * Labour HST is either 13% of the labour total or zero. Callers must
+     * pass the quote's cash/HST flag — compute() no longer accrues tax and
+     * leaves a later method to zero it.
+     */
+    private function labourHstAmount(float $labourTotal, bool $includeLabourHst): float
+    {
+        if (! $includeLabourHst || $labourTotal <= 0) {
+            return 0.0;
+        }
+
+        return round($labourTotal * self::HST_RATE, 2);
+    }
+
+    /**
+     * Editor / PDF grand total: computeWorks() plus commute and debris
+     * (those extras are HST-inclusive and sit outside the materials+labour fold).
+     */
+    public static function grandTotalWithCommuteAndDebris(
+        array $computed,
+        float $commuteAmount = 0.0,
+        float $debrisAmount = 0.0
+    ): float {
+        return round(
+            (float) ($computed['grand_total'] ?? 0) + $commuteAmount + $debrisAmount,
+            2
+        );
+    }
+
+    /**
+     * Overlay catalog delivery onto linked rows (once per line, not × qty).
+     * Call only when the user re-picks a catalog item — not on every compute.
      *
      * @param  list<array<string, mixed>>  $materialRows
      * @return list<array<string, mixed>>

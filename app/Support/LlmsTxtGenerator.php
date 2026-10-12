@@ -18,10 +18,10 @@ class LlmsTxtGenerator
         $base = rtrim((string) config('app.url'), '/');
         $summary = trim((string) config('seo.home_summary', ''));
         if ($summary === '') {
-            $summary = 'Licensed carpenter and renovation contractor in Carleton Place and Ottawa, Ontario.';
+            $summary = 'Fully insured carpentry and renovation business in Carleton Place since 2020.';
         }
 
-        $insurance = trim((string) config('seo.liability_insurance', '$3 million'));
+        $insurance = trim((string) config('seo.liability_insurance', 'Fully insured'));
         $phone = '(647) 834-7570';
 
         $lines = [
@@ -32,31 +32,55 @@ class LlmsTxtGenerator
             'Zanini Renovations is owned by Jonas Zanini.',
             'Office and marketing: Mayara Zanini. Based in Carleton Place, Ontario.',
             'Phone: '.$phone.'. Quotes are in Canadian dollars.',
-            'Insurance: '.$insurance.' general liability; WSIB clearance; Ontario Building Code O.Reg. 332/12 (Part 9 housing).',
+            'Insurance: '.$insurance.'.',
             '',
             '## Pages',
             '',
             '- [Home]('.$base.'/): Services, service area, team, reviews, and FAQ.',
+            '- [About]('.$base.'/about): Jonas Zanini and how Zanini Renovations works.',
+            '- [Reviews]('.$base.'/reviews): Client Google reviews.',
+            '- [Contact]('.$base.'/contact): Free estimate form, phone, and service area.',
+            '- [Services]('.$base.'/services): Decks, fences, basements, trim, built-ins, stairs, flooring, drywall, and kitchen remodels.',
             '- [Warranty]('.$base.'/warranty): Workmanship warranty and insurance details.',
             '- [Blog]('.$base.'/blog): Renovation and carpentry articles for Ottawa-area homeowners.',
             '- [Projects]('.$base.'/portfolio): Photos and details of completed carpentry and renovation work.',
+            '- [Service areas]('.$base.'/service-areas): Towns we serve in Lanark County and west Ottawa.',
             '- [Privacy policy]('.$base.'/privacy-policy)',
             '- [Terms and conditions]('.$base.'/terms-and-conditions)',
             '',
             '## Services',
             '',
-            '- Fencing, decks, basement framing and finishing, interior trim, custom built-ins,',
-            '  flooring, drywall, accent walls, and wood staircases.',
+            '- Decks, fences and gates, basement finishing, finish carpentry and trim,',
+            '  custom built-ins and closets, staircases, flooring, drywall, and kitchen remodels.',
             '',
             '## Service area',
             '',
-            '- Carleton Place, Ottawa, Kanata, Barrhaven, Orléans, Stittsville, Perth,',
-            '  Smiths Falls, and nearby Lanark County / National Capital Region communities.',
-            '',
+            '- '.trim((string) config('seo.service_area_text', '')),
+            '- [Service areas hub]('.$base.'/service-areas)',
         ];
 
+        foreach (\App\Support\PublicServices::publishedPages() as $page) {
+            $slug = trim((string) ($page['slug'] ?? ''));
+            $label = trim((string) ($page['hub_label'] ?? $page['nav_label'] ?? $slug));
+            if ($slug === '' || $label === '') {
+                continue;
+            }
+            $lines[] = '- ['.$label.']('.$base.'/services/'.$slug.')';
+        }
+
+        foreach (\App\Support\ServiceAreas::publishedPages() as $page) {
+            $slug = trim((string) ($page['slug'] ?? ''));
+            $label = trim((string) ($page['hub_label'] ?? $page['name'] ?? $slug));
+            if ($slug === '' || $label === '') {
+                continue;
+            }
+            $lines[] = '- ['.$label.']('.$base.'/service-areas/'.$slug.')';
+        }
+
+        $lines[] = '';
+
         $posts = $posts ?? BlogPost::query()
-            ->published()
+            ->indexable()
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->limit(25)
@@ -111,10 +135,8 @@ class LlmsTxtGenerator
         $lines[] = '';
         $lines[] = '- Phone: '.$phone;
         $lines[] = '- Website: '.$base.'/';
-        $googleBiz = trim((string) config('seo.google_business_url', ''));
-        if ($googleBiz !== '') {
-            $lines[] = '- Google Business: '.$googleBiz;
-        }
+        $googleBiz = SeoStructuredData::googleBusinessUrl();
+        $lines[] = '- Google Business: '.$googleBiz;
         $lines[] = '';
 
         return implode("\n", $lines);

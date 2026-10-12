@@ -26,4 +26,17 @@ yarn-error.log
 !/storage/framework/sessions/.gitignore
 /storage/framework/views/*
 !/storage/framework/views/.gitignore
+/storage/logs/*.log
 
+# Sensitive / notes files that should never be committed
+users.txt
+
+# Agent / local UI captures — do not deploy
+/artifacts/
+
+# Local walkthrough / clip-audit helpers — do not deploy
+/scripts/bq*-screenshots.js
+/scripts/bq*-clip-audit.js
+/scripts/bq*-viewport-shots.js
+/scripts/bq*-render-pdf.php
+/scripts/bq*-totals.php

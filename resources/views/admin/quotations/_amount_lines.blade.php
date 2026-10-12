@@ -15,7 +15,24 @@
       border-radius: 8px;
     }
     .q-ac-row--with-category {
-      grid-template-columns: minmax(0, 1.4fr) minmax(110px, 0.5fr) minmax(120px, 0.55fr) auto auto;
+      grid-template-columns: minmax(0, 1.5fr) minmax(7rem, 0.45fr) minmax(10.5rem, 0.7fr) auto auto;
+    }
+    .q-ac-row__category select.admin-input {
+      min-width: 10.5rem;
+      padding-right: 2.6rem;
+    }
+    [data-ac-card] {
+      container-type: inline-size;
+    }
+    @container (max-width: 720px) {
+      .q-ac-row,
+      .q-ac-row--with-category {
+        grid-template-columns: minmax(0, 1fr) minmax(10.5rem, 0.8fr) auto auto;
+        align-items: end;
+      }
+      .q-ac-row__desc {
+        grid-column: 1 / -1;
+      }
     }
     .q-ac-row .admin-form-group { margin-bottom: 0; min-width: 0; }
     .q-ac-row__desc label,
@@ -23,8 +40,8 @@
     .q-ac-row__category label,
     .q-ac-row__hst-label {
       display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      overflow: visible;
+      text-overflow: unset;
       white-space: nowrap;
     }
     .q-ac-row__hst-label {
@@ -93,15 +110,63 @@
     @media (max-width: 700px) {
       .q-ac-row,
       .q-ac-row--with-category {
-        grid-template-columns: 1fr;
-        align-items: stretch;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 8px;
+        align-items: end;
+        padding: 10px;
       }
-      .q-ac-row__desc {
-        grid-column: auto;
+      .q-ac-row {
+        grid-template-areas:
+          "desc desc"
+          "amount hst"
+          "actions actions";
       }
+      .q-ac-row--with-category {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+          "desc desc"
+          "amount category"
+          "taxrow taxrow";
+      }
+      .q-ac-row--with-category .q-ac-row__hst,
+      .q-ac-row--with-category .q-ac-row__actions {
+        grid-area: taxrow;
+      }
+      .q-ac-row--with-category .q-ac-row__hst {
+        padding-right: 52px;
+      }
+      .q-ac-row--with-category .q-ac-row__actions {
+        justify-self: end;
+        align-self: center;
+      }
+      .q-ac-row__desc { grid-area: desc; }
+      .q-ac-row__amount { grid-area: amount; }
+      .q-ac-row__category { grid-area: category; }
+      .q-ac-row__hst { grid-area: hst; }
       .q-ac-row__actions {
+        grid-area: actions;
         justify-content: flex-end;
+        align-items: center;
         padding-bottom: 0;
+      }
+      body .q-ac-row--with-category .q-ac-row__category select.admin-input {
+        min-width: 8rem;
+        width: auto;
+        padding-right: 1.35rem;
+      }
+      .q-ac-row__hst-label {
+        display: none;
+      }
+      .q-ac-row__hst {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+      }
+      .q-ac-hst-toggle.cp-visit-toggle {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
       }
     }
   </style>
@@ -110,7 +175,7 @@
 @php
   $field = $field ?? 'additional_costs';
   $idPrefix = $idPrefix ?? 'q-ac-'.preg_replace('/[^a-z0-9]+/i', '-', $field);
-  $title = $title ?? '';
+  $cardTitle = $cardTitle ?? '';
   $intro = $intro ?? '';
   $addLabel = $addLabel ?? 'Add line';
   $placeholder = $placeholder ?? 'Description';
@@ -169,13 +234,17 @@
      data-ac-summary-mode="{{ $summaryMode }}"
      data-ac-default-hst-included="{{ $defaultHstIncluded ? '1' : '0' }}"
      data-ac-show-category="{{ $showCategory ? '1' : '0' }}">
-  @if($title !== '' || $intro !== '')
+  @if($cardTitle !== '' || $intro !== '')
     <div class="q-additional-costs-card__head">
-      @if($title !== '')
-        <h3 class="q-additional-costs-card__title">{{ $title }}</h3>
-      @endif
-      @if($intro !== '')
-        <p class="admin-form-help q-additional-costs-card__intro">{!! $intro !!}</p>
+      @if($cardTitle !== '')
+        <h3 class="q-additional-costs-card__title">
+          {{ $cardTitle }}
+          @if($intro !== '')
+            <x-admin.info-tip :label="$cardTitle">{!! $intro !!}</x-admin.info-tip>
+          @endif
+        </h3>
+      @elseif($intro !== '')
+        <x-admin.info-tip label="Additional costs">{!! $intro !!}</x-admin.info-tip>
       @endif
     </div>
   @endif
@@ -195,17 +264,17 @@
                  data-ac-description>
         </div>
         <div class="admin-form-group q-ac-row__amount">
-          <label for="{{ $idPrefix }}-amt-{{ $idx }}">Amount (CA$)</label>
+          <label for="{{ $idPrefix }}-amt-{{ $idx }}">Amount</label>
           <input type="text"
                  id="{{ $idPrefix }}-amt-{{ $idx }}"
                  name="{{ $field }}[{{ $idx }}][amount]"
                  class="admin-input cp-money-input {{ $inputClass }}"
                  inputmode="decimal"
                  autocomplete="off"
-                 data-cp-money-entry="direct"
+                
                  placeholder="0.00"
                  value="{{ $row['amount'] }}"
-                 data-ac-amount>
+                 data-ac-amount data-cp-money-entry="direct">
         </div>
         @if ($showCategory)
           <div class="admin-form-group q-ac-row__category">

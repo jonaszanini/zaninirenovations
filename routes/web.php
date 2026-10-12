@@ -1,22 +1,25 @@
 <?php
 
+use App\Http\Controllers\Admin\Auth\LoginController;
+use App\Http\Controllers\Admin\Auth\PasswordResetController;
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ClientController;
-use App\Http\Controllers\Admin\MaterialController;
 use App\Http\Controllers\Admin\ClientProjectContractController;
 use App\Http\Controllers\Admin\ClientProjectInvoiceController;
 use App\Http\Controllers\Admin\ClientProjectQuotationController;
-use App\Http\Controllers\Admin\Auth\LoginController;
-use App\Http\Controllers\Admin\Auth\PasswordResetController;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GooglePhotosController;
+use App\Http\Controllers\Admin\MaterialController;
 use App\Http\Controllers\Admin\PavingDatabaseController;
 use App\Http\Controllers\Admin\PavingQuotationController;
+use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\StairsDatabaseController;
 use App\Http\Controllers\Admin\StairsQuotationController;
-use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\ContactFormController;
 use App\Http\Controllers\PortfolioController;
+use App\Http\Controllers\PublicSiteController;
+use App\Http\Controllers\ServiceAreaController;
+use App\Http\Controllers\ServicePageController;
 use App\Models\BlogPost;
 use App\Models\Project;
 use Illuminate\Support\Facades\Route;
@@ -38,7 +41,15 @@ Route::view('/warranty', 'site.warranty')->name('warranty');
 Route::view('/privacy-policy', 'site.privacy-policy')->name('privacy-policy');
 Route::view('/terms-and-conditions', 'site.terms-and-conditions')->name('terms-and-conditions');
 
-Route::permanentRedirect('/services/custom-kitchen-remodel', '/');
+Route::permanentRedirect('/services/custom-kitchen-remodel', '/services/kitchen-remodel');
+
+Route::get('/about', [PublicSiteController::class, 'about'])->name('about');
+Route::get('/reviews', [PublicSiteController::class, 'reviews'])->name('reviews');
+Route::get('/contact', [PublicSiteController::class, 'contact'])->name('contact');
+Route::get('/services', [ServicePageController::class, 'index'])->name('services.index');
+Route::get('/services/{slug}', [ServicePageController::class, 'show'])
+    ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
+    ->name('services.show');
 
 Route::get('/sitemap.xml', function () {
     $urls = \App\Support\PublicSitemap::urls();
@@ -68,6 +79,9 @@ Route::get('/client/receipt/{client_project}/{invoice}', [ClientProjectInvoiceCo
 Route::get('/client/quotation/{client_project}/{quotation}', [ClientProjectQuotationController::class, 'guestDownloadQuotationPdf'])
     ->middleware('signed')
     ->name('public.client-project.quotation-pdf');
+Route::match(['get', 'post'], '/quote/{quotation}/accept', [\App\Http\Controllers\PublicQuoteAcceptanceController::class, 'handle'])
+    ->middleware(['quote.accept.noindex', 'signed'])
+    ->name('public.quotations.accept');
 Route::get('/client/contract/{client_project}', [ClientProjectContractController::class, 'guestDownloadContractPdf'])
     ->middleware('signed')
     ->name('public.client-project.contract-pdf');
@@ -97,7 +111,7 @@ Route::get('/', function () {
         ->values();
 
     $homeBlogPosts = BlogPost::query()
-        ->published()
+        ->indexable()
         ->with(['categories:id,name,slug'])
         ->orderByDesc('published_at')
         ->orderByDesc('id')
@@ -127,6 +141,11 @@ Route::get('/portfolio/{slug}', [PortfolioController::class, 'show'])
     ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
     ->name('portfolio.show');
 
+Route::get('/service-areas', [ServiceAreaController::class, 'index'])->name('service-areas.index');
+Route::get('/service-areas/{slug}', [ServiceAreaController::class, 'show'])
+    ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
+    ->name('service-areas.show');
+
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/admin/login', [LoginController::class, 'login'])
@@ -150,6 +169,8 @@ Route::middleware('auth')->get('/dashboard', [DashboardController::class, 'index
 
 Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+    Route::get('/search/api', [\App\Http\Controllers\Admin\GlobalSearchController::class, 'api'])
+        ->name('search.api');
     Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     });
@@ -232,6 +253,9 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('materials.config.categories.destroy');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])
         ->name('materials.bulk-destroy');
+    Route::post('materials/import-from-home-depot', [MaterialController::class, 'importFromHomeDepot'])
+        ->name('materials.import-from-home-depot')
+        ->middleware('throttle:home-depot-import');
     Route::post('materials/bulk-import/start', [MaterialController::class, 'bulkImportStart'])
         ->name('materials.bulk-import.start');
     Route::post('materials/bulk-import/step', [MaterialController::class, 'bulkImportStep'])
@@ -254,6 +278,20 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('blog.posts.upload-image');
     Route::post('blog/posts/ai-metadata', [\App\Http\Controllers\Admin\BlogPostController::class, 'generateAiMetadata'])
         ->name('blog.posts.ai-metadata');
+    Route::post('blog/posts/ai-suggest', [\App\Http\Controllers\Admin\BlogPostController::class, 'suggestAiMetadata'])
+        ->name('blog.posts.ai-suggest');
+    Route::post('blog/posts/ai-image', [\App\Http\Controllers\Admin\BlogPostController::class, 'generateAiImage'])
+        ->name('blog.posts.ai-image');
+    Route::post('blog/posts/check-content', [\App\Http\Controllers\Admin\BlogPostController::class, 'checkContent'])
+        ->name('blog.posts.check-content');
+    Route::post('blog/posts/autosave', [\App\Http\Controllers\Admin\BlogPostController::class, 'autosave'])
+        ->name('blog.posts.autosave');
+    Route::post('blog/posts/{post}/autosave', [\App\Http\Controllers\Admin\BlogPostController::class, 'autosave'])
+        ->name('blog.posts.autosave.update');
+    Route::get('blog/posts/{post}/preview', [\App\Http\Controllers\Admin\BlogPostController::class, 'preview'])
+        ->name('blog.posts.preview');
+    Route::post('blog/posts/{post}/duplicate', [\App\Http\Controllers\Admin\BlogPostController::class, 'duplicate'])
+        ->name('blog.posts.duplicate');
     Route::resource('blog/posts', \App\Http\Controllers\Admin\BlogPostController::class)
         ->parameters(['posts' => 'post'])
         ->except(['show'])
@@ -290,6 +328,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('calendar.personal-events.destroy');
     Route::post('client-projects/{client_project}/status', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'update'])
         ->name('client-projects.status.update');
+    Route::post('client-projects/{client_project}/status/quick', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'quick'])
+        ->name('client-projects.status.quick');
     Route::post('client-projects/{client_project}/reopen', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'reopen'])
         ->name('client-projects.reopen');
     Route::post('client-projects/{client_project}/installments', [\App\Http\Controllers\Admin\ClientProjectFinanceController::class, 'saveInstallments'])
@@ -345,6 +385,28 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('vehicles.settings.home-address');
     Route::put('vehicles/settings/gas-price', [\App\Http\Controllers\Admin\VehicleController::class, 'updateGasPrice'])
         ->name('vehicles.settings.gas-price');
+    Route::put('vehicles/settings/business-contact', [\App\Http\Controllers\Admin\VehicleController::class, 'updateBusinessContact'])
+        ->name('vehicles.settings.business-contact');
+
+    // Global Financials — cross-project invoices and expenses lists.
+    Route::get('financials/invoices', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'invoices'])
+        ->name('financials.invoices');
+    Route::get('financials/expenses', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'expenses'])
+        ->name('financials.expenses');
+    Route::post('financials/expenses', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'storeExpense'])
+        ->name('financials.expenses.store');
+    Route::get('financials/projects/search', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'searchProjects'])
+        ->name('financials.projects.search');
+    Route::get('financials/etransfers', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'index'])
+        ->name('financials.etransfers');
+    Route::post('financials/etransfers', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'store'])
+        ->name('financials.etransfers.store');
+    Route::get('financials/etransfers/invoices/search', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'searchInvoices'])
+        ->name('financials.etransfers.invoices.search');
+    Route::post('financials/etransfers/{etransfer_notice}/record', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'record'])
+        ->name('financials.etransfers.record');
+    Route::post('financials/etransfers/{etransfer_notice}/ignore', [\App\Http\Controllers\Admin\EtransferNoticeController::class, 'ignore'])
+        ->name('financials.etransfers.ignore');
 
     Route::get('client-projects/{client_project}/travel-estimate', [\App\Http\Controllers\Admin\ClientProjectTravelController::class, 'estimate'])
         ->name('client-projects.travel-estimate');
@@ -382,6 +444,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.quotation.pdf-photos');
     Route::delete('client-projects/{client_project}/quotations/{quotation}', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'destroy'])
         ->name('client-projects.quotation.destroy');
+    Route::post('client-projects/{client_project}/quotations/{quotation}/duplicate', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'duplicate'])
+        ->name('client-projects.quotation.duplicate');
+    Route::get('quotations/projects/search', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'searchProjectsForDuplicate'])
+        ->name('quotations.projects.search');
 
     // Invoices (structured, PDF generation, email-to-client). Multiple allowed
     // per project — one per installment plus optional manual invoices.
@@ -415,6 +481,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.service-confirmation.send');
     // Generic on-demand "your project dates are…" email — works for any
     // billing type and can be re-sent freely (no idempotency flag).
+    Route::get('client-projects/{client_project}/utilities/room-area/guide/{room_area_room?}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'clientProjectGuide'])
+        ->name('client-projects.utilities.room-area.guide');
+    Route::get('client-projects/{client_project}/utilities/room-area/{room_area_room?}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'clientProject'])
+        ->name('client-projects.utilities.room-area');
     Route::put('client-projects/{client_project}/schedule-dates', [\App\Http\Controllers\Admin\ClientProjectController::class, 'updateScheduleDates'])
         ->name('client-projects.schedule-dates.update');
     Route::post('client-projects/{client_project}/schedule-dates/send', [\App\Http\Controllers\Admin\ClientProjectController::class, 'sendScheduleDates'])
@@ -522,7 +592,7 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::delete('quotations/low-deck/{low_deck_quotation}', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'destroy'])
         ->name('quotations.low-deck.destroy');
 
-    // Standard quotations (materials grid + labour, no PDF in-module).
+    // Standard quotations (materials grid + labour; client PDF is the linked project quotation).
     Route::get('quotations/standard', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'index'])
         ->name('quotations.standard.index');
     Route::get('quotations/standard/create', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'create'])
@@ -860,6 +930,32 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.lumber-board');
     Route::post('utilities/lumber-board/pdf', [\App\Http\Controllers\Admin\UtilitiesController::class, 'lumberBoardPdf'])
         ->name('utilities.lumber-board.pdf');
+    Route::post('utilities/lumber-board/optimize-sheets', [\App\Http\Controllers\Admin\UtilitiesController::class, 'optimizeSheets'])
+        ->name('utilities.lumber-board.optimize-sheets');
+    Route::get('utilities/cut-list/quotations', [\App\Http\Controllers\Admin\UtilitiesController::class, 'searchCutListQuotations'])
+        ->name('utilities.cut-list.quotations.search');
+    Route::get('utilities/cut-list/import', [\App\Http\Controllers\Admin\UtilitiesController::class, 'importCutListQuotation'])
+        ->name('utilities.cut-list.import');
+    Route::get('utilities/offcuts', [\App\Http\Controllers\Admin\OffcutController::class, 'index'])
+        ->name('utilities.offcuts.index');
+    Route::get('utilities/offcuts/available', [\App\Http\Controllers\Admin\OffcutController::class, 'availableJson'])
+        ->name('utilities.offcuts.available');
+    Route::post('utilities/offcuts', [\App\Http\Controllers\Admin\OffcutController::class, 'store'])
+        ->name('utilities.offcuts.store');
+    Route::post('utilities/offcuts/save-leftovers', [\App\Http\Controllers\Admin\OffcutController::class, 'saveLeftovers'])
+        ->name('utilities.offcuts.save-leftovers');
+    Route::post('utilities/offcuts/consume', [\App\Http\Controllers\Admin\OffcutController::class, 'consume'])
+        ->name('utilities.offcuts.consume');
+    Route::get('utilities/offcuts/create', [\App\Http\Controllers\Admin\OffcutController::class, 'create'])
+        ->name('utilities.offcuts.create');
+    Route::get('utilities/offcuts/{offcut}/edit', [\App\Http\Controllers\Admin\OffcutController::class, 'edit'])
+        ->name('utilities.offcuts.edit');
+    Route::put('utilities/offcuts/{offcut}', [\App\Http\Controllers\Admin\OffcutController::class, 'update'])
+        ->name('utilities.offcuts.update');
+    Route::post('utilities/offcuts/{offcut}/mark-used', [\App\Http\Controllers\Admin\OffcutController::class, 'markUsed'])
+        ->name('utilities.offcuts.mark-used');
+    Route::delete('utilities/offcuts/{offcut}', [\App\Http\Controllers\Admin\OffcutController::class, 'destroy'])
+        ->name('utilities.offcuts.destroy');
     Route::post('utilities/calculations', [\App\Http\Controllers\Admin\UtilitiesController::class, 'storeCalculation'])
         ->name('utilities.calculations.store');
     Route::put('utilities/calculations/{utility_calculation}', [\App\Http\Controllers\Admin\UtilitiesController::class, 'updateCalculation'])
@@ -884,10 +980,18 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
 
     Route::get('utilities/room-area', [\App\Http\Controllers\Admin\RoomAreaController::class, 'index'])
         ->name('utilities.room-area');
+    Route::get('utilities/room-area/guide', [\App\Http\Controllers\Admin\RoomAreaController::class, 'guide'])
+        ->name('utilities.room-area.guide');
     Route::get('utilities/room-area/layouts', [\App\Http\Controllers\Admin\RoomAreaController::class, 'searchLayouts'])
         ->name('utilities.room-area.layouts');
+    Route::get('utilities/room-area/quote', [\App\Http\Controllers\Admin\RoomAreaQuoteController::class, 'show'])
+        ->name('utilities.room-area.quote');
+    Route::post('utilities/room-area/quote', [\App\Http\Controllers\Admin\RoomAreaQuoteController::class, 'store'])
+        ->name('utilities.room-area.quote.store');
     Route::post('utilities/room-area/validate', [\App\Http\Controllers\Admin\RoomAreaController::class, 'validateRoom'])
         ->name('utilities.room-area.validate');
+    Route::post('utilities/room-area/pdf', [\App\Http\Controllers\Admin\RoomAreaController::class, 'exportPdf'])
+        ->name('utilities.room-area.pdf');
     Route::post('utilities/room-area/projects', [\App\Http\Controllers\Admin\RoomAreaController::class, 'storeProject'])
         ->name('utilities.room-area.projects.store');
     Route::put('utilities/room-area/projects/{room_area_project}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'updateProject'])
@@ -906,4 +1010,30 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.room-area.rooms.background');
     Route::delete('utilities/room-area/rooms/{room_area_room}/background', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyBackground'])
         ->name('utilities.room-area.rooms.background.destroy');
+    Route::get('utilities/room-area/rooms/{room_area_room}/pdf', [\App\Http\Controllers\Admin\RoomAreaController::class, 'downloadPdf'])
+        ->name('utilities.room-area.rooms.pdf');
+    Route::post('utilities/room-area/rooms/{room_area_room}/photos', [\App\Http\Controllers\Admin\RoomAreaController::class, 'storePhotos'])
+        ->name('utilities.room-area.rooms.photos.store');
+    Route::get('utilities/room-area/rooms/{room_area_room}/photos/{photo}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'showPhoto'])
+        ->name('utilities.room-area.rooms.photos.show');
+    Route::patch('utilities/room-area/rooms/{room_area_room}/photos/{photo}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'updatePhoto'])
+        ->name('utilities.room-area.rooms.photos.update');
+    Route::delete('utilities/room-area/rooms/{room_area_room}/photos/{photo}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyPhoto'])
+        ->name('utilities.room-area.rooms.photos.destroy');
+    Route::get('utilities/room-area/assemblies', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'index'])
+        ->name('utilities.room-area.assemblies.index');
+    Route::post('utilities/room-area/assemblies', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'store'])
+        ->name('utilities.room-area.assemblies.store');
+    Route::put('utilities/room-area/assemblies/{room_area_assembly}', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'update'])
+        ->name('utilities.room-area.assemblies.update');
+    Route::delete('utilities/room-area/assemblies/{room_area_assembly}', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'destroy'])
+        ->name('utilities.room-area.assemblies.destroy');
+    Route::post('utilities/room-area/rooms/{room_area_room}/assemblies', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'syncRoom'])
+        ->name('utilities.room-area.rooms.assemblies.sync');
+    Route::post('utilities/room-area/assemblies/evaluate', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'evaluate'])
+        ->name('utilities.room-area.assemblies.evaluate');
+    Route::get('utilities/room-area/assemblies/quote', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'quoteShow'])
+        ->name('utilities.room-area.assemblies.quote');
+    Route::post('utilities/room-area/assemblies/quote', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'quoteStore'])
+        ->name('utilities.room-area.assemblies.quote.store');
 });

@@ -86,7 +86,7 @@ class QuotationWorkDescriptionContextBuilderTest extends TestCase
 
         // Excluded trades are explicitly warned
         $this->assertStringContainsString('Trades NOT included in this quotation:', $text);
-        $this->assertStringContainsString('Insulation & Vapor Barrier', $text);
+        $this->assertStringContainsString('Insulation & Vapour Barrier', $text);
         $this->assertStringContainsString('Electrical', $text);
         $this->assertStringContainsString('Final Details & Cleanup', $text);
         $this->assertStringContainsString('Flooring', $text);

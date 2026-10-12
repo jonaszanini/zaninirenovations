@@ -1,13 +1,17 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Latest Projects Photos')
-
-@section('content')
-  <div class="admin-toolbar">
+@section('heading')
+  Latest Projects Photos
+  <x-admin.info-tip label="Latest Projects Photos">
     @php
       $portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
     @endphp
-    <p class="admin-toolbar-lede">Each project is a public page at /portfolio/… as soon as you save it. Photos are stored as WebP at {{ $portfolioWebp['quality'] }}% quality, max edge {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each; up to 15 per project.</p>
+    Each project is a public page at /portfolio/… as soon as you save it. Photos are stored as WebP at {{ $portfolioWebp['quality'] }}% quality, max edge {{ $portfolioWebp['max_edge_px'] }}px, about {{ (int) round($portfolioWebp['max_bytes'] / 1024) }}&nbsp;KB each; up to 15 per project.
+  </x-admin.info-tip>
+@endsection
+
+@section('content')
+  <div class="admin-toolbar">
     <div class="admin-toolbar-actions">
       <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
         <i class="fa fa-cog"></i> Categories
@@ -18,25 +22,37 @@
     </div>
   </div>
 
-  <form method="get" action="{{ route('admin.portfolio.index') }}" class="cp-filters cp-filters--3col portfolio-admin-filters">
-    <div class="cp-filter">
-      <label for="portfolio-filter-q">Search</label>
-      <input class="admin-input" type="search" id="portfolio-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project title or description">
-    </div>
-    <div class="cp-filter">
-      <label for="portfolio-filter-category">Category</label>
-      <select class="admin-input" id="portfolio-filter-category" name="category">
-        <option value="">All categories</option>
-        @foreach ($categories as $cat)
-          <option value="{{ $cat->slug }}" @selected($filters['category'] === $cat->slug)>{{ $cat->name }}</option>
-        @endforeach
-      </select>
-    </div>
-    <div class="cp-filter cp-filter--actions">
-      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
-      <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
-    </div>
-  </form>
+  @php
+    $activeFilterCount = \App\Support\AdminListFilters::activeCount([
+        'q' => $filters['q'] ?? '',
+        'category' => $filters['category'] ?? '',
+    ]);
+  @endphp
+  @component('admin.partials.filters_accordion', [
+    'id' => 'admin-filters-portfolio',
+    'storageKey' => 'admin-filters:portfolio',
+    'activeCount' => $activeFilterCount,
+  ])
+    <form method="get" action="{{ route('admin.portfolio.index') }}" class="cp-filters cp-filters--3col portfolio-admin-filters">
+      <div class="cp-filter">
+        <label for="portfolio-filter-q">Search</label>
+        <input class="admin-input" type="search" id="portfolio-filter-q" name="q" value="{{ $filters['q'] }}" placeholder="Project title or description">
+      </div>
+      <div class="cp-filter">
+        <label for="portfolio-filter-category">Category</label>
+        <select class="admin-input" id="portfolio-filter-category" name="category">
+          <option value="">All categories</option>
+          @foreach ($categories as $cat)
+            <option value="{{ $cat->slug }}" @selected($filters['category'] === $cat->slug)>{{ $cat->name }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="cp-filter cp-filter--actions">
+        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Apply</button>
+        <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
+      </div>
+    </form>
+  @endcomponent
 
   @if ($projects->isEmpty())
     <div class="admin-card">
@@ -80,6 +96,9 @@
               </div>
             @endif
             <p class="portfolio-admin-card__meta">
+              @if ($project->townLabel() !== '')
+                {{ $project->townLabel() }} ·
+              @endif
               {{ $project->photos_count }} / 15 photos
               @if ($project->completed_on)
                 · {{ \App\Support\EasternStandardTimeDisplay::formatCalendarMediumDate($project->completed_on) }}

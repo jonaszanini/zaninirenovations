@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MillworkQuotation extends Model
 {
     use \App\Models\Concerns\HasClientEmailMessage;
+    use \App\Models\Concerns\HasPdfFoldVersion;
+    use \App\Models\Concerns\HasReplyToAcceptChoice;
 
     public const HST_RATE = 0.13;
 
@@ -31,6 +33,7 @@ class MillworkQuotation extends Model
         'commute_round_trip_cost',
         'commute_amount',
         'version',
+        'cut_plan_version',
         'linked_at',
     ];
 
@@ -50,6 +53,7 @@ class MillworkQuotation extends Model
         'commute_round_trip_cost' => 'decimal:2',
         'commute_amount' => 'decimal:2',
         'version' => 'integer',
+        'cut_plan_version' => 'integer',
         'linked_at' => 'datetime',
     ];
 
@@ -71,6 +75,76 @@ class MillworkQuotation extends Model
         return max(0, (int) ($cut['sheet_count'] ?? 0));
     }
 
+    public static function unplacedAdminMessage(): string
+    {
+        return 'This quotation has parts that do not fit on any sheet. Change the size or pick a larger sheet before sending, downloading, or accepting.';
+    }
+
+    public static function unplacedClientMessage(): string
+    {
+        return 'This quote is being updated and is not available to download or accept yet. Please contact us if you have questions.';
+    }
+
+    /**
+     * Only the stored unplaced list written by the new builder may block a
+     * client PDF or accept page. Legacy snapshots without that key stay open.
+     */
+    public function hasUnplacedCutParts(): bool
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
+        $unplaced = $cut['unplaced'] ?? null;
+
+        return is_array($unplaced) && $unplaced !== [];
+    }
+
+    public function calcVersion(): int
+    {
+        if ($this->cut_plan_version !== null && $this->cut_plan_version !== '') {
+            $raw = (int) $this->cut_plan_version;
+            if ($raw >= \App\Services\MillworkQuotationCalculator::CALC_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::CALC_VERSION;
+            }
+            if ($raw >= \App\Services\MillworkQuotationCalculator::PARSING_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::PARSING_VERSION;
+            }
+            if ($raw >= \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
+            }
+
+            return 1;
+        }
+
+        return 1;
+    }
+
+    public function cutPlanVersion(): int
+    {
+        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION
+            ? \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION
+            : 1;
+    }
+
+    public function builderVersion(): int
+    {
+        return $this->calcVersion();
+    }
+
+    public function usesLegacyCutBuilder(): bool
+    {
+        return $this->cutPlanVersion() < \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
+    }
+
+    public function usesNewCalc(): bool
+    {
+        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::PARSING_VERSION;
+    }
+
+    public function canUpgradeCalc(): bool
+    {
+        return $this->calcVersion() < \App\Services\MillworkQuotationCalculator::PARSING_VERSION;
+    }
+
     public function displayTitle(): string
     {
         return 'Custom Millwork — '.$this->quote_number;
@@ -89,7 +163,10 @@ class MillworkQuotation extends Model
         $calc = is_array($this->calculation) ? $this->calculation : [];
         $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
 
-        return max(0, round((float) ($summary['materials_pre_hst'] ?? 0), 2));
+        $materials = max(0, (float) ($summary['materials_pre_hst'] ?? 0));
+        $markup = max(0, (float) ($summary['markup_amount'] ?? 0));
+
+        return round($materials + $markup, 2);
     }
 
     public function includesMaterialCharge(): bool
@@ -122,39 +199,89 @@ class MillworkQuotation extends Model
     {
         $inputs = is_array($this->inputs) ? $this->inputs : [];
         $calc = is_array($this->calculation) ? $this->calculation : [];
-        $scope = is_array($calc['scope'] ?? null) ? $calc['scope'] : [];
+        $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
 
-        $lines = [];
-        $lines[] = 'Custom millwork — cabinets, shelving, and sheet-good fabrication.';
-        $summary = trim((string) ($scope['piece_summary'] ?? ''));
-        if ($summary !== '') {
-            $lines[] = $summary;
+        $included = [];
+        if (empty($inputs['client_provides_all'])) {
+            $included[] = 'supply';
         }
-
-        $sheets = $this->sheetCount();
-        if ($sheets > 0) {
-            $lines[] = 'Sheet goods: '.$sheets.' sheet'.($sheets === 1 ? '' : 's').' (see cut plan).';
-        }
-
-        foreach ($calc['labor'] ?? [] as $row) {
-            if (! is_array($row) || (float) ($row['hours'] ?? 0) <= 0) {
+        $included[] = 'shop build';
+        $hasHardware = false;
+        $hasFinish = false;
+        foreach (is_array($inputs['pieces'] ?? null) ? $inputs['pieces'] : [] as $piece) {
+            if (! is_array($piece)) {
                 continue;
             }
-            $label = trim((string) ($row['label'] ?? ''));
-            if ($label !== '') {
-                $lines[] = '  • '.$label;
+            $type = \App\Services\Millwork\MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+            if (in_array($type, ['cabinet', 'cabinet_door', 'vanity', 'closet', 'bench'], true)) {
+                $hasHardware = true;
+            }
+            $finish = \App\Services\Millwork\MillworkPartBuilder::normalizeFinish((string) ($piece['finish'] ?? 'none'));
+            if ($finish !== 'none') {
+                $hasFinish = true;
             }
         }
+        if ($hasHardware) {
+            $included[] = 'hardware';
+        }
+        if ($hasFinish) {
+            $included[] = 'finishing';
+        }
+        $deliveryStored = (float) ($summary['delivery_amount'] ?? $inputs['delivery_amount'] ?? 0);
+        $legacyQuote = $this->usesLegacyCutBuilder();
+        if ($this->usesNewCalc()) {
+            if ($deliveryStored > 0 && empty($inputs['client_provides_all'])) {
+                $included[] = 'delivery';
+            }
+        } elseif ($deliveryStored > 0) {
+            $included[] = 'delivery';
+        }
+        if (! array_key_exists('include_install', $inputs) || ! empty($inputs['include_install'])) {
+            $included[] = 'on-site install';
+        }
+        $includeSentence = 'Includes '.self::joinAnd($included).'.';
 
-        $finish = trim((string) ($inputs['finish'] ?? $scope['finish_label'] ?? ''));
-        if ($finish !== '') {
-            $lines[] = 'Finish: '.$finish;
+        $lines = ['Custom millwork — cabinets, closets, built-ins, and finish carpentry.'];
+        foreach (is_array($inputs['pieces'] ?? null) ? $inputs['pieces'] : [] as $piece) {
+            if (! is_array($piece)) {
+                continue;
+            }
+            if (! isset($piece['_calc_version'])) {
+                $piece['_calc_version'] = $this->calcVersion();
+            }
+            $line = $legacyQuote
+                ? \App\Services\Millwork\LegacyMillworkPartBuilder::clientScopeLine($piece)
+                : \App\Services\Millwork\MillworkPartBuilder::clientScopeLine($piece);
+            if ($line === '') {
+                continue;
+            }
+            $lines[] = $line.' '.$includeSentence;
         }
 
         return \App\Support\QuotationWorkDescriptionHtml::combineAutoScopeWithWork(
             $lines,
             $this->work_description
         );
+    }
+
+    /**
+     * @param  list<string>  $parts
+     */
+    private static function joinAnd(array $parts): string
+    {
+        $parts = array_values(array_filter($parts, fn ($p) => trim((string) $p) !== ''));
+        $n = count($parts);
+        if ($n === 0) {
+            return '';
+        }
+        if ($n === 1) {
+            return $parts[0];
+        }
+        if ($n === 2) {
+            return $parts[0].' and '.$parts[1];
+        }
+
+        return implode(', ', array_slice($parts, 0, -1)).', and '.$parts[$n - 1];
     }
 
     public static function generateNumber(): string

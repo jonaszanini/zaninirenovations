@@ -1,8 +1,13 @@
 @forelse ($projects as $project)
   @php
+    $eagerFirstCount = $eagerFirstCount ?? 0;
     $photos = $project->photos->sortBy('sort_order');
     $cover = $photos->first();
     $coverSrc = $cover ? $cover->url() : '/images/gallery_1.jpg';
+    $coverDims = $cover
+      ? $cover->dimensions()
+      : \App\Support\PublicImageDimensions::of(public_path('images/gallery_1.jpg'));
+    $lazy = $loop->index >= (int) $eagerFirstCount;
   @endphp
   <div
     class="col-md-3 col-sm-6 col-xs-12 js-latest-project-item"
@@ -19,7 +24,10 @@
 
         <figure class="portfolio-img">
 
-          <img src="{{ $coverSrc }}" alt="{{ e($project->title) }}" loading="lazy" decoding="async">
+          <img src="{{ $coverSrc }}" alt="{{ e($project->title) }}"
+            @if ($coverDims) width="{{ $coverDims['width'] }}" height="{{ $coverDims['height'] }}" @endif
+            @if ($lazy) loading="lazy" @endif
+            decoding="async">
 
         </figure>
         <!-- end .cause-img  -->
@@ -30,6 +38,9 @@
         </div>
 
       </a>
+      @if ($project->townLabel() !== '')
+        <p class="portfolio-card-town">{{ $project->townLabel() }}</p>
+      @endif
       <!-- end .gallery-light-box  -->
 
     </div>

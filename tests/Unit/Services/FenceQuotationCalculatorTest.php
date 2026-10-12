@@ -20,6 +20,7 @@ class FenceQuotationCalculatorTest extends TestCase
             'labour_rate_per_ft' => 55.00,
             'labour_rate_8ft_per_ft' => 60.00,
             'labour_per_additional_gate' => 150.00,
+            'existing_post_labour_credit' => 30.00,
             'rails_per_section_6ft' => 2,
             'rails_per_section_8ft' => 3,
             'nails_per_picket' => 6,
@@ -56,6 +57,7 @@ class FenceQuotationCalculatorTest extends TestCase
             $make(FenceMaterial::KEY_NAILS, 100, 1000),
             $make(FenceMaterial::KEY_BRACKET, 3),
             $make(FenceMaterial::KEY_POST_CAP, 5),
+            $make(FenceMaterial::KEY_POST_CAP_6X6, 8),
             $make(FenceMaterial::KEY_GATE_HARDWARE, 25),
         ])->keyBy('key');
     }
@@ -335,6 +337,9 @@ class FenceQuotationCalculatorTest extends TestCase
         $postRow = collect($result['materials'])->firstWhere('key', FenceMaterial::KEY_POST_6X6_10);
         $this->assertNotNull($postRow);
         $this->assertSame(FenceMaterial::KEY_POST_6X6_10, $postRow['key']);
+        $capRow = collect($result['materials'])->firstWhere('key', FenceMaterial::KEY_POST_CAP_6X6);
+        $this->assertNotNull($capRow);
+        $this->assertNull(collect($result['materials'])->firstWhere('key', FenceMaterial::KEY_POST_CAP));
 
         $eightFt = $calculator->calculate([
             'sides' => [['length_ft' => 16]],
@@ -346,6 +351,385 @@ class FenceQuotationCalculatorTest extends TestCase
 
         $post12 = collect($eightFt['materials'])->firstWhere('key', FenceMaterial::KEY_POST_6X6_12);
         $this->assertNotNull($post12);
+    }
+
+    public function test_no_existing_post_ticks_keeps_labour_as_length_times_rate(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $length = 24.0;
+        $rate = 55.0;
+
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => $length]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => $rate,
+        ]);
+
+        $this->assertSame(round($length * $rate, 2), $result['totals']['labour_subtotal']);
+        $this->assertSame(0, $result['totals']['existing_post_credit']['count']);
+        $this->assertSame(0.0, $result['totals']['existing_post_credit']['amount']);
+        $this->assertSame(30.0, $result['inputs']['existing_post_labour_credit']);
+    }
+
+    public function test_one_left_existing_post_tick_credits_materials_and_labour(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $baseInputs = [
+            'sides' => [['length_ft' => 24]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'include_labour_hst' => true,
+        ];
+
+        $base = $calculator->calculate($baseInputs);
+        $left = $calculator->calculate(array_merge($baseInputs, [
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+        ]));
+
+        $this->assertSame(1, $left['totals']['existing_post_credit']['count']);
+        $this->assertSame(30.0, $left['totals']['existing_post_credit']['amount']);
+        $this->assertEqualsWithDelta(
+            $base['totals']['labour_subtotal'] - 30,
+            $left['totals']['labour_subtotal'],
+            0.001
+        );
+
+        $materialDelta = $base['totals']['materials_subtotal'] - $left['totals']['materials_subtotal'];
+        $hstDelta = $base['totals']['hst'] - $left['totals']['hst'];
+        $labourHstDelta = $base['totals']['labour_hst'] - $left['totals']['labour_hst'];
+        $this->assertGreaterThan(0, $materialDelta);
+        $this->assertEqualsWithDelta($materialDelta * FenceQuotation::HST_RATE, $hstDelta, 0.02);
+        $this->assertEqualsWithDelta(30 * FenceQuotation::HST_RATE, $labourHstDelta, 0.02);
+        $this->assertEqualsWithDelta(
+            $base['totals']['grand_total'] - $materialDelta - $hstDelta - 30 - $labourHstDelta,
+            $left['totals']['grand_total'],
+            0.02
+        );
+    }
+
+    public function test_both_existing_post_ticks_credit_sixty_labour(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $base = $calculator->calculate([
+            'sides' => [['length_ft' => 24]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+        ]);
+        $both = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 24,
+                'already_have_post_left' => true,
+                'already_have_post_right' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+        ]);
+
+        $this->assertSame(2, $both['totals']['existing_post_credit']['count']);
+        $this->assertSame(60.0, $both['totals']['existing_post_credit']['amount']);
+        $this->assertEqualsWithDelta(
+            $base['totals']['labour_subtotal'] - 60,
+            $both['totals']['labour_subtotal'],
+            0.001
+        );
+    }
+
+    public function test_connected_run_shared_corner_is_not_double_credited(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $base = $calculator->calculate([
+            'sides' => [
+                ['length_ft' => 16],
+                ['length_ft' => 16, 'connected_to_previous' => true],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+        ]);
+        $sharedTicks = $calculator->calculate([
+            'sides' => [
+                ['length_ft' => 16, 'already_have_post_right' => true],
+                ['length_ft' => 16, 'already_have_post_left' => true, 'connected_to_previous' => true],
+            ],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+        ]);
+
+        $this->assertSame(
+            $base['geometry']['structural_posts'] - 1,
+            $sharedTicks['geometry']['structural_posts']
+        );
+        $this->assertSame(1, $sharedTicks['totals']['existing_post_credit']['count']);
+        $this->assertSame(30.0, $sharedTicks['totals']['existing_post_credit']['amount']);
+        $this->assertEqualsWithDelta(
+            $base['totals']['labour_subtotal'] - 30,
+            $sharedTicks['totals']['labour_subtotal'],
+            0.001
+        );
+    }
+
+    public function test_backfilled_zero_credit_leaves_labour_unchanged_when_ticks_remove_posts(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $base = $calculator->calculate([
+            'sides' => [['length_ft' => 24]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 0,
+        ]);
+        $ticked = $calculator->calculate([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 0,
+        ]);
+
+        $this->assertSame($base['totals']['labour_subtotal'], $ticked['totals']['labour_subtotal']);
+        $this->assertSame(1, $ticked['totals']['existing_post_credit']['count']);
+        $this->assertSame(0.0, $ticked['totals']['existing_post_credit']['amount']);
+        $this->assertSame(24.0 * 55.0, $ticked['totals']['labour_subtotal']);
+    }
+
+    public function test_existing_post_labour_credit_cannot_go_negative(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $result = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 8,
+                'already_have_post_left' => true,
+                'already_have_post_right' => true,
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 10,
+            'existing_post_labour_credit' => 999,
+        ]);
+
+        $this->assertSame(2, $result['totals']['existing_post_credit']['count']);
+        $this->assertSame(0.0, $result['totals']['labour_subtotal']);
+        $this->assertSame(80.0, $result['totals']['labour_before_credit']);
+        $this->assertSame(80.0, $result['totals']['existing_post_credit']['amount']);
+        $this->assertNotEquals(1998.0, $result['totals']['existing_post_credit']['amount']);
+    }
+
+    public function test_calculator_clamps_negative_existing_post_credit_to_zero(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => -15,
+        ]);
+
+        $this->assertSame(0.0, $result['inputs']['existing_post_labour_credit']);
+        $this->assertSame(0.0, $result['totals']['existing_post_credit']['rate']);
+        $this->assertSame(0.0, $result['totals']['existing_post_credit']['amount']);
+        $this->assertSame(24.0 * 55.0, $result['totals']['labour_subtotal']);
+    }
+
+    public function test_decimal_existing_post_credit_is_applied(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $result = $calculator->calculate([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 12.50,
+        ]);
+
+        $this->assertSame(1, $result['totals']['existing_post_credit']['count']);
+        $this->assertEqualsWithDelta(12.50, $result['totals']['existing_post_credit']['amount'], 0.001);
+        $this->assertEqualsWithDelta(12.50, $result['totals']['existing_post_credit']['rate'], 0.001);
+        $this->assertEqualsWithDelta(24.0 * 55.0 - 12.50, $result['totals']['labour_subtotal'], 0.001);
+    }
+
+    public function test_extra_gates_and_existing_post_ticks_both_apply(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $base = $calculator->calculate([
+            'sides' => [['length_ft' => 24]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 2,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 30,
+        ]);
+        $ticked = $calculator->calculate([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 2,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 30,
+        ]);
+
+        $this->assertSame(1, $ticked['totals']['additional_gates_count']);
+        $this->assertEqualsWithDelta(24.0 * 55.0 + 150.0, $base['totals']['labour_before_credit'], 0.001);
+        $this->assertEqualsWithDelta(24.0 * 55.0 + 150.0, $ticked['totals']['labour_before_credit'], 0.001);
+        $this->assertSame(1, $ticked['totals']['existing_post_credit']['count']);
+        $this->assertEqualsWithDelta(30.0, $ticked['totals']['existing_post_credit']['amount'], 0.001);
+        $this->assertEqualsWithDelta(
+            $ticked['totals']['labour_before_credit'] - 30.0,
+            $ticked['totals']['labour_subtotal'],
+            0.001
+        );
+        $this->assertEqualsWithDelta(
+            $base['totals']['labour_subtotal'] - 30.0,
+            $ticked['totals']['labour_subtotal'],
+            0.001
+        );
+    }
+
+    public function test_gate_edge_ticks_credit_left_and_right_posts(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $baseInputs = [
+            'sides' => [['length_ft' => 24, 'gate_goes_here' => true, 'gate_preset' => '4_single']],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 1,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 30,
+        ];
+
+        $base = $calculator->calculate($baseInputs);
+        $left = $calculator->calculate(array_merge($baseInputs, [
+            'sides' => [[
+                'length_ft' => 24,
+                'gate_goes_here' => true,
+                'gate_preset' => '4_single',
+                'already_have_post_left' => true,
+            ]],
+        ]));
+        $right = $calculator->calculate(array_merge($baseInputs, [
+            'sides' => [[
+                'length_ft' => 24,
+                'gate_goes_here' => true,
+                'gate_preset' => '4_single',
+                'already_have_post_right' => true,
+            ]],
+        ]));
+        $both = $calculator->calculate(array_merge($baseInputs, [
+            'sides' => [[
+                'length_ft' => 24,
+                'gate_goes_here' => true,
+                'gate_preset' => '4_single',
+                'already_have_post_left' => true,
+                'already_have_post_right' => true,
+            ]],
+        ]));
+
+        $this->assertSame(1, $left['totals']['existing_post_credit']['count']);
+        $this->assertSame(30.0, $left['totals']['existing_post_credit']['amount']);
+        $this->assertEqualsWithDelta(
+            $base['totals']['labour_subtotal'] - 30,
+            $left['totals']['labour_subtotal'],
+            0.001
+        );
+
+        $this->assertSame(1, $right['totals']['existing_post_credit']['count']);
+        $this->assertSame(30.0, $right['totals']['existing_post_credit']['amount']);
+        $this->assertEqualsWithDelta(
+            $base['totals']['labour_subtotal'] - 30,
+            $right['totals']['labour_subtotal'],
+            0.001
+        );
+
+        $this->assertSame(2, $both['totals']['existing_post_credit']['count']);
+        $this->assertSame(60.0, $both['totals']['existing_post_credit']['amount']);
+        $this->assertEqualsWithDelta(
+            $base['totals']['labour_subtotal'] - 60,
+            $both['totals']['labour_subtotal'],
+            0.001
+        );
+    }
+
+    public function test_eight_point_three_three_foot_existing_tick_is_a_no_op(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $baseInputs = [
+            'sides' => [['length_ft' => 8.33]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 30,
+        ];
+
+        $base = $calculator->calculate($baseInputs);
+        $ticked = $calculator->calculate(array_merge($baseInputs, [
+            'sides' => [['length_ft' => 8.33, 'already_have_post_left' => true]],
+        ]));
+
+        $this->assertSame(
+            $base['geometry']['structural_posts'],
+            $ticked['geometry']['structural_posts']
+        );
+        $this->assertSame(0, $ticked['totals']['existing_post_credit']['count']);
+        $this->assertSame(0.0, $ticked['totals']['existing_post_credit']['amount']);
+        $this->assertSame($base['totals']['labour_subtotal'], $ticked['totals']['labour_subtotal']);
+    }
+
+    public function test_string_zero_tick_flags_do_not_apply_credit(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $ticked = $calculator->calculate([
+            'sides' => [[
+                'length_ft' => 24,
+                'already_have_post_left' => '0',
+                'already_have_post_right' => '0',
+            ]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => 30,
+        ]);
+
+        $this->assertFalse($ticked['inputs']['sides'][0]['already_have_post_left']);
+        $this->assertFalse($ticked['inputs']['sides'][0]['already_have_post_right']);
+        $this->assertSame(0, $ticked['totals']['existing_post_credit']['count']);
+        $this->assertSame(0.0, $ticked['totals']['existing_post_credit']['amount']);
+        $this->assertSame(24.0 * 55.0, $ticked['totals']['labour_subtotal']);
+    }
+
+    public function test_zero_string_credit_is_a_no_op_tick(): void
+    {
+        $calculator = $this->calculatorWithCatalogue($this->basicCatalogue());
+        $ticked = $calculator->calculate([
+            'sides' => [['length_ft' => 24, 'already_have_post_left' => true]],
+            'fence_height_ft' => 6,
+            'board_style' => 'standard',
+            'gate_count' => 0,
+            'labour_rate_per_ft' => 55,
+            'existing_post_labour_credit' => '0',
+        ]);
+
+        $this->assertSame(1, $ticked['totals']['existing_post_credit']['count']);
+        $this->assertSame(0.0, $ticked['totals']['existing_post_credit']['amount']);
+        $this->assertSame(0.0, $ticked['inputs']['existing_post_labour_credit']);
+        $this->assertSame(24.0 * 55.0, $ticked['totals']['labour_subtotal']);
     }
 
     public function test_gate_side_assignment_honours_all_marked_sides(): void

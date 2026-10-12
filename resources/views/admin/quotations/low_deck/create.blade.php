@@ -32,6 +32,9 @@
   $projectForReturn = ($isEdit && $quotation->project)
       ? $quotation->project
       : $linkProject;
+  $preservePid = optional($linkProject)->id
+      ?: ($isEdit && ! empty($quotation->client_project_id) ? (int) $quotation->client_project_id : null)
+      ?: (request()->filled('project') ? (int) request('project') : null);
 @endphp
 
 @section('heading', $title)
@@ -92,6 +95,10 @@
       display: inline-block; padding: 2px 8px; border-radius: 999px;
       background: #eef5fb; color: #024768; font-size: 11px; font-weight: 600;
     }
+    .ld-badge.is-calculating { background: #fff4d4; color: #8a5d00; }
+    .ld-badge.is-error { background: #fde1e1; color: #8a1a1a; }
+    .ld-badge.is-idle { background: #eef1f5; color: #556; }
+    .ld-badge.is-current { background: #e8f4ea; color: #0f5132; }
     .ld-form-toolbar {
       display: flex; justify-content: space-between; align-items: center;
       gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
@@ -161,36 +168,28 @@
 @endpush
 
 @section('content')
-  <div class="ld-form-toolbar">
-    <a href="{{ route('admin.quotations.low-deck.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to low deck quotations
-    </a>
-    <div class="ld-form-toolbar-right">
-      <a href="{{ route('admin.quotations.low-deck.config') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-cog"></i> Price configuration
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-      <a href="{{ route('admin.quotations.low-deck.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-      @if ($isEdit)
-        <a href="{{ route('admin.quotations.low-deck.purchase-list', $quotation) }}"
-           target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm"
-           data-purchase-list-choice
-           data-purchase-list-title="Print shopping list">
-          <i class="fa fa-print"></i> Print Shopping List
-        </a>
-        <a href="{{ route('admin.quotations.low-deck.layout-diagrams', $quotation) }}"
-           target="_blank" rel="noopener noreferrer"
-           class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-print"></i> Print Layout Diagrams
-        </a>
-        @include('admin.partials.quotation_view_pdf')
-      @endif
-      <button type="submit" form="ld-form" class="admin-btn admin-btn--primary admin-btn--sm">
-        <i class="fa fa-save"></i> {{ $isEdit ? 'Save changes' : 'Save quotation' }}
-      </button>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Low deck',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
+    'listUrl' => route('admin.quotations.low-deck.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.low-deck.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.low-deck.config', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'ld-form',
+    'saveId' => 'ld-btn-save',
+    'saveHotkey' => true,
+    'draftId' => 'ld-btn-draft',
+    'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.low-deck.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print shopping list',
+    'layoutDiagramsUrl' => $isEdit ? route('admin.quotations.low-deck.layout-diagrams', $quotation) : null,
+  ])
 
   @if ($isEdit && $quotation->project)
     <div class="ld-linked-banner">
@@ -230,9 +229,13 @@
   <div class="ld-calc-layout">
     {{-- ====================== LEFT: FORM =========================== --}}
     <div class="ld-left-stack">
-      <form id="ld-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor>
+      <form id="ld-form" method="post" action="{{ $formAction }}" class="admin-card" data-quotation-editor
+            data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
+            data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
         @csrf
+        @include('admin.partials.once_submit')
         @if ($isEdit) @method('PUT') @endif
+        <input type="hidden" name="save_intent" id="ld-save-intent" value="publish">
         @if ($linkProject)
           <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
         @endif
@@ -246,7 +249,10 @@
         </div>
 
         <div class="admin-form-group quotation-work-desc">
-          <label for="ld-work-description">Description of the work</label>
+          <span class="admin-label-with-tip">
+            <label for="ld-work-description">Description of the work</label>
+            <x-admin.info-tip label="Description of the work">Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+          </span>
           <textarea id="ld-work-description" name="work_description" rows="8"
                     @class(['admin-input', 'is-invalid' => $errors->has('work_description')])
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
@@ -256,7 +262,6 @@
               'aiQuotationType' => 'low_deck',
               'trailingActionPartial' => 'admin.quotations.low_deck._work_description_trailing_actions',
           ])
-          <p class="admin-form-help">Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</p>
           @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
 
@@ -266,10 +271,10 @@
 
         {{-- Dimensions ------------------------------------------------ --}}
         <div class="admin-form-section ld-section">
-          <h4 class="cp-heading-sm">Deck dimensions</h4>
-          <p class="admin-form-help cp-form-help-spaced">
-            Maximum {{ rtrim(rtrim(number_format((float) $settings->max_area_sq_ft, 2), '0'), '.') }} sq ft footprint (Ontario Building Code floating deck guardrail).
-          </p>
+          <h4 class="cp-heading-sm">
+            Deck dimensions
+            <x-admin.info-tip label="Deck dimensions">Maximum {{ rtrim(rtrim(number_format((float) $settings->max_area_sq_ft, 2), '0'), '.') }} sq ft footprint (Ontario Building Code floating deck guardrail). Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.</x-admin.info-tip>
+          </h4>
           <div class="ld-dims-grid">
             <div class="admin-form-group">
               <label for="ld-width">Width (feet) <span class="admin-required">*</span></label>
@@ -289,52 +294,50 @@
           <p id="ld-area-display" class="admin-form-help cp-form-help-spaced" style="display: none; margin-top: 10px;">
             Total area: <strong id="ld-area-value">0</strong> sq ft
           </p>
-          <p class="admin-form-help cp-form-help-spaced">
-            Field joist spacing is calculated automatically (uniform bays, max 15 in. between joists). Four edge joists sit 2¼ in. inside the perimeter rim.
-          </p>
           <div class="admin-form-group cp-form-group-spaced">
-            <label class="admin-checkbox">
-              <input type="hidden" name="include_under_deck_gravel" value="0">
-              <input type="checkbox" class="admin-checkbox__input" id="ld-under-deck-gravel"
-                     name="include_under_deck_gravel" value="1"
-                     @checked($initialIncludeUnderDeckGravel)>
-              <span class="admin-checkbox__mark" aria-hidden="true"></span>
-              <span class="admin-checkbox__text">Gravel under the deck</span>
-            </label>
-            <p class="admin-form-help">Adds under-deck gravel bags (1 per {{ rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.') }} sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.</p>
+            @include('admin.partials.checkbox', [
+              'name' => 'include_under_deck_gravel',
+              'id' => 'ld-under-deck-gravel',
+              'hiddenFallback' => true,
+              'checked' => $initialIncludeUnderDeckGravel,
+              'label' => 'Gravel under the deck',
+              'info' => 'Adds under-deck gravel bags (1 per '.rtrim(rtrim(number_format((float) ($settings->under_deck_gravel_sq_ft_per_bag ?? 8), 2), '0'), '.').' sq ft, same 30kg 1/2in gravel as under the blocks), weed-control fabric, and fabric spikes.',
+            ])
           </div>
         </div>
 
         {{-- Rates ----------------------------------------------------- --}}
         <div class="admin-form-section ld-section">
-          <h4 class="cp-heading-sm">Rates for this quotation</h4>
-          <p class="admin-form-help cp-form-help-spaced">
-            Prefilled from configuration defaults. Change them here to adjust this project only.
-          </p>
+          <h4 class="cp-heading-sm">
+            Rates for this quotation
+            <x-admin.info-tip label="Rates for this quotation">Prefilled from configuration defaults. Change them here to adjust this project only.</x-admin.info-tip>
+          </h4>
           <div class="ld-rates-grid">
             <div class="admin-form-group">
               <label for="ld-labour-rate">Labour rate (CA$ / sq ft)</label>
               <input id="ld-labour-rate" type="text" name="labour_rate_per_sqft"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('labour_rate_per_sqft')])
                      inputmode="decimal" autocomplete="off"
-                     value="{{ number_format((float) $initialLabour, 2, '.', '') }}">
+                     value="{{ number_format((float) $initialLabour, 2, '.', '') }}" data-cp-money-entry="direct">
               @error('labour_rate_per_sqft') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="admin-form-group">
-              <label for="ld-material-waste">Material waste (%)</label>
+              <span class="admin-label-with-tip">
+                <label for="ld-material-waste">Material waste (%)</label>
+                <x-admin.info-tip label="Material waste">Extra material for cuts and breakage. Internal ordering buffer — not shown on the client quotation.</x-admin.info-tip>
+              </span>
               <input id="ld-material-waste" type="number" min="0" max="100" step="0.1" name="material_waste_percent"
                      @class(['admin-input', 'is-invalid' => $errors->has('material_waste_percent')])
                      value="{{ rtrim(rtrim(number_format((float) $initialMaterialWaste, 2, '.', ''), '0'), '.') }}"
                      autocomplete="off">
               @error('material_waste_percent') <p class="admin-form-error">{{ $message }}</p> @enderror
-              <p class="admin-form-help">Extra material for cuts and breakage. Internal ordering buffer — not shown on the client quotation.</p>
             </div>
             <div class="admin-form-group">
               <label for="ld-waste-fee">Material dump fee</label>
               <input id="ld-waste-fee" type="text" name="waste_dump_fee_cad"
                      @class(['admin-input', 'cp-money-input', 'is-invalid' => $errors->has('waste_dump_fee_cad')])
                      inputmode="decimal" autocomplete="off"
-                     value="{{ number_format((float) $initialWasteFee, 2, '.', '') }}">
+                     value="{{ number_format((float) $initialWasteFee, 2, '.', '') }}" data-cp-money-entry="direct">
               @error('waste_dump_fee_cad') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
           </div>
@@ -375,10 +378,19 @@
     <aside class="admin-card ld-breakdown-card">
       @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
+      @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'ld-form'])
 
-      <h3 class="cp-heading-md">Live breakdown</h3>
-      <p class="admin-form-help cp-breakdown-intro">
-        Preview updates as you type. <span class="ld-badge" id="ld-status-badge">Calculating…</span>
+      <div class="qh-priced-head" data-qh-step="2">
+        <h3 class="cp-heading-md">
+          Live breakdown
+          <x-admin.info-tip label="Live breakdown">Preview updates as you type.</x-admin.info-tip>
+        </h3>
+        @include('admin.partials.quotation_price_config_gear', [
+          'url' => route('admin.quotations.low-deck.config'),
+        ])
+      </div>
+      <p class="cp-breakdown-intro">
+        <span class="ld-badge" id="ld-status-badge">Calculating…</span>
       </p>
 
       <div id="ld-geometry" class="admin-form-help cp-geometry-hint"></div>
@@ -453,7 +465,12 @@
   {{-- ====================== DIAGRAMS ============================= --}}
   <div class="admin-card ld-diagrams-card">
     <div class="ld-diagrams-toolbar no-print">
-      <h3 class="cp-heading-md" style="margin:0;">Layout diagrams</h3>
+      <h3 class="cp-heading-md admin-label-with-tip" style="margin:0;">
+        Layout diagrams
+        <span id="ld-diagrams-hint">
+          <x-admin.info-tip label="Layout diagrams">Enter dimensions to generate the foundations, framing, and decking layouts.</x-admin.info-tip>
+        </span>
+      </h3>
       <div class="ld-diagrams-toolbar-actions">
         @if ($isEdit)
           <a href="{{ route('admin.quotations.low-deck.layout-diagrams', $quotation) }}"
@@ -474,7 +491,6 @@
       @endif
       <span id="ld-diagram-print-dims"></span>
     </div>
-    <p class="admin-form-help cp-form-help-flush no-print" id="ld-diagrams-hint">Enter dimensions to generate the foundations, framing, and decking layouts.</p>
     <div class="ld-diagrams-grid">
       <div class="ld-diagram-panel">
         <h5>1. Foundations</h5>
@@ -498,6 +514,16 @@
   'use strict';
 
   var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var ldIntent = document.getElementById('ld-save-intent');
+  var ldDraftBtn = document.getElementById('ld-btn-draft');
+  var ldForm = document.getElementById('ld-form');
+  if (ldDraftBtn && ldIntent && ldForm) {
+    ldDraftBtn.addEventListener('click', function () {
+      ldIntent.value = 'draft';
+      if (typeof ldForm.requestSubmit === 'function') ldForm.requestSubmit();
+      else ldForm.submit();
+    });
+  }
   var previewUrl = @json(route('admin.quotations.low-deck.preview'));
   var initialCalc = @json($initialCalc);
 
@@ -604,8 +630,9 @@
     }
 
     statusBadge.textContent = 'Calculating…';
-    statusBadge.style.background = '#fff4d4';
-    statusBadge.style.color = '#8a5d00';
+    statusBadge.className = 'ld-badge is-calculating';
+    statusBadge.style.background = '';
+    statusBadge.style.color = '';
 
     fetch(previewUrl, {
       method: 'POST',
@@ -638,8 +665,9 @@
 
   function renderError(msg) {
     statusBadge.textContent = 'Error';
-    statusBadge.style.background = '#fde1e1';
-    statusBadge.style.color = '#8a1a1a';
+    statusBadge.className = 'ld-badge is-error';
+    statusBadge.style.background = '';
+    statusBadge.style.color = '';
     geometryEl.innerHTML = '<p style="color:#8a1a1a;font-weight:600;">' + escapeHtml(msg) + '</p>';
     materialsBody.innerHTML = '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
     ['ld-t-materials','ld-t-hst','ld-t-labour','ld-t-total','ld-t-labour-hst','ld-t-grand'].forEach(function (id) {
@@ -652,8 +680,9 @@
 
   function renderIdle(msg) {
     statusBadge.textContent = 'Idle';
-    statusBadge.style.background = '#eef1f5';
-    statusBadge.style.color = '#556';
+    statusBadge.className = 'ld-badge is-idle';
+    statusBadge.style.background = '';
+    statusBadge.style.color = '';
     geometryEl.textContent = msg || '';
     materialsBody.innerHTML = '<tr><td colspan="4" style="color:#6b7280;padding:12px;text-align:center;">—</td></tr>';
     tMaterials.textContent = 'CA$0.00';
@@ -685,8 +714,9 @@
       generateWorkDescriptionBtn.disabled = !(calc.suggested_work_description);
     }
     statusBadge.textContent = 'Up to date';
-    statusBadge.style.background = '#e8f4ea';
-    statusBadge.style.color = '#0f5132';
+    statusBadge.className = 'ld-badge is-current';
+    statusBadge.style.background = '';
+    statusBadge.style.color = '';
 
     var g = calc.geometry || {};
     var t = calc.totals || {};
@@ -695,6 +725,15 @@
     var beams = g.beams || {};
     var boards = g.boards || {};
     var tape = g.joist_tape || {};
+
+    var joistSpacingIn = joists.field_spacing_in || g.joist_spacing_in || '';
+    if (geometryEl) {
+      if (joistSpacingIn) {
+        geometryEl.setAttribute('data-joist-spacing-in', String(joistSpacingIn));
+      } else {
+        geometryEl.removeAttribute('data-joist-spacing-in');
+      }
+    }
 
     geometryEl.innerHTML =
       '<p style="margin:0 0 8px;"><strong>' + (g.area_sq_ft || 0) + ' sq ft</strong> · '

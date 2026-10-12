@@ -12,6 +12,7 @@ class RoomAreaProject extends Model
         'name',
         'client_project_id',
         'scale_pixels_per_foot',
+        'wall_thickness_in',
         'background_path',
         'canvas_width',
         'canvas_height',
@@ -19,6 +20,7 @@ class RoomAreaProject extends Model
 
     protected $casts = [
         'scale_pixels_per_foot' => 'float',
+        'wall_thickness_in' => 'float',
     ];
 
     public function clientProject(): BelongsTo

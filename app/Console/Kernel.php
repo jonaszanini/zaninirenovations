@@ -29,6 +29,7 @@ class Kernel extends ConsoleKernel
         $dailyAt($schedule, 'client-projects:send-past-due-invoice-reminders');
         $dailyAt($schedule, 'client-projects:notify-commencement-eve');
         $dailyAt($schedule, 'client-projects:start-due-today');
+        $dailyAt($schedule, 'blog:cleanup-orphans');
 
         // TEMPORARY cron smoke test: when SMS_CRON_TEST=true the scheduler texts
         // the owner every minute, proving cron is invoking `schedule:run`. Set

@@ -29,6 +29,15 @@ html.admin-dark body.admin-body {
   --admin-danger-soft: rgba(248, 113, 113, 0.16);
   --admin-success: #4ade80;
   --admin-success-soft: rgba(74, 222, 128, 0.16);
+  --admin-stat-tile-bg: var(--admin-input-bg);
+  --admin-stat-tile-border: var(--admin-border);
+  --admin-stat-highlight-bg: rgba(74, 222, 128, 0.14);
+  --admin-stat-highlight-border: rgba(74, 222, 128, 0.38);
+  --admin-info-tile-bg: rgba(56, 189, 248, 0.12);
+  --admin-info-tile-border: rgba(56, 189, 248, 0.35);
+  --admin-warn-tile-bg: rgba(245, 158, 11, 0.14);
+  --admin-warn-tile-border: rgba(245, 158, 11, 0.38);
+  --admin-warn-tile-text: #fbbf24;
   --admin-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
   --admin-shadow-md: 0 8px 30px rgba(0, 0, 0, 0.45);
   --admin-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.55);
@@ -55,6 +64,14 @@ html.admin-dark .admin-form-group-label,
 html.admin-dark .admin-form-help,
 html.admin-dark .admin-toolbar-lede {
   color: var(--admin-muted);
+}
+
+html.admin-dark .admin-checkbox-row {
+  color: var(--admin-text);
+}
+html.admin-dark .admin-checkbox-row label,
+html.admin-dark .admin-checkbox-row .admin-checkbox__text {
+  color: inherit;
 }
 
 html.admin-dark .admin-sidebar-brand {
@@ -102,8 +119,15 @@ html.admin-dark .admin-btn--secondary {
   color: var(--admin-primary);
 }
 
-html.admin-dark .admin-theme-toggle__btn[aria-pressed="true"] .admin-theme-toggle__switch {
+html.admin-dark .admin-sidebar .admin-theme-toggle__switch,
+html.admin-dark .admin-theme-toggle__btn[aria-pressed="true"] .admin-theme-toggle__switch,
+html.admin-dark .admin-theme-toggle__btn[aria-checked="true"] .admin-theme-toggle__switch {
   background: #024768;
+}
+html.admin-dark .admin-sidebar .admin-theme-toggle__switch::after,
+html.admin-dark .admin-theme-toggle__btn[aria-pressed="true"] .admin-theme-toggle__switch::after,
+html.admin-dark .admin-theme-toggle__btn[aria-checked="true"] .admin-theme-toggle__switch::after {
+  transform: translateX(20px);
 }
 
 /* Forms */
@@ -149,7 +173,7 @@ html.admin-dark .admin-input::placeholder,
 html.admin-dark .admin-content input::placeholder,
 html.admin-dark .admin-content textarea::placeholder,
 html.admin-dark .admin-topbar input::placeholder {
-  color: #64748b;
+  color: #94a3b8;
   opacity: 1;
 }
 
@@ -466,6 +490,18 @@ html.admin-dark .admin-search-select__clear:focus-visible {
   background: var(--admin-surface-hover);
 }
 
+html.admin-dark .admin-search-select__option--action {
+  border-top-color: var(--admin-border);
+}
+
+html.admin-dark .admin-search-select__option--action .admin-search-select__option-name {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .admin-search-select__error {
+  color: var(--admin-danger);
+}
+
 html.admin-dark .admin-places-autocomplete-wrap {
   --gmp-mat-color-surface: var(--admin-elevated);
   --gmp-mat-color-on-surface: var(--admin-heading);
@@ -547,6 +583,9 @@ html.admin-dark .admin-badge {
 
 /* Project-page surfaces that still hardcode #fff */
 html.admin-dark .dash-card,
+html.admin-dark .dash-panel,
+html.admin-dark .dash-finance-glance,
+html.admin-dark .dash-status-pill,
 html.admin-dark .portfolio-admin-card,
 html.admin-dark .fq-hub-card,
 html.admin-dark .cp-profit-tile,
@@ -797,7 +836,13 @@ html.admin-dark .cp-badge--draft {
   color: #fbbf24;
 }
 
-html.admin-dark .cp-badge--manual {
+html.admin-dark .cp-badge--manual,
+html.admin-dark .cp-badge[style*="background:#e0e7ff"] {
+  background: rgba(99, 102, 241, 0.25) !important;
+  color: #a5b4fc !important;
+}
+
+html.admin-dark .cp-badge--accepted {
   background: #334155;
   color: #cbd5e1;
 }
@@ -833,6 +878,10 @@ html.admin-dark .cp-utilities-item__name {
   color: var(--admin-heading);
 }
 
+html.admin-dark .cp-utilities-item__top {
+  color: var(--admin-text);
+}
+
 html.admin-dark .cp-utilities-item__meta {
   color: var(--admin-muted);
 }
@@ -844,6 +893,14 @@ html.admin-dark .cp-utilities-item__rooms li {
 
 html.admin-dark .cp-utilities-item__room-area {
   color: var(--admin-heading);
+}
+
+html.admin-dark .cp-utilities-item__room-photos {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-utilities-item__pdf {
+  color: var(--admin-primary);
 }
 
 html.admin-dark .sq-work-card__header,
@@ -1052,8 +1109,11 @@ html.admin-dark .tox-tinymce {
   border-color: var(--admin-border) !important;
 }
 
-html.admin-dark .tox .tox-edit-area__iframe {
-  background: var(--admin-input-bg);
+html.admin-dark .tox .tox-edit-area,
+html.admin-dark .tox .tox-edit-area__iframe,
+html.admin-dark .quotation-work-desc .tox-tinymce,
+html.admin-dark .sq-intro-work-desc .tox-tinymce {
+  background: var(--admin-input-bg) !important;
 }
 
 html.admin-dark .tox .tox-menubar,
@@ -1118,6 +1178,15 @@ html.admin-dark .cp-contacted-via-value--email {
 
 html.admin-dark .cp-checkbox-row strong {
   color: var(--admin-heading);
+}
+
+html.admin-dark .cp-reply-to-accept--error {
+  border-color: var(--admin-danger);
+}
+
+html.admin-dark .cp-badge-accepted {
+  background: var(--admin-success-soft);
+  color: var(--admin-success);
 }
 
 html.admin-dark .sq-work-card,
@@ -1191,9 +1260,29 @@ html.admin-dark .cp-project-photos-thumb-media--ppt {
 
 /* Room Area calculator leftovers */
 html.admin-dark .util-ra-desktop-notice {
-  background: rgba(250, 204, 21, 0.12);
-  border-color: rgba(250, 204, 21, 0.35);
-  color: #fde68a;
+  background: var(--admin-info-tile-bg, var(--admin-surface-hover));
+  border-color: var(--admin-info-tile-border, var(--admin-border));
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-shortcuts__popover {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-shortcuts__title,
+html.admin-dark .util-ra-shortcuts__row dt {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-shortcuts__row dd {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-icon-btn[data-ra-shortcuts-toggle][aria-expanded="true"] {
+  background: var(--admin-surface-hover);
 }
 
 html.admin-dark .util-ra-ruler-edit {
@@ -1211,6 +1300,212 @@ html.admin-dark .util-ra-canvas-wrap {
 
 html.admin-dark .util-ra-canvas-wrap.is-ruler-edit {
   outline-color: rgba(192, 132, 252, 0.45);
+}
+
+html.admin-dark .util-ra-canvas-wrap.is-object-edit {
+  outline-color: rgba(56, 189, 248, 0.45);
+}
+
+html.admin-dark .util-ra-palette {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-palette__toggle {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-palette__item {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-palette__item:hover,
+html.admin-dark .util-ra-palette__item:focus-visible,
+html.admin-dark .util-ra-palette__item.is-armed {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-walls-panel {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-thickness-chip {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-thickness-chip:hover,
+html.admin-dark .util-ra-thickness-chip:focus-visible {
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-thickness-chip.is-active {
+  background: var(--admin-primary);
+  color: #0f172a;
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-group-chip__swatch {
+  border-color: #f8fafc;
+  box-shadow: 0 0 0 1px #f8fafc;
+  opacity: 1;
+}
+
+html.admin-dark .util-ra-phone-bar {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra--fullpage .util-ra-phone-bar.is-overflowing::after {
+  background: linear-gradient(to right, transparent, var(--admin-surface));
+}
+
+html.admin-dark .util-ra-more-sheet {
+  background: var(--admin-elevated, var(--admin-surface));
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-more-sheet__title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-more-block__title {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-more-help {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-more-help__summary,
+html.admin-dark .util-ra-more-btn-label {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-sheet-strip {
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-sheet-strip .util-ra-palette__body,
+html.admin-dark .util-ra-sheet-strip .util-ra-walls-panel .util-ra-palette__body {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-thickness-custom label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-live-metrics__item {
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-live-metrics__item .util-ra-live-area__label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-object-ghost {
+  background: var(--admin-elevated, var(--admin-surface));
+  color: var(--admin-heading);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-object-edit {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+}
+
+html.admin-dark .util-ra-live-area {
+  background: var(--admin-primary-soft);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-live-area strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-live-area__height-unit {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-finish {
+  border-top-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-finish__title,
+html.admin-dark .util-ra-finish__walls strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-finish__dir-label,
+html.admin-dark .util-ra-finish__walls li,
+html.admin-dark .util-ra-wall-edit__net {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-finish__dir .admin-btn.is-active {
+  background: var(--admin-primary);
+  color: #fff;
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-kits,
+html.admin-dark .util-ra-kit,
+html.admin-dark .util-ra-kit-line,
+html.admin-dark .util-ra-kit-quote,
+html.admin-dark .util-ra-kit-quote__kit,
+html.admin-dark .util-ra-kits__quote {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-kit__name,
+html.admin-dark .util-ra-kits__title,
+html.admin-dark .util-ra-kit-editor__title,
+html.admin-dark .util-ra-kit__line strong,
+html.admin-dark .util-ra-kit-quote__lines strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-kits__empty,
+html.admin-dark .util-ra-kit__mat,
+html.admin-dark .util-ra-kit-quote__mat,
+html.admin-dark .util-ra-kits__project-title {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-kit-line {
+  background: var(--admin-elevated);
+}
+
+html.admin-dark .util-ra-kit__line-err,
+html.admin-dark .util-ra-kit-editor__error,
+html.admin-dark .util-ra-kit-quote__err {
+  color: #fca5a5;
+}
+
+html.admin-dark .util-ra-live-area__exports .admin-btn--ghost {
+  background: var(--admin-surface);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-live-area__exports .admin-btn--ghost:hover {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-elevated);
 }
 
 html.admin-dark .util-ra-btn--danger-ghost:hover:not(:disabled),
@@ -1239,8 +1534,225 @@ html.admin-dark .util-ra-rooms-item__actions .admin-btn--ghost:hover {
   background: var(--admin-primary-soft);
 }
 
+html.admin-dark .util-ra-type-walls {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-type-walls__dir.is-active {
+  background: var(--admin-input-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-type-walls__gap.is-closed {
+  color: #4ade80;
+}
+
+html.admin-dark .util-ra-type-walls__gap.is-off {
+  color: #fdba74;
+}
+
+html.admin-dark .util-ra-photos__thumb {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-lightbox__figure {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-lightbox__caption-input {
+  background: var(--admin-input-bg);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-photos__thumb-del {
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-rooms-item__photos {
+  color: var(--admin-muted);
+}
+
 html.admin-dark .util-ra-rooms-item {
   background: var(--admin-bg);
+}
+
+html.admin-dark .util-ra-full-header {
+  background: var(--admin-surface);
+  border-bottom-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-full-header__title,
+html.admin-dark .util-ra-full-header__name {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-full-header__name {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-full-header__sub {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-help-q {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-help-q[aria-expanded="true"],
+html.admin-dark .util-ra-help-q:hover,
+html.admin-dark .util-ra-help-q:focus-visible {
+  color: var(--admin-heading);
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-help-pop {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-unit-system {
+  border-color: var(--admin-border);
+  background: var(--admin-input-bg);
+}
+
+html.admin-dark .util-ra-unit-system__btn {
+  color: var(--admin-text);
+  background: transparent;
+}
+
+html.admin-dark .util-ra-unit-system__btn + .util-ra-unit-system__btn {
+  border-left-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-unit-system__btn.is-active {
+  background: var(--admin-primary);
+  color: #0f172a;
+}
+
+html.admin-dark .util-ra-templates-pop {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+html.admin-dark .util-ra-templates-pop__hint {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-icon-btn.is-active[data-ra-snap-toggle],
+html.admin-dark .util-ra-icon-toggle:has([data-ra-lock-layers]:checked) {
+  background: var(--admin-primary);
+  color: #0f172a;
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-ra-first-tip {
+  background: transparent;
+  border-color: transparent;
+}
+
+html.admin-dark .util-ra-guide {
+  background: var(--admin-bg);
+}
+
+html.admin-dark .util-ra-guide__title,
+html.admin-dark .util-ra-guide__steps h2,
+html.admin-dark .util-ra-guide__copy h2 {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-guide__lede,
+html.admin-dark .util-ra-guide__steps p,
+html.admin-dark .util-ra-guide__copy p,
+html.admin-dark .util-ra-guide__steps > li,
+html.admin-dark .util-ra-guide__step {
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-guide__body {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-guide__steps code {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-guide__samples {
+  background: var(--admin-elevated, var(--admin-input-bg));
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-guide__chip-label,
+html.admin-dark .util-ra-guide__samples .util-ra-zoom-label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra--fullpage .util-ra-side {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-project-bar {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra--fullpage .util-ra-project-bar__menu {
+  background: var(--admin-elevated, var(--admin-surface));
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra--fullpage:not([data-ra-lock-client-project]) .util-ra-empty {
+  background: var(--admin-bg);
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-side__tab.is-active {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #0f172a;
+}
+
+html.admin-dark .util-ra--fullpage .util-ra-canvas-card,
+html.admin-dark .util-ra--fullpage .util-ra-controls {
+  background: var(--admin-surface);
+}
+
+html.admin-dark .util-ra-sheet-handle__bar {
+  background: var(--admin-muted);
+}
+
+html.admin-dark .util-rq-trade {
+  background: var(--admin-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-rq-trade.is-on {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+}
+
+html.admin-dark .util-rq-preview__total strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-rooms-item__actions .admin-btn--primary {
+  color: #fff;
 }
 
 html.admin-dark .util-ra-rooms-item__actions .admin-btn--danger {
@@ -1365,6 +1877,30 @@ html.admin-dark .br-toolbar-grand {
 html.admin-dark .br-toolbar-grand {
   border-top-color: var(--admin-border);
 }
+html.admin-dark .br-sticky-total {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+}
+html.admin-dark .br-sheet-size__option {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .br-sheet-size__option:has(input:checked) {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+html.admin-dark .br-field-error {
+  color: #fca5a5;
+}
+html.admin-dark .admin-input.is-invalid {
+  border-color: #f87171;
+}
+html.admin-dark .br-desc-acc__summary {
+  color: var(--admin-heading);
+}
 html.admin-dark .br-layout .fl-breakdown-section {
   color: var(--admin-muted);
 }
@@ -1411,6 +1947,12 @@ html.admin-dark .mw-cut-dim {
 html.admin-dark .mw-cut-legend__n {
   color: var(--admin-primary);
 }
+html.admin-dark .mw-totals-bar {
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+}
+html.admin-dark .mw-totals-bar__expand {
+  color: var(--admin-muted);
+}
 html.admin-dark .mw-cut-kerf {
   fill: #e2e8f0;
   stroke: #e2e8f0;
@@ -1419,6 +1961,13 @@ html.admin-dark .mw-cut-kerf {
 html.admin-dark .mw-catalog-table select.admin-input,
 html.admin-dark .mw-col-kind select.admin-input {
   background-position: right 0.45rem center;
+}
+
+html.admin-dark #mw-main-form select.admin-input.mw-dim__unit,
+html.admin-dark #mw-main-form .admin-form-group select.mw-dim__unit {
+  padding: 0 1.2rem 0 0.3rem;
+  background-position: right 0.28rem center;
+  background-size: 10px 7px;
 }
 
 html.admin-dark .sq-qty__gear {
@@ -1430,5 +1979,1673 @@ html.admin-dark .sq-qty__gear {
 html.admin-dark .sq-qty__gear:hover,
 html.admin-dark .sq-qty__gear:focus-visible {
   color: var(--admin-primary-hover);
+}
+
+/* File inputs */
+html.admin-dark input[type="file"],
+html.admin-dark .admin-input[type="file"] {
+  background: var(--admin-input-bg);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+html.admin-dark input[type="file"]::file-selector-button {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+html.admin-dark input[type="file"]::file-selector-button:hover {
+  background: var(--admin-surface-hover);
+}
+
+/* Materials list */
+html.admin-dark .mat-thumb {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .mat-thumb--empty {
+  background: var(--admin-surface-hover);
+}
+
+/* Supplier sites */
+html.admin-dark .ss-tag-chip {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+html.admin-dark .ss-notes-preview {
+  color: var(--admin-muted);
+}
+
+/* Blog admin */
+html.admin-dark .blog-admin-ai-metadata-wrap {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .blog-admin-gemini-status {
+  color: var(--admin-success);
+}
+html.admin-dark .blog-admin-gemini-status.is-error {
+  color: var(--admin-danger);
+}
+html.admin-dark .blog-post-status--published {
+  color: #4ade80;
+}
+html.admin-dark .blog-post-status--draft {
+  color: #fbbf24;
+}
+html.admin-dark .blog-post-status--scheduled {
+  color: #60a5fa;
+}
+html.admin-dark .bp-list-filters {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+html.admin-dark .admin-filters-accordion .bp-list-filters {
+  background: transparent;
+  border: none;
+}
+html.admin-dark .bp-list-tab {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .bp-list-tab.is-active {
+  background: #0369a1;
+  border-color: #0369a1;
+  color: #fff;
+}
+html.admin-dark .bp-seo-badge {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .bp-seo-badge--ok {
+  color: #4ade80;
+  border-color: #166534;
+}
+html.admin-dark .bp-seo-badge--warn {
+  color: #fbbf24;
+  border-color: #854d0e;
+}
+html.admin-dark .bp-list-cat__more {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .bp-status-badge {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+}
+html.admin-dark .bp-status-badge.blog-post-status--published {
+  color: #4ade80;
+  background: rgba(22, 163, 74, 0.18);
+  border-color: #166534;
+}
+html.admin-dark .bp-status-badge.blog-post-status--draft {
+  color: #fbbf24;
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+}
+html.admin-dark .bp-status-badge.blog-post-status--scheduled {
+  color: #60a5fa;
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
+}
+html.admin-dark .bp-list-thumb,
+html.admin-dark .blog-admin-featured-preview,
+html.admin-dark .bp-snippet,
+html.admin-dark .bp-chip {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+html.admin-dark .bp-list-thumb--empty {
+  background: transparent;
+  color: var(--admin-muted);
+}
+html.admin-dark .bp-list-post__title,
+html.admin-dark .bp-list-post__title-link,
+html.admin-dark .admin-content a.bp-list-post__title-link,
+html.admin-dark .admin-table a.bp-list-post__title-link,
+html.admin-dark .admin-table a.bp-list-post__title-link:visited {
+  color: var(--admin-heading);
+}
+html.admin-dark .bp-list-post__meta {
+  color: var(--admin-muted);
+}
+html.admin-dark .bp-snippet__url {
+  color: #93c5fd;
+}
+html.admin-dark .bp-snippet__title {
+  color: #93c5fd;
+}
+html.admin-dark .bp-snippet__desc,
+html.admin-dark .bp-chip,
+html.admin-dark .bp-check-item {
+  color: var(--admin-text);
+}
+html.admin-dark .bp-check-item.is-ok,
+html.admin-dark .bp-check-ready.is-ok,
+html.admin-dark .admin-char-count.is-ok {
+  color: #4ade80;
+}
+html.admin-dark .bp-check-item.is-warn,
+html.admin-dark .bp-inline-alts,
+html.admin-dark .admin-char-count.is-warn {
+  color: #fbbf24;
+}
+html.admin-dark .bp-check-item.is-bad,
+html.admin-dark .bp-check-ready.is-bad {
+  color: #f87171;
+}
+html.admin-dark .bp-chip__x {
+  color: var(--admin-muted);
+}
+
+/* Fence calculator side cards */
+html.admin-dark .fq-side-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .fq-total-lf,
+html.admin-dark .fq-gate-warn,
+html.admin-dark .fq-price-banner {
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  background: var(--admin-elevated);
+}
+html.admin-dark .fq-side-card h5,
+html.admin-dark .fq-geometry-summary {
+  color: var(--admin-heading);
+}
+html.admin-dark .fq-side-meta,
+html.admin-dark .fq-geometry-per-ft-note,
+html.admin-dark .fq-geometry-side__sections {
+  color: var(--admin-muted);
+}
+html.admin-dark .fq-geometry-side {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .fq-geometry-side__title {
+  color: var(--admin-heading);
+}
+html.admin-dark .fq-side-existing-posts {
+  color: var(--admin-text);
+}
+html.admin-dark .fq-side-existing-posts__label {
+  color: var(--admin-muted);
+}
+html.admin-dark .fq-totals {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .fq-totals-row--total,
+html.admin-dark .fq-totals-row--grand {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .fq-totals-row--grand {
+  color: var(--admin-primary);
+}
+
+/* Fence live breakdown */
+html.admin-dark .fq-breakdown-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .fq-breakdown-card h3,
+html.admin-dark .fq-breakdown-card h4,
+html.admin-dark .fq-breakdown-card strong {
+  color: var(--admin-heading);
+}
+
+/* Additional admin surfaces */
+html.admin-dark .cp-time-entry {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-quotation-items-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-locked {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: var(--admin-text);
+}
+html.admin-dark .cp-locked h3 {
+  color: #fcd34d;
+}
+html.admin-dark .cp-recalc-banner {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+html.admin-dark .cp-recalc-banner__title {
+  color: #fcd34d;
+}
+
+/* Links in admin tables and content */
+html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"]) {
+  color: var(--admin-primary);
+}
+html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"]):visited {
+  color: var(--admin-primary);
+}
+html.admin-dark .admin-table a {
+  color: var(--admin-primary);
+}
+html.admin-dark .admin-table a:visited {
+  color: var(--admin-primary);
+}
+html.admin-dark .admin-content a.cp-clients-toolbar-clear:not(.admin-btn):not([class*="btn"]):not([class*="nav"]),
+html.admin-dark .admin-content a.cp-clients-toolbar-clear:not(.admin-btn):not([class*="btn"]):not([class*="nav"]):visited {
+  color: var(--admin-muted);
+}
+html.admin-dark .admin-content a.cp-clients-toolbar-clear:not(.admin-btn):not([class*="btn"]):not([class*="nav"]):hover,
+html.admin-dark .admin-content a.cp-clients-toolbar-clear:not(.admin-btn):not([class*="btn"]):not([class*="nav"]):focus-visible {
+  color: var(--admin-heading);
+}
+
+
+/* Shared prices compact table */
+html.admin-dark .sp-table th {
+  color: var(--admin-muted);
+  border-bottom-color: var(--admin-border);
+  background: transparent;
+}
+html.admin-dark .sp-table td,
+html.admin-dark .admin-content .sp-table td,
+html.admin-dark .admin-content .sp-table th,
+html.admin-dark .admin-content .sp-table tr:hover > td,
+html.admin-dark .admin-content .sp-table tr:hover > th {
+  background: transparent;
+  border-bottom-color: var(--admin-border);
+}
+html.admin-dark .sp-work-label,
+html.admin-dark .sp-work-label-input {
+  color: var(--admin-heading);
+}
+html.admin-dark .sp-work-label small,
+html.admin-dark .sp-work-key,
+html.admin-dark .sp-work-meta {
+  color: var(--admin-muted);
+}
+html.admin-dark .sp-work-label-input {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+}
+html.admin-dark .sp-add {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .sp-add > summary {
+  color: var(--admin-primary);
+}
+html.admin-dark .sp-ref-badge {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .sp-add__consumers > legend,
+html.admin-dark .sp-add__field > label,
+html.admin-dark .sp-add__cost-hint {
+  color: var(--admin-muted);
+}
+html.admin-dark .sp-input {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .sp-input:focus {
+  border-color: var(--admin-primary);
+}
+html.admin-dark .sp-chip {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+html.admin-dark .sp-effective {
+  color: var(--admin-muted);
+}
+html.admin-dark .sp-group__summary {
+  color: var(--admin-heading);
+}
+
+/* Communications log compact */
+html.admin-dark .comm-desc__subject {
+  color: var(--admin-heading);
+}
+html.admin-dark .comm-desc__body {
+  color: var(--admin-muted);
+}
+html.admin-dark .comm-desc__toggle {
+  color: var(--admin-primary);
+}
+html.admin-dark .comm-desc__error {
+  color: #fbbf24;
+}
+html.admin-dark .comm-recipient__cc {
+  color: var(--admin-muted);
+}
+
+/* Materials list compact */
+html.admin-dark .mat-thumb {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .mat-thumb--empty {
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+}
+
+/* ========================================================================
+   Client Projects Dark Mode Fixes
+   ======================================================================== */
+
+/* Project scope chips */
+html.admin-dark a.cp-projects-scope-chip {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark a.cp-projects-scope-chip:hover {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+  color: var(--admin-heading);
+}
+html.admin-dark a.cp-projects-scope-chip.cp-projects-scope-chip--active {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+
+/* Cancel modal panel */
+html.admin-dark #cp-cancel-modal .cp-status-modal-panel {
+  background: var(--admin-surface);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+html.admin-dark #cp-cancel-modal .cp-status-modal-title {
+  color: var(--admin-heading);
+}
+html.admin-dark #cp-cancel-modal .cp-status-modal-hint {
+  color: var(--admin-text);
+}
+html.admin-dark #cp-cancel-modal .cp-status-modal-label {
+  color: var(--admin-muted);
+}
+
+/* Calendar FullCalendar buttons */
+html.admin-dark .cp-calendar-card .fc .fc-button-primary {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .cp-calendar-card .fc .fc-button-primary:hover {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .cp-calendar-card .fc .fc-button-group .fc-button.fc-button-active {
+  background: var(--admin-primary);
+  border-color: var(--admin-primary);
+  color: #fff;
+}
+html.admin-dark .cp-calendar-card .fc-theme-standard td,
+html.admin-dark .cp-calendar-card .fc-theme-standard th {
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-calendar-card .fc-theme-standard .fc-scrollgrid {
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-calendar-card .fc .fc-col-header-cell {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .cp-calendar-card .fc .fc-daygrid-day {
+  background: var(--admin-surface);
+}
+html.admin-dark .cp-calendar-card .fc .fc-day-today {
+  background: rgba(2, 71, 104, 0.08) !important;
+}
+html.admin-dark .cp-calendar-card .fc .fc-daygrid-day-number {
+  color: var(--admin-text);
+}
+html.admin-dark .cp-calendar-card .fc .fc-day-other .fc-daygrid-day-number {
+  color: var(--admin-muted);
+}
+
+/* Time entries */
+html.admin-dark .cp-time-entry {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-time-entry--open {
+  background: var(--admin-surface);
+  border-color: var(--admin-primary);
+}
+
+/* Quotation items table */
+html.admin-dark .cp-quotation-items thead th {
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-quotation-items tbody td {
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-quotation-items tbody tr:hover td {
+  background: var(--admin-table-hover);
+}
+html.admin-dark .cp-quotation-add-row-btn {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .cp-quotation-add-row-btn:hover {
+  background: var(--admin-surface-hover);
+}
+
+/* Material cards */
+html.admin-dark .sq-materials-list > .sq-material-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .sq-materials-list > .sq-material-card:nth-child(even) {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .sq-mat-readout {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+
+/* Segment toggles */
+html.admin-dark .sq-mat-mode-segment__item span {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .sq-mat-mode-segment__item:has(input:checked) span {
+  background: #024768;
+  border-color: #024768;
+  color: #fff;
+}
+html.admin-dark .br-lw-segment__item span {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .admin-form-group .br-lw-segment__item:has(input:checked) span {
+  background: #024768;
+  border-color: #024768;
+  color: #fff;
+}
+
+/* Grand row commute */
+html.admin-dark .sq-grand-row--commute {
+  background: var(--admin-surface-hover);
+}
+
+/* Tab counts */
+html.admin-dark .cp-tab.is-active .cp-tab-count {
+  background: var(--admin-primary);
+  color: #0f172a;
+}
+
+/* Basement progress items */
+html.admin-dark .br-progress__item.is-current .br-progress__num {
+  background: #024768;
+  color: #fff;
+}
+html.admin-dark .br-progress__item .br-progress__num {
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+  border-color: var(--admin-border);
+}
+
+/* Warning backgrounds */
+html.admin-dark .cp-recalc-banner,
+html.admin-dark .admin-flash--warning {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: #fcd34d;
+}
+
+/* Invoice preview card */
+html.admin-dark .cp-invoice-preview-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Project header card */
+html.admin-dark .cp-header-card {
+  background: var(--admin-surface);
+}
+html.admin-dark .cp-header-name {
+  color: var(--admin-heading);
+}
+html.admin-dark .cp-header-detail__label {
+  color: var(--admin-muted);
+}
+html.admin-dark .cp-header-detail__value {
+  color: var(--admin-text);
+}
+
+/* Status form */
+html.admin-dark .cp-status-form {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-status-form-label {
+  color: var(--admin-heading);
+}
+html.admin-dark .cp-status-form-help {
+  color: var(--admin-muted);
+}
+
+/* Definition lists */
+html.admin-dark .cp-dl dt {
+  color: var(--admin-muted);
+}
+html.admin-dark .cp-dl dd {
+  color: var(--admin-text);
+}
+
+/* Notes popover */
+html.admin-dark .cp-notes-popover {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Edit form */
+html.admin-dark .cp-edit-project-form-card {
+  background: var(--admin-surface);
+}
+html.admin-dark .cp-danger-card {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+html.admin-dark .cp-danger-title {
+  color: #f87171;
+}
+
+/* Billing choice */
+html.admin-dark .cp-billing-option {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .cp-billing-option:has(input:checked) {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+}
+
+/* Search select inputs in tables */
+html.admin-dark .br-config-table .admin-search-select.is-selected .admin-search-select__input,
+html.admin-dark .br-extra-row.is-linked .admin-search-select__input {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+/* Scope label */
+html.admin-dark .cp-projects-scope-label {
+  color: var(--admin-muted);
+}
+
+/* Subtle text */
+html.admin-dark .cp-subtle {
+  color: var(--admin-muted);
+}
+
+/* Schedule summary */
+html.admin-dark .cp-schedule-summary {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-schedule-summary__dates {
+  color: var(--admin-text);
+}
+
+/* Final summary */
+html.admin-dark .cp-final-summary {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-final-summary__title {
+  color: var(--admin-heading);
+}
+
+/* Helper time cards */
+html.admin-dark .cp-helper-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Inline badges with hardcoded colors - override with important */
+html.admin-dark .cp-badge[style*="background:#e0e7ff"] {
+  background: rgba(99, 102, 241, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#dbeafe"] {
+  background: rgba(59, 130, 246, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#d1fae5"] {
+  background: rgba(16, 185, 129, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#fef3c7"] {
+  background: rgba(251, 191, 36, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#fee2e2"] {
+  background: rgba(239, 68, 68, 0.25) !important;
+}
+html.admin-dark .cp-badge[style*="background:#e5e7eb"] {
+  background: rgba(148, 163, 184, 0.2) !important;
+}
+
+/* Visit section */
+html.admin-dark .cp-visit-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Travel cost */
+html.admin-dark .cp-travel-cost {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Utilities teaser */
+html.admin-dark .cp-utilities-teaser {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Contract panel */
+html.admin-dark .cp-contract-panel {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Financials cards */
+html.admin-dark .cp-financials-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-expense-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+/* Mobile actions dropdown */
+html.admin-dark .admin-actions-dropdown__toggle {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .admin-actions-dropdown__toggle:hover {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .admin-actions-dropdown__menu {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .admin-actions-dropdown__item {
+  color: var(--admin-text);
+}
+html.admin-dark .admin-actions-dropdown__item:hover {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .admin-actions-dropdown__item--danger {
+  color: var(--admin-danger);
+}
+html.admin-dark .admin-actions-dropdown__item--success {
+  color: var(--admin-success, #22c55e);
+}
+html.admin-dark button.admin-actions-dropdown__item {
+  background: transparent;
+}
+
+html.admin-dark .cp-invoice-send-warning-link {
+  color: #fef3c7 !important;
+  border-color: color-mix(in srgb, #f59e0b 45%, var(--admin-border));
+  background: transparent;
+}
+html.admin-dark .cp-invoice-send-warning-link:hover {
+  color: #fff !important;
+  background: color-mix(in srgb, #f59e0b 22%, var(--admin-surface));
+}
+
+/* ------------------------------------------------------------------
+   Remaining dark-mode surfaces: stat tiles, quotation editors, badges,
+   utilities, search palette, disabled primary buttons, and inline
+   light tints that still leak after token conversion.
+   ------------------------------------------------------------------ */
+
+html.admin-dark .admin-btn--primary:disabled,
+html.admin-dark .admin-btn--primary[disabled] {
+  opacity: 0.72;
+  background: #024768;
+  color: #e2e8f0;
+  border-color: #0369a1;
+}
+
+html.admin-dark .cp-hourly-summary-tile,
+html.admin-dark .cp-profit-tile,
+html.admin-dark .q-commute-metric {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-stat-tile-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .cp-hourly-summary-tile--highlight {
+  background: var(--admin-stat-highlight-bg);
+  border-color: var(--admin-stat-highlight-border);
+}
+
+html.admin-dark .cp-profit-tile--highlight,
+html.admin-dark .cp-invoice-bill-to {
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
+}
+
+html.admin-dark .cp-invoice-bill-to__text,
+html.admin-dark .cp-profit-label,
+html.admin-dark .cp-hourly-summary-tile--highlight .cp-hourly-summary-label,
+html.admin-dark .cp-hourly-summary-tile--highlight .cp-hourly-summary-sub,
+html.admin-dark .cp-hourly-summary-tile--highlight .cp-hourly-summary-sub strong {
+  color: #cbd5e1;
+}
+
+html.admin-dark .cp-badge[style*="color"] {
+  color: color-mix(in srgb, currentColor 40%, white) !important;
+}
+
+html.admin-dark .cp-projects-quick-status-btn {
+  color: color-mix(in srgb, currentColor 40%, white);
+}
+
+html.admin-dark .br-step-nav__status,
+html.admin-dark .admin-form-help {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-invoice-bill-to__text,
+html.admin-dark .cp-invoice-bill-to__text strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-badge--hourly,
+html.admin-dark .cp-badge--materials,
+html.admin-dark .cp-helper-entry__badge--paid {
+  background: var(--admin-stat-highlight-bg);
+  color: var(--admin-success);
+}
+
+html.admin-dark .cp-badge--manual {
+  background: var(--admin-surface-hover);
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-badge[style*="#fef3c7"],
+html.admin-dark .cp-badge[style*="background:#fef3c7"] {
+  background: var(--admin-warn-tile-bg) !important;
+  color: var(--admin-warn-tile-text) !important;
+}
+
+html.admin-dark .cp-badge[style*="#f4f4f5"],
+html.admin-dark .cp-badge[style*="#e5e7eb"] {
+  background: var(--admin-surface-hover) !important;
+  color: var(--admin-muted) !important;
+}
+
+html.admin-dark .cp-badge[style*="#e0e7ff"],
+html.admin-dark .cp-badge[style*="#dbeafe"] {
+  background: var(--admin-info-tile-bg) !important;
+  color: #7dd3fc !important;
+}
+
+html.admin-dark .cp-badge[style*="#22c55e20"],
+html.admin-dark .cp-badge[style*="background:#22c55e20"] {
+  background: var(--admin-stat-highlight-bg) !important;
+  color: #86efac !important;
+}
+
+html.admin-dark .cp-badge[style*="#f59e0b20"] {
+  background: var(--admin-warn-tile-bg) !important;
+  color: #fbbf24 !important;
+}
+
+html.admin-dark .cp-time-entry--open {
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+}
+
+html.admin-dark .util-ps-diagram,
+html.admin-dark .util-lb-diagram,
+html.admin-dark .mat-form-hero__media,
+html.admin-dark .mat-form-hero__placeholder,
+html.admin-dark .mat-thumb {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-lb-bt-name {
+  background: rgba(15, 23, 42, 0.45) !important;
+  color: var(--admin-heading) !important;
+}
+
+html.admin-dark .util-lb-bt-name:focus {
+  background: var(--admin-input-bg) !important;
+}
+
+html.admin-dark .sq-step-hint,
+html.admin-dark .sh-permit,
+html.admin-dark .cp-locked {
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .sq-step-hint.ok {
+  background: var(--admin-stat-highlight-bg);
+  border-color: var(--admin-stat-highlight-border);
+  color: var(--admin-success);
+}
+
+html.admin-dark .pt-step-card,
+html.admin-dark .ld-diagram-panel,
+html.admin-dark .ld-materials-preview,
+html.admin-dark .fq-materials-preview,
+html.admin-dark .pq-output,
+html.admin-dark .pq-stone-card,
+html.admin-dark .pq-db-add-stone,
+html.admin-dark .pq-db-stone,
+html.admin-dark .sq-db-nosing-photos,
+html.admin-dark .sq-photo-card,
+html.admin-dark .config-table-wrap,
+html.admin-dark .blog-admin-ai-metadata-wrap {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .fq-materials-preview th,
+html.admin-dark .ld-materials-preview th,
+html.admin-dark .pq-summary-card,
+html.admin-dark .pt-step-card,
+html.admin-dark .fl-step-card {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-stat-tile-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .fq-linked-banner,
+html.admin-dark .ld-linked-banner {
+  background: var(--admin-stat-highlight-bg);
+  color: #86efac;
+  border-color: var(--admin-stat-highlight-border);
+}
+
+html.admin-dark .pq-stone-meta-link,
+html.admin-dark .pq-db-stone-open-link {
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .pq-stone-meta-link:hover,
+html.admin-dark .pq-db-stone-open-link:hover {
+  background: rgba(56, 189, 248, 0.22);
+  color: var(--admin-primary-hover);
+}
+
+html.admin-dark .asp__panel {
+  background: var(--admin-elevated);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .asp__input {
+  background: var(--admin-input-bg);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .asp__item:hover,
+html.admin-dark .asp__item.is-selected {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .asp__item-title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .asp__item-sub,
+html.admin-dark .asp__group-label,
+html.admin-dark .asp__empty,
+html.admin-dark .asp__loading,
+html.admin-dark .asp__hint {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .asp__kbd,
+html.admin-dark .asp__hint kbd,
+html.admin-dark .admin-global-search__kbd {
+  background: var(--admin-input-bg);
+  color: var(--admin-muted);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-modal,
+html.admin-dark .admin-dialog,
+html.admin-dark .admin-modal {
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-modal-header,
+html.admin-dark .cp-modal-footer {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-mark-paid-method-option {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .cp-mark-paid-method-option:has(input:checked) {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ps .admin-form-group input,
+html.admin-dark .util-ps .admin-form-group select,
+html.admin-dark .util-mc .admin-form-group input,
+html.admin-dark .util-mc .admin-form-group select,
+html.admin-dark .util-lb-pieces-table input,
+html.admin-dark .util-lb-save-row input {
+  background: var(--admin-input-bg);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-recalc-preview,
+html.admin-dark .cp-helper-panel,
+html.admin-dark .cp-expense-edit-row td {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+
+html.admin-dark output.admin-input {
+  background: var(--admin-input-bg);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .mat-form-hero__placeholder {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .supplier-sites-intro,
+html.admin-dark .ss-hero,
+html.admin-dark [style*="background:#e8f4f8"],
+html.admin-dark [style*="background:#f8fafc"],
+html.admin-dark [style*="background:#f1f5f9"],
+html.admin-dark [style*="background:#fafbfc"],
+html.admin-dark [style*="background:#eff6ff"] {
+  background-color: var(--admin-info-tile-bg) !important;
+  border-color: var(--admin-info-tile-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark [style*="background:#e8f4ea"] {
+  background-color: var(--admin-stat-highlight-bg) !important;
+  color: #86efac !important;
+  border-color: var(--admin-stat-highlight-border);
+}
+
+html.admin-dark [style*="background:#fffbeb"],
+html.admin-dark [style*="background:#fff7ed"] {
+  background-color: var(--admin-warn-tile-bg) !important;
+  color: var(--admin-warn-tile-text) !important;
+  border-color: var(--admin-warn-tile-border);
+}
+
+html.admin-dark .admin-btn--danger {
+  background: rgba(248, 113, 113, 0.16);
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.5);
+}
+html.admin-dark .admin-btn--danger:hover {
+  background: rgba(248, 113, 113, 0.26);
+  color: #fff;
+}
+
+html.admin-dark .admin-btn--success {
+  background: var(--admin-success-soft);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.38);
+}
+html.admin-dark .admin-btn--success:hover {
+  background: rgba(74, 222, 128, 0.26);
+  color: #bbf7d0;
+}
+html.admin-dark .admin-btn--success i.fa,
+html.admin-dark .admin-btn--success .fa {
+  color: inherit;
+}
+
+html.admin-dark .cp-invoice-send-warning-link:hover {
+  color: #7dd3fc !important;
+}
+
+html.admin-dark .cp-recalc-preview tr.is-paid td {
+  color: #86efac;
+}
+
+html.admin-dark .cp-required,
+html.admin-dark .admin-required,
+html.admin-dark label.cp-required,
+html.admin-dark .admin-form-error,
+html.admin-dark .admin-form-group label.cp-required,
+html.admin-dark .admin-label-with-tip__end > .cp-required,
+html.admin-dark .admin-label-with-tip__end > label.cp-required,
+html.admin-dark .admin-form-group .admin-label-with-tip__end > .cp-required,
+html.admin-dark .admin-form-group .admin-label-with-tip__end > label.cp-required {
+  color: #fca5a5;
+}
+
+html.admin-dark [style*="color:#b45309"],
+html.admin-dark [style*="color: #b45309"] {
+  color: #fbbf24 !important;
+}
+html.admin-dark [style*="color:#dc2626"],
+html.admin-dark [style*="color: #dc2626"] {
+  color: #fca5a5 !important;
+}
+
+/* ------------------------------------------------------------------
+   Quotation editor local <style> leftovers, inline badges, TinyMCE
+   chrome, date fields, and other hardcoded slate ink.
+   ------------------------------------------------------------------ */
+
+html.admin-dark .fq-badge,
+html.admin-dark .ld-badge {
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .fq-breakdown-note,
+html.admin-dark .ld-breakdown-note,
+html.admin-dark .pq-hint,
+html.admin-dark .pq-summary-section__title,
+html.admin-dark .pq-field-box-title,
+html.admin-dark .pq-stone-meta,
+html.admin-dark .pq-stone-meta-sep,
+html.admin-dark .pq-area-dimensions-sep,
+html.admin-dark .pq-db-file-picker-name,
+html.admin-dark .pq-db-rate-unit,
+html.admin-dark .pq-db-rate-price-label-text,
+html.admin-dark .pq-db-rates-group-title,
+html.admin-dark .pq-db-image-mode-btn,
+html.admin-dark .sq-db-rate-label,
+html.admin-dark .ss-notes-preview,
+html.admin-dark .cp-split-builder__remaining,
+html.admin-dark .cp-split-row__remove,
+html.admin-dark .q-pct-group label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .ld-totals-row--grand,
+html.admin-dark .fq-totals-row--grand,
+html.admin-dark .fl-bd-grand,
+html.admin-dark .pt-step-card h4,
+html.admin-dark .pt-net-banner strong,
+html.admin-dark .pq-area-computed,
+html.admin-dark .pq-marble-preview {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .ld-diagram-panel h5,
+html.admin-dark .cp-split-builder__label,
+html.admin-dark .cp-split-builder__remaining strong,
+html.admin-dark .sq-db-material-title,
+html.admin-dark .pq-db-rate-name,
+html.admin-dark .pq-stone-entry__title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .ld-linked-banner a,
+html.admin-dark .fq-linked-banner a {
+  color: #86efac;
+}
+
+html.admin-dark .ld-totals-row--labour-hst-excluded .ld-labour-hst-toggle .admin-checkbox__text,
+html.admin-dark .ld-totals-row--labour-hst-excluded #ld-t-labour-hst,
+html.admin-dark .fq-totals-row--labour-hst-excluded .fq-labour-hst-toggle .admin-checkbox__text,
+html.admin-dark .fq-totals-row--labour-hst-excluded #fq-t-labour-hst {
+  color: var(--admin-muted);
+}
+html.admin-dark .fq-totals-row--credit {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .pt-net-banner {
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .pt-readiness,
+html.admin-dark .pq-sidebar-actions,
+html.admin-dark .pq-options-row,
+html.admin-dark .pq-stone-entry,
+html.admin-dark .pq-field-box,
+html.admin-dark .pq-db-stone-card,
+html.admin-dark .pq-db-image-mode,
+html.admin-dark .pq-db-rates-list,
+html.admin-dark .pq-db-file-picker-btn,
+html.admin-dark .sq-material-card,
+html.admin-dark .sq-db-open-block,
+html.admin-dark .sq-db-material-photo img,
+html.admin-dark .sq-db-material-photo__placeholder {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .pt-readiness-title,
+html.admin-dark .pt-readiness-item,
+html.admin-dark .pt-readiness-item.is-optional,
+html.admin-dark .pt-readiness-item__icon,
+html.admin-dark .pt-readiness-item.is-optional .pt-readiness-item__icon {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .pt-readiness-summary,
+html.admin-dark .pt-readiness-item.is-done,
+html.admin-dark .pt-readiness-item.is-done .pt-readiness-item__icon,
+html.admin-dark .pq-profit-pos strong,
+html.admin-dark .cp-split-builder__remaining.is-balanced strong {
+  color: var(--admin-success);
+}
+
+html.admin-dark .pt-readiness-summary.is-incomplete,
+html.admin-dark .pt-readiness-item.is-pending .pt-readiness-item__icon,
+html.admin-dark .pq-preview-status__title,
+html.admin-dark .cp-vd-mat-note,
+html.admin-dark .comm-desc__error {
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .pq-profit-neg strong,
+html.admin-dark .cp-split-builder__remaining.is-over strong,
+html.admin-dark .cp-split-row__remove:not(:disabled):hover {
+  color: var(--admin-danger);
+}
+
+html.admin-dark .pq-row,
+html.admin-dark .pq-row span:first-child,
+html.admin-dark .pq-preview-status__list,
+html.admin-dark .pq-stone-entry__label,
+html.admin-dark .pq-stone-entry__fields .pq-stone-field label {
+  color: var(--admin-text);
+}
+
+html.admin-dark .pq-row strong {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pq-row--hl,
+html.admin-dark .pq-row--hl span:first-child,
+html.admin-dark .pq-row--hl strong,
+html.admin-dark .pq-row--total span:first-child,
+html.admin-dark .pq-row--total strong {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .pq-row--sub span:first-child,
+html.admin-dark .pq-row--muted span:first-child,
+html.admin-dark .pq-row--muted strong,
+html.admin-dark .pq-row--note span {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .pq-db-stone-card-footer,
+html.admin-dark .pq-db-stone-card-header,
+html.admin-dark .pq-db-rate-row,
+html.admin-dark .pq-stone-entry-thumb,
+html.admin-dark .sq-db-material,
+html.admin-dark .sq-material-card img,
+html.admin-dark .pq-db-stone-thumb-wrap {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .pq-db-image-mode-btn.is-active {
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .pq-db-add-stone.pq-db-add-stone--error {  background: var(--admin-danger-soft);
+  border-color: var(--admin-danger);
+}
+
+html.admin-dark .sq-picker-badge {
+  background: #024768;
+  color: #fff;
+}
+
+html.admin-dark .ss-tag-chip {
+  background: var(--admin-info-tile-bg);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .gf-total-tile__value--success {
+  color: var(--admin-success);
+}
+
+html.admin-dark .gf-total-tile__value--warning {
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .admin-badge[style*="color:#6b7280"],
+html.admin-dark .admin-badge[style*="color:#16a34a"] {
+  border-color: var(--admin-border) !important;
+}
+html.admin-dark .admin-badge[style*="color:#6b7280"] {
+  background: var(--admin-surface-hover) !important;
+  color: var(--admin-muted) !important;
+}
+html.admin-dark .admin-badge[style*="color:#16a34a"] {
+  background: var(--admin-stat-highlight-bg) !important;
+  color: var(--admin-success) !important;
+}
+
+html.admin-dark .mat-form-hero__placeholder,
+html.admin-dark .mat-form-hero__placeholder .fa,
+html.admin-dark .mat-form-hero__placeholder-text,
+html.admin-dark .mat-form-hero__placeholder-hint {
+  color: var(--admin-muted);
+  background-image: none;
+}
+
+html.admin-dark .mat-form-sync-error {
+  background: var(--admin-danger-soft);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
+html.admin-dark .cp-quotation-warning-inline {
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .cp-table tr.cp-comm-row-failed td,
+html.admin-dark .cp-table tr.cp-comm-row-failed:hover td {
+  background: var(--admin-danger-soft);
+}
+
+html.admin-dark .cp-project-photos-preview-tile {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-stat-tile-border);
+}
+
+html.admin-dark [style*="color:#6b7280"],
+html.admin-dark [style*="color:#64748b"],
+html.admin-dark [style*="color:#9ca3af"],
+html.admin-dark [style*="color:#4b5563"],
+html.admin-dark [style*="color:#475569"] {
+  color: var(--admin-muted) !important;
+}
+html.admin-dark [style*="color:#0f172a"],
+html.admin-dark [style*="color:#111827"],
+html.admin-dark [style*="color:#1e293b"],
+html.admin-dark [style*="color:#334155"],
+html.admin-dark [style*="color:#374151"] {
+  color: var(--admin-heading) !important;
+}
+html.admin-dark [style*="color:#024768"] {
+  color: var(--admin-primary) !important;
+}
+html.admin-dark [style*="background:#ffffff"],
+html.admin-dark [style*="background:#fafbfc"],
+html.admin-dark [style*="background:#f5f7f9"] {
+  background-color: var(--admin-surface) !important;
+}
+
+html.admin-dark input[type="date"],
+html.admin-dark input[type="time"],
+html.admin-dark input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+html.admin-dark input[type="date"]::-webkit-datetime-edit,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-text,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-month-field,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-day-field,
+html.admin-dark input[type="date"]::-webkit-datetime-edit-year-field,
+html.admin-dark input[type="time"]::-webkit-datetime-edit,
+html.admin-dark input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+html.admin-dark input[type="datetime-local"]::-webkit-datetime-edit,
+html.admin-dark input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+  color: var(--admin-text);
+}
+
+html.admin-dark input[type="date"]::-webkit-calendar-picker-indicator,
+html.admin-dark input[type="time"]::-webkit-calendar-picker-indicator,
+html.admin-dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  filter: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+html.admin-dark .fc .fc-day-today .fc-daygrid-day-number,
+html.admin-dark .fc .fc-timegrid-col.fc-day-today .fc-col-header-cell-cushion {
+  color: var(--admin-heading) !important;
+}
+
+html.admin-dark .admin-form-help,
+html.admin-dark span.admin-form-help {
+  color: #cbd5e1;
+}
+
+html.admin-dark .cp-badge i.fa,
+html.admin-dark .cp-badge .fa {
+  color: inherit !important;
+}
+html.admin-dark .cp-badge[style*="#15803d"] i.fa,
+html.admin-dark .cp-badge[style*="#22c55e"] i.fa {
+  color: #86efac !important;
+}
+html.admin-dark .fc .fc-button,
+html.admin-dark .fc .fc-button-primary {
+  background: #024768 !important;
+  border-color: #0369a1 !important;
+  color: #fff !important;
+}
+html.admin-dark .fc .fc-button-primary:not(:disabled).fc-button-active,
+html.admin-dark .fc .fc-button-primary:not(:disabled):active {
+  background: #013a52 !important;
+  color: #fff !important;
+}
+
+html.admin-dark .tox .tox-toolbar-overlord,
+html.admin-dark .tox .tox-editor-header,
+html.admin-dark .tox .tox-anchorbar,
+html.admin-dark .tox .tox-sidebar-wrap,
+html.admin-dark .tox .tox-menu,
+html.admin-dark .tox .tox-collection,
+html.admin-dark .tox .tox-dialog,
+html.admin-dark .tox .tox-dialog__header,
+html.admin-dark .tox .tox-dialog__footer,
+html.admin-dark .tox .tox-dialog__body,
+html.admin-dark .tox .tox-listboxfield,
+html.admin-dark .tox .tox-listbox--select,
+html.admin-dark .tox .tox-textfield,
+html.admin-dark .tox .tox-toolbar__group,
+html.admin-dark .tox .tox-split-button,
+html.admin-dark .tox .tox-tbtn--select {
+  background: var(--admin-surface-hover) !important;
+  background-color: var(--admin-surface-hover) !important;
+  color: var(--admin-text) !important;
+  border-color: var(--admin-border) !important;
+}
+
+html.admin-dark .tox .tox-tbtn svg,
+html.admin-dark .tox .tox-tbtn svg path,
+html.admin-dark .tox .tox-icon,
+html.admin-dark .tox .tox-collection__item,
+html.admin-dark .tox .tox-statusbar a,
+html.admin-dark .tox .tox-promotion-link {
+  fill: var(--admin-muted) !important;
+  color: var(--admin-muted) !important;
+}
+
+html.admin-dark .cp-hint {
+  background: var(--admin-stat-tile-bg);
+  color: var(--admin-muted);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-visit-toggle__control {
+  background: #475569;
+}
+
+html.admin-dark .cp-visit-toggle input:checked + .cp-visit-toggle__control {
+  background: #0369a1;
+}
+
+html.admin-dark .br-acc__num {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .cp-quick-status__btn {
+  color: #f1f5f9;
+  background: color-mix(in srgb, var(--qs-color, #64748b) 28%, var(--admin-surface));
+  border-color: color-mix(in srgb, var(--qs-color, #64748b) 55%, var(--admin-border));
+}
+
+html.admin-dark .cp-header-status > .cp-badge[style] {
+  color: color-mix(in srgb, currentColor 45%, white) !important;
+}
+
+html.admin-dark .fq-badge.is-calculating,
+html.admin-dark .ld-badge.is-calculating {
+  background: var(--admin-warn-tile-bg);
+  color: var(--admin-warn-tile-text);
+}
+html.admin-dark .fq-badge.is-error,
+html.admin-dark .ld-badge.is-error {
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+}
+html.admin-dark .fq-badge.is-idle,
+html.admin-dark .ld-badge.is-idle {
+  background: var(--admin-stat-tile-bg);
+  color: var(--admin-muted);
+}
+html.admin-dark .fq-badge.is-current,
+html.admin-dark .ld-badge.is-current {
+  background: var(--admin-stat-highlight-bg);
+  color: var(--admin-success);
+}
+
+html.admin-dark .sq-material-card__name-line,
+html.admin-dark .sq-db-open-block__title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .pq-db-field-label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .admin-btn--ghost {
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark [style*="background:#fff4d4"] {
+  background-color: var(--admin-warn-tile-bg) !important;
+}
+html.admin-dark [style*="background:#eef1f5"] {
+  background-color: var(--admin-stat-tile-bg) !important;
+}
+html.admin-dark [style*="background:#fde1e1"] {
+  background-color: var(--admin-danger-soft) !important;
+}
+html.admin-dark [style*="color:#8a5d00"] {
+  color: var(--admin-warn-tile-text) !important;
+}
+html.admin-dark [style*="color:#556"] {
+  color: var(--admin-muted) !important;
+}
+html.admin-dark [style*="color:#8a1a1a"] {
+  color: var(--admin-danger) !important;
+}
+html.admin-dark [style*="color:#0f5132"] {
+  color: var(--admin-success) !important;
+}
+
+html.admin-dark .dash-finance-glance__summary:hover {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .dash-card--alert {
+  background: var(--admin-danger-soft);
+  border-color: var(--admin-danger);
+}
+
+html.admin-dark .dash-alert-banner {
+  background: color-mix(in srgb, #f59e0b 16%, var(--admin-surface));
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--admin-text);
+}
+
+html.admin-dark .et-chip {
+  background: var(--admin-info-tile-bg);
+  border-color: var(--admin-info-tile-border);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .et-chip--paid {
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .et-card__warning {
+  background: var(--admin-warn-tile-bg);
+  border-color: var(--admin-warn-tile-border);
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .et-card__record-note {
+  color: var(--admin-warn-tile-text);
+}
+
+html.admin-dark .et-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .et-paste-advanced {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .et-paste-advanced > summary {
+  background: var(--admin-surface);
+  color: var(--admin-heading);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .dash-etransfer-today {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .util-lb-offcut-used {
+  background: var(--admin-stat-tile-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-lb-sheet-group,
+html.admin-dark .util-lb-sheet-svg {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-oc-pill {
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-oc-card {
+  background: var(--admin-input-bg);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-lb-min-offcut > label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .admin-toast__card {
+  background: var(--admin-elevated);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  box-shadow: var(--admin-shadow-md);
+  opacity: 1;
+}
+
+html.admin-dark .admin-toast--success {
+  background: #14532d;
+  color: #bbf7d0;
+  border-color: #166534;
+  opacity: 1;
+}
+
+html.admin-dark .admin-toast--error {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-color: #991b1b;
+  opacity: 1;
+}
+
+html.admin-dark .admin-toast--warning {
+  background: #7c2d12;
+  color: #fed7aa;
+  border-color: #9a3412;
+  opacity: 1;
+}
+
+html.admin-dark .admin-toast__close:hover,
+html.admin-dark .admin-toast__close:focus-visible {
+  background: var(--admin-surface-hover);
+}
+
+html.admin-dark .admin-input.admin-field-invalid,
+html.admin-dark input.admin-field-invalid,
+html.admin-dark textarea.admin-field-invalid,
+html.admin-dark select.admin-field-invalid,
+html.admin-dark [contenteditable].admin-field-invalid {
+  border-color: var(--admin-danger);
+  box-shadow: 0 0 0 3px var(--admin-danger-soft);
+}
+
+html.admin-dark .qh {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+html.admin-dark .qh-title,
+html.admin-dark .qh-crumb__current,
+html.admin-dark .qh-wizard__status,
+html.admin-dark .qh .br-step-nav__status {
+  color: var(--admin-heading);
+}
+html.admin-dark .qh-crumb__link,
+html.admin-dark .qh-price-gear:hover,
+html.admin-dark .qh-price-gear:focus-visible {
+  color: var(--admin-primary);
+}
+html.admin-dark .qh-price-gear {
+  color: var(--admin-muted);
+}
+html.admin-dark .qh-more {
+  color: var(--admin-text);
+}
+html.admin-dark .qh-step-errors {
+  border-color: #f87171;
+  background: #3f1d1d;
+  color: var(--admin-text);
 }
 

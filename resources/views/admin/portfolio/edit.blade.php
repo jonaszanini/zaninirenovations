@@ -29,12 +29,14 @@
       @endphp
       <div class="admin-form-group">
         <div class="admin-form-group__label-row">
-          <span class="admin-form-group-label">Categories</span>
+          <span class="admin-form-group-label">
+            Categories
+            <x-admin.info-tip label="Categories">Select all that apply (e.g. tile and wood).</x-admin.info-tip>
+          </span>
           <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
             <i class="fa fa-cog" aria-hidden="true"></i> Configure
           </a>
         </div>
-        <p class="admin-form-help" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
         @include('admin.partials.portfolio_category_ai')
         <div class="admin-category-checkboxes" id="portfolio-category-checkboxes">
           @foreach ($categories as $cat)
@@ -52,19 +54,15 @@
           <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
-      <div class="admin-form-group">
-        <label for="completed_on">Completed on</label>
-        <input class="admin-input" type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', optional($project->completed_on)->format('Y-m-d')) }}" required>
-        <p class="admin-form-help">When the work was finished (used to order projects on the site — newest completion first).</p>
-        @error('completed_on')
-          <div class="admin-form-error">{{ $message }}</div>
-        @enderror
-      </div>
+      @include('admin.partials.portfolio_town_and_completed')
 
       @if ($project->photos->isNotEmpty())
         <div class="admin-form-group" id="admin-photo-order-group">
           <div class="admin-form-group__label-row">
-            <span class="admin-form-group-label">Photos</span>
+            <span class="admin-form-group-label">
+              Photos
+              <x-admin.info-tip label="Photos">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> to straighten, rotate, crop, or add a Before or During label (saved as WebP). Select photos with the checkbox, then use <strong>Before</strong>, <strong>During</strong>, <strong>Delete</strong>, or <strong>Apply AI improvements</strong> below.</x-admin.info-tip>
+            </span>
             <div class="admin-photo-bulk-actions">
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm js-photo-bulk-label" id="admin-photo-bulk-before" disabled
                 data-url="{{ route('admin.portfolio.photos.bulk-label', $project) }}"
@@ -88,7 +86,6 @@
               </button>
             </div>
           </div>
-          <p class="admin-form-help">Drag by the grip icon to reorder. The <strong>first photo</strong> is the homepage project cover. Click <strong>Edit</strong> to straighten, rotate, crop, or add a Before or During label (saved as WebP). Select photos with the checkbox, then use <strong>Before</strong>, <strong>During</strong>, <strong>Delete</strong>, or <strong>Apply AI improvements</strong> below.</p>
           <ul id="admin-photo-sortable" class="admin-photo-sortable-list">
             @foreach ($project->photos as $photo)
               <li class="admin-photo-sortable-item" data-photo-id="{{ $photo->id }}">
@@ -185,7 +182,7 @@
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Portfolio form actions">
-      <button type="submit" form="portfolio-edit-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="portfolio-edit-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-check"></i> Save changes
       </button>
       <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Back to list</a>
@@ -277,15 +274,14 @@
         </div>
         <div class="admin-modal-actions">
           <div class="admin-photo-edit-tools">
-            <div class="admin-ai-action-group">
-              @include('admin.partials.ai_instruction_edit_link', [
-                'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT,
-                'instructionLabel' => 'Edit portfolio photo prompt',
-              ])
+            @component('admin.partials.ai_action_group', [
+              'instructionKey' => \App\Models\AiInstruction::KEY_PORTFOLIO_PHOTO_PROMPT,
+              'instructionLabel' => 'Edit portfolio photo prompt',
+            ])
               <button type="button" class="admin-btn admin-btn--primary admin-btn--icon" id="admin-photo-edit-ai" disabled aria-label="Apply AI improvements" title="Apply AI improvements">
                 <i class="fa fa-magic" aria-hidden="true"></i>
               </button>
-            </div>
+            @endcomponent
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--icon" id="admin-photo-edit-replace-toggle" disabled aria-expanded="false" aria-controls="admin-photo-edit-replace" aria-label="Replace" title="Replace">
               <i class="fa fa-exchange" aria-hidden="true"></i>
             </button>
@@ -295,7 +291,7 @@
           </div>
           <div class="admin-photo-edit-actions-end">
             <button type="button" class="admin-btn admin-btn--ghost" data-edit-modal-dismiss>Cancel</button>
-            <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-apply" disabled>Save</button>
+            <button type="button" class="admin-btn admin-btn--primary" id="admin-photo-edit-apply" data-hotkey-save disabled>Save</button>
           </div>
         </div>
         <div class="admin-photo-edit-feedback">
@@ -306,9 +302,11 @@
           <p id="admin-photo-edit-tools-status" class="nb2-status" role="status"></p>
         </div>
         <div id="admin-photo-edit-replace" class="admin-photo-edit-replace" hidden>
-          <p class="admin-form-help">Upload a new photo or pick one from Google Photos. It replaces this photo and keeps its place in the gallery.</p>
           <div class="admin-form-group">
-            <label for="admin-photo-edit-replace-file">Upload</label>
+            <span class="admin-label-with-tip">
+              <label for="admin-photo-edit-replace-file">Upload</label>
+              <x-admin.info-tip label="Upload">Upload a new photo or pick one from Google Photos. It replaces this photo and keeps its place in the gallery.</x-admin.info-tip>
+            </span>
             <input class="admin-input" type="file" id="admin-photo-edit-replace-file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
           </div>
           @include('admin.partials.google_photos_picker', [

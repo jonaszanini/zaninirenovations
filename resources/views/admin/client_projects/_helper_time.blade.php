@@ -48,8 +48,12 @@
   @else
     <form action="{{ route('admin.client-projects.helpers.sync', $project) }}" method="post" class="cp-helper-assign-form">
       @csrf
-      <h4 class="cp-time-saved-heading">Helpers on this project</h4>
-      <p class="admin-form-help cp-time-saved-help">Select who may log time here. Rates are set under Manage helpers.</p>
+      <h4 class="cp-time-saved-heading">Helpers on this project
+        @include('admin.partials.info_tip', [
+          'tipText' => 'Select who may log time here. Rates are set under Manage helpers.',
+          'tipLabel' => 'Helpers on this project',
+        ])
+      </h4>
       <div class="cp-helper-assign-row">
         <div class="cp-helper-assign-grid">
           @foreach ($activeHelpers as $helper)
@@ -125,8 +129,12 @@
         </div>
       </form>
 
-      <h4 class="cp-time-saved-heading" style="margin-top:20px;">Log other payment</h4>
-      <p class="admin-form-help cp-time-saved-help">Reimburse the helper for meals, materials they bought, Uber, etc.</p>
+      <h4 class="cp-time-saved-heading" style="margin-top:20px;">Log other payment
+        @include('admin.partials.info_tip', [
+          'tipText' => 'Reimburse the helper for meals, materials they bought, Uber, etc.',
+          'tipLabel' => 'Log other payment',
+        ])
+      </h4>
       <form action="{{ route('admin.client-projects.helper-time.store', $project) }}"
             method="post"
             class="cp-finance-form cp-helper-panel cp-helper-expense-form">
@@ -156,7 +164,7 @@
           <div class="admin-form-group col-2">
             <label>Amount</label>
             <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" required
-                   value="{{ old('expense_amount') }}" placeholder="0.00">
+                   value="{{ old('expense_amount') }}" placeholder="0.00" data-cp-money-entry="direct">
             @error('expense_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </div>
@@ -257,7 +265,7 @@
                   @endforeach
                 </select>
                 <input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off"
-                       data-cp-money-entry="direct" name="splits[0][amount]" placeholder="0.00" required>
+                       name="splits[0][amount]" placeholder="0.00" required data-cp-money-entry="direct">
                 <button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)" disabled>
                   <i class="fa fa-times"></i>
                 </button>
@@ -385,7 +393,7 @@
             div.setAttribute('data-split-row', '');
             div.innerHTML =
               '<select class="admin-input cp-split-row__method" name="splits[' + splitIdx + '][method]" required>' + opts + '</select>' +
-              '<input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off" data-cp-money-entry="direct" name="splits[' + splitIdx + '][amount]" placeholder="0.00" required>' +
+              '<input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off" name="splits[' + splitIdx + '][amount]" placeholder="0.00" required data-cp-money-entry="direct">' +
               '<button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)"><i class="fa fa-times"></i></button>';
 
             document.getElementById('cp-split-rows').appendChild(div);

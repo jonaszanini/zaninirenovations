@@ -26,6 +26,12 @@ class MillworkSettings extends Model
 
     public const SLOT_PULLS = 'pulls';
 
+    public const SLOT_RODS = 'closet_rods';
+
+    public const SLOT_SHELF_PINS = 'shelf_pins';
+
+    public const SLOT_TRIM = 'trim_stock';
+
     protected $fillable = [
         'owner_hourly_rate',
         'helper_hourly_rate',
@@ -78,6 +84,9 @@ class MillworkSettings extends Model
             self::SLOT_DRAWER_SLIDES => 'Drawer slides',
             self::SLOT_GLUE => 'Wood glue',
             self::SLOT_PULLS => 'Pulls / handles',
+            self::SLOT_RODS => 'Closet rods',
+            self::SLOT_SHELF_PINS => 'Shelf pins',
+            self::SLOT_TRIM => 'Trim stock',
         ];
     }
 
@@ -98,6 +107,10 @@ class MillworkSettings extends Model
             'stain_sf_per_hr' => 35,
             'install_sf_per_hr' => 8,
             'cut_hours_per_sheet' => 0.45,
+            'closet_sf_per_hr' => 3.5,
+            'wainscot_lf_per_hr' => 8,
+            'trim_lf_per_hr' => 20,
+            'mantel_hours_each' => 2.5,
         ];
     }
 
@@ -114,6 +127,8 @@ class MillworkSettings extends Model
                 'cabinet_sf_per_hr' => 'Cabinet box (sq ft / hour)',
                 'door_hours_each' => 'Door (hours each)',
                 'bench_sf_per_hr' => 'Bench seating (sq ft / hour)',
+                'closet_sf_per_hr' => 'Closet system (sq ft / hour)',
+                'mantel_hours_each' => 'Mantel (hours each)',
             ],
             'Finish & install' => [
                 'edge_band_lf_per_hr' => 'Edge banding (linear ft / hour)',
@@ -121,6 +136,8 @@ class MillworkSettings extends Model
                 'stain_sf_per_hr' => 'Stain (sq ft / hour)',
                 'install_sf_per_hr' => 'On-site install (sq ft / hour)',
                 'cut_hours_per_sheet' => 'Cut / nest (hours per sheet)',
+                'wainscot_lf_per_hr' => 'Wainscoting (linear ft / hour)',
+                'trim_lf_per_hr' => 'Trim install (linear ft / hour)',
             ],
         ];
     }
@@ -317,6 +334,32 @@ class MillworkSettings extends Model
             self::SLOT_PULLS => [
                 $item('pl_bar', 'Bar pull / handle (each)', 'each', 6.50),
             ],
+            self::SLOT_RODS => [
+                $item('rd_oval', 'Oval closet rod (each)', 'each', 18.00),
+            ],
+            self::SLOT_SHELF_PINS => [
+                $item('sp_pack', 'Shelf pins (pack of 20)', 'pack', 4.50, [
+                    'qty_per_pack' => 20,
+                ]),
+            ],
+            self::SLOT_TRIM => [
+                $item('tr_base', 'MDF baseboard', 'lf', 2.40, [
+                    'profile' => 'baseboard',
+                    'stock_length_ft' => 16,
+                ]),
+                $item('tr_case', 'MDF casing', 'lf', 2.10, [
+                    'profile' => 'casing',
+                    'stock_length_ft' => 16,
+                ]),
+                $item('tr_crown', 'MDF crown', 'lf', 3.80, [
+                    'profile' => 'crown',
+                    'stock_length_ft' => 12,
+                ]),
+                $item('tr_chair', 'MDF chair rail', 'lf', 2.60, [
+                    'profile' => 'chair_rail',
+                    'stock_length_ft' => 16,
+                ]),
+            ],
         ];
     }
 
@@ -413,6 +456,7 @@ class MillworkSettings extends Model
             $item['material_kind'] = in_array($kind, ['plywood', 'mdf'], true) ? $kind : 'plywood';
             $grade = strtolower(trim((string) ($row['grade'] ?? 'cabinet')));
             $item['grade'] = in_array($grade, ['cabinet', 'utility'], true) ? $grade : 'cabinet';
+            $item['species'] = self::sheetSpecies(array_merge($row, $item));
         }
         if ($slot === self::SLOT_PAINTS || $slot === self::SLOT_STAINS) {
             $item['size'] = trim((string) ($row['size'] ?? ''));
@@ -437,8 +481,16 @@ class MillworkSettings extends Model
             $item['coverage_lf'] = round(max(0.1, $cov), 2);
             $item['unit'] = ! empty($row['unit']) && $row['unit'] !== 'lf' ? trim((string) $row['unit']) : 'roll';
         }
-        if (in_array($slot, [self::SLOT_SCREWS, self::SLOT_NAILS], true)) {
+        if (in_array($slot, [self::SLOT_SCREWS, self::SLOT_NAILS, self::SLOT_SHELF_PINS], true)) {
             $item['qty_per_pack'] = max(1, (int) ($row['qty_per_pack'] ?? 1));
+        }
+        if ($slot === self::SLOT_TRIM) {
+            $profile = strtolower(trim((string) ($row['profile'] ?? 'baseboard')));
+            $item['profile'] = array_key_exists($profile, \App\Services\Millwork\MillworkPartBuilder::TRIM_PROFILES)
+                ? $profile
+                : 'baseboard';
+            $item['stock_length_ft'] = round(max(1, (float) ($row['stock_length_ft'] ?? 12)), 2);
+            $item['unit'] = 'lf';
         }
 
         return $item;
@@ -469,5 +521,111 @@ class MillworkSettings extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Exact material/species key for sheet swaps. Grade "cabinet" is too
+     * broad (cabinet ply, Baltic 5×5, and 18mm Baltic all share it).
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function sheetSpecies(array $row): string
+    {
+        $explicit = strtolower(trim((string) ($row['species'] ?? '')));
+        if ($explicit !== '') {
+            return $explicit;
+        }
+        $catalogId = (int) ($row['catalog_material_id'] ?? 0);
+        $sku = strtolower(trim((string) ($row['sku'] ?? '')));
+        $id = strtolower((string) ($row['id'] ?? ''));
+        $name = strtolower((string) ($row['name'] ?? ''));
+
+        if ($catalogId > 0) {
+            return 'material:'.$catalogId;
+        }
+        if ($sku !== '') {
+            return 'sku:'.$sku;
+        }
+
+        if (self::isDefaultCatalogueSheetId($id)) {
+            return self::defaultCatalogueSpecies($id, $name, $row);
+        }
+
+        if ($id !== '') {
+            return 'id:'.$id;
+        }
+        if ($name !== '') {
+            return 'name:'.$name;
+        }
+
+        return 'unknown';
+    }
+
+    private static function isDefaultCatalogueSheetId(string $id): bool
+    {
+        if ($id === '') {
+            return false;
+        }
+
+        return str_starts_with($id, 'ws_ply_34_cab_')
+            || str_starts_with($id, 'ws_ply_34_util_')
+            || str_starts_with($id, 'ws_ply_14_')
+            || str_starts_with($id, 'ws_mdf_')
+            || str_starts_with($id, 'ws_bb_bb_')
+            || str_starts_with($id, 'ws_b_bb_')
+            || $id === 'ws_birch_5x5'
+            || str_contains($id, 'birch_5x5');
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private static function defaultCatalogueSpecies(string $id, string $name, array $row): string
+    {
+        if (str_starts_with($id, 'ws_bb_bb_') || str_contains($name, 'bb/bb')) {
+            return 'baltic_bb_bb';
+        }
+        if (str_starts_with($id, 'ws_b_bb_') || str_contains($name, 'b/bb')) {
+            return 'baltic_b_bb';
+        }
+        if (str_contains($id, 'birch_5x5') || str_contains($name, '5×5') || str_contains($name, '5x5')) {
+            return 'baltic_5x5';
+        }
+        if (($row['material_kind'] ?? '') === 'mdf' || str_starts_with($id, 'ws_mdf_') || str_contains($name, 'mdf')) {
+            return 'mdf';
+        }
+        if (str_starts_with($id, 'ws_ply_34_util_') || str_contains($name, 'utility')) {
+            return 'utility_ply';
+        }
+        if (str_contains($name, 'baltic')) {
+            return 'baltic_birch';
+        }
+        if (str_starts_with($id, 'ws_ply_34_cab_')
+            || (str_contains($name, 'cabinet-grade') && str_contains($name, 'plywood'))) {
+            return 'cabinet_ply';
+        }
+        if ($id !== '') {
+            return 'id:'.$id;
+        }
+
+        return $name !== '' ? 'name:'.$name : 'unknown';
+    }
+
+    /**
+     * Synthetic 4×4 / 2×4 leftovers are only for known stocked families.
+     */
+    public static function allowsSyntheticSheetSwap(array $row): bool
+    {
+        $key = self::sheetSpecies($row);
+
+        return in_array($key, [
+            'cabinet_ply',
+            'utility_ply',
+            'mdf',
+            'baltic_birch',
+            'baltic_bb_bb',
+            'baltic_b_bb',
+            'baltic_5x5',
+        ], true);
     }
 }

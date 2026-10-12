@@ -19,26 +19,119 @@
 @php
   $isHourly = $project->isHourly();
   $isAccepted = $project->isAccepted();
+  $isClosed = $project->isClosed();
   $invoices = $project->invoices;
+  $showExistingInvoices = $invoices->isNotEmpty();
 
   $missing = $project->missingClientContactFields();
   $hasContactInfo = empty($missing);
 @endphp
 
 @if ($project->usesInvoiceBillingOverride())
-  <div class="admin-card" style="margin-bottom:1rem;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
-    <p style="margin:0;font-size:14px;color:#1e3a5f;">
-      <strong>Invoice bill-to:</strong> {{ $project->invoiceBillToName() }}
+  <div class="admin-card cp-invoice-bill-to">
+    <p class="cp-invoice-bill-to__text">
+      <span class="admin-label-with-tip">
+        <strong>Invoice bill-to:</strong>
+        <x-admin.info-tip label="Invoice bill-to">
+          PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).
+        </x-admin.info-tip>
+      </span>
+      {{ $project->invoiceBillToName() }}
       @if (filled(trim((string) $project->invoice_billing_address)))
-        <span class="admin-form-help" style="display:block;margin-top:6px;white-space:pre-line;">{{ $project->invoice_billing_address }}</span>
+        <span class="admin-form-help cp-invoice-bill-to__address">{{ $project->invoice_billing_address }}</span>
       @endif
     </p>
-    <p class="admin-form-help" style="margin:8px 0 0;">PDFs use this legal name/address. Emails and SMS still use the client contact on file (@include('admin.partials.client_directory_link', ['project' => $project])).</p>
     <a href="{{ route('admin.client-projects.edit', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-form-group-spaced">Edit project</a>
   </div>
 @endif
 
-@if ($isHourly)
+@if ($isClosed)
+  {{-- Cancelled / rejected: keep past invoices visible and deletable.
+       Creating, sending, and reminding stay locked. --}}
+  <div class="admin-card cp-invoice-closed-note">
+    <h3>{{ $project->statusLabel() }} project</h3>
+    <p>
+      @if ($showExistingInvoices)
+        Existing invoices are shown read-only. You can view the PDF or delete an unpaid invoice.
+        New invoices cannot be created while the project is {{ strtolower($project->statusLabel()) }}.
+      @else
+        Invoices stay locked while this project is {{ strtolower($project->statusLabel()) }}. No invoices were issued.
+      @endif
+    </p>
+  </div>
+
+  @if ($showExistingInvoices)
+    <div class="admin-card cp-contract-card">
+      <div class="cp-contract-header">
+        <div class="cp-contract-meta">
+          <h3>Existing invoices</h3>
+        </div>
+      </div>
+      <div class="admin-table-scroll">
+        <table class="admin-table cp-invoices-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th style="width:120px;">Subtotal</th>
+              <th style="width:120px;">HST</th>
+              <th style="width:130px;">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
+              <th style="width:130px;">Status</th>
+              <th style="width:200px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($invoices->sortByDesc('id') as $invoice)
+              @php
+                $statusLabel = \App\Models\ClientProjectInvoice::statusLabel($invoice->status);
+                $statusColor = \App\Models\ClientProjectInvoice::statusColor($invoice->status);
+              @endphp
+              <tr>
+                <td data-label="Description">
+                  {{ $invoice->installmentTitle() }}
+                  @if ($invoice->isHstExempt())
+                    <div style="margin-top:4px;">
+                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment — no HST charged on this invoice.">
+                        <i class="fa fa-money"></i> HST excluded
+                      </span>
+                    </div>
+                  @endif
+                </td>
+                <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
+                <td class="cp-col-amount" data-label="HST">
+                  @if ($invoice->isHstExempt())
+                    <span class="admin-form-help" style="font-style:italic;">— excluded</span>
+                  @else
+                    {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
+                  @endif
+                </td>
+                <td class="cp-col-amount" data-label="Total">
+                  <strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong>
+                </td>
+                <td data-label="Status">
+                  <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
+                    {{ $statusLabel }}
+                    <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
+                  </span>
+                </td>
+                <td data-label="Actions">
+                  @include('admin.client_projects._invoice_row_actions', [
+                    'project' => $project,
+                    'invoice' => $invoice,
+                    'installmentNumber' => $invoice->installment_number,
+                    'hasContactInfo' => $hasContactInfo,
+                    'missing' => $missing,
+                    'invoiceActionsReadOnly' => true,
+                  ])
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    </div>
+  @endif
+
+@elseif ($isHourly)
   {{-- =================================================================
        HOURLY FLOW — separate from anything fixed-price below. Leaves
        all installment / payment-plan logic untouched.
@@ -66,15 +159,17 @@
   <div class="admin-card cp-contract-card">
     <div class="cp-contract-header">
       <div class="cp-contract-meta">
-        <h3>Invoices</h3>
-        <p class="admin-form-help" style="margin:6px 0 0;">
-          This project is billed by the hour. Log time on the
-          <a href="#time" data-cp-jump-tab="time">Time Tracking</a> tab, then create
-          an invoice here whenever you're ready to bill the client for unbilled hours.
-          You can also raise a manual invoice for anything not tied to tracked time
-          (e.g. materials, delivery fees). Once you mark an invoice as paid, a receipt
-          is generated and emailed to the client automatically.
-        </p>
+        <h3>
+          Invoices
+          <x-admin.info-tip label="Invoices">
+            This project is billed by the hour. Log time on the
+            <a href="#time" data-cp-jump-tab="time">Time Tracking</a> tab, then create
+            an invoice here whenever you're ready to bill the client for unbilled hours.
+            You can also raise a manual invoice for anything not tied to tracked time
+            (e.g. materials, delivery fees). Once you mark an invoice as paid, a receipt
+            is generated and emailed to the client automatically.
+          </x-admin.info-tip>
+        </h3>
       </div>
 
       <div class="cp-contract-actions">
@@ -139,10 +234,12 @@
         to snapshot the unbilled entries into a draft, then review and send.
       </p>
     @else
-      <p class="admin-form-help" style="margin-top:14px; margin-bottom:6px;">
-        <i class="fa fa-info-circle"></i>
-        HST (13%) is added to each invoice once, on top of the pre-tax subtotal.
-      </p>
+      <h4 class="cp-heading-md">
+        Hourly invoices
+        <x-admin.info-tip label="HST on hourly invoices">
+          HST (13%) is added to each invoice once, on top of the pre-tax subtotal.
+        </x-admin.info-tip>
+      </h4>
       <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">
           <thead>
@@ -163,7 +260,7 @@
                 $entryCount = $invoice->timeEntries->count();
               @endphp
               <tr>
-                <td>
+                <td data-label="Description">
                   {{ $invoice->installment_description ?: 'Hourly work' }}
                   @if ($entryCount> 0)
                     <div class="admin-form-help" style="margin-top:2px;">
@@ -179,23 +276,25 @@
                     </div>
                   @endif
                 </td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
-                <td class="cp-col-amount">
+                <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
+                <td class="cp-col-amount" data-label="HST">
                   @if ($invoice->isHstExempt())
                     <span class="admin-form-help" style="font-style:italic;">— excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
                   @endif
                 </td>
-                <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
-                <td>
+                <td class="cp-col-amount" data-label="Total">
+                  <strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong>
+                </td>
+                <td data-label="Status">
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
                     {{ $statusLabel }}
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                 </td>
-                <td>
+                <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
                     'project' => $project,
                     'invoice' => $invoice,
@@ -205,6 +304,7 @@
                   ])
                 </td>
               </tr>
+              @include('admin.client_projects._invoice_send_warning_row', ['colspan' => 6])
             @endforeach
           </tbody>
         </table>
@@ -235,14 +335,16 @@
   <div class="admin-card cp-contract-card">
     <div class="cp-contract-header">
       <div class="cp-contract-meta">
-        <h3>Invoices</h3>
-        <p class="admin-form-help" style="margin:6px 0 0;">
-          One invoice per installment from your <a href="#financials" data-cp-jump-tab="financials">Payment plan</a>.
-          When you mark an invoice as paid, a receipt is generated and emailed to the client automatically,
-          and the matching installment on the Financials tab is marked paid for you.
-          Unpaid sent invoices get a payment reminder each day after the due date — use <strong>Stop daily reminders</strong> on a row to pause that without deleting the invoice.
-          Deleting an unpaid invoice removes only the invoice, not the payment-plan line.
-        </p>
+        <h3>
+          Invoices
+          <x-admin.info-tip label="Invoices">
+            One invoice per installment from your <a href="#financials" data-cp-jump-tab="financials">Payment plan</a>.
+            When you mark an invoice as paid, a receipt is generated and emailed to the client automatically,
+            and the matching installment on the Financials tab is marked paid for you.
+            Unpaid sent invoices get a payment reminder each day after the due date — use <strong>Stop daily reminders</strong> on a row to pause that without deleting the invoice.
+            Deleting an unpaid invoice removes only the invoice, not the payment-plan line.
+          </x-admin.info-tip>
+        </h3>
       </div>
 
       <div class="cp-contract-actions">
@@ -294,17 +396,19 @@
            + Total (incl. HST), so it's visually obvious that HST is
            applied exactly once on top of the pre-tax installment.
            ================================================================ --}}
-      <p class="admin-form-help" style="margin:10px 0 6px;">
-        <i class="fa fa-info-circle"></i>
-        Subtotal comes from the pre-tax installment amount on the
-        <a href="#financials" data-cp-jump-tab="financials">Financials payment plan</a>.
-        HST is applied once at invoice time, sliced proportionally from the
-        quotation's actual HST — so HST-exempt quotation lines (e.g. supplied
-        material) never get re-taxed here.
-        Existing draft / sent invoices are updated when you save a new payment
-        plan on Financials (paid invoices stay as-is). Installments that do not
-        have an invoice yet will use the new amounts when you create them.
-      </p>
+      <h4 class="cp-heading-md">
+        Installment invoices
+        <x-admin.info-tip label="Installment subtotal and HST">
+          Subtotal comes from the pre-tax installment amount on the
+          <a href="#financials" data-cp-jump-tab="financials">Financials payment plan</a>.
+          HST is applied once at invoice time, sliced proportionally from the
+          quotation's actual HST — so HST-exempt quotation lines (e.g. supplied
+          material) never get re-taxed here.
+          Existing draft / sent invoices are updated when you save a new payment
+          plan on Financials (paid invoices stay as-is). Installments that do not
+          have an invoice yet will use the new amounts when you create them.
+        </x-admin.info-tip>
+      </h4>
       <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">
           <thead>
@@ -349,8 +453,10 @@
                 $statusColor = \App\Models\ClientProjectInvoice::statusColor($status);
               @endphp
               <tr>
-                <td><strong>{{ $n }}</strong></td>
-                <td>
+                <td data-label="#">
+                  <strong>{{ $n }}</strong>
+                </td>
+                <td data-label="Description">
                   {{ $inst->label ?: 'Installment '.$n }}
                   @if ($inst->is_paid)
                     <span class="cp-badge" style="background:#22c55e20;color:#15803d;margin-left:4px;">Installment paid</span>
@@ -370,16 +476,18 @@
                     </div>
                   @endif
                 </td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($rowSubtotal) }}</td>
-                <td class="cp-col-amount">
+                <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($rowSubtotal) }}</td>
+                <td class="cp-col-amount" data-label="HST">
                   @if ($invoice && $invoice->isHstExempt())
                     <span class="admin-form-help" style="font-style:italic;">— excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($rowHst) }}
                   @endif
                 </td>
-                <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($rowTotal) }}</strong></td>
-                <td>
+                <td class="cp-col-amount" data-label="Total">
+                  <strong>{{ \App\Models\ClientProject::formatMoney($rowTotal) }}</strong>
+                </td>
+                <td data-label="Status">
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
                     {{ $statusLabel }}
                     @if ($invoice && $invoice->invoice_number)
@@ -388,7 +496,7 @@
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                 </td>
-                <td>
+                <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
                     'project' => $project,
                     'invoice' => $invoice,
@@ -398,6 +506,7 @@
                   ])
                 </td>
               </tr>
+              @include('admin.client_projects._invoice_send_warning_row', ['colspan' => 7])
             @endforeach
           </tbody>
         </table>
@@ -408,11 +517,12 @@
          Manual / ad-hoc invoices (no installment link)
          ================================================================ --}}
     @if ($manualInvoices->isNotEmpty())
-      <h4 style="margin:24px 0 6px;">Manual invoices</h4>
-      <p class="admin-form-help cp-heading-md">
-        <i class="fa fa-info-circle"></i>
-        HST (13%) is added to the manual invoice subtotal once — these invoices are not tied to the quotation, so the breakdown below is the only HST applied.
-      </p>
+      <h4 style="margin:24px 0 6px;">
+        Manual invoices
+        <x-admin.info-tip label="HST on manual invoices">
+          HST (13%) is added to the manual invoice subtotal once — these invoices are not tied to the quotation, so the breakdown below is the only HST applied.
+        </x-admin.info-tip>
+      </h4>
       <div class="admin-table-scroll">
         <table class="admin-table cp-invoices-table">
           <thead>
@@ -432,7 +542,7 @@
                 $statusColor = \App\Models\ClientProjectInvoice::statusColor($invoice->status);
               @endphp
               <tr>
-                <td>
+                <td data-label="Description">
                   {{ $invoice->installment_description ?: 'Manual invoice' }}
                   @if ($invoice->isHstExempt())
                     <div style="margin-top:4px;">
@@ -442,23 +552,25 @@
                     </div>
                   @endif
                 </td>
-                <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
-                <td class="cp-col-amount">
+                <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
+                <td class="cp-col-amount" data-label="HST">
                   @if ($invoice->isHstExempt())
                     <span class="admin-form-help" style="font-style:italic;">— excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
                   @endif
                 </td>
-                <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
-                <td>
+                <td class="cp-col-amount" data-label="Total">
+                  <strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong>
+                </td>
+                <td data-label="Status">
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">
                     {{ $statusLabel }}
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                 </td>
-                <td>
+                <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
                     'project' => $project,
                     'invoice' => $invoice,
@@ -468,6 +580,7 @@
                   ])
                 </td>
               </tr>
+              @include('admin.client_projects._invoice_send_warning_row', ['colspan' => 6])
             @endforeach
           </tbody>
         </table>
@@ -481,7 +594,7 @@
      non-locked state (hourly and fixed-price both use it). The pre-accept
      lock branch returns before this point, so we gate on that one case.
      ===================================================================== --}}
-@if ($isHourly || $isAccepted)
+@if (($isHourly || $isAccepted) && ! $isClosed)
   <div class="cp-modal-backdrop" id="cp-mark-paid-modal" hidden>
     <div class="cp-modal" role="dialog" aria-labelledby="cp-mark-paid-title">
       <div class="cp-modal-header">
@@ -529,8 +642,9 @@
                      class="admin-input cp-money-input"
                      inputmode="decimal"
                      autocomplete="off"
+                    
                      placeholder="0.00"
-                     required>
+                     required data-cp-money-entry="direct">
             </div>
           </div>
           <div class="admin-form-group cp-mark-paid-method">

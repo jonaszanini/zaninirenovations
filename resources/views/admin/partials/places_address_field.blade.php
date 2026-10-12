@@ -18,7 +18,17 @@
   $required = $required ?? false;
 @endphp
 <div class="admin-form-group admin-places-field">
-  <label for="{{ $inputId }}-widget">{{ $label }}@if ($required) <span class="cp-required">*</span>@endif</label>
+  <span class="admin-label-with-tip">
+    <label for="{{ $inputId }}-widget">{{ $label }}</label>
+    @if ($required || $help)
+      <span class="admin-label-with-tip__end">
+        @if ($required) <span class="cp-required">*</span>@endif
+        @if ($help)
+          <x-admin.info-tip :label="$label">{{ $help }}</x-admin.info-tip>
+        @endif
+      </span>
+    @endif
+  </span>
   <div class="admin-places-autocomplete-wrap"
        data-places-mount
        data-address-input="{{ $inputId }}"
@@ -34,9 +44,6 @@
   <input type="hidden" name="{{ $placeIdName }}" id="{{ $inputId }}-place-id" value="{{ $placeIdValue }}">
   <input type="hidden" name="{{ $latName }}" id="{{ $inputId }}-lat" value="{{ $latValue }}">
   <input type="hidden" name="{{ $lngName }}" id="{{ $inputId }}-lng" value="{{ $lngValue }}">
-  @if ($help)
-    <p class="admin-form-help">{{ $help }}</p>
-  @endif
   @if ($directoryHintId)
     <p class="admin-form-help cp-directory-address-hint" id="{{ $directoryHintId }}" hidden></p>
   @endif

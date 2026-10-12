@@ -4,7 +4,8 @@
  * Markup: [data-admin-search-select]
  * Optional: data-search-url, data-options-source, data-search-fields,
  * data-meta-keys, data-fill, data-fill-skip-if, data-address-input-id,
- * data-address-hint-id, data-empty-message, data-empty-query-message.
+ * data-address-hint-id, data-empty-message, data-empty-query-message,
+ * data-hd-import-url (catalog pickers: pull a Home Depot SKU into the DB).
  *
  * Events: admin-search-select:change  detail { id, option }
  */
@@ -81,6 +82,44 @@
       if (String(options[i].id) === String(id)) return options[i];
     }
     return null;
+  }
+
+  function normalizeHdSku(raw) {
+    var line = String(raw || '').trim();
+    if (!line) return null;
+    if (/homedepot\.ca/i.test(line)) {
+      var fromUrl = line.match(/\/product\/(?:[^/?#]+\/)?(\d{6,})/i);
+      return fromUrl ? fromUrl[1] : null;
+    }
+    var digits = line.match(/^(\d{6,})$/);
+    return digits ? digits[1] : null;
+  }
+
+  function optionSku(row) {
+    return row && row.sku != null ? String(row.sku).trim() : '';
+  }
+
+  function findExactSku(options, sku) {
+    if (!sku) return null;
+    for (var i = 0; i < (options || []).length; i++) {
+      if (optionSku(options[i]) === sku) return options[i];
+    }
+    return null;
+  }
+
+  function rememberImportedOption(root, option) {
+    if (!option || option.id == null) return;
+    option.id = String(option.id);
+    var sourceId = root.getAttribute('data-options-source');
+    var el = sourceId ? document.getElementById(sourceId) : null;
+    var pool = el ? (el._adminSsOptions || parseJson(el.textContent, [])) : loadLocalOptions(root);
+    if (optionById(pool, option.id)) {
+      var existing = optionById(pool, option.id);
+      Object.keys(option).forEach(function (key) { existing[key] = option[key]; });
+    } else {
+      pool.push(option);
+    }
+    if (el) el._adminSsOptions = pool;
   }
 
   function matches(row, query, fields) {
@@ -168,6 +207,7 @@
     var maxOptions = parseInt(root.getAttribute('data-max-options') || '80', 10) || 80;
     var listParent = root.getAttribute('data-list-parent') || '';
     var listHome = list.parentNode;
+    var hdImportUrl = root.getAttribute('data-hd-import-url') || '';
 
     var rows = [];
     var activeIndex = -1;
@@ -176,6 +216,9 @@
     var debounceTimer = null;
     var lastQuery = null;
     var abortCtrl = null;
+    var hdAbortCtrl = null;
+    var hdPulling = false;
+    var hdError = null;
 
     function setPostedId(id) {
       hidden.value = id ? String(id) : '';
@@ -189,12 +232,31 @@
     function placeList() {
       if (listParent !== 'body') return;
       var rect = input.getBoundingClientRect();
+      var pad = 8;
+      var vw = window.innerWidth || document.documentElement.clientWidth || 0;
+      var maxW = Math.max(80, vw - pad * 2);
+      var width = Math.min(Math.max(rect.width, Math.min(280, maxW)), maxW);
+      var left = rect.left;
+      if (left + width > vw - pad) {
+        left = vw - pad - width;
+      }
+      if (left < pad) {
+        left = pad;
+      }
       list.style.position = 'fixed';
-      list.style.left = rect.left + 'px';
+      list.style.boxSizing = 'border-box';
+      list.style.minWidth = '0';
+      list.style.left = Math.round(left) + 'px';
       list.style.right = 'auto';
       list.style.top = (rect.bottom + 4) + 'px';
-      list.style.width = Math.max(rect.width, 280) + 'px';
+      list.style.width = Math.round(width) + 'px';
+      list.style.maxWidth = maxW + 'px';
       list.style.zIndex = '200';
+      var placed = list.getBoundingClientRect();
+      if (placed.right > vw - pad || placed.left < pad) {
+        list.style.left = pad + 'px';
+        list.style.width = maxW + 'px';
+      }
     }
 
     function restoreList() {
@@ -205,6 +267,9 @@
       list.style.right = '';
       list.style.top = '';
       list.style.width = '';
+      list.style.maxWidth = '';
+      list.style.minWidth = '';
+      list.style.boxSizing = '';
       list.style.zIndex = '';
     }
 
@@ -244,10 +309,55 @@
       input.setAttribute('aria-activedescendant', opts[index].id);
     }
 
+    function renderHdAction(sku, query) {
+      if (hdError && hdError.query === query) {
+        var err = document.createElement('li');
+        err.className = 'admin-search-select__error';
+        err.setAttribute('role', 'status');
+        err.textContent = hdError.message;
+        list.appendChild(err);
+      }
+
+      var li = document.createElement('li');
+      li.id = (root.id || 'ss') + '-hd-import';
+      li.setAttribute('role', 'option');
+      li.className = 'admin-search-select__option admin-search-select__option--action';
+      li.setAttribute('data-hd-import-action', sku);
+      if (hdPulling) {
+        li.classList.add('is-loading');
+        li.setAttribute('aria-disabled', 'true');
+      }
+
+      var body = document.createElement('span');
+      body.className = 'admin-search-select__option-body';
+
+      var nameEl = document.createElement('span');
+      nameEl.className = 'admin-search-select__option-name';
+      nameEl.textContent = hdPulling
+        ? ('Pulling SKU ' + sku + ' from Home Depot…')
+        : ('Pull SKU ' + sku + ' from Home Depot');
+      body.appendChild(nameEl);
+
+      var metaEl = document.createElement('span');
+      metaEl.className = 'admin-search-select__option-meta';
+      metaEl.textContent = hdPulling ? 'Creating catalog material' : 'Add this item to the materials catalog';
+      body.appendChild(metaEl);
+      li.appendChild(body);
+      list.appendChild(li);
+    }
+
     function render(items, query) {
       rows = items || [];
       list.innerHTML = '';
-      if (!rows.length) {
+      var sku = hdImportUrl ? normalizeHdSku(query) : null;
+      var exact = sku ? (findExactSku(rows, sku) || findExactSku(localOptions, sku)) : null;
+      if (exact && sku) {
+        var already = rows.some(function (row) { return String(row.id) === String(exact.id); });
+        if (!already) rows = [exact].concat(rows);
+      }
+      var showHd = !!(sku && hdImportUrl && !exact);
+
+      if (!rows.length && !showHd) {
         var empty = document.createElement('li');
         empty.className = 'admin-search-select__empty';
         empty.textContent = query ? emptyMessage : emptyQueryMessage;
@@ -300,8 +410,86 @@
         list.appendChild(li);
       });
 
+      if (showHd) renderHdAction(sku, query);
+
       openList();
       setActive(0);
+    }
+
+    function finishHdPull() {
+      hdPulling = false;
+      if (hdAbortCtrl && typeof hdAbortCtrl.abort === 'function') {
+        hdAbortCtrl.abort();
+      }
+      hdAbortCtrl = null;
+    }
+
+    function markHdLoading(sku) {
+      var action = list.querySelector('[data-hd-import-action]');
+      if (!action) {
+        render(rows, lastQuery || sku);
+        return;
+      }
+      action.classList.add('is-loading');
+      action.setAttribute('aria-disabled', 'true');
+      var nameEl = action.querySelector('.admin-search-select__option-name');
+      var metaEl = action.querySelector('.admin-search-select__option-meta');
+      if (nameEl) nameEl.textContent = 'Pulling SKU ' + sku + ' from Home Depot…';
+      if (metaEl) metaEl.textContent = 'Creating catalog material';
+    }
+
+    function pullFromHomeDepot(sku) {
+      if (!hdImportUrl || !sku || hdPulling) return;
+      hdPulling = true;
+      hdError = null;
+      markHdLoading(sku);
+
+      if (hdAbortCtrl && typeof hdAbortCtrl.abort === 'function') hdAbortCtrl.abort();
+      hdAbortCtrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+
+      fetch(hdImportUrl, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': csrfToken()
+        },
+        body: JSON.stringify({ query: sku }),
+        signal: hdAbortCtrl ? hdAbortCtrl.signal : undefined
+      })
+        .then(function (r) {
+          return r.json().then(function (json) {
+            return { ok: r.ok, status: r.status, json: json || {} };
+          }).catch(function () {
+            return { ok: r.ok, status: r.status, json: {} };
+          });
+        })
+        .then(function (res) {
+          finishHdPull();
+          var material = res.json && res.json.material;
+          if (res.ok && material && material.id) {
+            hdError = null;
+            rememberImportedOption(root, material);
+            if (!optionById(localOptions, material.id)) localOptions.push(material);
+            choose(material);
+            return;
+          }
+          hdError = {
+            query: lastQuery || sku,
+            message: (res.json && res.json.message) || "Couldn't find that SKU on Home Depot"
+          };
+          render(rows, lastQuery || sku);
+        })
+        .catch(function (err) {
+          if (err && err.name === 'AbortError') return;
+          finishHdPull();
+          hdError = {
+            query: lastQuery || sku,
+            message: "Home Depot couldn't be reached, try again"
+          };
+          render(rows, lastQuery || sku);
+        });
     }
 
     function fetchRemote(query, callback) {
@@ -335,12 +523,16 @@
 
     function search(query, immediate) {
       var q = String(query || '').trim();
-      if (!immediate && q === lastQuery && rows.length) {
+      if (!immediate && q === lastQuery && (rows.length || list.querySelector('[data-hd-import-action]'))) {
         openList();
         return;
       }
       window.clearTimeout(debounceTimer);
       var run = function () {
+        if (q !== lastQuery) {
+          hdError = null;
+          if (hdPulling) finishHdPull();
+        }
         lastQuery = q;
         if (searchUrl) {
           fetchRemote(q, function (data) { render(data, q); });
@@ -382,6 +574,12 @@
     function onListMouseDown(e) { e.preventDefault(); }
 
     function onListClick(e) {
+      var action = e.target && e.target.closest ? e.target.closest('[data-hd-import-action]') : null;
+      if (action) {
+        if (action.getAttribute('aria-disabled') === 'true') return;
+        pullFromHomeDepot(action.getAttribute('data-hd-import-action'));
+        return;
+      }
       var opt = e.target && e.target.closest ? e.target.closest('[data-index]') : null;
       if (!opt) return;
       var idx = parseInt(opt.getAttribute('data-index'), 10);
@@ -411,9 +609,19 @@
         if (!open) return;
         setActive(activeIndex - 1);
       } else if (e.key === 'Enter') {
-        if (open && activeIndex >= 0 && rows[activeIndex]) {
-          e.preventDefault();
-          choose(rows[activeIndex]);
+        if (open && activeIndex >= 0) {
+          var activeEl = list.querySelectorAll('[role="option"]')[activeIndex];
+          if (activeEl && activeEl.getAttribute('data-hd-import-action')) {
+            e.preventDefault();
+            if (activeEl.getAttribute('aria-disabled') !== 'true') {
+              pullFromHomeDepot(activeEl.getAttribute('data-hd-import-action'));
+            }
+            return;
+          }
+          if (rows[activeIndex]) {
+            e.preventDefault();
+            choose(rows[activeIndex]);
+          }
         }
       } else if (e.key === 'Escape') {
         closeList();
@@ -427,6 +635,7 @@
     }
 
     function onDocClick(e) {
+      if (hdPulling) return;
       if (root.contains(e.target) || list.contains(e.target)) return;
       closeList();
     }
@@ -482,6 +691,7 @@
       getValue: function () { return hidden.value; },
       getOption: function () { return selected; },
       destroy: function () {
+        finishHdPull();
         list.removeEventListener('mousedown', onListMouseDown);
         list.removeEventListener('click', onListClick);
         input.removeEventListener('focus', onFocus);

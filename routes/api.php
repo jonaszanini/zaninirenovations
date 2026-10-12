@@ -18,3 +18,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+Route::post('/quotations/accept', [\App\Http\Controllers\Api\QuotationAcceptController::class, 'store'])
+    ->middleware(['quote.accept.token', 'throttle:quote-accept-api']);
+
+Route::post('/etransfers', [\App\Http\Controllers\Api\EtransferNoticeController::class, 'store'])
+    ->middleware(['etransfer.token', 'throttle:etransfer-api']);

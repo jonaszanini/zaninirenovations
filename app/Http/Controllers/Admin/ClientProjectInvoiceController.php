@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ClientProjectInvoiceClient;
-use App\Mail\ClientProjectInvoiceReceiptClient;
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectInvoice;
@@ -15,6 +14,7 @@ use App\Services\ClientSmsService;
 use App\Services\Invoice\InvoiceCreationService;
 use App\Services\Invoice\InvoicePdfService;
 use App\Services\Invoice\InvoiceTotalsCalculator;
+use App\Services\Invoice\MarkInvoicePaidService;
 use App\Services\MoceanSmsService;
 use App\Support\SignedPublicLink;
 use Illuminate\Http\Request;
@@ -53,6 +53,7 @@ class ClientProjectInvoiceController extends Controller
         protected InvoicePdfService $pdfService,
         protected InvoiceTotalsCalculator $totals,
         protected InvoiceCreationService $creationService,
+        protected MarkInvoicePaidService $markPaidService,
     ) {
     }
 
@@ -80,10 +81,14 @@ class ClientProjectInvoiceController extends Controller
 
         $mode = $data['mode'] ?? ($request->filled('installment_number') ? 'installment' : 'manual');
 
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'New invoices cannot be created on a cancelled or rejected project.')) {
+            return $redirect;
+        }
+
         // Guard: mode vs billing type must line up. This keeps the
         // fixed-price (installment / manual) and hourly flows strictly
         // separated so a form bug can't cross-contaminate them.
-        if ($mode === 'hourly' && !$client_project->isHourly()) {
+        if ($mode === 'hourly' && ! $client_project->isHourly()) {
             return back()->with('error', '"Create invoice from hours" is only available for hourly-billed projects.');
         }
         if ($mode === 'installment' && $client_project->isHourly()) {
@@ -93,7 +98,7 @@ class ClientProjectInvoiceController extends Controller
         $installmentNumber = $mode === 'installment' ? (int) ($data['installment_number'] ?? 0) : null;
 
         if ($mode === 'installment') {
-            if (!$installmentNumber) {
+            if (! $installmentNumber) {
                 return back()->with('error', 'Please pick an installment for the new invoice.');
             }
 
@@ -143,6 +148,13 @@ class ClientProjectInvoiceController extends Controller
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
+        if ($client_project->excludesInvoicesFromReceivables()) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('invoice')
+                ->with('info', 'This project is '.$client_project->statusLabel().'. Existing invoices are read-only — use the PDF or delete an unpaid invoice.');
+        }
+
         return view('admin.client_projects.invoice.edit', [
             'project' => $client_project,
             'invoice' => $invoice,
@@ -160,6 +172,10 @@ class ClientProjectInvoiceController extends Controller
     public function update(Request $request, ClientProject $client_project, ClientProjectInvoice $invoice)
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Invoices on cancelled or rejected projects cannot be edited.')) {
+            return $redirect;
+        }
 
         if ($invoice->isPaid()) {
             return back()->with('error', 'Paid invoices cannot be edited.');
@@ -210,19 +226,11 @@ class ClientProjectInvoiceController extends Controller
                 ? 0.0
                 : round($labour * ClientProjectInvoice::HST_RATE, 2);
             $invoice->total = round($labour + $invoice->hst + $materials, 2);
-            if ($invoice->total < 0.01) {
-                return back()
-                    ->withErrors([
-                        'items' => 'Invoice total must be at least CA$0.01. Reduce the credit or add more billable lines.',
-                    ])
-                    ->withInput();
-            }
-            $this->totals->syncHourlyExpenseLinks($client_project, $invoice, $items);
         } else {
             $invoice->items = $items;
             $gross = round((float) array_sum(array_column($items, 'amount')), 2);
 
-            if (!$invoice->isManual()) {
+            if (! $invoice->isManual()) {
                 [$pctStored, $amtStored, $discountVal] = $this->totals->resolveInstallmentDiscountFromRequest($request, $gross);
                 $invoice->discount_percent = $pctStored;
                 $invoice->discount_amount = $amtStored;
@@ -260,11 +268,23 @@ class ClientProjectInvoiceController extends Controller
             }
         }
 
-        if (!empty($data['due_on'])) {
-            $invoice->due_on = $data['due_on'];
-        }
+        DB::transaction(function () use ($client_project, $invoice, $items, $isHourlyManual, $data) {
+            if ($invoice->total < 0) {
+                throw ValidationException::withMessages([
+                    'items' => 'Invoice total cannot be negative. Reduce the credit or add more billable lines.',
+                ]);
+            }
 
-        $invoice->save();
+            if ($isHourlyManual) {
+                $this->totals->syncHourlyExpenseLinks($client_project, $invoice, $items);
+            }
+
+            if (! empty($data['due_on'])) {
+                $invoice->due_on = $data['due_on'];
+            }
+
+            $invoice->save();
+        });
 
         $intent = $data['intent'] ?? 'draft';
 
@@ -284,7 +304,7 @@ class ClientProjectInvoiceController extends Controller
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
-        if (!$invoice->hasContent() && $invoice->total <= 0) {
+        if (! $invoice->hasContent() && $invoice->total <= 0) {
             return back()->with('error', 'There is no invoice content to download yet. Please add at least one line item first.');
         }
 
@@ -301,7 +321,7 @@ class ClientProjectInvoiceController extends Controller
     {
         abort_unless((int) $invoice->client_project_id === (int) $client_project->id, 404);
 
-        if (!$invoice->hasContent() && (float) $invoice->total <= 0) {
+        if (! $invoice->hasContent() && (float) $invoice->total <= 0) {
             abort(404, 'Invoice not available.');
         }
 
@@ -342,7 +362,7 @@ class ClientProjectInvoiceController extends Controller
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
-        if (!$invoice->isPaid()) {
+        if (! $invoice->isPaid()) {
             return back()->with('error', 'Receipt is only available after the invoice is marked paid.');
         }
 
@@ -362,6 +382,10 @@ class ClientProjectInvoiceController extends Controller
     public function send(ClientProject $client_project, ClientProjectInvoice $invoice, ClientProjectStatusService $statusService)
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Invoices on cancelled or rejected projects cannot be sent.')) {
+            return $redirect;
+        }
 
         if ($invoice->isPaid()) {
             return back()->with('error', 'This invoice has already been paid.');
@@ -488,6 +512,10 @@ class ClientProjectInvoiceController extends Controller
     ) {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Invoices on cancelled or rejected projects cannot be sent.')) {
+            return $redirect;
+        }
+
         if ($invoice->isPaid()) {
             return back()->with('error', 'This invoice has already been paid.');
         }
@@ -542,6 +570,10 @@ class ClientProjectInvoiceController extends Controller
     ) {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Payment reminders are not sent for invoices on cancelled or rejected projects.')) {
+            return $redirect;
+        }
+
         if (! $invoice->isSent()) {
             return back()->with('error', 'Reminders can only be sent after the invoice has been emailed at least once.');
         }
@@ -575,6 +607,10 @@ class ClientProjectInvoiceController extends Controller
         ClientProjectStatusService $statusService,
     ) {
         $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Daily reminders cannot be changed on a cancelled or rejected project.')) {
+            return $redirect;
+        }
 
         if (! $invoice->isSent()) {
             return back()->with('error', 'Daily reminders can only be paused after the invoice has been sent.');
@@ -613,9 +649,13 @@ class ClientProjectInvoiceController extends Controller
      * Mark the invoice as paid, generate a Receipt PDF, email it, and
      * auto-mark the linked installment paid on the Financials tab.
      */
-    public function markPaid(Request $request, ClientProject $client_project, ClientProjectInvoice $invoice, ClientProjectStatusService $statusService)
+    public function markPaid(Request $request, ClientProject $client_project, ClientProjectInvoice $invoice)
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if ($redirect = $this->rejectClosedProjectMutation($client_project, 'Invoices on cancelled or rejected projects cannot be marked paid from this tab.')) {
+            return $redirect;
+        }
 
         if ($invoice->isPaid()) {
             return back()->with('error', 'This invoice is already marked paid.');
@@ -625,7 +665,7 @@ class ClientProjectInvoiceController extends Controller
         // we skipped the email/SMS step). We only require the invoice to
         // have something to put on the receipt — at least one line item
         // and a non-zero total.
-        if (!$invoice->hasContent() || (float) $invoice->total <= 0) {
+        if (! $invoice->hasContent() || (float) $invoice->total <= 0) {
             return back()->with('error', 'Add at least one line item with a description and amount before marking the invoice paid.');
         }
 
@@ -633,10 +673,6 @@ class ClientProjectInvoiceController extends Controller
             ClientProject::statuses(),
             fn (string $s) => ! in_array($s, ClientProject::terminalStatuses(), true)
         ));
-
-        $isFirstPaidInvoice = ! $client_project->invoices()
-            ->where('status', ClientProjectInvoice::STATUS_PAID)
-            ->exists();
 
         $data = $request->validate([
             'paid_on' => ['required', 'date'],
@@ -651,212 +687,28 @@ class ClientProjectInvoiceController extends Controller
             ],
         ]);
 
-        // Track whether this mark-paid flipped the first installment from
-        // unpaid → paid, so we can trigger the admin calendar email afterwards.
-        $firstInstallmentJustPaid = false;
+        $result = $this->markPaidService->mark(
+            $client_project,
+            $invoice,
+            $data['paid_on'],
+            (float) $data['paid_amount'],
+            $data['payment_method'],
+            $request->boolean('also_email_receipt'),
+            $request->boolean('also_sms_receipt'),
+            isset($data['project_status']) ? trim((string) $data['project_status']) : null,
+        );
 
-        DB::transaction(function () use ($invoice, $client_project, $data, &$firstInstallmentJustPaid) {
-            $invoice->paid_at = $data['paid_on'];
-            $invoice->paid_amount = round((float) $data['paid_amount'], 2);
-            $invoice->payment_method = $data['payment_method'];
-            $invoice->status = ClientProjectInvoice::STATUS_PAID;
-
-            // Generate + persist the Receipt PDF BEFORE saving status so
-            // the receipt_pdf_path is committed atomically with the paid state.
-            $pdf = $this->pdfService->renderReceiptPdf($client_project, $invoice);
-            $bytes = $pdf->output();
-            $relativePath = $this->pdfService->receiptPdfStoragePath($client_project, $invoice);
-            Storage::disk('local')->put($relativePath, $bytes);
-            $invoice->receipt_pdf_path = $relativePath;
-
-            $invoice->save();
-
-            // Auto-sync: align the linked installment’s pre-tax amount to what
-            // was actually billed on this invoice (subtotal after discount), and
-            // mark it paid when it wasn’t already (manual toggle may have paid it first).
-            if (!$invoice->isManual()) {
-                $installment = $client_project->installments()
-                    ->orderBy('sort_order')
-                    ->get()
-                    ->values()
-                    ->get($invoice->installment_number - 1);
-
-                if ($installment) {
-                    $wasPaid = (bool) $installment->is_paid;
-
-                    if (!$client_project->isHourly()) {
-                        $installment->amount = round(max(0.0, (float) $invoice->subtotal), 2);
-                    }
-
-                    if (!$wasPaid) {
-                        $installment->is_paid = true;
-                        $installment->paid_on = $data['paid_on'];
-                    }
-
-                    $installment->save();
-
-                    if (!$wasPaid && (int) $invoice->installment_number === 1) {
-                        $firstInstallmentJustPaid = true;
-                    }
-                }
-            }
-        });
-
-        // Re-read the persisted bytes so the email gets the exact saved PDF.
-        $disk = Storage::disk('local');
-        $receiptBytes = $disk->exists($invoice->receipt_pdf_path)
-            ? $disk->get($invoice->receipt_pdf_path)
-            : $this->pdfService->renderReceiptPdf($client_project, $invoice)->output();
-
-        $sendEmail = $request->boolean('also_email_receipt');
-        $sendSms = $request->boolean('also_sms_receipt');
-        $emailSent = false;
-        $smsSent = false;
-
-        if ($sendEmail && filled(trim((string) $client_project->client_email))) {
-            $cc = $client_project->secondaryClientEmail();
-            $receiptSubject = "Receipt — invoice {$invoice->invoice_number} paid";
-            $receiptDescription = "Receipt for invoice {$invoice->invoice_number} — paid "
-                .ClientProject::formatMoney((float) $invoice->paid_amount)
-                .' on '.\Carbon\Carbon::parse($invoice->paid_at)->format('M j, Y');
-
-            try {
-                $mailer = Mail::to($client_project->client_email);
-                if ($cc) {
-                    $mailer->cc($cc);
-                }
-                $mailer->send(new ClientProjectInvoiceReceiptClient(
-                    $client_project,
-                    $invoice,
-                    $receiptBytes,
-                    $this->pdfService->receiptPdfFilename($client_project, $invoice)
-                ));
-                $emailSent = true;
-
-                app(ClientCommunicationLogger::class)->logEmail(
-                    $client_project,
-                    ClientCommunicationLog::REASON_RECEIPT_SENT,
-                    $client_project->client_email,
-                    $cc,
-                    $receiptSubject,
-                    $receiptDescription,
-                );
-            } catch (\Throwable $e) {
-                Log::error('Failed to email receipt', [
-                    'project_id' => $client_project->id,
-                    'invoice_id' => $invoice->id,
-                    'exception' => $e->getMessage(),
-                ]);
-
-                app(ClientCommunicationLogger::class)->logEmail(
-                    $client_project,
-                    ClientCommunicationLog::REASON_RECEIPT_SENT,
-                    $client_project->client_email,
-                    $cc,
-                    $receiptSubject,
-                    $receiptDescription,
-                    ClientCommunicationLog::DIRECTION_TO_CLIENT,
-                    false,
-                    $e->getMessage(),
-                );
-            }
-        }
-
-        if ($sendSms) {
-            $smsSent = $this->sendReceiptSms($client_project, $invoice);
-        }
-
-        $deliveryParts = [];
-        if ($emailSent) {
-            $deliveryParts[] = 'receipt emailed to '.$client_project->clientEmailRecipientsLabel();
-        }
-        if ($smsSent) {
-            $deliveryParts[] = 'receipt SMS sent to client';
-        }
-        $deliveryNote = $deliveryParts !== []
-            ? '. '.ucfirst(implode('; ', $deliveryParts)).'.'
-            : '.';
-
-        $note = "Invoice {$invoice->invoice_number} marked paid "
-            .ClientProject::formatMoney($invoice->paid_amount)
-            .$deliveryNote;
-
-        try {
-            $statusService->recordEvent($client_project, $note);
-        } catch (\Throwable $e) {
-            Log::warning('Failed to record mark-paid history entry', [
-                'project_id' => $client_project->id,
-                'invoice_id' => $invoice->id,
-                'exception' => $e->getMessage(),
-            ]);
-        }
-
-        if ($emailSent && $smsSent) {
-            $flash = 'Invoice marked paid. Receipt emailed and SMS sent to the client.';
-        } elseif ($emailSent) {
-            $flash = "Invoice marked paid. Receipt emailed to {$client_project->clientEmailRecipientsLabel()}.";
-        } elseif ($smsSent) {
-            $flash = 'Invoice marked paid. Receipt SMS sent to the client.';
-        } elseif ($sendEmail || $sendSms) {
-            $flash = 'Invoice marked paid. Receipt delivery was requested but could not be sent — check contact info and logs.';
-        } else {
-            $flash = 'Invoice marked paid.';
-        }
-
-        $targetStatus = isset($data['project_status']) ? trim((string) $data['project_status']) : '';
-        if ($isFirstPaidInvoice && ! $client_project->isClosed() && $targetStatus !== '') {
-            $proj = $client_project->fresh();
-            if ($proj && $targetStatus !== $proj->status) {
-                try {
-                    $updated = $statusService->transition(
-                        $proj,
-                        $targetStatus,
-                        'Status set while marking the first paid invoice.'
-                    );
-                    $flash .= ' Project status updated to '.$updated->statusLabel().'.';
-                } catch (\Throwable $e) {
-                    Log::warning('markPaid: project_status transition failed', [
-                        'project_id' => $client_project->id,
-                        'invoice_id' => $invoice->id,
-                        'target_status' => $targetStatus,
-                        'exception' => $e->getMessage(),
-                    ]);
-                }
-            }
-        }
-
-        // If paying this invoice just flipped the 1st installment to paid,
-        // trigger the admin calendar email — or warn that dates are still
-        // pending, mirroring the Financials togglePaid flow.
-        $warning = null;
-        if ($firstInstallmentJustPaid) {
-            if (!$client_project->fresh()->hasSchedule()) {
-                $warning = 'Please set the project start and end dates — the calendar notification will be emailed once both are saved.';
-            } else {
-                $fresh = $client_project->fresh();
-                $result = $statusService->maybeSendCalendarDatesEmail($fresh);
-                $fixed = $statusService->maybeSendFixedScheduleConfirmationToClient($fresh->fresh());
-                if ($result === 'sent') {
-                    $flash .= ' Calendar notification emailed to the admin.';
-                } elseif ($result === 'failed') {
-                    $warning = 'The calendar notification email failed to send. Check logs and try again.';
-                }
-                if ($fixed === 'sent') {
-                    $flash .= ' Schedule confirmation emailed to the client.';
-                } elseif ($fixed === 'failed') {
-                    $warn2 = 'The client schedule confirmation email failed to send. Check logs.';
-                    $warning = $warning ? $warning.' '.$warn2 : $warn2;
-                }
-            }
+        if (! ($result['ok'] ?? false)) {
+            return back()->with('error', $result['error'] ?? 'Could not mark the invoice paid.');
         }
 
         $redirect = redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('invoice')
-            ->with('success', $flash);
+            ->with('success', $result['flash'] ?? 'Invoice marked paid.');
 
-        if ($warning) {
-            $redirect->with('warning', $warning);
+        if (! empty($result['warning'])) {
+            $redirect->with('warning', $result['warning']);
         }
 
         return $redirect;
@@ -946,7 +798,7 @@ class ClientProjectInvoiceController extends Controller
             $out[] = 'Set a payment due date on the invoice before sending an SMS link.';
         }
 
-        if (!$mocean->isConfigured()) {
+        if (! $mocean->isConfigured()) {
             $out[] = 'SMS is not configured — set MOCEAN_API_TOKEN on the server.';
         }
 
@@ -962,4 +814,19 @@ class ClientProjectInvoiceController extends Controller
         abort_unless($invoice->client_project_id === $project->id, 404);
     }
 
+    /**
+     * Cancelled / rejected projects keep existing invoices visible so they
+     * can be viewed or deleted, but must not create, send, or remind.
+     */
+    protected function rejectClosedProjectMutation(ClientProject $project, string $message)
+    {
+        if (! $project->excludesInvoicesFromReceivables()) {
+            return null;
+        }
+
+        return redirect()
+            ->route('admin.client-projects.show', $project)
+            ->withFragment('invoice')
+            ->with('error', $message);
+    }
 }

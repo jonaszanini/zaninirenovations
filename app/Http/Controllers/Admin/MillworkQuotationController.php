@@ -17,12 +17,15 @@ use App\Services\AdditionalCostsService;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
+use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Services\MillworkQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,13 +60,18 @@ class MillworkQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
+
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
 
         $quote = MillworkQuotation::create(array_merge($calc, [
             'quote_number' => MillworkQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -88,7 +96,8 @@ class MillworkQuotationController extends Controller
 
     public function update(Request $request, MillworkQuotation $millwork_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $wasDraft = (bool) $millwork_quotation->is_draft;
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $millwork_quotation);
 
         $millwork_quotation->fill(array_merge($calc, [
@@ -97,11 +106,16 @@ class MillworkQuotationController extends Controller
 
         $warnings = [];
         if ($millwork_quotation->isLinked() && $millwork_quotation->client_project_id) {
-            $project = ClientProject::query()->find($millwork_quotation->client_project_id);
-            if ($project) {
-                DB::transaction(function () use ($project, $millwork_quotation) {
-                    $this->syncLineToProjectQuotation($project, $millwork_quotation->fresh());
-                });
+            $fresh = $millwork_quotation->fresh();
+            if ($fresh && $fresh->hasUnplacedCutParts()) {
+                $warnings[] = MillworkQuotation::unplacedAdminMessage().' The project price was not updated.';
+            } else {
+                $project = ClientProject::query()->find($millwork_quotation->client_project_id);
+                if ($project && $fresh) {
+                    DB::transaction(function () use ($project, $fresh) {
+                        $this->syncLineToProjectQuotation($project, $fresh);
+                    });
+                }
             }
         }
 
@@ -111,17 +125,43 @@ class MillworkQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.millwork.edit', $millwork_quotation)
-            ->with('success', $linkedNow
-                ? 'Millwork quotation '.$millwork_quotation->quote_number.' updated and linked.'
-                : 'Millwork quotation '.$millwork_quotation->quote_number.' updated (v'.$millwork_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Millwork', $millwork_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
 
     public function preview(Request $request, ?MillworkQuotation $millwork_quotation = null)
     {
-        $raw = $this->gatherInputsFromRequest($request);
-        $calc = (new MillworkQuotationCalculator)->calculate($raw);
+        $this->prepareAdditionalCostMoneyOnRequest($request);
+        $this->prepareDebrisRemovalMoneyOnRequest($request);
+        $raw = $this->gatherInputsFromRequest($request, $millwork_quotation);
+        $upgrade = $request->boolean('upgrade_cut_plan');
+        $cutPlanVersion = $this->resolveCalcVersion($request, $millwork_quotation);
+        $raw['_cut_plan_version'] = $cutPlanVersion;
+        $raw['_calc_version'] = $cutPlanVersion;
+
+        $calc = (new MillworkQuotationCalculator)->calculate($raw, null, $cutPlanVersion);
+        $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+        if (json_encode($calc, $jsonFlags) === false) {
+            $errors = is_array($calc['field_errors'] ?? null) ? $calc['field_errors'] : [];
+            return response()->json([
+                'error' => 'Preview could not be calculated. Check the sizes and try again.',
+                'summary' => ['grand_total' => 0],
+                'field_errors' => $errors,
+                'cut_plan' => [
+                    'layouts' => [],
+                    'unplaced' => [],
+                    'preview_skipped' => true,
+                    'preview_message' => 'Preview could not be calculated. Check the sizes and try again.',
+                ],
+            ], 422);
+        }
+        if ($upgrade && $millwork_quotation && $millwork_quotation->canUpgradeCalc()) {
+            $notice = $this->recalcNoticePayload($millwork_quotation, $calc, $request);
+            if ($notice !== null) {
+                $calc['recalc_notice'] = $notice;
+            }
+        }
 
         return response()->json($calc);
     }
@@ -218,6 +258,9 @@ class MillworkQuotationController extends Controller
         if ((float) $millwork_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before linking.');
         }
+        if ($millwork_quotation->hasUnplacedCutParts()) {
+            return back()->with('error', MillworkQuotation::unplacedAdminMessage());
+        }
         if ($resp = $this->guardProjectClosedToNewQuotations($project)) {
             return $resp;
         }
@@ -244,6 +287,9 @@ class MillworkQuotationController extends Controller
         }
         if ((float) $millwork_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before creating a project.');
+        }
+        if ($millwork_quotation->hasUnplacedCutParts()) {
+            return back()->with('error', MillworkQuotation::unplacedAdminMessage());
         }
 
         $this->normalisePhoneOnRequest($request);
@@ -335,7 +381,13 @@ class MillworkQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
-        $linkProject = $this->quotationLinkCandidateProject($request);
+        $roomAreaImport = ! $quotation
+            ? app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'millwork')
+            : null;
+        $linkProject = $this->mergeRoomAreaLinkProject(
+            $this->quotationLinkCandidateProject($request),
+            $roomAreaImport
+        );
         if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
             $linkProject = null;
         }
@@ -351,12 +403,35 @@ class MillworkQuotationController extends Controller
         $previewInputs = MillworkQuotationCalculator::defaultInputs();
         $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
+        if (! $quotation && $roomAreaImport) {
+            $previewInputs = array_merge($previewInputs, $roomAreaImport['inputs']);
+        }
         if ($quotation && is_array($quotation->inputs)) {
             foreach ($quotation->inputs as $key => $value) {
                 $previewInputs[$key] = $value;
             }
         }
-        $initialPreview = (new MillworkQuotationCalculator)->calculate($previewInputs, $settings);
+        $cutPlanVersion = $quotation
+            ? $quotation->calcVersion()
+            : MillworkQuotationCalculator::CALC_VERSION;
+        if (! $quotation && trim((string) ($previewInputs['sheet_id'] ?? '')) === '') {
+            foreach ($settings->resolvedCatalog()[MillworkSettings::SLOT_WOOD_SHEETS] ?? [] as $sheetRow) {
+                if (! is_array($sheetRow)) {
+                    continue;
+                }
+                if (abs((float) ($sheetRow['thickness_in'] ?? 0) - 0.75) < 0.06) {
+                    $previewInputs['sheet_id'] = (string) ($sheetRow['id'] ?? '');
+                    break;
+                }
+            }
+        }
+        $previewInputs['_cut_plan_version'] = $cutPlanVersion;
+        $previewInputs['_calc_version'] = $cutPlanVersion;
+        $initialPreview = (new MillworkQuotationCalculator)->calculate(
+            $previewInputs,
+            $settings,
+            $cutPlanVersion
+        );
 
         return view('admin.quotations.millwork.create', [
             'quotation' => $quotation,
@@ -366,8 +441,11 @@ class MillworkQuotationController extends Controller
             'linkProject' => $linkProject,
             'linkedCpq' => $linkedCpq,
             'initialPreview' => $initialPreview,
+            'cutPlanVersion' => $cutPlanVersion,
+            'builderVersion' => $cutPlanVersion,
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
             'catalog' => $settings->resolvedCatalog(),
+            'roomAreaImport' => $quotation ? null : $roomAreaImport,
         ]);
     }
 
@@ -392,17 +470,18 @@ class MillworkQuotationController extends Controller
             'client_name.required' => 'Client name is required to save a published quotation.',
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), QuotationBuildingLabor::validationMessages()));
 
-        $rawInputs = $this->gatherInputsFromRequest($request);
-        if (! $draft) {
-            $hints = (new MillworkQuotationCalculator)->validationHints($rawInputs, false);
-            if ($hints !== []) {
-                throw ValidationException::withMessages([
-                    'calculation' => implode(' ', $hints),
-                ]);
-            }
+        $rawInputs = $this->gatherInputsFromRequest($request, $existing);
+        $cutPlanVersion = $this->resolveCalcVersion($request, $existing);
+        $rawInputs['_cut_plan_version'] = $cutPlanVersion;
+        $rawInputs['_calc_version'] = $cutPlanVersion;
+
+        $messages = (new MillworkQuotationCalculator)->validationMessages($rawInputs, $draft);
+        if ($messages !== []) {
+            throw ValidationException::withMessages($messages);
         }
 
-        $calc = (new MillworkQuotationCalculator)->calculate($rawInputs);
+        $calc = (new MillworkQuotationCalculator)->calculate($rawInputs, null, $cutPlanVersion);
+        unset($rawInputs['_existing_pieces']);
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
         $workDescription = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage(
             $request->input('work_description')
@@ -415,6 +494,7 @@ class MillworkQuotationController extends Controller
             'inputs' => $rawInputs,
             'calculation' => $calc,
             'final_quote_total' => round($final, 2),
+            'cut_plan_version' => $cutPlanVersion,
         ], $this->paymentScheduleFromRequest($request));
 
         $commute = $this->commutePersistenceFromRequest($request, $existing, 'millwork_quotations');
@@ -429,7 +509,7 @@ class MillworkQuotationController extends Controller
     /**
      * @return array<string, mixed>
      */
-    protected function gatherInputsFromRequest(Request $request): array
+    protected function gatherInputsFromRequest(Request $request, ?MillworkQuotation $existing = null): array
     {
         $defaults = MillworkQuotationCalculator::defaultInputs();
         $out = $defaults;
@@ -438,13 +518,28 @@ class MillworkQuotationController extends Controller
         $out['include_install'] = $request->boolean('include_install');
         $out['include_helper'] = $request->boolean('include_helper');
         $out['client_provides_all'] = $request->boolean('client_provides_all');
+        $out['waste_pct'] = $this->boundedPct($request->input('waste_pct', $defaults['waste_pct']));
+        $out['edge_waste_pct'] = $this->boundedPct($request->input('edge_waste_pct', $defaults['edge_waste_pct']));
+        $out['finish_waste_pct'] = $this->boundedPct($request->input('finish_waste_pct', $defaults['finish_waste_pct']));
+        $out['markup_pct'] = $this->boundedPct($request->input('markup_pct', $defaults['markup_pct']));
+        $out['delivery_amount'] = round(max(0, (float) $request->input('delivery_amount', $defaults['delivery_amount'])), 2);
+        $out['spare_sheets'] = $this->postedCount($request->input('spare_sheets', $defaults['spare_sheets']));
         foreach ([
             'sheet_id', 'back_sheet_id', 'edge_banding_id', 'paint_id', 'stain_id',
             'hinge_id', 'pull_id', 'screw_id', 'nail_id', 'slide_id', 'glue_id',
+            'rod_id', 'pin_id', 'trim_id',
         ] as $key) {
-            $out[$key] = trim((string) $request->input($key, $defaults[$key]));
+            $out[$key] = trim((string) $request->input($key, $defaults[$key] ?? ''));
         }
-        $out['pieces'] = $this->piecesFromRequest($request);
+        $existingPieces = is_array($existing?->inputs['pieces'] ?? null)
+            ? $existing->inputs['pieces']
+            : [];
+        $out['pieces'] = $this->piecesFromRequest(
+            $request,
+            $existingPieces,
+            $existing !== null && $existing->cutPlanVersion() < 2
+        );
+        $out['_existing_pieces'] = $existingPieces;
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
@@ -453,32 +548,78 @@ class MillworkQuotationController extends Controller
     }
 
     /**
+     * @param  list<array<string, mixed>>  $existingPieces
      * @return list<array<string, mixed>>
      */
-    private function piecesFromRequest(Request $request): array
+    private function piecesFromRequest(Request $request, array $existingPieces = [], bool $convertLegacyEdits = false): array
     {
         $raw = $request->input('pieces', []);
         if (! is_array($raw) || $raw === []) {
             return MillworkQuotationCalculator::defaultInputs()['pieces'];
         }
         $out = [];
-        foreach ($raw as $piece) {
+        foreach (array_values($raw) as $index => $piece) {
             if (! is_array($piece)) {
                 continue;
+            }
+            $saved = is_array($existingPieces[$index] ?? null) ? $existingPieces[$index] : null;
+            $omitMissingDefaults = ($convertLegacyEdits && $saved)
+                ? $this->missingFieldsEqualRenderedDefaults($piece, $saved)
+                : [
+                    'dims' => [],
+                    'flags' => [],
+                    'counts' => [],
+                ];
+            if ($convertLegacyEdits && $saved && ! $this->pieceNormalizedSizesEqual($piece, $saved)) {
+                $piece = MillworkDimensionParser::toLegacyInchPiece($piece);
             }
             $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
             $row = MillworkQuotationCalculator::defaultPiece($type);
             $row['type'] = $type;
-            $row['qty'] = max(0, (int) ($piece['qty'] ?? 1));
+            $row['qty'] = $this->postedCount($piece['qty'] ?? 1);
             $row['unit'] = strtolower((string) ($piece['unit'] ?? 'in')) === 'ft' ? 'ft' : 'in';
+            $row['name'] = trim((string) ($piece['name'] ?? ''));
+            $row['room'] = trim((string) ($piece['room'] ?? ''));
+            $row['style'] = \App\Services\Millwork\MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
+            if (! array_key_exists('profile', $piece) && $saved && array_key_exists('profile', $saved)) {
+                $row['profile'] = \App\Services\Millwork\MillworkPartBuilder::normalizeTrimProfile((string) $saved['profile']);
+            } else {
+                $row['profile'] = \App\Services\Millwork\MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
+            }
             foreach ([
-                'width', 'height', 'depth', 'length', 'thickness',
+                'width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft',
             ] as $dim) {
-                $row[$dim] = is_numeric($piece[$dim] ?? null) ? round((float) $piece[$dim], 4) : ($piece[$dim] ?? '');
+                if (in_array($dim, $omitMissingDefaults['dims'], true)) {
+                    unset($row[$dim]);
+                    continue;
+                }
+                // Thickness has no piece-level input, so a missing key is an empty
+                // post (main writes ''). Keeping a stored thickness beside the
+                // blank dimensions the form does send builds a row that was never saved.
+                if ($dim !== 'thickness'
+                    && ! array_key_exists($dim, $piece)
+                    && $saved
+                    && array_key_exists($dim, $saved)) {
+                    $row[$dim] = $saved[$dim];
+                    $savedUnit = $dim.'_unit';
+                    if (array_key_exists($savedUnit, $saved)) {
+                        $row[$savedUnit] = $saved[$savedUnit];
+                    }
+                    continue;
+                }
+                $row[$dim] = $this->postedDimension($piece[$dim] ?? '');
+                $unitKey = $dim.'_unit';
+                if (array_key_exists($unitKey, $piece) && $piece[$unitKey] !== '' && $piece[$unitKey] !== null) {
+                    $row[$unitKey] = strtolower((string) $piece[$unitKey]) === 'ft' ? 'ft' : 'in';
+                }
             }
             foreach ([
                 'edge_banding', 'include_back', 'include_doors', 'include_toe_kick', 'same_size',
             ] as $flag) {
+                if (in_array($flag, $omitMissingDefaults['flags'], true)) {
+                    unset($row[$flag]);
+                    continue;
+                }
                 $row[$flag] = filter_var($piece[$flag] ?? false, FILTER_VALIDATE_BOOLEAN);
             }
             $row['finish'] = MillworkPartBuilder::normalizeFinish((string) ($piece['finish'] ?? 'none'));
@@ -490,25 +631,62 @@ class MillworkQuotationController extends Controller
             $row['overlay'] = MillworkPartBuilder::normalizeOverlay((string) ($piece['overlay'] ?? 'full'));
             $style = strtolower((string) ($piece['hinge_style'] ?? 'overlay'));
             $row['hinge_style'] = in_array($style, ['overlay', 'inset', 'soft_close'], true) ? $style : 'overlay';
-            foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'pull_qty'] as $intKey) {
-                $row[$intKey] = max(0, (int) ($piece[$intKey] ?? $row[$intKey]));
+            foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $intKey) {
+                if (in_array($intKey, $omitMissingDefaults['counts'], true)) {
+                    unset($row[$intKey]);
+                    continue;
+                }
+                if (! array_key_exists($intKey, $piece) && $saved && array_key_exists($intKey, $saved)) {
+                    $row[$intKey] = $saved[$intKey];
+                    continue;
+                }
+                $row[$intKey] = $this->postedCount($piece[$intKey] ?? ($row[$intKey] ?? 0));
+            }
+            if (array_key_exists('pull_qty', $piece) && $piece['pull_qty'] !== '' && $piece['pull_qty'] !== null) {
+                $row['pull_qty'] = $this->postedCount($piece['pull_qty']);
+            } else {
+                unset($row['pull_qty']);
+            }
+            if (array_key_exists('hinge_qty', $piece) && $piece['hinge_qty'] !== '' && $piece['hinge_qty'] !== null) {
+                $row['hinge_qty'] = $this->postedCount($piece['hinge_qty']);
+            } else {
+                unset($row['hinge_qty']);
             }
             $sets = [];
             foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
                 if (! is_array($set)) {
                     continue;
                 }
-                $sets[] = [
-                    'qty' => max(0, (int) ($set['qty'] ?? 0)),
-                    'length' => $set['length'] ?? '',
-                    'width' => $set['width'] ?? '',
-                    'depth' => $set['depth'] ?? '',
-                    'height' => $set['height'] ?? '',
-                    'thickness' => $set['thickness'] ?? '',
+                $setRow = [
+                    'qty' => $this->postedCount($set['qty'] ?? 0),
+                    'length' => $this->postedDimension($set['length'] ?? ''),
+                    'width' => $this->postedDimension($set['width'] ?? ''),
+                    'depth' => $this->postedDimension($set['depth'] ?? ''),
+                    'height' => $this->postedDimension($set['height'] ?? ''),
+                    'thickness' => $this->postedDimension($set['thickness'] ?? ''),
                     'unit' => strtolower((string) ($set['unit'] ?? $row['unit'])) === 'ft' ? 'ft' : 'in',
                 ];
+                foreach (['length', 'width', 'depth', 'height', 'thickness'] as $dim) {
+                    $unitKey = $dim.'_unit';
+                    if (array_key_exists($unitKey, $set) && $set[$unitKey] !== '' && $set[$unitKey] !== null) {
+                        $setRow[$unitKey] = strtolower((string) $set[$unitKey]) === 'ft' ? 'ft' : 'in';
+                    }
+                }
+                $sets[] = $setRow;
             }
             $row['sets'] = $sets !== [] ? $sets : $row['sets'];
+            $postedVersion = (isset($piece['_calc_version']) && is_numeric($piece['_calc_version']))
+                ? (int) $piece['_calc_version'] : 0;
+            $savedVersion = ($saved && isset($saved['_calc_version']) && is_numeric($saved['_calc_version']))
+                ? (int) $saved['_calc_version'] : 0;
+            $sizesMatch = $saved && $this->pieceNormalizedSizesEqual($piece, $saved);
+            if ($sizesMatch) {
+                if ($savedVersion > 0) {
+                    $row['_calc_version'] = min($savedVersion, MillworkQuotationCalculator::CALC_VERSION);
+                }
+            } elseif ($postedVersion >= MillworkQuotationCalculator::PARSING_VERSION) {
+                $row['_calc_version'] = min($postedVersion, MillworkQuotationCalculator::CALC_VERSION);
+            }
             $out[] = $row;
         }
 
@@ -577,6 +755,264 @@ class MillworkQuotationController extends Controller
         return $out;
     }
 
+    private function boundedPct($value): float
+    {
+        if (! is_numeric($value)) {
+            return 0.0;
+        }
+
+        return round(max(0, min(100, (float) $value)), 2);
+    }
+
+    /**
+     * Coerce a posted count. Never silently cap — over-max values stay so
+     * validation can show an inline error.
+     */
+    private function postedCount(mixed $value): int
+    {
+        return max(0, (int) $value);
+    }
+
+    /**
+     * Compare stored sizes, and treat a newly typed missing field as an edit.
+     * Skip a field the row never stored only when the posted value still
+     * equals the rendered default ('' or 12 for stock_length_ft). Unit
+     * dropdowns that leave the implied legacy unit stay unchanged.
+     *
+     * @param  array<string, mixed>  $posted
+     * @param  array<string, mixed>  $saved
+     */
+    private function pieceNormalizedSizesEqual(array $posted, array $saved): bool
+    {
+        $dims = ['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'];
+        foreach ($dims as $key) {
+            if ($this->keyIsPresent($saved, $key)) {
+                if ($this->normalizedDimToken($posted[$key] ?? '') !== $this->normalizedDimToken($saved[$key] ?? '')) {
+                    return false;
+                }
+            } elseif (! $this->postedEqualsRenderedDefault($key, $posted[$key] ?? '')) {
+                return false;
+            }
+            if (! $this->postedUnitMatchesSaved($posted, $saved, $key)) {
+                return false;
+            }
+        }
+
+        $savedSets = is_array($saved['sets'] ?? null) ? $saved['sets'] : [];
+        if ($savedSets === []) {
+            return true;
+        }
+
+        $postedSets = is_array($posted['sets'] ?? null) ? $posted['sets'] : [];
+        if (count($postedSets) !== count($savedSets)) {
+            return false;
+        }
+        $setFallback = $this->impliedLegacyUnit($saved, 'width');
+        foreach ($savedSets as $i => $set) {
+            if (! is_array($set)) {
+                continue;
+            }
+            $postedSet = is_array($postedSets[$i] ?? null) ? $postedSets[$i] : [];
+            foreach (['length', 'width', 'depth', 'height', 'thickness'] as $key) {
+                if ($this->keyIsPresent($set, $key)) {
+                    if ($this->normalizedDimToken($postedSet[$key] ?? '') !== $this->normalizedDimToken($set[$key] ?? '')) {
+                        return false;
+                    }
+                } elseif (! $this->postedEqualsRenderedDefault($key, $postedSet[$key] ?? '')) {
+                    return false;
+                }
+                if (! $this->postedUnitMatchesSaved($postedSet, $set, $key, $setFallback)) {
+                    return false;
+                }
+            }
+            $postedSetUnit = $this->normalizePostedUnit($postedSet['unit'] ?? null);
+            if ($this->hasStoredSizeField($set, 'unit')) {
+                if ($postedSetUnit !== $this->normalizePostedUnit($set['unit'])) {
+                    return false;
+                }
+            } elseif ($postedSetUnit !== null && $postedSetUnit !== $setFallback) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $posted
+     * @param  array<string, mixed>  $saved
+     */
+    private function postedUnitMatchesSaved(
+        array $posted,
+        array $saved,
+        string $dimKey,
+        ?string $fallbackUnit = null
+    ): bool {
+        $unitKey = $dimKey.'_unit';
+        $postedUnit = $this->normalizePostedUnit($posted[$unitKey] ?? null);
+        if ($this->hasStoredSizeField($saved, $unitKey)) {
+            return $this->normalizePostedUnit($saved[$unitKey]) === ($postedUnit ?? $this->normalizePostedUnit($saved[$unitKey]));
+        }
+        if ($postedUnit === null) {
+            return true;
+        }
+
+        return $postedUnit === $this->impliedLegacyUnit($saved, $dimKey, $fallbackUnit);
+    }
+
+    /**
+     * @param  array<string, mixed>  $saved
+     */
+    private function impliedLegacyUnit(array $saved, string $key, ?string $fallbackUnit = null): string
+    {
+        if (in_array($key, ['linear_ft', 'stock_length_ft'], true)) {
+            return 'ft';
+        }
+
+        return MillworkPartBuilder::dimUnit($saved, $key, $fallbackUnit ?? (isset($saved['unit']) ? (string) $saved['unit'] : 'in'));
+    }
+
+    private function normalizePostedUnit(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return strtolower((string) $value) === 'ft' ? 'ft' : 'in';
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function hasStoredSizeField(array $row, string $key): bool
+    {
+        return array_key_exists($key, $row) && $row[$key] !== '' && $row[$key] !== null;
+    }
+
+    /**
+     * True when the stored row has the key, including an explicit blank ('').
+     * Only a missing key is "never stored".
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function keyIsPresent(array $row, string $key): bool
+    {
+        return array_key_exists($key, $row);
+    }
+
+    /**
+     * v1 only: fields the saved row never stored (key absent), whose posted
+     * values still match the rendered default. Those stay unset so calculate()
+     * can merge calculator defaults. An explicit stored '' stays ''.
+     *
+     * @param  array<string, mixed>  $posted
+     * @param  array<string, mixed>  $saved
+     * @return array{dims: list<string>, flags: list<string>, counts: list<string>}
+     */
+    private function missingFieldsEqualRenderedDefaults(array $posted, array $saved): array
+    {
+        $dims = [];
+        foreach (['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'] as $key) {
+            if (! $this->keyIsPresent($saved, $key)
+                && $this->postedEqualsRenderedDefault($key, $posted[$key] ?? '')) {
+                $dims[] = $key;
+            }
+        }
+        $type = MillworkPartBuilder::normalizeType((string) ($saved['type'] ?? $posted['type'] ?? 'shelf'));
+        $flags = [];
+        foreach (['edge_banding', 'include_back', 'include_doors', 'include_toe_kick'] as $flag) {
+            if (! $this->keyIsPresent($saved, $flag)
+                && $this->postedEqualsRenderedFlagDefault($flag, $posted[$flag] ?? null, $type)) {
+                $flags[] = $flag;
+            }
+        }
+        $counts = [];
+        foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings'] as $key) {
+            if (! $this->keyIsPresent($saved, $key)
+                && $this->postedEqualsRenderedCountDefault($key, $posted[$key] ?? null, $type)) {
+                $counts[] = $key;
+            }
+        }
+
+        return ['dims' => $dims, 'flags' => $flags, 'counts' => $counts];
+    }
+
+    private function postedEqualsRenderedDefault(string $key, mixed $posted): bool
+    {
+        $token = $this->normalizedDimToken($posted);
+        if ($key === 'stock_length_ft') {
+            return $token === '12' || $token === '';
+        }
+
+        return $token === '';
+    }
+
+    private function postedEqualsRenderedFlagDefault(string $flag, mixed $posted, string $type): bool
+    {
+        $bool = filter_var($posted ?? false, FILTER_VALIDATE_BOOLEAN);
+        $defaults = MillworkQuotationCalculator::defaultPiece($type);
+        $effective = filter_var($defaults[$flag] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        return $bool === $effective;
+    }
+
+    private function postedEqualsRenderedCountDefault(string $key, mixed $posted, string $type): bool
+    {
+        if ($posted === null || $posted === '') {
+            return true;
+        }
+        $defaults = MillworkQuotationCalculator::defaultPiece($type);
+
+        return $this->postedCount($posted) === (int) ($defaults[$key] ?? 0);
+    }
+
+    private function normalizedDimToken(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+        if (is_int($value) || is_float($value) || (is_string($value) && is_numeric($value))) {
+            $n = (float) $value;
+            if (abs($n - round($n)) < 0.0000001) {
+                return (string) (int) round($n);
+            }
+
+            return rtrim(rtrim(sprintf('%.4F', $n), '0'), '.');
+        }
+
+        return strtolower(trim(preg_replace('/\s+/', ' ', (string) $value) ?? (string) $value));
+    }
+
+    /**
+     * Keep typed fractions as strings so the v2 builder can parse 23 1/2.
+     * Plain numbers stay numeric for stored JSON compatibility.
+     */
+    private function postedDimension(mixed $raw): float|string
+    {
+        if ($raw === null) {
+            return '';
+        }
+        if (is_int($raw) || is_float($raw)) {
+            if (! is_finite($raw) || $raw <= 0) {
+                return is_finite($raw) ? '' : (string) $raw;
+            }
+
+            return round((float) $raw, 4);
+        }
+        $s = trim((string) $raw);
+        if ($s === '') {
+            return '';
+        }
+        if (is_numeric($s) && ! preg_match('/[eE]/', $s)) {
+            $n = (float) $s;
+            if (is_finite($n) && $n > 0) {
+                return round($n, 4);
+            }
+        }
+
+        return $s;
+    }
+
     protected function autoLinkIfRequested(MillworkQuotation $quote, Request $request, array &$warnings): bool
     {
         if ($quote->isLinked() || $quote->is_draft) {
@@ -597,6 +1033,11 @@ class MillworkQuotationController extends Controller
 
             return false;
         }
+        if ($quote->hasUnplacedCutParts()) {
+            $warnings[] = MillworkQuotation::unplacedAdminMessage();
+
+            return false;
+        }
 
         try {
             DB::transaction(function () use ($project, $quote) {
@@ -613,8 +1054,12 @@ class MillworkQuotationController extends Controller
 
     protected function syncLineToProjectQuotation(ClientProject $project, MillworkQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $items = [[
-            'description' => 'Custom millwork (labor)',
+            'description' => 'Custom millwork (labour)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
             'apply_hst' => true,
         ]];
@@ -677,11 +1122,67 @@ class MillworkQuotationController extends Controller
 
     protected function appendLineToProjectQuotation(ClientProject $project, MillworkQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $this->syncLineToProjectQuotation($project, $quote);
 
         $quote->update(array_merge([
             'client_project_id' => $project->id,
             'linked_at' => now(),
         ], $this->quotationLinkClientNameAttributes($project)));
+    }
+
+    protected function resolveCalcVersion(Request $request, ?MillworkQuotation $existing): int
+    {
+        if ($request->boolean('upgrade_cut_plan')) {
+            return MillworkQuotationCalculator::CALC_VERSION;
+        }
+        if ($existing) {
+            return $existing->calcVersion();
+        }
+
+        return MillworkQuotationCalculator::CALC_VERSION;
+    }
+
+    protected function resolveCutPlanVersion(Request $request, ?MillworkQuotation $existing): int
+    {
+        return $this->resolveCalcVersion($request, $existing) >= MillworkQuotationCalculator::CUT_PLAN_VERSION
+            ? MillworkQuotationCalculator::CUT_PLAN_VERSION
+            : 1;
+    }
+
+    /**
+     * @param  array<string, mixed>  $calc
+     * @return array{was: float, now: float, was_label: string, now_label: string}|null
+     */
+    protected function recalcNoticePayload(MillworkQuotation $quote, array $calc, Request $request): ?array
+    {
+        $was = round((float) ($quote->final_quote_total ?? 0), 2);
+        $now = $this->previewTotalWithExtras((float) ($calc['summary']['grand_total'] ?? 0), $request, $quote);
+        if (abs($was - $now) < 0.01) {
+            return null;
+        }
+
+        return [
+            'was' => $was,
+            'now' => $now,
+            'was_label' => ClientProject::formatMoney($was),
+            'now_label' => ClientProject::formatMoney($now),
+        ];
+    }
+
+    protected function previewTotalWithExtras(float $grand, Request $request, ?MillworkQuotation $existing): float
+    {
+        $base = ['final_quote_total' => round($grand, 2)];
+        $commute = $this->commutePersistenceFromRequest($request, $existing, 'millwork_quotations');
+        $merged = $this->mergeCommuteIntoPersistence($base, $commute, 'final_quote_total');
+        $debris = $this->debrisRemovalPersistenceFromRequest($request, $existing, 'millwork_quotations');
+        $merged = $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
+        $additional = $this->additionalCostsPersistenceFromRequest($request, $existing, 'millwork_quotations');
+        $merged = $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
+
+        return round((float) ($merged['final_quote_total'] ?? $grand), 2);
     }
 }

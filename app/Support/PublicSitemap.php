@@ -15,7 +15,7 @@ class PublicSitemap
     public static function urls(?Collection $blogPosts = null, ?Collection $projects = null): array
     {
         $blogPosts = $blogPosts ?? BlogPost::query()
-            ->published()
+            ->indexable()
             ->orderByDesc('updated_at')
             ->get(['slug', 'updated_at']);
 
@@ -62,7 +62,63 @@ class PublicSitemap
                 'changefreq' => 'weekly',
                 'priority' => '0.85',
             ],
+            [
+                'loc' => url('/service-areas'),
+                'lastmod' => self::lastmodFromFile(config_path('service_areas.php')),
+                'changefreq' => 'monthly',
+                'priority' => '0.8',
+            ],
+            [
+                'loc' => url('/about'),
+                'lastmod' => self::lastmodFromFile(resource_path('views/site/about.blade.php')),
+                'changefreq' => 'monthly',
+                'priority' => '0.8',
+            ],
+            [
+                'loc' => url('/reviews'),
+                'lastmod' => self::lastmodFromFile(resource_path('views/site/reviews.blade.php')),
+                'changefreq' => 'monthly',
+                'priority' => '0.8',
+            ],
+            [
+                'loc' => url('/contact'),
+                'lastmod' => self::lastmodFromFile(resource_path('views/site/contact.blade.php')),
+                'changefreq' => 'monthly',
+                'priority' => '0.8',
+            ],
+            [
+                'loc' => url('/services'),
+                'lastmod' => self::lastmodFromFile(config_path('public_services.php')),
+                'changefreq' => 'monthly',
+                'priority' => '0.85',
+            ],
         ];
+
+        foreach (\App\Support\PublicServices::publishedPages() as $page) {
+            $slug = trim((string) ($page['slug'] ?? ''));
+            if ($slug === '') {
+                continue;
+            }
+            $urls[] = [
+                'loc' => url('/services/'.$slug),
+                'lastmod' => self::lastmodFromFile(config_path('public_services.php')),
+                'changefreq' => 'monthly',
+                'priority' => '0.85',
+            ];
+        }
+
+        foreach (\App\Support\ServiceAreas::publishedPages() as $page) {
+            $slug = trim((string) ($page['slug'] ?? ''));
+            if ($slug === '') {
+                continue;
+            }
+            $urls[] = [
+                'loc' => url('/service-areas/'.$slug),
+                'lastmod' => self::lastmodFromFile(config_path('service_areas.php')),
+                'changefreq' => 'monthly',
+                'priority' => '0.8',
+            ];
+        }
 
         foreach ($blogPosts as $post) {
             $updated = $post->updated_at;

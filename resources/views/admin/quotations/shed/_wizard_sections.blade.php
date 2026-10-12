@@ -13,7 +13,10 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Shed type</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Roof shape drives rafter and roofing takeoff. Lean-to against a house is treated as attached.']) Style</label>
+      <span class="admin-label-with-tip">
+  <label>Style</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Roof shape drives rafter and roofing takeoff. Lean-to against a house is treated as attached.', 'tipLabel' => 'Style'])
+</span>
       <div class="sh-choice-grid">
         @foreach (ShedQuotationCalculator::SHED_TYPES as $key => $label)
           <label class="sh-choice">
@@ -38,12 +41,20 @@
   </div>
 </details>
 
-<details class="br-acc admin-card" data-br-step="size">
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Size</summary>
+<details class="br-acc admin-card" data-br-step="size" data-qh-step="2">
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">{{ ++$step }}</span> Size
+    @include('admin.partials.quotation_price_config_gear', [
+      'url' => route('admin.quotations.shed.price-configuration', request()->filled('project') ? ['project' => (int) request('project')] : []),
+    ])
+  </summary>
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
-        <label for="sh-length">@include('admin.partials.info_tip', ['text' => 'Outside length of the floor. Max without a permit: '.ShedQuotationCalculator::permitExemptMaxLabel().'.']) Length (ft)</label>
+        <span class="admin-label-with-tip">
+        <label for="sh-length">Length (ft)</label>
+        @include('admin.partials.info_tip', ['tipText' => 'Outside length of the floor. Max without a permit: '.ShedQuotationCalculator::permitExemptMaxLabel().'.', 'tipLabel' => 'Length (ft)'])
+      </span>
         <input type="number" min="0" step="0.1" class="admin-input sh-preview" id="sh-length" name="length_ft"
                value="{{ $shVal('length_ft') }}">
       </div>
@@ -53,12 +64,15 @@
                value="{{ $shVal('width_ft') }}">
       </div>
       <div class="admin-form-group">
-        <label for="sh-height">@include('admin.partials.info_tip', ['text' => 'Eave wall height. Default 8 ft.']) Wall height (ft)</label>
+        <label for="sh-height">Wall height (ft)</label>
         <input type="number" min="4" max="16" step="0.25" class="admin-input sh-preview" id="sh-height" name="wall_height_ft"
                value="{{ $shVal('wall_height_ft', 8) }}">
       </div>
       <div class="admin-form-group">
-        <label for="sh-pitch">@include('admin.partials.info_tip', ['text' => 'Rise per 12 inches of run. Steeper roofs use more shingles and rafters.']) Pitch</label>
+        <span class="admin-label-with-tip">
+        <label for="sh-pitch">Pitch</label>
+        @include('admin.partials.info_tip', ['tipText' => 'Rise per 12 inches of run. Steeper roofs use more shingles and rafters.', 'tipLabel' => 'Pitch'])
+      </span>
         <select class="admin-input sh-preview" id="sh-pitch" name="roof_pitch">
           @foreach ([4, 5, 6, 8, 10, 12] as $p)
             <option value="{{ $p }}" @selected((int) $shVal('roof_pitch', 6) === $p)>{{ $p }}/12</option>
@@ -66,12 +80,18 @@
         </select>
       </div>
       <div class="admin-form-group">
-        <label for="sh-overhang">@include('admin.partials.info_tip', ['text' => 'Eave overhang on all sides. Adds fascia, drip edge, and roof area.']) Overhang (in)</label>
+        <span class="admin-label-with-tip">
+        <label for="sh-overhang">Overhang (in)</label>
+        @include('admin.partials.info_tip', ['tipText' => 'Eave overhang on all sides. Adds fascia, drip edge, and roof area.', 'tipLabel' => 'Overhang (in)'])
+      </span>
         <input type="number" min="0" max="24" step="1" class="admin-input sh-preview" id="sh-overhang" name="overhang_in"
                value="{{ $shVal('overhang_in', 12) }}">
       </div>
       <div class="admin-form-group">
-        <label>@include('admin.partials.info_tip', ['text' => 'Detached, one-storey, storage-only sheds can be up to '.ShedQuotationCalculator::permitExemptMaxLabel().' without a building permit.']) Area</label>
+        <span class="admin-label-with-tip">
+          <label>Area</label>
+          @include('admin.partials.info_tip', ['tipText' => 'Detached, one-storey, storage-only sheds can be up to '.ShedQuotationCalculator::permitExemptMaxLabel().' without a building permit.', 'tipLabel' => 'Area'])
+        </span>
         <p class="sh-area-readout" id="sh-area-readout">—</p>
       </div>
     </div>
@@ -86,7 +106,10 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Foundation</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Pad = poured slab. Piles = helical. Skids = PT 6x6. Blocks = deck blocks.']) Type</label>
+      <span class="admin-label-with-tip">
+  <label>Type</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Pad = poured slab. Piles = helical. Skids = PT 6x6. Blocks = deck blocks.', 'tipLabel' => 'Type'])
+</span>
       <div class="sh-choice-grid">
         @foreach (ShedQuotationCalculator::FOUNDATIONS as $key => $label)
           <label class="sh-choice">
@@ -110,20 +133,28 @@
       </div>
     </div>
     <div class="admin-form-group" id="sh-found-piles" hidden>
-      <label for="sh-piles">@include('admin.partials.info_tip', ['text' => 'Leave blank to auto-count from size (~8 ft grid, min 4).']) Helical piles</label>
+      <span class="admin-label-with-tip">
+        <label for="sh-piles">Helical piles</label>
+        @include('admin.partials.info_tip', ['tipText' => 'Leave blank to auto-count from size (~8 ft grid, min 4).', 'tipLabel' => 'Helical piles'])
+      </span>
       <input type="number" min="0" step="1" class="admin-input sh-preview" id="sh-piles" name="pile_qty"
              placeholder="Auto" value="{{ $shVal('pile_qty') }}">
     </div>
     <div class="admin-form-group" id="sh-found-skids" hidden>
-      <label for="sh-skids">@include('admin.partials.info_tip', ['text' => 'Leave blank to auto-count from width.']) PT skids</label>
+      <span class="admin-label-with-tip">
+        <label for="sh-skids">PT skids</label>
+        @include('admin.partials.info_tip', ['tipText' => 'Leave blank to auto-count from width.', 'tipLabel' => 'PT skids'])
+      </span>
       <input type="number" min="0" step="1" class="admin-input sh-preview" id="sh-skids" name="skid_qty"
              placeholder="Auto" value="{{ $shVal('skid_qty') }}">
     </div>
     <div class="admin-form-group" id="sh-found-blocks" hidden>
-      <label for="sh-blocks">@include('admin.partials.info_tip', ['text' => 'Blocks sit in excavated holes on a 3/4" gravel bed for drainage. Leave blank to auto-count from size (~4 ft grid).']) Deck blocks</label>
+      <span class="admin-label-with-tip">
+        <label for="sh-blocks">Deck blocks</label>
+        @include('admin.partials.info_tip', ['tipText' => 'Blocks sit in excavated holes on a 3/4" gravel bed for drainage. Leave blank to auto-count from size (~4 ft grid). Labor includes digging each hole and setting the block. Materials include one 3/4" gravel bag under each block.', 'tipLabel' => 'Deck blocks'])
+      </span>
       <input type="number" min="0" step="1" class="admin-input sh-preview" id="sh-blocks" name="block_qty"
              placeholder="Auto" value="{{ $shVal('block_qty') }}">
-      <p class="admin-form-help">Labor includes digging each hole and setting the block. Materials include one 3/4" gravel bag under each block.</p>
     </div>
     @include('admin.partials.checkbox', [
       'name' => 'include_site_level',
@@ -141,7 +172,10 @@
   <div class="br-acc__body">
     <div class="admin-form-grid-2">
       <div class="admin-form-group">
-        <label>@include('admin.partials.info_tip', ['text' => 'Floor joists. 2x6 is typical for sheds over 8 ft wide.']) Joists</label>
+        <span class="admin-label-with-tip">
+  <label>Joists</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Floor joists. 2x6 is typical for sheds over 8 ft wide.', 'tipLabel' => 'Joists'])
+</span>
         <div class="sh-choice-grid sh-choice-grid--2">
           <label class="sh-choice"><input type="radio" name="joist_size" value="2x4" class="sh-preview" @checked($shVal('joist_size', '2x6') === '2x4')><span>2x4</span></label>
           <label class="sh-choice"><input type="radio" name="joist_size" value="2x6" class="sh-preview" @checked($shVal('joist_size', '2x6') === '2x6')><span>2x6</span></label>
@@ -163,7 +197,10 @@
         </div>
       </div>
       <div class="admin-form-group">
-        <label>@include('admin.partials.info_tip', ['text' => 'Wall studs. Use 2x6 when insulating for a finished interior.']) Wall studs</label>
+        <span class="admin-label-with-tip">
+  <label>Wall studs</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Wall studs. Use 2x6 when insulating for a finished interior.', 'tipLabel' => 'Wall studs'])
+</span>
         <div class="sh-choice-grid sh-choice-grid--2">
           <label class="sh-choice"><input type="radio" name="stud_size" value="2x4" class="sh-preview" @checked($shVal('stud_size', '2x4') === '2x4')><span>2x4</span></label>
           <label class="sh-choice"><input type="radio" name="stud_size" value="2x6" class="sh-preview" @checked($shVal('stud_size', '2x4') === '2x6')><span>2x6</span></label>
@@ -193,7 +230,10 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Roof</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips covering. House wrap or weather coat protect the deck until a finish roof. Finish roofs include underlayment, ice & water, drip edge, and ridge vent.']) Covering</label>
+      <span class="admin-label-with-tip">
+  <label>Covering</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Not now skips covering. House wrap or weather coat protect the deck until a finish roof. Finish roofs include underlayment, ice & water, drip edge, and ridge vent.', 'tipLabel' => 'Covering'])
+</span>
       <div class="sh-choice-grid">
         @foreach (ShedQuotationCalculator::ROOF as $key => $label)
           <label class="sh-choice">
@@ -218,7 +258,10 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Siding</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Not now skips siding. House wrap or weather coat protect the walls until finish siding. Finish siding includes house wrap and corner trim.']) Material</label>
+      <span class="admin-label-with-tip">
+  <label>Material</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Not now skips siding. House wrap or weather coat protect the walls until finish siding. Finish siding includes house wrap and corner trim.', 'tipLabel' => 'Material'])
+</span>
       <div class="sh-choice-grid">
         @foreach (ShedQuotationCalculator::SIDING as $key => $label)
           <label class="sh-choice">
@@ -295,7 +338,10 @@
   <summary class="br-acc__summary"><span class="br-acc__num">{{ ++$step }}</span> Interior finish</summary>
   <div class="br-acc__body">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Rough = shell only. Finished adds insulation, vapor barrier, and drywall. May affect the permit exemption.']) Finish</label>
+      <span class="admin-label-with-tip">
+  <label>Finish</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Rough = shell only. Finished adds insulation, vapor barrier, and drywall. May affect the permit exemption.', 'tipLabel' => 'Finish'])
+</span>
       <div class="sh-choice-grid sh-choice-grid--2">
         <label class="sh-choice">
           <input type="radio" name="interior_finish" value="rough" class="sh-preview" @checked($shVal('interior_finish', 'rough') === 'rough')>

@@ -13,6 +13,7 @@
     <div class="admin-card admin-card--narrow cp-edit-project-form-card">
     <form id="portfolio-create-form" action="{{ route('admin.portfolio.store') }}" method="post" enctype="multipart/form-data">
       @csrf
+      @include('admin.partials.once_submit')
       <input type="hidden" name="portfolio_ai_history_key" value="{{ $portfolioAiHistoryKey }}">
       <div class="admin-form-group">
         <label for="title">Title</label>
@@ -35,12 +36,14 @@
       @endphp
       <div class="admin-form-group">
         <div class="admin-form-group__label-row">
-          <span class="admin-form-group-label">Categories</span>
+          <span class="admin-form-group-label">
+            Categories
+            <x-admin.info-tip label="Categories">Select all that apply (e.g. tile and wood).</x-admin.info-tip>
+          </span>
           <a href="{{ route('admin.categories.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm" title="Manage portfolio categories">
             <i class="fa fa-cog" aria-hidden="true"></i> Configure
           </a>
         </div>
-        <p class="admin-form-help" style="margin-top:0;margin-bottom:0.65rem;">Select all that apply (e.g. tile and wood).</p>
         @include('admin.partials.portfolio_category_ai')
         <div class="admin-category-checkboxes" id="portfolio-category-checkboxes">
           @foreach ($categories as $cat)
@@ -58,14 +61,7 @@
           <div class="admin-form-error">{{ $message }}</div>
         @enderror
       </div>
-      <div class="admin-form-group">
-        <label for="completed_on">Completed on</label>
-        <input class="admin-input" type="date" id="completed_on" name="completed_on" value="{{ old('completed_on', now()->toDateString()) }}" required>
-        <p class="admin-form-help">When the work was finished (used to order projects on the site — newest completion first).</p>
-        @error('completed_on')
-          <div class="admin-form-error">{{ $message }}</div>
-        @enderror
-      </div>
+      @include('admin.partials.portfolio_town_and_completed')
       @php
         $portfolioWebp = \App\Services\ProjectPhotoWebpStorage::portfolioEncodingSettings();
       @endphp
@@ -99,7 +95,7 @@
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Portfolio form actions">
-      <button type="submit" form="portfolio-create-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="portfolio-create-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-check"></i> Save project
       </button>
       <a href="{{ route('admin.portfolio.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>

@@ -35,9 +35,11 @@
 
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
-          <label for="usr-password">New password</label>
+          <span class="admin-label-with-tip">
+            <label for="usr-password">New password</label>
+            <x-admin.info-tip label="New password">Leave blank to keep the current password.</x-admin.info-tip>
+          </span>
           <input class="admin-input" type="password" id="usr-password" name="password" autocomplete="new-password">
-          <p class="admin-form-help">Leave blank to keep the current password.</p>
           @error('password') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group">
@@ -47,7 +49,7 @@
       </div>
 
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save changes</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save changes</button>
         <a href="{{ route('admin.users.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

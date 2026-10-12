@@ -19,63 +19,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Structured data — geo (business pin in Beckwith)
+    | Structured data — geo
     |--------------------------------------------------------------------------
+    | Exact pin coordinates removed per service-area business guidelines.
+    | Do not publish a street address, postal code, or precise geo pin.
+    |
+    | Visible service-area sentence — same wording as the home location blurb.
+    | Do not invent shorter pairings (e.g. "Ottawa or Gatineau") in new UI.
     */
-    'latitude' => 45.120446,
-    'longitude' => -76.0081985,
+    'service_area_text' => 'Based in Carleton Place, we proudly serve Perth, Smiths Falls, Lanark County, the Ottawa region, and Gatineau.',
 
     /*
     |--------------------------------------------------------------------------
     | areaServed (verbatim list for JSON-LD)
     |--------------------------------------------------------------------------
+    | Names only — must match places named in service_area_text. Do not add
+    | neighbourhoods or towns that are not in that sentence.
     */
     'area_served' => [
-        ['@type' => 'City', 'name' => 'Ottawa'],
         ['@type' => 'City', 'name' => 'Carleton Place'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Centretown'],
-        ['@type' => 'AdministrativeArea', 'name' => 'The Glebe'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Old Ottawa South'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Old Ottawa East'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Sandy Hill'],
-        ['@type' => 'AdministrativeArea', 'name' => 'ByWard Market'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Lowertown'],
-        ['@type' => 'AdministrativeArea', 'name' => 'New Edinburgh'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Westboro'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Wellington Village'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Hintonburg'],
-        ['@type' => 'City', 'name' => 'Kanata'],
-        ['@type' => 'City', 'name' => 'Stittsville'],
-        ['@type' => 'City', 'name' => 'Barrhaven'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Bells Corners'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Centrepointe'],
-        ['@type' => 'City', 'name' => 'Orléans'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Beacon Hill'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Blackburn Hamlet'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Vanier'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Rockcliffe Park'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Riverside South'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Hunt Club'],
-        ['@type' => 'City', 'name' => 'Manotick'],
-        ['@type' => 'City', 'name' => 'Carp'],
-        ['@type' => 'City', 'name' => 'Dunrobin'],
-        ['@type' => 'City', 'name' => 'Greely'],
-        ['@type' => 'City', 'name' => 'Metcalfe'],
-        ['@type' => 'City', 'name' => 'Osgoode'],
-        ['@type' => 'City', 'name' => 'Richmond'],
-        ['@type' => 'City', 'name' => 'Almonte'],
-        ['@type' => 'City', 'name' => 'Ashton'],
-        ['@type' => 'City', 'name' => 'Beckwith'],
         ['@type' => 'City', 'name' => 'Perth'],
         ['@type' => 'City', 'name' => 'Smiths Falls'],
-        ['@type' => 'City', 'name' => 'Arnprior'],
-        ['@type' => 'City', 'name' => 'Innisville'],
-        ['@type' => 'City', 'name' => 'Lanark'],
-        ['@type' => 'City', 'name' => 'Pakenham'],
-        ['@type' => 'City', 'name' => 'Franktown'],
-        ['@type' => 'City', 'name' => 'Balderson'],
-        ['@type' => 'City', 'name' => 'Middleville'],
+        ['@type' => 'AdministrativeArea', 'name' => 'Lanark County'],
+        ['@type' => 'Place', 'name' => 'Ottawa region'],
+        ['@type' => 'City', 'name' => 'Gatineau'],
     ],
+
+    /*
+    | Filtered /blog?tag= and /blog?category= stay noindex until this many
+    | posts are published. /blog?q= is always noindex.
+    */
+    'blog_filter_index_min_posts' => (int) env('SEO_BLOG_FILTER_INDEX_MIN_POSTS', 8),
 
     /*
     |--------------------------------------------------------------------------
@@ -93,21 +67,21 @@ return [
         'Hardwood flooring installation',
         'Drywall',
         'Wood staircase refinishing',
+        'Kitchen remodeling',
         'Ontario Building Code O.Reg. 332/12',
         'Part 9 housing and small buildings',
-        'WSIB clearance certificate',
     ],
 
-    'liability_insurance' => '$3 million',
+    'liability_insurance' => 'Fully insured',
 
     /*
     |--------------------------------------------------------------------------
     | Short, quotable homepage summary (WebPage + visible intro for AI/SEO)
     |--------------------------------------------------------------------------
     */
-    'home_summary' => 'Zanini Renovations is a licensed carpenter and home renovation contractor based in Carleton Place, serving Ottawa and surrounding Ontario communities. We provide finish carpentry, rough carpentry, custom millwork, decks, basement framing, trim, fencing, flooring, drywall, and staircase work—with $3 million general liability insurance, WSIB clearance, and O.Reg. 332/12 compliant practices.',
+    'home_summary' => 'Zanini Renovations is a fully insured carpentry and renovation business based in Carleton Place, Ontario, since 2020. Decks, fences and gates, basement finishing, finish carpentry and trim, custom built-ins and closets, staircases, drywall and flooring.',
 
-    'home_title' => 'Carpenter & Renovation Contractor – Carleton Place & Ottawa | Zanini Renovations',
+    'home_title' => 'Carpenter & Renovation Contractor in Carleton Place | Zanini',
 
     'google_business_url' => env('SEO_GOOGLE_BUSINESS_URL') ?: 'https://maps.google.com/?cid=7676669856408637146',
 
@@ -121,15 +95,15 @@ return [
     'home_faq' => [
         [
             'question' => 'What renovation and carpentry services does Zanini Renovations offer?',
-            'answer' => 'We offer residential carpentry and renovation services including decks and outdoor living, fencing, basement framing and finishing, interior trim and moulding, custom built-ins and shelving, hardwood flooring, drywall, accent walls and wainscoting, and wood staircase refinishing. Projects are completed by a licensed and insured contractor.',
+            'answer' => 'We offer residential carpentry and renovation services including decks and outdoor living, fencing, basement framing and finishing, interior trim and moulding, custom built-ins and shelving, hardwood flooring, drywall, accent walls and wainscoting, wood staircase refinishing, and kitchen remodels. Projects are completed by a fully insured contractor.',
         ],
         [
             'question' => 'What areas does Zanini Renovations serve?',
-            'answer' => 'We are based in Carleton Place, Ontario and serve Ottawa, Kanata, Barrhaven, Orléans, Stittsville, Perth, Smiths Falls, and communities across the National Capital Region and Lanark County.',
+            'answer_from' => 'service_area_text',
         ],
         [
             'question' => 'Is Zanini Renovations fully insured for residential work?',
-            'answer' => 'Yes. Zanini Renovations carries $3 million in general liability insurance, ensuring your home and project are fully protected. All of our work strictly adheres to the Ontario Building Code (O.Reg. 332/12) requirements for Part 9 housing and small buildings, delivering structural integrity and professional craftsmanship you can trust.',
+            'answer' => 'Yes. Zanini Renovations is fully insured, ensuring your home and project are protected. All of our work strictly adheres to the Ontario Building Code (O.Reg. 332/12) requirements for Part 9 housing and small buildings, delivering structural integrity and professional craftsmanship you can trust.',
         ],
         [
             'question' => 'How do I get a quote for a renovation or carpentry project?',

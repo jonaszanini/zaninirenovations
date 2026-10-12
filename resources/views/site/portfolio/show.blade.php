@@ -60,10 +60,13 @@
                     data-gallery='@json($galleryUrls)'
                     aria-label="Open photo {{ $loop->iteration }} of {{ $project->photos->count() }}"
                   >
+                    @php $photoDims = $photo->dimensions(); @endphp
                     <img
                       src="{{ $photo->url() }}"
                       alt="{{ $project->title }} — photo {{ $loop->iteration }}"
-                      @if ($loop->first) loading="eager" @else loading="lazy" decoding="async" @endif
+                      @if ($photoDims) width="{{ $photoDims['width'] }}" height="{{ $photoDims['height'] }}" @endif
+                      @if ($loop->first) loading="eager" @else loading="lazy" @endif
+                      decoding="async"
                     >
                   </button>
                 @endforeach
@@ -75,6 +78,9 @@
               <p class="single-post-meta">
                 @if ($project->categoryLabel() !== '—')
                   <i class="fa fa-tag"></i> {{ $project->categoryLabel() }}
+                @endif
+                @if ($project->townLabel() !== '')
+                  &nbsp;<i class="fa fa-map-marker"></i> {{ $project->townLabel() }}
                 @endif
                 @if ($project->completed_on)
                   &nbsp;<i class="fa fa-calendar"></i> {{ $project->completed_on->format('F j, Y') }}
@@ -96,6 +102,12 @@
           <div class="widget site-sidebar portfolio-page-sidebar">
             <h2 class="widget-title">Project details</h2>
             <ul class="widget-post-category clearfix">
+              @if ($project->townLabel() !== '')
+                <li>
+                  Town
+                  <span class="pull-right">{{ $project->townLabel() }}</span>
+                </li>
+              @endif
               <li>
                 Category
                 <span class="pull-right">{{ $project->categoryLabel() }}</span>
@@ -140,7 +152,7 @@
           </p>
         </div>
         <div class="col-lg-3 col-md-3 col-sm-12 col-xs-12 text-center">
-          <a class="btn btn-theme btn-square btn-theme-invert" href="{{ url('/#contact-location') }}">Contact us</a>
+          <a class="btn btn-theme btn-square btn-theme-invert" href="{{ url('/contact') }}">Contact us</a>
         </div>
       </div>
     </div>

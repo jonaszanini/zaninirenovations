@@ -1,0 +1,152 @@
+<?php
+
+namespace Tests\Unit\Views;
+
+use Tests\TestCase;
+
+class AdminDarkThemeCoverageTest extends TestCase
+{
+    public function test_stat_tile_tokens_exist_in_light_and_dark_css(): void
+    {
+        $light = file_get_contents(public_path('css/admin.css'));
+        $dark = file_get_contents(public_path('css/admin-dark.css'));
+        $this->assertNotFalse($light);
+        $this->assertNotFalse($dark);
+
+        foreach ([
+            '--admin-stat-tile-bg',
+            '--admin-stat-tile-border',
+            '--admin-stat-highlight-bg',
+            '--admin-stat-highlight-border',
+            '--admin-info-tile-bg',
+            '--admin-info-tile-border',
+            '--admin-warn-tile-bg',
+            '--admin-warn-tile-border',
+            '--admin-warn-tile-text',
+        ] as $token) {
+            $this->assertStringContainsString($token, $light, "Light tokens missing {$token}");
+            $this->assertStringContainsString($token, $dark, "Dark tokens missing {$token}");
+        }
+    }
+
+    public function test_hourly_summary_tiles_use_shared_tokens(): void
+    {
+        $css = file_get_contents(public_path('css/admin-client-projects.css'));
+        $this->assertNotFalse($css);
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.cp-hourly-summary-tile\s*\{[^}]*background:\s*#f9fafb/i',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.cp-hourly-summary-tile\s*\{[^}]*background:\s*var\(--admin-stat-tile-bg\)/i',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.cp-hourly-summary-value\s*\{[^}]*color:\s*var\(--admin-heading\)/i',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.cp-hourly-summary-tile--highlight\s*\{[^}]*background:\s*var\(--admin-stat-highlight-bg\)/i',
+            $css
+        );
+    }
+
+    public function test_admin_dark_css_covers_remaining_surfaces(): void
+    {
+        $dark = file_get_contents(public_path('css/admin-dark.css'));
+        $this->assertNotFalse($dark);
+
+        foreach ([
+            'html.admin-dark .cp-hourly-summary-tile',
+            'html.admin-dark .cp-profit-tile--highlight',
+            'html.admin-dark .cp-invoice-bill-to',
+            'html.admin-dark .admin-btn--primary:disabled',
+            'html.admin-dark .asp__panel',
+            'html.admin-dark .q-commute-metric',
+            'html.admin-dark .pt-step-card',
+            'html.admin-dark .util-ps-diagram',
+            'html.admin-dark .fq-badge',
+            'html.admin-dark .pq-hint',
+            'html.admin-dark .pt-readiness',
+            'html.admin-dark .gf-total-tile__value--success',
+            'html.admin-dark .admin-btn--success',
+            'html.admin-dark .et-chip',
+            'html.admin-dark .et-chip--paid',
+            'html.admin-dark .et-card__warning',
+            'html.admin-dark .et-card__record-note',
+            'html.admin-dark .et-card',
+            'html.admin-dark .et-paste-advanced',
+            'html.admin-dark .et-paste-advanced > summary',
+            'html.admin-dark .dash-etransfer-today',
+            'html.admin-dark .util-lb-offcut-used',
+            'html.admin-dark .util-lb-sheet-group',
+            'html.admin-dark .util-oc-pill',
+            'html.admin-dark .util-oc-card',
+            'html.admin-dark .util-ra-full-header',
+            'html.admin-dark .util-ra-full-header__name',
+            'html.admin-dark .util-ra--fullpage .util-ra-side',
+            'html.admin-dark .util-ra-sheet-handle__bar',
+            'html.admin-dark .util-ra--fullpage .util-ra-canvas-card',
+            'html.admin-dark .util-ra-help-pop',
+            'html.admin-dark .util-ra-unit-system',
+            'html.admin-dark .util-ra-templates-pop',
+            'html.admin-dark .util-ra-more-sheet',
+            'html.admin-dark .util-ra-phone-bar',
+            'html.admin-dark .util-ra--fullpage .util-ra-phone-bar.is-overflowing::after',
+            'html.admin-dark .util-ra-more-block__title',
+            'html.admin-dark .util-ra-sheet-strip',
+            'html.admin-dark .util-ra-first-tip',
+            'html.admin-dark .util-ra-guide',
+            'html.admin-dark .util-ra-guide__body',
+            'html.admin-dark .util-ra-guide__samples',
+            'html.admin-dark .util-ra-finish',
+            'html.admin-dark .util-ra-kits',
+            'html.admin-dark .util-ra-kit',
+            'html.admin-dark .admin-filters-accordion .bp-list-filters',
+            'html.admin-dark .bp-list-cat__more',
+            'html.admin-dark .bp-status-badge',
+            'html.admin-dark .qh',
+            'html.admin-dark .admin-content a:not(.admin-btn):not(.bp-list-tab):not(.bp-list-post__title-link):not([class*="btn"]):not([class*="nav"])',
+            'html.admin-dark .admin-toast__card',
+            'html.admin-dark .admin-toast--success',
+            'html.admin-dark .admin-toast--error',
+            'html.admin-dark .admin-toast--warning',
+            'html.admin-dark input[type="date"]',
+            'html.admin-dark input[type="time"]',
+            'html.admin-dark input[type="datetime-local"]',
+        ] as $selector) {
+            $this->assertStringContainsString($selector, $dark, "Missing dark rule {$selector}");
+        }
+
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-toast__card\s*\{[^}]*opacity:\s*1/s',
+            $dark,
+            'Dark toast card must be opaque'
+        );
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-toast--success\s*\{[^}]*opacity:\s*1/s',
+            $dark
+        );
+        $this->assertMatchesRegularExpression(
+            '/html\.admin-dark \.admin-toast--error\s*\{[^}]*opacity:\s*1/s',
+            $dark
+        );
+
+        $this->assertStringNotContainsString(
+            'html.admin-dark .admin-content a:not(.admin-btn):not([class*="btn"]):not([class*="nav"]) {',
+            $dark
+        );
+        $this->assertStringContainsString(
+            'html.admin-dark .admin-content a.bp-list-post__title-link',
+            $dark
+        );
+    }
+
+    public function test_dark_mode_audit_script_is_in_the_repo(): void
+    {
+        $this->assertFileExists(base_path('dark-mode-audit.js'));
+        $this->assertFileExists(base_path('screenshot-all.js'));
+        $this->assertFileExists(base_path('docs/DARK_MODE_AUDIT.md'));
+    }
+}
