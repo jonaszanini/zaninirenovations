@@ -51,8 +51,10 @@
            aria-controls="q-building-expandable"
            @checked($checked)>
     <span class="cp-visit-toggle__control" aria-hidden="true"></span>
-    @include('admin.partials.info_tip', ['text' => 'For condominiums and multi-unit residential or commercial buildings. Adds a labour surcharge for elevator, parking, and loading-bay access. Hidden from the client PDF — folded into labour.'])
-    <span class="cp-visit-toggle__label">Building extra labour</span>
+    <span class="cp-visit-toggle__label cp-label-with-hint">
+      Building extra labour
+      @include('admin.partials.info_tip', ['text' => 'For condominiums and multi-unit residential or commercial buildings. Adds a labour surcharge for elevator, parking, and loading-bay access. Hidden from the client PDF — folded into labour.'])
+    </span>
   </label>
 
   <div id="q-building-expandable"
@@ -94,7 +96,11 @@
 <style>
   .q-building-card { margin-bottom: 16px; }
   .q-building-card .cp-visit-toggle { min-height: 44px; }
-  .q-building-card .cp-visit-toggle .admin-info-tip { margin: -10px -14px -10px -8px; }
+  .q-building-card .cp-visit-toggle__label .admin-info-tip {
+    margin: -10px -6px -10px 0;
+    text-transform: none;
+    letter-spacing: normal;
+  }
   .q-building-card .cp-visit-expandable.is-open.is-settled .cp-visit-expandable__inner { overflow: visible; }
   .q-building-percent-wrap {
     display: flex;
