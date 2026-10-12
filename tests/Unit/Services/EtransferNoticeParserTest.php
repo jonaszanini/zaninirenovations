@@ -140,4 +140,325 @@ TXT;
         $this->assertNull($parsed['message']);
         $this->assertSame(100.00, $parsed['amount']);
     }
+
+    public function test_scotiabank_deposit_own_address_is_not_sender_email(): void
+    {
+        $text = <<<'TXT'
+Your funds have been deposited
+
+$2,260.00 CAD from Zohar Barak has been automatically deposited into your account at Scotiabank at zaninirenovations@gmail.com.
+
+Message: invoice #INV-2026-0257
+
+Reference Number: CAZOHAROWN001
+
+October 8, 2026
+TXT;
+
+        $parsed = $this->parser->parse($text);
+
+        $this->assertSame('Zohar Barak', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+        $this->assertSame(2260.00, $parsed['amount']);
+        $this->assertSame('invoice #INV-2026-0257', $parsed['message']);
+    }
+
+    public function test_payer_email_is_kept_when_own_deposit_address_is_also_present(): void
+    {
+        $text = <<<'TXT'
+Malcolm Travis sent you $379.61 CAD
+
+The money has been automatically deposited into your account at Scotiabank at zaninirenovations@gmail.com.
+
+Sender's email: malcolm.travis@example.com
+
+Message: kitchen balance
+
+Reference Number: CAMALCOLM001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
+        $this->assertSame(379.61, $parsed['amount']);
+    }
+
+    public function test_normalize_sender_email_rejects_business_inbox(): void
+    {
+        $this->assertNull($this->parser->normalizeSenderEmail('zaninirenovations@gmail.com'));
+        $this->assertNull($this->parser->normalizeSenderEmail(' notify@payments.interac.ca '));
+        $this->assertSame('payer@example.com', $this->parser->normalizeSenderEmail('Payer@example.com'));
+    }
+
+    public function test_destination_pattern_filter_skips_bank_at_email(): void
+    {
+        $line = '$379.61 CAD from Malcolm Travis has been automatically deposited into your account at Scotiabank at dest-only@example.net.';
+
+        $this->assertSame(['dest-only@example.net'], $this->parser->destinationPatternEmails($line));
+
+        $text = <<<TXT
+Malcolm Travis sent you \$379.61 CAD
+{$line}
+Reference Number: CADESTONLY001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_deposit_address_strip_removes_destination_email(): void
+    {
+        $text = <<<'TXT'
+Pat Lee sent you $50.00 CAD
+Credit posted to your account at Scotiabank at strip-only@example.net.
+Reference Number: CASTRIPONLY001
+TXT;
+
+        $this->assertSame([], $this->parser->destinationPatternEmails($text));
+        $this->assertSame([], $this->parser->depositLineEmails($text));
+        $this->assertStringNotContainsString(
+            'strip-only@example.net',
+            $this->parser->stripDepositDestinationEmails($text)
+        );
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Pat Lee', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_deposit_line_filter_catches_email_destination_regex_misses(): void
+    {
+        $line = 'Funds have been deposited into your account at Scotiabank. Write line-only@example.net';
+
+        $this->assertSame([], $this->parser->destinationPatternEmails($line));
+        $this->assertSame(['line-only@example.net'], $this->parser->depositLineEmails($line));
+
+        $text = <<<TXT
+Pat Lee sent you \$50.00 CAD
+{$line}
+Reference Number: CALINEONLY001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Pat Lee', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_forwarded_unconfigured_alias_is_not_sender_email(): void
+    {
+        $text = <<<'TXT'
+From: Forward Desk <alias@forwarded.example>
+To: inbox@forwarded.example
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAFWDALIAS001
+TXT;
+
+        $this->assertStringNotContainsString(
+            'alias@forwarded.example',
+            $this->parser->stripForwardedHeaderLines($text)
+        );
+        $this->assertStringNotContainsString(
+            'inbox@forwarded.example',
+            $this->parser->stripForwardedHeaderLines($text)
+        );
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_payer_email_is_kept_when_forwarded_headers_are_present(): void
+    {
+        $text = <<<'TXT'
+From: alias@forwarded.example
+To: inbox@forwarded.example
+Malcolm Travis sent you $379.61 CAD
+Sender's email: malcolm.travis@example.com
+Reference Number: CAFWDPAYER001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
+    }
+
+    public function test_french_quoted_and_outlook_forwarded_headers_are_stripped(): void
+    {
+        $text = <<<'TXT'
+De : Alias Desk <alias@forwarded.example>
+À : inbox@forwarded.example
+> From: quoted@forwarded.example
+*From:* outlook@forwarded.example
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAFWDVAR001
+TXT;
+
+        $stripped = $this->parser->stripForwardedHeaderLines($text);
+        $this->assertStringNotContainsString('alias@forwarded.example', $stripped);
+        $this->assertStringNotContainsString('inbox@forwarded.example', $stripped);
+        $this->assertStringNotContainsString('quoted@forwarded.example', $stripped);
+        $this->assertStringNotContainsString('outlook@forwarded.example', $stripped);
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_reply_to_payer_email_is_used_when_it_is_the_only_address(): void
+    {
+        $text = <<<'TXT'
+From: notify@payments.interac.ca
+To: zaninirenovations@gmail.com
+Reply-To: malcolm.travis@example.com
+Malcolm Travis sent you $379.61 CAD
+Reference Number: CAREPLYTO001
+TXT;
+
+        $this->assertSame(['malcolm.travis@example.com'], $this->parser->replyToEmails($text));
+        $this->assertSame(['malcolm.travis@example.com'], $this->parser->interacReplyToEmails($text));
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
+    }
+
+    public function test_own_reply_to_is_not_stored_as_sender_email(): void
+    {
+        $this->assertNotContains('gmail.com', $this->parser->ownDomains());
+
+        $text = <<<'TXT'
+From: notify@payments.interac.ca
+Reply-To: zaninirenovations@gmail.com
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAREPLYOWN001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_public_gmail_reply_to_payer_is_kept(): void
+    {
+        $this->assertNotContains('gmail.com', $this->parser->ownDomains());
+
+        $text = <<<'TXT'
+From: notify@payments.interac.ca
+To: zaninirenovations@gmail.com
+Reply-To: jane@gmail.com
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAREPLYGMAIL001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertSame('jane@gmail.com', $parsed['sender_email']);
+    }
+
+    public function test_unconfigured_own_domain_reply_to_is_not_stored(): void
+    {
+        $this->assertContains('zaninirenovations.ca', $this->parser->ownDomains());
+        $this->assertNotContains('gmail.com', $this->parser->ownDomains());
+
+        $text = <<<'TXT'
+From: notify@payments.interac.ca
+To: zaninirenovations@gmail.com
+Reply-To: jonas@zaninirenovations.ca
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAREPLYOWNDOM001
+TXT;
+
+        $this->assertSame(['jonas@zaninirenovations.ca'], $this->parser->replyToEmails($text));
+        $this->assertSame(['jonas@zaninirenovations.ca'], $this->parser->interacReplyToEmails($text));
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_senders_email_wins_over_reply_to(): void
+    {
+        $text = <<<'TXT'
+From: notify@payments.interac.ca
+Reply-To: other.payer@example.com
+Malcolm Travis sent you $379.61 CAD
+Sender's email: malcolm.travis@example.com
+Reference Number: CAREPLYLOSE001
+TXT;
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
+    }
+
+    public function test_quoted_reply_to_from_interac_block_is_used(): void
+    {
+        $text = <<<'TXT'
+From: Zanini Renovations <zaninirenovations@gmail.com>
+To: zaninirenovations@gmail.com
+> From: notify@payments.interac.ca
+> Reply-To: malcolm.travis@example.com
+Malcolm Travis sent you $379.61 CAD
+Reference Number: CAREPLYQUOTE001
+TXT;
+
+        $this->assertSame(['malcolm.travis@example.com'], $this->parser->interacReplyToEmails($text));
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
+    }
+
+    public function test_outlook_bold_reply_to_from_interac_block_is_used(): void
+    {
+        $text = <<<'TXT'
+*From:* notify@payments.interac.ca
+*To:* zaninirenovations@gmail.com
+*Reply-To:* malcolm.travis@example.com
+Malcolm Travis sent you $379.61 CAD
+Reference Number: CAREPLYBOLD001
+TXT;
+
+        $this->assertSame(['malcolm.travis@example.com'], $this->parser->interacReplyToEmails($text));
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Malcolm Travis', $parsed['sender_name']);
+        $this->assertSame('malcolm.travis@example.com', $parsed['sender_email']);
+    }
+
+    public function test_bare_a_header_is_stripped_and_not_sender_email(): void
+    {
+        $text = <<<'TXT'
+A : inbox@forwarded.example
+Jane Citizen sent you $50.00 CAD
+Reference Number: CABAREA001
+TXT;
+
+        $this->assertStringNotContainsString(
+            'inbox@forwarded.example',
+            $this->parser->stripForwardedHeaderLines($text)
+        );
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
+
+    public function test_forwarded_reply_to_is_ignored_when_from_is_not_interac(): void
+    {
+        $text = <<<'TXT'
+From: Forward Desk <alias@forwarded.example>
+Reply-To: malcolm.travis@example.com
+Jane Citizen sent you $50.00 CAD
+Reference Number: CAREPLYFWD001
+TXT;
+
+        $this->assertSame(['malcolm.travis@example.com'], $this->parser->replyToEmails($text));
+        $this->assertSame([], $this->parser->interacReplyToEmails($text));
+
+        $parsed = $this->parser->parse($text);
+        $this->assertSame('Jane Citizen', $parsed['sender_name']);
+        $this->assertNull($parsed['sender_email']);
+    }
 }

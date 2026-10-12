@@ -13,16 +13,19 @@ class RoomAreaQuotePrefillTest extends TestCase
         $inputs = $prefill->wizardInputs('flooring', $this->option());
 
         $this->assertSame(80.0, $inputs['square_footage']);
+        $this->assertSame(88.0, $inputs['square_footage_with_waste']);
+        $this->assertSame(10.0, $inputs['waste_percent']);
+        $this->assertSame(5, $inputs['flooring_boxes']);
         $this->assertSame(30.0, $inputs['baseboard_linear_ft']);
         $this->assertTrue($inputs['install_baseboard']);
     }
 
-    public function test_painting_adds_wall_and_ceiling(): void
+    public function test_painting_adds_net_wall_and_ceiling(): void
     {
         $prefill = app(RoomAreaQuotePrefill::class);
         $inputs = $prefill->wizardInputs('painting', $this->option());
 
-        $this->assertSame(336.0, $inputs['total_property_sqf']);
+        $this->assertSame(312.0, $inputs['total_property_sqf']);
     }
 
     public function test_millwork_prefills_cabinet_piece_width_from_linear_feet(): void
@@ -49,6 +52,16 @@ class RoomAreaQuotePrefillTest extends TestCase
         $this->assertSame(12, $inputs['segments'][0]['qty']);
     }
 
+    public function test_trimming_includes_casing_lf(): void
+    {
+        $prefill = app(RoomAreaQuotePrefill::class);
+        $inputs = $prefill->wizardInputs('trimming', $this->option());
+
+        $this->assertSame(44.67, $inputs['casing_lf']);
+        $this->assertSame(1, $inputs['door_qty']);
+        $this->assertSame(1, $inputs['window_qty']);
+    }
+
     public function test_quotes_use_inside_area_when_thickness_present(): void
     {
         $prefill = app(RoomAreaQuotePrefill::class);
@@ -70,7 +83,14 @@ class RoomAreaQuotePrefillTest extends TestCase
             'area_sqft' => 80.0,
             'perimeter_lf' => 36.0,
             'baseboard_lf' => 30.0,
-            'wall_area_sqft' => 256.0,
+            'wall_area_sqft' => 232.0,
+            'net_wall_area_sqft' => 232.0,
+            'ceiling_area_sqft' => 80.0,
+            'flooring_waste_percent' => 10.0,
+            'flooring_boxes' => 5,
+            'flooring_box_sqft' => 20.0,
+            'flooring_with_waste_sqft' => 88.0,
+            'casing_lf' => 44.67,
             'door_count' => 1,
             'window_count' => 1,
             'cabinet_base_lf' => 3.0,

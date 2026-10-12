@@ -55,7 +55,7 @@ Minimum accepted payloads:
 | `sender_name` | if no `raw_text` | Display name from the email |
 | `amount` | if no parseable amount in `raw_text` | Number or CAD string (`1130`, `1,130.00`) |
 | `currency` | no | Defaults to `CAD` |
-| `sender_email` | no | Ignored if it is an `@interac.ca` address |
+| `sender_email` | no | Ignored if it is an `@interac.ca` address or one of our own deposit/business addresses |
 | `reference` | no | Interac confirmation / reference number. Alias: `reference_number` |
 | `message` | no | Memo the sender typed |
 | `received_at` | no | ISO-8601 or any Carbon-parseable datetime. Defaults to now (or the date parsed from the email) |
@@ -113,5 +113,9 @@ find an amount (and none was sent). Example: `{ "message": "...", "errors": { "a
 
 - **Never auto-records a payment.** Matching is a suggestion only.
 - Unique on `reference` when present, so retries of the same Interac email are idempotent.
-- Candidates are ranked by: invoice number in the memo (strongest), amount equal to the unpaid invoice total or an unpaid deposit/instalment, client name/email vs sender, then recency.
+- Candidates are ranked by: a full `INV-YYYY-NNNN` anywhere in the memo (strongest); a short number only directly after `inv` / `invoice` / `inv#` / `invoice #` (and only when the client or amount also matches — a short hit never outranks an amount match); amount equal to the unpaid invoice total or an unpaid deposit/instalment; client name/email vs sender; then recency. A bare `#NNN`, a 4-digit token, or digits inside a phone number is not a citation.
+- If the memo cites an invoice that is already paid, that invoice is still returned and flagged `Already paid` instead of dropping it for an unrelated open invoice. An open invoice that is also cited and matches the amount ranks above that paid invoice.
+- Recency alone (score 10) is strictly below `ETRANSFER_MIN_MATCH_SCORE` (default 15) and is not a confident suggestion. A score equal to the minimum is a match. The minimum is not silently raised.
+- Two or more open invoices cited in the memo, two or more open invoices that match the amount, or a cited invoice that conflicts with a different-client amount/name match, are an ambiguous match — nothing is preselected.
+- Configured own inboxes and any address on the auto-deposit line (`…deposited into your account at Scotiabank at …`) are never stored as `sender_email`. Forwarded From:/To:/De:/À: headers (including quoted `> From:` and Outlook `*From:*`) are ignored when picking the payer address. A Reply-To address is used only when it comes from the Interac notification itself and its domain is not one of ours (`zaninirenovations.ca` plus `ETRANSFER_OWN_DOMAINS`). Own mailboxes on public hosts (gmail.com, outlook.com, and the like) are rejected by exact address only, so a payer `jane@gmail.com` Reply-To is kept. When both Reply-To and `Sender's email:` are present, `Sender's email:` wins. When no payer address remains, it stays null.
 - Admin: **Financials → Incoming e-transfers** → Record payment (method e-Transfer) or Ignore.

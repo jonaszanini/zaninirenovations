@@ -348,16 +348,16 @@
       </header>
       <main class="admin-content">
         @if (session('success'))
-          <div class="admin-flash admin-flash--success">{{ session('success') }}</div>
+          <div class="admin-flash admin-flash--success" data-admin-flash="success">{{ session('success') }}</div>
         @endif
         @if (session('warning'))
-          <div class="admin-flash admin-flash--warning">{{ session('warning') }}</div>
+          <div class="admin-flash admin-flash--warning" data-admin-flash="warning">{{ session('warning') }}</div>
         @endif
         @if (session('error'))
-          <div class="admin-flash admin-flash--error">{{ session('error') }}</div>
+          <div class="admin-flash admin-flash--error" data-admin-flash="error">{{ session('error') }}</div>
         @endif
         @if ($errors->any())
-          <div class="admin-flash admin-flash--error" role="alert">
+          <div class="admin-flash admin-flash--error" data-admin-flash="error" role="alert">
             <strong>Please fix the following:</strong>
             <ul style="margin:8px 0 0 18px;">
               @foreach ($errors->all() as $message)
@@ -384,9 +384,12 @@
   </div>
 
   <script src="{{ asset('js/admin-theme.js') }}?v={{ @filemtime(public_path('js/admin-theme.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-date-picker.js') }}?v={{ @filemtime(public_path('js/admin-date-picker.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-avif-to-webp.js') }}?v={{ @filemtime(public_path('js/admin-avif-to-webp.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-dialog.js') }}?v={{ @filemtime(public_path('js/admin-dialog.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-info-tip.js') }}?v={{ @filemtime(public_path('js/admin-info-tip.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-search-select.js') }}?v={{ @filemtime(public_path('js/admin-search-select.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-filters-accordion.js') }}?v={{ @filemtime(public_path('js/admin-filters-accordion.js')) ?: time() }}"></script>
   <script>
     (function () {
       var app = document.getElementById('admin-app');
@@ -479,6 +482,28 @@
   <script src="{{ asset('js/admin-purchase-list-choice.js') }}?v={{ @filemtime(public_path('js/admin-purchase-list-choice.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-quotation-leave-save.js') }}?v={{ @filemtime(public_path('js/admin-quotation-leave-save.js')) ?: time() }}"></script>
   @endif
+
+  {{-- Shared save toast + Ctrl/Cmd+S (admin only) --}}
+  @php
+    $adminToastFields = [];
+    if ($errors->any()) {
+        foreach ($errors->messages() as $fieldName => $messages) {
+            $adminToastFields[] = [
+                'name' => $fieldName,
+                'message' => $messages[0] ?? 'is invalid',
+            ];
+        }
+    }
+    $adminToastFlash = [
+        'success' => session('success'),
+        'error' => session('error'),
+        'warning' => session('warning'),
+        'fields' => $adminToastFields,
+    ];
+  @endphp
+  <script type="application/json" id="admin-toast-flash">{!! json_encode($adminToastFlash, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
+  <script src="{{ asset('js/admin-toast.js') }}?v={{ @filemtime(public_path('js/admin-toast.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-hotkey-save.js') }}?v={{ @filemtime(public_path('js/admin-hotkey-save.js')) ?: time() }}"></script>
 
   {{-- Global search palette (Ctrl+K / Cmd+K) --}}
   <div id="admin-search-palette" class="asp" hidden>

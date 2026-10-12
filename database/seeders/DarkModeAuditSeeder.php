@@ -244,6 +244,13 @@ class DarkModeAuditSeeder extends Seeder
                 'published_at' => now(),
             ]
         );
+        $placeholderPath = $this->blogListPlaceholderPath();
+        if ($placeholderPath !== null) {
+            $post->forceFill([
+                'featured_image_path' => $placeholderPath,
+                'featured_image_alt' => 'Dark mode audit placeholder',
+            ])->save();
+        }
         if (method_exists($post, 'categories')) {
             $post->categories()->syncWithoutDetaching([$blogCat->id]);
         }
@@ -354,5 +361,41 @@ class DarkModeAuditSeeder extends Seeder
             'blog_post_id' => $post->id,
             'blog_category_id' => $blogCat->id,
         ] + collect($calcIds)->mapWithKeys(fn ($id, $key) => ["{$key}_quotation_id" => $id])->all();
+    }
+
+    private function blogListPlaceholderPath(): ?string
+    {
+        $relative = 'blog/list-placeholder.webp';
+        $dest = storage_path('app/public/'.$relative);
+        if (! is_dir(dirname($dest)) && ! mkdir(dirname($dest), 0775, true) && ! is_dir(dirname($dest))) {
+            return null;
+        }
+
+        if ($this->writeNeutralBlogPlaceholder($dest)) {
+            return $relative;
+        }
+
+        return is_file($dest) ? $relative : null;
+    }
+
+    private function writeNeutralBlogPlaceholder(string $dest): bool
+    {
+        if (! function_exists('imagecreatetruecolor') || ! function_exists('imagewebp')) {
+            return false;
+        }
+
+        $im = imagecreatetruecolor(96, 64);
+        if ($im === false) {
+            return false;
+        }
+
+        $bg = imagecolorallocate($im, 176, 184, 192);
+        $fg = imagecolorallocate($im, 148, 156, 164);
+        imagefilledrectangle($im, 0, 0, 95, 63, $bg);
+        imagefilledrectangle($im, 28, 16, 68, 48, $fg);
+        $ok = imagewebp($im, $dest, 80);
+        imagedestroy($im);
+
+        return $ok && is_file($dest);
     }
 }

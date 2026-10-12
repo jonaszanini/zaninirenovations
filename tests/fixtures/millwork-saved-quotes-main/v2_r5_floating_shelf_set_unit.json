@@ -1,0 +1,83 @@
+{
+    "version": 2,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "floating_shelf",
+                "unit": "in",
+                "qty": 1,
+                "edge_banding": false,
+                "sets": [
+                    {
+                        "qty": 1,
+                        "length": 3.9,
+                        "depth": 1.1,
+                        "thickness": "",
+                        "unit": "ft"
+                    }
+                ]
+            }
+        ],
+        "include_install": false,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 182.75,
+            "materials_pre_hst": 113.4,
+            "subtotal_pre_hst": 296.15,
+            "hst": 38.5,
+            "grand_total": 334.65
+        },
+        "labor": [
+            {
+                "key": "cut",
+                "label": "Shop — cut / nest sheets",
+                "hours": 0.9,
+                "amount": 76.5
+            },
+            {
+                "key": "floating",
+                "label": "Shop — floating shelves",
+                "hours": 1.25,
+                "amount": 106.25
+            }
+        ],
+        "materials": [
+            {
+                "key": "sheet_1",
+                "label": "3/4\" cabinet-grade plywood 4×8",
+                "qty": 1,
+                "unit_price": 72,
+                "amount": 72
+            },
+            {
+                "key": "sheet_2",
+                "label": "3/4\" cabinet-grade plywood 2×4",
+                "qty": 1,
+                "unit_price": 24,
+                "amount": 24
+            },
+            {
+                "key": "glue",
+                "label": "Wood glue, 16 oz",
+                "qty": 1,
+                "unit_price": 8.9,
+                "amount": 8.9
+            },
+            {
+                "key": "fastener",
+                "label": "1-1/4\" cabinet screws (box of 100)",
+                "qty": 1,
+                "unit_price": 8.5,
+                "amount": 8.5
+            }
+        ],
+        "scope_labels": [
+            "1× floating 46.8\"×13.2\"×36\""
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nFloating shelf. Floating shelf. Unfinished. Includes supply and shop build.",
+        "preview_skipped": false
+    }
+}

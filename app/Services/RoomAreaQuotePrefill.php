@@ -62,18 +62,31 @@ class RoomAreaQuotePrefill
         $area = round(max(0.0, (float) ($option['area_sqft'] ?? 0)), 2);
         $perimeter = round(max(0.0, (float) ($option['perimeter_lf'] ?? 0)), 2);
         $baseboard = round(max(0.0, (float) ($option['baseboard_lf'] ?? $perimeter)), 2);
-        $wallArea = round(max(0.0, (float) ($option['wall_area_sqft'] ?? 0)), 2);
+        $netWall = round(max(0.0, (float) ($option['net_wall_area_sqft'] ?? $option['wall_area_sqft'] ?? 0)), 2);
+        $ceilingArea = round(max(0.0, (float) ($option['ceiling_area_sqft'] ?? $area)), 2);
+        $waste = round(max(0.0, (float) ($option['flooring_waste_percent'] ?? RoomAreaFinishMath::DEFAULT_WASTE_PERCENT)), 2);
+        $boxes = (int) ($option['flooring_boxes'] ?? 0);
+        $boxSqFt = round(max(0.0, (float) ($option['flooring_box_sqft'] ?? RoomAreaFinishMath::DEFAULT_BOX_SQFT)), 2);
+        $flooringWithWaste = round(max(0.0, (float) ($option['flooring_with_waste_sqft'] ?? 0)), 2);
+        if ($flooringWithWaste <= 0 && $area > 0) {
+            $flooringWithWaste = round($area * (1.0 + ($waste / 100.0)), 2);
+        }
+        $casing = round(max(0.0, (float) ($option['casing_lf'] ?? 0)), 2);
         $doors = (int) ($option['door_count'] ?? 0);
         $windows = (int) ($option['window_count'] ?? 0);
 
         return match ($wizard) {
             'flooring' => [
                 'square_footage' => $area,
+                'square_footage_with_waste' => $flooringWithWaste,
+                'waste_percent' => $waste,
+                'flooring_boxes' => $boxes,
+                'box_sqft' => $boxSqFt,
                 'baseboard_linear_ft' => $baseboard,
                 'install_baseboard' => $baseboard > 0,
             ],
             'painting' => [
-                'total_property_sqf' => round($wallArea + $area, 2),
+                'total_property_sqf' => round($netWall + $ceilingArea, 2),
             ],
             'trimming' => [
                 'enabled_families' => ['floor_wall'],
@@ -82,6 +95,7 @@ class RoomAreaQuotePrefill
                 'baseboard_lf' => $baseboard > 0 ? $baseboard : $perimeter,
                 'door_qty' => $doors,
                 'window_qty' => $windows,
+                'casing_lf' => $casing,
             ],
             'tile' => [
                 'total_area_sqft' => $area,

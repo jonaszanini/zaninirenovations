@@ -54,6 +54,10 @@
   function submitWizard(intent) {
     var intentEl = document.getElementById('br-save-intent');
     if (intentEl) intentEl.value = intent;
+    if (window.AdminQuoteDraftValidation) {
+      if (intent === 'draft') window.AdminQuoteDraftValidation.relax(form);
+      else window.AdminQuoteDraftValidation.restore(form);
+    }
 
     if (!isEdit) {
       form.querySelectorAll('.br-acc').forEach(function (el) {
@@ -72,13 +76,6 @@
         if (idx < 0) idx = 0;
         setWizardStep(idx, true);
       }
-      setTimeout(function () {
-        if (!invalid) return;
-        try { invalid.focus(); } catch (err) { /* ignore */ }
-        if (typeof invalid.reportValidity === 'function') {
-          invalid.reportValidity();
-        }
-      }, 80);
       return;
     }
 
@@ -461,6 +458,8 @@
         wrap.innerHTML = tpl.innerHTML.replace(/__I__/g, String(i)).trim();
         var row = wrap.firstElementChild;
         list.appendChild(row);
+        var refreshTile = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+        if (refreshTile) refreshTile(row);
         initTileRow(row);
         schedulePreview();
       });
@@ -512,7 +511,10 @@
         wall: 'Basement area (sq ft, optional)',
         custom: 'Work area (sq ft)'
       };
-      areaLabel.textContent = labels[currentPreset()] || labels.full;
+      var nextLabel = labels[currentPreset()] || labels.full;
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.setLabelText === 'function') {
+        window.AdminInfoTip.setLabelText(areaLabel, nextLabel);
+      }
     }
     var baseEl = document.getElementById('br-base');
     if (baseEl) {
@@ -807,9 +809,12 @@
     }
     var prev = document.getElementById('br-prev');
     var next = document.getElementById('br-next');
-    if (prev) prev.disabled = currentIndex === 0;
+    if (prev) {
+      prev.disabled = currentIndex === 0;
+      prev.textContent = '← Back';
+    }
     if (next) {
-      next.textContent = key === 'review' ? 'Save' : 'Next';
+      next.textContent = key === 'review' ? 'Save' : '→ Next';
       next.disabled = false;
     }
     if (scroll) {
@@ -1153,6 +1158,8 @@
       wrap.innerHTML = extraTpl.innerHTML.replace(/__I__/g, String(i)).trim();
       var row = wrap.firstElementChild;
       extraList.appendChild(row);
+      var refreshExtra = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+      if (refreshExtra) refreshExtra(row);
       initExtraRow(row);
       schedulePreview();
     });

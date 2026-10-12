@@ -54,7 +54,14 @@
         @if ((float) ($option['wall_thickness_in'] ?? 0) > 0)
           <div><dt>Footprint</dt><dd>{{ $fmt((float) ($option['outside_area_sqft'] ?? $option['area_sqft'] ?? 0)) }} sq ft</dd></div>
         @endif
-        <div><dt>Walls</dt><dd>{{ $fmt((float) ($option['wall_area_sqft'] ?? 0)) }} sq ft</dd></div>
+        <div><dt>Net wall area</dt><dd>{{ $fmt((float) ($option['net_wall_area_sqft'] ?? $option['wall_area_sqft'] ?? 0)) }} sq ft</dd></div>
+        <div><dt>Ceiling</dt><dd>{{ $fmt((float) ($option['ceiling_area_sqft'] ?? $option['area_sqft'] ?? 0)) }} sq ft</dd></div>
+        @if ((int) ($option['flooring_boxes'] ?? 0) > 0)
+          <div><dt>Flooring</dt><dd>{{ $fmt((float) ($option['flooring_with_waste_sqft'] ?? 0)) }} sq ft with waste · {{ (int) $option['flooring_boxes'] }} boxes</dd></div>
+        @endif
+        @if ((float) ($option['casing_lf'] ?? 0) > 0)
+          <div><dt>Casing</dt><dd>{{ $fmt((float) $option['casing_lf']) }} lf</dd></div>
+        @endif
         <div><dt>Baseboard</dt><dd>{{ $fmt((float) ($option['baseboard_lf'] ?? 0)) }} lf</dd></div>
         @if ((float) ($option['framing_lf'] ?? 0) > 0 && (float) ($option['shared_wall_lf'] ?? 0) > 0)
           <div><dt>Framing</dt><dd>{{ $fmt((float) $option['framing_lf']) }} lf</dd></div>
@@ -127,7 +134,7 @@
                 <label class="admin-sr-only" for="rq-price-{{ $key }}">{{ $trade['label'] }} unit price</label>
                 <input class="admin-input cp-money-input util-rq-money" type="text" inputmode="decimal" autocomplete="off"
                        id="rq-price-{{ $key }}" name="unit_price[{{ $key }}]"
-                       value="{{ old('unit_price.'.$key) }}" data-rq-price>
+                       value="{{ old('unit_price.'.$key) }}" data-rq-price data-cp-money-entry="direct">
               </div>
             </div>
           @endforeach

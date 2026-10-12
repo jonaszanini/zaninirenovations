@@ -44,6 +44,21 @@
     return el.innerText.replace(/\s+/g, ' ').trim();
   }
 
+  function collectMaterialNames(tableSelector, noteSelector) {
+    var names = [];
+    document.querySelectorAll(tableSelector + ' tbody tr').forEach(function (tr) {
+      var cells = tr.querySelectorAll('td');
+      if (!cells.length) return;
+      var cell = cells[0].cloneNode(true);
+      cell.querySelectorAll(noteSelector).forEach(function (el) {
+        el.remove();
+      });
+      var label = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+      if (label && label !== '—') names.push(label);
+    });
+    return names;
+  }
+
   function collectPaintingContext(form) {
     var excluded = [];
     form.querySelectorAll('[data-excluded-row]').forEach(function (row) {
@@ -80,34 +95,39 @@
 
   function collectFenceContext(form) {
     var sides = [];
-    form.querySelectorAll('.fq-side-length').forEach(function (input) {
-      sides.push({ length_ft: input.value });
+    form.querySelectorAll('.fq-side-card').forEach(function (card) {
+      var lengthInput = card.querySelector('.fq-side-length');
+      var leftInput = card.querySelector('.fq-side-post-left');
+      var rightInput = card.querySelector('.fq-side-post-right');
+      var gateInput = card.querySelector('.fq-side-gate-here');
+      var connectedInput = card.querySelector('.fq-side-connected');
+      var gatePreset = card.querySelector('.fq-side-gate-preset');
+      var lengthFt = lengthInput ? String(lengthInput.value || '').trim() : '';
+      if (!lengthFt || Number(lengthFt) <= 0) return;
+      sides.push({
+        length_ft: lengthFt,
+        already_have_post_left: !!(leftInput && leftInput.checked),
+        already_have_post_right: !!(rightInput && rightInput.checked),
+        gate_goes_here: !!(gateInput && gateInput.checked),
+        connected_to_previous: !!(connectedInput && connectedInput.checked),
+        gate_preset: gatePreset ? String(gatePreset.value || '') : '',
+      });
     });
 
-    var materials = [];
-    document.querySelectorAll('#fq-materials tbody tr').forEach(function (tr) {
-      var cells = tr.querySelectorAll('td');
-      if (cells.length < 2) return;
-      var label = cells[0].innerText.replace(/\s+/g, ' ').trim();
-      var amount = cells[cells.length - 1].innerText.replace(/\s+/g, ' ').trim();
-      if (label) materials.push(label + (amount ? ' — ' + amount : ''));
+    var materials = collectMaterialNames('#fq-materials', '.fq-breakdown-note').filter(function (name) {
+      return !/\bdelivery\b/i.test(name);
     });
-
-    var totals = [
-      panelText('fq-t-materials') ? 'Materials: ' + panelText('fq-t-materials') : '',
-      panelText('fq-t-labour') ? 'Labour: ' + panelText('fq-t-labour') : '',
-      panelText('fq-t-grand') ? 'Grand total: ' + panelText('fq-t-grand') : '',
-    ].filter(Boolean).join('; ');
 
     return {
       client_name: formValue(form, 'client_name'),
       fence_height_ft: formSelectValue(form, 'fence_height_ft') || formValue(form, 'fence_height_ft'),
+      post_size: formSelectValue(form, 'post_size') || formValue(form, 'post_size'),
       board_style: formValue(form, 'board_style'),
-      gates: formValue(form, 'gates'),
+      gate_count: formValue(form, 'gate_count'),
+      extra_gate_preset: formValue(form, 'extra_gate_preset'),
       sides: sides,
-      geometry_summary: panelText('fq-geometry'),
+      section_count: sides.length,
       materials_summary: materials.join('\n'),
-      totals_summary: totals,
     };
   }
 
@@ -152,45 +172,37 @@
   }
 
   function collectStandardContext(form) {
-    var materials = [];
-    form.querySelectorAll('.sq-material-row').forEach(function (row) {
-      var shortName = row.querySelector('input[name*="[short_name]"]');
-      var desc = row.querySelector('input[name*="[description]"], textarea[name*="[description]"]');
-      var qty = row.querySelector('input[name*="[quantity]"]');
-      var unit = row.querySelector('input[name*="[unit_price]"]');
-      materials.push({
-        short_name: shortName ? shortName.value.trim() : '',
-        description: desc ? desc.value.trim() : '',
-        quantity: qty ? qty.value.trim() : '',
-        unit_price: unit ? unit.value.trim() : '',
-      });
-    });
-
     var jobs = [];
     form.querySelectorAll('.sq-work-card').forEach(function (card) {
       var title = card.querySelector('.sq-work-title');
       var useFixed = card.querySelector('.sq-labour-use-fixed-cb');
-      var fixedAmt = card.querySelector('.sq-labour-fixed-amount');
-      var rate = card.querySelector('.sq-labour-rate');
-      var qty = card.querySelector('.sq-labour-qty');
+      var modeEl = card.querySelector('.sq-labour-mode:checked');
+      var materials = [];
+      card.querySelectorAll('.sq-material-row').forEach(function (row) {
+        var shortName = row.querySelector('input[name*="[short_name]"]');
+        var desc = row.querySelector('input[name*="[description]"], textarea[name*="[description]"]');
+        var source = row.querySelector('.sq-mat-source-radio:checked');
+        var name = shortName ? shortName.value.trim() : '';
+        var description = desc ? desc.value.trim() : '';
+        if (source && source.value === 'electrical' && description === '') {
+          description = 'Electrical work';
+        }
+        if (name === '' && description === '') return;
+        materials.push({
+          short_name: name,
+          description: description,
+        });
+      });
       jobs.push({
         title: title ? title.value.trim() : '',
         labour_use_fixed: !!(useFixed && useFixed.checked),
-        labour_fixed_amount: fixedAmt ? fixedAmt.value.trim() : '',
-        labour_hourly_rate: rate ? rate.value.trim() : '',
-        labour_quantity: qty ? qty.value.trim() : '',
+        labour_mode: modeEl ? modeEl.value : 'hours',
+        materials: materials,
       });
     });
 
-    var first = jobs[0] || {};
     var docTypeEl = form.querySelector('input[name="document_type"]:checked');
     var pdfModeEl = form.querySelector('input[name="pdf_detail_mode"]:checked');
-
-    var totals = [
-      panelText('sq-mat-with-hst') ? 'Materials w/ HST: ' + panelText('sq-mat-with-hst') : '',
-      panelText('sq-g-labour-total') ? 'Labour w/ HST: ' + panelText('sq-g-labour-total') : '',
-      panelText('sq-g-grand') ? 'Grand total: ' + panelText('sq-g-grand') : '',
-    ].filter(Boolean).join('; ');
 
     return {
       client_name: formValue(form, 'client_name'),
@@ -201,13 +213,7 @@
       includes_labour: form.elements['includes_labour'] && form.elements['includes_labour'].checked,
       contingency_enabled: form.elements['contingency_enabled'] && form.elements['contingency_enabled'].checked,
       contingency_percent: formValue(form, 'contingency_percent'),
-      labour_use_fixed: !!first.labour_use_fixed,
-      labour_fixed_amount: first.labour_fixed_amount || '',
-      labour_hourly_rate: first.labour_hourly_rate || '',
-      labour_quantity: first.labour_quantity || '',
-      materials: materials,
       jobs: jobs,
-      totals_summary: totals,
     };
   }
 
@@ -430,15 +436,17 @@
   }
 
   function collectLowDeckContext(form) {
+    var spacing = formSelectValue(form, 'joist_spacing_in') || formValue(form, 'joist_spacing_in');
+    var geom = document.getElementById('ld-geometry');
+    if (!spacing && geom && geom.getAttribute('data-joist-spacing-in')) {
+      spacing = geom.getAttribute('data-joist-spacing-in');
+    }
     return {
       client_name: formValue(form, 'client_name'),
       width_ft: formValue(form, 'width_ft'),
       length_ft: formValue(form, 'length_ft'),
-      joist_spacing_in: formValue(form, 'joist_spacing_in'),
-      geometry_summary: panelText('ld-geometry') || panelText('ld-area-value'),
-      materials_summary: panelText('ld-materials'),
-      totals_summary: panelText('ld-live-root') || panelText('ld-totals'),
-      breakdown_summary: panelText('ld-live-root')
+      joist_spacing_in: spacing,
+      materials_summary: collectMaterialNames('#ld-materials', '.ld-breakdown-note').join('\n'),
     };
   }
 
@@ -475,10 +483,10 @@
 
   function shouldSkipFormKey(key) {
     if (!key) return true;
-    if (/^(?:_token|_method|save_intent|work_description|owner_hourly_rate|helper_hourly_rate|link_client_project_id|tm_client_pick|include_commute|include_debris_removal)$/.test(key)) {
+    if (/^(?:_token|_method|_serialised|save_intent|work_description|owner_hourly_rate|helper_hourly_rate|link_client_project_id|tm_client_pick|include_commute|include_debris_removal|material_waste_percent)$/.test(key)) {
       return true;
     }
-    if (/override|unit_price|hourly_rate/.test(key)) return true;
+    if (/override|unit_price|hourly_rate|labour_fixed_amount/.test(key)) return true;
     if (/^(?:payment_|commute_|fp_|debris_|additional_cost)/.test(key)) return true;
     return false;
   }

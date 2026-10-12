@@ -1,0 +1,93 @@
+{
+    "version": 2,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "closet",
+                "unit": "in",
+                "width": 72,
+                "height": 84,
+                "depth": 14,
+                "qty": 1,
+                "include_doors": false,
+                "edge_banding": false
+            }
+        ],
+        "client_provides_all": true,
+        "delivery_amount": 80,
+        "include_install": true,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 1173.85,
+            "materials_pre_hst": 0,
+            "subtotal_pre_hst": 1173.85,
+            "hst": 152.6,
+            "grand_total": 1326.45
+        },
+        "labor": [
+            {
+                "key": "cut",
+                "label": "Shop — cut / nest sheets",
+                "hours": 1.35,
+                "amount": 114.75
+            },
+            {
+                "key": "closet",
+                "label": "Shop — closet system",
+                "hours": 8.67,
+                "amount": 736.95
+            },
+            {
+                "key": "install",
+                "label": "On-site install",
+                "hours": 3.79,
+                "amount": 322.15
+            }
+        ],
+        "materials": [
+            {
+                "key": "sheet_1",
+                "label": "3/4\" cabinet-grade plywood 4×8",
+                "qty": 3,
+                "unit_price": 72,
+                "amount": 0
+            },
+            {
+                "key": "glue",
+                "label": "Wood glue, 16 oz",
+                "qty": 1,
+                "unit_price": 8.9,
+                "amount": 0
+            },
+            {
+                "key": "rod",
+                "label": "Oval closet rod (each)",
+                "qty": 1,
+                "unit_price": 18,
+                "amount": 0
+            },
+            {
+                "key": "pins",
+                "label": "Shelf pins (pack of 20)",
+                "qty": 2,
+                "unit_price": 4.5,
+                "amount": 0
+            },
+            {
+                "key": "fastener",
+                "label": "1-1/4\" cabinet screws (box of 100)",
+                "qty": 1,
+                "unit_price": 8.5,
+                "amount": 0
+            }
+        ],
+        "scope_labels": [
+            "1× closet 72\"×84\"×14\""
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nCloset system. Closet system, 72\" W × 84\" H × 14\" D. Unfinished. Includes shop build, hardware, delivery, and on-site install.",
+        "preview_skipped": false
+    }
+}

@@ -253,6 +253,9 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('materials.config.categories.destroy');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])
         ->name('materials.bulk-destroy');
+    Route::post('materials/import-from-home-depot', [MaterialController::class, 'importFromHomeDepot'])
+        ->name('materials.import-from-home-depot')
+        ->middleware('throttle:home-depot-import');
     Route::post('materials/bulk-import/start', [MaterialController::class, 'bulkImportStart'])
         ->name('materials.bulk-import.start');
     Route::post('materials/bulk-import/step', [MaterialController::class, 'bulkImportStep'])
@@ -382,6 +385,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('vehicles.settings.home-address');
     Route::put('vehicles/settings/gas-price', [\App\Http\Controllers\Admin\VehicleController::class, 'updateGasPrice'])
         ->name('vehicles.settings.gas-price');
+    Route::put('vehicles/settings/business-contact', [\App\Http\Controllers\Admin\VehicleController::class, 'updateBusinessContact'])
+        ->name('vehicles.settings.business-contact');
 
     // Global Financials — cross-project invoices and expenses lists.
     Route::get('financials/invoices', [\App\Http\Controllers\Admin\GlobalFinancialsController::class, 'invoices'])
@@ -587,7 +592,7 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::delete('quotations/low-deck/{low_deck_quotation}', [\App\Http\Controllers\Admin\LowDeckQuotationController::class, 'destroy'])
         ->name('quotations.low-deck.destroy');
 
-    // Standard quotations (materials grid + labour, no PDF in-module).
+    // Standard quotations (materials grid + labour; client PDF is the linked project quotation).
     Route::get('quotations/standard', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'index'])
         ->name('quotations.standard.index');
     Route::get('quotations/standard/create', [\App\Http\Controllers\Admin\StandardQuotationController::class, 'create'])
@@ -1015,4 +1020,20 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('utilities.room-area.rooms.photos.update');
     Route::delete('utilities/room-area/rooms/{room_area_room}/photos/{photo}', [\App\Http\Controllers\Admin\RoomAreaController::class, 'destroyPhoto'])
         ->name('utilities.room-area.rooms.photos.destroy');
+    Route::get('utilities/room-area/assemblies', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'index'])
+        ->name('utilities.room-area.assemblies.index');
+    Route::post('utilities/room-area/assemblies', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'store'])
+        ->name('utilities.room-area.assemblies.store');
+    Route::put('utilities/room-area/assemblies/{room_area_assembly}', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'update'])
+        ->name('utilities.room-area.assemblies.update');
+    Route::delete('utilities/room-area/assemblies/{room_area_assembly}', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'destroy'])
+        ->name('utilities.room-area.assemblies.destroy');
+    Route::post('utilities/room-area/rooms/{room_area_room}/assemblies', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'syncRoom'])
+        ->name('utilities.room-area.rooms.assemblies.sync');
+    Route::post('utilities/room-area/assemblies/evaluate', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'evaluate'])
+        ->name('utilities.room-area.assemblies.evaluate');
+    Route::get('utilities/room-area/assemblies/quote', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'quoteShow'])
+        ->name('utilities.room-area.assemblies.quote');
+    Route::post('utilities/room-area/assemblies/quote', [\App\Http\Controllers\Admin\RoomAreaAssemblyController::class, 'quoteStore'])
+        ->name('utilities.room-area.assemblies.quote.store');
 });

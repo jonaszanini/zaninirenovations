@@ -10,10 +10,11 @@
   <div class="admin-card mat-form-card">
     <form action="{{ route('admin.materials.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       @include('admin.materials._form')
       <div class="mat-edit-footer">
         <div class="admin-form-actions mat-edit-actions">
-          <button type="submit" class="admin-btn admin-btn--primary">
+          <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
             <i class="fa fa-save"></i> Create material
           </button>
           <a href="{{ route('admin.materials.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>

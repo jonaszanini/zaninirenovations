@@ -47,6 +47,7 @@ class RoomAreaQuoteLineInserter
 
         return DB::transaction(function () use ($lines, $existing, $clientProject, $clientName, $displayTitle, $jobTitle) {
             $materialRows = array_map(fn (array $line) => $this->materialRow($line), $lines);
+            $preservedWorks = $existing ? $existing->resolvedWorks() : [];
 
             if ($existing) {
                 $works = $existing->resolvedWorks();
@@ -93,79 +94,134 @@ class RoomAreaQuoteLineInserter
                 ]);
             }
 
-            $computed = $this->calculator->computeWorks(
-                $this->worksForCompute($works),
-                (bool) ($quote->contingency_enabled ?? false),
-                (float) ($quote->contingency_percent ?? 0),
-                (bool) ($quote->include_labour_hst ?? true),
-                (bool) ($quote->include_building ?? false),
-                (float) ($quote->building_labor_percent ?? 0)
+            return $this->persistComputedWorks(
+                $quote,
+                $works,
+                $preservedWorks,
+                $clientName,
+                $displayTitle,
+                $clientProject,
+                (bool) $existing
             );
-
-            $worksForStorage = [];
-            $materialsForStorage = [];
-            foreach ($computed['works'] as $i => $job) {
-                $posted = $works[$i] ?? [];
-                $jobMaterials = array_map(
-                    fn (array $m) => $this->persistMaterial($m),
-                    is_array($job['materials'] ?? null) ? $job['materials'] : []
-                );
-                foreach ($jobMaterials as $row) {
-                    $materialsForStorage[] = $row;
-                }
-                $useFixed = filter_var($posted['labour_use_fixed'] ?? true, FILTER_VALIDATE_BOOLEAN);
-                $worksForStorage[] = [
-                    'title' => trim((string) ($posted['title'] ?? '')),
-                    'materials' => $jobMaterials,
-                    'labour_mode' => (($posted['labour_mode'] ?? 'hours') === 'days') ? 'days' : 'hours',
-                    'labour_quantity' => round((float) ($posted['labour_quantity'] ?? 0), 2),
-                    'labour_hours' => $job['labour_hours'],
-                    'labour_hourly_rate' => round((float) ($posted['labour_hourly_rate'] ?? 0), 2),
-                    'labour_use_fixed' => $useFixed,
-                    'labour_fixed_amount' => $useFixed ? round((float) ($posted['labour_fixed_amount'] ?? 0), 2) : null,
-                    'labour_fixed_hst_included' => $useFixed && filter_var($posted['labour_fixed_hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                ];
-            }
-
-            $quote->fill([
-                'client_name' => $clientName,
-                'display_title' => $displayTitle,
-                'includes_material' => true,
-                'materials' => $materialsForStorage,
-                'works' => $worksForStorage,
-                'labour_use_fixed' => true,
-                'labour_fixed_amount' => (float) $computed['labour_total'],
-                'labour_hours' => $computed['labour_hours'],
-                'labour_total' => $computed['labour_total'],
-                'labour_hst' => $computed['labour_hst'],
-                'materials_subtotal_before_hst' => $computed['materials_subtotal_before_hst'],
-                'materials_hst' => $computed['materials_hst'],
-                'materials_with_hst' => $computed['materials_with_hst'],
-                'contingency_enabled' => $computed['contingency_enabled'],
-                'contingency_percent' => $computed['contingency_percent'],
-                'contingency_amount' => $computed['contingency_amount'],
-                'contingency_hst' => $computed['contingency_hst'],
-                'grand_total' => $computed['grand_total'],
-            ]);
-
-            if ($clientProject && $this->projectAllowsLink($clientProject)) {
-                $quote->client_project_id = $clientProject->id;
-                if (! $quote->linked_at) {
-                    $quote->linked_at = now();
-                }
-                if (trim((string) $quote->client_name) === '') {
-                    $quote->client_name = trim((string) $clientProject->client_name) ?: $clientName;
-                }
-            }
-
-            $quote->save();
-
-            if ($quote->client_project_id && $clientProject && (int) $quote->client_project_id === (int) $clientProject->id) {
-                $this->syncProjectQuotation($clientProject, $quote->fresh());
-            }
-
-            return $quote->fresh();
         });
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $works
+     * @param  list<array<string, mixed>>  $preservedWorks
+     */
+    private function persistComputedWorks(
+        StandardQuotation $quote,
+        array $works,
+        array $preservedWorks,
+        string $clientName,
+        string $displayTitle,
+        ?ClientProject $clientProject,
+        bool $existing
+    ): StandardQuotation {
+        $computed = $this->calculator->computeWorks(
+            $this->worksForCompute($works),
+            (bool) ($quote->contingency_enabled ?? false),
+            (float) ($quote->contingency_percent ?? 0),
+            (bool) ($quote->include_labour_hst ?? true),
+            (bool) ($quote->include_building ?? false),
+            (float) ($quote->building_labor_percent ?? 0),
+            $quote->usesCurrentPdfFold()
+        );
+
+        $worksForStorage = [];
+        $materialsForStorage = [];
+        // Match by the posted (pre-filter) index. computeWorks() drops blank
+        // rows, so pairing computed materials to preserved rows by position
+        // would keep the blank and silently drop the last new kit line.
+        foreach ($works as $i => $posted) {
+            if (! is_array($posted)) {
+                continue;
+            }
+            $preserved = $preservedWorks[$i] ?? null;
+            $preservedMats = is_array($preserved['materials'] ?? null)
+                ? array_values($preserved['materials'])
+                : [];
+            $postedMats = is_array($posted['materials'] ?? null)
+                ? array_values($posted['materials'])
+                : [];
+            $computedJob = is_array($computed['works'][$i] ?? null) ? $computed['works'][$i] : [];
+
+            $jobMaterials = [];
+            foreach ($postedMats as $idx => $postedMat) {
+                if (! is_array($postedMat)) {
+                    continue;
+                }
+                if (array_key_exists($idx, $preservedMats) && is_array($preservedMats[$idx])) {
+                    $jobMaterials[] = $preservedMats[$idx];
+                    continue;
+                }
+                $jobMaterials[] = $this->persistMaterial($postedMat);
+            }
+            foreach ($jobMaterials as $row) {
+                $materialsForStorage[] = $row;
+            }
+
+            if (is_array($preserved)) {
+                $workRow = $preserved;
+                $workRow['materials'] = $jobMaterials;
+                $worksForStorage[] = $workRow;
+
+                continue;
+            }
+
+            $useFixed = filter_var($posted['labour_use_fixed'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            $worksForStorage[] = [
+                'title' => trim((string) ($posted['title'] ?? '')),
+                'materials' => $jobMaterials,
+                'labour_mode' => (($posted['labour_mode'] ?? 'hours') === 'days') ? 'days' : 'hours',
+                'labour_quantity' => round((float) ($posted['labour_quantity'] ?? 0), 2),
+                'labour_hours' => $computedJob['labour_hours'] ?? 0,
+                'labour_hourly_rate' => round((float) ($posted['labour_hourly_rate'] ?? 0), 2),
+                'labour_use_fixed' => $useFixed,
+                'labour_fixed_amount' => $useFixed ? round((float) ($posted['labour_fixed_amount'] ?? 0), 2) : null,
+                'labour_fixed_hst_included' => $useFixed && filter_var($posted['labour_fixed_hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            ];
+        }
+
+        $quote->fill([
+            'client_name' => $clientName,
+            'display_title' => $displayTitle,
+            'includes_material' => true,
+            'materials' => $materialsForStorage,
+            'works' => $worksForStorage,
+            'labour_use_fixed' => $existing ? (bool) ($quote->labour_use_fixed ?? true) : true,
+            'labour_fixed_amount' => (float) $computed['labour_total'],
+            'labour_hours' => $computed['labour_hours'],
+            'labour_total' => $computed['labour_total'],
+            'labour_hst' => $computed['labour_hst'],
+            'materials_subtotal_before_hst' => $computed['materials_subtotal_before_hst'],
+            'materials_hst' => $computed['materials_hst'],
+            'materials_with_hst' => $computed['materials_with_hst'],
+            'contingency_enabled' => $computed['contingency_enabled'],
+            'contingency_percent' => $computed['contingency_percent'],
+            'contingency_amount' => $computed['contingency_amount'],
+            'contingency_hst' => $computed['contingency_hst'],
+            'grand_total' => $quote->editorGrandTotal($computed),
+        ]);
+
+        if ($clientProject && $this->projectAllowsLink($clientProject)) {
+            $quote->client_project_id = $clientProject->id;
+            if (! $quote->linked_at) {
+                $quote->linked_at = now();
+            }
+            if (trim((string) $quote->client_name) === '') {
+                $quote->client_name = trim((string) $clientProject->client_name) ?: $clientName;
+            }
+        }
+
+        $quote->save();
+
+        if ($quote->client_project_id && $clientProject && (int) $quote->client_project_id === (int) $clientProject->id && ! ($quote->is_draft ?? false)) {
+            $this->syncProjectQuotation($clientProject, $quote->fresh());
+        }
+
+        return $quote->fresh();
     }
 
     /**
@@ -184,7 +240,7 @@ class RoomAreaQuoteLineInserter
             $desc = trim((string) ($line['label'] ?? 'Room Area'));
         }
 
-        return [
+        $row = [
             'short_name' => $short,
             'description' => $desc,
             'unit_price' => round(max(0.0, (float) ($line['unit_price'] ?? 0)), 2),
@@ -197,9 +253,41 @@ class RoomAreaQuoteLineInserter
             'delivery_cad' => 0.0,
             'entry_mode' => $catalogId ? 'catalog' : 'manual',
             'line_kind' => StandardQuotation::LINE_KIND_MATERIAL,
-            'url' => $line['url'] ?? null,
-            'image_url' => $line['image_url'] ?? null,
+            'url' => $this->nullableUrl($line['url'] ?? null),
+            'image_url' => $this->nullableUrl($line['image_url'] ?? null),
         ];
+        return $this->copyAssemblyQuoteMeta($line, $row);
+    }
+
+
+    /**
+     * @param  array<string, mixed>  $from
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function copyAssemblyQuoteMeta(array $from, array $row): array
+    {
+        if (isset($from['assembly_line_id']) && (int) $from['assembly_line_id'] > 0) {
+            $row['assembly_line_id'] = (int) $from['assembly_line_id'];
+        }
+        $layoutId = trim((string) ($from['assembly_layout_id'] ?? ''));
+        if ($layoutId !== '') {
+            $row['assembly_layout_id'] = mb_substr($layoutId, 0, 40);
+        }
+        $covered = $from['assembly_covered_layouts'] ?? '';
+        if (is_array($covered)) {
+            $covered = json_encode(array_values($covered), JSON_UNESCAPED_UNICODE);
+        }
+        $covered = trim((string) $covered);
+        if ($covered !== '') {
+            $row['assembly_covered_layouts'] = $covered;
+        }
+        $quotedAt = trim((string) ($from['assembly_quoted_at'] ?? ''));
+        if ($quotedAt !== '') {
+            $row['assembly_quoted_at'] = mb_substr($quotedAt, 0, 40);
+        }
+
+        return $row;
     }
 
     /**
@@ -238,11 +326,11 @@ class RoomAreaQuoteLineInserter
             ? (int) $m['catalog_material_id']
             : null;
 
-        return [
+        $row = [
             'short_name' => (string) ($m['short_name'] ?? ''),
             'description' => (string) ($m['description'] ?? ''),
-            'url' => $m['url'] ?? null,
-            'image_url' => $m['image_url'] ?? null,
+            'url' => $this->nullableUrl($m['url'] ?? null),
+            'image_url' => $this->nullableUrl($m['image_url'] ?? null),
             'unit_price' => (float) ($m['unit_price'] ?? 0),
             'quantity' => (float) ($m['quantity'] ?? 0),
             'apply_hst' => array_key_exists('apply_hst', $m)
@@ -254,6 +342,14 @@ class RoomAreaQuoteLineInserter
             'line_kind' => StandardQuotation::LINE_KIND_MATERIAL,
             'entry_mode' => $catalogId ? 'catalog' : 'manual',
         ];
+        return $this->copyAssemblyQuoteMeta($m, $row);
+    }
+
+    private function nullableUrl(mixed $value): ?string
+    {
+        $url = trim((string) ($value ?? ''));
+
+        return $url === '' ? null : $url;
     }
 
     private function projectAllowsLink(ClientProject $project): bool
@@ -264,13 +360,10 @@ class RoomAreaQuoteLineInserter
     private function syncProjectQuotation(ClientProject $project, StandardQuotation $quote): void
     {
         $lineDescription = $quote->pdfSummaryLineDescription();
-        $taxable = round((float) ($quote->materials_subtotal_before_hst ?? 0) + (float) ($quote->labour_total ?? 0), 2);
-        $items = [[
-            'description' => $lineDescription !== '' ? $lineDescription : $quote->summaryDescription(),
-            'amount' => $taxable,
-            'apply_hst' => true,
-            'source_standard_quotation_id' => $quote->id,
-        ]];
+        if ($lineDescription === '') {
+            $lineDescription = $quote->summaryDescription();
+        }
+        $items = $quote->projectQuotationLineItems($lineDescription);
 
         /** @var ClientProjectQuotation $row */
         $row = ClientProjectQuotation::firstOrNew([

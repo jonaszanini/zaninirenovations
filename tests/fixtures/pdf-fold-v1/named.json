@@ -1,0 +1,281 @@
+{
+    "sq_2x_33_33": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Material",
+                "amount": 66.66,
+                "apply_hst": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Material",
+                "amount": 66.66,
+                "apply_hst": true
+            }
+        ],
+        "hst": 8.67,
+        "pdf_hst": 8.67,
+        "total": 75.33,
+        "pdf_total": 75.33,
+        "sq_materials": [
+            {
+                "short_name": "A",
+                "unit_price": 33.33,
+                "quantity": 1,
+                "apply_hst": true
+            },
+            {
+                "short_name": "B",
+                "unit_price": 33.33,
+                "quantity": 1,
+                "apply_hst": true
+            }
+        ]
+    },
+    "material_1000_debris_565": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "Debris removal and disposal",
+                "amount": 565,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Material",
+                "amount": 1500,
+                "apply_hst": true,
+                "hst_taxable_amount": 1500
+            }
+        ],
+        "hst": 195,
+        "pdf_hst": 195,
+        "total": 1695,
+        "pdf_total": 1695
+    },
+    "material_1000_commute_113": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "Commute expense",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Material",
+                "amount": 1100,
+                "apply_hst": true,
+                "hst_taxable_amount": 1100
+            }
+        ],
+        "hst": 143,
+        "pdf_hst": 143,
+        "total": 1243,
+        "pdf_total": 1243
+    },
+    "paving_1000_labour_613_commute": {
+        "source": "paving",
+        "items": [
+            {
+                "description": "Paving Stones — Material",
+                "amount": 1000,
+                "apply_hst": false,
+                "hst_included": true
+            },
+            {
+                "description": "Paving Stones — Labour",
+                "amount": 613,
+                "apply_hst": true,
+                "hst_taxable_amount": 500
+            },
+            {
+                "description": "Commute expense",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Paving Stones — Material",
+                "amount": 884.96,
+                "apply_hst": true
+            },
+            {
+                "description": "Paving Stones — Labour",
+                "amount": 688.5,
+                "apply_hst": true,
+                "hst_taxable_amount": 688.5
+            }
+        ],
+        "hst": 204.55,
+        "pdf_hst": 204.55,
+        "total": 1778.01,
+        "pdf_total": 1778.01
+    },
+    "labour_and_electrical_labour_split": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Labour",
+                "amount": 500,
+                "apply_hst": true
+            },
+            {
+                "description": "Electrical labour",
+                "amount": 300,
+                "apply_hst": true
+            },
+            {
+                "description": "Commute expense",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Labour",
+                "amount": 550,
+                "apply_hst": true,
+                "hst_taxable_amount": 550
+            },
+            {
+                "description": "Electrical labour",
+                "amount": 350,
+                "apply_hst": true,
+                "hst_taxable_amount": 350
+            }
+        ],
+        "hst": 117,
+        "pdf_hst": 117,
+        "total": 1017,
+        "pdf_total": 1017
+    },
+    "cash_fence_labour_plus_debris": {
+        "source": "fence",
+        "items": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "6 ft fence — labour",
+                "amount": 500,
+                "apply_hst": false
+            },
+            {
+                "description": "Debris removal and disposal",
+                "amount": 113,
+                "apply_hst": false,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Material",
+                "amount": 1000,
+                "apply_hst": true
+            },
+            {
+                "description": "6 ft fence — labour",
+                "amount": 613,
+                "apply_hst": false
+            }
+        ],
+        "hst": 130,
+        "pdf_hst": 130,
+        "total": 1743,
+        "pdf_total": 1743
+    },
+    "paving_heading_missing_apply_hst": {
+        "source": "paving",
+        "items": [
+            {
+                "description": "Job 1 — Driveway",
+                "amount": 0,
+                "is_heading": true
+            },
+            {
+                "description": "Paving Stones — Material",
+                "amount": 1130,
+                "apply_hst": true,
+                "hst_included": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Job 1 — Driveway",
+                "amount": 0,
+                "apply_hst": true
+            },
+            {
+                "description": "Paving Stones — Material",
+                "amount": 1000,
+                "apply_hst": true
+            }
+        ],
+        "hst": 130,
+        "pdf_hst": 130,
+        "total": 1130,
+        "pdf_total": 1130
+    },
+    "standard_heading_missing_apply_hst": {
+        "source": "standard",
+        "items": [
+            {
+                "description": "Job one",
+                "amount": 0,
+                "is_heading": true
+            },
+            {
+                "description": "Material",
+                "amount": 100,
+                "apply_hst": true
+            }
+        ],
+        "override": null,
+        "lines": [
+            {
+                "description": "Job one",
+                "amount": 0,
+                "apply_hst": true,
+                "is_heading": true
+            },
+            {
+                "description": "Material",
+                "amount": 100,
+                "apply_hst": true
+            }
+        ],
+        "hst": 13,
+        "pdf_hst": 13,
+        "total": 113,
+        "pdf_total": 113
+    }
+}

@@ -44,6 +44,8 @@ class SvgVisualizer
         $svg[] = '<svg class="mw-cut-svg" viewBox="0 0 '.$this->n($vbW).' '.$this->n($vbH).'" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cut plan '.$this->esc($sheet->label).'">';
         $svg[] = '<rect class="mw-cut-bg" x="0" y="0" width="'.$this->n($vbW).'" height="'.$this->n($vbH).'" />';
         $svg[] = '<defs>';
+        $svg[] = '<marker id="'.$clipPrefix.'-grain" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" class="mw-cut-grain-head" /></marker>';
+        $svg[] = '<pattern id="'.$clipPrefix.'-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" class="mw-cut-offcut-hatch" /></pattern>';
         $i = 0;
         foreach ($sheet->placedParts as $p) {
             $i++;
@@ -54,6 +56,9 @@ class SvgVisualizer
 
         $svg[] = '<g transform="translate('.$this->n($padL).' '.$this->n($padT).')">';
         $svg[] = '<rect class="mw-cut-stock" x="0" y="0" width="'.$this->n($sheet->width).'" height="'.$this->n($sheet->length).'" />';
+        $grainX = $sheet->width + 4;
+        $svg[] = '<line class="mw-cut-grain" x1="'.$this->n($grainX).'" y1="'.$this->n($sheet->length - 1).'" x2="'.$this->n($grainX).'" y2="1" marker-end="url(#'.$clipPrefix.'-grain)" />';
+        $svg[] = $this->label($grainX + 3.2, $sheet->length / 2, 'Grain', 'mw-cut-grain-label', 2.4, true);
 
         foreach ($sheet->freeRectangles as $offcut) {
             if (min($offcut->width, $offcut->height) < 2.5) {
@@ -61,13 +66,14 @@ class SvgVisualizer
             }
             $y = $flipY - $offcut->y - $offcut->height;
             $svg[] = '<rect class="mw-cut-offcut" x="'.$this->n($offcut->x).'" y="'.$this->n($y).'" width="'.$this->n($offcut->width).'" height="'.$this->n($offcut->height).'" />';
-            if ($offcut->width >= 10 && $offcut->height >= 8) {
+            $svg[] = '<rect class="mw-cut-offcut-shade" x="'.$this->n($offcut->x).'" y="'.$this->n($y).'" width="'.$this->n($offcut->width).'" height="'.$this->n($offcut->height).'" fill="url(#'.$clipPrefix.'-hatch)" />';
+            if (min($offcut->width, $offcut->height) >= 6) {
                 $svg[] = $this->label(
                     $offcut->x + ($offcut->width / 2),
                     $y + ($offcut->height / 2),
                     $this->inchPair($offcut->width, $offcut->height),
                     'mw-cut-offcut-label',
-                    min(2.2, min($offcut->width, $offcut->height) / 8)
+                    min(3.2, max(1.6, min($offcut->width, $offcut->height) / 5))
                 );
             }
         }
@@ -135,6 +141,9 @@ class SvgVisualizer
                 'label' => $p->part->label,
                 'size' => $this->inchPair($p->width, $p->height),
                 'rotated' => $p->rotated,
+                'qty' => max(1, (int) $p->part->quantity),
+                'material' => $sheet->label !== '' ? $sheet->label : $this->inchPair($sheet->width, $sheet->length),
+                'edge' => $this->edgeSummary($p),
             ];
         }
 
@@ -157,10 +166,12 @@ class SvgVisualizer
         $out[] = '<g clip-path="url(#'.$clipId.')">';
 
         if ($minD >= 8.0) {
-            $nameSize = $this->fitFont($p->part->label, $p->width * 0.88, $minD * 0.28, 2.4);
-            $dimSize = $this->fitFont($dim, $p->width * 0.88, $minD * 0.22, 2.0);
-            $out[] = $this->label($cx, $cy - ($minD * 0.14), $p->part->label, 'mw-cut-part-label', $nameSize);
-            $out[] = $this->label($cx, $cy + ($minD * 0.16), $dim, 'mw-cut-part-dim', $dimSize);
+            $num = (string) $n;
+            $nameSize = $this->fitFont($num.' '.$p->part->label, $p->width * 0.88, $minD * 0.28, 3.4);
+            $dimSize = $this->fitFont($dim, $p->width * 0.88, $minD * 0.22, 2.8);
+            $out[] = $this->label($cx, $cy - ($minD * 0.18), $num, 'mw-cut-part-num', max(2.2, $nameSize));
+            $out[] = $this->label($cx, $cy + ($minD * 0.02), $p->part->label, 'mw-cut-part-label', $nameSize);
+            $out[] = $this->label($cx, $cy + ($minD * 0.22), $dim, 'mw-cut-part-dim', $dimSize);
         }
 
         $out[] = '</g>';
@@ -254,6 +265,31 @@ class SvgVisualizer
         return rtrim(rtrim(number_format($inches, 3, '.', ''), '0'), '.').'"';
     }
 
+    private function edgeSummary(PlacedPart $p): string
+    {
+        $sides = [];
+        if ($p->part->edgeBandTop > 0) {
+            $sides[] = 'top';
+        }
+        if ($p->part->edgeBandBottom > 0) {
+            $sides[] = 'bottom';
+        }
+        if ($p->part->edgeBandLeft > 0) {
+            $sides[] = 'left';
+        }
+        if ($p->part->edgeBandRight > 0) {
+            $sides[] = 'right';
+        }
+        if ($sides === []) {
+            return 'None';
+        }
+        if (count($sides) === 4) {
+            return 'All edges';
+        }
+
+        return implode(', ', $sides);
+    }
+
     private function fitFont(string $text, float $along, float $across, float $preferred): float
     {
         $len = max(1, strlen($text));
@@ -277,7 +313,7 @@ class SvgVisualizer
 
     private function inchPair(float $a, float $b): string
     {
-        return $this->inch($a).' × '.$this->inch($b);
+        return $this->inch(max($a, $b)).' × '.$this->inch(min($a, $b));
     }
 
     private function n(float $n): string

@@ -1,5 +1,6 @@
 @php
   use App\Services\Millwork\MillworkPartBuilder;
+  use App\Services\MillworkQuotationCalculator;
   $pi = $pi ?? 0;
   $piece = is_array($piece ?? null) ? $piece : [];
   $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
@@ -7,9 +8,21 @@
   $unit = ($piece['unit'] ?? 'in') === 'ft' ? 'ft' : 'in';
   $style = MillworkPartBuilder::normalizeCabinetStyle((string) ($piece['style'] ?? 'base'));
   $profile = MillworkPartBuilder::normalizeTrimProfile((string) ($piece['profile'] ?? 'baseboard'));
+  $isLegacyQuote = $isLegacyQuote ?? (((int) ($cutPlanVersion ?? $builderVersion ?? 2)) < 2);
+  $shelfStructureVersion = ((int) ($cutPlanVersion ?? $builderVersion ?? 0)) >= MillworkQuotationCalculator::CALC_VERSION;
+  $piece = MillworkQuotationCalculator::withEffectiveFormDefaults($piece, $isLegacyQuote);
+  $shelfHeightRaw = $piece['height'] ?? '';
+  $shelfStructureOpen = $type === 'shelf' && trim((string) $shelfHeightRaw) !== '';
+  $namedColumns = $shelfStructureOpen ? 'shelf' : 'pack';
+  $namedShelfCount = $type === 'closet' ? 'closet' : ($shelfStructureOpen ? 'shelf' : 'cabinet');
   $unitSuffix = $unit === 'ft' ? 'ft' : 'in';
+  $pieceN = is_numeric($pi) ? ((int) $pi + 1) : 1;
+  $pieceTipName = trim((string) ($piece['name'] ?? ''));
+  $pieceTipLabel = $pieceTipName !== '' ? $pieceTipName : ('piece '.$pieceN);
+  $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
 @endphp
 <article class="mw-piece admin-card" data-mw-piece data-mw-type="{{ $type }}" data-mw-below="{{ (($piece['below'] ?? 'divisions') === 'drawers') ? 'drawers' : 'divisions' }}">
+  <input type="hidden" name="pieces[{{ $pi }}][_calc_version]" value="{{ (int) ($piece['_calc_version'] ?? 0) }}" data-mw-calc-version>
   <div class="mw-piece__head">
     <h4 class="mw-piece__title">Piece <span data-mw-piece-n>{{ is_numeric($pi) ? ((int) $pi + 1) : '1' }}</span></h4>
     <div class="mw-piece__actions">
@@ -24,7 +37,10 @@
 
   <div class="mw-piece__row mw-piece__row--id">
     <div class="admin-form-group mw-field--type">
-      <label>@include('admin.partials.info_tip', ['text' => 'Pick the millwork type. Fields below change to match.']) Type</label>
+      <span class="admin-label-with-tip">
+        <label>Type</label>
+        <x-admin.info-tip :label="'Type — '.$pieceTipLabel">Pick the millwork type. Fields below change to match.</x-admin.info-tip>
+      </span>
       <select class="admin-input mw-preview" name="pieces[{{ $pi }}][type]" data-mw-type-input>
         @foreach (MillworkPartBuilder::TYPE_GROUPS as $group => $keys)
           <optgroup label="{{ $group }}">
@@ -47,55 +63,98 @@
     </div>
   </div>
 
-  <div class="mw-piece__row mw-piece__row--dims" data-mw-show="kallax cabinet vanity closet bench mantel wainscoting trim">
+  <div class="mw-piece__row mw-piece__row--dims" data-mw-show="shelf kallax cabinet vanity closet bench mantel wainscoting trim">
+    <input type="hidden" name="pieces[{{ $pi }}][unit]" value="{{ $unit }}" data-mw-unit>
     <div class="admin-form-group mw-field--qty" data-mw-show="kallax cabinet vanity closet bench mantel">
       <label>How many</label>
-      <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][qty]" value="{{ $piece['qty'] ?? 1 }}">
+      <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.qty') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][qty]" value="{{ $piece['qty'] ?? 1 }}"
+             @if ($errors->has('pieces.'.$pi.'.qty')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.qty')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
-    <div class="admin-form-group mw-field--unit" data-mw-show="kallax cabinet vanity closet bench mantel wainscoting trim">
-      <label>Units</label>
-      <select class="admin-input mw-preview" name="pieces[{{ $pi }}][unit]" data-mw-unit>
-        <option value="in" @selected($unit === 'in')>In</option>
-        <option value="ft" @selected($unit === 'ft')>Ft</option>
-      </select>
-    </div>
-    <div class="admin-form-group mw-field--w" data-mw-show="kallax cabinet vanity closet">
-      <label>W (<span data-mw-unit-label>{{ $unitSuffix }}</span>)</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][width]"
-             placeholder="{{ $type === 'closet' ? '72' : '36' }}" value="{{ $piece['width'] ?? '' }}">
-    </div>
-    <div class="admin-form-group mw-field--len" data-mw-show="bench mantel">
-      <label>L (<span data-mw-unit-label>{{ $unitSuffix }}</span>)</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][length]"
-             placeholder="{{ $type === 'mantel' ? '60' : '48' }}" value="{{ $piece['length'] ?? '' }}">
-    </div>
+    @include('admin.quotations.millwork._dim_field', [
+      'pi' => $pi,
+      'piece' => $piece,
+      'row' => $piece,
+      'namePrefix' => 'pieces['.$pi.']',
+      'dimName' => 'width',
+      'dimLabel' => 'W',
+      'dimField' => 'w',
+      'dimShow' => 'kallax cabinet vanity closet',
+      'dimPlaceholder' => $type === 'closet' ? '72' : '36',
+      'setField' => null,
+    ])
+    @include('admin.quotations.millwork._dim_field', [
+      'pi' => $pi,
+      'piece' => $piece,
+      'row' => $piece,
+      'namePrefix' => 'pieces['.$pi.']',
+      'dimName' => 'length',
+      'dimLabel' => 'L',
+      'dimField' => 'len',
+      'dimShow' => 'bench mantel',
+      'dimPlaceholder' => $type === 'mantel' ? '60' : '48',
+      'setField' => null,
+    ])
     <div class="admin-form-group mw-field--lf" data-mw-show="wainscoting trim">
       <label>Lin. ft</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][linear_ft]"
+      <input type="text" inputmode="decimal" autocomplete="off"
+             class="admin-input mw-preview mw-input--dim{{ $errors->has('pieces.'.$pi.'.linear_ft') ? ' is-invalid' : '' }}"
+             name="pieces[{{ $pi }}][linear_ft]"
              placeholder="24" value="{{ $piece['linear_ft'] ?? '' }}">
+      @error('pieces.'.$pi.'.linear_ft')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
-    <div class="admin-form-group mw-field--h" data-mw-show="kallax cabinet vanity closet bench mantel wainscoting">
-      <label>H (<span data-mw-unit-label>{{ $unitSuffix }}</span>)</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][height]"
-             placeholder="{{ in_array($type, ['closet'], true) ? '84' : ($type === 'wainscoting' ? '36' : '34.5') }}"
-             value="{{ $piece['height'] ?? '' }}">
-    </div>
-    <div class="admin-form-group mw-field--d" data-mw-show="kallax cabinet vanity closet bench mantel">
-      <label>D (<span data-mw-unit-label>{{ $unitSuffix }}</span>)</label>
-      <input type="number" min="0" step="0.01" class="admin-input mw-preview mw-input--dim" name="pieces[{{ $pi }}][depth]"
-             placeholder="{{ $type === 'vanity' ? '21' : ($type === 'closet' ? '14' : ($type === 'mantel' ? '10' : '24')) }}"
-             value="{{ $piece['depth'] ?? '' }}">
-    </div>
+    @include('admin.quotations.millwork._dim_field', [
+      'pi' => $pi,
+      'piece' => $piece,
+      'row' => $piece,
+      'namePrefix' => 'pieces['.$pi.']',
+      'dimName' => 'height',
+      'dimLabel' => 'H',
+      'dimField' => 'h',
+      'dimShow' => ($shelfStructureVersion ? 'shelf ' : '').'kallax cabinet vanity closet bench mantel wainscoting',
+      'dimPlaceholder' => $type === 'shelf' ? '72' : (in_array($type, ['closet'], true) ? '84' : ($type === 'wainscoting' ? '36' : '34.5')),
+      'setField' => null,
+    ])
+    @include('admin.quotations.millwork._dim_field', [
+      'pi' => $pi,
+      'piece' => $piece,
+      'row' => $piece,
+      'namePrefix' => 'pieces['.$pi.']',
+      'dimName' => 'depth',
+      'dimLabel' => 'D',
+      'dimField' => 'd',
+      'dimShow' => 'kallax cabinet vanity closet bench mantel',
+      'dimPlaceholder' => $type === 'vanity' ? '21' : ($type === 'closet' ? '14' : ($type === 'mantel' ? '10' : '24')),
+      'setField' => null,
+    ])
   </div>
 
   <div class="mw-piece__row mw-piece__row--pack" data-mw-show="kallax closet">
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Sections across. Vertical partitions = columns − 1.']) Columns</label>
-      <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][columns]" value="{{ $piece['columns'] ?? 2 }}">
+      <span class="admin-label-with-tip">
+        <label>Columns</label>
+        <x-admin.info-tip :label="'Columns — '.$pieceTipLabel">Sections across. Vertical partitions = columns − 1.</x-admin.info-tip>
+      </span>
+      <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.columns') ? ' is-invalid' : '' }}" @if ($namedColumns === 'pack') name="pieces[{{ $pi }}][columns]" @endif data-mw-field="columns" data-mw-owner="pack" data-mw-name="pieces[{{ $pi }}][columns]" value="{{ $piece['columns'] ?? 2 }}"
+             @if ($errors->has('pieces.'.$pi.'.columns')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.columns')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group" data-mw-show="kallax">
-      <label>Rows</label>
-      <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][rows]" value="{{ $piece['rows'] ?? 2 }}">
+      <span class="admin-label-with-tip">
+        <label>Rows</label>
+        <x-admin.info-tip :label="'Rows — '.$pieceTipLabel">Rows stack the cubes. Horizontal partitions = rows − 1.</x-admin.info-tip>
+      </span>
+      <input type="number" min="1" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.rows') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][rows]" value="{{ $piece['rows'] ?? 2 }}"
+             @if ($errors->has('pieces.'.$pi.'.rows')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.rows')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group mw-field--finish" data-mw-show="kallax">
       <label>Finish</label>
@@ -108,11 +167,19 @@
     </div>
     <div class="admin-form-group" data-mw-show="closet">
       <label>Shelves / sec.</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? 3 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.shelf_count') ? ' is-invalid' : '' }}" @if ($namedShelfCount === 'closet') name="pieces[{{ $pi }}][shelf_count]" @endif data-mw-field="shelf_count" data-mw-owner="closet" data-mw-name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? 3 }}"
+             @if ($errors->has('pieces.'.$pi.'.shelf_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.shelf_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group" data-mw-show="closet">
       <label>Rods</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][rod_count]" value="{{ $piece['rod_count'] ?? 1 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.rod_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][rod_count]" value="{{ $piece['rod_count'] ?? 1 }}"
+             @if ($errors->has('pieces.'.$pi.'.rod_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.rod_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
   </div>
 
@@ -134,20 +201,27 @@
     </div>
     <div class="admin-form-group">
       <label>Door #</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][door_count]" value="{{ $piece['door_count'] ?? 2 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.door_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][door_count]" value="{{ $piece['door_count'] ?? 2 }}"
+             @if ($errors->has('pieces.'.$pi.'.door_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.door_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group" data-mw-show="cabinet vanity">
       <label>Shelves</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? 1 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.shelf_count') ? ' is-invalid' : '' }}" @if ($namedShelfCount === 'cabinet') name="pieces[{{ $pi }}][shelf_count]" @endif data-mw-field="shelf_count" data-mw-owner="cabinet" data-mw-name="pieces[{{ $pi }}][shelf_count]" value="{{ $piece['shelf_count'] ?? 1 }}"
+             @if ($errors->has('pieces.'.$pi.'.shelf_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.shelf_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group" data-mw-show="cabinet vanity closet">
       <label>Drawers</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}">
-    </div>
-    <div class="admin-form-group" data-mw-show="cabinet cabinet_door vanity closet bench-drawers">
-      <label>Pulls</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][pull_qty]"
-             placeholder="Auto" value="{{ $piece['pull_qty'] ?? '' }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.drawer_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}"
+             @if ($errors->has('pieces.'.$pi.'.drawer_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.drawer_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group mw-field--finish">
       <label>Finish</label>
@@ -157,6 +231,32 @@
         <option value="stain" @selected(($piece['finish'] ?? '') === 'stain')>Stained</option>
         <option value="clear" @selected(($piece['finish'] ?? '') === 'clear')>Clear coat</option>
       </select>
+    </div>
+  </div>
+
+  <div class="mw-piece__row mw-piece__row--pack" data-mw-show="cabinet cabinet_door vanity closet bench-drawers">
+    @unless ($isLegacyQuote)
+    <div class="admin-form-group" data-mw-show="cabinet cabinet_door vanity closet">
+      <label>
+        <span data-mw-show="cabinet vanity closet">Hinges (per unit)</span>
+        <span data-mw-show="cabinet_door">Hinges (total)</span>
+      </label>
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.hinge_qty') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][hinge_qty]"
+             placeholder="Auto" value="{{ $piece['hinge_qty'] ?? '' }}"
+             @if ($errors->has('pieces.'.$pi.'.hinge_qty')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.hinge_qty')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
+    </div>
+    @endunless
+    <div class="admin-form-group">
+      <label>Pulls</label>
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.pull_qty') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][pull_qty]"
+             placeholder="Auto" value="{{ $piece['pull_qty'] ?? '' }}"
+             @if ($errors->has('pieces.'.$pi.'.pull_qty')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.pull_qty')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
   </div>
 
@@ -177,11 +277,19 @@
     </div>
     <div class="admin-form-group" data-mw-show="bench-divisions">
       <label>Divisions</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][division_count]" value="{{ $piece['division_count'] ?? 2 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.division_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][division_count]" value="{{ $piece['division_count'] ?? 2 }}"
+             @if ($errors->has('pieces.'.$pi.'.division_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.division_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group" data-mw-show="bench-drawers">
       <label>Drawers</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}">
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.drawer_count') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][drawer_count]" value="{{ $piece['drawer_count'] ?? 0 }}"
+             @if ($errors->has('pieces.'.$pi.'.drawer_count')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.drawer_count')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group mw-field--finish">
       <label>Finish</label>
@@ -204,8 +312,15 @@
       </select>
     </div>
     <div class="admin-form-group">
-      <label>@include('admin.partials.info_tip', ['text' => 'Each opening adds 2 × height + width of casing (defaults 80" × 32").']) Openings</label>
-      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" name="pieces[{{ $pi }}][openings]" value="{{ $piece['openings'] ?? 0 }}">
+      <span class="admin-label-with-tip">
+        <label>Openings</label>
+        <x-admin.info-tip :label="'Openings — '.$pieceTipLabel">Each opening adds 2 × height + width of casing (defaults 80" × 32").</x-admin.info-tip>
+      </span>
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('pieces.'.$pi.'.openings') ? ' is-invalid' : '' }}" name="pieces[{{ $pi }}][openings]" value="{{ $piece['openings'] ?? 0 }}"
+             @if ($errors->has('pieces.'.$pi.'.openings')) aria-invalid="true" @endif>
+      @error('pieces.'.$pi.'.openings')
+        <p class="admin-form-error">{{ $message }}</p>
+      @enderror
     </div>
     <div class="admin-form-group">
       <label>Stock (ft)</label>
@@ -235,9 +350,36 @@
     </div>
   </div>
 
+  @if ($shelfStructureVersion)
+  <div class="mw-piece__row mw-piece__row--pack" data-mw-show="shelf">
+    <div class="admin-form-group">
+      <span class="admin-label-with-tip">
+        <label>Columns</label>
+        <x-admin.info-tip :label="'Columns — '.$pieceTipLabel">Used with height. Vertical dividers = columns − 1. Leave height blank to price each size set as one board.</x-admin.info-tip>
+      </span>
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" @if ($namedColumns === 'shelf') name="pieces[{{ $pi }}][columns]" @endif data-mw-field="columns" data-mw-owner="shelf" data-mw-name="pieces[{{ $pi }}][columns]" value="{{ $shelfStructureOpen ? ($piece['columns'] ?? '') : '' }}" placeholder="1">
+    </div>
+    <div class="admin-form-group">
+      <span class="admin-label-with-tip">
+        <label>Shelves</label>
+        <x-admin.info-tip :label="'Shelves — '.$pieceTipLabel">Extra boards when height is set, in addition to the size-set board.</x-admin.info-tip>
+      </span>
+      <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" @if ($namedShelfCount === 'shelf') name="pieces[{{ $pi }}][shelf_count]" @endif data-mw-field="shelf_count" data-mw-owner="shelf" data-mw-name="pieces[{{ $pi }}][shelf_count]" value="{{ $shelfStructureOpen ? ($piece['shelf_count'] ?? '') : '' }}" placeholder="0">
+    </div>
+  </div>
+  @endif
+
   <div data-mw-show="shelf floating_shelf cabinet_door">
-    <p class="admin-form-help mw-piece__hint">Size sets — add groups if you have mixed sizes.</p>
-    <p class="admin-form-help mw-piece__hint" data-mw-show="floating_shelf">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</p>
+    <div class="mw-piece__sets-head">
+      <span class="admin-label-with-tip">
+        <span class="mw-piece__sets-title">Size sets</span>
+        <x-admin.info-tip :label="'Size sets — '.$pieceTipLabel">Size sets — add groups if you have mixed sizes.</x-admin.info-tip>
+      </span>
+      <span class="admin-label-with-tip" data-mw-show="floating_shelf">
+        <span class="mw-piece__sets-title">Open-back box</span>
+        <x-admin.info-tip :label="'Open-back box — '.$pieceTipLabel">Open-back box: top, bottom, front, and ends. Thickness is the outer box height.</x-admin.info-tip>
+      </span>
+    </div>
     <div data-mw-set-list>
       @foreach ($sets as $si => $set)
         @include('admin.quotations.millwork._set_row', ['pi' => $pi, 'si' => $si, 'set' => is_array($set) ? $set : [], 'unit' => $unit])
@@ -246,6 +388,17 @@
     <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-add-set>
       <i class="fa fa-plus"></i> Add size set
     </button>
+  </div>
+
+  <div class="mw-piece__flags" data-mw-show="{{ ($shelfStructureVersion ? 'shelf ' : '').'floating_shelf kallax cabinet vanity closet bench mantel' }}">
+    @include('admin.partials.checkbox', [
+      'name' => 'pieces['.$pi.'][include_back]',
+      'hiddenFallback' => true,
+      'checked' => ! empty($piece['include_back']),
+      'label' => $type === 'mantel' ? 'Include bottom panel' : 'Include 1/4" back',
+      'info' => 'Adds a back panel on the 1/4" sheet. Leave it off for an open shelf.',
+      'inputClass' => 'admin-checkbox__input mw-preview',
+    ])
   </div>
 
   <details class="mw-piece__more">
@@ -300,15 +453,6 @@
         'info' => 'Shrinks the raw cut so the finished size matches after banding.',
         'inputClass' => 'admin-checkbox__input mw-preview',
       ])
-      <div data-mw-show="floating_shelf kallax cabinet vanity closet bench mantel">
-        @include('admin.partials.checkbox', [
-          'name' => 'pieces['.$pi.'][include_back]',
-          'hiddenFallback' => true,
-          'checked' => ! empty($piece['include_back']),
-          'label' => $type === 'mantel' ? 'Include bottom panel' : 'Include 1/4" back',
-          'inputClass' => 'admin-checkbox__input mw-preview',
-        ])
-      </div>
       <div data-mw-show="cabinet vanity">
         @include('admin.partials.checkbox', [
           'name' => 'pieces['.$pi.'][include_toe_kick]',

@@ -19,6 +19,8 @@ use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Services\TrimmingQuotationCalculator;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
+use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,13 +55,18 @@ class TrimmingQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
+
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
 
         $quote = TrimmingQuotation::create(array_merge($calc, [
             'quote_number' => TrimmingQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -84,7 +91,8 @@ class TrimmingQuotationController extends Controller
 
     public function update(Request $request, TrimmingQuotation $trimming_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $wasDraft = (bool) $trimming_quotation->is_draft;
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $trimming_quotation);
 
         $trimming_quotation->fill(array_merge($calc, [
@@ -107,9 +115,7 @@ class TrimmingQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.trimming.edit', $trimming_quotation)
-            ->with('success', $linkedNow
-                ? 'Trimming quotation '.$trimming_quotation->quote_number.' updated and linked.'
-                : 'Trimming quotation '.$trimming_quotation->quote_number.' updated (v'.$trimming_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Trimming', $trimming_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -518,6 +524,10 @@ class TrimmingQuotationController extends Controller
 
     protected function syncLineToProjectQuotation(ClientProject $project, TrimmingQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Interior trimming (labor)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
@@ -582,6 +592,10 @@ class TrimmingQuotationController extends Controller
 
     protected function appendLineToProjectQuotation(ClientProject $project, TrimmingQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $this->syncLineToProjectQuotation($project, $quote);
 
         $quote->update(array_merge([

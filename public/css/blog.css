@@ -54,6 +54,9 @@ body.blog-public .single-post-inner-title__heading {
   font-weight: 700;
   color: #444357;
 }
+body.blog-public .post-inner-featured-content + .single-post-inner-title {
+  padding-top: 24px;
+}
 body.blog-public .post-inner-featured-content img,
 body.blog-public .single-post-content img,
 body.blog-public .blog-hero__img {

@@ -112,10 +112,9 @@ class QuotationWorkDescriptionContextBuilder
         $lines = ['Quotation type: Fence installation'];
 
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
-        $this->appendLine($lines, 'Fence height', $c['fence_height_ft'] ?? null);
+        $this->appendLine($lines, 'Fence height', $this->fenceHeightLabel($c['fence_height_ft'] ?? null));
         $this->appendLine($lines, 'Post size', $c['post_size'] ?? null);
-        $this->appendLine($lines, 'Board style', $c['board_style'] ?? null);
-        $this->appendLine($lines, 'Gates', $c['gates'] ?? null);
+        $this->appendLine($lines, 'Board style', $this->fenceBoardStyleLabel($c['board_style'] ?? null));
 
         if (($c['board_style'] ?? '') === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING) {
             $overlap = \App\Models\FenceFormulaSetting::current()->overlapping_in;
@@ -124,38 +123,57 @@ class QuotationWorkDescriptionContextBuilder
             }
         }
 
-        $sides = is_array($c['sides'] ?? null) ? $c['sides'] : [];
+        $sides = $this->fenceSides($c);
+        $sectionCount = count($sides);
+        $totalLf = 0.0;
         $sideParts = [];
+        $gatesOnSides = 0;
         foreach ($sides as $i => $side) {
-            if (! is_array($side)) {
-                continue;
+            $len = (float) ($side['length_ft'] ?? 0);
+            $totalLf += $len;
+            $part = 'Run '.($i + 1).': '.$this->linearFtLabel($len);
+            $existing = [];
+            if (! empty($side['already_have_post_left'])) {
+                $existing[] = 'existing post on left';
             }
-            $len = $side['length_ft'] ?? null;
-            if ($len !== null && $len !== '' && is_numeric($len) && (float) $len > 0) {
-                $part = 'Side '.($i + 1).': '.rtrim(rtrim(number_format((float) $len, 1, '.', ''), '0'), '.').' linear ft';
-                $existing = [];
-                if (! empty($side['already_have_post_left'])) {
-                    $existing[] = 'existing post on left';
-                }
-                if (! empty($side['already_have_post_right'])) {
-                    $existing[] = 'existing post on right';
-                }
-                if (! empty($side['gate_goes_here'])) {
-                    $existing[] = 'gate on this side';
-                }
-                if ($existing !== []) {
-                    $part .= ' ('.implode(', ', $existing).')';
-                }
-                $sideParts[] = $part;
+            if (! empty($side['already_have_post_right'])) {
+                $existing[] = 'existing post on right';
             }
+            if (array_key_exists('connected_to_previous', $side) && $i > 0) {
+                $existing[] = ! empty($side['connected_to_previous'])
+                    ? 'connected to previous run'
+                    : 'not connected to previous run';
+            }
+            if (! empty($side['gate_goes_here'])) {
+                $spec = \App\Support\FenceGateSpec::fromSide($side);
+                $existing[] = $spec->shortLabel().' gate on this run';
+                $gatesOnSides++;
+            }
+            if ($existing !== []) {
+                $part .= ' ('.implode(', ', $existing).')';
+            }
+            $sideParts[] = $part;
         }
-        if ($sideParts !== []) {
+
+        if ($sectionCount > 0) {
+            $lines[] = 'Fence runs entered on this quote: '.$sectionCount;
+            $lines[] = 'Total length: '.$this->linearFtLabel($totalLf);
+            $lines[] = 'Quantity rule: use this run count exactly. Do not add runs from post spacing, rails, pickets, or other material quantities.';
             $lines[] = 'Fence runs: '.implode('; ', $sideParts);
         }
 
-        $this->appendBlock($lines, 'Layout / geometry', $c['geometry_summary'] ?? null);
-        $this->appendBlock($lines, 'Materials list', $c['materials_summary'] ?? null);
-        $this->appendBlock($lines, 'Pricing snapshot', $c['totals_summary'] ?? null);
+        $gateCount = $this->fenceGateCount($c, $gatesOnSides);
+        if ($gateCount > 0) {
+            $this->appendLine($lines, 'Gates', $this->fenceGateSummary($c, $sides, $gateCount, $gatesOnSides));
+        } elseif (array_key_exists('gate_count', $c) || array_key_exists('gates', $c)) {
+            $this->appendLine($lines, 'Gates', '0');
+        }
+
+        $materials = $this->clientFacingMaterialNames($c);
+        if ($this->textMentionsConcrete($materials)) {
+            $this->appendLine($lines, 'Post footings', 'concrete');
+        }
+        $this->appendBlock($lines, 'Materials list', $materials !== '' ? $materials : null);
 
         return implode("\n", $lines);
     }
@@ -168,13 +186,12 @@ class QuotationWorkDescriptionContextBuilder
         $lines = ['Quotation type: Low floating deck'];
 
         $this->appendLine($lines, 'Client', $c['client_name'] ?? null);
-        $this->appendLine($lines, 'Width', isset($c['width_ft']) ? $c['width_ft'].' ft' : null);
-        $this->appendLine($lines, 'Length', isset($c['length_ft']) ? $c['length_ft'].' ft' : null);
-        $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) ? $c['joist_spacing_in'].' in (auto, max 15 in.)' : null);
+        $this->appendLine($lines, 'Width', isset($c['width_ft']) && $c['width_ft'] !== '' ? $c['width_ft'].' ft' : null);
+        $this->appendLine($lines, 'Length', isset($c['length_ft']) && $c['length_ft'] !== '' ? $c['length_ft'].' ft' : null);
+        $this->appendLine($lines, 'Joist spacing', $this->formatInchMeasure($c['joist_spacing_in'] ?? null));
 
-        $this->appendBlock($lines, 'Layout / geometry', $c['geometry_summary'] ?? null);
-        $this->appendBlock($lines, 'Materials list', $c['materials_summary'] ?? null);
-        $this->appendBlock($lines, 'Pricing snapshot', $c['totals_summary'] ?? null);
+        $materials = $this->clientFacingMaterialNames($c);
+        $this->appendBlock($lines, 'Materials list', $materials !== '' ? $materials : null);
 
         return implode("\n", $lines);
     }
@@ -243,65 +260,67 @@ class QuotationWorkDescriptionContextBuilder
             $lines[] = 'PDF includes: '.implode(' and ', $includes);
         }
 
-        $materials = is_array($c['materials'] ?? null) ? $c['materials'] : [];
-        if ($materials !== []) {
-            $lines[] = 'Materials:';
-            foreach ($materials as $row) {
-                if (! is_array($row)) {
-                    continue;
-                }
-                $name = trim((string) ($row['short_name'] ?? $row['description'] ?? ''));
-                $desc = trim((string) ($row['description'] ?? ''));
-                $qty = trim((string) ($row['quantity'] ?? ''));
-                $unit = trim((string) ($row['unit_price'] ?? ''));
-                if ($name === '' && $desc === '') {
-                    continue;
-                }
-                $part = $name !== '' ? $name : $desc;
-                if ($desc !== '' && $desc !== $name) {
-                    $part .= ' — '.$desc;
-                }
-                if ($qty !== '' && is_numeric($qty)) {
-                    $part .= ', qty '.$qty;
-                }
-                if ($unit !== '') {
-                    $part .= ', unit '.$unit;
-                }
-                $lines[] = '  - '.$part;
-            }
-        }
-
         $jobs = is_array($c['jobs'] ?? null) ? $c['jobs'] : [];
-        if (count($jobs) > 1) {
-            $lines[] = 'Jobs:';
+        $flatMaterials = is_array($c['materials'] ?? null) ? $c['materials'] : [];
+
+        if ($jobs !== []) {
             foreach ($jobs as $i => $job) {
                 if (! is_array($job)) {
                     continue;
                 }
                 $title = trim((string) ($job['title'] ?? ''));
-                $lines[] = '  - '.($title !== '' ? $title : 'Job '.($i + 1));
+                $lines[] = 'Job '.($i + 1).($title !== '' ? ': '.$title : '');
+                $jobMaterials = is_array($job['materials'] ?? null) ? $job['materials'] : [];
+                foreach ($jobMaterials as $row) {
+                    $name = $this->standardMaterialName($row);
+                    if ($name !== '') {
+                        $lines[] = '  - '.$name;
+                    }
+                }
+                if (filter_var($job['labour_use_fixed'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                    $lines[] = '  Labour: flat fee';
+                } else {
+                    $mode = strtolower(trim((string) ($job['labour_mode'] ?? 'hours')));
+                    $lines[] = '  Labour: estimated in '.($mode === 'days' ? 'days' : 'hours');
+                }
+            }
+        } elseif ($flatMaterials !== []) {
+            $lines[] = 'Materials:';
+            foreach ($flatMaterials as $row) {
+                $name = $this->standardMaterialName($row);
+                if ($name !== '') {
+                    $lines[] = '  - '.$name;
+                }
             }
         }
 
         if (filter_var($c['contingency_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $this->appendLine($lines, 'Contingency allowance', ($c['contingency_percent'] ?? '').'%');
+            $pct = trim((string) ($c['contingency_percent'] ?? ''));
+            $this->appendLine($lines, 'Contingency allowance', $pct !== '' ? $pct.'%' : 'yes');
         }
-
-        if (filter_var($c['labour_use_fixed'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $this->appendLine($lines, 'Labour', 'Fixed amount '.($c['labour_fixed_amount'] ?? ''));
-        } else {
-            $labour = trim(implode(' ', array_filter([
-                isset($c['labour_hourly_rate']) ? 'Rate '.$c['labour_hourly_rate'].'/hr' : '',
-                isset($c['labour_quantity']) ? 'Qty '.$c['labour_quantity'].' hours' : '',
-            ])));
-            if ($labour !== '') {
-                $lines[] = 'Labour: '.$labour;
-            }
-        }
-
-        $this->appendBlock($lines, 'Totals snapshot', $c['totals_summary'] ?? null);
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @param  mixed  $row
+     */
+    private function standardMaterialName($row): string
+    {
+        if (! is_array($row)) {
+            return '';
+        }
+        $name = trim((string) ($row['short_name'] ?? $row['name'] ?? ''));
+        $desc = trim((string) ($row['description'] ?? ''));
+        if ($name === '' && $desc === '') {
+            return '';
+        }
+        $part = $name !== '' ? $name : $desc;
+        if ($desc !== '' && $desc !== $name) {
+            $part .= ' — '.$desc;
+        }
+
+        return $this->stripMoneyFromText($part);
     }
 
     /**
@@ -485,7 +504,7 @@ class QuotationWorkDescriptionContextBuilder
             $this->appendLine($lines, 'Foundation', ShedQuotationCalculator::foundationLabel($foundation));
         }
         $this->appendLine($lines, 'Joist size', $c['joist_size'] ?? null);
-        $this->appendLine($lines, 'Joist spacing', isset($c['joist_spacing_in']) && $c['joist_spacing_in'] !== '' ? $c['joist_spacing_in'].' in' : null);
+        $this->appendLine($lines, 'Joist spacing', $this->formatInchMeasure($c['joist_spacing_in'] ?? null));
         $this->appendLine($lines, 'Stud size', $c['stud_size'] ?? null);
         $this->appendLine($lines, 'Stud spacing', isset($c['stud_spacing_in']) && $c['stud_spacing_in'] !== '' ? $c['stud_spacing_in'].' in' : null);
 
@@ -1120,10 +1139,12 @@ class QuotationWorkDescriptionContextBuilder
                 if ($value) {
                     $lines[] = $label.': yes';
                 }
+
                 continue;
             }
             if (is_array($value)) {
                 $this->flattenInto($lines, $value, $label, $skipKeys);
+
                 continue;
             }
             if (is_scalar($value) && trim((string) $value) !== '') {
@@ -1135,9 +1156,12 @@ class QuotationWorkDescriptionContextBuilder
     private function shouldSkipContextKey(string $key): bool
     {
         if (in_array($key, [
-            '_token', '_method', 'save_intent', 'work_description',
+            '_token', '_method', '_serialised', 'save_intent', 'work_description',
             'owner_hourly_rate', 'helper_hourly_rate', 'link_client_project_id',
             'tm_client_pick', 'include_commute', 'include_debris_removal',
+            'geometry_summary', 'totals_summary', 'sections_total',
+            'material_waste_percent', 'material_waste_amount',
+            'labour_fixed_amount', 'labour_hourly_rate',
         ], true)) {
             return true;
         }
@@ -1166,6 +1190,42 @@ class QuotationWorkDescriptionContextBuilder
     /**
      * @param  list<string>  $lines
      */
+    /**
+     * Plain "16 in" from a number, "16", "16-inch", or "16 in (auto, max 15 in.)".
+     * Formula notes are dropped. Empty / non-numeric values are omitted.
+     */
+    private function formatInchMeasure(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_numeric($value)) {
+            $n = (float) $value;
+            if ($n <= 0) {
+                return null;
+            }
+
+            return $this->plainNumber($n).' in';
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+        if (! preg_match('/^\s*(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|"|″)?\b/i', $raw, $m)) {
+            return null;
+        }
+
+        return $this->plainNumber((float) $m[1]).' in';
+    }
+
+    private function plainNumber(float $n): string
+    {
+        $formatted = rtrim(rtrim(number_format($n, 2, '.', ''), '0'), '.');
+
+        return $formatted === '' ? '0' : $formatted;
+    }
+
     private function appendLine(array &$lines, string $label, mixed $value): void
     {
         $text = is_scalar($value) ? trim((string) $value) : '';
@@ -1191,5 +1251,207 @@ class QuotationWorkDescriptionContextBuilder
         $n = round((float) $sqf, 0);
 
         return number_format($n).' sq ft';
+    }
+
+    /**
+     * User-entered fence runs (sides), not calculator post-to-post spans.
+     *
+     * @param  array<string, mixed>  $c
+     * @return list<array<string, mixed>>
+     */
+    private function fenceSides(array $c): array
+    {
+        $raw = $c['sides'] ?? null;
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $sides = [];
+        foreach ($raw as $side) {
+            if (! is_array($side)) {
+                continue;
+            }
+            $len = $side['length_ft'] ?? null;
+            if ($len === null || $len === '' || ! is_numeric($len) || (float) $len <= 0) {
+                continue;
+            }
+            $sides[] = $side;
+        }
+
+        return $sides;
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     */
+    private function fenceGateCount(array $c, int $gatesOnSides): int
+    {
+        $raw = $c['gate_count'] ?? $c['gates'] ?? null;
+        $stated = is_numeric($raw) ? (int) $raw : 0;
+
+        return max($stated, $gatesOnSides, 0);
+    }
+
+    /**
+     * @param  array<string, mixed>  $c
+     * @param  list<array<string, mixed>>  $sides
+     */
+    private function fenceGateSummary(array $c, array $sides, int $gateCount, int $gatesOnSides): string
+    {
+        $labels = [];
+        foreach ($sides as $side) {
+            if (empty($side['gate_goes_here'])) {
+                continue;
+            }
+            $labels[] = \App\Support\FenceGateSpec::fromSide($side)->shortLabel();
+        }
+        $extra = max(0, $gateCount - $gatesOnSides);
+        $extraSpec = \App\Support\FenceGateSpec::fromKey($c['extra_gate_preset'] ?? \App\Support\FenceGateSpec::DEFAULT_KEY);
+        for ($i = 0; $i < $extra; $i++) {
+            $labels[] = $extraSpec->shortLabel();
+        }
+
+        if ($labels === []) {
+            return (string) $gateCount;
+        }
+
+        return $gateCount.' ('.implode(', ', $labels).')';
+    }
+
+    private function fenceHeightLabel(mixed $value): ?string
+    {
+        $text = is_scalar($value) ? trim((string) $value) : '';
+        if ($text === '') {
+            return null;
+        }
+        if (is_numeric($text)) {
+            $n = rtrim(rtrim(number_format((float) $text, 1, '.', ''), '0'), '.');
+
+            return $n.' ft';
+        }
+
+        return $text;
+    }
+
+    private function fenceBoardStyleLabel(mixed $value): ?string
+    {
+        $text = is_scalar($value) ? trim((string) $value) : '';
+        if ($text === '') {
+            return null;
+        }
+        if ($text === \App\Models\FenceQuotation::BOARD_STYLE_STANDARD) {
+            return 'standard board';
+        }
+        if ($text === \App\Models\FenceQuotation::BOARD_STYLE_OVERLAPPING) {
+            return 'overlapping board';
+        }
+
+        return $text;
+    }
+
+    private function linearFtLabel(float $feet): string
+    {
+        $n = rtrim(rtrim(number_format($feet, 1, '.', ''), '0'), '.');
+
+        return $n.' linear feet';
+    }
+
+    /**
+     * Catalogue names only. Drops calculator notes (span counts, waste math,
+     * prices) whether they arrive as structured rows or pasted innerText.
+     *
+     * @param  array<string, mixed>  $c
+     */
+    private function clientFacingMaterialNames(array $c): string
+    {
+        $fromRows = $this->namesFromMaterialRows($c['materials'] ?? null);
+        if ($fromRows !== '') {
+            return $fromRows;
+        }
+
+        return $this->stripCalculatorTakeoffNotes((string) ($c['materials_summary'] ?? ''));
+    }
+
+    private function namesFromMaterialRows(mixed $rows): string
+    {
+        if (! is_array($rows) || $rows === []) {
+            return '';
+        }
+
+        $names = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name === '' || preg_match('/\bdelivery\b/i', $name) === 1) {
+                continue;
+            }
+            $names[] = $name;
+        }
+
+        return implode("\n", $names);
+    }
+
+    private function stripCalculatorTakeoffNotes(string $text): string
+    {
+        $text = $this->stripMoneyFromText($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $lines = preg_split('/\R+/u', $text) ?: [];
+        $out = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || $line === '—' || preg_match('/\bdelivery\b/i', $line) === 1) {
+                continue;
+            }
+
+            $line = preg_replace('/\bPickets:\s*\d+\s*,?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\+\s*\d+\s+per (?:section|panel)\s*\(\s*\d+\s*\)\s*waste/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bper (?:section|panel)\s*\(\s*\d+\s*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\(\s*\d+\s*\/\s*(?:section|panel)\s*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bTop board\s*\([^)]*(?:sections?|panels?|clear span)[^)]*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bFence:\s*\d+\s*/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bgates:\s*\d+/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bStructural:\s*\d+\s*,?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bMax\s+\d+(?:\.\d+)?\'\s+spacing\.?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bGate on sides?:\s*\d+\s*\([^)]*\)\.?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\d+(?:\.\d+)?\s+bags\/post[^.]*waste/iu', '', $line) ?? $line;
+            $line = preg_replace('/\b2\s*[×x]\s*\d+\s+fence rails/iu', '', $line) ?? $line;
+            $line = preg_replace('/\b1 per post\b/iu', '', $line) ?? $line;
+            $line = preg_replace('/\b1 set per gate\b/iu', '', $line) ?? $line;
+            $line = preg_replace('/\+\s*\d+\s+waste\.?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bpre-waste\b/iu', '', $line) ?? $line;
+            $line = preg_replace('/\bMaterial waste:\s*\d+(?:\.\d+)?%\s*(?:\(internal\))?/iu', '', $line) ?? $line;
+            $line = preg_replace('/\(\s*\d+(?:\.\d+)?%\s*waste[^)]*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\(\s*internal\s*\)/iu', '', $line) ?? $line;
+            $line = preg_replace('/\s{2,}/u', ' ', $line) ?? $line;
+            $line = trim($line, " \t,;·+");
+            if ($line !== '') {
+                $out[] = $line;
+            }
+        }
+
+        return implode("\n", $out);
+    }
+
+    private function stripMoneyFromText(string $text): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $text = preg_replace('/\s*[—-]\s*CA\$[\d,]+(?:\.\d+)?/u', '', $text) ?? $text;
+        $text = preg_replace('/\s*CA\$[\d,]+(?:\.\d+)?/u', '', $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function textMentionsConcrete(string $text): bool
+    {
+        return $text !== '' && preg_match('/\bconcrete\b/iu', $text) === 1;
     }
 }

@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form method="post" action="{{ $supplierSite->exists ? route('admin.supplier-sites.update', $supplierSite) : route('admin.supplier-sites.store') }}">
       @csrf
+      @include('admin.partials.once_submit')
       @if ($supplierSite->exists) @method('PUT') @endif
 
       <div class="admin-form-grid-2">
@@ -54,11 +55,13 @@
       </div>
 
       <div class="admin-form-group">
-        <label for="ss-tags">Tags</label>
+        <span class="admin-label-with-tip">
+          <label for="ss-tags">Tags</label>
+          <x-admin.info-tip label="Tags">Comma-separated. Tags are reusable — search or filter by them on the list.</x-admin.info-tip>
+        </span>
         <input class="admin-input @error('tags_input') is-invalid @enderror" type="text" id="ss-tags" name="tags_input"
                value="{{ old('tags_input', $supplierSite->exists ? $supplierSite->tagsInputValue() : '') }}"
                maxlength="2000" placeholder="Bin Rental, crushed stone, bedding sand">
-        <p class="admin-form-help">Comma-separated. Tags are reusable — search or filter by them on the list.</p>
         @error('tags_input') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
 
@@ -88,7 +91,7 @@
       </div>
 
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save</button>
         <a href="{{ route('admin.supplier-sites.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

@@ -80,8 +80,10 @@
 
 @section('content')
   <div class="admin-card">
-    <h3>Quick expense entry</h3>
-    <p class="admin-form-help" style="margin: 0 0 12px;">Add an expense to any active project. On mobile, tap the camera button to snap a receipt photo.</p>
+    <h3>
+      Quick expense entry
+      <x-admin.info-tip label="Quick expense entry">Add an expense to any active project. On mobile, tap the camera button to snap a receipt photo.</x-admin.info-tip>
+    </h3>
     <form action="{{ route('admin.financials.expenses.store') }}" method="post" enctype="multipart/form-data" id="gf-quick-expense-form">
       @csrf
       <div class="gf-quick-expense-form">
@@ -109,7 +111,7 @@
         </div>
         <div class="admin-form-group admin-form-group--amount">
           <label for="gf-expense-amount">Amount <span class="cp-required">*</span></label>
-          <input type="text" id="gf-expense-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+          <input type="text" id="gf-expense-amount" name="amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00" required data-cp-money-entry="direct">
           @error('amount') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group admin-form-group--submit">
@@ -119,18 +121,36 @@
         </div>
       </div>
       <div class="admin-form-group gf-quick-expense-receipt">
-        <label for="gf-expense-receipt">
-          <i class="fa fa-camera"></i> Receipt (optional)
-        </label>
+        <span class="admin-label-with-tip">
+          <label for="gf-expense-receipt"><i class="fa fa-camera"></i> Receipt (optional)</label>
+          <x-admin.info-tip label="Receipt">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</x-admin.info-tip>
+        </span>
         <input type="file" id="gf-expense-receipt" name="receipt" class="admin-input" accept="image/*,application/pdf" capture="environment">
-        <p class="admin-form-help">Image (auto-converted to WebP) or PDF. On mobile, tap to take a photo directly.</p>
         @error('receipt') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>
     </form>
   </div>
 
-  <div class="admin-card cp-filters">
-    <form action="{{ route('admin.financials.expenses') }}" method="get" class="cp-filters-form" style="display:contents;">
+  @php
+    $activeFilterCount = \App\Support\AdminListFilters::activeCount([
+        'search' => $search ?? '',
+        'date_from' => $dateFrom ?? '',
+        'date_to' => $dateTo ?? '',
+        'has_receipt' => $hasReceipt ?? '',
+    ], [], [
+        'dateRange' => ['date_from', 'date_to'],
+        'minLength' => ['search' => 2],
+        'allowed' => [
+            'has_receipt' => ['yes', 'no'],
+        ],
+    ]);
+  @endphp
+  @component('admin.partials.filters_accordion', [
+    'id' => 'admin-filters-expenses',
+    'storageKey' => 'admin-filters:expenses',
+    'activeCount' => $activeFilterCount,
+  ])
+    <form action="{{ route('admin.financials.expenses') }}" method="get" class="cp-filters">
       <div class="cp-filter cp-filter--search">
         <label for="gf-search">Search</label>
         <input type="text" id="gf-search" name="search" class="admin-input" placeholder="Description, project…" value="{{ $search }}" minlength="2">
@@ -156,7 +176,7 @@
         <a href="{{ route('admin.financials.expenses') }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
       </div>
     </form>
-  </div>
+  @endcomponent
 
   <div class="gf-totals">
     <div class="gf-total-tile">
@@ -220,10 +240,10 @@
                 </td>
                 <td data-label="Actions" class="admin-table-actions">
                   <div class="admin-actions-dropdown">
-                    <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions">
+                    <button type="button" class="admin-actions-dropdown__toggle" aria-label="Actions" aria-expanded="false" aria-haspopup="menu">
                       <i class="fa fa-ellipsis-h" aria-hidden="true"></i>
                     </button>
-                    <div class="admin-actions-dropdown__menu">
+                    <div class="admin-actions-dropdown__menu" role="menu">
                       @if ($project)
                         <a href="{{ route('admin.client-projects.show', $project) }}#financials" class="admin-actions-dropdown__item">
                           <i class="fa fa-folder-open"></i> Open project

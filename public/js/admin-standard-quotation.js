@@ -170,7 +170,7 @@
     if (qtyInput) qtyInput.disabled = !!on;
     modeRadios.forEach(function (r) { r.disabled = !!on; });
     if (fixedAmtInput) fixedAmtInput.disabled = !on;
-    if (fixedHstInc) fixedHstInc.disabled = !on;
+    if (fixedHstInc) fixedHstInc.disabled = !on || !labourHstEnabled();
   }
 
   function syncHstToggles(row) {
@@ -195,6 +195,8 @@
     var subSum = 0;
     var hstSum = 0;
     var withSum = 0;
+    var contSubSum = 0;
+    var contHstSum = 0;
 
     rows.forEach(function (row) {
       syncHstToggles(row);
@@ -208,6 +210,8 @@
       var inclusive = row.querySelector('.sq-mat-hst-inclusive-cb') && row.querySelector('.sq-mat-hst-inclusive-cb').checked;
       var applyCb = row.querySelector('.sq-mat-hst-cb');
       var chargePreTax = applyCb && applyCb.checked;
+      var source = row.querySelector('.sq-mat-source-radio:checked');
+      var isElectrical = !!(source && source.value === 'electrical');
       var lineGross = Math.round((unit * qty + delivery) * 100) / 100;
       var lineSub;
       var lineHst;
@@ -243,6 +247,10 @@
       subSum += lineSub;
       hstSum += lineHst;
       withSum += lineTot;
+      if (!isElectrical) {
+        contSubSum += lineSub;
+        contHstSum += lineHst;
+      }
     });
 
     subSum = Math.round(subSum * 100) / 100;
@@ -262,7 +270,7 @@
     var labWithHst;
     if (useFixed) {
       var fa = parseMoney(fixedAmtInput ? fixedAmtInput.value : '');
-      if (fixedHstInc && fixedHstInc.checked) {
+      if (fixedHstInc && fixedHstInc.checked && labourHstEnabled()) {
         lab = Math.round(fa / (1 + HST) * 100) / 100;
         labHst = Math.round((fa - lab) * 100) / 100;
         labWithHst = fa;
@@ -315,7 +323,9 @@
       withSum: withSum,
       lab: lab,
       labHst: labHst,
-      labWithHst: labWithHst
+      labWithHst: labWithHst,
+      contSubSum: Math.round(contSubSum * 100) / 100,
+      contHstSum: Math.round(contHstSum * 100) / 100
     };
   }
 
@@ -327,6 +337,8 @@
     var lab = 0;
     var labHst = 0;
     var labWithHst = 0;
+    var contBase = 0;
+    var contBaseHst = 0;
     jobs.forEach(function (j) {
       subSum += j.subSum;
       hstSum += j.hstSum;
@@ -334,6 +346,8 @@
       lab += j.lab;
       labHst += j.labHst;
       labWithHst += j.labWithHst;
+      contBase += j.contSubSum || 0;
+      contBaseHst += j.contHstSum || 0;
     });
     subSum = Math.round(subSum * 100) / 100;
     hstSum = Math.round(hstSum * 100) / 100;
@@ -372,9 +386,9 @@
     var contPct = contingencyPctValue();
     var contAmt = 0;
     var contHst = 0;
-    if (contOn && subSum > 0 && contPct > 0) {
-      contAmt = Math.round(subSum * (contPct / 100) * 100) / 100;
-      var effRate = subSum > 0 ? (hstSum / subSum) : 0;
+    if (contOn && contBase > 0 && contPct > 0) {
+      contAmt = Math.round(contBase * (contPct / 100) * 100) / 100;
+      var effRate = contBase > 0 ? (contBaseHst / contBase) : 0;
       contHst = Math.round(contAmt * effRate * 100) / 100;
     }
 
@@ -390,9 +404,9 @@
     setText(contAddedAmount, money(contAmt + contHst));
     setText(
       contAddedDetail,
-      '(' + pctLabel + '% of ' + money(subSum) + ' materials'
+      '(' + pctLabel + '% of ' + money(contBase) + ' materials'
         + (contHst > 0 ? ', ' + money(contAmt) + ' + ' + money(contHst) + ' HST' : ' before HST')
-        + ')'
+        + ', not electrical work)'
     );
     setText(gMatSub, money(subSum));
     setText(gMatHst, money(hstWithCont));
@@ -590,7 +604,7 @@
     if (!val) return;
     var next = val
       .replace(/works\[(?:\d+|__W__)]/g, 'works[' + w + ']')
-      .replace(/materials\[(?:\d+|__I__)]/g, 'materials[' + i + ']')
+      .replace(/\[materials\]\[(?:\d+|__I__)]/g, '[materials][' + i + ']')
       .replace(/sq-mat-catalog-w(?:\d+|__W__)-(?:\d+|__I__)/g, 'sq-mat-catalog-w' + w + '-' + i)
       .replace(/sq-w(?:\d+|__W__)/g, 'sq-w' + w);
     if (next !== val) el.setAttribute(attr, next);
@@ -621,6 +635,9 @@
       });
       var num = card.querySelector('.sq-work-number-val');
       if (num) num.textContent = String(w + 1);
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshRepeatLabels === 'function') {
+        window.AdminInfoTip.refreshRepeatLabels(card);
+      }
       reindexMaterialNames(card, w);
       syncFixedLabourUI(card);
     });
@@ -664,6 +681,8 @@
     var wrap = document.createElement('div');
     wrap.innerHTML = html.trim();
     var newRow = wrap.firstElementChild;
+    var refreshRow = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+    if (refreshRow) refreshRow(newRow);
     list.appendChild(newRow);
     reindexMaterialNames(card, w);
     if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
@@ -678,6 +697,8 @@
     var wrap = document.createElement('div');
     wrap.innerHTML = html.trim();
     var card = wrap.querySelector('.sq-work-card') || wrap.firstElementChild;
+    var refreshCard = window.AdminInfoTip && (window.AdminInfoTip.refreshControlIds || window.AdminInfoTip.refreshIds);
+    if (refreshCard) refreshCard(card);
     worksRoot.appendChild(card);
     workCards().forEach(function (c) {
       if (c !== card) {
@@ -695,6 +716,7 @@
     }
     card.querySelectorAll('.sq-material-row').forEach(initMaterialRow);
     recalcAll();
+    saveOpenJobs();
     var title = card.querySelector('.sq-work-title');
     if (title) title.focus();
   }
@@ -770,10 +792,13 @@
       var list = cardRm ? cardRm.querySelector('.sq-materials-list') : null;
       if (!row || !list) return;
       if (list.querySelectorAll('.sq-material-row').length <= 1) return;
-      destroyCatalogPicker(row);
-      row.remove();
-      reindexMaterialNames(cardRm, workCards().indexOf(cardRm));
-      recalcAll();
+      var matName = materialRowLabel(row);
+      confirmRemove('Remove ' + matName + '?', 'Remove material', function () {
+        destroyCatalogPicker(row);
+        row.remove();
+        reindexMaterialNames(cardRm, workCards().indexOf(cardRm));
+        recalcAll();
+      });
       return;
     }
     var rmWork = e.target.closest('.sq-remove-work');
@@ -781,16 +806,26 @@
       if (workCards().length <= 1) return;
       var cardDel = rmWork.closest('.sq-work-card');
       if (!cardDel) return;
-      var contBlock = document.getElementById('sq-contingency-block');
-      if (contBlock && cardDel.contains(contBlock)) {
-        var host = workCards().filter(function (c) { return c !== cardDel; }).pop();
-        var slot = host && host.querySelector('.sq-materials-footer-start');
-        if (slot) slot.appendChild(contBlock);
-      }
-      cardDel.querySelectorAll('.sq-material-row').forEach(destroyCatalogPicker);
-      cardDel.remove();
-      reindexAll();
-      recalcAll();
+      var titleEl = cardDel.querySelector('.sq-work-title');
+      var jobLabel = titleEl && String(titleEl.value || '').trim()
+        ? String(titleEl.value).trim()
+        : ('Job ' + (workCards().indexOf(cardDel) + 1));
+      var matCount = cardDel.querySelectorAll('.sq-material-row').length;
+      var jobMsg = 'Remove ' + jobLabel + ' and its ' + matCount + ' material row'
+        + (matCount === 1 ? '' : 's') + '?';
+      confirmRemove(jobMsg, 'Remove job', function () {
+        var contBlock = document.getElementById('sq-contingency-block');
+        if (contBlock && cardDel.contains(contBlock)) {
+          var host = workCards().filter(function (c) { return c !== cardDel; }).pop();
+          var slot = host && host.querySelector('.sq-materials-footer-start');
+          if (slot) slot.appendChild(contBlock);
+        }
+        cardDel.querySelectorAll('.sq-material-row').forEach(destroyCatalogPicker);
+        cardDel.remove();
+        reindexAll();
+        recalcAll();
+        saveOpenJobs();
+      });
       return;
     }
     var tog = e.target.closest('.sq-work-toggle');
@@ -807,11 +842,68 @@
     }
   });
 
-  function toggleWorkCard(card) {
-    var open = !card.classList.contains('is-open');
-    card.classList.toggle('is-open', open);
+  function materialRowLabel(row) {
+    var shortEl = row.querySelector('.sq-mat-short-name');
+    var descEl = row.querySelector('.sq-mat-desc');
+    var shortName = shortEl ? String(shortEl.value || '').trim() : '';
+    var desc = descEl ? String(descEl.value || '').trim() : '';
+    return shortName || desc || 'this material';
+  }
+
+  function confirmRemove(message, title, onConfirm) {
+    if (window.AdminDialog && typeof window.AdminDialog.confirm === 'function') {
+      window.AdminDialog.confirm(message, { title: title, danger: true, confirmLabel: 'Remove' }).then(function (ok) {
+        if (ok) onConfirm();
+      });
+      return;
+    }
+    if (window.confirm(message)) onConfirm();
+  }
+
+  function openJobsKey() {
+    return 'admin-sq-open-jobs:' + (form.getAttribute('data-quote-id') || 'new');
+  }
+
+  function setWorkOpen(card, open) {
+    card.classList.toggle('is-open', !!open);
     var btn = card.querySelector('.sq-work-toggle');
     if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function saveOpenJobs() {
+    try {
+      var open = [];
+      workCards().forEach(function (card, i) {
+        if (card.classList.contains('is-open')) open.push(i);
+      });
+      sessionStorage.setItem(openJobsKey(), JSON.stringify({ open: open, t: Date.now() }));
+    } catch (err) {}
+  }
+
+  function restoreOpenJobs() {
+    var stored;
+    try {
+      var raw = sessionStorage.getItem(openJobsKey());
+      if (raw == null) return;
+      stored = JSON.parse(raw);
+    } catch (err) {
+      return;
+    }
+    if (!stored || !Array.isArray(stored.open)) return;
+    if (stored.t && (Date.now() - stored.t) > SCROLL_MAX_AGE_MS) return;
+    workCards().forEach(function (card, i) {
+      var shouldOpen = stored.open.indexOf(i) !== -1;
+      if (card.querySelector('.admin-form-error, .is-invalid')) {
+        shouldOpen = true;
+      }
+      setWorkOpen(card, shouldOpen);
+    });
+  }
+
+  function toggleWorkCard(card) {
+    var open = !card.classList.contains('is-open');
+    setWorkOpen(card, open);
+    saveOpenJobs();
   }
 
   var addWorkBtn = document.getElementById('sq-add-work');
@@ -864,9 +956,8 @@
       e.target.id === 'sq-include-labour-hst' ||
       e.target.id === 'q-building-include'
     ) {
-      if (e.target.classList.contains('sq-labour-use-fixed-cb')) {
-        var card = e.target.closest('.sq-work-card');
-        if (card) syncFixedLabourUI(card);
+      if (e.target.classList.contains('sq-labour-use-fixed-cb') || e.target.id === 'sq-include-labour-hst') {
+        workCards().forEach(syncFixedLabourUI);
       }
       recalcAll();
     }
@@ -877,6 +968,8 @@
     syncFixedLabourUI(card);
   });
   updateWorkChrome();
+  restoreOpenJobs();
+  form.addEventListener('submit', saveOpenJobs);
   recalcAll();
 
   document.addEventListener('commute-expense:change', function (e) {

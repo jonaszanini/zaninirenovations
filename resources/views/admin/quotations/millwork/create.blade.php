@@ -44,12 +44,39 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Millwork',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.millwork.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'mw-main-form',
+    'saveId' => 'mw-btn-publish',
+    'draftId' => 'mw-btn-draft',
+    'draftHotkey' => true,
+    'wizard' => [
+      'navId' => 'mw-step-nav',
+      'prevId' => 'mw-prev',
+      'nextId' => 'mw-next',
+      'statusId' => 'mw-step-status',
+      'count' => $enabledCount,
+      'hidden' => $isEdit,
+    ],
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'purchaseListUrl' => $isEdit ? route('admin.quotations.millwork.purchase-list', $quotation) : null,
+    'purchaseListTitle' => 'Print material list',
+    'cutListUrl' => $isEdit ? route('admin.quotations.millwork.cut-list', $quotation) : null,
+  ])
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
   </div>
   @include('admin.partials.room_area_prefill_banner')
-  @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
-  @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
 
   @if ($isEdit && $quotation->project)
     <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
@@ -62,47 +89,14 @@
   <form method="post" action="{{ $formAction }}" id="mw-main-form" class="pq-layout br-layout {{ $isEdit ? 'br-layout--edit' : 'br-layout--create' }}"
         data-br-mode="{{ $isEdit ? 'edit' : 'create' }}"
         data-quotation-editor
-        data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
+        data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
+        data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="mw-save-intent" value="publish">
-
-    <div class="br-toolbar" aria-label="Quotation actions">
-      <div class="pq-sidebar-actions">
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="mw-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-btn-draft">Save as draft</button>
-        <a href="{{ route('admin.quotations.millwork.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @if ($isEdit)
-          <a href="{{ route('admin.quotations.millwork.cut-list', $quotation) }}"
-             target="_blank" rel="noopener noreferrer"
-             class="admin-btn admin-btn--ghost admin-btn--sm">
-            <i class="fa fa-print"></i> Print cut list
-          </a>
-          <a href="{{ route('admin.quotations.millwork.purchase-list', $quotation) }}"
-             target="_blank" rel="noopener noreferrer"
-             class="admin-btn admin-btn--ghost admin-btn--sm"
-             data-purchase-list-choice
-             data-purchase-list-title="Print material list">
-            <i class="fa fa-print"></i> Print material list
-          </a>
-        @endif
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-nav="{{ route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []) }}">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-mw-nav="{{ route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []) }}">Cancel</button>
-        @include('admin.partials.quotation_view_pdf')
-      </div>
-      <div class="br-step-nav" id="mw-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-prev" disabled>Back</button>
-        <span class="br-step-nav__status" id="mw-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="mw-next">Next</button>
-      </div>
-    </div>
+    <input type="hidden" name="_cut_plan_version" id="mw-cut-plan-version" value="{{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }}">
+    <input type="hidden" name="upgrade_cut_plan" id="mw-upgrade-cut-plan" value="0">
 
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">
@@ -120,7 +114,10 @@
         <div class="admin-card fl-step-card mw-client-card">
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
-              <label for="mw-client-name">@include('admin.partials.info_tip', ['text' => 'Name printed on the quotation PDF and used when linking this quote to a project.']) Client name</label>
+              <span class="admin-label-with-tip">
+                <label for="mw-client-name">Client name</label>
+                <x-admin.info-tip label="Client name">Name printed on the quotation PDF and used when linking this quote to a project.</x-admin.info-tip>
+              </span>
               <input type="text" class="admin-input" id="mw-client-name" name="client_name" maxlength="160"
                      value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
             </div>
@@ -148,10 +145,66 @@
 
             <div class="mw-cut-plan-head">
               <h4 class="br-review-heading">Cut plan</h4>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-print-cut-list" @disabled($cutLayouts === [])>
-                <i class="fa fa-print"></i> Print cut list
-              </button>
+              <div class="mw-cut-plan-head__actions">
+                @if ($isEdit && $quotation && $quotation->canUpgradeCalc())
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-upgrade-cut-plan-btn">
+                    Recalculate with new cut plan
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-undo-cut-plan-btn" hidden>
+                    Undo recalculate
+                  </button>
+                @endif
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-print-cut-list" @disabled($cutLayouts === [])>
+                  <i class="fa fa-print"></i> Print cut list
+                </button>
+              </div>
             </div>
+            @php
+              $unplacedParts = is_array($initialPreview['cut_plan']['unplaced'] ?? null) ? $initialPreview['cut_plan']['unplaced'] : [];
+              $cutSeams = is_array($initialPreview['cut_plan']['seams'] ?? null) ? $initialPreview['cut_plan']['seams'] : [];
+            @endphp
+            @php
+              $recalcNotice = is_array($initialPreview['recalc_notice'] ?? null) ? $initialPreview['recalc_notice'] : null;
+            @endphp
+            <div id="mw-recalc-banner" class="admin-flash admin-flash--warning mw-recalc-banner" role="status" @if (! $recalcNotice) hidden @endif>
+              <strong>Recalculated with the new cut plan</strong>
+              <p id="mw-recalc-text">
+                @if ($recalcNotice)
+                  was {{ \App\Models\ClientProject::formatMoney((float) $recalcNotice['was']) }},
+                  now {{ \App\Models\ClientProject::formatMoney((float) $recalcNotice['now']) }}.
+                  Review the cut plan before you save.
+                @endif
+              </p>
+              @if ($isEdit && $quotation && $quotation->usesLegacyCutBuilder())
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="mw-undo-cut-plan-banner-btn">
+                  Undo
+                </button>
+              @endif
+            </div>
+            <div id="mw-unplaced-banner" class="admin-flash admin-flash--error mw-unplaced-banner" role="alert" @if ($unplacedParts === []) hidden @endif>
+              <strong>Parts do not fit on any sheet</strong>
+              <p>These parts are not in the cut plan and are not in the price. Change the size or pick a larger sheet. The client PDF cannot be downloaded until every part fits.</p>
+              <ul id="mw-unplaced-list">
+                @foreach ($unplacedParts as $missing)
+                  <li>{{ $missing['label'] ?? 'Part' }}</li>
+                @endforeach
+              </ul>
+            </div>
+            <div id="mw-cut-seams" class="mw-cut-seams" @if ($cutSeams === []) hidden @endif>
+              @foreach ($cutSeams as $seam)
+                <p>
+                  {{ $seam['label'] ?? 'Back' }}: {{ $seam['note'] ?? '' }}
+                  @if (! empty($seam['panels']))
+                    ({{ implode(' + ', $seam['panels']) }})
+                  @endif
+                  @include('admin.partials.info_tip', [
+                    'tipText' => 'Finished sizes still add up to '.($seam['original'] ?? '').'.',
+                    'tipLabel' => 'Finished size',
+                  ])
+                </p>
+              @endforeach
+            </div>
+            <p class="admin-form-help mw-cut-plan__status" id="mw-cut-plan-status" hidden>Updating cut plan…</p>
             <p class="admin-form-help" id="mw-cut-meta">
               {{ (int) ($initialPreview['cut_plan']['sheet_count'] ?? 0) }} sheet(s)
               @if (! empty($initialPreview['cut_plan']['yield_pct']))
@@ -164,7 +217,7 @@
                 · Kerf {{ $kerfLabel }}
               @endif
             </p>
-            <div id="mw-cut-plan" class="mw-cut-plan">
+            <div id="mw-cut-plan" class="mw-cut-plan" aria-busy="false">
               @forelse ($cutLayouts as $layout)
                 @include('admin.quotations.millwork._cut_sheet', ['layout' => $layout])
               @empty
@@ -242,7 +295,10 @@
             </template>
 
             <div class="admin-form-group quotation-work-desc">
-              <label for="mw-work-description">@include('admin.partials.info_tip', ['text' => 'Optional scope summary on the client PDF. Improve with AI after you fill the wizard.']) Description</label>
+              <span class="admin-label-with-tip">
+                <label for="mw-work-description">Description</label>
+                <x-admin.info-tip label="Description">Optional scope summary on the client PDF. Improve with AI after you fill the wizard. Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+              </span>
               <textarea class="admin-input" id="mw-work-description" name="work_description" rows="5"
                         placeholder="Describe the millwork to be built and installed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
               @include('admin.partials.quotation_work_description_ai', [
@@ -250,9 +306,10 @@
                   'aiContextFormId' => 'mw-main-form',
                   'aiQuotationType' => 'millwork',
               ])
-              <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
             </div>
 
+            @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
+            @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'mw-main-form'])
             @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
             @include('admin.quotations._commute_debris_row')
             @include('admin.quotations._building', ['quotation' => $quotation, 'inputs' => $inputs ?? [], 'previewClass' => 'mw-preview'])
@@ -271,7 +328,9 @@
 
     <aside class="br-aside">
       <div class="pq-summary-card">
-        <h4>Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="mw-live-root">
           <p class="admin-form-help" id="mw-live-empty">Add piece dimensions to see the cut plan.</p>
           <div id="mw-live-body"></div>
@@ -325,6 +384,10 @@
       ),
       initialPreview: @json($initialPreview ?? null),
       isEdit: @json($isEdit),
+      cutPlanVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }},
+      calcVersion: {{ (int) ($cutPlanVersion ?? ($isEdit && $quotation ? $quotation->calcVersion() : \App\Services\MillworkQuotationCalculator::CALC_VERSION)) }},
+      latestCalcVersion: {{ (int) \App\Services\MillworkQuotationCalculator::CALC_VERSION }},
+      storedTotal: {{ $isEdit && $quotation ? json_encode((float) $quotation->final_quote_total) : '0' }},
       sectionKeys: @json(array_keys($sectionList)),
       quoteNumber: @json($isEdit && $quotation ? ($quotation->quote_number ?? '') : ''),
       printCssUrl: @json(asset('css/millwork-cut-list-print.css').'?v='.(@filemtime(public_path('css/millwork-cut-list-print.css')) ?: time())),

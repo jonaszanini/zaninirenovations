@@ -17,7 +17,10 @@
   <div class="admin-form-group">
     <span class="cp-document-links-label">
       Document links <span class="admin-form-help cp-inline-help">(optional)</span>
-      @include('admin.partials.info_tip', ['text' => 'Paste Word, Excel, or PowerPoint share links (OneDrive, SharePoint, Google Docs, or a direct file URL). Type is detected from the link; you can override it. Add as many as you need.'])
+      @include('admin.partials.info_tip', [
+        'tipText' => 'Paste Word, Excel, or PowerPoint share links (OneDrive, SharePoint, Google Docs, or a direct file URL). Type is detected from the link; you can override it. Add as many as you need.',
+        'tipLabel' => 'Document links',
+      ])
     </span>
   </div>
 

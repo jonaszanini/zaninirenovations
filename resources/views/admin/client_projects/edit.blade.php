@@ -47,12 +47,13 @@
         </div>
 
         <div class="admin-form-group">
-          <label for="cp-conversation-on" class="cp-label-with-hint">
-            Conversation on
+          <span class="admin-label-with-tip cp-label-with-hint">
+            <label for="cp-conversation-on">Conversation on</label>
             @include('admin.client_projects._cp_field_hint', [
-              'text' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
+              'tipText' => 'If the thread moved (e.g. they emailed first but you now chat on SMS or WhatsApp), pick where you usually follow up.',
+              'tipLabel' => 'Conversation on',
             ])
-          </label>
+          </span>
           <select id="cp-conversation-on" name="conversation_on" @class(['admin-input', 'is-invalid' => $errors->has('conversation_on')])>
             <option value="" @selected(old('conversation_on', $project->conversation_on) === null || old('conversation_on', $project->conversation_on) === '')>— Not set —</option>
             @foreach (\App\Models\ClientProject::contactedViaOptions() as $value => $label)
@@ -86,7 +87,10 @@
             @error('client_name') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
-            <label for="cp-client-email-secondary">Secondary email <small class="admin-form-help cp-inline-help">(CC'd)</small></label>
+            <span class="admin-label-with-tip">
+              <label for="cp-client-email-secondary">Secondary email</label>
+              <x-admin.info-tip label="Secondary email">Optional — CC'd on every client email.</x-admin.info-tip>
+            </span>
             <input class="admin-input" type="email" id="cp-client-email-secondary" name="client_email_secondary"
                    value="{{ old('client_email_secondary', $project->client_email_secondary) }}" maxlength="255"
                    placeholder="spouse@example.com"
@@ -134,7 +138,8 @@
           <h3 style="font-size:1rem;" class="cp-label-with-hint">
             Invoice billing <span class="admin-form-help cp-inline-help">(optional)</span>
             @include('admin.client_projects._cp_field_hint', [
-              'text' => 'When the payer is a company or a different legal entity, enter the name and address that should appear in the Bill to block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.',
+              'tipText' => 'When the payer is a company or a different legal entity, enter the name and address that should appear in the Bill to block on invoices and receipts. Day-to-day contact (name, email, phone above) stays the same for emails and SMS.',
+              'tipLabel' => 'Invoice billing',
             ])
           </h3>
           <div class="admin-form-group">
@@ -146,12 +151,14 @@
             @error('invoice_billing_name') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
-            <label for="cp-invoice-billing-address">Billing address</label>
+            <span class="admin-label-with-tip">
+              <label for="cp-invoice-billing-address">Billing address</label>
+              <x-admin.info-tip label="Billing address">Leave blank to use the client address above on PDFs.</x-admin.info-tip>
+            </span>
               <textarea id="cp-invoice-billing-address" name="invoice_billing_address" rows="3" maxlength="2000"
                         class="admin-input" placeholder="Registered office or mailing address for AP"
                         @disabled($clientFieldsLocked)>{{ old('invoice_billing_address', $project->invoice_billing_address) }}</textarea>
             @error('invoice_billing_address') <p class="admin-form-error">{{ $message }}</p> @enderror
-            <p class="admin-form-help">Leave blank to use the client address above on PDFs.</p>
           </div>
         </div>
       </div>
@@ -234,7 +241,7 @@
                  autocomplete="off"
                 
                  placeholder="0.00"
-                 value="{{ old('hourly_rate', $project->hourly_rate ? number_format((float) $project->hourly_rate, 2, '.', '') : '') }}">
+                 value="{{ old('hourly_rate', $project->hourly_rate ? number_format((float) $project->hourly_rate, 2, '.', '') : '') }}" data-cp-money-entry="direct">
           @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
       </div>
@@ -246,14 +253,14 @@
       </div>
 
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary"><i class="fa fa-check"></i> Save changes</button>
+        <button type="submit" id="cp-btn-save" class="admin-btn admin-btn--primary" data-hotkey-save><i class="fa fa-check"></i> Save changes</button>
         <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>
     </div>
 
     <aside class="cp-edit-project-actions-aside" role="region" aria-label="Project form actions">
-      <button type="submit" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" id="cp-btn-save-aside" form="cp-edit-project-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-check"></i> Save changes
       </button>
       <a href="{{ route('admin.client-projects.show', $project) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>

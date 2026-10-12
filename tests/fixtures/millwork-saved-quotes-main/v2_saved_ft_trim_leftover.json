@@ -1,0 +1,58 @@
+{
+    "version": 2,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "trim",
+                "profile": "casing",
+                "unit": "ft",
+                "linear_ft": 40,
+                "openings": 2,
+                "width": 72,
+                "height": 84,
+                "qty": 1,
+                "edge_banding": false
+            }
+        ],
+        "include_install": false,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 374,
+            "materials_pre_hst": 219.7,
+            "subtotal_pre_hst": 593.7,
+            "hst": 77.18,
+            "grand_total": 670.88
+        },
+        "labor": [
+            {
+                "key": "trim",
+                "label": "Trim / casing / base",
+                "hours": 4.4,
+                "amount": 374
+            }
+        ],
+        "materials": [
+            {
+                "key": "trim",
+                "label": "MDF baseboard",
+                "qty": 88,
+                "unit_price": 2.4,
+                "amount": 211.2
+            },
+            {
+                "key": "fastener",
+                "label": "1-1/4\" cabinet screws (box of 100)",
+                "qty": 1,
+                "unit_price": 8.5,
+                "amount": 8.5
+            }
+        ],
+        "scope_labels": [
+            "1× Casing 80 lf"
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nTrim casing, approx. 80 lin. ft. Includes supply and shop build."
+    }
+}

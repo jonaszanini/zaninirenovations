@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Vehicles')
+@section('heading')
+  Vehicles
+  <x-admin.info-tip label="Vehicles">Track company vehicles, fuel costs, business contact, and your home / office address for project travel estimates.</x-admin.info-tip>
+@endsection
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-vehicles.css') }}?v={{ @filemtime(public_path('css/admin-vehicles.css')) ?: time() }}">
@@ -8,9 +11,6 @@
 
 @section('content')
   <div class="admin-toolbar">
-    <p class="admin-toolbar-lede">
-      Track company vehicles, fuel costs, and your home / office address for project travel estimates.
-    </p>
     <a href="{{ route('admin.vehicles.create') }}" class="admin-btn admin-btn--primary">
       <i class="fa fa-plus"></i> Add new vehicle
     </a>
@@ -25,8 +25,10 @@
 
   <div class="admin-vehicles-grid">
     <div class="admin-card admin-vehicles-home-card">
-      <h3>Home / office address</h3>
-      <p class="admin-form-help">Used as the starting point for round-trip travel cost on each project.</p>
+      <h3>
+        Home / office address
+        <x-admin.info-tip label="Home / office address">Used as the starting point for round-trip travel cost on each project.</x-admin.info-tip>
+      </h3>
       <form action="{{ route('admin.vehicles.settings.home-address') }}" method="post">
         @csrf
         @method('PUT')
@@ -43,7 +45,46 @@
           'lngValue' => old('home_address_longitude', $settings->home_address_longitude),
           'help' => 'Pick a Google suggestion so distance to projects can be calculated automatically.',
         ])
-        <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save home address</button>
+        <button type="submit" id="vh-btn-home" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save home address</button>
+      </form>
+    </div>
+
+    <div class="admin-card admin-vehicles-contact-card">
+      <h3>Business contact @include('admin.partials.info_tip', [
+        'tipText' => 'Shown to clients on quote accept pages and the blocked PDF page.',
+        'tipLabel' => 'Business contact',
+      ])</h3>
+      <form action="{{ route('admin.vehicles.settings.business-contact') }}" method="post">
+        @csrf
+        @method('PUT')
+        <div class="admin-form-grid-2">
+          <div class="admin-form-group">
+            <label for="company-contact-phone">Phone</label>
+            <input class="admin-input cp-phone-input"
+                   type="text"
+                   id="company-contact-phone"
+                   name="contact_phone"
+                   value="{{ old('contact_phone', $settings->contact_phone) }}"
+                   inputmode="tel"
+                   autocomplete="tel"
+                   maxlength="40"
+                   placeholder="(647) 834-7570">
+            @error('contact_phone') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+          <div class="admin-form-group">
+            <label for="company-contact-email">Email</label>
+            <input class="admin-input"
+                   type="email"
+                   id="company-contact-email"
+                   name="contact_email"
+                   value="{{ old('contact_email', $settings->contact_email) }}"
+                   autocomplete="email"
+                   maxlength="160"
+                   placeholder="zaninirenovations@gmail.com">
+            @error('contact_email') <p class="admin-form-error">{{ $message }}</p> @enderror
+          </div>
+        </div>
+        <button type="submit" id="vh-btn-contact" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save business contact</button>
       </form>
     </div>
 
@@ -64,7 +105,10 @@
         @csrf
         @method('PUT')
         <div class="admin-form-group admin-vehicles-gas-field">
-          <label for="company-gas-price">Current gas price (CAD / L)</label>
+          <span class="admin-label-with-tip">
+            <label for="company-gas-price">Current gas price (CAD / L)</label>
+            <x-admin.info-tip label="Current gas price">Company-wide — used with each vehicle’s L/100 km for fuel estimates.</x-admin.info-tip>
+          </span>
           <div class="admin-vehicles-gas-row">
             <input class="admin-input cp-money-input" type="text"
                    id="company-gas-price"
@@ -76,10 +120,9 @@
                    data-cp-money-places="3"
                    data-cp-gas-price
                    placeholder="1.450"
-                   required>
-            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save gas price</button>
+                   required data-cp-money-entry="direct">
+            <button type="submit" id="vh-btn-gas" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>Save gas price</button>
           </div>
-          <p class="admin-form-help">Company-wide — used with each vehicle’s L/100 km for fuel estimates.</p>
           @error('gas_price_per_liter') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
       </form>

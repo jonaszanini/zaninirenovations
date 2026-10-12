@@ -1,0 +1,36 @@
+{
+    "version": 2,
+    "inputs": {
+        "pieces": [
+            {
+                "type": "closet",
+                "unit": "ft",
+                "width": 6,
+                "height": "",
+                "depth": "",
+                "qty": 1,
+                "edge_banding": false,
+                "include_doors": false
+            }
+        ],
+        "include_install": false,
+        "owner_hourly_rate": 85,
+        "helper_hourly_rate": 45
+    },
+    "expected": {
+        "summary": {
+            "labor_pre_hst": 0,
+            "materials_pre_hst": 0,
+            "subtotal_pre_hst": 0,
+            "hst": 0,
+            "grand_total": 0
+        },
+        "labor": [],
+        "materials": [],
+        "scope_labels": [
+            "1× closet 72\"×1008\"×168\""
+        ],
+        "pdf_scope": "Custom millwork — cabinets, closets, built-ins, and finish carpentry.\nCloset system. Closet system, 72\" W. Unfinished. Includes supply, shop build, and hardware.",
+        "preview_skipped": false
+    }
+}

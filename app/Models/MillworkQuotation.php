@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MillworkQuotation extends Model
 {
     use \App\Models\Concerns\HasClientEmailMessage;
+    use \App\Models\Concerns\HasPdfFoldVersion;
     use \App\Models\Concerns\HasReplyToAcceptChoice;
 
     public const HST_RATE = 0.13;
@@ -32,6 +33,7 @@ class MillworkQuotation extends Model
         'commute_round_trip_cost',
         'commute_amount',
         'version',
+        'cut_plan_version',
         'linked_at',
     ];
 
@@ -51,6 +53,7 @@ class MillworkQuotation extends Model
         'commute_round_trip_cost' => 'decimal:2',
         'commute_amount' => 'decimal:2',
         'version' => 'integer',
+        'cut_plan_version' => 'integer',
         'linked_at' => 'datetime',
     ];
 
@@ -70,6 +73,76 @@ class MillworkQuotation extends Model
         $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
 
         return max(0, (int) ($cut['sheet_count'] ?? 0));
+    }
+
+    public static function unplacedAdminMessage(): string
+    {
+        return 'This quotation has parts that do not fit on any sheet. Change the size or pick a larger sheet before sending, downloading, or accepting.';
+    }
+
+    public static function unplacedClientMessage(): string
+    {
+        return 'This quote is being updated and is not available to download or accept yet. Please contact us if you have questions.';
+    }
+
+    /**
+     * Only the stored unplaced list written by the new builder may block a
+     * client PDF or accept page. Legacy snapshots without that key stay open.
+     */
+    public function hasUnplacedCutParts(): bool
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $cut = is_array($calc['cut_plan'] ?? null) ? $calc['cut_plan'] : [];
+        $unplaced = $cut['unplaced'] ?? null;
+
+        return is_array($unplaced) && $unplaced !== [];
+    }
+
+    public function calcVersion(): int
+    {
+        if ($this->cut_plan_version !== null && $this->cut_plan_version !== '') {
+            $raw = (int) $this->cut_plan_version;
+            if ($raw >= \App\Services\MillworkQuotationCalculator::CALC_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::CALC_VERSION;
+            }
+            if ($raw >= \App\Services\MillworkQuotationCalculator::PARSING_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::PARSING_VERSION;
+            }
+            if ($raw >= \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION) {
+                return \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
+            }
+
+            return 1;
+        }
+
+        return 1;
+    }
+
+    public function cutPlanVersion(): int
+    {
+        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION
+            ? \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION
+            : 1;
+    }
+
+    public function builderVersion(): int
+    {
+        return $this->calcVersion();
+    }
+
+    public function usesLegacyCutBuilder(): bool
+    {
+        return $this->cutPlanVersion() < \App\Services\MillworkQuotationCalculator::CUT_PLAN_VERSION;
+    }
+
+    public function usesNewCalc(): bool
+    {
+        return $this->calcVersion() >= \App\Services\MillworkQuotationCalculator::PARSING_VERSION;
+    }
+
+    public function canUpgradeCalc(): bool
+    {
+        return $this->calcVersion() < \App\Services\MillworkQuotationCalculator::PARSING_VERSION;
     }
 
     public function displayTitle(): string
@@ -154,7 +227,13 @@ class MillworkQuotation extends Model
         if ($hasFinish) {
             $included[] = 'finishing';
         }
-        if ((float) ($summary['delivery_amount'] ?? $inputs['delivery_amount'] ?? 0) > 0) {
+        $deliveryStored = (float) ($summary['delivery_amount'] ?? $inputs['delivery_amount'] ?? 0);
+        $legacyQuote = $this->usesLegacyCutBuilder();
+        if ($this->usesNewCalc()) {
+            if ($deliveryStored > 0 && empty($inputs['client_provides_all'])) {
+                $included[] = 'delivery';
+            }
+        } elseif ($deliveryStored > 0) {
             $included[] = 'delivery';
         }
         if (! array_key_exists('include_install', $inputs) || ! empty($inputs['include_install'])) {
@@ -167,7 +246,12 @@ class MillworkQuotation extends Model
             if (! is_array($piece)) {
                 continue;
             }
-            $line = \App\Services\Millwork\MillworkPartBuilder::clientScopeLine($piece);
+            if (! isset($piece['_calc_version'])) {
+                $piece['_calc_version'] = $this->calcVersion();
+            }
+            $line = $legacyQuote
+                ? \App\Services\Millwork\LegacyMillworkPartBuilder::clientScopeLine($piece)
+                : \App\Services\Millwork\MillworkPartBuilder::clientScopeLine($piece);
             if ($line === '') {
                 continue;
             }

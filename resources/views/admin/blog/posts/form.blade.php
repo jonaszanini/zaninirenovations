@@ -40,6 +40,7 @@
         data-upload-url="{{ route('admin.blog.posts.upload-image') }}"
         data-site-host="zaninirenovations.ca">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="intent" id="bp-intent" value="save">
 
@@ -84,22 +85,24 @@
 
         <div class="bp-block bp-block--ai admin-card">
           <div class="blog-admin-ai-metadata-wrap">
-            <div class="admin-ai-action-group">
-              @include('admin.partials.ai_instruction_edit_link', [
-                'instructionKey' => \App\Models\AiInstruction::KEY_BLOG_POST,
-                'instructionLabel' => 'Edit blog post metadata prompt',
-              ])
+            @component('admin.partials.ai_action_group', [
+              'instructionKey' => \App\Models\AiInstruction::KEY_BLOG_POST,
+              'instructionLabel' => 'Edit blog post metadata prompt',
+              'showHistory' => true,
+              'historyKey' => 'blog-post-'.((int) ($post->id ?? 0)),
+            ])
               <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-ai-suggest-btn">
                 <i class="fa fa-magic" aria-hidden="true"></i> Suggest metadata
               </button>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-ai-image-btn">
-                <i class="fa fa-picture-o" aria-hidden="true"></i> Generate image
-              </button>
-              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-check-btn">
-                Check content
-              </button>
-              <span class="admin-ai-text-history-mount" data-history-mount data-history-key="blog-post-{{ (int) ($post->id ?? 0) }}"></span>
-            </div>
+              @slot('extra')
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-ai-image-btn">
+                  <i class="fa fa-picture-o" aria-hidden="true"></i> Generate image
+                </button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-check-btn">
+                  Check content
+                </button>
+              @endslot
+            @endcomponent
             <span id="bp-ai-metadata-status" class="blog-admin-gemini-status" aria-live="polite"></span>
           </div>
         </div>
@@ -121,7 +124,7 @@
             </div>
           </div>
           <div class="bp-form-actions" id="bp-form-actions">
-            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-save" data-intent="save">Save draft</button>
+            <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-save" data-intent="save" data-hotkey-save>Save draft</button>
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" id="bp-btn-publish" data-intent="publish">Publish</button>
             <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm" id="bp-btn-unpublish" data-intent="draft" hidden>Unpublish</button>
             @if ($isEdit)

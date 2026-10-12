@@ -45,9 +45,14 @@ class TaskController extends Controller
             'client_project_id' => ['nullable', 'exists:client_projects,id'],
         ]);
 
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
+
         $data['created_by'] = auth()->id();
 
         Task::create($data);
+        $this->rememberSubmitSucceeded($request);
 
         return back()->with('success', 'Task added.');
     }

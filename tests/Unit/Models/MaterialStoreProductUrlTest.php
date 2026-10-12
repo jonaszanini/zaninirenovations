@@ -43,4 +43,31 @@ class MaterialStoreProductUrlTest extends TestCase
         $this->assertFalse($material->isSerpApiSyncable());
         $this->assertSame('https://binrentalsottawa.com/dumpster-rentals/', $material->storeProductUrl());
     }
+
+    public function test_catalog_ready_rejects_inactive_and_zero_dollar_stubs(): void
+    {
+        $ready = new Material([
+            'name' => '6x6 Post Cap',
+            'store_sku' => '1001898921',
+            'price_cad' => 1.49,
+            'is_active' => true,
+        ]);
+        $this->assertTrue($ready->isCatalogReady());
+
+        $stub = new Material([
+            'name' => 'HD 1001898921',
+            'store_sku' => '1001898921',
+            'price_cad' => 0,
+            'is_active' => true,
+        ]);
+        $this->assertFalse($stub->isCatalogReady());
+
+        $inactive = new Material([
+            'name' => '6x6 Post Cap',
+            'store_sku' => '1001898921',
+            'price_cad' => 1.49,
+            'is_active' => false,
+        ]);
+        $this->assertFalse($inactive->isCatalogReady());
+    }
 }

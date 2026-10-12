@@ -20,6 +20,8 @@ use App\Services\QuotationPaymentSchedule;
 use App\Services\ShedQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
+use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -53,13 +55,18 @@ class ShedQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
+
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
 
         $quote = ShedQuotation::create(array_merge($calc, [
             'quote_number' => ShedQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -84,7 +91,8 @@ class ShedQuotationController extends Controller
 
     public function update(Request $request, ShedQuotation $shed_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $wasDraft = (bool) $shed_quotation->is_draft;
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $shed_quotation);
 
         $shed_quotation->fill(array_merge($calc, [
@@ -107,9 +115,7 @@ class ShedQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.shed.edit', $shed_quotation)
-            ->with('success', $linkedNow
-                ? 'Shed quotation '.$shed_quotation->quote_number.' updated and linked.'
-                : 'Shed quotation '.$shed_quotation->quote_number.' updated (v'.$shed_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Shed', $shed_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -527,6 +533,10 @@ class ShedQuotationController extends Controller
 
     protected function syncLineToProjectQuotation(ClientProject $project, ShedQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $items = [[
             'description' => 'Shed construction (labor)',
             'amount' => $quote->labourPreTaxAmountForProjectQuotation(),
@@ -591,6 +601,10 @@ class ShedQuotationController extends Controller
 
     protected function appendLineToProjectQuotation(ClientProject $project, ShedQuotation $quote): void
     {
+        if ($this->quotationIsDraft($quote)) {
+            return;
+        }
+
         $this->syncLineToProjectQuotation($project, $quote);
 
         $quote->update(array_merge([

@@ -19,6 +19,8 @@ use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
+use App\Support\QuotationSaveIntent;
 use App\Services\StairsQuotationCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -54,13 +56,18 @@ class StairsQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, null);
+
+        if ($replay = $this->rejectReplaySubmit($request)) {
+            return $replay;
+        }
 
         $quote = StairsQuotation::create(array_merge($calc, [
             'quote_number' => StairsQuotation::generateNumber(),
             'version' => 1,
         ]));
+        $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
         $hubProjectRequested = $this->quotationLinkCandidateProject($request);
@@ -85,7 +92,8 @@ class StairsQuotationController extends Controller
 
     public function update(Request $request, StairsQuotation $stairs_quotation)
     {
-        $intent = $request->input('save_intent') === 'draft' ? 'draft' : 'publish';
+        $wasDraft = (bool) $stairs_quotation->is_draft;
+        $intent = QuotationSaveIntent::fromRequest($request);
         $calc = $this->validatedCalculation($request, $intent, $stairs_quotation);
 
         $stairs_quotation->fill(array_merge($calc, [
@@ -108,9 +116,7 @@ class StairsQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.stairs.edit', $stairs_quotation)
-            ->with('success', $linkedNow
-                ? 'Stairs quotation '.$stairs_quotation->quote_number.' updated and linked.'
-                : 'Stairs quotation '.$stairs_quotation->quote_number.' updated (v'.$stairs_quotation->version.').');
+            ->with('success', QuotationDraftFlash::updated('Stairs', $stairs_quotation, $linkedNow, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -521,6 +527,10 @@ class StairsQuotationController extends Controller
 
     protected function syncStairsLineToProjectQuotation(ClientProject $project, StairsQuotation $stairsQuotation): void
     {
+        if ($this->quotationIsDraft($stairsQuotation)) {
+            return;
+        }
+
         $items = [[
             'description' => $stairsQuotation->summaryDescription(),
             'amount' => $stairsQuotation->labourPreTaxAmountForProjectQuotation(),
@@ -581,6 +591,10 @@ class StairsQuotationController extends Controller
         StairsQuotation $stairsQuotation,
         string $lineDescription
     ): void {
+        if ($this->quotationIsDraft($stairsQuotation)) {
+            return;
+        }
+
         $this->syncStairsLineToProjectQuotation($project, $stairsQuotation);
 
         $stairsQuotation->update(array_merge([

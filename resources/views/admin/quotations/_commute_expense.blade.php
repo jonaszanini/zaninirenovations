@@ -79,17 +79,20 @@
         <span class="q-commute-metric__value q-commute-metric__value--hl" data-cp-commute-added>CA$0.00</span>
       </div>
     </div>
+    <p class="admin-form-help" data-cp-commute-status hidden></p>
 
     <div class="q-commute-card__fields">
       <div class="admin-form-group q-commute-field q-commute-field--pct">
-        <label for="q-commute-percent">% of round trip</label>
+        <span class="admin-label-with-tip">
+          <label for="q-commute-percent">% of round trip</label>
+          <x-admin.info-tip label="% of round trip">100% = full round-trip fuel cost per trip.</x-admin.info-tip>
+        </span>
         <div class="q-commute-field__inline">
           <input type="text" inputmode="decimal" id="q-commute-percent" name="commute_trip_percent"
                  class="admin-input" maxlength="6" autocomplete="off"
                  value="{{ $commutePercent }}" data-cp-commute-percent>
           <span class="q-commute-field__suffix">%</span>
         </div>
-        <p class="admin-form-help">100% = full round-trip fuel cost per trip.</p>
       </div>
       <div class="admin-form-group q-commute-field">
         <label for="q-commute-trips">Estimated trips</label>
@@ -132,6 +135,7 @@
   }
   .q-commute-choice__input { margin: 0; }
   .q-commute-choice__text { font-size: 0.9rem; color: var(--admin-heading, #0f172a); }
+  [data-cp-commute-status] { margin: 8px 0 0; }
   .util-sr-only {
     position: absolute;
     width: 1px;

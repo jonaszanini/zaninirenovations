@@ -46,15 +46,28 @@ class RoomAreaCanvasData
 
     public const WALL_THICKNESS_PRESETS_IN = [0.0, 3.5, 4.5, 5.5, 6.0];
 
+    public const EDITOR_DIM_MODES = ['all', 'main', 'area', 'off'];
+
+    public const EDITOR_UNIT_SYSTEMS = ['imperial', 'metric'];
+
+    public const EDITOR_MEASURE_UNITS = ['meter', 'inch', 'feet_decimal', 'feet_inch_frac'];
+
+    public const EDITOR_TEMPLATES = ['rect', 'l', 'u', 't', 'alcove'];
+
     public const DEFAULT_WALL_HEIGHT_FT = 8.0;
 
     public const DEFAULT_DOOR_HEIGHT_IN = 80.0;
 
     public const DEFAULT_WINDOW_HEIGHT_IN = 36.0;
 
+    public const DEFAULT_OPENING_HEIGHT_IN = 84.0;
+
     public const STAIR_TREAD_IN = 10.0;
 
     public const MAX_WALL_THICKNESS_IN = 12.0;
+
+    /** Real-world lock compare; ignores a few pixels of canvas resize. */
+    public const LOCK_GEOM_TOLERANCE_FT = 0.05;
 
     /** @var list<string> */
     public const GROUP_COLORS = [
@@ -230,7 +243,58 @@ class RoomAreaCanvasData
             $canvas['background'] = $background;
         }
 
+        $editor = $this->normalizeEditorPrefs($input['editor'] ?? null);
+        if ($editor !== null) {
+            $canvas['editor'] = $editor;
+        }
+
         return $canvas;
+    }
+
+    /**
+     * Optional Batch 1 editor prefs. Missing or invalid keys are dropped so
+     * older saved rooms still load.
+     *
+     * @param  mixed  $raw
+     * @return array{
+     *   layers_locked?: bool,
+     *   dimensions_mode?: string,
+     *   unit_system?: string,
+     *   angle_snap?: bool,
+     *   template?: string
+     * }|null
+     */
+    public function normalizeEditorPrefs($raw): ?array
+    {
+        if (! is_array($raw) || $raw === []) {
+            return null;
+        }
+
+        $out = [];
+        if (array_key_exists('layers_locked', $raw)) {
+            $out['layers_locked'] = filter_var($raw['layers_locked'], FILTER_VALIDATE_BOOLEAN);
+        }
+        $mode = isset($raw['dimensions_mode']) ? (string) $raw['dimensions_mode'] : '';
+        if (in_array($mode, self::EDITOR_DIM_MODES, true)) {
+            $out['dimensions_mode'] = $mode;
+        }
+        $units = isset($raw['unit_system']) ? (string) $raw['unit_system'] : '';
+        if (in_array($units, self::EDITOR_UNIT_SYSTEMS, true)) {
+            $out['unit_system'] = $units;
+        }
+        $measure = isset($raw['measure_unit']) ? (string) $raw['measure_unit'] : '';
+        if (in_array($measure, self::EDITOR_MEASURE_UNITS, true)) {
+            $out['measure_unit'] = $measure;
+        }
+        if (array_key_exists('angle_snap', $raw)) {
+            $out['angle_snap'] = filter_var($raw['angle_snap'], FILTER_VALIDATE_BOOLEAN);
+        }
+        $template = isset($raw['template']) ? (string) $raw['template'] : '';
+        if (in_array($template, self::EDITOR_TEMPLATES, true)) {
+            $out['template'] = $template;
+        }
+
+        return $out === [] ? null : $out;
     }
 
     /**
@@ -364,14 +428,50 @@ class RoomAreaCanvasData
             $object['hinge'] = in_array($hinge, self::OBJECT_HINGES, true) ? $hinge : 'left';
         }
 
-        if ($type === 'window' || $type === 'opening') {
-            $height = isset($item['height']) ? (float) $item['height'] : 48.0;
-            $sill = isset($item['sill_height']) ? (float) $item['sill_height'] : 36.0;
+        if (in_array($type, ['door', 'window'], true)) {
+            $sides = array_key_exists('casing_sides', $item) && is_numeric($item['casing_sides'])
+                ? (int) $item['casing_sides']
+                : ($type === 'door' ? 2 : 4);
+            $object['casing_sides'] = max(0, min($type === 'window' ? 4 : 2, $sides));
+        }
+
+        if ($type === 'door') {
+            $face = isset($item['door_face']) && is_string($item['door_face'])
+                ? strtolower(trim($item['door_face']))
+                : RoomAreaFinishMath::DOOR_FACE_INTERIOR;
+            $object['door_face'] = $face === RoomAreaFinishMath::DOOR_FACE_EXTERIOR
+                ? RoomAreaFinishMath::DOOR_FACE_EXTERIOR
+                : RoomAreaFinishMath::DOOR_FACE_INTERIOR;
+        }
+
+        if ($type === 'opening') {
+            $legacyPlaceholder = isset($item['height']) && is_numeric($item['height'])
+                && abs((float) $item['height'] - RoomAreaFinishMath::LEGACY_OPENING_HEIGHT_IN) < 0.001;
+            $sides = array_key_exists('casing_sides', $item) && is_numeric($item['casing_sides'])
+                ? (int) $item['casing_sides']
+                : ($legacyPlaceholder ? 0 : 2);
+            $object['casing_sides'] = max(0, min(2, $sides));
+        }
+
+        if ($type === 'window') {
+            $height = isset($item['height']) && is_numeric($item['height'])
+                ? (float) $item['height']
+                : self::DEFAULT_WINDOW_HEIGHT_IN;
             if ($height > 0 && $height <= 240) {
                 $object['height'] = round($height, 3);
             }
-            if ($sill >= 0 && $sill <= 240) {
-                $object['sill_height'] = round($sill, 3);
+            if (isset($item['sill_height']) && is_numeric($item['sill_height'])) {
+                $sill = (float) $item['sill_height'];
+                if ($sill >= 0 && $sill <= 240) {
+                    $object['sill_height'] = round($sill, 3);
+                }
+            }
+        } elseif ($type === 'opening') {
+            if (isset($item['height']) && is_numeric($item['height'])) {
+                $height = (float) $item['height'];
+                if ($height > 0 && $height <= 240) {
+                    $object['height'] = round($height, 3);
+                }
             }
         } elseif ($type === 'door' && isset($item['height']) && is_numeric($item['height'])) {
             $height = (float) $item['height'];
@@ -726,7 +826,10 @@ class RoomAreaCanvasData
      *   stairs_quote_type: string
      * }
      */
-    public function layoutMetrics(array $canvas, float $pixelsPerFoot, float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT): array
+    /**
+     * @param  array<string, mixed>  $finish
+     */
+    public function layoutMetrics(array $canvas, float $pixelsPerFoot, float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT, array $finish = []): array
     {
         $normalized = $this->normalize($canvas);
         $area = 0.0;
@@ -768,10 +871,16 @@ class RoomAreaCanvasData
         $sharedLf = $this->sharedWalls->sharedLengthFeet($normalized, $pixelsPerFoot);
         $framing = $this->sharedWalls->framingLf($perimeter, $sharedLf);
         $baseboard = max(0.0, round($perimeter - $objectMetrics['baseboard_deduction_lf'], 2));
-        $grossWall = $perimeter * $wallHeightFt;
-        $wallArea = max(0.0, round($grossWall - $objectMetrics['wall_deduction_sqft'], 2));
         $insideArea = round($area, 2);
         $outsideArea = $this->outsideAreaSqFt($insideArea, $perimeter, $sharedLf, $thicknessIn);
+        $finishMetrics = app(RoomAreaFinishMath::class)->finishMetrics(
+            $normalized,
+            $pixelsPerFoot,
+            $wallHeightFt,
+            $insideArea,
+            $finish
+        );
+        $wallArea = (float) ($finishMetrics['net_wall_area_sqft'] ?? 0);
 
         return [
             'area_sqft' => $insideArea,
@@ -797,7 +906,7 @@ class RoomAreaCanvasData
             'stairs_treads' => $library['stairs_treads'],
             'stairs_run_lf' => $library['stairs_run_lf'],
             'stairs_quote_type' => $library['stairs_quote_type'],
-        ];
+        ] + $finishMetrics;
     }
 
     /**
@@ -842,7 +951,12 @@ class RoomAreaCanvasData
             'stairs_treads' => 0,
             'stairs_run_lf' => 0.0,
             'stairs_quote_type' => 'standard',
-        ];
+        ] + app(RoomAreaFinishMath::class)->finishMetrics(
+            $this->emptyCanvas(),
+            0,
+            $this->normalizeWallHeight($wallHeightFt),
+            0.0
+        );
     }
 
     public function outsideAreaSqFt(float $insideArea, float $perimeterLf, float $sharedLf, float $thicknessIn): float
@@ -935,15 +1049,7 @@ class RoomAreaCanvasData
      */
     private function objectHeightInches(array $object, string $type, float $wallHeightFt): float
     {
-        if (isset($object['height']) && is_numeric($object['height']) && (float) $object['height'] > 0) {
-            return (float) $object['height'];
-        }
-
-        return match ($type) {
-            'window' => self::DEFAULT_WINDOW_HEIGHT_IN,
-            'opening' => $wallHeightFt * 12.0,
-            default => self::DEFAULT_DOOR_HEIGHT_IN,
-        };
+        return app(RoomAreaFinishMath::class)->objectHeightInches($object, $type, $wallHeightFt);
     }
 
     /**
@@ -1028,5 +1134,335 @@ class RoomAreaCanvasData
             'u' => $base + 6,
             default => $base,
         };
+    }
+
+    public function isLayersLocked($canvas): bool
+    {
+        return is_array($canvas) && ! empty($canvas['editor']['layers_locked']);
+    }
+
+    /**
+     * Keep the stored lock when the client omits canvas.editor.
+     *
+     * @param  array<string, mixed>  $normalized
+     * @param  array<string, mixed>|null  $existing
+     * @param  mixed  $rawInput
+     * @return array<string, mixed>
+     */
+    public function preserveEditorLock(array $normalized, $existing, $rawInput): array
+    {
+        $existingLocked = is_array($existing) && ! empty($existing['editor']['layers_locked']);
+        if (! $existingLocked) {
+            return $normalized;
+        }
+
+        $rawEditor = is_array($rawInput) && isset($rawInput['editor']) && is_array($rawInput['editor'])
+            ? $rawInput['editor']
+            : null;
+        $explicitUnlock = is_array($rawEditor)
+            && array_key_exists('layers_locked', $rawEditor)
+            && filter_var($rawEditor['layers_locked'], FILTER_VALIDATE_BOOLEAN) === false;
+
+        if ($explicitUnlock) {
+            return $normalized;
+        }
+
+        $editor = isset($normalized['editor']) && is_array($normalized['editor'])
+            ? $normalized['editor']
+            : [];
+        $existingEditor = $this->normalizeEditorPrefs($existing['editor'] ?? []);
+        if ($existingEditor !== null) {
+            $editor = array_merge($existingEditor, $editor);
+        }
+        $editor['layers_locked'] = true;
+        $normalized['editor'] = $editor;
+
+        return $normalized;
+    }
+
+    /**
+     * Keep stored vertices when a locked save is within the geometry tolerance
+     * so sub-tolerance moves cannot accumulate across requests.
+     *
+     * @param  array<string, mixed>  $normalized
+     * @param  array<string, mixed>|null  $existing
+     * @return array<string, mixed>
+     */
+    public function restoreStoredGeometryIfWithinTolerance(array $normalized, $existing, ?float $existingScale, ?float $incomingScale): array
+    {
+        if (! $this->isLayersLocked($existing) || ! is_array($existing)) {
+            return $normalized;
+        }
+        if ($this->geometryDiffersInFeet($existing, $normalized, $existingScale, $incomingScale)) {
+            return $normalized;
+        }
+
+        $factor = $this->scaleFactor($existingScale, $incomingScale);
+        $normalized = $this->copyStoredVertices($normalized, $existing, $factor);
+        if (isset($existing['background']) && is_array($existing['background'])
+            && ! $this->backgroundLayoutDiffers($existing, $normalized, $existingScale, $incomingScale)) {
+            $scaledBg = $this->scaleBackgroundLayout($existing['background'], $factor);
+            if ($scaledBg !== null) {
+                $normalized['background'] = $scaledBg;
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Keep the stored floor-plan layout when a locked save omits background.
+     *
+     * @param  array<string, mixed>  $normalized
+     * @param  array<string, mixed>|null  $existing
+     * @return array<string, mixed>
+     */
+    public function preserveLockedBackground(array $normalized, $existing, ?float $existingScale = null, ?float $incomingScale = null): array
+    {
+        if (! $this->isLayersLocked($existing) || ! is_array($existing)) {
+            return $normalized;
+        }
+        if (! isset($normalized['background']) && isset($existing['background'])) {
+            $scaled = $this->scaleBackgroundLayout(
+                $existing['background'],
+                $this->scaleFactor($existingScale, $incomingScale)
+            );
+            $normalized['background'] = $scaled ?? $existing['background'];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalized
+     * @param  array<string, mixed>  $existing
+     * @return array<string, mixed>
+     */
+    private function scaleFactor(?float $existingScale, ?float $incomingScale): float
+    {
+        if ($existingScale === null || $existingScale <= 0 || $incomingScale === null || $incomingScale <= 0) {
+            return 1.0;
+        }
+
+        return round($incomingScale, 4) / $existingScale;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $background
+     * @return array{x: float, y: float, width: float, height: float}|null
+     */
+    private function scaleBackgroundLayout($background, float $factor): ?array
+    {
+        $norm = is_array($background) ? $this->normalizeBackground($background) : null;
+        if ($norm === null) {
+            return null;
+        }
+        foreach (['x', 'y', 'width', 'height'] as $key) {
+            $norm[$key] = round($norm[$key] * $factor, 3);
+        }
+
+        return $norm;
+    }
+
+    private function copyStoredVertices(array $normalized, array $existing, float $factor = 1.0): array
+    {
+        $exGroups = $existing['groups'] ?? [];
+        $inGroups = $normalized['groups'] ?? [];
+        if (! is_array($exGroups) || ! is_array($inGroups) || count($exGroups) !== count($inGroups)) {
+            return $normalized;
+        }
+        foreach ($exGroups as $gi => $exGroup) {
+            $exPolys = is_array($exGroup) ? ($exGroup['polygons'] ?? []) : [];
+            $inPolys = is_array($inGroups[$gi] ?? null) ? ($inGroups[$gi]['polygons'] ?? []) : [];
+            if (! is_array($exPolys) || ! is_array($inPolys) || count($exPolys) !== count($inPolys)) {
+                continue;
+            }
+            foreach ($exPolys as $pi => $exPoly) {
+                $exVerts = is_array($exPoly) ? ($exPoly['vertices'] ?? []) : [];
+                if (! is_array($exVerts) || ! isset($normalized['groups'][$gi]['polygons'][$pi])) {
+                    continue;
+                }
+                $normalized['groups'][$gi]['polygons'][$pi]['vertices'] = array_map(function ($vertex) use ($factor) {
+                    return [
+                        'x' => ((float) ($vertex['x'] ?? 0)) * $factor,
+                        'y' => ((float) ($vertex['y'] ?? 0)) * $factor,
+                    ];
+                }, $exVerts);
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * When a saved room is locked, reject real-world geometry or scale changes
+     * until the stored lock is already off. Unlocking in the same request as a
+     * corner move is rejected. Area names and canvas-pixel resize (same feet)
+     * are not geometry changes.
+     *
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>  $incoming
+     */
+    public function lockedGeometryChangeMessage($existing, array $incoming, ?float $existingScale = null, ?float $incomingScale = null): ?string
+    {
+        if (! $this->isLayersLocked($existing)) {
+            return null;
+        }
+
+        $exScale = $existingScale !== null && $existingScale > 0 ? $existingScale : null;
+        $inScale = $incomingScale !== null && $incomingScale > 0 ? $incomingScale : $exScale;
+        if ($exScale === null) {
+            $exScale = $inScale;
+        }
+
+        if ($this->geometryDiffersInFeet($existing, $incoming, $exScale, $inScale)) {
+            $pixelsSame = $this->vertexPixelsMatch($existing, $incoming);
+            if ($pixelsSame && $existingScale !== null && $incomingScale !== null
+                && abs($existingScale - $incomingScale) > 0.0001) {
+                return 'Unlock layers to recalibrate scale.';
+            }
+
+            return 'Unlock layers to change walls or areas.';
+        }
+
+        if ($this->backgroundLayoutDiffers($existing, $incoming, $exScale, $inScale)) {
+            return 'Unlock layers to change the floor plan.';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>  $incoming
+     */
+    private function backgroundLayoutDiffers($existing, array $incoming, ?float $existingScale = null, ?float $incomingScale = null): bool
+    {
+        $incomingBg = $incoming['background'] ?? null;
+        if (! is_array($incomingBg)) {
+            return false;
+        }
+        $existingBg = is_array($existing) ? ($existing['background'] ?? null) : null;
+        $incomingNorm = $this->normalizeBackground($incomingBg);
+        $existingNorm = is_array($existingBg) ? $this->normalizeBackground($existingBg) : null;
+        if ($incomingNorm === null) {
+            return false;
+        }
+        if ($existingNorm === null) {
+            return true;
+        }
+
+        $exScale = $existingScale !== null && $existingScale > 0 ? $existingScale : 1.0;
+        $inScale = $incomingScale !== null && $incomingScale > 0 ? $incomingScale : $exScale;
+        foreach (['x', 'y', 'width', 'height'] as $key) {
+            if (abs(($existingNorm[$key] / $exScale) - ($incomingNorm[$key] / $inScale)) > self::LOCK_GEOM_TOLERANCE_FT) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>  $incoming
+     */
+    private function geometryDiffersInFeet($existing, array $incoming, ?float $existingScale, ?float $incomingScale): bool
+    {
+        $exGroups = is_array($existing) ? ($existing['groups'] ?? []) : [];
+        $inGroups = $incoming['groups'] ?? [];
+        if (! is_array($exGroups) || ! is_array($inGroups)) {
+            return true;
+        }
+        if (count($exGroups) !== count($inGroups)) {
+            return true;
+        }
+
+        foreach ($exGroups as $gi => $exGroup) {
+            $inGroup = $inGroups[$gi] ?? null;
+            if (! is_array($exGroup) || ! is_array($inGroup)) {
+                return true;
+            }
+            $exPolys = $exGroup['polygons'] ?? [];
+            $inPolys = $inGroup['polygons'] ?? [];
+            if (! is_array($exPolys) || ! is_array($inPolys) || count($exPolys) !== count($inPolys)) {
+                return true;
+            }
+            foreach ($exPolys as $pi => $exPoly) {
+                $inPoly = $inPolys[$pi] ?? null;
+                if (! is_array($exPoly) || ! is_array($inPoly)) {
+                    return true;
+                }
+                $exVerts = $exPoly['vertices'] ?? [];
+                $inVerts = $inPoly['vertices'] ?? [];
+                if (! is_array($exVerts) || ! is_array($inVerts) || count($exVerts) !== count($inVerts)) {
+                    return true;
+                }
+                foreach ($exVerts as $vi => $exV) {
+                    $inV = $inVerts[$vi] ?? null;
+                    if (! is_array($exV) || ! is_array($inV)) {
+                        return true;
+                    }
+                    $exFt = $this->pointInFeet($exV, $existingScale);
+                    $inFt = $this->pointInFeet($inV, $incomingScale);
+                    if ($exFt === null || $inFt === null) {
+                        return true;
+                    }
+                    if (abs($exFt[0] - $inFt[0]) > self::LOCK_GEOM_TOLERANCE_FT
+                        || abs($exFt[1] - $inFt[1]) > self::LOCK_GEOM_TOLERANCE_FT) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $existing
+     * @param  array<string, mixed>  $incoming
+     */
+    private function vertexPixelsMatch($existing, array $incoming): bool
+    {
+        $exGroups = is_array($existing) ? ($existing['groups'] ?? []) : [];
+        $inGroups = $incoming['groups'] ?? [];
+        if (! is_array($exGroups) || ! is_array($inGroups) || count($exGroups) !== count($inGroups)) {
+            return false;
+        }
+        foreach ($exGroups as $gi => $exGroup) {
+            $inGroup = $inGroups[$gi] ?? null;
+            $exPolys = is_array($exGroup) ? ($exGroup['polygons'] ?? []) : [];
+            $inPolys = is_array($inGroup) ? ($inGroup['polygons'] ?? []) : [];
+            if (! is_array($exPolys) || ! is_array($inPolys) || count($exPolys) !== count($inPolys)) {
+                return false;
+            }
+            foreach ($exPolys as $pi => $exPoly) {
+                $inPoly = $inPolys[$pi] ?? null;
+                $exVerts = is_array($exPoly) ? ($exPoly['vertices'] ?? []) : [];
+                $inVerts = is_array($inPoly) ? ($inPoly['vertices'] ?? []) : [];
+                if (json_encode($exVerts) !== json_encode($inVerts)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $point
+     * @return array{0: float, 1: float}|null
+     */
+    private function pointInFeet(array $point, ?float $scale): ?array
+    {
+        if ($scale === null || $scale <= 0) {
+            return null;
+        }
+        if (! isset($point['x'], $point['y']) || ! is_numeric($point['x']) || ! is_numeric($point['y'])) {
+            return null;
+        }
+
+        return [(float) $point['x'] / $scale, (float) $point['y'] / $scale];
     }
 }

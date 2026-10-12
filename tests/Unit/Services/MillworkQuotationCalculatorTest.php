@@ -254,7 +254,7 @@ class MillworkQuotationCalculatorTest extends TestCase
             ]],
         ];
 
-        $hints = (new MillworkQuotationCalculator)->validationHints($inputs, false);
+        $hints = (new MillworkQuotationCalculator)->validationHints($inputs, false, $this->settings());
         $this->assertSame([], $hints);
 
         $out = (new MillworkPartBuilder)->explode($inputs['pieces'][0], 0.75, 0.018);

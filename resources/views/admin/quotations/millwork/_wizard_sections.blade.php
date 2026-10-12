@@ -3,6 +3,7 @@
   use App\Services\Millwork\MillworkPartBuilder;
   use App\Services\MillworkQuotationCalculator;
 
+  $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
   $mwVal = function (string $key, $fallback = '') use ($inputs) {
       return old($key, $inputs[$key] ?? $fallback);
   };
@@ -20,6 +21,7 @@
   $needsEdgeBanding = false;
   $needsPaint = false;
   $needsStain = false;
+  $isLegacyQuote = $isLegacyQuote ?? (((int) ($cutPlanVersion ?? $builderVersion ?? 2)) < 2);
 
   foreach ($pieces as $pieceRow) {
       if (! is_array($pieceRow)) {
@@ -51,19 +53,21 @@
 @endphp
 
 <details class="br-acc admin-card is-active" data-br-step="pieces" open>
-  <summary class="br-acc__summary"><span class="br-acc__num">1</span> Pieces</summary>
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">1</span> Pieces
+    <x-admin.info-tip label="Pieces">Add each millwork item — cabinets, closets, vanities, trim, and more. Duplicate a piece to copy its sizes.</x-admin.info-tip>
+  </summary>
   <div class="br-acc__body">
-    <p class="admin-form-help">Add each millwork item — cabinets, closets, vanities, trim, and more. Duplicate a piece to copy its sizes.</p>
     <div id="mw-piece-list">
       @foreach ($pieces as $pi => $piece)
-        @include('admin.quotations.millwork._piece_card', ['pi' => $pi, 'piece' => is_array($piece) ? $piece : []])
+        @include('admin.quotations.millwork._piece_card', ['pi' => $pi, 'piece' => is_array($piece) ? $piece : [], 'isLegacyQuote' => $isLegacyQuote ?? (((int) ($cutPlanVersion ?? 2)) < 2)])
       @endforeach
     </div>
     <button type="button" class="admin-btn admin-btn--ghost" id="mw-add-piece" style="margin-top:10px;">
       <i class="fa fa-plus"></i> Add another piece
     </button>
     <template id="mw-piece-template">
-      @include('admin.quotations.millwork._piece_card', ['pi' => '__P__', 'piece' => MillworkQuotationCalculator::defaultPiece('shelf')])
+      @include('admin.quotations.millwork._piece_card', ['pi' => '__P__', 'piece' => MillworkQuotationCalculator::defaultPiece('shelf'), 'isLegacyQuote' => $isLegacyQuote ?? (((int) ($cutPlanVersion ?? 2)) < 2)])
     </template>
     <template id="mw-set-template">
       @include('admin.quotations.millwork._set_row', ['pi' => '__P__', 'si' => '__S__', 'set' => ['qty' => 1, 'unit' => 'in']])
@@ -71,15 +75,35 @@
   </div>
 </details>
 
-<details class="br-acc admin-card" data-br-step="materials">
-  <summary class="br-acc__summary"><span class="br-acc__num">2</span> Materials &amp; finish</summary>
+<details class="br-acc admin-card" data-br-step="materials" data-qh-step="2">
+  <summary class="br-acc__summary">
+    <span class="br-acc__num">2</span> Materials &amp; finish
+    <x-admin.info-tip label="Materials & finish">Sheet size defaults to 4×8 from Price configuration. Waste % is applied to edge banding, finish, and linear trim. Nesting leftover is already in the cut plan — add spare sheets if you want extras.</x-admin.info-tip>
+    @include('admin.partials.quotation_price_config_gear', [
+      'url' => route('admin.quotations.millwork.price-configuration', request()->filled('project') ? ['project' => (int) request('project')] : []),
+    ])
+  </summary>
   <div class="br-acc__body">
-    <p class="admin-form-help">Sheet size defaults to 4×8 from Price configuration. Waste % is applied to edge banding, finish, and linear trim. Nesting leftover is already in the cut plan — add spare sheets if you want extras.</p>
     <div class="admin-form-group mw-sheet-field">
-      <label for="mw-sheet">@include('admin.partials.info_tip', ['text' => 'Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.']) Wood sheet</label>
+      <span class="admin-label-with-tip">
+        <label for="mw-sheet">Wood sheet</label>
+        <x-admin.info-tip label="Wood sheet">Primary 4×8 (or catalog size). The cut plan picks smaller leftover sheets when they fit.</x-admin.info-tip>
+      </span>
+      @php
+        $sheetSelected = (string) $mwVal('sheet_id');
+        $preselectThreeQuarter = ! ($isEdit ?? false) && $sheetSelected === '';
+        if ($preselectThreeQuarter) {
+            foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row) {
+                if (abs((float) ($row['thickness_in'] ?? 0) - 0.75) < 0.06) {
+                    $sheetSelected = (string) ($row['id'] ?? '');
+                    break;
+                }
+            }
+        }
+      @endphp
       <select class="admin-input mw-preview mw-sheet-select" id="mw-sheet" name="sheet_id">
         @foreach ($opt(MillworkSettings::SLOT_WOOD_SHEETS) as $row)
-          <option value="{{ $row['id'] }}" @selected($mwVal('sheet_id') === ($row['id'] ?? ''))>
+          <option value="{{ $row['id'] }}" @selected($sheetSelected === (string) ($row['id'] ?? ''))>
             {{ trim((string) ($row['name'] ?? 'Sheet')) }}
           </option>
         @endforeach
@@ -155,24 +179,37 @@
     </div>
     <div class="mw-short-row">
       <div class="admin-form-group">
-        <label for="mw-waste">@include('admin.partials.info_tip', ['text' => 'Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.']) Waste %</label>
+        <span class="admin-label-with-tip">
+          <label for="mw-waste">Waste %</label>
+          <x-admin.info-tip label="Waste %">Applied to linear trim and wainscoting rails. Sheet count comes from the cut plan.</x-admin.info-tip>
+        </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-waste" name="waste_pct"
                value="{{ old('waste_pct', $inputs['waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-edge-waste">Edge waste %</label>
+        <span class="admin-label-with-tip">
+          <label for="mw-edge-waste">Edge waste %</label>
+          <x-admin.info-tip label="Edge waste %">Extra edge banding beyond the cut-plan length.</x-admin.info-tip>
+        </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-edge-waste" name="edge_waste_pct"
                value="{{ old('edge_waste_pct', $inputs['edge_waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
-        <label for="mw-finish-waste">Finish waste %</label>
+        <span class="admin-label-with-tip">
+          <label for="mw-finish-waste">Finish waste %</label>
+          <x-admin.info-tip label="Finish waste %">Extra paint or stain beyond the measured faces.</x-admin.info-tip>
+        </span>
         <input type="number" min="0" max="100" step="0.5" class="admin-input mw-preview mw-input--qty" id="mw-finish-waste" name="finish_waste_pct"
                value="{{ old('finish_waste_pct', $inputs['finish_waste_pct'] ?? 10) }}">
       </div>
       <div class="admin-form-group">
         <label for="mw-spare">Spare sheets</label>
-        <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty" id="mw-spare" name="spare_sheets"
-               value="{{ old('spare_sheets', $inputs['spare_sheets'] ?? 0) }}">
+        <input type="number" min="0" step="1" class="admin-input mw-preview mw-input--qty{{ $errors->has('spare_sheets') ? ' is-invalid' : '' }}" id="mw-spare" name="spare_sheets"
+               value="{{ old('spare_sheets', $inputs['spare_sheets'] ?? 0) }}"
+               @if ($errors->has('spare_sheets')) aria-invalid="true" @endif>
+        @error('spare_sheets')
+          <p class="admin-form-error">{{ $message }}</p>
+        @enderror
       </div>
       <div class="admin-form-group">
         <label for="mw-markup">Markup %</label>
@@ -185,7 +222,7 @@
         <label for="mw-owner-rate">Owner rate</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input mw-preview mw-input--money" id="mw-owner-rate" name="owner_hourly_rate"
-               value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate), 2, '.', '')) }}">
+               value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate), 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         @include('admin.quotations._include_helper', [
@@ -195,11 +232,11 @@
           'rateValue' => old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate), 2, '.', '')),
         ])
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group" id="mw-delivery-wrap" @if (old('client_provides_all', $inputs['client_provides_all'] ?? false)) hidden @endif>
         <label for="mw-delivery">Delivery</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input mw-preview mw-input--money" id="mw-delivery" name="delivery_amount"
-               value="{{ old('delivery_amount', number_format((float) ($inputs['delivery_amount'] ?? 0), 2, '.', '')) }}">
+               value="{{ old('delivery_amount', number_format((float) ($inputs['delivery_amount'] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
     </div>
     @include('admin.partials.checkbox', [
@@ -219,19 +256,27 @@
     <div class="mw-hw-grid">
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-hinge">Hinges</label>
-        <select class="admin-input mw-preview" id="mw-hinge" name="hinge_id">
+        <select class="admin-input mw-preview" id="mw-hinge" name="hinge_id" data-mw-hw-select>
           @foreach ($opt(MillworkSettings::SLOT_HINGES) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('hinge_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
+            @php $hwPrice = (float) ($row['unit_price'] ?? 0); @endphp
+            <option value="{{ $row['id'] }}" data-price="{{ number_format($hwPrice, 2, '.', '') }}" @selected($mwVal('hinge_id') === ($row['id'] ?? ''))>
+              {{ $row['name'] }}@if ($hwPrice > 0) — {{ \App\Models\ClientProject::formatMoney($hwPrice) }}@endif
+            </option>
           @endforeach
         </select>
+        <p class="admin-form-help mw-hw-price" data-mw-hw-price hidden></p>
       </div>
       <div class="admin-form-group" data-mw-hw="cabinet-family" @if (! $needsCabinetHardware) hidden @endif>
         <label for="mw-pull">Pulls</label>
-        <select class="admin-input mw-preview" id="mw-pull" name="pull_id">
+        <select class="admin-input mw-preview" id="mw-pull" name="pull_id" data-mw-hw-select>
           @foreach ($opt(MillworkSettings::SLOT_PULLS) as $row)
-            <option value="{{ $row['id'] }}" @selected($mwVal('pull_id') === ($row['id'] ?? ''))>{{ $row['name'] }}</option>
+            @php $hwPrice = (float) ($row['unit_price'] ?? 0); @endphp
+            <option value="{{ $row['id'] }}" data-price="{{ number_format($hwPrice, 2, '.', '') }}" @selected($mwVal('pull_id') === ($row['id'] ?? ''))>
+              {{ $row['name'] }}@if ($hwPrice > 0) — {{ \App\Models\ClientProject::formatMoney($hwPrice) }}@endif
+            </option>
           @endforeach
         </select>
+        <p class="admin-form-help mw-hw-price" data-mw-hw-price hidden></p>
       </div>
       <div class="admin-form-group">
         <label for="mw-screw">Screws</label>

@@ -27,7 +27,7 @@ trait HasReplyToAcceptChoice
             }
 
             $parsed = QuotationReplyToAccept::parse($request->input(QuotationReplyToAccept::FIELD));
-            if ($parsed === null) {
+            if ($parsed === null && ! \App\Support\QuotationSaveIntent::isDraft($request)) {
                 throw ValidationException::withMessages([
                     QuotationReplyToAccept::FIELD => QuotationReplyToAccept::MESSAGE,
                 ]);
@@ -40,6 +40,10 @@ trait HasReplyToAcceptChoice
             $type = ClientProjectQuotation::sourceTypeForModel($model);
             $id = (int) $model->getKey();
             if ($type === null || $id < 1) {
+                return;
+            }
+
+            if ((bool) ($model->is_draft ?? false)) {
                 return;
             }
 

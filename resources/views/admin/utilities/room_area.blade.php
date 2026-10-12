@@ -14,10 +14,13 @@
     'pageTitle' => 'Room Area',
     'backUrl' => route('admin.utilities.index'),
     'backLabel' => 'All utilities',
+    'assembliesJson' => $assembliesJson ?? [],
+    'catalogPickerOptions' => $catalogPickerOptions ?? [],
   ])
 @endsection
 
 @push('scripts')
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <script src="{{ asset('js/room-area-lib.js') }}?v={{ @filemtime(public_path('js/room-area-lib.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-utilities-room-area.js') }}?v={{ @filemtime(public_path('js/admin-utilities-room-area.js')) ?: time() }}"></script>
 @endpush

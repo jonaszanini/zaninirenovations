@@ -31,6 +31,9 @@ yarn-error.log
 # Sensitive / notes files that should never be committed
 users.txt
 
+# Agent / local UI captures — do not deploy
+/artifacts/
+
 # Local walkthrough / clip-audit helpers — do not deploy
 /scripts/bq*-screenshots.js
 /scripts/bq*-clip-audit.js

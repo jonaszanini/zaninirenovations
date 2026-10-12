@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AiInstruction;
+use App\Support\QuotationWorkDescriptionStyle;
 use RuntimeException;
 
 class QuotationWorkDescriptionAiService
@@ -10,7 +11,8 @@ class QuotationWorkDescriptionAiService
     public function __construct(
         protected GeminiService $gemini,
         protected QuotationWorkDescriptionContextBuilder $contextBuilder,
-    ) {}
+    ) {
+    }
 
     /**
      * @param  array<string, mixed>|null  $contextPayload
@@ -116,6 +118,6 @@ class QuotationWorkDescriptionAiService
             }
         }
 
-        return trim(implode(' ', $parts));
+        return QuotationWorkDescriptionStyle::apply(trim(implode(' ', $parts)));
     }
 }

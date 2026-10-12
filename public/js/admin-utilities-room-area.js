@@ -3,12 +3,19 @@
   'use strict';
 
   if (typeof Konva === 'undefined') return;
+  var RA = window.RoomAreaLib;
+  if (!RA) return;
 
   var root = document.querySelector('[data-room-area]');
   if (!root) return;
 
   function isFullPage() {
     return root.hasAttribute('data-ra-fullpage');
+  }
+
+  function isPhoneChrome() {
+    return isFullPage() && typeof window.matchMedia === 'function'
+      && window.matchMedia('(max-width: 900px)').matches;
   }
 
   function raAll(sel) {
@@ -24,13 +31,18 @@
   var INCHES_PER_FOOT = 12;
   var SQFT_TO_SQM = 0.092903;
   var FEET_TO_METERS = 0.3048;
-  var MEASURE_UNIT_STORAGE_KEY = 'room-area-measure-unit';
   var FIRST_TIP_STORAGE_KEY = 'zr-room-area-guide-tip-v1';
   var MEASURE_UNITS = {
     meter: 'meter',
     inch: 'inch',
     feet_decimal: 'feet_decimal',
     feet_inch_frac: 'feet_inch_frac'
+  };
+  var DIM_MODES = {
+    all: 'all',
+    main: 'main',
+    area: 'area',
+    off: 'off'
   };
   var MIN_CANVAS_W = 260;
   var MIN_CANVAS_H = 520;
@@ -70,7 +82,14 @@
   var OBJECT_SNAP_PX = 36;
   var OBJECT_MIN_WIDTH_IN = 6;
   var OBJECT_MAX_WIDTH_IN = 240;
-  var DEFAULT_WALL_HEIGHT_FT = 8;
+  var DEFAULT_WALL_HEIGHT_FT = RA.DEFAULT_WALL_HEIGHT_FT || 8;
+  var DEFAULT_EDITOR_PREFS = {
+    layers_locked: false,
+    dimensions_mode: DIM_MODES.all,
+    unit_system: 'imperial',
+    measure_unit: MEASURE_UNITS.feet_inch_frac,
+    angle_snap: true
+  };
   var DEFAULT_DOOR_HEIGHT_IN = 80;
   var DEFAULT_WINDOW_HEIGHT_IN = 36;
   var DEFAULT_TYPED_PPF = 12;
@@ -125,8 +144,8 @@
   }
 
   function canvasTagFill(selected) {
-    if (selected) return 'rgba(249, 168, 37, 0.95)';
-    return isAdminDark() ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255,255,255,0.92)';
+    if (selected) return 'rgba(249, 168, 37, 0.98)';
+    return isAdminDark() ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255,255,255,0.98)';
   }
 
   function canvasBrandStroke() {
@@ -233,6 +252,19 @@
     liveWallArea: root.querySelector('[data-ra-live-wall-area]'),
     liveCounts: root.querySelector('[data-ra-live-counts]'),
     wallHeight: root.querySelector('[data-ra-wall-height]'),
+    ceilingHeight: root.querySelector('[data-ra-ceiling-height]'),
+    floorWaste: root.querySelector('[data-ra-floor-waste]'),
+    floorBox: root.querySelector('[data-ra-floor-box]'),
+    wallList: root.querySelector('[data-ra-wall-list]'),
+    liveCeilingArea: root.querySelector('[data-ra-live-ceiling-area]'),
+    liveBoxes: root.querySelector('[data-ra-live-boxes]'),
+    liveCasing: root.querySelector('[data-ra-live-casing]'),
+    wallNetArea: root.querySelector('[data-ra-wall-net-area]'),
+    objectCasing: root.querySelector('[data-ra-object-casing]'),
+    objectCasingWrap: root.querySelector('[data-ra-object-casing-wrap]'),
+    objectDoorFace: root.querySelector('[data-ra-object-door-face]'),
+    objectDoorFaceWrap: root.querySelector('[data-ra-object-door-face-wrap]'),
+    floorBoxUnit: root.querySelector('[data-ra-floor-box-unit]'),
     exportPng: root.querySelector('[data-ra-export-png]'),
     exportPdf: root.querySelector('[data-ra-export-pdf]'),
     attachPdf: root.querySelector('[data-ra-attach-pdf]'),
@@ -261,6 +293,16 @@
     zoomReset: root.querySelector('[data-ra-zoom-reset]'),
     zoomLabel: root.querySelector('[data-ra-zoom-label]'),
     measureUnit: root.querySelector('[data-ra-measure-unit]'),
+    dimensionsMode: root.querySelector('[data-ra-dimensions-mode]'),
+    lockLayers: root.querySelector('[data-ra-lock-layers]'),
+    snapToggle: root.querySelector('[data-ra-snap-toggle]'),
+    templatesToggle: root.querySelector('[data-ra-templates-toggle]'),
+    templatesPopover: root.querySelector('[data-ra-templates-popover]'),
+    templatesRoot: root.querySelector('[data-ra-templates]'),
+    moreToggle: root.querySelector('[data-ra-more-toggle]'),
+    moreClose: root.querySelector('[data-ra-more-close]'),
+    moreSheet: root.querySelector('[data-ra-more-sheet]'),
+    sheetTotal: root.querySelector('[data-ra-sheet-total]'),
     areaName: root.querySelector('[data-ra-area-name]'),
     areaNameWrap: root.querySelector('[data-ra-area-name-wrap]'),
     palette: root.querySelector('[data-ra-palette]'),
@@ -336,6 +378,14 @@
     nextObjectId: 1,
     selectedObjectId: null,
     showDimensions: true,
+    dimensionsMode: DIM_MODES.all,
+    layersLocked: false,
+    templateKind: null,
+    angleSnap: true,
+    altHeld: false,
+    imperialUnit: MEASURE_UNITS.feet_inch_frac,
+    alignGuides: null,
+    openingHint: null,
     armedCatalogKey: null,
     placingCatalog: null,
     objectGhost: null,
@@ -361,6 +411,7 @@
     stage: null,
     worldGroup: null,
     viewport: { scale: 1, x: 0, y: 0, zoomPercent: 100 },
+    userAdjustedViewport: false,
     panning: false,
     didPan: false,
     lastPanScreen: null,
@@ -407,6 +458,10 @@
     canvasW: 5400,
     canvasH: 3840,
     wallHeightFt: DEFAULT_WALL_HEIGHT_FT,
+    ceilingHeightFt: null,
+    flooringWastePercent: RA.DEFAULT_WASTE_PERCENT || 10,
+    flooringDirection: RA.DIRECTION_LENGTH || 0,
+    flooringBoxSqFt: RA.DEFAULT_BOX_SQFT || 20,
     wallThicknessIn: 0,
     transformer: null,
     sharedPairs: [],
@@ -415,7 +470,8 @@
     typedHeading: 0,
     typedStart: null,
     typedWalls: [],
-    lightboxPhotoId: null
+    lightboxPhotoId: null,
+    assemblies: []
   };
 
   var resizeTimer = null;
@@ -455,13 +511,19 @@
         x: obj.x,
         y: obj.y,
         depth: obj.depth,
-        rotation: obj.rotation || 0
+        rotation: obj.rotation || 0,
+        casing_sides: obj.casing_sides,
+        door_face: obj.door_face
       };
     });
   }
 
+  function objectType(obj) {
+    return RA.objectType ? RA.objectType(obj) : String(obj && obj.type || '').toLowerCase().trim();
+  }
+
   function isWallObject(obj) {
-    return !!(obj && WALL_OBJECT_TYPES[obj.type]);
+    return !!(obj && WALL_OBJECT_TYPES[objectType(obj)]);
   }
 
   function isFreeObject(obj) {
@@ -710,7 +772,9 @@
       width: item.width,
       offset: 0,
       swing: 'left_in',
-      hinge: 'left'
+      hinge: 'left',
+      casing_sides: RA.defaultCasingSides(item.type),
+      door_face: item.type && String(item.type).toLowerCase() === 'door' ? 'interior' : undefined
     };
     state.nextObjectId += 1;
     if (item.place === 'floor' || FREE_OBJECT_TYPES[item.type]) {
@@ -1032,34 +1096,158 @@
   }
 
   function wallHeightFt() {
-    var n = els.wallHeight ? parseFloat(els.wallHeight.value) : state.wallHeightFt;
+    var n = state.wallHeightFt;
     if (!isFinite(n) || n < 1) return DEFAULT_WALL_HEIGHT_FT;
     if (n > 20) return 20;
     return Math.round(n * 100) / 100;
   }
 
-  function setWallHeight(value) {
-    var next = wallHeightFtFromValue(value);
-    state.wallHeightFt = next;
-    if (els.wallHeight && document.activeElement !== els.wallHeight) {
-      els.wallHeight.value = String(next);
+  function ceilingHeightFt() {
+    return RA.ceilingHeightFt(state.ceilingHeightFt, wallHeightFt());
+  }
+
+  function flooringWastePercent() {
+    return RA.normalizeWastePercent(state.flooringWastePercent);
+  }
+
+  function finishSnapshot() {
+    return {
+      wallHeightFt: state.wallHeightFt,
+      ceilingHeightFt: state.ceilingHeightFt,
+      flooringWastePercent: state.flooringWastePercent,
+      flooringDirection: state.flooringDirection,
+      flooringBoxSqFt: state.flooringBoxSqFt
+    };
+  }
+
+  function applyFinishSnapshot(snap) {
+    if (!snap) return;
+    if (snap.wallHeightFt != null && isFinite(snap.wallHeightFt)) state.wallHeightFt = snap.wallHeightFt;
+    state.ceilingHeightFt = snap.ceilingHeightFt;
+    if (snap.flooringWastePercent != null) state.flooringWastePercent = snap.flooringWastePercent;
+    if (snap.flooringDirection != null) state.flooringDirection = snap.flooringDirection;
+    if (snap.flooringBoxSqFt != null) state.flooringBoxSqFt = snap.flooringBoxSqFt;
+    syncFinishInputs(true);
+  }
+
+  function flooringBoxSqFt() {
+    return RA.normalizeBoxSqFt(state.flooringBoxSqFt);
+  }
+
+  function flooringDirectionDeg() {
+    return RA.normalizeDirection(state.flooringDirection);
+  }
+
+  function syncWallHeightInput(force) {
+    if (!els.wallHeight) return;
+    if (!force && document.activeElement === els.wallHeight) return;
+    els.wallHeight.value = RA.wallHeightDisplay(state.wallHeightFt, isMetricDisplay(), fmt);
+  }
+
+  function syncCeilingHeightInput(force) {
+    if (!els.ceilingHeight) return;
+    if (!force && document.activeElement === els.ceilingHeight) return;
+    els.ceilingHeight.value = RA.wallHeightDisplay(ceilingHeightFt(), isMetricDisplay(), fmt);
+  }
+
+  function syncFinishInputs(force) {
+    syncWallHeightInput(force);
+    syncCeilingHeightInput(force);
+    if (els.floorWaste && (force || document.activeElement !== els.floorWaste)) {
+      els.floorWaste.value = String(flooringWastePercent());
     }
+    if (els.floorBox && (force || document.activeElement !== els.floorBox)) {
+      els.floorBox.value = String(flooringBoxSqFt());
+    }
+    raAll('[data-ra-floor-dir]').forEach(function (btn) {
+      var on = parseInt(btn.getAttribute('data-ra-floor-dir'), 10) === flooringDirectionDeg();
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function setWallHeight(value, recordUndo) {
+    var n = parseFloat(value);
+    if (!isFinite(n) || n < 1) n = DEFAULT_WALL_HEIGHT_FT;
+    if (n > 20) n = 20;
+    var prev = state.wallHeightFt;
+    var next = Math.round(n * 100) / 100;
+    if (recordUndo && Math.abs(next - prev) > 0.0001) pushUndoSnapshot();
+    state.wallHeightFt = next;
+    if (state.ceilingHeightFt == null || Math.abs((state.ceilingHeightFt || 0) - prev) < 0.001) {
+      state.ceilingHeightFt = null;
+    }
+    syncFinishInputs(true);
+  }
+
+  function setCeilingHeight(value, recordUndo) {
+    var n = parseFloat(value);
+    var next = null;
+    if (isFinite(n) && n >= 1) {
+      if (n > 20) n = 20;
+      next = Math.round(n * 100) / 100;
+    }
+    if (recordUndo) {
+      var prev = state.ceilingHeightFt;
+      if ((prev == null && next != null) || (prev != null && next == null) || (prev != null && next != null && Math.abs(prev - next) > 0.0001)) {
+        pushUndoSnapshot();
+      }
+    }
+    state.ceilingHeightFt = next;
+    syncCeilingHeightInput(true);
+  }
+
+  function setFlooringWaste(value, recordUndo) {
+    var parsed = RA.parseWastePercent(value);
+    if (!parsed.ok) {
+      setFeedback(parsed.error, true);
+      syncFinishInputs(true);
+      return false;
+    }
+    if (recordUndo && Math.abs((state.flooringWastePercent || 0) - parsed.value) > 0.0001) {
+      pushUndoSnapshot();
+    }
+    state.flooringWastePercent = parsed.value;
+    syncFinishInputs(true);
+    return true;
+  }
+
+  function setFlooringBox(value, recordUndo) {
+    var next = RA.normalizeBoxSqFt(value);
+    if (recordUndo && Math.abs((state.flooringBoxSqFt || 0) - next) > 0.0001) pushUndoSnapshot();
+    state.flooringBoxSqFt = next;
+    syncFinishInputs(true);
+  }
+
+  function setFlooringDirection(deg, recordUndo) {
+    var next = RA.normalizeDirection(deg);
+    if (recordUndo && state.flooringDirection !== next) pushUndoSnapshot();
+    state.flooringDirection = next;
+    syncFinishInputs(true);
+    if (state.stage) redrawFlooringDirection();
+  }
+
+  function resetFinishSettings() {
+    state.ceilingHeightFt = null;
+    state.flooringWastePercent = RA.DEFAULT_WASTE_PERCENT || 10;
+    state.flooringDirection = RA.DIRECTION_LENGTH || 0;
+    state.flooringBoxSqFt = RA.DEFAULT_BOX_SQFT || 20;
+    syncFinishInputs(true);
   }
 
   function wallHeightFtFromValue(value) {
-    var n = parseFloat(value);
-    if (!isFinite(n) || n < 1) return DEFAULT_WALL_HEIGHT_FT;
-    if (n > 20) return 20;
-    return Math.round(n * 100) / 100;
+    var parsed = RA.parseWallHeight(value, isMetricDisplay());
+    if (parsed && parsed.warning) {
+      setFeedback(parsed.warning, true);
+      return null;
+    }
+    if (!parsed || !isFinite(parsed.feet) || parsed.feet < 1) return DEFAULT_WALL_HEIGHT_FT;
+    if (parsed.feet > 20) return 20;
+    return Math.round(parsed.feet * 100) / 100;
   }
 
   function objectHeightInches(obj, heightFt) {
-    if (obj && obj.height != null && isFinite(obj.height) && obj.height > 0) {
-      return obj.height;
-    }
-    if (obj && obj.type === 'window') return DEFAULT_WINDOW_HEIGHT_IN;
-    if (obj && obj.type === 'opening') return heightFt * INCHES_PER_FOOT;
-    return DEFAULT_DOOR_HEIGHT_IN;
+    return RA.objectHeightInches(obj, heightFt);
   }
 
   function metricObjects() {
@@ -1114,6 +1302,7 @@
     if (els.wallsToggle) {
       els.wallsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
+    syncPhoneSheetForDock();
   }
 
   function toggleWallsOpen() {
@@ -1136,14 +1325,15 @@
       if (width <= 0) return;
       var objHeight = objectHeightInches(obj, height);
       var area = (width / INCHES_PER_FOOT) * (objHeight / INCHES_PER_FOOT);
-      if (obj.type === 'door') {
+      var kind = objectType(obj);
+      if (kind === 'door') {
         doorCount += 1;
         baseboardIn += width;
         wallDeduction += area;
-      } else if (obj.type === 'window') {
+      } else if (kind === 'window') {
         windowCount += 1;
         wallDeduction += area;
-      } else if (obj.type === 'opening') {
+      } else if (kind === 'opening') {
         openingCount += 1;
         baseboardIn += width;
       }
@@ -1162,6 +1352,20 @@
     var library = libraryMetrics();
     var baseboard = Math.max(0, Math.round((perimeter - baseboardIn / INCHES_PER_FOOT) * 100) / 100);
     var wallArea = Math.max(0, Math.round((perimeter * height - wallDeduction) * 100) / 100);
+    var ceiling = ceilingHeightFt();
+    var walls = perWallNetAreas(ceiling);
+    var waste = flooringWastePercent();
+    var box = flooringBoxSqFt();
+    var corners = { inside: 0, outside: 0 };
+    (state.groups || []).forEach(function (group) {
+      (group.polygons || []).forEach(function (poly) {
+        if (!poly || !poly.vertices || poly.vertices.length < 3) return;
+        if (poly.closed === false) return;
+        var counted = RA.cornerCounts(poly.vertices);
+        corners.inside += counted.inside;
+        corners.outside += counted.outside;
+      });
+    });
     return {
       area_sqft: floor,
       inside_area_sqft: floor,
@@ -1169,7 +1373,7 @@
       perimeter_lf: perimeter,
       baseboard_lf: baseboard,
       wall_height_ft: height,
-      wall_area_sqft: wallArea,
+      wall_area_sqft: walls.reduce(function (sum, wall) { return sum + wall.net_area_sqft; }, 0),
       door_count: doorCount,
       window_count: windowCount,
       opening_count: openingCount,
@@ -1180,8 +1384,28 @@
       cabinet_base_lf: library.cabinet_base_lf,
       cabinet_upper_lf: library.cabinet_upper_lf,
       stairs_count: library.stairs_count,
-      stairs_treads: library.stairs_treads
+      stairs_treads: library.stairs_treads,
+      ceiling_height_ft: ceiling,
+      ceiling_area_sqft: RA.ceilingAreaSqFt(floor),
+      net_wall_area_sqft: walls.reduce(function (sum, wall) { return sum + wall.net_area_sqft; }, 0),
+      walls: walls,
+      flooring_waste_percent: waste,
+      flooring_direction: flooringDirectionDeg(),
+      flooring_box_sqft: box,
+      flooring_boxes: RA.flooringBoxes(floor, waste, box),
+      flooring_with_waste_sqft: RA.flooringWithWasteSqFt(floor, waste),
+      casing_lf: RA.totalCasingLf(metricObjects(), ceiling),
+      inside_corners: corners.inside,
+      outside_corners: corners.outside
     };
+  }
+
+  function perWallNetAreas(ceiling) {
+    var height = ceiling != null ? ceiling : ceilingHeightFt();
+    return RA.perWallNetAreas({
+      groups: state.groups,
+      objects: metricObjects()
+    }, pixelsPerFoot() || 0, height);
   }
 
   function libraryMetrics() {
@@ -1376,6 +1600,10 @@
   }
 
   function deleteActivePolygon() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var group = activeGroup();
     var poly = activePolygon();
     if (!group || !poly) return;
@@ -1441,7 +1669,43 @@
     if (thickness > 0) payload.wall_thickness_in = thickness;
     var bg = captureBackgroundLayoutForSave();
     if (bg) payload.background = bg;
+    payload.editor = serializeEditorPrefs();
     return payload;
+  }
+
+  function defaultEditorPrefs() {
+    return {
+      layers_locked: false,
+      dimensions_mode: DIM_MODES.all,
+      unit_system: 'imperial',
+      measure_unit: MEASURE_UNITS.feet_inch_frac,
+      angle_snap: true
+    };
+  }
+
+  function serializeEditorPrefs() {
+    var editor = {
+      layers_locked: !!state.layersLocked,
+      dimensions_mode: DIM_MODES[state.dimensionsMode] ? state.dimensionsMode : DIM_MODES.all,
+      unit_system: isMetricDisplay() ? 'metric' : 'imperial',
+      measure_unit: state.measureUnit || MEASURE_UNITS.feet_inch_frac,
+      angle_snap: state.angleSnap !== false
+    };
+    if (state.templateKind) editor.template = state.templateKind;
+    return editor;
+  }
+
+  function applyEditorPrefs(editor, silent) {
+    var prefs = Object.assign({}, defaultEditorPrefs(), editor && typeof editor === 'object' ? editor : {});
+    if (prefs.measure_unit && MEASURE_UNITS[prefs.measure_unit]) {
+      setMeasureUnit(prefs.measure_unit, silent);
+    } else if (prefs.unit_system) {
+      setUnitSystem(prefs.unit_system, silent);
+    }
+    setDimensionsMode(prefs.dimensions_mode, silent);
+    setLayersLocked(!!prefs.layers_locked, silent !== false);
+    setAngleSnap(prefs.angle_snap !== false, silent !== false);
+    state.templateKind = prefs.template || null;
   }
 
   function serializeObjects() {
@@ -1557,6 +1821,7 @@
       if (raw.background) out.background = raw.background;
       if (Array.isArray(raw.objects)) out.objects = raw.objects;
       if (raw.wall_thickness_in != null) out.wall_thickness_in = raw.wall_thickness_in;
+      if (raw.editor && typeof raw.editor === 'object') out.editor = raw.editor;
       return out;
     }
     return { v: 2, groups: [] };
@@ -1612,6 +1877,7 @@
     }
     hydrateObjects(data.objects || []);
     setWallThickness(data.wall_thickness_in != null ? data.wall_thickness_in : (activeProject() && activeProject().wall_thickness_in) || 0, true);
+    applyEditorPrefs(data.editor && typeof data.editor === 'object' ? data.editor : defaultEditorPrefs(), true);
   }
 
   function hydrateObjects(rawObjects) {
@@ -1620,7 +1886,7 @@
     state.nextObjectId = 1;
     (rawObjects || []).forEach(function (item, idx) {
       if (!item) return;
-      var type = item.type || 'door';
+      var type = objectType(item) || 'door';
       if (FREE_OBJECT_TYPES[type]) {
         if (item.x == null || item.y == null) return;
         var size = defaultFreeSize(type, item.subtype || '');
@@ -1647,7 +1913,11 @@
         swing: item.swing || 'left_in',
         hinge: item.hinge || 'left',
         height: item.height != null ? parseFloat(item.height) : undefined,
-        sill_height: item.sill_height != null ? parseFloat(item.sill_height) : undefined
+        sill_height: item.sill_height != null ? parseFloat(item.sill_height) : undefined,
+        casing_sides: item.casing_sides != null && String(item.casing_sides).trim() !== ''
+          ? parseInt(item.casing_sides, 10)
+          : RA.defaultCasingSides(type, item.door_face),
+        door_face: item.door_face || (type === 'door' ? 'interior' : undefined)
       };
       var wall = resolveWall(obj.wall_id);
       if (wall) clampObjectToWall(obj, wall);
@@ -1690,17 +1960,36 @@
     if (els.groupChipTotal) {
       var sqft = groupAreaSqFt(group);
       var count = (group.polygons || []).filter(function (p) { return p.closed && p.vertices.length >= 3; }).length;
-      els.groupChipTotal.textContent = fmt(sqft, 2) + ' sq ft' + (count > 1 ? ' (' + count + ' areas)' : '');
+      els.groupChipTotal.textContent = fmtAreaFromSqFt(sqft) + (count > 1 ? ' (' + count + ' areas)' : '');
     }
   }
 
-  function measureWrapWidth() {
-    var wrap = els.canvasWrap;
-    if (!wrap) return 0;
+  function canvasGutterInsets(wrap) {
+    wrap = wrap || els.canvasWrap;
+    if (!wrap) return { top: 0, right: 0, bottom: 0, left: 0 };
+    var cs = window.getComputedStyle(wrap);
+    return {
+      top: parseFloat(cs.paddingTop) || 0,
+      right: parseFloat(cs.paddingRight) || 0,
+      bottom: parseFloat(cs.paddingBottom) || 0,
+      left: parseFloat(cs.paddingLeft) || 0
+    };
+  }
+
+  function visibleWrapSize(wrap) {
+    wrap = wrap || els.canvasWrap;
+    if (!wrap) return { w: 0, h: 0 };
     var rect = wrap.getBoundingClientRect();
-    var w = Math.floor(rect.width);
-    if (w < 1) w = Math.floor(wrap.clientWidth);
-    return w > 0 ? w : 0;
+    var inset = canvasGutterInsets(wrap);
+    var w = Math.floor(rect.width - inset.left - inset.right);
+    var h = Math.floor(rect.height - inset.top - inset.bottom);
+    if (w < 1) w = Math.floor(wrap.clientWidth - inset.left - inset.right);
+    if (h < 1) h = Math.floor(wrap.clientHeight - inset.top - inset.bottom);
+    return { w: Math.max(0, w), h: Math.max(0, h) };
+  }
+
+  function measureWrapWidth() {
+    return visibleWrapSize().w;
   }
 
   function isNarrowCanvas(width) {
@@ -1734,10 +2023,10 @@
       return { w: state.viewportW || 900, h: state.viewportH || 640 };
     }
     if (isFullPage()) {
-      var wrapH = Math.floor(wrap.getBoundingClientRect().height || wrap.clientHeight);
+      var vis = visibleWrapSize(wrap);
       return {
-        w: Math.max(MIN_CANVAS_W, wrapW),
-        h: Math.max(1, wrapH || 240)
+        w: Math.max(MIN_CANVAS_W, vis.w || wrapW),
+        h: Math.max(1, vis.h || 240)
       };
     }
     var w = wrapW;
@@ -1964,7 +2253,9 @@
           width: Math.round(state.bgLayout.width * 1000) / 1000,
           height: Math.round(state.bgLayout.height * 1000) / 1000
         }
-        : null
+        : null,
+      editor: serializeEditorPrefs(),
+      finish: finishSnapshot()
     };
   }
 
@@ -2018,6 +2309,14 @@
       }
     }
     return data.message || fallback;
+  }
+
+  function readFetchJson(res, fallbackMessage) {
+    return RA.readFetchJson(res, fallbackMessage);
+  }
+
+  function friendlyNetworkError(err, fallbackMessage) {
+    return RA.friendlyNetworkError(err, fallbackMessage);
   }
 
   function csrf() {
@@ -2113,81 +2412,19 @@
   function setFeedback(msg, isError) {
     if (!els.feedback) return;
     els.feedback.textContent = msg;
+    if (msg) els.feedback.setAttribute('title', msg);
+    else els.feedback.removeAttribute('title');
     els.feedback.className = 'util-ra-feedback ' + (isError ? 'is-error' : 'is-ok');
     show(els.feedback, !!msg);
     if (msg) setTimeout(function () { show(els.feedback, false); }, 4500);
   }
 
   function parseFeetInput(raw) {
-    var s = String(raw).trim();
-    if (!s) throw new Error('Enter a length (e.g. 12\' 6", 12.5, or 150").');
-
-    s = s.replace(/½/g, '1/2').replace(/¼/g, '1/4').replace(/¾/g, '3/4');
-    s = s.replace(/feet|foot/gi, "'");
-    s = s.replace(/\bft\b/gi, "'");
-    s = s.replace(/inches|inch/gi, '"');
-    s = s.replace(/\bin\b/gi, '"');
-    s = s.replace(/\s+/g, ' ').trim();
-
-    var m;
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*([\d.]+)\s+(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) + parseFloat(m[3]) / parseFloat(m[4])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) / parseFloat(m[3])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*([\d.]+)\s*["″]?$/))) {
-      return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*-\s*([\d.]+)$/))) {
-      return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s+([\d.]+)\s+(\d+)\s*\/\s*(\d+)$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) + parseFloat(m[3]) / parseFloat(m[4])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s+(\d+)\s*\/\s*(\d+)$/))) {
-      return parseFloat(m[1]) + (parseFloat(m[2]) / parseFloat(m[3])) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s+([\d.]+)$/))) {
-      return parseFloat(m[1]) + parseFloat(m[2]) / INCHES_PER_FOOT;
-    }
-    if ((m = s.match(/^([\d.]+)\s*['′]\s*$/))) {
-      var feetOnly = parseFloat(m[1]);
-      if (isNaN(feetOnly) || feetOnly <= 0) throw new Error('Enter a valid length greater than zero.');
-      return feetOnly;
-    }
-    if ((m = s.match(/^([\d.]+)\s*["″]\s*$/))) {
-      var inchesOnly = parseFloat(m[1]);
-      if (isNaN(inchesOnly) || inchesOnly <= 0) throw new Error('Enter a valid length greater than zero.');
-      return inchesOnly / INCHES_PER_FOOT;
-    }
-
-    if (/^[\d.,]+$/.test(s)) {
-      var n = parseFloat(s.replace(/,/g, ''));
-      if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-      if (s.indexOf('.') !== -1) return n;
-      return n / INCHES_PER_FOOT;
-    }
-
-    if ((m = s.match(/^(\d+)\s*\/\s*(\d+)\s*["″]?$/))) {
-      var fracIn = parseFloat(m[1]) / parseFloat(m[2]);
-      if (isNaN(fracIn) || fracIn <= 0) throw new Error('Enter a valid length greater than zero.');
-      return fracIn / INCHES_PER_FOOT;
-    }
-
-    throw new Error('Use 12\' 6", 12.5 ft, or 150" (inches).');
+    return RA.parseLengthInput(raw, MEASURE_UNITS.feet_inch_frac);
   }
 
   function fmt(n, d) {
-    return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d).replace(/\.?0+$/, '');
-  }
-
-  function loadMeasureUnit() {
-    try {
-      var saved = localStorage.getItem(MEASURE_UNIT_STORAGE_KEY);
-      if (saved && MEASURE_UNITS[saved]) return saved;
-    } catch (e) { /* ignore */ }
-    return MEASURE_UNITS.feet_inch_frac;
+    return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d);
   }
 
   function reduceFraction(num, den) {
@@ -2227,7 +2464,7 @@
   }
 
   function fmtFeetDecimal(lenFt) {
-    return fmt(Math.round(lenFt * 1000) / 1000, 3) + ' ft';
+    return fmt(lenFt, 2) + ' ft';
   }
 
   function fmtInchesOnly(lenFt) {
@@ -2237,9 +2474,7 @@
   }
 
   function fmtMeters(lenFt) {
-    var meters = lenFt * FEET_TO_METERS;
-    var decimals = meters >= 10 ? 2 : 3;
-    return fmt(meters, decimals) + ' m';
+    return fmt(lenFt * FEET_TO_METERS, 2) + ' m';
   }
 
   function fmtLengthFromFeet(lenFt) {
@@ -2273,22 +2508,92 @@
   function updateMeasureUnitPlaceholders() {
     var ph = measureUnitPlaceholder();
     if (els.wallLength) els.wallLength.placeholder = ph;
-    if (els.knownLength) els.knownLength.placeholder = ph;
+    raAll('[data-ra-known-length]').forEach(function (el) { el.placeholder = ph; });
+    if (els.typeLength) els.typeLength.placeholder = isMetricDisplay() ? '3.66 m' : (state.measureUnit === MEASURE_UNITS.inch ? '150"' : (state.measureUnit === MEASURE_UNITS.feet_decimal ? '12.5' : "12'6"));
+    if (els.typeRectW) els.typeRectW.placeholder = isMetricDisplay() ? '3.66' : '12';
+    if (els.typeRectL) els.typeRectL.placeholder = isMetricDisplay() ? '3.05' : '10';
+    if (els.wallHeight) els.wallHeight.placeholder = isMetricDisplay() ? '2.44' : '8';
+    if (els.ceilingHeight) els.ceilingHeight.placeholder = isMetricDisplay() ? '2.44' : '8';
   }
 
-  function setMeasureUnit(unit) {
+  function isMetricDisplay() {
+    return state.measureUnit === MEASURE_UNITS.meter;
+  }
+
+  function setMeasureUnit(unit, silent) {
     if (!MEASURE_UNITS[unit]) return;
+    if (unit !== MEASURE_UNITS.meter) state.imperialUnit = unit;
     state.measureUnit = unit;
-    try { localStorage.setItem(MEASURE_UNIT_STORAGE_KEY, unit); } catch (e) { /* ignore */ }
-    if (els.measureUnit) els.measureUnit.value = unit;
+    raAll('[data-ra-measure-unit]').forEach(function (sel) {
+      if (unit === MEASURE_UNITS.meter) {
+        sel.value = state.imperialUnit || MEASURE_UNITS.feet_inch_frac;
+      } else {
+        sel.value = unit;
+      }
+    });
+    syncUnitSystemUi();
     updateMeasureUnitPlaceholders();
-    redrawLabels();
-    redrawRulers();
-    refreshWallLengthInput();
+    updateLiveUnitLabels();
+    syncWallHeightInput();
+    if (!silent) {
+      redrawLabels();
+      redrawRulers();
+      refreshWallLengthInput();
+      updateLiveArea();
+      renderTypedWallsList();
+    }
     if (state.selectedRulerId !== null && els.rulerLength) {
       var ruler = findRulerById(state.selectedRulerId);
       if (ruler) els.rulerLength.textContent = rulerLengthLabel(ruler);
     }
+  }
+
+  function syncUnitSystemUi() {
+    var metric = isMetricDisplay();
+    raAll('[data-ra-unit-system]').forEach(function (btn) {
+      var want = btn.getAttribute('data-ra-unit-system') === 'metric';
+      var on = want === metric;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function setUnitSystem(system, silent) {
+    if (system === 'metric') {
+      setMeasureUnit(MEASURE_UNITS.meter, silent);
+      return;
+    }
+    setMeasureUnit(state.imperialUnit && state.imperialUnit !== MEASURE_UNITS.meter
+      ? state.imperialUnit
+      : MEASURE_UNITS.feet_inch_frac, silent);
+  }
+
+  function updateLiveUnitLabels() {
+    var area = isMetricDisplay() ? 'm²' : 'sq ft';
+    var linear = isMetricDisplay() ? 'm' : 'lf';
+    raAll('[data-ra-area-unit]').forEach(function (el) { el.textContent = area; });
+    raAll('[data-ra-linear-unit]').forEach(function (el) { el.textContent = linear; });
+    raAll('[data-ra-wall-area-label]').forEach(function (el) {
+      el.textContent = 'Net wall area';
+    });
+    if (els.floorBoxUnit) {
+      els.floorBoxUnit.textContent = isMetricDisplay() ? 'm²' : 'sf';
+    } else if (els.floorBox) {
+      var boxUnit = els.floorBox.parentNode && els.floorBox.parentNode.querySelector('.util-ra-live-area__height-unit');
+      if (boxUnit) boxUnit.textContent = isMetricDisplay() ? 'm²' : 'sf';
+    }
+    if (els.wallHeight) {
+      var unitEl = els.wallHeight.parentNode && els.wallHeight.parentNode.querySelector('.util-ra-live-area__height-unit');
+      if (unitEl) unitEl.textContent = isMetricDisplay() ? 'm' : 'ft';
+    }
+    if (els.ceilingHeight) {
+      var ceilUnit = els.ceilingHeight.parentNode && els.ceilingHeight.parentNode.querySelector('.util-ra-live-area__height-unit');
+      if (ceilUnit) ceilUnit.textContent = isMetricDisplay() ? 'm' : 'ft';
+    }
+    syncFinishInputs(false);
+    raAll('[data-ra-measure-unit-wrap]').forEach(function (el) {
+      el.hidden = isMetricDisplay();
+    });
   }
 
   function refreshWallLengthInput() {
@@ -2298,48 +2603,59 @@
   }
 
   function parseMetersInput(raw) {
-    var s = String(raw).trim();
-    var cm = s.match(/^([\d.,]+)\s*cm(s)?$/i);
-    if (cm) {
-      var cmVal = parseFloat(cm[1].replace(/,/g, ''));
-      if (isNaN(cmVal) || cmVal <= 0) throw new Error('Enter a valid length greater than zero.');
-      return (cmVal / 100) / FEET_TO_METERS;
-    }
-    s = s.replace(/\s*m(eters?|etres?)?\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in meters.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return n / FEET_TO_METERS;
+    return RA.parseLengthInput(raw, MEASURE_UNITS.meter);
   }
 
   function parseInchesOnlyInput(raw) {
-    var s = String(raw).trim();
-    s = s.replace(/["″]\s*$/, '').replace(/\s*in(ch(es)?)?\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in inches.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return n / INCHES_PER_FOOT;
+    return RA.parseLengthInput(raw, MEASURE_UNITS.inch);
   }
 
   function parseFeetDecimalInput(raw) {
-    var s = String(raw).trim().replace(/\s*(ft|feet|foot)\s*$/i, '').trim();
-    if (!s) throw new Error('Enter a length in feet.');
-    var n = parseFloat(s.replace(/,/g, ''));
-    if (isNaN(n) || n <= 0) throw new Error('Enter a valid length greater than zero.');
-    return n;
+    return RA.parseLengthInput(raw, MEASURE_UNITS.feet_decimal);
+  }
+
+  function parseMmInput(raw) {
+    return RA.parseLengthInput(raw, 'mm');
+  }
+
+  function detectExplicitLengthUnit(raw) {
+    return RA.detectExplicitUnit(raw);
   }
 
   function parseLengthInput(raw) {
-    switch (state.measureUnit) {
-      case MEASURE_UNITS.meter:
-        return parseMetersInput(raw);
-      case MEASURE_UNITS.inch:
-        return parseInchesOnlyInput(raw);
-      case MEASURE_UNITS.feet_decimal:
-        return parseFeetDecimalInput(raw);
-      default:
-        return parseFeetInput(raw);
-    }
+    return RA.parseLengthInput(raw, state.measureUnit);
+  }
+
+  function geometryLocked() {
+    return !!state.layersLocked;
+  }
+
+  function warnGeometryLocked() {
+    setFeedback('Unlock layers to move walls or corners. Doors, windows, and notes stay editable.', true);
+  }
+
+  function shouldAngleSnap(e) {
+    if (state.altHeld || (e && e.evt && e.evt.altKey)) return false;
+    if (state.angleSnap) return true;
+    return !!(state.shiftHeld || (e && e.evt && e.evt.shiftKey));
+  }
+
+  function fmtAreaFromSqFt(sqft) {
+    if (sqft == null || !isFinite(sqft)) return '—';
+    if (isMetricDisplay()) return fmt(sqft * SQFT_TO_SQM, 2) + ' m²';
+    return fmt(sqft, 2) + ' sq ft';
+  }
+
+  function formatLinearQty(feet) {
+    if (feet == null || !isFinite(feet)) return '—';
+    if (isMetricDisplay()) return fmt(feet * FEET_TO_METERS, 2);
+    return fmt(feet, 2);
+  }
+
+  function formatAreaQty(sqft) {
+    if (sqft == null || !isFinite(sqft)) return '—';
+    if (isMetricDisplay()) return fmt(sqft * SQFT_TO_SQM, 2);
+    return fmt(sqft, 2);
   }
 
   function shoelaceArea(vertices) {
@@ -2422,7 +2738,8 @@
       activeGroupId: state.activeGroupId,
       activePolygonId: state.activePolygonId,
       scalePixelsPerFoot: captureScaleSnapshot(),
-      wallThicknessIn: wallThicknessIn()
+      wallThicknessIn: wallThicknessIn(),
+      finish: finishSnapshot()
     };
   }
 
@@ -2499,6 +2816,7 @@
     if (snap.wallThicknessIn != null) {
       setWallThickness(snap.wallThicknessIn, true);
     }
+    if (snap.finish) applyFinishSnapshot(snap.finish);
     state.selectedVertexIndices = [];
     clearWallSelection();
     clearVertexSelection();
@@ -2537,6 +2855,12 @@
   function angleDelta(a, b) {
     var d = Math.abs(a - b) % (Math.PI * 2);
     return d > Math.PI ? Math.PI * 2 - d : d;
+  }
+
+  function angleSnapPoint(raw, prev) {
+    if (!prev || !raw) return raw;
+    var mag = snapPointMagnetic(raw, prev, 'incoming');
+    return mag.snapped ? { x: mag.x, y: mag.y } : raw;
   }
 
   function snapPoint(raw, prev, step) {
@@ -2638,6 +2962,122 @@
     return clampToCanvas(found ? best : raw);
   }
 
+  function alignmentThreshold() {
+    return Math.max(uiSize(5), 4);
+  }
+
+  function collectAlignmentGuides(idx, raw) {
+    if (!raw || state.altHeld) return { point: raw, guides: [] };
+    var thresh = alignmentThreshold();
+    var xHits = [];
+    var yHits = [];
+    allPolygons().forEach(function (entry) {
+      (entry.polygon.vertices || []).forEach(function (v, vi) {
+        if (entry.polygon.id === (activePolygon() && activePolygon().id) && vi === idx) return;
+        if (Math.abs(v.x - raw.x) <= thresh) xHits.push(v.x);
+        if (Math.abs(v.y - raw.y) <= thresh) yHits.push(v.y);
+      });
+    });
+    var point = { x: raw.x, y: raw.y };
+    var guides = [];
+    if (xHits.length) {
+      xHits.sort(function (a, b) { return Math.abs(a - raw.x) - Math.abs(b - raw.x); });
+      point.x = xHits[0];
+      guides.push({ type: 'v', x: point.x });
+    }
+    if (yHits.length) {
+      yHits.sort(function (a, b) { return Math.abs(a - raw.y) - Math.abs(b - raw.y); });
+      point.y = yHits[0];
+      guides.push({ type: 'h', y: point.y });
+    }
+    return { point: point, guides: guides };
+  }
+
+  function snapVertexToGuides(idx, raw) {
+    var aligned = collectAlignmentGuides(idx, raw);
+    state.alignGuides = aligned.guides;
+    return clampToCanvas(aligned.point);
+  }
+
+  function redrawAlignmentGuides() {
+    var layer = state.layers.preview;
+    if (!layer) return;
+    var guides = state.alignGuides || [];
+    var hint = state.openingHint;
+    if (!guides.length && !hint && !state.drawPreview) {
+      return;
+    }
+    guides.forEach(function (g) {
+      if (g.type === 'v') {
+        layer.add(new Konva.Line({
+          points: [g.x, 0, g.x, canvasH()],
+          stroke: isAdminDark() ? 'rgba(125, 211, 252, 0.55)' : 'rgba(2, 71, 104, 0.35)',
+          strokeWidth: uiSize(1),
+          dash: [uiSize(6), uiSize(4)],
+          listening: false
+        }));
+      } else {
+        layer.add(new Konva.Line({
+          points: [0, g.y, canvasW(), g.y],
+          stroke: isAdminDark() ? 'rgba(125, 211, 252, 0.55)' : 'rgba(2, 71, 104, 0.35)',
+          strokeWidth: uiSize(1),
+          dash: [uiSize(6), uiSize(4)],
+          listening: false
+        }));
+      }
+    });
+    if (hint && hint.point && hint.text) {
+      var kLabel = new Konva.Label({
+        x: hint.point.x,
+        y: hint.point.y,
+        listening: false
+      });
+      kLabel.add(new Konva.Tag({
+        fill: canvasTagFill(true),
+        stroke: '#f57f17',
+        strokeWidth: uiSize(1),
+        cornerRadius: uiSize(4),
+        pointerDirection: 'down',
+        pointerWidth: uiSize(8),
+        pointerHeight: uiSize(6)
+      }));
+      kLabel.add(new Konva.Text({
+        text: hint.text,
+        fontSize: uiSize(11),
+        fontFamily: 'Open Sans, sans-serif',
+        fill: '#5d4037',
+        padding: uiSize(4)
+      }));
+      kLabel.offsetX(kLabel.width() / 2);
+      layer.add(kLabel);
+    }
+  }
+
+  function clearLiveGuides() {
+    state.alignGuides = null;
+    state.openingHint = null;
+    if (state.layers.preview && !state.drawPreview) {
+      state.layers.preview.destroyChildren();
+      flushKonva();
+    }
+  }
+
+  function openingCornerHint(obj) {
+    if (!obj || isFreeObject(obj)) return null;
+    var place = objectPlacement(obj);
+    if (!place || !place.wall) return null;
+    var startIn = Math.max(0, place.offset || 0);
+    var endIn = Math.max(0, place.lengthIn - (place.offset || 0) - (place.width || 0));
+    var fromStart = startIn <= endIn;
+    var inches = fromStart ? startIn : endIn;
+    var corner = fromStart ? place.wall.a : place.wall.b;
+    return {
+      point: { x: place.mid.x, y: place.mid.y },
+      text: fmtLengthFromFeet(inches / INCHES_PER_FOOT) + (fromStart ? ' from start' : ' from end'),
+      corner: corner
+    };
+  }
+
   function fmtFeetInches(lenFt) {
     return fmtLengthFromFeet(lenFt);
   }
@@ -2690,10 +3130,11 @@
   }
 
   function snapVertexPosition(idx, raw) {
-    if (state.shiftHeld) {
-      return snapVertexPositionShift(idx, raw);
+    var next = raw;
+    if (shouldAngleSnap()) {
+      next = snapVertexPositionShift(idx, raw);
     }
-    return clampToCanvas(raw);
+    return snapVertexToGuides(idx, next);
   }
 
   /** Move one or more selected corners; group drags keep relative spacing (uniform delta). */
@@ -2742,6 +3183,10 @@
   }
 
   function deleteSelectedWall() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     var n = activeVertices().length;
     if (wallCount() === 0) return;
@@ -2867,6 +3312,10 @@
   }
 
   function deleteSelectedVertex() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedVertexIndices.length === 0) return;
     if (activeVertices().length - state.selectedVertexIndices.length < 2) {
       setFeedback('Need at least two corners to keep a wall segment.', true);
@@ -2923,12 +3372,14 @@
   }
 
   function canDragWalls() {
-    return wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating
+    return !geometryLocked()
+      && wallCount() > 0 && isActiveClosed() && !isPanOrPinchActive() && !state.rulerMode && !state.calibrating
       && !state.armedCatalogKey && !state.placingCatalog;
   }
 
   function canDragShapes() {
-    return !isDrawingOpenShape()
+    return !geometryLocked()
+      && !isDrawingOpenShape()
       && !isPanOrPinchActive()
       && !state.rulerMode
       && !state.calibrating
@@ -3304,6 +3755,10 @@
   }
 
   function splitSelectedWall() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     var idx = state.selectedWallIndex;
     var a = activeVertices()[idx];
@@ -3386,7 +3841,7 @@
     state.rulerMode = false;
     state.rulerDraft = [];
     state.rulerPreview = null;
-    if (els.rulerToggle) els.rulerToggle.classList.remove('is-active');
+    raAll('[data-ra-ruler-toggle]').forEach(function (btn) { btn.classList.remove('is-active'); });
     redrawRulers();
     redrawWalls();
     redrawLabels();
@@ -3407,7 +3862,7 @@
     state.rulerMode = true;
     state.rulerDraft = [];
     state.rulerPreview = null;
-    if (els.rulerToggle) els.rulerToggle.classList.add('is-active');
+    raAll('[data-ra-ruler-toggle]').forEach(function (btn) { btn.classList.add('is-active'); });
     redrawAll();
     var ppf = pixelsPerFoot();
     if (ppf > 0) {
@@ -3425,8 +3880,7 @@
     var point = pos;
     if (state.rulerDraft.length === 1) {
       var prev = state.rulerDraft[0];
-      if (shiftSnap) point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
-      else point = pos;
+      if (shiftSnap) point = angleSnapPoint(pos, prev);
     }
     point = clampToCanvas(point);
     state.rulerDraft.push(point);
@@ -3485,6 +3939,10 @@
   }
 
   function applyWallLength() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     if (!pixelsPerFoot()) {
       setFeedback('Calibrate scale before editing wall lengths.', true);
@@ -3765,6 +4223,8 @@
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     setWallHeight(DEFAULT_WALL_HEIGHT_FT);
+    resetFinishSettings();
+    applyEditorPrefs(defaultEditorPrefs(), true);
     show(els.liveArea, false);
     if (state.stage) {
       state.lastUiScale = 0;
@@ -3914,7 +4374,12 @@
     return scaleFromZoomPercent(clampZoomPercent(zoomPercentFromScale(scale)));
   }
 
+  function markUserViewport() {
+    state.userAdjustedViewport = true;
+  }
+
   function setWorldScale(scale, screenX, screenY) {
+    markUserViewport();
     var nextScale = clampWorldScale(scale);
     if (screenX != null && screenY != null && state.viewport.scale > 0) {
       var oldScale = state.viewport.scale;
@@ -4002,9 +4467,9 @@
       if (state.stage.height() > 1) vh = state.stage.height();
     }
     if (els.canvasWrap) {
-      var rect = els.canvasWrap.getBoundingClientRect();
-      if (rect.width > 1) vw = Math.floor(rect.width);
-      if (rect.height > 1) vh = Math.floor(rect.height);
+      var vis = visibleWrapSize(els.canvasWrap);
+      if (vis.w > 1) vw = vis.w;
+      if (vis.h > 1) vh = vis.h;
     }
     return { w: Math.max(1, vw), h: Math.max(1, vh) };
   }
@@ -4016,24 +4481,20 @@
     var vh = view.h;
     var bounds = rawContentBounds();
     if (bounds.hasContent) {
-      var cx = (bounds.minX + bounds.maxX) / 2;
-      var cy = (bounds.minY + bounds.maxY) / 2;
-      var bw = (bounds.maxX - bounds.minX) * s;
-      var bh = (bounds.maxY - bounds.minY) * s;
-      var margin = 8;
-      if (bw <= vw) {
-        state.viewport.x = vw / 2 - cx * s;
-      } else {
-        var minX = vw - margin - bounds.maxX * s;
-        var maxX = margin - bounds.minX * s;
+      var keep = 48;
+      var minX = keep - bounds.maxX * s;
+      var maxX = vw - keep - bounds.minX * s;
+      if (minX <= maxX) {
         state.viewport.x = Math.max(minX, Math.min(maxX, state.viewport.x));
-      }
-      if (bh <= vh) {
-        state.viewport.y = vh / 2 - cy * s;
       } else {
-        var minY = vh - margin - bounds.maxY * s;
-        var maxY = margin - bounds.minY * s;
+        state.viewport.x = (minX + maxX) / 2;
+      }
+      var minY = keep - bounds.maxY * s;
+      var maxY = vh - keep - bounds.minY * s;
+      if (minY <= maxY) {
         state.viewport.y = Math.max(minY, Math.min(maxY, state.viewport.y));
+      } else {
+        state.viewport.y = (minY + maxY) / 2;
       }
       return;
     }
@@ -4091,6 +4552,7 @@
   }
 
   function resetViewport() {
+    markUserViewport();
     state.viewport.zoomPercent = 100;
     state.viewport.scale = naturalWorldScale();
     state.viewport.x = 0;
@@ -4136,12 +4598,7 @@
     state.lastUiScale = 0;
     applyViewport();
     updateCanvasCursor();
-  }
-
-  function refitCanvasToLayout() {
-    if (!state.stage || !els.canvasWrap) return;
-    resizeStage();
-    if (viewportContentBounds().hasContent) fitViewport();
+    redrawLabels();
   }
 
   function updateZoomUI() {
@@ -4169,9 +4626,9 @@
     if (!els.canvasWrap || els.canvasWrap._raViewportBound) return;
     els.canvasWrap._raViewportBound = true;
 
-    if (isFullPage() && typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== 'undefined') {
       new ResizeObserver(function () {
-        scheduleStageResize();
+        resizeStage();
       }).observe(els.canvasWrap);
     }
 
@@ -4181,7 +4638,10 @@
       var rect = state.stage.container().getBoundingClientRect();
       var x = e.clientX - rect.left;
       var y = e.clientY - rect.top;
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.4 && !e.ctrlKey && !e.metaKey) {
+      var shiftPan = !!(e.shiftKey && !e.ctrlKey && !e.metaKey);
+      var horizontalPan = Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.4 && !e.ctrlKey && !e.metaKey;
+      if (shiftPan || horizontalPan) {
+        markUserViewport();
         state.viewport.x -= e.deltaX;
         state.viewport.y -= e.deltaY;
         applyViewport();
@@ -4199,6 +4659,11 @@
         updateDrawPreviewFromPointer();
         return;
       }
+      if (e.code === 'AltLeft' || e.code === 'AltRight') {
+        state.altHeld = true;
+        updateDrawPreviewFromPointer();
+        return;
+      }
       if (e.code !== 'Space' || e.repeat) return;
       if (isTypingTarget(e.target)) return;
       e.preventDefault();
@@ -4208,9 +4673,26 @@
       redrawVertices();
     });
 
+    window.addEventListener('blur', function () {
+      state.altHeld = false;
+      state.shiftHeld = false;
+      updateDrawPreviewFromPointer();
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        state.altHeld = false;
+        state.shiftHeld = false;
+      }
+    });
+
     document.addEventListener('keyup', function (e) {
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         state.shiftHeld = false;
+        updateDrawPreviewFromPointer();
+        return;
+      }
+      if (e.code === 'AltLeft' || e.code === 'AltRight') {
+        state.altHeld = false;
         updateDrawPreviewFromPointer();
         return;
       }
@@ -4368,68 +4850,62 @@
     els.canvasWrap.addEventListener('touchcancel', onTouchEnd, { passive: false, capture: true });
   }
 
+  function refitCanvasToLayout() {
+    if (!state.stage || !els.canvasWrap) return;
+    resizeStage();
+  }
+
   function resizeStage() {
     if (!state.stage || !els.canvasWrap) return;
+    var prevW = state.viewportW || state.stage.width();
+    var prevH = state.viewportH || state.stage.height();
+    var prevScale = state.viewport.scale;
+    var worldCx = prevScale > 0 ? (prevW / 2 - state.viewport.x) / prevScale : 0;
+    var worldCy = prevScale > 0 ? (prevH / 2 - state.viewport.y) / prevScale : 0;
+
     var vp = getViewportDimensions();
-    if (vp.w === state.viewportW && vp.h === state.viewportH) {
-      if (viewportContentBounds().hasContent) fitViewport();
+    var vis = visibleWrapSize(els.canvasWrap);
+    if (vis.w > 1) {
+      vp.w = isFullPage() ? Math.max(MIN_CANVAS_W, vis.w) : vis.w;
+    }
+    if (isFullPage() && vis.h > 1) {
+      vp.h = Math.max(1, vis.h);
+    }
+    if (vp.w === state.viewportW && vp.h === state.viewportH
+      && state.stage.width() === vp.w && state.stage.height() === vp.h) {
+      redrawLabels();
       return;
     }
 
-    if (isFullPage()) {
-      syncDrawableDimensions();
-      state.stage.width(state.viewportW);
-      state.stage.height(state.viewportH);
-      drawGrid();
-      redrawAll();
-      applyViewport();
-      return;
-    }
-
-    var oldContentW = state.viewportW;
-    var oldContentH = state.viewportH;
-    var oldWorldW = state.canvasW;
-    var oldWorldH = state.canvasH;
-
-    syncDrawableDimensions();
-
-    if (oldContentW > 0 && oldContentH > 0) {
-      var factor = canvasScaleFactor(oldContentW, oldContentH, contentW(), contentH());
-      if (state.groups.length && allPolygons().some(function (e) { return e.polygon.vertices.length; })) {
-        scaleAllCanvasPoints(oldContentW, oldContentH, contentW(), contentH());
-        clearUndoStack();
-      }
-      if (state.calibPoints.length) {
-        state.calibPoints = scalePoints(state.calibPoints, oldContentW, oldContentH, contentW(), contentH());
-      }
-      scaleProjectRulers(oldContentW, oldContentH, contentW(), contentH());
-      scaleBgLayoutState(oldContentW, oldContentH, contentW(), contentH());
-      if (Math.abs(factor - 1) > 0.0005) {
-        scaleActivePixelsPerFoot(factor);
-      }
-    }
-
+    state.viewportW = vp.w;
+    state.viewportH = vp.h;
+    state.canvasW = Math.round(vp.w * DRAW_AREA_FACTOR);
+    state.canvasH = Math.round(vp.h * DRAW_AREA_FACTOR);
+    syncCanvasWrapSize(vp.w, vp.h);
     state.stage.width(state.viewportW);
     state.stage.height(state.viewportH);
-    if (state.bgImage) {
-      if (oldContentW > 0 && oldContentH > 0) {
-        applyBackgroundLayoutToKonva();
-      } else {
-        layoutBackgroundImage(true);
-      }
-    }
+    if (state.bgImage) applyBackgroundLayoutToKonva();
     drawGrid();
     redrawAll();
-    if (viewportContentBounds().hasContent) {
-      fitViewport();
-    } else if (oldWorldW !== state.canvasW || oldWorldH !== state.canvasH) {
+
+    if (state.userAdjustedViewport && prevScale > 0) {
+      state.viewport.scale = prevScale;
+      state.viewport.zoomPercent = zoomPercentFromScale(prevScale);
+      state.viewport.x = state.viewportW / 2 - worldCx * prevScale;
+      state.viewport.y = state.viewportH / 2 - worldCy * prevScale;
       applyViewport();
+      return;
     }
+
+    if (viewportContentBounds().hasContent) fitViewport();
+    else applyViewport();
   }
 
   function scheduleStageResize() {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(resizeStage, 120);
+    resizeTimer = setTimeout(function () {
+      resizeStage();
+    }, 120);
   }
 
   function initStage() {
@@ -4460,6 +4936,7 @@
     state.layers.bg = new Konva.Group();
     state.layers.grid = new Konva.Group();
     state.layers.draw = new Konva.Group();
+    state.layers.finish = new Konva.Group({ listening: false });
     state.layers.objects = new Konva.Group();
     state.layers.vertices = new Konva.Group();
     state.layers.walls = new Konva.Group();
@@ -4471,6 +4948,7 @@
     state.worldGroup.add(state.layers.bg);
     state.worldGroup.add(state.layers.grid);
     state.worldGroup.add(state.layers.draw);
+    state.worldGroup.add(state.layers.finish);
     state.worldGroup.add(state.layers.objects);
     state.worldGroup.add(state.layers.walls);
     state.worldGroup.add(state.layers.vertices);
@@ -4525,7 +5003,10 @@
       if (!pos) return;
       var dx = pos.x - state.lastPanScreen.x;
       var dy = pos.y - state.lastPanScreen.y;
-      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) state.didPan = true;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        state.didPan = true;
+        markUserViewport();
+      }
       state.viewport.x += dx;
       state.viewport.y += dy;
       state.lastPanScreen = pos;
@@ -4561,8 +5042,7 @@
       var pos = getPointerPos();
       if (!pos) return;
       var preview = pos;
-      if (state.shiftHeld) preview = snapPoint(pos, state.rulerDraft[0], SHIFT_SNAP_STEP);
-      else preview = pos;
+      if (shouldAngleSnap()) preview = angleSnapPoint(pos, state.rulerDraft[0]);
       state.rulerPreview = clampToCanvas(preview);
       redrawRulers();
     });
@@ -4572,6 +5052,7 @@
       if (state.draggingObject) {
         state.draggingObject = false;
         state.objectPointerDown = null;
+        clearLiveGuides();
         rematchAllObjects();
         redrawAll();
         return;
@@ -4636,10 +5117,14 @@
     show(els.bgDeleteCanvas, hasBg);
     show(els.bgShowWrap, hasBg);
     show(els.bgMoveToggle, hasBg);
+    if (els.bgMoveToggle) {
+      els.bgMoveToggle.disabled = !hasBg || geometryLocked();
+      els.bgMoveToggle.setAttribute('aria-disabled', (!hasBg || geometryLocked()) ? 'true' : 'false');
+    }
     if (els.bgShowImage) {
       els.bgShowImage.checked = state.bgImageVisible;
     }
-    if (!hasBg) stopBgMoveMode();
+    if (!hasBg || geometryLocked()) stopBgMoveMode();
     applyBackgroundImageVisibility();
   }
 
@@ -4733,6 +5218,11 @@
 
   function toggleBgMoveMode() {
     if (!state.bgImage) return;
+    if (geometryLocked()) {
+      stopBgMoveMode();
+      setFeedback('Unlock layers to move the floor plan.', true);
+      return;
+    }
     if (state.bgMoveMode) {
       stopBgMoveMode();
       setFeedback('Image move mode off.', false);
@@ -4819,8 +5309,83 @@
     syncBackgroundUI();
   }
 
+  function redrawFlooringDirection() {
+    var layer = state.layers.finish;
+    if (!layer) return;
+    layer.destroyChildren();
+    if (!hasAnyClosedPolygon() || !pixelsPerFoot()) {
+      flushKonva();
+      return;
+    }
+    var deg = flooringDirectionDeg();
+    var rad = deg * Math.PI / 180;
+    var nx = -Math.sin(rad);
+    var ny = Math.cos(rad);
+    var stroke = isAdminDark() ? 'rgba(125, 211, 252, 0.62)' : 'rgba(2, 71, 104, 0.42)';
+    var step = Math.max(14, (pixelsPerFoot() || 12) * 0.9);
+    allClosedPolygons().forEach(function (entry) {
+      var verts = entry.polygon.vertices || [];
+      if (verts.length < 3) return;
+      var minX = verts[0].x;
+      var maxX = verts[0].x;
+      var minY = verts[0].y;
+      var maxY = verts[0].y;
+      verts.forEach(function (v) {
+        if (v.x < minX) minX = v.x;
+        if (v.x > maxX) maxX = v.x;
+        if (v.y < minY) minY = v.y;
+        if (v.y > maxY) maxY = v.y;
+      });
+      var group = new Konva.Group({
+        listening: false,
+        clipFunc: function (ctx) {
+          ctx.beginPath();
+          verts.forEach(function (v, i) {
+            if (i === 0) ctx.moveTo(v.x, v.y);
+            else ctx.lineTo(v.x, v.y);
+          });
+          ctx.closePath();
+        }
+      });
+      var cx = (minX + maxX) / 2;
+      var cy = (minY + maxY) / 2;
+      var span = Math.hypot(maxX - minX, maxY - minY) + step * 2;
+      var count = Math.ceil(span / step);
+      for (var i = -count; i <= count; i++) {
+        var ox = cx + nx * i * step;
+        var oy = cy + ny * i * step;
+        var dx = Math.cos(rad) * span;
+        var dy = Math.sin(rad) * span;
+        group.add(new Konva.Line({
+          points: [ox - dx, oy - dy, ox + dx, oy + dy],
+          stroke: stroke,
+          strokeWidth: uiSize(1),
+          listening: false
+        }));
+      }
+      var arrowLen = Math.min(maxX - minX, maxY - minY) * 0.28;
+      if (arrowLen > 12) {
+        var ax = Math.cos(rad) * arrowLen / 2;
+        var ay = Math.sin(rad) * arrowLen / 2;
+        group.add(new Konva.Arrow({
+          points: [cx - ax, cy - ay, cx + ax, cy + ay],
+          stroke: isAdminDark() ? '#7dd3fc' : '#024768',
+          fill: isAdminDark() ? '#7dd3fc' : '#024768',
+          strokeWidth: uiSize(1.5),
+          pointerLength: uiSize(7),
+          pointerWidth: uiSize(7),
+          listening: false,
+          opacity: 0.85
+        }));
+      }
+      layer.add(group);
+    });
+    flushKonva();
+  }
+
   function redrawAll() {
     redrawPolygonLine();
+    redrawFlooringDirection();
     redrawObjects();
     redrawVertices();
     redrawLabels();
@@ -4880,6 +5445,10 @@
   }
 
   function addAreaSameGroup() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!isActiveClosed()) {
       setFeedback('Close the current shape before adding another area.', true);
       return;
@@ -4891,6 +5460,10 @@
   }
 
   function addAreaNewGroup() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!isActiveClosed()) {
       setFeedback('Close the current shape before starting a new color group.', true);
       return;
@@ -4907,6 +5480,10 @@
   }
 
   function removeLastDrawVertex() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return false;
+    }
     if (!isDrawingOpenShape() || !activeVertices().length) return false;
     pushUndoSnapshot();
     activeVertices().pop();
@@ -4965,7 +5542,7 @@
   function snapDrawPreviewPoint(pos) {
     var prev = lastDrawVertex();
     if (!prev || !pos) return null;
-    var point = state.shiftHeld ? snapPoint(pos, prev, SHIFT_SNAP_STEP) : pos;
+    var point = shouldAngleSnap() ? angleSnapPoint(pos, prev) : pos;
     var verts = activeVertices();
     if (verts.length >= 3) {
       var first = verts[0];
@@ -5003,6 +5580,17 @@
     var pos = getPointerPos();
     if (!pos) return;
     state.drawPreview = snapDrawPreviewPoint(pos);
+    if (state.drawPreview) {
+      var last = lastDrawVertex();
+      var aligned = collectAlignmentGuides(-1, state.drawPreview);
+      state.alignGuides = aligned.guides || [];
+      if (last && shouldAngleSnap()) {
+        var snapped = angleSnapPoint(state.drawPreview, last);
+        if (snapped && (snapped.x !== state.drawPreview.x || snapped.y !== state.drawPreview.y)) {
+          state.drawPreview = snapped;
+        }
+      }
+    }
     redrawDrawPreview();
   }
 
@@ -5014,6 +5602,7 @@
     var prev = lastDrawVertex();
     var dest = state.drawPreview;
     if (!prev || !dest || dist(prev, dest) < 1) {
+      redrawAlignmentGuides();
       flushKonva();
       return;
     }
@@ -5067,6 +5656,7 @@
       layer.add(kLabel);
     }
 
+    redrawAlignmentGuides();
     flushKonva();
   }
 
@@ -5803,7 +6393,7 @@
           stroke: isSelected ? '#f57f17' : '#fff',
           strokeWidth: uiSize(isSelected ? 3 : 2),
           hitStrokeWidth: Math.max(0, (hitR - visualR) * 2),
-          draggable: !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
+          draggable: !geometryLocked() && !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
           listening: !isPanOrPinchActive() && !state.rulerMode && !state.bgMoveMode,
           dragDistance: uiSize(3)
         });
@@ -5816,8 +6406,9 @@
           if (state.stage && !state.draggingVertex && !state.draggingWall) updateCanvasCursor();
         });
         circle.on('dragstart', function (e) {
-          if (isPanOrPinchActive()) {
+          if (geometryLocked() || isPanOrPinchActive()) {
             e.target.stopDrag();
+            if (geometryLocked()) warnGeometryLocked();
             return;
           }
           var shiftKey = isShiftKey(e);
@@ -5878,6 +6469,7 @@
           redrawPolygonLine();
           redrawLabels();
           redrawWalls();
+          redrawDrawPreview();
           updateLiveArea();
           if (state.selectedWallIndex !== null && els.wallLength) {
             var lenFt = wallLengthFeet(state.selectedWallIndex);
@@ -5895,6 +6487,7 @@
           state.vertexDragFrom = null;
           state.vertexDragOrigins = null;
           applyVertexGroupDrag(vertexIndex, raw, true);
+          clearLiveGuides();
           if (!isValidShape(activeVertices(), isActiveClosed())) {
             var snap = state.undoStack.length ? state.undoStack[state.undoStack.length - 1] : null;
             if (snap) restoreUndoSnapshot(snap);
@@ -5919,9 +6512,18 @@
     var nameItems = buildAreaNameLabels();
     var occupied = nameItems.map(function (item) { return item.box; });
 
-    if (state.showDimensions) {
-      drawWallDimensionLabels(labelLayer, occupied);
-      drawObjectDimensionLabels(labelLayer, occupied);
+    if (state.dimensionsMode !== DIM_MODES.off) {
+      if (state.dimensionsMode === DIM_MODES.all) {
+        drawWallDimensionLabels(labelLayer, occupied);
+        drawObjectDimensionLabels(labelLayer, occupied);
+        drawOverallDimensionLabel(labelLayer, occupied);
+      } else if (state.dimensionsMode === DIM_MODES.main) {
+        drawOverallDimensionLabel(labelLayer, occupied);
+      } else if (state.dimensionsMode === DIM_MODES.area) {
+        if (!nameItems.length) {
+          drawOverallDimensionLabel(labelLayer, occupied, true);
+        }
+      }
     }
 
     nameItems.forEach(function (item) {
@@ -6135,6 +6737,71 @@
     });
   }
 
+  function drawOverallDimensionLabel(labelLayer, nameBoxes, areaOnly) {
+    var verts = activeVertices();
+    var ppf = pixelsPerFoot();
+    if (!ppf || !isActiveClosed() || verts.length < 3) return;
+    var box = polygonAabbSize(verts);
+    var area = areaSqFt(verts);
+    var text;
+    if (areaOnly) {
+      text = fmtAreaFromSqFt(area);
+    } else {
+      text = RA.overallDimensionText(verts, {
+        width: box.width / ppf,
+        height: box.height / ppf,
+        formatLength: fmtLengthFromFeet,
+        areaLabel: area != null ? fmtAreaFromSqFt(area) : null
+      });
+    }
+    var c = polygonCentroid(verts) || { x: box.width / 2, y: box.height / 2 };
+    var kLabel = new Konva.Label({
+      x: c.x,
+      y: c.y,
+      listening: false
+    });
+    kLabel.add(new Konva.Tag({
+      fill: canvasTagFill(false),
+      stroke: canvasBrandStroke(),
+      strokeWidth: uiSize(1),
+      cornerRadius: uiSize(4),
+      pointerDirection: 'none'
+    }));
+    kLabel.add(new Konva.Text({
+      text: text,
+      fontSize: uiSize(12),
+      fontFamily: 'Open Sans, sans-serif',
+      fontStyle: '700',
+      fill: canvasAreaLabelText(),
+      padding: uiSize(5)
+    }));
+    kLabel.offsetX(kLabel.width() / 2);
+    kLabel.offsetY(kLabel.height() / 2);
+    var boxLabel = konvaLabelBox(kLabel);
+    var offsets = [0, uiSize(22), -uiSize(22), uiSize(40), -uiSize(40)];
+    var placed = false;
+    var i;
+    for (i = 0; i < offsets.length; i++) {
+      kLabel.y(c.y + offsets[i]);
+      kLabel.offsetY(kLabel.height() / 2);
+      boxLabel = konvaLabelBox(kLabel);
+      if (!overlapsAnyBox(boxLabel, nameBoxes, uiSize(2))) {
+        placed = true;
+        break;
+      }
+    }
+    if (!placed && (areaOnly || state.dimensionsMode === DIM_MODES.main || state.dimensionsMode === DIM_MODES.area)) {
+      var aabb = polygonAabbSize(verts);
+      kLabel.y(isFinite(aabb.minY) ? aabb.minY - uiSize(16) : c.y - uiSize(28));
+      kLabel.offsetY(kLabel.height() / 2);
+      boxLabel = konvaLabelBox(kLabel);
+      placed = true;
+    }
+    if (!placed) return;
+    labelLayer.add(kLabel);
+    nameBoxes.push(boxLabel);
+  }
+
   function polygonCentroid(verts) {
     var n = verts.length;
     if (!n) return null;
@@ -6199,7 +6866,14 @@
       if (v.x > maxX) maxX = v.x;
       if (v.y > maxY) maxY = v.y;
     });
-    return { width: Math.max(0, maxX - minX), height: Math.max(0, maxY - minY) };
+    return {
+      width: Math.max(0, maxX - minX),
+      height: Math.max(0, maxY - minY),
+      minX: minX,
+      minY: minY,
+      maxX: maxX,
+      maxY: maxY
+    };
   }
 
   function polygonAxisSpan(origin, verts, axisX, axisY) {
@@ -6225,7 +6899,7 @@
       var lines = [];
       if (name) lines.push(name);
       else if (roomFallback) lines.push(roomFallback);
-      if (sqft != null) lines.push(fmt(sqft, 1) + ' sq ft');
+      if (sqft != null) lines.push(fmtAreaFromSqFt(sqft));
       if (!lines.length) return;
       var center = polygonCentroid(poly.vertices);
       if (!center) return;
@@ -6676,15 +7350,14 @@
       state.calibPoints.push({ x: pos.x, y: pos.y });
       redrawCalib();
       var ready = state.calibPoints.length === 2;
-      els.knownLength.disabled = !ready;
-      els.applyScale.disabled = !ready;
-      if (ready) els.knownLength.focus();
+      raAll('[data-ra-known-length]').forEach(function (el) { el.disabled = !ready; });
+      raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = !ready; });
+      if (ready && els.knownLength) els.knownLength.focus();
       return;
     }
 
     if (state.rulerMode) {
-      var rulerShiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
-      placeRulerPoint(pos, rulerShiftSnap);
+      placeRulerPoint(pos, shouldAngleSnap(e));
       return;
     }
 
@@ -6739,12 +7412,15 @@
         }
       }
 
-      var drawShiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
+      if (geometryLocked()) {
+        warnGeometryLocked();
+        return;
+      }
       var drawPoint = pos;
       if (activeVertices().length > 0) {
         var drawPrev = activeVertices()[activeVertices().length - 1];
-        if (drawShiftSnap) {
-          drawPoint = snapPoint(pos, drawPrev, SHIFT_SNAP_STEP);
+        if (shouldAngleSnap(e)) {
+          drawPoint = angleSnapPoint(pos, drawPrev);
         }
       }
       pushUndoSnapshot();
@@ -6787,14 +7463,15 @@
       }
     }
 
-    var shiftSnap = state.shiftHeld || !!(e && e.evt && e.evt.shiftKey);
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var point = pos;
     if (activeVertices().length > 0) {
       var prev = activeVertices()[activeVertices().length - 1];
-      if (shiftSnap) {
-        point = snapPoint(pos, prev, SHIFT_SNAP_STEP);
-      } else {
-        point = pos;
+      if (shouldAngleSnap(e)) {
+        point = angleSnapPoint(pos, prev);
       }
     }
     pushUndoSnapshot();
@@ -6833,6 +7510,10 @@
   }
 
   function closeShape() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (activeVertices().length < 3) return;
     if (!isSimplePolygon(activeVertices())) {
       setFeedback('Shape crosses itself — adjust corners before closing.', true);
@@ -6883,6 +7564,8 @@
     clearUndoStack();
     if (els.roomName) els.roomName.value = '';
     setWallHeight(DEFAULT_WALL_HEIGHT_FT);
+    resetFinishSettings();
+    applyEditorPrefs(defaultEditorPrefs(), true);
     show(els.liveArea, false);
     clearDraftLayers();
     resetTypedWalls();
@@ -6893,12 +7576,18 @@
     captureSavedSnapshot();
   }
 
-  function clearShape() {
+  function clearShape(opts) {
+    opts = opts || {};
+    if (!opts.force && geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     resetDraftCanvas();
   }
 
   function beginNewRoom() {
     resetDraftCanvas();
+    applyEditorPrefs(defaultEditorPrefs(), true);
     revokeDraftBackground();
     state.bgLayout = null;
     stopBgMoveMode();
@@ -6937,8 +7626,30 @@
     });
   }
 
+  function snapshotGeometryKey(snap) {
+    var groups = (snap && snap.groups) || [];
+    return JSON.stringify({
+      g: groups.map(function (group) {
+        return (group.polygons || []).map(function (poly) {
+          return { id: poly.id, closed: !!poly.closed, v: poly.vertices };
+        });
+      }),
+      scale: snap ? snap.scalePixelsPerFoot : null,
+      thick: snap ? snap.wallThicknessIn : null
+    });
+  }
+
+  function historyAllowedWhileLocked(snap) {
+    if (!snap) return false;
+    return snapshotGeometryKey(snap) === snapshotGeometryKey(snapshotState());
+  }
+
   function undoVertex() {
     if (!state.undoStack.length) return;
+    if (geometryLocked() && !historyAllowedWhileLocked(state.undoStack[state.undoStack.length - 1])) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.draggingWall) finishWallDrag(getPointerPos());
     state.draggingVertex = false;
     state.vertexDragFrom = null;
@@ -6957,6 +7668,10 @@
 
   function redoAction() {
     if (!state.redoStack.length) return;
+    if (geometryLocked() && !historyAllowedWhileLocked(state.redoStack[state.redoStack.length - 1])) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.draggingWall) finishWallDrag(getPointerPos());
     state.draggingVertex = false;
     state.vertexDragFrom = null;
@@ -6979,6 +7694,7 @@
     if (grandTotal === null) {
       show(els.liveArea, false);
       setSaveDisabled(true);
+      if (els.sheetTotal) els.sheetTotal.textContent = '—';
       updateGroupChip();
       return;
     }
@@ -6993,17 +7709,25 @@
     });
     els.liveArea.classList.toggle('util-ra-live-area--single', closedCount <= 1 && groupsWithAreas <= 1);
     if (els.liveActiveShape) {
-      els.liveActiveShape.textContent = activeSqft !== null ? fmt(activeSqft, 2) : '—';
+      els.liveActiveShape.textContent = activeSqft !== null ? formatAreaQty(activeSqft) : '—';
     }
     if (els.liveGrandTotal) {
-      els.liveGrandTotal.textContent = fmt(grandTotal, 2);
+      els.liveGrandTotal.textContent = formatAreaQty(grandTotal);
     }
     if (els.liveSqft) els.liveSqft.textContent = fmt(grandTotal, 2);
     if (els.liveSqm) els.liveSqm.textContent = fmt(grandTotal * SQFT_TO_SQM, 2);
+    if (els.sheetTotal) els.sheetTotal.textContent = fmtAreaFromSqFt(grandTotal);
+    var alt = root.querySelector('[data-ra-live-sqft-alt]');
+    if (alt) alt.textContent = fmt(grandTotal, 2);
     var metrics = computeWallMetrics();
-    if (els.livePerimeter) els.livePerimeter.textContent = formatMetricQty(metrics.perimeter_lf);
-    if (els.liveBaseboard) els.liveBaseboard.textContent = formatMetricQty(metrics.baseboard_lf);
-    if (els.liveWallArea) els.liveWallArea.textContent = formatMetricQty(metrics.wall_area_sqft);
+    if (els.livePerimeter) els.livePerimeter.textContent = formatLinearQty(metrics.perimeter_lf);
+    if (els.liveBaseboard) els.liveBaseboard.textContent = formatLinearQty(metrics.baseboard_lf);
+    if (els.liveWallArea) els.liveWallArea.textContent = formatAreaQty(metrics.net_wall_area_sqft != null ? metrics.net_wall_area_sqft : metrics.wall_area_sqft);
+    if (els.liveCeilingArea) els.liveCeilingArea.textContent = formatAreaQty(metrics.ceiling_area_sqft);
+    if (els.liveBoxes) els.liveBoxes.textContent = metrics.flooring_boxes > 0 ? String(metrics.flooring_boxes) : '—';
+    if (els.liveCasing) els.liveCasing.textContent = formatLinearQty(metrics.casing_lf || 0);
+    renderWallNetList(metrics.walls || []);
+    updateSelectedWallNet(metrics.walls || []);
     if (els.liveCounts) {
       var counts = metrics.door_count + (metrics.door_count === 1 ? ' door' : ' doors') +
         ' · ' + metrics.window_count + (metrics.window_count === 1 ? ' window' : ' windows') +
@@ -7016,19 +7740,19 @@
     if (els.liveFootprint) {
       var showFp = metrics.wall_thickness_in > 0 && Math.abs(metrics.outside_area_sqft - metrics.inside_area_sqft) > 0.009;
       show(els.liveFootprintWrap, showFp);
-      els.liveFootprint.textContent = formatMetricQty(metrics.outside_area_sqft);
+      els.liveFootprint.textContent = formatAreaQty(metrics.outside_area_sqft);
     }
     if (els.liveFraming) {
       var showFr = metrics.shared_wall_lf > 0.009;
       show(els.liveFramingWrap, showFr);
-      els.liveFraming.textContent = formatMetricQty(metrics.framing_lf);
+      els.liveFraming.textContent = formatLinearQty(metrics.framing_lf);
     }
     if (els.liveCabinets) {
       var cab = (metrics.cabinet_base_lf || 0) + (metrics.cabinet_upper_lf || 0);
       show(els.liveCabinetsWrap, cab > 0.009);
       var cabParts = [];
-      if (metrics.cabinet_base_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_base_lf) + ' base');
-      if (metrics.cabinet_upper_lf > 0) cabParts.push(formatMetricQty(metrics.cabinet_upper_lf) + ' up');
+      if (metrics.cabinet_base_lf > 0) cabParts.push(formatLinearQty(metrics.cabinet_base_lf) + ' base');
+      if (metrics.cabinet_upper_lf > 0) cabParts.push(formatLinearQty(metrics.cabinet_upper_lf) + ' up');
       els.liveCabinets.textContent = cabParts.join(' · ') || '0';
     }
     syncExportButtons();
@@ -7042,13 +7766,54 @@
         li.innerHTML =
           '<span class="util-ra-live-area-groups__swatch" style="background:' + esc(group.color) + '"></span>' +
           '<span class="util-ra-live-area-groups__label">Group total:</span>' +
-          '<strong>' + fmt(groupAreaSqFt(group), 2) + '</strong> sq ft' +
+          '<strong>' + formatAreaQty(groupAreaSqFt(group)) + '</strong> ' + (isMetricDisplay() ? 'm²' : 'sq ft') +
           (count > 1 ? ' <span class="util-ra-live-area-groups__count">(' + count + ' areas)</span>' : '');
         els.liveGroupList.appendChild(li);
       });
     }
     updateGroupChip();
     setSaveDisabled(!pixelsPerFoot());
+    redrawFlooringDirection();
+    renderKits();
+  }
+
+  function renderWallNetList(walls) {
+    if (!els.wallList) return;
+    els.wallList.innerHTML = '';
+    if (!walls.length) {
+      show(els.wallList, false);
+      return;
+    }
+    walls.forEach(function (wall) {
+      var li = document.createElement('li');
+      var lengthLabel = fmtLengthFromFeet(wall.length_lf);
+      var areaLabel = isMetricDisplay()
+        ? formatAreaQty(wall.net_area_sqft) + ' m²'
+        : formatAreaQty(wall.net_area_sqft) + ' sq ft';
+      li.textContent = wall.label + ' ' + lengthLabel + ' — ';
+      var strong = document.createElement('strong');
+      strong.textContent = areaLabel;
+      li.appendChild(strong);
+      els.wallList.appendChild(li);
+    });
+    show(els.wallList, true);
+  }
+
+  function updateSelectedWallNet(walls) {
+    if (!els.wallNetArea) return;
+    if (state.selectedWallIndex == null) {
+      show(els.wallNetArea, false);
+      return;
+    }
+    var wallsList = listClosedWalls();
+    var selected = wallsList[state.selectedWallIndex];
+    var row = selected && (walls || []).find(function (w) { return w.id === selected.wallId; });
+    if (!row) {
+      show(els.wallNetArea, false);
+      return;
+    }
+    els.wallNetArea.textContent = 'Net ' + formatAreaQty(row.net_area_sqft);
+    show(els.wallNetArea, true);
   }
 
   function setAllDisabled(sel, disabled) {
@@ -7058,15 +7823,23 @@
   }
 
   function updateToolbar() {
-    setAllDisabled('[data-ra-undo-vertex]', state.undoStack.length === 0);
-    setAllDisabled('[data-ra-redo]', state.redoStack.length === 0);
+    var undoDisabled = state.undoStack.length === 0;
+    if (!undoDisabled && geometryLocked()) {
+      undoDisabled = !historyAllowedWhileLocked(state.undoStack[state.undoStack.length - 1]);
+    }
+    var redoDisabled = state.redoStack.length === 0;
+    if (!redoDisabled && geometryLocked()) {
+      redoDisabled = !historyAllowedWhileLocked(state.redoStack[state.redoStack.length - 1]);
+    }
+    setAllDisabled('[data-ra-undo-vertex]', undoDisabled);
+    setAllDisabled('[data-ra-redo]', redoDisabled);
     if (els.splitWall) els.splitWall.disabled = state.selectedWallIndex === null;
     setAllDisabled('[data-ra-close-shape]', activeVertices().length < 3 || isActiveClosed());
-    if (els.addArea) els.addArea.disabled = !isActiveClosed();
-    if (els.addAreaNewGroup) els.addAreaNewGroup.disabled = !isActiveClosed();
+    setAllDisabled('[data-ra-add-area]', !isActiveClosed());
+    setAllDisabled('[data-ra-add-area-new-group]', !isActiveClosed());
     if (els.deleteArea) {
       var canDelete = hasAnyClosedPolygon() || activeVertices().length > 0;
-      els.deleteArea.disabled = !canDelete;
+      setAllDisabled('[data-ra-delete-area]', !canDelete);
     }
     if (els.deleteWall) {
       els.deleteWall.disabled = state.selectedWallIndex === null;
@@ -7150,12 +7923,12 @@
   function stopCalibrationMode() {
     state.calibrating = false;
     state.calibPoints = [];
-    if (els.calibrateToggle) els.calibrateToggle.classList.remove('is-active');
-    if (els.knownLength) {
-      els.knownLength.value = '';
-      els.knownLength.disabled = true;
-    }
-    if (els.applyScale) els.applyScale.disabled = true;
+    raAll('[data-ra-calibrate-toggle]').forEach(function (btn) { btn.classList.remove('is-active'); });
+    raAll('[data-ra-known-length]').forEach(function (el) {
+      el.value = '';
+      el.disabled = true;
+    });
+    raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = true; });
     redrawCalib();
     redrawVertices();
   }
@@ -7166,6 +7939,10 @@
       setFeedback('Calibration cancelled.', false);
       return;
     }
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
 
     if (state.rulerMode) stopRulerMode();
     stopBgMoveMode();
@@ -7173,20 +7950,28 @@
 
     state.calibrating = true;
     state.calibPoints = [];
-    if (els.calibrateToggle) els.calibrateToggle.classList.add('is-active');
-    if (els.knownLength) {
-      els.knownLength.disabled = true;
-      els.knownLength.value = '';
-    }
-    if (els.applyScale) els.applyScale.disabled = true;
+    raAll('[data-ra-calibrate-toggle]').forEach(function (btn) { btn.classList.add('is-active'); });
+    raAll('[data-ra-known-length]').forEach(function (el) {
+      el.disabled = true;
+      el.value = '';
+    });
+    raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = true; });
     redrawCalib();
     setFeedback('Click two points on a known wall length.', false);
   }
 
   function applyScale() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.calibPoints.length !== 2) return;
     try {
-      var feet = parseLengthInput(els.knownLength.value);
+      var knownRaw = '';
+      raAll('[data-ra-known-length]').forEach(function (el) {
+        if (el.value) knownRaw = el.value;
+      });
+      var feet = parseLengthInput(knownRaw);
       var pxDist = dist(state.calibPoints[0], state.calibPoints[1]);
       if (pxDist < 5) throw new Error('Points are too close — pick a longer reference.');
       var ppf = pxDist / feet;
@@ -7225,7 +8010,7 @@
             if (idx >= 0) project.rooms[idx] = result.data.room;
             updateScaleUI();
             captureSavedSnapshot();
-            setFeedback('Scale calibrated for this room.', false);
+            setFeedback('Scale calibrated for this room. Parsed as ' + RA.describeParsedLength(feet) + '.', false);
           })
           .catch(function (e) {
             setFeedback(e.message, true);
@@ -7235,7 +8020,7 @@
 
       state.draftScale = ppf;
       setWorkingPixelsPerFoot(ppf);
-      setFeedback('Scale calibrated. Save the room to keep this scale with it.', false);
+      setFeedback('Scale calibrated. Parsed as ' + RA.describeParsedLength(feet) + '. Save the room to keep this scale with it.', false);
     } catch (err) {
       setFeedback(err.message, true);
     }
@@ -7278,12 +8063,16 @@
   function updateEditUI() {
     var editing = !!state.editingRoomId;
     var saveLabel = editing ? 'Save changes' : 'Save room';
+    var saveTip = editing
+      ? 'Save changes to this room.'
+      : 'Save this room\'s outline, scale, and objects.';
     raAll('[data-ra-save-room]').forEach(function (btn) {
       btn.setAttribute('aria-label', saveLabel);
     });
     raAll('[data-ra-save-tip]').forEach(function (tip) {
-      tip.setAttribute('data-tooltip', saveLabel);
+      tip.setAttribute('data-tooltip', saveTip);
     });
+    syncGuideLinks();
     updateFullpageTitle();
     raAll('[data-ra-cancel-edit]').forEach(function (btn) {
       show(btn, editing);
@@ -7307,6 +8096,13 @@
     state.editingRoomId = room.id;
     if (els.roomName) els.roomName.value = room.name;
     setWallHeight(room.wall_height_ft || DEFAULT_WALL_HEIGHT_FT);
+    state.ceilingHeightFt = room.ceiling_height_ft != null && Math.abs(room.ceiling_height_ft - wallHeightFt()) > 0.001
+      ? room.ceiling_height_ft
+      : null;
+    state.flooringWastePercent = room.flooring_waste_percent != null ? room.flooring_waste_percent : (RA.DEFAULT_WASTE_PERCENT || 10);
+    state.flooringDirection = room.flooring_direction != null ? room.flooring_direction : (RA.DIRECTION_LENGTH || 0);
+    state.flooringBoxSqFt = room.flooring_box_sqft != null ? room.flooring_box_sqft : (RA.DEFAULT_BOX_SQFT || 20);
+    syncFinishInputs(true);
     updateEditUI();
 
     ensureStage();
@@ -7318,10 +8114,11 @@
       if (!currentProject) return;
       var currentRoom = currentProject.rooms.find(function (r) { return r.id === roomId; });
       if (!currentRoom || !roomHasDrawableData(currentRoom)) {
-        clearShape();
+        clearShape({ force: true });
         return;
       }
 
+      state.userAdjustedViewport = false;
       resizeStage();
       loadBackground(currentRoom.background_url || null);
 
@@ -7342,16 +8139,19 @@
       fitViewport();
       requestAnimationFrame(refitCanvasToLayout);
       captureSavedSnapshot();
-      setFeedback('Editing "' + currentRoom.name + '". Change the shape and click Save changes.', false);
+      renderKits();
+      setFeedback('Editing "' + currentRoom.name + '". Click Save to keep changes.', false);
     });
   }
 
   function cancelEdit() {
     if (!state.editingRoomId) return;
-    clearShape();
+    clearShape({ force: true });
+    revokeDraftBackground();
+    state.bgLayout = null;
     loadBackground(null);
     captureSavedSnapshot();
-    setFeedback('Edit cancelled.', false);
+    setFeedback('Left this room. The saved plan is unchanged.', false);
   }
 
   function renderRooms() {
@@ -7470,6 +8270,39 @@
     document.body.removeChild(ta);
   }
 
+  function guideHref() {
+    var base = root.getAttribute('data-ra-guide-url') || '';
+    if (!base || root.hasAttribute('data-ra-lock-client-project')) return base;
+    try {
+      var url = new URL(base, window.location.origin);
+      if (state.activeProjectId) {
+        url.searchParams.set('ra_project', String(state.activeProjectId));
+      } else {
+        url.searchParams.delete('ra_project');
+      }
+      if (state.editingRoomId) {
+        url.searchParams.set('ra_room', String(state.editingRoomId));
+      } else {
+        url.searchParams.delete('ra_room');
+      }
+      return url.pathname + url.search;
+    } catch (err) {
+      return base;
+    }
+  }
+
+  function syncGuideLinks() {
+    if (!isFullPage()) return;
+    var href = guideHref();
+    if (!href) return;
+    raAll('[data-ra-help-guide]').forEach(function (a) {
+      a.setAttribute('href', href);
+    });
+    raAll('[data-ra-first-tip] a[href]').forEach(function (a) {
+      a.setAttribute('href', href);
+    });
+  }
+
   function renderWorkspace() {
     var hasProject = !!state.activeProjectId;
     show(els.empty, !hasProject);
@@ -7477,6 +8310,7 @@
     show(els.deleteProjectBtn, hasProject);
     renderLinked();
     renderRooms();
+    syncGuideLinks();
 
     if (!hasProject) {
       resetEditor();
@@ -7492,7 +8326,7 @@
     var projectId = project.id;
     stopRulerMode();
     clearRulerSelection();
-    clearShape();
+    clearShape({ force: true });
     var token = state.editorToken;
     ensureStage();
     loadBackground(null);
@@ -7569,18 +8403,27 @@
       },
       body: JSON.stringify({ client_project_id: clientProjectId ? parseInt(clientProjectId, 10) : null })
     })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (!data.ok) return;
-        project.client_project_id = data.project.client_project_id;
-        project.client_project_name = data.project.client_project_name;
+      .then(function (res) {
+        return readFetchJson(res, 'Could not update project.');
+      })
+      .then(function (result) {
+        if (!result.ok) return;
+        project.client_project_id = result.data.project.client_project_id;
+        project.client_project_name = result.data.project.client_project_name;
         renderLinked();
+      })
+      .catch(function (err) {
+        setFeedback(friendlyNetworkError(err, 'Could not update project. Check your connection and try again.'), true);
       });
   }
 
   function deleteProject() {
     var project = activeProject();
     if (!project) return;
+    if (projectHasLockedRoom(project)) {
+      setFeedback('Unlock layers to delete this project.', true);
+      return;
+    }
 
     confirmAction('Delete this project and all saved rooms?', { title: 'Delete project', danger: true }).then(function (ok) {
       if (!ok) return;
@@ -7594,14 +8437,22 @@
           Accept: 'application/json'
         }
       })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
+        .then(function (res) {
+          return readFetchJson(res, 'Could not delete project.');
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            setFeedback((result.data && result.data.message) || 'Unlock layers to delete this project.', true);
+            return;
+          }
           state.projects = state.projects.filter(function (p) { return p.id !== project.id; });
           state.activeProjectId = null;
           refreshProjectSelect();
           renderWorkspace();
           setFeedback('Project deleted.', false);
+        })
+        .catch(function (err) {
+          setFeedback(friendlyNetworkError(err, 'Could not delete project. Check your connection and try again.'), true);
         });
     });
   }
@@ -7649,15 +8500,15 @@
         canvas_width: contentW(),
         canvas_height: contentH(),
         scale_pixels_per_foot: scale,
-        wall_height_ft: wallHeightFt()
+        wall_height_ft: wallHeightFt(),
+        ceiling_height_ft: ceilingHeightFt(),
+        flooring_waste_percent: flooringWastePercent(),
+        flooring_direction: flooringDirectionDeg(),
+        flooring_box_sqft: flooringBoxSqFt()
       })
     })
       .then(function (res) {
-        return res.json().then(function (data) {
-          return { ok: res.ok, status: res.status, data: data };
-        }).catch(function () {
-          return { ok: false, status: res.status, data: { message: 'Could not read server response.' } };
-        });
+        return readFetchJson(res, 'Could not read server response.');
       })
       .then(function (result) {
         if (!result.ok) {
@@ -7667,28 +8518,31 @@
           ));
         }
         var savedRoom = result.data.room;
-        if (!isUpdate && state.draftBackground && state.draftBackground.file) {
-          return uploadRoomBackgroundFile(savedRoom.id, state.draftBackground.file).then(function (bgResult) {
+        if (savedRoom && savedRoom.id && !state.editingRoomId) {
+          state.editingRoomId = savedRoom.id;
+        }
+        var pendingFile = state.draftBackground && state.draftBackground.file;
+        if (pendingFile && savedRoom && savedRoom.id) {
+          return uploadRoomBackgroundFile(savedRoom.id, pendingFile).then(function (bgResult) {
             savedRoom.background_url = bgResult.background_url;
-            return { ok: true, data: { room: savedRoom } };
+            return { ok: true, data: { room: savedRoom }, created: !isUpdate };
+          }).catch(function (err) {
+            throw new Error(RA.planUploadErrorAfterRoomSaved(err));
           });
         }
         return result;
       })
       .then(function (result) {
         setSaveDisabled(false);
-        if (isUpdate) {
-          var idx = project.rooms.findIndex(function (r) { return r.id === result.data.room.id; });
-          if (idx >= 0) {
-            var oldRoom = project.rooms[idx];
-            var newRoom = result.data.room;
-            if (oldRoom && oldRoom.rulers) newRoom.rulers = oldRoom.rulers;
-            project.rooms[idx] = newRoom;
-          }
+        var savedListRoom = result.data.room;
+        var idx = project.rooms.findIndex(function (r) { return r.id === savedListRoom.id; });
+        if (idx >= 0) {
+          var oldRoom = project.rooms[idx];
+          if (oldRoom && oldRoom.rulers) savedListRoom.rulers = oldRoom.rulers;
+          project.rooms[idx] = savedListRoom;
         } else {
-          var newRoom = result.data.room;
           if (state.draftRulers && state.draftRulers.length) {
-            newRoom.rulers = state.draftRulers.map(function (r) {
+            savedListRoom.rulers = state.draftRulers.map(function (r) {
               return {
                 id: r.id,
                 p1: { x: r.p1.x, y: r.p1.y },
@@ -7696,7 +8550,7 @@
               };
             });
           }
-          project.rooms.push(newRoom);
+          project.rooms.push(savedListRoom);
         }
         project.canvas_width = contentW();
         project.canvas_height = contentH();
@@ -7721,7 +8575,28 @@
       });
   }
 
+  function roomLayersLocked(roomId) {
+    if (state.editingRoomId === roomId && geometryLocked()) return true;
+    var project = activeProject();
+    if (!project || !project.rooms) return false;
+    var room = project.rooms.find(function (r) { return r.id === roomId; });
+    if (!room) return false;
+    var canvas = room.canvas || room.vertices;
+    return !!(canvas && canvas.editor && canvas.editor.layers_locked);
+  }
+
+  function projectHasLockedRoom(project) {
+    return !!(project && project.rooms && project.rooms.some(function (room) {
+      var canvas = room.canvas || room.vertices;
+      return !!(canvas && canvas.editor && canvas.editor.layers_locked);
+    }));
+  }
+
   function deleteRoom(roomId) {
+    if (roomLayersLocked(roomId)) {
+      setFeedback('Unlock layers to delete this room.', true);
+      return;
+    }
     confirmAction('Delete this room?', { title: 'Delete room', danger: true }).then(function (ok) {
       if (!ok) return;
 
@@ -7734,20 +8609,28 @@
           Accept: 'application/json'
         }
       })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
+        .then(function (res) {
+          return readFetchJson(res, 'Could not delete room.');
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            setFeedback((result.data && result.data.message) || 'Unlock layers to delete this room.', true);
+            return;
+          }
           var project = activeProject();
           if (project) {
             project.rooms = project.rooms.filter(function (r) { return r.id !== roomId; });
             if (state.editingRoomId === roomId) {
-              clearShape();
+              clearShape({ force: true });
               loadBackground(null);
               renderPhotos();
             }
             renderRooms();
             setFeedback('Room deleted.', false);
           }
+        })
+        .catch(function () {
+          setFeedback('Could not delete room. Check your connection and try again.', true);
         });
     });
   }
@@ -7766,9 +8649,17 @@
       },
       body: fd
     })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (res) {
+        return readFetchJson(res, 'Could not upload the floor plan.');
+      })
       .then(function (result) {
-        if (!result.ok) throw new Error(result.data.message || 'Upload failed.');
+        if (!result.ok) {
+          var err = new Error(saveErrorMessage(result.data, result.status === 413
+            ? 'That file is too large to upload.'
+            : 'Could not upload the floor plan.'));
+          err.status = result.status;
+          throw err;
+        }
         return result.data;
       });
   }
@@ -7780,6 +8671,10 @@
     if (state.editingRoomId) {
       var room = activeRoom();
       if (!room) return;
+      if (room.background_url && geometryLocked()) {
+        setFeedback('Unlock layers to change the floor plan.', true);
+        return;
+      }
 
       uploadRoomBackgroundFile(room.id, file)
         .then(function (data) {
@@ -7788,7 +8683,9 @@
           captureSavedSnapshot();
           setFeedback('Floor plan uploaded for this room.', false);
         })
-        .catch(function (e) { setFeedback(e.message, true); });
+        .catch(function (e) {
+          setFeedback(RA.friendlyPlanUploadError(e), true);
+        });
       return;
     }
 
@@ -7805,6 +8702,10 @@
     if (state.editingRoomId) {
       var room = activeRoom();
       if (!room || !room.background_url) return;
+      if (geometryLocked() || roomLayersLocked(room.id)) {
+        setFeedback('Unlock layers to change the floor plan.', true);
+        return;
+      }
 
       confirmAction(
         'Delete the floor plan image for this room? The room outline will stay.',
@@ -7821,13 +8722,25 @@
             Accept: 'application/json'
           }
         })
-          .then(function (res) { return res.json(); })
-          .then(function (data) {
-            if (!data.ok) return;
+          .then(function (res) {
+            return res.json().then(function (data) {
+              return { ok: res.ok, data: data };
+            }).catch(function () {
+              return { ok: false, data: { message: 'Could not delete floor plan.' } };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok) {
+              setFeedback((result.data && result.data.message) || 'Unlock layers to change the floor plan.', true);
+              return;
+            }
             room.background_url = null;
             loadBackground(null);
             captureSavedSnapshot();
             setFeedback('Floor plan image deleted for this room.', false);
+          })
+          .catch(function () {
+            setFeedback('Could not delete floor plan. Check your connection and try again.', true);
           });
       });
       return;
@@ -8006,6 +8919,7 @@
     if (els.paletteToggle) {
       els.paletteToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
+    syncPhoneSheetForDock();
   }
 
   function togglePaletteOpen() {
@@ -8231,6 +9145,26 @@
     updateToolbar();
   }
 
+  function fillCasingOptions(obj) {
+    if (!els.objectCasing) return;
+    var kind = objectType(obj);
+    var options = kind === 'window'
+      ? [['4', '4 sides'], ['3', '3 sides (stool)'], ['0', 'None']]
+      : [['2', 'Both sides'], ['1', 'One side'], ['0', 'None']];
+    var current = String(RA.casingSidesForObject(obj));
+    els.objectCasing.innerHTML = '';
+    options.forEach(function (opt) {
+      var option = document.createElement('option');
+      option.value = opt[0];
+      option.textContent = opt[1];
+      els.objectCasing.appendChild(option);
+    });
+    if (!options.some(function (opt) { return opt[0] === current; })) {
+      current = String(RA.defaultCasingSides(kind, obj && obj.door_face));
+    }
+    els.objectCasing.value = current;
+  }
+
   function syncObjectPropertiesPanel() {
     var obj = selectedObject();
     if (!obj || !els.objectEdit) return;
@@ -8241,10 +9175,18 @@
     if (els.objectRotation) els.objectRotation.value = String(Math.round((obj.rotation || 0) * 10) / 10);
     if (els.objectSwing) els.objectSwing.value = obj.swing || 'left_in';
     if (els.objectHinge) els.objectHinge.value = obj.hinge || 'left';
+    fillCasingOptions(obj);
+    if (els.objectCasing) els.objectCasing.value = String(RA.casingSidesForObject(obj));
+    if (els.objectDoorFace) els.objectDoorFace.value = RA.normalizeDoorFace(obj.door_face);
     var free = isFreeObject(obj);
-    var showSwing = !free && obj.type === 'door' && obj.subtype !== 'sliding' && obj.subtype !== 'pocket' && obj.subtype !== 'bifold';
+    var kind = objectType(obj);
+    var showSwing = !free && kind === 'door' && obj.subtype !== 'sliding' && obj.subtype !== 'pocket' && obj.subtype !== 'bifold';
+    var showCasing = !free && (kind === 'door' || kind === 'window' || kind === 'opening');
+    var showDoorFace = !free && kind === 'door';
     show(els.objectSwingWrap, showSwing);
     show(els.objectHingeWrap, showSwing);
+    show(els.objectCasingWrap, showCasing);
+    show(els.objectDoorFaceWrap, showDoorFace);
     show(els.objectOffsetWrap, !free);
     show(els.objectDepthWrap, free);
     show(els.objectRotationWrap, free);
@@ -8337,6 +9279,22 @@
     pushUndoSnapshot();
     if (els.objectSwing) obj.swing = els.objectSwing.value;
     if (els.objectHinge) obj.hinge = els.objectHinge.value;
+    var kind = objectType(obj);
+    if (els.objectDoorFace && kind === 'door') {
+      var nextFace = RA.normalizeDoorFace(els.objectDoorFace.value);
+      if (nextFace !== RA.normalizeDoorFace(obj.door_face)) {
+        obj.door_face = nextFace;
+        if (els.objectCasing) els.objectCasing.value = String(RA.defaultCasingSides('door', nextFace));
+      }
+      obj.door_face = nextFace;
+    }
+    if (els.objectCasing && (kind === 'door' || kind === 'window' || kind === 'opening')) {
+      obj.casing_sides = RA.casingSidesForObject({
+        type: kind,
+        casing_sides: els.objectCasing.value,
+        door_face: obj.door_face
+      });
+    }
     if (obj.hinge === 'right' && obj.swing && obj.swing.indexOf('left') === 0) {
       obj.swing = obj.swing.replace('left', 'right');
     } else if (obj.hinge === 'left' && obj.swing && obj.swing.indexOf('right') === 0) {
@@ -8416,9 +9374,340 @@
   }
 
   function setShowDimensions(on) {
-    state.showDimensions = !!on;
+    setDimensionsMode(on ? DIM_MODES.all : DIM_MODES.off);
+  }
+
+  function setDimensionsMode(mode, silent) {
+    if (!DIM_MODES[mode]) mode = DIM_MODES.all;
+    state.dimensionsMode = mode;
+    state.showDimensions = mode !== DIM_MODES.off;
+    raAll('[data-ra-dimensions-mode]').forEach(function (sel) { sel.value = mode; });
     if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
-    redrawLabels();
+    if (!silent) redrawLabels();
+  }
+
+  function setLayersLocked(on, silent) {
+    state.layersLocked = !!on;
+    raAll('[data-ra-lock-layers]').forEach(function (box) { box.checked = state.layersLocked; });
+    if (els.canvasWrap) els.canvasWrap.classList.toggle('is-layers-locked', state.layersLocked);
+    if (state.layersLocked) {
+      clearVertexSelection();
+      stopBgMoveMode();
+      // Keep opening selection; only drop vertex/wall edits.
+    }
+    syncBackgroundUI();
+    updateToolbar();
+    redrawVertices();
+    redrawWalls();
+    if (!silent) {
+      setFeedback(state.layersLocked
+        ? 'Wall corners locked. Doors, windows, and notes stay editable.'
+        : 'Wall corners unlocked.', false);
+    }
+  }
+
+  function setAngleSnap(on, silent) {
+    state.angleSnap = !!on;
+    raAll('[data-ra-snap-toggle]').forEach(function (btn) {
+      btn.classList.toggle('is-active', state.angleSnap);
+      btn.setAttribute('aria-pressed', state.angleSnap ? 'true' : 'false');
+    });
+    if (!silent) {
+      setFeedback(state.angleSnap ? 'Angle snap on (45° / 90°). Hold Alt to bypass.' : 'Angle snap off.', false);
+    }
+  }
+
+  function templatesPopoverOpen() {
+    if (isPhoneChrome()) return root.classList.contains('is-more-open');
+    return !!(els.templatesPopover && !els.templatesPopover.hasAttribute('hidden'));
+  }
+
+  function placeObjectDock() {
+    var dock = root.querySelector('.util-ra-object-dock');
+    var card = root.querySelector('.util-ra-canvas-card');
+    var slot = root.querySelector('[data-ra-sheet-dock]');
+    if (!dock || !card) return;
+    if (isPhoneChrome() && slot) {
+      if (dock.parentElement !== slot) slot.appendChild(dock);
+      return;
+    }
+    if (dock.parentElement === card) return;
+    var edit = card.querySelector('.util-ra-edit-dock');
+    var wrap = card.querySelector('.util-ra-canvas-wrap');
+    card.insertBefore(dock, edit || wrap || null);
+  }
+
+  function phoneSheetExpandedHeight() {
+    var header = root.querySelector('.util-ra-full-header');
+    var phoneBar = root.querySelector('.util-ra-phone-bar');
+    var projectBar = root.querySelector('.util-ra-project-bar');
+    var handle = root.querySelector('[data-ra-sheet-handle]');
+    var chrome = 0;
+    [header, phoneBar, projectBar, handle].forEach(function (el) {
+      if (!el || getComputedStyle(el).display === 'none') return;
+      chrome += el.getBoundingClientRect().height;
+    });
+    var maxForCanvas = Math.max(80, Math.round(window.innerHeight - chrome - 160));
+    return Math.min(280, Math.round(window.innerHeight * 0.4), maxForCanvas);
+  }
+
+  function resetDesktopSheetState() {
+    if (isPhoneChrome()) return;
+    root.classList.remove('is-sheet-expanded', 'is-dock-open');
+    root.style.removeProperty('--ra-sheet-h');
+    var handle = root.querySelector('[data-ra-sheet-handle]');
+    if (handle) handle.setAttribute('aria-expanded', 'false');
+  }
+
+  function syncPhoneSheetForDock() {
+    if (!isPhoneChrome()) {
+      resetDesktopSheetState();
+      return;
+    }
+    var open = (els.palette && els.palette.classList.contains('is-open'))
+      || (els.wallsPanel && els.wallsPanel.classList.contains('is-open'));
+    root.classList.toggle('is-dock-open', !!open);
+    if (open) {
+      root.style.setProperty('--ra-sheet-h', phoneSheetExpandedHeight() + 'px');
+      return;
+    }
+    if (root.classList.contains('is-sheet-expanded')) return;
+    root.style.setProperty('--ra-sheet-h', 'auto');
+  }
+
+  function syncPhoneBarOverflow() {
+    var bar = root.querySelector('[data-ra-phone-bar]');
+    var scroll = root.querySelector('[data-ra-phone-scroll]');
+    if (!bar || !scroll) return;
+    bar.classList.toggle('is-overflowing', scroll.scrollWidth > scroll.clientWidth + 1);
+  }
+
+  var moreLastFocus = null;
+
+  function moreSheetFocusables() {
+    if (!els.moreSheet) return [];
+    return Array.prototype.filter.call(
+      els.moreSheet.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+      function (el) {
+        if (el.disabled || el.hidden) return false;
+        var cs = window.getComputedStyle(el);
+        return cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0;
+      }
+    );
+  }
+
+  function trapMoreFocus(e) {
+    if (!root.classList.contains('is-more-open') || e.key !== 'Tab' || !els.moreSheet) return;
+    var list = moreSheetFocusables();
+    if (!list.length) return;
+    var first = list[0];
+    var last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  function setMoreOpen(open) {
+    var wasOpen = root.classList.contains('is-more-open');
+    root.classList.toggle('is-more-open', !!open);
+    raAll('[data-ra-more-toggle]').forEach(function (btn) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('is-active', !!open);
+    });
+    if (els.moreSheet) {
+      els.moreSheet.setAttribute('aria-modal', open ? 'true' : 'false');
+    }
+    if (isPhoneChrome() && els.templatesPopover) {
+      els.templatesPopover.removeAttribute('hidden');
+    }
+    if (open && isPhoneChrome() && els.moreSheet) {
+      els.moreSheet.scrollTop = 0;
+      if (!wasOpen) moreLastFocus = document.activeElement;
+      requestAnimationFrame(function () {
+        var closeBtn = els.moreSheet.querySelector('[data-ra-more-close]');
+        var list = moreSheetFocusables();
+        (closeBtn || list[0] || els.moreSheet).focus();
+      });
+    } else if (!open && wasOpen) {
+      var toggle = root.querySelector('[data-ra-more-toggle]');
+      if (toggle) toggle.focus();
+      else if (moreLastFocus && moreLastFocus.focus) moreLastFocus.focus();
+    }
+  }
+
+  function scrollMoreToTemplates() {
+    var sec = root.querySelector('[data-ra-more-templates]');
+    if (!sec || !els.moreSheet) return;
+    requestAnimationFrame(function () {
+      var sheetBox = els.moreSheet.getBoundingClientRect();
+      var secBox = sec.getBoundingClientRect();
+      els.moreSheet.scrollTop += (secBox.top - sheetBox.top) - 8;
+    });
+  }
+
+  function setTemplatesPopover(open) {
+    if (isPhoneChrome()) {
+      setMoreOpen(!!open);
+      if (open) scrollMoreToTemplates();
+      raAll('[data-ra-templates-toggle]').forEach(function (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.classList.toggle('is-active', !!open);
+      });
+      return;
+    }
+    if (!els.templatesPopover || !els.templatesToggle) return;
+    show(els.templatesPopover, open);
+    raAll('[data-ra-templates-toggle]').forEach(function (btn) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('is-active', !!open);
+    });
+    if (open) {
+      var r = els.templatesToggle.getBoundingClientRect();
+      var left = Math.max(8, Math.min(r.left, window.innerWidth - 280));
+      els.templatesPopover.style.position = 'fixed';
+      els.templatesPopover.style.top = Math.round(r.bottom + 8) + 'px';
+      els.templatesPopover.style.left = Math.round(left) + 'px';
+      els.templatesPopover.style.right = 'auto';
+      els.templatesPopover.style.zIndex = '80';
+    }
+  }
+
+  function bindTemplatesPopoverFollow() {
+    if (!els.templatesPopover || !els.templatesToggle) return;
+    var reposition = function () {
+      if (isPhoneChrome()) return;
+      if (templatesPopoverOpen()) setTemplatesPopover(true);
+    };
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    var toolbar = root.querySelector('.util-ra-canvas-toolbar');
+    if (toolbar) toolbar.addEventListener('scroll', reposition);
+  }
+
+  function toggleTemplatesPopover() {
+    setTemplatesPopover(!templatesPopoverOpen());
+  }
+
+  function closeTemplatesPopover() {
+    setTemplatesPopover(false);
+  }
+
+  function readTemplateSize(fallbackW, fallbackL) {
+    var w = fallbackW;
+    var l = fallbackL;
+    try {
+      if (els.typeRectW && String(els.typeRectW.value).trim()) w = parseLengthInput(els.typeRectW.value);
+    } catch (e) { /* keep fallback */ }
+    try {
+      if (els.typeRectL && String(els.typeRectL.value).trim()) l = parseLengthInput(els.typeRectL.value);
+    } catch (e) { /* keep fallback */ }
+    return { w: w, l: l };
+  }
+
+  function templateRectFeet(w, l) {
+    return RA.rectangle(w, l);
+  }
+
+  function templateLFeet(w, h, rw, rh) {
+    return RA.lShape(w, h, rw, rh);
+  }
+
+  function templateUFeet(w, h, ow, od) {
+    return RA.uShape(w, h, ow, od);
+  }
+
+  function templateTFeet(bw, bh, sw, sh) {
+    return RA.tShape(bw, bh, sw, sh);
+  }
+
+  function feetTemplateToPixels(feetVerts) {
+    var ppf = ensureTypedScale();
+    var start = typedStartPoint();
+    return feetVerts.map(function (v) {
+      return clampToCanvas({ x: start.x + v.x * ppf, y: start.y + v.y * ppf });
+    });
+  }
+
+  function applyRoomTemplate(kind) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
+    ensureInitialCanvas();
+    var size = (kind === 'l' || kind === 'u' || kind === 't')
+      ? readTemplateSize(16, 12)
+      : readTemplateSize(12, 10);
+    var feet = RA.shapeFromKind(kind, size.w, size.l);
+    pushUndoSnapshot();
+    setActiveVertices(feetTemplateToPixels(feet));
+    setActiveClosed(true);
+    rematchAllObjects();
+    syncTypedWallsFromCanvas();
+    renderTypedWallsList();
+    updateTypedCloseBar();
+    closeTemplatesPopover();
+    setMoreOpen(false);
+    state.templateKind = (kind === 'l' || kind === 'u' || kind === 't') ? kind : 'rect';
+    redrawAll();
+    fitViewport();
+    setFeedback((kind === 'l' ? 'L-shape' : kind === 'u' ? 'U-shape' : kind === 't' ? 'T-shape' : 'Rectangle') + ' placed. Type lengths to refine.', false);
+  }
+
+  function insertAlcoveVertices(verts, wallIndex, width, depth, closed) {
+    var next = RA.insertAlcove(verts, wallIndex, width, depth, closed);
+    if (!next || next.length < 3) return null;
+    return next;
+  }
+
+  function longestWallIndex() {
+    var best = 0;
+    var bestLen = -1;
+    var count = wallCount();
+    for (var i = 0; i < count; i++) {
+      var a = activeVertices()[i];
+      var b = activeVertices()[wallEndIndex(i)];
+      var len = dist(a, b);
+      if (len > bestLen) {
+        bestLen = len;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  function addAlcove() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
+    if (wallCount() < 1) {
+      setFeedback('Draw a wall first, then add an alcove.', true);
+      return;
+    }
+    var idx = state.selectedWallIndex != null ? state.selectedWallIndex : longestWallIndex();
+    var ppf = ensureTypedScale();
+    pushUndoSnapshot();
+    var next = insertAlcoveVertices(activeVertices(), idx, 4 * ppf, 2 * ppf, isActiveClosed());
+    if (!next || !isValidShape(next, isActiveClosed())) {
+      discardLastUndoSnapshot();
+      setFeedback('Could not add an alcove on that wall.', true);
+      return;
+    }
+    setActiveVertices(next.map(clampToCanvas));
+    rematchAllObjects();
+    syncTypedWallsFromCanvas();
+    renderTypedWallsList();
+    updateTypedCloseBar();
+    closeTemplatesPopover();
+    setMoreOpen(false);
+    clearWallSelection();
+    state.templateKind = 'alcove';
+    redrawAll();
+    setFeedback('Alcove added. Edit the new wall lengths if needed.', false);
   }
 
   function moveObjectAlongWall(obj, pos) {
@@ -8433,10 +9722,12 @@
     var snap = snapToNearestWall(pos, hitTolerance(OBJECT_SNAP_PX * 2));
     if (!snap) return;
     applySnapToObject(obj, snap);
+    state.openingHint = openingCornerHint(obj);
     redrawPolygonLine();
     redrawObjects();
     redrawLabels();
     redrawWalls();
+    redrawDrawPreview();
     syncObjectPropertiesPanel();
   }
 
@@ -8466,6 +9757,7 @@
   function captureRoomPng(pixelRatio) {
     if (!state.stage) return '';
     var prevShow = state.showDimensions;
+    var prevDimMode = state.dimensionsMode;
     var prevViewport = {
       scale: state.viewport.scale,
       x: state.viewport.x,
@@ -8474,6 +9766,7 @@
     };
     state.exporting = true;
     state.showDimensions = true;
+    state.dimensionsMode = DIM_MODES.all;
     fitViewport();
     redrawAll();
     var bg = new Konva.Rect({
@@ -8496,6 +9789,7 @@
     bg.destroy();
     state.exporting = false;
     state.showDimensions = prevShow;
+    state.dimensionsMode = prevDimMode;
     state.viewport.scale = prevViewport.scale;
     state.viewport.x = prevViewport.x;
     state.viewport.y = prevViewport.y;
@@ -8542,12 +9836,36 @@
   }
 
   function metricRows(metrics) {
+    if (isMetricDisplay()) {
+      return [
+        { label: 'Floor area', value: formatMetricQty(metrics.area_sqft * SQFT_TO_SQM) + ' m²' },
+        { label: 'Perimeter', value: formatMetricQty(metrics.perimeter_lf * FEET_TO_METERS) + ' m' },
+        { label: 'Baseboard', value: formatMetricQty(metrics.baseboard_lf * FEET_TO_METERS) + ' m' },
+        { label: 'Wall height', value: formatMetricQty(metrics.wall_height_ft * FEET_TO_METERS) + ' m' },
+        { label: 'Ceiling height', value: formatMetricQty((metrics.ceiling_height_ft || metrics.wall_height_ft) * FEET_TO_METERS) + ' m' },
+        { label: 'Ceiling area', value: formatMetricQty((metrics.ceiling_area_sqft || metrics.area_sqft) * SQFT_TO_SQM) + ' m²' },
+        { label: 'Net wall area', value: formatMetricQty((metrics.net_wall_area_sqft != null ? metrics.net_wall_area_sqft : metrics.wall_area_sqft) * SQFT_TO_SQM) + ' m²' },
+        { label: 'Flooring with waste', value: formatMetricQty((metrics.flooring_with_waste_sqft || metrics.area_sqft) * SQFT_TO_SQM) + ' m²' },
+        { label: 'Flooring boxes', value: String(metrics.flooring_boxes || 0) },
+        { label: 'Box size', value: formatMetricQty((metrics.flooring_box_sqft || 20) * SQFT_TO_SQM) + ' m²' },
+        { label: 'Casing', value: formatMetricQty((metrics.casing_lf || 0) * FEET_TO_METERS) + ' m' },
+        { label: 'Doors', value: String(metrics.door_count) },
+        { label: 'Windows', value: String(metrics.window_count) },
+        { label: 'Openings', value: String(metrics.opening_count) }
+      ];
+    }
     return [
       { label: 'Floor area', value: formatMetricQty(metrics.area_sqft) + ' sq ft' },
       { label: 'Perimeter', value: formatMetricQty(metrics.perimeter_lf) + ' lf' },
       { label: 'Baseboard', value: formatMetricQty(metrics.baseboard_lf) + ' lf' },
       { label: 'Wall height', value: formatMetricQty(metrics.wall_height_ft) + ' ft' },
-      { label: 'Wall area', value: formatMetricQty(metrics.wall_area_sqft) + ' sq ft' },
+      { label: 'Ceiling height', value: formatMetricQty(metrics.ceiling_height_ft || metrics.wall_height_ft) + ' ft' },
+      { label: 'Ceiling area', value: formatMetricQty(metrics.ceiling_area_sqft || metrics.area_sqft) + ' sq ft' },
+      { label: 'Net wall area', value: formatMetricQty(metrics.net_wall_area_sqft != null ? metrics.net_wall_area_sqft : metrics.wall_area_sqft) + ' sq ft' },
+      { label: 'Flooring with waste', value: formatMetricQty(metrics.flooring_with_waste_sqft || metrics.area_sqft) + ' sq ft' },
+      { label: 'Flooring boxes', value: String(metrics.flooring_boxes || 0) },
+      { label: 'Box size', value: formatMetricQty(metrics.flooring_box_sqft || 20) + ' sq ft' },
+      { label: 'Casing', value: formatMetricQty(metrics.casing_lf || 0) + ' lf' },
       { label: 'Doors', value: String(metrics.door_count) },
       { label: 'Windows', value: String(metrics.window_count) },
       { label: 'Openings', value: String(metrics.opening_count) }
@@ -8575,6 +9893,10 @@
     addPdfField(form, 'title', roomExportTitle());
     addPdfField(form, 'summary', 'Wall metrics from the Room Area drawing.');
     addPdfField(form, 'wall_height_ft', metrics.wall_height_ft);
+    addPdfField(form, 'ceiling_height_ft', metrics.ceiling_height_ft);
+    addPdfField(form, 'flooring_waste_percent', metrics.flooring_waste_percent);
+    addPdfField(form, 'flooring_direction', metrics.flooring_direction);
+    addPdfField(form, 'flooring_box_sqft', metrics.flooring_box_sqft);
     if (state.editingRoomId) addPdfField(form, 'room_id', state.editingRoomId);
     if (attach) addPdfField(form, 'attach', '1');
     if (diagram) addPdfField(form, 'diagram', diagram);
@@ -8820,6 +10142,10 @@
   }
 
   function addTypedWall() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (isActiveClosed()) {
       setFeedback('Room is closed. Start a new area to type more walls.', true);
       return;
@@ -8855,6 +10181,10 @@
   }
 
   function addTypedRectangle() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var w;
     var l;
     try {
@@ -8894,6 +10224,10 @@
   }
 
   function autoCloseTyped() {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var verts = activeVertices().slice();
     if (verts.length < 3) return;
     pushUndoSnapshot();
@@ -8925,6 +10259,11 @@
   }
 
   function editTypedWallLength(index, raw) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      renderTypedWallsList();
+      return;
+    }
     var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
@@ -8942,6 +10281,10 @@
   }
 
   function deleteTypedWall(index) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     var walls = (state.typedWalls.length ? state.typedWalls : wallsFromVertices(activeVertices(), isActiveClosed()))
       .filter(function (w) { return !w.closing; });
     if (!walls[index]) return;
@@ -9097,9 +10440,15 @@
       },
       body: fd
     })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (res) {
+        return readFetchJson(res, 'Could not upload photos.');
+      })
       .then(function (result) {
-        if (!result.ok) throw new Error(result.data.message || 'Could not upload photos.');
+        if (!result.ok) {
+          throw new Error(saveErrorMessage(result.data, result.status === 413
+            ? 'That file is too large to upload.'
+            : 'Could not upload photos.'));
+        }
         var room = activeRoom();
         if (room) {
           room.photos = (room.photos || []).concat(result.data.photos || []);
@@ -9110,7 +10459,7 @@
         setFeedback('Photos added.', false);
       })
       .catch(function (err) {
-        setFeedback((err && err.message) || 'Could not upload photos.', true);
+        setFeedback(friendlyNetworkError(err, 'Could not upload photos. Check your connection and try again.'), true);
       });
   }
 
@@ -9127,18 +10476,26 @@
           Accept: 'application/json'
         }
       })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.ok) return;
+        .then(function (res) {
+          return readFetchJson(res, 'Could not delete photo.');
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            setFeedback((result.data && result.data.message) || 'Could not delete photo.', true);
+            return;
+          }
           var room = activeRoom();
           if (room) {
             room.photos = (room.photos || []).filter(function (p) { return p.id !== photoId; });
-            room.photo_count = data.photo_count;
+            room.photo_count = result.data.photo_count;
           }
           renderPhotos();
           renderRooms();
           closeLightbox();
           setFeedback('Photo deleted.', false);
+        })
+        .catch(function (err) {
+          setFeedback(friendlyNetworkError(err, 'Could not delete photo. Check your connection and try again.'), true);
         });
     });
   }
@@ -9267,6 +10624,10 @@
   }
 
   function nudgeSelectedVertices(dx, dy) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (!state.selectedVertexIndices.length) return;
     pushUndoSnapshot();
     var orig = activeVertices().map(function (v) { return { x: v.x, y: v.y }; });
@@ -9289,6 +10650,10 @@
   }
 
   function nudgeSelectedWall(dx, dy) {
+    if (geometryLocked()) {
+      warnGeometryLocked();
+      return;
+    }
     if (state.selectedWallIndex === null) return;
     var idx = state.selectedWallIndex;
     var endIdx = wallEndIndex(idx);
@@ -9321,6 +10686,11 @@
   }
 
   function handleRoomAreaKeydown(e) {
+    if (e.key === 'Escape' && root.classList.contains('is-more-open')) {
+      e.preventDefault();
+      setMoreOpen(false);
+      return;
+    }
     if (isTypingTarget(e.target)) return;
     if (els.lightbox && !els.lightbox.hasAttribute('hidden')) return;
 
@@ -9331,6 +10701,10 @@
       e.preventDefault();
       if (shortcutsPopoverOpen()) {
         closeShortcutsPopover();
+        return;
+      }
+      if (templatesPopoverOpen()) {
+        closeTemplatesPopover();
         return;
       }
       if (state.armedCatalogKey || state.placingCatalog) {
@@ -9439,6 +10813,38 @@
     }
   }
 
+  function bindProjectMenu() {
+    var btn = root.querySelector('[data-ra-project-menu-toggle]');
+    var menu = root.querySelector('[data-ra-project-menu]');
+    if (!btn || !menu) return;
+
+    function setOpen(open) {
+      menu.classList.toggle('is-open', !!open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(!menu.classList.contains('is-open'));
+    });
+    document.addEventListener('pointerdown', function (e) {
+      if (!menu.classList.contains('is-open')) return;
+      if (menu.contains(e.target) || btn.contains(e.target)) return;
+      setOpen(false);
+      e.stopPropagation();
+    }, true);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && menu.classList.contains('is-open')) {
+        setOpen(false);
+        e.stopPropagation();
+      }
+    });
+    window.addEventListener('resize', function () {
+      if (!isPhoneChrome()) setOpen(false);
+    });
+  }
+
   function bindEvents() {
     els.projectSelect.addEventListener('change', function () {
       var newId = els.projectSelect.value ? parseInt(els.projectSelect.value, 10) : null;
@@ -9452,14 +10858,16 @@
         els.projectSelect.value = newId ? String(newId) : '';
         state.calibrating = false;
         state.calibPoints = [];
-        if (els.calibrateToggle) els.calibrateToggle.classList.remove('is-active');
-        if (els.knownLength) els.knownLength.disabled = true;
-        if (els.applyScale) els.applyScale.disabled = true;
+        raAll('[data-ra-calibrate-toggle]').forEach(function (btn) { btn.classList.remove('is-active'); });
+        raAll('[data-ra-known-length]').forEach(function (el) { el.disabled = true; });
+        raAll('[data-ra-apply-scale]').forEach(function (el) { el.disabled = true; });
         stopRulerMode();
         clearRulerSelection();
         renderWorkspace();
       });
     });
+
+    bindProjectMenu();
 
     els.newProjectToggle.addEventListener('click', function () {
       show(els.newProjectPanel, els.newProjectPanel.hasAttribute('hidden'));
@@ -9471,11 +10879,15 @@
       updateProjectLink(els.linkClientProject.value);
     });
 
-    if (els.calibrateToggle) els.calibrateToggle.addEventListener('click', toggleCalibrate);
-    if (els.applyScale) els.applyScale.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      applyScale();
+    raAll('[data-ra-calibrate-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', toggleCalibrate);
+    });
+    raAll('[data-ra-apply-scale]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyScale();
+      });
     });
 
     raAll('[data-ra-undo-vertex]').forEach(function (btn) {
@@ -9492,7 +10904,9 @@
         toggleShortcutsPopover();
       });
     }
-    els.closeShape.addEventListener('click', closeShape);
+    raAll('[data-ra-close-shape]').forEach(function (btn) {
+      btn.addEventListener('click', closeShape);
+    });
     if (els.paletteToggle) {
       els.paletteToggle.addEventListener('click', function (e) {
         e.preventDefault();
@@ -9535,10 +10949,18 @@
         }
       });
     }
-    if (els.addArea) els.addArea.addEventListener('click', addAreaSameGroup);
-    if (els.addAreaNewGroup) els.addAreaNewGroup.addEventListener('click', addAreaNewGroup);
-    if (els.deleteArea) els.deleteArea.addEventListener('click', deleteActivePolygon);
-    els.clearShape.addEventListener('click', clearShape);
+    raAll('[data-ra-add-area]').forEach(function (btn) {
+      btn.addEventListener('click', addAreaSameGroup);
+    });
+    raAll('[data-ra-add-area-new-group]').forEach(function (btn) {
+      btn.addEventListener('click', addAreaNewGroup);
+    });
+    raAll('[data-ra-delete-area]').forEach(function (btn) {
+      btn.addEventListener('click', deleteActivePolygon);
+    });
+    raAll('[data-ra-clear-shape]').forEach(function (btn) {
+      btn.addEventListener('click', clearShape);
+    });
     raAll('[data-ra-save-room]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         saveRoom().catch(function () {});
@@ -9555,7 +10977,9 @@
     if (els.deleteWall) els.deleteWall.addEventListener('click', deleteSelectedWall);
     if (els.deleteVertex) els.deleteVertex.addEventListener('click', deleteSelectedVertex);
     if (els.vertexCancel) els.vertexCancel.addEventListener('click', clearVertexSelection);
-    if (els.rulerToggle) els.rulerToggle.addEventListener('click', toggleRulerMode);
+    raAll('[data-ra-ruler-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', toggleRulerMode);
+    });
     if (els.deleteRuler) els.deleteRuler.addEventListener('click', deleteSelectedRuler);
     if (els.rulerCancel) els.rulerCancel.addEventListener('click', clearRulerSelection);
     if (els.objectWidth) {
@@ -9596,6 +11020,8 @@
     }
     if (els.objectSwing) els.objectSwing.addEventListener('change', applyObjectSwingHinge);
     if (els.objectHinge) els.objectHinge.addEventListener('change', applyObjectSwingHinge);
+    if (els.objectCasing) els.objectCasing.addEventListener('change', applyObjectSwingHinge);
+    if (els.objectDoorFace) els.objectDoorFace.addEventListener('change', applyObjectSwingHinge);
     if (els.objectFlip) els.objectFlip.addEventListener('click', flipSelectedObject);
     if (els.objectRotate) els.objectRotate.addEventListener('click', rotateSelectedObject);
     if (els.deleteObject) els.deleteObject.addEventListener('click', deleteSelectedObject);
@@ -9605,14 +11031,76 @@
         setShowDimensions(els.dimensionsToggle.checked);
       });
     }
+    raAll('[data-ra-dimensions-mode]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        setDimensionsMode(sel.value);
+      });
+    });
+    raAll('[data-ra-lock-layers]').forEach(function (box) {
+      box.addEventListener('change', function () {
+        setLayersLocked(box.checked);
+      });
+    });
+    raAll('[data-ra-snap-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setAngleSnap(!state.angleSnap);
+      });
+    });
+    raAll('[data-ra-unit-system]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setUnitSystem(btn.getAttribute('data-ra-unit-system'));
+      });
+    });
+    raAll('[data-ra-templates-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleTemplatesPopover();
+      });
+    });
+    raAll('[data-ra-more-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMoreOpen(!root.classList.contains('is-more-open'));
+      });
+    });
+    raAll('[data-ra-more-close]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setMoreOpen(false);
+      });
+    });
+    raAll('[data-ra-template]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        applyRoomTemplate(btn.getAttribute('data-ra-template'));
+      });
+    });
+    raAll('[data-ra-alcove]').forEach(function (btn) {
+      btn.addEventListener('click', addAlcove);
+    });
     bindAreaNameField();
 
     document.addEventListener('keydown', handleRoomAreaKeydown);
+    document.addEventListener('keydown', trapMoreFocus, true);
 
     document.addEventListener('pointerdown', function (e) {
-      if (!shortcutsPopoverOpen()) return;
-      if (els.shortcuts && els.shortcuts.contains(e.target)) return;
-      closeShortcutsPopover();
+      if (shortcutsPopoverOpen() && !(els.shortcuts && els.shortcuts.contains(e.target))) {
+        closeShortcutsPopover();
+      }
+      if (isPhoneChrome()) {
+        if (root.classList.contains('is-more-open')) {
+          var more = els.moreSheet;
+          var phoneBar = root.querySelector('[data-ra-phone-bar]');
+          if (more && !more.contains(e.target) && !(phoneBar && phoneBar.contains(e.target))) {
+            setMoreOpen(false);
+          }
+        }
+        return;
+      }
+      if (templatesPopoverOpen() && !(els.templatesRoot && els.templatesRoot.contains(e.target))) {
+        closeTemplatesPopover();
+      }
     });
 
     if (els.wallLength) {
@@ -9645,15 +11133,68 @@
     });
 
     if (els.wallHeight) {
-      els.wallHeight.addEventListener('input', function () {
-        state.wallHeightFt = wallHeightFt();
+      els.wallHeight.addEventListener('change', function () {
+        var next = wallHeightFtFromValue(els.wallHeight.value);
+        if (next == null) {
+          syncWallHeightInput(true);
+          return;
+        }
+        setWallHeight(next, true);
         updateLiveArea();
       });
-      els.wallHeight.addEventListener('change', function () {
-        setWallHeight(els.wallHeight.value);
+      els.wallHeight.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        var next = wallHeightFtFromValue(els.wallHeight.value);
+        if (next == null) {
+          syncWallHeightInput(true);
+          return;
+        }
+        setWallHeight(next, true);
         updateLiveArea();
       });
     }
+    if (els.ceilingHeight) {
+      function commitCeilingFromInput() {
+        var raw = els.ceilingHeight.value;
+        if (raw == null || String(raw).trim() === '') {
+          setCeilingHeight(null, true);
+          updateLiveArea();
+          return;
+        }
+        var next = wallHeightFtFromValue(raw);
+        if (next == null) {
+          syncCeilingHeightInput(true);
+          return;
+        }
+        setCeilingHeight(next, true);
+        updateLiveArea();
+      }
+      els.ceilingHeight.addEventListener('change', commitCeilingFromInput);
+      els.ceilingHeight.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        commitCeilingFromInput();
+      });
+    }
+    if (els.floorWaste) {
+      els.floorWaste.addEventListener('change', function () {
+        setFlooringWaste(els.floorWaste.value, true);
+        updateLiveArea();
+      });
+    }
+    if (els.floorBox) {
+      els.floorBox.addEventListener('change', function () {
+        setFlooringBox(els.floorBox.value, true);
+        updateLiveArea();
+      });
+    }
+    raAll('[data-ra-floor-dir]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setFlooringDirection(btn.getAttribute('data-ra-floor-dir'), true);
+        updateLiveArea();
+      });
+    });
     if (els.exportPng) els.exportPng.addEventListener('click', exportPng);
     if (els.exportPdf) els.exportPdf.addEventListener('click', exportPdf);
     if (els.attachPdf) els.attachPdf.addEventListener('click', attachPdf);
@@ -9661,19 +11202,26 @@
     raAll('[data-ra-zoom-in]').forEach(function (btn) { btn.addEventListener('click', zoomIn); });
     raAll('[data-ra-zoom-out]').forEach(function (btn) { btn.addEventListener('click', zoomOut); });
     raAll('[data-ra-zoom-100]').forEach(function (btn) { btn.addEventListener('click', resetViewport); });
-    raAll('[data-ra-zoom-reset]').forEach(function (btn) { btn.addEventListener('click', fitViewport); });
+    raAll('[data-ra-zoom-reset]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.userAdjustedViewport = false;
+        fitViewport();
+        markUserViewport();
+      });
+    });
     bindSidePanel();
     bindHelpPops();
+    bindKits();
     bindFirstTip();
     if (els.roomName) {
       els.roomName.addEventListener('input', updateFullpageTitle);
     }
 
-    if (els.measureUnit) {
-      els.measureUnit.addEventListener('change', function () {
-        setMeasureUnit(els.measureUnit.value);
+    raAll('[data-ra-measure-unit]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        setMeasureUnit(sel.value);
       });
-    }
+    });
 
     if (els.typeDirBtns) {
       els.typeDirBtns.forEach(function (btn) {
@@ -9727,10 +11275,20 @@
 
     window.addEventListener('resize', scheduleStageResize);
 
-    document.addEventListener('admin-theme-change', function () {
+    function redrawForTheme() {
       drawGrid();
       redrawAll();
-    });
+    }
+    document.addEventListener('admin-theme-change', redrawForTheme);
+    var lastHtmlDark = document.documentElement.classList.contains('admin-dark');
+    if (window.MutationObserver) {
+      new MutationObserver(function () {
+        var dark = document.documentElement.classList.contains('admin-dark');
+        if (dark === lastHtmlDark) return;
+        lastHtmlDark = dark;
+        redrawForTheme();
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    }
 
     window.addEventListener('beforeunload', function (e) {
       if (!hasUnsavedChanges()) return;
@@ -9777,6 +11335,404 @@
     raAll('[data-ra-help-pop]').forEach(function (btn) {
       btn.setAttribute('aria-expanded', 'false');
     });
+  }
+
+  function kitQuoteRoomUrl(roomId) {
+    var tpl = root.getAttribute('data-assembly-quote-room-template') || '';
+    return tpl ? urlFromTemplate(tpl, roomId) : '';
+  }
+
+  function kitQuoteProjectUrl(projectId) {
+    var tpl = root.getAttribute('data-assembly-quote-project-template') || '';
+    return tpl ? urlFromTemplate(tpl, projectId) : '';
+  }
+
+  function displayKitUnit(qty, unit) {
+    unit = String(unit || '');
+    if (!unit) return '';
+    if (Math.abs(Number(qty)) === 1) return unit;
+    if (/box$/i.test(unit)) return unit.replace(/box$/i, 'boxes');
+    if (/\bpails\b/i.test(unit) || /\bboxes\b/i.test(unit) || /\bsticks\b/i.test(unit)) return unit;
+    if (/\bpail\b/i.test(unit)) return unit.replace(/\bpail\b/i, 'pails');
+    if (/stick$/i.test(unit)) return unit.replace(/stick$/i, 'sticks');
+    if (/s$/i.test(unit)) return unit;
+    if (/x$/i.test(unit)) return unit;
+    if (/^(ea|lf|sf|gal|qt|in|ft|mm|cm|m|sq)$/i.test(unit)) return unit;
+    return unit + 's';
+  }
+
+  function formatKitQty(qty, unit, whole) {
+    if (qty == null || !isFinite(qty)) return '—';
+    var n = whole || Math.abs(qty - Math.round(qty)) < 0.001
+      ? String(Math.round(qty))
+      : fmt(qty, 2);
+    return unit ? n + ' ' + displayKitUnit(qty, unit) : n;
+  }
+
+  function evaluateKit(assembly, metrics) {
+    return (assembly.lines || []).map(function (line) {
+      var result = RA.evaluateAssemblyLine(line, metrics);
+      return {
+        id: line.id,
+        name: line.name,
+        unit: line.unit,
+        whole_units: !!line.whole_units,
+        qty: result.qty,
+        raw: result.raw,
+        error: result.error,
+        material_name: line.material_name || ''
+      };
+    });
+  }
+
+  function renderKits() {
+    var list = root.querySelector('[data-ra-kit-list]');
+    if (!list) return;
+    var empty = root.querySelector('[data-ra-kit-empty]');
+    var quoteBtn = root.querySelector('[data-ra-kit-quote]');
+    var projectWrap = root.querySelector('[data-ra-kit-project]');
+    var projectList = root.querySelector('[data-ra-kit-project-list]');
+    var room = activeRoom();
+    var project = activeProject();
+    var attached = (room && room.assembly_ids) ? room.assembly_ids.map(Number) : [];
+    var metrics = hasAnyClosedPolygon() ? computeWallMetrics() : (room && room.metrics) || {};
+    list.innerHTML = '';
+    if (!state.assemblies.length) {
+      show(empty, true);
+      show(quoteBtn, false);
+      show(projectWrap, false);
+      return;
+    }
+    show(empty, false);
+    state.assemblies.forEach(function (kit) {
+      var li = document.createElement('li');
+      li.className = 'util-ra-kit';
+      li.setAttribute('data-ra-kit-id', String(kit.id));
+      var on = attached.indexOf(Number(kit.id)) !== -1;
+      var lines = evaluateKit(kit, metrics);
+      var linesHtml = lines.map(function (line) {
+        if (line.error) {
+          return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><span class="util-ra-kit__line-err">' + esc(line.error) + '</span></li>';
+        }
+        if (line.qty != null && Number(line.qty) <= 0) return '';
+        var extra = line.material_name ? '<span class="util-ra-kit__mat">' + esc(line.material_name) + '</span>' : '';
+        return '<li class="util-ra-kit__line"><span>' + esc(line.name) + extra + '</span><strong>' + esc(formatKitQty(line.qty, line.unit, line.whole_units)) + '</strong></li>';
+      }).join('');
+      li.innerHTML =
+        '<div class="util-ra-kit__head">' +
+          '<p class="util-ra-kit__name">' + esc(kit.name) + '</p>' +
+          '<label class="util-ra-kit__use">' +
+            '<input type="checkbox" data-ra-kit-use value="' + esc(String(kit.id)) + '"' + (on ? ' checked' : '') + (room ? '' : ' disabled') + '>' +
+            'Use on this room' +
+          '</label>' +
+          '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-ra-kit-edit="' + esc(String(kit.id)) + '">Edit</button>' +
+        '</div>' +
+        '<ul class="util-ra-kit__lines">' + linesHtml + '</ul>';
+      list.appendChild(li);
+    });
+
+    var canQuote = !!(room && room.id && attached.length);
+    if (quoteBtn) {
+      if (canQuote) {
+        quoteBtn.href = kitQuoteRoomUrl(room.id);
+        show(quoteBtn, true);
+      } else if (project && project.rooms && project.rooms.length >= 2 && project.rooms.some(function (r) { return (r.assembly_ids || []).length; })) {
+        quoteBtn.href = kitQuoteProjectUrl(project.id);
+        show(quoteBtn, true);
+      } else {
+        show(quoteBtn, false);
+      }
+    }
+
+    if (projectWrap && projectList && project && project.rooms && project.rooms.length >= 2) {
+      projectList.innerHTML = '';
+      var totals = {};
+      project.rooms.forEach(function (r) {
+        var ids = (r.assembly_ids || []).map(Number);
+        var roomMetrics = (state.editingRoomId === r.id && hasAnyClosedPolygon()) ? metrics : (r.metrics || {});
+        state.assemblies.forEach(function (kit) {
+          if (ids.indexOf(Number(kit.id)) === -1) return;
+          if (!totals[kit.id]) totals[kit.id] = { name: kit.name, lines: {} };
+          evaluateKit(kit, roomMetrics).forEach(function (line) {
+            var key = String(line.id || line.name);
+            if (!totals[kit.id].lines[key]) {
+              totals[kit.id].lines[key] = { name: line.name, unit: line.unit, whole: line.whole_units, raw: 0, error: null };
+            }
+            if (line.error) totals[kit.id].lines[key].error = line.error;
+            else if (line.raw != null) totals[kit.id].lines[key].raw += line.raw;
+          });
+        });
+      });
+      var keys = Object.keys(totals);
+      if (keys.length) {
+        keys.forEach(function (id) {
+          var kit = totals[id];
+          var item = document.createElement('li');
+          item.className = 'util-ra-kit';
+          item.innerHTML = '<p class="util-ra-kit__name">' + esc(kit.name) + '</p><ul class="util-ra-kit__lines">' +
+            Object.keys(kit.lines).map(function (key) {
+              var line = kit.lines[key];
+              if (line.error) return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><span class="util-ra-kit__line-err">' + esc(line.error) + '</span></li>';
+              var qty = RA.applyFormulaRounding(line.raw, !!line.whole);
+              if (qty != null && Number(qty) <= 0) return '';
+              return '<li class="util-ra-kit__line"><span>' + esc(line.name) + '</span><strong>' + esc(formatKitQty(qty, line.unit, line.whole)) + '</strong></li>';
+            }).join('') + '</ul>';
+          projectList.appendChild(item);
+        });
+        show(projectWrap, true);
+      } else {
+        show(projectWrap, false);
+      }
+    } else {
+      show(projectWrap, false);
+    }
+  }
+
+  function kitEditorLineMarkup(line) {
+    var tpl = document.getElementById('ra-kit-line-template');
+    if (!tpl) return null;
+    var node = tpl.content.firstElementChild.cloneNode(true);
+    if (line && line.id) node.setAttribute('data-line-id', String(line.id));
+    var name = node.querySelector('[data-ra-kit-line-name]');
+    var unit = node.querySelector('[data-ra-kit-line-unit]');
+    var formula = node.querySelector('[data-ra-kit-line-formula]');
+    var whole = node.querySelector('[data-ra-kit-line-whole]');
+    var mat = node.querySelector('[data-ra-kit-line-material]');
+    var search = node.querySelector('[data-admin-search-select]');
+    if (name) name.value = (line && line.name) || '';
+    if (unit) unit.value = (line && line.unit) || '';
+    if (formula) formula.value = (line && line.formula) || '';
+    if (whole) whole.checked = !line || line.whole_units !== false;
+    if (mat) mat.value = (line && line.material_id) ? String(line.material_id) : '';
+    if (search && line && line.material_name) {
+      var input = search.querySelector('.admin-search-select__input');
+      if (input) input.value = line.material_name;
+    }
+    if (search && window.AdminSearchSelect) {
+      window.AdminSearchSelect.init(search);
+    }
+    return node;
+  }
+
+  function collectKitEditorLines() {
+    var rows = [];
+    root.querySelectorAll('[data-ra-kit-lines] [data-ra-kit-line]').forEach(function (row) {
+      var name = ((row.querySelector('[data-ra-kit-line-name]') || {}).value || '').trim();
+      var formula = ((row.querySelector('[data-ra-kit-line-formula]') || {}).value || '').trim();
+      if (!name && !formula) return;
+      var materialEl = row.querySelector('[data-ra-kit-line-material]');
+      var materialId = materialEl && materialEl.value ? parseInt(materialEl.value, 10) : null;
+      rows.push({
+        id: row.getAttribute('data-line-id') ? parseInt(row.getAttribute('data-line-id'), 10) : null,
+        name: name,
+        formula: formula,
+        unit: ((row.querySelector('[data-ra-kit-line-unit]') || {}).value || 'ea').trim() || 'ea',
+        whole_units: !!(row.querySelector('[data-ra-kit-line-whole]') || {}).checked,
+        material_id: materialId > 0 ? materialId : null
+      });
+    });
+    return rows;
+  }
+
+  function openKitEditor(kit) {
+    var form = root.querySelector('[data-ra-kit-editor]');
+    if (!form) return;
+    form.setAttribute('data-kit-id', kit && kit.id ? String(kit.id) : '');
+    var title = root.querySelector('[data-ra-kit-editor-title]');
+    if (title) title.textContent = kit && kit.id ? 'Edit kit' : 'New kit';
+    var name = root.querySelector('[data-ra-kit-name]');
+    var notes = root.querySelector('[data-ra-kit-notes]');
+    if (name) name.value = (kit && kit.name) || '';
+    if (notes) notes.value = (kit && kit.notes) || '';
+    var lines = root.querySelector('[data-ra-kit-lines]');
+    if (lines) {
+      lines.innerHTML = '';
+      var source = (kit && kit.lines && kit.lines.length) ? kit.lines : [{ name: '', formula: '', unit: '', whole_units: true }];
+      source.forEach(function (line) {
+        var node = kitEditorLineMarkup(line);
+        if (node) lines.appendChild(node);
+      });
+    }
+    var del = root.querySelector('[data-ra-kit-delete]');
+    show(del, !!(kit && kit.id));
+    var err = root.querySelector('[data-ra-kit-editor-error]');
+    show(err, false);
+    show(form, true);
+    if (name) name.focus();
+  }
+
+  function closeKitEditor() {
+    var form = root.querySelector('[data-ra-kit-editor]');
+    show(form, false);
+  }
+
+  function setKitEditorError(message) {
+    var err = root.querySelector('[data-ra-kit-editor-error]');
+    if (!err) return;
+    err.textContent = message || '';
+    show(err, !!message);
+  }
+
+  function applyAssembliesPayload(assemblies) {
+    state.assemblies = assemblies || [];
+    renderKits();
+  }
+
+  function saveKitEditor(e) {
+    if (e) e.preventDefault();
+    var saveBtn = root.querySelector('[data-ra-kit-save]');
+    if (saveBtn && saveBtn.disabled) return;
+    var form = root.querySelector('[data-ra-kit-editor]');
+    var name = ((root.querySelector('[data-ra-kit-name]') || {}).value || '').trim();
+    var notes = ((root.querySelector('[data-ra-kit-notes]') || {}).value || '').trim();
+    var lines = collectKitEditorLines();
+    if (!name) {
+      setKitEditorError('Enter a kit name.');
+      return;
+    }
+    if (!lines.length) {
+      setKitEditorError('Add at least one material line.');
+      return;
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var check = RA.evaluateFormula(lines[i].formula, RA.formulaVariablesFromMetrics({
+        area_sqft: 100, net_wall_area_sqft: 320, ceiling_area_sqft: 100,
+        perimeter_lf: 40, door_count: 1, window_count: 1, wall_height_ft: 8,
+        flooring_boxes: 6, flooring_waste_percent: 10, outside_corners: 0, inside_corners: 4
+      }));
+      if (!check.ok) {
+        setKitEditorError(lines[i].name + ': ' + check.error);
+        return;
+      }
+    }
+    var id = form && form.getAttribute('data-kit-id');
+    var url = id
+      ? urlFromTemplate(root.getAttribute('data-assembly-update-template') || '', id)
+      : (root.getAttribute('data-assembly-store-url') || '');
+    if (saveBtn) saveBtn.disabled = true;
+    fetch(url, {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+      body: JSON.stringify({ name: name, notes: notes || null, lines: lines })
+    }).then(function (res) { return RA.readFetchJson(res, 'Could not save that kit.'); })
+      .then(function (payload) {
+        var data = payload && payload.data ? payload.data : payload;
+        if (payload && payload.ok === false) {
+          var errors = data && data.errors ? data.errors : {};
+          var first = errors.name && errors.name[0];
+          throw new Error(first || data.message || 'Could not save that kit.');
+        }
+        if (data.assemblies) applyAssembliesPayload(data.assemblies);
+        closeKitEditor();
+        setFeedback('Kit saved.', false);
+      })
+      .catch(function (err) {
+        setKitEditorError(err.message || 'Could not save that kit.');
+      })
+      .then(function () {
+        if (saveBtn) saveBtn.disabled = false;
+      });
+  }
+
+  function deleteCurrentKit() {
+    var form = root.querySelector('[data-ra-kit-editor]');
+    var id = form && form.getAttribute('data-kit-id');
+    if (!id) return;
+    if (!window.confirm('Delete this kit? Rooms that use it will drop it.')) return;
+    fetch(urlFromTemplate(root.getAttribute('data-assembly-destroy-template') || '', id), {
+      method: 'DELETE',
+      headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() }
+    }).then(function (res) { return RA.readFetchJson(res, 'Could not delete that kit.'); })
+      .then(function (payload) {
+        var data = payload && payload.data ? payload.data : payload;
+        if (payload && payload.ok === false) {
+          throw new Error((data && data.message) || 'Could not delete that kit.');
+        }
+        if (data.assemblies) applyAssembliesPayload(data.assemblies);
+        closeKitEditor();
+        setFeedback('Kit deleted.', false);
+      })
+      .catch(function (err) {
+        setKitEditorError(friendlyNetworkError(err, 'Could not delete that kit. Check your connection and try again.'));
+      });
+  }
+
+  function syncRoomKits(ids) {
+    var room = activeRoom();
+    if (!room) return;
+    fetch(urlFromTemplate(root.getAttribute('data-room-assemblies-template') || '', room.id), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+      body: JSON.stringify({ assembly_ids: ids })
+    }).then(function (res) { return RA.readFetchJson(res, 'Could not update kits for this room.'); })
+      .then(function (data) {
+        room.assembly_ids = data.assembly_ids || ids;
+        var project = activeProject();
+        if (project) {
+          var idx = project.rooms.findIndex(function (r) { return r.id === room.id; });
+          if (idx >= 0) project.rooms[idx].assembly_ids = room.assembly_ids;
+        }
+        renderKits();
+      })
+      .catch(function (err) {
+        setFeedback(err.message || 'Could not update kits for this room.', true);
+        renderKits();
+      });
+  }
+
+  function bindKits() {
+    state.assemblies = parseJson('data-assemblies', []);
+    var seedErr = root.getAttribute('data-ra-kit-seed-error');
+    if (seedErr) setFeedback(seedErr, true);
+    renderKits();
+    var list = root.querySelector('[data-ra-kit-list]');
+    if (list) {
+      list.addEventListener('change', function (e) {
+        var box = e.target.closest('[data-ra-kit-use]');
+        if (!box) return;
+        var ids = [];
+        list.querySelectorAll('[data-ra-kit-use]:checked').forEach(function (el) {
+          ids.push(parseInt(el.value, 10));
+        });
+        syncRoomKits(ids);
+      });
+      list.addEventListener('click', function (e) {
+        var edit = e.target.closest('[data-ra-kit-edit]');
+        if (!edit) return;
+        var id = parseInt(edit.getAttribute('data-ra-kit-edit'), 10);
+        var kit = state.assemblies.find(function (row) { return Number(row.id) === id; });
+        if (kit) openKitEditor(kit);
+      });
+    }
+    var neu = root.querySelector('[data-ra-kit-new]');
+    if (neu) neu.addEventListener('click', function () { openKitEditor(null); });
+    var cancel = root.querySelector('[data-ra-kit-editor-cancel]');
+    if (cancel) cancel.addEventListener('click', closeKitEditor);
+    var form = root.querySelector('[data-ra-kit-editor]');
+    if (form) form.addEventListener('submit', saveKitEditor);
+    window.addEventListener('pageshow', function () {
+      var saveBtn = root.querySelector('[data-ra-kit-save]');
+      if (saveBtn) saveBtn.disabled = false;
+    });
+    var addLine = root.querySelector('[data-ra-kit-add-line]');
+    if (addLine) {
+      addLine.addEventListener('click', function () {
+        var lines = root.querySelector('[data-ra-kit-lines]');
+        var node = kitEditorLineMarkup(null);
+        if (lines && node) lines.appendChild(node);
+      });
+    }
+    var lines = root.querySelector('[data-ra-kit-lines]');
+    if (lines) {
+      lines.addEventListener('click', function (e) {
+        var remove = e.target.closest('[data-ra-kit-line-remove]');
+        if (!remove) return;
+        var row = remove.closest('[data-ra-kit-line]');
+        if (row && lines.querySelectorAll('[data-ra-kit-line]').length > 1) row.remove();
+      });
+    }
+    var del = root.querySelector('[data-ra-kit-delete]');
+    if (del) del.addEventListener('click', deleteCurrentKit);
   }
 
   function bindHelpPops() {
@@ -9853,64 +11809,127 @@
       return e.clientY;
     }
 
+    function collapsedSheetMin() {
+      var handleH = handle.getBoundingClientRect().height || 44;
+      var strip = root.querySelector('[data-ra-sheet-strip]');
+      var stripH = strip ? strip.getBoundingClientRect().height : 0;
+      return Math.max(44, Math.round(handleH + stripH));
+    }
+
     function clampSheet(height) {
-      var minH = Math.round(Math.min(window.innerHeight * 0.22, 168));
-      var maxH = Math.round(window.innerHeight * 0.55);
+      var minH = isPhoneChrome() ? collapsedSheetMin() : Math.round(Math.min(window.innerHeight * 0.22, 168));
+      var maxH = isPhoneChrome()
+        ? phoneSheetExpandedHeight()
+        : Math.round(window.innerHeight * 0.55);
       return Math.max(minH, Math.min(maxH, Math.round(height)));
+    }
+
+    function afterSheetLayoutChange() {
+      scheduleStageResize();
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          resizeStage();
+          redrawLabels();
+        });
+      });
     }
 
     function applySheet(height) {
       root.style.setProperty('--ra-sheet-h', clampSheet(height) + 'px');
-      scheduleStageResize();
+      afterSheetLayoutChange();
     }
+
+    var moved = false;
+
+    function toggleSheet() {
+      if (!isPhoneChrome()) return;
+      var expanded = root.classList.toggle('is-sheet-expanded');
+      handle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      root.style.setProperty('--ra-sheet-h', expanded ? phoneSheetExpandedHeight() + 'px' : 'auto');
+      afterSheetLayoutChange();
+    }
+
+    var tapHandled = false;
 
     function onDown(e) {
       if (window.matchMedia('(min-width: 901px)').matches) return;
       dragging = true;
+      moved = false;
+      tapHandled = false;
       startY = eventY(e);
       startH = side.getBoundingClientRect().height;
       if (e.pointerId != null && handle.setPointerCapture) {
         pointerId = e.pointerId;
         try { handle.setPointerCapture(e.pointerId); } catch (err) {}
       }
-      e.preventDefault();
+      if (e.type !== 'touchstart') e.preventDefault();
     }
 
     function onMove(e) {
       if (!dragging) return;
+      if (Math.abs(startY - eventY(e)) > 6) moved = true;
+      if (!moved) return;
       var next = startH + (startY - eventY(e));
       applySheet(next);
+      root.classList.toggle('is-sheet-expanded', clampSheet(next) > collapsedSheetMin() + 16);
+      handle.setAttribute('aria-expanded', root.classList.contains('is-sheet-expanded') ? 'true' : 'false');
       e.preventDefault();
     }
 
-    function onUp() {
+    function onUp(e) {
+      var wasDragging = dragging;
       dragging = false;
       pointerId = null;
+      if (!wasDragging || moved) return;
+      if (e && (e.type === 'touchend' || e.pointerType === 'touch')) {
+        tapHandled = true;
+        toggleSheet();
+      }
     }
 
     handle.addEventListener('pointerdown', onDown);
     handle.addEventListener('pointermove', onMove);
     handle.addEventListener('pointerup', onUp);
     handle.addEventListener('pointercancel', onUp);
-    handle.addEventListener('touchstart', onDown, { passive: false });
+    handle.addEventListener('touchstart', onDown, { passive: true });
     handle.addEventListener('touchmove', onMove, { passive: false });
     handle.addEventListener('touchend', onUp);
+    handle.addEventListener('click', function () {
+      if (tapHandled) {
+        tapHandled = false;
+        return;
+      }
+      if (moved) return;
+      toggleSheet();
+    });
+    handle.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleSheet();
+      }
+    });
   }
 
   function init() {
     state.projects = parseJson('data-projects', []);
-    state.measureUnit = loadMeasureUnit();
-    if (els.measureUnit) els.measureUnit.value = state.measureUnit;
+    applyEditorPrefs(defaultEditorPrefs(), true);
+    raAll('[data-ra-measure-unit]').forEach(function (sel) { sel.value = state.imperialUnit || MEASURE_UNITS.feet_inch_frac; });
     updateMeasureUnitPlaceholders();
     bindEvents();
     bindViewportEvents();
+    bindTemplatesPopoverFollow();
     renderObjectPalette();
+    syncUnitSystemUi();
+    updateLiveUnitLabels();
     if (els.dimensionsToggle) els.dimensionsToggle.checked = state.showDimensions;
     refreshProjectSelect();
-    var raProject = (function () {
-      try { return new URLSearchParams(window.location.search).get('ra_project'); } catch (e) { return null; }
+    var queryParams = (function () {
+      try { return new URLSearchParams(window.location.search); } catch (e) { return null; }
     })();
+    var raProject = queryParams ? queryParams.get('ra_project') : null;
+    var raRoom = queryParams ? queryParams.get('ra_room') : null;
     var initialRoom = parseInt(root.getAttribute('data-ra-initial-room-id') || '', 10);
+    if (!initialRoom && raRoom) initialRoom = parseInt(raRoom, 10);
     var lockedClient = root.hasAttribute('data-ra-lock-client-project');
     if (state.projects.length) {
       var chosen = null;
@@ -9931,11 +11950,24 @@
         refreshProjectSelect();
       }
     }
+    if (isPhoneChrome()) {
+      root.style.setProperty('--ra-sheet-h', 'auto');
+    } else {
+      resetDesktopSheetState();
+    }
+    placeObjectDock();
+    window.addEventListener('resize', function () {
+      placeObjectDock();
+      syncPhoneSheetForDock();
+      syncPhoneBarOverflow();
+    });
+    syncPhoneBarOverflow();
     renderWorkspace();
     updateFullpageTitle();
     if (initialRoom) {
       loadRoom(initialRoom);
     }
+    syncGuideLinks();
   }
 
   init();

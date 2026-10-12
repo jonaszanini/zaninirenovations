@@ -159,6 +159,24 @@
 @endpush
 
 @section('content')
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Painting',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'pt-main-form',
+    'saveId' => 'pt-btn-publish',
+    'draftId' => 'pt-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
   @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
     <div class="fq-linked-banner">
@@ -176,8 +194,9 @@
 
   <div class="pq-layout">
     <div>
-      <form id="pt-main-form" method="post" action="{{ $formAction }}" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
+      <form id="pt-main-form" method="post" action="{{ $formAction }}" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}" data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
         @csrf
+        @include('admin.partials.once_submit')
         @if ($isEdit)
           @method('PUT')
         @endif
@@ -197,8 +216,10 @@
                    value="{{ old('total_property_sqf', $inputs['total_property_sqf'] ?? '') }}">
           </div>
 
-          <h5 style="margin:16px 0 8px;">Excluded rooms / areas</h5>
-          <p class="pq-hint" style="margin:0 0 10px;">Subtract rooms you are not painting. Use dimensions (L × W) or enter total sq ft.</p>
+          <h5 class="admin-label-with-tip" style="margin:16px 0 8px;">
+            Excluded rooms / areas
+            <x-admin.info-tip label="Excluded rooms / areas">Subtract rooms you are not painting. Use dimensions (L × W) or enter total sq ft.</x-admin.info-tip>
+          </h5>
           <div id="pt-excluded-root">
             @foreach ($excludedRows as $i => $row)
               @php
@@ -248,8 +269,13 @@
           </div>
         </div>
 
-        <div class="pt-step-card">
-          <h4>Step 2 — Specifications</h4>
+        <div class="pt-step-card" data-qh-step="2">
+          <h4 class="qh-priced-head">
+            Step 2 — Specifications
+            @include('admin.partials.quotation_price_config_gear', [
+              'url' => route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+            ])
+          </h4>
           <div class="pq-form-grid">
             <div class="admin-form-group">
               <label for="paint_line_id">Paint brand / line</label>
@@ -261,9 +287,11 @@
               </select>
             </div>
             <div class="admin-form-group">
-              <label>Number of top coats</label>
+              <span class="admin-label-with-tip">
+                <label>Number of top coats</label>
+                <x-admin.info-tip label="Number of top coats">Fixed at {{ PaintingQuotationCalculator::DEFAULT_COATS }} top coats per company standards.</x-admin.info-tip>
+              </span>
               <input type="text" class="admin-input" value="{{ PaintingQuotationCalculator::DEFAULT_COATS }} (company standard)" readonly>
-              <p class="pq-hint">Fixed at {{ PaintingQuotationCalculator::DEFAULT_COATS }} top coats per company standards.</p>
             </div>
           </div>
           <div class="admin-form-group">
@@ -271,7 +299,10 @@
             <textarea class="admin-input" id="surface_prep_description" name="surface_prep_description" rows="4" maxlength="5000">{{ old('surface_prep_description', $inputs['surface_prep_description'] ?? PaintingQuotationCalculator::defaultSurfacePrepDescription()) }}</textarea>
           </div>
           <div class="admin-form-group quotation-work-desc">
-            <label for="work-description">Project description <span class="admin-form-help">(optional — appears on client PDF)</span></label>
+            <span class="admin-label-with-tip">
+              <label for="work-description">Project description</label>
+              <x-admin.info-tip label="Project description">Optional — appears on the client PDF. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+            </span>
             <textarea class="admin-input" id="work-description" name="work_description" rows="8"
                       placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
             @include('admin.partials.quotation_work_description_ai', [
@@ -279,7 +310,6 @@
                 'aiContextFormId' => 'pt-main-form',
                 'aiQuotationType' => 'painting',
             ])
-            <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
           </div>
         </div>
 
@@ -308,21 +338,6 @@
     </div>
 
     <aside class="pq-sticky">
-      <div class="pq-sidebar-actions">
-        <button type="submit" form="pt-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="pt-btn-publish">
-          <i class="fa fa-save"></i> Save quotation
-        </button>
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="pt-btn-draft">Save as draft</button>
-        <a href="{{ route('admin.quotations.painting.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-cog"></i> Price configuration
-        </a>
-        @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-        <a href="{{ route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-arrow-left"></i> Back to list
-        </a>
-        <a href="{{ route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-        @include('admin.partials.quotation_view_pdf')
-      </div>
       @if ($isEdit && $linkedCpq && $quotation->project && ! $quotation->is_draft)
         @php
           $paintingSendConfirm = 'This will generate a new PDF and email it to '.$quotation->project->clientEmailRecipientsLabel().'. Continue?';
@@ -340,7 +355,9 @@
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'pt-main-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'pt-main-form'])
       <div class="pq-summary-card">
-        <h4 class="cp-form-help-spaced">Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="pt-live-root">
           <div id="pt-readiness-root" aria-live="polite"></div>
           <div id="pt-breakdown-root" class="pt-breakdown is-empty"></div>

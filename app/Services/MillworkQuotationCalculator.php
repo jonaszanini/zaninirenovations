@@ -8,6 +8,10 @@ use App\Services\CutOptimizer\CutOptimizerEngine;
 use App\Services\CutOptimizer\Part;
 use App\Services\CutOptimizer\StockOption;
 use App\Services\CutOptimizer\SvgVisualizer;
+use App\Services\Millwork\Frozen\V2MillworkQuotationCalculator;
+use App\Services\Millwork\LegacyMillworkQuotationCalculator;
+use App\Services\Millwork\MillworkDimensionParser;
+use App\Services\Millwork\MillworkPanelSplitter;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Support\QuotationBuildingLabor;
 use App\Support\QuotationHelperLabor;
@@ -22,6 +26,25 @@ class MillworkQuotationCalculator
     ];
 
     public const HST_RATE = MillworkQuotation::HST_RATE;
+
+    /** Stored cut plans without this key (or with a lower value) keep the v1 snapshot. */
+    public const CUT_PLAN_VERSION = 2;
+
+    /** New parsing, inch defaults, and 240" used-field limits. Saved v2 stays on the frozen builder. */
+    public const PARSING_VERSION = 3;
+
+    /** Simple-shelf structure when a row has a height. New quotes only; saved v3 stays on the board price. */
+    public const CALC_VERSION = 4;
+
+    public const MAX_QTY = 200;
+
+    public const MAX_COUNT = 100;
+
+    public const MAX_DIM_IN = 240.0;
+
+    public const MAX_LINEAR_FT = 500.0;
+
+    public const MAX_SPARE_SHEETS = 50;
 
     /**
      * @return array<string, mixed>
@@ -144,13 +167,108 @@ class MillworkQuotationCalculator
     }
 
     /**
+     * Fill flags and counts a v1 row never stored with the values calculate()
+     * already uses, so the edit form shows the priced defaults.
+     *
+     * @param  array<string, mixed>  $piece
+     * @return array<string, mixed>
+     */
+    public static function withEffectiveFormDefaults(array $piece, bool $forLegacyQuote): array
+    {
+        if (! $forLegacyQuote) {
+            return $piece;
+        }
+        $defaults = self::defaultPiece((string) ($piece['type'] ?? 'shelf'));
+        foreach ([
+            'include_doors', 'include_toe_kick', 'include_back', 'edge_banding',
+            'door_count', 'shelf_count', 'drawer_count', 'division_count',
+            'columns', 'rows', 'rod_count', 'openings',
+        ] as $key) {
+            if (! array_key_exists($key, $piece) && array_key_exists($key, $defaults)) {
+                $piece[$key] = $defaults[$key];
+            }
+        }
+
+        return $piece;
+    }
+
+    /**
+     * 1 = legacy cut plan, 2 = frozen v2 builder, 3 = new parsing, 4 = shelf structure.
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function resolveCalcVersion(array $inputs, ?int $explicit = null): int
+    {
+        $raw = $explicit;
+        if ($raw === null && isset($inputs['_calc_version']) && is_numeric($inputs['_calc_version'])) {
+            $raw = (int) $inputs['_calc_version'];
+        }
+        if ($raw === null && isset($inputs['_cut_plan_version']) && is_numeric($inputs['_cut_plan_version'])) {
+            $raw = (int) $inputs['_cut_plan_version'];
+        }
+        if ($raw === null && isset($inputs['_builder_version']) && is_numeric($inputs['_builder_version'])) {
+            $raw = (int) $inputs['_builder_version'];
+        }
+        if ($raw === null) {
+            return self::CALC_VERSION;
+        }
+        if ($raw >= self::CALC_VERSION) {
+            return self::CALC_VERSION;
+        }
+        if ($raw >= self::PARSING_VERSION) {
+            return self::PARSING_VERSION;
+        }
+        if ($raw >= self::CUT_PLAN_VERSION) {
+            return self::CUT_PLAN_VERSION;
+        }
+
+        return 1;
+    }
+
+    /**
+     * True when any stored piece has been edited onto the v3 path.
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function hasEditedPiece(array $inputs): bool
+    {
+        foreach ($inputs['pieces'] ?? [] as $piece) {
+            if (is_array($piece) && MillworkPartBuilder::usesNewParsing($piece)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function resolveCutPlanVersion(array $inputs, ?int $explicit = null): int
+    {
+        return self::resolveCalcVersion($inputs, $explicit) >= self::CUT_PLAN_VERSION
+            ? self::CUT_PLAN_VERSION
+            : 1;
+    }
+
+    /**
      * @param  array<string, mixed>  $inputs
      * @return array<string, mixed>
      */
-    public function calculate(array $inputs, ?MillworkSettings $settings = null): array
+    public function calculate(array $inputs, ?MillworkSettings $settings = null, ?int $cutPlanVersion = null): array
     {
         $settings = $settings ?? MillworkSettings::current();
+        $calcVersion = self::resolveCalcVersion($inputs, $cutPlanVersion);
+        $cutPlanVersion = $calcVersion >= self::CUT_PLAN_VERSION ? self::CUT_PLAN_VERSION : 1;
+        if ($cutPlanVersion < self::CUT_PLAN_VERSION) {
+            return $this->calculateLegacy($inputs, $settings);
+        }
+        if ($calcVersion < self::PARSING_VERSION && ! self::hasEditedPiece($inputs)) {
+            return $this->calculateFrozenV2($inputs, $settings);
+        }
         $inputs = array_merge(self::defaultInputs(), $inputs);
+        $inputs['_calc_version'] = $calcVersion;
+        $inputs['_cut_plan_version'] = $calcVersion;
         $prod = $settings->resolvedProductivity();
         $cut = $settings->resolvedCutSettings();
         $catalog = $settings->resolvedCatalog();
@@ -175,9 +293,10 @@ class MillworkQuotationCalculator
         $ebItem = $this->pickCatalogItem($catalog, MillworkSettings::SLOT_EDGE_BANDING, (string) ($inputs['edge_banding_id'] ?? ''));
         $ebThick = (float) ($cut['edge_band_thickness_in'] ?? ($ebItem['thickness_in'] ?? 0.018));
 
-        $builder = new MillworkPartBuilder();
+        $builder = new MillworkPartBuilder($calcVersion);
         $primaryParts = [];
         $backParts = [];
+        $explodedByPiece = [];
         $hardware = ['hinges' => 0.0, 'pulls' => 0.0, 'drawer_slides' => 0.0, 'glue' => 0.0, 'rods' => 0.0, 'shelf_pins' => 0.0];
         $edgeLf = 0.0;
         $paintSf = 0.0;
@@ -207,7 +326,8 @@ class MillworkQuotationCalculator
         $spareSheets = max(0, (int) ($inputs['spare_sheets'] ?? 0));
 
         foreach ($this->pieces($inputs) as $idx => $piece) {
-            $exploded = $builder->explode($piece, $thickness, ! empty($piece['edge_banding']) ? $ebThick : 0.0);
+            $exploded = $builder->explode($piece, $thickness, ! empty($piece['edge_banding']) ? $ebThick : 0.0, $idx);
+            $explodedByPiece[$idx] = ['piece' => $piece, 'exploded' => $exploded];
             foreach ($exploded['parts'] as $part) {
                 if ($part->materialKey === 'back') {
                     $backParts[] = $part;
@@ -261,7 +381,8 @@ class MillworkQuotationCalculator
             }
         }
 
-        $cutPlan = $this->buildCutPlan(
+        $cutPlan = $this->previewCutPlanOrSkip(
+            $inputs,
             $primaryParts,
             $backParts,
             $sheet,
@@ -270,6 +391,28 @@ class MillworkQuotationCalculator
             (float) ($cut['kerf_in'] ?? 0.125),
             (float) ($cut['trim_in'] ?? 0.125),
             (float) ($cut['min_offcut_in'] ?? 2.0)
+        );
+        $cutPlan['builder_version'] = $builder->version();
+
+        $this->chargePlacedPartsOnly(
+            $explodedByPiece,
+            $cutPlan,
+            $hardware,
+            $edgeLf,
+            $paintSf,
+            $stainSf,
+            $fasteners,
+            $boxSf,
+            $shelfUnits,
+            $floatingUnits,
+            $cubeCount,
+            $cabinetBoxSf,
+            $doorCount,
+            $benchSf,
+            $closetSf,
+            $mantelUnits,
+            $wainscotLf,
+            $trimLf
         );
 
         $edgeLfQuoted = $edgeLf * (1 + ($edgeWastePct / 100));
@@ -383,7 +526,7 @@ class MillworkQuotationCalculator
             $breakdown[] = ['key' => $row['key'], 'label' => $row['label'], 'amount' => $row['amount']];
         }
 
-        return [
+        return $this->withFieldErrors($inputs, [
             'scope' => [
                 'piece_count' => count($this->pieces($inputs)),
                 'piece_summary' => implode('; ', $labels),
@@ -435,57 +578,576 @@ class MillworkQuotationCalculator
                 'trim_lf' => round($trimLfQuoted, 2),
                 'wainscot_lf' => round($wainscotLfQuoted, 2),
             ],
-        ];
+        ]);
+    }
+
+    /**
+     * Main's millwork calculator, part builder, and packer — used only for
+     * quotes that have not been switched to the new cut plan.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @return array<string, mixed>
+     */
+    private function calculateLegacy(array $inputs, ?MillworkSettings $settings): array
+    {
+        $out = (new LegacyMillworkQuotationCalculator)->calculate($inputs, $settings);
+        if (isset($out['cut_plan']) && is_array($out['cut_plan'])) {
+            unset($out['cut_plan']['unplaced'], $out['cut_plan']['placed_by_id'], $out['cut_plan']['builder_version']);
+            $out['cut_plan']['version'] = 1;
+        }
+
+        return $this->withFieldErrors($inputs, $out);
+    }
+
+    /**
+     * Main 578b5081 v2 calculator + builder. Untouched saved v2 only.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @return array<string, mixed>
+     */
+    private function calculateFrozenV2(array $inputs, ?MillworkSettings $settings): array
+    {
+        return (new V2MillworkQuotationCalculator)->calculate($inputs, $settings, 2);
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, mixed>  $out
+     * @return array<string, mixed>
+     */
+    private function withFieldErrors(array $inputs, array $out): array
+    {
+        $errors = [];
+        $this->collectDimensionFieldErrors($inputs, $errors);
+        $out['field_errors'] = $errors;
+
+        return $out;
     }
 
     /**
      * @param  array<string, mixed>  $inputs
      * @return list<string>
      */
-    public function validationHints(array $inputs, bool $draft): array
+    public function validationHints(array $inputs, bool $draft, ?MillworkSettings $settings = null): array
     {
-        if ($draft) {
-            return [];
+        return array_values($this->validationMessages($inputs, $draft, $settings));
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @return array<string, string>
+     */
+    public function validationMessages(array $inputs, bool $draft, ?MillworkSettings $settings = null): array
+    {
+        $messages = [];
+        $this->collectDimensionFieldErrors($inputs, $messages);
+        $calcVersion = self::resolveCalcVersion($inputs);
+
+        if ($calcVersion < self::CUT_PLAN_VERSION) {
+            if ($draft) {
+                return $messages;
+            }
+            $legacy = (new LegacyMillworkQuotationCalculator)->validationHints($inputs, false);
+            if ($legacy !== []) {
+                $messages['calculation'] = $messages['calculation'] ?? implode(' ', $legacy);
+            }
+
+            return $messages;
         }
-        $hints = [];
+
+        if ($draft) {
+            return $messages;
+        }
+
+        if ($calcVersion < self::PARSING_VERSION) {
+            $messages = $this->mainV2ValidationMessages($inputs, $settings, $messages);
+            $limitHint = $this->dimensionLimitHint($inputs);
+            if ($limitHint !== null) {
+                $messages['calculation'] = $limitHint;
+            }
+
+            return $messages;
+        }
+
+        $limitHint = $this->dimensionLimitHint($inputs);
+        if ($limitHint !== null) {
+            $messages['calculation'] = $limitHint;
+        }
+
+        $hasPart = false;
+        $unsized = [];
+        foreach ($this->pieces($inputs) as $idx => $piece) {
+            if ($this->pieceIsSized($piece)) {
+                $hasPart = true;
+            } else {
+                $unsized[] = $idx;
+            }
+        }
+        if ($unsized !== []) {
+            foreach ($unsized as $idx) {
+                $key = 'pieces.'.$idx;
+                if (! isset($messages[$key])) {
+                    $messages[$key] = 'This piece needs quantity and dimensions.';
+                }
+            }
+            $messages['calculation'] = $messages['calculation']
+                ?? 'Every millwork piece needs quantity and dimensions before publishing.';
+        }
+        if (! $hasPart) {
+            $messages['calculation'] = 'Add at least one millwork piece with quantity and dimensions.';
+        }
+        if ($hasPart && $limitHint === null && ! $this->hasInvalidPostedDimension($inputs)) {
+            $preview = $this->calculate($inputs, $settings);
+            $unplaced = is_array($preview['cut_plan']['unplaced'] ?? null) ? $preview['cut_plan']['unplaced'] : [];
+            if ($unplaced !== []) {
+                $labels = array_values(array_unique(array_filter(array_map(
+                    static fn ($row) => trim((string) ($row['label'] ?? '')),
+                    $unplaced
+                ))));
+                $list = $labels !== [] ? ' ('.implode(', ', $labels).')' : '';
+                $messages['calculation'] = 'These parts do not fit on any sheet we stock'.$list.'. Change the size or pick a larger sheet before publishing.';
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Main's publish rules for saved v2 quotes: at least one sized piece, then unplaced.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, string>  $messages
+     * @return array<string, string>
+     */
+    private function mainV2ValidationMessages(array $inputs, ?MillworkSettings $settings, array $messages): array
+    {
         $hasPart = false;
         foreach ($this->pieces($inputs) as $piece) {
-            $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
-            if (in_array($type, ['shelf', 'floating_shelf', 'cabinet_door'], true)) {
-                foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
-                    if ((int) ($set['qty'] ?? 0) > 0) {
-                        $len = MillworkPartBuilder::positiveDim($set, ['length', 'height']);
-                        $wid = MillworkPartBuilder::positiveDim($set, ['width', 'depth']);
-                        if ($len > 0 && $wid > 0) {
-                            $hasPart = true;
-                        }
-                    }
-                }
-            } elseif (in_array($type, ['trim', 'wainscoting'], true)) {
-                $lf = MillworkPartBuilder::positiveDim($piece, ['linear_ft', 'length']);
-                if ($lf > 0) {
-                    $hasPart = true;
-                }
-            } elseif ($type === 'mantel') {
-                $len = MillworkPartBuilder::positiveDim($piece, ['length', 'width']);
-                $dep = MillworkPartBuilder::positiveDim($piece, ['depth']);
-                if ($len > 0 && $dep > 0) {
-                    $hasPart = true;
-                }
-            } else {
-                $w = MillworkPartBuilder::positiveDim($piece, ['width', 'length']);
-                $h = MillworkPartBuilder::positiveDim($piece, ['height']);
-                $d = MillworkPartBuilder::positiveDim($piece, ['depth']);
-                if ($w > 0 && ($h > 0 || $type === 'bench') && $d > 0) {
-                    $hasPart = true;
-                }
+            if ($this->pieceIsSized($piece)) {
+                $hasPart = true;
+                break;
             }
         }
         if (! $hasPart) {
-            $hints[] = 'Add at least one millwork piece with quantity and dimensions.';
+            $messages['calculation'] = 'Add at least one millwork piece with quantity and dimensions.';
+        }
+        if ($hasPart) {
+            $preview = $this->calculate($inputs, $settings);
+            $unplaced = is_array($preview['cut_plan']['unplaced'] ?? null) ? $preview['cut_plan']['unplaced'] : [];
+            if ($unplaced !== []) {
+                $labels = array_values(array_unique(array_filter(array_map(
+                    static fn ($row) => trim((string) ($row['label'] ?? '')),
+                    $unplaced
+                ))));
+                $list = $labels !== [] ? ' ('.implode(', ', $labels).')' : '';
+                $messages['calculation'] = 'These parts do not fit on any sheet we stock'.$list.'. Change the size or pick a larger sheet before publishing.';
+            }
         }
 
-        return $hints;
+        return $messages;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, string>  $messages
+     */
+    private function collectDimensionFieldErrors(array $inputs, array &$messages): void
+    {
+        $rawPieces = is_array($inputs['pieces'] ?? null) ? array_values($inputs['pieces']) : [];
+        $savedPieces = is_array($inputs['_existing_pieces'] ?? null) ? array_values($inputs['_existing_pieces']) : [];
+        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::PARSING_VERSION;
+
+        foreach ($rawPieces as $pi => $piece) {
+            if (! is_array($piece)) {
+                continue;
+            }
+            $saved = is_array($savedPieces[$pi] ?? null) ? $savedPieces[$pi] : [];
+            $used = $this->usedParseKeys($piece);
+            $only = $this->keysToValidateForRow($piece, $saved, $used, $quoteIsV3);
+            $this->collectRowDimensionErrors($piece, 'pieces.'.$pi, $messages, null, $only);
+            $savedSets = is_array($saved['sets'] ?? null) ? array_values($saved['sets']) : [];
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $si => $set) {
+                if (! is_array($set)) {
+                    continue;
+                }
+                $set['_calc_version'] = $piece['_calc_version'] ?? $set['_calc_version'] ?? null;
+                $savedSet = is_array($savedSets[$si] ?? null) ? $savedSets[$si] : [];
+                $setUsed = $this->usedSetLimitKeys($piece);
+                $setOnly = $this->keysToValidateForRow($set, $savedSet, $setUsed, $quoteIsV3);
+                $this->collectRowDimensionErrors(
+                    $set,
+                    'pieces.'.$pi.'.sets.'.$si,
+                    $messages,
+                    (string) ($piece['unit'] ?? 'in'),
+                    $setOnly
+                );
+            }
+        }
+        $this->collectCountFieldErrors($inputs, $messages);
+    }
+
+    /**
+     * v3 quotes check every used field. v1/v2 only check used fields whose
+     * posted value changed from the stored row, even after JS marks the
+     * piece v3, so leftover text like 36in. or n/a does not block a save
+     * or land on a hidden unused input.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $saved
+     * @param  list<string>  $used
+     * @return list<string>
+     */
+    private function keysToValidateForRow(array $row, array $saved, array $used, bool $validateUnchanged): array
+    {
+        if ($used === []) {
+            return [];
+        }
+        if ($validateUnchanged || $saved === []) {
+            return $used;
+        }
+        $changed = [];
+        foreach ($used as $key) {
+            if ($this->dimensionValueChanged($row, $saved, $key)) {
+                $changed[] = $key;
+            }
+        }
+
+        return $changed;
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $saved
+     */
+    private function dimensionValueChanged(array $current, array $saved, string $key): bool
+    {
+        if (! array_key_exists($key, $saved)) {
+            $cur = $current[$key] ?? '';
+
+            return $cur !== '' && $cur !== null;
+        }
+
+        return $this->dimensionCompareToken($current[$key] ?? '') !== $this->dimensionCompareToken($saved[$key] ?? '');
+    }
+
+    private function dimensionCompareToken(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        return strtolower(trim(preg_replace('/\s+/', ' ', (string) $value) ?? (string) $value));
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, string>  $messages
+     */
+    private function collectCountFieldErrors(array $inputs, array &$messages): void
+    {
+        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::PARSING_VERSION;
+        if ($quoteIsV3 || self::hasEditedPiece($inputs)) {
+            if ((int) ($inputs['spare_sheets'] ?? 0) > self::MAX_SPARE_SHEETS) {
+                $messages['spare_sheets'] = 'Spare sheets cannot be more than '.self::MAX_SPARE_SHEETS.'.';
+            }
+        }
+
+        $labels = [
+            'qty' => 'Quantity',
+            'door_count' => 'Door count',
+            'shelf_count' => 'Shelf count',
+            'drawer_count' => 'Drawer count',
+            'division_count' => 'Division count',
+            'columns' => 'Columns',
+            'rows' => 'Rows',
+            'rod_count' => 'Rod count',
+            'openings' => 'Openings',
+            'pull_qty' => 'Pull quantity',
+            'hinge_qty' => 'Hinge quantity',
+        ];
+
+        foreach ($this->pieces($inputs) as $pi => $piece) {
+            if (! $quoteIsV3 && ! MillworkPartBuilder::usesNewParsing($piece)) {
+                continue;
+            }
+            if ((int) ($piece['qty'] ?? 0) > self::MAX_QTY) {
+                $messages['pieces.'.$pi.'.qty'] = $labels['qty'].' cannot be more than '.self::MAX_QTY.'.';
+            }
+            foreach ($labels as $key => $label) {
+                if ($key === 'qty') {
+                    continue;
+                }
+                if (! array_key_exists($key, $piece)) {
+                    continue;
+                }
+                if ((int) $piece[$key] > self::MAX_COUNT) {
+                    $messages['pieces.'.$pi.'.'.$key] = $label.' cannot be more than '.self::MAX_COUNT.'.';
+                }
+            }
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $si => $set) {
+                if (is_array($set) && (int) ($set['qty'] ?? 0) > self::MAX_QTY) {
+                    $messages['pieces.'.$pi.'.sets.'.$si.'.qty'] = $labels['qty'].' cannot be more than '.self::MAX_QTY.'.';
+                }
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, string>  $messages
+     */
+    /**
+     * @param  list<string>|null  $onlyKeys
+     */
+    private function collectRowDimensionErrors(array $row, string $prefix, array &$messages, ?string $fallbackUnit = null, ?array $onlyKeys = null): void
+    {
+        foreach (['width', 'height', 'depth', 'length', 'thickness', 'linear_ft', 'stock_length_ft'] as $key) {
+            if ($onlyKeys !== null && ! in_array($key, $onlyKeys, true)) {
+                continue;
+            }
+            if (! array_key_exists($key, $row)) {
+                continue;
+            }
+            $unit = $fallbackUnit !== null && ! in_array($key, ['linear_ft', 'stock_length_ft'], true)
+                ? MillworkDimensionParser::fieldUnitOf($key, $row, $fallbackUnit)
+                : MillworkDimensionParser::fieldUnitOf($key, $row);
+            $parsed = MillworkDimensionParser::inspect($row[$key], $unit);
+            if ($parsed['status'] === MillworkDimensionParser::STATUS_INVALID) {
+                $messages[$prefix.'.'.$key] = $parsed['message'] ?? MillworkDimensionParser::INVALID_MESSAGE;
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     */
+    private function pieceIsSized(array $piece): bool
+    {
+        $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+        $read = MillworkPartBuilder::usesNewParsing($piece)
+            ? static fn (array $row, array $keys): float => MillworkPartBuilder::dimInches($row, $keys)
+            : static fn (array $row, array $keys): float => MillworkPartBuilder::positiveDim($row, $keys);
+        if (in_array($type, ['shelf', 'floating_shelf', 'cabinet_door'], true)) {
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
+                if (! is_array($set) || (int) ($set['qty'] ?? 0) <= 0) {
+                    continue;
+                }
+                $set['_calc_version'] = $piece['_calc_version'] ?? $set['_calc_version'] ?? null;
+                $len = $read($set, ['length', 'height']);
+                $wid = $read($set, ['width', 'depth']);
+                if ($len > 0 && $wid > 0) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        if (in_array($type, ['trim', 'wainscoting'], true)) {
+            return $read($piece, ['linear_ft', 'length']) > 0;
+        }
+        if ($type === 'mantel') {
+            $len = $read($piece, ['length', 'width']);
+            $dep = $read($piece, ['depth']);
+
+            return $len > 0 && $dep > 0;
+        }
+        $w = $read($piece, ['width', 'length']);
+        $h = $read($piece, ['height']);
+        $d = $read($piece, ['depth']);
+
+        return $w > 0 && ($h > 0 || $type === 'bench') && $d > 0;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    public function hasInvalidPostedDimension(array $inputs): bool
+    {
+        $messages = [];
+        $this->collectDimensionFieldErrors($inputs, $messages);
+
+        return $messages !== [];
+    }
+
+    /**
+     * @param  list<Part>  $primary
+     * @param  list<Part>  $backs
+     * @param  array<string, mixed>|null  $sheet
+     * @param  array<string, mixed>|null  $backSheet
+     * @param  list<array<string, mixed>>  $allSheets
+     * @return array<string, mixed>
+     */
+    private function previewCutPlanOrSkip(
+        array $inputs,
+        array $primary,
+        array $backs,
+        ?array $sheet,
+        ?array $backSheet,
+        array $allSheets,
+        float $kerf,
+        float $trim,
+        float $minOffcut
+    ): array {
+        if ($this->shouldSkipCutPlanPreview($inputs)) {
+            $limitHint = $this->dimensionLimitHint($inputs);
+
+            return [
+                'version' => self::CUT_PLAN_VERSION,
+                'sheet_count' => 0,
+                'yield_pct' => 0.0,
+                'kerf_in' => $kerf,
+                'layouts' => [],
+                'stock_used' => [],
+                'original_part_count' => 0,
+                'placed_part_count' => 0,
+                'placed_by_id' => [],
+                'unplaced' => [],
+                'seams' => [],
+                'preview_skipped' => true,
+                'preview_message' => $limitHint ?? 'Fix the highlighted sizes to update the cut plan.',
+            ];
+        }
+
+        return $this->buildCutPlan($primary, $backs, $sheet, $backSheet, $allSheets, $kerf, $trim, $minOffcut);
+    }
+
+    /**
+     * Never drop an untouched v2 cut plan. Skip only when a v3 / edited piece
+     * has an invalid typed size (not a stored over-240" used field).
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    private function shouldSkipCutPlanPreview(array $inputs): bool
+    {
+        $countErrors = [];
+        $this->collectCountFieldErrors($inputs, $countErrors);
+        if ($countErrors !== []) {
+            return true;
+        }
+        foreach ($this->pieces($inputs) as $piece) {
+            if (! MillworkPartBuilder::usesNewParsing($piece)) {
+                continue;
+            }
+            $messages = [];
+            $this->collectRowDimensionErrors($piece, 'p', $messages, null, $this->usedParseKeys($piece));
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
+                if (is_array($set)) {
+                    $set['_calc_version'] = $piece['_calc_version'] ?? null;
+                    $this->collectRowDimensionErrors($set, 's', $messages, (string) ($piece['unit'] ?? 'in'), $this->usedSetLimitKeys($piece));
+                }
+            }
+            if ($messages !== []) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    private function dimensionLimitHint(array $inputs): ?string
+    {
+        $quoteIsV3 = self::resolveCalcVersion($inputs) >= self::PARSING_VERSION;
+        if (($quoteIsV3 || self::hasEditedPiece($inputs)) && (int) ($inputs['spare_sheets'] ?? 0) > self::MAX_SPARE_SHEETS) {
+            return 'Spare sheets cannot be more than '.self::MAX_SPARE_SHEETS.'.';
+        }
+        foreach ($this->pieces($inputs) as $piece) {
+            if (! $quoteIsV3 && ! MillworkPartBuilder::usesNewParsing($piece)) {
+                continue;
+            }
+            if ((int) ($piece['qty'] ?? 0) > self::MAX_QTY) {
+                return 'Quantity cannot be more than '.self::MAX_QTY.'.';
+            }
+            foreach (['door_count', 'shelf_count', 'drawer_count', 'division_count', 'columns', 'rows', 'rod_count', 'openings', 'pull_qty', 'hinge_qty'] as $countKey) {
+                if (array_key_exists($countKey, $piece) && (int) $piece[$countKey] > self::MAX_COUNT) {
+                    return 'Count cannot be more than '.self::MAX_COUNT.'.';
+                }
+            }
+            $linearFt = MillworkPartBuilder::positiveDim($piece, ['linear_ft']);
+            if ($linearFt > self::MAX_LINEAR_FT) {
+                return 'Linear footage cannot be more than '.self::MAX_LINEAR_FT.' ft.';
+            }
+            foreach ($this->usedLimitKeys($piece) as $key) {
+                if (MillworkPartBuilder::trimOpeningIsInches($piece, $key)) {
+                    continue;
+                }
+                if (MillworkPartBuilder::dimInches($piece, [$key]) > self::MAX_DIM_IN) {
+                    return 'Each width, height, depth, and length must be 240 inches (20 ft) or less.';
+                }
+            }
+            foreach (is_array($piece['sets'] ?? null) ? $piece['sets'] : [] as $set) {
+                if (! is_array($set)) {
+                    continue;
+                }
+                if ((int) ($set['qty'] ?? 0) > self::MAX_QTY) {
+                    return 'Quantity cannot be more than '.self::MAX_QTY.'.';
+                }
+                $set['_calc_version'] = $piece['_calc_version'] ?? null;
+                foreach ($this->usedSetLimitKeys($piece) as $key) {
+                    if (MillworkPartBuilder::dimInches($set, [$key], (string) ($piece['unit'] ?? 'in')) > self::MAX_DIM_IN) {
+                        return 'Each width, height, depth, and length must be 240 inches (20 ft) or less.';
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Fields the piece type actually uses. Hidden leftover trim depth / unused
+     * wainscot width must not trip the 240" check.
+     *
+     * @param  array<string, mixed>  $piece
+     * @return list<string>
+     */
+    private function usedLimitKeys(array $piece): array
+    {
+        $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+
+        return match ($type) {
+            'shelf', 'cabinet_door', 'floating_shelf' => [],
+            'kallax', 'cabinet', 'vanity', 'closet' => ['width', 'height', 'depth'],
+            'bench' => ['length', 'width', 'depth', 'height'],
+            'mantel' => ['length', 'width', 'depth', 'height'],
+            'wainscoting' => ['height'],
+            'trim' => ((int) ($piece['openings'] ?? 0) > 0) ? ['width', 'height'] : [],
+            default => ['width', 'height', 'depth'],
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     * @return list<string>
+     */
+    private function usedParseKeys(array $piece): array
+    {
+        $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+        $keys = $this->usedLimitKeys($piece);
+        if (in_array($type, ['trim', 'wainscoting'], true)) {
+            $keys[] = 'linear_ft';
+            $keys[] = 'length';
+            $keys[] = 'stock_length_ft';
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     * @return list<string>
+     */
+    private function usedSetLimitKeys(array $piece): array
+    {
+        $type = MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf'));
+
+        return match ($type) {
+            'floating_shelf' => ['length', 'height', 'depth', 'width', 'thickness'],
+            'shelf', 'cabinet_door' => ['length', 'height', 'depth', 'width'],
+            default => [],
+        };
     }
 
     /**
@@ -498,11 +1160,21 @@ class MillworkQuotationCalculator
         if (! is_array($raw)) {
             return [];
         }
+        $quoteCalc = self::resolveCalcVersion($inputs);
         $out = [];
         foreach ($raw as $piece) {
-            if (is_array($piece)) {
-                $out[] = array_merge(self::defaultPiece((string) ($piece['type'] ?? 'shelf')), $piece);
+            if (! is_array($piece)) {
+                continue;
             }
+            $merged = array_merge(self::defaultPiece((string) ($piece['type'] ?? 'shelf')), $piece);
+            if (! isset($merged['_calc_version']) || $merged['_calc_version'] === '' || $merged['_calc_version'] === null) {
+                $merged['_calc_version'] = $quoteCalc;
+            } else {
+                $merged['_calc_version'] = (int) $merged['_calc_version'] >= self::CALC_VERSION
+                    ? self::CALC_VERSION
+                    : (int) $merged['_calc_version'];
+            }
+            $out[] = $merged;
         }
 
         return $out;
@@ -528,42 +1200,87 @@ class MillworkQuotationCalculator
     ): array {
         $engine = new CutOptimizerEngine();
         $visual = new SvgVisualizer();
+        $splitter = new MillworkPanelSplitter();
         $layouts = [];
         $sheetCount = 0;
         $usedByStock = [];
+        $unplaced = [];
+        $seams = [];
+        $placedById = [];
+        $originalPartCount = $this->partQty($primary) + $this->partQty($backs);
+        $packedPartCount = 0;
 
-        $runGroup = function (array $parts, ?array $preferred, string $group) use ($engine, $visual, $allSheets, $kerf, $trim, $minOffcut, &$layouts, &$sheetCount, &$usedByStock): void {
+        $runGroup = function (array $parts, ?array $preferred, string $group) use (
+            $engine,
+            $visual,
+            $splitter,
+            $allSheets,
+            $kerf,
+            $trim,
+            $minOffcut,
+            &$layouts,
+            &$sheetCount,
+            &$usedByStock,
+            &$unplaced,
+            &$seams,
+            &$packedPartCount,
+            &$placedById
+        ): void {
             if ($parts === []) {
                 return;
             }
             $stocks = $this->stockOptionsFor($preferred, $allSheets);
-            $sheets = $engine->optimize($parts, $stocks, $kerf, $trim, $minOffcut);
+            $split = $splitter->splitOversizedBacks($parts, $stocks);
+            foreach ($split['seams'] as $seam) {
+                $seams[] = $seam;
+            }
+            $toPack = $split['parts'];
+            $sheets = $engine->optimize($toPack, $stocks, $kerf, $trim, $minOffcut);
+            $placedCounts = [];
             foreach ($sheets as $packed) {
                 $sheetCount++;
                 $described = $visual->describe($packed);
                 $described['group'] = $group;
                 $layouts[] = $described;
+                $packedPartCount += count($packed->placedParts);
+                foreach ($packed->placedParts as $placed) {
+                    $id = $placed->part->id;
+                    $placedCounts[$id] = ($placedCounts[$id] ?? 0) + 1;
+                    $baseId = $this->packerBaseId($id);
+                    $placedById[$baseId] = ($placedById[$baseId] ?? 0) + 1;
+                }
                 $key = $this->inchKey($packed->width, $packed->length).'|'.$group;
                 if (! isset($usedByStock[$key])) {
+                    $priced = $this->pricePackedSheet($packed, $preferred, $stocks);
                     $usedByStock[$key] = [
-                        'label' => $packed->label !== '' ? $packed->label : $this->inchKey($packed->width, $packed->length),
+                        'label' => $priced['name'],
                         'width' => $packed->width,
                         'length' => $packed->length,
                         'qty' => 0,
-                        'unit_price' => (float) ($preferred['unit_price'] ?? 0),
-                        'catalog_material_id' => $preferred['catalog_material_id'] ?? null,
-                        'name' => $preferred['name'] ?? $packed->label,
+                        'unit_price' => $priced['unit_price'],
+                        'catalog_material_id' => $priced['catalog_material_id'],
+                        'name' => $priced['name'],
                     ];
-                    foreach ($stocks as $opt) {
-                        if (abs($opt->width - $packed->width) < 0.2 && abs($opt->length - $packed->length) < 0.2) {
-                            $usedByStock[$key]['unit_price'] = $opt->unitPrice;
-                            $usedByStock[$key]['catalog_material_id'] = $opt->catalogMaterialId;
-                            $usedByStock[$key]['name'] = $opt->label;
-                            break;
-                        }
-                    }
                 }
                 $usedByStock[$key]['qty']++;
+            }
+            $missing = [];
+            foreach ($engine->flattenParts($toPack) as $part) {
+                $id = $part->id;
+                if (($placedCounts[$id] ?? 0) > 0) {
+                    $placedCounts[$id]--;
+                    continue;
+                }
+                $missing[] = [
+                    'id' => $this->packerBaseId($part->id),
+                    'label' => $this->packerBaseLabel($part->id, $part->label),
+                    'size' => $this->partSizeLabel($part),
+                    'reason' => 'Does not fit on any sheet we stock',
+                    'piece_index' => $part->sourcePieceIndex,
+                ];
+            }
+            foreach ($this->groupUnplaced($missing) as $row) {
+                $unplaced[] = $row;
             }
         };
 
@@ -579,11 +1296,17 @@ class MillworkQuotationCalculator
         }
 
         return [
+            'version' => self::CUT_PLAN_VERSION,
             'sheet_count' => $sheetCount,
             'yield_pct' => $totalArea > 0 ? round(100 - ($totalWaste / $totalArea * 100), 1) : 0.0,
             'kerf_in' => $kerf,
             'layouts' => $layouts,
             'stock_used' => array_values($usedByStock),
+            'original_part_count' => $originalPartCount,
+            'placed_part_count' => $packedPartCount,
+            'placed_by_id' => $placedById,
+            'unplaced' => $unplaced,
+            'seams' => $seams,
         ];
     }
 
@@ -595,24 +1318,27 @@ class MillworkQuotationCalculator
     private function stockOptionsFor(?array $preferred, array $allSheets): array
     {
         $kind = (string) ($preferred['material_kind'] ?? 'plywood');
-        $grade = (string) ($preferred['grade'] ?? 'cabinet');
+        $species = MillworkSettings::sheetSpecies($preferred ?? []);
         $thk = (float) ($preferred['thickness_in'] ?? 0.75);
+        $preferredId = (string) ($preferred['id'] ?? '');
         $options = [];
+        if (is_array($preferred) && $preferred !== []) {
+            $options[] = $this->stockOptionFromRow($preferred);
+        }
         foreach ($allSheets as $row) {
+            if ($preferredId !== '' && (string) ($row['id'] ?? '') === $preferredId) {
+                continue;
+            }
             if (abs((float) ($row['thickness_in'] ?? 0) - $thk) > 0.06) {
                 continue;
             }
             if (($row['material_kind'] ?? '') !== $kind) {
                 continue;
             }
-            $options[] = new StockOption(
-                (string) ($row['id'] ?? uniqid('st')),
-                (string) ($row['name'] ?? 'Sheet'),
-                (float) ($row['width_in'] ?? 48),
-                (float) ($row['length_in'] ?? 96),
-                (float) ($row['unit_price'] ?? 0),
-                isset($row['catalog_material_id']) ? (int) $row['catalog_material_id'] : null
-            );
+            if (MillworkSettings::sheetSpecies($row) !== $species) {
+                continue;
+            }
+            $options[] = $this->stockOptionFromRow($row);
         }
         if ($options === []) {
             $w = (float) ($preferred['width_in'] ?? 48);
@@ -625,13 +1351,78 @@ class MillworkQuotationCalculator
                 (float) ($preferred['unit_price'] ?? 0),
                 isset($preferred['catalog_material_id']) ? (int) $preferred['catalog_material_id'] : null
             );
-            if ($thk >= 0.7) {
-                $options[] = new StockOption('half', '4×4 sheet', 48, 48, round(((float) ($preferred['unit_price'] ?? 0)) * 0.55, 2));
-                $options[] = new StockOption('quarter', '2×4 sheet', 24, 48, round(((float) ($preferred['unit_price'] ?? 0)) * 0.32, 2));
+            if ($thk >= 0.7 && is_array($preferred) && MillworkSettings::allowsSyntheticSheetSwap($preferred)) {
+                $fallbackPrice = (float) ($preferred['unit_price'] ?? 0);
+                $options[] = new StockOption('half', '4×4 sheet', 48, 48, round($fallbackPrice * 0.55, 2));
+                $options[] = new StockOption('quarter', '2×4 sheet', 24, 48, round($fallbackPrice * 0.32, 2));
             }
         }
 
         return $options;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function stockOptionFromRow(array $row): StockOption
+    {
+        return new StockOption(
+            (string) ($row['id'] ?? uniqid('st')),
+            (string) ($row['name'] ?? 'Sheet'),
+            (float) ($row['width_in'] ?? 48),
+            (float) ($row['length_in'] ?? 96),
+            (float) ($row['unit_price'] ?? 0),
+            isset($row['catalog_material_id']) ? (int) $row['catalog_material_id'] : null
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $preferred
+     * @param  list<StockOption>  $stocks
+     * @return array{name: string, unit_price: float, catalog_material_id: int|null}
+     */
+    private function pricePackedSheet($packed, ?array $preferred, array $stocks): array
+    {
+        $name = $packed->label !== '' ? $packed->label : $this->inchKey($packed->width, $packed->length);
+        $price = (float) ($preferred['unit_price'] ?? 0);
+        $catalogId = $preferred['catalog_material_id'] ?? null;
+        $preferredMatches = is_array($preferred)
+            && abs((float) ($preferred['width_in'] ?? 0) - $packed->width) < 0.2
+            && abs((float) ($preferred['length_in'] ?? 0) - $packed->length) < 0.2;
+        if ($preferredMatches) {
+            return [
+                'name' => (string) ($preferred['name'] ?? $name),
+                'unit_price' => (float) ($preferred['unit_price'] ?? 0),
+                'catalog_material_id' => $preferred['catalog_material_id'] ?? null,
+            ];
+        }
+        foreach ($stocks as $opt) {
+            if (abs($opt->width - $packed->width) < 0.2 && abs($opt->length - $packed->length) < 0.2) {
+                $name = $opt->label;
+                $price = $opt->unitPrice;
+                $catalogId = $opt->catalogMaterialId;
+                break;
+            }
+        }
+
+        return [
+            'name' => $name,
+            'unit_price' => $price,
+            'catalog_material_id' => $catalogId,
+        ];
+    }
+
+    /**
+     * @param  list<Part>  $parts
+     */
+    private function partQty(array $parts): int
+    {
+        $n = 0;
+        foreach ($parts as $part) {
+            $n += max(1, (int) $part->quantity);
+        }
+
+        return $n;
     }
 
     /**
@@ -1083,6 +1874,487 @@ class MillworkQuotationCalculator
         $b = rtrim(rtrim(number_format($l, 2, '.', ''), '0'), '.');
 
         return $a.'×'.$b;
+    }
+
+    /** Longest × shortest, with inch marks (100"×12"). */
+    private function partSizeLabel(Part $part): string
+    {
+        return $this->sizeLabel($part->length, $part->width);
+    }
+
+    private function sizeLabel(float $a, float $b): string
+    {
+        return $this->fmtInches(max($a, $b)).'×'.$this->fmtInches(min($a, $b));
+    }
+
+    private function fmtInches(float $inches): string
+    {
+        return rtrim(rtrim(number_format($inches, 2, '.', ''), '0'), '.').'"';
+    }
+
+    /**
+     * Charge labour, edge banding, finish, and hardware for placed parts only.
+     * A piece with one leftover set keeps the sets that fit.
+     *
+     * @param  array<int, array<string, mixed>>  $explodedByPiece
+     * @param  array<string, mixed>  $cutPlan
+     * @param  array<string, float>  $hardware
+     */
+    private function chargePlacedPartsOnly(
+        array $explodedByPiece,
+        array $cutPlan,
+        array &$hardware,
+        float &$edgeLf,
+        float &$paintSf,
+        float &$stainSf,
+        int &$fasteners,
+        float &$boxSf,
+        int &$shelfUnits,
+        int &$floatingUnits,
+        int &$cubeCount,
+        float &$cabinetBoxSf,
+        int &$doorCount,
+        float &$benchSf,
+        float &$closetSf,
+        int &$mantelUnits,
+        float &$wainscotLf,
+        float &$trimLf
+    ): void {
+        $unplaced = is_array($cutPlan['unplaced'] ?? null) ? $cutPlan['unplaced'] : [];
+        if ($unplaced === []) {
+            return;
+        }
+        if ((int) ($cutPlan['placed_part_count'] ?? 0) === 0) {
+            $this->resetShopCharges(
+                $hardware,
+                $edgeLf,
+                $paintSf,
+                $stainSf,
+                $fasteners,
+                $boxSf,
+                $shelfUnits,
+                $floatingUnits,
+                $cubeCount,
+                $cabinetBoxSf,
+                $doorCount,
+                $benchSf,
+                $closetSf,
+                $mantelUnits,
+                $wainscotLf,
+                $trimLf
+            );
+
+            return;
+        }
+
+        $unplacedIndexes = [];
+        foreach ($unplaced as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            foreach ((array) ($row['piece_indexes'] ?? []) as $i) {
+                $unplacedIndexes[(int) $i] = true;
+            }
+            if (array_key_exists('piece_index', $row) && $row['piece_index'] !== null && $row['piece_index'] !== '') {
+                $unplacedIndexes[(int) $row['piece_index']] = true;
+            }
+        }
+
+        $placedById = is_array($cutPlan['placed_by_id'] ?? null) ? $cutPlan['placed_by_id'] : [];
+        $this->resetShopCharges(
+            $hardware,
+            $edgeLf,
+            $paintSf,
+            $stainSf,
+            $fasteners,
+            $boxSf,
+            $shelfUnits,
+            $floatingUnits,
+            $cubeCount,
+            $cabinetBoxSf,
+            $doorCount,
+            $benchSf,
+            $closetSf,
+            $mantelUnits,
+            $wainscotLf,
+            $trimLf
+        );
+
+        foreach ($explodedByPiece as $idx => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $ex = is_array($row['exploded'] ?? null) ? $row['exploded'] : [];
+            $piece = is_array($row['piece'] ?? null) ? $row['piece'] : [];
+            if (! isset($unplacedIndexes[(int) $idx])) {
+                $this->addExplodedShopCharges(
+                    $piece,
+                    $ex,
+                    $hardware,
+                    $edgeLf,
+                    $paintSf,
+                    $stainSf,
+                    $fasteners,
+                    $boxSf,
+                    $shelfUnits,
+                    $floatingUnits,
+                    $cubeCount,
+                    $cabinetBoxSf,
+                    $doorCount,
+                    $benchSf,
+                    $closetSf,
+                    $mantelUnits,
+                    $wainscotLf,
+                    $trimLf
+                );
+                continue;
+            }
+            $this->addPlacedOnlyShopCharges(
+                $piece,
+                $ex,
+                $placedById,
+                $hardware,
+                $edgeLf,
+                $paintSf,
+                $stainSf,
+                $fasteners,
+                $boxSf,
+                $shelfUnits,
+                $floatingUnits,
+                $cubeCount,
+                $cabinetBoxSf,
+                $doorCount,
+                $benchSf,
+                $closetSf,
+                $mantelUnits,
+                $wainscotLf,
+                $trimLf
+            );
+        }
+    }
+
+    /**
+     * @param  array<string, float>  $hardware
+     */
+    private function resetShopCharges(
+        array &$hardware,
+        float &$edgeLf,
+        float &$paintSf,
+        float &$stainSf,
+        int &$fasteners,
+        float &$boxSf,
+        int &$shelfUnits,
+        int &$floatingUnits,
+        int &$cubeCount,
+        float &$cabinetBoxSf,
+        int &$doorCount,
+        float &$benchSf,
+        float &$closetSf,
+        int &$mantelUnits,
+        float &$wainscotLf,
+        float &$trimLf
+    ): void {
+        $hardware = ['hinges' => 0.0, 'pulls' => 0.0, 'drawer_slides' => 0.0, 'glue' => 0.0, 'rods' => 0.0, 'shelf_pins' => 0.0];
+        $edgeLf = 0.0;
+        $paintSf = 0.0;
+        $stainSf = 0.0;
+        $fasteners = 0;
+        $boxSf = 0.0;
+        $shelfUnits = 0;
+        $floatingUnits = 0;
+        $cubeCount = 0;
+        $cabinetBoxSf = 0.0;
+        $doorCount = 0;
+        $benchSf = 0.0;
+        $closetSf = 0.0;
+        $mantelUnits = 0;
+        $wainscotLf = 0.0;
+        $trimLf = 0.0;
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     * @param  array<string, mixed>  $ex
+     * @param  array<string, float>  $hardware
+     */
+    private function addExplodedShopCharges(
+        array $piece,
+        array $ex,
+        array &$hardware,
+        float &$edgeLf,
+        float &$paintSf,
+        float &$stainSf,
+        int &$fasteners,
+        float &$boxSf,
+        int &$shelfUnits,
+        int &$floatingUnits,
+        int &$cubeCount,
+        float &$cabinetBoxSf,
+        int &$doorCount,
+        float &$benchSf,
+        float &$closetSf,
+        int &$mantelUnits,
+        float &$wainscotLf,
+        float &$trimLf
+    ): void {
+        foreach ($hardware as $k => $_) {
+            $hardware[$k] += (float) ($ex['hardware'][$k] ?? 0);
+        }
+        $edgeLf += (float) ($ex['edge_band_lf'] ?? 0);
+        $paintSf += (float) ($ex['paint_sf'] ?? 0);
+        $stainSf += (float) ($ex['stain_sf'] ?? 0);
+        $fasteners += (int) ($ex['fastener_count'] ?? 0);
+        $boxSf += (float) ($ex['box_sf'] ?? 0);
+        $this->addTypeShopCharges(
+            MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf')),
+            (float) ($ex['box_sf'] ?? 0),
+            (int) ($ex['unit_count'] ?? 0),
+            (int) ($ex['door_count'] ?? 0),
+            (int) ($ex['cube_count'] ?? 0),
+            (float) ($ex['linear_lf'] ?? 0),
+            $shelfUnits,
+            $floatingUnits,
+            $cubeCount,
+            $cabinetBoxSf,
+            $doorCount,
+            $benchSf,
+            $closetSf,
+            $mantelUnits,
+            $wainscotLf,
+            $trimLf
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $piece
+     * @param  array<string, mixed>  $ex
+     * @param  array<string, int>  $placedById
+     * @param  array<string, float>  $hardware
+     */
+    private function addPlacedOnlyShopCharges(
+        array $piece,
+        array $ex,
+        array &$placedById,
+        array &$hardware,
+        float &$edgeLf,
+        float &$paintSf,
+        float &$stainSf,
+        int &$fasteners,
+        float &$boxSf,
+        int &$shelfUnits,
+        int &$floatingUnits,
+        int &$cubeCount,
+        float &$cabinetBoxSf,
+        int &$doorCount,
+        float &$benchSf,
+        float &$closetSf,
+        int &$mantelUnits,
+        float &$wainscotLf,
+        float &$trimLf
+    ): void {
+        $parts = is_array($ex['parts'] ?? null) ? $ex['parts'] : [];
+        $finish = MillworkPartBuilder::normalizeFinish((string) ($piece['finish'] ?? 'none'));
+        $totalQty = 0;
+        $placedQty = 0;
+        $placedBox = 0.0;
+        foreach ($parts as $part) {
+            if (! $part instanceof Part) {
+                continue;
+            }
+            $qty = max(1, (int) $part->quantity);
+            $totalQty += $qty;
+            $id = $part->id;
+            $got = min($qty, (int) ($placedById[$id] ?? 0));
+            $placedById[$id] = max(0, (int) ($placedById[$id] ?? 0) - $got);
+            $placedQty += $got;
+            if ($got <= 0) {
+                continue;
+            }
+            $placedBox += ($part->width * $part->length * $got) / 144.0;
+            $edgeLf += $this->partEdgeLf($part) * $got;
+            $face = 2.0 * ($part->width * $part->length) / 144.0 * $got;
+            if ($finish === 'paint') {
+                $paintSf += $face;
+            } elseif (in_array($finish, ['stain', 'clear'], true)) {
+                $stainSf += $face;
+            }
+        }
+
+        $ratio = 1.0;
+        if ($parts !== [] && $totalQty > 0) {
+            $ratio = $placedQty / $totalQty;
+        }
+
+        foreach ($hardware as $k => $_) {
+            $hardware[$k] += (float) ($ex['hardware'][$k] ?? 0) * $ratio;
+        }
+        $fasteners += (int) round(((int) ($ex['fastener_count'] ?? 0)) * $ratio);
+        $scaledBox = $placedBox;
+        $boxSf += $scaledBox;
+        $this->addTypeShopCharges(
+            MillworkPartBuilder::normalizeType((string) ($piece['type'] ?? 'shelf')),
+            $scaledBox,
+            (int) round(((int) ($ex['unit_count'] ?? 0)) * $ratio),
+            (int) round(((int) ($ex['door_count'] ?? 0)) * $ratio),
+            (int) round(((int) ($ex['cube_count'] ?? 0)) * $ratio),
+            (float) ($ex['linear_lf'] ?? 0) * $ratio,
+            $shelfUnits,
+            $floatingUnits,
+            $cubeCount,
+            $cabinetBoxSf,
+            $doorCount,
+            $benchSf,
+            $closetSf,
+            $mantelUnits,
+            $wainscotLf,
+            $trimLf
+        );
+    }
+
+    private function addTypeShopCharges(
+        string $type,
+        float $boxSf,
+        int $units,
+        int $doors,
+        int $cubes,
+        float $linear,
+        int &$shelfUnits,
+        int &$floatingUnits,
+        int &$cubeCount,
+        float &$cabinetBoxSf,
+        int &$doorCount,
+        float &$benchSf,
+        float &$closetSf,
+        int &$mantelUnits,
+        float &$wainscotLf,
+        float &$trimLf
+    ): void {
+        if ($type === 'shelf') {
+            $shelfUnits += $units;
+        }
+        if ($type === 'floating_shelf') {
+            $floatingUnits += $units;
+        }
+        if ($type === 'kallax') {
+            $cubeCount += $cubes;
+        }
+        if (in_array($type, ['cabinet', 'vanity'], true)) {
+            $cabinetBoxSf += $boxSf;
+        }
+        if ($type === 'closet') {
+            $closetSf += $boxSf;
+        }
+        if ($type === 'bench') {
+            $benchSf += $boxSf;
+        }
+        if ($type === 'mantel') {
+            $mantelUnits += $units;
+        }
+        if ($type === 'wainscoting') {
+            $wainscotLf += $linear;
+        }
+        if ($type === 'trim') {
+            $trimLf += $linear;
+        }
+        $doorCount += $doors;
+    }
+
+    private function packerBaseId(string $id): string
+    {
+        return (string) preg_replace('/#\d+$/', '', $id);
+    }
+
+    private function packerBaseLabel(string $id, string $label): string
+    {
+        if (! str_contains($id, '#')) {
+            return $label;
+        }
+
+        return (string) preg_replace('/\s+\d+$/', '', $label);
+    }
+
+    private function partEdgeLf(Part $part): float
+    {
+        $lf = 0.0;
+        if ($part->edgeBandTop > 0) {
+            $lf += $part->length / 12.0;
+        }
+        if ($part->edgeBandBottom > 0) {
+            $lf += $part->length / 12.0;
+        }
+        if ($part->edgeBandLeft > 0) {
+            $lf += $part->width / 12.0;
+        }
+        if ($part->edgeBandRight > 0) {
+            $lf += $part->width / 12.0;
+        }
+
+        return $lf;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function groupUnplaced(array $rows): array
+    {
+        $groups = [];
+        foreach ($rows as $row) {
+            $size = $this->canonicalUnplacedSize((string) ($row['size'] ?? ''));
+            $name = $this->unplacedNameWithoutSize((string) ($row['label'] ?? 'Part'));
+            $key = $name.'|'.$size;
+            if (! isset($groups[$key])) {
+                $groups[$key] = $row + [
+                    'qty' => 0,
+                    'piece_indexes' => [],
+                    'size' => $size,
+                    'name' => $name,
+                ];
+            }
+            $groups[$key]['qty']++;
+            if (isset($row['piece_index'])) {
+                $groups[$key]['piece_indexes'][] = $row['piece_index'];
+            }
+        }
+        $out = [];
+        foreach ($groups as $group) {
+            $qty = (int) ($group['qty'] ?? 1);
+            $name = (string) ($group['name'] ?? 'Part');
+            $size = (string) ($group['size'] ?? '');
+            $indexes = array_values(array_unique(array_map('intval', $group['piece_indexes'] ?? [])));
+            $label = $qty > 1 ? $qty.'× '.$name : $name;
+            if ($size !== '') {
+                $label .= ' '.$size;
+            }
+            $out[] = [
+                'id' => $group['id'] ?? '',
+                'label' => $label,
+                'size' => $size,
+                'qty' => $qty,
+                'reason' => $group['reason'] ?? 'Does not fit on any sheet we stock',
+                'piece_index' => $indexes[0] ?? $group['piece_index'] ?? null,
+                'piece_indexes' => $indexes,
+            ];
+        }
+
+        return $out;
+    }
+
+    private function unplacedNameWithoutSize(string $label): string
+    {
+        $stripped = preg_replace('/\s*\d+(?:\.\d+)?"\s*[×xX]\s*\d+(?:\.\d+)?"/u', '', $label) ?? $label;
+        $stripped = trim(preg_replace('/\s+/', ' ', $stripped) ?? $stripped);
+
+        return $stripped !== '' ? $stripped : 'Part';
+    }
+
+    private function canonicalUnplacedSize(string $size): string
+    {
+        if (preg_match('/(\d+(?:\.\d+)?)"\s*[×xX]\s*(\d+(?:\.\d+)?)"/u', $size, $m)) {
+            return $this->sizeLabel((float) $m[1], (float) $m[2]);
+        }
+
+        return $size;
     }
 
     /**

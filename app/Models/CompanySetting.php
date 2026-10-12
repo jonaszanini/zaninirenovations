@@ -12,6 +12,9 @@ class CompanySetting extends Model
         'home_address_latitude',
         'home_address_longitude',
         'gas_price_per_liter',
+        'contact_phone',
+        'contact_phone_tel',
+        'contact_email',
     ];
 
     protected $casts = [

@@ -6,6 +6,13 @@
   @php
     $pq = ($hubProject ?? null) ? ['project' => $hubProject->id] : [];
   @endphp
+  <nav class="qh-crumb" aria-label="Breadcrumb">
+    <ol class="qh-crumb__list">
+      <li class="qh-crumb__item">
+        <span class="qh-crumb__current qh-crumb__quotations" aria-current="page">Quotations</span>
+      </li>
+    </ol>
+  </nav>
 
   @if (!empty($hubProjectError))
     <div class="admin-flash admin-flash--danger">{{ $hubProjectError }}</div>
@@ -18,11 +25,10 @@
     </div>
   @else
     <div class="admin-card fq-hub-intro">
-      <h3 style="margin:0 0 8px;">Standalone quotations</h3>
-      <p class="admin-form-help cp-form-help-flush">
-        Calculators produce saved quotes that you can tie to a project when you're ready —
-        either from here or via the project's Quotation tab.
-      </p>
+      <h3 style="margin:0 0 8px;">
+        Standalone quotations
+        <x-admin.info-tip label="Standalone quotations">Calculators produce saved quotes that you can tie to a project when you're ready — either from here or via the project's Quotation tab.</x-admin.info-tip>
+      </h3>
     </div>
   @endif
 

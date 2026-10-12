@@ -41,6 +41,25 @@ trait ResolvesQuotationProjectLink
         return null;
     }
 
+    protected function quotationIsDraft(object $quotation): bool
+    {
+        return (bool) ($quotation->is_draft ?? false);
+    }
+
+    /** Drafts must stay off the project's client quotation (link / create-project). */
+    protected function guardQuotationIsDraft(object $quotation, string $action = 'link'): ?RedirectResponse
+    {
+        if (! $this->quotationIsDraft($quotation)) {
+            return null;
+        }
+
+        $message = $action === 'create-project'
+            ? 'Publish the quotation before creating a project.'
+            : 'Publish the quotation (click Save quotation, not Save as draft) before linking.';
+
+        return back()->with('error', $message);
+    }
+
     /** Guard used before linking to an existing project: its status must still accept new quotations. */
     protected function guardProjectClosedToNewQuotations(ClientProject $project): ?RedirectResponse
     {
@@ -164,17 +183,48 @@ trait ResolvesQuotationProjectLink
 
         if (($quotation->is_draft ?? false)) {
             $clientName = $updates['client_name'] ?? trim((string) ($quotation->client_name ?? ''));
-            if ($clientName !== '' && $this->quotationLinkGrandTotal($quotation) > 0) {
+            if (
+                $clientName !== ''
+                && $this->quotationLinkGrandTotal($quotation) > 0
+                && $this->quotationHasPublishOnlyChoices($quotation)
+            ) {
                 $updates['is_draft'] = false;
             }
         }
 
-        if ($updates === []) {
+        if (method_exists($this, 'refreshLinkedCommuteExpense')) {
+            $this->refreshLinkedCommuteExpense($quotation, $project);
+        }
+
+        if ($updates === [] && ! $quotation->isDirty()) {
             return;
         }
 
-        $quotation->update($updates);
+        foreach ($updates as $key => $value) {
+            $quotation->{$key} = $value;
+        }
+        $quotation->save();
         $quotation->refresh();
+    }
+
+    protected function quotationHasPublishOnlyChoices(object $quotation): bool
+    {
+        $payment = $quotation->getRawOriginal('payment_installments');
+        if ($payment === null || $payment === '') {
+            return false;
+        }
+
+        $debris = $quotation->getRawOriginal('include_debris_removal');
+        if ($debris === null || $debris === '') {
+            return false;
+        }
+
+        $accept = $quotation->getRawOriginal(\App\Support\QuotationReplyToAccept::FIELD);
+        if ($accept === null || $accept === '') {
+            return false;
+        }
+
+        return true;
     }
 
     protected function quotationLinkGrandTotal(object $quotation): float

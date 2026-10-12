@@ -6,6 +6,7 @@
   <div class="admin-card">
     <form action="{{ route('admin.client-tags.store') }}" method="post">
       @csrf
+      @include('admin.partials.once_submit')
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
           <label for="name">Name</label>
@@ -23,7 +24,7 @@
         </div>
       </div>
       <div class="admin-form-actions">
-        <button type="submit" class="admin-btn admin-btn--primary">Save tag</button>
+        <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save tag</button>
         <a href="{{ route('admin.client-tags.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
     </form>

@@ -51,23 +51,24 @@
 @section('heading', $title)
 
 @section('content')
-  <div class="fq-form-toolbar">
-    <a href="{{ route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-      <i class="fa fa-arrow-left"></i> Back to list
-    </a>
-    <a href="{{ route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Cancel</a>
-    <div class="fq-form-toolbar-right">
-      <a href="{{ route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-        <i class="fa fa-cog"></i> Price configuration
-      </a>
-      @include('admin.partials.quotation_back_to_project', ['project' => $projectForReturn])
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="tm-btn-draft">Save as draft</button>
-      @include('admin.partials.quotation_view_pdf')
-      <button type="submit" form="tm-main-form" class="admin-btn admin-btn--primary admin-btn--sm" id="tm-btn-publish">
-        <i class="fa fa-save"></i> Save quotation
-      </button>
-    </div>
-  </div>
+  @include('admin.partials.quotation_editor_header', [
+    'title' => $title,
+    'typeLabel' => 'Trim',
+    'project' => $projectForReturn,
+    'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
+    'listUrl' => route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []),
+    'priceConfigUrl' => route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+    'formId' => 'tm-main-form',
+    'saveId' => 'tm-btn-publish',
+    'draftId' => 'tm-btn-draft',
+    'draftHotkey' => true,
+  ])
+  @include('admin.partials.quotation_editor_more_actions', [
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+  ])
 
   @include('admin.partials.room_area_prefill_banner')
   @if ($isEdit && $quotation->project)
@@ -81,8 +82,9 @@
     <div class="admin-flash admin-flash--danger">{{ $errors->first('calculation') }}</div>
   @endif
 
-  <form method="post" action="{{ $formAction }}" id="tm-main-form" class="tm-layout" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}">
+  <form method="post" action="{{ $formAction }}" id="tm-main-form" class="tm-layout" data-quotation-editor data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}" data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}">
     @csrf
+    @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="tm-save-intent" value="publish">
     @if ($linkProject)
@@ -118,7 +120,10 @@
           </div>
         </div>
         <div class="admin-form-group quotation-work-desc">
-          <label for="tm-work-description">Work description</label>
+          <span class="admin-label-with-tip">
+            <label for="tm-work-description">Work description</label>
+            <x-admin.info-tip label="Work description">Formatting (bold, lists, headings) is preserved on the client PDF.</x-admin.info-tip>
+          </span>
           <textarea class="admin-input" id="tm-work-description" name="work_description" rows="8"
                     placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
           @include('admin.partials.quotation_work_description_ai', [
@@ -126,12 +131,16 @@
               'aiContextFormId' => 'tm-main-form',
               'aiQuotationType' => 'trimming',
           ])
-          <p class="admin-form-help">Formatting (bold, lists, headings) is preserved on the client PDF.</p>
         </div>
       </div>
 
-      <div class="admin-card tm-card">
-        <h4>Doors &amp; windows</h4>
+      <div class="admin-card tm-card" data-qh-step="2">
+        <h4 class="qh-priced-head">
+          Doors &amp; windows
+          @include('admin.partials.quotation_price_config_gear', [
+            'url' => route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []),
+          ])
+        </h4>
         <label class="admin-checkbox tm-family-toggle">
           <input type="checkbox" class="admin-checkbox__input tm-preview" name="enabled_families[]" value="doors_windows"
                  data-tm-family="doors_windows" @checked($familyOn('doors_windows'))>
@@ -155,7 +164,10 @@
               ])
             </div>
             <div class="admin-form-group">
-              <label for="tm-windows">@include('admin.partials.info_tip', ['text' => $tips['windows']]) Window openings</label>
+              <span class="admin-label-with-tip">
+  <label for="tm-windows">Window openings</label>
+  @include('admin.partials.info_tip', ['tipText' => $tips['windows'], 'tipLabel' => 'Window openings'])
+</span>
               <input type="number" min="0" step="1" class="admin-input tm-preview" id="tm-windows" name="window_qty" value="{{ $tmVal('window_qty', 0) }}">
             </div>
           </div>
@@ -276,7 +288,10 @@
         <div class="tm-family-body" data-tm-family-body="floor_wall" @unless($familyOn('floor_wall')) hidden @endunless>
           <div class="pq-form-grid">
             <div class="admin-form-group">
-              <label for="tm-floor-lf">@include('admin.partials.info_tip', ['text' => $tips['floor_lf']]) Linear feet</label>
+              <span class="admin-label-with-tip">
+  <label for="tm-floor-lf">Linear feet</label>
+  @include('admin.partials.info_tip', ['tipText' => $tips['floor_lf'], 'tipLabel' => 'Linear feet'])
+</span>
               <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-floor-lf" name="floor_lf" value="{{ $tmVal('floor_lf', 0) }}">
             </div>
           </div>
@@ -382,7 +397,10 @@
           </div>
           <div class="pq-form-grid">
             <div class="admin-form-group">
-              <label for="tm-crown-lf">@include('admin.partials.info_tip', ['text' => $tips['crown']]) Crown (lf)</label>
+              <span class="admin-label-with-tip">
+  <label for="tm-crown-lf">Crown (lf)</label>
+  @include('admin.partials.info_tip', ['tipText' => $tips['crown'], 'tipLabel' => 'Crown (lf)'])
+</span>
               <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-crown-lf" name="crown_lf" value="{{ $tmVal('crown_lf', 0) }}">
             </div>
             <div class="admin-form-group">
@@ -460,7 +478,10 @@
               </select>
             </div>
             <div class="admin-form-group">
-              <label for="tm-wain-lf">@include('admin.partials.info_tip', ['text' => $tips['wainscot']]) Wall lf</label>
+              <span class="admin-label-with-tip">
+  <label for="tm-wain-lf">Wall lf</label>
+  @include('admin.partials.info_tip', ['tipText' => $tips['wainscot'], 'tipLabel' => 'Wall lf'])
+</span>
               <input type="number" min="0" step="0.01" class="admin-input tm-preview" id="tm-wain-lf" name="wainscot_wall_lf" value="{{ $tmVal('wainscot_wall_lf', 0) }}">
             </div>
             <div class="admin-form-group">
@@ -474,30 +495,37 @@
       <div class="admin-card tm-card">
         <h4>Prep &amp; finish</h4>
         <div class="tm-chip-row">
-          <label class="admin-checkbox">
-            <input type="hidden" name="include_remove_existing" value="0">
-            <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_remove_existing" value="1" @checked($tmOn('include_remove_existing'))>
-            <span class="admin-checkbox__mark"></span>
-            <span class="admin-checkbox__text">@include('admin.partials.info_tip', ['text' => $tips['remove']]) Remove existing</span>
-          </label>
-          <label class="admin-checkbox">
-            <input type="hidden" name="include_caulk_paint" value="0">
-            <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_caulk_paint" value="1" @checked($tmOn('include_caulk_paint'))>
-            <span class="admin-checkbox__mark"></span>
-            <span class="admin-checkbox__text">@include('admin.partials.info_tip', ['text' => $tips['paint']]) Caulk &amp; paint</span>
-          </label>
+          @include('admin.partials.checkbox', [
+            'name' => 'include_remove_existing',
+            'hiddenFallback' => true,
+            'checked' => $tmOn('include_remove_existing'),
+            'label' => 'Remove existing',
+            'info' => $tips['remove'],
+            'inputClass' => 'admin-checkbox__input tm-preview',
+          ])
+          @include('admin.partials.checkbox', [
+            'name' => 'include_caulk_paint',
+            'hiddenFallback' => true,
+            'checked' => $tmOn('include_caulk_paint'),
+            'label' => 'Caulk & paint',
+            'info' => $tips['paint'],
+            'inputClass' => 'admin-checkbox__input tm-preview',
+          ])
           <label class="admin-checkbox">
             <input type="hidden" name="include_stain" value="0">
             <input type="checkbox" class="admin-checkbox__input tm-preview" name="include_stain" value="1" @checked($tmOn('include_stain'))>
             <span class="admin-checkbox__mark"></span>
             <span class="admin-checkbox__text">Stain &amp; clear coat</span>
           </label>
-          <label class="admin-checkbox">
-            <input type="hidden" name="client_provides_all" value="0">
-            <input type="checkbox" class="admin-checkbox__input tm-preview" id="tm-client-all" name="client_provides_all" value="1" @checked($tmOn('client_provides_all'))>
-            <span class="admin-checkbox__mark"></span>
-            <span class="admin-checkbox__text">@include('admin.partials.info_tip', ['text' => $tips['client_all']]) Client supplies materials</span>
-          </label>
+          @include('admin.partials.checkbox', [
+            'name' => 'client_provides_all',
+            'id' => 'tm-client-all',
+            'hiddenFallback' => true,
+            'checked' => $tmOn('client_provides_all'),
+            'label' => 'Client supplies materials',
+            'info' => $tips['client_all'],
+            'inputClass' => 'admin-checkbox__input tm-preview',
+          ])
         </div>
         <div class="pq-form-grid tm-override-grid">
           <div class="admin-form-group" data-tm-show-when="include_remove_existing">
@@ -540,7 +568,9 @@
       @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'tm-main-form'])
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'tm-main-form'])
       <div class="pq-summary-card">
-        <h4 class="cp-form-help-spaced">Live breakdown</h4>
+        <div class="qh-priced-head">
+          <h4>Live breakdown</h4>
+        </div>
         <div id="tm-live-root">
           <p class="admin-form-help" id="tm-live-empty">Turn on a family and enter quantities.</p>
           <div id="tm-live-body" hidden></div>

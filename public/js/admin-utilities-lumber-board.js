@@ -632,7 +632,7 @@
         '</div>' +
       '</td>' +
       '<td>' +
-        '<input type="text" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="Optional" data-lb-stock-price value="' + (data && data.price != null ? escapeAttr(data.price) : '') + '">' +
+        '<input type="text" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="Optional" data-lb-stock-price value="' + (data && data.price != null ? escapeAttr(data.price) : '') + '" data-cp-money-entry="direct">' +
       '</td>' +
       '<td class="util-lb-col-action">' +
         '<button type="button" class="admin-btn admin-btn--danger admin-btn--sm util-lb-row-remove" data-lb-remove-stock title="Remove" aria-label="Remove board length"><i class="fa fa-times"></i></button>' +
@@ -720,10 +720,14 @@
       '</header>' +
       '<div class="util-lb-bt-body">' +
         '<div class="admin-form-group">' +
-          '<span class="admin-form-group-label">Calculation mode' +
-            '<span class="util-tip" tabindex="0" data-tip="Minimize waste compares every stock length and a mixed-length plan. Single board length uses only the length you select below.">' +
-              '<i class="fa fa-info-circle"></i>' +
-            '</span>' +
+          '<span class="admin-label-with-tip">' +
+            '<span class="admin-form-group-label">Calculation mode</span>' +
+            (window.AdminInfoTip
+              ? window.AdminInfoTip.html(
+                  'Minimize waste compares every stock length and a mixed-length plan. Single board length uses only the length you select below.',
+                  'Calculation mode'
+                )
+              : '') +
           '</span>' +
           '<div class="util-segmented" role="group" aria-label="Calculation mode" data-lb-mode-toggle>' +
             '<button type="button" class="util-segmented__btn' + (data.mode !== 'single' ? ' is-active' : '') + '" data-mode="minimize">Minimize waste</button>' +

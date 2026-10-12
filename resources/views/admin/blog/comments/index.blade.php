@@ -16,17 +16,28 @@
       @endforeach
     </div>
 
-    <form method="get" action="{{ route('admin.blog.comments.index') }}" class="cp-filters cp-filters--3col bp-list-filters">
-      <input type="hidden" name="status" value="{{ $status }}">
-      <div class="cp-filter">
-        <label for="bp-comments-q">Search</label>
-        <input type="search" id="bp-comments-q" name="q" value="{{ $q }}" placeholder="Author, email, comment, post…" class="admin-input">
-      </div>
-      <div class="cp-filter cp-filter--actions">
-        <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Apply</button>
-        <a href="{{ route('admin.blog.comments.index', ['status' => $status]) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
-      </div>
-    </form>
+    @php
+      $activeFilterCount = \App\Support\AdminListFilters::activeCount([
+          'q' => $q ?? '',
+      ]);
+    @endphp
+    @component('admin.partials.filters_accordion', [
+      'id' => 'admin-filters-blog-comments',
+      'storageKey' => 'admin-filters:blog-comments',
+      'activeCount' => $activeFilterCount,
+    ])
+      <form method="get" action="{{ route('admin.blog.comments.index') }}" class="cp-filters cp-filters--3col bp-list-filters">
+        <input type="hidden" name="status" value="{{ $status }}">
+        <div class="cp-filter">
+          <label for="bp-comments-q">Search</label>
+          <input type="search" id="bp-comments-q" name="q" value="{{ $q }}" placeholder="Author, email, comment, post…" class="admin-input">
+        </div>
+        <div class="cp-filter cp-filter--actions">
+          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Apply</button>
+          <a href="{{ route('admin.blog.comments.index', ['status' => $status]) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Reset</a>
+        </div>
+      </form>
+    @endcomponent
 
     <div class="admin-card">
       <div class="admin-table-scroll">

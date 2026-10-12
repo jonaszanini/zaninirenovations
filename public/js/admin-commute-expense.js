@@ -61,6 +61,7 @@
     function setStatus(msg, isError) {
       if (!statusEl) return;
       statusEl.textContent = msg || '';
+      statusEl.hidden = !msg;
       statusEl.classList.toggle('admin-form-error', !!isError);
     }
 

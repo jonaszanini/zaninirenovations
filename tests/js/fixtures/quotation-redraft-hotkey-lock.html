@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Re-draft confirm hotkey lock</title>
+</head>
+<body>
+  <form id="quote-form"
+        method="post"
+        action="/quotations/save"
+        data-quotation-editor
+        data-qh-client-share="1">
+    <input type="hidden" name="save_intent" id="save-intent" value="publish">
+    <input type="hidden" name="is_draft" id="is-draft" value="0">
+    <input type="text" name="client_name" value="Ada Client">
+  </form>
+  <div class="qh-actions">
+    <button type="submit" class="qh-actions__save admin-btn" id="st-btn-save" form="quote-form">Save quotation</button>
+    <button type="button" class="qh-actions__draft admin-btn" id="st-btn-draft" form="quote-form" data-hotkey-save>Save as draft</button>
+  </div>
+  <script>
+    (function () {
+      if (!/[?&]draft=submit(?:&|$)/.test(location.search)) return;
+      var draft = document.getElementById('st-btn-draft');
+      if (draft) draft.type = 'submit';
+    })();
+  </script>
+
+  <div id="admin-dialog" class="admin-dialog" hidden aria-hidden="true">
+    <div class="admin-dialog-backdrop" data-admin-dialog-dismiss tabindex="-1" aria-hidden="true"></div>
+    <div class="admin-dialog-panel" role="alertdialog" aria-modal="true" aria-labelledby="admin-dialog-title" aria-describedby="admin-dialog-message">
+      <div class="admin-dialog-icon-wrap admin-dialog-icon-wrap--confirm" aria-hidden="true">
+        <i class="fa fa-question-circle admin-dialog-icon" aria-hidden="true"></i>
+      </div>
+      <h2 id="admin-dialog-title" class="admin-dialog-title">Confirm</h2>
+      <p id="admin-dialog-message" class="admin-dialog-message"></p>
+      <div class="admin-dialog-actions"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var hotkeyFirst = /[?&]order=hotkey-first/.test(location.search);
+      var scripts = hotkeyFirst
+        ? ['admin-dialog.js', 'admin-hotkey-save.js', 'admin-quotation-leave-save.js']
+        : ['admin-dialog.js', 'admin-quotation-leave-save.js', 'admin-hotkey-save.js'];
+      scripts.forEach(function (name) {
+        document.write('<script src="/js/' + name + '"><\/script>');
+      });
+    })();
+  </script>
+</body>
+</html>

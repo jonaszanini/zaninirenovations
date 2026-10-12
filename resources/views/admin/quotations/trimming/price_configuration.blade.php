@@ -26,7 +26,7 @@
       </a>
     </div>
     <div class="admin-toolbar-group admin-toolbar-actions">
-      <button type="submit" form="tm-config-form" class="admin-btn admin-btn--primary admin-btn--sm">
+      <button type="submit" form="tm-config-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-save"></i> Save configuration
       </button>
     </div>
@@ -63,21 +63,27 @@
           <label for="owner_hourly_rate">Owner hourly rate (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="owner_hourly_rate" name="owner_hourly_rate"
-                 value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('owner_hourly_rate', number_format((float) $settings->owner_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="admin-form-group">
           <label for="helper_hourly_rate">Helper hourly rate (CAD$)</label>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input" id="helper_hourly_rate" name="helper_hourly_rate"
-                 value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required>
+                 value="{{ old('helper_hourly_rate', number_format((float) $settings->helper_hourly_rate, 2, '.', '')) }}" required data-cp-money-entry="direct">
         </div>
         <div class="admin-form-group">
-          <label for="hours_per_day">@include('admin.partials.info_tip', ['text' => 'Used for calendar-day estimates (1 / 2 / 3 people).']) Hours per working day</label>
+          <span class="admin-label-with-tip">
+  <label for="hours_per_day">Hours per working day</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Used for calendar-day estimates (1 / 2 / 3 people).', 'tipLabel' => 'Hours per working day'])
+</span>
           <input type="number" step="0.25" min="0.5" max="16" class="admin-input" id="hours_per_day" name="hours_per_day"
                  value="{{ old('hours_per_day', $settings->hours_per_day) }}" required>
         </div>
         <div class="admin-form-group">
-          <label for="waste_percent">@include('admin.partials.info_tip', ['text' => 'Extra stick length for cuts and waste. Applied when packing 8 ft sticks.']) Material waste (%)</label>
+          <span class="admin-label-with-tip">
+  <label for="waste_percent">Material waste (%)</label>
+  @include('admin.partials.info_tip', ['tipText' => 'Extra stick length for cuts and waste. Applied when packing 8 ft sticks.', 'tipLabel' => 'Material waste (%)'])
+</span>
           <input type="number" step="0.5" min="0" max="50" class="admin-input" id="waste_percent" name="waste_percent"
                  value="{{ old('waste_percent', $settings->waste_percent) }}" required>
         </div>
@@ -183,7 +189,7 @@
                          data-br-cfg-price id="tm-mat-price-{{ $key }}"
                          name="materials[{{ $key }}][unit_price]"
                          data-fallback-price="{{ $fallbackPrice }}"
-                         value="{{ $displayPrice }}">
+                         value="{{ $displayPrice }}" data-cp-money-entry="direct">
                 </td>
               </tr>
             @endforeach
@@ -193,7 +199,7 @@
     </section>
 
     <div class="admin-form-actions">
-      <button type="submit" class="admin-btn admin-btn--primary">
+      <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>
         <i class="fa fa-save"></i> Save configuration
       </button>
     </div>

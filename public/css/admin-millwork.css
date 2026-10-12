@@ -1,5 +1,14 @@
 /* Custom millwork quotation — mobile-first, admin tokens. */
 
+.br-acc__summary .admin-info-tip {
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.mw-dim-field .admin-form-error {
+  margin-top: 4px;
+}
+
 .mw-piece,
 .mw-piece.admin-card {
   margin: 0 0 8px;
@@ -46,7 +55,29 @@
   min-width: 9.5rem;
 }
 .mw-piece__row--dims {
-  grid-template-columns: 5.25rem 4.75rem 5.4rem 5.4rem 5.4rem;
+  grid-template-columns: 4.75rem repeat(3, minmax(7.25rem, 1fr));
+}
+.mw-dim {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+}
+.mw-dim .mw-input--dim {
+  flex: 1 1 auto;
+  min-width: 4.75rem;
+  max-width: none;
+}
+#mw-main-form select.admin-input.mw-dim__unit,
+#mw-main-form .admin-form-group select.mw-dim__unit {
+  flex: 0 0 3.5rem;
+  width: 3.5rem;
+  min-width: 3.5rem;
+  max-width: 3.5rem;
+  padding: 0 1.2rem 0 0.3rem;
+  background-position: right 0.28rem center;
+  background-size: 10px 7px;
+  font-size: 13px;
 }
 .mw-piece__row--pack {
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -61,6 +92,18 @@
 }
 .mw-piece__hint {
   margin: 2px 0 6px;
+}
+.mw-piece__sets-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  margin: 2px 0 6px;
+}
+.mw-piece__sets-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-heading);
 }
 .mw-piece__more {
   margin-top: 4px;
@@ -105,6 +148,38 @@
 #mw-main-form > .br-aside {
   padding-bottom: var(--mw-bar-space);
 }
+#mw-main-form :is(input, select, textarea, button, .admin-form-group, .cp-checkbox-row) {
+  scroll-margin-bottom: calc(var(--mw-bar-space, 4.5rem) + 12px);
+}
+#mw-main-form .admin-label-with-tip > label,
+#mw-main-form .admin-checkbox__text {
+  white-space: nowrap;
+}
+@media (min-width: 1100px) {
+  #mw-main-form.br-layout.pq-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+    column-gap: 16px;
+    row-gap: 12px;
+    align-items: start;
+  }
+  #mw-main-form > .br-shell {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  #mw-main-form > .br-aside {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: 12px;
+    align-self: start;
+    max-height: calc(100vh - 96px);
+    overflow: auto;
+  }
+  #mw-main-form > .mw-totals-bar {
+    grid-column: 1 / -1;
+  }
+}
 .mw-totals-bar {
   position: sticky;
   bottom: 0;
@@ -125,6 +200,14 @@
 }
 .mw-totals-bar [hidden] {
   display: none !important;
+}
+#mw-upgrade-cut-plan-btn[hidden],
+#mw-undo-cut-plan-btn[hidden],
+#mw-undo-cut-plan-banner-btn[hidden] {
+  display: none !important;
+}
+.mw-recalc-banner .admin-btn {
+  margin-top: 8px;
 }
 .mw-totals-bar span {
   display: flex;
@@ -223,6 +306,72 @@
   flex-shrink: 0;
   align-self: flex-end;
 }
+.mw-cut-plan-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.mw-recalc-banner,
+.mw-unplaced-banner {
+  margin: 0 0 12px;
+}
+.mw-recalc-banner p {
+  margin: 6px 0 0;
+  font-weight: 400;
+}
+.mw-unplaced-banner p {
+  margin: 6px 0 8px;
+  font-weight: 400;
+}
+.mw-unplaced-banner ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.mw-unplaced-banner li {
+  margin: 2px 0;
+  font-weight: 400;
+}
+.mw-cut-seams {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  overflow: visible;
+}
+.mw-cut-seams p {
+  position: relative;
+  margin: 0 0 6px;
+  font-size: 13px;
+  overflow: visible;
+}
+.mw-cut-seams .admin-info-tip {
+  vertical-align: middle;
+}
+.mw-cut-seams .admin-info-tip__bubble {
+  z-index: 80;
+}
+.mw-cut-seams p:last-child {
+  margin-bottom: 0;
+}
+
+.mw-cut-plan__status {
+  margin: 0 0 8px;
+  color: var(--admin-muted);
+}
+.mw-cut-plan.is-loading {
+  opacity: 0.55;
+}
+.mw-hw-price {
+  margin: 2px 0 0;
+}
+#mw-main-form.is-client-all #mw-delivery-wrap,
+#mw-main-form.is-client-all #mw-bar-delivery-wrap {
+  display: none !important;
+}
 
 .mw-cut-plan {
   display: grid;
@@ -290,16 +439,30 @@
   vector-effect: non-scaling-stroke;
 }
 .mw-cut-offcut {
-  fill: var(--admin-surface-hover);
+  fill: color-mix(in srgb, var(--admin-muted) 22%, var(--admin-surface));
   stroke: var(--admin-muted);
   stroke-width: 1px;
-  stroke-dasharray: 3 3;
   vector-effect: non-scaling-stroke;
 }
-.mw-cut-offcut-label {
-  fill: var(--admin-muted);
-  font-family: sans-serif;
+.mw-cut-offcut-shade { pointer-events: none; }
+.mw-cut-offcut-hatch {
+  stroke: var(--admin-muted);
+  stroke-width: 1;
 }
+.mw-cut-grain { stroke: var(--admin-primary); stroke-width: 1.4; fill: none; }
+.mw-cut-grain-head { fill: var(--admin-primary); }
+.mw-cut-grain-label,
+.mw-cut-part-num {
+  fill: var(--admin-heading);
+  font-family: sans-serif;
+  font-weight: 700;
+}
+.mw-cut-offcut-label {
+  fill: var(--admin-heading);
+  font-family: sans-serif;
+  font-weight: 700;
+}
+.mw-parts-list { margin-top: 12px; }
 .mw-cut-part-fill {
   fill: var(--admin-primary-soft, rgba(2, 71, 104, 0.18));
   stroke: var(--admin-primary, #024768);
@@ -327,6 +490,13 @@
 }
 
 [data-mw-show] { display: none; }
+.mw-piece label [data-mw-show] { display: none; }
+.mw-piece[data-mw-type="cabinet"] label [data-mw-show~="cabinet"],
+.mw-piece[data-mw-type="vanity"] label [data-mw-show~="vanity"],
+.mw-piece[data-mw-type="closet"] label [data-mw-show~="closet"],
+.mw-piece[data-mw-type="cabinet_door"] label [data-mw-show~="cabinet_door"] {
+  display: inline;
+}
 [data-mw-mat][hidden],
 [data-mw-hw][hidden] {
   display: none !important;
@@ -368,7 +538,8 @@
 .mw-piece[data-mw-type="bench"] .mw-piece__row[data-mw-show~="bench"],
 .mw-piece[data-mw-type="wainscoting"] .mw-piece__row[data-mw-show~="wainscoting"],
 .mw-piece[data-mw-type="mantel"] .mw-piece__row[data-mw-show~="mantel"],
-.mw-piece[data-mw-type="trim"] .mw-piece__row[data-mw-show~="trim"] {
+.mw-piece[data-mw-type="trim"] .mw-piece__row[data-mw-show~="trim"],
+.mw-piece[data-mw-type="bench"][data-mw-below="drawers"] .mw-piece__row[data-mw-show~="bench-drawers"] {
   display: grid;
 }
 
@@ -574,18 +745,24 @@
     min-width: 0;
   }
   .mw-piece__row--dims {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
   .mw-field--qty,
-  .mw-field--unit {
-    grid-column: span 3;
-  }
   .mw-field--w,
   .mw-field--h,
   .mw-field--d,
   .mw-field--len,
   .mw-field--lf {
-    grid-column: span 2;
+    grid-column: auto;
+  }
+  #mw-main-form select.admin-input.mw-dim__unit,
+  #mw-main-form .admin-form-group select.mw-dim__unit {
+    flex-basis: 3.5rem;
+    width: 3.5rem;
+    min-width: 3.5rem;
+    max-width: 3.5rem;
+    padding: 0 1.2rem 0 0.3rem;
+    background-position: right 0.28rem center;
   }
   .mw-piece__row--pack {
     grid-template-columns: 1fr 1fr;
