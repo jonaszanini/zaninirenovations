@@ -2,21 +2,14 @@
 
 namespace App\Models\Concerns;
 
+use App\Support\Quotations\PdfFoldVersion;
+
 /**
  * Client PDF commute/debris fold is versioned so saved quotes keep their
- * lines, HST and total.
- * 1 = legacy (extras may land on the first taxed line).
- * 2 = #60 fold (live since ~01:20; frozen byte-for-byte).
- * 3 = current (labour-category / calculator HST / override footer).
+ * lines, HST and total. Version numbers live on {@see PdfFoldVersion}.
  */
 trait HasPdfFoldVersion
 {
-    public const PDF_FOLD_VERSION_LEGACY = 1;
-
-    public const PDF_FOLD_VERSION_V2 = 2;
-
-    public const PDF_FOLD_VERSION_CURRENT = 3;
-
     public function initializeHasPdfFoldVersion(): void
     {
         $this->mergeFillable(['pdf_fold_version']);
@@ -36,7 +29,7 @@ trait HasPdfFoldVersion
                 return;
             }
 
-            $model->setAttribute('pdf_fold_version', self::PDF_FOLD_VERSION_CURRENT);
+            $model->setAttribute('pdf_fold_version', PdfFoldVersion::CURRENT);
         });
     }
 
@@ -57,17 +50,17 @@ trait HasPdfFoldVersion
             return $fromSource;
         }
 
-        return $this->exists ? self::PDF_FOLD_VERSION_LEGACY : self::PDF_FOLD_VERSION_CURRENT;
+        return $this->exists ? PdfFoldVersion::LEGACY : PdfFoldVersion::CURRENT;
     }
 
     public function usesCurrentPdfFold(): bool
     {
-        return $this->resolvedPdfFoldVersion() === self::PDF_FOLD_VERSION_CURRENT;
+        return $this->resolvedPdfFoldVersion() === PdfFoldVersion::CURRENT;
     }
 
     public function usesPdfFoldV2(): bool
     {
-        return $this->resolvedPdfFoldVersion() === self::PDF_FOLD_VERSION_V2;
+        return $this->resolvedPdfFoldVersion() === PdfFoldVersion::V2;
     }
 
     /**

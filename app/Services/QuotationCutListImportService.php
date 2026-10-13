@@ -24,9 +24,11 @@ class QuotationCutListImportService
         'stairs' => 'Stairs',
     ];
 
-    public function __construct(
-        private MillworkPartBuilder $partBuilder = new MillworkPartBuilder(),
-    ) {
+    private MillworkPartBuilder $partBuilder;
+
+    public function __construct(?MillworkPartBuilder $partBuilder = null)
+    {
+        $this->partBuilder = $partBuilder ?? new MillworkPartBuilder();
     }
 
     /**

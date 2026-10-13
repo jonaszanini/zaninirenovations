@@ -30,10 +30,10 @@ final class FenceGateSpec
     ];
 
     public function __construct(
-        public readonly string $key,
-        public readonly float $widthFt,
-        public readonly string $type,
-        public readonly string $label,
+        public string $key,
+        public float $widthFt,
+        public string $type,
+        public string $label,
     ) {}
 
     public static function default(): self
