@@ -1708,6 +1708,14 @@ a.admin-client-link:focus-visible {
   margin-bottom: 0;
   white-space: normal;
 }
+/* Visit switches are not text labels. display:inline above drops the track
+   width, so the knob paints over the first letters of the label. */
+.admin-label-with-tip > label.cp-visit-toggle,
+.admin-form-group .admin-label-with-tip > label.cp-visit-toggle {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
 .admin-label-with-tip > label.admin-checkbox,
 .admin-label-with-tip > label.admin-checkbox--block,
 .br-toggle-qty .admin-label-with-tip > label.admin-checkbox,
