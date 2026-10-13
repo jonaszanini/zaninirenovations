@@ -2810,6 +2810,16 @@ a:hover .cp-expense-receipt-pdf {
   cursor: pointer;
   color: var(--admin-text, inherit);
 }
+/* A tipped checkbox puts the phrase in the label and the ⓘ after it.
+   Flex + gap on this row treats those as two columns and splits the sentence. */
+.cp-checkbox-row.admin-label-with-tip {
+  display: block;
+  gap: 0;
+  align-items: unset;
+  padding: 0 0 0 34px;
+  text-indent: -34px;
+  min-height: 44px;
+}
 .cp-checkbox-row:not(.admin-checkbox) input[type="radio"] {
   width: auto;
   min-height: auto;

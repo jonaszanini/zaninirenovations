@@ -38,10 +38,6 @@
   $rawLabel = isset($label) ? (string) $label : '';
   $plainLabel = trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($rawLabel), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
   $labelIsHtml = \App\Support\AdminInfoTipInclude::labelIsHtml($rawLabel);
-  $split = $hasInfo ? \App\Support\AdminInfoTipInclude::splitLabelHtml($rawLabel) : ['lead' => '', 'last' => '', 'lastIsHtml' => false];
-  $tailWord = $hasInfo ? $split['last'] : '';
-  $leadHtml = $hasInfo ? $split['lead'] : $rawLabel;
-  $tailIsHtml = $hasInfo && ! empty($split['lastIsHtml']);
   $innerClass = $hasInfo
     ? trim('admin-checkbox'.(str_contains($extraClass, 'admin-checkbox--block') ? ' admin-checkbox--block' : ''))
     : $class;
@@ -66,14 +62,11 @@
     }
     if (isset($label)) {
       echo '<span class="admin-checkbox__text">';
-      echo $labelIsHtml ? $leadHtml : e($leadHtml);
+      echo $labelIsHtml ? $rawLabel : e($rawLabel);
       echo '</span>';
     }
   @endphp
 </label>@if ($hasInfo)<span class="admin-label-with-tip__end">
-    @if ($tailWord !== '')
-      <label for="{{ $id }}" class="admin-checkbox__tail">@if ($tailIsHtml){!! $tailWord !!}@else{{ $tailWord }}@endif</label>
-    @endif
     @include('admin.partials.info_tip', ['tipText' => $info, 'tipLabel' => $plainLabel !== '' ? $plainLabel : 'this field', 'tipHtml' => null, 'tipId' => null])
   </span>
 </span>

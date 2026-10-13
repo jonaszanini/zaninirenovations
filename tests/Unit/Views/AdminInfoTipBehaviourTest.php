@@ -43,18 +43,11 @@ class AdminInfoTipBehaviourTest extends TestCase
 
         $this->assertStringContainsString('admin-label-with-tip', $html);
         $this->assertStringContainsString('admin-label-with-tip__end', $html);
-        $this->assertStringContainsString('admin-checkbox__tail', $html);
         $this->assertStringContainsString('aria-label="About Sync prices after import"', $html);
+        $this->assertStringContainsString('>Sync prices after import</span>', $html);
+        $this->assertStringNotContainsString('admin-checkbox__tail', $html);
         $this->assertDoesNotMatchRegularExpression(
             '/<label[^>]*>[\s\S]*admin-info-tip-wrap[\s\S]*<\/label>/',
-            $html
-        );
-        $this->assertMatchesRegularExpression(
-            '/admin-checkbox__tail[^>]*>import<\/label>\s*<span class="admin-info-tip-wrap"/',
-            $html
-        );
-        $this->assertDoesNotMatchRegularExpression(
-            '/admin-checkbox__text[^>]*>\s+/',
             $html
         );
     }
@@ -150,8 +143,7 @@ BLADE);
             'errors' => new ViewErrorBag,
         ])->render();
 
-        $this->assertStringContainsString('<strong>Client provides all</strong>', $html);
-        $this->assertStringContainsString('<strong>materials</strong>', $html);
+        $this->assertStringContainsString('<strong>Client provides all materials</strong>', $html);
         $this->assertStringNotContainsString('<strong>Client provides all</span>', $html);
         $this->assertSame(substr_count($html, '<strong>'), substr_count($html, '</strong>'));
         $this->assertDoesNotMatchRegularExpression('/<strong>[^<]*<\/span>/', $html);
@@ -730,8 +722,8 @@ BLADE);
             '/<label[^>]*id="br-area-label"/',
             $html
         );
-        $this->assertStringContainsString('Total basement area (sq', $html);
-        $this->assertStringContainsString('>ft)</label>', $html);
+        $this->assertStringContainsString('Total basement area (sq ft)</label>', $html);
+        $this->assertStringNotContainsString('>ft)</label>', $html);
         $this->assertStringNotContainsString('sq ft) ft)', $html);
         $this->assertStringContainsString('admin-info-tip-wrap', $html);
     }

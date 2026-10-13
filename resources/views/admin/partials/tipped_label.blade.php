@@ -1,6 +1,7 @@
 {{--
-  Label + ⓘ with the last word glued to the tip (nowrap) so two-column
-  grids keep inputs aligned when the icon would otherwise wrap alone.
+  Label + ⓘ. The whole phrase stays in one <label>. The required *
+  and the ⓘ sit in the trailing span so they stay on the same line
+  as the last word without pulling that word into its own element.
 
   Order is always: label text, then *, then <small>, then ⓘ.
   Required * is wrapped with the ⓘ so they stay on one line.
@@ -26,36 +27,21 @@
   $tipHtml = array_key_exists('tipHtml', $defined) ? $defined['tipHtml'] : null;
   $tipLabel = array_key_exists('tipLabel', $defined) ? $defined['tipLabel'] : $label;
   $tipId = array_key_exists('tipId', $defined) ? $defined['tipId'] : null;
-  $parts = \App\Support\AdminInfoTipInclude::splitLabel(trim(strip_tags((string) $label)));
-  $lead = $required ? '' : $parts['lead'];
-  $last = $required ? trim(strip_tags((string) $label)) : $parts['last'];
+  $labelText = trim(strip_tags((string) $label));
   $forAttr = $for !== '' ? ' for="'.e($for).'"' : '';
   $idAttr = $labelId !== null ? ' id="'.e($labelId).'"' : '';
 @endphp
 <span class="admin-label-with-tip"{!! $idAttr !!}>
-  @if ($lead !== '')
-    <label{!! $forAttr !!}>{!! $prefixHtml !!}{{ $lead }}</label>
-  @endif
-  @if ($required)
-    <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}</label>
-    <span class="admin-label-with-tip__end">
+  <label{!! $forAttr !!}>{!! $prefixHtml !!}{{ $labelText }}</label>
+  <span class="admin-label-with-tip__end">
+    @if ($required)
       <span class="cp-required">*</span>
-      @include('admin.partials.info_tip', [
-        'tipText' => $tipText,
-        'tipHtml' => $tipHtml,
-        'tipLabel' => $tipLabel,
-        'tipId' => $tipId,
-      ])
-    </span>
-  @else
-    <span class="admin-label-with-tip__end">
-      <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}</label>
-      @include('admin.partials.info_tip', [
-        'tipText' => $tipText,
-        'tipHtml' => $tipHtml,
-        'tipLabel' => $tipLabel,
-        'tipId' => $tipId,
-      ])
-    </span>
-  @endif
+    @endif
+    @include('admin.partials.info_tip', [
+      'tipText' => $tipText,
+      'tipHtml' => $tipHtml,
+      'tipLabel' => $tipLabel,
+      'tipId' => $tipId,
+    ])
+  </span>
 </span>
