@@ -13,9 +13,9 @@
   ])
   <div class="admin-card">
     <div class="admin-table-scroll">
-      <table class="admin-table admin-table--stack">
+      <table class="admin-table admin-table--compact admin-table--stack blog-tax-table">
         <thead>
-          <tr><th>Name</th><th>Slug</th><th style="width:60px;">Posts</th><th style="width:140px;"></th></tr>
+          <tr><th>Name</th><th>Slug</th><th>Posts</th><th class="blog-tax-table__actions"></th></tr>
         </thead>
         <tbody>
           @forelse ($categories as $category)
@@ -24,11 +24,13 @@
               <td data-label="Slug">{{ $category->slug }}</td>
               <td data-label="Posts">{{ $category->posts_count }}</td>
               <td class="admin-table__actions" data-label="">
-                <a href="{{ route('admin.blog.categories.edit', $category) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
-                <form action="{{ route('admin.blog.categories.destroy', $category) }}" method="post" style="display:inline;" onsubmit="return confirm('Delete this category?');">
-                  @csrf @method('DELETE')
-                  <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
-                </form>
+                <div class="blog-tax-actions">
+                  <a href="{{ route('admin.blog.categories.edit', $category) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
+                  <form action="{{ route('admin.blog.categories.destroy', $category) }}" method="post" onsubmit="return confirm('Delete this category?');">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
+                  </form>
+                </div>
               </td>
             </tr>
           @empty

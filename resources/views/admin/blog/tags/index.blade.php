@@ -33,9 +33,9 @@
   </details>
   <div class="admin-card">
     <div class="admin-table-scroll">
-      <table class="admin-table admin-table--stack">
+      <table class="admin-table admin-table--compact admin-table--stack blog-tax-table">
       <thead>
-        <tr><th>Name</th><th>Slug</th><th style="width:60px;">Posts</th><th style="width:140px;"></th></tr>
+        <tr><th>Name</th><th>Slug</th><th>Posts</th><th class="blog-tax-table__actions"></th></tr>
       </thead>
       <tbody>
         @forelse ($tags as $tag)
@@ -44,11 +44,13 @@
             <td data-label="Slug">{{ $tag->slug }}</td>
             <td data-label="Posts">{{ $tag->posts_count }}</td>
             <td class="admin-table__actions" data-label="">
-              <a href="{{ route('admin.blog.tags.edit', $tag) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
-              <form action="{{ route('admin.blog.tags.destroy', $tag) }}" method="post" style="display:inline;" onsubmit="return confirm('Delete this tag?');">
-                @csrf @method('DELETE')
-                <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
-              </form>
+              <div class="blog-tax-actions">
+                <a href="{{ route('admin.blog.tags.edit', $tag) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Edit</a>
+                <form action="{{ route('admin.blog.tags.destroy', $tag) }}" method="post" onsubmit="return confirm('Delete this tag?');">
+                  @csrf @method('DELETE')
+                  <button type="submit" class="admin-btn admin-btn--danger admin-btn--sm">Delete</button>
+                </form>
+              </div>
             </td>
           </tr>
         @empty

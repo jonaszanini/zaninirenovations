@@ -986,3 +986,51 @@ html.admin-dark .admin-content a.bp-list-tab.is-active .bp-list-tab__count {
     justify-content: flex-start;
   }
 }
+
+/* Category and tag rows: Edit and Delete share one short line. */
+.blog-tax-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+}
+
+.blog-tax-actions form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.blog-tax-table .blog-tax-actions .admin-btn {
+  margin: 0;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 0.7rem;
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+@media (min-width: 641px) {
+  .blog-tax-table th.blog-tax-table__actions,
+  .blog-tax-table td.admin-table__actions {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+    vertical-align: middle;
+  }
+
+  .blog-tax-actions {
+    justify-content: flex-end;
+  }
+
+  .blog-tax-table .blog-tax-actions .admin-btn {
+    min-height: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 900px) {
+  .blog-tax-table td.admin-table__actions .admin-btn {
+    margin-bottom: 0;
+  }
+}
