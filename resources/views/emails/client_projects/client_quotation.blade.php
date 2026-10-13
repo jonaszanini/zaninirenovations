@@ -17,6 +17,10 @@
     </p>
   @endif
 
+  @if (($photoAttachmentCount ?? 0) > 0)
+    <p>The reference photos shown in the PDF are also attached to this email.</p>
+  @endif
+
   <p>
     This proposal outlines the scope of the work. All planned work is designed to
     meet or exceed the standards set by the Ontario Building Code (O.Reg. 332/12)

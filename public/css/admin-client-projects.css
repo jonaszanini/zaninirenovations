@@ -6503,7 +6503,7 @@ body.cp-modal-open {
 .cp-visit-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 0;
   cursor: pointer;
   user-select: none;
   margin: 0;
@@ -6531,9 +6531,14 @@ body.cp-modal-open {
   border: 0;
 }
 .cp-visit-toggle__control {
+  display: inline-block;
+  vertical-align: middle;
+  flex: 0 0 44px;
   flex-shrink: 0;
   width: 44px;
+  min-width: 44px;
   height: 26px;
+  margin-right: 12px;
   border-radius: 999px;
   background: var(--admin-border-strong);
   position: relative;
@@ -6574,7 +6579,9 @@ body.cp-modal-open {
   margin-top: 4px;
 }
 .cp-visit-toggle--compact .cp-visit-toggle__control {
+  flex-basis: 40px;
   width: 40px;
+  min-width: 40px;
   height: 24px;
 }
 .cp-visit-toggle--compact .cp-visit-toggle__control::after {

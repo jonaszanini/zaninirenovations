@@ -1,13 +1,32 @@
 name: Tests
 
+# GitHub bills runner minutes. A push to an open pull request used to start
+# this workflow twice, and a newer push did not cancel the run it replaced.
+# The millwork fuzz and live layout checks run only from a manual dispatch.
+
 on:
   push:
+    branches:
+      - main
   pull_request:
+  workflow_dispatch:
+    inputs:
+      slow:
+        description: Run the millwork 3k fuzz and live layout checks
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   phpunit:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PUPPETEER_CACHE_DIR: /home/runner/.cache/puppeteer
 
     services:
       mysql:
@@ -27,7 +46,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -35,6 +54,7 @@ jobs:
           php-version: '8.2'
           extensions: dom, mbstring, pdo_mysql, fileinfo, intl
           coverage: none
+          cache: composer
 
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -44,38 +64,23 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      - name: Blade syntax smoke (no database)
-        run: |
-          php artisan test tests/Unit/Views/BladeSyntaxTest.php
-          php artisan test tests/Unit/Views/AiActionGroupTest.php
-          php artisan test tests/Unit/Views/QuotationPdfPageBreakTest.php
-          php artisan test tests/Unit/BasementQuotationWizardViewTest.php
-          php artisan test tests/Unit/Models/BasementQuotationScopePdfTest.php
-          php artisan test tests/Unit/Support/AdminListFiltersTest.php
-          php artisan test tests/Unit/Support/CadMoneyTest.php
-          php artisan test tests/Unit/Support/AdminOnceSubmitTokenTest.php
-          php artisan test tests/Unit/Support/QuotationSaveIntentTest.php
-          php artisan test tests/Unit/Support/QuotationDraftFlashTest.php
-          php artisan test tests/Unit/Services/HomeDepotCaUrlsTest.php
-          php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
-          php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
-
-      - name: Admin info-tip unit tests (no database)
-        run: |
-          php artisan test tests/Unit/Views/AdminInfoTipTest.php
-          php artisan test tests/Unit/Views/AdminInfoTipBehaviourTest.php
-          php artisan test tests/Unit/Views/AdminInfoTipIdIsolationTest.php
-          php artisan test tests/Unit/Views/AdminInfoTipCallerContractTest.php
-          php artisan test tests/Unit/Views/FencePriceBannerTipTest.php
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
 
-      - name: Room Area JS library (no database)
+      - name: Cache Puppeteer
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-24.43.1
+
+      - name: Install Node dependencies
+        run: npm ci --no-fund --no-audit
+
+      - name: JavaScript tests
         run: |
-          npm ci --no-fund
           node tests/js/room-area-lib.test.js
           node tests/js/room-area-formula.test.js
           node tests/js/room-area-phone-geometry.test.js
@@ -85,206 +90,189 @@ jobs:
           node tests/js/admin-date-picker-browser.test.js
           node tests/js/quotation-redraft-confirm-browser.test.js
           node tests/js/quotation-redraft-hotkey-lock-browser.test.js
-
-      - name: Admin info-tip JS behaviour (no database)
-        run: |
           node tests/js/admin-info-tip.test.mjs
           node tests/js/admin-info-tip-click.test.mjs
 
-      - name: Cut optimizer unit tests (no database)
-        run: php artisan test tests/Unit/Services/CutOptimizerEngineTest.php
+      - name: Unit tests (no database)
+        run: |
+          php artisan test \
+            tests/Unit/Views/BladeSyntaxTest.php \
+            tests/Unit/Views/AiActionGroupTest.php \
+            tests/Unit/Views/QuotationPdfPageBreakTest.php \
+            tests/Unit/BasementQuotationWizardViewTest.php \
+            tests/Unit/Models/BasementQuotationScopePdfTest.php \
+            tests/Unit/Support/AdminListFiltersTest.php \
+            tests/Unit/Support/CadMoneyTest.php \
+            tests/Unit/Support/AdminOnceSubmitTokenTest.php \
+            tests/Unit/Support/QuotationSaveIntentTest.php \
+            tests/Unit/Support/QuotationDraftFlashTest.php \
+            tests/Unit/Services/HomeDepotCaUrlsTest.php \
+            tests/Unit/Views/AdminInfoTipTest.php \
+            tests/Unit/Views/AdminInfoTipBehaviourTest.php \
+            tests/Unit/Views/AdminInfoTipIdIsolationTest.php \
+            tests/Unit/Views/AdminInfoTipCallerContractTest.php \
+            tests/Unit/Views/FencePriceBannerTipTest.php \
+            tests/Unit/Services/CutOptimizerEngineTest.php \
+            tests/Unit/Services/MillworkCutPlanPlacementTest.php \
+            tests/Unit/Services/Millwork/MillworkDimensionParserTest.php \
+            tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php \
+            tests/Unit/Services/MillworkCalcVersionGateTest.php \
+            tests/Unit/Views/AdminDarkThemeCoverageTest.php \
+            tests/Unit/Views/AdminDatePickerThemeTest.php \
+            tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php \
+            tests/Unit/Views/QuotationEditorHeaderMarkupTest.php \
+            tests/Unit/Views/PublicCssLightOnlyTest.php \
+            tests/Unit/Views/PublicMobileNavDropdownTest.php \
+            tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php \
+            tests/Unit/Views/HomeKitchenTileImageTest.php
 
-      - name: Millwork cut-plan placement (no database)
-        run: php artisan test tests/Unit/Services/MillworkCutPlanPlacementTest.php
+      - name: Database tests (MySQL)
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: zanini_renovations_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          QUOTE_ACCEPT_API_TOKEN: ci-quote-accept-token
+          ETRANSFER_API_TOKEN: ci-etransfer-token
+        run: |
+          php artisan test \
+            tests/Feature/Smoke \
+            tests/Feature/QuoteAcceptance \
+            tests/Unit/Services/EtransferNoticeParserTest.php \
+            tests/Unit/Services/EtransferInvoiceMatcherTest.php \
+            tests/Feature/Etransfer \
+            tests/Feature/Invoices/MarkPaidInvoiceTest.php \
+            tests/Feature/Admin/GlobalFinancialsTest.php \
+            tests/Feature/Admin/GlobalSearchApiTest.php \
+            tests/Feature/Admin/QuickStatusChangeTest.php \
+            tests/Feature/DuplicateQuotationTest.php \
+            tests/Feature/ExpenseAmountParsingTest.php \
+            tests/Feature/Invoices/HourlyInvoiceUpdateTest.php \
+            tests/Feature/Admin/DashboardActionFirstLayoutTest.php \
+            tests/Feature/Admin/CancelledProjectInvoiceExclusionTest.php \
+            tests/Feature/Admin/ClientIndexAddressSearchTest.php \
+            tests/Feature/Admin/ClientProjectFiltersAccordionTest.php \
+            tests/Unit/Services/RoomAreaCanvasDataTest.php \
+            tests/Feature/Admin/RoomAreaCanvasObjectsTest.php \
+            tests/Feature/Admin/RoomAreaPdfExportTest.php \
+            tests/Feature/Admin/BasementRoomAreaImportTest.php \
+            tests/Feature/Admin/BasementQuotationMathRoundTripTest.php \
+            tests/Feature/Admin/BasementQuotationPagesTest.php \
+            tests/Feature/Admin/QuotationEditorHeaderTest.php \
+            tests/Feature/Admin/QuotationHotkeySaveStateTest.php \
+            tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php \
+            tests/Feature/Admin/QuotationDraftClientFacingGuardTest.php \
+            tests/Feature/Admin/QuotationEditorControlInventoryTest.php \
+            tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php \
+            tests/Feature/Admin/RoomAreaQuoteLinesTest.php \
+            tests/Unit/Services/RoomAreaQuotePrefillTest.php \
+            tests/Feature/Admin/RoomAreaQuotePrefillTest.php \
+            tests/Unit/Services/RoomAreaSharedWallsTest.php \
+            tests/Unit/Services/RoomAreaMeasurementParserTest.php \
+            tests/Unit/Services/RoomAreaClosingErrorTest.php \
+            tests/Feature/Admin/RoomAreaPhotosTest.php \
+            tests/Feature/Admin/ClientProjectRoomAreaPageTest.php \
+            tests/Feature/Admin/UtilitiesRoomAreaPageTest.php \
+            tests/Feature/Admin/RoomAreaGuidePageTest.php \
+            tests/Unit/Support/HtmlContentSanitizerTest.php \
+            tests/Unit/Support/PlainTextLimiterTest.php \
+            tests/Feature/BlogPhase1FixesTest.php \
+            tests/Feature/BlogPhase2AdminTest.php \
+            tests/Unit/Services/BlogPostQualityTest.php \
+            tests/Feature/BlogPhase3PublicTest.php \
+            tests/Unit/Support/SecurityHardeningTest.php \
+            tests/Feature/OnPageSeoBatch2Test.php \
+            tests/Unit/Support/SeoGeoTest.php \
+            tests/Feature/OnPageSeoBatch3Test.php \
+            tests/Feature/OnPageSeoBatch4Test.php \
+            tests/Feature/OnPageSeoBatch5Test.php \
+            tests/Feature/PublicPageBannedWordsTest.php \
+            tests/Feature/Admin/OffcutInventoryTest.php \
+            tests/Feature/Admin/QuotationCutListImportTest.php \
+            tests/Unit/Services/MillworkQuotationCalculatorTest.php \
+            tests/Feature/Admin/MillworkQuotationPagesTest.php \
+            tests/Feature/Admin/MillworkLeaveSaveBrowserTest.php \
+            tests/Feature/Admin/MillworkCreateBrowserTest.php \
+            tests/Feature/Admin/MillworkResaveBrowserTest.php \
+            tests/Feature/Admin/MillworkQuotationRoundTripTest.php \
+            tests/Feature/Admin/MillworkCutPlanPlacementTest.php \
+            tests/Unit/Views/HomeServiceTileUppercaseTest.php \
+            tests/Unit/Views/QuotationExpensePairLayoutTest.php \
+            tests/Unit/Support/QuotationWorkDescriptionStyleTest.php \
+            tests/Unit/Services/QuotationWorkDescriptionInstructionTest.php \
+            tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php \
+            tests/Unit/Services/QuotationWorkDescriptionLowDeckContextTest.php \
+            tests/Unit/Services/QuotationWorkDescriptionStandardContextTest.php \
+            tests/Unit/Services/QuotationWorkDescriptionAiServiceTest.php \
+            tests/Unit/Models/ClientProjectQuotationPdfLineItemsTest.php \
+            tests/Unit/Models/ClientProjectQuotationPdfFoldV2Test.php \
+            tests/Unit/Models/ClientProjectQuotationPdfFoldV3Test.php \
+            tests/Unit/Models/ClientProjectQuotationPdfFoldV2IdentityTest.php \
+            tests/Unit/Models/ClientProjectQuotationPdfFoldV2SqLinkedIdentityTest.php \
+            tests/Unit/Models/ClientProjectQuotationPdfFoldV1IdentityTest.php \
+            tests/Feature/Quotations/PdfFoldVersionLinkTest.php \
+            tests/Unit/Models/StandardQuotationPdfLineItemsTest.php \
+            tests/Unit/Services/StandardQuotationCalculatorTest.php \
+            tests/Unit/Services/StandardQuotationKitRewriteAuditorTest.php \
+            tests/Unit/Models/StandardQuotationEditorTotalTest.php \
+            tests/Feature/Admin/StandardQuotationPurchaseListTest.php \
+            tests/Unit/Views/StandardQuotationEditorJsTest.php \
+            tests/Unit/Services/FenceQuotationCalculatorTest.php \
+            tests/Unit/Services/FenceQuotationScenarioTest.php \
+            tests/Unit/Services/FenceQuotationOct8FixesTest.php \
+            tests/Unit/Models/FenceMaterialTest.php \
+            tests/Unit/Models/FenceQuotationTest.php \
+            tests/Unit/Models/FenceQuotationLabourHstTest.php \
+            tests/Unit/Support/FenceWorkDescriptionGeneratorTest.php \
+            tests/Unit/Support/FenceSideFlagsTest.php \
+            tests/Unit/Views/FenceQuotationFormRestoreTest.php \
+            tests/Feature/Admin/FenceQuotationFormRestoreTest.php \
+            tests/Feature/Admin/FenceQuotationInfoTipTest.php \
+            tests/Feature/Admin/FenceExistingPostLabourCreditTest.php \
+            tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php \
+            tests/Unit/Services/MaterialPriceSyncServiceTest.php \
+            tests/Unit/Models/MaterialStoreProductUrlTest.php \
+            tests/Feature/Admin/RoomAreaBatch1PageTest.php \
+            tests/Unit/Services/RoomAreaTemplatesTest.php \
+            tests/Unit/Models/BlogPostListHelpersTest.php \
+            tests/Feature/Admin/BlogPostsIndexLayoutTest.php \
+            tests/Feature/Admin/AdminHotkeySaveMarkerTest.php \
+            tests/Feature/Admin/AdminOnceSubmitReplayTest.php \
+            tests/Feature/Admin/AdminHotkeySaveMarkupTest.php \
+            tests/Unit/Services/RoomAreaFinishMathTest.php \
+            tests/Feature/Admin/RoomAreaBatch2PageTest.php \
+            tests/Feature/SharedPricesLayoutTest.php \
+            tests/Feature/AdminMoneyDirectEntryTest.php \
+            tests/Feature/SharedPricesTest.php \
+            tests/Feature/SharedPricesAddRenameTest.php \
+            tests/Feature/SharedWorksNormalizedLabelMigrationTest.php \
+            tests/Feature/SharedPricesParallelSaveTest.php \
+            tests/Unit/Models/SharedWorkLabelTest.php \
+            tests/Unit/Services/SharedWorkCatalogTest.php \
+            tests/Unit/Services/FlooringQuotationCalculatorTest.php \
+            tests/Unit/Services/RoomAreaFormulaParserTest.php \
+            tests/Feature/Admin/RoomAreaBatch3PageTest.php \
+            tests/Feature/Admin/RoomAreaKitSeedRaceTest.php \
+            tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
 
-      - name: Millwork dimension parser (no database)
-        run: php artisan test tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
+      - name: Upload Shared prices geometry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-prices-geometry
+          path: |
+            storage/app/sp-layout-geometry.json
+            storage/app/sp-layout-1100.png
+          if-no-files-found: warn
 
-      - name: Millwork saved-quote fixtures vs main (no database)
-        run: php artisan test tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
-
-      - name: Millwork v3 calc-version gate (no database)
-        run: php artisan test tests/Unit/Services/MillworkCalcVersionGateTest.php
-
-      - name: Millwork v2 3k fuzz invariants (no database)
+      - name: Millwork v2 3k fuzz invariants
+        if: ${{ success() && github.event.inputs.slow == 'true' }}
         run: php artisan test tests/Unit/Services/MillworkV2FuzzParityTest.php
 
-      - name: Admin dark-theme CSS coverage (no database)
-        run: |
-          php artisan test tests/Unit/Views/AdminDarkThemeCoverageTest.php
-          php artisan test tests/Unit/Views/AdminDatePickerThemeTest.php
-          php artisan test tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
-          php artisan test tests/Unit/Views/QuotationExpensePairLayoutTest.php
-          php artisan test tests/Unit/Views/QuotationEditorHeaderMarkupTest.php
-
-      - name: Public CSS light-only (no database)
-        run: |
-          php artisan test tests/Unit/Views/PublicCssLightOnlyTest.php
-          php artisan test tests/Unit/Views/PublicMobileNavDropdownTest.php
-          php artisan test tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
-          php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
-          php artisan test tests/Unit/Views/HomeKitchenTileImageTest.php
-
-      - name: Route smoke (MySQL)
-        env:
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: zanini_renovations_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
-        run: php artisan test tests/Feature/Smoke
-
-      - name: Quote acceptance (MySQL)
-        env:
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: zanini_renovations_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
-          QUOTE_ACCEPT_API_TOKEN: ci-quote-accept-token
-        run: php artisan test tests/Feature/QuoteAcceptance
-
-      - name: E-transfer matching
-        env:
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: zanini_renovations_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
-          ETRANSFER_API_TOKEN: ci-etransfer-token
-          QUOTE_ACCEPT_API_TOKEN: ci-quote-accept-token
-        run: |
-          php artisan test tests/Unit/Services/EtransferNoticeParserTest.php
-          php artisan test tests/Unit/Services/EtransferInvoiceMatcherTest.php
-          php artisan test tests/Feature/Etransfer
-          php artisan test tests/Feature/Invoices/MarkPaidInvoiceTest.php
-
-      - name: Feature tests (MySQL)
-        env:
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: zanini_renovations_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
-        run: |
-          php artisan test tests/Feature/Admin/GlobalFinancialsTest.php
-          php artisan test tests/Feature/Admin/GlobalSearchApiTest.php
-          php artisan test tests/Feature/Admin/QuickStatusChangeTest.php
-          php artisan test tests/Feature/DuplicateQuotationTest.php
-          php artisan test tests/Feature/ExpenseAmountParsingTest.php
-          php artisan test tests/Feature/Invoices/HourlyInvoiceUpdateTest.php
-          php artisan test tests/Feature/Admin/DashboardActionFirstLayoutTest.php
-          php artisan test tests/Feature/Admin/CancelledProjectInvoiceExclusionTest.php
-          php artisan test tests/Feature/Admin/ClientIndexAddressSearchTest.php
-          php artisan test tests/Feature/Admin/ClientProjectFiltersAccordionTest.php
-          php artisan test tests/Unit/Services/RoomAreaCanvasDataTest.php
-          php artisan test tests/Feature/Admin/RoomAreaCanvasObjectsTest.php
-          php artisan test tests/Feature/Admin/RoomAreaPdfExportTest.php
-          php artisan test tests/Feature/Admin/BasementRoomAreaImportTest.php
-          php artisan test tests/Feature/Admin/BasementQuotationMathRoundTripTest.php
-          php artisan test tests/Feature/Admin/BasementQuotationPagesTest.php
-          php artisan test tests/Feature/Admin/QuotationEditorHeaderTest.php
-          php artisan test tests/Feature/Admin/QuotationHotkeySaveStateTest.php
-          php artisan test tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php
-          php artisan test tests/Feature/Admin/QuotationDraftClientFacingGuardTest.php
-          php artisan test tests/Feature/Admin/QuotationEditorControlInventoryTest.php
-          php artisan test tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php
-          php artisan test tests/Feature/Admin/RoomAreaQuoteLinesTest.php
-          php artisan test tests/Unit/Services/RoomAreaQuotePrefillTest.php
-          php artisan test tests/Feature/Admin/RoomAreaQuotePrefillTest.php
-          php artisan test tests/Unit/Services/RoomAreaSharedWallsTest.php
-          php artisan test tests/Unit/Services/RoomAreaMeasurementParserTest.php
-          php artisan test tests/Unit/Services/RoomAreaClosingErrorTest.php
-          php artisan test tests/Feature/Admin/RoomAreaPhotosTest.php
-          php artisan test tests/Feature/Admin/ClientProjectRoomAreaPageTest.php
-          php artisan test tests/Feature/Admin/UtilitiesRoomAreaPageTest.php
-          php artisan test tests/Feature/Admin/RoomAreaGuidePageTest.php
-          php artisan test tests/Unit/Support/HtmlContentSanitizerTest.php
-          php artisan test tests/Unit/Support/PlainTextLimiterTest.php
-          php artisan test tests/Feature/BlogPhase1FixesTest.php
-          php artisan test tests/Feature/BlogPhase2AdminTest.php
-          php artisan test tests/Unit/Services/BlogPostQualityTest.php
-          php artisan test tests/Feature/BlogPhase3PublicTest.php
-          php artisan test tests/Unit/Support/SecurityHardeningTest.php
-          php artisan test tests/Feature/OnPageSeoBatch2Test.php
-          php artisan test tests/Unit/Support/SeoGeoTest.php
-          php artisan test tests/Feature/OnPageSeoBatch3Test.php
-          php artisan test tests/Feature/OnPageSeoBatch4Test.php
-          php artisan test tests/Feature/OnPageSeoBatch5Test.php
-          php artisan test tests/Feature/PublicPageBannedWordsTest.php
-          php artisan test tests/Feature/Admin/OffcutInventoryTest.php
-          php artisan test tests/Feature/Admin/QuotationCutListImportTest.php
-          php artisan test tests/Unit/Services/MillworkQuotationCalculatorTest.php
-          php artisan test tests/Feature/Admin/MillworkQuotationPagesTest.php
-          php artisan test tests/Feature/Admin/MillworkLeaveSaveBrowserTest.php
-          php artisan test tests/Feature/Admin/MillworkCreateBrowserTest.php
-          php artisan test tests/Feature/Admin/MillworkResaveBrowserTest.php
-          php artisan test tests/Feature/Admin/MillworkQuotationRoundTripTest.php
-          php artisan test tests/Feature/Admin/MillworkCutPlanPlacementTest.php
-          php artisan test tests/Unit/Views/HomeServiceTileUppercaseTest.php
-          php artisan test tests/Unit/Views/QuotationExpensePairLayoutTest.php
-          php artisan test tests/Unit/Support/QuotationWorkDescriptionStyleTest.php
-          php artisan test tests/Unit/Services/QuotationWorkDescriptionInstructionTest.php
-          php artisan test tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php
-          php artisan test tests/Unit/Services/QuotationWorkDescriptionLowDeckContextTest.php
-          php artisan test tests/Unit/Services/QuotationWorkDescriptionStandardContextTest.php
-          php artisan test tests/Unit/Services/QuotationWorkDescriptionAiServiceTest.php
-          php artisan test tests/Unit/Models/ClientProjectQuotationPdfLineItemsTest.php
-          php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV2Test.php
-          php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV3Test.php
-          php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV2IdentityTest.php
-          php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV2SqLinkedIdentityTest.php
-          php artisan test tests/Unit/Models/ClientProjectQuotationPdfFoldV1IdentityTest.php
-          php artisan test tests/Feature/Quotations/PdfFoldVersionLinkTest.php
-          php artisan test tests/Unit/Models/StandardQuotationPdfLineItemsTest.php
-          php artisan test tests/Unit/Services/StandardQuotationCalculatorTest.php
-          php artisan test tests/Unit/Services/StandardQuotationKitRewriteAuditorTest.php
-          php artisan test tests/Unit/Models/StandardQuotationEditorTotalTest.php
-          php artisan test tests/Feature/Admin/StandardQuotationPurchaseListTest.php
-          php artisan test tests/Unit/Views/StandardQuotationEditorJsTest.php
-          php artisan test tests/Unit/Services/FenceQuotationCalculatorTest.php
-          php artisan test tests/Unit/Services/FenceQuotationScenarioTest.php
-          php artisan test tests/Unit/Services/FenceQuotationOct8FixesTest.php
-          php artisan test tests/Unit/Models/FenceMaterialTest.php
-          php artisan test tests/Unit/Models/FenceQuotationTest.php
-          php artisan test tests/Unit/Models/FenceQuotationLabourHstTest.php
-          php artisan test tests/Unit/Support/FenceWorkDescriptionGeneratorTest.php
-          php artisan test tests/Unit/Support/FenceSideFlagsTest.php
-          php artisan test tests/Unit/Views/FenceQuotationFormRestoreTest.php
-          php artisan test tests/Feature/Admin/FenceQuotationFormRestoreTest.php
-          php artisan test tests/Feature/Admin/FenceQuotationInfoTipTest.php
-          php artisan test tests/Feature/Admin/FenceExistingPostLabourCreditTest.php
-          php artisan test tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php
-          php artisan test tests/Unit/Services/MaterialPriceSyncServiceTest.php
-          php artisan test tests/Unit/Models/MaterialStoreProductUrlTest.php
-          php artisan test tests/Feature/Admin/RoomAreaBatch1PageTest.php
-          php artisan test tests/Unit/Services/RoomAreaTemplatesTest.php
-          php artisan test tests/Unit/Models/BlogPostListHelpersTest.php
-          php artisan test tests/Feature/Admin/BlogPostsIndexLayoutTest.php
-          php artisan test tests/Feature/Admin/AdminHotkeySaveMarkerTest.php
-          php artisan test tests/Feature/Admin/AdminOnceSubmitReplayTest.php
-          php artisan test tests/Feature/Admin/AdminHotkeySaveMarkupTest.php
-          php artisan test tests/Unit/Services/RoomAreaFinishMathTest.php
-          php artisan test tests/Feature/Admin/RoomAreaBatch2PageTest.php
-          php artisan test tests/Feature/SharedPricesLayoutTest.php
-          php artisan test tests/Feature/AdminMoneyDirectEntryTest.php
-          php artisan test tests/Feature/SharedPricesTest.php
-          php artisan test tests/Feature/SharedPricesAddRenameTest.php
-          php artisan test tests/Feature/SharedWorksNormalizedLabelMigrationTest.php
-          php artisan test tests/Feature/SharedPricesParallelSaveTest.php
-          php artisan test tests/Unit/Models/SharedWorkLabelTest.php
-          php artisan test tests/Unit/Services/SharedWorkCatalogTest.php
-          php artisan test tests/Unit/Services/FlooringQuotationCalculatorTest.php
-          php artisan test tests/Unit/Services/RoomAreaFormulaParserTest.php
-          php artisan test tests/Feature/Admin/RoomAreaBatch3PageTest.php
-          php artisan test tests/Feature/Admin/RoomAreaKitSeedRaceTest.php
-          php artisan test tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
-
       - name: Room Area live layout geometry
+        if: ${{ success() && github.event.inputs.slow == 'true' }}
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
@@ -310,17 +298,8 @@ jobs:
           curl -sf http://127.0.0.1:8001/admin/login >/dev/null
           node tests/js/room-area-phone-geometry.test.js
 
-      - name: Upload Shared prices geometry
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: shared-prices-geometry
-          path: |
-            storage/app/sp-layout-geometry.json
-            storage/app/sp-layout-1100.png
-          if-no-files-found: warn
-
       - name: Blog posts live layout geometry
+        if: ${{ success() && github.event.inputs.slow == 'true' }}
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1

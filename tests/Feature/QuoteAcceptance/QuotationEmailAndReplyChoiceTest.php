@@ -4,8 +4,11 @@ namespace Tests\Feature\QuoteAcceptance;
 
 use App\Mail\ClientProjectQuotationClient;
 use App\Models\ClientProject;
+use App\Models\ClientProjectPhoto;
+use App\Support\PrivateAppFile;
 use App\Support\QuotationReplyToAccept;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -35,9 +38,78 @@ class QuotationEmailAndReplyChoiceTest extends IntegrationTestCase
             $html = view($mail->view, $mail->viewData)->render();
             $this->assertStringContainsString('Accept this quote', $html);
             $this->assertStringContainsString('I accept', $html);
+            $this->assertStringNotContainsString('also attached to this email', $html);
 
             return true;
         });
+    }
+
+    public function test_quotation_email_attaches_only_the_photos_selected_for_the_pdf(): void
+    {
+        Storage::fake('local');
+
+        [$project, $quotation] = $this->makeLinkedQuotation();
+
+        $selectedPath = 'client-project-photos/project-'.$project->id.'/selected.webp';
+        $otherPath = 'client-project-photos/project-'.$project->id.'/other.webp';
+        $missingPath = 'client-project-photos/project-'.$project->id.'/missing.webp';
+        PrivateAppFile::put($selectedPath, 'webp-selected');
+        PrivateAppFile::put($otherPath, 'webp-other');
+
+        $selected = ClientProjectPhoto::query()->create([
+            'client_project_id' => $project->id,
+            'path' => $selectedPath,
+            'media_type' => ClientProjectPhoto::TYPE_IMAGE,
+            'original_filename' => 'Project-image01.webp',
+            'sort_order' => 1,
+        ]);
+        $duplicateName = ClientProjectPhoto::query()->create([
+            'client_project_id' => $project->id,
+            'path' => $otherPath,
+            'media_type' => ClientProjectPhoto::TYPE_IMAGE,
+            'original_filename' => 'Project-image01.webp',
+            'sort_order' => 2,
+        ]);
+        $missing = ClientProjectPhoto::query()->create([
+            'client_project_id' => $project->id,
+            'path' => $missingPath,
+            'media_type' => ClientProjectPhoto::TYPE_IMAGE,
+            'original_filename' => 'Gone.webp',
+            'sort_order' => 3,
+        ]);
+        ClientProjectPhoto::query()->create([
+            'client_project_id' => $project->id,
+            'path' => $otherPath,
+            'media_type' => ClientProjectPhoto::TYPE_IMAGE,
+            'original_filename' => 'Not-selected.webp',
+            'sort_order' => 4,
+        ]);
+
+        $quotation->pdf_photo_ids = [$selected->id, $duplicateName->id, $missing->id];
+        $quotation->save();
+
+        $mail = new ClientProjectQuotationClient($project, $quotation->fresh(), 'pdf-bytes', 'quotation.pdf');
+        $mail->build();
+
+        $names = [];
+        $mimes = [];
+        foreach ($mail->attachments as $attachment) {
+            $names[] = $attachment['options']['as'] ?? '';
+            $mimes[] = $attachment['options']['mime'] ?? '';
+        }
+
+        $this->assertSame([
+            'Project-image01.webp',
+            'Project-image01-'.$duplicateName->id.'.webp',
+        ], $names);
+        $this->assertSame(['image/webp', 'image/webp'], $mimes);
+        $this->assertNotContains('Not-selected.webp', $names);
+        $this->assertNotContains('Gone.webp', $names);
+        $this->assertCount(1, $mail->rawAttachments);
+        $this->assertSame('application/pdf', $mail->rawAttachments[0]['options']['mime']);
+
+        $html = view($mail->view, $mail->viewData)->render();
+        $this->assertStringContainsString('also attached to this email', $html);
     }
 
     public function test_email_is_blocked_when_reply_to_accept_choice_is_unset(): void

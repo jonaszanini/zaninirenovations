@@ -15,7 +15,7 @@
           <h4 class="cp-quotation-pdf-photos__title">Photos for client PDF</h4>
           <p class="admin-form-help cp-quotation-pdf-photos__help">
             Select project images to append after the quotation when you download or email the PDF.
-            Videos and PDF files on the project are not embedded in the quotation PDF.
+            The same images are attached to the client email. Videos and PDF files on the project are not included.
           </p>
         </div>
         @if ($projectImagePhotos->isNotEmpty())

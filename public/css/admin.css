@@ -1105,10 +1105,14 @@ button.admin-btn[hidden] {
 
 .tk-item__actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
+}
+
+.tk-item__actions form {
+  margin: 0;
 }
 
 .tk-item__edit-form {
@@ -1708,8 +1712,8 @@ a.admin-client-link:focus-visible {
   margin-bottom: 0;
   white-space: normal;
 }
-/* Visit switches are not text labels. display:inline above drops the track
-   width, so the knob paints over the first letters of the label. */
+/* Visit switches are not text labels. display:inline above drops flex
+   layout; the track itself is inline-block so the knob still keeps its width. */
 .admin-label-with-tip > label.cp-visit-toggle,
 .admin-form-group .admin-label-with-tip > label.cp-visit-toggle {
   display: inline-flex;
