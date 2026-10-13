@@ -109,6 +109,8 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('mw-col-thickness')
             ->assertSee('mw-col-kind')
             ->assertSee('>Melamine</option>', false)
+            ->assertSee('mw-kind-pair', false)
+            ->assertSee('mw-catalog-table--sheets', false)
             ->assertSee('Hinges')
             ->assertSee('Paint')
             ->assertSee('Stain')

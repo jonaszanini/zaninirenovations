@@ -93,7 +93,7 @@
       @foreach (MillworkSettings::catalogSlots() as $slot => $label)
         <h4 class="br-review-heading">{{ $label }}</h4>
         <div class="admin-table-scroll">
-          <table class="admin-table br-config-table mw-catalog-table">
+          <table class="admin-table br-config-table mw-catalog-table{{ $slot === \App\Models\MillworkSettings::SLOT_WOOD_SHEETS ? ' mw-catalog-table--sheets' : '' }}">
             <thead>
               <tr>
                 <th class="mw-col-mat">Materials DB</th>

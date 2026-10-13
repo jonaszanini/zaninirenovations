@@ -45,15 +45,17 @@
       </div>
     </td>
     <td class="mw-col-kind" data-label="Kind">
-      <select class="admin-input" name="{{ $prefix }}[material_kind]">
-        @foreach (MillworkSettings::SHEET_KINDS as $kind => $kindLabel)
-          <option value="{{ $kind }}" @selected(($row['material_kind'] ?? 'plywood') === $kind)>{{ $kindLabel }}</option>
-        @endforeach
-      </select>
-      <select class="admin-input" name="{{ $prefix }}[grade]" style="margin-top:6px;">
-        <option value="cabinet" @selected(($row['grade'] ?? 'cabinet') === 'cabinet')>Cabinet grade</option>
-        <option value="utility" @selected(($row['grade'] ?? '') === 'utility')>Utility</option>
-      </select>
+      <div class="mw-kind-pair">
+        <select class="admin-input" name="{{ $prefix }}[material_kind]" aria-label="Kind">
+          @foreach (MillworkSettings::SHEET_KINDS as $kind => $kindLabel)
+            <option value="{{ $kind }}" @selected(($row['material_kind'] ?? 'plywood') === $kind)>{{ $kindLabel }}</option>
+          @endforeach
+        </select>
+        <select class="admin-input" name="{{ $prefix }}[grade]" aria-label="Grade">
+          <option value="cabinet" @selected(($row['grade'] ?? 'cabinet') === 'cabinet')>Cabinet grade</option>
+          <option value="utility" @selected(($row['grade'] ?? '') === 'utility')>Utility</option>
+        </select>
+      </div>
     </td>
   @elseif ($slot === MillworkSettings::SLOT_PAINTS || $slot === MillworkSettings::SLOT_STAINS)
     <td class="mw-col-size" data-label="Size">
