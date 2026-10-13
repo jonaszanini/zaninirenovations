@@ -46,8 +46,9 @@
     </td>
     <td class="mw-col-kind" data-label="Kind">
       <select class="admin-input" name="{{ $prefix }}[material_kind]">
-        <option value="plywood" @selected(($row['material_kind'] ?? 'plywood') === 'plywood')>Plywood</option>
-        <option value="mdf" @selected(($row['material_kind'] ?? '') === 'mdf')>MDF</option>
+        @foreach (MillworkSettings::SHEET_KINDS as $kind => $kindLabel)
+          <option value="{{ $kind }}" @selected(($row['material_kind'] ?? 'plywood') === $kind)>{{ $kindLabel }}</option>
+        @endforeach
       </select>
       <select class="admin-input" name="{{ $prefix }}[grade]" style="margin-top:6px;">
         <option value="cabinet" @selected(($row['grade'] ?? 'cabinet') === 'cabinet')>Cabinet grade</option>

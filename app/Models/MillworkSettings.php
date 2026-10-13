@@ -32,6 +32,13 @@ class MillworkSettings extends Model
 
     public const SLOT_TRIM = 'trim_stock';
 
+    /** Wood-sheet Kind dropdown. Unknown posted values are stored as plywood. */
+    public const SHEET_KINDS = [
+        'plywood' => 'Plywood',
+        'mdf' => 'MDF',
+        'melamine' => 'Melamine',
+    ];
+
     protected $fillable = [
         'owner_hourly_rate',
         'helper_hourly_rate',
@@ -453,7 +460,7 @@ class MillworkSettings extends Model
             $item['width_in'] = round(max(1, (float) ($row['width_in'] ?? 48)), 4);
             $item['length_in'] = round(max(1, (float) ($row['length_in'] ?? 96)), 4);
             $kind = strtolower(trim((string) ($row['material_kind'] ?? 'plywood')));
-            $item['material_kind'] = in_array($kind, ['plywood', 'mdf'], true) ? $kind : 'plywood';
+            $item['material_kind'] = array_key_exists($kind, self::SHEET_KINDS) ? $kind : 'plywood';
             $grade = strtolower(trim((string) ($row['grade'] ?? 'cabinet')));
             $item['grade'] = in_array($grade, ['cabinet', 'utility'], true) ? $grade : 'cabinet';
             $item['species'] = self::sheetSpecies(array_merge($row, $item));
@@ -591,6 +598,9 @@ class MillworkSettings extends Model
         if (str_contains($id, 'birch_5x5') || str_contains($name, '5×5') || str_contains($name, '5x5')) {
             return 'baltic_5x5';
         }
+        if (($row['material_kind'] ?? '') === 'melamine' || str_contains($name, 'melamine')) {
+            return 'melamine';
+        }
         if (($row['material_kind'] ?? '') === 'mdf' || str_starts_with($id, 'ws_mdf_') || str_contains($name, 'mdf')) {
             return 'mdf';
         }
@@ -622,6 +632,7 @@ class MillworkSettings extends Model
             'cabinet_ply',
             'utility_ply',
             'mdf',
+            'melamine',
             'baltic_birch',
             'baltic_bb_bb',
             'baltic_b_bb',

@@ -108,6 +108,7 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('mw-col-dims')
             ->assertSee('mw-col-thickness')
             ->assertSee('mw-col-kind')
+            ->assertSee('>Melamine</option>', false)
             ->assertSee('Hinges')
             ->assertSee('Paint')
             ->assertSee('Stain')
@@ -119,6 +120,29 @@ class MillworkQuotationPagesTest extends IntegrationTestCase
             ->assertSee('>Catalog</button>', false)
             ->assertSee('>Cut settings</button>', false)
             ->assertSee('Save configuration');
+    }
+
+    public function test_melamine_sheet_kind_is_stored_and_not_grouped_with_plywood(): void
+    {
+        $settings = new MillworkSettings();
+        $settings->catalog = [
+            MillworkSettings::SLOT_WOOD_SHEETS => [[
+                'id' => 'ws_ply_34_cab_48x96',
+                'name' => '3/4" cabinet-grade plywood 4×8',
+                'unit' => 'sheet',
+                'unit_price' => 40,
+                'thickness_in' => 0.75,
+                'width_in' => 48,
+                'length_in' => 96,
+                'material_kind' => 'melamine',
+                'grade' => 'cabinet',
+            ]],
+        ];
+
+        $sheet = $settings->resolvedCatalog()[MillworkSettings::SLOT_WOOD_SHEETS][0];
+        $this->assertSame('melamine', $sheet['material_kind']);
+        $this->assertSame('melamine', MillworkSettings::sheetSpecies($sheet));
+        $this->assertTrue(MillworkSettings::allowsSyntheticSheetSwap($sheet));
     }
 
     public function test_project_context_sits_between_price_configuration_and_next(): void
