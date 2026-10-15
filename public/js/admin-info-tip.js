@@ -901,6 +901,9 @@
       if (heading) {
         wrapHeadingCopy(heading, tip);
       }
+      if (heading && heading.classList && heading.classList.contains('q-additional-costs-card__title')) {
+        return;
+      }
       glueLastTextNode(tip, 'admin-label-with-tip__end');
     });
   }

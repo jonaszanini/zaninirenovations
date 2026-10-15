@@ -52,20 +52,24 @@
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }
-    .q-ac-hst-toggle.cp-visit-toggle {
+    .admin-form-group label.q-ac-hst-toggle.cp-visit-toggle {
       display: inline-flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      justify-content: center;
-      gap: 3px;
+      justify-content: flex-start;
+      gap: 8px;
       min-height: 44px;
-      min-width: 64px;
+      min-width: 0;
+      margin-bottom: 0;
+    }
+    .q-ac-hst-toggle .cp-visit-toggle__control {
+      margin-right: 0;
     }
     .q-ac-hst-toggle .cp-visit-toggle__label {
       margin: 0;
-      font-size: 0.68rem;
+      font-size: 0.75rem;
       font-weight: 600;
-      line-height: 1.1;
+      line-height: 1.2;
       white-space: nowrap;
       color: var(--admin-muted);
     }
@@ -91,10 +95,14 @@
     .q-trade-lines { margin-top: 16px; }
     .q-trade-lines .q-additional-costs-card__intro { margin-bottom: 12px; }
     .q-additional-costs-card__title {
+      display: block;
       margin: 0 0 6px;
       font-size: 1.05rem;
       font-weight: 700;
       color: var(--admin-heading);
+    }
+    .q-additional-costs-card__title .admin-heading-copy {
+      display: inline;
     }
     .q-additional-costs-card__intro { margin: 0 0 14px; }
     @media (max-width: 900px) {
