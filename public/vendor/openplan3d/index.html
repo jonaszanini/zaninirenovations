@@ -99,6 +99,139 @@
 				background-color: #f1f5f9 !important;
 				color: #0f172a !important;
 			}
+
+			/* Catalog Category Tags / Pills Layout & Dark Mode Enhancements */
+			div[class*="max-h-24"],
+			.flex.flex-wrap.max-h-24 {
+				max-height: 125px !important;
+				display: flex !important;
+				flex-wrap: wrap !important;
+				gap: 5px 6px !important;
+				padding: 4px 4px 6px 1px !important;
+				margin-top: 4px !important;
+				margin-bottom: 6px !important;
+				align-items: center !important;
+				scrollbar-width: thin !important;
+				scrollbar-color: rgba(148, 163, 184, 0.3) transparent !important;
+			}
+
+			div[class*="max-h-24"]::-webkit-scrollbar,
+			.flex.flex-wrap.max-h-24::-webkit-scrollbar {
+				width: 4px !important;
+				height: 4px !important;
+			}
+
+			div[class*="max-h-24"]::-webkit-scrollbar-track,
+			.flex.flex-wrap.max-h-24::-webkit-scrollbar-track {
+				background: transparent !important;
+			}
+
+			div[class*="max-h-24"]::-webkit-scrollbar-thumb,
+			.flex.flex-wrap.max-h-24::-webkit-scrollbar-thumb {
+				background: rgba(148, 163, 184, 0.25) !important;
+				border-radius: 9999px !important;
+			}
+
+			div[class*="max-h-24"]::-webkit-scrollbar-thumb:hover,
+			.flex.flex-wrap.max-h-24::-webkit-scrollbar-thumb:hover {
+				background: rgba(148, 163, 184, 0.5) !important;
+			}
+
+			/* Base Tag Button Styling */
+			div[class*="max-h-24"] > button,
+			.flex.flex-wrap.max-h-24 > button {
+				font-size: 11px !important;
+				line-height: 1.25 !important;
+				font-weight: 500 !important;
+				padding: 3.5px 9px !important;
+				border-radius: 9999px !important;
+				letter-spacing: 0.01em !important;
+				display: inline-flex !important;
+				align-items: center !important;
+				justify-content: center !important;
+				white-space: nowrap !important;
+				cursor: pointer !important;
+				user-select: none !important;
+				transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease !important;
+			}
+
+			/* Light Mode Inactive Tags */
+			html:not(.dark) div[class*="max-h-24"] > button.text-gray-600,
+			html:not(.dark) .flex.flex-wrap.max-h-24 > button.text-gray-600 {
+				border: 1px solid #e2e8f0 !important;
+				color: #475569 !important;
+			}
+
+			html:not(.dark) div[class*="max-h-24"] > button.text-gray-600:hover,
+			html:not(.dark) .flex.flex-wrap.max-h-24 > button.text-gray-600:hover {
+				background-color: #e2e8f0 !important;
+				color: #0f172a !important;
+				border-color: #cbd5e1 !important;
+			}
+
+			/* Dark Mode Inactive Tags (Readable contrast, dark slate surface) */
+			html.dark div[class*="max-h-24"] > button.text-gray-600,
+			html.dark div[class*="max-h-24"] > button:not(.text-white):not([class*="bg-blue-"]):not([class*="bg-pink-"]),
+			html.dark .flex.flex-wrap.max-h-24 > button.text-gray-600,
+			html.dark .flex.flex-wrap.max-h-24 > button:not(.text-white):not([class*="bg-blue-"]):not([class*="bg-pink-"]) {
+				background-color: #1e293b !important;
+				color: #f1f5f9 !important;
+				border: 1px solid #334155 !important;
+				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+			}
+
+			/* Dark Mode Inactive Tags: Hover */
+			html.dark div[class*="max-h-24"] > button.text-gray-600:hover,
+			html.dark div[class*="max-h-24"] > button:not(.text-white):not([class*="bg-blue-"]):not([class*="bg-pink-"]):hover,
+			html.dark .flex.flex-wrap.max-h-24 > button.text-gray-600:hover,
+			html.dark .flex.flex-wrap.max-h-24 > button:not(.text-white):not([class*="bg-blue-"]):not([class*="bg-pink-"]):hover {
+				background-color: #334155 !important;
+				color: #ffffff !important;
+				border-color: #475569 !important;
+				transform: translateY(-1px) !important;
+				box-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.4) !important;
+			}
+
+			/* Dark Mode Active "All" Tag */
+			html.dark div[class*="max-h-24"] > button[class*="bg-blue-"],
+			html.dark .flex.flex-wrap.max-h-24 > button[class*="bg-blue-"] {
+				background-color: #2563eb !important;
+				color: #ffffff !important;
+				font-weight: 600 !important;
+				border: 1px solid #60a5fa !important;
+				box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45) !important;
+			}
+
+			/* Dark Mode Active "Favorites" Tag */
+			html.dark div[class*="max-h-24"] > button[class*="bg-pink-"],
+			html.dark .flex.flex-wrap.max-h-24 > button[class*="bg-pink-"] {
+				background-color: #db2777 !important;
+				color: #ffffff !important;
+				font-weight: 600 !important;
+				border: 1px solid #f472b6 !important;
+				box-shadow: 0 2px 8px rgba(219, 39, 119, 0.45) !important;
+			}
+
+			/* Dark Mode Active Category Tags (.text-white with inline category color) */
+			html.dark div[class*="max-h-24"] > button.text-white,
+			html.dark .flex.flex-wrap.max-h-24 > button.text-white {
+				color: #ffffff !important;
+				font-weight: 600 !important;
+				border: 1px solid rgba(255, 255, 255, 0.35) !important;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+				text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+			}
+
+			/* Dark Mode Active Tags: Hover */
+			html.dark div[class*="max-h-24"] > button.text-white:hover,
+			html.dark div[class*="max-h-24"] > button[class*="bg-blue-"]:hover,
+			html.dark div[class*="max-h-24"] > button[class*="bg-pink-"]:hover,
+			html.dark .flex.flex-wrap.max-h-24 > button.text-white:hover,
+			html.dark .flex.flex-wrap.max-h-24 > button[class*="bg-blue-"]:hover,
+			html.dark .flex.flex-wrap.max-h-24 > button[class*="bg-pink-"]:hover {
+				filter: brightness(1.12) !important;
+				transform: translateY(-1px) !important;
+			}
 		</style>
 	</head>
 	<body data-sveltekit-preload-data="hover">
