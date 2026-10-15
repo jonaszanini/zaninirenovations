@@ -98,6 +98,11 @@
         <span class="openplan3d-btn-label">Guide</span>
       </a>
 
+      <button type="button" class="admin-btn admin-btn--ghost openplan3d-tool-btn" id="openplan3d-theme-toggle" aria-label="Toggle dark/light theme" title="Toggle dark/light theme">
+        <i class="fa fa-moon-o" data-theme-icon="moon" aria-hidden="true"></i>
+        <i class="fa fa-sun-o" data-theme-icon="sun" aria-hidden="true" hidden></i>
+      </button>
+
       <a href="#" class="admin-btn admin-btn--ghost openplan3d-tool-btn" id="openplan3d-quote-btn" hidden title="Create or add lines to a quotation">
         <i class="fa fa-file-text-o" aria-hidden="true"></i>
         <span class="openplan3d-btn-label">Quote</span>
@@ -201,7 +206,7 @@
   height: 100vh;
   height: 100dvh;
   min-height: 0;
-  background: var(--admin-card-bg, #ffffff);
+  background: var(--admin-surface, #ffffff);
   border: none;
   border-radius: 0;
   overflow: hidden;
@@ -214,7 +219,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.5rem 1rem;
-  background: var(--admin-header-bg, #f8fafc);
+  background: var(--admin-surface, #f8fafc);
   border-bottom: 1px solid var(--admin-border, #e2e8f0);
   flex-wrap: wrap;
   min-height: 58px;
@@ -518,28 +523,204 @@
   }
 }
 
-/* Dark mode overrides if dark theme applied */
-body.dark .openplan3d-metrics-ribbon,
-[data-theme="dark"] .openplan3d-metrics-ribbon {
-  background: #1e293b;
-  border-color: #334155;
-}
-
-body.dark .openplan3d-metric-card,
-[data-theme="dark"] .openplan3d-metric-card {
+/* Dark mode overrides (html.admin-dark, body.admin-dark) */
+html.admin-dark .util-ra-openplan3d-wrap,
+body.admin-dark .util-ra-openplan3d-wrap,
+.admin-dark .util-ra-openplan3d-wrap {
   background: #0f172a;
-  border-color: #334155;
+  color: #e2e8f0;
 }
 
-body.dark .openplan3d-metric-val,
-[data-theme="dark"] .openplan3d-metric-val {
+html.admin-dark .util-ra-openplan3d-header,
+body.admin-dark .util-ra-openplan3d-header,
+.admin-dark .util-ra-openplan3d-header {
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+}
+
+html.admin-dark .util-ra-openplan3d-title,
+body.admin-dark .util-ra-openplan3d-title,
+.admin-dark .util-ra-openplan3d-title {
   color: #f8fafc;
 }
 
-body.dark .openplan3d-settings-drawer,
-[data-theme="dark"] .openplan3d-settings-drawer {
+html.admin-dark .util-ra-openplan3d-sub,
+body.admin-dark .util-ra-openplan3d-sub,
+.admin-dark .util-ra-openplan3d-sub {
+  color: #94a3b8;
+}
+
+html.admin-dark .util-ra-badge--openplan3d,
+body.admin-dark .util-ra-badge--openplan3d,
+.admin-dark .util-ra-badge--openplan3d {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+html.admin-dark .openplan3d-dirty-badge,
+body.admin-dark .openplan3d-dirty-badge,
+.admin-dark .openplan3d-dirty-badge {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+html.admin-dark .openplan3d-dirty-dot,
+body.admin-dark .openplan3d-dirty-dot,
+.admin-dark .openplan3d-dirty-dot {
+  background-color: #f59e0b;
+}
+
+html.admin-dark .openplan3d-control-label,
+body.admin-dark .openplan3d-control-label,
+.admin-dark .openplan3d-control-label {
+  color: #94a3b8;
+}
+
+html.admin-dark .openplan3d-select,
+html.admin-dark .openplan3d-input,
+body.admin-dark .openplan3d-select,
+body.admin-dark .openplan3d-input,
+.admin-dark .openplan3d-select,
+.admin-dark .openplan3d-input {
+  background: #090e17;
+  border: 1px solid #334155;
+  color: #f8fafc;
+}
+
+html.admin-dark .openplan3d-select:focus,
+html.admin-dark .openplan3d-input:focus,
+body.admin-dark .openplan3d-select:focus,
+body.admin-dark .openplan3d-input:focus,
+.admin-dark .openplan3d-select:focus,
+.admin-dark .openplan3d-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+  outline: none;
+}
+
+html.admin-dark .util-ra-openplan3d-header .admin-btn--ghost,
+body.admin-dark .util-ra-openplan3d-header .admin-btn--ghost,
+.admin-dark .util-ra-openplan3d-header .admin-btn--ghost,
+html.admin-dark .util-ra-openplan3d-header .openplan3d-tool-btn,
+body.admin-dark .util-ra-openplan3d-header .openplan3d-tool-btn,
+.admin-dark .util-ra-openplan3d-header .openplan3d-tool-btn,
+html.admin-dark .openplan3d-settings-drawer .admin-btn--ghost,
+body.admin-dark .openplan3d-settings-drawer .admin-btn--ghost,
+.admin-dark .openplan3d-settings-drawer .admin-btn--ghost {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+}
+
+html.admin-dark .util-ra-openplan3d-header .admin-btn--ghost:hover,
+body.admin-dark .util-ra-openplan3d-header .admin-btn--ghost:hover,
+.admin-dark .util-ra-openplan3d-header .admin-btn--ghost:hover,
+html.admin-dark .util-ra-openplan3d-header .openplan3d-tool-btn:hover,
+body.admin-dark .util-ra-openplan3d-header .openplan3d-tool-btn:hover,
+.admin-dark .util-ra-openplan3d-header .openplan3d-tool-btn:hover,
+html.admin-dark .openplan3d-settings-drawer .admin-btn--ghost:hover,
+body.admin-dark .openplan3d-settings-drawer .admin-btn--ghost:hover,
+.admin-dark .openplan3d-settings-drawer .admin-btn--ghost:hover {
+  background: #334155;
+  border-color: #475569;
+  color: #ffffff;
+}
+
+html.admin-dark .openplan3d-save-btn,
+body.admin-dark .openplan3d-save-btn,
+.admin-dark .openplan3d-save-btn {
+  background: #0284c7;
+  border: 1px solid #38bdf8;
+  color: #ffffff;
+}
+
+html.admin-dark .openplan3d-save-btn:hover:not(:disabled),
+body.admin-dark .openplan3d-save-btn:hover:not(:disabled),
+.admin-dark .openplan3d-save-btn:hover:not(:disabled) {
+  background: #0369a1;
+  border-color: #7dd3fc;
+  color: #ffffff;
+}
+
+html.admin-dark .openplan3d-save-btn:disabled,
+body.admin-dark .openplan3d-save-btn:disabled,
+.admin-dark .openplan3d-save-btn:disabled {
   background: #1e293b;
   border-color: #334155;
+  color: #64748b;
+  opacity: 0.55;
+}
+
+html.admin-dark .openplan3d-settings-drawer,
+body.admin-dark .openplan3d-settings-drawer,
+.admin-dark .openplan3d-settings-drawer {
+  background: #111a2c;
+  border-bottom: 1px solid #1e293b;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+html.admin-dark .openplan3d-setting-item label,
+body.admin-dark .openplan3d-setting-item label,
+.admin-dark .openplan3d-setting-item label {
+  color: #94a3b8;
+}
+
+html.admin-dark .openplan3d-setting-item input,
+body.admin-dark .openplan3d-setting-item input,
+.admin-dark .openplan3d-setting-item input {
+  background: #090e17;
+  border: 1px solid #334155;
+  color: #f8fafc;
+}
+
+html.admin-dark .openplan3d-metrics-ribbon,
+body.admin-dark .openplan3d-metrics-ribbon,
+.admin-dark .openplan3d-metrics-ribbon {
+  background: #070b12;
+  border-bottom: 1px solid #1e293b;
+}
+
+html.admin-dark .openplan3d-metric-card,
+body.admin-dark .openplan3d-metric-card,
+.admin-dark .openplan3d-metric-card {
+  background: #131c2e;
+  border: 1px solid #243247;
+}
+
+html.admin-dark .openplan3d-metric-label,
+body.admin-dark .openplan3d-metric-label,
+.admin-dark .openplan3d-metric-label {
+  color: #94a3b8;
+}
+
+html.admin-dark .openplan3d-metric-val,
+body.admin-dark .openplan3d-metric-val,
+.admin-dark .openplan3d-metric-val {
+  color: #38bdf8;
+}
+
+html.admin-dark .openplan3d-metric-unit,
+body.admin-dark .openplan3d-metric-unit,
+.admin-dark .openplan3d-metric-unit {
+  color: #64748b;
+}
+
+html.admin-dark .openplan3d-feedback--success,
+body.admin-dark .openplan3d-feedback--success,
+.admin-dark .openplan3d-feedback--success {
+  background: rgba(74, 222, 128, 0.14);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+html.admin-dark .openplan3d-feedback--error,
+body.admin-dark .openplan3d-feedback--error,
+.admin-dark .openplan3d-feedback--error {
+  background: rgba(248, 113, 113, 0.14);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
 }
 </style>
 
@@ -1068,6 +1249,38 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
   });
+
+  // Theme toggle button support for full-page mode
+  var themeToggleBtn = document.getElementById('openplan3d-theme-toggle');
+  if (themeToggleBtn) {
+    function syncThemeButton() {
+      var isDark = document.documentElement.classList.contains('admin-dark');
+      var moon = themeToggleBtn.querySelector('[data-theme-icon="moon"]');
+      var sun = themeToggleBtn.querySelector('[data-theme-icon="sun"]');
+      if (moon) moon.hidden = isDark;
+      if (sun) sun.hidden = !isDark;
+      themeToggleBtn.setAttribute('title', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+      themeToggleBtn.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+    }
+
+    syncThemeButton();
+
+    themeToggleBtn.addEventListener('click', function () {
+      var wasDark = document.documentElement.classList.contains('admin-dark');
+      var nowDark = !wasDark;
+      document.documentElement.classList.toggle('admin-dark', nowDark);
+      if (document.body) {
+        document.body.classList.toggle('admin-dark', nowDark);
+      }
+      try {
+        localStorage.setItem('zanini-admin-theme', nowDark ? 'dark' : 'light');
+      } catch (e) {}
+      syncThemeButton();
+      document.dispatchEvent(new CustomEvent('admin-theme-change', { detail: { dark: nowDark } }));
+    });
+
+    document.addEventListener('admin-theme-change', syncThemeButton);
+  }
 
   // Kick off initial setup
   initializeSelection();

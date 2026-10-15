@@ -1733,6 +1733,130 @@ html.admin-dark .util-ra--fullpage .util-ra-controls {
   background: var(--admin-surface);
 }
 
+html.admin-dark .util-ra-openplan3d-wrap {
+  background: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-openplan3d-header {
+  background: var(--admin-bg);
+  border-bottom-color: var(--admin-border);
+}
+
+html.admin-dark .util-ra-openplan3d-title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .util-ra-openplan3d-sub {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .util-ra-badge--openplan3d {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+html.admin-dark .openplan3d-dirty-badge {
+  background: var(--admin-warn-tile-bg);
+  color: var(--admin-warn-tile-text);
+  border-color: var(--admin-warn-tile-border);
+}
+
+html.admin-dark .openplan3d-dirty-dot {
+  background-color: #f59e0b;
+}
+
+html.admin-dark .openplan3d-control-label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .openplan3d-select,
+html.admin-dark .openplan3d-input {
+  background: #090e17;
+  border-color: var(--admin-border);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .openplan3d-select:focus,
+html.admin-dark .openplan3d-input:focus {
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}
+
+html.admin-dark .util-ra-openplan3d-header .admin-btn--ghost,
+html.admin-dark .util-ra-openplan3d-header .openplan3d-tool-btn,
+html.admin-dark .openplan3d-settings-drawer .admin-btn--ghost {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+html.admin-dark .util-ra-openplan3d-header .admin-btn--ghost:hover,
+html.admin-dark .util-ra-openplan3d-header .openplan3d-tool-btn:hover,
+html.admin-dark .openplan3d-settings-drawer .admin-btn--ghost:hover {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+  color: #ffffff;
+}
+
+html.admin-dark .openplan3d-save-btn {
+  background: #0284c7;
+  border-color: var(--admin-primary);
+  color: #ffffff;
+}
+
+html.admin-dark .openplan3d-save-btn:hover:not(:disabled) {
+  background: #0369a1;
+  border-color: var(--admin-primary-hover);
+  color: #ffffff;
+}
+
+html.admin-dark .openplan3d-save-btn:disabled {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+  opacity: 0.55;
+}
+
+html.admin-dark .openplan3d-settings-drawer {
+  background: var(--admin-surface);
+  border-bottom-color: var(--admin-border);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+html.admin-dark .openplan3d-setting-item label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .openplan3d-setting-item input {
+  background: #090e17;
+  border-color: var(--admin-border);
+  color: var(--admin-heading);
+}
+
+html.admin-dark .openplan3d-metrics-ribbon {
+  background: #070b12;
+  border-bottom-color: var(--admin-border);
+}
+
+html.admin-dark .openplan3d-metric-card {
+  background: #131c2e;
+  border-color: #243247;
+}
+
+html.admin-dark .openplan3d-metric-label {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .openplan3d-metric-val {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .openplan3d-metric-unit {
+  color: #64748b;
+}
+
 html.admin-dark .util-ra-sheet-handle__bar {
   background: var(--admin-muted);
 }
