@@ -40,6 +40,10 @@ class UtilitiesRoomAreaPageTest extends IntegrationTestCase
             ->assertSee('Testing full page room area')
             ->assertSee('admin-dark.css', false)
             ->assertSee('id="admin-app"', false)
+            ->assertSee('admin-body--fullscreen', false)
+            ->assertSee('admin-app--fullscreen', false)
+            ->assertDontSee('class="admin-sidebar"', false)
+            ->assertDontSee('class="admin-topbar"', false)
             ->getContent();
 
         $this->assertStringContainsString(route('admin.utilities.index', [], false), $html);
@@ -53,7 +57,9 @@ class UtilitiesRoomAreaPageTest extends IntegrationTestCase
         $this->get(route('admin.utilities.index'))
             ->assertOk()
             ->assertSee('Room Area')
-            ->assertSee(route('admin.utilities.room-area', [], false), false);
+            ->assertSee(route('admin.utilities.room-area', [], false), false)
+            ->assertSee('target="_blank"', false)
+            ->assertSee('rel="noopener"', false);
     }
 
     public function test_unlinked_quote_picker_backs_to_standalone_full_page(): void

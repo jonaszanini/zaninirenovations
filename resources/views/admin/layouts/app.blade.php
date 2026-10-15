@@ -43,13 +43,14 @@
   @stack('head')
   <link rel="stylesheet" href="{{ asset('css/admin-dark.css') }}?v={{ @filemtime(public_path('css/admin-dark.css')) ?: time() }}">
 </head>
-<body class="admin-body">
+<body class="admin-body @if(View::hasSection('no_sidebar')) admin-body--fullscreen @endif">
   <script>
     if (document.documentElement.classList.contains('admin-dark')) {
       document.body.classList.add('admin-dark');
     }
   </script>
-  <div class="admin-app" id="admin-app">
+  <div class="admin-app @if(View::hasSection('no_sidebar')) admin-app--fullscreen admin-app--no-sidebar @endif" id="admin-app">
+    @unless (View::hasSection('no_sidebar'))
     <div class="admin-nav-backdrop" id="admin-nav-backdrop" aria-hidden="true" hidden></div>
     <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
       <div class="admin-sidebar-brand">
@@ -331,7 +332,9 @@
         </form>
       </div>
     </aside>
+    @endunless
     <div class="admin-main">
+      @unless (View::hasSection('no_sidebar'))
       <header class="admin-topbar">
         <div class="admin-topbar-inner">
           <button type="button" class="admin-menu-toggle" id="admin-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="admin-sidebar">
@@ -346,6 +349,7 @@
           </button>
         </div>
       </header>
+      @endunless
       <main class="admin-content">
         @if (session('success'))
           <div class="admin-flash admin-flash--success" data-admin-flash="success">{{ session('success') }}</div>

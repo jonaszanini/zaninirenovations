@@ -56,6 +56,7 @@ class UtilitiesController extends Controller
                 'icon' => 'room_area',
                 'route' => route('admin.utilities.room-area'),
                 'available' => true,
+                'target' => '_blank',
             ],
         ];
 

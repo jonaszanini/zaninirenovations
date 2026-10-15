@@ -8,6 +8,7 @@
       'items' => $linkedUtilities['room_area'] ?? [],
       'new_url' => $links['room_area'] ?? route('admin.client-projects.utilities.room-area', $project),
       'new_label' => 'Open Room Area tool',
+      'target' => '_blank',
     ],
     'measurement' => [
       'title' => 'Measurement Conversion',
@@ -54,7 +55,7 @@
       </p>
       <div class="cp-utilities-empty__actions">
         @foreach ($sections as $section)
-          <a href="{{ $section['new_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm">
+          <a href="{{ $section['new_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm" @if (!empty($section['target'])) target="{{ $section['target'] }}" rel="noopener" @endif>
             <i class="fa {{ $section['icon'] }}" aria-hidden="true"></i> {{ $section['new_label'] }}
           </a>
         @endforeach
@@ -70,7 +71,7 @@
               {{ $section['title'] }}
               <span class="cp-utilities-section__count">{{ count($section['items']) }}</span>
             </h3>
-            <a href="{{ $section['new_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm">{{ $section['new_label'] }}</a>
+            <a href="{{ $section['new_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm" @if (!empty($section['target'])) target="{{ $section['target'] }}" rel="noopener" @endif>{{ $section['new_label'] }}</a>
           </div>
 
           <div class="cp-utilities-list">
@@ -111,7 +112,7 @@
                       </p>
                     @endif
                   </div>
-                  <a href="{{ $item['open_url'] }}" class="admin-btn admin-btn--primary admin-btn--sm cp-utilities-item__open">
+                  <a href="{{ $item['open_url'] }}" class="admin-btn admin-btn--primary admin-btn--sm cp-utilities-item__open" @if ($key === 'room_area') target="_blank" rel="noopener" @endif>
                     <i class="fa fa-external-link" aria-hidden="true"></i> Open
                   </a>
                 </div>
@@ -129,7 +130,7 @@
                             <a href="{{ $room['pdf_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm cp-utilities-item__pdf" target="_blank" rel="noopener">PDF</a>
                           @endif
                           @if (!empty($room['open_url']))
-                            <a href="{{ $room['open_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm">Open</a>
+                            <a href="{{ $room['open_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener">Open</a>
                           @endif
                         </span>
                       </li>

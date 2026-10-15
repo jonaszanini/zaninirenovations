@@ -10,7 +10,7 @@
   <div class="ic-model-grid">
     @foreach ($tools as $tool)
       @if ($tool['available'])
-        <a href="{{ $tool['route'] }}" class="admin-card ic-model-card">
+        <a href="{{ $tool['route'] }}" class="admin-card ic-model-card" @if (!empty($tool['target'])) target="{{ $tool['target'] }}" rel="noopener" @endif>
           <span class="ic-model-card__icon">
             @include('admin.utilities._tool_icon_' . $tool['icon'])
           </span>

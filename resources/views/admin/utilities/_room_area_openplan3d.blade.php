@@ -17,7 +17,7 @@
     : route('admin.utilities.room-area.guide', $guideQuery);
 @endphp
 
-<div class="util-ra-openplan3d-wrap"
+<div class="util-ra-openplan3d-wrap util-ra--fullpage"
   data-room-area-openplan3d
   data-projects="{{ json_encode($projectsJson ?? []) }}"
   data-client-projects="{{ json_encode(collect($clientProjects ?? [])->map(fn ($p) => ['id' => $p->id, 'name' => method_exists($p, 'linkSelectLabel') ? $p->linkSelectLabel() : ($p->name ?? 'Project #'.$p->id)])) }}"
@@ -196,12 +196,14 @@
 .util-ra-openplan3d-wrap {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  height: calc(100vh - 100px);
-  min-height: 600px;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   background: var(--admin-card-bg, #ffffff);
-  border: 1px solid var(--admin-border, #e2e8f0);
-  border-radius: 10px;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
 }
@@ -484,10 +486,10 @@
 
 @media (max-width: 768px) {
   .util-ra-openplan3d-wrap {
-    height: calc(100vh - 75px);
+    height: 100vh;
+    height: 100dvh;
     border-radius: 0;
-    border-left: 0;
-    border-right: 0;
+    border: none;
   }
 
   .util-ra-openplan3d-header {

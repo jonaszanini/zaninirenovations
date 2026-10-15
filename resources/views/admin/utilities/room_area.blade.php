@@ -1,6 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('heading', 'Room Area')
+@section('no_sidebar', true)
 
 @push('head')
   <link rel="stylesheet" href="{{ asset('css/admin-utilities.css') }}?v={{ @filemtime(public_path('css/admin-utilities.css')) ?: time() }}">

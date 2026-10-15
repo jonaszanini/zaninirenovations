@@ -38,6 +38,10 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             ->assertSee('Kitchen remodel')
             ->assertSee('admin-dark.css', false)
             ->assertSee('id="admin-app"', false)
+            ->assertSee('admin-body--fullscreen', false)
+            ->assertSee('admin-app--fullscreen', false)
+            ->assertDontSee('class="admin-sidebar"', false)
+            ->assertDontSee('class="admin-topbar"', false)
             ->assertSee('data-ra-help-guide', false)
             ->assertDontSee('Coming soon')
             ->assertSee(route('admin.client-projects.utilities.room-area.guide', $project, false), false);
@@ -157,6 +161,8 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString($pageUrl, $html);
         $this->assertStringContainsString($roomUrl, $html);
         $this->assertStringContainsString('Open Room Area tool', $html);
+        $this->assertStringContainsString('target="_blank"', $html);
+        $this->assertStringContainsString('rel="noopener"', $html);
         $this->assertStringNotContainsString('data-ra-canvas-wrap', $html);
         $this->assertStringNotContainsString('id="ra-konva-container"', $html);
     }

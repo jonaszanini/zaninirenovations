@@ -861,8 +861,14 @@
           <input class="admin-input" type="text" id="cp-refund-note" name="refund_note" maxlength="500" placeholder="Cancellation, kept deposit, …">
         </div>
         @if ($refundCanEmail)
-          <label class="admin-checkbox">
-            <input type="checkbox" name="also_email_refund" value="1" checked>
+          <label class="admin-checkbox cp-checkbox-row">
+            <input type="hidden" name="also_email_refund" value="0">
+            <input type="checkbox"
+                   class="admin-checkbox__input"
+                   id="cp-refund-email"
+                   name="also_email_refund"
+                   value="1"
+                   checked>
             <span class="admin-checkbox__mark" aria-hidden="true"></span>
             <span class="admin-checkbox__text">Email refund receipt to {{ $project->clientEmailRecipientsLabel() }}</span>
           </label>
