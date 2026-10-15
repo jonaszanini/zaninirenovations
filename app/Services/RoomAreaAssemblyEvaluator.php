@@ -130,7 +130,12 @@ class RoomAreaAssemblyEvaluator
             $error = $result['error'];
         }
 
-        $material = $line->relationLoaded('material') ? $line->material : $line->material()->first();
+        $material = null;
+        if ($line->relationLoaded('material')) {
+            $material = $line->material;
+        } elseif ($line->material_id !== null) {
+            $material = $line->material()->first();
+        }
 
         return [
             'id' => $line->id,

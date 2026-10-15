@@ -151,6 +151,7 @@ class OpenPlan3DParityTest extends TestCase
                     'unit' => $lineDef['unit'],
                     'whole_units' => $lineDef['whole_units'],
                 ]);
+                $line->setRelation('material', null);
                 $lines[] = $line;
             }
             $assembly->setRelation('lines', collect($lines));
@@ -169,6 +170,9 @@ class OpenPlan3DParityTest extends TestCase
             new RoomAreaAssemblyLine(['name' => 'Drywall Cuts per Opening', 'formula' => 'drywall_openings * 4', 'unit' => 'ea', 'whole_units' => true]),
             new RoomAreaAssemblyLine(['name' => 'Total Wall Area Over 32', 'formula' => 'wall_area_sqft / 32', 'unit' => 'ea', 'whole_units' => false]),
         ];
+        foreach ($customLines as $customLine) {
+            $customLine->setRelation('material', null);
+        }
         $customKit->setRelation('lines', collect($customLines));
         $assemblies[] = $customKit;
 
