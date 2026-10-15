@@ -51,8 +51,10 @@ class MarkInvoicePaidService
             return ['ok' => false, 'error' => 'This invoice does not belong to that project.'];
         }
 
-        if ($invoice->isPaid()) {
-            return ['ok' => false, 'error' => 'This invoice is already marked paid.'];
+        if ($invoice->isPaid() || $invoice->isRefunded()) {
+            return ['ok' => false, 'error' => $invoice->isRefunded()
+                ? 'This invoice has been refunded.'
+                : 'This invoice is already marked paid.'];
         }
 
         if (! $invoice->hasContent() || (float) $invoice->total <= 0) {

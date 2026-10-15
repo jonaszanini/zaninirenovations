@@ -23,7 +23,7 @@ class AdminDashboardService
 {
     private const CACHE_TTL_SECONDS = 120;
 
-    private const CACHE_KEY = 'admin_dashboard_payload_v3';
+    private const CACHE_KEY = 'admin_dashboard_payload_v4';
 
     public function build(bool $refresh = false): array
     {
@@ -236,7 +236,7 @@ class AdminDashboardService
         $rev = (float) ClientProjectInvoice::query()
             ->where('status', ClientProjectInvoice::STATUS_PAID)
             ->whereBetween('paid_at', [$yearStart, $now])
-            ->sum('paid_amount');
+            ->sum(\Illuminate\Support\Facades\DB::raw(ClientProjectInvoice::netCollectedCashSql()));
 
         if ($rev <= 0) {
             return null;
@@ -348,7 +348,7 @@ class AdminDashboardService
             $monthRevenue[] = round((float) ClientProjectInvoice::query()
                 ->where('status', ClientProjectInvoice::STATUS_PAID)
                 ->whereBetween('paid_at', [$ms, $me])
-                ->sum('paid_amount'), 2);
+                ->sum(\Illuminate\Support\Facades\DB::raw(ClientProjectInvoice::netCollectedCashSql())), 2);
 
             $monthCosts[] = round((float) ClientProjectExpense::query()
                 ->whereBetween('occurred_on', [$ms->toDateString(), $me->toDateString()])
@@ -362,7 +362,7 @@ class AdminDashboardService
         $ytdRevenue = (float) ClientProjectInvoice::query()
             ->where('status', ClientProjectInvoice::STATUS_PAID)
             ->whereBetween('paid_at', [$yearStart, $ytdEnd])
-            ->sum('paid_amount');
+            ->sum(\Illuminate\Support\Facades\DB::raw(ClientProjectInvoice::netCollectedCashSql()));
 
         $ytdCosts = (float) ClientProjectExpense::query()
             ->whereBetween('occurred_on', [$yearStart->toDateString(), $ytdEnd->toDateString()])
@@ -379,7 +379,7 @@ class AdminDashboardService
         $prevYearRevenue = (float) ClientProjectInvoice::query()
             ->where('status', ClientProjectInvoice::STATUS_PAID)
             ->whereBetween('paid_at', [$prevStart, $prevEnd])
-            ->sum('paid_amount');
+            ->sum(\Illuminate\Support\Facades\DB::raw(ClientProjectInvoice::netCollectedCashSql()));
 
         $ytdCollected = $ytdRevenue;
 
@@ -413,7 +413,7 @@ class AdminDashboardService
         $cashThisMonth = (float) ClientProjectInvoice::query()
             ->where('status', ClientProjectInvoice::STATUS_PAID)
             ->whereBetween('paid_at', [$monthStart, $now])
-            ->sum('paid_amount');
+            ->sum(\Illuminate\Support\Facades\DB::raw(ClientProjectInvoice::netCollectedCashSql()));
 
         $withValue = $projects->filter(fn (ClientProject $p) => (float) ($p->total_amount ?? 0) > 0
             && $p->isAccepted());
@@ -424,7 +424,7 @@ class AdminDashboardService
         $ytdRev = (float) ClientProjectInvoice::query()
             ->where('status', ClientProjectInvoice::STATUS_PAID)
             ->whereYear('paid_at', $year)
-            ->sum('paid_amount');
+            ->sum(\Illuminate\Support\Facades\DB::raw(ClientProjectInvoice::netCollectedCashSql()));
         $ytdCosts = (float) ClientProjectExpense::query()
             ->whereYear('occurred_on', $year)
             ->sum('amount');

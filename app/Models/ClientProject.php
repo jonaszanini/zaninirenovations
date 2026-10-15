@@ -1262,16 +1262,56 @@ class ClientProject extends Model
      * Sum of paid installments (pre-tax `ClientProjectInstallment::amount`).
      * For installment invoices, amounts are aligned to the invoice’s billed
      * subtotal (after discount) when the invoice is marked paid.
+     *
+     * A full refund unmarks the installment, so it drops out of this sum.
+     * A partial refund stays paid and the pre-tax share of the refund is
+     * subtracted. Hourly profit is hours × rate, reduced by the pre-tax
+     * share of every refund on the project.
      */
     public function totalRevenueCollected(): float
     {
         if ($this->isHourly()) {
-            return $this->hourlyAmountEarned();
+            return max(0.0, round($this->hourlyAmountEarned() - $this->preTaxRefundShare(true, true), 2));
         }
 
-        return (float) $this->installments
+        $paid = (float) $this->installments
             ->where('is_paid', true)
             ->sum('amount');
+
+        return max(0.0, round($paid - $this->preTaxRefundShare(false, false), 2));
+    }
+
+    /**
+     * Pre-tax share of recorded refunds. Full refunds on fixed-price
+     * installments are skipped because the installment is already unpaid.
+     * Manual invoices never feed fixed-price profit.
+     */
+    protected function preTaxRefundShare(bool $includeFullyRefunded, bool $includeManual): float
+    {
+        $total = 0.0;
+        foreach ($this->invoicesForRevenue() as $invoice) {
+            if (! $includeManual && $invoice->isManual()) {
+                continue;
+            }
+            if (! $includeFullyRefunded && $invoice->isRefunded()) {
+                continue;
+            }
+            $total += $invoice->preTaxShareOfRefund();
+        }
+
+        return round($total, 2);
+    }
+
+    protected function invoicesForRevenue()
+    {
+        if ($this->relationLoaded('invoices')) {
+            return $this->invoices;
+        }
+        if (! $this->exists) {
+            return collect();
+        }
+
+        return $this->invoices()->get();
     }
 
     /** For "pay in full" plan revenue is total amount once the single installment is paid. */

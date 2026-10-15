@@ -361,7 +361,7 @@ class EtransferInvoiceMatcher
 
     public function outstandingBalance(ClientProjectInvoice $invoice): float
     {
-        if ($invoice->isPaid()) {
+        if ($invoice->isPaid() || $invoice->isRefunded()) {
             return 0.0;
         }
 

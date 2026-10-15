@@ -461,6 +461,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.invoices.pdf');
     Route::get('client-projects/{client_project}/invoices/{invoice}/receipt', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'downloadReceipt'])
         ->name('client-projects.invoices.receipt');
+    Route::get('client-projects/{client_project}/invoices/{invoice}/refund-receipt', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'downloadRefund'])
+        ->name('client-projects.invoices.refund-receipt');
     Route::post('client-projects/{client_project}/invoices/{invoice}/send', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'send'])
         ->name('client-projects.invoices.send');
     Route::post('client-projects/{client_project}/invoices/{invoice}/sms', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'sendInvoiceSms'])
@@ -472,6 +474,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('client-projects.invoices.reminders.toggle');
     Route::post('client-projects/{client_project}/invoices/{invoice}/mark-paid', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'markPaid'])
         ->name('client-projects.invoices.mark-paid');
+    Route::post('client-projects/{client_project}/invoices/{invoice}/refund', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'refund'])
+        ->name('client-projects.invoices.refund');
     Route::delete('client-projects/{client_project}/invoices/{invoice}', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'destroy'])
         ->name('client-projects.invoices.destroy');
 

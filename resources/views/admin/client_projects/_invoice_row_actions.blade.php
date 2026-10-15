@@ -90,10 +90,14 @@
     : "Send a payment reminder SMS to {$clientSms} now?";
 
   $canMarkPaid = false;
+  $canRefund = false;
+  $showPaymentReceipt = false;
   $pauseConfirm = '';
   $deleteConfirm = 'Delete this draft invoice? This cannot be undone.';
   if ($invoice) {
-      $canMarkPaid = ! $invoice->isPaid() && $invoice->hasContent() && (float) $invoice->total > 0;
+      $canMarkPaid = ! $invoice->isSettled() && $invoice->hasContent() && (float) $invoice->total > 0;
+      $canRefund = $invoice->isPaid() && $invoice->refundableBalance() >= 0.01;
+      $showPaymentReceipt = $invoice->isPaid() || $invoice->isRefunded();
       if ($invoice->isSent()) {
           $pauseConfirm = $invoice->dailyRemindersPaused()
               ? "Resume daily payment reminders for invoice {$invoice->invoice_number}? The client will be emailed or texted again each day this invoice stays unpaid past the due date."
@@ -136,7 +140,18 @@
             'target' => '_blank',
         ];
     }
-    if ($invoice->isPaid()) {
+    if ($canRefund) {
+        $readOnlyDropdownItems[] = [
+            'type' => 'refund',
+            'icon' => 'fa-undo',
+            'label' => 'Refund',
+            'url' => route('admin.client-projects.invoices.refund', [$project, $invoice]),
+            'amount' => number_format($invoice->refundableBalance(), 2, '.', ''),
+            'invoiceLabel' => 'Invoice #'.$invoice->invoice_number,
+            'class' => 'admin-actions-dropdown__item--danger',
+        ];
+    }
+    if ($showPaymentReceipt) {
         $readOnlyDropdownItems[] = [
             'type' => 'link',
             'href' => route('admin.client-projects.invoices.receipt', [$project, $invoice]),
@@ -145,7 +160,17 @@
             'target' => '_blank',
             'class' => 'admin-actions-dropdown__item--success',
         ];
-    } else {
+    }
+    if ($invoice->hasRefund()) {
+        $readOnlyDropdownItems[] = [
+            'type' => 'link',
+            'href' => route('admin.client-projects.invoices.refund-receipt', [$project, $invoice]),
+            'icon' => 'fa-file-text-o',
+            'label' => 'Refund receipt',
+            'target' => '_blank',
+        ];
+    }
+    if (! $invoice->isSettled()) {
         $readOnlyDropdownItems[] = [
             'type' => 'form',
             'action' => route('admin.client-projects.invoices.destroy', [$project, $invoice]),
@@ -168,7 +193,18 @@
         PDF
       </a>
     @endif
-    @if ($invoice->isPaid())
+    @if ($canRefund)
+      <button type="button"
+              class="admin-btn admin-btn--danger admin-btn--sm"
+              data-cp-refund-url="{{ route('admin.client-projects.invoices.refund', [$project, $invoice]) }}"
+              data-cp-refund-amount="{{ number_format($invoice->refundableBalance(), 2, '.', '') }}"
+              data-cp-refund-label="Invoice #{{ $invoice->invoice_number }}"
+              aria-label="Refund">
+        <i class="fa fa-undo" aria-hidden="true"></i>
+        Refund
+      </button>
+    @endif
+    @if ($showPaymentReceipt)
       <a href="{{ route('admin.client-projects.invoices.receipt', [$project, $invoice]) }}"
          target="_blank"
          rel="noopener"
@@ -177,7 +213,18 @@
         <i class="fa fa-download" aria-hidden="true"></i>
         Receipt
       </a>
-    @else
+    @endif
+    @if ($invoice->hasRefund())
+      <a href="{{ route('admin.client-projects.invoices.refund-receipt', [$project, $invoice]) }}"
+         target="_blank"
+         rel="noopener"
+         class="admin-btn admin-btn--ghost admin-btn--sm"
+         aria-label="Refund receipt">
+        <i class="fa fa-file-text-o" aria-hidden="true"></i>
+        Refund receipt
+      </a>
+    @endif
+    @if (! $invoice->isSettled())
       <form action="{{ route('admin.client-projects.invoices.destroy', [$project, $invoice]) }}"
             method="post"
             class="cp-inline-form"
@@ -205,6 +252,15 @@
                 <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
                 {{ $item['label'] }}
               </a>
+            @elseif ($item['type'] === 'refund')
+              <button type="button"
+                      class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}"
+                      data-cp-refund-url="{{ $item['url'] }}"
+                      data-cp-refund-amount="{{ $item['amount'] }}"
+                      data-cp-refund-label="{{ $item['invoiceLabel'] }}">
+                <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+                {{ $item['label'] }}
+              </button>
             @elseif ($item['type'] === 'form')
               <form action="{{ $item['action'] }}"
                     method="post"
@@ -243,7 +299,7 @@
     }
 
     $invoiceDropdownItems = [];
-    if (! $invoice->isPaid()) {
+    if (! $invoice->isSettled()) {
         $invoiceDropdownItems[] = [
             'type' => 'link',
             'href' => route('admin.client-projects.invoices.edit', [$project, $invoice]),
@@ -260,7 +316,7 @@
             'target' => '_blank',
         ];
     }
-    if (! $invoice->isPaid()) {
+    if (! $invoice->isSettled()) {
         if ($canSend) {
             $invoiceDropdownItems[] = [
                 'type' => 'form',
@@ -298,7 +354,7 @@
             'confirm' => $pauseConfirm,
         ];
     }
-    if (! $invoice->isPaid() && $canMarkPaid) {
+    if (! $invoice->isSettled() && $canMarkPaid) {
         $invoiceDropdownItems[] = [
             'type' => 'markpaid',
             'icon' => 'fa-check',
@@ -309,7 +365,18 @@
             'firstPaid' => $showMarkPaidStatusPicker ? '1' : '0',
         ];
     }
-    if ($invoice->isPaid()) {
+    if ($canRefund) {
+        $invoiceDropdownItems[] = [
+            'type' => 'refund',
+            'icon' => 'fa-undo',
+            'label' => 'Refund',
+            'url' => route('admin.client-projects.invoices.refund', [$project, $invoice]),
+            'amount' => number_format($invoice->refundableBalance(), 2, '.', ''),
+            'invoiceLabel' => 'Invoice #'.$invoice->invoice_number,
+            'class' => 'admin-actions-dropdown__item--danger',
+        ];
+    }
+    if ($showPaymentReceipt) {
         $invoiceDropdownItems[] = [
             'type' => 'link',
             'href' => route('admin.client-projects.invoices.receipt', [$project, $invoice]),
@@ -319,7 +386,16 @@
             'class' => 'admin-actions-dropdown__item--success',
         ];
     }
-    if (! $invoice->isPaid()) {
+    if ($invoice->hasRefund()) {
+        $invoiceDropdownItems[] = [
+            'type' => 'link',
+            'href' => route('admin.client-projects.invoices.refund-receipt', [$project, $invoice]),
+            'icon' => 'fa-file-text-o',
+            'label' => 'Refund receipt',
+            'target' => '_blank',
+        ];
+    }
+    if (! $invoice->isSettled()) {
         $invoiceDropdownItems[] = [
             'type' => 'form',
             'action' => route('admin.client-projects.invoices.destroy', [$project, $invoice]),
@@ -333,7 +409,7 @@
   @endphp
   <div class="cp-invoice-actions admin-table-actions">
     {{-- Edit (hidden on paid invoices; view a read-only version via PDF) --}}
-    @unless ($invoice->isPaid())
+    @unless ($invoice->isSettled())
       <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}"
          class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn"
          aria-label="Edit">
@@ -355,7 +431,7 @@
     @endif
 
     {{-- Send / Resend (draft or sent state) --}}
-    @unless ($invoice->isPaid())
+    @unless ($invoice->isSettled())
       @if ($canSend)
         <form action="{{ route('admin.client-projects.invoices.send', [$project, $invoice]) }}"
               method="post"
@@ -450,7 +526,7 @@
          even drafts. Useful when the client paid in person/cash and we
          skip the email/SMS step. We still require line items + a total so
          the receipt PDF has something meaningful to render. --}}
-    @unless ($invoice->isPaid())
+    @unless ($invoice->isSettled())
       @php
         $canMarkPaid = $invoice->hasContent() && (float) $invoice->total> 0;
         $markPaidTitle = $canMarkPaid
@@ -481,8 +557,20 @@
       @endif
     @endunless
 
-    {{-- Receipt download (only once paid) --}}
-    @if ($invoice->isPaid())
+    @if ($canRefund)
+      <button type="button"
+              class="admin-btn admin-btn--danger admin-btn--sm cp-action-icon-btn"
+              data-cp-refund-url="{{ route('admin.client-projects.invoices.refund', [$project, $invoice]) }}"
+              data-cp-refund-amount="{{ number_format($invoice->refundableBalance(), 2, '.', '') }}"
+              data-cp-refund-label="Invoice #{{ $invoice->invoice_number }}"
+              aria-label="Refund">
+        <i class="fa fa-undo" aria-hidden="true"></i>
+        <span class="cp-action-tooltip">Refund</span>
+      </button>
+    @endif
+
+    {{-- Original payment receipt stays available after a refund. --}}
+    @if ($showPaymentReceipt)
       <a href="{{ route('admin.client-projects.invoices.receipt', [$project, $invoice]) }}"
          target="_blank"
          rel="noopener"
@@ -493,11 +581,22 @@
       </a>
     @endif
 
+    @if ($invoice->hasRefund())
+      <a href="{{ route('admin.client-projects.invoices.refund-receipt', [$project, $invoice]) }}"
+         target="_blank"
+         rel="noopener"
+         class="admin-btn admin-btn--ghost admin-btn--sm cp-action-icon-btn"
+         aria-label="Refund receipt">
+        <i class="fa fa-file-text-o" aria-hidden="true"></i>
+        <span class="cp-action-tooltip">Refund receipt</span>
+      </a>
+    @endif
+
     {{-- Delete — allowed for any non-paid invoice. Sent invoices get a
          stronger confirmation dialog because the client already has the
          emailed PDF; deleting on our end just lets the admin start the
          installment over (e.g. fix a wrong total, regenerate the number). --}}
-    @unless ($invoice->isPaid())
+    @unless ($invoice->isSettled())
       @php
         if ($invoice->wasEverSent()) {
             $deleteConfirm = "Invoice #{$invoice->invoice_number} has already been emailed to {$clientEmail}. Deleting it removes the invoice from our records and returns this line to Create Invoice — the payment-plan row stays. The client will still have the old PDF in their inbox. Continue?";
@@ -533,6 +632,15 @@
                 <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
                 {{ $item['label'] }}
               </a>
+            @elseif ($item['type'] === 'refund')
+              <button type="button"
+                      class="admin-actions-dropdown__item {{ $item['class'] ?? '' }}"
+                      data-cp-refund-url="{{ $item['url'] }}"
+                      data-cp-refund-amount="{{ $item['amount'] }}"
+                      data-cp-refund-label="{{ $item['invoiceLabel'] }}">
+                <i class="fa {{ $item['icon'] }}" aria-hidden="true"></i>
+                {{ $item['label'] }}
+              </button>
             @elseif ($item['type'] === 'form')
               <form action="{{ $item['action'] }}"
                     method="post"

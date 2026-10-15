@@ -47,6 +47,8 @@ class ClientCommunicationLog extends Model
     /** One-time automated intro / compliance notice before first client SMS. */
     public const REASON_SMS_INTRO = 'sms_intro';
     public const REASON_RECEIPT_SENT = 'receipt_sent';
+    /** Email of the refund receipt after money is returned on a paid invoice. */
+    public const REASON_REFUND_SENT = 'refund_sent';
     /** SMS with signed link to open the receipt PDF after mark-as-paid. */
     public const REASON_RECEIPT_SMS_LINK = 'receipt_sms_link';
     public const REASON_QUOTE_RECEIVED_AUTO = 'quote_received_auto';
@@ -74,6 +76,7 @@ class ClientCommunicationLog extends Model
         self::REASON_INVOICE_SMS_LINK => 'Invoice (SMS link)',
         self::REASON_SMS_INTRO => 'SMS intro (compliance)',
         self::REASON_RECEIPT_SENT => 'Receipt',
+        self::REASON_REFUND_SENT => 'Refund receipt',
         self::REASON_RECEIPT_SMS_LINK => 'Receipt (SMS link)',
         self::REASON_QUOTE_RECEIVED_AUTO => 'Quote received (auto-reply)',
         self::REASON_SERVICE_CONFIRMATION => 'Service confirmation',
@@ -177,6 +180,7 @@ class ClientCommunicationLog extends Model
             self::REASON_SMS_INTRO => '#0d9488',                    // teal
             self::REASON_RECEIPT_SENT,
             self::REASON_RECEIPT_SMS_LINK => '#22c55e',              // green
+            self::REASON_REFUND_SENT => '#dc2626',                   // red
             self::REASON_SERVICE_CONFIRMATION,
             self::REASON_FIXED_SCHEDULE_CONFIRMATION,
             self::REASON_SCHEDULE_DATES_MANUAL => '#10b981',         // emerald

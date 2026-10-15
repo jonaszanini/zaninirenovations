@@ -60,7 +60,7 @@
         'dateRange' => ['date_from', 'date_to'],
         'minLength' => ['search' => 2],
         'allowed' => [
-            'status' => ['draft', 'sent', 'paid'],
+            'status' => ['draft', 'sent', 'paid', 'refunded'],
         ],
     ]);
   @endphp
@@ -77,6 +77,7 @@
           <option value="draft" @selected($status === 'draft')>Draft</option>
           <option value="sent" @selected($status === 'sent')>Sent</option>
           <option value="paid" @selected($status === 'paid')>Paid</option>
+          <option value="refunded" @selected($status === 'refunded')>Refunded</option>
         </select>
       </div>
       <div class="cp-filter cp-filter--search">
@@ -188,14 +189,21 @@
                             <i class="fa fa-file-pdf-o"></i> View PDF
                           </a>
                         @endif
-                        @if ($invoice->isPaid() && $invoice->receipt_pdf_path)
+                        @if (($invoice->isPaid() || $invoice->isRefunded()) && $invoice->receipt_pdf_path)
                           <a href="{{ route('admin.client-projects.invoices.receipt', [$project, $invoice]) }}" target="_blank" class="admin-actions-dropdown__item">
                             <i class="fa fa-file-text-o"></i> View receipt
                           </a>
                         @endif
-                        <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}" class="admin-actions-dropdown__item">
-                          <i class="fa fa-pencil"></i> Edit
-                        </a>
+                        @if ($invoice->hasRefund())
+                          <a href="{{ route('admin.client-projects.invoices.refund-receipt', [$project, $invoice]) }}" target="_blank" class="admin-actions-dropdown__item">
+                            <i class="fa fa-undo"></i> Refund receipt
+                          </a>
+                        @endif
+                        @unless ($invoice->isRefunded())
+                          <a href="{{ route('admin.client-projects.invoices.edit', [$project, $invoice]) }}" class="admin-actions-dropdown__item">
+                            <i class="fa fa-pencil"></i> Edit
+                          </a>
+                        @endunless
                       @endif
                     </div>
                   </div>

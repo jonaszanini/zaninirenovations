@@ -31,6 +31,7 @@ class ClientProjectInvoice extends Model
     public const STATUS_DRAFT = 'draft';
     public const STATUS_SENT = 'sent';
     public const STATUS_PAID = 'paid';
+    public const STATUS_REFUNDED = 'refunded';
 
     public const HST_RATE = 0.13;
 
@@ -81,8 +82,13 @@ class ClientProjectInvoice extends Model
         'paid_at',
         'paid_amount',
         'payment_method',
+        'refunded_at',
+        'refund_amount',
+        'refund_method',
+        'refund_note',
         'invoice_pdf_path',
         'receipt_pdf_path',
+        'refund_pdf_path',
         'version',
         'included_project_quotation_ids',
         'included_quotations_snapshot',
@@ -98,10 +104,12 @@ class ClientProjectInvoice extends Model
         'discount_percent' => 'decimal:4',
         'discount_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
+        'refund_amount' => 'decimal:2',
         'sent_at' => 'datetime',
         'due_on' => 'date',
         'reminders_paused_at' => 'datetime',
         'paid_at' => 'datetime',
+        'refunded_at' => 'datetime',
         'version' => 'integer',
         'included_project_quotation_ids' => 'array',
         'included_quotations_snapshot' => 'array',
@@ -186,6 +194,9 @@ class ClientProjectInvoice extends Model
             if (filled($invoice->receipt_pdf_path)) {
                 Storage::disk('local')->delete($invoice->receipt_pdf_path);
             }
+            if (filled($invoice->refund_pdf_path)) {
+                Storage::disk('local')->delete($invoice->refund_pdf_path);
+            }
         });
     }
 
@@ -204,6 +215,81 @@ class ClientProjectInvoice extends Model
     public function isPaid(): bool
     {
         return $this->status === self::STATUS_PAID;
+    }
+
+    public function isRefunded(): bool
+    {
+        return $this->status === self::STATUS_REFUNDED;
+    }
+
+    /** Paid or fully refunded — line items and send actions stay locked. */
+    public function isSettled(): bool
+    {
+        return $this->isPaid() || $this->isRefunded();
+    }
+
+    /** Cash the client paid. Falls back to the invoice total for older rows. */
+    public function paidCash(): float
+    {
+        $paid = round((float) ($this->paid_amount ?? 0), 2);
+        if ($paid <= 0) {
+            $paid = round((float) $this->total, 2);
+        }
+
+        return $paid;
+    }
+
+    public function refundCash(): float
+    {
+        return round(max(0, (float) ($this->refund_amount ?? 0)), 2);
+    }
+
+    public function hasRefund(): bool
+    {
+        return $this->refundCash() > 0.009;
+    }
+
+    /** Cash still returnable on this invoice. */
+    public function refundableBalance(): float
+    {
+        return round(max(0, $this->paidCash() - $this->refundCash()), 2);
+    }
+
+    /**
+     * Pre-tax portion of the refund. Used so project profit drops by the
+     * same kind of amount installments store (subtotal, not the HST total).
+     */
+    public function preTaxShareOfRefund(): float
+    {
+        $refund = $this->refundCash();
+        if ($refund <= 0) {
+            return 0.0;
+        }
+
+        $total = round((float) $this->total, 2);
+        $subtotal = round((float) $this->subtotal, 2);
+
+        if ($this->isHstExempt() || $total < 0.01 || abs($total - $subtotal) < 0.01) {
+            return round(min($refund, $subtotal > 0 ? $subtotal : $refund), 2);
+        }
+
+        return round(min($subtotal, $refund * ($subtotal / $total)), 2);
+    }
+
+    /** Cash still counted as collected on a paid invoice (paid minus refunded). */
+    public static function netCollectedCashSql(): string
+    {
+        return 'GREATEST(0, COALESCE(paid_amount, 0) - COALESCE(refund_amount, 0))';
+    }
+
+    public function refundMethodLabel(): ?string
+    {
+        if (! $this->refund_method) {
+            return null;
+        }
+
+        return self::PAYMENT_METHOD_LABELS[$this->refund_method]
+            ?? ucfirst((string) $this->refund_method);
     }
 
     /** Has the invoice been emailed to the client at least once? */
@@ -425,6 +511,7 @@ class ClientProjectInvoice extends Model
             self::STATUS_DRAFT => 'Draft',
             self::STATUS_SENT => 'Sent',
             self::STATUS_PAID => 'Paid',
+            self::STATUS_REFUNDED => 'Refunded',
             default => 'No Invoice',
         };
     }
@@ -436,6 +523,7 @@ class ClientProjectInvoice extends Model
             self::STATUS_DRAFT => '#f59e0b',    // amber
             self::STATUS_SENT => '#3b82f6',     // blue
             self::STATUS_PAID => '#22c55e',     // green
+            self::STATUS_REFUNDED => '#dc2626', // red
             default => '#9ca3af',               // slate
         };
     }

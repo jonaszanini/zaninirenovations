@@ -124,7 +124,10 @@ class RecalculateRemainingInstallmentsService
 
         $unpaidInvoiceCount = $project->invoices()
             ->whereNotNull('installment_number')
-            ->where('status', '!=', ClientProjectInvoice::STATUS_PAID)
+            ->whereNotIn('status', [
+                ClientProjectInvoice::STATUS_PAID,
+                ClientProjectInvoice::STATUS_REFUNDED,
+            ])
             ->count();
 
         // Only treat quotation vs plan mismatch as a "project total has changed"
@@ -240,9 +243,13 @@ class RecalculateRemainingInstallmentsService
             $newPreTax = (float) $analysis['quotation_pre_tax'];
 
             // 1) Delete unpaid installment-linked invoices (draft or sent).
+            // Paid and refunded invoices stay on the row.
             $unpaidInvoices = $project->invoices()
                 ->whereNotNull('installment_number')
-                ->where('status', '!=', ClientProjectInvoice::STATUS_PAID)
+                ->whereNotIn('status', [
+                    ClientProjectInvoice::STATUS_PAID,
+                    ClientProjectInvoice::STATUS_REFUNDED,
+                ])
                 ->get();
 
             foreach ($unpaidInvoices as $invoice) {

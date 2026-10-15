@@ -202,7 +202,10 @@ class RecalculateRemainingInstallmentsServiceTest extends TestCase
 
         $invoiceRelation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
         $invoiceRelation->shouldReceive('whereNotNull')->with('installment_number')->andReturnSelf();
-        $invoiceRelation->shouldReceive('where')->with('status', '!=', ClientProjectInvoice::STATUS_PAID)->andReturnSelf();
+        $invoiceRelation->shouldReceive('whereNotIn')->with('status', [
+            ClientProjectInvoice::STATUS_PAID,
+            ClientProjectInvoice::STATUS_REFUNDED,
+        ])->andReturnSelf();
         $unpaidInvoices = (int) ($opts['unpaid_invoice_count'] ?? 0);
         $installmentInvoices = (int) ($opts['installment_invoice_count'] ?? $unpaidInvoices);
         $invoiceRelation->shouldReceive('count')->andReturn($installmentInvoices, $unpaidInvoices);

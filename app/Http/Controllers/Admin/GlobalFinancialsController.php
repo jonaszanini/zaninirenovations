@@ -25,6 +25,7 @@ class GlobalFinancialsController extends Controller
             ClientProjectInvoice::STATUS_DRAFT,
             ClientProjectInvoice::STATUS_SENT,
             ClientProjectInvoice::STATUS_PAID,
+            ClientProjectInvoice::STATUS_REFUNDED,
         ], true)) {
             $query->where('status', $status);
         }
@@ -110,7 +111,7 @@ class GlobalFinancialsController extends Controller
             DB::raw('COALESCE(SUM(subtotal), 0) as subtotal'),
             DB::raw('COALESCE(SUM(hst), 0) as hst'),
             DB::raw('COALESCE(SUM(total), 0) as total'),
-            DB::raw('COALESCE(SUM(CASE WHEN status = "paid" THEN total ELSE 0 END), 0) as paid'),
+            DB::raw('COALESCE(SUM(CASE WHEN status = "paid" THEN GREATEST(0, total - COALESCE(refund_amount, 0)) ELSE 0 END), 0) as paid'),
         ])->first();
 
         return [

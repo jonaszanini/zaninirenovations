@@ -55,6 +55,23 @@ class InvoicePdfService
         return $pdf;
     }
 
+    public function renderRefundPdf(ClientProject $project, ClientProjectInvoice $invoice)
+    {
+        $pdf = Pdf::loadView('admin.client_projects.invoice.refund', [
+            'project' => $project,
+            'invoice' => $invoice,
+        ])
+            ->setPaper('a4')
+            ->setOption('isRemoteEnabled', true)
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('defaultFont', 'Roboto');
+
+        $pdf->render();
+        $this->stampPageNumbers($pdf);
+
+        return $pdf;
+    }
+
     protected function stampPageNumbers($pdf): void
     {
         $dompdf = $pdf->getDomPDF();
@@ -124,5 +141,21 @@ class InvoicePdfService
         $slug = Str::slug($project->name) ?: 'project-'.$project->id;
 
         return "receipt-{$invoice->invoice_number}-{$slug}.pdf";
+    }
+
+    public function refundPdfStoragePath(ClientProject $project, ClientProjectInvoice $invoice): string
+    {
+        return sprintf(
+            'refunds/project-%d-invoice-%d.pdf',
+            $project->id,
+            $invoice->id
+        );
+    }
+
+    public function refundPdfFilename(ClientProject $project, ClientProjectInvoice $invoice): string
+    {
+        $slug = Str::slug($project->name) ?: 'project-'.$project->id;
+
+        return "refund-{$invoice->invoice_number}-{$slug}.pdf";
     }
 }

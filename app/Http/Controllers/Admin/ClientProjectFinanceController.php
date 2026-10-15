@@ -163,7 +163,7 @@ class ClientProjectFinanceController extends Controller
     /**
      * Align unpaid installment-linked invoices with the current payment plan.
      *
-     * - Paid invoices are never modified.
+     * - Paid and refunded invoices are never modified.
      * - Unpaid invoices whose installment_number no longer exists are deleted.
      * - Remaining unpaid invoices get fresh amounts / labels from the plan.
      *
@@ -179,7 +179,10 @@ class ClientProjectFinanceController extends Controller
 
         $invoices = $project->invoices()
             ->whereNotNull('installment_number')
-            ->where('status', '!=', ClientProjectInvoice::STATUS_PAID)
+            ->whereNotIn('status', [
+                ClientProjectInvoice::STATUS_PAID,
+                ClientProjectInvoice::STATUS_REFUNDED,
+            ])
             ->get();
 
         foreach ($invoices as $invoice) {

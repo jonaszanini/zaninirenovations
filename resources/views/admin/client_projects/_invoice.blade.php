@@ -52,7 +52,7 @@
     <h3>{{ $project->statusLabel() }} project</h3>
     <p>
       @if ($showExistingInvoices)
-        Existing invoices are shown read-only. You can view the PDF or delete an unpaid invoice.
+        Existing invoices are shown read-only. You can view the PDF, refund a paid invoice, or delete an unpaid invoice.
         New invoices cannot be created while the project is {{ strtolower($project->statusLabel()) }}.
       @else
         Invoices stay locked while this project is {{ strtolower($project->statusLabel()) }}. No invoices were issued.
@@ -112,6 +112,7 @@
                     {{ $statusLabel }}
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
+                  @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -293,6 +294,7 @@
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -458,7 +460,7 @@
                 </td>
                 <td data-label="Description">
                   {{ $inst->label ?: 'Installment '.$n }}
-                  @if ($inst->is_paid)
+                  @if ($inst->is_paid && ! ($invoice && $invoice->isRefunded()))
                     <span class="cp-badge" style="background:#22c55e20;color:#15803d;margin-left:4px;">Installment paid</span>
                   @endif
                   @if ($hasMismatch)
@@ -495,6 +497,7 @@
                     @endif
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -569,6 +572,7 @@
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -798,3 +802,125 @@
     })();
   </script>
 @endif
+
+{{-- Refund dialog. Also shown on cancelled and rejected projects, where the rest of this tab is read-only. --}}
+<div class="cp-modal-backdrop" id="cp-refund-modal" hidden>
+  <div class="cp-modal" role="dialog" aria-labelledby="cp-refund-title">
+    <div class="cp-modal-header">
+      <h3 id="cp-refund-title">Refund invoice</h3>
+      <button type="button" class="cp-modal-close" data-cp-refund-close aria-label="Close">&times;</button>
+    </div>
+    <form method="post" id="cp-refund-form">
+      @csrf
+      <div class="cp-modal-body">
+        @php
+          $refundCanEmail = filled(trim((string) $project->client_email));
+        @endphp
+        <p class="admin-form-help" style="margin-top:0;">
+          Return money already received on <strong id="cp-refund-invoice-label">this invoice</strong>.
+          A full refund marks the invoice refunded. A smaller amount stays paid.
+          The project status does not change.
+        </p>
+        <div class="admin-form-grid-2">
+          <div class="admin-form-group">
+            <label for="cp-refund-date">Refund date</label>
+            <input class="admin-input" type="date" id="cp-refund-date" name="refunded_on" required value="{{ now()->toDateString() }}">
+          </div>
+          <div class="admin-form-group">
+            <label for="cp-refund-amount">Amount to refund (CAD)</label>
+            <input type="text"
+                   id="cp-refund-amount"
+                   name="refund_amount"
+                   class="admin-input cp-money-input"
+                   inputmode="decimal"
+                   autocomplete="off"
+                   placeholder="0.00"
+                   required
+                   data-cp-money-entry="direct">
+          </div>
+        </div>
+        <div class="admin-form-group cp-mark-paid-method">
+          <label class="cp-mark-paid-method-label">Refund method</label>
+          <div class="cp-mark-paid-method-options" role="radiogroup" aria-label="Refund method">
+            <label class="cp-mark-paid-method-option">
+              <input type="radio" name="refund_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER }}" checked>
+              <span><i class="fa fa-bank"></i> e-Transfer</span>
+            </label>
+            <label class="cp-mark-paid-method-option">
+              <input type="radio" name="refund_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_CASH }}">
+              <span><i class="fa fa-money"></i> Cash</span>
+            </label>
+            <label class="cp-mark-paid-method-option">
+              <input type="radio" name="refund_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_CHECK }}">
+              <span><i class="fa fa-file-text-o"></i> Check</span>
+            </label>
+          </div>
+        </div>
+        <div class="admin-form-group">
+          <label for="cp-refund-note">Note <span class="admin-form-help">(optional)</span></label>
+          <input class="admin-input" type="text" id="cp-refund-note" name="refund_note" maxlength="500" placeholder="Cancellation, kept deposit, …">
+        </div>
+        @if ($refundCanEmail)
+          <label class="admin-checkbox">
+            <input type="checkbox" name="also_email_refund" value="1" checked>
+            <span class="admin-checkbox__mark" aria-hidden="true"></span>
+            <span class="admin-checkbox__text">Email refund receipt to {{ $project->clientEmailRecipientsLabel() }}</span>
+          </label>
+        @else
+          <input type="hidden" name="also_email_refund" value="0">
+        @endif
+      </div>
+      <div class="cp-modal-footer">
+        <button type="button" class="admin-btn admin-btn--ghost" data-cp-refund-close>Cancel</button>
+        <button type="submit" class="admin-btn admin-btn--danger">
+          <i class="fa fa-undo"></i> Record refund
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  (function () {
+    var modal = document.getElementById('cp-refund-modal');
+    var form = document.getElementById('cp-refund-form');
+    var amountInput = document.getElementById('cp-refund-amount');
+    var label = document.getElementById('cp-refund-invoice-label');
+    if (!modal || !form || !amountInput) return;
+
+    function openModal(trigger) {
+      form.action = trigger.getAttribute('data-cp-refund-url');
+      amountInput.value = trigger.getAttribute('data-cp-refund-amount') || '0.00';
+      label.textContent = trigger.getAttribute('data-cp-refund-label') || 'this invoice';
+      if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
+        window.cpMoneyMask.wire([amountInput]);
+      }
+      modal.hidden = false;
+      document.body.classList.add('cp-modal-open');
+      amountInput.focus();
+    }
+
+    function closeModal() {
+      modal.hidden = true;
+      if (!document.querySelector('.cp-modal-backdrop:not([hidden])')) {
+        document.body.classList.remove('cp-modal-open');
+      }
+    }
+
+    document.addEventListener('click', function (e) {
+      var trigger = e.target.closest('[data-cp-refund-url]');
+      if (trigger) {
+        e.preventDefault();
+        openModal(trigger);
+        return;
+      }
+      if (e.target.closest('[data-cp-refund-close]') || e.target === modal) {
+        closeModal();
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (!modal.hidden && e.key === 'Escape') closeModal();
+    });
+  })();
+</script>
+

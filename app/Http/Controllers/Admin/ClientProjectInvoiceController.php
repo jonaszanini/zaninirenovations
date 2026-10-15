@@ -15,6 +15,7 @@ use App\Services\Invoice\InvoiceCreationService;
 use App\Services\Invoice\InvoicePdfService;
 use App\Services\Invoice\InvoiceTotalsCalculator;
 use App\Services\Invoice\MarkInvoicePaidService;
+use App\Services\Invoice\RefundInvoiceService;
 use App\Services\MoceanSmsService;
 use App\Support\SignedPublicLink;
 use Illuminate\Http\Request;
@@ -54,6 +55,7 @@ class ClientProjectInvoiceController extends Controller
         protected InvoiceTotalsCalculator $totals,
         protected InvoiceCreationService $creationService,
         protected MarkInvoicePaidService $markPaidService,
+        protected RefundInvoiceService $refundService,
     ) {
     }
 
@@ -177,8 +179,10 @@ class ClientProjectInvoiceController extends Controller
             return $redirect;
         }
 
-        if ($invoice->isPaid()) {
-            return back()->with('error', 'Paid invoices cannot be edited.');
+        if ($invoice->isSettled()) {
+            return back()->with('error', $invoice->isRefunded()
+                ? 'Refunded invoices cannot be edited.'
+                : 'Paid invoices cannot be edited.');
         }
 
         $data = $request->validate([
@@ -337,7 +341,7 @@ class ClientProjectInvoiceController extends Controller
     {
         abort_unless((int) $invoice->client_project_id === (int) $client_project->id, 404);
 
-        if (! $invoice->isPaid()) {
+        if (! $invoice->isPaid() && ! $invoice->isRefunded()) {
             abort(404, 'Receipt not available.');
         }
 
@@ -362,7 +366,7 @@ class ClientProjectInvoiceController extends Controller
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
-        if (! $invoice->isPaid()) {
+        if (! $invoice->isPaid() && ! $invoice->isRefunded()) {
             return back()->with('error', 'Receipt is only available after the invoice is marked paid.');
         }
 
@@ -387,8 +391,10 @@ class ClientProjectInvoiceController extends Controller
             return $redirect;
         }
 
-        if ($invoice->isPaid()) {
-            return back()->with('error', 'This invoice has already been paid.');
+        if ($invoice->isSettled()) {
+            return back()->with('error', $invoice->isRefunded()
+                ? 'This invoice has been refunded.'
+                : 'This invoice has already been paid.');
         }
 
         // Require at least one complete line item (both description AND
@@ -427,9 +433,11 @@ class ClientProjectInvoiceController extends Controller
 
         $invoice->invoice_pdf_path = $relativePath;
         $invoice->sent_at = now();
-        $invoice->status = $invoice->isPaid()
-            ? ClientProjectInvoice::STATUS_PAID
-            : ClientProjectInvoice::STATUS_SENT;
+        $invoice->status = $invoice->isRefunded()
+            ? ClientProjectInvoice::STATUS_REFUNDED
+            : ($invoice->isPaid()
+                ? ClientProjectInvoice::STATUS_PAID
+                : ClientProjectInvoice::STATUS_SENT);
 
         $invoice->save();
 
@@ -516,8 +524,10 @@ class ClientProjectInvoiceController extends Controller
             return $redirect;
         }
 
-        if ($invoice->isPaid()) {
-            return back()->with('error', 'This invoice has already been paid.');
+        if ($invoice->isSettled()) {
+            return back()->with('error', $invoice->isRefunded()
+                ? 'This invoice has been refunded.'
+                : 'This invoice has already been paid.');
         }
 
         $blocked = $this->invoiceSmsBlockers($client_project, $invoice, $moceanSms);
@@ -616,8 +626,8 @@ class ClientProjectInvoiceController extends Controller
             return back()->with('error', 'Daily reminders can only be paused after the invoice has been sent.');
         }
 
-        if ($invoice->isPaid()) {
-            return back()->with('error', 'Paid invoices do not receive payment reminders.');
+        if ($invoice->isSettled()) {
+            return back()->with('error', 'Paid or refunded invoices do not receive payment reminders.');
         }
 
         if ($invoice->dailyRemindersPaused()) {
@@ -657,8 +667,10 @@ class ClientProjectInvoiceController extends Controller
             return $redirect;
         }
 
-        if ($invoice->isPaid()) {
-            return back()->with('error', 'This invoice is already marked paid.');
+        if ($invoice->isSettled()) {
+            return back()->with('error', $invoice->isRefunded()
+                ? 'This invoice has been refunded.'
+                : 'This invoice is already marked paid.');
         }
 
         // Drafts can be marked paid too (e.g. client paid in person/cash and
@@ -714,12 +726,72 @@ class ClientProjectInvoiceController extends Controller
         return $redirect;
     }
 
+    /**
+     * Return money already collected on a paid invoice. Allowed after the
+     * project is cancelled or rejected — the rest of this tab stays read-only.
+     */
+    public function refund(Request $request, ClientProject $client_project, ClientProjectInvoice $invoice)
+    {
+        $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        $data = $request->validate([
+            'refunded_on' => ['required', 'date'],
+            'refund_amount' => ['required', 'numeric', 'min:0.01'],
+            'refund_method' => ['required', Rule::in(array_keys(ClientProjectInvoice::PAYMENT_METHOD_LABELS))],
+            'refund_note' => ['nullable', 'string', 'max:500'],
+            'also_email_refund' => ['nullable', 'boolean'],
+        ]);
+
+        $result = $this->refundService->refund(
+            $client_project,
+            $invoice,
+            $data['refunded_on'],
+            (float) $data['refund_amount'],
+            $data['refund_method'],
+            $data['refund_note'] ?? null,
+            $request->boolean('also_email_refund'),
+        );
+
+        if (! ($result['ok'] ?? false)) {
+            return back()->with('error', $result['error'] ?? 'Could not record the refund.');
+        }
+
+        return redirect()
+            ->route('admin.client-projects.show', $client_project)
+            ->withFragment('invoice')
+            ->with('success', $result['flash'] ?? 'Refund recorded.');
+    }
+
+    /**
+     * Stream the stored refund receipt. Regenerates it if the file is missing.
+     */
+    public function downloadRefund(ClientProject $client_project, ClientProjectInvoice $invoice)
+    {
+        $this->authorizeInvoiceForProject($client_project, $invoice);
+
+        if (! $invoice->hasRefund()) {
+            return back()->with('error', 'A refund receipt is only available after a refund is recorded.');
+        }
+
+        $disk = Storage::disk('local');
+        if (filled($invoice->refund_pdf_path) && $disk->exists($invoice->refund_pdf_path)) {
+            return response($disk->get($invoice->refund_pdf_path), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$this->pdfService->refundPdfFilename($client_project, $invoice).'"',
+            ]);
+        }
+
+        $pdf = $this->pdfService->renderRefundPdf($client_project, $invoice);
+
+        return $pdf->stream($this->pdfService->refundPdfFilename($client_project, $invoice));
+    }
+
     public function destroy(ClientProject $client_project, ClientProjectInvoice $invoice)
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
-        if ($invoice->isPaid()) {
-            return back()->with('error', 'Paid invoices cannot be deleted.');
+        if ($invoice->isSettled()) {
+            return back()->with('error', 'Paid or refunded invoices cannot be deleted.');
         }
 
         $invoice->delete();
