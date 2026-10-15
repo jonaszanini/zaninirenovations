@@ -1233,11 +1233,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (e.data.type === 'OPENPLAN3D_READY') {
       iframeReady = true;
-      if (currentPlan && iframe && iframe.contentWindow) {
+      var isDark = document.documentElement.classList.contains('admin-dark');
+      if (iframe && iframe.contentWindow) {
         iframe.contentWindow.postMessage({
-          type: 'OPENPLAN3D_LOAD_PLAN',
-          plan: currentPlan
+          type: 'OPENPLAN3D_SET_THEME',
+          theme: isDark ? 'dark' : 'light'
         }, '*');
+        if (currentPlan) {
+          iframe.contentWindow.postMessage({
+            type: 'OPENPLAN3D_LOAD_PLAN',
+            plan: currentPlan
+          }, '*');
+        }
       }
     } else if (e.data.type === 'OPENPLAN3D_PLAN_CHANGED') {
       currentPlan = e.data.plan;
@@ -1276,6 +1283,12 @@ document.addEventListener('DOMContentLoaded', function () {
       try {
         localStorage.setItem('zanini-admin-theme', nowDark ? 'dark' : 'light');
       } catch (e) {}
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({
+          type: 'OPENPLAN3D_SET_THEME',
+          theme: nowDark ? 'dark' : 'light'
+        }, '*');
+      }
       syncThemeButton();
       document.dispatchEvent(new CustomEvent('admin-theme-change', { detail: { dark: nowDark } }));
     });
