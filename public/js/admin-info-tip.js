@@ -747,16 +747,9 @@
   }
 
   /**
-   * Keep a short marker (*, required star) with the ⓘ. Do not pull the
-   * last word of a label into its own element — that splits the phrase
-   * ("…when" in one box, "saving" in the next).
+   * Glue the ⓘ to the last text word or the preceding inline element
+   * (*, small, label, span) via a nowrap span. Never reorder children.
    */
-  function isTipMarker(el) {
-    if (!el || el.nodeType !== 1 || !el.classList) return false;
-    if (el.classList.contains('cp-required')) return true;
-    return String(el.textContent || '').replace(/\s+/g, ' ').trim() === '*';
-  }
-
   function glueLastTextNode(tip, extraClass) {
     if (!tip || !tip.parentNode) return null;
     if (tip.parentNode.classList && tip.parentNode.classList.contains('admin-label-with-tip__end')) {
@@ -764,8 +757,24 @@
     }
     extraClass = extraClass || 'admin-label-with-tip__end';
     var prev = previousNonEmptyNode(tip);
-    if (!prev || prev.nodeType !== 1 || isGlueSkipElement(prev)) return null;
-    if (!isTipMarker(prev)) return null;
+    if (!prev) return null;
+    if (prev.nodeType === 3) {
+      var last = splitTextNodeLastWord(prev);
+      return last ? wrapWordAndTip(tip, last, extraClass, prev) : null;
+    }
+    if (prev.nodeType !== 1 || isGlueSkipElement(prev)) return null;
+    var textNode = lastUnlockedTextNode(prev);
+    if (textNode) {
+      var whole = String(prev.textContent || '').replace(/\s+/g, ' ').trim();
+      var raw = String(textNode.textContent || '');
+      var trimmed = raw.replace(/\s+$/g, '');
+      var space = trimmed.lastIndexOf(' ');
+      var lastWord = space === -1 ? trimmed : trimmed.slice(space + 1);
+      if (lastWord && lastWord !== whole) {
+        var word = splitTextNodeLastWord(textNode);
+        if (word) return wrapWordAndTip(tip, word, extraClass, prev);
+      }
+    }
     return wrapElementAndTip(prev, tip, extraClass);
   }
 
