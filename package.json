@@ -5,8 +5,5 @@
   },
   "dependencies": {
     "puppeteer": "24.43.1"
-  },
-  "devDependencies": {
-    "konva": "9.3.22"
   }
 }

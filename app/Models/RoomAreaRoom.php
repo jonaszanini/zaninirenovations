@@ -26,10 +26,14 @@ class RoomAreaRoom extends Model
         'flooring_direction',
         'flooring_box_sqft',
         'pdf_path',
+        'legacy_canvas_data',
+        'openplan3d_import_meta',
     ];
 
     protected $casts = [
         'vertices' => 'array',
+        'legacy_canvas_data' => 'array',
+        'openplan3d_import_meta' => 'array',
         'area_sqft' => 'float',
         'scale_pixels_per_foot' => 'float',
         'wall_height_ft' => 'float',
@@ -95,6 +99,11 @@ class RoomAreaRoom extends Model
      */
     public function layoutMetrics(): array
     {
+        $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
+        if ($bridge->isPlan($this->vertices)) {
+            return $bridge->layoutMetrics($this->vertices, null, $this->finishSettings());
+        }
+
         $scale = $this->resolvedScalePixelsPerFoot();
         $height = $this->resolvedWallHeightFt();
         if ($scale <= 0) {

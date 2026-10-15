@@ -21,8 +21,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoomAreaController extends Controller
 {
-    public function index()
+    public function resolveEngine(Request $request): string
     {
+        return 'openplan3d';
+    }
+
+    public function index(Request $request)
+    {
+        $engine = 'openplan3d';
         $projects = RoomAreaProject::query()
             ->with([
                 'rooms.photos',
@@ -38,15 +44,19 @@ class RoomAreaController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'client_name']);
 
-        return view('admin.utilities.room_area', array_merge([
+        $view = 'admin.utilities.room_area';
+
+        return view($view, array_merge([
+            'engine' => $engine,
             'projects' => $projects,
             'clientProjects' => $clientProjects,
             'projectsJson' => $projects->map(fn (RoomAreaProject $project) => $this->projectPayload($project))->values(),
         ], $this->assemblyPageData()));
     }
 
-    public function clientProject(ClientProject $client_project, ?RoomAreaRoom $room_area_room = null)
+    public function clientProject(Request $request, ClientProject $client_project, ?RoomAreaRoom $room_area_room = null)
     {
+        $engine = 'openplan3d';
         if ($room_area_room) {
             $room_area_room->loadMissing('project');
             if ((int) ($room_area_room->project?->client_project_id) !== (int) $client_project->id) {
@@ -78,8 +88,10 @@ class RoomAreaController extends Controller
             ->get(['id', 'name', 'client_name']);
 
         $pageTitle = $room_area_room?->name ?: 'Room Area';
+        $view = 'admin.client_projects.room_area';
 
-        return view('admin.client_projects.room_area', array_merge([
+        return view($view, array_merge([
+            'engine' => $engine,
             'clientProject' => $client_project,
             'projects' => $projects,
             'clientProjects' => $clientProjects,
@@ -249,6 +261,7 @@ class RoomAreaController extends Controller
             'canvas.editor.measure_unit' => ['nullable', 'string', 'in:meter,inch,feet_decimal,feet_inch_frac'],
             'canvas.editor.angle_snap' => ['nullable', 'boolean'],
             'canvas.editor.template' => ['nullable', 'string', 'in:rect,l,u,t,alcove'],
+            'plan' => ['nullable', 'array'],
             'vertices' => ['nullable', 'array'],
             'vertices.*.x' => ['required_with:vertices', 'numeric'],
             'vertices.*.y' => ['required_with:vertices', 'numeric'],
@@ -261,6 +274,44 @@ class RoomAreaController extends Controller
             'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
             'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
         ]);
+
+        $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
+        $plan = $data['plan'] ?? null;
+        if (is_array($plan) && $bridge->isPlan($plan)) {
+            $finish = [
+                'wall_height_ft' => $data['wall_height_ft'] ?? null,
+                'ceiling_height_ft' => $data['ceiling_height_ft'] ?? null,
+                'flooring_waste_percent' => $data['flooring_waste_percent'] ?? null,
+                'flooring_direction' => $data['flooring_direction'] ?? null,
+                'flooring_box_sqft' => $data['flooring_box_sqft'] ?? null,
+            ];
+            $metrics = $bridge->layoutMetrics($plan, null, $finish);
+            if ($metrics['area_sqft'] <= 0 && empty($metrics['walls'])) {
+                return response()->json(['ok' => false, 'message' => 'The drawing must contain at least one closed room or wall.'], 422);
+            }
+
+            $room = $room_area_project->rooms()->create([
+                'name' => $data['name'],
+                'vertices' => $plan,
+                'canvas_width' => $data['canvas_width'] ?? null,
+                'canvas_height' => $data['canvas_height'] ?? null,
+                'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
+                    ? round((float) $data['scale_pixels_per_foot'], 4)
+                    : null,
+                'area_sqft' => $metrics['area_sqft'],
+                'wall_height_ft' => $metrics['wall_height_ft'],
+                'ceiling_height_ft' => $metrics['ceiling_height_ft'],
+                'flooring_waste_percent' => $metrics['flooring_waste_percent'],
+                'flooring_direction' => $metrics['flooring_direction'],
+                'flooring_box_sqft' => $metrics['flooring_box_sqft'],
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'room' => $this->roomPayload($room, $canvasData),
+                'project' => $this->projectPayload($room_area_project->fresh(['clientProject', 'rooms.photos', 'rooms.assemblies'])),
+            ]);
+        }
 
         $scale = (float) ($data['scale_pixels_per_foot'] ?? $room_area_project->scale_pixels_per_foot ?? 0);
         $rawCanvas = $data['canvas'] ?? $data['vertices'] ?? null;
@@ -330,6 +381,7 @@ class RoomAreaController extends Controller
             'canvas.editor.measure_unit' => ['nullable', 'string', 'in:meter,inch,feet_decimal,feet_inch_frac'],
             'canvas.editor.angle_snap' => ['nullable', 'boolean'],
             'canvas.editor.template' => ['nullable', 'string', 'in:rect,l,u,t,alcove'],
+            'plan' => ['nullable', 'array'],
             'vertices' => ['nullable', 'array'],
             'vertices.*.x' => ['required_with:vertices', 'numeric'],
             'vertices.*.y' => ['required_with:vertices', 'numeric'],
@@ -342,6 +394,50 @@ class RoomAreaController extends Controller
             'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
             'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
         ]);
+
+        $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
+        $plan = $data['plan'] ?? null;
+        if (is_array($plan) && $bridge->isPlan($plan)) {
+            $finish = [
+                'wall_height_ft' => $data['wall_height_ft'] ?? $room_area_room->wall_height_ft,
+                'ceiling_height_ft' => $data['ceiling_height_ft'] ?? $room_area_room->ceiling_height_ft,
+                'flooring_waste_percent' => $data['flooring_waste_percent'] ?? $room_area_room->flooring_waste_percent,
+                'flooring_direction' => $data['flooring_direction'] ?? $room_area_room->flooring_direction,
+                'flooring_box_sqft' => $data['flooring_box_sqft'] ?? $room_area_room->flooring_box_sqft,
+            ];
+            $metrics = $bridge->layoutMetrics($plan, null, $finish);
+            if ($metrics['area_sqft'] <= 0 && empty($metrics['walls'])) {
+                return response()->json(['ok' => false, 'message' => 'The drawing must contain at least one closed room or wall.'], 422);
+            }
+
+            $legacyBackup = $room_area_room->legacy_canvas_data;
+            if ($legacyBackup === null && ! $bridge->isPlan($room_area_room->vertices)) {
+                $legacyBackup = $room_area_room->vertices;
+            }
+
+            $room_area_room->update([
+                'name' => $data['name'],
+                'vertices' => $plan,
+                'legacy_canvas_data' => $legacyBackup,
+                'canvas_width' => $data['canvas_width'] ?? null,
+                'canvas_height' => $data['canvas_height'] ?? null,
+                'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
+                    ? round((float) $data['scale_pixels_per_foot'], 4)
+                    : $room_area_room->scale_pixels_per_foot,
+                'area_sqft' => $metrics['area_sqft'],
+                'wall_height_ft' => $metrics['wall_height_ft'],
+                'ceiling_height_ft' => $metrics['ceiling_height_ft'],
+                'flooring_waste_percent' => $metrics['flooring_waste_percent'],
+                'flooring_direction' => $metrics['flooring_direction'],
+                'flooring_box_sqft' => $metrics['flooring_box_sqft'],
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'room' => $this->roomPayload($room_area_room->fresh(), $canvasData),
+                'project' => $this->projectPayload($room_area_room->project->fresh(['clientProject', 'rooms.photos', 'rooms.assemblies'])),
+            ]);
+        }
 
         $scale = (float) ($data['scale_pixels_per_foot'] ?? $room_area_room->scale_pixels_per_foot ?? $room_area_room->project->scale_pixels_per_foot ?? 0);
         $rawCanvas = $data['canvas'] ?? $data['vertices'] ?? null;
@@ -741,23 +837,40 @@ class RoomAreaController extends Controller
     private function roomPayload(RoomAreaRoom $room, ?RoomAreaCanvasData $canvasData = null): array
     {
         $canvasData ??= app(RoomAreaCanvasData::class);
+        $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
         if (! $room->relationLoaded('photos')) {
             $room->load('photos');
         }
-        $canvas = $canvasData->normalize($room->vertices);
+
+        $isOpenPlan3D = $bridge->isPlan($room->vertices);
         $scale = (float) ($room->scale_pixels_per_foot ?? $room->project?->scale_pixels_per_foot ?? 0);
-        $groupSummaries = $scale > 0
-            ? $canvasData->groupSummaries($canvas, $scale)
-            : [];
-        $metrics = $scale > 0
-            ? $canvasData->layoutMetrics($canvas, $scale, $room->resolvedWallHeightFt(), $room->finishSettings())
-            : $canvasData->emptyLayoutMetrics($room->resolvedWallHeightFt());
+
+        if ($isOpenPlan3D) {
+            $plan = $room->vertices;
+            $canvas = is_array($room->legacy_canvas_data) ? $canvasData->normalize($room->legacy_canvas_data) : null;
+            $groupSummaries = [];
+            $metrics = $room->layoutMetrics();
+        } else {
+            $canvas = $canvasData->normalize($room->vertices);
+            $groupSummaries = $scale > 0
+                ? $canvasData->groupSummaries($canvas, $scale)
+                : [];
+            $metrics = $scale > 0
+                ? $canvasData->layoutMetrics($canvas, $scale, $room->resolvedWallHeightFt(), $room->finishSettings())
+                : $canvasData->emptyLayoutMetrics($room->resolvedWallHeightFt());
+            $plan = $scale > 0
+                ? $bridge->fromCanvasData($canvas, $scale, $room->resolvedWallHeightFt(), $room->finishSettings())
+                : null;
+        }
 
         return [
             'id' => $room->id,
             'name' => $room->name,
             'vertices' => $room->vertices,
             'canvas' => $canvas,
+            'plan' => $plan,
+            'is_openplan3d' => $isOpenPlan3D,
+            'legacy_canvas_data' => $room->legacy_canvas_data,
             'group_summaries' => $groupSummaries,
             'metrics' => $metrics,
             'canvas_width' => $room->canvas_width,

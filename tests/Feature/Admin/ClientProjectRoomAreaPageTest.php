@@ -31,37 +31,14 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->get(route('admin.client-projects.utilities.room-area', $project))
             ->assertOk()
             ->assertViewIs('admin.client_projects.room_area')
-            ->assertSee('data-ra-fullpage', false)
-            ->assertSee('id="ra-full-room-name"', false)
+            ->assertSee('data-room-area-openplan3d', false)
+            ->assertSee('vendor/openplan3d/editor/index.html', false)
             ->assertSee('Back to project')
-            ->assertSee('data-ra-save-room', false)
-            ->assertSee('data-ra-zoom-in', false)
-            ->assertSee('data-ra-zoom-out', false)
-            ->assertSee('data-ra-zoom-100', false)
-            ->assertSee('data-ra-zoom-reset', false)
-            ->assertSee('data-ra-side', false)
-            ->assertSee('data-ra-sheet-handle', false)
-            ->assertSee('util-ra-full-header__back-label', false)
+            ->assertSee('id="openplan3d-save-btn"', false)
             ->assertSee('Kitchen remodel')
-            ->assertSee('Kitchen')
             ->assertSee('admin-dark.css', false)
             ->assertSee('id="admin-app"', false)
-            ->assertSee('util-ra--chrome-v2', false)
-            ->assertSee('data-ra-chrome', false)
             ->assertSee('data-ra-help-guide', false)
-            ->assertSee('data-ra-first-tip', false)
-            ->assertSee('util-ra-tool-group--view', false)
-            ->assertSee('util-ra-tool-group--draw', false)
-            ->assertSee('util-ra-tool-group--measure', false)
-            ->assertSee('util-ra-tool-group--room-tools', false)
-            ->assertSee('Draw / Edit')
-            ->assertSee('Measure / Units')
-            ->assertSee('Room tools')
-            ->assertSee('Objects / Walls')
-            ->assertSee('data-ra-templates-toggle', false)
-            ->assertSee('data-ra-lock-layers', false)
-            ->assertSee('data-ra-dimensions-mode', false)
-            ->assertSee('data-ra-unit-system="metric"', false)
             ->assertDontSee('Coming soon')
             ->assertSee(route('admin.client-projects.utilities.room-area.guide', $project, false), false);
     }
@@ -77,11 +54,9 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             'room_area_room' => $room,
         ]))
             ->assertOk()
-            ->assertSee('data-ra-initial-room-id="'.$room->id.'"', false)
-            ->assertSee('Dining')
-            ->assertSee('data-ra-type-length', false)
-            ->assertSee('data-ra-live-baseboard', false)
-            ->assertSee('data-ra-photos', false);
+            ->assertSee('data-room-area-openplan3d', false)
+            ->assertSee('data-initial-room-id="'.$room->id.'"', false)
+            ->assertSee('Dining');
     }
 
     public function test_missing_client_project_returns_404(): void
@@ -184,97 +159,6 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
         $this->assertStringContainsString('Open Room Area tool', $html);
         $this->assertStringNotContainsString('data-ra-canvas-wrap', $html);
         $this->assertStringNotContainsString('id="ra-konva-container"', $html);
-    }
-
-    public function test_room_area_js_zooms_without_requiring_shift(): void
-    {
-        $js = file_get_contents(public_path('js/admin-utilities-room-area.js'));
-        $this->assertNotFalse($js);
-        $this->assertStringNotContainsString('!e.shiftKey) return', $js);
-        $this->assertStringContainsString('data-ra-fullpage', $js);
-        $this->assertStringContainsString('bindSidePanel', $js);
-        $this->assertStringContainsString('bindSheetHandle', $js);
-        $this->assertStringContainsString('bindHelpPops', $js);
-        $this->assertStringContainsString('bindFirstTip', $js);
-        $this->assertStringContainsString('zr-room-area-guide-tip-v1', $js);
-        $this->assertStringContainsString('syncGuideLinks', $js);
-        $this->assertStringContainsString("get('ra_room')", $js);
-        $this->assertStringContainsString('drawGrid();', $js);
-
-        $css = file_get_contents(public_path('css/admin-utilities.css'));
-        $this->assertNotFalse($css);
-        $this->assertStringContainsString('width: 25rem', $css);
-        $this->assertStringContainsString('--ra-sheet-h', $css);
-        $this->assertStringContainsString('min-height: 45vh', $css);
-        $this->assertStringContainsString('.admin-app:has(.util-ra--fullpage) .admin-sidebar', $css);
-        $this->assertStringContainsString('.admin-app:has(.util-ra--fullpage) .admin-topbar', $css);
-        $this->assertStringContainsString('.util-ra--fullpage[data-ra-lock-client-project] .util-ra-project-bar', $css);
-        $this->assertStringContainsString('.admin-app:has(.util-ra-guide) .admin-sidebar', $css);
-        $this->assertStringContainsString('.util-ra-help-pop', $css);
-        $this->assertStringContainsString('.util-ra-first-tip', $css);
-        $this->assertStringContainsString('.util-ra-first-tip[hidden]', $css);
-        $this->assertStringContainsString('.util-ra-first-tip:empty', $css);
-        $this->assertStringContainsString('.util-ra-tip[data-tooltip]::after', $css);
-        $this->assertStringContainsString('(hover: hover) and (pointer: fine)', $css);
-        $this->assertStringContainsString('.util-ra-tool-group--measure', $css);
-        $this->assertStringContainsString('.util-ra--fullpage .util-ra-canvas-toolbar .util-ra-scale-status', $css);
-    }
-
-    public function test_full_page_editor_chrome_includes_help_link_and_grouped_tools(): void
-    {
-        $this->actingAsAdmin();
-        $project = ClientProject::factory()->create();
-        $room = $this->makeRoom($project, 'Bath');
-
-        $html = $this->get(route('admin.client-projects.utilities.room-area', [
-            'client_project' => $project,
-            'room_area_room' => $room,
-        ]))
-            ->assertOk()
-            ->getContent();
-
-        $this->assertStringContainsString('data-ra-help-guide', $html);
-        $this->assertStringContainsString('util-ra-full-header__help', $html);
-        $this->assertStringContainsString('Guide', $html);
-        $this->assertStringContainsString('data-ra-help-pop="measure"', $html);
-        $this->assertStringContainsString('data-ra-help-pop="type-walls"', $html);
-        $this->assertStringContainsString('data-ra-help-pop="finish"', $html);
-        $this->assertStringContainsString('data-ra-help-pop="kits"', $html);
-        $this->assertStringContainsString('data-ra-help-pop="first-tip"', $html);
-        $this->assertStringNotContainsString('data-ra-help-pop="view"', $html);
-        $this->assertStringNotContainsString('data-ra-help-pop="objects"', $html);
-        $this->assertLessThanOrEqual(6, substr_count($html, 'class="util-ra-help-q"'));
-        $this->assertStringContainsString('data-ra-first-tip-dismiss', $html);
-        $this->assertStringContainsString('util-ra-first-tip__guide', $html);
-        $this->assertStringContainsString('New here', $html);
-        $toolsAt = strpos($html, 'util-ra-full-header__row--tools');
-        $tipAt = strpos($html, 'data-ra-first-tip');
-        $projectAt = strpos($html, 'util-ra-project-bar');
-        $this->assertNotFalse($toolsAt);
-        $this->assertNotFalse($tipAt);
-        $this->assertNotFalse($projectAt);
-        $this->assertTrue($toolsAt < $tipAt && $tipAt < $projectAt, 'first-tip sits in the View toolbar, not as a strip above Project');
-        $this->assertStringContainsString('data-ra-project-menu-toggle', $html);
-        $this->assertStringContainsString('data-ra-project-menu', $html);
-        $guideUrl = route('admin.client-projects.utilities.room-area.guide', [
-            'client_project' => $project,
-            'room_area_room' => $room,
-        ], false);
-        $this->assertStringContainsString($guideUrl, $html);
-        $this->assertStringContainsString('data-tooltip="Open the on-site Room Area walkthrough."', $html);
-        $this->assertStringContainsString('data-tooltip="Save this room\'s outline, scale, and objects."', $html);
-        $this->assertStringContainsString('data-tooltip="Fit the whole drawing in the view."', $html);
-        $this->assertStringContainsString('data-tooltip="Show or hide Measure, Math, Photos, and Rooms."', $html);
-        $this->assertStringContainsString('data-tooltip="Open doors, windows, stairs, and fixtures."', $html);
-        $this->assertStringContainsString('data-tooltip="Turn on wall thickness for drawing; quotes still use the inside."', $html);
-        $this->assertStringContainsString('data-tooltip="Tap two ends of a known wall, then type that length."', $html);
-        $this->assertStringContainsString('aria-label="Open Room Area guide"', $html);
-        $this->assertStringContainsString('aria-label="Save room"', $html);
-        $this->assertStringContainsString('aria-label="Fit drawing in view"', $html);
-        $this->assertStringContainsString('aria-label="Show or hide side panel"', $html);
-        $this->assertStringContainsString('aria-label="Open object library"', $html);
-        $this->assertStringContainsString('aria-label="Zoom in"', $html);
-        $this->assertStringContainsString('aria-label="Zoom out"', $html);
     }
 
     /**

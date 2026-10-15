@@ -12,69 +12,8 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
 
-    public function test_math_tab_exposes_finish_fields_and_help_tip(): void
-    {
-        $this->actingAsAdmin();
-
-        $html = $this->get(route('admin.utilities.room-area'))
-            ->assertOk()
-            ->assertSee('data-ra-ceiling-height', false)
-            ->assertSee('data-ra-floor-waste', false)
-            ->assertSee('data-ra-floor-box', false)
-            ->assertSee('data-ra-floor-dir="0"', false)
-            ->assertSee('data-ra-floor-dir="90"', false)
-            ->assertSee('data-ra-wall-list', false)
-            ->assertSee('data-ra-live-ceiling-area', false)
-            ->assertSee('data-ra-live-boxes', false)
-            ->assertSee('data-ra-live-casing', false)
-            ->assertSee('data-ra-live-wall-area', false)
-            ->assertSee('data-ra-object-casing', false)
-            ->assertSee('data-ra-object-door-face', false)
-            ->assertSee('Both sides')
-            ->assertSee('Interior')
-            ->getContent();
-
-        $this->assertStringContainsString('data-ra-help-pop="finish"', $html);
-        $this->assertStringContainsString('data-ra-help-pop-panel="finish"', $html);
-        $this->assertStringContainsString('util-ra--fullpage', $html);
-        $this->assertStringContainsString('data-ra-live-wall-area', $html);
-        $this->assertMatchesRegularExpression('/data-ra-live-wall-area[^<]*<\\/span>\\s*<span data-ra-area-unit>/', $html);
-        $this->assertStringNotContainsString('admin-toolbar-lede', $html);
-    }
-
     public function test_assets_wire_finish_math_and_friendly_plan_errors(): void
     {
-        $js = file_get_contents(public_path('js/admin-utilities-room-area.js'));
-        $this->assertNotFalse($js);
-        $this->assertStringContainsString('function ceilingHeightFt()', $js);
-        $this->assertStringContainsString('function perWallNetAreas(', $js);
-        $this->assertStringContainsString('RA.perWallNetAreas(', $js);
-        $this->assertStringContainsString('function finishSnapshot(', $js);
-        $this->assertStringContainsString('function applyFinishSnapshot(', $js);
-        $this->assertStringContainsString('parseWastePercent(', $js);
-        $this->assertStringContainsString('Net wall area', $js);
-        $this->assertStringContainsString('function redrawFlooringDirection(', $js);
-        $this->assertStringContainsString('RA.flooringBoxes(', $js);
-        $this->assertStringContainsString('RA.totalCasingLf(', $js);
-        $this->assertStringContainsString('RA.friendlyPlanUploadError(e)', $js);
-        $this->assertStringContainsString('RA.planUploadErrorAfterRoomSaved(err)', $js);
-        $this->assertStringContainsString('commitCeilingFromInput', $js);
-        $this->assertStringContainsString("setCeilingHeight(null, true)", $js);
-        $this->assertStringContainsString('Math.abs((state.flooringWastePercent || 0) - parsed.value)', $js);
-        $this->assertMatchesRegularExpression('/resizeStage\(\);\s*redrawLabels\(\);/', $js);
-        $this->assertStringContainsString('function refitCanvasToLayout()', $js);
-        $this->assertSame(2, substr_count($js, 'requestAnimationFrame(refitCanvasToLayout)'));
-        $this->assertMatchesRegularExpression(
-            '/function resizeStage\(\) \{[\s\S]*?\n  function /',
-            $js
-        );
-        preg_match('/function resizeStage\(\) \{([\s\S]*?)\n  function /', $js, $resizeStage);
-        $this->assertArrayHasKey(1, $resizeStage);
-        $this->assertStringContainsString('userAdjustedViewport', $resizeStage[1]);
-        $this->assertStringContainsString('fitViewport', $resizeStage[1]);
-        $this->assertStringNotContainsString("friendlyNetworkError(err, 'Could not upload the floor plan. Check your connection and try again.')", $js);
-        $this->assertStringNotContainsString("friendlyNetworkError(e, 'Could not upload the floor plan. Check your connection and try again.')", $js);
-
         $lib = file_get_contents(public_path('js/room-area-lib.js'));
         $this->assertNotFalse($lib);
         $this->assertStringContainsString('function flooringBoxes(', $lib);

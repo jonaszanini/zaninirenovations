@@ -16,37 +16,6 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
 
-    public function test_kits_tab_exposes_editor_hooks_and_help_tip(): void
-    {
-        $this->actingAsAdmin();
-
-        $html = $this->get(route('admin.utilities.room-area'))
-            ->assertOk()
-            ->assertSee('data-ra-side-tab="kits"', false)
-            ->assertSee('data-ra-kit-list', false)
-            ->assertSee('data-ra-kit-new', false)
-            ->assertSee('data-ra-kit-quote', false)
-            ->assertSee('aria-live="polite"', false)
-            ->assertSee('Add kits to quote')
-            ->assertSee('data-ra-kit-name', false)
-            ->assertSee('maxlength="120"', false)
-            ->assertSee('maxlength="200"', false)
-            ->assertSee('ceil(net_wall_sf * 1.12 / 32)', false)
-            ->getContent();
-
-        $this->assertStringContainsString('data-ra-help-pop="kits"', $html);
-        $this->assertStringNotContainsString('data-ra-toolbar-overflow', $html);
-        $this->assertStringContainsString('util-ra--fullpage', $html);
-        $this->assertStringContainsString('id="ra-catalog-options"', $html);
-        $this->assertStringContainsString('maxlength="120"', $html);
-        $this->assertStringContainsString('maxlength="200"', $html);
-        $this->assertStringContainsString('maxlength="20"', $html);
-        $this->assertStringContainsString('Drywall wall', $html);
-        $this->assertStringContainsString('LVP floor', $html);
-        $this->assertStringContainsString('Baseboard', $html);
-        $this->assertSame(3, RoomAreaAssembly::query()->count());
-    }
-
     public function test_deleted_default_kits_are_not_recreated_on_get(): void
     {
         $this->actingAsAdmin();
@@ -205,24 +174,6 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
 
     public function test_assets_wire_formula_parser_and_kit_styles(): void
     {
-        $js = file_get_contents(public_path('js/admin-utilities-room-area.js'));
-        $this->assertStringContainsString('function renderKits(', $js);
-        $this->assertStringContainsString('RA.evaluateAssemblyLine(', $js);
-        $this->assertStringContainsString('function bindKits(', $js);
-        $this->assertStringContainsString('typeof ResizeObserver', $js);
-        $this->assertMatchesRegularExpression('/ResizeObserver\(function \(\) \{\s*resizeStage\(\);/', $js);
-        $this->assertStringNotContainsString('isFullPage() && typeof ResizeObserver', $js);
-        $this->assertStringContainsString('userAdjustedViewport', $js);
-        $this->assertStringNotContainsString('if (state.userAdjustedViewport) return;', $js);
-        $this->assertStringContainsString("if (/s$/i.test(unit)) return unit;", $js);
-        $this->assertStringContainsString("if (/\\bpails\\b/i.test(unit)", $js);
-        $this->assertStringContainsString("addEventListener('pageshow'", $js);
-        $this->assertStringContainsString('var shiftPan', $js);
-        $this->assertStringContainsString('e.shiftKey', $js);
-        $this->assertStringContainsString('Click Save to keep changes', $js);
-        $this->assertStringNotContainsString('function syncToolbarOverflow(', $js);
-        $this->assertStringNotContainsString('data-ra-toolbar-overflow', $js);
-        $this->assertStringContainsString('visibleWrapSize', $js);
         $inserter = file_get_contents(app_path('Services/RoomAreaQuoteLineInserter.php'));
         $this->assertStringContainsString('usesCurrentPdfFold()', $inserter);
         $calc = file_get_contents(app_path('Services/StandardQuotationCalculator.php'));
@@ -230,15 +181,6 @@ class RoomAreaBatch3PageTest extends IntegrationTestCase
         $this->assertStringContainsString('bool $assignSurchargeRemainderToLabourJobs = false', $calc);
         $this->assertStringNotContainsString('?bool $assignSurchargeRemainderToLabourJobs', $calc);
         $this->assertStringNotContainsString('$useCurrentPdfFold', $calc);
-        $this->assertMatchesRegularExpression(
-            '/function deleteCurrentKit\([\s\S]*payload\.ok === false[\s\S]*Kit deleted/',
-            $js
-        );
-        $this->assertMatchesRegularExpression(
-            '/function deleteCurrentKit\([\s\S]*friendlyNetworkError\([\s\S]*Could not delete that kit/',
-            $js
-        );
-        $this->assertDoesNotMatchRegularExpression('/\beval\s*\(/', $js);
 
         $lib = file_get_contents(public_path('js/room-area-lib.js'));
         $this->assertStringContainsString('function evaluateFormula(', $lib);

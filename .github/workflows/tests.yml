@@ -23,6 +23,7 @@ concurrency:
 
 jobs:
   phpunit:
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -82,8 +83,9 @@ jobs:
       - name: JavaScript tests
         run: |
           node tests/js/room-area-lib.test.js
+          node tests/js/openplan3d-parity.test.js
+          node tests/js/openplan3d-browser.test.js
           node tests/js/room-area-formula.test.js
-          node tests/js/room-area-phone-geometry.test.js
           node tests/js/shared-prices-effective.test.js
           node tests/js/admin-hotkey-save.test.js
           node tests/js/admin-hotkey-save-browser.test.js
@@ -96,6 +98,8 @@ jobs:
       - name: Unit tests (no database)
         run: |
           php artisan test \
+            tests/Unit/Services/OpenPlan3DParityTest.php \
+            tests/Unit/Services/RoomAreaDrawingImporterTest.php \
             tests/Unit/Views/BladeSyntaxTest.php \
             tests/Unit/Views/AiActionGroupTest.php \
             tests/Unit/Views/QuotationPdfPageBreakTest.php \
@@ -154,6 +158,9 @@ jobs:
             tests/Feature/Admin/CancelledProjectInvoiceExclusionTest.php \
             tests/Feature/Admin/ClientIndexAddressSearchTest.php \
             tests/Feature/Admin/ClientProjectFiltersAccordionTest.php \
+            tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php \
+            tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php \
+            tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php \
             tests/Unit/Services/RoomAreaCanvasDataTest.php \
             tests/Feature/Admin/RoomAreaCanvasObjectsTest.php \
             tests/Feature/Admin/RoomAreaPdfExportTest.php \
@@ -234,7 +241,6 @@ jobs:
             tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php \
             tests/Unit/Services/MaterialPriceSyncServiceTest.php \
             tests/Unit/Models/MaterialStoreProductUrlTest.php \
-            tests/Feature/Admin/RoomAreaBatch1PageTest.php \
             tests/Unit/Services/RoomAreaTemplatesTest.php \
             tests/Unit/Models/BlogPostListHelpersTest.php \
             tests/Feature/Admin/BlogPostsIndexLayoutTest.php \
