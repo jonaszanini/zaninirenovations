@@ -134,4 +134,38 @@ const extDoorMetrics = bridge.layoutMetrics(exteriorDoorPlan, 'r1', { wall_heigh
 // 1-side casing: 1 * (36 + 160) / 12 = 196 / 12 = 16.33 LF
 assert.strictEqual(extDoorMetrics.casing_lf, 16.33, '1-side exterior door casing LF is 16.33');
 
+// Test 7: Multi-room aggregate layoutMetrics with library items (cabinets and stairs)
+const multiRoomPlan = {
+  format: 'openplan3d',
+  units: 'in',
+  walls: [
+    { id: 'w1', start: { x: 0, y: 0 }, end: { x: 120, y: 0 }, thickness: 4.5, height: 96 },
+    { id: 'w2', start: { x: 120, y: 0 }, end: { x: 120, y: 120 }, thickness: 4.5, height: 96 },
+    { id: 'w3', start: { x: 120, y: 120 }, end: { x: 0, y: 120 }, thickness: 4.5, height: 96 },
+    { id: 'w4', start: { x: 0, y: 120 }, end: { x: 0, y: 0 }, thickness: 4.5, height: 96 },
+    { id: 'w5', start: { x: 120, y: 0 }, end: { x: 240, y: 0 }, thickness: 4.5, height: 96 },
+    { id: 'w6', start: { x: 240, y: 0 }, end: { x: 240, y: 120 }, thickness: 4.5, height: 96 },
+    { id: 'w7', start: { x: 240, y: 120 }, end: { x: 120, y: 120 }, thickness: 4.5, height: 96 }
+  ],
+  rooms: [
+    { id: 'r1', name: 'Room 1', walls: ['w1', 'w2', 'w3', 'w4'] },
+    { id: 'r2', name: 'Room 2', walls: ['w5', 'w6', 'w7', 'w2'] }
+  ],
+  furniture: [
+    { catalogId: 'cabinet_base_36', width: 36, depth: 24 },
+    { catalogId: 'cabinet_upper_30', width: 30, depth: 12 }
+  ],
+  stairs: [
+    { stairType: 'straight', depth: 120, riserCount: 12 }
+  ]
+};
+
+const multiMetrics = bridge.layoutMetrics(multiRoomPlan, null, { wall_height_ft: 8.0 });
+assert.ok(multiMetrics.area_sqft > 0, 'Multi-room area computed without ReferenceError');
+assert.strictEqual(multiMetrics.polygon_count, 2, 'Multi-room polygon count is 2');
+assert.strictEqual(multiMetrics.cabinet_base_lf, 3.0, 'Base cabinet LF is 36 / 12 = 3.0');
+assert.strictEqual(multiMetrics.cabinet_upper_lf, 2.5, 'Upper cabinet LF is 30 / 12 = 2.5');
+assert.strictEqual(multiMetrics.stairs_count, 1, 'Stairs count is 1');
+assert.strictEqual(multiMetrics.stairs_treads, 12, 'Stairs treads is 12');
+
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

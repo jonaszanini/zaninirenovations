@@ -51,6 +51,138 @@
 					});
 				}
 			</script>
+			<script type="module">
+				import("/vendor/openplan3d/_app/immutable/chunks/1VjVcrjm.js").then((storeModule) => {
+					window.__openPlan3D = {
+						getProject: () => {
+							let cur = null;
+							if (storeModule.c && typeof storeModule.c.subscribe === 'function') {
+								const unsub = storeModule.c.subscribe(v => cur = v);
+								if (typeof unsub === 'function') unsub();
+							}
+							return cur;
+						},
+						setProject: (project) => {
+							if (typeof storeModule.H === 'function') {
+								storeModule.H(project);
+							} else if (storeModule.c && typeof storeModule.c.set === 'function') {
+								storeModule.c.set(project);
+							}
+						},
+						subscribe: (callback) => {
+							if (storeModule.c && typeof storeModule.c.subscribe === 'function') {
+								return storeModule.c.subscribe(callback);
+							}
+							return () => {};
+						}
+					};
+
+					function serializePlan(raw) {
+						if (!raw || typeof raw !== 'object') return null;
+						try {
+							return JSON.parse(JSON.stringify(raw));
+						} catch (e) {
+							try {
+								const ancestors = [];
+								const json = JSON.stringify(raw, function(key, value) {
+									if (typeof value === 'function' || typeof value === 'symbol') return undefined;
+									if (typeof value === 'object' && value !== null) {
+										while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
+											ancestors.pop();
+										}
+										if (ancestors.includes(value)) return undefined;
+										ancestors.push(value);
+									}
+									return value;
+								});
+								return JSON.parse(json);
+							} catch (e2) {
+								console.warn('[openPlan3D Bridge] Failed to serialize plan:', e2);
+								return null;
+							}
+						}
+					}
+
+					// Notify parent window that openPlan3D API is ready
+					if (window.parent && window.parent !== window) {
+						window.parent.postMessage({ type: 'OPENPLAN3D_READY' }, '*');
+					}
+
+					// Forward project changes to parent (debounced and isolated from Svelte store execution)
+					let initial = true;
+					let updateTimeout = null;
+					window.__openPlan3D.subscribe((project) => {
+						if (initial) {
+							initial = false;
+							return;
+						}
+						if (updateTimeout) clearTimeout(updateTimeout);
+						updateTimeout = setTimeout(() => {
+							updateTimeout = null;
+							if (window.parent && window.parent !== window) {
+								try {
+									const cur = (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function')
+										? window.__openPlan3D.getProject()
+										: project;
+									const cleanPlan = serializePlan(cur);
+									if (cleanPlan) {
+										window.parent.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: cleanPlan }, '*');
+									}
+								} catch (postErr) {
+									console.warn('[openPlan3D Bridge] Error posting plan change:', postErr);
+								}
+							}
+						}, 30);
+					});
+				}).catch(err => {
+					console.error('[openPlan3D Bridge] Error loading store module:', err);
+				});
+
+				// Hotkey forwarder: forward Ctrl+S / Cmd+S to parent
+				window.addEventListener('keydown', (e) => {
+					if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+						e.preventDefault();
+						if (window.parent && window.parent !== window) {
+							window.parent.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*');
+						}
+					}
+				});
+
+				// Message receiver from parent window
+				window.addEventListener('message', (event) => {
+					const data = event.data;
+					if (!data || typeof data !== 'object') return;
+
+					if (data.type === 'OPENPLAN3D_LOAD_PLAN') {
+						const load = () => {
+							if (window.__openPlan3D && typeof window.__openPlan3D.setProject === 'function') {
+								window.__openPlan3D.setProject(data.plan);
+							} else {
+								setTimeout(load, 50);
+							}
+						};
+						load();
+					}
+
+					if (data.type === 'OPENPLAN3D_REQUEST_PLAN') {
+						if (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function') {
+							const plan = window.__openPlan3D.getProject();
+							if (window.parent && window.parent !== window) {
+								try {
+									const cleanPlan = serializePlan(plan);
+									window.parent.postMessage({
+										type: 'OPENPLAN3D_PLAN_RESPONSE',
+										requestId: data.requestId,
+										plan: cleanPlan
+									}, '*');
+								} catch (postErr) {
+									console.warn('[openPlan3D Bridge] Error posting plan response:', postErr);
+								}
+							}
+						}
+					}
+				});
+			</script>
 		</div>
 	</body>
 </html>

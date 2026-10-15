@@ -258,6 +258,58 @@
     };
   }
 
+  function resolveLibraryMetrics(floor, cmPerUnit) {
+    var baseIn = 0.0, upperIn = 0.0;
+    var rawFurniture = (floor && floor.furniture) || [];
+    for (var i = 0; i < rawFurniture.length; i++) {
+      var f = rawFurniture[i];
+      if (!f || typeof f !== 'object') continue;
+      var cat = String(f.catalogId || f.sourceCategory || '').toLowerCase();
+      var wIn = ((Number(f.width) || 36.0) * cmPerUnit) / CM_PER_INCH;
+      var dIn = ((Number(f.depth) || 24.0) * cmPerUnit) / CM_PER_INCH;
+      if (cat.indexOf('cabinet') !== -1) {
+        if (cat.indexOf('upper') !== -1) {
+          upperIn += Math.max(0.0, wIn);
+        } else if (cat.indexOf('corner') !== -1) {
+          baseIn += Math.max(0.0, wIn) + Math.max(0.0, dIn);
+        } else {
+          baseIn += Math.max(0.0, wIn);
+        }
+      }
+    }
+
+    var stairsCount = 0, treads = 0, runIn = 0.0, quoteType = 'standard';
+    var rawStairs = (floor && floor.stairs) || [];
+    for (var i = 0; i < rawStairs.length; i++) {
+      var s = rawStairs[i];
+      if (!s || typeof s !== 'object') continue;
+      stairsCount++;
+      var stType = String(s.stairType || 'straight').toLowerCase();
+      var sDepthIn = ((Number(s.depth) || 300.0) * cmPerUnit) / CM_PER_INCH;
+      runIn += Math.max(0.0, sDepthIn);
+      var risers = Number(s.riserCount || 0);
+      if (risers <= 0) {
+        var baseR = Math.max(1, Math.round(sDepthIn / STAIR_TREAD_IN));
+        risers = stType.indexOf('u') !== -1 ? baseR + 6 : (stType.indexOf('l') !== -1 ? baseR + 3 : baseR);
+      }
+      treads += risers;
+      if (stType.indexOf('u') !== -1) {
+        quoteType = 'double_landing';
+      } else if (stType.indexOf('l') !== -1 && quoteType !== 'double_landing') {
+        quoteType = 'single_landing';
+      }
+    }
+
+    return {
+      cabinet_base_lf: roundTo(baseIn / 12.0, 2),
+      cabinet_upper_lf: roundTo(upperIn / 12.0, 2),
+      stairs_count: stairsCount,
+      stairs_treads: Math.max(0, treads),
+      stairs_run_lf: roundTo(runIn / 12.0, 2),
+      stairs_quote_type: quoteType
+    };
+  }
+
   function layoutMetrics(plan, roomId, finish, options) {
     finish = finish || {};
     options = options || {};
@@ -624,37 +676,7 @@
     var outsideAreaSqFt = roundTo(Math.max(insideAreaSqFt, insideAreaSqFt + (exteriorLf * thicknessFt)), 2);
 
     // Furniture / Cabinets / Stairs
-    var baseIn = 0.0, upperIn = 0.0;
-    var rawFurniture = floor.furniture || [];
-    for (var i = 0; i < rawFurniture.length; i++) {
-      var f = rawFurniture[i];
-      var cat = String(f.catalogId || f.sourceCategory || '').toLowerCase();
-      var wIn = ((f.width || 36.0) * cmPerUnit) / CM_PER_INCH;
-      var dIn = ((f.depth || 24.0) * cmPerUnit) / CM_PER_INCH;
-      if (cat.indexOf('cabinet') !== -1) {
-        if (cat.indexOf('upper') !== -1) upperIn += Math.max(0, wIn);
-        else if (cat.indexOf('corner') !== -1) baseIn += Math.max(0, wIn) + Math.max(0, dIn);
-        else baseIn += Math.max(0, wIn);
-      }
-    }
-
-    var stairsCount = 0, treads = 0, runIn = 0.0, quoteType = 'standard';
-    var rawStairs = floor.stairs || [];
-    for (var i = 0; i < rawStairs.length; i++) {
-      var s = rawStairs[i];
-      stairsCount++;
-      var stType = String(s.stairType || 'straight').toLowerCase();
-      var sDepthIn = ((s.depth || 300.0) * cmPerUnit) / CM_PER_INCH;
-      runIn += Math.max(0, sDepthIn);
-      var risers = Number(s.riserCount || 0);
-      if (risers <= 0) {
-        var baseR = Math.max(1, Math.round(sDepthIn / STAIR_TREAD_IN));
-        risers = stType.indexOf('u') !== -1 ? baseR + 6 : (stType.indexOf('l') !== -1 ? baseR + 3 : baseR);
-      }
-      treads += risers;
-      if (stType.indexOf('u') !== -1) quoteType = 'double_landing';
-      else if (stType.indexOf('l') !== -1 && quoteType !== 'double_landing') quoteType = 'single_landing';
-    }
+    var lib = resolveLibraryMetrics(floor, cmPerUnit);
 
     return {
       area_sqft: insideAreaSqFt,
@@ -674,12 +696,12 @@
       outside_area_sqft: outsideAreaSqFt,
       shared_wall_lf: sharedLf,
       framing_lf: framingLf,
-      cabinet_base_lf: roundTo(baseIn / 12.0, 2),
-      cabinet_upper_lf: roundTo(upperIn / 12.0, 2),
-      stairs_count: stairsCount,
-      stairs_treads: Math.max(0, treads),
-      stairs_run_lf: roundTo(runIn / 12.0, 2),
-      stairs_quote_type: quoteType,
+      cabinet_base_lf: lib.cabinet_base_lf,
+      cabinet_upper_lf: lib.cabinet_upper_lf,
+      stairs_count: lib.stairs_count,
+      stairs_treads: lib.stairs_treads,
+      stairs_run_lf: lib.stairs_run_lf,
+      stairs_quote_type: lib.stairs_quote_type,
       ceiling_height_ft: ceilingHeight,
       ceiling_area_sqft: ceilingAreaSqFt,
       net_wall_area_sqft: totalNetWallArea,

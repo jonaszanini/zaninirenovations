@@ -188,7 +188,7 @@
   <main class="util-ra-openplan3d-frame-container" id="openplan3d-container">
     <iframe
       id="openplan3d-iframe"
-      src="{{ asset('vendor/openplan3d/editor/index.html') }}"
+      src="{{ asset('vendor/openplan3d/editor/index.html') }}?v={{ @filemtime(public_path('vendor/openplan3d/editor/index.html')) ?: time() }}"
       title="openPlan3D Floor Plan Editor"
       class="util-ra-openplan3d-iframe"
       allow="fullscreen"
@@ -820,14 +820,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     try {
       var bridge = window.OpenPlan3DMeasurementBridge;
-      var metrics = bridge.layoutMetrics(plan, null, getFinishSettings());
+      var roomId = (currentRoom && (currentRoom.id || currentRoom.name)) ? (currentRoom.id || currentRoom.name) : null;
+      var metrics = bridge.layoutMetrics(plan, roomId, getFinishSettings());
       metricArea.textContent = (metrics.area_sqft || 0).toFixed(2);
-      metricPerimeter.textContent = (metrics.perimeter_ft || 0).toFixed(2);
-      metricBaseboard.textContent = (metrics.baseboard_ft || 0).toFixed(2);
+      metricPerimeter.textContent = (metrics.perimeter_lf != null ? metrics.perimeter_lf : (metrics.perimeter_ft || 0)).toFixed(2);
+      metricBaseboard.textContent = (metrics.baseboard_lf != null ? metrics.baseboard_lf : (metrics.baseboard_ft || 0)).toFixed(2);
       metricWallArea.textContent = (metrics.net_wall_area_sqft || metrics.net_wall_sqft || metrics.wall_area_sqft || 0).toFixed(2);
       metricOpenings.textContent = (metrics.door_count || 0) + ' doors · ' + (metrics.window_count || 0) + ' windows';
-      metricCasing.textContent = (metrics.casing_lf || metrics.casing_ft || 0).toFixed(2);
-      metricBoxes.textContent = String(metrics.flooring_boxes || metrics.boxes || 0);
+      metricCasing.textContent = (metrics.casing_lf != null ? metrics.casing_lf : (metrics.casing_ft || 0)).toFixed(2);
+      metricBoxes.textContent = String(metrics.flooring_boxes != null ? metrics.flooring_boxes : (metrics.boxes || 0));
     } catch (err) {
       console.warn('[openPlan3D] Metrics computation failed:', err);
     }
