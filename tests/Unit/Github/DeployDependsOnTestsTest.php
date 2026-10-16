@@ -20,6 +20,10 @@ class DeployDependsOnTestsTest extends TestCase
         );
         $this->assertStringContainsString("push:\n    branches:\n      - main", $yaml);
         $this->assertStringContainsString('pull_request:', $yaml);
+        $this->assertMatchesRegularExpression(
+            '/pull_request:\s*\n\s+types:\s*\[opened,\s*synchronize,\s*reopened,\s*ready_for_review\]/',
+            $yaml
+        );
         $this->assertStringContainsString('workflow_dispatch:', $yaml);
         $this->assertStringContainsString('openplan3d-editor-bridge.test.js', $yaml);
         $this->assertStringContainsString('openplan3d-editor-browser.test.js', $yaml);
