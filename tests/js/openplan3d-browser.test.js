@@ -104,8 +104,12 @@ async function run() {
     const initialOpenings = await page.$eval('#metric-openings', (el) => el.textContent.trim());
     assert.strictEqual(initialOpenings, '0 doors · 0 windows', 'Initial openings should be 0');
 
-    const dirtyAtLoad = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
-    assert.strictEqual(dirtyAtLoad, false, 'Saved room must open without an Unsaved badge');
+    const dirtyAtLoad = await page.$eval('#openplan3d-dirty-badge', (el) => ({
+      hidden: el.hidden,
+      display: getComputedStyle(el).display,
+    }));
+    assert.strictEqual(dirtyAtLoad.hidden, true, 'Saved room must open without an Unsaved badge');
+    assert.strictEqual(dirtyAtLoad.display, 'none', 'hidden Unsaved badge must not be visible');
 
     const blankBootPlan = {
       id: 'untitled',
@@ -122,6 +126,31 @@ async function run() {
     const dirtyBeforeAck = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
     assert.strictEqual(dirtyBeforeAck, false, 'Boot store writes must not mark the room Unsaved');
 
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_LOAD_ACK', ok: false, plan: plan }, '*');
+    }, blankBootPlan);
+    await new Promise((r) => setTimeout(r, 50));
+
+    const areaAfterFailedAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    assert.strictEqual(areaAfterFailedAck, '150.00', 'ACK ok:false must not adopt the editor current plan');
+    const saveDisabledOnFail = await page.$eval('#openplan3d-save-btn', (el) => el.disabled);
+    assert.strictEqual(saveDisabledOnFail, true, 'ACK ok:false must keep Save disabled');
+    const failedAckFeedback = await page.$eval('#openplan3d-feedback', (el) => ({
+      hidden: el.hidden,
+      text: el.textContent,
+      error: el.className.indexOf('openplan3d-feedback--error') !== -1,
+    }));
+    assert.strictEqual(failedAckFeedback.hidden, false, 'ACK ok:false must show a visible error');
+    assert.ok(failedAckFeedback.error, 'ACK ok:false feedback is an error');
+    assert.match(failedAckFeedback.text, /did not confirm/i);
+    const stateAfterFail = await page.evaluate(() => window.OpenPlan3DHost.getState());
+    assert.strictEqual(stateAfterFail.loadAcked, false, 'ACK ok:false must not mark loadAcked');
+    assert.notStrictEqual(
+      (stateAfterFail.currentPlan && stateAfterFail.currentPlan.name) || '',
+      'Untitled Project',
+      'ACK ok:false must keep the saved room plan'
+    );
+
     await page.evaluate(() => {
       window.postMessage({ type: 'OPENPLAN3D_LOAD_ACK', ok: true }, '*');
     });
@@ -131,6 +160,18 @@ async function run() {
     assert.strictEqual(areaAfterAck, '150.00', 'LOAD_ACK must keep the saved geometry metrics');
     const dirtyAfterAck = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
     assert.strictEqual(dirtyAfterAck, false, 'LOAD_ACK must leave the Unsaved badge hidden');
+
+    const loadedSamePlan = await page.evaluate(() => window.OpenPlan3DHost.getState().currentPlan);
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
+    }, loadedSamePlan);
+    await new Promise((r) => setTimeout(r, 50));
+    const dirtySamePlan = await page.$eval('#openplan3d-dirty-badge', (el) => ({
+      hidden: el.hidden,
+      display: getComputedStyle(el).display,
+    }));
+    assert.strictEqual(dirtySamePlan.hidden, true, 'Re-emitting the loaded plan after ACK must not mark Unsaved');
+    assert.strictEqual(dirtySamePlan.display, 'none', 'Unsaved stays visually hidden when the plan matches');
     const areaDelta = Math.abs(parseFloat(areaAfterAck) - 150.0);
     assert.ok(areaDelta <= 0.01, 'Opened metrics must match stored area_sqft within 0.01');
 

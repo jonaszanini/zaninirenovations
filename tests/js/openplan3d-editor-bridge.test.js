@@ -61,6 +61,8 @@ assert.doesNotMatch(
 const hostSrc = fs.readFileSync(HOST_JS, 'utf8');
 assert.match(hostSrc, /resolveOpenPlan3DRoomId/, 'host must resolve an openPlan3D room id');
 assert.match(hostSrc, /OPENPLAN3D_LOAD_ACK/, 'host must wait for LOAD_ACK');
+assert.match(hostSrc, /e\.data\.ok === false/, 'host must treat ACK ok:false as a failed load');
+assert.match(hostSrc, /plansMatch\(currentPlan,\s*loadedPlanBaseline\)/, 'Unsaved compares against the loaded plan');
 assert.match(hostSrc, /confirm_zero_area/, 'host must send confirm_zero_area');
 assert.doesNotMatch(
   hostSrc,
@@ -109,7 +111,12 @@ const session = bridge.createSession({
 });
 
 session.handleParentMessage({ data: { type: 'OPENPLAN3D_LOAD_PLAN', plan: loaded } });
-assert.strictEqual(session.getState().queuedPlan, loaded, 'LOAD_PLAN is queued before mount');
+const queued = session.getState().queuedPlan;
+assert.ok(queued, 'LOAD_PLAN is queued before mount');
+assert.ok(bridge.plansMatch(queued, loaded), 'queued plan keeps the saved geometry');
+assert.ok(Array.isArray(queued.floors), 'queued plan is wrapped as an editor project');
+assert.ok(Array.isArray(queued.floors[0].doors), 'floors include doors so the editor can render');
+assert.ok(Array.isArray(queued.floors[0].windows), 'floors include windows so the editor can render');
 assert.strictEqual(store.value.name, 'Untitled Project', 'queued load must not apply before mount');
 
 session.attachStore(storeModule);
@@ -142,6 +149,52 @@ const forwardedAfterAck = session.onStoreChange(loaded, function () {
 });
 assert.strictEqual(forwardedAfterAck, true, 'real edits after LOAD_ACK are forwarded');
 
+const mismatchPosted = [];
+const mismatchTimers = [];
+const mismatchStore = {
+  value: blank,
+  subscribe: function (cb) {
+    cb(mismatchStore.value);
+    return function () {};
+  },
+  set: function () {},
+};
+const mismatchSession = bridge.createSession({
+  postToParent: function (msg) { mismatchPosted.push(msg); },
+  schedule: function (fn) {
+    mismatchTimers.push(fn);
+    return 0;
+  },
+  showError: function () {},
+});
+mismatchSession.handleParentMessage({ data: { type: 'OPENPLAN3D_LOAD_PLAN', plan: loaded } });
+mismatchSession.attachStore({ H: function () { mismatchStore.set(); }, c: mismatchStore });
+mismatchSession.onEditorMounted();
+var safety = 0;
+while (mismatchTimers.length && safety < 80) {
+  safety++;
+  mismatchTimers.shift()();
+}
+const failedAck = mismatchPosted.filter(function (m) { return m.type === 'OPENPLAN3D_LOAD_ACK'; }).pop();
+assert.ok(failedAck, 'failed load must still ACK');
+assert.strictEqual(failedAck.ok, false, 'ACK ok is false when getProject never matches');
+assert.strictEqual(failedAck.plan, null, 'failed ACK must not send the editor current plan');
+assert.strictEqual(mismatchSession.getState().loadAcked, false, 'failed ACK must not mark loadAcked');
+assert.strictEqual(mismatchSession.getState().ignoreStoreChanges, true, 'failed ACK keeps ignoring store writes');
+assert.strictEqual(
+  mismatchSession.onStoreChange(blank, function () {}),
+  false,
+  'failed ACK must not forward the editor plan'
+);
+
+assert.strictEqual(host.plansMatch(loaded, loaded), true);
+assert.strictEqual(host.plansMatch(loaded, blank), false);
+const editorReady = bridge.toEditorProject(loaded);
+assert.ok(Array.isArray(editorReady.floors) && editorReady.floors.length === 1, 'compact floor plans become editor floors');
+assert.ok(bridge.plansMatch(editorReady, loaded), 'editor wrapping must not change the geometry fingerprint');
+assert.deepStrictEqual(editorReady.floors[0].doors, []);
+assert.deepStrictEqual(editorReady.floors[0].windows, []);
+
 const twoRoomPlan = {
   unit: 'cm',
   floor: {
@@ -161,6 +214,7 @@ const twoRoomPlan = {
   },
 };
 
+assert.strictEqual(host.plansMatch(twoRoomPlan, twoRoomPlan), true);
 assert.strictEqual(host.resolveOpenPlan3DRoomId(twoRoomPlan, 10), null, 'database id 10 is not an openPlan3D room id');
 assert.strictEqual(host.resolveOpenPlan3DRoomId(twoRoomPlan, 'r2'), 'r2');
 assert.strictEqual(host.resolveOpenPlan3DRoomId(twoRoomPlan, null), null, 'whole plan when no openPlan3D room is chosen');

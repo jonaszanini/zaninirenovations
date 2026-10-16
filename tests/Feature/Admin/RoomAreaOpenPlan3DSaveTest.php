@@ -264,6 +264,35 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertEquals(0.0, (float) $room->area_sqft);
     }
 
+    public function test_confirm_zero_area_still_rejects_plan_with_no_room_or_wall(): void
+    {
+        $room = $this->storeSampleRoom(150.0);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => $room->name,
+                'plan' => [
+                    'format' => 'openplan3d',
+                    'units' => 'cm',
+                    'floor' => [
+                        'walls' => [],
+                        'rooms' => [],
+                    ],
+                ],
+                'confirm_zero_area' => true,
+            ]
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('ok', false);
+        $this->assertStringContainsString('at least one closed room or wall', $response->getContent());
+
+        $room->refresh();
+        $this->assertEquals(150.0, (float) $room->area_sqft);
+        $this->assertTrue($this->bridge->isPlan($room->vertices));
+    }
+
     private function storeSampleRoom(float $areaSqft): RoomAreaRoom
     {
         $plan = $this->sampleOpenPlan(10.0, 15.0);

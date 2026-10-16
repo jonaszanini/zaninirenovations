@@ -286,7 +286,7 @@ class RoomAreaController extends Controller
                 'flooring_box_sqft' => $data['flooring_box_sqft'] ?? null,
             ];
             $metrics = $bridge->layoutMetrics($plan, null, $finish);
-            if ($metrics['area_sqft'] <= 0 && empty($metrics['walls'])) {
+            if (! $this->openPlanHasRoomOrWall($plan, $metrics)) {
                 return response()->json(['ok' => false, 'message' => 'The drawing must contain at least one closed room or wall.'], 422);
             }
 
@@ -410,7 +410,7 @@ class RoomAreaController extends Controller
             $existingArea = (float) $room_area_room->area_sqft;
             $incomingArea = (float) $metrics['area_sqft'];
             $confirmedZero = $request->boolean('confirm_zero_area');
-            if ($incomingArea <= 0 && empty($metrics['walls']) && ! $confirmedZero) {
+            if (! $this->openPlanHasRoomOrWall($plan, $metrics)) {
                 return response()->json(['ok' => false, 'message' => 'The drawing must contain at least one closed room or wall.'], 422);
             }
             if ($existingArea > 0 && $incomingArea <= 0 && ! $confirmedZero) {
@@ -1098,5 +1098,49 @@ class RoomAreaController extends Controller
             return;
         }
         $project->update(['wall_thickness_in' => $thickness]);
+    }
+
+    /**
+     * True when the openPlan3D payload contains at least one wall or room.
+     * confirm_zero_area cannot bypass this — an empty drawing is never saved.
+     *
+     * @param  array<string, mixed>  $plan
+     * @param  array<string, mixed>  $metrics
+     */
+    private function openPlanHasRoomOrWall(array $plan, array $metrics): bool
+    {
+        if (! empty($metrics['walls'])) {
+            return true;
+        }
+
+        $floors = [];
+        if (isset($plan['floor']) && is_array($plan['floor'])) {
+            $floors[] = $plan['floor'];
+        }
+        if (isset($plan['floors']) && is_array($plan['floors'])) {
+            foreach ($plan['floors'] as $floor) {
+                if (is_array($floor)) {
+                    $floors[] = $floor;
+                }
+            }
+        }
+        if (isset($plan['project']['floors']) && is_array($plan['project']['floors'])) {
+            foreach ($plan['project']['floors'] as $floor) {
+                if (is_array($floor)) {
+                    $floors[] = $floor;
+                }
+            }
+        }
+        if ($floors === [] && (isset($plan['walls']) || isset($plan['rooms']))) {
+            $floors[] = $plan;
+        }
+
+        foreach ($floors as $floor) {
+            if (! empty($floor['walls']) || ! empty($floor['rooms'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

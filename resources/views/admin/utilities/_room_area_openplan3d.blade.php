@@ -283,6 +283,10 @@
   border: 1px solid #fde68a;
 }
 
+.openplan3d-dirty-badge[hidden] {
+  display: none !important;
+}
+
 .openplan3d-dirty-dot {
   width: 6px;
   height: 6px;
@@ -564,6 +568,12 @@ body.admin-dark .openplan3d-dirty-badge,
   background: rgba(245, 158, 11, 0.16);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+html.admin-dark .openplan3d-dirty-badge[hidden],
+body.admin-dark .openplan3d-dirty-badge[hidden],
+.admin-dark .openplan3d-dirty-badge[hidden] {
+  display: none !important;
 }
 
 html.admin-dark .openplan3d-dirty-dot,

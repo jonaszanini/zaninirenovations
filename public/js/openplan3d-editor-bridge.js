@@ -105,6 +105,54 @@
     }
   }
 
+  var FLOOR_ARRAY_KEYS = [
+    'walls',
+    'rooms',
+    'doors',
+    'windows',
+    'furniture',
+    'stairs',
+    'guides',
+    'measurements',
+    'annotations',
+    'textAnnotations',
+    'groups'
+  ];
+
+  function normalizeFloor(floor) {
+    if (!floor || typeof floor !== 'object') return { walls: [], rooms: [], doors: [], windows: [] };
+    var next = {};
+    for (var key in floor) {
+      if (Object.prototype.hasOwnProperty.call(floor, key)) next[key] = floor[key];
+    }
+    for (var i = 0; i < FLOOR_ARRAY_KEYS.length; i++) {
+      var k = FLOOR_ARRAY_KEYS[i];
+      if (!Array.isArray(next[k])) next[k] = [];
+    }
+    return next;
+  }
+
+  function toEditorProject(plan) {
+    if (!plan || typeof plan !== 'object') return plan;
+    var p = serializePlan(plan);
+    if (!p) return plan;
+    var floors = [];
+    if (Array.isArray(p.floors)) {
+      floors = p.floors;
+    } else if (p.project && Array.isArray(p.project.floors)) {
+      floors = p.project.floors;
+    } else if (p.floor && typeof p.floor === 'object') {
+      floors = [p.floor];
+    } else if (Array.isArray(p.walls) || Array.isArray(p.rooms)) {
+      floors = [p];
+    }
+    p.floors = floors.map(function (floor) { return normalizeFloor(floor); });
+    if (!p.activeFloorId && p.floors[0] && p.floors[0].id) {
+      p.activeFloorId = p.floors[0].id;
+    }
+    return p;
+  }
+
   function inspectStoreModule(mod) {
     if (!mod || typeof mod !== 'object') {
       return { ok: false, setter: null, store: null, reason: 'missing-module' };
@@ -316,13 +364,23 @@
     }
 
     function emitAck(ok, plan) {
-      loadAcked = true;
-      ignoreStoreChanges = false;
-      queuedPlan = null;
+      if (ok) {
+        loadAcked = true;
+        ignoreStoreChanges = false;
+        queuedPlan = null;
+        postToParent({
+          type: 'OPENPLAN3D_LOAD_ACK',
+          ok: true,
+          plan: serializePlan(plan)
+        });
+        return;
+      }
+      loadAcked = false;
+      ignoreStoreChanges = true;
       postToParent({
         type: 'OPENPLAN3D_LOAD_ACK',
-        ok: !!ok,
-        plan: serializePlan(plan)
+        ok: false,
+        plan: null
       });
     }
 
@@ -376,7 +434,7 @@
     }
 
     function queueLoad(plan) {
-      queuedPlan = plan == null ? null : plan;
+      queuedPlan = plan == null ? null : toEditorProject(plan);
       loadAcked = false;
       ignoreStoreChanges = true;
       tryApply();
@@ -467,6 +525,7 @@
     serializePlan: serializePlan,
     planFingerprint: planFingerprint,
     plansMatch: plansMatch,
+    toEditorProject: toEditorProject,
     inspectStoreModule: inspectStoreModule,
     storeExportsOk: storeExportsOk,
     clearLocalStorageKeys: clearLocalStorageKeys,

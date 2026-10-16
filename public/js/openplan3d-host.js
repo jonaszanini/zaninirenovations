@@ -80,6 +80,80 @@
     return bridge.layoutMetrics(plan, roomId, finish || {});
   }
 
+  function collectPlanWalls(plan) {
+    var walls = [];
+    function addFrom(obj) {
+      if (obj && Array.isArray(obj.walls)) {
+        for (var i = 0; i < obj.walls.length; i++) {
+          if (obj.walls[i]) walls.push(obj.walls[i]);
+        }
+      }
+    }
+    if (!plan || typeof plan !== 'object') return walls;
+    addFrom(plan);
+    addFrom(plan.floor);
+    if (Array.isArray(plan.floors)) {
+      for (var f = 0; f < plan.floors.length; f++) addFrom(plan.floors[f]);
+    }
+    if (plan.project && Array.isArray(plan.project.floors)) {
+      for (var p = 0; p < plan.project.floors.length; p++) addFrom(plan.project.floors[p]);
+    }
+    return walls;
+  }
+
+  function floorSnapshot(floor) {
+    if (!floor || typeof floor !== 'object') return null;
+    var walls = Array.isArray(floor.walls) ? floor.walls : [];
+    var rooms = Array.isArray(floor.rooms) ? floor.rooms : [];
+    return {
+      walls: walls.map(function (w) {
+        if (!w) return null;
+        return {
+          id: w.id || null,
+          sx: w.start ? w.start.x : null,
+          sy: w.start ? w.start.y : null,
+          ex: w.end ? w.end.x : null,
+          ey: w.end ? w.end.y : null
+        };
+      }),
+      rooms: rooms.map(function (r) {
+        var poly = (r && r.polygon) || [];
+        var last = poly.length ? poly[poly.length - 1] : null;
+        return {
+          id: r && r.id,
+          n: poly.length,
+          last: last ? [last.x, last.y] : null
+        };
+      }),
+      doors: Array.isArray(floor.doors) ? floor.doors.length : 0,
+      windows: Array.isArray(floor.windows) ? floor.windows.length : 0
+    };
+  }
+
+  function planFingerprint(plan) {
+    if (!plan || typeof plan !== 'object') return null;
+    var floors = [];
+    if (Array.isArray(plan.floors)) {
+      floors = plan.floors;
+    } else if (plan.project && Array.isArray(plan.project.floors)) {
+      floors = plan.project.floors;
+    } else if (plan.floor && typeof plan.floor === 'object') {
+      floors = [plan.floor];
+    } else if (Array.isArray(plan.walls)) {
+      floors = [plan];
+    }
+    return { floors: floors.map(floorSnapshot) };
+  }
+
+  function plansMatch(a, b) {
+    if (!a || !b) return false;
+    try {
+      return JSON.stringify(planFingerprint(a)) === JSON.stringify(planFingerprint(b));
+    } catch (e) {
+      return false;
+    }
+  }
+
   function boot(options) {
     options = options || {};
     var doc = options.document || (typeof document !== 'undefined' ? document : null);
@@ -138,6 +212,7 @@
     var isSaving = false;
     var iframeReady = false;
     var loadAcked = false;
+    var loadedPlanBaseline = null;
     var selectedOpenPlan3DRoomId = null;
 
     function setDirty(val) {
@@ -675,23 +750,29 @@
             requestEditorLoad(currentPlan);
           }
         } else if (e.data.type === 'OPENPLAN3D_LOAD_ACK') {
+          if (e.data.ok === false) {
+            loadAcked = false;
+            if (saveBtn) saveBtn.disabled = true;
+            setDirty(false);
+            showFeedback('The editor did not confirm the loaded room. Do not Save Plan until the geometry looks correct.', true);
+            return;
+          }
           loadAcked = true;
           if (e.data.plan) {
             currentPlan = e.data.plan;
-            updateMetrics(currentPlan);
           }
+          loadedPlanBaseline = currentPlan;
+          updateMetrics(currentPlan);
           setDirty(false);
           if (saveBtn) saveBtn.disabled = !currentPlan;
-          if (e.data.ok === false) {
-            showFeedback('The editor did not confirm the loaded room. Check the drawing before saving.', true);
-          }
         } else if (e.data.type === 'OPENPLAN3D_BRIDGE_ERROR') {
           showFeedback('openPlan3D editor API is unavailable. Room geometry cannot be loaded. Refresh the page.', true);
         } else if (e.data.type === 'OPENPLAN3D_PLAN_CHANGED') {
           if (!loadAcked) return;
           currentPlan = e.data.plan;
-          setDirty(true);
-          if (saveBtn) saveBtn.disabled = false;
+          var planChanged = !plansMatch(currentPlan, loadedPlanBaseline);
+          setDirty(planChanged);
+          if (saveBtn) saveBtn.disabled = !currentPlan;
           updateMetrics(currentPlan);
         } else if (e.data.type === 'OPENPLAN3D_SELECT_ROOM') {
           var nextId = resolveOpenPlan3DRoomId(currentPlan, e.data.roomId);
@@ -756,6 +837,7 @@
           iframeReady: iframeReady,
           currentPlan: currentPlan,
           currentRoom: currentRoom,
+          loadedPlanBaseline: loadedPlanBaseline,
           selectedOpenPlan3DRoomId: selectedOpenPlan3DRoomId
         };
       }
@@ -766,8 +848,11 @@
 
   return {
     collectPlanRooms: collectPlanRooms,
+    collectPlanWalls: collectPlanWalls,
     resolveOpenPlan3DRoomId: resolveOpenPlan3DRoomId,
     computeMetrics: computeMetrics,
+    plansMatch: plansMatch,
+    planFingerprint: planFingerprint,
     boot: boot
   };
 }));
