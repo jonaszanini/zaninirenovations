@@ -278,6 +278,10 @@ class RoomAreaController extends Controller
         $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
         $plan = $data['plan'] ?? null;
         if (is_array($plan) && $bridge->isPlan($plan)) {
+            $planCheck = app(\App\Services\OpenPlan3DPlanValidator::class)->validate($plan);
+            if (! $planCheck['valid']) {
+                return response()->json(['ok' => false, 'message' => $planCheck['message']], 422);
+            }
             $finish = [
                 'wall_height_ft' => $data['wall_height_ft'] ?? null,
                 'ceiling_height_ft' => $data['ceiling_height_ft'] ?? null,
@@ -399,6 +403,10 @@ class RoomAreaController extends Controller
         $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
         $plan = $data['plan'] ?? null;
         if (is_array($plan) && $bridge->isPlan($plan)) {
+            $planCheck = app(\App\Services\OpenPlan3DPlanValidator::class)->validate($plan);
+            if (! $planCheck['valid']) {
+                return response()->json(['ok' => false, 'message' => $planCheck['message']], 422);
+            }
             $finish = [
                 'wall_height_ft' => $data['wall_height_ft'] ?? $room_area_room->wall_height_ft,
                 'ceiling_height_ft' => $data['ceiling_height_ft'] ?? $room_area_room->ceiling_height_ft,

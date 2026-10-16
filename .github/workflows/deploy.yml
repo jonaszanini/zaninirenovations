@@ -10,11 +10,46 @@ on:
 
 concurrency:
   group: production-deploy
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
+  require-tests:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Require a successful Tests run for this SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "Looking for a successful Tests run on ${SHA}"
+          for i in $(seq 1 90); do
+            payload="$(gh run list --repo "$REPO" --workflow Tests --commit "$SHA" --json conclusion,status)"
+            conclusion="$(printf '%s' "$payload" | jq -r '[.[] | select(.status=="completed")] | .[0].conclusion // empty')"
+            inflight="$(printf '%s' "$payload" | jq -r '[.[] | select(.status=="in_progress" or .status=="queued" or .status=="pending" or .status=="waiting" or .status=="requested")] | length')"
+            if [ "$conclusion" = "success" ]; then
+              echo "Tests succeeded for ${SHA}"
+              exit 0
+            fi
+            if [ "$conclusion" = "failure" ] || [ "$conclusion" = "cancelled" ] || [ "$conclusion" = "timed_out" ]; then
+              echo "Tests ${conclusion} for ${SHA}; refusing deploy"
+              exit 1
+            fi
+            echo "Waiting for Tests on ${SHA} (attempt ${i}, in-flight=${inflight})"
+            sleep 20
+          done
+          echo "Timed out waiting for Tests on ${SHA}. Run the Tests workflow first."
+          exit 1
+
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push') }}
+    needs: [require-tests]
+    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && needs.require-tests.result == 'success') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: PROD

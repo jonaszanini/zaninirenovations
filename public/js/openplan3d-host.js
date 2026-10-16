@@ -150,7 +150,9 @@
       start: roundPoint(o.start),
       end: roundPoint(o.end),
       x: roundCoord(o.x),
-      y: roundCoord(o.y)
+      y: roundCoord(o.y),
+      swing: o.swing || o.openDirection || o.opening || null,
+      hinge: o.hinge || o.hingeSide || null
     };
   }
 
@@ -161,12 +163,32 @@
       : { x: item.x, y: item.y };
     return {
       id: item.id || null,
+      type: item.type || item.kind || item.catalogId || item.itemType || null,
+      material: item.material || item.materialId || item.finish || null,
       x: roundCoord(pos.x),
       y: roundCoord(pos.y),
       rotation: roundCoord(item.rotation),
       width: roundCoord(item.width),
       depth: roundCoord(item.depth),
       height: roundCoord(item.height)
+    };
+  }
+
+  function snapshotStairs(item) {
+    if (!item) return null;
+    var pos = item.position && typeof item.position === 'object'
+      ? item.position
+      : { x: item.x, y: item.y };
+    return {
+      id: item.id || null,
+      type: item.type || item.kind || null,
+      material: item.material || item.materialId || null,
+      x: roundCoord(pos.x),
+      y: roundCoord(pos.y),
+      rotation: roundCoord(item.rotation),
+      width: roundCoord(item.width),
+      run: roundCoord(item.run != null ? item.run : item.length),
+      treads: item.treads != null ? item.treads : (item.treadCount != null ? item.treadCount : null)
     };
   }
 
@@ -206,8 +228,31 @@
       doors: (Array.isArray(floor.doors) ? floor.doors : []).map(snapshotOpening),
       windows: (Array.isArray(floor.windows) ? floor.windows : []).map(snapshotOpening),
       furniture: furniture,
+      stairs: (Array.isArray(floor.stairs) ? floor.stairs : []).map(snapshotStairs),
       labels: collectLabels(floor)
     };
+  }
+
+  function editorExpectedOrigin(iframe, win) {
+    if (!iframe) return win && win.location ? win.location.origin : '';
+    var src = (iframe.getAttribute && iframe.getAttribute('src')) || iframe.src || '';
+    if (!src || src === 'about:blank') {
+      return win && win.location ? win.location.origin : '';
+    }
+    try {
+      return new URL(src, win && win.location ? win.location.href : undefined).origin;
+    } catch (err) {
+      return win && win.location ? win.location.origin : '';
+    }
+  }
+
+  function isTrustedEditorMessage(event, iframe, win) {
+    if (!event || !iframe || !iframe.contentWindow) return false;
+    if (event.source !== iframe.contentWindow) return false;
+    var expected = editorExpectedOrigin(iframe, win);
+    if (expected && event.origin === expected) return true;
+    var src = (iframe.getAttribute && iframe.getAttribute('src')) || iframe.src || '';
+    return (!src || src === 'about:blank') && event.origin === 'null';
   }
 
   function planFingerprint(plan) {
@@ -262,6 +307,7 @@
     var settingsDrawer = doc.getElementById('openplan3d-settings-drawer');
     var settingsClose = doc.getElementById('openplan3d-settings-close');
     var dirtyBadge = doc.getElementById('openplan3d-dirty-badge');
+    var noScaleWarning = doc.getElementById('openplan3d-noscale-warning');
     var feedbackEl = doc.getElementById('openplan3d-feedback');
 
     var wallHeightInput = doc.getElementById('ra-wall-height');
@@ -309,6 +355,27 @@
       if (dirtyBadge) {
         dirtyBadge.hidden = !isDirty;
       }
+    }
+
+    function planHasUnit(plan) {
+      if (!plan || typeof plan !== 'object') return false;
+      if (plan.unit || plan.units) return true;
+      var floor = plan.floor || (Array.isArray(plan.floors) && plan.floors[0]) || null;
+      return !!(floor && (floor.unit || floor.units));
+    }
+
+    function hasUsableScale() {
+      var roomScale = currentRoom && currentRoom.scale_pixels_per_foot;
+      if (roomScale && Number(roomScale) > 0) return true;
+      var projectScale = currentProject && currentProject.scale_pixels_per_foot;
+      if (projectScale && Number(projectScale) > 0) return true;
+      return planHasUnit(currentPlan);
+    }
+
+    function updateScaleWarning() {
+      if (!noScaleWarning) return;
+      var show = !!(currentRoom || currentPlan) && !hasUsableScale();
+      noScaleWarning.hidden = !show;
     }
 
     function showFeedback(msg, isError) {
@@ -382,7 +449,7 @@
 
     function postToEditor(payload) {
       if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage(payload, '*');
+        iframe.contentWindow.postMessage(payload, editorExpectedOrigin(iframe, win) || '*');
       }
     }
 
@@ -466,6 +533,7 @@
 
         currentPlan = currentRoom.plan || null;
         updateMetrics(currentPlan);
+        updateScaleWarning();
 
         if (iframeReady) {
           requestEditorLoad(currentPlan);
@@ -485,6 +553,7 @@
         if (roomNameInput) roomNameInput.value = '';
         currentPlan = null;
         updateMetrics(null);
+        updateScaleWarning();
         if (quoteBtn) quoteBtn.hidden = true;
         setDirty(false);
         if (saveBtn) saveBtn.disabled = true;
@@ -638,7 +707,10 @@
       }
 
       isSaving = true;
-      if (saveBtn) saveBtn.disabled = true;
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.setAttribute('aria-busy', 'true');
+      }
       var saveSpinner = saveBtn ? saveBtn.querySelector('.openplan3d-save-spinner') : null;
       var saveText = saveBtn ? saveBtn.querySelector('.openplan3d-save-text') : null;
       if (saveSpinner) saveSpinner.hidden = false;
@@ -718,7 +790,10 @@
       })
       .finally(function () {
         isSaving = false;
-        if (saveBtn) saveBtn.disabled = false;
+        if (saveBtn) {
+          saveBtn.removeAttribute('aria-busy');
+          saveBtn.disabled = !currentPlan || !loadAcked;
+        }
         if (saveSpinner) saveSpinner.hidden = true;
         if (saveText) saveText.hidden = false;
       });
@@ -828,6 +903,7 @@
       });
 
       win.addEventListener('message', function (e) {
+        if (!isTrustedEditorMessage(e, iframe, win)) return;
         if (!e.data || typeof e.data !== 'object') return;
 
         if (e.data.type === 'OPENPLAN3D_READY') {
@@ -854,8 +930,9 @@
           }
           loadedPlanBaseline = currentPlan;
           updateMetrics(currentPlan);
+          updateScaleWarning();
           setDirty(false);
-          if (saveBtn) saveBtn.disabled = !currentPlan;
+          if (saveBtn) saveBtn.disabled = !currentPlan || isSaving;
         } else if (e.data.type === 'OPENPLAN3D_BRIDGE_ERROR') {
           showFeedback('openPlan3D editor API is unavailable. Room geometry cannot be loaded. Refresh the page.', true);
         } else if (e.data.type === 'OPENPLAN3D_PLAN_CHANGED') {
@@ -863,8 +940,9 @@
           currentPlan = e.data.plan;
           var planChanged = !plansMatch(currentPlan, loadedPlanBaseline);
           setDirty(planChanged);
-          if (saveBtn) saveBtn.disabled = !currentPlan;
+          if (saveBtn) saveBtn.disabled = !currentPlan || isSaving;
           updateMetrics(currentPlan);
+          updateScaleWarning();
         } else if (e.data.type === 'OPENPLAN3D_SELECT_ROOM') {
           var nextId = resolveOpenPlan3DRoomId(currentPlan, e.data.roomId);
           selectedOpenPlan3DRoomId = nextId;
@@ -924,12 +1002,14 @@
       getState: function () {
         return {
           isDirty: isDirty,
+          isSaving: isSaving,
           loadAcked: loadAcked,
           iframeReady: iframeReady,
           currentPlan: currentPlan,
           currentRoom: currentRoom,
           loadedPlanBaseline: loadedPlanBaseline,
-          selectedOpenPlan3DRoomId: selectedOpenPlan3DRoomId
+          selectedOpenPlan3DRoomId: selectedOpenPlan3DRoomId,
+          hasUsableScale: hasUsableScale()
         };
       }
     };
@@ -945,6 +1025,8 @@
     plansMatch: plansMatch,
     planFingerprint: planFingerprint,
     clonePlan: clonePlan,
+    editorExpectedOrigin: editorExpectedOrigin,
+    isTrustedEditorMessage: isTrustedEditorMessage,
     boot: boot
   };
 }));

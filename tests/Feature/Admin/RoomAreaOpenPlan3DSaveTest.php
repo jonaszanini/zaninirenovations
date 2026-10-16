@@ -172,6 +172,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertOk();
         $response->assertSee('data-room-area-openplan3d', false);
         $response->assertSee('id="openplan3d-save-btn"', false);
+        $response->assertSee('id="openplan3d-noscale-warning"', false);
         $response->assertSee('data-hotkey-save', false);
         $response->assertSee('data-ra-save-room', false);
         $response->assertSee('id="openplan3d-metrics-ribbon"', false);
@@ -358,6 +359,46 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             'name' => 'Triangle Room',
             'room_area_project_id' => $this->project->id,
         ]);
+    }
+
+    public function test_rejects_self_intersecting_plan_with_422(): void
+    {
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+        $plan['floor']['rooms'][0]['polygon'] = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 100, 'y' => 100],
+            ['x' => 100, 'y' => 0],
+            ['x' => 0, 'y' => 100],
+        ];
+
+        $response = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            ['name' => 'Bowtie', 'plan' => $plan]
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('ok', false);
+        $this->assertStringContainsString('crosses itself', $response->getContent());
+        $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Bowtie']);
+    }
+
+    public function test_rejects_nan_and_impossible_sizes_with_422(): void
+    {
+        $nan = $this->sampleOpenPlan();
+        $nan['floor']['walls'][0]['start']['x'] = 'NaN';
+        $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            ['name' => 'NaN Room', 'plan' => $nan]
+        )->assertStatus(422)->assertJsonPath('ok', false);
+
+        $huge = $this->sampleOpenPlan(20000, 20000);
+        $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            ['name' => 'Huge Room', 'plan' => $huge]
+        )->assertStatus(422)->assertJsonPath('ok', false);
+
+        $this->assertDatabaseMissing('room_area_rooms', ['name' => 'NaN Room']);
+        $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Huge Room']);
     }
 
     private function storeSampleRoom(float $areaSqft): RoomAreaRoom

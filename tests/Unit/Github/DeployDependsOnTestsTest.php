@@ -61,6 +61,7 @@ class DeployDependsOnTestsTest extends TestCase
         $db = $this->listedPaths($yaml, 'Database tests (MySQL)', 'Upload Shared prices geometry');
 
         $this->assertContains('tests/Unit/Github/DeployDependsOnTestsTest.php', $unit);
+        $this->assertContains('tests/Unit/Services/OpenPlan3DPlanValidatorTest.php', $unit);
         $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php', $db);
         $this->assertContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $db);
         $this->assertNotContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $unit);
@@ -78,6 +79,12 @@ class DeployDependsOnTestsTest extends TestCase
     public function test_deploy_requires_tests_success_and_is_skipped_when_tests_fail(): void
     {
         $yaml = $this->workflow('deploy.yml');
+        $this->assertMatchesRegularExpression(
+            '/concurrency:\s*\n\s+group:\s+production-deploy\s*\n\s+cancel-in-progress:\s+true/m',
+            $yaml
+        );
+        $this->assertStringContainsString('require-tests:', $yaml);
+        $this->assertStringContainsString('needs.require-tests.result', $yaml);
         $onBlock = $this->section($yaml, 'on:', 'concurrency:');
 
         $this->assertStringContainsString('workflow_run:', $onBlock);
@@ -122,9 +129,13 @@ class DeployDependsOnTestsTest extends TestCase
             $this->deployIfAllows($if, 'workflow_run', 'success', 'main', 'push'),
             'Tests success on a push to main may deploy'
         );
+        $this->assertFalse(
+            $this->deployIfAllows($if, 'workflow_dispatch', null, null, null, 'skipped'),
+            'Manual workflow_dispatch must not deploy without a green Tests run'
+        );
         $this->assertTrue(
-            $this->deployIfAllows($if, 'workflow_dispatch', null, null, null),
-            'Manual workflow_dispatch remains allowed'
+            $this->deployIfAllows($if, 'workflow_dispatch', null, null, null, 'success'),
+            'Manual workflow_dispatch may deploy after Tests success'
         );
     }
 
@@ -165,7 +176,7 @@ class DeployDependsOnTestsTest extends TestCase
 
     private function jobIf(string $yaml): string
     {
-        if (preg_match('/jobs:\s*\n\s+deploy:\s*\n\s+if:\s*\$\{\{\s*(.+?)\s*\}\}/s', $yaml, $m)) {
+        if (preg_match('/(?:^|\n)\s+deploy:\s*\n(?:\s+needs:\s*\[[^\]]+\]\s*\n)?\s+if:\s*\$\{\{\s*(.+?)\s*\}\}/s', $yaml, $m)) {
             return trim($m[1]);
         }
 
@@ -177,11 +188,14 @@ class DeployDependsOnTestsTest extends TestCase
         string $eventName,
         ?string $conclusion,
         ?string $branch,
-        ?string $runEvent
+        ?string $runEvent,
+        string $testsResult = 'skipped'
     ): bool {
         $php = $expression;
         $php = str_replace(
             [
+                'needs.require-tests.result',
+                'always()',
                 'github.event.workflow_run.head_branch',
                 'github.event.workflow_run.conclusion',
                 'github.event.workflow_run.event',
@@ -190,6 +204,8 @@ class DeployDependsOnTestsTest extends TestCase
                 '||',
             ],
             [
+                var_export($testsResult, true),
+                'true',
                 var_export($branch, true),
                 var_export($conclusion, true),
                 var_export($runEvent, true),

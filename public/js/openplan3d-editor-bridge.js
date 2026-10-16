@@ -330,7 +330,13 @@
     options = options || {};
     var postToParent = options.postToParent || function (msg) {
       if (typeof window !== 'undefined' && window.parent) {
-        window.parent.postMessage(msg, '*');
+        var target = '*';
+        try {
+          if (window.location && window.location.origin && window.location.origin !== 'null') {
+            target = window.location.origin;
+          }
+        } catch (e) {}
+        window.parent.postMessage(msg, target);
       }
     };
     var apiRef = null;
@@ -468,7 +474,16 @@
       return inspected;
     }
 
+    function isTrustedParentMessage(event) {
+      if (typeof window === 'undefined' || !window.parent) return true;
+      if (!event) return false;
+      if (event.source !== window.parent) return false;
+      if (!event.origin || event.origin === 'null') return window.location.origin === 'null' || !window.location.origin;
+      return event.origin === window.location.origin;
+    }
+
     function handleParentMessage(event) {
+      if (!isTrustedParentMessage(event)) return false;
       var data = event && event.data;
       if (!data || typeof data !== 'object') return false;
       if (data.type === 'OPENPLAN3D_LOAD_PLAN') {
