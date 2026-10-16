@@ -84,15 +84,18 @@ class Project extends Model
     /** Comma-separated category names for tables and cards. */
     public function categoryLabel(): string
     {
-        if ($this->categories->isEmpty()) {
-            return '—';
-        }
-
-        return $this->categories
+        $visible = $this->categories
+            ->filter(fn ($c) => $c->isPublicFilter())
             ->sortBy(fn ($c) => [$c->sort_order, strtolower($c->name)])
             ->pluck('name')
             ->unique()
-            ->implode(', ');
+            ->filter();
+
+        if ($visible->isEmpty()) {
+            return '—';
+        }
+
+        return $visible->implode(', ');
     }
 
     public function slugRedirects(): HasMany

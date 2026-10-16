@@ -12,6 +12,7 @@
   $isContact = request()->routeIs('contact');
   $stickyHeader = ! request()->routeIs('blog.*') && ! $isServiceAreas && ! $isServices && ! $isAbout && ! $isReviews && ! $isContact;
   $servicePages = \App\Support\PublicServices::publishedPages();
+  $areaPages = \App\Support\ServiceAreas::publishedPages();
 @endphp
 
 @if (request()->routeIs('blog.*'))
@@ -31,7 +32,7 @@
           <div class="col-lg-6 col-md-6 col-sm-6 text-left ">
             <div class="top-bar-link">
               <strong>PHONE NUMBER</strong>
-              : (647) 834-7570
+              : {{ \App\Support\BusinessContact::phoneDisplay() }}
             </div>
           </div>
 
@@ -132,6 +133,17 @@
             </li>
             <li>
               <a href="{{ route('portfolio.index') }}" class="nav_menu @if ($isPortfolio) link-active @endif" title="Latest projects">Projects</a>
+            </li>
+            <li class="dropdown @if ($isServiceAreas) active @endif">
+              <a href="{{ route('service-areas.index') }}" class="dropdown-toggle nav_menu @if ($isServiceAreas) link-active @endif" data-toggle="dropdown" title="Service Areas" aria-haspopup="true" aria-expanded="false">
+                Service Areas <span class="caret"></span>
+              </a>
+              <ul class="dropdown-menu">
+                <li><a href="{{ route('service-areas.index') }}">All service areas</a></li>
+                @foreach ($areaPages as $areaPage)
+                  <li><a href="{{ url('/service-areas/'.$areaPage['slug']) }}">{{ $areaPage['hub_label'] ?? $areaPage['name'] }}</a></li>
+                @endforeach
+              </ul>
             </li>
             <li>
               <a href="{{ route('about') }}" class="nav_menu @if ($isAbout) link-active @endif" title="About us">About</a>

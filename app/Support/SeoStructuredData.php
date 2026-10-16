@@ -26,6 +26,34 @@ class SeoStructuredData
     }
 
     /**
+     * Public profile URLs already present in the repo (Facebook, Instagram, GBP).
+     * Messaging links such as WhatsApp are excluded from sameAs.
+     *
+     * @return list<string>
+     */
+    public static function profileSameAsUrls(): array
+    {
+        $candidates = [
+            (string) config('social.facebook_url', ''),
+            (string) config('social.instagram_url', ''),
+            self::googleBusinessUrl(),
+        ];
+        $out = [];
+        foreach ($candidates as $url) {
+            $url = trim($url);
+            if ($url === '' || ! str_starts_with($url, 'http')) {
+                continue;
+            }
+            if (str_contains($url, 'wa.me') || str_contains(strtolower($url), 'whatsapp')) {
+                continue;
+            }
+            $out[] = $url;
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    /**
      * JSON-LD output safe on PHP 8.0+ (JSON_INVALID_UTF8_IGNORE exists from PHP 8.3).
      */
     public static function toJsonLd(array $data): string
@@ -43,10 +71,7 @@ class SeoStructuredData
         $url = rtrim(config('app.url'), '/');
         $knowsAbout = self::knowsAboutTopics();
         $areas = config('seo.area_served', []);
-        $fb = (string) config('social.facebook_url', '');
-        $ig = (string) config('social.instagram_url', '');
-        $googleBiz = self::googleBusinessUrl();
-        $sameAs = array_values(array_filter([$fb, $ig, $googleBiz], static fn ($u) => is_string($u) && str_starts_with($u, 'http')));
+        $sameAs = self::profileSameAsUrls();
         $homeSummary = trim((string) config('seo.home_summary', ''));
         if ($homeSummary === '') {
             $homeSummary = 'Fully insured carpentry and renovation business in Carleton Place since 2020.';
@@ -88,9 +113,8 @@ class SeoStructuredData
             'slogan' => 'Quality craftsmanship for Ottawa-area homes',
             'knowsAbout' => $knowsAbout,
             'telephone' => '+1-647-834-7570',
-            'email' => (string) config('mail.from.address', ''),
+            'email' => (string) (config('mail.from.address') ?: BusinessContact::DEFAULT_EMAIL),
             'foundingDate' => '2020',
-            'priceRange' => '$$',
             'address' => [
                 '@type' => 'PostalAddress',
                 'addressLocality' => 'Carleton Place',
@@ -98,6 +122,7 @@ class SeoStructuredData
                 'addressCountry' => 'CA',
             ],
             'areaServed' => $areas,
+            'openingHours' => 'Mo-Fr 09:00-18:00',
             'openingHoursSpecification' => [
                 [
                     '@type' => 'OpeningHoursSpecification',
@@ -106,7 +131,11 @@ class SeoStructuredData
                     'closes' => '18:00',
                 ],
             ],
-            'founder' => ['@id' => $url.'/#person-jonas'],
+            'founder' => [
+                '@type' => 'Person',
+                '@id' => $url.'/#person-jonas',
+                'name' => 'Jonas Zanini',
+            ],
             'employee' => [
                 ['@id' => $url.'/#person-mayara'],
             ],

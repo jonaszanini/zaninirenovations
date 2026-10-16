@@ -107,6 +107,7 @@ Route::get('/', function () {
     $projectFilterCategories = $projects
         ->flatMap(fn (Project $p) => $p->categories)
         ->unique('id')
+        ->filter(fn ($c) => $c->isPublicFilter())
         ->sortBy(fn ($c) => [$c->sort_order, strtolower($c->name)])
         ->values();
 
