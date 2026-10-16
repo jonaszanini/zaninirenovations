@@ -48,7 +48,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          # QuotationEditorControlInventoryTest git-shows pinned SHA 86e68a3e.
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2

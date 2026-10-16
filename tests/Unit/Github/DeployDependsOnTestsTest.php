@@ -27,6 +27,11 @@ class DeployDependsOnTestsTest extends TestCase
         $this->assertStringContainsString('workflow_dispatch:', $yaml);
         $this->assertStringContainsString('openplan3d-editor-bridge.test.js', $yaml);
         $this->assertStringContainsString('openplan3d-editor-browser.test.js', $yaml);
+        $this->assertMatchesRegularExpression(
+            '/fetch-depth:\s*0/',
+            $yaml,
+            'Shallow clone hides 86e68a3e from QuotationEditorControlInventoryTest'
+        );
     }
 
     public function test_tests_workflow_invokes_each_listed_phpunit_path_separately(): void
