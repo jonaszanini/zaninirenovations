@@ -426,6 +426,8 @@
     var modalLinkCancel = doc.getElementById('openplan3d-modal-link-cancel');
     var modalClientSelect = doc.getElementById('openplan3d-modal-client-project');
     var modalResolve = null;
+    var modalIsSaveFlow = false;
+    var modalOpenerEl = null;
 
     function getModalFocusable() {
       if (!modalEl || modalEl.hidden) return [];
@@ -482,15 +484,19 @@
       if (modalEl) modalEl.hidden = true;
       var resolve = modalResolve;
       modalResolve = null;
-      if (result == null && isSaving) {
+      var wasSaveFlow = modalIsSaveFlow;
+      modalIsSaveFlow = false;
+      if (wasSaveFlow && result == null && isSaving) {
         isSaving = false;
         if (saveBtn) {
           saveBtn.removeAttribute('aria-busy');
           saveBtn.disabled = !currentPlan || !loadAcked;
         }
       }
-      if (saveBtn && typeof saveBtn.focus === 'function') {
-        try { saveBtn.focus(); } catch (e) {}
+      var toFocus = modalOpenerEl || saveBtn;
+      modalOpenerEl = null;
+      if (toFocus && typeof toFocus.focus === 'function') {
+        try { toFocus.focus(); } catch (e) {}
       }
       if (typeof resolve === 'function') resolve(result);
     }
@@ -522,6 +528,8 @@
           return;
         }
         modalResolve = resolve;
+        modalIsSaveFlow = !!opts.isSaveFlow;
+        modalOpenerEl = opts.opener || (doc ? doc.activeElement : null) || saveBtn;
         if (modalTitle) modalTitle.textContent = opts.title || 'Confirm';
         if (modalBody) {
           modalBody.textContent = opts.body || '';
@@ -585,6 +593,17 @@
     }
 
     function jsonPost(url, method, payload) {
+      var controller = (win && typeof win.AbortController !== 'undefined')
+        ? new win.AbortController()
+        : (typeof AbortController !== 'undefined' ? new AbortController() : null);
+      var timeoutId = null;
+      if (controller) {
+        var scheduleTimer = (win && typeof win.setTimeout === 'function') ? win.setTimeout : setTimeout;
+        timeoutId = scheduleTimer(function () {
+          try { controller.abort(); } catch (e) {}
+        }, 30000);
+      }
+
       return fetch(url, {
         method: method,
         headers: {
@@ -592,11 +611,26 @@
           'Accept': 'application/json',
           'X-CSRF-TOKEN': csrfToken
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller ? controller.signal : undefined
       }).then(function (res) {
         return res.json().then(function (data) {
           return { status: res.status, ok: res.ok, data: data };
         });
+      }).catch(function (err) {
+        if (isSaving) {
+          isSaving = false;
+          if (saveBtn) {
+            saveBtn.removeAttribute('aria-busy');
+            saveBtn.disabled = !currentPlan || !loadAcked;
+          }
+        }
+        throw err;
+      }).finally(function () {
+        if (timeoutId) {
+          var cancelTimer = (win && typeof win.clearTimeout === 'function') ? win.clearTimeout : clearTimeout;
+          cancelTimer(timeoutId);
+        }
       });
     }
 
@@ -1135,7 +1169,9 @@
           mode: 'confirm',
           title: 'Replace stored area?',
           body: 'This save would replace the stored room area (' + storedArea.toFixed(2) + ' sq ft) with 0. Continue?',
-          confirmLabel: 'Replace'
+          confirmLabel: 'Replace',
+          isSaveFlow: true,
+          opener: saveBtn
         }).then(function (ok) {
           if (ok !== true) {
             showFeedback('Save cancelled. The stored room area was kept.', true);
@@ -1157,7 +1193,9 @@
           dest = showModal({
             mode: 'save-destination',
             title: 'Save plan',
-            body: ''
+            body: '',
+            isSaveFlow: true,
+            opener: saveBtn
           });
         }
 
@@ -1456,6 +1494,10 @@
       computeMetrics: currentMetrics,
       savePlan: savePlan,
       selectRoom: selectRoom,
+      askConfirm: askConfirm,
+      askPrompt: askPrompt,
+      showModal: showModal,
+      finishModal: finishModal,
       getState: function () {
         return {
           isDirty: isDirty,

@@ -794,6 +794,73 @@ async function run() {
     const activeAfterCancel = await page.evaluate(() => document.activeElement && document.activeElement.id);
     assert.strictEqual(activeAfterCancel, 'openplan3d-save-btn', 'Closing modal returns focus to Save button');
 
+    // 10. In-flight-save + cancel-discard case and return focus to modal opener
+    await page.goto(`http://127.0.0.1:${port}/openplan3d-room-area.html`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      window.__nativeDialogs = [];
+      window.confirm = function () { window.__nativeDialogs.push('confirm'); return false; };
+      window.alert = function () { window.__nativeDialogs.push('alert'); };
+      window.prompt = function () { window.__nativeDialogs.push('prompt'); return null; };
+    });
+    await postFromEditor({ type: 'OPENPLAN3D_READY' });
+    await postFromEditor({ type: 'OPENPLAN3D_LOAD_ACK', ok: true, plan: noScalePlan });
+
+    // (a) Return focus to the control that opened the modal (non-save control)
+    await page.focus('#openplan3d-new-room-btn');
+    const focusedBeforeOpen = await page.evaluate(() => document.activeElement && document.activeElement.id);
+    assert.strictEqual(focusedBeforeOpen, 'openplan3d-new-room-btn', 'new room button is focused before modal open');
+
+    await page.evaluate(() => {
+      window.OpenPlan3DHost.askConfirm('Discard changes?', 'Unsaved changes');
+    });
+    await page.waitForSelector('#openplan3d-modal:not([hidden])');
+    await page.click('#openplan3d-modal-cancel');
+    await page.waitForSelector('#openplan3d-modal[hidden]');
+    const activeAfterNonSaveCancel = await page.evaluate(() => document.activeElement && document.activeElement.id);
+    assert.strictEqual(activeAfterNonSaveCancel, 'openplan3d-new-room-btn', 'Closing modal returns focus to the opener control');
+
+    // (b) In-flight-save + cancel-discard case:
+    // When a save request is in-flight, opening and dismissing a non-save modal must NOT clear isSaving or unlock Save.
+    saveDelayMs = 1200;
+    lastSavedBody = null;
+    await page.click('#openplan3d-save-btn');
+
+    const isSavingDuringFlight = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
+    assert.strictEqual(isSavingDuringFlight, true, 'isSaving must be true while save is in-flight');
+    const saveBusy = await page.$eval('#openplan3d-save-btn', (el) => el.getAttribute('aria-busy'));
+    const saveDisabled = await page.$eval('#openplan3d-save-btn', (el) => el.disabled);
+    assert.strictEqual(saveBusy, 'true', 'Save button has aria-busy="true" during save flight');
+    assert.strictEqual(saveDisabled, true, 'Save button is disabled during save flight');
+
+    // Now, while save is still in flight, a discard dialog is triggered
+    await page.focus('#openplan3d-new-room-btn');
+    await page.evaluate(() => {
+      window.OpenPlan3DHost.askConfirm('Discard changes?', 'Unsaved changes');
+    });
+    await page.waitForSelector('#openplan3d-modal:not([hidden])');
+
+    // User cancels the discard modal
+    await page.click('#openplan3d-modal-cancel');
+    await page.waitForSelector('#openplan3d-modal[hidden]');
+
+    // CRITICAL: isSaving must NOT be released by the non-save modal cancellation!
+    const isSavingAfterDiscardCancel = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
+    assert.strictEqual(isSavingAfterDiscardCancel, true, 'isSaving must REMAIN true after cancelling discard modal');
+    const saveBusyStill = await page.$eval('#openplan3d-save-btn', (el) => el.getAttribute('aria-busy'));
+    const saveDisabledStill = await page.$eval('#openplan3d-save-btn', (el) => el.disabled);
+    assert.strictEqual(saveBusyStill, 'true', 'Save button must remain aria-busy while save is in-flight');
+    assert.strictEqual(saveDisabledStill, true, 'Save button must remain disabled while save is in-flight');
+
+    // Focus returned to the opener element
+    const activeAfterDiscardCancel = await page.evaluate(() => document.activeElement && document.activeElement.id);
+    assert.strictEqual(activeAfterDiscardCancel, 'openplan3d-new-room-btn', 'Focus returns to opener after discard cancel');
+
+    // Wait for in-flight save to complete
+    await page.waitForFunction(() => !window.OpenPlan3DHost.getState().isSaving, { timeout: 3000 });
+    const isSavingAfterComplete = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
+    assert.strictEqual(isSavingAfterComplete, false, 'isSaving is unlocked once the save completes');
+    assert.ok(lastSavedBody, 'save completes successfully in the background');
+
     const nativeUsed = await page.evaluate(() => window.__nativeDialogs);
     assert.deepStrictEqual(nativeUsed, [], 'in-app modal must replace native alert/confirm/prompt');
 

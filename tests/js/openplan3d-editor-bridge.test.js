@@ -91,9 +91,40 @@ assert.doesNotMatch(hostSrc, /\bwin\.confirm\b|\bwindow\.confirm\s*\(/);
 assert.doesNotMatch(hostSrc, /\bwin\.alert\b|\bwindow\.alert\s*\(/);
 assert.doesNotMatch(hostSrc, /\bwin\.prompt\b|\bwindow\.prompt\s*\(/);
 
+assert.match(hostSrc, /function jsonPost[\s\S]*?AbortController/, 'jsonPost must use AbortController');
+assert.match(hostSrc, /modalIsSaveFlow/, 'finishModal must track save flow');
+assert.match(hostSrc, /modalOpenerEl/, 'modal opener must be tracked for focus return');
+
 const bridgeSrc = fs.readFileSync(path.resolve(__dirname, '../../public/js/openplan3d-editor-bridge.js'), 'utf8');
 assert.match(bridgeSrc, /style\.setProperty\('display', 'none'/, 'native chrome hide must set inline display');
 assert.match(bridgeSrc, /__zaniniNativeSaveClickLocked/, 'hidden vendor chrome clicks must be captured');
+assert.match(bridgeSrc, /vendor-top-bar/, 'hideNativeSaveUi must scope to vendor header container');
+
+let headerQueried = false;
+let bodyQueried = false;
+const mockRoot = {
+  querySelectorAll: function () {},
+  body: {
+    querySelector: function (sel) {
+      if (sel.indexOf('.vendor-top-bar') !== -1) {
+        return {
+          querySelectorAll: function () {
+            headerQueried = true;
+            return [];
+          }
+        };
+      }
+      return null;
+    },
+    querySelectorAll: function () {
+      bodyQueried = true;
+      return [];
+    }
+  }
+};
+bridge.hideNativeSaveUi(mockRoot);
+assert.strictEqual(headerQueried, true, 'hideNativeSaveUi queries inside header container');
+assert.strictEqual(bodyQueried, false, 'hideNativeSaveUi must NOT query whole body');
 
 assert.strictEqual(bridge.isBlockedStorageKey('floorplan_projects'), true);
 assert.strictEqual(bridge.isBlockedStorageKey('floorplan_thumb_abc'), true);

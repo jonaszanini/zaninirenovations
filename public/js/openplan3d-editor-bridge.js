@@ -293,7 +293,14 @@
   function hideNativeSaveUi(root) {
     if (!root || typeof root.querySelectorAll !== 'function') return 0;
     var scope = root.body || root.documentElement || root;
-    var nodes = scope.querySelectorAll('a, button, span, [data-save-label], [aria-label]');
+    var header = null;
+    if (scope.matches && scope.matches('.vendor-top-bar, [data-vendor-header], header, nav, [class*="top-bar"], [class*="topbar"], div.bg-gradient-to-r.from-slate-800')) {
+      header = scope;
+    } else if (typeof scope.querySelector === 'function') {
+      header = scope.querySelector('.vendor-top-bar, [data-vendor-header], header, nav, [class*="top-bar"], [class*="topbar"], div.bg-gradient-to-r.from-slate-800');
+    }
+    if (!header) return 0;
+    var nodes = header.querySelectorAll('a, button, span, [data-save-label], [aria-label]');
     var hidden = 0;
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
@@ -306,14 +313,14 @@
         var wrap = el.closest('[data-zanini-hide-native-save], span.inline-grid');
         if (!wrap && el.parentElement && el.parentElement.classList && el.parentElement.classList.contains('relative')) {
           var p = el.parentElement;
-          if (p !== scope && !isInsideEditorPanel(p) && p.querySelectorAll('button, a').length <= 2) {
+          if (p !== header && !isInsideEditorPanel(p) && p.querySelectorAll('button, a').length <= 2) {
             wrap = p;
           }
         }
-        if (wrap && wrap !== el && wrap !== scope && !isInsideEditorPanel(wrap)) target = wrap;
+        if (wrap && wrap !== el && wrap !== header && !isInsideEditorPanel(wrap)) target = wrap;
       } else if (el.closest) {
         var wrap2 = el.closest('[data-zanini-hide-native-save], span.inline-grid');
-        if (wrap2 && wrap2 !== el && wrap2 !== scope && !isInsideEditorPanel(wrap2)) target = wrap2;
+        if (wrap2 && wrap2 !== el && wrap2 !== header && !isInsideEditorPanel(wrap2)) target = wrap2;
       }
       if (isInsideEditorPanel(target)) continue;
       if (target.getAttribute('data-zanini-hide-native-save') === '1' && target.hidden) {
