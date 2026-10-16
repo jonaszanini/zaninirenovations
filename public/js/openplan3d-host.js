@@ -450,16 +450,19 @@
         finishModal(null);
         return;
       }
-      if (e.key === 'Tab') {
+      var isTab = e.key === 'Tab' || e.key === 'BackTab' || e.keyCode === 9;
+      if (isTab) {
         var focusable = getModalFocusable();
         if (focusable.length === 0) {
           e.preventDefault();
+          e.stopPropagation();
           return;
         }
         var first = focusable[0];
         var last = focusable[focusable.length - 1];
         var active = doc.activeElement;
-        if (e.shiftKey) {
+        var isShift = !!(e.shiftKey || e.key === 'BackTab');
+        if (isShift) {
           if (active === first || !modalEl.contains(active)) {
             e.preventDefault();
             e.stopPropagation();

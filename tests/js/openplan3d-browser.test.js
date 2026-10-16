@@ -777,7 +777,8 @@ async function run() {
 
     // Shift+Tab from first element wraps to last element
     await page.keyboard.down('Shift');
-    await page.keyboard.press('Tab');
+    await page.keyboard.down('Tab');
+    await page.keyboard.up('Tab');
     await page.keyboard.up('Shift');
     const wrappedToLast = await page.evaluate(() => {
       const modal = document.getElementById('openplan3d-modal');
