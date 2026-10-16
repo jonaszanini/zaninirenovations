@@ -543,7 +543,14 @@ async function run() {
 
     failNextSave = true;
     await page.click('#openplan3d-save-btn');
-    await new Promise((r) => setTimeout(r, 200));
+    await page.waitForFunction(
+      () => {
+        const state = window.OpenPlan3DHost && window.OpenPlan3DHost.getState();
+        const fb = document.getElementById('openplan3d-feedback');
+        return state && !state.isSaving && fb && !fb.hidden && fb.textContent.length > 0;
+      },
+      { timeout: 5000 }
+    );
     const isSavingAfterFail = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
     assert.strictEqual(isSavingAfterFail, false, 'isSaving clears after failed save');
     const saveDisabledAfterFail = await page.$eval('#openplan3d-save-btn', (el) => el.disabled);
