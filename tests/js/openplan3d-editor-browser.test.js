@@ -142,7 +142,11 @@ async function run() {
     };
 
     await page.evaluate((plan) => {
-      window.__openPlan3DSession.handleParentMessage({ data: { type: 'OPENPLAN3D_LOAD_PLAN', plan: plan } });
+      window.__openPlan3DSession.handleParentMessage({
+        data: { type: 'OPENPLAN3D_LOAD_PLAN', plan: plan },
+        source: window.parent,
+        origin: window.location.origin,
+      });
       window.__store.set({ id: 'untitled', name: 'Untitled Project', floors: [{ walls: [], rooms: [] }] });
       window.__openPlan3DSession.onEditorMounted();
     }, loaded);

@@ -19,10 +19,30 @@
     .openplan3d-tool-btn, .openplan3d-save-btn, .util-ra-engine-toggle { min-height: 44px; padding: 0.5rem 0.75rem; }
   }
   .openplan3d-modal[hidden], .openplan3d-modal [hidden] { display: none !important; }
-  .openplan3d-modal { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,0.35); }
-  .openplan3d-modal-panel { background: #fff; padding: 1rem; min-width: 280px; max-width: 92vw; }
-  .openplan3d-modal-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .openplan3d-modal-actions .admin-btn, .openplan3d-modal-actions--stack .admin-btn { min-height: 44px; }
+  .openplan3d-modal { position: fixed; inset: 0; z-index: 80; display: flex; align-items: flex-end; justify-content: center; padding: 0.75rem; box-sizing: border-box; }
+  .openplan3d-modal-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); }
+  .openplan3d-modal-panel { position: relative; z-index: 1; width: min(420px, 100%); max-height: min(90dvh, 640px); overflow: auto; background: var(--admin-surface, #ffffff); color: var(--admin-text, #1e293b); border: 1px solid var(--admin-border, #e2e8f0); border-radius: 10px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2); padding: 1rem; }
+  .openplan3d-modal-title { margin: 0 0 0.4rem; font-size: 1.05rem; color: var(--admin-heading, #0f172a); }
+  .openplan3d-modal-body { margin: 0 0 0.75rem; font-size: 0.9rem; color: var(--admin-muted, #64748b); line-height: 1.45; }
+  .openplan3d-modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; }
+  .openplan3d-modal-actions--stack { justify-content: stretch; margin-bottom: 0.5rem; }
+  .openplan3d-modal-actions .admin-btn { min-height: 44px; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+  .openplan3d-modal-actions--stack .admin-btn { flex: 1 1 160px; }
+  .admin-btn--primary { background: #2563eb; color: #fff; border-color: #1d4ed8; }
+  .admin-btn--ghost { background: transparent; color: inherit; border-color: #cbd5e1; }
+  @media (min-width: 700px) { .openplan3d-modal { align-items: center; } }
+  @media (max-width: 390px) {
+    .openplan3d-modal { padding: 0.5rem; align-items: flex-end; }
+    .openplan3d-modal-panel { width: 100%; }
+  }
+  .admin-dark { --admin-surface: #0f172a; --admin-text: #e2e8f0; --admin-border: #334155; --admin-heading: #f8fafc; --admin-muted: #94a3b8; background: #020617; color: #e2e8f0; }
+  .admin-dark .util-ra-openplan3d-wrap { background: #0f172a; border-color: #334155; }
+  .admin-dark .util-ra-openplan3d-header { background: #1e293b; border-color: #334155; }
+  .admin-dark .openplan3d-modal-backdrop { background: rgba(2, 6, 23, 0.72); }
+  .admin-dark .openplan3d-modal-panel { background: #111a2c; color: #e2e8f0; border-color: #334155; }
+  .admin-dark .openplan3d-modal-title { color: #f8fafc; }
+  .admin-dark .openplan3d-modal-body, .admin-dark .openplan3d-modal-field-label { color: #94a3b8; }
+  .admin-dark .admin-btn--ghost { border-color: #475569; color: #e2e8f0; }
   </style>
 </head>
 <body style="margin: 0; padding: 10px; font-family: sans-serif;">
@@ -168,6 +188,7 @@
   </div>
 
   <div id="openplan3d-feedback" class="openplan3d-feedback" hidden role="alert" aria-live="polite"></div>
+  <div id="openplan3d-noscale-warning" class="openplan3d-noscale-warning" hidden role="status">This room has no scale. Measurements may be wrong until scale is set.</div>
 
   <div id="openplan3d-modal" class="openplan3d-modal" hidden>
     <div class="openplan3d-modal-backdrop" data-openplan3d-modal-dismiss tabindex="-1" aria-hidden="true"></div>

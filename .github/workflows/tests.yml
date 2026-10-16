@@ -104,6 +104,7 @@ jobs:
           set -euo pipefail
           files=(
             tests/Unit/Services/OpenPlan3DParityTest.php
+            tests/Unit/Services/OpenPlan3DPlanValidatorTest.php
             tests/Unit/Github/DeployDependsOnTestsTest.php
             tests/Unit/Views/BladeSyntaxTest.php
             tests/Unit/Views/AiActionGroupTest.php

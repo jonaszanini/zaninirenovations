@@ -261,8 +261,28 @@
     };
   }
 
+  function isEditorPanel(node) {
+    if (!node || node.nodeType !== 1) return false;
+    var tag = (node.tagName || '').toLowerCase();
+    if (tag === 'aside' || tag === 'main' || tag === 'section' || tag === 'form' || tag === 'canvas') return true;
+    var cls = typeof node.className === 'string' ? node.className : '';
+    if (/\b(panel|sidebar|toolbar|catalog|drawer|viewport|canvas)\b/i.test(cls)) return true;
+    if (node.hasAttribute('data-editor-panel')) return true;
+    return false;
+  }
+
+  function isInsideEditorPanel(node) {
+    if (!node || node.nodeType !== 1) return false;
+    if (isEditorPanel(node)) return true;
+    if (node.closest && node.closest('aside, main, section, form, [data-editor-panel], .panel, .sidebar, .toolbar')) {
+      return true;
+    }
+    return false;
+  }
+
   function shouldHideNativeControl(el) {
     if (!el || el.nodeType !== 1) return false;
+    if (isInsideEditorPanel(el)) return false;
     if (el.hasAttribute('data-save-label')) return true;
     var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
     var aria = (el.getAttribute('aria-label') || '').trim();
@@ -278,13 +298,24 @@
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
       if (!shouldHideNativeControl(el)) continue;
+      if (isInsideEditorPanel(el)) continue;
       var target = el;
       var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
       var aria = (el.getAttribute('aria-label') || '').trim();
-      if ((text === 'Export' || aria === 'Export' || HIDE_LABELS[text] || HIDE_LABELS[aria]) && el.closest) {
-        var wrap = el.closest('[data-zanini-hide-native-save], .relative, li, span.inline-grid');
-        if (wrap && wrap !== el && wrap !== scope) target = wrap;
+      if ((text === 'Export' || aria === 'Export') && el.closest) {
+        var wrap = el.closest('[data-zanini-hide-native-save], span.inline-grid');
+        if (!wrap && el.parentElement && el.parentElement.classList && el.parentElement.classList.contains('relative')) {
+          var p = el.parentElement;
+          if (p !== scope && !isInsideEditorPanel(p) && p.querySelectorAll('button, a').length <= 2) {
+            wrap = p;
+          }
+        }
+        if (wrap && wrap !== el && wrap !== scope && !isInsideEditorPanel(wrap)) target = wrap;
+      } else if (el.closest) {
+        var wrap2 = el.closest('[data-zanini-hide-native-save], span.inline-grid');
+        if (wrap2 && wrap2 !== el && wrap2 !== scope && !isInsideEditorPanel(wrap2)) target = wrap2;
       }
+      if (isInsideEditorPanel(target)) continue;
       if (target.getAttribute('data-zanini-hide-native-save') === '1' && target.hidden) {
         hidden++;
         continue;
@@ -352,7 +383,17 @@
     options = options || {};
     var postToParent = options.postToParent || function (msg) {
       if (typeof window !== 'undefined' && window.parent) {
-        window.parent.postMessage(msg, '*');
+        var target = null;
+        try {
+          if (window.location && window.location.origin && window.location.origin !== 'null') {
+            target = window.location.origin;
+          }
+        } catch (e) {}
+        if (!target || target === '*' || target === 'null') {
+          console.error('[openPlan3D-bridge] Refusing postMessage: invalid or missing target origin', target);
+          return;
+        }
+        window.parent.postMessage(msg, target);
       }
     };
     var apiRef = null;
@@ -490,7 +531,17 @@
       return inspected;
     }
 
+    function isTrustedParentMessage(event) {
+      if (typeof window === 'undefined' || !window.parent) return true;
+      if (!event) return false;
+      if (event.source !== window.parent) return false;
+      if (!event.origin || event.origin === 'null') return false;
+      if (!window.location || !window.location.origin || window.location.origin === 'null') return false;
+      return event.origin === window.location.origin;
+    }
+
     function handleParentMessage(event) {
+      if (!isTrustedParentMessage(event)) return false;
       var data = event && event.data;
       if (!data || typeof data !== 'object') return false;
       if (data.type === 'OPENPLAN3D_LOAD_PLAN') {
@@ -535,6 +586,7 @@
       onEditorMounted: onEditorMounted,
       getState: state,
       serializePlan: serializePlan,
+      postToParent: postToParent,
       now: now
     };
   }
@@ -553,6 +605,7 @@
     clearLocalStorageKeys: clearLocalStorageKeys,
     snapshotBlockedStorage: snapshotBlockedStorage,
     installStorageLock: installStorageLock,
+    isEditorPanel: isEditorPanel,
     hideNativeSaveUi: hideNativeSaveUi,
     shouldHideNativeControl: shouldHideNativeControl,
     keepHostedClass: keepHostedClass,
