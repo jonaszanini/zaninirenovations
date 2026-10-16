@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>openPlan3D embed test</title>
+  <script src="/js/openplan3d-editor-bridge.js"></script>
+</head>
+<body>
+  <div class="h-12 bg-gradient-to-r from-slate-800 to-slate-700 flex items-center px-4 gap-2">
+    <a class="flex items-center gap-1" href="#projects">Projects</a>
+    <span class="inline-grid shrink-0">Saved ✓</span>
+    <div class="relative">
+      <button type="button">Export</button>
+    </div>
+    <button type="button" class="bg-white text-slate-800 font-semibold">Save</button>
+  </div>
+  <script>
+    document.documentElement.classList.add('zanini-hosted-openplan3d');
+    OpenPlan3DEditorBridge.installStorageLock();
+    window.__openPlan3DSession = OpenPlan3DEditorBridge.createSession();
+    OpenPlan3DEditorBridge.startHidingNativeSaveUi(document);
+    window.addEventListener('message', function (event) {
+      window.__openPlan3DSession.handleParentMessage(event);
+    });
+
+    var params = new URLSearchParams(window.location.search);
+    window.__store = {
+      value: { id: 'untitled', name: 'Untitled Project', floors: [{ walls: [], rooms: [] }] },
+      listeners: [],
+      subscribe: function (cb) {
+        this.listeners.push(cb);
+        cb(this.value);
+        return function () {};
+      },
+      set: function (v) {
+        this.value = v;
+        this.listeners.forEach(function (cb) { cb(v); });
+      }
+    };
+
+    if (params.get('missing') === '1') {
+      window.__openPlan3DSession.attachStore({});
+    } else {
+      window.__openPlan3DSession.attachStore({
+        H: function (project) { window.__store.set(project); },
+        c: window.__store
+      });
+    }
+  </script>
+</body>
+</html>

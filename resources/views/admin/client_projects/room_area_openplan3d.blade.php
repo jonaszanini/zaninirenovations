@@ -22,5 +22,6 @@
 
 @push('scripts')
   <script src="{{ asset('js/openplan3d-measurement-bridge.js') }}?v={{ @filemtime(public_path('js/openplan3d-measurement-bridge.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/openplan3d-host.js') }}?v={{ @filemtime(public_path('js/openplan3d-host.js')) ?: time() }}"></script>
 @endpush
 

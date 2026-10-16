@@ -104,6 +104,36 @@ async function run() {
     const initialOpenings = await page.$eval('#metric-openings', (el) => el.textContent.trim());
     assert.strictEqual(initialOpenings, '0 doors · 0 windows', 'Initial openings should be 0');
 
+    const dirtyAtLoad = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
+    assert.strictEqual(dirtyAtLoad, false, 'Saved room must open without an Unsaved badge');
+
+    const blankBootPlan = {
+      id: 'untitled',
+      name: 'Untitled Project',
+      floors: [{ id: 'f1', walls: [], rooms: [] }],
+    };
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
+    }, blankBootPlan);
+    await new Promise((r) => setTimeout(r, 80));
+
+    const areaBeforeAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    assert.strictEqual(areaBeforeAck, '150.00', 'Boot Untitled Project must not overwrite loaded metrics before LOAD_ACK');
+    const dirtyBeforeAck = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
+    assert.strictEqual(dirtyBeforeAck, false, 'Boot store writes must not mark the room Unsaved');
+
+    await page.evaluate(() => {
+      window.postMessage({ type: 'OPENPLAN3D_LOAD_ACK', ok: true }, '*');
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const areaAfterAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    assert.strictEqual(areaAfterAck, '150.00', 'LOAD_ACK must keep the saved geometry metrics');
+    const dirtyAfterAck = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
+    assert.strictEqual(dirtyAfterAck, false, 'LOAD_ACK must leave the Unsaved badge hidden');
+    const areaDelta = Math.abs(parseFloat(areaAfterAck) - 150.0);
+    assert.ok(areaDelta <= 0.01, 'Opened metrics must match stored area_sqft within 0.01');
+
     // 2. Simulate Drawing Updates / OpenPlan3D Plan Changed with Door and Window
     const updatedPlan = {
       unit: 'cm',
@@ -141,7 +171,6 @@ async function run() {
       window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
     }, updatedPlan);
 
-    // Wait for event loop
     await new Promise((r) => setTimeout(r, 100));
 
     // Assert live metrics updated
@@ -195,6 +224,79 @@ async function run() {
       return { width: rect.width, height: rect.height };
     });
     assert.ok(saveBtnBox.height >= 36, 'Save button height should be comfortably tappable');
+
+    // 5. Two-room plan: strip uses whole plan, not database room id 10
+    const twoRoomPlan = {
+      unit: 'cm',
+      version: '1.0',
+      floor: {
+        walls: [
+          { id: 'w1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 }, height: 243.84, thickness: 10 },
+          { id: 'w2', start: { x: 304.8, y: 0 }, end: { x: 304.8, y: 304.8 }, height: 243.84, thickness: 10 },
+          { id: 'w3', start: { x: 304.8, y: 304.8 }, end: { x: 0, y: 304.8 }, height: 243.84, thickness: 10 },
+          { id: 'w4', start: { x: 0, y: 304.8 }, end: { x: 0, y: 0 }, height: 243.84, thickness: 10 },
+          { id: 'w5', start: { x: 304.8, y: 0 }, end: { x: 609.6, y: 0 }, height: 243.84, thickness: 10 },
+          { id: 'w6', start: { x: 609.6, y: 0 }, end: { x: 609.6, y: 304.8 }, height: 243.84, thickness: 10 },
+          { id: 'w7', start: { x: 609.6, y: 304.8 }, end: { x: 304.8, y: 304.8 }, height: 243.84, thickness: 10 },
+        ],
+        rooms: [
+          {
+            id: 'r1',
+            name: 'Kitchen',
+            walls: ['w1', 'w2', 'w3', 'w4'],
+            polygon: [
+              { x: 0, y: 0 }, { x: 304.8, y: 0 }, { x: 304.8, y: 304.8 }, { x: 0, y: 304.8 },
+            ],
+          },
+          {
+            id: 'r2',
+            name: 'Bath',
+            walls: ['w5', 'w6', 'w7', 'w2'],
+            polygon: [
+              { x: 304.8, y: 0 }, { x: 609.6, y: 0 }, { x: 609.6, y: 304.8 }, { x: 304.8, y: 304.8 },
+            ],
+          },
+        ],
+      },
+    };
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
+    }, twoRoomPlan);
+    await new Promise((r) => setTimeout(r, 80));
+    const twoRoomStrip = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    assert.strictEqual(twoRoomStrip, '200.00', 'Metrics strip must use whole-plan area, not database room id 10');
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(lastSavedBody, 'Two-room save should post');
+    assert.strictEqual(twoRoomStrip, '200.00');
+    assert.ok(lastSavedBody.plan.floor.rooms.length === 2, 'Saved plan must keep both openPlan3D rooms');
+
+    // 6. Save Plan never sends 0 metrics for a >0 room without confirm
+    const zeroPlan = { format: 'openplan3d', unit: 'cm', floor: { walls: [], rooms: [] } };
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
+    }, zeroPlan);
+    await new Promise((r) => setTimeout(r, 50));
+    lastSavedBody = null;
+    await page.evaluate(() => {
+      window.__confirmAnswers = [false];
+      window.confirm = function () {
+        return window.__confirmAnswers.shift() !== false;
+      };
+    });
+    await page.click('#openplan3d-save-btn');
+    await new Promise((r) => setTimeout(r, 150));
+    assert.strictEqual(lastSavedBody, null, 'Save Plan must not send a 0-area overwrite when confirm is declined');
+
+    lastSavedBody = null;
+    await page.evaluate(() => {
+      window.__confirmAnswers = [true];
+    });
+    await page.click('#openplan3d-save-btn');
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(lastSavedBody, 'Save Plan may send 0-area after explicit confirm');
+    assert.strictEqual(lastSavedBody.confirm_zero_area, true, 'Confirmed 0-area save must send confirm_zero_area');
 
     console.log('All openPlan3D Puppeteer browser tests PASSED successfully!');
   } finally {

@@ -5,6 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" type="image/svg+xml" href="/vendor/openplan3d/favicon.svg" />
 		<title>open3dFloorplan</title>
+		<script src="/js/openplan3d-editor-bridge.js"></script>
 		<link href="/vendor/openplan3d/_app/immutable/entry/start.ChH6DPSY.js" rel="modulepreload">
 		<link href="/vendor/openplan3d/_app/immutable/chunks/IK8I3O5V.js" rel="modulepreload">
 		<link href="/vendor/openplan3d/_app/immutable/chunks/BZH7Uaq2.js" rel="modulepreload">
@@ -232,9 +233,40 @@
 				filter: brightness(1.12) !important;
 				transform: translateY(-1px) !important;
 			}
+
+			/* Zanini host: hide vendor Projects / Save / Saved ✓ / Export chrome */
+			html.zanini-hosted-openplan3d [data-zanini-hide-native-save] {
+				display: none !important;
+			}
+			html.zanini-hosted-openplan3d .h-12.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1 {
+				display: none !important;
+			}
+			html.zanini-hosted-openplan3d .h-12.bg-gradient-to-r.from-slate-800 > button.bg-white.text-slate-800.font-semibold {
+				display: none !important;
+			}
+			html.zanini-hosted-openplan3d .h-12.bg-gradient-to-r.from-slate-800 > span.inline-grid {
+				display: none !important;
+			}
+			html.zanini-hosted-openplan3d .h-12.bg-gradient-to-r.from-slate-800 > .relative:has(> button svg path[d^="M21 15v4"]) {
+				display: none !important;
+			}
 		</style>
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<script>
+			document.documentElement.classList.add('zanini-hosted-openplan3d');
+			if (window.OpenPlan3DEditorBridge) {
+				window.OpenPlan3DEditorBridge.keepHostedClass(document);
+				window.OpenPlan3DEditorBridge.installStorageLock();
+				window.__openPlan3DSession = window.OpenPlan3DEditorBridge.createSession();
+				window.OpenPlan3DEditorBridge.startHidingNativeSaveUi(document);
+			}
+			window.addEventListener('message', function (event) {
+				if (window.__openPlan3DSession) {
+					window.__openPlan3DSession.handleParentMessage(event);
+				}
+			});
+		</script>
 		<div style="display: contents">
 			<script>
 				{
@@ -258,65 +290,36 @@
 							import("/vendor/openplan3d/_app/immutable/entry/start.ChH6DPSY.js"),
 							import("/vendor/openplan3d/_app/immutable/entry/app.Badnr33M.js")
 						]).then(([kit, app]) => {
-							kit.start(app, element);
+							return Promise.resolve(kit.start(app, element));
+						}).then(() => {
+							if (window.__openPlan3DSession) {
+								window.__openPlan3DSession.onEditorMounted();
+							}
+						}).catch((err) => {
+							console.error('[openPlan3D Bridge] Editor failed to mount:', err);
+							if (window.OpenPlan3DEditorBridge) {
+								window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor failed to mount. Room geometry cannot be loaded. Refresh the page.');
+							}
+							if (window.parent && window.parent !== window) {
+								window.parent.postMessage({ type: 'OPENPLAN3D_BRIDGE_ERROR', message: 'editor-mount-failed' }, '*');
+							}
 						});
 					});
 				}
 			</script>
 			<script type="module">
 				import("/vendor/openplan3d/_app/immutable/chunks/1VjVcrjm.js").then((storeModule) => {
-					window.__openPlan3D = {
-						getProject: () => {
-							let cur = null;
-							if (storeModule.c && typeof storeModule.c.subscribe === 'function') {
-								const unsub = storeModule.c.subscribe(v => cur = v);
-								if (typeof unsub === 'function') unsub();
-							}
-							return cur;
-						},
-						setProject: (project) => {
-							if (typeof storeModule.H === 'function') {
-								storeModule.H(project);
-							} else if (storeModule.c && typeof storeModule.c.set === 'function') {
-								storeModule.c.set(project);
-							}
-						},
-						subscribe: (callback) => {
-							if (storeModule.c && typeof storeModule.c.subscribe === 'function') {
-								return storeModule.c.subscribe(callback);
-							}
-							return () => {};
-						}
-					};
-
-					function serializePlan(raw) {
-						if (!raw || typeof raw !== 'object') return null;
-						try {
-							return JSON.parse(JSON.stringify(raw));
-						} catch (e) {
-							try {
-								const ancestors = [];
-								const json = JSON.stringify(raw, function(key, value) {
-									if (typeof value === 'function' || typeof value === 'symbol') return undefined;
-									if (typeof value === 'object' && value !== null) {
-										while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
-											ancestors.pop();
-										}
-										if (ancestors.includes(value)) return undefined;
-										ancestors.push(value);
-									}
-									return value;
-								});
-								return JSON.parse(json);
-							} catch (e2) {
-								console.warn('[openPlan3D Bridge] Failed to serialize plan:', e2);
-								return null;
-							}
-						}
+					const session = window.__openPlan3DSession;
+					const bridge = window.OpenPlan3DEditorBridge;
+					if (!session || !bridge) {
+						throw new Error('openPlan3D editor bridge is missing');
 					}
 
-					
-					// Auto-sync initial dark theme with parent window
+					const inspected = session.attachStore(storeModule);
+					if (!inspected || !inspected.ok) {
+						return;
+					}
+
 					try {
 						if (window.parent && window.parent !== window && window.parent.document) {
 							if (window.parent.document.documentElement.classList.contains('admin-dark')) {
@@ -325,12 +328,6 @@
 						}
 					} catch (e) {}
 
-					// Notify parent window that openPlan3D API is ready
-					if (window.parent && window.parent !== window) {
-						window.parent.postMessage({ type: 'OPENPLAN3D_READY' }, '*');
-					}
-
-					// Forward project changes to parent (debounced and isolated from Svelte store execution)
 					let initial = true;
 					let updateTimeout = null;
 					window.__openPlan3D.subscribe((project) => {
@@ -338,75 +335,41 @@
 							initial = false;
 							return;
 						}
-						if (updateTimeout) clearTimeout(updateTimeout);
-						updateTimeout = setTimeout(() => {
-							updateTimeout = null;
-							if (window.parent && window.parent !== window) {
-								try {
-									const cur = (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function')
-										? window.__openPlan3D.getProject()
-										: project;
-									const cleanPlan = serializePlan(cur);
-									if (cleanPlan) {
-										window.parent.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: cleanPlan }, '*');
+						session.onStoreChange(project, (cur) => {
+							if (updateTimeout) clearTimeout(updateTimeout);
+							updateTimeout = setTimeout(() => {
+								updateTimeout = null;
+								if (window.parent && window.parent !== window) {
+									try {
+										const live = (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function')
+											? window.__openPlan3D.getProject()
+											: cur;
+										const cleanPlan = session.serializePlan(live);
+										if (cleanPlan) {
+											window.parent.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: cleanPlan }, '*');
+										}
+									} catch (postErr) {
+										console.warn('[openPlan3D Bridge] Error posting plan change:', postErr);
 									}
-								} catch (postErr) {
-									console.warn('[openPlan3D Bridge] Error posting plan change:', postErr);
 								}
-							}
-						}, 30);
+							}, 30);
+						});
 					});
 				}).catch(err => {
 					console.error('[openPlan3D Bridge] Error loading store module:', err);
+					if (window.OpenPlan3DEditorBridge) {
+						window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor API is unavailable (missing H/c store exports). Room geometry cannot be loaded. Refresh the page.');
+					}
+					if (window.parent && window.parent !== window) {
+						window.parent.postMessage({ type: 'OPENPLAN3D_BRIDGE_ERROR', message: 'missing-store-exports' }, '*');
+					}
 				});
 
-				// Hotkey forwarder: forward Ctrl+S / Cmd+S to parent
 				window.addEventListener('keydown', (e) => {
 					if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
 						e.preventDefault();
 						if (window.parent && window.parent !== window) {
 							window.parent.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*');
-						}
-					}
-				});
-
-				// Message receiver from parent window
-				window.addEventListener('message', (event) => {
-					const data = event.data;
-					if (!data || typeof data !== 'object') return;
-
-					
-					if (data.type === 'OPENPLAN3D_SET_THEME') {
-						document.documentElement.classList.toggle('dark', data.theme === 'dark');
-						try { localStorage.setItem('o3d_theme', data.theme); } catch (e) {}
-					}
-
-					if (data.type === 'OPENPLAN3D_LOAD_PLAN') {
-						const load = () => {
-							if (window.__openPlan3D && typeof window.__openPlan3D.setProject === 'function') {
-								window.__openPlan3D.setProject(data.plan);
-							} else {
-								setTimeout(load, 50);
-							}
-						};
-						load();
-					}
-
-					if (data.type === 'OPENPLAN3D_REQUEST_PLAN') {
-						if (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function') {
-							const plan = window.__openPlan3D.getProject();
-							if (window.parent && window.parent !== window) {
-								try {
-									const cleanPlan = serializePlan(plan);
-									window.parent.postMessage({
-										type: 'OPENPLAN3D_PLAN_RESPONSE',
-										requestId: data.requestId,
-										plan: cleanPlan
-									}, '*');
-								} catch (postErr) {
-									console.warn('[openPlan3D Bridge] Error posting plan response:', postErr);
-								}
-							}
 						}
 					}
 				});

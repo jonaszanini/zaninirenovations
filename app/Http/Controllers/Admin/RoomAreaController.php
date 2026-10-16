@@ -393,6 +393,7 @@ class RoomAreaController extends Controller
             'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
             'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
+            'confirm_zero_area' => ['sometimes', 'boolean'],
         ]);
 
         $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
@@ -406,8 +407,18 @@ class RoomAreaController extends Controller
                 'flooring_box_sqft' => $data['flooring_box_sqft'] ?? $room_area_room->flooring_box_sqft,
             ];
             $metrics = $bridge->layoutMetrics($plan, null, $finish);
-            if ($metrics['area_sqft'] <= 0 && empty($metrics['walls'])) {
+            $existingArea = (float) $room_area_room->area_sqft;
+            $incomingArea = (float) $metrics['area_sqft'];
+            $confirmedZero = $request->boolean('confirm_zero_area');
+            if ($incomingArea <= 0 && empty($metrics['walls']) && ! $confirmedZero) {
                 return response()->json(['ok' => false, 'message' => 'The drawing must contain at least one closed room or wall.'], 422);
+            }
+            if ($existingArea > 0 && $incomingArea <= 0 && ! $confirmedZero) {
+                return response()->json([
+                    'ok' => false,
+                    'code' => 'zero_area_overwrite',
+                    'message' => 'Refusing to overwrite a room with area '.$existingArea.' sq ft using a 0-area plan. Confirm to proceed.',
+                ], 422);
             }
 
             $legacyBackup = $room_area_room->legacy_canvas_data;

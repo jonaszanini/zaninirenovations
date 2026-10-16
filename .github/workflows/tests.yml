@@ -18,7 +18,7 @@ on:
         default: false
 
 concurrency:
-  group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -84,7 +84,9 @@ jobs:
         run: |
           node tests/js/room-area-lib.test.js
           node tests/js/openplan3d-parity.test.js
+          node tests/js/openplan3d-editor-bridge.test.js
           node tests/js/openplan3d-browser.test.js
+          node tests/js/openplan3d-editor-browser.test.js
           node tests/js/room-area-formula.test.js
           node tests/js/shared-prices-effective.test.js
           node tests/js/admin-hotkey-save.test.js
@@ -99,6 +101,7 @@ jobs:
         run: |
           php artisan test \
             tests/Unit/Services/OpenPlan3DParityTest.php \
+            tests/Unit/Github/DeployDependsOnTestsTest.php \
             tests/Unit/Services/RoomAreaDrawingImporterTest.php \
             tests/Unit/Views/BladeSyntaxTest.php \
             tests/Unit/Views/AiActionGroupTest.php \
@@ -129,6 +132,7 @@ jobs:
             tests/Unit/Views/PublicMobileNavDropdownTest.php \
             tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php \
             tests/Unit/Views/HomeKitchenTileImageTest.php
+          php artisan test tests/Unit/Github/DeployDependsOnTestsTest.php
 
       - name: Database tests (MySQL)
         env:
@@ -262,6 +266,7 @@ jobs:
             tests/Feature/Admin/RoomAreaBatch3PageTest.php \
             tests/Feature/Admin/RoomAreaKitSeedRaceTest.php \
             tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
+          php artisan test tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php
 
       - name: Upload Shared prices geometry
         if: always()
