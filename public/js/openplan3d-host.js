@@ -234,6 +234,15 @@
     }
   }
 
+  function clonePlan(plan) {
+    if (!plan || typeof plan !== 'object') return plan;
+    try {
+      return JSON.parse(JSON.stringify(plan));
+    } catch (e) {
+      return plan;
+    }
+  }
+
   function boot(options) {
     options = options || {};
     var doc = options.document || (typeof document !== 'undefined' ? document : null);
@@ -643,9 +652,10 @@
       var finish = getFinishSettings();
       var submitOnce = 'openplan3d_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
+      var sentPlan = clonePlan(currentPlan);
       var payload = {
         name: roomName,
-        plan: currentPlan,
+        plan: sentPlan,
         wall_height_ft: finish.wall_height_ft,
         ceiling_height_ft: finish.ceiling_height_ft,
         flooring_waste_percent: finish.flooring_waste_percent,
@@ -695,8 +705,8 @@
             quoteBtn.hidden = false;
           }
 
-          loadedPlanBaseline = currentPlan;
-          setDirty(false);
+          loadedPlanBaseline = sentPlan;
+          setDirty(!plansMatch(currentPlan, sentPlan));
           showFeedback('Plan saved successfully!');
         } else {
           var errMsg = (result.data && (result.data.message || (result.data.errors ? Object.values(result.data.errors).flat().join(' ') : null))) || 'Save failed.';
@@ -934,6 +944,7 @@
     computeMetrics: computeMetrics,
     plansMatch: plansMatch,
     planFingerprint: planFingerprint,
+    clonePlan: clonePlan,
     boot: boot
   };
 }));

@@ -322,6 +322,44 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertTrue($this->bridge->isPlan($room->vertices));
     }
 
+    public function test_three_point_room_with_no_walls_is_accepted(): void
+    {
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floor' => [
+                'walls' => [],
+                'rooms' => [
+                    [
+                        'id' => 'tri',
+                        'name' => 'Triangle',
+                        'polygon' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 304.8, 'y' => 0],
+                            ['x' => 0, 'y' => 304.8],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            [
+                'name' => 'Triangle Room',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $this->assertDatabaseHas('room_area_rooms', [
+            'name' => 'Triangle Room',
+            'room_area_project_id' => $this->project->id,
+        ]);
+    }
+
     private function storeSampleRoom(float $areaSqft): RoomAreaRoom
     {
         $plan = $this->sampleOpenPlan(10.0, 15.0);

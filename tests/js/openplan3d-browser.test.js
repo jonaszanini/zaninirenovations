@@ -7,8 +7,11 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../..');
 const FIXTURE = path.join(__dirname, 'fixtures/openplan3d-room-area.html');
+const host = require('../../public/js/openplan3d-host.js');
 
 let lastSavedBody = null;
+let saveDelayMs = 0;
+let failNextSave = false;
 
 function startServer() {
   return new Promise((resolve, reject) => {
@@ -21,11 +24,22 @@ function startServer() {
         req.on('data', (c) => chunks.push(c));
         req.on('end', () => {
           lastSavedBody = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            ok: true,
-            room: { id: 10, name: lastSavedBody.name, area_sqft: 180.0 },
-          }));
+          const delay = saveDelayMs;
+          const fail = failNextSave;
+          saveDelayMs = 0;
+          failNextSave = false;
+          setTimeout(() => {
+            if (fail) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: false, message: 'save failed' }));
+              return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              ok: true,
+              room: { id: 10, name: lastSavedBody.name, area_sqft: 180.0 },
+            }));
+          }, delay);
         });
         return;
       }
@@ -271,6 +285,36 @@ async function run() {
     assert.strictEqual(await unsavedVisible(), true, 'undo to the pre-save plan after save must mark Unsaved');
     await postPlan(movedDoor);
     assert.strictEqual(await unsavedVisible(), false, 'undo back to the last saved plan must clear Unsaved');
+
+    saveDelayMs = 450;
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 40));
+    await postPlan(addedLabel);
+    await new Promise((r) => setTimeout(r, 700));
+    assert.ok(lastSavedBody, 'in-flight save must still post the request-time plan');
+    assert.ok(
+      host.plansMatch(lastSavedBody.plan, movedDoor),
+      'request body must be the plan at save click, not the in-flight edit'
+    );
+    assert.strictEqual(await unsavedVisible(), true, 'edits during an in-flight save must stay Unsaved');
+    const afterInFlight = await page.evaluate(() => {
+      const s = window.OpenPlan3DHost.getState();
+      return { baseline: s.loadedPlanBaseline, current: s.currentPlan, dirty: s.isDirty };
+    });
+    assert.ok(host.plansMatch(afterInFlight.baseline, movedDoor), 'baseline is the plan that was SENT');
+    assert.ok(host.plansMatch(afterInFlight.current, addedLabel), 'current plan is the in-flight edit');
+    assert.strictEqual(afterInFlight.dirty, true, 'isDirty stays true when current differs from the sent snapshot');
+
+    const baselineBeforeFail = await page.evaluate(() => window.OpenPlan3DHost.getState().loadedPlanBaseline);
+    failNextSave = true;
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 250));
+    assert.ok(lastSavedBody, 'failed save still posted');
+    assert.strictEqual(await unsavedVisible(), true, 'failed save must leave Unsaved visible');
+    const afterFail = await page.evaluate(() => window.OpenPlan3DHost.getState().loadedPlanBaseline);
+    assert.ok(host.plansMatch(afterFail, baselineBeforeFail), 'failed save must leave loadedPlanBaseline unchanged');
 
     // 2. Simulate Drawing Updates / OpenPlan3D Plan Changed with Door and Window
     const updatedPlan = {
