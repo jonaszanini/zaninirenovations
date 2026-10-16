@@ -52,6 +52,12 @@ assert.match(html, /OPENPLAN3D_LOAD_ACK|onEditorMounted/, 'editor must queue loa
 assert.match(html, /installStorageLock/, 'editor must lock vendor storage');
 assert.match(html, /zanini-hosted-openplan3d/, 'editor must mark hosted mode');
 assert.match(html, /missing H\/c store exports/, 'editor must show a visible error if H/c are missing');
+assert.match(html, /\[data-zanini-hide-native-save\]/, 'vendor chrome hide must use the data attribute, not Tailwind layout selectors');
+assert.doesNotMatch(
+  html,
+  /\.h-12\.bg-gradient-to-r\.from-slate-800/,
+  'fragile Tailwind chrome-hide selectors must not remain in the editor CSS'
+);
 assert.doesNotMatch(
   html,
   /if \(window\.__openPlan3D && typeof window\.__openPlan3D\.setProject === 'function'\) \{\s*window\.__openPlan3D\.setProject\(data\.plan\);/,
@@ -69,6 +75,16 @@ assert.doesNotMatch(
   'host must not pass the database room id into layoutMetrics'
 );
 assert.match(hostSrc, /resolveOpenPlan3DRoomId\(plan,\s*selectedOpenPlan3DRoomId\)/);
+assert.match(hostSrc, /function askConfirm/, 'native confirm must be replaced with an in-app modal');
+assert.match(hostSrc, /save-destination/, 'Save must offer link vs standalone');
+assert.match(hostSrc, /startBlankSession/, 'Room Area must boot a blank session by default');
+assert.doesNotMatch(hostSrc, /\bwin\.confirm\b|\bwindow\.confirm\s*\(/);
+assert.doesNotMatch(hostSrc, /\bwin\.alert\b|\bwindow\.alert\s*\(/);
+assert.doesNotMatch(hostSrc, /\bwin\.prompt\b|\bwindow\.prompt\s*\(/);
+
+const bridgeSrc = fs.readFileSync(path.resolve(__dirname, '../../public/js/openplan3d-editor-bridge.js'), 'utf8');
+assert.match(bridgeSrc, /style\.setProperty\('display', 'none'/, 'native chrome hide must set inline display');
+assert.match(bridgeSrc, /__zaniniNativeSaveClickLocked/, 'hidden vendor chrome clicks must be captured');
 
 assert.strictEqual(bridge.isBlockedStorageKey('floorplan_projects'), true);
 assert.strictEqual(bridge.isBlockedStorageKey('floorplan_thumb_abc'), true);

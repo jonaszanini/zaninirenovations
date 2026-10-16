@@ -18,20 +18,27 @@
   @media (max-width: 768px) {
     .openplan3d-tool-btn, .openplan3d-save-btn, .util-ra-engine-toggle { min-height: 44px; padding: 0.5rem 0.75rem; }
   }
+  .openplan3d-modal[hidden], .openplan3d-modal [hidden] { display: none !important; }
+  .openplan3d-modal { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,0.35); }
+  .openplan3d-modal-panel { background: #fff; padding: 1rem; min-width: 280px; max-width: 92vw; }
+  .openplan3d-modal-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .openplan3d-modal-actions .admin-btn, .openplan3d-modal-actions--stack .admin-btn { min-height: 44px; }
   </style>
 </head>
 <body style="margin: 0; padding: 10px; font-family: sans-serif;">
 
 <div class="util-ra-openplan3d-wrap"
   data-room-area-openplan3d
-  data-projects='[{"id":1,"name":"Test Suite Project","client_project_name":"Suite 101","rooms":[{"id":10,"name":"Living Room","area_sqft":150.0,"wall_height_ft":8.0,"ceiling_height_ft":8.0,"flooring_waste_percent":10.0,"flooring_box_sqft":20.0,"plan":{"unit":"cm","version":"1.0","floor":{"walls":[{"id":"w1","start":{"x":0,"y":0},"end":{"x":365.76,"y":0},"height":243.84,"thickness":10},{"id":"w2","start":{"x":365.76,"y":0},"end":{"x":365.76,"y":381},"height":243.84,"thickness":10},{"id":"w3","start":{"x":365.76,"y":381},"end":{"x":0,"y":381},"height":243.84,"thickness":10},{"id":"w4","start":{"x":0,"y":381},"end":{"x":0,"y":0},"height":243.84,"thickness":10}],"rooms":[{"id":"r1","name":"Living Room","walls":["w1","w2","w3","w4"],"polygon":[{"x":0,"y":0},{"x":365.76,"y":0},{"x":365.76,"y":381},{"x":0,"y":381}]}]}}}]}]'
-  data-client-projects='[{"id":1,"name":"Suite 101"}]'
+  data-projects='[{"id":1,"name":"Test Suite Project","client_project_id":1,"client_project_name":"Suite 101","rooms":[{"id":10,"name":"Living Room","area_sqft":150.0,"wall_height_ft":8.0,"ceiling_height_ft":8.0,"flooring_waste_percent":10.0,"flooring_box_sqft":20.0,"plan":{"unit":"cm","version":"1.0","floor":{"walls":[{"id":"w1","start":{"x":0,"y":0},"end":{"x":365.76,"y":0},"height":243.84,"thickness":10},{"id":"w2","start":{"x":365.76,"y":0},"end":{"x":365.76,"y":381},"height":243.84,"thickness":10},{"id":"w3","start":{"x":365.76,"y":381},"end":{"x":0,"y":381},"height":243.84,"thickness":10},{"id":"w4","start":{"x":0,"y":381},"end":{"x":0,"y":0},"height":243.84,"thickness":10}],"rooms":[{"id":"r1","name":"Living Room","walls":["w1","w2","w3","w4"],"polygon":[{"x":0,"y":0},{"x":365.76,"y":0},{"x":365.76,"y":381},{"x":0,"y":381}]}]}}}]}]'
+  data-client-projects='[{"id":1,"name":"Suite 101"},{"id":2,"name":"Kitchen remodel"}]'
   data-initial-room-id="10"
   data-initial-project-id="1"
+  data-bound-client-project=""
   data-room-store-template="/api/projects/__ID__/rooms"
   data-room-update-template="/api/rooms/__ID__"
   data-room-destroy-template="/api/rooms/__ID__/destroy"
   data-project-store-url="/api/projects"
+  data-project-update-template="/api/projects/__ID__"
   data-quote-room-template="/admin/quotations?layout=room:__ID__"
   data-quote-project-template="/admin/quotations?layout=project:__ID__"
 >
@@ -161,6 +168,37 @@
   </div>
 
   <div id="openplan3d-feedback" class="openplan3d-feedback" hidden role="alert" aria-live="polite"></div>
+
+  <div id="openplan3d-modal" class="openplan3d-modal" hidden>
+    <div class="openplan3d-modal-backdrop" data-openplan3d-modal-dismiss tabindex="-1" aria-hidden="true"></div>
+    <div class="openplan3d-modal-panel" role="dialog" aria-modal="true" aria-labelledby="openplan3d-modal-title">
+      <h2 id="openplan3d-modal-title" class="openplan3d-modal-title">Confirm</h2>
+      <p id="openplan3d-modal-body" class="openplan3d-modal-body"></p>
+      <label id="openplan3d-modal-input-wrap" class="openplan3d-modal-field" hidden>
+        <span class="openplan3d-modal-field-label">Name</span>
+        <input type="text" id="openplan3d-modal-input" class="admin-input" maxlength="120">
+      </label>
+      <div id="openplan3d-modal-link" class="openplan3d-modal-link" hidden>
+        <div class="openplan3d-modal-link-head">
+          <span class="openplan3d-modal-field-label">Client project</span>
+        </div>
+        <label class="openplan3d-modal-field" for="openplan3d-modal-client-project">
+          <select id="openplan3d-modal-client-project" class="admin-input" aria-label="Client project">
+            <option value="">— Select a client project —</option>
+          </select>
+        </label>
+        <div class="openplan3d-modal-actions openplan3d-modal-actions--stack">
+          <button type="button" class="admin-btn admin-btn--primary" id="openplan3d-modal-link-btn">Link to a project</button>
+          <button type="button" class="admin-btn admin-btn--ghost" id="openplan3d-modal-standalone-btn">Keep standalone</button>
+          <button type="button" class="admin-btn admin-btn--ghost" id="openplan3d-modal-link-cancel">Cancel</button>
+        </div>
+      </div>
+      <div id="openplan3d-modal-actions" class="openplan3d-modal-actions">
+        <button type="button" class="admin-btn admin-btn--ghost" id="openplan3d-modal-cancel">Cancel</button>
+        <button type="button" class="admin-btn admin-btn--primary" id="openplan3d-modal-confirm">OK</button>
+      </div>
+    </div>
+  </div>
 
   <main class="util-ra-openplan3d-frame-container" id="openplan3d-container">
     <iframe

@@ -37,6 +37,11 @@ class UtilitiesRoomAreaPageTest extends IntegrationTestCase
             ->assertSee('id="openplan3d-save-btn"', false)
             ->assertSee('id="openplan3d-project-select"', false)
             ->assertSee('id="openplan3d-room-select"', false)
+            ->assertSee('id="openplan3d-modal"', false)
+            ->assertSee('Link to a project')
+            ->assertSee('Keep standalone')
+            ->assertDontSee('data-ra-help-guide', false)
+            ->assertDontSee('openplan3d-btn-label">Guide', false)
             ->assertSee('Testing full page room area')
             ->assertSee('admin-dark.css', false)
             ->assertSee('id="admin-app"', false)
@@ -48,6 +53,7 @@ class UtilitiesRoomAreaPageTest extends IntegrationTestCase
 
         $this->assertStringContainsString(route('admin.utilities.index', [], false), $html);
         $this->assertStringNotContainsString('admin-toolbar-lede', $html);
+        $this->assertStringContainsString('data-bound-client-project=""', $html);
     }
 
     public function test_utilities_index_room_area_card_opens_full_page_route(): void

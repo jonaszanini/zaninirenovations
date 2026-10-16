@@ -69,7 +69,8 @@ class RoomAreaGuidePageTest extends IntegrationTestCase
 
         $this->get(route('admin.utilities.room-area', ['ra_project' => $layout->id]))
             ->assertOk()
-            ->assertSee($guideUrl, false);
+            ->assertDontSee($guideUrl, false)
+            ->assertDontSee('data-ra-help-guide', false);
 
         $this->get($guideUrl)
             ->assertOk()

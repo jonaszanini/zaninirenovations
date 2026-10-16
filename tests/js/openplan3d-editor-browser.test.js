@@ -93,6 +93,13 @@ async function run() {
     assert.ok(hidden.some((t) => t === 'Save' || t.indexOf('Save') === 0), 'Save control must be hidden');
     assert.ok(hidden.some((t) => t.indexOf('Saved') !== -1), 'Saved ✓ control must be hidden');
     assert.ok(hidden.some((t) => t.indexOf('Export') !== -1), 'Export control must be hidden');
+    const hideStyle = await page.$$eval('[data-zanini-hide-native-save]', (els) => els.map((el) => ({
+      display: getComputedStyle(el).display,
+      pointerEvents: getComputedStyle(el).pointerEvents,
+    })));
+    assert.ok(hideStyle.length > 0, 'vendor chrome must be marked hidden');
+    assert.ok(hideStyle.every((s) => s.display === 'none'), 'vendor chrome must be display:none, not only CSS class matching');
+    assert.ok(hideStyle.every((s) => s.pointerEvents === 'none'), 'vendor chrome must ignore pointer events');
 
     await page.evaluate(() => {
       localStorage.setItem('floorplan_projects', '{"hack":true}');

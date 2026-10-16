@@ -272,8 +272,8 @@
 
   function hideNativeSaveUi(root) {
     if (!root || typeof root.querySelectorAll !== 'function') return 0;
-    var header = root.querySelector('.h-12.bg-gradient-to-r') || root;
-    var nodes = header.querySelectorAll('a, button, span');
+    var scope = root.body || root.documentElement || root;
+    var nodes = scope.querySelectorAll('a, button, span, [data-save-label], [aria-label]');
     var hidden = 0;
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
@@ -281,13 +281,19 @@
       var target = el;
       var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
       var aria = (el.getAttribute('aria-label') || '').trim();
-      if ((text === 'Export' || aria === 'Export') && el.closest) {
-        var wrap = el.closest('.relative');
-        if (wrap) target = wrap;
+      if ((text === 'Export' || aria === 'Export' || HIDE_LABELS[text] || HIDE_LABELS[aria]) && el.closest) {
+        var wrap = el.closest('[data-zanini-hide-native-save], .relative, li, span.inline-grid');
+        if (wrap && wrap !== el && wrap !== scope) target = wrap;
+      }
+      if (target.getAttribute('data-zanini-hide-native-save') === '1' && target.hidden) {
+        hidden++;
+        continue;
       }
       target.setAttribute('data-zanini-hide-native-save', '1');
       target.hidden = true;
       target.setAttribute('aria-hidden', 'true');
+      target.style.setProperty('display', 'none', 'important');
+      target.style.setProperty('pointer-events', 'none', 'important');
       if (target.tagName === 'BUTTON') {
         target.disabled = true;
         target.setAttribute('tabindex', '-1');
@@ -316,11 +322,27 @@
     doc = doc || (typeof document !== 'undefined' ? document : null);
     if (!doc) return null;
     hideNativeSaveUi(doc);
+    if (doc.addEventListener && !doc.__zaniniNativeSaveClickLocked) {
+      doc.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-zanini-hide-native-save]') : null;
+        if (!el) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+      doc.__zaniniNativeSaveClickLocked = true;
+    }
     if (typeof MutationObserver !== 'function' || !doc.documentElement) {
       return null;
     }
+    var hiding = false;
     var obs = new MutationObserver(function () {
-      hideNativeSaveUi(doc);
+      if (hiding) return;
+      hiding = true;
+      try {
+        hideNativeSaveUi(doc);
+      } finally {
+        hiding = false;
+      }
     });
     obs.observe(doc.documentElement, { childList: true, subtree: true, characterData: true });
     return obs;

@@ -10,48 +10,105 @@ const FIXTURE = path.join(__dirname, 'fixtures/openplan3d-room-area.html');
 const host = require('../../public/js/openplan3d-host.js');
 
 let lastSavedBody = null;
+let lastProjectBody = null;
 let saveDelayMs = 0;
 let failNextSave = false;
+let nextProjectId = 50;
+
+function jsonBody(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8');
+      resolve(raw ? JSON.parse(raw) : {});
+    });
+  });
+}
+
+function sendJson(res, status, payload) {
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(payload));
+}
+
+function fixtureHtml(blank) {
+  let html = fs.readFileSync(FIXTURE, 'utf8');
+  if (blank) {
+    html = html
+      .replace('data-initial-room-id="10"', 'data-initial-room-id=""')
+      .replace('data-initial-project-id="1"', 'data-initial-project-id=""');
+  }
+  return html;
+}
 
 function startServer() {
   return new Promise((resolve, reject) => {
     const publicDir = path.join(ROOT, 'public');
     const server = http.createServer((req, res) => {
       const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+      const method = (req.method || 'GET').toUpperCase();
 
-      if (urlPath.startsWith('/api/rooms/')) {
-        const chunks = [];
-        req.on('data', (c) => chunks.push(c));
-        req.on('end', () => {
-          lastSavedBody = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      if (urlPath === '/api/projects' && method === 'POST') {
+        jsonBody(req).then((body) => {
+          lastProjectBody = body;
+          const project = {
+            id: nextProjectId++,
+            name: body.name || 'Room plans',
+            client_project_id: body.client_project_id || null,
+            rooms: [],
+          };
+          sendJson(res, 200, { ok: true, project: project });
+        });
+        return;
+      }
+
+      const projectUpdate = urlPath.match(/^\/api\/projects\/(\d+)$/);
+      if (projectUpdate && (method === 'PUT' || method === 'POST')) {
+        jsonBody(req).then((body) => {
+          lastProjectBody = body;
+          sendJson(res, 200, {
+            ok: true,
+            project: {
+              id: parseInt(projectUpdate[1], 10),
+              name: body.name || 'Linked project',
+              client_project_id: body.client_project_id || null,
+              rooms: [],
+            },
+          });
+        });
+        return;
+      }
+
+      if ((urlPath.startsWith('/api/rooms/') || /\/api\/projects\/\d+\/rooms$/.test(urlPath)) && method !== 'GET') {
+        jsonBody(req).then((body) => {
+          lastSavedBody = body;
           const delay = saveDelayMs;
           const fail = failNextSave;
           saveDelayMs = 0;
           failNextSave = false;
           setTimeout(() => {
             if (fail) {
-              res.writeHead(500, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ ok: false, message: 'save failed' }));
+              sendJson(res, 500, { ok: false, message: 'save failed' });
               return;
             }
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
+            sendJson(res, 200, {
               ok: true,
-              room: { id: 10, name: lastSavedBody.name, area_sqft: 180.0 },
-            }));
+              room: { id: lastSavedBody.id || 10, name: lastSavedBody.name, area_sqft: 180.0 },
+            });
           }, delay);
         });
         return;
       }
 
-      let file;
       if (urlPath === '/' || urlPath === '/openplan3d-room-area.html') {
-        file = FIXTURE;
-      } else {
-        file = path.join(publicDir, urlPath.replace(/^\//, ''));
+        const blank = /(?:\?|&)blank=1(?:&|$)/.test(req.url || '');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(fixtureHtml(blank));
+        return;
       }
 
-      const allowed = file === FIXTURE || file.startsWith(publicDir + path.sep);
+      const file = path.join(publicDir, urlPath.replace(/^\//, ''));
+      const allowed = file.startsWith(publicDir + path.sep);
       if (!allowed) {
         res.writeHead(403);
         res.end();
@@ -105,6 +162,13 @@ async function run() {
     // Assert toolbar and elements loaded
     const title = await page.$eval('.util-ra-openplan3d-title', (el) => el.textContent.trim());
     assert.strictEqual(title, 'Room Area', 'Page title should be Room Area');
+    assert.strictEqual(await page.$('[data-ra-help-guide]'), null, 'Guide control must be removed from the editor');
+    await page.evaluate(() => {
+      window.__nativeDialogs = [];
+      window.confirm = function () { window.__nativeDialogs.push('confirm'); return false; };
+      window.alert = function () { window.__nativeDialogs.push('alert'); };
+      window.prompt = function () { window.__nativeDialogs.push('prompt'); return null; };
+    });
 
     const quoteBtnVisible = await page.$eval('#openplan3d-quote-btn', (el) => !el.hidden);
     assert.strictEqual(quoteBtnVisible, true, 'Quote button should be visible for saved room');
@@ -454,31 +518,100 @@ async function run() {
     assert.strictEqual(twoRoomStrip, '200.00');
     assert.ok(lastSavedBody.plan.floor.rooms.length === 2, 'Saved plan must keep both openPlan3D rooms');
 
-    // 6. Save Plan never sends 0 metrics for a >0 room without confirm
+    // 6. Save Plan never sends 0 metrics for a >0 room without in-app confirm
     const zeroPlan = { format: 'openplan3d', unit: 'cm', floor: { walls: [], rooms: [] } };
     await page.evaluate((plan) => {
       window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
     }, zeroPlan);
     await new Promise((r) => setTimeout(r, 50));
     lastSavedBody = null;
-    await page.evaluate(() => {
-      window.__confirmAnswers = [false];
-      window.confirm = function () {
-        return window.__confirmAnswers.shift() !== false;
-      };
-    });
-    await page.click('#openplan3d-save-btn');
+    await page.evaluate(() => window.OpenPlan3DHost.savePlan());
+    await page.waitForSelector('#openplan3d-modal:not([hidden])');
+    const zeroTitle = await page.$eval('#openplan3d-modal-title', (el) => el.textContent.trim());
+    assert.match(zeroTitle, /Replace stored area/i, 'zero-area save uses the in-app modal');
+    await page.click('#openplan3d-modal-cancel');
+    await page.waitForSelector('#openplan3d-modal[hidden]');
     await new Promise((r) => setTimeout(r, 150));
     assert.strictEqual(lastSavedBody, null, 'Save Plan must not send a 0-area overwrite when confirm is declined');
 
     lastSavedBody = null;
-    await page.evaluate(() => {
-      window.__confirmAnswers = [true];
-    });
-    await page.click('#openplan3d-save-btn');
+    await page.evaluate(() => window.OpenPlan3DHost.savePlan());
+    await page.waitForSelector('#openplan3d-modal:not([hidden])');
+    await page.click('#openplan3d-modal-confirm');
     await new Promise((r) => setTimeout(r, 200));
     assert.ok(lastSavedBody, 'Save Plan may send 0-area after explicit confirm');
     assert.strictEqual(lastSavedBody.confirm_zero_area, true, 'Confirmed 0-area save must send confirm_zero_area');
+
+    async function bootBlankEditor() {
+      lastSavedBody = null;
+      lastProjectBody = null;
+      await page.setViewport({ width: 1280, height: 900 });
+      await page.goto(`http://127.0.0.1:${port}/openplan3d-room-area.html?blank=1`, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => {
+        window.__nativeDialogs = [];
+        window.confirm = function () { window.__nativeDialogs.push('confirm'); return false; };
+        window.alert = function () { window.__nativeDialogs.push('alert'); };
+        window.prompt = function () { window.__nativeDialogs.push('prompt'); return null; };
+      });
+      await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_READY' }, '*'));
+      const empty = { unit: 'cm', floor: { walls: [], rooms: [] } };
+      await page.evaluate((plan) => {
+        window.postMessage({ type: 'OPENPLAN3D_LOAD_ACK', ok: true, plan: plan }, '*');
+      }, empty);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    // 7. Blank default + Save destination (Link / Keep standalone)
+    await bootBlankEditor();
+    const blankState = await page.evaluate(() => window.OpenPlan3DHost.getState());
+    assert.strictEqual(blankState.currentProject, null, 'Room Area opens with no project selected');
+    const projectVal = await page.$eval('#openplan3d-project-select', (el) => el.value);
+    assert.strictEqual(projectVal, '', 'Project select starts blank');
+    const blankRoomName = await page.$eval('#openplan3d-room-name', (el) => el.value);
+    assert.strictEqual(blankRoomName, 'Room 1', 'Blank session still names the new room');
+
+    lastSavedBody = null;
+    lastProjectBody = null;
+    await page.evaluate(() => window.OpenPlan3DHost.savePlan());
+    await page.waitForSelector('#openplan3d-modal:not([hidden])');
+    const destTitle = await page.$eval('#openplan3d-modal-title', (el) => el.textContent.trim());
+    assert.strictEqual(destTitle, 'Save plan');
+    const linkLabel = await page.$eval('#openplan3d-modal-link-btn', (el) => el.textContent.trim());
+    const standLabel = await page.$eval('#openplan3d-modal-standalone-btn', (el) => el.textContent.trim());
+    assert.strictEqual(linkLabel, 'Link to a project');
+    assert.strictEqual(standLabel, 'Keep standalone');
+    const destChrome = await page.evaluate(() => ({
+      nameHidden: document.getElementById('openplan3d-modal-input-wrap').hidden,
+      actionsHidden: document.getElementById('openplan3d-modal-actions').hidden,
+      linkHidden: document.getElementById('openplan3d-modal-link').hidden,
+    }));
+    assert.strictEqual(destChrome.nameHidden, true, 'destination modal must not show the name prompt');
+    assert.strictEqual(destChrome.actionsHidden, true, 'destination modal must not show the generic OK row');
+    assert.strictEqual(destChrome.linkHidden, false, 'destination choices must be visible');
+    await page.click('#openplan3d-modal-link-cancel');
+    await page.waitForSelector('#openplan3d-modal[hidden]');
+    assert.strictEqual(lastSavedBody, null, 'Cancel destination must not save');
+    assert.strictEqual(lastProjectBody, null, 'Cancel destination must not create a project');
+
+    await page.evaluate(() => window.OpenPlan3DHost.savePlan());
+    await page.waitForSelector('#openplan3d-modal:not([hidden])');
+    await page.click('#openplan3d-modal-standalone-btn');
+    await new Promise((r) => setTimeout(r, 250));
+    assert.ok(lastProjectBody, 'Keep standalone must create a project');
+    assert.ok(!lastProjectBody.client_project_id, 'standalone project is unlinked');
+    assert.ok(lastSavedBody, 'Keep standalone must then save the room');
+
+    await bootBlankEditor();
+    await page.evaluate(() => window.OpenPlan3DHost.savePlan());
+    await page.waitForSelector('#openplan3d-modal:not([hidden])');
+    await page.select('#openplan3d-modal-client-project', '2');
+    await page.click('#openplan3d-modal-link-btn');
+    await new Promise((r) => setTimeout(r, 250));
+    assert.strictEqual(Number(lastProjectBody && lastProjectBody.client_project_id), 2, 'Link to a project posts the chosen client project');
+    assert.ok(lastSavedBody, 'Link to a project must save after linking');
+
+    const nativeUsed = await page.evaluate(() => window.__nativeDialogs);
+    assert.deepStrictEqual(nativeUsed, [], 'in-app modal must replace native alert/confirm/prompt');
 
     console.log('All openPlan3D Puppeteer browser tests PASSED successfully!');
   } finally {
