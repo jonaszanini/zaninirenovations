@@ -286,7 +286,7 @@ class RoomAreaController extends Controller
                 'flooring_box_sqft' => $data['flooring_box_sqft'] ?? null,
             ];
             $metrics = $bridge->layoutMetrics($plan, null, $finish);
-            if ($metrics['area_sqft'] <= 0 && empty($metrics['walls'])) {
+            if (! $this->openPlanHasRoomOrWall($plan, $metrics)) {
                 return response()->json(['ok' => false, 'message' => 'The drawing must contain at least one closed room or wall.'], 422);
             }
 
@@ -393,6 +393,7 @@ class RoomAreaController extends Controller
             'flooring_waste_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
             'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
+            'confirm_zero_area' => ['sometimes', 'boolean'],
         ]);
 
         $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
@@ -406,8 +407,18 @@ class RoomAreaController extends Controller
                 'flooring_box_sqft' => $data['flooring_box_sqft'] ?? $room_area_room->flooring_box_sqft,
             ];
             $metrics = $bridge->layoutMetrics($plan, null, $finish);
-            if ($metrics['area_sqft'] <= 0 && empty($metrics['walls'])) {
+            $existingArea = (float) $room_area_room->area_sqft;
+            $incomingArea = (float) $metrics['area_sqft'];
+            $confirmedZero = $request->boolean('confirm_zero_area');
+            if (! $this->openPlanHasRoomOrWall($plan, $metrics)) {
                 return response()->json(['ok' => false, 'message' => 'The drawing must contain at least one closed room or wall.'], 422);
+            }
+            if ($existingArea > 0 && $incomingArea <= 0 && ! $confirmedZero) {
+                return response()->json([
+                    'ok' => false,
+                    'code' => 'zero_area_overwrite',
+                    'message' => 'Refusing to overwrite a room with area '.$existingArea.' sq ft using a 0-area plan. Confirm to proceed.',
+                ], 422);
             }
 
             $legacyBackup = $room_area_room->legacy_canvas_data;
@@ -1087,5 +1098,57 @@ class RoomAreaController extends Controller
             return;
         }
         $project->update(['wall_thickness_in' => $thickness]);
+    }
+
+    /**
+     * True when the openPlan3D payload contains at least one wall or a room
+     * polygon with 3+ points. Empty room objects (rooms: [{}]) do not count.
+     * confirm_zero_area cannot bypass this — an empty drawing is never saved.
+     *
+     * @param  array<string, mixed>  $plan
+     * @param  array<string, mixed>  $metrics
+     */
+    private function openPlanHasRoomOrWall(array $plan, array $metrics): bool
+    {
+        $floors = [];
+        if (isset($plan['floor']) && is_array($plan['floor'])) {
+            $floors[] = $plan['floor'];
+        }
+        if (isset($plan['floors']) && is_array($plan['floors'])) {
+            foreach ($plan['floors'] as $floor) {
+                if (is_array($floor)) {
+                    $floors[] = $floor;
+                }
+            }
+        }
+        if (isset($plan['project']['floors']) && is_array($plan['project']['floors'])) {
+            foreach ($plan['project']['floors'] as $floor) {
+                if (is_array($floor)) {
+                    $floors[] = $floor;
+                }
+            }
+        }
+        if ($floors === [] && (isset($plan['walls']) || isset($plan['rooms']))) {
+            $floors[] = $plan;
+        }
+
+        foreach ($floors as $floor) {
+            foreach ($floor['walls'] ?? [] as $wall) {
+                if (is_array($wall) && isset($wall['start'], $wall['end'])) {
+                    return true;
+                }
+            }
+            foreach ($floor['rooms'] ?? [] as $room) {
+                if (! is_array($room)) {
+                    continue;
+                }
+                $poly = $room['polygon'] ?? $room['points'] ?? [];
+                if (is_array($poly) && count($poly) >= 3) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

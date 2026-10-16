@@ -173,9 +173,11 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertSee('data-room-area-openplan3d', false);
         $response->assertSee('id="openplan3d-save-btn"', false);
         $response->assertSee('data-hotkey-save', false);
+        $response->assertSee('data-ra-save-room', false);
         $response->assertSee('id="openplan3d-metrics-ribbon"', false);
         $response->assertSee('id="openplan3d-settings-drawer"', false);
         $response->assertSee('openplan3d-measurement-bridge.js', false);
+        $response->assertSee('openplan3d-host.js', false);
     }
 
     public function test_renders_client_project_openplan3d_editor_view(): void
@@ -195,7 +197,258 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertSee('data-room-area-openplan3d', false);
         $response->assertSee('id="openplan3d-save-btn"', false);
         $response->assertSee('data-hotkey-save', false);
+        $response->assertSee('data-ra-save-room', false);
         $response->assertSee('openplan3d-measurement-bridge.js', false);
+        $response->assertSee('openplan3d-host.js', false);
+    }
+
+    public function test_stores_two_room_plan_using_whole_plan_area(): void
+    {
+        $plan = $this->twoRoomPlan();
+
+        $response = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            [
+                'name' => 'Whole Floor',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk();
+        $this->assertEquals(200.0, $response->json('room.area_sqft'));
+        $this->assertDatabaseHas('room_area_rooms', [
+            'name' => 'Whole Floor',
+            'room_area_project_id' => $this->project->id,
+            'area_sqft' => 200.0,
+        ]);
+    }
+
+    public function test_rejects_zero_area_overwrite_of_positive_room_without_confirm(): void
+    {
+        $room = $this->storeSampleRoom(150.0);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => $room->name,
+                'plan' => $this->zeroAreaPlan(),
+            ]
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('ok', false);
+        $response->assertJsonPath('code', 'zero_area_overwrite');
+
+        $room->refresh();
+        $this->assertEquals(150.0, (float) $room->area_sqft);
+        $this->assertTrue($this->bridge->isPlan($room->vertices));
+    }
+
+    public function test_allows_zero_area_overwrite_when_confirm_flag_is_sent(): void
+    {
+        $room = $this->storeSampleRoom(150.0);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => $room->name,
+                'plan' => $this->zeroAreaPlan(),
+                'confirm_zero_area' => true,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $room->refresh();
+        $this->assertEquals(0.0, (float) $room->area_sqft);
+    }
+
+    public function test_confirm_zero_area_still_rejects_plan_with_no_room_or_wall(): void
+    {
+        $room = $this->storeSampleRoom(150.0);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => $room->name,
+                'plan' => [
+                    'format' => 'openplan3d',
+                    'units' => 'cm',
+                    'floor' => [
+                        'walls' => [],
+                        'rooms' => [],
+                    ],
+                ],
+                'confirm_zero_area' => true,
+            ]
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('ok', false);
+        $this->assertStringContainsString('at least one closed room or wall', $response->getContent());
+
+        $room->refresh();
+        $this->assertEquals(150.0, (float) $room->area_sqft);
+        $this->assertTrue($this->bridge->isPlan($room->vertices));
+    }
+
+    public function test_empty_room_object_without_polygon_is_rejected_even_with_confirm(): void
+    {
+        $room = $this->storeSampleRoom(150.0);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => $room->name,
+                'plan' => [
+                    'format' => 'openplan3d',
+                    'units' => 'cm',
+                    'floor' => [
+                        'walls' => [],
+                        'rooms' => [(object) []],
+                    ],
+                ],
+                'confirm_zero_area' => true,
+            ]
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('ok', false);
+        $this->assertStringContainsString('at least one closed room or wall', $response->getContent());
+
+        $room->refresh();
+        $this->assertEquals(150.0, (float) $room->area_sqft);
+        $this->assertTrue($this->bridge->isPlan($room->vertices));
+    }
+
+    public function test_three_point_room_with_no_walls_is_accepted(): void
+    {
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floor' => [
+                'walls' => [],
+                'rooms' => [
+                    [
+                        'id' => 'tri',
+                        'name' => 'Triangle',
+                        'polygon' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 304.8, 'y' => 0],
+                            ['x' => 0, 'y' => 304.8],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            [
+                'name' => 'Triangle Room',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $this->assertDatabaseHas('room_area_rooms', [
+            'name' => 'Triangle Room',
+            'room_area_project_id' => $this->project->id,
+        ]);
+    }
+
+    private function storeSampleRoom(float $areaSqft): RoomAreaRoom
+    {
+        $plan = $this->sampleOpenPlan(10.0, 15.0);
+        $metrics = $this->bridge->layoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $this->assertEquals($areaSqft, $metrics['area_sqft']);
+
+        return RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Stored Room',
+            'scale_pixels_per_foot' => 20.0,
+            'area_sqft' => $metrics['area_sqft'],
+            'vertices' => $plan,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function twoRoomPlan(): array
+    {
+        $ten = 10.0 * 30.48;
+
+        return [
+            'unit' => 'cm',
+            'version' => '1.0',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => $ten, 'y' => 0], 'height' => 243.84, 'thickness' => 10],
+                    ['id' => 'w2', 'start' => ['x' => $ten, 'y' => 0], 'end' => ['x' => $ten, 'y' => $ten], 'height' => 243.84, 'thickness' => 10],
+                    ['id' => 'w3', 'start' => ['x' => $ten, 'y' => $ten], 'end' => ['x' => 0, 'y' => $ten], 'height' => 243.84, 'thickness' => 10],
+                    ['id' => 'w4', 'start' => ['x' => 0, 'y' => $ten], 'end' => ['x' => 0, 'y' => 0], 'height' => 243.84, 'thickness' => 10],
+                    ['id' => 'w5', 'start' => ['x' => $ten, 'y' => 0], 'end' => ['x' => $ten * 2, 'y' => 0], 'height' => 243.84, 'thickness' => 10],
+                    ['id' => 'w6', 'start' => ['x' => $ten * 2, 'y' => 0], 'end' => ['x' => $ten * 2, 'y' => $ten], 'height' => 243.84, 'thickness' => 10],
+                    ['id' => 'w7', 'start' => ['x' => $ten * 2, 'y' => $ten], 'end' => ['x' => $ten, 'y' => $ten], 'height' => 243.84, 'thickness' => 10],
+                ],
+                'rooms' => [
+                    [
+                        'id' => 'r1',
+                        'name' => 'Kitchen',
+                        'walls' => ['w1', 'w2', 'w3', 'w4'],
+                        'polygon' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => $ten, 'y' => 0],
+                            ['x' => $ten, 'y' => $ten],
+                            ['x' => 0, 'y' => $ten],
+                        ],
+                    ],
+                    [
+                        'id' => 'r2',
+                        'name' => 'Bath',
+                        'walls' => ['w5', 'w6', 'w7', 'w2'],
+                        'polygon' => [
+                            ['x' => $ten, 'y' => 0],
+                            ['x' => $ten * 2, 'y' => 0],
+                            ['x' => $ten * 2, 'y' => $ten],
+                            ['x' => $ten, 'y' => $ten],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function zeroAreaPlan(): array
+    {
+        return [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 0, 'y' => 0], 'height' => 243.84, 'thickness' => 10],
+                ],
+                'rooms' => [
+                    [
+                        'id' => 'empty',
+                        'name' => 'Untitled Project',
+                        'walls' => ['w1'],
+                        'polygon' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 0, 'y' => 0],
+                        ],
+                    ],
+                ],
+            ],
+        ];
     }
 }
 
