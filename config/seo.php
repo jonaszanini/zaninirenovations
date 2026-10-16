@@ -33,15 +33,19 @@ return [
     |--------------------------------------------------------------------------
     | areaServed (verbatim list for JSON-LD)
     |--------------------------------------------------------------------------
-    | Names only — must match places named in service_area_text. Do not add
-    | neighbourhoods or towns that are not in that sentence.
+    | Towns named on the public site / JSON-LD areaServed list.
     */
     'area_served' => [
         ['@type' => 'City', 'name' => 'Carleton Place'],
+        ['@type' => 'AdministrativeArea', 'name' => 'Beckwith'],
+        ['@type' => 'City', 'name' => 'Ottawa'],
+        ['@type' => 'City', 'name' => 'Kanata'],
+        ['@type' => 'City', 'name' => 'Stittsville'],
+        ['@type' => 'City', 'name' => 'Barrhaven'],
+        ['@type' => 'City', 'name' => 'Nepean'],
+        ['@type' => 'City', 'name' => 'Almonte'],
         ['@type' => 'City', 'name' => 'Perth'],
         ['@type' => 'City', 'name' => 'Smiths Falls'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Lanark County'],
-        ['@type' => 'Place', 'name' => 'Ottawa region'],
         ['@type' => 'City', 'name' => 'Gatineau'],
     ],
 
@@ -57,19 +61,12 @@ return [
     |--------------------------------------------------------------------------
     */
     'knows_about' => [
-        'Finish carpentry',
-        'Rough carpentry',
-        'Custom millwork',
-        'Residential fencing',
-        'Deck construction',
-        'Basement framing and finishing',
-        'Interior trim and moulding',
-        'Hardwood flooring installation',
-        'Drywall',
-        'Wood staircase refinishing',
-        'Kitchen remodeling',
-        'Ontario Building Code O.Reg. 332/12',
-        'Part 9 housing and small buildings',
+        'Carpentry',
+        'Decks',
+        'Fences',
+        'Basements',
+        'Kitchens',
+        'Flooring',
     ],
 
     'liability_insurance' => 'Fully insured',

@@ -38,7 +38,7 @@
         </div>
 
       </a>
-      @if ($project->townLabel() !== '')
+      @if ($project->townLabel() !== '' && ! $project->isOutOfMarket())
         <p class="portfolio-card-town">{{ $project->townLabel() }}</p>
       @endif
       <!-- end .gallery-light-box  -->

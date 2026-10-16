@@ -144,6 +144,12 @@ class OnPageSeoBatch1Test extends TestCase
 
         $this->assertStringNotContainsString('(647)-834', $content);
         $this->assertStringContainsString('(647) 834-7570', $content);
+
+        $warranty = $this->get('/warranty');
+        $warranty->assertStatus(200);
+        $warrantyHtml = $warranty->getContent();
+        $this->assertStringNotContainsString('(647)-834', $warrantyHtml);
+        $this->assertStringContainsString('(647) 834-7570', $warrantyHtml);
     }
 
     /**
