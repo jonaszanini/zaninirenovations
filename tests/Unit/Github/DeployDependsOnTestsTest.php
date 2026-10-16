@@ -57,6 +57,8 @@ class DeployDependsOnTestsTest extends TestCase
 
         $this->assertContains('tests/Unit/Github/DeployDependsOnTestsTest.php', $unit);
         $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php', $db);
+        $this->assertContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $db);
+        $this->assertNotContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $unit);
         $this->assertGreaterThan(20, count($unit));
         $this->assertGreaterThan(80, count($db));
         $this->assertSame(count($unit), count(array_unique($unit)));

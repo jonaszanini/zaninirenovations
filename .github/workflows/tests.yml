@@ -104,7 +104,6 @@ jobs:
           files=(
             tests/Unit/Services/OpenPlan3DParityTest.php
             tests/Unit/Github/DeployDependsOnTestsTest.php
-            tests/Unit/Services/RoomAreaDrawingImporterTest.php
             tests/Unit/Views/BladeSyntaxTest.php
             tests/Unit/Views/AiActionGroupTest.php
             tests/Unit/Views/QuotationPdfPageBreakTest.php
@@ -177,6 +176,7 @@ jobs:
             tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php
             tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php
             tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php
+            tests/Unit/Services/RoomAreaDrawingImporterTest.php
             tests/Unit/Services/RoomAreaCanvasDataTest.php
             tests/Feature/Admin/RoomAreaCanvasObjectsTest.php
             tests/Feature/Admin/RoomAreaPdfExportTest.php
