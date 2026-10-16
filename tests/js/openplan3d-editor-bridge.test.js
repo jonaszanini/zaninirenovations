@@ -62,7 +62,6 @@ const hostSrc = fs.readFileSync(HOST_JS, 'utf8');
 assert.match(hostSrc, /resolveOpenPlan3DRoomId/, 'host must resolve an openPlan3D room id');
 assert.match(hostSrc, /OPENPLAN3D_LOAD_ACK/, 'host must wait for LOAD_ACK');
 assert.match(hostSrc, /e\.data\.ok === false/, 'host must treat ACK ok:false as a failed load');
-assert.match(hostSrc, /plansMatch\(currentPlan,\s*loadedPlanBaseline\)/, 'Unsaved compares against the loaded plan');
 assert.match(hostSrc, /confirm_zero_area/, 'host must send confirm_zero_area');
 assert.doesNotMatch(
   hostSrc,
@@ -189,6 +188,69 @@ assert.strictEqual(
 
 assert.strictEqual(host.plansMatch(loaded, loaded), true);
 assert.strictEqual(host.plansMatch(loaded, blank), false);
+
+function geometryPlan() {
+  return {
+    unit: 'cm',
+    floor: {
+      walls: [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 }, height: 243.84, thickness: 10 },
+        { id: 'w2', start: { x: 304.8, y: 0 }, end: { x: 304.8, y: 304.8 }, height: 243.84, thickness: 10 },
+        { id: 'w3', start: { x: 304.8, y: 304.8 }, end: { x: 0, y: 304.8 }, height: 243.84, thickness: 10 },
+        { id: 'w4', start: { x: 0, y: 304.8 }, end: { x: 0, y: 0 }, height: 243.84, thickness: 10 },
+      ],
+      rooms: [
+        {
+          id: 'r1',
+          name: 'Kitchen',
+          walls: ['w1', 'w2', 'w3', 'w4'],
+          polygon: [
+            { x: 0, y: 0 },
+            { x: 304.8, y: 0 },
+            { x: 304.8, y: 304.8 },
+            { x: 0, y: 304.8 },
+          ],
+        },
+      ],
+      doors: [{ id: 'd1', wallId: 'w1', position: 0.3, offset: 50, width: 91.44, height: 203.2 }],
+      windows: [{ id: 'win1', wallId: 'w2', position: 0.4, offset: 80, width: 121.92, height: 91.44 }],
+      furniture: [{ id: 'f1', position: { x: 40, y: 40 }, rotation: 0, width: 60, depth: 40 }],
+      textAnnotations: [{ id: 't1', text: 'Kitchen', position: { x: 20, y: 20 } }],
+    },
+  };
+}
+
+function clonePlan(plan) {
+  return JSON.parse(JSON.stringify(plan));
+}
+
+const geo = geometryPlan();
+assert.strictEqual(host.plansMatch(geo, clonePlan(geo)), true, 'identical geometry matches');
+
+const movedDoor = clonePlan(geo);
+movedDoor.floor.doors[0].position = 0.7;
+assert.strictEqual(host.plansMatch(geo, movedDoor), false, 'moving a door must change the fingerprint');
+
+const thickWall = clonePlan(geo);
+thickWall.floor.walls[0].thickness = 20;
+assert.strictEqual(host.plansMatch(geo, thickWall), false, 'wall thickness must change the fingerprint');
+
+const movedCorner = clonePlan(geo);
+movedCorner.floor.rooms[0].polygon[1].x = 280;
+assert.strictEqual(host.plansMatch(geo, movedCorner), false, 'moving a middle room corner must change the fingerprint');
+
+const addedFurn = clonePlan(geo);
+addedFurn.floor.furniture.push({ id: 'f2', position: { x: 80, y: 80 }, rotation: 0, width: 30, depth: 30 });
+assert.strictEqual(host.plansMatch(geo, addedFurn), false, 'adding furniture must change the fingerprint');
+
+const addedLabel = clonePlan(geo);
+addedLabel.floor.textAnnotations.push({ id: 't2', text: 'Bath', position: { x: 90, y: 90 } });
+assert.strictEqual(host.plansMatch(geo, addedLabel), false, 'adding a label must change the fingerprint');
+
+const coordNoise = clonePlan(geo);
+coordNoise.floor.walls[0].start.x += 1e-8;
+coordNoise.floor.rooms[0].polygon[1].y += 4e-7;
+assert.strictEqual(host.plansMatch(geo, coordNoise), true, 'coordinates are compared at 1e-6');
 const editorReady = bridge.toEditorProject(loaded);
 assert.ok(Array.isArray(editorReady.floors) && editorReady.floors.length === 1, 'compact floor plans become editor floors');
 assert.ok(bridge.plansMatch(editorReady, loaded), 'editor wrapping must not change the geometry fingerprint');

@@ -175,6 +175,103 @@ async function run() {
     const areaDelta = Math.abs(parseFloat(areaAfterAck) - 150.0);
     assert.ok(areaDelta <= 0.01, 'Opened metrics must match stored area_sqft within 0.01');
 
+    async function postPlan(plan) {
+      await page.evaluate((p) => {
+        window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: p }, '*');
+      }, plan);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    async function unsavedVisible() {
+      return page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden && getComputedStyle(el).display !== 'none');
+    }
+
+    const ackPlan = await page.evaluate(() => JSON.parse(JSON.stringify(window.OpenPlan3DHost.getState().currentPlan)));
+    const workPlan = JSON.parse(JSON.stringify(ackPlan));
+    const floor = workPlan.floor || (workPlan.floors && workPlan.floors[0]) || workPlan;
+    floor.doors = [{ id: 'd1', wallId: 'w1', position: 0.3, offset: 50, width: 91.44, height: 203.2 }];
+    floor.windows = Array.isArray(floor.windows) ? floor.windows : [];
+    floor.furniture = [{ id: 'f1', position: { x: 40, y: 40 }, rotation: 0, width: 60, depth: 40 }];
+    floor.textAnnotations = [{ id: 't1', text: 'Kitchen', position: { x: 20, y: 20 } }];
+    if (!Array.isArray(floor.rooms) || !floor.rooms[0] || !Array.isArray(floor.rooms[0].polygon) || floor.rooms[0].polygon.length < 3) {
+      floor.rooms = [{
+        id: 'r1',
+        name: 'Living Room',
+        walls: ['w1', 'w2', 'w3', 'w4'],
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 365.76, y: 0 },
+          { x: 365.76, y: 381 },
+          { x: 0, y: 381 },
+        ],
+      }];
+    }
+
+    await postPlan(workPlan);
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(lastSavedBody, 'Saving the working plan must post');
+    assert.strictEqual(await unsavedVisible(), false, 'Unsaved clears after save');
+    const baselineAfterSave = await page.evaluate(() => window.OpenPlan3DHost.getState().loadedPlanBaseline);
+    assert.ok(baselineAfterSave, 'successful save must set loadedPlanBaseline');
+
+    function clone(plan) {
+      return JSON.parse(JSON.stringify(plan));
+    }
+
+    const movedDoor = clone(workPlan);
+    (movedDoor.floor || movedDoor.floors[0]).doors[0].position = 0.72;
+    await postPlan(movedDoor);
+    assert.strictEqual(await unsavedVisible(), true, 'moving a door must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo back to the saved plan must clear Unsaved');
+
+    const thickWall = clone(workPlan);
+    (thickWall.floor || thickWall.floors[0]).walls[0].thickness = 20;
+    await postPlan(thickWall);
+    assert.strictEqual(await unsavedVisible(), true, 'changing wall thickness must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo wall thickness must clear Unsaved');
+
+    const movedCorner = clone(workPlan);
+    (movedCorner.floor || movedCorner.floors[0]).rooms[0].polygon[1].x += 30;
+    await postPlan(movedCorner);
+    assert.strictEqual(await unsavedVisible(), true, 'moving a middle room corner must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo middle corner must clear Unsaved');
+
+    const addedFurn = clone(workPlan);
+    (addedFurn.floor || addedFurn.floors[0]).furniture.push({
+      id: 'f2', position: { x: 120, y: 80 }, rotation: 15, width: 40, depth: 40,
+    });
+    await postPlan(addedFurn);
+    assert.strictEqual(await unsavedVisible(), true, 'adding furniture must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo furniture must clear Unsaved');
+
+    const addedLabel = clone(workPlan);
+    (addedLabel.floor || addedLabel.floors[0]).textAnnotations.push({
+      id: 't2', text: 'Bath', position: { x: 90, y: 90 },
+    });
+    await postPlan(addedLabel);
+    assert.strictEqual(await unsavedVisible(), true, 'adding a label must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo label must clear Unsaved');
+
+    await postPlan(movedDoor);
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(lastSavedBody, 'Save after door move must post');
+    assert.strictEqual(await unsavedVisible(), false, 'Unsaved clears after saving the door move');
+    await postPlan(movedDoor);
+    assert.strictEqual(await unsavedVisible(), false, 're-emitting the saved plan must stay clean');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), true, 'undo to the pre-save plan after save must mark Unsaved');
+    await postPlan(movedDoor);
+    assert.strictEqual(await unsavedVisible(), false, 'undo back to the last saved plan must clear Unsaved');
+
     // 2. Simulate Drawing Updates / OpenPlan3D Plan Changed with Door and Window
     const updatedPlan = {
       unit: 'cm',

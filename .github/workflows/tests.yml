@@ -134,9 +134,15 @@ jobs:
             tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
             tests/Unit/Views/HomeKitchenTileImageTest.php
           )
+          failed=()
           for f in "${files[@]}"; do
-            php artisan test "$f"
+            php artisan test "$f" || failed+=("$f")
           done
+          if [ ${#failed[@]} -ne 0 ]; then
+            printf 'Failed PHPUnit paths:\n'
+            printf '  %s\n' "${failed[@]}"
+            exit 1
+          fi
 
       - name: Database tests (MySQL)
         env:
@@ -272,9 +278,15 @@ jobs:
             tests/Feature/Admin/RoomAreaKitSeedRaceTest.php
             tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
           )
+          failed=()
           for f in "${files[@]}"; do
-            php artisan test "$f"
+            php artisan test "$f" || failed+=("$f")
           done
+          if [ ${#failed[@]} -ne 0 ]; then
+            printf 'Failed PHPUnit paths:\n'
+            printf '  %s\n' "${failed[@]}"
+            exit 1
+          fi
 
       - name: Upload Shared prices geometry
         if: always()

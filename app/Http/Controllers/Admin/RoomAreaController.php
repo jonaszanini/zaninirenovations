@@ -1101,7 +1101,8 @@ class RoomAreaController extends Controller
     }
 
     /**
-     * True when the openPlan3D payload contains at least one wall or room.
+     * True when the openPlan3D payload contains at least one wall or a room
+     * polygon with 3+ points. Empty room objects (rooms: [{}]) do not count.
      * confirm_zero_area cannot bypass this — an empty drawing is never saved.
      *
      * @param  array<string, mixed>  $plan
@@ -1109,10 +1110,6 @@ class RoomAreaController extends Controller
      */
     private function openPlanHasRoomOrWall(array $plan, array $metrics): bool
     {
-        if (! empty($metrics['walls'])) {
-            return true;
-        }
-
         $floors = [];
         if (isset($plan['floor']) && is_array($plan['floor'])) {
             $floors[] = $plan['floor'];
@@ -1136,8 +1133,19 @@ class RoomAreaController extends Controller
         }
 
         foreach ($floors as $floor) {
-            if (! empty($floor['walls']) || ! empty($floor['rooms'])) {
-                return true;
+            foreach ($floor['walls'] ?? [] as $wall) {
+                if (is_array($wall) && isset($wall['start'], $wall['end'])) {
+                    return true;
+                }
+            }
+            foreach ($floor['rooms'] ?? [] as $room) {
+                if (! is_array($room)) {
+                    continue;
+                }
+                $poly = $room['polygon'] ?? $room['points'] ?? [];
+                if (is_array($poly) && count($poly) >= 3) {
+                    return true;
+                }
             }
         }
 

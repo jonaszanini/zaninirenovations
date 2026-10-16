@@ -101,32 +101,112 @@
     return walls;
   }
 
+  function roundCoord(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return n == null ? null : n;
+    return Math.round(n * 1e6) / 1e6;
+  }
+
+  function roundPoint(p) {
+    if (!p || typeof p !== 'object') return null;
+    var out = { x: roundCoord(p.x), y: roundCoord(p.y) };
+    if (p.z != null) out.z = roundCoord(p.z);
+    return out;
+  }
+
+  function snapshotWall(w) {
+    if (!w) return null;
+    return {
+      id: w.id || null,
+      start: roundPoint(w.start),
+      end: roundPoint(w.end),
+      thickness: roundCoord(w.thickness != null ? w.thickness : w.thickness_cm),
+      height: roundCoord(w.height != null ? w.height : w.height_cm)
+    };
+  }
+
+  function snapshotRoom(r) {
+    if (!r) return null;
+    var poly = Array.isArray(r.polygon) ? r.polygon : (Array.isArray(r.points) ? r.points : []);
+    return {
+      id: r.id || null,
+      name: r.name || null,
+      walls: Array.isArray(r.walls) ? r.walls.slice() : [],
+      polygon: poly.map(roundPoint)
+    };
+  }
+
+  function snapshotOpening(o) {
+    if (!o) return null;
+    var pos = o.position;
+    if (pos && typeof pos === 'object') pos = roundPoint(pos);
+    else pos = roundCoord(pos);
+    return {
+      id: o.id || null,
+      wallId: o.wallId || o.wall_id || null,
+      position: pos,
+      offset: roundCoord(o.offset != null ? o.offset : null),
+      width: roundCoord(o.width),
+      height: roundCoord(o.height),
+      start: roundPoint(o.start),
+      end: roundPoint(o.end),
+      x: roundCoord(o.x),
+      y: roundCoord(o.y)
+    };
+  }
+
+  function snapshotFurniture(item) {
+    if (!item) return null;
+    var pos = item.position && typeof item.position === 'object'
+      ? item.position
+      : { x: item.x, y: item.y };
+    return {
+      id: item.id || null,
+      x: roundCoord(pos.x),
+      y: roundCoord(pos.y),
+      rotation: roundCoord(item.rotation),
+      width: roundCoord(item.width),
+      depth: roundCoord(item.depth),
+      height: roundCoord(item.height)
+    };
+  }
+
+  function snapshotLabel(item) {
+    if (!item) return null;
+    var pos = item.position && typeof item.position === 'object'
+      ? item.position
+      : { x: item.x, y: item.y };
+    return {
+      id: item.id || null,
+      text: item.text || item.label || item.content || item.name || null,
+      x: roundCoord(pos.x),
+      y: roundCoord(pos.y)
+    };
+  }
+
+  function collectLabels(floor) {
+    var out = [];
+    var keys = ['labels', 'annotations', 'textAnnotations', 'texts', 'measurements'];
+    for (var k = 0; k < keys.length; k++) {
+      var list = floor[keys[k]];
+      if (!Array.isArray(list)) continue;
+      for (var i = 0; i < list.length; i++) out.push(snapshotLabel(list[i]));
+    }
+    return out;
+  }
+
   function floorSnapshot(floor) {
     if (!floor || typeof floor !== 'object') return null;
-    var walls = Array.isArray(floor.walls) ? floor.walls : [];
-    var rooms = Array.isArray(floor.rooms) ? floor.rooms : [];
+    var furniture = [];
+    if (Array.isArray(floor.furniture)) {
+      for (var f = 0; f < floor.furniture.length; f++) furniture.push(snapshotFurniture(floor.furniture[f]));
+    }
     return {
-      walls: walls.map(function (w) {
-        if (!w) return null;
-        return {
-          id: w.id || null,
-          sx: w.start ? w.start.x : null,
-          sy: w.start ? w.start.y : null,
-          ex: w.end ? w.end.x : null,
-          ey: w.end ? w.end.y : null
-        };
-      }),
-      rooms: rooms.map(function (r) {
-        var poly = (r && r.polygon) || [];
-        var last = poly.length ? poly[poly.length - 1] : null;
-        return {
-          id: r && r.id,
-          n: poly.length,
-          last: last ? [last.x, last.y] : null
-        };
-      }),
-      doors: Array.isArray(floor.doors) ? floor.doors.length : 0,
-      windows: Array.isArray(floor.windows) ? floor.windows.length : 0
+      walls: (Array.isArray(floor.walls) ? floor.walls : []).map(snapshotWall),
+      rooms: (Array.isArray(floor.rooms) ? floor.rooms : []).map(snapshotRoom),
+      doors: (Array.isArray(floor.doors) ? floor.doors : []).map(snapshotOpening),
+      windows: (Array.isArray(floor.windows) ? floor.windows : []).map(snapshotOpening),
+      furniture: furniture,
+      labels: collectLabels(floor)
     };
   }
 
@@ -615,6 +695,7 @@
             quoteBtn.hidden = false;
           }
 
+          loadedPlanBaseline = currentPlan;
           setDirty(false);
           showFeedback('Plan saved successfully!');
         } else {

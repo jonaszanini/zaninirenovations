@@ -35,7 +35,13 @@ class DeployDependsOnTestsTest extends TestCase
             'DeployDependsOnTestsTest must appear once (no duplicate artisan entry)'
         );
         $this->assertStringContainsString('for f in "${files[@]}"', $yaml);
-        $this->assertStringContainsString('php artisan test "$f"', $yaml);
+        $this->assertStringContainsString('php artisan test "$f" || failed+=("$f")', $yaml);
+        $this->assertGreaterThanOrEqual(
+            2,
+            substr_count($yaml, 'failed+=("$f")'),
+            'Unit and Database loops must collect failures instead of stopping at the first'
+        );
+        $this->assertStringContainsString('${#failed[@]}', $yaml);
         $this->assertDoesNotMatchRegularExpression(
             '/php artisan test \\\\\s*\n\s+tests\//',
             $yaml,
