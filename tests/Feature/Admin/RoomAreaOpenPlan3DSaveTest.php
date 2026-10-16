@@ -401,6 +401,18 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Huge Room']);
     }
 
+    public function test_rejects_submitted_plan_even_when_bridge_is_plan_is_false(): void
+    {
+        $malformed = ['walls' => 'not-an-array'];
+        $response = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            ['name' => 'Malformed Plan Room', 'plan' => $malformed]
+        );
+        $response->assertStatus(422)->assertJsonPath('ok', false);
+        $this->assertStringContainsString('Floor walls must be an array.', $response->getContent());
+        $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Malformed Plan Room']);
+    }
+
     private function storeSampleRoom(float $areaSqft): RoomAreaRoom
     {
         $plan = $this->sampleOpenPlan(10.0, 15.0);

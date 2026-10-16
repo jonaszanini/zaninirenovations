@@ -206,4 +206,99 @@ class OpenPlan3DPlanValidatorTest extends TestCase
         $this->assertFalse($modifiedResult['valid']);
         $this->assertStringContainsString('crosses itself', (string) $modifiedResult['message']);
     }
+
+    public function test_converts_item_sizes_to_cm_using_plan_unit_before_comparing(): void
+    {
+        $planMeters = $this->rectangle(5.0, 6.0);
+        $planMeters['unit'] = 'm';
+        foreach ($planMeters['floor']['walls'] as &$w) {
+            $w['thickness'] = 0.1;
+            $w['height'] = 2.4;
+        }
+        unset($w);
+        // In meters: width 120m = 12000 cm > MAX_ITEM_WIDTH_CM (10000 cm)
+        $planMeters['floor']['furniture'] = [
+            ['id' => 'f1', 'width' => 120.0, 'depth' => 1.0, 'height' => 1.0],
+        ];
+
+        $result = $this->validator->validate($planMeters);
+        $this->assertFalse($result['valid']);
+        $this->assertStringContainsString('width is impossibly large', (string) $result['message']);
+
+        // In meters: width 80m = 8000 cm <= 10000 cm -> valid
+        $planMeters['floor']['furniture'][0]['width'] = 80.0;
+        $this->assertTrue($this->validator->validate($planMeters)['valid']);
+
+        // In cm: width 9500 cm <= 10000 cm -> valid
+        $planCm = $this->rectangle();
+        $planCm['unit'] = 'cm';
+        $planCm['floor']['furniture'] = [
+            ['id' => 'f2', 'width' => 9500.0, 'depth' => 50.0],
+        ];
+        $this->assertTrue($this->validator->validate($planCm)['valid']);
+
+        // In cm: width 10001 cm > 10000 cm -> invalid
+        $planCm['floor']['furniture'][0]['width'] = 10001.0;
+        $resultCm = $this->validator->validate($planCm);
+        $this->assertFalse($resultCm['valid']);
+        $this->assertStringContainsString('width is impossibly large', (string) $resultCm['message']);
+    }
+
+    public function test_self_crossing_exemption_strictly_matches_same_room_id(): void
+    {
+        $crossingPoly = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 100, 'y' => 100],
+            ['x' => 100, 'y' => 0],
+            ['x' => 0, 'y' => 100],
+        ];
+
+        $existingPlan = $this->rectangle();
+        $existingPlan['floor']['rooms'][0]['id'] = 'room-saved-1';
+        $existingPlan['floor']['rooms'][0]['polygon'] = $crossingPoly;
+
+        // Same polygon, but different room id -> must be rejected
+        $planDifferentId = $this->rectangle();
+        $planDifferentId['floor']['rooms'][0]['id'] = 'room-different-2';
+        $planDifferentId['floor']['rooms'][0]['polygon'] = $crossingPoly;
+
+        $diffResult = $this->validator->validate($planDifferentId, $existingPlan);
+        $this->assertFalse($diffResult['valid']);
+        $this->assertStringContainsString('crosses itself', (string) $diffResult['message']);
+
+        // Same polygon, but no room id -> must be rejected
+        $planNoId = $this->rectangle();
+        unset($planNoId['floor']['rooms'][0]['id']);
+        $planNoId['floor']['rooms'][0]['polygon'] = $crossingPoly;
+
+        $noIdResult = $this->validator->validate($planNoId, $existingPlan);
+        $this->assertFalse($noIdResult['valid']);
+        $this->assertStringContainsString('crosses itself', (string) $noIdResult['message']);
+
+        // Same polygon and same room id -> allowed with warning
+        $planSameId = $this->rectangle();
+        $planSameId['floor']['rooms'][0]['id'] = 'room-saved-1';
+        $planSameId['floor']['rooms'][0]['polygon'] = $crossingPoly;
+
+        $sameResult = $this->validator->validate($planSameId, $existingPlan);
+        $this->assertTrue($sameResult['valid']);
+        $this->assertNotNull($sameResult['warning']);
+    }
+
+    public function test_rejects_plan_with_invalid_wall_or_room_array_structures(): void
+    {
+        $plan = $this->rectangle();
+        $plan['floor']['walls'] = 'not-an-array';
+
+        $result = $this->validator->validate($plan);
+        $this->assertFalse($result['valid']);
+        $this->assertSame('Floor walls must be an array.', $result['message']);
+
+        $plan2 = $this->rectangle();
+        $plan2['floor']['rooms'] = 'not-an-array';
+
+        $result2 = $this->validator->validate($plan2);
+        $this->assertFalse($result2['valid']);
+        $this->assertSame('Floor rooms must be an array.', $result2['message']);
+    }
 }
