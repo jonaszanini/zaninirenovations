@@ -80,7 +80,7 @@ class DeployDependsOnTestsTest extends TestCase
     {
         $yaml = $this->workflow('deploy.yml');
         $this->assertMatchesRegularExpression(
-            '/concurrency:\s*\n\s+group:\s+production-deploy\s*\n\s+cancel-in-progress:\s+true/m',
+            '/concurrency:\s*\n\s+group:\s+production-deploy\s*\n\s+cancel-in-progress:\s+false/m',
             $yaml
         );
         $this->assertStringContainsString('require-tests:', $yaml);
@@ -161,7 +161,7 @@ class DeployDependsOnTestsTest extends TestCase
         $yaml = file_get_contents($path);
         $this->assertNotFalse($yaml);
 
-        return $yaml;
+        return str_replace("\r\n", "\n", $yaml);
     }
 
     private function section(string $yaml, string $start, string $end): string

@@ -69,6 +69,9 @@ assert.doesNotMatch(
   /contentWindow\.postMessage\(payload,\s*'\*'\)/,
   'host must not post to the editor with a wildcard origin'
 );
+assert.match(hostSrc, /AbortController/, 'host save request must use AbortController');
+assert.match(hostSrc, /Refusing postMessage: invalid or missing target origin/, 'host must refuse post without valid origin');
+
 assert.doesNotMatch(
   hostSrc,
   /currentRoom\.id \|\| currentRoom\.name/,
@@ -211,6 +214,16 @@ assert.strictEqual(
   host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: 'https://evil.test' }, fakeIframe, fakeWin),
   false,
   'cross-origin messages are rejected'
+);
+assert.strictEqual(
+  host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: 'null' }, fakeIframe, fakeWin),
+  false,
+  'null origin messages are rejected'
+);
+assert.strictEqual(
+  host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: '' }, fakeIframe, fakeWin),
+  false,
+  'empty origin messages are rejected'
 );
 
 function geometryPlan() {

@@ -535,6 +535,24 @@ async function run() {
     const busyDuring = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
     assert.strictEqual(busyDuring, false, 'isSaving clears after the single in-flight request');
 
+    // On error/timeout: always clear isSaving, re-enable Save, keep Unsaved state, and show visible error
+    const modifiedPlan = clone(noScalePlan);
+    modifiedPlan.floor.rooms[0].polygon[0].x = 10;
+    await postPlan(modifiedPlan);
+    assert.strictEqual(await unsavedVisible(), true, 'modified plan is marked unsaved before save');
+
+    failNextSave = true;
+    await page.click('#openplan3d-save-btn');
+    await new Promise((r) => setTimeout(r, 200));
+    const isSavingAfterFail = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
+    assert.strictEqual(isSavingAfterFail, false, 'isSaving clears after failed save');
+    const saveDisabledAfterFail = await page.$eval('#openplan3d-save-btn', (el) => el.disabled);
+    assert.strictEqual(saveDisabledAfterFail, false, 'save button re-enabled after failure');
+    const unsavedAfterFail = await unsavedVisible();
+    assert.strictEqual(unsavedAfterFail, true, 'unsaved state kept after failure');
+    const feedbackVisible = await page.$eval('#openplan3d-feedback', (el) => !el.hidden && el.textContent.length > 0);
+    assert.strictEqual(feedbackVisible, true, 'visible error message shown after failure');
+
     console.log('All openPlan3D Puppeteer browser tests PASSED successfully!');
   } finally {
     await browser.close();

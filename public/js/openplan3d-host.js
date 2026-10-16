@@ -234,25 +234,31 @@
   }
 
   function editorExpectedOrigin(iframe, win) {
-    if (!iframe) return win && win.location ? win.location.origin : '';
+    if (!iframe) {
+      var wOrigin = win && win.location ? win.location.origin : '';
+      return (wOrigin && wOrigin !== 'null') ? wOrigin : '';
+    }
     var src = (iframe.getAttribute && iframe.getAttribute('src')) || iframe.src || '';
     if (!src || src === 'about:blank') {
-      return win && win.location ? win.location.origin : '';
+      var baseOrigin = win && win.location ? win.location.origin : '';
+      return (baseOrigin && baseOrigin !== 'null') ? baseOrigin : '';
     }
     try {
-      return new URL(src, win && win.location ? win.location.href : undefined).origin;
+      var parsed = new URL(src, win && win.location ? win.location.href : undefined);
+      return (parsed.origin && parsed.origin !== 'null') ? parsed.origin : '';
     } catch (err) {
-      return win && win.location ? win.location.origin : '';
+      var fallbackOrigin = win && win.location ? win.location.origin : '';
+      return (fallbackOrigin && fallbackOrigin !== 'null') ? fallbackOrigin : '';
     }
   }
 
   function isTrustedEditorMessage(event, iframe, win) {
     if (!event || !iframe || !iframe.contentWindow) return false;
     if (event.source !== iframe.contentWindow) return false;
+    if (!event.origin || event.origin === 'null') return false;
     var expected = editorExpectedOrigin(iframe, win);
-    if (expected && event.origin === expected) return true;
-    var src = (iframe.getAttribute && iframe.getAttribute('src')) || iframe.src || '';
-    return (!src || src === 'about:blank') && event.origin === 'null';
+    if (!expected || expected === 'null') return false;
+    return event.origin === expected;
   }
 
   function planFingerprint(plan) {
@@ -449,7 +455,12 @@
 
     function postToEditor(payload) {
       if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage(payload, editorExpectedOrigin(iframe, win) || '*');
+        var targetOrigin = editorExpectedOrigin(iframe, win);
+        if (!targetOrigin || targetOrigin === '*' || targetOrigin === 'null') {
+          console.error('[openPlan3D] Refusing postMessage: invalid or missing target origin', targetOrigin);
+          return;
+        }
+        iframe.contentWindow.postMessage(payload, targetOrigin);
       }
     }
 
@@ -739,6 +750,17 @@
 
       if (win) win.__lastSavedPayload = payload;
 
+      var controller = (win && typeof win.AbortController !== 'undefined')
+        ? new win.AbortController()
+        : (typeof AbortController !== 'undefined' ? new AbortController() : null);
+      var timeoutId = null;
+      if (controller) {
+        var scheduleTimer = (win && typeof win.setTimeout === 'function') ? win.setTimeout : setTimeout;
+        timeoutId = scheduleTimer(function () {
+          try { controller.abort(); } catch (e) {}
+        }, 30000);
+      }
+
       fetch(url, {
         method: isUpdate ? 'PUT' : 'POST',
         headers: {
@@ -746,7 +768,8 @@
           'Accept': 'application/json',
           'X-CSRF-TOKEN': csrfToken
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller ? controller.signal : undefined
       })
       .then(function (res) {
         return res.json().then(function (data) {
@@ -785,10 +808,18 @@
           showFeedback(errMsg, true);
         }
       })
-      .catch(function () {
-        showFeedback('An unexpected error occurred while saving the plan.', true);
+      .catch(function (err) {
+        if (err && (err.name === 'AbortError' || err.code === 20)) {
+          showFeedback('Save request timed out. Please try again.', true);
+        } else {
+          showFeedback((err && err.message) || 'An unexpected error occurred while saving the plan.', true);
+        }
       })
       .finally(function () {
+        if (timeoutId) {
+          var cancelTimer = (win && typeof win.clearTimeout === 'function') ? win.clearTimeout : clearTimeout;
+          cancelTimer(timeoutId);
+        }
         isSaving = false;
         if (saveBtn) {
           saveBtn.removeAttribute('aria-busy');

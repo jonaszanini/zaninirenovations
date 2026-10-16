@@ -16,6 +16,18 @@ class OpenPlan3DPlanValidator
 
     public const MAX_HEIGHT_CM = 2000.0;
 
+    public const MAX_ITEM_WIDTH_CM = 5000.0;
+
+    public const MAX_ITEM_DEPTH_CM = 5000.0;
+
+    public const MAX_ITEM_RUN_CM = 5000.0;
+
+    public const MAX_ITEM_LENGTH_CM = 5000.0;
+
+    public const MAX_COORDINATE = 1000000.0;
+
+    public const MAX_PAYLOAD_BYTES = 2097152; // 2 MB
+
     public function __construct(
         private ?PolygonAreaService $polygonArea = null,
     ) {
@@ -24,21 +36,31 @@ class OpenPlan3DPlanValidator
 
     /**
      * @param  array<string, mixed>  $plan
-     * @return array{valid: bool, message: ?string}
+     * @param  array<string, mixed>|null  $existingPlan
+     * @return array{valid: bool, message: ?string, warning?: ?string}
      */
-    public function validate(array $plan): array
+    public function validate(array $plan, ?array $existingPlan = null): array
     {
+        $encoded = json_encode($plan);
+        if ($encoded === false || strlen($encoded) > self::MAX_PAYLOAD_BYTES) {
+            return ['valid' => false, 'message' => 'Floor plan data exceeds maximum allowed size.'];
+        }
+
         $floors = $this->floors($plan);
         $cmPerUnit = $this->cmPerUnit($plan, $floors);
 
+        $warning = null;
         foreach ($floors as $floor) {
-            $check = $this->validateFloor($floor, $cmPerUnit);
+            $check = $this->validateFloor($floor, $cmPerUnit, $existingPlan);
             if (! $check['valid']) {
                 return $check;
             }
+            if (isset($check['warning'])) {
+                $warning = $check['warning'];
+            }
         }
 
-        return ['valid' => true, 'message' => null];
+        return ['valid' => true, 'message' => null, 'warning' => $warning];
     }
 
     /**
@@ -96,13 +118,17 @@ class OpenPlan3DPlanValidator
 
     /**
      * @param  array<string, mixed>  $floor
-     * @return array{valid: bool, message: ?string}
+     * @param  array<string, mixed>|null  $existingPlan
+     * @return array{valid: bool, message: ?string, warning?: ?string}
      */
-    private function validateFloor(array $floor, float $cmPerUnit): array
+    private function validateFloor(array $floor, float $cmPerUnit, ?array $existingPlan = null): array
     {
+        if (isset($floor['walls']) && ! is_array($floor['walls'])) {
+            return ['valid' => false, 'message' => 'Floor walls must be an array.'];
+        }
         foreach ($floor['walls'] ?? [] as $wall) {
             if (! is_array($wall)) {
-                continue;
+                return ['valid' => false, 'message' => 'Wall entry must be an object.'];
             }
             $check = $this->validateWall($wall, $cmPerUnit);
             if (! $check['valid']) {
@@ -110,20 +136,37 @@ class OpenPlan3DPlanValidator
             }
         }
 
+        $warning = null;
+        if (isset($floor['rooms']) && ! is_array($floor['rooms'])) {
+            return ['valid' => false, 'message' => 'Floor rooms must be an array.'];
+        }
         foreach ($floor['rooms'] ?? [] as $room) {
             if (! is_array($room)) {
-                continue;
+                return ['valid' => false, 'message' => 'Room entry must be an object.'];
             }
-            $check = $this->validateRoom($room, $cmPerUnit);
+            $check = $this->validateRoom($room, $cmPerUnit, $existingPlan);
             if (! $check['valid']) {
                 return $check;
+            }
+            if (isset($check['warning'])) {
+                $warning = $check['warning'];
             }
         }
 
         foreach (['doors', 'windows', 'furniture', 'stairs'] as $listKey) {
+            if (isset($floor[$listKey]) && ! is_array($floor[$listKey])) {
+                return ['valid' => false, 'message' => 'Floor '.$listKey.' must be an array.'];
+            }
             foreach ($floor[$listKey] ?? [] as $item) {
                 if (! is_array($item)) {
-                    continue;
+                    $singular = match ($listKey) {
+                        'furniture' => 'Furniture',
+                        'stairs' => 'Stairs',
+                        'doors' => 'Door',
+                        'windows' => 'Window',
+                        default => ucfirst(rtrim($listKey, 's')),
+                    };
+                    return ['valid' => false, 'message' => $singular.' entry must be an object.'];
                 }
                 $check = $this->validateSizedItem($item, $listKey);
                 if (! $check['valid']) {
@@ -132,7 +175,7 @@ class OpenPlan3DPlanValidator
             }
         }
 
-        return ['valid' => true, 'message' => null];
+        return ['valid' => true, 'message' => null, 'warning' => $warning];
     }
 
     /**
@@ -165,9 +208,10 @@ class OpenPlan3DPlanValidator
 
     /**
      * @param  array<string, mixed>  $room
-     * @return array{valid: bool, message: ?string}
+     * @param  array<string, mixed>|null  $existingPlan
+     * @return array{valid: bool, message: ?string, warning?: ?string}
      */
-    private function validateRoom(array $room, float $cmPerUnit): array
+    private function validateRoom(array $room, float $cmPerUnit, ?array $existingPlan = null): array
     {
         $poly = $room['polygon'] ?? $room['points'] ?? null;
         if (! is_array($poly) || $poly === []) {
@@ -191,6 +235,10 @@ class OpenPlan3DPlanValidator
         }
 
         if (! $this->polygonArea->isSimplePolygon($points)) {
+            if ($this->isExistingUnchangedPolygon($points, $existingPlan, $room['id'] ?? null)) {
+                return ['valid' => true, 'message' => null, 'warning' => 'Existing room polygon crosses itself.'];
+            }
+
             return ['valid' => false, 'message' => 'Room shape crosses itself — adjust corners.'];
         }
 
@@ -232,10 +280,49 @@ class OpenPlan3DPlanValidator
             return ['valid' => false, 'message' => ucfirst($kind).' height is impossibly large.'];
         }
 
-        if (isset($item['position']) && is_array($item['position'])) {
+        $width = $item['width'] ?? null;
+        if ($width !== null && $width !== '' && (float) $width > self::MAX_ITEM_WIDTH_CM) {
+            return ['valid' => false, 'message' => ucfirst($kind).' width is impossibly large.'];
+        }
+
+        $depth = $item['depth'] ?? null;
+        if ($depth !== null && $depth !== '' && (float) $depth > self::MAX_ITEM_DEPTH_CM) {
+            return ['valid' => false, 'message' => ucfirst($kind).' depth is impossibly large.'];
+        }
+
+        $run = $item['run'] ?? null;
+        if ($run !== null && $run !== '' && (float) $run > self::MAX_ITEM_RUN_CM) {
+            return ['valid' => false, 'message' => ucfirst($kind).' run is impossibly large.'];
+        }
+
+        $length = $item['length'] ?? null;
+        if ($length !== null && $length !== '' && (float) $length > self::MAX_ITEM_LENGTH_CM) {
+            return ['valid' => false, 'message' => ucfirst($kind).' length is impossibly large.'];
+        }
+
+        $offset = $item['offset'] ?? null;
+        if ($offset !== null && $offset !== '' && abs((float) $offset) > self::MAX_COORDINATE) {
+            return ['valid' => false, 'message' => ucfirst($kind).' offset is impossibly large.'];
+        }
+
+        if (isset($item['position'])) {
+            if (! is_array($item['position'])) {
+                return ['valid' => false, 'message' => ucfirst($kind).' position must be coordinates.'];
+            }
             $check = $this->validatePoint($item['position'], ucfirst($kind).' position');
             if (! $check['valid']) {
                 return $check;
+            }
+        }
+
+        foreach (['x', 'y', 'z'] as $axis) {
+            if (array_key_exists($axis, $item) && $item[$axis] !== null && $item[$axis] !== '') {
+                if ($this->isBadNumber($item[$axis])) {
+                    return ['valid' => false, 'message' => ucfirst($kind).' '.$axis.' must be a finite number.'];
+                }
+                if (abs((float) $item[$axis]) > self::MAX_COORDINATE) {
+                    return ['valid' => false, 'message' => ucfirst($kind).' '.$axis.' coordinate is impossibly large.'];
+                }
             }
         }
 
@@ -255,12 +342,112 @@ class OpenPlan3DPlanValidator
             if ($this->isBadNumber($point[$axis])) {
                 return ['valid' => false, 'message' => $label.' '.$axis.' must be a finite number.'];
             }
+            if (abs((float) $point[$axis]) > self::MAX_COORDINATE) {
+                return ['valid' => false, 'message' => $label.' '.$axis.' coordinate is impossibly large.'];
+            }
         }
-        if (array_key_exists('z', $point) && $point['z'] !== null && $this->isBadNumber($point['z'])) {
-            return ['valid' => false, 'message' => $label.' z must be a finite number.'];
+        if (array_key_exists('z', $point) && $point['z'] !== null && $point['z'] !== '') {
+            if ($this->isBadNumber($point['z'])) {
+                return ['valid' => false, 'message' => $label.' z must be a finite number.'];
+            }
+            if (abs((float) $point['z']) > self::MAX_COORDINATE) {
+                return ['valid' => false, 'message' => $label.' z coordinate is impossibly large.'];
+            }
         }
 
         return ['valid' => true, 'message' => null];
+    }
+
+    /**
+     * @param  list<array{x: float, y: float}>  $points
+     * @param  array<string, mixed>|null  $existingPlan
+     */
+    private function isExistingUnchangedPolygon(array $points, ?array $existingPlan, ?string $roomId = null): bool
+    {
+        if ($existingPlan === null) {
+            return false;
+        }
+
+        $existingRooms = $this->collectRooms($existingPlan);
+
+        if ($roomId !== null) {
+            foreach ($existingRooms as $er) {
+                if (isset($er['id']) && (string) $er['id'] === (string) $roomId) {
+                    $erPoly = $this->extractPolygonPoints($er);
+                    if ($this->polygonsMatch($points, $erPoly)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        foreach ($existingRooms as $er) {
+            $erPoly = $this->extractPolygonPoints($er);
+            if ($this->polygonsMatch($points, $erPoly)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     * @return list<array<string, mixed>>
+     */
+    private function collectRooms(array $plan): array
+    {
+        $rooms = [];
+        foreach ($this->floors($plan) as $floor) {
+            if (isset($floor['rooms']) && is_array($floor['rooms'])) {
+                foreach ($floor['rooms'] as $room) {
+                    if (is_array($room)) {
+                        $rooms[] = $room;
+                    }
+                }
+            }
+        }
+
+        return $rooms;
+    }
+
+    /**
+     * @param  array<string, mixed>  $room
+     * @return list<array{x: float, y: float}>
+     */
+    private function extractPolygonPoints(array $room): array
+    {
+        $poly = $room['polygon'] ?? $room['points'] ?? null;
+        if (! is_array($poly)) {
+            return [];
+        }
+        $points = [];
+        foreach ($poly as $vertex) {
+            if (is_array($vertex) && isset($vertex['x'], $vertex['y']) && is_numeric($vertex['x']) && is_numeric($vertex['y'])) {
+                $points[] = ['x' => (float) $vertex['x'], 'y' => (float) $vertex['y']];
+            }
+        }
+
+        return $points;
+    }
+
+    /**
+     * @param  list<array{x: float, y: float}>  $polyA
+     * @param  list<array{x: float, y: float}>  $polyB
+     */
+    private function polygonsMatch(array $polyA, array $polyB): bool
+    {
+        if (count($polyA) !== count($polyB) || count($polyA) === 0) {
+            return false;
+        }
+        for ($i = 0; $i < count($polyA); $i++) {
+            if (abs($polyA[$i]['x'] - $polyB[$i]['x']) > 0.001 ||
+                abs($polyA[$i]['y'] - $polyB[$i]['y']) > 0.001) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function isBadNumber(mixed $value): bool
