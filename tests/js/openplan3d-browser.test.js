@@ -7,8 +7,11 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../..');
 const FIXTURE = path.join(__dirname, 'fixtures/openplan3d-room-area.html');
+const host = require('../../public/js/openplan3d-host.js');
 
 let lastSavedBody = null;
+let saveDelayMs = 0;
+let failNextSave = false;
 
 function startServer() {
   return new Promise((resolve, reject) => {
@@ -21,11 +24,22 @@ function startServer() {
         req.on('data', (c) => chunks.push(c));
         req.on('end', () => {
           lastSavedBody = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            ok: true,
-            room: { id: 10, name: lastSavedBody.name, area_sqft: 180.0 },
-          }));
+          const delay = saveDelayMs;
+          const fail = failNextSave;
+          saveDelayMs = 0;
+          failNextSave = false;
+          setTimeout(() => {
+            if (fail) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: false, message: 'save failed' }));
+              return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              ok: true,
+              room: { id: 10, name: lastSavedBody.name, area_sqft: 180.0 },
+            }));
+          }, delay);
         });
         return;
       }
@@ -104,6 +118,204 @@ async function run() {
     const initialOpenings = await page.$eval('#metric-openings', (el) => el.textContent.trim());
     assert.strictEqual(initialOpenings, '0 doors · 0 windows', 'Initial openings should be 0');
 
+    const dirtyAtLoad = await page.$eval('#openplan3d-dirty-badge', (el) => ({
+      hidden: el.hidden,
+      display: getComputedStyle(el).display,
+    }));
+    assert.strictEqual(dirtyAtLoad.hidden, true, 'Saved room must open without an Unsaved badge');
+    assert.strictEqual(dirtyAtLoad.display, 'none', 'hidden Unsaved badge must not be visible');
+
+    const blankBootPlan = {
+      id: 'untitled',
+      name: 'Untitled Project',
+      floors: [{ id: 'f1', walls: [], rooms: [] }],
+    };
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
+    }, blankBootPlan);
+    await new Promise((r) => setTimeout(r, 80));
+
+    const areaBeforeAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    assert.strictEqual(areaBeforeAck, '150.00', 'Boot Untitled Project must not overwrite loaded metrics before LOAD_ACK');
+    const dirtyBeforeAck = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
+    assert.strictEqual(dirtyBeforeAck, false, 'Boot store writes must not mark the room Unsaved');
+
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_LOAD_ACK', ok: false, plan: plan }, '*');
+    }, blankBootPlan);
+    await new Promise((r) => setTimeout(r, 50));
+
+    const areaAfterFailedAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    assert.strictEqual(areaAfterFailedAck, '150.00', 'ACK ok:false must not adopt the editor current plan');
+    const saveDisabledOnFail = await page.$eval('#openplan3d-save-btn', (el) => el.disabled);
+    assert.strictEqual(saveDisabledOnFail, true, 'ACK ok:false must keep Save disabled');
+    const failedAckFeedback = await page.$eval('#openplan3d-feedback', (el) => ({
+      hidden: el.hidden,
+      text: el.textContent,
+      error: el.className.indexOf('openplan3d-feedback--error') !== -1,
+    }));
+    assert.strictEqual(failedAckFeedback.hidden, false, 'ACK ok:false must show a visible error');
+    assert.ok(failedAckFeedback.error, 'ACK ok:false feedback is an error');
+    assert.match(failedAckFeedback.text, /did not confirm/i);
+    const stateAfterFail = await page.evaluate(() => window.OpenPlan3DHost.getState());
+    assert.strictEqual(stateAfterFail.loadAcked, false, 'ACK ok:false must not mark loadAcked');
+    assert.notStrictEqual(
+      (stateAfterFail.currentPlan && stateAfterFail.currentPlan.name) || '',
+      'Untitled Project',
+      'ACK ok:false must keep the saved room plan'
+    );
+
+    await page.evaluate(() => {
+      window.postMessage({ type: 'OPENPLAN3D_LOAD_ACK', ok: true }, '*');
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const areaAfterAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    assert.strictEqual(areaAfterAck, '150.00', 'LOAD_ACK must keep the saved geometry metrics');
+    const dirtyAfterAck = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
+    assert.strictEqual(dirtyAfterAck, false, 'LOAD_ACK must leave the Unsaved badge hidden');
+
+    const loadedSamePlan = await page.evaluate(() => window.OpenPlan3DHost.getState().currentPlan);
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
+    }, loadedSamePlan);
+    await new Promise((r) => setTimeout(r, 50));
+    const dirtySamePlan = await page.$eval('#openplan3d-dirty-badge', (el) => ({
+      hidden: el.hidden,
+      display: getComputedStyle(el).display,
+    }));
+    assert.strictEqual(dirtySamePlan.hidden, true, 'Re-emitting the loaded plan after ACK must not mark Unsaved');
+    assert.strictEqual(dirtySamePlan.display, 'none', 'Unsaved stays visually hidden when the plan matches');
+    const areaDelta = Math.abs(parseFloat(areaAfterAck) - 150.0);
+    assert.ok(areaDelta <= 0.01, 'Opened metrics must match stored area_sqft within 0.01');
+
+    async function postPlan(plan) {
+      await page.evaluate((p) => {
+        window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: p }, '*');
+      }, plan);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    async function unsavedVisible() {
+      return page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden && getComputedStyle(el).display !== 'none');
+    }
+
+    const ackPlan = await page.evaluate(() => JSON.parse(JSON.stringify(window.OpenPlan3DHost.getState().currentPlan)));
+    const workPlan = JSON.parse(JSON.stringify(ackPlan));
+    const floor = workPlan.floor || (workPlan.floors && workPlan.floors[0]) || workPlan;
+    floor.doors = [{ id: 'd1', wallId: 'w1', position: 0.3, offset: 50, width: 91.44, height: 203.2 }];
+    floor.windows = Array.isArray(floor.windows) ? floor.windows : [];
+    floor.furniture = [{ id: 'f1', position: { x: 40, y: 40 }, rotation: 0, width: 60, depth: 40 }];
+    floor.textAnnotations = [{ id: 't1', text: 'Kitchen', position: { x: 20, y: 20 } }];
+    if (!Array.isArray(floor.rooms) || !floor.rooms[0] || !Array.isArray(floor.rooms[0].polygon) || floor.rooms[0].polygon.length < 3) {
+      floor.rooms = [{
+        id: 'r1',
+        name: 'Living Room',
+        walls: ['w1', 'w2', 'w3', 'w4'],
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 365.76, y: 0 },
+          { x: 365.76, y: 381 },
+          { x: 0, y: 381 },
+        ],
+      }];
+    }
+
+    await postPlan(workPlan);
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(lastSavedBody, 'Saving the working plan must post');
+    assert.strictEqual(await unsavedVisible(), false, 'Unsaved clears after save');
+    const baselineAfterSave = await page.evaluate(() => window.OpenPlan3DHost.getState().loadedPlanBaseline);
+    assert.ok(baselineAfterSave, 'successful save must set loadedPlanBaseline');
+
+    function clone(plan) {
+      return JSON.parse(JSON.stringify(plan));
+    }
+
+    const movedDoor = clone(workPlan);
+    (movedDoor.floor || movedDoor.floors[0]).doors[0].position = 0.72;
+    await postPlan(movedDoor);
+    assert.strictEqual(await unsavedVisible(), true, 'moving a door must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo back to the saved plan must clear Unsaved');
+
+    const thickWall = clone(workPlan);
+    (thickWall.floor || thickWall.floors[0]).walls[0].thickness = 20;
+    await postPlan(thickWall);
+    assert.strictEqual(await unsavedVisible(), true, 'changing wall thickness must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo wall thickness must clear Unsaved');
+
+    const movedCorner = clone(workPlan);
+    (movedCorner.floor || movedCorner.floors[0]).rooms[0].polygon[1].x += 30;
+    await postPlan(movedCorner);
+    assert.strictEqual(await unsavedVisible(), true, 'moving a middle room corner must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo middle corner must clear Unsaved');
+
+    const addedFurn = clone(workPlan);
+    (addedFurn.floor || addedFurn.floors[0]).furniture.push({
+      id: 'f2', position: { x: 120, y: 80 }, rotation: 15, width: 40, depth: 40,
+    });
+    await postPlan(addedFurn);
+    assert.strictEqual(await unsavedVisible(), true, 'adding furniture must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo furniture must clear Unsaved');
+
+    const addedLabel = clone(workPlan);
+    (addedLabel.floor || addedLabel.floors[0]).textAnnotations.push({
+      id: 't2', text: 'Bath', position: { x: 90, y: 90 },
+    });
+    await postPlan(addedLabel);
+    assert.strictEqual(await unsavedVisible(), true, 'adding a label must mark Unsaved');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), false, 'undo label must clear Unsaved');
+
+    await postPlan(movedDoor);
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(lastSavedBody, 'Save after door move must post');
+    assert.strictEqual(await unsavedVisible(), false, 'Unsaved clears after saving the door move');
+    await postPlan(movedDoor);
+    assert.strictEqual(await unsavedVisible(), false, 're-emitting the saved plan must stay clean');
+    await postPlan(workPlan);
+    assert.strictEqual(await unsavedVisible(), true, 'undo to the pre-save plan after save must mark Unsaved');
+    await postPlan(movedDoor);
+    assert.strictEqual(await unsavedVisible(), false, 'undo back to the last saved plan must clear Unsaved');
+
+    saveDelayMs = 450;
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 40));
+    await postPlan(addedLabel);
+    await new Promise((r) => setTimeout(r, 700));
+    assert.ok(lastSavedBody, 'in-flight save must still post the request-time plan');
+    assert.ok(
+      host.plansMatch(lastSavedBody.plan, movedDoor),
+      'request body must be the plan at save click, not the in-flight edit'
+    );
+    assert.strictEqual(await unsavedVisible(), true, 'edits during an in-flight save must stay Unsaved');
+    const afterInFlight = await page.evaluate(() => {
+      const s = window.OpenPlan3DHost.getState();
+      return { baseline: s.loadedPlanBaseline, current: s.currentPlan, dirty: s.isDirty };
+    });
+    assert.ok(host.plansMatch(afterInFlight.baseline, movedDoor), 'baseline is the plan that was SENT');
+    assert.ok(host.plansMatch(afterInFlight.current, addedLabel), 'current plan is the in-flight edit');
+    assert.strictEqual(afterInFlight.dirty, true, 'isDirty stays true when current differs from the sent snapshot');
+
+    const baselineBeforeFail = await page.evaluate(() => window.OpenPlan3DHost.getState().loadedPlanBaseline);
+    failNextSave = true;
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 250));
+    assert.ok(lastSavedBody, 'failed save still posted');
+    assert.strictEqual(await unsavedVisible(), true, 'failed save must leave Unsaved visible');
+    const afterFail = await page.evaluate(() => window.OpenPlan3DHost.getState().loadedPlanBaseline);
+    assert.ok(host.plansMatch(afterFail, baselineBeforeFail), 'failed save must leave loadedPlanBaseline unchanged');
+
     // 2. Simulate Drawing Updates / OpenPlan3D Plan Changed with Door and Window
     const updatedPlan = {
       unit: 'cm',
@@ -141,7 +353,6 @@ async function run() {
       window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
     }, updatedPlan);
 
-    // Wait for event loop
     await new Promise((r) => setTimeout(r, 100));
 
     // Assert live metrics updated
@@ -195,6 +406,79 @@ async function run() {
       return { width: rect.width, height: rect.height };
     });
     assert.ok(saveBtnBox.height >= 36, 'Save button height should be comfortably tappable');
+
+    // 5. Two-room plan: strip uses whole plan, not database room id 10
+    const twoRoomPlan = {
+      unit: 'cm',
+      version: '1.0',
+      floor: {
+        walls: [
+          { id: 'w1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 }, height: 243.84, thickness: 10 },
+          { id: 'w2', start: { x: 304.8, y: 0 }, end: { x: 304.8, y: 304.8 }, height: 243.84, thickness: 10 },
+          { id: 'w3', start: { x: 304.8, y: 304.8 }, end: { x: 0, y: 304.8 }, height: 243.84, thickness: 10 },
+          { id: 'w4', start: { x: 0, y: 304.8 }, end: { x: 0, y: 0 }, height: 243.84, thickness: 10 },
+          { id: 'w5', start: { x: 304.8, y: 0 }, end: { x: 609.6, y: 0 }, height: 243.84, thickness: 10 },
+          { id: 'w6', start: { x: 609.6, y: 0 }, end: { x: 609.6, y: 304.8 }, height: 243.84, thickness: 10 },
+          { id: 'w7', start: { x: 609.6, y: 304.8 }, end: { x: 304.8, y: 304.8 }, height: 243.84, thickness: 10 },
+        ],
+        rooms: [
+          {
+            id: 'r1',
+            name: 'Kitchen',
+            walls: ['w1', 'w2', 'w3', 'w4'],
+            polygon: [
+              { x: 0, y: 0 }, { x: 304.8, y: 0 }, { x: 304.8, y: 304.8 }, { x: 0, y: 304.8 },
+            ],
+          },
+          {
+            id: 'r2',
+            name: 'Bath',
+            walls: ['w5', 'w6', 'w7', 'w2'],
+            polygon: [
+              { x: 304.8, y: 0 }, { x: 609.6, y: 0 }, { x: 609.6, y: 304.8 }, { x: 304.8, y: 304.8 },
+            ],
+          },
+        ],
+      },
+    };
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
+    }, twoRoomPlan);
+    await new Promise((r) => setTimeout(r, 80));
+    const twoRoomStrip = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    assert.strictEqual(twoRoomStrip, '200.00', 'Metrics strip must use whole-plan area, not database room id 10');
+    lastSavedBody = null;
+    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(lastSavedBody, 'Two-room save should post');
+    assert.strictEqual(twoRoomStrip, '200.00');
+    assert.ok(lastSavedBody.plan.floor.rooms.length === 2, 'Saved plan must keep both openPlan3D rooms');
+
+    // 6. Save Plan never sends 0 metrics for a >0 room without confirm
+    const zeroPlan = { format: 'openplan3d', unit: 'cm', floor: { walls: [], rooms: [] } };
+    await page.evaluate((plan) => {
+      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
+    }, zeroPlan);
+    await new Promise((r) => setTimeout(r, 50));
+    lastSavedBody = null;
+    await page.evaluate(() => {
+      window.__confirmAnswers = [false];
+      window.confirm = function () {
+        return window.__confirmAnswers.shift() !== false;
+      };
+    });
+    await page.click('#openplan3d-save-btn');
+    await new Promise((r) => setTimeout(r, 150));
+    assert.strictEqual(lastSavedBody, null, 'Save Plan must not send a 0-area overwrite when confirm is declined');
+
+    lastSavedBody = null;
+    await page.evaluate(() => {
+      window.__confirmAnswers = [true];
+    });
+    await page.click('#openplan3d-save-btn');
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(lastSavedBody, 'Save Plan may send 0-area after explicit confirm');
+    assert.strictEqual(lastSavedBody.confirm_zero_area, true, 'Confirmed 0-area save must send confirm_zero_area');
 
     console.log('All openPlan3D Puppeteer browser tests PASSED successfully!');
   } finally {
