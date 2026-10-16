@@ -392,14 +392,22 @@
       noScaleWarning.hidden = !show;
     }
 
+    var feedbackTimer = null;
     function showFeedback(msg, isError) {
       if (!feedbackEl) return;
+      if (feedbackTimer) {
+        var cancelTimer = (win && typeof win.clearTimeout === 'function') ? win.clearTimeout : clearTimeout;
+        cancelTimer(feedbackTimer);
+        feedbackTimer = null;
+      }
       feedbackEl.textContent = msg;
       feedbackEl.className = 'openplan3d-feedback ' + (isError ? 'openplan3d-feedback--error' : 'openplan3d-feedback--success');
       feedbackEl.hidden = false;
       if (!isError) {
-        setTimeout(function () {
+        var scheduleTimer = (win && typeof win.setTimeout === 'function') ? win.setTimeout : setTimeout;
+        feedbackTimer = scheduleTimer(function () {
           feedbackEl.hidden = true;
+          feedbackTimer = null;
         }, 5000);
       }
     }
@@ -454,11 +462,13 @@
         if (e.shiftKey) {
           if (active === first || !modalEl.contains(active)) {
             e.preventDefault();
+            e.stopPropagation();
             last.focus();
           }
         } else {
           if (active === last || !modalEl.contains(active)) {
             e.preventDefault();
+            e.stopPropagation();
             first.focus();
           }
         }
@@ -1335,12 +1345,7 @@
       });
     });
 
-    if (modalEl) {
-      modalEl.addEventListener('keydown', handleModalKeyDown);
-    }
-
     if (win) {
-      win.addEventListener('keydown', handleModalKeyDown, true);
 
       win.addEventListener('beforeunload', function (e) {
         if (isDirty) {
