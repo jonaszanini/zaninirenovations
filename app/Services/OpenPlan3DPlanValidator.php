@@ -16,13 +16,13 @@ class OpenPlan3DPlanValidator
 
     public const MAX_HEIGHT_CM = 2000.0;
 
-    public const MAX_ITEM_WIDTH_CM = 5000.0;
+    public const MAX_ITEM_WIDTH_CM = 10000.0;
 
-    public const MAX_ITEM_DEPTH_CM = 5000.0;
+    public const MAX_ITEM_DEPTH_CM = 10000.0;
 
-    public const MAX_ITEM_RUN_CM = 5000.0;
+    public const MAX_ITEM_RUN_CM = 10000.0;
 
-    public const MAX_ITEM_LENGTH_CM = 5000.0;
+    public const MAX_ITEM_LENGTH_CM = 10000.0;
 
     public const MAX_COORDINATE = 1000000.0;
 
@@ -168,7 +168,7 @@ class OpenPlan3DPlanValidator
                     };
                     return ['valid' => false, 'message' => $singular.' entry must be an object.'];
                 }
-                $check = $this->validateSizedItem($item, $listKey);
+                $check = $this->validateSizedItem($item, $listKey, $cmPerUnit);
                 if (! $check['valid']) {
                     return $check;
                 }
@@ -203,7 +203,7 @@ class OpenPlan3DPlanValidator
             }
         }
 
-        return $this->validateSizedItem($wall, 'wall');
+        return $this->validateSizedItem($wall, 'wall', $cmPerUnit);
     }
 
     /**
@@ -255,7 +255,7 @@ class OpenPlan3DPlanValidator
      * @param  array<string, mixed>  $item
      * @return array{valid: bool, message: ?string}
      */
-    private function validateSizedItem(array $item, string $kind): array
+    private function validateSizedItem(array $item, string $kind, float $cmPerUnit = 1.0): array
     {
         foreach (['width', 'height', 'depth', 'thickness', 'thickness_cm', 'height_cm', 'offset', 'run', 'length'] as $field) {
             if (! array_key_exists($field, $item) || $item[$field] === null || $item[$field] === '') {
@@ -270,34 +270,60 @@ class OpenPlan3DPlanValidator
             }
         }
 
-        $thickness = $item['thickness'] ?? $item['thickness_cm'] ?? null;
-        if ($thickness !== null && $thickness !== '' && (float) $thickness > self::MAX_THICKNESS_CM) {
+        $thickness = $item['thickness'] ?? null;
+        if ($thickness !== null && $thickness !== '') {
+            $thicknessCm = (float) $thickness * $cmPerUnit;
+            if ($thicknessCm > self::MAX_THICKNESS_CM) {
+                return ['valid' => false, 'message' => ucfirst($kind).' thickness is impossibly large.'];
+            }
+        }
+        $thicknessCmDirect = $item['thickness_cm'] ?? null;
+        if ($thicknessCmDirect !== null && $thicknessCmDirect !== '' && (float) $thicknessCmDirect > self::MAX_THICKNESS_CM) {
             return ['valid' => false, 'message' => ucfirst($kind).' thickness is impossibly large.'];
         }
 
-        $height = $item['height'] ?? $item['height_cm'] ?? null;
-        if ($height !== null && $height !== '' && (float) $height > self::MAX_HEIGHT_CM) {
+        $height = $item['height'] ?? null;
+        if ($height !== null && $height !== '') {
+            $heightCm = (float) $height * $cmPerUnit;
+            if ($heightCm > self::MAX_HEIGHT_CM) {
+                return ['valid' => false, 'message' => ucfirst($kind).' height is impossibly large.'];
+            }
+        }
+        $heightCmDirect = $item['height_cm'] ?? null;
+        if ($heightCmDirect !== null && $heightCmDirect !== '' && (float) $heightCmDirect > self::MAX_HEIGHT_CM) {
             return ['valid' => false, 'message' => ucfirst($kind).' height is impossibly large.'];
         }
 
         $width = $item['width'] ?? null;
-        if ($width !== null && $width !== '' && (float) $width > self::MAX_ITEM_WIDTH_CM) {
-            return ['valid' => false, 'message' => ucfirst($kind).' width is impossibly large.'];
+        if ($width !== null && $width !== '') {
+            $widthCm = (float) $width * $cmPerUnit;
+            if ($widthCm > self::MAX_ITEM_WIDTH_CM) {
+                return ['valid' => false, 'message' => ucfirst($kind).' width is impossibly large.'];
+            }
         }
 
         $depth = $item['depth'] ?? null;
-        if ($depth !== null && $depth !== '' && (float) $depth > self::MAX_ITEM_DEPTH_CM) {
-            return ['valid' => false, 'message' => ucfirst($kind).' depth is impossibly large.'];
+        if ($depth !== null && $depth !== '') {
+            $depthCm = (float) $depth * $cmPerUnit;
+            if ($depthCm > self::MAX_ITEM_DEPTH_CM) {
+                return ['valid' => false, 'message' => ucfirst($kind).' depth is impossibly large.'];
+            }
         }
 
         $run = $item['run'] ?? null;
-        if ($run !== null && $run !== '' && (float) $run > self::MAX_ITEM_RUN_CM) {
-            return ['valid' => false, 'message' => ucfirst($kind).' run is impossibly large.'];
+        if ($run !== null && $run !== '') {
+            $runCm = (float) $run * $cmPerUnit;
+            if ($runCm > self::MAX_ITEM_RUN_CM) {
+                return ['valid' => false, 'message' => ucfirst($kind).' run is impossibly large.'];
+            }
         }
 
         $length = $item['length'] ?? null;
-        if ($length !== null && $length !== '' && (float) $length > self::MAX_ITEM_LENGTH_CM) {
-            return ['valid' => false, 'message' => ucfirst($kind).' length is impossibly large.'];
+        if ($length !== null && $length !== '') {
+            $lengthCm = (float) $length * $cmPerUnit;
+            if ($lengthCm > self::MAX_ITEM_LENGTH_CM) {
+                return ['valid' => false, 'message' => ucfirst($kind).' length is impossibly large.'];
+            }
         }
 
         $offset = $item['offset'] ?? null;
@@ -364,27 +390,18 @@ class OpenPlan3DPlanValidator
      */
     private function isExistingUnchangedPolygon(array $points, ?array $existingPlan, ?string $roomId = null): bool
     {
-        if ($existingPlan === null) {
+        if ($existingPlan === null || $roomId === null || trim($roomId) === '') {
             return false;
         }
 
         $existingRooms = $this->collectRooms($existingPlan);
 
-        if ($roomId !== null) {
-            foreach ($existingRooms as $er) {
-                if (isset($er['id']) && (string) $er['id'] === (string) $roomId) {
-                    $erPoly = $this->extractPolygonPoints($er);
-                    if ($this->polygonsMatch($points, $erPoly)) {
-                        return true;
-                    }
-                }
-            }
-        }
-
         foreach ($existingRooms as $er) {
-            $erPoly = $this->extractPolygonPoints($er);
-            if ($this->polygonsMatch($points, $erPoly)) {
-                return true;
+            if (isset($er['id']) && (string) $er['id'] === (string) $roomId) {
+                $erPoly = $this->extractPolygonPoints($er);
+                if ($this->polygonsMatch($points, $erPoly)) {
+                    return true;
+                }
             }
         }
 
