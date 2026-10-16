@@ -2289,6 +2289,7 @@ a.nav-btn-highlight:hover {
   flex: 0 0 50%;
   max-width: 50%;
   width: auto;
+  margin-left: 0;
   padding-left: 15px;
   padding-right: 15px;
 }
@@ -2296,6 +2297,8 @@ a.nav-btn-highlight:hover {
   .team-carousel.snap-carousel .snap-carousel__slide {
     flex: 0 0 100%;
     max-width: 100%;
+    width: 100%;
+    margin-left: 0;
   }
 }
 .team-carousel .snap-carousel__dots .owl-dot,
@@ -3764,6 +3767,13 @@ ul.custom-bullet-list.custom-icon li:before {
 }
 .team-carousel.snap-carousel .snap-carousel__slide {
   width: auto;
+  margin-left: 0;
+}
+@media (max-width: 768px) {
+  .team-carousel.snap-carousel .snap-carousel__slide {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 .team-carousel .owl-nav {
   -webkit-transition: all 0.5s ease-in-out;

@@ -542,7 +542,7 @@
               <div class="team-carousel snap-carousel" data-items="2" data-nav="false" data-dots="true">
                 <div class="snap-carousel__track">
 
-                <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0 snap-carousel__slide">
+                <div class="col-md-3 col-sm-6 col-xs-12 snap-carousel__slide">
 
                   <div class="team-layout-1 text-center">
 
@@ -575,7 +575,7 @@
                 </div>
                 <!--  end .col-lg-3 col-md-3 col-sm-6 col-xs-12 -->
 
-                <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0 snap-carousel__slide">
+                <div class="col-md-3 col-sm-6 col-xs-12 snap-carousel__slide">
 
                   <div class="team-layout-1 text-center">
 

@@ -163,16 +163,19 @@ class OnPageSeoBatch2Test extends IntegrationTestCase
 
         $encoded = SeoStructuredData::toJsonLd($graph);
         $this->assertStringNotContainsString('"@type":"ItemList"', $encoded);
-        $this->assertStringContainsString('Barrhaven', $encoded);
+        $this->assertStringNotContainsString('Barrhaven', $encoded);
         $this->assertStringNotContainsString('Orléans', $encoded);
         $this->assertStringContainsString($areaText, $encoded);
         $this->assertStringNotContainsString('priceRange', $encoded);
 
-        $areaNames = array_map(static fn ($place) => (string) ($place['name'] ?? ''), $areas);
-        $this->assertEqualsCanonicalizing(
-            ['Carleton Place', 'Beckwith', 'Ottawa', 'Kanata', 'Stittsville', 'Barrhaven', 'Nepean', 'Almonte', 'Perth', 'Smiths Falls', 'Gatineau'],
-            $areaNames
-        );
+        foreach ($areas as $place) {
+            $name = (string) ($place['name'] ?? '');
+            $this->assertNotSame('', $name);
+            $this->assertTrue(
+                str_contains($areaText, $name),
+                "areaServed name [{$name}] must appear in seo.service_area_text"
+            );
+        }
     }
 
     public function test_public_pages_do_not_claim_licensed_wsib_or_one_person(): void

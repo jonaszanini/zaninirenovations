@@ -33,19 +33,17 @@ return [
     |--------------------------------------------------------------------------
     | areaServed (verbatim list for JSON-LD)
     |--------------------------------------------------------------------------
-    | Towns named on the public site / JSON-LD areaServed list.
+    | Keep in sync with service_area_text. Names only — must match places
+    | named in that sentence. Do not add neighbourhoods or towns that are
+    | not in the visible copy. Keep one regional entry (Lanark County /
+    | Ottawa region) as named on the page.
     */
     'area_served' => [
         ['@type' => 'City', 'name' => 'Carleton Place'],
-        ['@type' => 'AdministrativeArea', 'name' => 'Beckwith'],
-        ['@type' => 'City', 'name' => 'Ottawa'],
-        ['@type' => 'City', 'name' => 'Kanata'],
-        ['@type' => 'City', 'name' => 'Stittsville'],
-        ['@type' => 'City', 'name' => 'Barrhaven'],
-        ['@type' => 'City', 'name' => 'Nepean'],
-        ['@type' => 'City', 'name' => 'Almonte'],
         ['@type' => 'City', 'name' => 'Perth'],
         ['@type' => 'City', 'name' => 'Smiths Falls'],
+        ['@type' => 'AdministrativeArea', 'name' => 'Lanark County'],
+        ['@type' => 'Place', 'name' => 'Ottawa region'],
         ['@type' => 'City', 'name' => 'Gatineau'],
     ],
 

@@ -13,15 +13,10 @@ class OnPageSeoOct16Test extends IntegrationTestCase
     /** @var list<string> */
     private const JSONLD_AREA_SERVED = [
         'Carleton Place',
-        'Beckwith',
-        'Ottawa',
-        'Kanata',
-        'Stittsville',
-        'Barrhaven',
-        'Nepean',
-        'Almonte',
         'Perth',
         'Smiths Falls',
+        'Lanark County',
+        'Ottawa region',
         'Gatineau',
     ];
 
@@ -107,17 +102,11 @@ class OnPageSeoOct16Test extends IntegrationTestCase
         $this->assertSame(1, substr_count($html, 'Jonas was an excellent professional'));
         $this->assertSame(1, substr_count($html, 'beautiful fence in our backyard'));
 
-        $home = file_get_contents(resource_path('views/site/home.blade.php'));
-        $this->assertIsString($home);
-        $this->assertStringNotContainsString('owl-carousel', $home);
-        $this->assertStringContainsString('snap-carousel', $home);
-        $this->assertStringContainsString('snap-carousel__track', $home);
-
-        $js = file_get_contents(public_path('js/custom-scripts.js'));
-        $this->assertIsString($js);
-        $this->assertStringContainsString('zr_init_snap_carousels', $js);
-        $this->assertStringContainsString('scroll-snap', $js);
-        $this->assertStringContainsString('skipOwl', $js);
+        $this->assertStringNotContainsString('owl-carousel', $html);
+        $this->assertStringNotContainsString('owl-item', $html);
+        $this->assertGreaterThanOrEqual(3, substr_count($html, 'snap-carousel'));
+        $this->assertSame(2, substr_count($html, 'col-md-3 col-sm-6 col-xs-12 snap-carousel__slide'));
+        $this->assertStringNotContainsString('col-xs-10 col-xs-offset-1', $html);
     }
 
     public function test_home_json_ld_parses_with_required_business_fields_and_no_price_range(): void
@@ -161,6 +150,12 @@ class OnPageSeoOct16Test extends IntegrationTestCase
             $business['areaServed'] ?? []
         );
         $this->assertEqualsCanonicalizing(self::JSONLD_AREA_SERVED, $areaNames);
+        $areaText = (string) config('seo.service_area_text');
+        foreach ($areaNames as $name) {
+            $this->assertStringContainsString($name, $areaText);
+        }
+        $this->assertStringNotContainsString('Barrhaven', $script[1]);
+        $this->assertStringNotContainsString('Beckwith', $script[1]);
 
         $this->assertArrayNotHasKey('priceRange', $business);
         $this->assertStringNotContainsString('priceRange', $script[1]);
@@ -190,9 +185,9 @@ class OnPageSeoOct16Test extends IntegrationTestCase
     {
         $plumbing = ProjectCategory::query()->firstOrCreate(
             ['slug' => 'plumbing-fixtures'],
-            ['name' => 'Plumbing Fixtures', 'sort_order' => 90]
+            ['name' => 'Plumbing Fixtures', 'sort_order' => 90, 'hide_from_public_filters' => true]
         );
-        $plumbing->name = 'Plumbing Fixtures';
+        $plumbing->hide_from_public_filters = true;
         $plumbing->save();
 
         $decks = ProjectCategory::query()->firstOrCreate(
@@ -239,7 +234,9 @@ class OnPageSeoOct16Test extends IntegrationTestCase
 
         $this->assertStringContainsString('data-filter="deck"', $home);
         $this->assertStringNotContainsString('data-filter="plumbing-fixtures"', $home);
+        $this->assertTrue($plumbing->hide_from_public_filters);
         $this->assertFalse($plumbing->isPublicFilter());
+        $this->assertFalse($decks->hide_from_public_filters);
         $this->assertTrue($decks->isPublicFilter());
     }
 

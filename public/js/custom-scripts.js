@@ -1806,7 +1806,7 @@ jQuery(function ($) {
 
             var $dotsWrap = $();
             if (dotsOn) {
-                $dotsWrap = $('<div class="owl-dots snap-carousel__dots" role="tablist" aria-label="Slides" />');
+                $dotsWrap = $('<div class="owl-dots snap-carousel__dots" aria-label="Slides" />');
                 $root.append($dotsWrap);
             }
 

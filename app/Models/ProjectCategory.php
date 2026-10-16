@@ -7,21 +7,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ProjectCategory extends Model
 {
-    /** Public homepage filters that should not appear as buttons. */
-    public const HIDDEN_PUBLIC_FILTER_SLUGS = [
-        'plumbing-fixtures',
-        'plumbing_fixtures',
-        'plumbing-fixture',
-    ];
-
     protected $fillable = [
         'name',
         'slug',
         'sort_order',
+        'hide_from_public_filters',
     ];
 
     protected $attributes = [
         'sort_order' => 0,
+        'hide_from_public_filters' => false,
+    ];
+
+    protected $casts = [
+        'hide_from_public_filters' => 'boolean',
     ];
 
     public function projects(): BelongsToMany
@@ -32,13 +31,6 @@ class ProjectCategory extends Model
 
     public function isPublicFilter(): bool
     {
-        $slug = strtolower(str_replace('_', '-', trim((string) $this->slug)));
-        if (in_array($slug, self::HIDDEN_PUBLIC_FILTER_SLUGS, true) || str_contains($slug, 'plumbing')) {
-            return false;
-        }
-
-        $name = strtolower(trim((string) $this->name));
-
-        return $name !== 'plumbing fixtures' && ! str_contains($name, 'plumbing fixture');
+        return ! (bool) $this->hide_from_public_filters;
     }
 }
