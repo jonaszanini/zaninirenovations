@@ -33,4 +33,24 @@ class ProjectCategory extends Model
     {
         return ! (bool) $this->hide_from_public_filters;
     }
+
+    /**
+     * Backfill used by the hide_from_public_filters migration.
+     * Matches known slugs and Plumbing Fixture(s) names, case-insensitive.
+     */
+    public static function backfillHiddenPublicFilters(): int
+    {
+        return static::query()
+            ->where(function ($query) {
+                $query->whereIn('slug', [
+                    'plumbing-fixtures',
+                    'plumbing_fixtures',
+                    'plumbing-fixture',
+                ])->orWhereRaw('LOWER(name) IN (?, ?)', [
+                    'plumbing fixtures',
+                    'plumbing fixture',
+                ]);
+            })
+            ->update(['hide_from_public_filters' => true]);
+    }
 }

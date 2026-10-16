@@ -1,8 +1,8 @@
 <?php
 
+use App\Models\ProjectCategory;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -13,9 +13,7 @@ return new class extends Migration
             $table->boolean('hide_from_public_filters')->default(false)->after('sort_order');
         });
 
-        DB::table('project_categories')
-            ->whereIn('slug', ['plumbing-fixtures', 'plumbing_fixtures', 'plumbing-fixture'])
-            ->update(['hide_from_public_filters' => true]);
+        ProjectCategory::backfillHiddenPublicFilters();
     }
 
     public function down(): void

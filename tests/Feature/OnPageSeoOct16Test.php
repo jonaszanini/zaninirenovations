@@ -240,6 +240,42 @@ class OnPageSeoOct16Test extends IntegrationTestCase
         $this->assertTrue($decks->isPublicFilter());
     }
 
+    public function test_hide_from_public_filters_backfill_matches_plumbing_names_case_insensitively(): void
+    {
+        $mixedCase = ProjectCategory::query()->create([
+            'name' => 'plumbing FIXTURES',
+            'slug' => 'odd-label-not-the-slug',
+            'sort_order' => 91,
+            'hide_from_public_filters' => false,
+        ]);
+        $singular = ProjectCategory::query()->create([
+            'name' => 'Plumbing Fixture',
+            'slug' => 'legacy-fixture-label',
+            'sort_order' => 92,
+            'hide_from_public_filters' => false,
+        ]);
+        $unrelated = ProjectCategory::query()->create([
+            'name' => 'Deck hardware',
+            'slug' => 'deck-hardware',
+            'sort_order' => 5,
+            'hide_from_public_filters' => false,
+        ]);
+
+        $this->assertFalse($mixedCase->hide_from_public_filters);
+        $this->assertFalse($singular->hide_from_public_filters);
+        $this->assertTrue($mixedCase->isPublicFilter());
+        $this->assertTrue($singular->isPublicFilter());
+
+        ProjectCategory::backfillHiddenPublicFilters();
+
+        $this->assertTrue($mixedCase->fresh()->hide_from_public_filters);
+        $this->assertFalse($mixedCase->fresh()->isPublicFilter());
+        $this->assertTrue($singular->fresh()->hide_from_public_filters);
+        $this->assertFalse($singular->fresh()->isPublicFilter());
+        $this->assertFalse($unrelated->fresh()->hide_from_public_filters);
+        $this->assertTrue($unrelated->fresh()->isPublicFilter());
+    }
+
     public function test_warranty_header_phone_uses_space_after_area_code(): void
     {
         $this->assertSame('(647) 834-7570', BusinessContact::normalizePhoneDisplay('(647)-834-7570'));
