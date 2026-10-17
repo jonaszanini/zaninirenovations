@@ -63,6 +63,15 @@ assert.match(hostSrc, /resolveOpenPlan3DRoomId/, 'host must resolve an openPlan3
 assert.match(hostSrc, /OPENPLAN3D_LOAD_ACK/, 'host must wait for LOAD_ACK');
 assert.match(hostSrc, /e\.data\.ok === false/, 'host must treat ACK ok:false as a failed load');
 assert.match(hostSrc, /confirm_zero_area/, 'host must send confirm_zero_area');
+assert.match(hostSrc, /isTrustedEditorMessage/, 'host must check postMessage source and origin');
+assert.doesNotMatch(
+  hostSrc,
+  /contentWindow\.postMessage\(payload,\s*'\*'\)/,
+  'host must not post to the editor with a wildcard origin'
+);
+assert.match(hostSrc, /AbortController/, 'host save request must use AbortController');
+assert.match(hostSrc, /Refusing postMessage: invalid or missing target origin/, 'host must refuse post without valid origin');
+
 assert.doesNotMatch(
   hostSrc,
   /currentRoom\.id \|\| currentRoom\.name/,
@@ -189,6 +198,34 @@ assert.strictEqual(
 assert.strictEqual(host.plansMatch(loaded, loaded), true);
 assert.strictEqual(host.plansMatch(loaded, blank), false);
 
+const fakeIframe = { contentWindow: { id: 'editor' }, src: 'https://zanini.test/vendor/openplan3d/editor/index.html' };
+const fakeWin = { location: { origin: 'https://zanini.test', href: 'https://zanini.test/admin' } };
+assert.strictEqual(
+  host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: 'https://zanini.test' }, fakeIframe, fakeWin),
+  true,
+  'same-origin iframe messages are accepted'
+);
+assert.strictEqual(
+  host.isTrustedEditorMessage({ source: {}, origin: 'https://zanini.test' }, fakeIframe, fakeWin),
+  false,
+  'messages not from the editor iframe are rejected'
+);
+assert.strictEqual(
+  host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: 'https://evil.test' }, fakeIframe, fakeWin),
+  false,
+  'cross-origin messages are rejected'
+);
+assert.strictEqual(
+  host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: 'null' }, fakeIframe, fakeWin),
+  false,
+  'null origin messages are rejected'
+);
+assert.strictEqual(
+  host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: '' }, fakeIframe, fakeWin),
+  false,
+  'empty origin messages are rejected'
+);
+
 function geometryPlan() {
   return {
     unit: 'cm',
@@ -246,6 +283,19 @@ assert.strictEqual(host.plansMatch(geo, addedFurn), false, 'adding furniture mus
 const addedLabel = clonePlan(geo);
 addedLabel.floor.textAnnotations.push({ id: 't2', text: 'Bath', position: { x: 90, y: 90 } });
 assert.strictEqual(host.plansMatch(geo, addedLabel), false, 'adding a label must change the fingerprint');
+
+const swungDoor = clonePlan(geo);
+swungDoor.floor.doors[0].swing = 'left';
+assert.strictEqual(host.plansMatch(geo, swungDoor), false, 'door swing must change the fingerprint');
+
+const stairsPlan = clonePlan(geo);
+stairsPlan.floor.stairs = [{ id: 's1', position: { x: 12, y: 12 }, width: 90, run: 250, treads: 13 }];
+assert.strictEqual(host.plansMatch(geo, stairsPlan), false, 'stairs must change the fingerprint');
+
+const typedFurn = clonePlan(geo);
+typedFurn.floor.furniture[0].type = 'sofa';
+typedFurn.floor.furniture[0].material = 'oak';
+assert.strictEqual(host.plansMatch(geo, typedFurn), false, 'furniture type and material must change the fingerprint');
 
 const coordNoise = clonePlan(geo);
 coordNoise.floor.walls[0].start.x += 1e-8;

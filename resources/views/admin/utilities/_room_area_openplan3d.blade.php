@@ -184,6 +184,15 @@
   {{-- Feedback / Toast Message Box --}}
   <div id="openplan3d-feedback" class="openplan3d-feedback" hidden role="alert" aria-live="polite"></div>
 
+  <div id="openplan3d-noscale-warning" class="openplan3d-noscale-warning" hidden role="status">
+    <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+    <span>This room has no scale. Measurements may be wrong until scale is set.</span>
+    @include('admin.partials.info_tip', [
+      'tipLabel' => 'Room scale',
+      'tipText' => 'Scale converts the drawing to real-world feet. openPlan3D plans that include a unit (cm, ft, in) already have scale. Set scale before trusting measurements or quotes.',
+    ])
+  </div>
+
   {{-- Iframe Container --}}
   <main class="util-ra-openplan3d-frame-container" id="openplan3d-container">
     <iframe
@@ -464,6 +473,22 @@
   border-color: #fecaca;
 }
 
+.openplan3d-noscale-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #92400e;
+  background: #fffbeb;
+  border-bottom: 1px solid #fcd34d;
+}
+
+.openplan3d-noscale-warning[hidden] {
+  display: none !important;
+}
+
 /* Frame container */
 .util-ra-openplan3d-frame-container {
   flex: 1;
@@ -524,6 +549,12 @@
 @media (max-width: 390px) {
   .openplan3d-control-label {
     display: none;
+  }
+
+  .openplan3d-noscale-warning {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
   }
 }
 
@@ -731,5 +762,19 @@ body.admin-dark .openplan3d-feedback--error,
   background: rgba(248, 113, 113, 0.14);
   color: #f87171;
   border-color: rgba(248, 113, 113, 0.3);
+}
+
+html.admin-dark .openplan3d-noscale-warning,
+body.admin-dark .openplan3d-noscale-warning,
+.admin-dark .openplan3d-noscale-warning {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border-bottom-color: rgba(245, 158, 11, 0.35);
+}
+
+html.admin-dark .openplan3d-noscale-warning[hidden],
+body.admin-dark .openplan3d-noscale-warning[hidden],
+.admin-dark .openplan3d-noscale-warning[hidden] {
+  display: none !important;
 }
 </style>

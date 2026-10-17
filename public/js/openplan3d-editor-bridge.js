@@ -330,7 +330,17 @@
     options = options || {};
     var postToParent = options.postToParent || function (msg) {
       if (typeof window !== 'undefined' && window.parent) {
-        window.parent.postMessage(msg, '*');
+        var target = null;
+        try {
+          if (window.location && window.location.origin && window.location.origin !== 'null') {
+            target = window.location.origin;
+          }
+        } catch (e) {}
+        if (!target || target === '*' || target === 'null') {
+          console.error('[openPlan3D-bridge] Refusing postMessage: invalid or missing target origin', target);
+          return;
+        }
+        window.parent.postMessage(msg, target);
       }
     };
     var apiRef = null;
@@ -468,7 +478,17 @@
       return inspected;
     }
 
+    function isTrustedParentMessage(event) {
+      if (typeof window === 'undefined' || !window.parent) return true;
+      if (!event) return false;
+      if (event.source !== window.parent) return false;
+      if (!event.origin || event.origin === 'null') return false;
+      if (!window.location || !window.location.origin || window.location.origin === 'null') return false;
+      return event.origin === window.location.origin;
+    }
+
     function handleParentMessage(event) {
+      if (!isTrustedParentMessage(event)) return false;
       var data = event && event.data;
       if (!data || typeof data !== 'object') return false;
       if (data.type === 'OPENPLAN3D_LOAD_PLAN') {

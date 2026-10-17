@@ -10,6 +10,7 @@ const FIXTURE = path.join(__dirname, 'fixtures/openplan3d-room-area.html');
 const host = require('../../public/js/openplan3d-host.js');
 
 let lastSavedBody = null;
+let saveCount = 0;
 let saveDelayMs = 0;
 let failNextSave = false;
 
@@ -24,6 +25,7 @@ function startServer() {
         req.on('data', (c) => chunks.push(c));
         req.on('end', () => {
           lastSavedBody = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+          saveCount += 1;
           const delay = saveDelayMs;
           const fail = failNextSave;
           saveDelayMs = 0;
@@ -102,6 +104,15 @@ async function run() {
     await page.setViewport({ width: 1280, height: 900 });
     await page.goto(`http://127.0.0.1:${port}/openplan3d-room-area.html`, { waitUntil: 'domcontentloaded' });
 
+    async function postFromEditor(data) {
+      const handle = await page.$('#openplan3d-iframe');
+      const frame = handle && await handle.contentFrame();
+      if (!frame) throw new Error('openPlan3D iframe has no content frame');
+      await frame.evaluate((msg) => {
+        parent.postMessage(msg, '*');
+      }, data);
+    }
+
     // Assert toolbar and elements loaded
     const title = await page.$eval('.util-ra-openplan3d-title', (el) => el.textContent.trim());
     assert.strictEqual(title, 'Room Area', 'Page title should be Room Area');
@@ -130,9 +141,7 @@ async function run() {
       name: 'Untitled Project',
       floors: [{ id: 'f1', walls: [], rooms: [] }],
     };
-    await page.evaluate((plan) => {
-      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
-    }, blankBootPlan);
+    await postFromEditor({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: blankBootPlan });
     await new Promise((r) => setTimeout(r, 80));
 
     const areaBeforeAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
@@ -140,9 +149,7 @@ async function run() {
     const dirtyBeforeAck = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
     assert.strictEqual(dirtyBeforeAck, false, 'Boot store writes must not mark the room Unsaved');
 
-    await page.evaluate((plan) => {
-      window.postMessage({ type: 'OPENPLAN3D_LOAD_ACK', ok: false, plan: plan }, '*');
-    }, blankBootPlan);
+    await postFromEditor({ type: 'OPENPLAN3D_LOAD_ACK', ok: false, plan: blankBootPlan });
     await new Promise((r) => setTimeout(r, 50));
 
     const areaAfterFailedAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
@@ -165,9 +172,7 @@ async function run() {
       'ACK ok:false must keep the saved room plan'
     );
 
-    await page.evaluate(() => {
-      window.postMessage({ type: 'OPENPLAN3D_LOAD_ACK', ok: true }, '*');
-    });
+    await postFromEditor({ type: 'OPENPLAN3D_LOAD_ACK', ok: true });
     await new Promise((r) => setTimeout(r, 50));
 
     const areaAfterAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
@@ -176,9 +181,7 @@ async function run() {
     assert.strictEqual(dirtyAfterAck, false, 'LOAD_ACK must leave the Unsaved badge hidden');
 
     const loadedSamePlan = await page.evaluate(() => window.OpenPlan3DHost.getState().currentPlan);
-    await page.evaluate((plan) => {
-      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
-    }, loadedSamePlan);
+    await postFromEditor({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: loadedSamePlan });
     await new Promise((r) => setTimeout(r, 50));
     const dirtySamePlan = await page.$eval('#openplan3d-dirty-badge', (el) => ({
       hidden: el.hidden,
@@ -190,9 +193,7 @@ async function run() {
     assert.ok(areaDelta <= 0.01, 'Opened metrics must match stored area_sqft within 0.01');
 
     async function postPlan(plan) {
-      await page.evaluate((p) => {
-        window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: p }, '*');
-      }, plan);
+      await postFromEditor({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan });
       await new Promise((r) => setTimeout(r, 50));
     }
 
@@ -223,7 +224,7 @@ async function run() {
 
     await postPlan(workPlan);
     lastSavedBody = null;
-    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
     await new Promise((r) => setTimeout(r, 200));
     assert.ok(lastSavedBody, 'Saving the working plan must post');
     assert.strictEqual(await unsavedVisible(), false, 'Unsaved clears after save');
@@ -275,7 +276,7 @@ async function run() {
 
     await postPlan(movedDoor);
     lastSavedBody = null;
-    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
     await new Promise((r) => setTimeout(r, 200));
     assert.ok(lastSavedBody, 'Save after door move must post');
     assert.strictEqual(await unsavedVisible(), false, 'Unsaved clears after saving the door move');
@@ -288,7 +289,7 @@ async function run() {
 
     saveDelayMs = 450;
     lastSavedBody = null;
-    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
     await new Promise((r) => setTimeout(r, 40));
     await postPlan(addedLabel);
     await new Promise((r) => setTimeout(r, 700));
@@ -309,7 +310,7 @@ async function run() {
     const baselineBeforeFail = await page.evaluate(() => window.OpenPlan3DHost.getState().loadedPlanBaseline);
     failNextSave = true;
     lastSavedBody = null;
-    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
     await new Promise((r) => setTimeout(r, 250));
     assert.ok(lastSavedBody, 'failed save still posted');
     assert.strictEqual(await unsavedVisible(), true, 'failed save must leave Unsaved visible');
@@ -349,9 +350,7 @@ async function run() {
       },
     };
 
-    await page.evaluate((plan) => {
-      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
-    }, updatedPlan);
+    await postFromEditor({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: updatedPlan });
 
     await new Promise((r) => setTimeout(r, 100));
 
@@ -370,9 +369,7 @@ async function run() {
 
     // 3. Test Ctrl+S save shortcut forwarded from editor iframe
     lastSavedBody = null;
-    await page.evaluate(() => {
-      window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*');
-    });
+    await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
 
     await new Promise((r) => setTimeout(r, 200));
 
@@ -441,14 +438,12 @@ async function run() {
         ],
       },
     };
-    await page.evaluate((plan) => {
-      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
-    }, twoRoomPlan);
+    await postFromEditor({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: twoRoomPlan });
     await new Promise((r) => setTimeout(r, 80));
     const twoRoomStrip = await page.$eval('#metric-area', (el) => el.textContent.trim());
     assert.strictEqual(twoRoomStrip, '200.00', 'Metrics strip must use whole-plan area, not database room id 10');
     lastSavedBody = null;
-    await page.evaluate(() => window.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*'));
+    await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
     await new Promise((r) => setTimeout(r, 200));
     assert.ok(lastSavedBody, 'Two-room save should post');
     assert.strictEqual(twoRoomStrip, '200.00');
@@ -456,9 +451,7 @@ async function run() {
 
     // 6. Save Plan never sends 0 metrics for a >0 room without confirm
     const zeroPlan = { format: 'openplan3d', unit: 'cm', floor: { walls: [], rooms: [] } };
-    await page.evaluate((plan) => {
-      window.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: plan }, '*');
-    }, zeroPlan);
+    await postFromEditor({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: zeroPlan });
     await new Promise((r) => setTimeout(r, 50));
     lastSavedBody = null;
     await page.evaluate(() => {
@@ -479,6 +472,93 @@ async function run() {
     await new Promise((r) => setTimeout(r, 200));
     assert.ok(lastSavedBody, 'Save Plan may send 0-area after explicit confirm');
     assert.strictEqual(lastSavedBody.confirm_zero_area, true, 'Confirmed 0-area save must send confirm_zero_area');
+
+    const areaBeforeSpoof = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    await page.evaluate(() => {
+      window.postMessage({
+        type: 'OPENPLAN3D_PLAN_CHANGED',
+        plan: { unit: 'cm', floor: { walls: [], rooms: [{ id: 'spoof', polygon: [{ x: 0, y: 0 }, { x: 1000, y: 0 }, { x: 1000, y: 1000 }, { x: 0, y: 1000 }] }] } },
+      }, '*');
+    });
+    await new Promise((r) => setTimeout(r, 80));
+    const areaAfterSpoof = await page.$eval('#metric-area', (el) => el.textContent.trim());
+    assert.strictEqual(areaAfterSpoof, areaBeforeSpoof, 'messages not from the editor iframe must be ignored');
+
+    await postPlan(workPlan);
+    lastSavedBody = null;
+    await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(lastSavedBody, 'reset baseline to workPlan before L2 fingerprint checks');
+    assert.strictEqual(await unsavedVisible(), false, 'saved workPlan must clear Unsaved');
+
+    const swingPlan = clone(workPlan);
+    (swingPlan.floor || swingPlan.floors[0]).doors[0].swing = 'left';
+    await postPlan(swingPlan);
+    assert.strictEqual(await unsavedVisible(), true, 'changing door swing must mark Unsaved');
+
+    const stairPlan = clone(workPlan);
+    (stairPlan.floor || stairPlan.floors[0]).stairs = [{ id: 's1', position: { x: 10, y: 10 }, width: 90, run: 250, treads: 12 }];
+    await postPlan(workPlan);
+    await postPlan(stairPlan);
+    assert.strictEqual(await unsavedVisible(), true, 'adding stairs must mark Unsaved');
+
+    const typedFurn = clone(workPlan);
+    (typedFurn.floor || typedFurn.floors[0]).furniture[0].type = 'sofa';
+    (typedFurn.floor || typedFurn.floors[0]).furniture[0].material = 'oak';
+    await postPlan(workPlan);
+    await postPlan(typedFurn);
+    assert.strictEqual(await unsavedVisible(), true, 'changing furniture type or material must mark Unsaved');
+
+    const noScalePlan = {
+      floor: {
+        walls: [
+          { id: 'w1', start: { x: 0, y: 0 }, end: { x: 100, y: 0 } },
+          { id: 'w2', start: { x: 100, y: 0 }, end: { x: 100, y: 100 } },
+          { id: 'w3', start: { x: 100, y: 100 }, end: { x: 0, y: 100 } },
+          { id: 'w4', start: { x: 0, y: 100 }, end: { x: 0, y: 0 } },
+        ],
+        rooms: [{ id: 'r1', polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }] }],
+      },
+    };
+    await postPlan(noScalePlan);
+    const noScale = await page.$eval('#openplan3d-noscale-warning', (el) => !el.hidden && getComputedStyle(el).display !== 'none');
+    assert.strictEqual(noScale, true, 'a room without scale or units must show the no-scale warning');
+
+    saveDelayMs = 400;
+    saveCount = 0;
+    lastSavedBody = null;
+    await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
+    await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
+    await page.click('#openplan3d-save-btn');
+    await new Promise((r) => setTimeout(r, 700));
+    assert.strictEqual(saveCount, 1, 'in-flight save lock must drop duplicate Save clicks');
+    const busyDuring = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
+    assert.strictEqual(busyDuring, false, 'isSaving clears after the single in-flight request');
+
+    // On error/timeout: always clear isSaving, re-enable Save, keep Unsaved state, and show visible error
+    const modifiedPlan = clone(noScalePlan);
+    modifiedPlan.floor.rooms[0].polygon[0].x = 10;
+    await postPlan(modifiedPlan);
+    assert.strictEqual(await unsavedVisible(), true, 'modified plan is marked unsaved before save');
+
+    failNextSave = true;
+    await page.click('#openplan3d-save-btn');
+    await page.waitForFunction(
+      () => {
+        const state = window.OpenPlan3DHost && window.OpenPlan3DHost.getState();
+        const fb = document.getElementById('openplan3d-feedback');
+        return state && !state.isSaving && fb && !fb.hidden && fb.textContent.length > 0;
+      },
+      { timeout: 5000 }
+    );
+    const isSavingAfterFail = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
+    assert.strictEqual(isSavingAfterFail, false, 'isSaving clears after failed save');
+    const saveDisabledAfterFail = await page.$eval('#openplan3d-save-btn', (el) => el.disabled);
+    assert.strictEqual(saveDisabledAfterFail, false, 'save button re-enabled after failure');
+    const unsavedAfterFail = await unsavedVisible();
+    assert.strictEqual(unsavedAfterFail, true, 'unsaved state kept after failure');
+    const feedbackVisible = await page.$eval('#openplan3d-feedback', (el) => !el.hidden && el.textContent.length > 0);
+    assert.strictEqual(feedbackVisible, true, 'visible error message shown after failure');
 
     console.log('All openPlan3D Puppeteer browser tests PASSED successfully!');
   } finally {
