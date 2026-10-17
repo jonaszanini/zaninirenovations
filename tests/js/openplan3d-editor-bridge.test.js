@@ -384,4 +384,31 @@ assert.ok(metricsAll && metricsAll.area_sqft === 200, 'whole-plan area is 200 sq
 assert.ok(metricsFirst && metricsFirst.area_sqft === 100, 'selected openPlan3D room area is 100');
 assert.notStrictEqual(metricsAll.area_sqft, metricsFirst.area_sqft);
 
+// Verify hideNativeSaveUi targets div.bg-gradient-to-r.from-slate-800 first
+const queryLog = [];
+const mockScope = {
+  matches: function (sel) {
+    queryLog.push({ type: 'matches', sel: sel });
+    return false;
+  },
+  querySelector: function (sel) {
+    queryLog.push({ type: 'querySelector', sel: sel });
+    return null;
+  },
+  querySelectorAll: function () { return []; }
+};
+bridge.hideNativeSaveUi(mockScope);
+assert.strictEqual(queryLog[0].sel, 'div.bg-gradient-to-r.from-slate-800', 'hideNativeSaveUi targets div.bg-gradient-to-r.from-slate-800 first');
+
+// Verify public/vendor/openplan3d/editor/index.html has CSS fallback restored
+const indexHtml = fs.readFileSync(INDEX, 'utf8');
+assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > button.bg-white.text-slate-800.font-semibold'), 'CSS fallback for Save button is restored');
+assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1'), 'CSS fallback for Projects link is restored');
+assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > .relative:has(> button svg path[d^="M21 15v4"])'), 'CSS fallback for Export dropdown is restored');
+
+// Verify openplan3d-host.js does not unlock isSaving in jsonPost
+const hostJs = fs.readFileSync(HOST_JS, 'utf8');
+const jsonPostSrc = hostJs.slice(hostJs.indexOf('function jsonPost('), hostJs.indexOf('function getFinishSettings('));
+assert.ok(!jsonPostSrc.includes('isSaving'), 'jsonPost must not release isSaving');
+
 console.log('All openPlan3D editor-bridge unit tests PASSED!');

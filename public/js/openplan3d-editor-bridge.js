@@ -294,10 +294,19 @@
     if (!root || typeof root.querySelectorAll !== 'function') return 0;
     var scope = root.body || root.documentElement || root;
     var header = null;
-    if (scope.matches && scope.matches('.vendor-top-bar, [data-vendor-header], header, nav, [class*="top-bar"], [class*="topbar"], div.bg-gradient-to-r.from-slate-800')) {
+    var primarySelector = 'div.bg-gradient-to-r.from-slate-800';
+    if (scope.matches && scope.matches(primarySelector)) {
       header = scope;
     } else if (typeof scope.querySelector === 'function') {
-      header = scope.querySelector('.vendor-top-bar, [data-vendor-header], header, nav, [class*="top-bar"], [class*="topbar"], div.bg-gradient-to-r.from-slate-800');
+      header = scope.querySelector(primarySelector);
+    }
+    if (!header) {
+      var fallbackSelector = '.vendor-top-bar, [data-vendor-header], header, nav, [class*="top-bar"], [class*="topbar"]';
+      if (scope.matches && scope.matches(fallbackSelector)) {
+        header = scope;
+      } else if (typeof scope.querySelector === 'function') {
+        header = scope.querySelector(fallbackSelector);
+      }
     }
     if (!header) return 0;
     var nodes = header.querySelectorAll('a, button, span, [data-save-label], [aria-label]');

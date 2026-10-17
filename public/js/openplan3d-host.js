@@ -617,15 +617,6 @@
         return res.json().then(function (data) {
           return { status: res.status, ok: res.ok, data: data };
         });
-      }).catch(function (err) {
-        if (isSaving) {
-          isSaving = false;
-          if (saveBtn) {
-            saveBtn.removeAttribute('aria-busy');
-            saveBtn.disabled = !currentPlan || !loadAcked;
-          }
-        }
-        throw err;
       }).finally(function () {
         if (timeoutId) {
           var cancelTimer = (win && typeof win.clearTimeout === 'function') ? win.clearTimeout : clearTimeout;
@@ -1498,6 +1489,7 @@
       askPrompt: askPrompt,
       showModal: showModal,
       finishModal: finishModal,
+      jsonPost: jsonPost,
       getState: function () {
         return {
           isDirty: isDirty,

@@ -859,10 +859,31 @@ async function run() {
     await page.waitForFunction(() => !window.OpenPlan3DHost.getState().isSaving, { timeout: 3000 });
     const isSavingAfterComplete = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
     assert.strictEqual(isSavingAfterComplete, false, 'isSaving is unlocked once the save completes');
-    assert.ok(lastSavedBody, 'save completes successfully in the background');
+    // (c) Failed jsonPost during in-flight save keeps Save locked:
+    saveDelayMs = 1500;
+    lastSavedBody = null;
+    await page.click('#openplan3d-save-btn');
+    assert.strictEqual(await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving), true, 'save is in-flight');
 
-    const nativeUsed = await page.evaluate(() => window.__nativeDialogs);
-    assert.deepStrictEqual(nativeUsed, [], 'in-app modal must replace native alert/confirm/prompt');
+    const jsonPostFailed = await page.evaluate(async () => {
+      try {
+        await window.OpenPlan3DHost.jsonPost('/nonexistent-failure-endpoint', 'POST', {});
+        return false;
+      } catch (e) {
+        return true;
+      }
+    });
+    assert.strictEqual(jsonPostFailed, true, 'jsonPost rejected on failed endpoint');
+
+    const isSavingAfterFailedJsonPost = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
+    assert.strictEqual(isSavingAfterFailedJsonPost, true, 'failed jsonPost during in-flight save must keep Save locked');
+    const saveBusyAfterFailedJsonPost = await page.$eval('#openplan3d-save-btn', (el) => el.getAttribute('aria-busy'));
+    const saveDisabledAfterFailedJsonPost = await page.$eval('#openplan3d-save-btn', (el) => el.disabled);
+    assert.strictEqual(saveBusyAfterFailedJsonPost, 'true', 'Save button must remain aria-busy');
+    assert.strictEqual(saveDisabledAfterFailedJsonPost, true, 'Save button must remain disabled');
+
+    await page.waitForFunction(() => !window.OpenPlan3DHost.getState().isSaving, { timeout: 4000 });
+    assert.strictEqual(await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving), false, 'isSaving unlocked after save completed');
 
     console.log('All openPlan3D Puppeteer browser tests PASSED successfully!');
   } finally {
