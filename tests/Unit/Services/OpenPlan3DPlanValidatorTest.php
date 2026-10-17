@@ -301,4 +301,71 @@ class OpenPlan3DPlanValidatorTest extends TestCase
         $this->assertFalse($result2['valid']);
         $this->assertSame('Floor rooms must be an array.', $result2['message']);
     }
+
+    public function test_whitelists_allowed_units_and_rejects_anything_else(): void
+    {
+        // Test each whitelisted unit with appropriate wall dimensions
+        $unitsWithDims = [
+            'cm' => ['w' => 300.0, 'l' => 400.0, 'thick' => 10.0, 'h' => 240.0],
+            'm' => ['w' => 3.0, 'l' => 4.0, 'thick' => 0.1, 'h' => 2.4],
+            'mm' => ['w' => 3000.0, 'l' => 4000.0, 'thick' => 100.0, 'h' => 2400.0],
+            'in' => ['w' => 120.0, 'l' => 150.0, 'thick' => 4.0, 'h' => 96.0],
+            'ft' => ['w' => 10.0, 'l' => 12.0, 'thick' => 0.33, 'h' => 8.0],
+        ];
+
+        foreach ($unitsWithDims as $unit => $dims) {
+            $plan = $this->rectangle($dims['w'], $dims['l']);
+            $plan['unit'] = $unit;
+            foreach ($plan['floor']['walls'] as &$w) {
+                $w['thickness'] = $dims['thick'];
+                $w['height'] = $dims['h'];
+            }
+            unset($w);
+
+            $res = $this->validator->validate($plan);
+            $this->assertTrue($res['valid'], "Unit '{$unit}' must be accepted.");
+        }
+
+        foreach (['yards', 'km', 'pixels', 'banana', 'yd'] as $invalidUnit) {
+            $plan = $this->rectangle();
+            $plan['unit'] = $invalidUnit;
+            $res = $this->validator->validate($plan);
+            $this->assertFalse($res['valid'], "Unit '{$invalidUnit}' must be rejected.");
+            $this->assertSame('Invalid plan unit. Allowed units are cm, m, mm, in, ft.', $res['message']);
+        }
+
+        // Floor-level invalid unit
+        $planFloorInvalid = $this->rectangle();
+        unset($planFloorInvalid['unit']);
+        $planFloorInvalid['floor']['unit'] = 'lightyears';
+        $resFloor = $this->validator->validate($planFloorInvalid);
+        $this->assertFalse($resFloor['valid']);
+        $this->assertSame('Invalid plan unit. Allowed units are cm, m, mm, in, ft.', $resFloor['message']);
+    }
+
+    public function test_converts_item_sizes_with_mm_unit(): void
+    {
+        $planMm = $this->rectangle(3000.0, 4000.0);
+        $planMm['unit'] = 'mm';
+        foreach ($planMm['floor']['walls'] as &$w) {
+            $w['thickness'] = 100.0;
+            $w['height'] = 2400.0;
+        }
+        unset($w);
+
+        // 90,000 mm = 9,000 cm <= 10,000 cm limit -> valid
+        $planMm['floor']['furniture'] = [
+            ['id' => 'item-mm-ok', 'name' => 'MM Desk', 'width' => 90000.0, 'depth' => 4000.0],
+        ];
+        $resOk = $this->validator->validate($planMm);
+        $this->assertTrue($resOk['valid']);
+
+        // 110,000 mm = 11,000 cm > 10,000 cm limit -> invalid
+        $planMm['floor']['furniture'] = [
+            ['id' => 'item-mm-too-big', 'name' => 'Giant MM Desk', 'width' => 110000.0, 'depth' => 4000.0],
+        ];
+        $resTooBig = $this->validator->validate($planMm);
+        $this->assertFalse($resTooBig['valid']);
+        $this->assertStringContainsString('width is impossibly large', (string) $resTooBig['message']);
+    }
 }

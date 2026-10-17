@@ -278,6 +278,9 @@ class RoomAreaController extends Controller
         $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
         $plan = $data['plan'] ?? null;
         if (is_array($plan)) {
+            if (! $bridge->isPlan($plan)) {
+                return response()->json(['ok' => false, 'message' => 'The provided plan data is not a valid OpenPlan3D model.'], 422);
+            }
             $planCheck = app(\App\Services\OpenPlan3DPlanValidator::class)->validate($plan);
             if (! $planCheck['valid']) {
                 return response()->json(['ok' => false, 'message' => $planCheck['message']], 422);
@@ -403,6 +406,9 @@ class RoomAreaController extends Controller
         $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
         $plan = $data['plan'] ?? null;
         if (is_array($plan)) {
+            if (! $bridge->isPlan($plan)) {
+                return response()->json(['ok' => false, 'message' => 'The provided plan data is not a valid OpenPlan3D model.'], 422);
+            }
             $existingPlan = is_array($room_area_room->vertices) ? $room_area_room->vertices : null;
             $planCheck = app(\App\Services\OpenPlan3DPlanValidator::class)->validate($plan, $existingPlan);
             if (! $planCheck['valid']) {
