@@ -99,6 +99,7 @@ class OpenPlan3DMeasurementBridge
         $unit = strtolower((string) ($options['unit'] ?? $plan['units'] ?? $floor['units'] ?? 'cm'));
         $cmPerUnit = match ($unit) {
             'm', 'meter', 'meters' => 100.0,
+            'mm', 'millimeter', 'millimeters' => 0.1,
             'in', 'inch', 'inches' => self::CM_PER_INCH,
             'ft', 'feet', 'foot' => self::CM_PER_FOOT,
             default => 1.0, // cm

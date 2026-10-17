@@ -28,6 +28,24 @@ class OpenPlan3DPlanValidator
 
     public const MAX_PAYLOAD_BYTES = 2097152; // 2 MB
 
+    public const ALLOWED_UNITS = [
+        'cm' => 1.0,
+        'centimeter' => 1.0,
+        'centimeters' => 1.0,
+        'm' => 100.0,
+        'meter' => 100.0,
+        'meters' => 100.0,
+        'mm' => 0.1,
+        'millimeter' => 0.1,
+        'millimeters' => 0.1,
+        'in' => OpenPlan3DMeasurementBridge::CM_PER_INCH,
+        'inch' => OpenPlan3DMeasurementBridge::CM_PER_INCH,
+        'inches' => OpenPlan3DMeasurementBridge::CM_PER_INCH,
+        'ft' => OpenPlan3DMeasurementBridge::CM_PER_FOOT,
+        'feet' => OpenPlan3DMeasurementBridge::CM_PER_FOOT,
+        'foot' => OpenPlan3DMeasurementBridge::CM_PER_FOOT,
+    ];
+
     public function __construct(
         private ?PolygonAreaService $polygonArea = null,
     ) {
@@ -46,7 +64,19 @@ class OpenPlan3DPlanValidator
             return ['valid' => false, 'message' => 'Floor plan data exceeds maximum allowed size.'];
         }
 
+        $planUnitRaw = $plan['unit'] ?? $plan['units'] ?? null;
+        if ($planUnitRaw !== null && $this->resolveUnitFactor($planUnitRaw) === null) {
+            return ['valid' => false, 'message' => 'Invalid plan unit. Allowed units are cm, m, mm, in, ft.'];
+        }
+
         $floors = $this->floors($plan);
+        foreach ($floors as $floor) {
+            $floorUnitRaw = $floor['unit'] ?? $floor['units'] ?? null;
+            if ($floorUnitRaw !== null && $this->resolveUnitFactor($floorUnitRaw) === null) {
+                return ['valid' => false, 'message' => 'Invalid plan unit. Allowed units are cm, m, mm, in, ft.'];
+            }
+        }
+
         $cmPerUnit = $this->cmPerUnit($plan, $floors);
 
         $warning = null;
@@ -97,23 +127,39 @@ class OpenPlan3DPlanValidator
         return $floors;
     }
 
+    public function resolveUnitFactor(mixed $unit): ?float
+    {
+        if ($unit === null || $unit === '') {
+            return 1.0;
+        }
+        if (! is_string($unit)) {
+            return null;
+        }
+        $normalized = strtolower(trim($unit));
+
+        return self::ALLOWED_UNITS[$normalized] ?? null;
+    }
+
     /**
      * @param  array<string, mixed>  $plan
      * @param  list<array<string, mixed>>  $floors
      */
     private function cmPerUnit(array $plan, array $floors): float
     {
-        $unit = strtolower((string) ($plan['unit'] ?? $plan['units'] ?? ''));
-        if ($unit === '' && $floors !== []) {
-            $unit = strtolower((string) ($floors[0]['unit'] ?? $floors[0]['units'] ?? ''));
+        $planUnitRaw = $plan['unit'] ?? $plan['units'] ?? null;
+        $factor = $this->resolveUnitFactor($planUnitRaw);
+        if ($factor !== null && $planUnitRaw !== null && $planUnitRaw !== '') {
+            return $factor;
+        }
+        if ($floors !== []) {
+            $floorUnitRaw = $floors[0]['unit'] ?? $floors[0]['units'] ?? null;
+            $floorFactor = $this->resolveUnitFactor($floorUnitRaw);
+            if ($floorFactor !== null && $floorUnitRaw !== null && $floorUnitRaw !== '') {
+                return $floorFactor;
+            }
         }
 
-        return match ($unit) {
-            'm', 'meter', 'meters' => 100.0,
-            'in', 'inch', 'inches' => OpenPlan3DMeasurementBridge::CM_PER_INCH,
-            'ft', 'feet', 'foot' => OpenPlan3DMeasurementBridge::CM_PER_FOOT,
-            default => 1.0,
-        };
+        return 1.0;
     }
 
     /**

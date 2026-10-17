@@ -408,16 +408,71 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Huge Room']);
     }
 
-    public function test_rejects_submitted_plan_even_when_bridge_is_plan_is_false(): void
+    public function test_rejects_non_plan_arrays_in_store_and_update_via_bridge_is_plan(): void
     {
-        $malformed = ['walls' => 'not-an-array'];
-        $response = $this->actingAs($this->user)->postJson(
+        $nonPlan = ['random' => 'data', 'walls' => 'not-an-array'];
+
+        // Store
+        $storeResponse = $this->actingAs($this->user)->postJson(
             route('admin.utilities.room-area.rooms.store', $this->project),
-            ['name' => 'Malformed Plan Room', 'plan' => $malformed]
+            ['name' => 'Non Plan Room', 'plan' => $nonPlan]
         );
-        $response->assertStatus(422)->assertJsonPath('ok', false);
-        $this->assertStringContainsString('Floor walls must be an array.', $response->getContent());
-        $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Malformed Plan Room']);
+        $storeResponse->assertStatus(422)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('message', 'The provided plan data is not a valid OpenPlan3D model.');
+        $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Non Plan Room']);
+
+        // Update
+        $existingRoom = $this->storeSampleRoom(150.0);
+        $updateResponse = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $existingRoom),
+            ['name' => 'Updated Room', 'plan' => $nonPlan]
+        );
+        $updateResponse->assertStatus(422)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('message', 'The provided plan data is not a valid OpenPlan3D model.');
+    }
+
+    public function test_rejects_real_plan_with_unsupported_unit_and_accepts_whitelisted_units(): void
+    {
+        // Unsupported unit on store -> 422 from validator
+        $invalidUnitPlan = $this->sampleOpenPlan(10.0, 12.0);
+        $invalidUnitPlan['unit'] = 'yards';
+
+        $invalidResponse = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            ['name' => 'Yards Room', 'plan' => $invalidUnitPlan]
+        );
+        $invalidResponse->assertStatus(422)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('message', 'Invalid plan unit. Allowed units are cm, m, mm, in, ft.');
+        $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Yards Room']);
+
+        // Whitelisted unit 'mm' on store -> succeeds
+        $mmPlan = $this->sampleOpenPlan(10.0, 12.0);
+        $mmPlan['unit'] = 'mm';
+        // Convert cm to mm (* 10)
+        foreach ($mmPlan['floor']['walls'] as &$w) {
+            $w['start']['x'] *= 10;
+            $w['start']['y'] *= 10;
+            $w['end']['x'] *= 10;
+            $w['end']['y'] *= 10;
+            $w['height'] *= 10;
+            $w['thickness'] *= 10;
+        }
+        unset($w);
+        foreach ($mmPlan['floor']['rooms'][0]['polygon'] as &$pt) {
+            $pt['x'] *= 10;
+            $pt['y'] *= 10;
+        }
+        unset($pt);
+
+        $validResponse = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            ['name' => 'MM Room', 'plan' => $mmPlan]
+        );
+        $validResponse->assertStatus(200)->assertJsonPath('ok', true);
+        $this->assertDatabaseHas('room_area_rooms', ['name' => 'MM Room']);
     }
 
     private function storeSampleRoom(float $areaSqft): RoomAreaRoom
