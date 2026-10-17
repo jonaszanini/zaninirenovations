@@ -147,6 +147,14 @@
                   </li>
                   <li>
                     <i class="fa fa-caret-right fa-footer"></i>
+                    <a href="{{ url('/services/tile-installation') }}">Tile</a>
+                  </li>
+                  <li>
+                    <i class="fa fa-caret-right fa-footer"></i>
+                    <a href="{{ url('/services/accent-walls') }}">Accent Walls</a>
+                  </li>
+                  <li>
+                    <i class="fa fa-caret-right fa-footer"></i>
                     <a href="{{ url('/services/staircases') }}">Stairs</a>
                   </li>
                   <li>

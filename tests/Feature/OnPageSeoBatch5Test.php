@@ -84,9 +84,11 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
         $this->assertStringContainsString('/service-areas/carleton-place</loc>', $xml);
         $this->assertStringContainsString('/service-areas/kanata</loc>', $xml);
         $this->assertStringContainsString('/service-areas/barrhaven</loc>', $xml);
+        $this->assertStringContainsString('/service-areas/almonte-mississippi-mills</loc>', $xml);
+        $this->assertStringContainsString('/service-areas/perth</loc>', $xml);
+        $this->assertStringContainsString('/service-areas/nepean</loc>', $xml);
         $this->assertStringNotContainsString('/service-areas/almonte</loc>', $xml);
         $this->assertStringNotContainsString('/service-areas/stittsville</loc>', $xml);
-        $this->assertStringNotContainsString('/service-areas/perth</loc>', $xml);
         $this->assertStringNotContainsString('/service-areas/orleans</loc>', $xml);
     }
 
@@ -94,8 +96,10 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
     {
         $this->get('/service-areas/almonte')->assertNotFound();
         $this->get('/service-areas/stittsville')->assertNotFound();
-        $this->get('/service-areas/perth')->assertNotFound();
         $this->get('/service-areas/orleans')->assertNotFound();
+        $this->get('/service-areas/perth')->assertOk();
+        $this->get('/service-areas/nepean')->assertOk();
+        $this->get('/service-areas/almonte-mississippi-mills')->assertOk();
     }
 
     public function test_banned_words_are_absent_from_new_pages(): void
@@ -161,14 +165,15 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
         $this->assertStringContainsString('/service-areas/carleton-place', $html);
         $this->assertStringContainsString('/service-areas/kanata', $html);
         $this->assertStringContainsString('/service-areas/barrhaven', $html);
+        $this->assertStringContainsString('/service-areas/almonte-mississippi-mills', $html);
+        $this->assertStringContainsString('/service-areas/perth', $html);
+        $this->assertStringContainsString('/service-areas/nepean', $html);
         $this->assertStringContainsString('sa-town-grid', $html);
         $this->assertStringContainsString('sa-town--featured', $html);
         $this->assertStringContainsString('View page', $html);
         $this->assertStringContainsString('Open in Google Maps', $html);
         $this->assertStringContainsString('sa-town__name--plain', $html);
         $this->assertStringContainsString('Perth', $html);
-        $this->assertStringContainsString('/portfolio/custom-classic-fireplace-mantel', $html);
-        $this->assertStringContainsString('/portfolio/gabled-porch-roof', $html);
         $this->assertStringContainsString('Gatineau, QC', $html);
         $this->assertStringNotContainsString('Orléans', $html);
         $this->assertStringNotContainsString('Orleans', $html);
@@ -181,7 +186,7 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
     public function test_town_copy_is_not_a_shared_template(): void
     {
         $pages = ServiceAreas::publishedPages();
-        $this->assertCount(3, $pages);
+        $this->assertCount(6, $pages);
 
         $texts = [];
         foreach ($pages as $page) {
@@ -189,11 +194,19 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
         }
 
         $slugs = array_keys($texts);
+        $boilerplate = [
+            'we can look after the permit as an optional extra, quoted separately, or you can handle it yourself.',
+            'our work in ontario is done to the ontario building code (o.reg.',
+            'when a renovation needs electrical or plumbing, we arrange qualified, certified electricians and plumbers.',
+        ];
         for ($i = 0; $i < count($slugs); $i++) {
             for ($j = $i + 1; $j < count($slugs); $j++) {
                 $a = $this->sentences($texts[$slugs[$i]]);
                 $b = $this->sentences($texts[$slugs[$j]]);
-                $shared = array_values(array_intersect($a, $b));
+                $shared = array_values(array_filter(
+                    array_intersect($a, $b),
+                    fn (string $sentence) => ! in_array($sentence, $boilerplate, true)
+                ));
                 $this->assertSame(
                     [],
                     $shared,

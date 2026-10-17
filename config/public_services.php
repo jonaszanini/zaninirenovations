@@ -557,6 +557,87 @@ return [
             ],
         ],
 
+        'tile-installation' => [
+            'published' => true,
+            'slug' => 'tile-installation',
+            'nav_label' => 'Tile installation',
+            'hub_label' => 'Tile installation',
+            'title' => 'Tile Installation – Carleton Place & Ottawa | Zanini',
+            'meta_description' => 'Tile floors, kitchen backsplashes, showers and fireplace surrounds, set with careful layout and clean grout lines. Carleton Place, Kanata and Ottawa.',
+            'h1' => 'Tile Installation in Carleton Place and Ottawa',
+            'breadcrumb_name' => 'Tile installation',
+            'service_type' => 'Tile installation',
+            'fallback_image' => 'images/services/tiles.webp',
+            'hero_alt' => 'Honeycomb tile backsplash installation in Kanata',
+            'hero_project_slug' => 'backsplash-installation',
+            'cta_heading' => 'Get a free estimate for tile',
+            'cta_text' => 'Send photos of the room and the tile you have in mind. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
+            'faqs_heading' => 'Tile installation FAQ',
+            'faqs' => [
+                [
+                    'question' => 'Do you install tile floors as well as walls?',
+                    'answer' => 'Yes. Tile is one of the floors we install, along with hardwood, engineered wood, vinyl and laminate. We also tile backsplashes, bathroom walls and fireplace surrounds.',
+                ],
+                [
+                    'question' => 'Can you tile a backsplash without replacing the countertop?',
+                    'answer' => 'Usually, yes. Our Kanata backsplash was installed against the existing cabinets and countertops. We\'ll check the wall and the countertop edge at the visit.',
+                ],
+                [
+                    'question' => 'Do you handle the plumbing for a tiled shower?',
+                    'answer' => 'Plumbing is done by qualified, certified plumbers, whom we arrange as part of the project, so you have one point of contact.',
+                ],
+            ],
+            'projects' => [
+                ['slug' => 'backsplash-installation', 'label' => 'Backsplash installation, Kanata', 'text' => 'a honeycomb backsplash of white hexagon tiles with marble-like veining and consistent grout lines.'],
+                ['slug' => 'custom-classic-fireplace-mantel', 'label' => 'Custom classic fireplace mantel, Perth', 'text' => 'a large-format tile surround and a matching raised step hearth below a custom mantel.'],
+                ['slug' => 'fireplace-renovation', 'label' => 'Fireplace renovation, Kanata', 'text' => 'surface prep and priming, plus new grout across the surround.'],
+            ],
+        ],
+
+        'accent-walls' => [
+            'published' => true,
+            'slug' => 'accent-walls',
+            'nav_label' => 'Accent walls',
+            'hub_label' => 'Accent walls',
+            'title' => 'Accent Walls & Wainscoting – Carleton Place | Zanini',
+            'meta_description' => 'Accent walls, wainscoting, board and batten, feature walls and fireplace surrounds, built and trimmed on site. Carleton Place, Kanata, Perth and Ottawa.',
+            'h1' => 'Accent Walls and Wainscoting in Carleton Place and Ottawa',
+            'breadcrumb_name' => 'Accent walls',
+            'service_type' => 'Accent walls and wainscoting',
+            'fallback_image' => 'images/services/accent-walls.webp',
+            'hero_alt' => 'Custom classic fireplace mantel with a tile surround in Perth',
+            'hero_project_slug' => 'custom-classic-fireplace-mantel',
+            'cta_heading' => 'Get a free estimate for an accent wall',
+            'cta_text' => 'Send photos of the wall and a picture of the look you like. Monday to Friday, 9 AM to 6 PM. Fully insured · in business since 2020 · based in Carleton Place.',
+            'faqs_heading' => 'Accent walls FAQ',
+            'faqs' => [
+                [
+                    'question' => 'What\'s the difference between wainscoting and an accent wall?',
+                    'answer' => 'Wainscoting usually covers the lower part of a wall with panels or boards and a cap rail. An accent wall is a feature treatment, such as board and batten, picture-frame moulding or slats, that can run floor to ceiling on one wall.',
+                ],
+                [
+                    'question' => 'Do you paint the wall after the trim goes up?',
+                    'answer' => 'We fill and caulk so the wall is ready for paint. We\'ll agree on painting as part of the quote.',
+                ],
+                [
+                    'question' => 'Can you add lighting or a TV outlet to a feature wall?',
+                    'answer' => 'Yes. The wiring is done by qualified, certified electricians, whom we arrange as part of the project.',
+                ],
+            ],
+            'projects' => [
+                ['slug' => 'custom-classic-fireplace-mantel', 'label' => 'Custom classic fireplace mantel, Perth', 'text' => 'corbels, an arched header and dentil crown, with a large-format tile surround and raised hearth.'],
+                ['slug' => 'fireplace-surround-niche-carleton-place', 'label' => 'Fireplace surround with niche, Carleton Place', 'text' => 'a drywall bump-out with a recessed niche and wrapped baseboard below a floating mantel shelf.'],
+                ['slug' => 'built-in-shelving-wall-kanata', 'label' => 'Built-in shelving wall, Kanata', 'text' => 'a full-wall white built-in with crown moulding.'],
+                ['slug' => 'fireplace-renovation', 'label' => 'Fireplace renovation, Kanata', 'text' => 'prep, priming and new grout.'],
+            ],
+            'reviews' => [
+                [
+                    'quote' => 'On the upper floor, Jonas covered our fireplace with beautiful finishes and installed stunning handmade shelves with excellent craftsmanship. In the upstairs hallway, he added frames and lighting combined with dark paint, giving the house a very elegant look.',
+                    'author' => 'Leo B.',
+                ],
+            ],
+        ],
+
     ],
 
 ];

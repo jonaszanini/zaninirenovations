@@ -46,7 +46,7 @@ class OnPageSeoBatch3Test extends IntegrationTestCase
             $this->assertStringContainsString('sa-btn', $html, $path);
         }
 
-        $this->assertCount(9, PublicServices::publishedPages());
+        $this->assertCount(11, PublicServices::publishedPages());
     }
 
     public function test_service_pages_include_exact_h1_faqs_and_json_ld(): void

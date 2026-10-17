@@ -13,7 +13,7 @@
 
 <p><strong>Sinks and faucets.</strong> That kitchen also got a large stainless steel undermount sink and a high-arc pull-down faucet.</p>
 
-<p><strong>Backsplash tile.</strong> In a Kanata kitchen we installed a honeycomb-style backsplash of white hexagon tiles with marble-like veining. It needed precise cuts around every outlet and corner and consistent grout lines to keep the pattern clean.</p>
+<p><strong><a href="{{ url('/services/tile-installation') }}">Backsplash tile</a>.</strong> In a Kanata kitchen we installed a honeycomb-style backsplash of white hexagon tiles with marble-like veining. It needed precise cuts around every outlet and corner and consistent grout lines to keep the pattern clean.</p>
 
 <p><strong>Built-in storage and pantry space.</strong> Floor-to-ceiling pantry cabinets, open shelving, a coffee station or a built-in wall next to the kitchen. In the same Kanata home, the kitchen update was part of a bigger job that included a full-wall built-in and a new fireplace mantel. See <a href="{{ url('/services/custom-built-ins-closets') }}">custom built-ins</a>.</p>
 

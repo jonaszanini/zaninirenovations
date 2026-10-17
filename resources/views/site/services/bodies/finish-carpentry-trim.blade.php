@@ -11,9 +11,9 @@
 
 <p><strong>Crown moulding.</strong> Crown along a ceiling line or across the top of a built-in, such as the shelving wall we built in a Kanata living room.</p>
 
-<p><strong>Wainscoting, panelling and accent walls.</strong> Panelled or board-and-batten walls, picture-frame moulding and feature walls that give a plain room some character.</p>
+<p><strong><a href="{{ url('/services/accent-walls') }}">Wainscoting, panelling and accent walls</a>.</strong> Panelled or board-and-batten walls, picture-frame moulding and feature walls that give a plain room some character.</p>
 
-<p><strong>Fireplace mantels and surrounds.</strong> From a simple floating shelf to a full traditional mantel. In Perth we designed and built a multi-layered mantel with decorative corbels, an arched header and dentil crown moulding, built on site in the client's garage. It has a large-format tile surround and a raised step hearth.</p>
+<p><strong><a href="{{ url('/services/accent-walls') }}">Fireplace mantels and surrounds</a>.</strong> From a simple floating shelf to a full traditional mantel. In Perth we designed and built a multi-layered mantel with decorative corbels, an arched header and dentil crown moulding, built on site in the client's garage. It has a large-format tile surround and a raised step hearth.</p>
 
 <p><strong>Interior and closet doors.</strong> Hanging interior doors, bifolds and sliding barn doors, and trimming them out. In one basement we hung two pairs of six-panel bifold doors across a wide storage wall, set out with a laser level so the whole run lines up.</p>
 
