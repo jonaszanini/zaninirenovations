@@ -69,10 +69,14 @@ class OnPageSeoOct16Test extends IntegrationTestCase
         $this->assertSame($urls, array_values(array_unique($urls)), 'Footer SERVICES must keep only one link per URL.');
         $this->assertContains(url('/services/finish-carpentry-trim'), $urls);
         $this->assertContains(url('/services/flooring-installation'), $urls);
+        $this->assertContains(url('/services/tile-installation'), $urls);
+        $this->assertContains(url('/services/accent-walls'), $urls);
         $this->assertSame(1, substr_count($lists[1][0], url('/services/finish-carpentry-trim')));
         $this->assertSame(1, substr_count($lists[1][0], url('/services/flooring-installation')));
-        $this->assertStringNotContainsString('Accent Walls', $lists[1][0]);
-        $this->assertDoesNotMatchRegularExpression('/>Tile</', $lists[1][0]);
+        $this->assertSame(1, substr_count($lists[1][0], url('/services/tile-installation')));
+        $this->assertSame(1, substr_count($lists[1][0], url('/services/accent-walls')));
+        $this->assertSame(1, substr_count($lists[1][0], '>Tile</a>'));
+        $this->assertSame(1, substr_count($lists[1][0], '>Accent Walls</a>'));
     }
 
     public function test_homepage_does_not_duplicate_headings_team_cards_or_reviews(): void
