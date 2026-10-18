@@ -343,7 +343,15 @@
     var roomStoreTemplate = rootEl.dataset.roomStoreTemplate || '';
     var roomUpdateTemplate = rootEl.dataset.roomUpdateTemplate || '';
     var projectStoreUrl = rootEl.dataset.projectStoreUrl || '';
+    var projectUpdateTemplate = rootEl.dataset.projectUpdateTemplate || '';
     var quoteRoomTemplate = rootEl.dataset.quoteRoomTemplate || '';
+    var boundClientProjectId = parseInt(rootEl.dataset.boundClientProject, 10) || null;
+    var clientProjects = [];
+    try {
+      clientProjects = JSON.parse(rootEl.dataset.clientProjects || '[]');
+    } catch (err2) {
+      clientProjects = [];
+    }
 
     var quoteBtn = doc.getElementById('openplan3d-quote-btn');
     var currentProject = null;
@@ -384,16 +392,237 @@
       noScaleWarning.hidden = !show;
     }
 
+    var feedbackTimer = null;
     function showFeedback(msg, isError) {
       if (!feedbackEl) return;
+      if (feedbackTimer) {
+        var cancelTimer = (win && typeof win.clearTimeout === 'function') ? win.clearTimeout : clearTimeout;
+        cancelTimer(feedbackTimer);
+        feedbackTimer = null;
+      }
       feedbackEl.textContent = msg;
       feedbackEl.className = 'openplan3d-feedback ' + (isError ? 'openplan3d-feedback--error' : 'openplan3d-feedback--success');
       feedbackEl.hidden = false;
       if (!isError) {
-        setTimeout(function () {
+        var scheduleTimer = (win && typeof win.setTimeout === 'function') ? win.setTimeout : setTimeout;
+        feedbackTimer = scheduleTimer(function () {
           feedbackEl.hidden = true;
+          feedbackTimer = null;
         }, 5000);
       }
+    }
+
+    var modalEl = doc.getElementById('openplan3d-modal');
+    var modalTitle = doc.getElementById('openplan3d-modal-title');
+    var modalBody = doc.getElementById('openplan3d-modal-body');
+    var modalInputWrap = doc.getElementById('openplan3d-modal-input-wrap');
+    var modalInput = doc.getElementById('openplan3d-modal-input');
+    var modalLink = doc.getElementById('openplan3d-modal-link');
+    var modalActions = doc.getElementById('openplan3d-modal-actions');
+    var modalCancel = doc.getElementById('openplan3d-modal-cancel');
+    var modalConfirm = doc.getElementById('openplan3d-modal-confirm');
+    var modalLinkBtn = doc.getElementById('openplan3d-modal-link-btn');
+    var modalStandaloneBtn = doc.getElementById('openplan3d-modal-standalone-btn');
+    var modalLinkCancel = doc.getElementById('openplan3d-modal-link-cancel');
+    var modalClientSelect = doc.getElementById('openplan3d-modal-client-project');
+    var modalResolve = null;
+    var modalIsSaveFlow = false;
+    var modalOpenerEl = null;
+
+    function getModalFocusable() {
+      if (!modalEl || modalEl.hidden) return [];
+      var nodes = modalEl.querySelectorAll(
+        'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
+      );
+      var visible = [];
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (el.hidden) continue;
+        if (el.closest && el.closest('[hidden]')) continue;
+        visible.push(el);
+      }
+      return visible;
+    }
+
+    function handleModalKeyDown(e) {
+      if (!modalEl || modalEl.hidden) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishModal(null);
+        return;
+      }
+      var isTab = e.key === 'Tab' || e.key === 'BackTab' || e.keyCode === 9;
+      if (isTab) {
+        var focusable = getModalFocusable();
+        if (focusable.length === 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        var active = doc.activeElement;
+        var isShift = !!(e.shiftKey || e.key === 'BackTab');
+        if (isShift) {
+          if (active === first || !modalEl.contains(active)) {
+            e.preventDefault();
+            e.stopPropagation();
+            last.focus();
+          }
+        } else {
+          if (active === last || !modalEl.contains(active)) {
+            e.preventDefault();
+            e.stopPropagation();
+            first.focus();
+          }
+        }
+      }
+    }
+
+    function finishModal(result) {
+      if (modalEl) modalEl.hidden = true;
+      var resolve = modalResolve;
+      modalResolve = null;
+      var wasSaveFlow = modalIsSaveFlow;
+      modalIsSaveFlow = false;
+      if (wasSaveFlow && result == null && isSaving) {
+        isSaving = false;
+        if (saveBtn) {
+          saveBtn.removeAttribute('aria-busy');
+          saveBtn.disabled = !currentPlan || !loadAcked;
+        }
+      }
+      var toFocus = modalOpenerEl || saveBtn;
+      modalOpenerEl = null;
+      if (toFocus && typeof toFocus.focus === 'function') {
+        try { toFocus.focus(); } catch (e) {}
+      }
+      if (typeof resolve === 'function') resolve(result);
+    }
+
+    function fillClientProjectSelect() {
+      if (!modalClientSelect) return;
+      modalClientSelect.innerHTML = '';
+      var empty = doc.createElement('option');
+      empty.value = '';
+      empty.textContent = '— Select a client project —';
+      modalClientSelect.appendChild(empty);
+      clientProjects.forEach(function (p) {
+        var opt = doc.createElement('option');
+        opt.value = String(p.id);
+        opt.textContent = p.name || ('Project #' + p.id);
+        modalClientSelect.appendChild(opt);
+      });
+    }
+
+    function showModal(opts) {
+      opts = opts || {};
+      return new Promise(function (resolve) {
+        if (!modalEl) {
+          resolve(opts.fallback != null ? opts.fallback : null);
+          return;
+        }
+        if (modalResolve) {
+          resolve(null);
+          return;
+        }
+        modalResolve = resolve;
+        modalIsSaveFlow = !!opts.isSaveFlow;
+        modalOpenerEl = opts.opener || (doc ? doc.activeElement : null) || saveBtn;
+        if (modalTitle) modalTitle.textContent = opts.title || 'Confirm';
+        if (modalBody) {
+          modalBody.textContent = opts.body || '';
+          modalBody.hidden = !opts.body;
+        }
+        var mode = opts.mode || 'confirm';
+        if (modalInputWrap) modalInputWrap.hidden = mode !== 'prompt';
+        if (modalLink) modalLink.hidden = mode !== 'save-destination';
+        if (modalActions) modalActions.hidden = mode === 'save-destination';
+        if (modalCancel) modalCancel.hidden = !!opts.hideCancel;
+        if (modalConfirm) modalConfirm.textContent = opts.confirmLabel || (mode === 'prompt' ? 'Continue' : 'OK');
+        if (mode === 'save-destination') fillClientProjectSelect();
+        modalEl.hidden = false;
+        setTimeout(function () {
+          if (mode === 'prompt' && modalInput) {
+            modalInput.value = opts.defaultValue || '';
+            modalInput.focus();
+            modalInput.select();
+            return;
+          }
+          if (mode === 'save-destination' && modalLinkBtn) {
+            modalLinkBtn.focus();
+            return;
+          }
+          if (modalConfirm) modalConfirm.focus();
+        }, 0);
+      });
+    }
+
+    function askConfirm(message, title) {
+      return showModal({
+        mode: 'confirm',
+        title: title || 'Unsaved changes',
+        body: message,
+        confirmLabel: 'Discard'
+      }).then(function (result) { return result === true; });
+    }
+
+    function askPrompt(title, defaultValue) {
+      return showModal({
+        mode: 'prompt',
+        title: title,
+        body: '',
+        defaultValue: defaultValue || '',
+        confirmLabel: 'Continue'
+      }).then(function (result) {
+        if (result == null) return null;
+        var value = String(result).trim();
+        return value || null;
+      });
+    }
+
+    function askAlert(message) {
+      return showModal({
+        mode: 'alert',
+        title: 'Room Area',
+        body: message,
+        confirmLabel: 'OK',
+        hideCancel: true
+      }).then(function () { return true; });
+    }
+
+    function jsonPost(url, method, payload) {
+      var controller = (win && typeof win.AbortController !== 'undefined')
+        ? new win.AbortController()
+        : (typeof AbortController !== 'undefined' ? new AbortController() : null);
+      var timeoutId = null;
+      if (controller) {
+        var scheduleTimer = (win && typeof win.setTimeout === 'function') ? win.setTimeout : setTimeout;
+        timeoutId = scheduleTimer(function () {
+          try { controller.abort(); } catch (e) {}
+        }, 30000);
+      }
+
+      return fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify(payload),
+        signal: controller ? controller.signal : undefined
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          return { status: res.status, ok: res.ok, data: data };
+        });
+      }).finally(function () {
+        if (timeoutId) {
+          var cancelTimer = (win && typeof win.clearTimeout === 'function') ? win.clearTimeout : clearTimeout;
+          cancelTimer(timeoutId);
+        }
+      });
     }
 
     function getFinishSettings() {
@@ -571,6 +800,13 @@
       }
     }
 
+    function startBlankSession() {
+      currentProject = null;
+      if (projectSelect) projectSelect.value = '';
+      populateRooms();
+      applyNewRoom('Room 1');
+    }
+
     function initializeSelection() {
       populateProjects();
 
@@ -602,7 +838,7 @@
         }
       }
 
-      if (!targetProject && projects.length > 0) {
+      if (!targetProject && boundClientProjectId && projects.length > 0) {
         targetProject = projects[0];
       }
 
@@ -613,67 +849,120 @@
         } else if (targetProject.rooms && targetProject.rooms.length > 0) {
           selectRoom(targetProject.rooms[0]);
         } else {
-          createNewRoom();
+          applyNewRoom('Room 1');
         }
-      }
-    }
-
-    function createNewRoom() {
-      if (!currentProject) {
-        if (win && win.alert) win.alert('Please select or create a project first.');
         return;
       }
-      var roomNumber = (currentProject.rooms ? currentProject.rooms.length : 0) + 1;
-      var name = win && win.prompt ? win.prompt('Room name:', 'Room ' + roomNumber) : ('Room ' + roomNumber);
-      if (!name || !name.trim()) return;
 
+      startBlankSession();
+    }
+
+    function applyNewRoom(name) {
       var newRoom = {
         id: null,
-        name: name.trim(),
-        plan: null,
+        name: name,
+        plan: { unit: 'cm', floor: { walls: [], rooms: [] } },
         wall_height_ft: 8,
         ceiling_height_ft: 8,
         flooring_waste_percent: 10,
         flooring_box_sqft: 20
       };
-
       selectRoom(newRoom);
       if (saveBtn) saveBtn.disabled = false;
       setDirty(false);
     }
 
-    function createNewProject() {
-      var name = win && win.prompt ? win.prompt('Project name:') : null;
-      if (!name || !name.trim()) return;
+    function createNewRoom() {
+      var roomNumber = ((currentProject && currentProject.rooms) ? currentProject.rooms.length : 0) + 1;
+      askPrompt('Room name', 'Room ' + roomNumber).then(function (name) {
+        if (!name) return;
+        applyNewRoom(name);
+      });
+    }
 
-      var payload = {
-        name: name.trim(),
-        _token: csrfToken
-      };
-
-      fetch(projectStoreUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify(payload)
-      })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (data.ok && data.project) {
-          projects.push(data.project);
-          populateProjects();
-          selectProject(data.project.id);
-          createNewRoom();
-          showFeedback('Project created successfully!');
-        } else {
-          showFeedback(data.message || 'Failed to create project.', true);
+    function rememberProject(project) {
+      if (!project) return;
+      var replaced = false;
+      for (var i = 0; i < projects.length; i++) {
+        if (projects[i].id === project.id) {
+          projects[i] = project;
+          replaced = true;
+          break;
         }
-      })
-      .catch(function () {
+      }
+      if (!replaced) projects.push(project);
+      currentProject = project;
+      populateProjects();
+      selectProject(project.id);
+    }
+
+    function createNewProject() {
+      askPrompt('Project name', '').then(function (name) {
+        if (!name) {
+          if (projectSelect) projectSelect.value = currentProject ? String(currentProject.id) : '';
+          return;
+        }
+        return jsonPost(projectStoreUrl, 'POST', { name: name, _token: csrfToken }).then(function (result) {
+          if (result.ok && result.data && result.data.ok && result.data.project) {
+            rememberProject(result.data.project);
+            applyNewRoom('Room 1');
+            showFeedback('Project created successfully!');
+          } else {
+            showFeedback((result.data && result.data.message) || 'Failed to create project.', true);
+            if (projectSelect) projectSelect.value = currentProject ? String(currentProject.id) : '';
+          }
+        });
+      }).catch(function () {
         showFeedback('Server error creating project.', true);
+      });
+    }
+
+    function needsDestinationChoice() {
+      if (boundClientProjectId) return false;
+      if (currentProject && currentProject.client_project_id) return false;
+      return true;
+    }
+
+    function ensureProjectForSave(choice) {
+      var name = ((roomNameInput && roomNameInput.value) || 'Room plans').trim() || 'Room plans';
+      if (choice && choice.action === 'link') {
+        var clientId = parseInt(choice.clientProjectId, 10);
+        if (!clientId) {
+          showFeedback('Select a client project to link.', true);
+          return Promise.resolve(false);
+        }
+        if (currentProject && currentProject.id) {
+          var updateUrl = projectUpdateTemplate.replace('__ID__', currentProject.id);
+          return jsonPost(updateUrl, 'PUT', { client_project_id: clientId, _token: csrfToken }).then(function (result) {
+            if (result.ok && result.data && result.data.project) {
+              rememberProject(result.data.project);
+              return true;
+            }
+            showFeedback((result.data && result.data.message) || 'Could not link to that project.', true);
+            return false;
+          });
+        }
+        return jsonPost(projectStoreUrl, 'POST', {
+          name: name,
+          client_project_id: clientId,
+          _token: csrfToken
+        }).then(function (result) {
+          if (result.ok && result.data && result.data.project) {
+            rememberProject(result.data.project);
+            return true;
+          }
+          showFeedback((result.data && result.data.message) || 'Could not link to that project.', true);
+          return false;
+        });
+      }
+      if (currentProject && currentProject.id) return Promise.resolve(true);
+      return jsonPost(projectStoreUrl, 'POST', { name: name, _token: csrfToken }).then(function (result) {
+        if (result.ok && result.data && result.data.project) {
+          rememberProject(result.data.project);
+          return true;
+        }
+        showFeedback((result.data && result.data.message) || 'Could not create a standalone project.', true);
+        return false;
       });
     }
 
@@ -683,38 +972,39 @@
       return isFinite(n) ? n : 0;
     }
 
-    function savePlan() {
-      if (isSaving) return;
+    function submitSave(confirmZero) {
       if (!currentProject) {
         showFeedback('No active project selected.', true);
+        isSaving = false;
+        if (saveBtn) {
+          saveBtn.removeAttribute('aria-busy');
+          saveBtn.disabled = !currentPlan || !loadAcked;
+          try { saveBtn.focus(); } catch (e) {}
+        }
         return;
       }
 
       var roomName = ((roomNameInput && roomNameInput.value) || '').trim();
       if (!roomName) {
         showFeedback('Please enter a room name.', true);
+        isSaving = false;
+        if (saveBtn) {
+          saveBtn.removeAttribute('aria-busy');
+          saveBtn.disabled = !currentPlan || !loadAcked;
+        }
         if (roomNameInput) roomNameInput.focus();
         return;
       }
 
       if (!currentPlan) {
         showFeedback('No floor plan data available to save.', true);
-        return;
-      }
-
-      var metrics = currentMetrics(currentPlan);
-      var storedArea = storedAreaSqft();
-      var incomingArea = metrics && metrics.area_sqft != null ? Number(metrics.area_sqft) : 0;
-      var confirmZero = false;
-      if (storedArea > 0 && (!isFinite(incomingArea) || incomingArea <= 0)) {
-        var ok = win && typeof win.confirm === 'function'
-          ? win.confirm('This save would replace the stored room area (' + storedArea.toFixed(2) + ' sq ft) with 0. Continue?')
-          : false;
-        if (!ok) {
-          showFeedback('Save cancelled. The stored room area was kept.', true);
-          return;
+        isSaving = false;
+        if (saveBtn) {
+          saveBtn.removeAttribute('aria-busy');
+          saveBtn.disabled = !currentPlan || !loadAcked;
+          try { saveBtn.focus(); } catch (e) {}
         }
-        confirmZero = true;
+        return;
       }
 
       isSaving = true;
@@ -743,7 +1033,7 @@
         ceiling_height_ft: finish.ceiling_height_ft,
         flooring_waste_percent: finish.flooring_waste_percent,
         flooring_box_sqft: finish.flooring_box_sqft,
-        confirm_zero_area: confirmZero,
+        confirm_zero_area: !!confirmZero,
         _submit_once: submitOnce,
         _token: csrfToken
       };
@@ -830,6 +1120,149 @@
       });
     }
 
+    function savePlan() {
+      if (isSaving) return;
+      var roomName = ((roomNameInput && roomNameInput.value) || '').trim();
+      if (!roomName) {
+        showFeedback('Please enter a room name.', true);
+        if (roomNameInput) roomNameInput.focus();
+        return;
+      }
+      if (!currentPlan) {
+        showFeedback('No floor plan data available to save.', true);
+        return;
+      }
+
+      isSaving = true;
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.setAttribute('aria-busy', 'true');
+      }
+
+      var unlockSave = function () {
+        isSaving = false;
+        if (saveBtn) {
+          saveBtn.removeAttribute('aria-busy');
+          saveBtn.disabled = !currentPlan || !loadAcked;
+          try { saveBtn.focus(); } catch (e) {}
+        }
+      };
+
+      var metrics = currentMetrics(currentPlan);
+      var storedArea = storedAreaSqft();
+      var incomingArea = metrics && metrics.area_sqft != null ? Number(metrics.area_sqft) : 0;
+      var confirmZero = false;
+
+      // Ask the zero-area replace question BEFORE linking or creating a project
+      var zeroAreaCheck = Promise.resolve(true);
+      if (storedArea > 0 && (!isFinite(incomingArea) || incomingArea <= 0)) {
+        zeroAreaCheck = showModal({
+          mode: 'confirm',
+          title: 'Replace stored area?',
+          body: 'This save would replace the stored room area (' + storedArea.toFixed(2) + ' sq ft) with 0. Continue?',
+          confirmLabel: 'Replace',
+          isSaveFlow: true,
+          opener: saveBtn
+        }).then(function (ok) {
+          if (ok !== true) {
+            showFeedback('Save cancelled. The stored room area was kept.', true);
+            return false;
+          }
+          confirmZero = true;
+          return true;
+        });
+      }
+
+      zeroAreaCheck.then(function (proceed) {
+        if (!proceed) {
+          unlockSave();
+          return null;
+        }
+
+        var dest = Promise.resolve({ action: 'keep' });
+        if (needsDestinationChoice()) {
+          dest = showModal({
+            mode: 'save-destination',
+            title: 'Save plan',
+            body: '',
+            isSaveFlow: true,
+            opener: saveBtn
+          });
+        }
+
+        return dest.then(function (choice) {
+          if (needsDestinationChoice() && !choice) {
+            unlockSave();
+            return null;
+          }
+
+          var projectPromise = needsDestinationChoice()
+            ? ensureProjectForSave(choice)
+            : Promise.resolve(true);
+
+          return projectPromise.then(function (ok) {
+            if (!ok) {
+              unlockSave();
+              return null;
+            }
+            return submitSave(confirmZero);
+          });
+        });
+      }).catch(function (err) {
+        unlockSave();
+        showFeedback((err && err.message) || 'An unexpected error occurred while saving the plan.', true);
+      });
+    }
+
+    if (modalCancel) {
+      modalCancel.addEventListener('click', function () { finishModal(null); });
+    }
+    if (modalConfirm) {
+      modalConfirm.addEventListener('click', function () {
+        if (modalInputWrap && !modalInputWrap.hidden) {
+          finishModal(modalInput ? modalInput.value : '');
+          return;
+        }
+        finishModal(true);
+      });
+    }
+    if (modalStandaloneBtn) {
+      modalStandaloneBtn.addEventListener('click', function () {
+        finishModal({ action: 'standalone' });
+      });
+    }
+    if (modalLinkCancel) {
+      modalLinkCancel.addEventListener('click', function () { finishModal(null); });
+    }
+    if (modalLinkBtn) {
+      modalLinkBtn.addEventListener('click', function () {
+        var clientProjectId = modalClientSelect ? String(modalClientSelect.value || '').trim() : '';
+        if (!clientProjectId) {
+          if (modalClientSelect) modalClientSelect.focus();
+          return;
+        }
+        finishModal({
+          action: 'link',
+          clientProjectId: clientProjectId
+        });
+      });
+    }
+    if (doc) {
+      doc.addEventListener('keydown', handleModalKeyDown, true);
+    }
+    if (modalEl) {
+      var backdrop = modalEl.querySelector('[data-openplan3d-modal-dismiss]');
+      if (backdrop) backdrop.addEventListener('click', function () { finishModal(null); });
+    }
+    if (modalInput) {
+      modalInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          finishModal(modalInput.value);
+        }
+      });
+    }
+
     if (projectSelect) {
       projectSelect.addEventListener('change', function () {
         var val = projectSelect.value;
@@ -837,18 +1270,29 @@
           createNewProject();
           return;
         }
-        if (isDirty) {
-          if (!win.confirm('You have unsaved changes. Discard changes and switch project?')) {
+        var proceed = function () {
+          if (!val) {
+            startBlankSession();
+            return;
+          }
+          selectProject(parseInt(val, 10));
+          if (currentProject && currentProject.rooms && currentProject.rooms.length > 0) {
+            selectRoom(currentProject.rooms[0]);
+          } else {
+            applyNewRoom('Room 1');
+          }
+        };
+        if (!isDirty) {
+          proceed();
+          return;
+        }
+        askConfirm('You have unsaved changes. Discard changes and switch project?').then(function (ok) {
+          if (!ok) {
             projectSelect.value = currentProject ? String(currentProject.id) : '';
             return;
           }
-        }
-        selectProject(parseInt(val, 10));
-        if (currentProject && currentProject.rooms && currentProject.rooms.length > 0) {
-          selectRoom(currentProject.rooms[0]);
-        } else {
-          selectRoom(null);
-        }
+          proceed();
+        });
       });
     }
 
@@ -859,23 +1303,30 @@
           createNewRoom();
           return;
         }
-        if (isDirty) {
-          if (!win.confirm('You have unsaved changes. Discard changes and switch room?')) {
+        var applyRoom = function () {
+          var roomId = parseInt(val, 10);
+          var found = null;
+          if (currentProject && currentProject.rooms) {
+            for (var i = 0; i < currentProject.rooms.length; i++) {
+              if (currentProject.rooms[i].id === roomId) {
+                found = currentProject.rooms[i];
+                break;
+              }
+            }
+          }
+          selectRoom(found);
+        };
+        if (!isDirty) {
+          applyRoom();
+          return;
+        }
+        askConfirm('You have unsaved changes. Discard changes and switch room?').then(function (ok) {
+          if (!ok) {
             roomSelect.value = currentRoom && currentRoom.id ? String(currentRoom.id) : '';
             return;
           }
-        }
-        var roomId = parseInt(val, 10);
-        var found = null;
-        if (currentProject && currentProject.rooms) {
-          for (var i = 0; i < currentProject.rooms.length; i++) {
-            if (currentProject.rooms[i].id === roomId) {
-              found = currentProject.rooms[i];
-              break;
-            }
-          }
-        }
-        selectRoom(found);
+          applyRoom();
+        });
       });
     }
 
@@ -887,12 +1338,13 @@
 
     if (newRoomBtn) {
       newRoomBtn.addEventListener('click', function () {
-        if (isDirty) {
-          if (!win.confirm('You have unsaved changes. Discard changes and create new room?')) {
-            return;
-          }
+        if (!isDirty) {
+          createNewRoom();
+          return;
         }
-        createNewRoom();
+        askConfirm('You have unsaved changes. Discard changes and create new room?').then(function (ok) {
+          if (ok) createNewRoom();
+        });
       });
     }
 
@@ -926,6 +1378,7 @@
     });
 
     if (win) {
+
       win.addEventListener('beforeunload', function (e) {
         if (isDirty) {
           e.preventDefault();
@@ -946,6 +1399,8 @@
           });
           if (currentPlan) {
             requestEditorLoad(currentPlan);
+          } else {
+            requestEditorLoad({ unit: 'cm', floor: { walls: [], rooms: [] } });
           }
         } else if (e.data.type === 'OPENPLAN3D_LOAD_ACK') {
           if (e.data.ok === false) {
@@ -1030,6 +1485,11 @@
       computeMetrics: currentMetrics,
       savePlan: savePlan,
       selectRoom: selectRoom,
+      askConfirm: askConfirm,
+      askPrompt: askPrompt,
+      showModal: showModal,
+      finishModal: finishModal,
+      jsonPost: jsonPost,
       getState: function () {
         return {
           isDirty: isDirty,
@@ -1038,6 +1498,7 @@
           iframeReady: iframeReady,
           currentPlan: currentPlan,
           currentRoom: currentRoom,
+          currentProject: currentProject,
           loadedPlanBaseline: loadedPlanBaseline,
           selectedOpenPlan3DRoomId: selectedOpenPlan3DRoomId,
           hasUsableScale: hasUsableScale()

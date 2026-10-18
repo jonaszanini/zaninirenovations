@@ -5,16 +5,6 @@
   $clientProjectName = $clientProject->name ?? null;
   $initialRoomId = $initialRoomId ?? request()->integer('ra_room') ?: null;
   $initialProjectId = request()->integer('ra_project') ?: null;
-  $guideQuery = array_filter([
-    'ra_project' => $initialProjectId,
-    'ra_room' => $initialRoomId,
-  ]);
-  $guideUrl = isset($clientProject)
-    ? route('admin.client-projects.utilities.room-area.guide', array_filter([
-        'client_project' => $clientProject,
-        'room_area_room' => $initialRoomId,
-      ]))
-    : route('admin.utilities.room-area.guide', $guideQuery);
 @endphp
 
 <div class="util-ra-openplan3d-wrap util-ra--fullpage"
@@ -23,10 +13,12 @@
   data-client-projects="{{ json_encode(collect($clientProjects ?? [])->map(fn ($p) => ['id' => $p->id, 'name' => method_exists($p, 'linkSelectLabel') ? $p->linkSelectLabel() : ($p->name ?? 'Project #'.$p->id)])) }}"
   data-initial-room-id="{{ $initialRoomId }}"
   data-initial-project-id="{{ $initialProjectId }}"
+  data-bound-client-project="{{ isset($clientProject) ? $clientProject->id : '' }}"
   data-room-store-template="{{ route('admin.utilities.room-area.rooms.store', ['room_area_project' => '__ID__']) }}"
   data-room-update-template="{{ route('admin.utilities.room-area.rooms.update', ['room_area_room' => '__ID__']) }}"
   data-room-destroy-template="{{ route('admin.utilities.room-area.rooms.destroy', ['room_area_room' => '__ID__']) }}"
   data-project-store-url="{{ route('admin.utilities.room-area.projects.store') }}"
+  data-project-update-template="{{ route('admin.utilities.room-area.projects.update', ['room_area_project' => '__ID__']) }}"
   data-quote-room-template="{{ route('admin.utilities.room-area.quote') }}?layout=room:__ID__"
   data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__"
 >
@@ -92,11 +84,6 @@
         'tipLabel' => 'openPlan3D engine preview',
         'tipText' => 'openPlan3D is a self-hosted 2D/3D floor plan editor running completely offline from our server. All measurements, floor plans, and quotes remain securely stored in your database.',
       ])
-
-      <a href="{{ $guideUrl }}" class="admin-btn admin-btn--ghost openplan3d-tool-btn util-ra-full-header__help" data-ra-help-guide aria-label="Open Room Area guide" title="Open Room Area walkthrough and help guide">
-        <i class="fa fa-question-circle" aria-hidden="true"></i>
-        <span class="openplan3d-btn-label">Guide</span>
-      </a>
 
       <button type="button" class="admin-btn admin-btn--ghost openplan3d-tool-btn" id="openplan3d-theme-toggle" aria-label="Toggle dark/light theme" title="Toggle dark/light theme">
         <i class="fa fa-moon-o" data-theme-icon="moon" aria-hidden="true"></i>
@@ -193,6 +180,40 @@
     ])
   </div>
 
+  <div id="openplan3d-modal" class="openplan3d-modal" hidden>
+    <div class="openplan3d-modal-backdrop" data-openplan3d-modal-dismiss tabindex="-1" aria-hidden="true"></div>
+    <div class="openplan3d-modal-panel" role="dialog" aria-modal="true" aria-labelledby="openplan3d-modal-title">
+      <h2 id="openplan3d-modal-title" class="openplan3d-modal-title">Confirm</h2>
+      <p id="openplan3d-modal-body" class="openplan3d-modal-body"></p>
+      <label id="openplan3d-modal-input-wrap" class="openplan3d-modal-field" hidden>
+        <span class="openplan3d-modal-field-label">Name</span>
+        <input type="text" id="openplan3d-modal-input" class="admin-input" maxlength="120">
+      </label>
+      <div id="openplan3d-modal-link" class="openplan3d-modal-link" hidden>
+        <div class="openplan3d-modal-link-head">
+          <span class="openplan3d-modal-field-label">Client project</span>
+          @include('admin.partials.info_tip', [
+            'tipLabel' => 'Link or standalone',
+            'tipText' => 'Keep standalone stores the room under Utilities. Link to a project attaches it to a client job so the crew can open it from that project.',
+          ])
+        </div>
+        <label class="openplan3d-modal-field" for="openplan3d-modal-client-project">
+          <select id="openplan3d-modal-client-project" class="admin-input" aria-label="Client project">
+            <option value="">— Select a client project —</option>
+          </select>
+        </label>
+        <div class="openplan3d-modal-actions openplan3d-modal-actions--stack">
+          <button type="button" class="admin-btn admin-btn--primary" id="openplan3d-modal-link-btn">Link to a project</button>
+          <button type="button" class="admin-btn admin-btn--ghost" id="openplan3d-modal-standalone-btn">Keep standalone</button>
+          <button type="button" class="admin-btn admin-btn--ghost" id="openplan3d-modal-link-cancel">Cancel</button>
+        </div>
+      </div>
+      <div id="openplan3d-modal-actions" class="openplan3d-modal-actions">
+        <button type="button" class="admin-btn admin-btn--ghost" id="openplan3d-modal-cancel">Cancel</button>
+        <button type="button" class="admin-btn admin-btn--primary" id="openplan3d-modal-confirm">OK</button>
+      </div>
+    </div>
+  </div>
   {{-- Iframe Container --}}
   <main class="util-ra-openplan3d-frame-container" id="openplan3d-container">
     <iframe
@@ -489,6 +510,110 @@
   display: none !important;
 }
 
+.openplan3d-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0.75rem;
+  box-sizing: border-box;
+}
+
+.openplan3d-modal[hidden],
+.openplan3d-modal [hidden] {
+  display: none !important;
+}
+
+.openplan3d-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.openplan3d-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  max-height: min(90dvh, 640px);
+  overflow: auto;
+  background: var(--admin-surface, #ffffff);
+  color: var(--admin-text, #1e293b);
+  border: 1px solid var(--admin-border, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2);
+  padding: 1rem;
+}
+
+.openplan3d-modal-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  color: var(--admin-heading, #0f172a);
+}
+
+.openplan3d-modal-body {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--admin-muted, #64748b);
+  line-height: 1.45;
+}
+
+.openplan3d-modal-link-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.openplan3d-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+}
+
+.openplan3d-modal-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--admin-muted, #64748b);
+}
+
+.openplan3d-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.openplan3d-modal-actions--stack {
+  justify-content: stretch;
+  margin-bottom: 0.5rem;
+}
+
+.openplan3d-modal-actions .admin-btn {
+  min-height: 44px;
+}
+
+.openplan3d-modal-actions--stack .admin-btn {
+  flex: 1 1 160px;
+}
+
+@media (min-width: 700px) {
+  .openplan3d-modal {
+    align-items: center;
+  }
+}
+
+@media (max-width: 390px) {
+  .openplan3d-modal {
+    padding: 0.5rem;
+    align-items: flex-end;
+  }
+  .openplan3d-modal-panel {
+    width: 100%;
+  }
+}
 /* Frame container */
 .util-ra-openplan3d-frame-container {
   flex: 1;
@@ -775,6 +900,43 @@ body.admin-dark .openplan3d-noscale-warning,
 html.admin-dark .openplan3d-noscale-warning[hidden],
 body.admin-dark .openplan3d-noscale-warning[hidden],
 .admin-dark .openplan3d-noscale-warning[hidden] {
+  display: none !important;
+}
+html.admin-dark .openplan3d-modal-backdrop,
+body.admin-dark .openplan3d-modal-backdrop,
+.admin-dark .openplan3d-modal-backdrop {
+  background: rgba(2, 6, 23, 0.72);
+}
+
+html.admin-dark .openplan3d-modal-panel,
+body.admin-dark .openplan3d-modal-panel,
+.admin-dark .openplan3d-modal-panel {
+  background: var(--admin-surface, #111a2c);
+  color: var(--admin-text, #e2e8f0);
+  border-color: var(--admin-border, #334155);
+}
+
+html.admin-dark .openplan3d-modal-title,
+body.admin-dark .openplan3d-modal-title,
+.admin-dark .openplan3d-modal-title {
+  color: var(--admin-heading, #f8fafc);
+}
+
+html.admin-dark .openplan3d-modal-body,
+body.admin-dark .openplan3d-modal-body,
+.admin-dark .openplan3d-modal-body,
+html.admin-dark .openplan3d-modal-field-label,
+body.admin-dark .openplan3d-modal-field-label,
+.admin-dark .openplan3d-modal-field-label {
+  color: var(--admin-muted, #94a3b8);
+}
+
+html.admin-dark .openplan3d-modal[hidden],
+body.admin-dark .openplan3d-modal[hidden],
+.admin-dark .openplan3d-modal[hidden],
+html.admin-dark .openplan3d-modal [hidden],
+body.admin-dark .openplan3d-modal [hidden],
+.admin-dark .openplan3d-modal [hidden] {
   display: none !important;
 }
 </style>

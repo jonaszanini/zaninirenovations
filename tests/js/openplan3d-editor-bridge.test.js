@@ -52,6 +52,12 @@ assert.match(html, /OPENPLAN3D_LOAD_ACK|onEditorMounted/, 'editor must queue loa
 assert.match(html, /installStorageLock/, 'editor must lock vendor storage');
 assert.match(html, /zanini-hosted-openplan3d/, 'editor must mark hosted mode');
 assert.match(html, /missing H\/c store exports/, 'editor must show a visible error if H/c are missing');
+assert.match(html, /\[data-zanini-hide-native-save\]/, 'vendor chrome hide must use the data attribute, not Tailwind layout selectors');
+assert.doesNotMatch(
+  html,
+  /\.h-12\.bg-gradient-to-r\.from-slate-800/,
+  'fragile Tailwind chrome-hide selectors must not remain in the editor CSS'
+);
 assert.doesNotMatch(
   html,
   /if \(window\.__openPlan3D && typeof window\.__openPlan3D\.setProject === 'function'\) \{\s*window\.__openPlan3D\.setProject\(data\.plan\);/,
@@ -78,6 +84,47 @@ assert.doesNotMatch(
   'host must not pass the database room id into layoutMetrics'
 );
 assert.match(hostSrc, /resolveOpenPlan3DRoomId\(plan,\s*selectedOpenPlan3DRoomId\)/);
+assert.match(hostSrc, /function askConfirm/, 'native confirm must be replaced with an in-app modal');
+assert.match(hostSrc, /save-destination/, 'Save must offer link vs standalone');
+assert.match(hostSrc, /startBlankSession/, 'Room Area must boot a blank session by default');
+assert.doesNotMatch(hostSrc, /\bwin\.confirm\b|\bwindow\.confirm\s*\(/);
+assert.doesNotMatch(hostSrc, /\bwin\.alert\b|\bwindow\.alert\s*\(/);
+assert.doesNotMatch(hostSrc, /\bwin\.prompt\b|\bwindow\.prompt\s*\(/);
+
+assert.match(hostSrc, /function jsonPost[\s\S]*?AbortController/, 'jsonPost must use AbortController');
+assert.match(hostSrc, /modalIsSaveFlow/, 'finishModal must track save flow');
+assert.match(hostSrc, /modalOpenerEl/, 'modal opener must be tracked for focus return');
+
+const bridgeSrc = fs.readFileSync(path.resolve(__dirname, '../../public/js/openplan3d-editor-bridge.js'), 'utf8');
+assert.match(bridgeSrc, /style\.setProperty\('display', 'none'/, 'native chrome hide must set inline display');
+assert.match(bridgeSrc, /__zaniniNativeSaveClickLocked/, 'hidden vendor chrome clicks must be captured');
+assert.match(bridgeSrc, /vendor-top-bar/, 'hideNativeSaveUi must scope to vendor header container');
+
+let headerQueried = false;
+let bodyQueried = false;
+const mockRoot = {
+  querySelectorAll: function () {},
+  body: {
+    querySelector: function (sel) {
+      if (sel.indexOf('.vendor-top-bar') !== -1) {
+        return {
+          querySelectorAll: function () {
+            headerQueried = true;
+            return [];
+          }
+        };
+      }
+      return null;
+    },
+    querySelectorAll: function () {
+      bodyQueried = true;
+      return [];
+    }
+  }
+};
+bridge.hideNativeSaveUi(mockRoot);
+assert.strictEqual(headerQueried, true, 'hideNativeSaveUi queries inside header container');
+assert.strictEqual(bodyQueried, false, 'hideNativeSaveUi must NOT query whole body');
 
 assert.strictEqual(bridge.isBlockedStorageKey('floorplan_projects'), true);
 assert.strictEqual(bridge.isBlockedStorageKey('floorplan_thumb_abc'), true);
@@ -336,5 +383,32 @@ const metricsFirst = host.computeMetrics(twoRoomPlan, { wall_height_ft: 8 }, 'r1
 assert.ok(metricsAll && metricsAll.area_sqft === 200, 'whole-plan area is 200 sq ft, got ' + (metricsAll && metricsAll.area_sqft));
 assert.ok(metricsFirst && metricsFirst.area_sqft === 100, 'selected openPlan3D room area is 100');
 assert.notStrictEqual(metricsAll.area_sqft, metricsFirst.area_sqft);
+
+// Verify hideNativeSaveUi targets div.bg-gradient-to-r.from-slate-800 first
+const queryLog = [];
+const mockScope = {
+  matches: function (sel) {
+    queryLog.push({ type: 'matches', sel: sel });
+    return false;
+  },
+  querySelector: function (sel) {
+    queryLog.push({ type: 'querySelector', sel: sel });
+    return null;
+  },
+  querySelectorAll: function () { return []; }
+};
+bridge.hideNativeSaveUi(mockScope);
+assert.strictEqual(queryLog[0].sel, 'div.bg-gradient-to-r.from-slate-800', 'hideNativeSaveUi targets div.bg-gradient-to-r.from-slate-800 first');
+
+// Verify public/vendor/openplan3d/editor/index.html has CSS fallback restored
+const indexHtml = fs.readFileSync(INDEX, 'utf8');
+assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > button.bg-white.text-slate-800.font-semibold'), 'CSS fallback for Save button is restored');
+assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1'), 'CSS fallback for Projects link is restored');
+assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > .relative:has(> button svg path[d^="M21 15v4"])'), 'CSS fallback for Export dropdown is restored');
+
+// Verify openplan3d-host.js does not unlock isSaving in jsonPost
+const hostJs = fs.readFileSync(HOST_JS, 'utf8');
+const jsonPostSrc = hostJs.slice(hostJs.indexOf('function jsonPost('), hostJs.indexOf('function getFinishSettings('));
+assert.ok(!jsonPostSrc.includes('isSaving'), 'jsonPost must not release isSaving');
 
 console.log('All openPlan3D editor-bridge unit tests PASSED!');

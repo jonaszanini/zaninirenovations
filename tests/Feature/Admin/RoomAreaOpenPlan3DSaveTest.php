@@ -179,6 +179,10 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertSee('id="openplan3d-settings-drawer"', false);
         $response->assertSee('openplan3d-measurement-bridge.js', false);
         $response->assertSee('openplan3d-host.js', false);
+        $response->assertSee('id="openplan3d-modal"', false);
+        $response->assertSee('Link to a project');
+        $response->assertSee('Keep standalone');
+        $response->assertDontSee('data-ra-help-guide', false);
     }
 
     public function test_renders_client_project_openplan3d_editor_view(): void
@@ -201,6 +205,9 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertSee('data-ra-save-room', false);
         $response->assertSee('openplan3d-measurement-bridge.js', false);
         $response->assertSee('openplan3d-host.js', false);
+        $response->assertSee('id="openplan3d-modal"', false);
+        $response->assertDontSee('data-ra-help-guide', false);
+        $response->assertSee('data-bound-client-project="'.$clientProject->id.'"', false);
     }
 
     public function test_stores_two_room_plan_using_whole_plan_area(): void

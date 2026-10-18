@@ -42,9 +42,11 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             ->assertSee('admin-app--fullscreen', false)
             ->assertDontSee('class="admin-sidebar"', false)
             ->assertDontSee('class="admin-topbar"', false)
-            ->assertSee('data-ra-help-guide', false)
+            ->assertDontSee('data-ra-help-guide', false)
             ->assertDontSee('Coming soon')
-            ->assertSee(route('admin.client-projects.utilities.room-area.guide', $project, false), false);
+            ->assertDontSee(route('admin.client-projects.utilities.room-area.guide', $project, false), false)
+            ->assertSee('id="openplan3d-modal"', false)
+            ->assertSee('data-bound-client-project="'.$project->id.'"', false);
     }
 
     public function test_admin_can_open_existing_room_on_full_page(): void
