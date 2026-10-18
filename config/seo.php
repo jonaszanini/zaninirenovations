@@ -33,8 +33,10 @@ return [
     |--------------------------------------------------------------------------
     | areaServed (verbatim list for JSON-LD)
     |--------------------------------------------------------------------------
-    | Names only — must match places named in service_area_text. Do not add
-    | neighbourhoods or towns that are not in that sentence.
+    | Keep in sync with service_area_text. Names only — must match places
+    | named in that sentence. Do not add neighbourhoods or towns that are
+    | not in the visible copy. Keep one regional entry (Lanark County /
+    | Ottawa region) as named on the page.
     */
     'area_served' => [
         ['@type' => 'City', 'name' => 'Carleton Place'],
@@ -57,19 +59,12 @@ return [
     |--------------------------------------------------------------------------
     */
     'knows_about' => [
-        'Finish carpentry',
-        'Rough carpentry',
-        'Custom millwork',
-        'Residential fencing',
-        'Deck construction',
-        'Basement framing and finishing',
-        'Interior trim and moulding',
-        'Hardwood flooring installation',
-        'Drywall',
-        'Wood staircase refinishing',
-        'Kitchen remodeling',
-        'Ontario Building Code O.Reg. 332/12',
-        'Part 9 housing and small buildings',
+        'Carpentry',
+        'Decks',
+        'Fences',
+        'Basements',
+        'Kitchens',
+        'Flooring',
     ],
 
     'liability_insurance' => 'Fully insured',

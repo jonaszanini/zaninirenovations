@@ -22,8 +22,27 @@ class BusinessContact
     public static function phoneDisplay(): string
     {
         $phone = trim((string) (self::settings()?->contact_phone ?? ''));
+        if ($phone === '') {
+            $phone = self::DEFAULT_PHONE;
+        }
 
-        return $phone !== '' ? $phone : self::DEFAULT_PHONE;
+        return self::normalizePhoneDisplay($phone);
+    }
+
+    /**
+     * Canonical public format: "(647) 834-7570" (space after area code, not a hyphen).
+     */
+    public static function normalizePhoneDisplay(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if (strlen($digits) === 11 && $digits[0] === '1') {
+            $digits = substr($digits, 1);
+        }
+        if (strlen($digits) === 10) {
+            return sprintf('(%s) %s-%s', substr($digits, 0, 3), substr($digits, 3, 3), substr($digits, 6));
+        }
+
+        return str_replace('(647)-', '(647) ', $phone);
     }
 
     public static function phoneHref(): string

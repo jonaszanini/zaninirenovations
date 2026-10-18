@@ -214,7 +214,6 @@
       </div>
     </div>
   </div>
-
   {{-- Iframe Container --}}
   <main class="util-ra-openplan3d-frame-container" id="openplan3d-container">
     <iframe
@@ -903,7 +902,6 @@ body.admin-dark .openplan3d-noscale-warning[hidden],
 .admin-dark .openplan3d-noscale-warning[hidden] {
   display: none !important;
 }
-
 html.admin-dark .openplan3d-modal-backdrop,
 body.admin-dark .openplan3d-modal-backdrop,
 .admin-dark .openplan3d-modal-backdrop {

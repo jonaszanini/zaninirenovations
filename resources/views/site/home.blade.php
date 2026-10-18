@@ -11,9 +11,9 @@
 @push('head-assets')
 <link rel="preload" as="image" href="{{ url('images/home_1_slider_1.webp') }}" fetchpriority="high">
 <style>
-  /* Owl hides .owl-carousel until JS runs — show first slide immediately for LCP */
-  #slider_1.owl-carousel { display: block; }
-  #slider_1.owl-carousel:not(.owl-loaded) > .slider_item_container:not(:first-child) { display: none; }
+  /* Scroll-snap slider: first slide is in the document for LCP; later slides
+     sit in the track without Owl cloning headings into the HTML. */
+  #slider_1.snap-carousel { display: block; }
   #slider_1 .slider_item_container { position: relative; min-height: 320px; }
   @media (min-width: 992px) { #slider_1 .slider_item_container { min-height: 520px; } }
   @media (min-width: 1371px) { #slider_1 .slider_item_container { min-height: 800px; } }
@@ -115,9 +115,10 @@
     <!--  HOME SLIDER BLOCK  -->
 
     <div id="home" class="slider-wrap">
-      <div id="slider_1" class="owl-carousel" data-nav="true" data-dots="true" data-autoplay="false" data-autoplaytimeout="10000" data-bg_effect="true">
+      <div id="slider_1" class="snap-carousel" data-nav="true" data-dots="true" data-items="1">
+        <div class="snap-carousel__track">
 
-        <div class="slider_item_container" data-bg_img="images/home_1_slider_1.webp" data-bg_color="#111111" data-bg_opacity="0.5">
+        <div class="slider_item_container snap-carousel__slide" data-bg_img="images/home_1_slider_1.webp" data-bg_color="#111111" data-bg_opacity="0.5">
           <div class="slide-bg">
             <img src="{{ url('images/home_1_slider_1.webp') }}" alt="Deck and outdoor living project by Zanini Renovations" fetchpriority="high" decoding="async" width="1280" height="539">
           </div>
@@ -149,7 +150,7 @@
         </div>
         <!-- end .slider_item_container  -->
 
-        <div class="slider_item_container" data-bg_img="images/home_1_slider_2.webp" data-bg_color="#111111" data-bg_opacity="0.5">
+        <div class="slider_item_container snap-carousel__slide" data-bg_img="images/home_1_slider_2.webp" data-bg_color="#111111" data-bg_opacity="0.5">
           <div class="item">
             <div class="slider-content">
               <div class="container text-left">
@@ -181,7 +182,7 @@
         </div>
         <!-- end .slider_item_container  -->
 
-        <div class="slider_item_container" data-bg_img="images/home_1_slider_3.webp" data-bg_color="#111111" data-bg_opacity="0.5">
+        <div class="slider_item_container snap-carousel__slide" data-bg_img="images/home_1_slider_3.webp" data-bg_color="#111111" data-bg_opacity="0.5">
           <div class="item">
             <div class="slider-content">
               <div class="container text-center">
@@ -213,6 +214,7 @@
         </div>
         <!-- end .slider_item_container  -->
 
+        </div>
       </div>
       <!-- end .slider_1  -->
     </div>
@@ -537,9 +539,10 @@
           <div class="col-md-8 col-sm-12">
             <div class="row">
 
-              <div class="team-carousel owl-carousel" data-items="2">
+              <div class="team-carousel snap-carousel" data-items="2" data-nav="false" data-dots="true">
+                <div class="snap-carousel__track">
 
-                <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
+                <div class="col-md-3 col-sm-6 col-xs-12 snap-carousel__slide">
 
                   <div class="team-layout-1 text-center">
 
@@ -572,7 +575,7 @@
                 </div>
                 <!--  end .col-lg-3 col-md-3 col-sm-6 col-xs-12 -->
 
-                <div class="col-md-3 col-sm-6 col-xs-10 col-xs-offset-1 col-sm-offset-0 col-md-offset-0">
+                <div class="col-md-3 col-sm-6 col-xs-12 snap-carousel__slide">
 
                   <div class="team-layout-1 text-center">
 
@@ -603,6 +606,7 @@
                 </div>
                 <!--  end .col-lg-3 col-md-3 col-sm-6 col-xs-12  -->
 
+                </div>
               </div>
             </div>
             <!-- end .row  -->
@@ -641,9 +645,10 @@
 
           <div class="col-lg-6 col-md-12 col-sm-12">
 
-            <div class="testimonial-container testimonial-carousel--nav owl-carousel text-left wow fadeInLeft" data-items="1" data-nav="true" data-dots="true">
+            <div class="testimonial-container testimonial-carousel--nav snap-carousel text-left wow fadeInLeft" data-items="1" data-nav="true" data-dots="true">
+              <div class="snap-carousel__track">
 
-              <div class="col-lg-4 col-md-4 col-sm-4 col-xs-12">
+              <div class="col-lg-4 col-md-4 col-sm-4 col-xs-12 snap-carousel__slide">
 
                 <div class="testimony-layout-1 transparent-bg">
 
@@ -661,7 +666,7 @@
 
               </div>
 
-              <div class="col-lg-4 col-md-4 col-sm-4 col-xs-12">
+              <div class="col-lg-4 col-md-4 col-sm-4 col-xs-12 snap-carousel__slide">
 
                 <div class="testimony-layout-1 transparent-bg">
                   <p class="testimony-text">
@@ -677,7 +682,7 @@
 
               </div>
 
-              <div class="col-lg-4 col-md-4 col-sm-4 col-xs-12">
+              <div class="col-lg-4 col-md-4 col-sm-4 col-xs-12 snap-carousel__slide">
 
                 <div class="testimony-layout-1 transparent-bg">
                   <p class="testimony-text">
@@ -693,6 +698,7 @@
 
               </div>
 
+              </div>
             </div>
             <!-- end .testimonial-container  -->
 

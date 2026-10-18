@@ -166,6 +166,7 @@ class OnPageSeoBatch2Test extends IntegrationTestCase
         $this->assertStringNotContainsString('Barrhaven', $encoded);
         $this->assertStringNotContainsString('Orléans', $encoded);
         $this->assertStringContainsString($areaText, $encoded);
+        $this->assertStringNotContainsString('priceRange', $encoded);
 
         foreach ($areas as $place) {
             $name = (string) ($place['name'] ?? '');

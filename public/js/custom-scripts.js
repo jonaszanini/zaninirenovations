@@ -287,52 +287,48 @@ jQuery(function ($) {
             }
         });
         
-        // Carousel.
-        
+        // Carousel. Homepage hero is CSS scroll-snap; skip Owl so slides
+        // are not cloned. Do not return from the ready handler here.
         var $slider_1 = $("#slider_1");
-        
         var $this = $slider_1;
-        
+        var skipOwl = !$this.hasClass('owl-carousel')
+            || typeof $.fn.owlCarousel !== 'function'
+            || ($this.attr('data-carousel') && $this.data('carousel') !== 1);
+        if (skipOwl) {
+            $this.removeClass('owl-carousel');
+        }
+
+        if (!skipOwl) {
         var items_val = 1,
                 bg_effect_val = true,
                 nav_val = false,
                 dots_val = true,
                 autoplay_val = true,
                 autoplaytimeout_val = 10000;
-        // Status.
-        if ($this.attr('data-carousel') && $this.data('carousel') !== 1) {
-            $this.removeClass('owl-carousel');
-            return '';
-        }
-        
-        // Status.
+
         if ($this.attr('data-bg_effect') && !isNaN($this.data('bg_effect'))) {
             bg_effect_val = $this.data('bg_effect');
         }
-        // navigation status.
         if ($this.attr('data-nav') && !isNaN($this.data('nav'))) {
             nav_val = $this.data('nav');
         }
-
-        // navigation status.
         if ($this.attr('data-dots') && !isNaN($this.data('dots'))) {
             dots_val = $this.data('dots');
         }
-        // Autoplay status.
         if ($this.attr('data-autoplay') && !isNaN($this.data('autoplay'))) {
             autoplay_val = $this.data('autoplay');
         }
-        // Autoplay status.
         if ($this.attr('data-autoplaytimeout') && !isNaN($this.data('autoplaytimeout'))) {
             autoplaytimeout_val = $this.data('autoplaytimeout');
         }
-        
+
         $slider_1.owlCarousel({
             rtl: rtl_status,
             callbacks: true,
             margin:0,
             items: items_val,
-            loop: true,
+            loop: false,
+            rewind: true,
             autoplay: autoplay_val,
             autoplayTimeout: autoplaytimeout_val,
             autoplayHoverPause: false,
@@ -342,13 +338,13 @@ jQuery(function ($) {
                 0: {
                     items: items_val,
                     nav: false,
-                    loop: true,
+                    loop: false,
                     dots: false
                 },
                 600: {
                     items: items_val,
                     nav: false,
-                    loop: true,
+                    loop: false,
                     dots: false
                 },
                 1000: {
@@ -357,43 +353,26 @@ jQuery(function ($) {
             },
             navText: ["<i class='fa fa-angle-left'></i>", "<i class='fa fa-angle-right'></i>"]
         });
-        
-        
-        
-        
+
         var $slider_animation = $slider_1;
-        
-         
-        
-        // Fired before current slide change
         $slider_animation.on('change.owl.carousel', function (event) {
             var $currentItem = $('.owl-item', $slider_animation).eq(event.item.index);
             var $elemsToanim = $currentItem.find("[data-animation-out]");
             setAnimation($elemsToanim, 'out');
         });
-        
-     
-        // Fired after current slide has been changed
-
         $slider_animation.on('changed.owl.carousel', function (event) {
             var $currentItem = $('.owl-item', $slider_animation).eq(event.item.index);
             var $elemsToanim = $currentItem.find("[data-animation-in]");
             setAnimation($elemsToanim, 'in');
-      
         });
-        
-        
-        
-        if( bg_effect_val === true ) {
-           
+        if (bg_effect_val === true) {
             $slider_animation.on('translated.owl.carousel',function(e){
                $(".active .slide-bg").addClass("slidezoom");
-           }); 
-
+           });
            $slider_animation.on('translate.owl.carousel',function(e){
                $(".active .slide-bg").removeClass("slidezoom");
            });
-        
+        }
         }
         
         
@@ -960,10 +939,15 @@ jQuery(function ($) {
             }
             
 
+            if (!$this.hasClass('owl-carousel') || typeof $.fn.owlCarousel !== 'function') {
+                return;
+            }
+
             $this.owlCarousel({
                 rtl: rtl_status,
                 items: items_val,
-                loop: true,
+                loop: false,
+                rewind: true,
                 autoplay: autoplay_val,
                 autoplayTimeout: autoplaytimeout_val,
                 autoplayHoverPause: true,
@@ -1057,10 +1041,15 @@ jQuery(function ($) {
             }
             
 
+            if (!$this.hasClass('owl-carousel') || typeof $.fn.owlCarousel !== 'function') {
+                return;
+            }
+
             $this.owlCarousel({
                 rtl: rtl_status,
                 items: items_val,
-                loop: true,
+                loop: false,
+                rewind: true,
                 autoplay: autoplay_val,
                 autoplayTimeout: autoplaytimeout_val,
                 autoplayHoverPause: true,
@@ -1766,5 +1755,146 @@ jQuery(function ($) {
     }
 
     zr_latest_projects_filter();
+
+    /**
+     * CSS scroll-snap carousels. Slides stay in the document once — no Owl
+     * clones of headings, team cards, or reviews. Touch/phone swipe is native.
+     */
+    function zr_init_snap_carousels() {
+        $('.snap-carousel').each(function () {
+            var $root = $(this);
+            if ($root.data('snapReady')) {
+                return;
+            }
+            $root.data('snapReady', true);
+
+            var $track = $root.children('.snap-carousel__track');
+            if (!$track.length) {
+                return;
+            }
+
+            var $slides = $track.children();
+            if (!$slides.length) {
+                return;
+            }
+
+            $slides.addClass('snap-carousel__slide');
+
+            var navOn = $root.attr('data-nav') === 'true' || $root.data('nav') === true || $root.data('nav') === 1;
+            var dotsOn = $root.attr('data-dots') == null
+                ? true
+                : ($root.attr('data-dots') === 'true' || $root.data('dots') === true || $root.data('dots') === 1);
+            var defaultItems = parseInt($root.attr('data-items'), 10) || 1;
+
+            function itemsPerView() {
+                if (defaultItems <= 1) {
+                    return 1;
+                }
+                return window.innerWidth <= 768 ? 1 : defaultItems;
+            }
+
+            var $nav = $();
+            var $prev = $();
+            var $next = $();
+            if (navOn) {
+                $nav = $('<div class="owl-nav snap-carousel__nav" />');
+                $prev = $('<button type="button" class="owl-prev" aria-label="Previous slide"><i class="fa fa-angle-left" aria-hidden="true"></i></button>');
+                $next = $('<button type="button" class="owl-next" aria-label="Next slide"><i class="fa fa-angle-right" aria-hidden="true"></i></button>');
+                $nav.append($prev, $next);
+                $root.append($nav);
+            }
+
+            var $dotsWrap = $();
+            if (dotsOn) {
+                $dotsWrap = $('<div class="owl-dots snap-carousel__dots" aria-label="Slides" />');
+                $root.append($dotsWrap);
+            }
+
+            function pageCount() {
+                return Math.max(1, Math.ceil($slides.length / itemsPerView()));
+            }
+
+            function currentPage() {
+                var trackEl = $track[0];
+                var width = trackEl.clientWidth || 1;
+                var maxScroll = Math.max(0, trackEl.scrollWidth - width);
+                if (maxScroll <= 0) {
+                    return 0;
+                }
+                var pages = pageCount();
+                return Math.max(0, Math.min(pages - 1, Math.round(trackEl.scrollLeft / width)));
+            }
+
+            function goTo(page) {
+                var trackEl = $track[0];
+                var pages = pageCount();
+                var next = ((page % pages) + pages) % pages;
+                var left = next * (trackEl.clientWidth || 0);
+                if (typeof trackEl.scrollTo === 'function') {
+                    trackEl.scrollTo({ left: left, behavior: 'smooth' });
+                } else {
+                    trackEl.scrollLeft = left;
+                }
+            }
+
+            function rebuildDots() {
+                if ($dotsWrap.length) {
+                    $dotsWrap.empty();
+                    var n = pageCount();
+                    for (var i = 0; i < n; i++) {
+                        (function (page) {
+                            var $dot = $('<button type="button" class="owl-dot" aria-label="Go to slide ' + (page + 1) + '" />').append('<span></span>');
+                            $dot.on('click', function () { goTo(page); });
+                            $dotsWrap.append($dot);
+                        })(i);
+                    }
+                    if (n <= 1) {
+                        $dotsWrap.hide();
+                    } else {
+                        $dotsWrap.show();
+                    }
+                }
+                if ($nav.length) {
+                    if (pageCount() <= 1) {
+                        $nav.hide();
+                    } else {
+                        $nav.show();
+                    }
+                }
+                sync();
+            }
+
+            function sync() {
+                var page = currentPage();
+                if ($dotsWrap.length) {
+                    $dotsWrap.children().removeClass('active').attr('aria-current', 'false')
+                        .eq(page).addClass('active').attr('aria-current', 'true');
+                }
+            }
+
+            if ($prev.length) {
+                $prev.on('click', function () {
+                    goTo(currentPage() - 1);
+                });
+            }
+            if ($next.length) {
+                $next.on('click', function () {
+                    goTo(currentPage() + 1);
+                });
+            }
+
+            $track.on('scroll', function () {
+                window.requestAnimationFrame(sync);
+            });
+
+            $(window).on('resize', function () {
+                rebuildDots();
+            });
+
+            rebuildDots();
+        });
+    }
+
+    zr_init_snap_carousels();
 
 });

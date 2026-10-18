@@ -81,13 +81,18 @@ class SeoGeoTest extends TestCase
         );
 
         $this->assertIsArray($business['knowsAbout']);
-        $this->assertContains('Deck construction', $business['knowsAbout']);
+        $this->assertContains('Decks', $business['knowsAbout']);
+        $this->assertSame(['Carpentry', 'Decks', 'Fences', 'Basements', 'Kitchens', 'Flooring'], $business['knowsAbout']);
         $this->assertNotContains('Red Seal carpentry', $business['knowsAbout']);
         $this->assertArrayNotHasKey('aggregateRating', $business);
         $this->assertArrayNotHasKey('review', $business);
         $this->assertArrayNotHasKey('geo', $business, 'Geo coordinates should not be published for a service-area business');
+        $this->assertArrayNotHasKey('priceRange', $business);
         $this->assertSame('2020', $business['foundingDate']);
         $this->assertSame(config('seo.area_served'), $business['areaServed']);
+        $this->assertSame('Mo-Fr 09:00-18:00', $business['openingHours'] ?? null);
+        $this->assertSame('Jonas Zanini', $business['founder']['name'] ?? null);
+        $this->assertSame('Person', $business['founder']['@type'] ?? null);
         $this->assertContains(
             'https://maps.google.com/?cid=7676669856408637146',
             $business['sameAs']
