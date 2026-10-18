@@ -694,7 +694,9 @@ async function run() {
     await page.evaluate(() => window.OpenPlan3DHost.savePlan());
     await page.waitForSelector('#openplan3d-modal:not([hidden])');
     await page.click('#openplan3d-modal-standalone-btn');
-    await new Promise((r) => setTimeout(r, 250));
+    for (let i = 0; i < 80 && !lastSavedBody; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
     assert.ok(lastProjectBody, 'Keep standalone must create a project');
     assert.ok(!lastProjectBody.client_project_id, 'standalone project is unlinked');
     assert.ok(lastSavedBody, 'Keep standalone must then save the room');
@@ -704,7 +706,9 @@ async function run() {
     await page.waitForSelector('#openplan3d-modal:not([hidden])');
     await page.select('#openplan3d-modal-client-project', '2');
     await page.click('#openplan3d-modal-link-btn');
-    await new Promise((r) => setTimeout(r, 250));
+    for (let i = 0; i < 80 && !lastSavedBody; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
     assert.strictEqual(Number(lastProjectBody && lastProjectBody.client_project_id), 2, 'Link to a project posts the chosen client project');
     assert.ok(lastSavedBody, 'Link to a project must save after linking');
 
@@ -738,10 +742,13 @@ async function run() {
       return t && t.textContent.trim() === 'Save plan';
     });
     assert.strictEqual(lastProjectBody, null, 'Destination modal shown, project not yet created');
+    lastSavedBody = null;
     await page.click('#openplan3d-modal-standalone-btn');
-    await new Promise((r) => setTimeout(r, 250));
+    for (let i = 0; i < 80 && !lastSavedBody; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
     assert.ok(lastProjectBody, 'Project created after destination confirmed');
-    assert.strictEqual(lastSavedBody.confirm_zero_area, true, 'confirm_zero_area is preserved');
+    assert.strictEqual(lastSavedBody && lastSavedBody.confirm_zero_area, true, 'confirm_zero_area is preserved');
 
     // 9. Item 8: Modal focus trap, close on Esc, and return focus to Save button
     await bootBlankEditor();
