@@ -27,7 +27,7 @@ return [
         'h1' => 'Areas We Serve in Lanark County and West Ottawa',
         'intro_paragraphs' => [
             'Zanini Renovations is a fully insured carpentry and renovation business with an office in Carleton Place. Owner Jonas Zanini has run the company since 2020. We take on residential carpentry, kitchen remodels, and commercial work, and we coordinate with qualified trades when a job needs electrical or plumbing. Call (647) 834-7570 for a free estimate; work is backed by a one-year workmanship warranty.',
-            'We work across Lanark County, west Ottawa, and Gatineau. Open a town page for Carleton Place, Kanata and Stittsville, or Barrhaven, or browse the full list of communities below.',
+            'We work across Lanark County, west Ottawa, and Gatineau. Open a town page for Carleton Place, Kanata and Stittsville, Barrhaven, Almonte and Mississippi Mills, Perth, or Nepean, or browse the full list of communities below.',
         ],
     ],
 
@@ -75,7 +75,7 @@ return [
                     'url' => 'https://beckwith.ca/services/building-by-law/',
                 ],
             ],
-            'nearby' => ['kanata', 'barrhaven'],
+            'nearby' => ['kanata', 'barrhaven', 'almonte-mississippi-mills', 'perth'],
             'intro_paragraphs' => [
                 'Zanini Renovations keeps its office in Carleton Place. Owner Jonas Zanini has run the business since 2020. We are fully insured, we back our carpentry with a one-year workmanship warranty, and we take kitchen remodels and commercial work as well as fences, decks, basements, and trim. Call (647) 834-7570 for a free written estimate on a home in town, in Beckwith Township, or in Franktown.',
                 'Carleton Place sits on the Mississippi River at the Lanark County edge of Ottawa. From the office we work on in-town streets, river lots, and rural Beckwith addresses that use a Carleton Place mailing address. Franktown is part of that same local area: we quote and build there the same way we do in town.',
@@ -93,7 +93,7 @@ return [
                 ],
                 [
                     'title' => 'Basements, trim and fireplace surrounds',
-                    'text' => 'Inside town we have rebuilt a basement after flooding—framing, drywall, flooring, and trim—while qualified trades handled electrical and plumbing. We also build fireplace surrounds and niches when a living room needs a painted, site-built finish. Finish carpentry in older Carleton Place houses often means scribing trim to floors and plaster that are no longer level.',
+                    'text' => 'Inside town we have rebuilt a basement after flooding—framing, drywall, flooring, and trim—while qualified trades handled electrical and plumbing. We also build [fireplace surrounds](/services/accent-walls) and niches when a living room needs a painted, site-built finish. Finish carpentry in older Carleton Place houses often means scribing trim to floors and plaster that are no longer level.',
                 ],
             ],
             'projects_intro' => 'Recent carpentry in Carleton Place is linked below, with photographs on each project page. We do the same work in Beckwith and Franktown.',
@@ -152,7 +152,7 @@ return [
                     'url' => 'https://ottawa.ca/en/planning-development-and-construction/building-and-renovating',
                 ],
             ],
-            'nearby' => ['barrhaven', 'carleton-place'],
+            'nearby' => ['barrhaven', 'carleton-place', 'nepean'],
             'intro_paragraphs' => [
                 'Kanata and Stittsville are west Ottawa communities we serve from our Carleton Place office. Zanini Renovations has been in business since 2020. Owner Jonas Zanini runs the company. We are fully insured, we offer a one-year workmanship warranty, and we take kitchen remodels and commercial carpentry as well as decks, fences, built-ins, and trim. Call (647) 834-7570 for a free estimate on a Kanata or Stittsville house.',
                 'The two communities sit next to each other, and the City of Ottawa handles building permits for both. On this page you will find Kanata decks, patio pads, fireplace and tile work, and built-in shelving, along with a backyard fence and gate we built in Stittsville.',
@@ -166,7 +166,7 @@ return [
                 ],
                 [
                     'title' => 'Fireplace, tile and built-ins',
-                    'text' => 'One Kanata house received a fireplace renovation and a hexagon tile backsplash. A separate Kanata job is a built-in shelving wall. That is finish carpentry and millwork done on site. We can leave the woodwork paint-ready or finish it ourselves; the estimate says which.',
+                    'text' => 'One Kanata house received a fireplace renovation and a [hexagon tile backsplash](/services/tile-installation). A separate Kanata job is a built-in shelving wall. That is finish carpentry and millwork done on site. We can leave the woodwork paint-ready or finish it ourselves; the estimate says which.',
                 ],
                 [
                     'title' => 'Fences in Stittsville',
@@ -226,7 +226,7 @@ return [
                     'url' => 'https://ottawa.ca/en/planning-development-and-construction/building-and-renovating',
                 ],
             ],
-            'nearby' => ['kanata', 'carleton-place'],
+            'nearby' => ['kanata', 'carleton-place', 'nepean'],
             'intro_paragraphs' => [
                 'Barrhaven is a south-west Ottawa community we serve from Carleton Place. Zanini Renovations has been in business since 2020, with owner Jonas Zanini. We are fully insured and we include a one-year workmanship warranty on our carpentry. Kitchen remodels and commercial work are in the mix when the job is a fit. Call (647) 834-7570 for a free estimate on a Barrhaven basement, built-in, fence, or bathroom millwork project.',
                 'The Barrhaven work on this site is a finished basement, a window seat with storage, a custom bathroom vanity, and a backyard privacy fence with a gate. That mix is typical of the calls we take in this part of Ottawa: lower-level rooms that need to become living space, millwork that has to fit an existing opening, and yards that need privacy from the next lot.',
@@ -273,6 +273,232 @@ return [
                 ],
             ],
         ],
+
+        'almonte-mississippi-mills' => [
+            'published' => true,
+            'slug' => 'almonte-mississippi-mills',
+            'name' => 'Almonte',
+            'hub_label' => 'Almonte & Mississippi Mills',
+            'featured_note' => 'Porches, fences, trim and basements. Also Pakenham.',
+            'breadcrumb_name' => 'Almonte & Mississippi Mills',
+            'title' => 'Carpenter in Almonte & Mississippi Mills | Zanini',
+            'meta_description' => 'Almonte and Mississippi Mills carpenter for decks, porches, fences, trim, built-ins and basements, from nearby Carleton Place. Fully insured. Free quote.',
+            'h1' => 'Carpentry and renovations in Almonte and Mississippi Mills',
+            'covers' => ['Mississippi Mills', 'Pakenham'],
+            'area_served' => [
+                ['@type' => 'City', 'name' => 'Almonte'],
+                ['@type' => 'AdministrativeArea', 'name' => 'Mississippi Mills'],
+                ['@type' => 'Place', 'name' => 'Pakenham'],
+            ],
+            'project_slugs' => [
+                'gabled-porch-roof',
+            ],
+            'permit_links' => [
+                [
+                    'label' => 'Mississippi Mills Building and Renovating',
+                    'url' => 'https://www.mississippimills.ca/build-and-invest/development-services-and-engineering-department/building-and-renovating/',
+                ],
+            ],
+            'nearby' => ['carleton-place', 'kanata'],
+            'faqs_heading' => 'Questions about work in Almonte and Mississippi Mills',
+            'intro_paragraphs' => [
+                'Almonte is a short drive up the road from our home base in Carleton Place, so Almonte, Pakenham and the rest of Mississippi Mills are local work for us. We build decks, porches, fences and stairs outside, and trim, built-ins, flooring, tile and basements inside.',
+            ],
+            'services_heading' => 'Services we do in Almonte and Mississippi Mills',
+            'services_intro' => '',
+            'services' => [
+                [
+                    'title' => 'Porches, decks and exterior stairs',
+                    'text' => 'In Almonte we framed a gabled porch roof, with clean framing and OSB sheathing designed for Ontario snow loads. We also build decks, landings and exterior stairs fitted to the house and the grade. See [decks](/services/decks) and [staircases](/services/staircases).',
+                ],
+                [
+                    'title' => 'Fences and gates',
+                    'text' => 'Privacy fences, side-yard fences and gates that hang square. We arrange utility locates before we dig and set posts for frost. See [fences and gates](/services/fences-gates).',
+                ],
+                [
+                    'title' => 'Trim, built-ins and feature walls',
+                    'text' => 'Many Almonte houses are older, and finish carpentry in an older house often means scribing trim to floors and plaster that are no longer level. We do baseboard, casing, wainscoting, mantels and built-ins. See [finish carpentry](/services/finish-carpentry-trim) and [accent walls](/services/accent-walls).',
+                ],
+                [
+                    'title' => 'Basements, floors and tile',
+                    'text' => 'Basement finishing, hardwood, engineered wood, vinyl, laminate and tile floors, and tile backsplashes. When a renovation needs electrical or plumbing, we arrange qualified, certified electricians and plumbers.',
+                ],
+            ],
+            'projects_intro' => 'Recent carpentry in Almonte is linked below.',
+            'projects_note' => 'The [gabled porch roof in Almonte](/portfolio/gabled-porch-roof) is structural framing and OSB sheathing for a new gabled porch roof. Nearby work: [engineered hardwood flooring, Ashton](/portfolio/engineering-hard-wood-flooring-installation) and our [Carleton Place projects](/service-areas/carleton-place).',
+            'permits_heading' => 'Permits and local notes',
+            'permits_paragraphs' => [
+                'Almonte and Pakenham are both part of the Municipality of Mississippi Mills, so building permits for addresses in the municipality go through the Mississippi Mills Building Department. Which office applies depends on where the property sits, not the mailing address, so check with the municipality if you\'re near a boundary, or send us the address and we\'ll help you find the right office.',
+                'Whether a porch, deck or basement needs a permit depends on the work and the municipality\'s current rules. We can look after the permit as an optional extra, quoted separately, or you can handle it yourself. Our work in Ontario is done to the Ontario Building Code (O.Reg. 332/12).',
+            ],
+            'map_heading' => 'Where we work from',
+            'map_paragraphs' => [
+                'We work from Carleton Place across Mississippi Mills, Beckwith and west Ottawa.',
+            ],
+            'faqs' => [
+                [
+                    'question' => 'Do you work in Pakenham and rural Mississippi Mills too?',
+                    'answer' => 'Yes. Pakenham and the rural parts of Mississippi Mills are part of the area we serve from Carleton Place. We quote and build there the same way we do in Almonte.',
+                ],
+                [
+                    'question' => 'Who issues building permits for an Almonte address?',
+                    'answer' => 'The Mississippi Mills Building Department. If a permit is needed, we can handle it for you as an optional extra, quoted separately, or you can apply yourself.',
+                ],
+                [
+                    'question' => 'Can you quote from photos before visiting?',
+                    'answer' => 'You can send photos and a short description to get a sense of the scope. Most jobs still need a site visit to measure, and we\'ll tell you up front if one is needed.',
+                ],
+            ],
+        ],
+
+        'perth' => [
+            'published' => true,
+            'slug' => 'perth',
+            'name' => 'Perth',
+            'hub_label' => 'Perth',
+            'featured_note' => 'Fireplace mantels, trim, tile, decks and fences.',
+            'breadcrumb_name' => 'Perth',
+            'title' => 'Carpenter in Perth, Ontario | Zanini Renovations',
+            'meta_description' => 'Perth carpenter for fireplace mantels, trim, built-ins, tile, decks and fences, from nearby Carleton Place. Fully insured, since 2020. Free estimate.',
+            'h1' => 'Carpentry and renovations in Perth',
+            'covers' => [],
+            'area_served' => [
+                ['@type' => 'City', 'name' => 'Perth'],
+                ['@type' => 'AdministrativeArea', 'name' => 'Tay Valley Township'],
+            ],
+            'project_slugs' => [
+                'custom-classic-fireplace-mantel',
+            ],
+            'permit_links' => [
+                [
+                    'label' => 'Town of Perth Building and Renovating',
+                    'url' => 'https://www.perth.ca/business-development/building-and-renovating/',
+                ],
+                [
+                    'label' => 'Tay Valley Township Building',
+                    'url' => 'https://www.tayvalleytwp.ca/living-here/building/',
+                ],
+            ],
+            'nearby' => ['carleton-place', 'almonte-mississippi-mills'],
+            'intro_paragraphs' => [
+                'We work in Perth and the surrounding townships from our base in Carleton Place. Perth has many older homes, and they reward careful finish carpentry: mantels, trim and built-ins made to fit rooms that aren\'t perfectly square. We also build decks, fences and stairs, and install floors and tile.',
+            ],
+            'services_heading' => 'Services we do in Perth',
+            'services_intro' => '',
+            'services' => [
+                [
+                    'title' => 'Fireplace mantels and surrounds',
+                    'text' => 'In a Perth living room we designed and built a custom classic mantel: multi-layered, with decorative corbels, an arched header and dentil crown moulding. It sits over a large-format tile surround with a matching raised step hearth, with the walls taped, sanded and painted to finish. See [accent walls and fireplace surrounds](/services/accent-walls).',
+                ],
+                [
+                    'title' => 'Trim, wainscoting and built-ins',
+                    'text' => 'Baseboard, casing, crown, wainscoting and built-in shelving, scribed to the walls and floors you have. See [finish carpentry](/services/finish-carpentry-trim) and [custom built-ins](/services/custom-built-ins-closets).',
+                ],
+                [
+                    'title' => 'Tile and floors',
+                    'text' => 'Backsplashes, tile floors and fireplace tile, plus hardwood, engineered wood, vinyl and laminate. See [tile installation](/services/tile-installation) and [flooring](/services/flooring-installation).',
+                ],
+                [
+                    'title' => 'Decks, fences and stairs',
+                    'text' => 'Outdoor carpentry framed to the house and the grade, with posts set for frost. When a renovation needs electrical or plumbing, we arrange qualified, certified electricians and plumbers.',
+                ],
+            ],
+            'projects_intro' => 'Recent carpentry in Perth is linked below.',
+            'projects_note' => 'The [custom classic fireplace mantel in Perth](/portfolio/custom-classic-fireplace-mantel) has corbels, an arched header and dentil crown, a large-format tile surround and a raised step hearth.',
+            'permits_heading' => 'Permits and local notes',
+            'permits_paragraphs' => [
+                'Inside the Town of Perth, building permits go through the Town\'s Building Department. Perth is surrounded by rural townships, and many addresses with a Perth mailing address are actually in one of them, such as Tay Valley Township, which has its own Building Department. Which office applies depends on where the property sits, not the mailing address. Check with the offices below, or send us the address and we\'ll help you find the right one.',
+                'We can look after the permit as an optional extra, quoted separately, or you can handle it yourself. Our work in Ontario is done to the Ontario Building Code (O.Reg. 332/12).',
+            ],
+            'map_heading' => 'Where we work from',
+            'map_paragraphs' => [
+                'We work from Carleton Place across Lanark County, including Perth, Smiths Falls and Lanark Highlands, and into west Ottawa.',
+            ],
+            'faqs' => [
+                [
+                    'question' => 'Who issues building permits for a Perth address?',
+                    'answer' => 'The Town of Perth Building Department for addresses inside the town. Rural addresses around Perth may fall under a township, such as Tay Valley Township. If you\'re unsure, send us the address.',
+                ],
+                [
+                    'question' => 'Can you match the trim in an older Perth home?',
+                    'answer' => 'Often, yes. Many standard profiles are still available, and we\'ll look at the closest match. Bring us a short offcut, or we\'ll take a photo and measurements at the visit.',
+                ],
+            ],
+        ],
+
+        'nepean' => [
+            'published' => true,
+            'slug' => 'nepean',
+            'name' => 'Nepean',
+            'hub_label' => 'Nepean',
+            'featured_note' => 'Kitchens, built-ins, floors and decks in homes and condos.',
+            'breadcrumb_name' => 'Nepean',
+            'title' => 'Carpenter in Nepean, Ottawa | Zanini Renovations',
+            'meta_description' => 'Nepean carpenter for kitchen updates, cabinets, built-ins, trim, tile, floors and decks, in homes and condos. Fully insured, since 2020. Free estimate.',
+            'h1' => 'Carpentry and renovations in Nepean',
+            'covers' => [],
+            'area_served' => [
+                ['@type' => 'Place', 'name' => 'Nepean, Ottawa'],
+            ],
+            'project_slugs' => [
+                'kitchen-renovations',
+            ],
+            'permit_links' => [
+                [
+                    'label' => 'City of Ottawa Building and renovating',
+                    'url' => 'https://ottawa.ca/en/planning-development-and-construction/building-and-renovating',
+                ],
+            ],
+            'nearby' => ['kanata', 'barrhaven'],
+            'intro_paragraphs' => [
+                'Nepean is part of the City of Ottawa, and we work there from our base in Carleton Place. Our most recent kitchen was a condo kitchen renovation, and we take on carpentry in houses, condos and rental units across the area: kitchens, built-ins, trim, floors, tile, decks and fences.',
+            ],
+            'services_heading' => 'Services we do in Nepean',
+            'services_intro' => '',
+            'services' => [
+                [
+                    'title' => 'Kitchen updates and unit renovations',
+                    'text' => 'In Nepean we renovated a unit\'s kitchen, bathroom vanity, closets and doors. The kitchen got 16 custom-built flat-style cabinet doors in white with black bar pulls, four custom drawers, soft-close full-extension hardware, and new dark matte countertops with a two-tiered breakfast bar. A large stainless undermount sink and pull-down faucet finished it. See [kitchen remodels](/services/kitchen-remodel).',
+                ],
+                [
+                    'title' => 'Built-ins, closets and trim',
+                    'text' => 'Closet doors, built-in storage, baseboard and casing. See [custom built-ins and closets](/services/custom-built-ins-closets) and [finish carpentry](/services/finish-carpentry-trim).',
+                ],
+                [
+                    'title' => 'Floors and tile',
+                    'text' => 'Hardwood, engineered wood, vinyl, laminate and tile floors, and tile backsplashes. See [flooring](/services/flooring-installation) and [tile installation](/services/tile-installation).',
+                ],
+                [
+                    'title' => 'Decks, fences and basements',
+                    'text' => 'Outdoor carpentry and basement finishing. When a renovation needs electrical or plumbing, we arrange qualified, certified electricians and plumbers. Gas work isn\'t included.',
+                ],
+            ],
+            'projects_intro' => 'Recent carpentry in Nepean is linked below.',
+            'projects_note' => 'The [Nepean kitchen renovation](/portfolio/kitchen-renovations) has 16 custom white cabinet doors, four drawers, soft-close hardware, dark matte countertops with a two-tiered breakfast bar, and a new undermount sink. Nearby work: [basement finishing, Barrhaven](/portfolio/basement-finishing), [custom bathroom vanity, Barrhaven](/portfolio/custom-bathroom-vanity-barrhaven) and [heavy storage shelf in an Ottawa condo](/portfolio/heavy-storage-shelf-in-ottawa-condo).',
+            'permits_heading' => 'Permits and local notes',
+            'permits_paragraphs' => [
+                'Nepean addresses are inside the City of Ottawa, so building permits, when they\'re required, go through the City of Ottawa\'s Building Code Services. Whether a kitchen, basement or deck needs a permit depends on the work and the city\'s current rules. In a condo, the building\'s management or condo corporation may have its own rules for renovations, so check those before work starts.',
+                'We can look after the permit as an optional extra, quoted separately, or you can handle it yourself. Our work in Ontario is done to the Ontario Building Code (O.Reg. 332/12).',
+            ],
+            'map_heading' => 'Where we work from',
+            'map_paragraphs' => [
+                'We work from Carleton Place across west and south Ottawa.',
+            ],
+            'faqs' => [
+                [
+                    'question' => 'Do you work in condos and rental units in Nepean?',
+                    'answer' => 'Yes. We work in condos and commercial spaces as well as houses. Our Nepean kitchen was part of a unit renovation.',
+                ],
+                [
+                    'question' => 'Who issues building permits for a Nepean address?',
+                    'answer' => 'The City of Ottawa\'s Building Code Services. If a permit is needed, we can handle it as an optional extra, quoted separately, or you can apply yourself.',
+                ],
+                [
+                    'question' => 'Can you replace cabinet doors without replacing the whole kitchen?',
+                    'answer' => 'The Nepean kitchen got custom-built doors, drawers, hardware and new countertops. Whether that approach suits your kitchen depends on the existing cabinet boxes, so we\'ll look at them at the visit.',
+                ],
+            ],
+        ],
     ],
 
     /*
@@ -300,10 +526,12 @@ return [
                 ],
                 [
                     'name' => 'Almonte',
+                    'page' => 'almonte-mississippi-mills',
                     'project_slugs' => ['gabled-porch-roof'],
                 ],
                 [
                     'name' => 'Mississippi Mills',
+                    'page' => 'almonte-mississippi-mills',
                     'note' => 'Almonte and Pakenham.',
                     'project_slugs' => ['gabled-porch-roof'],
                 ],
@@ -312,6 +540,7 @@ return [
                 ],
                 [
                     'name' => 'Perth',
+                    'page' => 'perth',
                     'project_slugs' => ['custom-classic-fireplace-mantel'],
                 ],
                 [
@@ -354,6 +583,7 @@ return [
                 ],
                 [
                     'name' => 'Nepean',
+                    'page' => 'nepean',
                     'project_slugs' => ['kitchen-renovations'],
                 ],
                 [

@@ -92,6 +92,7 @@ class ServiceAreas
         }
         $chunks[] = (string) ($page['services_intro'] ?? '');
         $chunks[] = (string) ($page['projects_intro'] ?? '');
+        $chunks[] = (string) ($page['projects_note'] ?? '');
         foreach ((array) ($page['services'] ?? []) as $service) {
             if (! is_array($service)) {
                 continue;
@@ -108,6 +109,38 @@ class ServiceAreas
         }
 
         return trim(preg_replace('/\s+/', ' ', implode(' ', $chunks)) ?? '');
+    }
+
+    /**
+     * Escape town-page copy and turn [label](/path) or [label](https://…) into links.
+     */
+    public static function richText(string $text): string
+    {
+        $escaped = e($text);
+
+        $linked = preg_replace_callback(
+            '/\[([^\]\n]+)\]\(([^)\s]+)\)/',
+            static function (array $match): string {
+                $href = html_entity_decode($match[2], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                if (! self::isSafePublicHref($href)) {
+                    return $match[0];
+                }
+
+                return '<a href="'.e($href).'">'.$match[1].'</a>';
+            },
+            $escaped
+        );
+
+        return is_string($linked) ? $linked : $escaped;
+    }
+
+    public static function isSafePublicHref(string $href): bool
+    {
+        if (str_starts_with($href, '/') && ! str_starts_with($href, '//')) {
+            return true;
+        }
+
+        return (bool) preg_match('#^https://[a-z0-9.-]+(?:/|$)#i', $href);
     }
 
     /**

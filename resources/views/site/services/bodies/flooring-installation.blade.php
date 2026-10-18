@@ -13,7 +13,7 @@
 
 <p><strong>Upstairs and whole-floor replacements.</strong> Taking out old carpet and putting in new flooring across a whole level, often together with the stairs. See <a href="{{ url('/services/staircases') }}">staircases</a>.</p>
 
-<p><strong>Hardwood, vinyl, laminate and tile.</strong> Along with engineered wood, we install solid hardwood, vinyl, laminate and tile, so one company can look after the floors from the basement to the upstairs bedrooms.</p>
+<p><strong>Hardwood, vinyl, laminate and tile.</strong> Along with engineered wood, we install solid hardwood, vinyl, laminate and <a href="{{ url('/services/tile-installation') }}">tile</a>, so one company can look after the floors from the basement to the upstairs bedrooms.</p>
 
 <p>Not sure which floor suits the room? We'll walk through the options with you, including how each one handles moisture, wear and the transitions to the rooms around it. Some jobs are small, like a single room or a hallway, and those are welcome too.</p>
 

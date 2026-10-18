@@ -44,7 +44,7 @@
           @foreach ((array) ($page['services'] ?? []) as $service)
             <article class="sa-card">
               <h3>{{ $service['title'] }}</h3>
-              <p>{{ $service['text'] }}</p>
+              <p>{!! \App\Support\ServiceAreas::richText((string) ($service['text'] ?? '')) !!}</p>
             </article>
           @endforeach
         </div>
@@ -53,11 +53,14 @@
 
     <section class="sa-section">
       <div class="container">
-        <h2>Recent projects in {{ $page['name'] }}</h2>
+        <h2>{{ $page['projects_heading'] ?? ('Recent projects in '.$page['name']) }}</h2>
         @if (! empty($page['projects_intro']))
-          <p>{{ $page['projects_intro'] }}</p>
+          <p>{!! \App\Support\ServiceAreas::richText((string) $page['projects_intro']) !!}</p>
         @endif
         @include('site.partials.service-area-projects', ['projects' => $projects])
+        @if (! empty($page['projects_note']))
+          <p>{!! \App\Support\ServiceAreas::richText((string) $page['projects_note']) !!}</p>
+        @endif
       </div>
     </section>
 
@@ -105,7 +108,7 @@
     @if (! empty($page['faqs']))
       <section class="sa-section">
         <div class="container">
-          <h2>Questions about work in {{ $page['name'] }}</h2>
+          <h2>{{ $page['faqs_heading'] ?? ('Questions about work in '.$page['name']) }}</h2>
           <div class="sa-faq">
             @foreach ($page['faqs'] as $faq)
               <details class="sa-faq__item">
