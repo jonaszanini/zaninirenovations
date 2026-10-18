@@ -451,7 +451,7 @@ return [
             ],
             'nearby' => ['kanata', 'barrhaven'],
             'intro_paragraphs' => [
-                'Nepean is part of the City of Ottawa, and we work there from our base in Carleton Place. Our most recent kitchen was a Nepean unit renovation, and we take on carpentry in houses, condos and rental units across the area: kitchens, built-ins, trim, floors, tile, decks and fences.',
+                'Nepean is part of the City of Ottawa, and we work there from our base in Carleton Place. Our most recent kitchen was a condo kitchen renovation, and we take on carpentry in houses, condos and rental units across the area: kitchens, built-ins, trim, floors, tile, decks and fences.',
             ],
             'services_heading' => 'Services we do in Nepean',
             'services_intro' => '',
@@ -487,7 +487,7 @@ return [
             'faqs' => [
                 [
                     'question' => 'Do you work in condos and rental units in Nepean?',
-                    'answer' => 'Yes. Most of our carpentry and renovation work is offered in condos and commercial spaces as well as houses. Our Nepean kitchen was part of a unit renovation.',
+                    'answer' => 'Yes. We work in condos and commercial spaces as well as houses. Our Nepean kitchen was part of a unit renovation.',
                 ],
                 [
                     'question' => 'Who issues building permits for a Nepean address?',

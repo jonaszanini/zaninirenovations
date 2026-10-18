@@ -630,12 +630,6 @@ return [
                 ['slug' => 'built-in-shelving-wall-kanata', 'label' => 'Built-in shelving wall, Kanata', 'text' => 'a full-wall white built-in with crown moulding.'],
                 ['slug' => 'fireplace-renovation', 'label' => 'Fireplace renovation, Kanata', 'text' => 'prep, priming and new grout.'],
             ],
-            'reviews' => [
-                [
-                    'quote' => 'On the upper floor, Jonas covered our fireplace with beautiful finishes and installed stunning handmade shelves with excellent craftsmanship. In the upstairs hallway, he added frames and lighting combined with dark paint, giving the house a very elegant look.',
-                    'author' => 'Leo B.',
-                ],
-            ],
         ],
 
     ],

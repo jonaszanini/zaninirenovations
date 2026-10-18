@@ -25,7 +25,7 @@
 
 <h2>Residential and commercial</h2>
 
-<p>Most of our tile work is in homes, but we also work in condos and commercial spaces. Our most recent kitchen was a condo project (see <a href="{{ url('/services/kitchen-remodel') }}">kitchen remodels</a>).</p>
+<p>Most of our tile work is in homes, but we also work in condos and commercial spaces. Our most recent kitchen was a condo kitchen renovation (see <a href="{{ url('/services/kitchen-remodel') }}">kitchen remodels</a>).</p>
 
 <h2>How a tile job works</h2>
 

@@ -11,7 +11,7 @@
 
 <p><strong>Board and batten and picture-frame moulding.</strong> Vertical battens over a flat panel, or moulding laid out in boxes, either partway up the wall or floor to ceiling. Spacing is worked out for each wall so the boxes or battens are even from end to end and line up with windows, outlets and corners.</p>
 
-<p><strong>Feature walls.</strong> A single wall treated as a focal point, behind a bed, a sofa or a desk, or at the end of a hallway. Slats, panels and trim can all work, and paint colour plays a big part. One client described what we did in her upstairs hallway: "he added frames and lighting combined with dark paint, giving the house a very elegant look."</p>
+<p><strong>Feature walls.</strong> A single wall treated as a focal point, behind a bed, a sofa or a desk, or at the end of a hallway. Slats, panels and trim can all work, and paint colour plays a big part. One client described what we did in their upstairs hallway: "he added frames and lighting combined with dark paint, giving the house a very elegant look."</p>
 
 <p><strong>Fireplace surrounds and mantels.</strong> The fireplace wall is often the room's main feature. In Perth we built a multi-layered mantel with decorative corbels, an arched header and dentil crown moulding, with a large-format <a href="{{ url('/services/tile-installation') }}">tile</a> surround and a raised step hearth. In a Carleton Place living room we built out a drywall surround with a recessed niche, a wood sill and baseboard wrapped all the way around, below a floating mantel shelf. Fireplace work is planned around the required clearances from combustible materials and the appliance manufacturer's instructions. Gas work, such as connecting a gas fireplace, isn't included.</p>
 
