@@ -213,7 +213,7 @@ class OnPageSeoBatch3Test extends IntegrationTestCase
             ['built-in-window-storage', 'Built-in window storage', 'Barrhaven'],
             ['custom-bathroom-vanity-barrhaven', 'Custom bathroom vanity', 'Barrhaven'],
             ['2nd-floor-and-stairs-renovation', '2nd floor and stairs renovation', 'South Keys'],
-            ['engineering-hard-wood-flooring-installation', 'Engineered hardwood flooring', 'Ashton'],
+            ['engineering-hard-wood-flooring-installation', 'Engineered Hardwood Flooring Installation in Ashton', 'Ashton'],
             ['kitchen-renovations', 'Kitchen renovations', 'Nepean'],
             ['backsplash-installation', 'Backsplash installation', 'Kanata'],
             ['lattice-fence', 'Lattice fence', 'Alta Vista'],

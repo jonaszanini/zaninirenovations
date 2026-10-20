@@ -66,6 +66,7 @@
   @endif
 
   @stack('jsonld')
+  @include('partials.schema')
 
   <link href="{{ url('css/bootstrap.min.css') }}" rel="stylesheet" type="text/css">
   <link rel="stylesheet" href="{{ url('css/font-awesome.min.css') }}" media="print" onload="this.media='all'">

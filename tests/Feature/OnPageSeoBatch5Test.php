@@ -246,7 +246,7 @@ class OnPageSeoBatch5Test extends IntegrationTestCase
             ['catio', 'Catio', 'South Keys'],
             ['2nd-floor-and-stairs-renovation', '2nd floor and stairs renovation', 'South Keys'],
             ['lattice-fence', 'Lattice fence', 'Alta Vista'],
-            ['engineering-hard-wood-flooring-installation', 'Engineered hardwood flooring', 'Ashton'],
+            ['engineering-hard-wood-flooring-installation', 'Engineered Hardwood Flooring Installation in Ashton', 'Ashton'],
             ['custom-shed-doors', 'Custom shed doors', 'West Carleton'],
         ];
 

@@ -83,6 +83,12 @@ class OnPageSeoOct16Test extends IntegrationTestCase
     {
         $html = $this->get('/')->assertOk()->getContent();
 
+        $this->assertSame(1, preg_match_all('/<h1[^>]*>(.*?)<\/h1>/is', $html, $h1Matches));
+        $this->assertSame(
+            'Carpenter & Renovation Contractor in Carleton Place & Ottawa',
+            trim(html_entity_decode(strip_tags($h1Matches[1][0]), ENT_QUOTES | ENT_HTML5, 'UTF-8'))
+        );
+
         preg_match_all('/<h([23])[^>]*>(.*?)<\/h\1>/is', $html, $matches, PREG_SET_ORDER);
         $this->assertNotEmpty($matches);
 

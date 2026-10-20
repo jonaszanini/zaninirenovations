@@ -291,7 +291,8 @@ jQuery(function ($) {
         // are not cloned. Do not return from the ready handler here.
         var $slider_1 = $("#slider_1");
         var $this = $slider_1;
-        var skipOwl = !$this.hasClass('owl-carousel')
+        var skipOwl = $this.hasClass('snap-carousel')
+            || !$this.hasClass('owl-carousel')
             || typeof $.fn.owlCarousel !== 'function'
             || ($this.attr('data-carousel') && $this.data('carousel') !== 1);
         if (skipOwl) {
@@ -692,6 +693,11 @@ jQuery(function ($) {
         $gallery_carousel.each(function () {
 
             var $this = $(this);
+
+            if ($this.hasClass('snap-carousel') || !$this.hasClass('owl-carousel') || typeof $.fn.owlCarousel !== 'function') {
+                $this.removeClass('owl-carousel');
+                return;
+            }
             
             var items_val = 5,
                     nav_val = false,
@@ -793,6 +799,11 @@ jQuery(function ($) {
         $logo_items.each(function () {
 
             var $this = $(this);
+
+            if ($this.hasClass('snap-carousel') || !$this.hasClass('owl-carousel') || typeof $.fn.owlCarousel !== 'function') {
+                $this.removeClass('owl-carousel');
+                return;
+            }
             
             var items_val = 6,
                     nav_val = false,
@@ -885,6 +896,11 @@ jQuery(function ($) {
         $testimonial_container.each(function () {
 
             var $this = $(this);
+
+            if ($this.hasClass('snap-carousel') || !$this.hasClass('owl-carousel') || typeof $.fn.owlCarousel !== 'function') {
+                $this.removeClass('owl-carousel');
+                return;
+            }
             
             var items_val = 2,
                     nav_val = false,
@@ -987,6 +1003,11 @@ jQuery(function ($) {
         $team_carousel.each(function () {
 
             var $this = $(this);
+
+            if ($this.hasClass('snap-carousel') || !$this.hasClass('owl-carousel') || typeof $.fn.owlCarousel !== 'function') {
+                $this.removeClass('owl-carousel');
+                return;
+            }
             
             var items_val = 3,
                     nav_val = false,

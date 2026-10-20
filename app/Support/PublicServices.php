@@ -163,4 +163,68 @@ class PublicServices
 
         return $items;
     }
+
+    /**
+     * Return published service pages that match a portfolio project.
+     * Matches via explicit references in hero_project_slug, projects, or more_projects,
+     * and falls back to project categories.
+     *
+     * @param  Project|string  $project
+     * @return Collection<int, array<string, mixed>>
+     */
+    public static function servicesForProject(Project|string $project): Collection
+    {
+        $projectSlug = $project instanceof Project ? (string) $project->slug : trim($project);
+        if ($projectSlug === '') {
+            return collect();
+        }
+
+        $directMatches = collect(self::publishedPages())->filter(function (array $page) use ($projectSlug) {
+            if (($page['hero_project_slug'] ?? '') === $projectSlug) {
+                return true;
+            }
+            foreach ((array) ($page['projects'] ?? []) as $row) {
+                if (is_array($row) && ($row['slug'] ?? '') === $projectSlug) {
+                    return true;
+                }
+            }
+            foreach ((array) ($page['more_projects'] ?? []) as $row) {
+                if (is_array($row) && ($row['slug'] ?? '') === $projectSlug) {
+                    return true;
+                }
+            }
+
+            return false;
+        })->values();
+
+        if ($directMatches->isNotEmpty()) {
+            return $directMatches;
+        }
+
+        if ($project instanceof Project && $project->relationLoaded('categories')) {
+            $catSlugs = $project->categories->pluck('slug')->all();
+            $categoryMap = [
+                'deck' => 'decks',
+                'fencing' => 'fences-gates',
+                'basement_renovation' => 'basement-finishing',
+                'tile' => 'tile-installation',
+                'flooring' => 'flooring-installation',
+                'forniture' => 'custom-built-ins-closets',
+            ];
+            $matchedServiceSlugs = [];
+            foreach ($catSlugs as $cSlug) {
+                if (isset($categoryMap[$cSlug])) {
+                    $matchedServiceSlugs[] = $categoryMap[$cSlug];
+                }
+            }
+            if ($matchedServiceSlugs !== []) {
+                return collect(self::publishedPages())
+                    ->filter(fn (array $page) => in_array($page['slug'] ?? '', $matchedServiceSlugs, true))
+                    ->values();
+            }
+        }
+
+        return collect();
+    }
 }
+

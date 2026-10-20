@@ -6,6 +6,8 @@
 /vendor
 .env
 .env.backup
+.env.bak
+.env.*.bak
 .env.production
 .env.testing
 .env.*.local

@@ -597,8 +597,8 @@ return [
         'accent-walls' => [
             'published' => true,
             'slug' => 'accent-walls',
-            'nav_label' => 'Accent walls',
-            'hub_label' => 'Accent walls',
+            'nav_label' => 'Accent walls & fireplaces',
+            'hub_label' => 'Accent walls & fireplaces',
             'title' => 'Accent Walls & Wainscoting – Carleton Place | Zanini',
             'meta_description' => 'Accent walls, wainscoting, board and batten, feature walls and fireplace surrounds, built and trimmed on site. Carleton Place, Kanata, Perth and Ottawa.',
             'h1' => 'Accent Walls and Wainscoting in Carleton Place and Ottawa',

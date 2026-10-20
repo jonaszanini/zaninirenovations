@@ -30,6 +30,7 @@
         <env name="DB_USERNAME" value="root"/>
         <env name="DB_PASSWORD" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="MAIL_FROM_ADDRESS" value="zaninirenovations@gmail.com"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

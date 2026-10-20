@@ -103,7 +103,7 @@ class OnPageSeoBatch6Test extends IntegrationTestCase
             ['built-in-shelving-wall-kanata', 'Built-in shelving wall', 'Kanata'],
             ['gabled-porch-roof', 'Gabled porch roof', 'Almonte'],
             ['kitchen-renovations', 'Kitchen renovations', 'Nepean'],
-            ['engineering-hard-wood-flooring-installation', 'Engineered hardwood flooring', 'Ashton'],
+            ['engineering-hard-wood-flooring-installation', 'Engineered Hardwood Flooring Installation in Ashton', 'Ashton'],
             ['basement-finishing', 'Basement finishing', 'Barrhaven'],
             ['custom-bathroom-vanity-barrhaven', 'Custom bathroom vanity', 'Barrhaven'],
         ] as [$slug, $title, $town]) {

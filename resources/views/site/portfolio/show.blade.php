@@ -94,7 +94,18 @@
                   <p>{{ $paragraph }}</p>
                 @endif
               @endforeach
+              @php
+                $matchingServices = \App\Support\PublicServices::servicesForProject($project);
+              @endphp
             </div>
+            @if ($matchingServices->isNotEmpty())
+              <p class="portfolio-page-service-link">
+                Related service:
+                @foreach ($matchingServices as $svc)
+                  <a href="{{ url('/services/'.$svc['slug']) }}">{{ $svc['hub_label'] ?? $svc['nav_label'] }}</a>@if (! $loop->last), @endif
+                @endforeach
+              </p>
+            @endif
           </article>
         </div>
 
@@ -112,6 +123,16 @@
                 Category
                 <span class="pull-right">{{ $project->categoryLabel() }}</span>
               </li>
+              @if ($matchingServices->isNotEmpty())
+                <li>
+                  {{ \Illuminate\Support\Str::plural('Service', $matchingServices->count()) }}
+                  <span class="pull-right">
+                    @foreach ($matchingServices as $svc)
+                      <a href="{{ url('/services/'.$svc['slug']) }}">{{ $svc['hub_label'] ?? $svc['nav_label'] }}</a>@if (! $loop->last), @endif
+                    @endforeach
+                  </span>
+                </li>
+              @endif
               @if ($project->completed_on)
                 <li>
                   Completed

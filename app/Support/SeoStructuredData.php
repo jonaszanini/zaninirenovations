@@ -66,6 +66,62 @@ class SeoStructuredData
         return json_encode($data, $flags) ?: '{}';
     }
 
+    /**
+     * Canonical HomeAndConstructionBusiness structured data for the site.
+     *
+     * @return array<string, mixed>
+     */
+    public static function canonicalBusiness(): array
+    {
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'HomeAndConstructionBusiness',
+            '@id' => 'https://zaninirenovations.ca/#business',
+            'name' => 'Zanini Renovations',
+            'url' => 'https://zaninirenovations.ca/',
+            'logo' => 'https://zaninirenovations.ca/images/logo.png',
+            'telephone' => '+1-647-834-7570',
+            'foundingDate' => '2020',
+            'founder' => [
+                '@type' => 'Person',
+                'name' => 'Jonas Zanini',
+            ],
+            'address' => [
+                '@type' => 'PostalAddress',
+                'addressLocality' => 'Carleton Place',
+                'addressRegion' => 'ON',
+                'addressCountry' => 'CA',
+            ],
+            'hasMap' => self::GOOGLE_BUSINESS_CID,
+            'openingHoursSpecification' => [
+                [
+                    '@type' => 'OpeningHoursSpecification',
+                    'dayOfWeek' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                    'opens' => '09:00',
+                    'closes' => '18:00',
+                ],
+            ],
+            'sameAs' => array_values(array_filter([
+                (string) config('social.facebook_url', 'https://www.facebook.com/zaninirenovations'),
+                (string) config('social.instagram_url', 'https://www.instagram.com/zaninirenovations/'),
+            ])),
+            'areaServed' => [
+                'Carleton Place',
+                'Beckwith',
+                'Almonte',
+                'Mississippi Mills',
+                'Perth',
+                'Smiths Falls',
+                'Ottawa',
+                'Kanata',
+                'Stittsville',
+                'Barrhaven',
+                'Nepean',
+                'Gatineau',
+            ],
+        ];
+    }
+
     public static function homeGraph(): array
     {
         $url = rtrim(config('app.url'), '/');
@@ -605,29 +661,6 @@ class SeoStructuredData
             $areas = [['@type' => 'Place', 'name' => (string) ($page['name'] ?? 'Ottawa')]];
         }
 
-        $business = [
-            '@type' => ['LocalBusiness', 'HomeAndConstructionBusiness'],
-            '@id' => $url.'#localbusiness',
-            'name' => 'Zanini Renovations',
-            'url' => $url,
-            'description' => $description,
-            'telephone' => '+1-647-834-7570',
-            'email' => (string) config('mail.from.address', ''),
-            'foundingDate' => '2020',
-            'address' => [
-                '@type' => 'PostalAddress',
-                'addressLocality' => 'Carleton Place',
-                'addressRegion' => 'ON',
-                'addressCountry' => 'CA',
-            ],
-            'areaServed' => $areas,
-            'founder' => [
-                '@type' => 'Person',
-                'name' => 'Jonas Zanini',
-            ],
-            'parentOrganization' => ['@id' => $base.'/#business'],
-        ];
-
         $service = [
             '@type' => 'Service',
             '@id' => $url.'#service',
@@ -635,7 +668,11 @@ class SeoStructuredData
             'serviceType' => 'Carpentry and renovation',
             'description' => $description,
             'url' => $url,
-            'provider' => ['@id' => $url.'#localbusiness'],
+            'provider' => [
+                '@type' => 'LocalBusiness',
+                '@id' => 'https://zaninirenovations.ca/#business',
+                'name' => 'Zanini Renovations',
+            ],
             'areaServed' => $areas,
         ];
 
@@ -655,7 +692,6 @@ class SeoStructuredData
                 'isPartOf' => ['@id' => $base.'/#website'],
                 'about' => ['@id' => $url.'#service'],
             ],
-            $business,
             $service,
         ];
 

@@ -20,7 +20,7 @@
           @endif
           <span class="sa-project__body">
             <span class="sa-project__title">{{ $project->title }}</span>
-            @if ($town !== '')
+            @if ($town !== '' && ! \Illuminate\Support\Str::contains(strtolower($project->title), strtolower($town)))
               <span class="sa-project__town">{{ $town }}</span>
             @endif
           </span>
