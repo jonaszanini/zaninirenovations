@@ -2,14 +2,19 @@
 
 namespace App\Services;
 
+use App\Mail\ClientProjectQuoteAcceptedAdmin;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
+use App\Support\BusinessContact;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Idempotent quotation acceptance (public signed link, API bot, admin).
- * Does not email or SMS the client.
+ * Does not email or SMS the client. A new acceptance from the public
+ * Accept this quote link (quotation email and PDF) emails the business inbox.
  */
 class QuoteAcceptanceService
 {
@@ -124,7 +129,61 @@ class QuoteAcceptanceService
             'source_note' => $sourceNote,
         ]);
 
+        if ($via === ClientProjectQuotation::ACCEPTED_VIA_LINK) {
+            $this->notifyBusinessOfLinkAcceptance($quotation->fresh(['project']) ?? $quotation);
+        }
+
         return self::STATUS_ACCEPTED;
+    }
+
+    /**
+     * Email the business inbox after a client accepts from the shared
+     * email/PDF link. A mail failure does not undo the acceptance.
+     */
+    private function notifyBusinessOfLinkAcceptance(ClientProjectQuotation $quotation): void
+    {
+        $quotation->loadMissing('project');
+        $project = $quotation->project;
+        if ($project === null) {
+            return;
+        }
+
+        $to = BusinessContact::DEFAULT_EMAIL;
+        $mailable = new ClientProjectQuoteAcceptedAdmin($quotation, $project);
+        $subject = $mailable->subjectLine();
+        $description = "{$project->client_name} accepted {$quotation->displayQuoteNumber()}. Quote status is now {$quotation->statusLabel()}. Project status is now {$project->statusLabel()}.";
+
+        try {
+            Mail::to($to)->send($mailable);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_QUOTE_ACCEPTED_ADMIN,
+                $to,
+                null,
+                $subject,
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_ADMIN,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Quote acceptance notice email failed', [
+                'quotation_id' => $quotation->id,
+                'client_project_id' => $project->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_QUOTE_ACCEPTED_ADMIN,
+                $to,
+                null,
+                $subject,
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_ADMIN,
+                false,
+                $e->getMessage(),
+            );
+        }
     }
 
     public function findProjectByNumber(string $projectNumber): ?ClientProject

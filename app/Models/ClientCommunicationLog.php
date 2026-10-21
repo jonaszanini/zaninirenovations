@@ -65,6 +65,8 @@ class ClientCommunicationLog extends Model
     public const REASON_CALENDAR_EVENT_ADMIN = 'calendar_event_admin';
     public const REASON_QUOTE_PENDING_REMINDER_ADMIN = 'quote_pending_reminder_admin';
     public const REASON_QUOTE_SENT_FOLLOWUP_ADMIN = 'quote_sent_followup_admin';
+    /** Business inbox notice when a client accepts from the email or PDF link. */
+    public const REASON_QUOTE_ACCEPTED_ADMIN = 'quote_accepted_admin';
 
     public const REASON_LABELS = [
         self::REASON_QUOTATION_SENT => 'Quotation',
@@ -92,6 +94,7 @@ class ClientCommunicationLog extends Model
         self::REASON_CALENDAR_EVENT_ADMIN => 'Calendar event (admin)',
         self::REASON_QUOTE_PENDING_REMINDER_ADMIN => 'Daily quote reminder (admin)',
         self::REASON_QUOTE_SENT_FOLLOWUP_ADMIN => 'Quote follow-up (admin)',
+        self::REASON_QUOTE_ACCEPTED_ADMIN => 'Quote accepted (admin)',
     ];
 
     protected $fillable = [

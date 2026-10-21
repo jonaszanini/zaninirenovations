@@ -2,8 +2,12 @@
 
 namespace Tests\Feature\QuoteAcceptance;
 
+use App\Mail\ClientProjectQuoteAcceptedAdmin;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
+use App\Services\QuoteAcceptanceService;
+use App\Support\BusinessContact;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Tests\IntegrationTestCase;
 
@@ -178,5 +182,44 @@ class SignedLinkAcceptTest extends IntegrationTestCase
         $this->assertStringContainsString('href="'.$acceptUrl.'"', $html);
         $this->assertStringNotContainsString('quote-accept-url', $html);
         $this->assertStringNotContainsString('>'.$acceptUrl.'<', $html);
+    }
+
+    public function test_signed_accept_emails_the_business_once(): void
+    {
+        Mail::fake();
+        [$project, $quotation] = $this->makeLinkedQuotation();
+        $url = URL::signedRoute('public.quotations.accept', ['quotation' => $quotation]);
+
+        $this->post($url)->assertRedirect();
+        $this->post($url)->assertOk();
+
+        Mail::assertSent(ClientProjectQuoteAcceptedAdmin::class, 1);
+        Mail::assertSent(ClientProjectQuoteAcceptedAdmin::class, function (ClientProjectQuoteAcceptedAdmin $mail) use ($project, $quotation) {
+            $mail->build();
+            $html = view($mail->view, $mail->viewData)->render();
+            $this->assertStringContainsString($project->client_name, $html);
+            $this->assertStringContainsString($quotation->displayQuoteNumber(), $html);
+            $this->assertStringContainsString('has accepted quote', $html);
+            $this->assertStringContainsString('status has been changed to', $html);
+            $this->assertStringContainsString('Accepted', $html);
+
+            return $mail->hasTo(BusinessContact::DEFAULT_EMAIL);
+        });
+    }
+
+    public function test_admin_accept_does_not_email_the_business_inbox(): void
+    {
+        Mail::fake();
+        [, $quotation] = $this->makeLinkedQuotation();
+
+        $status = app(QuoteAcceptanceService::class)->accept(
+            $quotation,
+            ClientProjectQuotation::ACCEPTED_VIA_ADMIN,
+            '127.0.0.1',
+            null,
+        );
+
+        $this->assertSame(QuoteAcceptanceService::STATUS_ACCEPTED, $status);
+        Mail::assertNothingSent();
     }
 }
