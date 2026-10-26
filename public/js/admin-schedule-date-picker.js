@@ -378,16 +378,6 @@
 
     if (cfg.saveUrl) {
       postScheduleDates(cfg.saveUrl, '', '');
-      return;
-    }
-
-    var form = cfg.submitForm;
-    if (!form) return;
-
-    if (typeof form.requestSubmit === 'function') {
-      form.requestSubmit();
-    } else {
-      form.submit();
     }
   }
 
@@ -433,7 +423,7 @@
     btn.addEventListener('click', function () {
       var cfg = configFromElement(btn);
       var hasDates = (cfg.startInput && cfg.startInput.value) || (cfg.endInput && cfg.endInput.value);
-      if (!hasDates && !cfg.saveUrl) return;
+      if (!hasDates) return;
       var message = 'Clear the start and end dates for this project?';
       if (window.AdminDialog && typeof window.AdminDialog.confirm === 'function') {
         window.AdminDialog.confirm(message, { title: 'Clear dates' }).then(function (ok) {
