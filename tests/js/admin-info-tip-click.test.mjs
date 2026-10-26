@@ -476,6 +476,24 @@ function fixtureHtml() {
       <input class="admin-input" id="named-input" aria-labelledby="named-hint" value="">
       <span id="named-hint">Existing hint</span>
     </div>
+    <div class="admin-form-grid-2 cp-schedule-dates" id="schedule-dates-fixture">
+      <div class="admin-form-group">
+        <label for="sched-start" class="cp-schedule-date-label">Start date</label>
+        <input class="admin-input" type="date" id="sched-start" value="">
+      </div>
+      <div class="admin-form-group">
+        <span class="admin-label-with-tip">
+          <label for="sched-end">End date</label>
+          <span class="admin-label-with-tip__end">
+            <span class="admin-info-tip-wrap" id="sched-end-tip-wrap">
+              <button type="button" class="admin-info-tip" aria-label="About End date" aria-expanded="false" aria-controls="t-sched-end">i</button>
+              <span id="t-sched-end" class="admin-info-tip__bubble" role="tooltip">Same-day start and end is allowed.</span>
+            </span>
+          </span>
+        </span>
+        <input class="admin-input" type="date" id="sched-end" value="">
+      </div>
+    </div>
     <span class="admin-label-with-tip" id="improve-row">
       <span class="admin-form-group-label">Improve description</span>
       <span class="admin-info-tip-wrap">
