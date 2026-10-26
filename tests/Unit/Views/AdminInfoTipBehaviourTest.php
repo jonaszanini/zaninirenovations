@@ -735,8 +735,11 @@ BLADE);
             '/<label[^>]*id="br-area-label"/',
             $html
         );
-        $this->assertStringContainsString('Total basement area (sq', $html);
-        $this->assertStringContainsString('>ft)</label>', $html);
+        $this->assertStringContainsString('Total basement area (sq ft)', $html);
+        $this->assertMatchesRegularExpression(
+            '/<label[^>]*for="br-area"[^>]*>[\s\S]*Total basement area \(sq ft\)/',
+            $html
+        );
         $this->assertStringNotContainsString('sq ft) ft)', $html);
         $this->assertStringContainsString('admin-info-tip-wrap', $html);
     }
