@@ -57,6 +57,8 @@ assert.doesNotMatch(cpCss, /@media \(min-width:\s*1100px\)[\s\S]{0,200}\.br-bath
 assert.doesNotMatch(cpCss, /@media \(min-width:\s*900px\)[\s\S]{0,220}\.br-check-grid[\s\S]{0,80}repeat\(3/);
 assert.doesNotMatch(cpCss, /@container br-main \(min-width:\s*720px\)/);
 assert.match(cpCss, /@media \(min-width:\s*700px\)\s*\{\s*\.br-bath-light-grid[\s\S]{0,80}1fr 1fr/);
+assert.match(cpCss, /\.cp-schedule-dates \.admin-form-group > label\.cp-schedule-date-label[\s\S]{0,220}height:\s*1\.5rem/);
+assert.match(cpCss, /\.cp-schedule-dates \.admin-label-with-tip__end > \.admin-info-tip-wrap[\s\S]{0,120}max-height:\s*1\.25rem/);
 assert.match(source, /function glueLastTextNode/);
 assert.match(source, /function wrapHeadingCopy/);
 assert.match(source, /function wrapElementAndTip/);
@@ -1887,6 +1889,31 @@ async function puppeteerClick() {
     assert.ok(strongWord.hasEnd, 'F: tip parks in __end beside the label');
     assert.ok(strongWord.rects > 1, `F: <label><strong>Drywall</strong></label> must produce multiple boxes (got ${strongWord.rects})`);
     assert.equal(strongWord.lines, 1, 'F: same-line strong+label must count as one line');
+
+    const scheduleDatesAlign = await page.evaluate(() => {
+      const startLabel = document.querySelector('#schedule-dates-fixture .cp-schedule-date-label');
+      const endRow = document.querySelector('#schedule-dates-fixture .admin-label-with-tip');
+      const startInput = document.getElementById('sched-start');
+      const endInput = document.getElementById('sched-end');
+      const sr = startLabel.getBoundingClientRect();
+      const er = endRow.getBoundingClientRect();
+      const si = startInput.getBoundingClientRect();
+      const ei = endInput.getBoundingClientRect();
+      return {
+        startLabelH: sr.height,
+        endLabelH: er.height,
+        labelHeightDelta: Math.abs(sr.height - er.height),
+        inputTopDelta: Math.abs(si.top - ei.top),
+      };
+    });
+    assert.ok(
+      scheduleDatesAlign.labelHeightDelta <= 0.5,
+      `D2: schedule label rows same height at 1280 (${scheduleDatesAlign.startLabelH}px vs ${scheduleDatesAlign.endLabelH}px)`
+    );
+    assert.ok(
+      scheduleDatesAlign.inputTopDelta <= 0.5,
+      `D2: schedule date input tops align at 1280 (delta ${scheduleDatesAlign.inputTopDelta}px)`
+    );
 
     async function brokenInNarrowColumns(width) {
       return page.evaluate((colWidth) => {

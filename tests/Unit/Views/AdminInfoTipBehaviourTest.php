@@ -373,6 +373,10 @@ BLADE);
             $css
         );
         $cpCss = file_get_contents(public_path('css/admin-client-projects.css'));
+        $this->assertMatchesRegularExpression(
+            '/\.cp-schedule-dates \.admin-form-group > label\.cp-schedule-date-label[\s\S]{0,260}height:\s*1\.5rem/',
+            $cpCss
+        );
         $this->assertStringContainsString('.br-layout--create .br-acc__summary .admin-info-tip', $cpCss);
         $this->assertStringContainsString('pointer-events: auto', $cpCss);
         $this->assertStringContainsString('.tm-chip-row > .admin-checkbox-row', $cpCss);
