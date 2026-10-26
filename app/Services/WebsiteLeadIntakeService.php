@@ -13,6 +13,8 @@ use Illuminate\Support\Str;
  */
 class WebsiteLeadIntakeService
 {
+    private const PROJECT_NAME_MAX_LENGTH = 255;
+
     public function __construct(
         protected ClientProjectContactService $contactService,
         protected ClientProjectStatusService $statusService,
@@ -45,7 +47,7 @@ class WebsiteLeadIntakeService
             $this->contactService->applyForCreate($projectData);
 
             $project = ClientProject::create(array_merge($projectData, [
-                'name' => Str::limit($clientName.' — Website inquiry', 255, ''),
+                'name' => $this->buildProjectName($clientName, $data),
                 'contacted_via' => ClientProject::CONTACTED_VIA_WEBSITE_FORM,
                 'billing_type' => ClientProject::BILLING_FIXED,
                 'hourly_rate' => null,
@@ -71,6 +73,28 @@ class WebsiteLeadIntakeService
 
             return null;
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function buildProjectName(string $clientName, array $data): string
+    {
+        $clientName = trim($clientName);
+        $subject = Str::squish((string) ($data['email_subject'] ?? ''));
+        $tail = $subject !== '' ? $subject : 'Inquiry';
+
+        $prefix = 'Website — '.$clientName.' — ';
+        $maxTailLength = self::PROJECT_NAME_MAX_LENGTH - mb_strlen($prefix, 'UTF-8');
+        if ($maxTailLength < 1) {
+            return mb_substr($prefix, 0, self::PROJECT_NAME_MAX_LENGTH, 'UTF-8');
+        }
+
+        if (mb_strlen($tail, 'UTF-8') > $maxTailLength) {
+            $tail = mb_substr($tail, 0, $maxTailLength, 'UTF-8');
+        }
+
+        return $prefix.$tail;
     }
 
     /** @param  array<string, mixed>  $data */
