@@ -19,29 +19,37 @@
 
 @unless ($hideButton)
   <div class="cp-schedule-pick-row">
-    <button type="button"
-            class="admin-btn admin-btn--outline admin-btn--sm"
-            data-schedule-date-picker
-            data-start-input="#{{ $startDateId }}"
-            data-end-input="#{{ $endDateId }}"
-            data-events-url="{{ route('admin.client-projects.calendar.picker-events') }}"
-            @if (! empty($excludeProjectId)) data-exclude-id="{{ $excludeProjectId }}" @endif
-            @if (! empty($submitFormId)) data-submit-form="#{{ $submitFormId }}" @endif
-            @if (! empty($saveUrl)) data-save-url="{{ $saveUrl }}" @endif
-            @if (! empty($scheduleToggleId)) data-schedule-toggle="#{{ $scheduleToggleId }}" @endif>
-      <i class="fa fa-calendar" aria-hidden="true"></i> Pick on calendar
-    </button>
-    <button type="button"
-            class="admin-btn admin-btn--ghost admin-btn--sm"
-            data-schedule-clear-dates
-            data-start-input="#{{ $startDateId }}"
-            data-end-input="#{{ $endDateId }}"
-            @if (! empty($saveUrl)) data-save-url="{{ $saveUrl }}" @endif
-            @if (! empty($scheduleToggleId)) data-schedule-toggle="#{{ $scheduleToggleId }}" @endif>
-      Clear dates
-    </button>
-    <x-admin.info-tip label="Clear dates">Clears the start and end date fields@if (! empty($saveUrl)) and saves immediately@endif. The project will not appear on the Project Calendar until both dates are set again.</x-admin.info-tip>
-    <x-admin.info-tip label="Pick on calendar">{{ $hint }}</x-admin.info-tip>
+    <span class="admin-label-with-tip cp-schedule-pick-btn-wrap">
+      <button type="button"
+              class="admin-btn admin-btn--outline admin-btn--sm"
+              data-schedule-date-picker
+              data-start-input="#{{ $startDateId }}"
+              data-end-input="#{{ $endDateId }}"
+              data-events-url="{{ route('admin.client-projects.calendar.picker-events') }}"
+              @if (! empty($excludeProjectId)) data-exclude-id="{{ $excludeProjectId }}" @endif
+              @if (! empty($submitFormId)) data-submit-form="#{{ $submitFormId }}" @endif
+              @if (! empty($saveUrl)) data-save-url="{{ $saveUrl }}" @endif
+              @if (! empty($scheduleToggleId)) data-schedule-toggle="#{{ $scheduleToggleId }}" @endif>
+        <i class="fa fa-calendar" aria-hidden="true"></i> Pick on calendar
+      </button>
+      <span class="admin-label-with-tip__end">
+        <x-admin.info-tip label="Pick on calendar">{{ $hint }}</x-admin.info-tip>
+      </span>
+    </span>
+    <span class="admin-label-with-tip cp-schedule-pick-btn-wrap">
+      <button type="button"
+              class="admin-btn admin-btn--ghost admin-btn--sm"
+              data-schedule-clear-dates
+              data-start-input="#{{ $startDateId }}"
+              data-end-input="#{{ $endDateId }}"
+              @if (! empty($saveUrl)) data-save-url="{{ $saveUrl }}" @endif
+              @if (! empty($scheduleToggleId)) data-schedule-toggle="#{{ $scheduleToggleId }}" @endif>
+        Clear dates
+      </button>
+      <span class="admin-label-with-tip__end">
+        <x-admin.info-tip label="Clear dates">Clears the start and end date fields@if (! empty($saveUrl)) and saves immediately@endif. The project will not appear on the Project Calendar until both dates are set again.</x-admin.info-tip>
+      </span>
+    </span>
   </div>
 @endunless
 

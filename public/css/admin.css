@@ -1684,9 +1684,7 @@ a.admin-client-link:focus-visible {
   pointer-events: auto;
 }
 .admin-card > h3:has(.admin-info-tip) {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
+  display: block;
 }
 .admin-card > h3.sp-heading:has(.admin-info-tip) {
   display: block;
@@ -1832,9 +1830,8 @@ summary > .admin-heading-copy {
   min-width: 0;
 }
 .admin-label-with-tip__end {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
+  display: inline;
+  vertical-align: baseline;
   white-space: nowrap;
 }
 .admin-label-with-tip__end > span {

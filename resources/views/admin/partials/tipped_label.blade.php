@@ -1,6 +1,5 @@
 {{--
-  Label + ⓘ with the last word glued to the tip (nowrap) so two-column
-  grids keep inputs aligned when the icon would otherwise wrap alone.
+  Label + ⓘ: full label text in one <label>, then * and ⓘ in __end (nowrap).
 
   Order is always: label text, then *, then <small>, then ⓘ.
   Required * is wrapped with the ⓘ so they stay on one line.
@@ -26,36 +25,26 @@
   $tipHtml = array_key_exists('tipHtml', $defined) ? $defined['tipHtml'] : null;
   $tipLabel = array_key_exists('tipLabel', $defined) ? $defined['tipLabel'] : $label;
   $tipId = array_key_exists('tipId', $defined) ? $defined['tipId'] : null;
-  $parts = \App\Support\AdminInfoTipInclude::splitLabel(trim(strip_tags((string) $label)));
-  $lead = $required ? '' : $parts['lead'];
-  $last = $required ? trim(strip_tags((string) $label)) : $parts['last'];
+  $plainLabel = trim(strip_tags((string) $label));
+  $hasTip = filled($tipText) || filled($tipHtml);
   $forAttr = $for !== '' ? ' for="'.e($for).'"' : '';
   $idAttr = $labelId !== null ? ' id="'.e($labelId).'"' : '';
 @endphp
 <span class="admin-label-with-tip"{!! $idAttr !!}>
-  @if ($lead !== '')
-    <label{!! $forAttr !!}>{!! $prefixHtml !!}{{ $lead }}</label>
-  @endif
-  @if ($required)
-    <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}</label>
+  <label{!! $forAttr !!}>{!! $prefixHtml !!}{{ $plainLabel }}</label>
+  @if ($required || $hasTip)
     <span class="admin-label-with-tip__end">
-      <span class="cp-required">*</span>
-      @include('admin.partials.info_tip', [
-        'tipText' => $tipText,
-        'tipHtml' => $tipHtml,
-        'tipLabel' => $tipLabel,
-        'tipId' => $tipId,
-      ])
-    </span>
-  @else
-    <span class="admin-label-with-tip__end">
-      <label{!! $forAttr !!}>@if ($lead === ''){!! $prefixHtml !!}@endif{{ $last }}</label>
-      @include('admin.partials.info_tip', [
-        'tipText' => $tipText,
-        'tipHtml' => $tipHtml,
-        'tipLabel' => $tipLabel,
-        'tipId' => $tipId,
-      ])
+      @if ($required)
+        <span class="cp-required">*</span>
+      @endif
+      @if ($hasTip)
+        @include('admin.partials.info_tip', [
+          'tipText' => $tipText,
+          'tipHtml' => $tipHtml,
+          'tipLabel' => $tipLabel,
+          'tipId' => $tipId,
+        ])
+      @endif
     </span>
   @endif
 </span>

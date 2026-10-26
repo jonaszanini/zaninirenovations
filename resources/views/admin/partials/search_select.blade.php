@@ -97,7 +97,9 @@
           $ssHint['tipLabel'] = $ssHint['tipLabel'] ?? $label;
           unset($ssHint['id'], $ssHint['label'], $ssHint['text'], $ssHint['html']);
         @endphp
-        @include('admin.client_projects._cp_field_hint', $ssHint)
+        <span class="admin-label-with-tip__end">
+          @include('admin.client_projects._cp_field_hint', $ssHint)
+        </span>
       @endif
     </span>
   @endunless

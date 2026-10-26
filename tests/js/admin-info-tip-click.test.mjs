@@ -30,6 +30,8 @@ assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label\.admin-checkbox[\s\S]
 assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,220}display:\s*block/);
 assert.match(adminCss, /\.admin-checkbox-row/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/);
+assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline;/);
+assert.doesNotMatch(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline-flex/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,220}display:\s*inline/);
 assert.match(adminCss, /admin-label-with-tip__tail/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*\.admin-info-tip-wrap[\s\S]{0,80}display:\s*inline-flex/);

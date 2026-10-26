@@ -486,23 +486,11 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   body.appendChild(input);
   AdminInfoTip.hoist(document);
   const glued = row.querySelector('.admin-label-with-tip__end');
-  assert.ok(glued, 'previous sibling is a label, so glue its last word with the tip');
+  assert.ok(glued, 'tip is parked in __end beside the full label');
   assert.equal(glued.contains(wrap), true);
-  assert.match(String(glued.textContent || ''), /rooms/);
-  assert.match(String(label.textContent || ''), /Finished/);
-  assert.ok(!String(glued.textContent || '').includes('Finished rooms'), 'do not nowrap the whole label');
-  const tail = glued.querySelector('label');
-  assert.ok(tail, 'moved word is a second label, not a plain span');
-  assert.equal(tail.htmlFor, 'br-rooms');
-  assert.equal(tail.getAttribute('for'), 'br-rooms');
-  assert.match(String(tail.className || ''), /admin-label-with-tip__tail/);
-  const labelledBy = String(input.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
-  assert.ok(labelledBy.length >= 2, 'aria-labelledby points at both labels');
-  const accName = labelledBy.map((id) => {
-    const el = document.getElementById(id);
-    return String(el ? el.textContent : '').replace(/\s+/g, ' ').trim();
-  }).filter(Boolean).join(' ');
-  assert.equal(accName, 'Finished rooms', 'accessible name keeps the full label text');
+  assert.equal(String(label.textContent || '').trim(), 'Finished rooms', 'label text is not split');
+  assert.equal(glued.querySelector('label'), null, 'no tail label when parking beside a full label');
+  assert.equal(label.htmlFor, 'br-rooms', 'single label still points at the control');
 
   const heading = document.createElement('h4');
   heading.appendChild(document.createTextNode('Finished rooms'));
@@ -539,13 +527,8 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   const ids = String(input.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
   assert.ok(ids.includes('named-hint'), 'N6: keep an existing aria-labelledby id');
   assert.equal(document.getElementById('named-hint').textContent, 'Existing hint');
-  assert.ok(ids.length >= 3, 'N6: split labels add ids in front of the existing hint');
-  const name = ids.map((id) => {
-    const el = document.getElementById(id);
-    return String(el ? el.textContent : '').replace(/\s+/g, ' ').trim();
-  }).filter(Boolean).join(' ');
-  assert.match(name, /Owner rate/);
-  assert.match(name, /Existing hint/);
+  assert.equal(label.htmlFor, 'named-input', 'label htmlFor still targets the input');
+  assert.equal(String(label.textContent || '').trim(), 'Owner rate (CAD$)', 'full label text is preserved');
 }
 
 {
@@ -563,10 +546,28 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
   body.appendChild(row);
   body.appendChild(input);
   AdminInfoTip.hoist(document);
-  const tail = row.querySelector('.admin-label-with-tip__end label, .admin-label-with-tip__end .cp-required');
-  assert.ok(tail, 'D5: Amount * splits the asterisk into the glued end');
-  assert.equal(String(tail.textContent || '').trim(), '*');
-  assert.match(String(tail.className || ''), /cp-required/, 'D5: extracted * keeps cp-required');
+  const end = row.querySelector('.admin-label-with-tip__end');
+  assert.ok(end, 'D5: tip parks in __end');
+  assert.equal(end.contains(wrap), true);
+  assert.equal(String(label.textContent || '').trim(), 'Amount *', 'asterisk stays on the main label when parking');
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
+  row.className = 'admin-label-with-tip cp-schedule-pick-btn-wrap';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'admin-btn admin-btn--outline admin-btn--sm';
+  btn.textContent = 'Pick on calendar';
+  const { wrap } = makeTip(document, 'admin-info-tip-pick', 'Pick on calendar');
+  row.appendChild(btn);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  AdminInfoTip.hoist(document);
+  assert.equal(String(btn.textContent || '').trim(), 'Pick on calendar', 'button text is never split');
+  const end = row.querySelector('.admin-label-with-tip__end');
+  assert.ok(end && end.contains(wrap), 'tip moves into __end after the button');
 }
 
 {

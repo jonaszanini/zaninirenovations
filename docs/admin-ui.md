@@ -28,7 +28,7 @@ The include wrapper **does not** inherit parent `$text` / `$html` / `$id` / `$la
 
 `@include` of `admin.partials.info_tip` / `_cp_field_hint` is compiled to `AdminInfoTipInclude::render($data)` / `renderHint($data)` so parent `tipHtml` / `tipLabel` / `tipId` cannot leak (does not rely on the IsolatingFactory view override).
 
-Field labels keep the last word and the ⓘ in `.admin-label-with-tip__end` (`white-space: nowrap`) so two-column grids stay aligned at 390px.
+Field labels keep the full phrase in one `<label>` (or heading copy); the ⓘ sits in `.admin-label-with-tip__end` (`display: inline`, `white-space: nowrap`) right after the label or button text so two-column grids stay aligned at 390px without splitting words into separate blocks.
 
 HTML (links, `<code>`, `<strong>`) goes in the slot (trusted Blade only):
 

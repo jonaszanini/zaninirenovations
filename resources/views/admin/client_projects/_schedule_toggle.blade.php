@@ -46,7 +46,7 @@
     ])
     <div class="admin-form-grid-2 cp-schedule-dates">
       <div class="admin-form-group">
-        <label for="{{ $startDateId }}">Start date</label>
+        <label for="{{ $startDateId }}" class="cp-schedule-date-label">Start date</label>
         <input class="admin-input" type="date" id="{{ $startDateId }}" name="start_date" value="{{ $startDateValue }}">
         @error('start_date') <p class="admin-form-error">{{ $message }}</p> @enderror
       </div>

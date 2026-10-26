@@ -40,7 +40,9 @@
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
           <label for="mat-short-name">Short name</label>
-          <x-admin.info-tip label="Short name">Shown in lists and pickers. Leave blank to use the store name.</x-admin.info-tip>
+          <span class="admin-label-with-tip__end">
+            <x-admin.info-tip label="Short name">Shown in lists and pickers. Leave blank to use the store name.</x-admin.info-tip>
+          </span>
         </span>
         <input @class(['admin-input', 'is-invalid' => $errors->has('short_name')]) type="text" id="mat-short-name" name="short_name" value="{{ old('short_name', $m?->short_name) }}" maxlength="120"
                placeholder="e.g. 2x4x8 Stud">

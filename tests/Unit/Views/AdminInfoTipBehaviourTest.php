@@ -241,6 +241,7 @@ BLADE);
         $this->assertStringContainsString("idFromControlName(input.getAttribute && input.getAttribute('name'))", $js);
         $this->assertStringContainsString("btn.setAttribute('aria-label', aboutLabel(aria))", $js);
         $this->assertStringContainsString("label.admin-checkbox, .admin-checkbox-row > .admin-label-with-tip__end", $js);
+        $this->assertStringContainsString('function parkTipInLabelRow', $js);
         $this->assertStringContainsString("'.mw-totals-bar'", $js);
         $this->assertStringContainsString('setLabelText: setLabelText', $js);
         $basementJs = file_get_contents(public_path('js/admin-basement-quotation.js'));
@@ -338,6 +339,10 @@ BLADE);
             $css
         );
         $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline/',
+            $css
+        );
+        $this->assertDoesNotMatchRegularExpression(
             '/\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline-flex/',
             $css
         );
