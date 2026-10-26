@@ -784,47 +784,43 @@ async function run() {
     const focusableIds = await modalFocusableInPage();
     assert.ok(focusableIds.length >= 2, 'modal exposes multiple tab stops');
 
-    // Focus last visible focusable element inside modal (match openplan3d-host trap list)
-    await page.evaluate(() => {
+    const trapEnds = await page.evaluate(() => {
       const modal = document.getElementById('openplan3d-modal');
       const nodes = modal.querySelectorAll(
         'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
       );
       const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
-      visible[visible.length - 1].focus();
-    });
-    await page.waitForFunction(() => {
-      const modal = document.getElementById('openplan3d-modal');
-      const nodes = modal.querySelectorAll(
-        'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
-      );
-      const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
+      const first = visible[0];
       const last = visible[visible.length - 1];
-      return document.activeElement === last;
-    }, { timeout: 5000 });
+      return {
+        firstId: first && first.id,
+        lastId: last && last.id,
+      };
+    });
+    assert.ok(trapEnds.lastId, 'modal has a last tab stop');
+    await page.focus('#' + trapEnds.lastId);
+    await page.waitForFunction(
+      (lastId) => (document.activeElement && document.activeElement.id) === lastId,
+      { timeout: 8000 },
+      trapEnds.lastId
+    );
     await page.keyboard.press('Tab');
-    const wrappedToFirst = await page.waitForFunction(() => {
-      const modal = document.getElementById('openplan3d-modal');
-      const nodes = modal.querySelectorAll(
-        'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
-      );
-      const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
-      return document.activeElement === visible[0];
-    }, { timeout: 5000 }).then(() => true).catch(() => false);
+    const wrappedToFirst = await page.waitForFunction(
+      (firstId) => (document.activeElement && document.activeElement.id) === firstId,
+      { timeout: 8000 },
+      trapEnds.firstId
+    ).then(() => true).catch(() => false);
     assert.strictEqual(wrappedToFirst, true, 'Tab from last element wraps to first element');
 
     // Shift+Tab from first element wraps to last element
     await page.keyboard.down('Shift');
     await page.keyboard.press('Tab');
     await page.keyboard.up('Shift');
-    const wrappedToLast = await page.waitForFunction(() => {
-      const modal = document.getElementById('openplan3d-modal');
-      const nodes = modal.querySelectorAll(
-        'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
-      );
-      const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
-      return document.activeElement === visible[visible.length - 1];
-    }, { timeout: 5000 }).then(() => true).catch(() => false);
+    const wrappedToLast = await page.waitForFunction(
+      (lastId) => (document.activeElement && document.activeElement.id) === lastId,
+      { timeout: 8000 },
+      trapEnds.lastId
+    ).then(() => true).catch(() => false);
     assert.strictEqual(wrappedToLast, true, 'Shift+Tab from first element wraps to last element');
 
     // Close via link cancel and verify focus returns to Save button
