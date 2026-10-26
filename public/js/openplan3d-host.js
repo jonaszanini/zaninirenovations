@@ -463,19 +463,18 @@
         var first = focusable[0];
         var last = focusable[focusable.length - 1];
         var active = doc.activeElement;
+        var idx = focusable.indexOf(active);
         var isShift = !!(e.shiftKey || e.key === 'BackTab');
         if (isShift) {
-          if (active === first || !modalEl.contains(active)) {
+          if (idx <= 0) {
             e.preventDefault();
             e.stopPropagation();
             last.focus();
           }
-        } else {
-          if (active === last || !modalEl.contains(active)) {
-            e.preventDefault();
-            e.stopPropagation();
-            first.focus();
-          }
+        } else if (idx === focusable.length - 1 || idx < 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          first.focus();
         }
       }
     }
