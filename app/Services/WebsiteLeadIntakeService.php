@@ -45,7 +45,7 @@ class WebsiteLeadIntakeService
             $this->contactService->applyForCreate($projectData);
 
             $project = ClientProject::create(array_merge($projectData, [
-                'name' => Str::limit($clientName.' — Website inquiry', 255, ''),
+                'name' => $this->buildProjectName($clientName, $data),
                 'contacted_via' => ClientProject::CONTACTED_VIA_WEBSITE_FORM,
                 'billing_type' => ClientProject::BILLING_FIXED,
                 'hourly_rate' => null,
@@ -71,6 +71,28 @@ class WebsiteLeadIntakeService
 
             return null;
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function buildProjectName(string $clientName, array $data): string
+    {
+        $clientName = trim($clientName);
+        $subject = trim((string) ($data['email_subject'] ?? ''));
+        $tail = $subject !== '' ? $subject : 'Inquiry';
+
+        $prefix = 'Website — '.$clientName.' — ';
+        $maxTailLength = 255 - strlen($prefix);
+        if ($maxTailLength < 1) {
+            return Str::limit($prefix, 255, '');
+        }
+
+        if (strlen($tail) > $maxTailLength) {
+            $tail = Str::limit($tail, $maxTailLength, '');
+        }
+
+        return $prefix.$tail;
     }
 
     /** @param  array<string, mixed>  $data */
