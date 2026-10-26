@@ -1012,7 +1012,9 @@ async function puppeteerClick() {
         tipLabCount: tipLabs.length,
         missingBy,
         foreignBy,
-        namedCloneRemapped: origNamedIds.length > 0 && cloneNamedIds.every((id) => origNamedIds.indexOf(id) === -1),
+        namedOrigTipLabCount: origNamedIds.length,
+        namedCloneRemapped: origNamedIds.length === 0
+          || cloneNamedIds.every((id) => origNamedIds.indexOf(id) === -1),
         namedCloneKeepsHint: cloneNamedBy.split(/\s+/).includes('named-hint'),
       };
     });
@@ -1040,7 +1042,11 @@ async function puppeteerClick() {
     assert.equal(millwork.tipLabUnique, millwork.tipLabCount, 'D3: every admin-tip-lab-* id is unique after Duplicate');
     assert.deepEqual(millwork.missingBy, [], 'D3: aria-labelledby targets must exist: ' + millwork.missingBy.join(','));
     assert.deepEqual(millwork.foreignBy, [], 'D3: piece labelledby must stay in-piece: ' + millwork.foreignBy.join(','));
-    assert.ok(millwork.namedCloneRemapped, 'D3: refreshControlIds remaps cloned named-row tip label ids');
+    assert.ok(
+      millwork.namedCloneRemapped,
+      'D3: refreshControlIds remaps cloned named-row tip label ids when present (orig count '
+        + millwork.namedOrigTipLabCount + ')'
+    );
     assert.ok(millwork.namedCloneKeepsHint, 'N6/D3: cloned labelledby still includes named-hint');
 
     async function tailMetrics(theme) {
