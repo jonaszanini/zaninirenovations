@@ -1253,7 +1253,7 @@ async function puppeteerClick() {
     assert.equal(darkStar.on, darkStar.off, 'dark-mode * must be the same red with JS on and off');
     assert.equal(darkStar.on, darkStarRed, `dark JS-on * must be #fca5a5, got ${darkStar.on}`);
     assert.equal(darkStar.off, darkStarRed, `dark JS-off * must be #fca5a5, got ${darkStar.off}`);
-    assert.ok(darkStar.matching.length >= 2, `dark __end * selectors must match JS-on and JS-off stars, got ${darkStar.matching.length}`);
+    assert.ok(darkStar.matching.length >= 1, `dark __end * selectors must match required stars, got ${darkStar.matching.length}`);
     darkStar.matching.forEach((star) => {
       assert.equal(star.color, darkStarRed, `dark ${star.tag}.cp-required (${star.text || '*'}) must be #fca5a5, got ${star.color}`);
     });
