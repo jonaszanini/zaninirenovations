@@ -765,34 +765,66 @@ async function run() {
     await page.evaluate(() => window.OpenPlan3DHost.savePlan());
     await page.waitForSelector('#openplan3d-modal:not([hidden])');
 
-    // Focus last visible focusable element inside modal
+    function modalFocusableInPage() {
+      return page.evaluate(() => {
+        const modal = document.getElementById('openplan3d-modal');
+        const nodes = modal.querySelectorAll(
+          'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
+        );
+        const visible = [];
+        nodes.forEach((el) => {
+          if (el.hidden) return;
+          if (el.closest && el.closest('[hidden]')) return;
+          visible.push(el.id || el.tagName);
+        });
+        return visible;
+      });
+    }
+
+    const focusableIds = await modalFocusableInPage();
+    assert.ok(focusableIds.length >= 2, 'modal exposes multiple tab stops');
+
+    // Focus last visible focusable element inside modal (match openplan3d-host trap list)
     await page.evaluate(() => {
       const modal = document.getElementById('openplan3d-modal');
-      const focusable = modal.querySelectorAll('button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden])');
-      const visible = Array.from(focusable).filter(el => !el.hidden && !el.closest('[hidden]'));
+      const nodes = modal.querySelectorAll(
+        'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
+      );
+      const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
       visible[visible.length - 1].focus();
     });
-    // Tab wraps to first focusable
-    await page.keyboard.press('Tab');
-    const wrappedToFirst = await page.evaluate(() => {
+    await page.waitForFunction(() => {
       const modal = document.getElementById('openplan3d-modal');
-      const focusable = modal.querySelectorAll('button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden])');
-      const visible = Array.from(focusable).filter(el => !el.hidden && !el.closest('[hidden]'));
-      return document.activeElement === visible[0];
+      const nodes = modal.querySelectorAll(
+        'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
+      );
+      const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
+      const last = visible[visible.length - 1];
+      return document.activeElement === last;
     });
+    await page.keyboard.press('Tab');
+    const wrappedToFirst = await page.waitForFunction(() => {
+      const modal = document.getElementById('openplan3d-modal');
+      const nodes = modal.querySelectorAll(
+        'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
+      );
+      const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
+      return document.activeElement === visible[0];
+    }, { timeout: 3000 }).then(() => true).catch(() => false);
     assert.strictEqual(wrappedToFirst, true, 'Tab from last element wraps to first element');
 
     // Shift+Tab from first element wraps to last element
     await page.keyboard.down('Shift');
-    await page.keyboard.down('Tab');
-    await page.keyboard.up('Tab');
+    await page.keyboard.press('Tab');
     await page.keyboard.up('Shift');
-    const wrappedToLast = await page.evaluate(() => {
+    const wrappedToLast = await page.waitForFunction(() => {
       const modal = document.getElementById('openplan3d-modal');
-      const focusable = modal.querySelectorAll('button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden])');
-      const visible = Array.from(focusable).filter(el => !el.hidden && !el.closest('[hidden]'));
+      const nodes = modal.querySelectorAll(
+        'button:not([disabled]):not([hidden]), [href], input:not([disabled]):not([hidden]), select:not([disabled]):not([hidden]), textarea:not([disabled]):not([hidden]), [tabindex]:not([tabindex="-1"])'
+      );
+      const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
       return document.activeElement === visible[visible.length - 1];
-    });
+    }, { timeout: 3000 }).then(() => true).catch(() => false);
     assert.strictEqual(wrappedToLast, true, 'Shift+Tab from first element wraps to last element');
 
     // Close via link cancel and verify focus returns to Save button

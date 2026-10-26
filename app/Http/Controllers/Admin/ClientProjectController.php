@@ -656,8 +656,8 @@ class ClientProjectController extends Controller
     public function updateScheduleDates(Request $request, ClientProject $client_project, ClientProjectStatusService $service)
     {
         $validator = Validator::make($request->all(), [
-            'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'start_date' => ['nullable', 'required_with:end_date', 'date'],
+            'end_date' => ['nullable', 'required_with:start_date', 'date', 'after_or_equal:start_date'],
         ], $this->clientProjectValidationMessages());
 
         if ($validator->fails()) {
@@ -672,16 +672,19 @@ class ClientProjectController extends Controller
         $previousStart = $client_project->start_date ? $client_project->start_date->toDateString() : null;
         $previousEnd = $client_project->end_date ? $client_project->end_date->toDateString() : null;
 
-        $client_project->start_date = $data['start_date'];
-        $client_project->end_date = $data['end_date'];
+        $client_project->start_date = $data['start_date'] ?? null;
+        $client_project->end_date = $data['end_date'] ?? null;
         $client_project->save();
+
+        $cleared = $client_project->start_date === null && $client_project->end_date === null;
+        $savedLabel = $cleared ? 'Start and end dates cleared' : 'Start and end dates saved';
 
         return $this->redirectAfterScheduleDateChange(
             $client_project,
             $previousStart,
             $previousEnd,
             $service,
-            'Start and end dates saved',
+            $savedLabel,
             'schedule'
         );
     }
