@@ -1844,21 +1844,29 @@ async function puppeteerClick() {
     `;
     await page.setViewport({ width: 1280, height: 800 });
     const strongWord = await page.evaluate(() => {
-      const end = document.querySelector('#strong-word-row .admin-label-with-tip__end');
-      const wrap = end && end.querySelector('.admin-info-tip-wrap');
-      const word = end && Array.from(end.children).find((c) => c !== wrap);
-      if (!word) return { rects: 0, lines: 0, text: '' };
+      const row = document.getElementById('strong-word-row');
+      const end = row && row.querySelector('.admin-label-with-tip__end');
+      const label = row && row.querySelector('label');
+      const strong = label && label.querySelector('strong');
       const range = document.createRange();
-      range.selectNodeContents(word);
-      const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0.5 && r.height > 0.5);
+      if (label) range.selectNodeContents(label);
+      const rects = label ? Array.from(range.getClientRects()).filter((r) => r.width > 0.5 && r.height > 0.5) : [];
       const lines = [];
       rects.forEach((r) => {
         const top = Math.round(r.top);
         if (!lines.some((t) => Math.abs(t - top) <= 2)) lines.push(top);
       });
-      return { rects: rects.length, lines: lines.length, text: String(word.textContent || '').trim() };
+      return {
+        hasEnd: !!(end && end.querySelector('.admin-info-tip-wrap')),
+        labelText: label ? String(label.textContent || '').trim() : '',
+        strongText: strong ? String(strong.textContent || '').trim() : '',
+        rects: rects.length,
+        lines: lines.length,
+      };
     });
-    assert.equal(strongWord.text, 'Drywall', 'F: strong-word fixture must glue Drywall');
+    assert.equal(strongWord.labelText, 'Drywall', 'F: strong-word label stays intact');
+    assert.equal(strongWord.strongText, 'Drywall', 'F: <strong> is not split out of the label');
+    assert.ok(strongWord.hasEnd, 'F: tip parks in __end beside the label');
     assert.ok(strongWord.rects > 1, `F: <label><strong>Drywall</strong></label> must produce multiple boxes (got ${strongWord.rects})`);
     assert.equal(strongWord.lines, 1, 'F: same-line strong+label must count as one line');
 
