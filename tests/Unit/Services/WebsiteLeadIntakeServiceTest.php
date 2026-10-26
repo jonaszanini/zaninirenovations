@@ -50,13 +50,42 @@ class WebsiteLeadIntakeServiceTest extends IntegrationTestCase
             'email_subject' => $longSubject,
         ]);
 
-        $this->assertLessThanOrEqual(255, strlen($name));
+        $this->assertLessThanOrEqual(255, mb_strlen($name, 'UTF-8'));
         $this->assertStringStartsWith('Website — Shawn Millman — ', $name);
         $this->assertSame(
             255,
-            strlen($name),
+            mb_strlen($name, 'UTF-8'),
             'Expected the subject portion to be trimmed so the full name fits in 255 characters.'
         );
+    }
+
+    public function test_build_project_name_squishes_subject_line_breaks(): void
+    {
+        $service = app(WebsiteLeadIntakeService::class);
+
+        $name = $this->invokeBuildProjectName($service, 'Shawn Millman', [
+            'email_subject' => "Fence\r\nquote",
+        ]);
+
+        $this->assertSame('Website — Shawn Millman — Fence quote', $name);
+        $this->assertStringNotContainsString("\r", $name);
+        $this->assertStringNotContainsString("\n", $name);
+    }
+
+    public function test_build_project_name_truncates_multibyte_subject_by_character_count(): void
+    {
+        $service = app(WebsiteLeadIntakeService::class);
+        $subject = str_repeat('字', 120).str_repeat('😀', 120);
+
+        $name = $this->invokeBuildProjectName($service, 'Shawn Millman', [
+            'email_subject' => $subject,
+        ]);
+
+        $this->assertSame(255, mb_strlen($name, 'UTF-8'));
+        $this->assertStringStartsWith('Website — Shawn Millman — ', $name);
+        $this->assertTrue(mb_check_encoding($name, 'UTF-8'));
+        $tail = mb_substr($name, mb_strlen('Website — Shawn Millman — ', 'UTF-8'), null, 'UTF-8');
+        $this->assertSame(mb_substr($subject, 0, mb_strlen($tail, 'UTF-8'), 'UTF-8'), $tail);
     }
 
     public function test_create_lead_returns_null_when_client_name_missing(): void

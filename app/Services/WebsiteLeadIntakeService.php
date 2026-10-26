@@ -13,6 +13,8 @@ use Illuminate\Support\Str;
  */
 class WebsiteLeadIntakeService
 {
+    private const PROJECT_NAME_MAX_LENGTH = 255;
+
     public function __construct(
         protected ClientProjectContactService $contactService,
         protected ClientProjectStatusService $statusService,
@@ -79,17 +81,17 @@ class WebsiteLeadIntakeService
     protected function buildProjectName(string $clientName, array $data): string
     {
         $clientName = trim($clientName);
-        $subject = trim((string) ($data['email_subject'] ?? ''));
+        $subject = Str::squish((string) ($data['email_subject'] ?? ''));
         $tail = $subject !== '' ? $subject : 'Inquiry';
 
         $prefix = 'Website — '.$clientName.' — ';
-        $maxTailLength = 255 - strlen($prefix);
+        $maxTailLength = self::PROJECT_NAME_MAX_LENGTH - mb_strlen($prefix, 'UTF-8');
         if ($maxTailLength < 1) {
-            return Str::limit($prefix, 255, '');
+            return mb_substr($prefix, 0, self::PROJECT_NAME_MAX_LENGTH, 'UTF-8');
         }
 
-        if (strlen($tail) > $maxTailLength) {
-            $tail = Str::limit($tail, $maxTailLength, '');
+        if (mb_strlen($tail, 'UTF-8') > $maxTailLength) {
+            $tail = mb_substr($tail, 0, $maxTailLength, 'UTF-8');
         }
 
         return $prefix.$tail;
