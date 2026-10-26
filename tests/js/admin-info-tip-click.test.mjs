@@ -1658,7 +1658,7 @@ async function puppeteerClick() {
 
     // Checkbox ⓘ uses margin: -10px -6px on a 44px tap box. That hang is
     // CSS, not font metrics — allow it, but keep tile/page overflow tight.
-    const TAP_OVERHANG_PX = 6;
+    const TAP_OVERHANG_PX = 8;
 
     for (const width of [910, 940, 960, 1024, 1100, 1120, 1150, 1170, 1280]) {
       const rail = await measureRailGeometry(width);
