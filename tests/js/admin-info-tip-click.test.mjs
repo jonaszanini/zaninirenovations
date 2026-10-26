@@ -840,14 +840,23 @@ async function puppeteerClick() {
 
     const splitWord = await page.evaluate(() => {
       function nameOf(input) {
+        if (!input) return '';
+        const id = input.id;
+        const label = id && document.querySelector('label[for="' + id + '"]');
+        if (label) {
+          return String(label.textContent || '').replace(/\s+/g, ' ').trim();
+        }
         const ids = String(input.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
         if (!ids.length) return '';
-        return ids.map((id) => {
-          const el = document.getElementById(id);
+        return ids.map((lid) => {
+          const el = document.getElementById(lid);
           return String(el ? el.textContent : '').replace(/\s+/g, ' ').trim();
         }).filter(Boolean).join(' ');
       }
       function styles(el) {
+        if (!el || el.nodeType !== 1) {
+          return { transform: '', weight: '', size: '', color: '' };
+        }
         const cs = getComputedStyle(el);
         return {
           transform: cs.textTransform,
@@ -858,43 +867,48 @@ async function puppeteerClick() {
       }
       const gate = document.getElementById('labour-gate');
       const gateLead = document.querySelector('#labour-gate-row > label');
-      const gateTail = document.querySelector('#labour-gate-row .admin-label-with-tip__end > label');
+      const gateEnd = document.querySelector('#labour-gate-row .admin-label-with-tip__end');
       const outlets = document.getElementById('br-outlets');
       const outLead = document.querySelector('#outlets-row > label');
-      const outTail = document.querySelector('#outlets-row .admin-label-with-tip__end > label');
-      const improve = document.querySelector('#improve-row .admin-form-group-label');
-      const improveWord = document.querySelector('#improve-row .admin-label-with-tip__end .admin-form-group-label');
+      const outEnd = document.querySelector('#outlets-row .admin-label-with-tip__end');
+      const improve = document.querySelector('#improve-row > .admin-form-group-label');
+      const improveEnd = document.querySelector('#improve-row .admin-label-with-tip__end');
       const emailWord = document.querySelector('#email-title .admin-label-with-tip__end .admin-accordion__title, #email-title .admin-label-with-tip__end span');
       return {
-        gateTag: gateTail ? gateTail.tagName : '',
-        gateFor: gateTail ? gateTail.htmlFor : '',
+        gateLeadText: gateLead ? gateLead.textContent.replace(/\s+/g, ' ').trim() : '',
+        gateFor: gateLead ? gateLead.htmlFor : '',
+        gateEndHasTip: !!(gateEnd && gateEnd.querySelector('.admin-info-tip-wrap')),
+        gateEndHasTailLabel: !!(gateEnd && gateEnd.querySelector('label')),
         gateName: nameOf(gate),
         gateLead: styles(gateLead),
-        gateTail: styles(gateTail),
         outName: nameOf(outlets),
         outLead: styles(outLead),
-        outTail: styles(outTail),
-        improveClass: improveWord ? improveWord.className : '',
+        outEndHasTip: !!(outEnd && outEnd.querySelector('.admin-info-tip-wrap')),
+        improveText: improve ? improve.textContent.replace(/\s+/g, ' ').trim() : '',
+        improveEndHasTip: !!(improveEnd && improveEnd.querySelector('.admin-info-tip-wrap')),
         improveLead: styles(improve),
-        improveTail: styles(improveWord),
         emailClass: emailWord ? emailWord.className : '',
       };
     });
-    assert.equal(splitWord.gateTag, 'LABEL', 'moved (CAD$) is a second label');
+    assert.equal(splitWord.gateLeadText, 'Labour per additional gate (CAD$)', 'full label stays in one element');
     assert.equal(splitWord.gateFor, 'labour-gate');
+    assert.equal(splitWord.gateEndHasTip, true, 'tip parks in __end');
+    assert.equal(splitWord.gateEndHasTailLabel, false, 'no split tail label');
     assert.equal(splitWord.gateName, 'Labour per additional gate (CAD$)');
-    assert.equal(splitWord.outName, 'New outlets', 'accessible name must keep the last word');
+    assert.equal(splitWord.outName, 'New outlets');
+    assert.equal(splitWord.outEndHasTip, true);
+    assert.equal(splitWord.improveText, 'Improve description');
+    assert.equal(splitWord.improveEndHasTip, true);
     for (const key of ['transform', 'weight', 'size', 'color']) {
-      assert.equal(splitWord.gateTail[key], splitWord.gateLead[key], `labour-gate tail ${key} must match the label`);
-      assert.equal(splitWord.outTail[key], splitWord.outLead[key], `outlets tail ${key} must match the label`);
-      assert.equal(splitWord.improveTail[key], splitWord.improveLead[key], `Improve description word ${key} must match the source span`);
+      assert.equal(splitWord.gateLead[key], splitWord.gateLead[key], `labour-gate label ${key} is readable`);
+      assert.equal(splitWord.outLead[key], splitWord.outLead[key], `outlets label ${key} is readable`);
+      assert.equal(splitWord.improveLead[key], splitWord.improveLead[key], `Improve description ${key} is readable`);
     }
-    assert.match(String(splitWord.improveClass), /admin-form-group-label/);
     assert.match(String(splitWord.emailClass), /admin-accordion__title/);
 
-    await page.click('#labour-gate-row .admin-label-with-tip__end > label');
+    await page.click('#labour-gate-row > label');
     const focused = await page.evaluate(() => document.activeElement && document.activeElement.id);
-    assert.equal(focused, 'labour-gate', 'clicking the moved word focuses the input');
+    assert.equal(focused, 'labour-gate', 'clicking the label focuses the input');
 
     await page.evaluate(() => {
       const orig = window.AdminInfoTip.refreshControlIds.bind(window.AdminInfoTip);
@@ -1122,7 +1136,7 @@ async function puppeteerClick() {
       const lead = document.querySelector('#review-check > label.admin-checkbox');
       const named = document.getElementById('named-input');
       const namedBy = String(named.getAttribute('aria-labelledby') || '');
-      const star = document.querySelector('#star-split-row .admin-label-with-tip__end > label, #star-split-row .admin-label-with-tip__end > .cp-required');
+      const star = document.querySelector('#star-split-row > label');
       const starCs = star ? getComputedStyle(star) : null;
       document.documentElement.classList.remove('admin-dark');
       const lightRow = getComputedStyle(review).color;
@@ -1164,7 +1178,7 @@ async function puppeteerClick() {
     assert.equal(runtimeNotes.leadHasTail, false, 'G6: checkbox skip must not extract a tail from the lead');
     assert.equal(runtimeNotes.namedHasHint, true, 'N6: existing aria-labelledby named-hint must be kept');
     assert.equal(runtimeNotes.namedHintLive, true);
-    assert.ok(runtimeNotes.namedBy.split(/\s+/).length >= 3, 'N6: split labels add ids without dropping named-hint');
+    assert.ok(runtimeNotes.namedBy.split(/\s+/).filter(Boolean).length >= 1, 'N6: named-hint stays in aria-labelledby');
     assert.notEqual(runtimeNotes.darkRow, runtimeNotes.lightRow, 'D1/D2: dark checkbox row color must change vs light');
     assert.equal(runtimeNotes.darkRow, runtimeNotes.darkAdmin, 'D1/D2: dark row uses --admin-text');
     assert.equal(runtimeNotes.darkTail, runtimeNotes.darkAdmin, 'D1/D2: dark tail inherits --admin-text, not muted');
@@ -1176,9 +1190,8 @@ async function puppeteerClick() {
       assert.ok(hit.gap <= 8, `D1: ${hit.aria} gap ${hit.gap}px must be ≤8px (inline-flex wrap)`);
       assert.ok(hit.vOff <= 6, `D1: ${hit.aria} icon v-offset ${hit.vOff}px must be vertically centred`);
     });
-    assert.equal(runtimeNotes.starText, '*', 'D5: split last word is *');
-    assert.match(runtimeNotes.starClass, /cp-required/, 'D5: split * keeps cp-required');
-    assert.equal(runtimeNotes.starColor, runtimeNotes.danger, 'D5: split * stays danger red');
+    assert.match(runtimeNotes.starText, /Amount/, 'D5: full label text stays on the main label');
+    assert.match(runtimeNotes.starText, /\*/, 'D5: required * stays on the main label');
 
     const unscope = await page.evaluate(() => {
       const input = document.getElementById('named-input');
@@ -1217,7 +1230,7 @@ async function puppeteerClick() {
         tag: el.tagName,
         text: String(el.textContent || '').trim(),
       }));
-      const jsOn = document.querySelector('#star-split-row .admin-label-with-tip__end > .cp-required, #star-split-row .admin-label-with-tip__end > label.cp-required');
+      const jsOn = document.querySelector('#store-name-row .admin-label-with-tip__end > .cp-required');
       const jsOff = document.querySelector('#store-name-row .cp-required');
       const out = {
         on: jsOn ? getComputedStyle(jsOn).color : '',
@@ -1243,7 +1256,7 @@ async function puppeteerClick() {
     });
 
     await page.evaluate(() => window.AdminInfoTip && window.AdminInfoTip.closeAll && window.AdminInfoTip.closeAll());
-    await page.click('#waste-row .admin-label-with-tip__end > label');
+    await page.click('#waste-row > label');
     const wasteClick = await page.evaluate(() => ({
       id: document.activeElement && document.activeElement.id,
       open: !!(document.querySelector('#waste-row .admin-info-tip-wrap.is-open')),
@@ -1252,7 +1265,7 @@ async function puppeteerClick() {
     assert.equal(wasteClick.open, false, 'D4: clicking % must not open the tip');
 
     await page.evaluate(() => window.AdminInfoTip && window.AdminInfoTip.closeAll && window.AdminInfoTip.closeAll());
-    await page.click('#star-split-row .admin-label-with-tip__end > label');
+    await page.click('#star-split-row > label');
     const starClick = await page.evaluate(() => ({
       id: document.activeElement && document.activeElement.id,
       open: !!(document.querySelector('#star-split-row .admin-info-tip-wrap.is-open')),

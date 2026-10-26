@@ -18,7 +18,7 @@
 @endphp
 
 @unless ($hideButton)
-  <div class="cp-schedule-pick-row">
+  <div class="cp-schedule-pick-row cp-schedule-pick-row--after-heading">
     <span class="admin-label-with-tip cp-schedule-pick-btn-wrap">
       <button type="button"
               class="admin-btn admin-btn--outline admin-btn--sm"

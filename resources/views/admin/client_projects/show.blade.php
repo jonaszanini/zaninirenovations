@@ -889,7 +889,7 @@
       </div>
 
       <div class="admin-card">
-        <h3 class="cp-form-help-flush sp-heading">
+        <h3 class="cp-form-help-flush sp-heading cp-schedule-card-heading">
           <span class="admin-heading-copy">Start &amp; End dates
             <x-admin.info-tip label="Start and End dates">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link. Picking dates on the calendar saves them immediately.</x-admin.info-tip>
           </span>

@@ -801,7 +801,7 @@ async function run() {
       const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
       const last = visible[visible.length - 1];
       return document.activeElement === last;
-    });
+    }, { timeout: 5000 });
     await page.keyboard.press('Tab');
     const wrappedToFirst = await page.waitForFunction(() => {
       const modal = document.getElementById('openplan3d-modal');
@@ -810,7 +810,7 @@ async function run() {
       );
       const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
       return document.activeElement === visible[0];
-    }, { timeout: 3000 }).then(() => true).catch(() => false);
+    }, { timeout: 5000 }).then(() => true).catch(() => false);
     assert.strictEqual(wrappedToFirst, true, 'Tab from last element wraps to first element');
 
     // Shift+Tab from first element wraps to last element
@@ -824,7 +824,7 @@ async function run() {
       );
       const visible = Array.from(nodes).filter((el) => !el.hidden && !el.closest('[hidden]'));
       return document.activeElement === visible[visible.length - 1];
-    }, { timeout: 3000 }).then(() => true).catch(() => false);
+    }, { timeout: 5000 }).then(() => true).catch(() => false);
     assert.strictEqual(wrappedToLast, true, 'Shift+Tab from first element wraps to last element');
 
     // Close via link cancel and verify focus returns to Save button

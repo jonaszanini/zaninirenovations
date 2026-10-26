@@ -87,6 +87,8 @@
       <span class="cp-visit-toggle__control" aria-hidden="true"></span>
       <span class="cp-visit-toggle__label">Set as active vehicle</span>
     </label>
-    <x-admin.info-tip label="Set as active vehicle">Only one vehicle can be active. It is used for project travel fuel estimates.</x-admin.info-tip>
+    <span class="admin-label-with-tip__end">
+      <x-admin.info-tip label="Set as active vehicle">Only one vehicle can be active. It is used for project travel fuel estimates.</x-admin.info-tip>
+    </span>
   </span>
 </div>

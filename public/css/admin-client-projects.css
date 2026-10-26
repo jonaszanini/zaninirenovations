@@ -6764,12 +6764,29 @@ body.cp-modal-open {
 .cp-schedule-dates.admin-form-grid-2 {
   align-items: start;
 }
+.cp-schedule-dates.admin-form-grid-2 > .admin-form-group > .admin-label-with-tip {
+  min-height: 0;
+}
 .cp-schedule-dates .admin-form-group > label.cp-schedule-date-label,
 .cp-schedule-dates .admin-form-group > .admin-label-with-tip {
   display: block;
-  min-height: 2.6em;
   margin-bottom: 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1.25rem;
+  min-height: 1.25rem;
   box-sizing: border-box;
+}
+.cp-schedule-dates .admin-label-with-tip > label {
+  font-size: inherit;
+  font-weight: 600;
+  line-height: inherit;
+  margin-bottom: 0;
+}
+.cp-schedule-card-heading {
+  margin-bottom: 12px;
+}
+.cp-schedule-pick-row--after-heading {
+  margin-top: 0;
 }
 @media (max-width: 480px) {
   .cp-schedule-dates.admin-form-grid-2 {

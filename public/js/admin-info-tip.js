@@ -584,12 +584,16 @@
     if (el.tagName === 'BUTTON' || el.classList.contains('admin-btn') || el.classList.contains('util-segmented__btn')) {
       return true;
     }
+    if (el.classList.contains('cp-visit-toggle') || el.classList.contains('q-ac-hst-toggle')) {
+      return true;
+    }
     return false;
   }
 
   function isInlineLabelElement(el) {
     if (!el || el.nodeType !== 1) return false;
-    if (el.tagName === 'LABEL' && el.classList && !el.classList.contains('admin-checkbox')) {
+    if (el.tagName === 'LABEL' && el.classList && !el.classList.contains('admin-checkbox')
+      && !el.classList.contains('cp-visit-toggle')) {
       return true;
     }
     return !!(el.classList && el.classList.contains('admin-form-group-label'));
@@ -608,6 +612,9 @@
     if (!row || tip.parentNode !== row) return null;
     var prev = previousNonEmptyNode(tip);
     if (!prev || prev.nodeType !== 1) return null;
+    if (prev.classList && (prev.classList.contains('cp-visit-toggle') || prev.classList.contains('q-ac-hst-toggle'))) {
+      return null;
+    }
     if (!isInlineLabelElement(prev) && !isGlueSkipElement(prev)) return null;
     if (isGlueSkipElement(prev) && prev.tagName !== 'BUTTON' && !prev.classList.contains('admin-btn')) {
       return null;

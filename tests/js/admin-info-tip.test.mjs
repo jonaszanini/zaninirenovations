@@ -555,6 +555,24 @@ import { createEnv, makeTip } from './admin-info-tip-harness.mjs';
 {
   const { document, body, AdminInfoTip } = createEnv();
   const row = document.createElement('span');
+  row.className = 'admin-label-with-tip';
+  const toggle = document.createElement('label');
+  toggle.className = 'cp-visit-toggle';
+  toggle.setAttribute('for', 'vehicle-is-active');
+  toggle.textContent = 'Set as active vehicle';
+  const { wrap } = makeTip(document, 'admin-info-tip-vehicle', 'Set as active vehicle');
+  row.appendChild(toggle);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  AdminInfoTip.hoist(document);
+  assert.equal(row.querySelector('.admin-label-with-tip__end'), null, 'visit toggle tips are not parked into __end');
+  assert.equal(toggle.parentNode, row, 'toggle label stays in the row');
+  assert.equal(wrap.parentNode, row, 'tip stays beside the toggle');
+}
+
+{
+  const { document, body, AdminInfoTip } = createEnv();
+  const row = document.createElement('span');
   row.className = 'admin-label-with-tip cp-schedule-pick-btn-wrap';
   const btn = document.createElement('button');
   btn.type = 'button';
