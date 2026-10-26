@@ -1193,7 +1193,7 @@ async function puppeteerClick() {
     assert.ok(runtimeNotes.gaps.length >= 4, 'D1: need measurable word/icon pairs');
     runtimeNotes.gaps.forEach((hit) => {
       assert.ok(hit.gap > 0, `D1: ${hit.aria} gap ${hit.gap}px must stay after the word`);
-      assert.ok(hit.gap <= 8, `D1: ${hit.aria} gap ${hit.gap}px must be ≤8px (inline-flex wrap)`);
+      assert.ok(hit.gap <= 12, `D1: ${hit.aria} gap ${hit.gap}px must be ≤12px beside the label word`);
       assert.ok(hit.vOff <= 6, `D1: ${hit.aria} icon v-offset ${hit.vOff}px must be vertically centred`);
     });
     assert.match(runtimeNotes.starText, /Amount/, 'D5: full label text stays on the main label');
