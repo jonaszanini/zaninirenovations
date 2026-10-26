@@ -31,6 +31,19 @@
             @if (! empty($scheduleToggleId)) data-schedule-toggle="#{{ $scheduleToggleId }}" @endif>
       <i class="fa fa-calendar" aria-hidden="true"></i> Pick on calendar
     </button>
+    @if (! empty($saveUrl) || ! empty($submitFormId))
+      <button type="button"
+              class="admin-btn admin-btn--ghost admin-btn--sm"
+              data-schedule-clear-dates
+              data-start-input="#{{ $startDateId }}"
+              data-end-input="#{{ $endDateId }}"
+              @if (! empty($submitFormId)) data-submit-form="#{{ $submitFormId }}" @endif
+              @if (! empty($saveUrl)) data-save-url="{{ $saveUrl }}" @endif
+              @if (! empty($scheduleToggleId)) data-schedule-toggle="#{{ $scheduleToggleId }}" @endif>
+        Clear dates
+      </button>
+      <x-admin.info-tip label="Clear dates">Removes the saved start and end dates (project no longer appears on the Project Calendar until you set dates again).</x-admin.info-tip>
+    @endif
     <x-admin.info-tip label="Pick on calendar">{{ $hint }}</x-admin.info-tip>
   </div>
 @endunless

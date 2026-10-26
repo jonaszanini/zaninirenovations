@@ -97,6 +97,77 @@ class ClientProjectScheduleDatesTest extends IntegrationTestCase
         $this->get(route('admin.client-projects.show', $project))
             ->assertOk()
             ->assertSee('data-save-url="'.route('admin.client-projects.schedule-dates.update', $project).'"', false)
-            ->assertSee('Use these dates', false);
+            ->assertSee('Use these dates', false)
+            ->assertSee('data-schedule-clear-dates', false)
+            ->assertSee('Clear dates', false);
+    }
+
+    public function test_clearing_schedule_dates_saves_nulls(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'start_date' => '2026-10-01',
+            'end_date' => '2026-10-05',
+        ]);
+
+        $this->put(route('admin.client-projects.schedule-dates.update', $project), [
+            'start_date' => '',
+            'end_date' => '',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Start and end dates cleared.');
+
+        $project->refresh();
+        $this->assertNull($project->start_date);
+        $this->assertNull($project->end_date);
+    }
+
+    public function test_schedule_dates_update_rejects_only_start_without_end(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'start_date' => null,
+            'end_date' => null,
+        ]);
+
+        $this->from(route('admin.client-projects.show', $project))
+            ->put(route('admin.client-projects.schedule-dates.update', $project), [
+                'start_date' => '2026-10-20',
+                'end_date' => '',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('end_date');
+
+        $project->refresh();
+        $this->assertNull($project->start_date);
+        $this->assertNull($project->end_date);
+    }
+
+    public function test_full_project_update_can_clear_schedule_dates(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Kitchen',
+            'client_name' => 'Jane',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-10',
+        ]);
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Kitchen',
+            'client_name' => 'Jane',
+            'start_date' => '',
+            'end_date' => '',
+        ])->assertRedirect();
+
+        $project->refresh();
+        $this->assertNull($project->start_date);
+        $this->assertNull($project->end_date);
     }
 }

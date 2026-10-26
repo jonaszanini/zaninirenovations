@@ -1916,6 +1916,9 @@ a:hover .cp-expense-receipt-pdf {
 .cp-calendar-card {
   padding: 16px;
 }
+.cp-calendar-card .fc-daygrid-day-frame {
+  touch-action: manipulation;
+}
 
 /* Today cell — light brand blue (replaces FullCalendar default yellow). */
 .cp-calendar-card .fc .fc-daygrid-day.fc-day-today,
@@ -6809,6 +6812,14 @@ body.cp-modal-open {
 }
 .cp-date-picker-calendar .fc-daygrid-day {
   cursor: pointer;
+}
+/* Busy-day blocks are visual only — taps must reach the day cell (touch). */
+.cp-date-picker-calendar .fc-daygrid-event,
+.cp-date-picker-calendar .fc-event {
+  pointer-events: none;
+}
+.cp-date-picker-calendar .fc-daygrid-day-frame {
+  touch-action: manipulation;
 }
 .cp-date-picker-calendar .fc-daygrid-day:hover {
   background: var(--admin-primary-soft);

@@ -133,9 +133,8 @@
       firstDay: 0,
       height: 'auto',
       headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
-      selectable: true,
-      unselectAuto: false,
-      longPressDelay: 150,
+      // Tap-to-select (two taps: start, then end). Drag-select is not used here.
+      selectable: false,
       eventDisplay: 'block',
       events: busyEvents,
       eventDidMount: function (info) {
@@ -143,15 +142,8 @@
           info.el.setAttribute('title', info.event.title + ' — ' + info.event.extendedProps.status);
         }
       },
-      select: function (info) {
-        var startIso = fmtIso(info.start);
-        var endIso = fmtIso(new Date(info.end.getTime() - 24 * 60 * 60 * 1000));
-        if (startIso === endIso) {
-          handleDayClick(startIso);
-        } else {
-          setSelection(startIso, endIso);
-        }
-        calendar.unselect();
+      dateClick: function (info) {
+        handleDayClick(fmtIso(info.date));
       },
     });
     calendar.render();
@@ -325,8 +317,8 @@
     [
       ['_token', csrfToken()],
       ['_method', 'PUT'],
-      ['start_date', start],
-      ['end_date', end],
+      ['start_date', start || ''],
+      ['end_date', end || ''],
     ].forEach(function (pair) {
       var input = document.createElement('input');
       input.type = 'hidden';
@@ -347,16 +339,56 @@
     }
   }
 
-  function configFromButton(btn) {
+  function configFromElement(el) {
     return {
-      startInput: qs(btn.getAttribute('data-start-input')),
-      endInput: qs(btn.getAttribute('data-end-input')),
-      toggle: qs(btn.getAttribute('data-schedule-toggle')),
-      saveUrl: btn.getAttribute('data-save-url') || '',
-      submitForm: qs(btn.getAttribute('data-submit-form')),
-      eventsUrl: btn.getAttribute('data-events-url') || '',
-      excludeId: btn.getAttribute('data-exclude-id') || '',
+      startInput: qs(el.getAttribute('data-start-input')),
+      endInput: qs(el.getAttribute('data-end-input')),
+      toggle: qs(el.getAttribute('data-schedule-toggle')),
+      saveUrl: el.getAttribute('data-save-url') || '',
+      submitForm: qs(el.getAttribute('data-submit-form')),
+      eventsUrl: el.getAttribute('data-events-url') || '',
+      excludeId: el.getAttribute('data-exclude-id') || '',
     };
+  }
+
+  function clearScheduleDates(cfg) {
+    if (!cfg) return;
+    var startInput = cfg.startInput;
+    var endInput = cfg.endInput;
+    var toggle = cfg.toggle;
+
+    if (toggle) {
+      toggle.checked = false;
+      toggle.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (startInput) {
+      startInput.disabled = false;
+      startInput.value = '';
+      startInput.dispatchEvent(new Event('change', { bubbles: true }));
+      startInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (endInput) {
+      endInput.disabled = false;
+      endInput.value = '';
+      endInput.dispatchEvent(new Event('change', { bubbles: true }));
+      endInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    document.dispatchEvent(new CustomEvent('schedule-date-picker:clear', { bubbles: true }));
+
+    if (cfg.saveUrl) {
+      postScheduleDates(cfg.saveUrl, '', '');
+      return;
+    }
+
+    var form = cfg.submitForm;
+    if (!form) return;
+
+    if (typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+    } else {
+      form.submit();
+    }
   }
 
   function bindModalChrome() {
@@ -391,12 +423,34 @@
     btn.setAttribute('data-schedule-date-picker-init', '1');
     bindModalChrome();
     btn.addEventListener('click', function () {
-      openModal(configFromButton(btn));
+      openModal(configFromElement(btn));
+    });
+  }
+
+  function initClearButton(btn) {
+    if (!btn || btn.getAttribute('data-schedule-clear-init') === '1') return;
+    btn.setAttribute('data-schedule-clear-init', '1');
+    btn.addEventListener('click', function () {
+      var cfg = configFromElement(btn);
+      var hasDates = (cfg.startInput && cfg.startInput.value) || (cfg.endInput && cfg.endInput.value);
+      if (!hasDates && !cfg.saveUrl) return;
+      var message = 'Clear the start and end dates for this project?';
+      if (window.AdminDialog && typeof window.AdminDialog.confirm === 'function') {
+        window.AdminDialog.confirm(message, { title: 'Clear dates' }).then(function (ok) {
+          if (ok) clearScheduleDates(cfg);
+        });
+        return;
+      }
+      if (window.confirm(message)) {
+        clearScheduleDates(cfg);
+      }
     });
   }
 
   function initAll(scope) {
-    (scope || document).querySelectorAll('[data-schedule-date-picker]').forEach(initButton);
+    var root = scope || document;
+    root.querySelectorAll('[data-schedule-date-picker]').forEach(initButton);
+    root.querySelectorAll('[data-schedule-clear-dates]').forEach(initClearButton);
   }
 
   window.AdminScheduleDatePicker = {
@@ -404,6 +458,7 @@
     initAll: initAll,
     open: openModal,
     close: closeModal,
+    clear: clearScheduleDates,
   };
 
   if (document.readyState === 'loading') {

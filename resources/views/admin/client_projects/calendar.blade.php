@@ -280,6 +280,7 @@
         selectable: true,
         selectMirror: true,
         unselectAuto: true,
+        selectLongPressDelay: 0,
         select: function (info) {
           var startYmd = formatYmd(info.start);
           var endYmd = info.allDay ? inclusiveEndFromFc(info.end) : formatYmd(info.end);
