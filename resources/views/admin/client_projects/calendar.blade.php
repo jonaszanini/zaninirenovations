@@ -270,6 +270,10 @@
         right: 'dayGridMonth,timeGridWeek,listMonth',
       };
 
+      // Drag-select fights vertical scrolling on phones; taps use dateClick instead.
+      var touchLikeCalendar = window.matchMedia('(pointer: coarse)').matches
+        || window.matchMedia('(hover: none)').matches;
+
       calendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
         headerToolbar: calendarToolbar,
@@ -277,11 +281,17 @@
         height: 'auto',
         events: projectEvents,
         eventDisplay: 'block',
-        selectable: true,
-        selectMirror: true,
+        selectable: !touchLikeCalendar,
+        selectMirror: !touchLikeCalendar,
         unselectAuto: true,
-        selectLongPressDelay: 0,
+        selectLongPressDelay: touchLikeCalendar ? 500 : 0,
+        dateClick: function (info) {
+          if (!touchLikeCalendar) return;
+          var ymd = formatYmd(info.date);
+          openCreate(ymd, ymd);
+        },
         select: function (info) {
+          if (touchLikeCalendar) return;
           var startYmd = formatYmd(info.start);
           var endYmd = info.allDay ? inclusiveEndFromFc(info.end) : formatYmd(info.end);
           openCreate(startYmd, endYmd);

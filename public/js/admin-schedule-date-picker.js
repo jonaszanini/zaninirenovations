@@ -351,11 +351,32 @@
     };
   }
 
+  function scheduleClearToast(title) {
+    if (window.AdminToast && typeof window.AdminToast.show === 'function') {
+      window.AdminToast.show({
+        type: 'success',
+        title: title,
+        sticky: false,
+        duration: 2500,
+      });
+      return;
+    }
+    var warn = document.getElementById('cp-schedule-date-warning')
+      || document.getElementById('cp-create-date-warning')
+      || document.getElementById('cp-edit-date-warning');
+    if (warn) {
+      warn.textContent = title;
+      warn.classList.remove('admin-flash--js-hidden');
+    }
+  }
+
   function clearScheduleDates(cfg) {
     if (!cfg) return;
     var startInput = cfg.startInput;
     var endInput = cfg.endInput;
     var toggle = cfg.toggle;
+    var hadFieldValues = (startInput && startInput.value) || (endInput && endInput.value);
+    var toggleWasOn = !!(toggle && toggle.checked);
 
     if (toggle) {
       toggle.checked = false;
@@ -376,8 +397,17 @@
 
     document.dispatchEvent(new CustomEvent('schedule-date-picker:clear', { bubbles: true }));
 
-    if (cfg.saveUrl) {
+    if (cfg.saveUrl && hadFieldValues) {
       postScheduleDates(cfg.saveUrl, '', '');
+      return;
+    }
+
+    if (hadFieldValues) {
+      scheduleClearToast('Start and end dates cleared');
+    } else if (toggleWasOn) {
+      scheduleClearToast('Schedule turned off; dates were already empty');
+    } else {
+      scheduleClearToast('Start and end dates are already empty');
     }
   }
 
@@ -423,7 +453,11 @@
     btn.addEventListener('click', function () {
       var cfg = configFromElement(btn);
       var hasDates = (cfg.startInput && cfg.startInput.value) || (cfg.endInput && cfg.endInput.value);
-      if (!hasDates) return;
+      var toggleOn = cfg.toggle && cfg.toggle.checked;
+      if (!hasDates) {
+        clearScheduleDates(cfg);
+        return;
+      }
       var message = 'Clear the start and end dates for this project?';
       if (window.AdminDialog && typeof window.AdminDialog.confirm === 'function') {
         window.AdminDialog.confirm(message, { title: 'Clear dates' }).then(function (ok) {

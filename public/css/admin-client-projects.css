@@ -1917,7 +1917,10 @@ a:hover .cp-expense-receipt-pdf {
   padding: 16px;
 }
 .cp-calendar-card .fc-daygrid-day-frame {
-  touch-action: manipulation;
+  touch-action: pan-y;
+}
+.cp-calendar-card .fc .fc-scroller {
+  touch-action: pan-y;
 }
 
 /* Today cell — light brand blue (replaces FullCalendar default yellow). */
