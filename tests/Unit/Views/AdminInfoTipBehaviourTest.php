@@ -241,6 +241,7 @@ BLADE);
         $this->assertStringContainsString("idFromControlName(input.getAttribute && input.getAttribute('name'))", $js);
         $this->assertStringContainsString("btn.setAttribute('aria-label', aboutLabel(aria))", $js);
         $this->assertStringContainsString("label.admin-checkbox, .admin-checkbox-row > .admin-label-with-tip__end", $js);
+        $this->assertStringContainsString('function parkTipInLabelRow', $js);
         $this->assertStringContainsString("'.mw-totals-bar'", $js);
         $this->assertStringContainsString('setLabelText: setLabelText', $js);
         $basementJs = file_get_contents(public_path('js/admin-basement-quotation.js'));
@@ -338,6 +339,10 @@ BLADE);
             $css
         );
         $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline/',
+            $css
+        );
+        $this->assertDoesNotMatchRegularExpression(
             '/\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline-flex/',
             $css
         );
@@ -368,6 +373,10 @@ BLADE);
             $css
         );
         $cpCss = file_get_contents(public_path('css/admin-client-projects.css'));
+        $this->assertMatchesRegularExpression(
+            '/\.cp-schedule-dates \.admin-form-group > label\.cp-schedule-date-label[\s\S]{0,260}height:\s*1\.5rem/',
+            $cpCss
+        );
         $this->assertStringContainsString('.br-layout--create .br-acc__summary .admin-info-tip', $cpCss);
         $this->assertStringContainsString('pointer-events: auto', $cpCss);
         $this->assertStringContainsString('.tm-chip-row > .admin-checkbox-row', $cpCss);
@@ -730,8 +739,11 @@ BLADE);
             '/<label[^>]*id="br-area-label"/',
             $html
         );
-        $this->assertStringContainsString('Total basement area (sq', $html);
-        $this->assertStringContainsString('>ft)</label>', $html);
+        $this->assertStringContainsString('Total basement area (sq ft)', $html);
+        $this->assertMatchesRegularExpression(
+            '/<label[^>]*for="br-area"[^>]*>[\s\S]*Total basement area \(sq ft\)/',
+            $html
+        );
         $this->assertStringNotContainsString('sq ft) ft)', $html);
         $this->assertStringContainsString('admin-info-tip-wrap', $html);
     }

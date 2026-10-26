@@ -722,12 +722,14 @@
         '<div class="admin-form-group">' +
           '<span class="admin-label-with-tip">' +
             '<span class="admin-form-group-label">Calculation mode</span>' +
+            '<span class="admin-label-with-tip__end">' +
             (window.AdminInfoTip
               ? window.AdminInfoTip.html(
                   'Minimize waste compares every stock length and a mixed-length plan. Single board length uses only the length you select below.',
                   'Calculation mode'
                 )
               : '') +
+            '</span>' +
           '</span>' +
           '<div class="util-segmented" role="group" aria-label="Calculation mode" data-lb-mode-toggle>' +
             '<button type="button" class="util-segmented__btn' + (data.mode !== 'single' ? ' is-active' : '') + '" data-mode="minimize">Minimize waste</button>' +

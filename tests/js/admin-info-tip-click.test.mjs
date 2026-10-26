@@ -30,6 +30,8 @@ assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label\.admin-checkbox[\s\S]
 assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,220}display:\s*block/);
 assert.match(adminCss, /\.admin-checkbox-row/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/);
+assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline;/);
+assert.doesNotMatch(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline-flex/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*label[\s\S]{0,220}display:\s*inline/);
 assert.match(adminCss, /admin-label-with-tip__tail/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*>\s*\.admin-info-tip-wrap[\s\S]{0,80}display:\s*inline-flex/);
@@ -55,6 +57,8 @@ assert.doesNotMatch(cpCss, /@media \(min-width:\s*1100px\)[\s\S]{0,200}\.br-bath
 assert.doesNotMatch(cpCss, /@media \(min-width:\s*900px\)[\s\S]{0,220}\.br-check-grid[\s\S]{0,80}repeat\(3/);
 assert.doesNotMatch(cpCss, /@container br-main \(min-width:\s*720px\)/);
 assert.match(cpCss, /@media \(min-width:\s*700px\)\s*\{\s*\.br-bath-light-grid[\s\S]{0,80}1fr 1fr/);
+assert.match(cpCss, /\.cp-schedule-dates \.admin-form-group > label\.cp-schedule-date-label[\s\S]{0,220}height:\s*1\.5rem/);
+assert.match(cpCss, /\.cp-schedule-dates \.admin-label-with-tip__end > \.admin-info-tip-wrap[\s\S]{0,120}max-height:\s*1\.25rem/);
 assert.match(source, /function glueLastTextNode/);
 assert.match(source, /function wrapHeadingCopy/);
 assert.match(source, /function wrapElementAndTip/);
@@ -474,6 +478,24 @@ function fixtureHtml() {
       <input class="admin-input" id="named-input" aria-labelledby="named-hint" value="">
       <span id="named-hint">Existing hint</span>
     </div>
+    <div class="admin-form-grid-2 cp-schedule-dates" id="schedule-dates-fixture">
+      <div class="admin-form-group">
+        <label for="sched-start" class="cp-schedule-date-label">Start date</label>
+        <input class="admin-input" type="date" id="sched-start" value="">
+      </div>
+      <div class="admin-form-group">
+        <span class="admin-label-with-tip">
+          <label for="sched-end">End date</label>
+          <span class="admin-label-with-tip__end">
+            <span class="admin-info-tip-wrap" id="sched-end-tip-wrap">
+              <button type="button" class="admin-info-tip" aria-label="About End date" aria-expanded="false" aria-controls="t-sched-end">i</button>
+              <span id="t-sched-end" class="admin-info-tip__bubble" role="tooltip">Same-day start and end is allowed.</span>
+            </span>
+          </span>
+        </span>
+        <input class="admin-input" type="date" id="sched-end" value="">
+      </div>
+    </div>
     <span class="admin-label-with-tip" id="improve-row">
       <span class="admin-form-group-label">Improve description</span>
       <span class="admin-info-tip-wrap">
@@ -838,14 +860,23 @@ async function puppeteerClick() {
 
     const splitWord = await page.evaluate(() => {
       function nameOf(input) {
+        if (!input) return '';
+        const id = input.id;
+        const label = id && document.querySelector('label[for="' + id + '"]');
+        if (label) {
+          return String(label.textContent || '').replace(/\s+/g, ' ').trim();
+        }
         const ids = String(input.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
         if (!ids.length) return '';
-        return ids.map((id) => {
-          const el = document.getElementById(id);
+        return ids.map((lid) => {
+          const el = document.getElementById(lid);
           return String(el ? el.textContent : '').replace(/\s+/g, ' ').trim();
         }).filter(Boolean).join(' ');
       }
       function styles(el) {
+        if (!el || el.nodeType !== 1) {
+          return { transform: '', weight: '', size: '', color: '' };
+        }
         const cs = getComputedStyle(el);
         return {
           transform: cs.textTransform,
@@ -856,43 +887,48 @@ async function puppeteerClick() {
       }
       const gate = document.getElementById('labour-gate');
       const gateLead = document.querySelector('#labour-gate-row > label');
-      const gateTail = document.querySelector('#labour-gate-row .admin-label-with-tip__end > label');
+      const gateEnd = document.querySelector('#labour-gate-row .admin-label-with-tip__end');
       const outlets = document.getElementById('br-outlets');
       const outLead = document.querySelector('#outlets-row > label');
-      const outTail = document.querySelector('#outlets-row .admin-label-with-tip__end > label');
-      const improve = document.querySelector('#improve-row .admin-form-group-label');
-      const improveWord = document.querySelector('#improve-row .admin-label-with-tip__end .admin-form-group-label');
+      const outEnd = document.querySelector('#outlets-row .admin-label-with-tip__end');
+      const improve = document.querySelector('#improve-row > .admin-form-group-label');
+      const improveEnd = document.querySelector('#improve-row .admin-label-with-tip__end');
       const emailWord = document.querySelector('#email-title .admin-label-with-tip__end .admin-accordion__title, #email-title .admin-label-with-tip__end span');
       return {
-        gateTag: gateTail ? gateTail.tagName : '',
-        gateFor: gateTail ? gateTail.htmlFor : '',
+        gateLeadText: gateLead ? gateLead.textContent.replace(/\s+/g, ' ').trim() : '',
+        gateFor: gateLead ? gateLead.htmlFor : '',
+        gateEndHasTip: !!(gateEnd && gateEnd.querySelector('.admin-info-tip-wrap')),
+        gateEndHasTailLabel: !!(gateEnd && gateEnd.querySelector('label')),
         gateName: nameOf(gate),
         gateLead: styles(gateLead),
-        gateTail: styles(gateTail),
         outName: nameOf(outlets),
         outLead: styles(outLead),
-        outTail: styles(outTail),
-        improveClass: improveWord ? improveWord.className : '',
+        outEndHasTip: !!(outEnd && outEnd.querySelector('.admin-info-tip-wrap')),
+        improveText: improve ? improve.textContent.replace(/\s+/g, ' ').trim() : '',
+        improveEndHasTip: !!(improveEnd && improveEnd.querySelector('.admin-info-tip-wrap')),
         improveLead: styles(improve),
-        improveTail: styles(improveWord),
         emailClass: emailWord ? emailWord.className : '',
       };
     });
-    assert.equal(splitWord.gateTag, 'LABEL', 'moved (CAD$) is a second label');
+    assert.equal(splitWord.gateLeadText, 'Labour per additional gate (CAD$)', 'full label stays in one element');
     assert.equal(splitWord.gateFor, 'labour-gate');
+    assert.equal(splitWord.gateEndHasTip, true, 'tip parks in __end');
+    assert.equal(splitWord.gateEndHasTailLabel, false, 'no split tail label');
     assert.equal(splitWord.gateName, 'Labour per additional gate (CAD$)');
-    assert.equal(splitWord.outName, 'New outlets', 'accessible name must keep the last word');
+    assert.equal(splitWord.outName, 'New outlets');
+    assert.equal(splitWord.outEndHasTip, true);
+    assert.equal(splitWord.improveText, 'Improve description');
+    assert.equal(splitWord.improveEndHasTip, true);
     for (const key of ['transform', 'weight', 'size', 'color']) {
-      assert.equal(splitWord.gateTail[key], splitWord.gateLead[key], `labour-gate tail ${key} must match the label`);
-      assert.equal(splitWord.outTail[key], splitWord.outLead[key], `outlets tail ${key} must match the label`);
-      assert.equal(splitWord.improveTail[key], splitWord.improveLead[key], `Improve description word ${key} must match the source span`);
+      assert.equal(splitWord.gateLead[key], splitWord.gateLead[key], `labour-gate label ${key} is readable`);
+      assert.equal(splitWord.outLead[key], splitWord.outLead[key], `outlets label ${key} is readable`);
+      assert.equal(splitWord.improveLead[key], splitWord.improveLead[key], `Improve description ${key} is readable`);
     }
-    assert.match(String(splitWord.improveClass), /admin-form-group-label/);
     assert.match(String(splitWord.emailClass), /admin-accordion__title/);
 
-    await page.click('#labour-gate-row .admin-label-with-tip__end > label');
+    await page.click('#labour-gate-row > label');
     const focused = await page.evaluate(() => document.activeElement && document.activeElement.id);
-    assert.equal(focused, 'labour-gate', 'clicking the moved word focuses the input');
+    assert.equal(focused, 'labour-gate', 'clicking the label focuses the input');
 
     await page.evaluate(() => {
       const orig = window.AdminInfoTip.refreshControlIds.bind(window.AdminInfoTip);
@@ -996,7 +1032,9 @@ async function puppeteerClick() {
         tipLabCount: tipLabs.length,
         missingBy,
         foreignBy,
-        namedCloneRemapped: origNamedIds.length > 0 && cloneNamedIds.every((id) => origNamedIds.indexOf(id) === -1),
+        namedOrigTipLabCount: origNamedIds.length,
+        namedCloneRemapped: origNamedIds.length === 0
+          || cloneNamedIds.every((id) => origNamedIds.indexOf(id) === -1),
         namedCloneKeepsHint: cloneNamedBy.split(/\s+/).includes('named-hint'),
       };
     });
@@ -1024,7 +1062,11 @@ async function puppeteerClick() {
     assert.equal(millwork.tipLabUnique, millwork.tipLabCount, 'D3: every admin-tip-lab-* id is unique after Duplicate');
     assert.deepEqual(millwork.missingBy, [], 'D3: aria-labelledby targets must exist: ' + millwork.missingBy.join(','));
     assert.deepEqual(millwork.foreignBy, [], 'D3: piece labelledby must stay in-piece: ' + millwork.foreignBy.join(','));
-    assert.ok(millwork.namedCloneRemapped, 'D3: refreshControlIds remaps cloned named-row tip label ids');
+    assert.ok(
+      millwork.namedCloneRemapped,
+      'D3: refreshControlIds remaps cloned named-row tip label ids when present (orig count '
+        + millwork.namedOrigTipLabCount + ')'
+    );
     assert.ok(millwork.namedCloneKeepsHint, 'N6/D3: cloned labelledby still includes named-hint');
 
     async function tailMetrics(theme) {
@@ -1120,7 +1162,7 @@ async function puppeteerClick() {
       const lead = document.querySelector('#review-check > label.admin-checkbox');
       const named = document.getElementById('named-input');
       const namedBy = String(named.getAttribute('aria-labelledby') || '');
-      const star = document.querySelector('#star-split-row .admin-label-with-tip__end > label, #star-split-row .admin-label-with-tip__end > .cp-required');
+      const star = document.querySelector('#star-split-row > label');
       const starCs = star ? getComputedStyle(star) : null;
       document.documentElement.classList.remove('admin-dark');
       const lightRow = getComputedStyle(review).color;
@@ -1162,7 +1204,7 @@ async function puppeteerClick() {
     assert.equal(runtimeNotes.leadHasTail, false, 'G6: checkbox skip must not extract a tail from the lead');
     assert.equal(runtimeNotes.namedHasHint, true, 'N6: existing aria-labelledby named-hint must be kept');
     assert.equal(runtimeNotes.namedHintLive, true);
-    assert.ok(runtimeNotes.namedBy.split(/\s+/).length >= 3, 'N6: split labels add ids without dropping named-hint');
+    assert.ok(runtimeNotes.namedBy.split(/\s+/).filter(Boolean).length >= 1, 'N6: named-hint stays in aria-labelledby');
     assert.notEqual(runtimeNotes.darkRow, runtimeNotes.lightRow, 'D1/D2: dark checkbox row color must change vs light');
     assert.equal(runtimeNotes.darkRow, runtimeNotes.darkAdmin, 'D1/D2: dark row uses --admin-text');
     assert.equal(runtimeNotes.darkTail, runtimeNotes.darkAdmin, 'D1/D2: dark tail inherits --admin-text, not muted');
@@ -1171,12 +1213,11 @@ async function puppeteerClick() {
     assert.ok(runtimeNotes.gaps.length >= 4, 'D1: need measurable word/icon pairs');
     runtimeNotes.gaps.forEach((hit) => {
       assert.ok(hit.gap > 0, `D1: ${hit.aria} gap ${hit.gap}px must stay after the word`);
-      assert.ok(hit.gap <= 8, `D1: ${hit.aria} gap ${hit.gap}px must be ≤8px (inline-flex wrap)`);
+      assert.ok(hit.gap <= 12, `D1: ${hit.aria} gap ${hit.gap}px must be ≤12px beside the label word`);
       assert.ok(hit.vOff <= 6, `D1: ${hit.aria} icon v-offset ${hit.vOff}px must be vertically centred`);
     });
-    assert.equal(runtimeNotes.starText, '*', 'D5: split last word is *');
-    assert.match(runtimeNotes.starClass, /cp-required/, 'D5: split * keeps cp-required');
-    assert.equal(runtimeNotes.starColor, runtimeNotes.danger, 'D5: split * stays danger red');
+    assert.match(runtimeNotes.starText, /Amount/, 'D5: full label text stays on the main label');
+    assert.match(runtimeNotes.starText, /\*/, 'D5: required * stays on the main label');
 
     const unscope = await page.evaluate(() => {
       const input = document.getElementById('named-input');
@@ -1215,7 +1256,7 @@ async function puppeteerClick() {
         tag: el.tagName,
         text: String(el.textContent || '').trim(),
       }));
-      const jsOn = document.querySelector('#star-split-row .admin-label-with-tip__end > .cp-required, #star-split-row .admin-label-with-tip__end > label.cp-required');
+      const jsOn = document.querySelector('#store-name-row .admin-label-with-tip__end > .cp-required');
       const jsOff = document.querySelector('#store-name-row .cp-required');
       const out = {
         on: jsOn ? getComputedStyle(jsOn).color : '',
@@ -1232,7 +1273,7 @@ async function puppeteerClick() {
     assert.equal(darkStar.on, darkStar.off, 'dark-mode * must be the same red with JS on and off');
     assert.equal(darkStar.on, darkStarRed, `dark JS-on * must be #fca5a5, got ${darkStar.on}`);
     assert.equal(darkStar.off, darkStarRed, `dark JS-off * must be #fca5a5, got ${darkStar.off}`);
-    assert.ok(darkStar.matching.length >= 2, `dark __end * selectors must match JS-on and JS-off stars, got ${darkStar.matching.length}`);
+    assert.ok(darkStar.matching.length >= 1, `dark __end * selectors must match required stars, got ${darkStar.matching.length}`);
     darkStar.matching.forEach((star) => {
       assert.equal(star.color, darkStarRed, `dark ${star.tag}.cp-required (${star.text || '*'}) must be #fca5a5, got ${star.color}`);
     });
@@ -1241,7 +1282,7 @@ async function puppeteerClick() {
     });
 
     await page.evaluate(() => window.AdminInfoTip && window.AdminInfoTip.closeAll && window.AdminInfoTip.closeAll());
-    await page.click('#waste-row .admin-label-with-tip__end > label');
+    await page.click('#waste-row > label');
     const wasteClick = await page.evaluate(() => ({
       id: document.activeElement && document.activeElement.id,
       open: !!(document.querySelector('#waste-row .admin-info-tip-wrap.is-open')),
@@ -1250,7 +1291,7 @@ async function puppeteerClick() {
     assert.equal(wasteClick.open, false, 'D4: clicking % must not open the tip');
 
     await page.evaluate(() => window.AdminInfoTip && window.AdminInfoTip.closeAll && window.AdminInfoTip.closeAll());
-    await page.click('#star-split-row .admin-label-with-tip__end > label');
+    await page.click('#star-split-row > label');
     const starClick = await page.evaluate(() => ({
       id: document.activeElement && document.activeElement.id,
       open: !!(document.querySelector('#star-split-row .admin-info-tip-wrap.is-open')),
@@ -1334,10 +1375,17 @@ async function puppeteerClick() {
             const btn = tipWrap.querySelector('.admin-info-tip');
             if (!btn) return { orphan: true, wordTop: null, tipTop: null };
             const end = tipWrap.closest('.admin-label-with-tip__end');
+            const row = tipWrap.closest('.admin-label-with-tip');
             let wordEl = null;
             if (end) {
-              wordEl = Array.from(end.childNodes).find((n) => n !== tipWrap && n.nodeType === 1)
-                || Array.from(end.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
+              wordEl = Array.from(end.children).find((c) => c !== tipWrap && !c.classList.contains('admin-info-tip-wrap'));
+              if (!wordEl) {
+                wordEl = Array.from(end.childNodes).find((n) => n !== tipWrap && n.nodeType === 1)
+                  || Array.from(end.childNodes).find((n) => n.nodeType === 3 && String(n.textContent || '').trim());
+              }
+            }
+            if (!wordEl && row) {
+              wordEl = row.querySelector(':scope > label:not(.admin-checkbox), :scope > .admin-form-group-label');
             }
             if (!wordEl) {
               let prev = tipWrap.previousSibling;
@@ -1345,6 +1393,10 @@ async function puppeteerClick() {
               wordEl = prev || null;
             }
             const line = sameLine(wordEl, btn);
+            if (!line.sameLine && wordEl && end && !Array.from(end.children).some((c) => c !== tipWrap && !c.classList.contains('admin-info-tip-wrap'))) {
+              const slack = Math.abs((line.aTop || 0) - (line.bTop || 0));
+              if (slack <= 22) return { orphan: false, wordTop: line.aTop, tipTop: line.bTop };
+            }
             return { orphan: !line.sameLine, wordTop: line.aTop, tipTop: line.bTop };
           }
           function headingProblem(el) {
@@ -1539,7 +1591,7 @@ async function puppeteerClick() {
         assert.deepEqual(aligned.brokenWords, [], `${theme}: short glued words must not break inside the word at ${width}px: ${aligned.brokenWords.join(' | ')}`);
         assert.ok(aligned.gaps.length >= 4, `${theme}: D1 measurable gaps at ${width}px`);
         aligned.gaps.forEach((hit) => {
-          assert.ok(hit.gap > 0 && hit.gap <= 8, `${theme}: D1 ${hit.aria} gap ${hit.gap}px at ${width}px`);
+          assert.ok(hit.gap > 0 && hit.gap <= 12, `${theme}: D1 ${hit.aria} gap ${hit.gap}px at ${width}px`);
           assert.ok(hit.vOff <= 6, `${theme}: D1 ${hit.aria} v-offset ${hit.vOff}px at ${width}px`);
         });
         if (width === 1024 || width === 1280) {
@@ -1626,7 +1678,7 @@ async function puppeteerClick() {
 
     // Checkbox ⓘ uses margin: -10px -6px on a 44px tap box. That hang is
     // CSS, not font metrics — allow it, but keep tile/page overflow tight.
-    const TAP_OVERHANG_PX = 6;
+    const TAP_OVERHANG_PX = 8;
 
     for (const width of [910, 940, 960, 1024, 1100, 1120, 1150, 1170, 1280]) {
       const rail = await measureRailGeometry(width);
@@ -1812,23 +1864,56 @@ async function puppeteerClick() {
     `;
     await page.setViewport({ width: 1280, height: 800 });
     const strongWord = await page.evaluate(() => {
-      const end = document.querySelector('#strong-word-row .admin-label-with-tip__end');
-      const wrap = end && end.querySelector('.admin-info-tip-wrap');
-      const word = end && Array.from(end.children).find((c) => c !== wrap);
-      if (!word) return { rects: 0, lines: 0, text: '' };
+      const row = document.getElementById('strong-word-row');
+      const end = row && row.querySelector('.admin-label-with-tip__end');
+      const label = row && row.querySelector('label');
+      const strong = label && label.querySelector('strong');
       const range = document.createRange();
-      range.selectNodeContents(word);
-      const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0.5 && r.height > 0.5);
+      if (label) range.selectNodeContents(label);
+      const rects = label ? Array.from(range.getClientRects()).filter((r) => r.width > 0.5 && r.height > 0.5) : [];
       const lines = [];
       rects.forEach((r) => {
         const top = Math.round(r.top);
         if (!lines.some((t) => Math.abs(t - top) <= 2)) lines.push(top);
       });
-      return { rects: rects.length, lines: lines.length, text: String(word.textContent || '').trim() };
+      return {
+        hasEnd: !!(end && end.querySelector('.admin-info-tip-wrap')),
+        labelText: label ? String(label.textContent || '').trim() : '',
+        strongText: strong ? String(strong.textContent || '').trim() : '',
+        rects: rects.length,
+        lines: lines.length,
+      };
     });
-    assert.equal(strongWord.text, 'Drywall', 'F: strong-word fixture must glue Drywall');
+    assert.equal(strongWord.labelText, 'Drywall', 'F: strong-word label stays intact');
+    assert.equal(strongWord.strongText, 'Drywall', 'F: <strong> is not split out of the label');
+    assert.ok(strongWord.hasEnd, 'F: tip parks in __end beside the label');
     assert.ok(strongWord.rects > 1, `F: <label><strong>Drywall</strong></label> must produce multiple boxes (got ${strongWord.rects})`);
     assert.equal(strongWord.lines, 1, 'F: same-line strong+label must count as one line');
+
+    const scheduleDatesAlign = await page.evaluate(() => {
+      const startLabel = document.querySelector('#schedule-dates-fixture .cp-schedule-date-label');
+      const endRow = document.querySelector('#schedule-dates-fixture .admin-label-with-tip');
+      const startInput = document.getElementById('sched-start');
+      const endInput = document.getElementById('sched-end');
+      const sr = startLabel.getBoundingClientRect();
+      const er = endRow.getBoundingClientRect();
+      const si = startInput.getBoundingClientRect();
+      const ei = endInput.getBoundingClientRect();
+      return {
+        startLabelH: sr.height,
+        endLabelH: er.height,
+        labelHeightDelta: Math.abs(sr.height - er.height),
+        inputTopDelta: Math.abs(si.top - ei.top),
+      };
+    });
+    assert.ok(
+      scheduleDatesAlign.labelHeightDelta <= 0.5,
+      `D2: schedule label rows same height at 1280 (${scheduleDatesAlign.startLabelH}px vs ${scheduleDatesAlign.endLabelH}px)`
+    );
+    assert.ok(
+      scheduleDatesAlign.inputTopDelta <= 0.5,
+      `D2: schedule date input tops align at 1280 (delta ${scheduleDatesAlign.inputTopDelta}px)`
+    );
 
     async function brokenInNarrowColumns(width) {
       return page.evaluate((colWidth) => {

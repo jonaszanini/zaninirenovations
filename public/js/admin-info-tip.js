@@ -581,7 +581,51 @@
     if (el.classList.contains('admin-label-with-tip__end')) return true;
     if (el.classList.contains('admin-heading-copy')) return true;
     if (el.classList.contains('admin-checkbox')) return true;
+    if (el.tagName === 'BUTTON' || el.classList.contains('admin-btn') || el.classList.contains('util-segmented__btn')) {
+      return true;
+    }
+    if (el.classList.contains('cp-visit-toggle') || el.classList.contains('q-ac-hst-toggle')) {
+      return true;
+    }
     return false;
+  }
+
+  function isInlineLabelElement(el) {
+    if (!el || el.nodeType !== 1) return false;
+    if (el.tagName === 'LABEL' && el.classList && !el.classList.contains('admin-checkbox')
+      && !el.classList.contains('cp-visit-toggle')) {
+      return true;
+    }
+    return !!(el.classList && el.classList.contains('admin-form-group-label'));
+  }
+
+  /**
+   * Inside .admin-label-with-tip, park the ⓘ in __end beside the full label
+   * (or beside a button) without splitting label or button text.
+   */
+  function parkTipInLabelRow(tip) {
+    if (!tip || !tip.parentNode) return null;
+    if (tip.parentNode.classList && tip.parentNode.classList.contains('admin-label-with-tip__end')) {
+      return null;
+    }
+    var row = tip.closest && tip.closest('.admin-label-with-tip');
+    if (!row || tip.parentNode !== row) return null;
+    var prev = previousNonEmptyNode(tip);
+    if (!prev || prev.nodeType !== 1) return null;
+    if (prev.classList && (prev.classList.contains('cp-visit-toggle') || prev.classList.contains('q-ac-hst-toggle'))) {
+      return null;
+    }
+    if (!isInlineLabelElement(prev) && !isGlueSkipElement(prev)) return null;
+    if (isGlueSkipElement(prev) && prev.tagName !== 'BUTTON' && !prev.classList.contains('admin-btn')) {
+      return null;
+    }
+    if (isInlineLabelElement(prev) && prev.querySelector && prev.querySelector('[id]')) {
+      return wrapElementAndTip(prev, tip, 'admin-label-with-tip__end');
+    }
+    var end = makeEnd();
+    row.insertBefore(end, tip);
+    end.appendChild(tip);
+    return end;
   }
 
   function lastUnlockedTextNode(el) {
@@ -755,6 +799,8 @@
     if (tip.parentNode.classList && tip.parentNode.classList.contains('admin-label-with-tip__end')) {
       return null;
     }
+    var parked = parkTipInLabelRow(tip);
+    if (parked) return parked;
     extraClass = extraClass || 'admin-label-with-tip__end';
     var prev = previousNonEmptyNode(tip);
     if (!prev) return null;

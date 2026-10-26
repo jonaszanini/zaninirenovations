@@ -889,9 +889,10 @@
       </div>
 
       <div class="admin-card">
-        <h3 class="cp-form-help-flush">
-          Start &amp; End dates
-          <x-admin.info-tip label="Start and End dates">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link. Picking dates on the calendar saves them immediately.</x-admin.info-tip>
+        <h3 class="cp-form-help-flush sp-heading cp-schedule-card-heading">
+          <span class="admin-heading-copy">Start &amp; End dates
+            <x-admin.info-tip label="Start and End dates">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link. Picking dates on the calendar saves them immediately.</x-admin.info-tip>
+          </span>
         </h3>
         <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning admin-flash--js-hidden" role="alert"></div>
 
@@ -903,17 +904,19 @@
           'hint' => 'See other projects\' booked days, click two days (start, then end), then Use these dates to save.',
         ])
 
-        <div class="admin-form-grid-2">
+        <div class="admin-form-grid-2 cp-schedule-dates">
           <div class="admin-form-group">
-            <label for="cp-start">Start date</label>
+            <label for="cp-start" class="cp-schedule-date-label">Start date</label>
             <input class="admin-input" type="date" id="cp-start" name="start_date" value="{{ old('start_date', optional($project->start_date)->toDateString()) }}">
             @error('start_date') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
           <div class="admin-form-group">
-            <span class="admin-label-with-tip">
-              <label for="cp-end">End date</label>
-              <x-admin.info-tip label="End date">Same-day start &amp; end is allowed.</x-admin.info-tip>
-            </span>
+            @include('admin.partials.tipped_label', [
+              'label' => 'End date',
+              'for' => 'cp-end',
+              'tipText' => 'Same-day start & end is allowed.',
+              'tipLabel' => 'End date',
+            ])
             <input class="admin-input" type="date" id="cp-end" name="end_date" value="{{ old('end_date', optional($project->end_date)->toDateString()) }}">
             @error('end_date') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>

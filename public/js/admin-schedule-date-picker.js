@@ -453,7 +453,6 @@
     btn.addEventListener('click', function () {
       var cfg = configFromElement(btn);
       var hasDates = (cfg.startInput && cfg.startInput.value) || (cfg.endInput && cfg.endInput.value);
-      var toggleOn = cfg.toggle && cfg.toggle.checked;
       if (!hasDates) {
         clearScheduleDates(cfg);
         return;
