@@ -35,17 +35,19 @@ class SupplierWebsiteDataExtractor
 
         foreach ($pages as $page) {
             $html = $page['html'];
-            $this->collectJsonLd($html, $phones, $emails, $addresses, $name, $hours, $logo, $description, $tagCandidates);
-            $this->collectMeta($html, $name, $description, $logo, $tagCandidates);
+            $pageUrl = (string) ($page['url'] ?? '');
+            $this->collectJsonLd($html, $pageUrl, $phones, $emails, $addresses, $name, $hours, $logo, $description, $tagCandidates);
+            $this->collectMeta($html, $pageUrl, $name, $description, $logo, $tagCandidates);
             $this->collectTelMailto($html, $phones, $emails);
             $this->collectSocial($html, $social);
             $this->collectStructuredAddresses($html, $addresses);
             $this->collectAddressRegex($html, $addresses);
-            $this->collectHeaderLogo($html, $logo);
+            $this->collectHeaderLogo($html, $pageUrl, $logo);
             $this->collectContentTags($html, $tagCandidates);
         }
 
-        $addresses = array_slice($this->uniqueList($addresses), 0, self::MAX_ADDRESSES);
+        $addresses = array_slice($this->finalizeAddresses($addresses), 0, self::MAX_ADDRESSES);
+        $baseUrl = is_string($websiteUrl) && $websiteUrl !== '' ? $websiteUrl : '';
 
         return [
             'name' => $name,
@@ -54,7 +56,7 @@ class SupplierWebsiteDataExtractor
             'addresses' => $addresses,
             'hours' => $hours,
             'social_links' => $this->uniqueList($social),
-            'logo_url' => $logo,
+            'logo_url' => $this->resolveHttpUrl($logo, $baseUrl),
             'description' => $description,
             'tags' => $this->finalizeTags($tagCandidates),
             'website_url' => $websiteUrl,
@@ -68,6 +70,7 @@ class SupplierWebsiteDataExtractor
      */
     private function collectJsonLd(
         string $html,
+        string $pageUrl,
         array &$phones,
         array &$emails,
         array &$addresses,
@@ -93,7 +96,7 @@ class SupplierWebsiteDataExtractor
                 if (! is_array($node)) {
                     continue;
                 }
-                $this->walkSchemaNode($node, $phones, $emails, $addresses, $name, $hours, $logo, $description, $tagCandidates);
+                $this->walkSchemaNode($node, $pageUrl, $phones, $emails, $addresses, $name, $hours, $logo, $description, $tagCandidates);
             }
         }
     }
@@ -106,6 +109,7 @@ class SupplierWebsiteDataExtractor
      */
     private function walkSchemaNode(
         array $node,
+        string $pageUrl,
         array &$phones,
         array &$emails,
         array &$addresses,
@@ -162,14 +166,12 @@ class SupplierWebsiteDataExtractor
             $hours = trim($node['openingHours']);
         }
 
-        if ($logo === null) {
-            if (isset($node['logo']) && is_string($node['logo'])) {
-                $logo = trim($node['logo']);
-            } elseif (isset($node['image']) && is_string($node['image'])) {
-                $logo = trim($node['image']);
-            } elseif (isset($node['logo']) && is_array($node['logo']) && isset($node['logo']['url']) && is_string($node['logo']['url'])) {
-                $logo = trim($node['logo']['url']);
-            }
+        if (isset($node['logo']) && is_string($node['logo'])) {
+            $this->assignLogo($logo, $node['logo'], $pageUrl);
+        } elseif (isset($node['logo']) && is_array($node['logo']) && isset($node['logo']['url']) && is_string($node['logo']['url'])) {
+            $this->assignLogo($logo, $node['logo']['url'], $pageUrl);
+        } elseif ($logo === null && isset($node['image']) && is_string($node['image'])) {
+            $this->assignLogo($logo, $node['image'], $pageUrl);
         }
 
         foreach (['serviceType', 'knowsAbout'] as $tagKey) {
@@ -178,11 +180,11 @@ class SupplierWebsiteDataExtractor
             }
             $raw = $node[$tagKey];
             if (is_string($raw)) {
-                $tagCandidates[] = $raw;
+                $tagCandidates[] = $this->normalizeTagCandidate($raw);
             } elseif (is_array($raw)) {
                 foreach ($raw as $item) {
                     if (is_string($item)) {
-                        $tagCandidates[] = $item;
+                        $tagCandidates[] = $this->normalizeTagCandidate($item);
                     }
                 }
             }
@@ -267,7 +269,7 @@ class SupplierWebsiteDataExtractor
         return $lines !== [] ? implode('; ', $lines) : null;
     }
 
-    private function collectMeta(string $html, ?string &$name, ?string &$description, ?string &$logo, array &$tagCandidates): void
+    private function collectMeta(string $html, string $pageUrl, ?string &$name, ?string &$description, ?string &$logo, array &$tagCandidates): void
     {
         if ($name === null && preg_match('/<meta[^>]+property=["\']og:site_name["\'][^>]+content=["\']([^"\']+)/i', $html, $m)) {
             $name = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5));
@@ -279,7 +281,7 @@ class SupplierWebsiteDataExtractor
             $description = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5));
         }
         if ($logo === null && preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)/i', $html, $m)) {
-            $logo = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5));
+            $this->assignLogo($logo, $m[1], $pageUrl);
         }
         if ($name === null && preg_match('/<title[^>]*>([^<]+)<\/title>/i', $html, $m)) {
             $title = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5));
@@ -369,7 +371,7 @@ class SupplierWebsiteDataExtractor
                 $parts = [];
                 foreach ($linkMatches[1] as $anchorHtml) {
                     $part = $this->collapseWhitespace(strip_tags($anchorHtml));
-                    if ($part !== '') {
+                    if ($part !== '' && ! $this->isMapsLinkLabelNoise($part)) {
                         $parts[] = $part;
                     }
                 }
@@ -381,7 +383,7 @@ class SupplierWebsiteDataExtractor
             $parts = [];
             foreach ($mapLinks[1] as $anchorHtml) {
                 $part = $this->collapseWhitespace(strip_tags($anchorHtml));
-                if ($part !== '') {
+                if ($part !== '' && ! $this->isMapsLinkLabelNoise($part)) {
                     $parts[] = $part;
                 }
             }
@@ -414,6 +416,9 @@ class SupplierWebsiteDataExtractor
         )) {
             foreach ($matches as $m) {
                 $street = trim($m[1], " \t\n\r\0\x0B,");
+                if ($this->looksLikePhoneOrOrderFragment($street)) {
+                    continue;
+                }
                 $city = trim($m[2]);
                 $region = strtoupper($m[3]);
                 $postal = strtoupper($m[4].' '.$m[5]);
@@ -446,7 +451,7 @@ class SupplierWebsiteDataExtractor
         }
     }
 
-    private function collectHeaderLogo(string $html, ?string &$logo): void
+    private function collectHeaderLogo(string $html, string $pageUrl, ?string &$logo): void
     {
         if ($logo !== null) {
             return;
@@ -460,7 +465,7 @@ class SupplierWebsiteDataExtractor
                 continue;
             }
             if (preg_match('/\bsrc\s*=\s*["\']([^"\']+)["\']/i', $tag, $m)) {
-                $logo = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5));
+                $this->assignLogo($logo, $m[1], $pageUrl);
                 return;
             }
         }
@@ -510,9 +515,10 @@ class SupplierWebsiteDataExtractor
     private function finalizeTags(array $tagCandidates): array
     {
         $stop = [
-            'home', 'about', 'contact', 'contact us', 'blog', 'news', 'menu', 'search',
-            'read more', 'learn more', 'get a quote', 'quote', 'privacy', 'terms',
-            'facebook', 'instagram', 'linkedin', 'twitter', 'login', 'cart',
+            'home', 'about', 'about us', 'contact', 'contact us', 'blog', 'news', 'menu', 'search',
+            'read more', 'learn more', 'get a quote', 'quote', 'privacy', 'terms', 'faq', 'faqs',
+            'facebook', 'instagram', 'linkedin', 'twitter', 'login', 'cart', 'shop now', 'shop',
+            'click here', 'sign up', 'subscribe', 'view all', 'see all',
         ];
         $out = [];
         foreach ($tagCandidates as $raw) {
@@ -526,6 +532,12 @@ class SupplierWebsiteDataExtractor
                 }
                 $lower = mb_strtolower($piece);
                 if (in_array($lower, $stop, true)) {
+                    continue;
+                }
+                if (preg_match('/^welcome to\b/u', $lower)) {
+                    continue;
+                }
+                if (preg_match('/\b(shop now|click here|contact us|read more)\b/u', $lower)) {
                     continue;
                 }
                 if (preg_match('/^\d+$/', $piece)) {
@@ -551,6 +563,188 @@ class SupplierWebsiteDataExtractor
         }
 
         return mb_convert_case($text, MB_CASE_TITLE, 'UTF-8');
+    }
+
+    private function assignLogo(?string &$logo, string $candidate, string $pageUrl): void
+    {
+        if ($logo !== null) {
+            return;
+        }
+        $resolved = $this->resolveHttpUrl($candidate, $pageUrl);
+        if ($resolved !== null) {
+            $logo = $resolved;
+        }
+    }
+
+    private function normalizeTagCandidate(string $raw): string
+    {
+        return $this->collapseWhitespace(strip_tags(html_entity_decode($raw, ENT_QUOTES | ENT_HTML5)));
+    }
+
+    public function resolveHttpUrl(?string $raw, string $baseUrl): ?string
+    {
+        if ($raw === null) {
+            return null;
+        }
+        $raw = trim(html_entity_decode($raw, ENT_QUOTES | ENT_HTML5));
+        if ($raw === '') {
+            return null;
+        }
+        $lower = strtolower($raw);
+        if (str_starts_with($lower, 'data:')
+            || str_starts_with($lower, 'javascript:')
+            || str_starts_with($lower, 'blob:')) {
+            return null;
+        }
+        if (preg_match('#^https?://#i', $raw)) {
+            return $this->normalizeHttpUrl($raw);
+        }
+        if ($baseUrl === '') {
+            return null;
+        }
+        if (str_starts_with($raw, '//')) {
+            $parts = parse_url($baseUrl);
+            $scheme = (string) ($parts['scheme'] ?? 'https');
+
+            return $this->normalizeHttpUrl($scheme.':'.$raw);
+        }
+        $parts = parse_url($baseUrl);
+        if (! is_array($parts) || empty($parts['host'])) {
+            return null;
+        }
+        $scheme = (string) ($parts['scheme'] ?? 'https');
+        $host = (string) $parts['host'];
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+        if (str_starts_with($raw, '/')) {
+            return $this->normalizeHttpUrl($scheme.'://'.$host.$port.$raw);
+        }
+        $basePath = (string) ($parts['path'] ?? '/');
+        $dir = rtrim(str_replace('\\', '/', dirname($basePath)), '/');
+        if ($dir === '' || $dir === '.') {
+            $dir = '';
+        }
+
+        return $this->normalizeHttpUrl($scheme.'://'.$host.$port.$dir.'/'.$raw);
+    }
+
+    private function normalizeHttpUrl(string $url): ?string
+    {
+        if (! preg_match('#^https?://#i', $url)) {
+            return null;
+        }
+
+        return $url;
+    }
+
+    private function isMapsLinkLabelNoise(string $part): bool
+    {
+        $lower = mb_strtolower(trim($part));
+
+        return in_array($lower, [
+            'directions',
+            'get directions',
+            'view map',
+            'view on map',
+            'map',
+            'open in maps',
+            'google maps',
+            'see map',
+        ], true);
+    }
+
+    private function looksLikePhoneOrOrderFragment(string $text): bool
+    {
+        if (preg_match('/\b(?:\+?1[\s.\-]?)?(?:\(?\d{3}\)?[\s.\-]?)\d{3}[\s.\-]?\d{4}\b/', $text)) {
+            return true;
+        }
+        if (preg_match('/\border\s*#?\s*\d+/i', $text)) {
+            return true;
+        }
+        $digits = preg_replace('/\D/', '', $text) ?? '';
+        if (strlen($digits) >= 10 && ! preg_match('/\b(?:st|street|ave|avenue|rd|road|blvd|drive|dr|unit|suite|industrial)\b/i', $text)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /** @param  list<string>  $addresses @return list<string> */
+    private function finalizeAddresses(array $addresses): array
+    {
+        $candidates = [];
+        foreach ($addresses as $addr) {
+            $addr = trim($addr);
+            if ($addr === '' || $this->isSpuriousAddress($addr)) {
+                continue;
+            }
+            $candidates[] = $addr;
+        }
+
+        usort($candidates, fn (string $a, string $b) => $this->addressScore($b) <=> $this->addressScore($a));
+
+        $unique = [];
+        foreach ($candidates as $addr) {
+            $key = $this->normalizeAddressKey($addr);
+            if (! isset($unique[$key])) {
+                $unique[$key] = $addr;
+            }
+        }
+
+        $list = array_values($unique);
+        $result = [];
+        foreach ($list as $addr) {
+            $norm = $this->normalizeAddressKey($addr);
+            $drop = false;
+            foreach ($list as $other) {
+                if ($addr === $other) {
+                    continue;
+                }
+                $otherNorm = $this->normalizeAddressKey($other);
+                if ($norm !== $otherNorm && str_contains($otherNorm, $norm)) {
+                    $drop = true;
+                    break;
+                }
+            }
+            if (! $drop) {
+                $result[] = $addr;
+            }
+        }
+
+        return $result;
+    }
+
+    private function isSpuriousAddress(string $addr): bool
+    {
+        if ($this->isMapsLinkLabelNoise($addr)) {
+            return true;
+        }
+        if ($this->looksLikePhoneOrOrderFragment($addr)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function addressScore(string $addr): int
+    {
+        $score = strlen($addr);
+        if (preg_match('/\b[A-Z]\d[A-Z]\s*\d[A-Z]\d\b/i', $addr)) {
+            $score += 200;
+        }
+        if (preg_match('/\b(?:ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|YT|NT|NU)\b/i', $addr)) {
+            $score += 50;
+        }
+
+        return $score;
+    }
+
+    private function normalizeAddressKey(string $addr): string
+    {
+        $key = mb_strtolower($addr);
+        $key = preg_replace('/\s+/', ' ', $key) ?? $key;
+        $key = preg_replace('/[.,]/', '', $key) ?? $key;
+
+        return trim($key);
     }
 
     private function normalizePhoneDigits(string $raw): string

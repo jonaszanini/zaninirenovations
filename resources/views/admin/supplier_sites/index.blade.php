@@ -202,6 +202,7 @@
                          width="32"
                          height="32"
                          loading="lazy"
+                         referrerpolicy="no-referrer"
                          onerror="this.style.display='none'">
                   @endif
                   <strong>{{ $site->name }}</strong>

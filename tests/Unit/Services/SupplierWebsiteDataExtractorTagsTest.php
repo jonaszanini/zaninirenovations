@@ -12,8 +12,10 @@ class SupplierWebsiteDataExtractorTagsTest extends TestCase
         $html = <<<'HTML'
         <html><head>
         <meta name="keywords" content="glass, fire-rated glass, laminated glass">
+        <script type="application/ld+json">{"knowsAbout":["<strong>laminated glass</strong>","Shop Now"]}</script>
         </head><body>
-        <nav><a href="/">Home</a><a href="/services/">Elevator glass</a></nav>
+        <nav><a href="/">Home</a><a href="/faq/">FAQ</a><a href="/services/">Elevator glass</a></nav>
+        <h2>Welcome to Raw Glass</h2>
         <h2>Custom shower enclosures</h2>
         </body></html>
         HTML;
@@ -27,6 +29,10 @@ class SupplierWebsiteDataExtractorTagsTest extends TestCase
         $joined = implode(', ', $result['tags']);
         $this->assertStringContainsString('Glass', $joined);
         $this->assertMatchesRegularExpression('/fire[- ]rated glass/i', $joined);
+        $this->assertStringContainsString('Laminated Glass', $joined);
+        $this->assertStringNotContainsString('Shop Now', $joined);
+        $this->assertStringNotContainsString('FAQ', $joined);
+        $this->assertStringNotContainsString('Welcome', $joined);
         $this->assertLessThanOrEqual(6, count($result['tags']));
     }
 }
