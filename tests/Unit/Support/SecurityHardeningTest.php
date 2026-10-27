@@ -45,6 +45,11 @@ class SecurityHardeningTest extends TestCase
         $this->assertTrue(SafeOutboundHttp::isPrivateIp('10.0.0.5'));
         $this->assertFalse(SafeOutboundHttp::isAllowedPublicHttpsUrl('http://example.com/x'));
         $this->assertFalse(SafeOutboundHttp::isAllowedPublicHttpsUrl('https://127.0.0.1/secret'));
+        $this->assertFalse(SafeOutboundHttp::isAllowedPublicWebUrl('https://127.0.0.1/secret'));
+        $this->assertFalse(SafeOutboundHttp::isAllowedPublicWebUrl('http://[::1]/'));
+        $this->assertFalse(SafeOutboundHttp::isAllowedPublicWebUrl('ftp://example.com/x'));
+        $this->assertFalse(SafeOutboundHttp::isAllowedPublicWebUrl('http://example.com:8080/'));
+        $this->assertTrue(SafeOutboundHttp::isAllowedPublicWebUrl('http://example.com/x'));
     }
 
     public function test_missing_role_is_not_admin(): void

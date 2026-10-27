@@ -14,6 +14,10 @@ class SupplierSite extends Model
         'phone',
         'email',
         'address',
+        'distance_km',
+        'drive_minutes',
+        'distance_checked_at',
+        'distance_error',
         'is_favorite',
         'sort_order',
     ];
@@ -21,6 +25,9 @@ class SupplierSite extends Model
     protected $casts = [
         'is_favorite' => 'boolean',
         'sort_order' => 'integer',
+        'distance_km' => 'decimal:2',
+        'drive_minutes' => 'integer',
+        'distance_checked_at' => 'datetime',
     ];
 
     public function tags(): BelongsToMany
@@ -32,5 +39,28 @@ class SupplierSite extends Model
     public function tagsInputValue(): string
     {
         return $this->tags->pluck('name')->implode(', ');
+    }
+
+    public function distanceDisplayLabel(): string
+    {
+        if ($this->distance_km !== null) {
+            $km = rtrim(rtrim(number_format((float) $this->distance_km, 1, '.', ''), '0'), '.');
+            if ($this->drive_minutes !== null && $this->drive_minutes > 0) {
+                return $km.' km · '.$this->drive_minutes.' min';
+            }
+
+            return $km.' km';
+        }
+
+        if (filled($this->distance_error)) {
+            return \Illuminate\Support\Str::limit((string) $this->distance_error, 48);
+        }
+
+        return '—';
+    }
+
+    public function distanceErrorForTip(): ?string
+    {
+        return filled($this->distance_error) ? (string) $this->distance_error : null;
     }
 }

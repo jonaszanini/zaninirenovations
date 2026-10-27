@@ -60,5 +60,9 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('home-depot-import', function (Request $request) {
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
         });
+
+        RateLimiter::for('supplier-site-tools', function (Request $request) {
+            return Limit::perMinute(12)->by($request->user()?->id ?: $request->ip());
+        });
     }
 }

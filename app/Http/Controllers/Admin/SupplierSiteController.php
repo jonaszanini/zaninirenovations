@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SupplierSite;
 use App\Models\SupplierTag;
+use App\Services\SupplierSiteDistanceService;
+use App\Services\SupplierWebsite\SupplierWebsiteImportService;
 use App\Support\AdminPaginatedList;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -16,6 +19,8 @@ class SupplierSiteController extends Controller
         $q = trim((string) $request->query('q', ''));
         $tagSlug = trim((string) $request->query('tag', ''));
         $perPage = AdminPaginatedList::perPage($request);
+        $sort = trim((string) $request->query('sort', ''));
+        $sortDir = strtolower(trim((string) $request->query('dir', 'asc'))) === 'desc' ? 'desc' : 'asc';
 
         $query = SupplierSite::query()
             ->with('tags')
@@ -34,9 +39,16 @@ class SupplierSiteController extends Controller
                         ->orWhereHas('tags', fn ($tags) => $tags->where('name', 'like', $like));
                 });
             })
-            ->orderByDesc('is_favorite')
-            ->orderBy('sort_order')
-            ->orderBy('name');
+            ->orderByDesc('is_favorite');
+
+        if ($sort === 'distance') {
+            $query->orderByRaw('distance_km IS NULL')
+                ->orderBy('distance_km', $sortDir)
+                ->orderBy('name');
+        } else {
+            $query->orderBy('sort_order')
+                ->orderBy('name');
+        }
 
         $supplierSites = AdminPaginatedList::paginateOrAll($query, $perPage);
 
@@ -51,7 +63,35 @@ class SupplierSiteController extends Controller
             'tagSlug',
             'perPage',
             'filterTags',
+            'sort',
+            'sortDir',
         ));
+    }
+
+    public function importPreview(Request $request, SupplierWebsiteImportService $import): JsonResponse
+    {
+        $data = $request->validate([
+            'url' => ['required', 'string', 'max:500'],
+        ]);
+
+        $result = $import->preview($data['url']);
+
+        return response()->json($result);
+    }
+
+    public function refreshDistance(SupplierSite $supplier_site, SupplierSiteDistanceService $distances): JsonResponse
+    {
+        $result = $distances->refresh($supplier_site);
+        $supplier_site->refresh();
+
+        return response()->json([
+            'ok' => $result['ok'],
+            'message' => $result['message'],
+            'distance_km' => $supplier_site->distance_km !== null ? (float) $supplier_site->distance_km : null,
+            'drive_minutes' => $supplier_site->drive_minutes,
+            'distance_label' => $supplier_site->distanceDisplayLabel(),
+            'distance_error' => $supplier_site->distance_error,
+        ]);
     }
 
     public function create()
@@ -61,7 +101,7 @@ class SupplierSiteController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, SupplierSiteDistanceService $distances)
     {
         $this->normalisePhoneOnRequest($request);
         $data = $this->validateSupplierSite($request);
@@ -75,6 +115,7 @@ class SupplierSiteController extends Controller
         $site->tags()->sync(SupplierTag::syncFromNames(
             SupplierTag::parseNamesFromInput($request->input('tags_input'))
         ));
+        $distances->refresh($site);
 
         return redirect()
             ->route('admin.supplier-sites.index')
@@ -90,12 +131,28 @@ class SupplierSiteController extends Controller
         ]);
     }
 
-    public function update(Request $request, SupplierSite $supplier_site)
+    public function update(Request $request, SupplierSite $supplier_site, SupplierSiteDistanceService $distances)
     {
         $this->normalisePhoneOnRequest($request);
         $data = $this->validateSupplierSite($request);
 
-        $supplier_site->update($data);
+        $previousAddress = trim((string) $supplier_site->address);
+        $newAddress = trim((string) ($data['address'] ?? ''));
+        if ($previousAddress !== $newAddress) {
+            $supplier_site->fill($data);
+            $supplier_site->forceFill([
+                'distance_km' => null,
+                'drive_minutes' => null,
+                'distance_checked_at' => null,
+                'distance_error' => null,
+            ]);
+            $supplier_site->save();
+        } else {
+            $supplier_site->update($data);
+        }
+        if ($newAddress !== '' && $supplier_site->distance_km === null) {
+            $distances->refresh($supplier_site);
+        }
         $supplier_site->tags()->sync(SupplierTag::syncFromNames(
             SupplierTag::parseNamesFromInput($request->input('tags_input'))
         ));
