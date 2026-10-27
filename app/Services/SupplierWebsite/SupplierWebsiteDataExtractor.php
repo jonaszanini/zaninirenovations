@@ -350,6 +350,8 @@ class SupplierWebsiteDataExtractor
     /** @param  list<string>  $addresses */
     private function collectStructuredAddresses(string $html, array &$addresses): void
     {
+        $html = $this->htmlBodyForAddressExtraction($html);
+
         if (preg_match_all('/<address\b[^>]*>(.*?)<\/address>/is', $html, $blocks)) {
             foreach ($blocks[1] as $inner) {
                 $text = $this->collapseWhitespace(strip_tags($inner));
@@ -407,33 +409,41 @@ class SupplierWebsiteDataExtractor
     /** @param  list<string>  $addresses */
     private function collectCanadianPostalAddresses(string $html, array &$addresses): void
     {
-        $plain = $this->collapseWhitespace(strip_tags($html));
-        if (preg_match_all(
-            '/(\d{1,6}[\w\s\.\-\',#]{3,80}?)\s*,?\s*([A-Za-z][\w\s\-]{2,40})\s*,?\s*(ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|YT|NT|NU)\s+([A-Z]\d[A-Z])\s*(\d[A-Z]\d)/i',
-            $plain,
-            $matches,
-            PREG_SET_ORDER
-        )) {
-            foreach ($matches as $m) {
-                $street = trim($m[1], " \t\n\r\0\x0B,");
-                if ($this->looksLikePhoneOrOrderFragment($street)) {
-                    continue;
-                }
-                $city = trim($m[2]);
-                $region = strtoupper($m[3]);
-                $postal = strtoupper($m[4].' '.$m[5]);
-                $addresses[] = $street.', '.$city.', '.$region.' '.$postal;
+        $html = $this->htmlBodyForAddressExtraction($html);
+        $chunks = preg_split('/<\/?(?:p|div|li|address|td|th|h[1-6])\b[^>]*>/i', $html) ?: [$html];
+        foreach ($chunks as $chunk) {
+            $plain = $this->collapseWhitespace(strip_tags($chunk));
+            if ($plain === '') {
+                continue;
             }
-        } elseif (preg_match_all(
-            '/([A-Za-z0-9][\w\s\.\-\',#]{3,80}?)\s+([A-Z]\d[A-Z])\s*(\d[A-Z]\d)/i',
-            $plain,
-            $shortMatches,
-            PREG_SET_ORDER
-        )) {
-            foreach ($shortMatches as $m) {
-                $line = trim($m[1]);
-                $postal = strtoupper($m[2].' '.$m[3]);
-                if (preg_match('/\d/', $line)) {
+            if (preg_match_all(
+                '/(\d{1,6}[\w\s\.\-\',#]{3,80}?)\s*,?\s*([A-Za-z][\w\s\-]{2,40})\s*,?\s*(ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|YT|NT|NU)\s+([A-Z]\d[A-Z])\s*(\d[A-Z]\d)/i',
+                $plain,
+                $matches,
+                PREG_SET_ORDER
+            )) {
+                foreach ($matches as $m) {
+                    $street = trim($m[1], " \t\n\r\0\x0B,");
+                    if ($this->looksLikePhoneOrOrderFragment($street)) {
+                        continue;
+                    }
+                    $city = trim($m[2]);
+                    $region = strtoupper($m[3]);
+                    $postal = strtoupper($m[4].' '.$m[5]);
+                    $addresses[] = $street.', '.$city.', '.$region.' '.$postal;
+                }
+            } elseif (preg_match_all(
+                '/(\d{1,6}[\w\s\.\-\',#]{3,80}?)\s+([A-Z]\d[A-Z])\s*(\d[A-Z]\d)/i',
+                $plain,
+                $shortMatches,
+                PREG_SET_ORDER
+            )) {
+                foreach ($shortMatches as $m) {
+                    $line = trim($m[1]);
+                    $postal = strtoupper($m[2].' '.$m[3]);
+                    if ($this->looksLikePhoneOrOrderFragment($line)) {
+                        continue;
+                    }
                     $addresses[] = $line.' '.$postal;
                 }
             }
@@ -443,7 +453,7 @@ class SupplierWebsiteDataExtractor
     /** @param  list<string>  $addresses */
     private function collectAddressRegex(string $html, array &$addresses): void
     {
-        $plain = $this->collapseWhitespace(strip_tags($html));
+        $plain = $this->collapseWhitespace(strip_tags($this->htmlBodyForAddressExtraction($html)));
         if (preg_match_all('/\d{1,6}\s+[A-Za-z0-9][\w\s\.\-\']{2,60},\s*[A-Za-z][\w\s\-]{2,40},\s*[A-Z]{2}\s*[A-Z0-9][A-Z0-9\s]{2,7}/', $plain, $matches)) {
             foreach ($matches[0] as $line) {
                 $addresses[] = trim($line);
@@ -501,9 +511,19 @@ class SupplierWebsiteDataExtractor
     private function joinAddressParts(array $parts): string
     {
         $joined = implode(', ', $parts);
+        $joined = preg_replace('/,\s*([A-Z]{2})\s*,\s*([A-Z]\d[A-Z]\s*\d[A-Z]\d)/i', ', $1 $2', $joined) ?? $joined;
         $joined = preg_replace('/,\s*([A-Z]\d[A-Z]\s*\d[A-Z]\d)/i', ' $1', $joined) ?? $joined;
 
         return trim($joined);
+    }
+
+    private function htmlBodyForAddressExtraction(string $html): string
+    {
+        if (preg_match('/<body\b[^>]*>(.*)<\/body>/is', $html, $match)) {
+            return $match[1];
+        }
+
+        return preg_replace('/<head\b[^>]*>.*?<\/head>/is', '', $html) ?? $html;
     }
 
     private function collapseWhitespace(string $text): string
@@ -719,6 +739,9 @@ class SupplierWebsiteDataExtractor
             return true;
         }
         if ($this->looksLikePhoneOrOrderFragment($addr)) {
+            return true;
+        }
+        if (preg_match('/\bdirections\b/i', $addr)) {
             return true;
         }
 
