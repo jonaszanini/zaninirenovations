@@ -26,6 +26,7 @@ class QuotationDefaultOwnerHourlyTest extends IntegrationTestCase
         $crew->owner_hourly_rate = 73.25;
         $crew->save();
         SharedWorkCatalog::forgetCache();
+        $this->assertEqualsWithDelta(73.25, SharedWorkCatalog::ownerHourlyRate(), 0.001);
     }
 
     public function test_standard_create_defaults_labour_hourly_to_shared_owner_rate(): void

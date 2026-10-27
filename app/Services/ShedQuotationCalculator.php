@@ -708,6 +708,9 @@ class ShedQuotationCalculator
      */
     private function emptyCalculation(array $inputs, ShedSettings $settings, float $height): array
     {
+        $ownerRate = max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate));
+        $helperRate = max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate));
+
         return [
             'scope' => [
                 'shed_type' => self::normalizeShedType($inputs['shed_type'] ?? 'gable'),
@@ -729,12 +732,12 @@ class ShedQuotationCalculator
             'labor' => [],
             'materials' => [],
             'extra_materials' => [],
-            'eta' => $this->etaScenarios(0, (float) $settings->hours_per_day, (float) $settings->owner_hourly_rate, (float) $settings->helper_hourly_rate),
+            'eta' => $this->etaScenarios(0, (float) $settings->hours_per_day, $ownerRate, $helperRate),
             'breakdown' => [],
             'summary' => [
                 'total_hours' => 0.0,
-                'owner_hourly_rate' => (float) $settings->owner_hourly_rate,
-                'helper_hourly_rate' => (float) $settings->helper_hourly_rate,
+                'owner_hourly_rate' => $ownerRate,
+                'helper_hourly_rate' => $helperRate,
                 'include_helper' => QuotationHelperLabor::enabled($inputs),
                 'labor_pre_hst' => 0.0,
                 'labor_hst' => 0.0,
