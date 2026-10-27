@@ -70,6 +70,24 @@
       padding-left: 8px;
       padding-right: 8px;
     }
+    .ss-logo-thumb {
+      display: block;
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      border-radius: 4px;
+      background: var(--admin-elevated);
+      border: 1px solid var(--admin-border);
+    }
+    .ss-name-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .ss-name-cell strong {
+      min-width: 0;
+    }
   </style>
 @endpush
 
@@ -175,7 +193,20 @@
                   <i class="fa fa-star ss-favorite" title="Favorite" aria-hidden="true"></i>
                 @endif
               </td>
-              <td data-label="Name"><strong>{{ $site->name }}</strong></td>
+              <td data-label="Name">
+                <div class="ss-name-cell">
+                  @if (filled($site->logo_url))
+                    <img src="{{ $site->logo_url }}"
+                         alt=""
+                         class="ss-logo-thumb"
+                         width="32"
+                         height="32"
+                         loading="lazy"
+                         onerror="this.style.display='none'">
+                  @endif
+                  <strong>{{ $site->name }}</strong>
+                </div>
+              </td>
               <td data-label="Website">
                 @if (filled($site->url))
                   <div class="ss-url-actions">

@@ -117,6 +117,11 @@ jobs:
             tests/Unit/Support/QuotationSaveIntentTest.php
             tests/Unit/Support/QuotationDraftFlashTest.php
             tests/Unit/Services/HomeDepotCaUrlsTest.php
+            tests/Unit/Services/SupplierWebsiteDataExtractorTest.php
+            tests/Unit/Services/SupplierWebsiteDataExtractorAddressCapTest.php
+            tests/Unit/Services/SupplierWebsiteDataExtractorGoogleMapsAddressTest.php
+            tests/Unit/Services/SupplierWebsiteDataExtractorTagsTest.php
+            tests/Unit/Services/SupplierWebsiteImportServiceTest.php
             tests/Unit/Views/AdminInfoTipTest.php
             tests/Unit/Views/AdminInfoTipBehaviourTest.php
             tests/Unit/Views/AdminInfoTipIdIsolationTest.php

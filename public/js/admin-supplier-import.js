@@ -55,6 +55,13 @@
         fillField('ss-phone', data.phone);
         fillField('ss-email', data.email);
         fillField('ss-address', data.address);
+        fillField('ss-logo-url', data.logo_url);
+        if (data.tags) {
+          var tagsEl = document.getElementById('ss-tags');
+          if (tagsEl && !tagsEl.value.trim()) {
+            tagsEl.value = data.tags;
+          }
+        }
         if (data.notes) {
           var notes = document.getElementById('ss-notes');
           if (notes && !notes.value.trim()) {

@@ -64,12 +64,10 @@ class SupplierWebsiteImportService
         if ($extracted['social_links'] !== []) {
             $notes[] = 'Social: '.implode(', ', $extracted['social_links']);
         }
-        if ($extracted['logo_url']) {
-            $notes[] = 'Logo: '.$extracted['logo_url'];
-        }
 
         $phone = $extracted['phones'][0] ?? null;
         $email = $extracted['emails'][0] ?? null;
+        $tags = $extracted['tags'] ?? [];
 
         return [
             'ok' => true,
@@ -82,6 +80,8 @@ class SupplierWebsiteImportService
                 'other_addresses' => $otherAddresses,
                 'distance_note' => $distanceNote,
                 'notes' => $notes !== [] ? implode("\n\n", $notes) : null,
+                'logo_url' => $extracted['logo_url'],
+                'tags' => $tags !== [] ? implode(', ', $tags) : null,
                 'phones_found' => $extracted['phones'],
                 'emails_found' => $extracted['emails'],
             ],

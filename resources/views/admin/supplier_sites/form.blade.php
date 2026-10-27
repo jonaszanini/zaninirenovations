@@ -93,6 +93,17 @@
       </div>
 
       <div class="admin-form-group">
+        @include('admin.partials.tipped_label', [
+          'for' => 'ss-logo-url',
+          'label' => 'Logo URL',
+          'tipText' => 'Optional. Shown as a small thumbnail on the suppliers list. Use a direct http or https image link.',
+        ])
+        <input class="admin-input @error('logo_url') is-invalid @enderror" type="url" id="ss-logo-url" name="logo_url"
+               value="{{ old('logo_url', $supplierSite->logo_url) }}" maxlength="500" placeholder="https://example.com/logo.png" autocomplete="off">
+        @error('logo_url') <p class="admin-form-error">{{ $message }}</p> @enderror
+      </div>
+
+      <div class="admin-form-group">
         <label for="ss-address">Address</label>
         <input class="admin-input @error('address') is-invalid @enderror" type="text" id="ss-address" name="address"
                value="{{ old('address', $supplierSite->address) }}" maxlength="500" autocomplete="street-address"
