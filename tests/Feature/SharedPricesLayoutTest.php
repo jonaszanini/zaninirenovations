@@ -133,13 +133,13 @@ class SharedPricesLayoutTest extends IntegrationTestCase
 
         $columns = $this->desktopGridColumns($css);
         $this->assertCount(8, $columns);
-        $this->assertGreaterThanOrEqual(9.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
+        $this->assertGreaterThanOrEqual(11.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
         foreach ([1, 2, 4, 5] as $idx) {
-            $this->assertGreaterThanOrEqual(4.75, $this->cssMinRem($columns[$idx]), "Column {$idx} must share width evenly");
+            $this->assertGreaterThanOrEqual(4.25, $this->cssMinRem($columns[$idx]), "Column {$idx} must share width evenly");
         }
-        $this->assertGreaterThanOrEqual(3.75, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
+        $this->assertGreaterThanOrEqual(3.25, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
         $this->assertSame('2.75rem', trim($columns[6]), 'Catalog search column stays fixed');
-        $this->assertGreaterThanOrEqual(5.75, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
+        $this->assertGreaterThanOrEqual(5.25, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
 
         $this->assertStringContainsString('title="{{ $work->label }}"', $blade);
         $this->assertStringContainsString('grid-area: search', $css);
