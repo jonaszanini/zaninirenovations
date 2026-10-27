@@ -510,11 +510,19 @@ class SupplierWebsiteDataExtractor
     /** @param  list<string>  $parts */
     private function joinAddressParts(array $parts): string
     {
-        $joined = implode(', ', $parts);
-        $joined = preg_replace('/,\s*([A-Z]{2})\s*,\s*([A-Z]\d[A-Z]\s*\d[A-Z]\d)/i', ', $1 $2', $joined) ?? $joined;
-        $joined = preg_replace('/,\s*([A-Z]\d[A-Z]\s*\d[A-Z]\d)/i', ' $1', $joined) ?? $joined;
+        return $this->normalizeAddressFormatting(implode(', ', $parts));
+    }
 
-        return trim($joined);
+    private function normalizeAddressFormatting(string $addr): string
+    {
+        $addr = preg_replace(
+            '/,\s*((?:ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|YT|NT|NU))\s*,\s*((?:[A-Z]\d[A-Z])\s*(?:\d[A-Z]\d))/i',
+            ', $1 $2',
+            $addr
+        ) ?? $addr;
+        $addr = preg_replace('/,\s*((?:[A-Z]\d[A-Z])\s*(?:\d[A-Z]\d))/i', ' $1', $addr) ?? $addr;
+
+        return trim($addr);
     }
 
     private function htmlBodyForAddressExtraction(string $html): string
@@ -693,7 +701,7 @@ class SupplierWebsiteDataExtractor
     {
         $candidates = [];
         foreach ($addresses as $addr) {
-            $addr = trim($addr);
+            $addr = $this->normalizeAddressFormatting(trim($addr));
             if ($addr === '' || $this->isSpuriousAddress($addr)) {
                 continue;
             }
