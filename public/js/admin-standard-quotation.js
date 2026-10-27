@@ -50,6 +50,109 @@
   form.addEventListener('submit', saveScrollPosition);
   restoreScrollPosition();
 
+  var PDF_DOC_MSG = {
+    document_type: 'Pick whether this is a quotation or an estimate.',
+    pdf_detail_mode: 'Choose how material and labour appear on the client PDF.',
+    includes_pdf: 'Select Material and/or Labour for the PDF intro.'
+  };
+
+  function includesPdfChecked(targetForm) {
+    var mat = targetForm.querySelector('input[type="checkbox"][name="includes_material"]');
+    var lab = targetForm.querySelector('input[type="checkbox"][name="includes_labour"]');
+    return !!(mat && mat.checked) || !!(lab && lab.checked);
+  }
+
+  function setPdfFieldError(id, message) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (message) {
+      el.textContent = message;
+      el.removeAttribute('hidden');
+    } else {
+      el.textContent = '';
+      el.setAttribute('hidden', 'hidden');
+    }
+  }
+
+  function pdfDocumentSection() {
+    return document.getElementById('sq-pdf-document-section');
+  }
+
+  function validatePdfDocumentOptions(targetForm, showErrors) {
+    if (!targetForm || !pdfDocumentSection()) {
+      return true;
+    }
+    var doc = targetForm.querySelector('input[name="document_type"]:checked');
+    var mode = targetForm.querySelector('input[name="pdf_detail_mode"]:checked');
+    var ok = true;
+    if (!doc) {
+      ok = false;
+      if (showErrors) setPdfFieldError('sq-error-document_type', PDF_DOC_MSG.document_type);
+    } else if (showErrors) {
+      setPdfFieldError('sq-error-document_type', '');
+    }
+    if (!mode) {
+      ok = false;
+      if (showErrors) setPdfFieldError('sq-error-pdf_detail_mode', PDF_DOC_MSG.pdf_detail_mode);
+    } else if (showErrors) {
+      setPdfFieldError('sq-error-pdf_detail_mode', '');
+    }
+    if (!includesPdfChecked(targetForm)) {
+      ok = false;
+      if (showErrors) setPdfFieldError('sq-error-includes_pdf', PDF_DOC_MSG.includes_pdf);
+    } else if (showErrors) {
+      setPdfFieldError('sq-error-includes_pdf', '');
+    }
+    var banner = document.getElementById('sq-pdf-setup-banner');
+    if (banner) {
+      banner.hidden = ok;
+    }
+    return ok;
+  }
+
+  function scrollPdfDocumentSection() {
+    var section = pdfDocumentSection();
+    if (section && typeof section.scrollIntoView === 'function') {
+      section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  form.addEventListener('submit', function (e) {
+    if (!validatePdfDocumentOptions(form, true)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      scrollPdfDocumentSection();
+    }
+  }, true);
+
+  form.addEventListener('change', function (e) {
+    if (!e.target) return;
+    var name = e.target.name;
+    if (name !== 'document_type' && name !== 'pdf_detail_mode' && name !== 'includes_material' && name !== 'includes_labour') {
+      return;
+    }
+    var valid = validatePdfDocumentOptions(form, false);
+    if (valid) {
+      setPdfFieldError('sq-error-document_type', '');
+      setPdfFieldError('sq-error-pdf_detail_mode', '');
+      setPdfFieldError('sq-error-includes_pdf', '');
+    }
+    var banner = document.getElementById('sq-pdf-setup-banner');
+    if (banner) {
+      banner.hidden = valid;
+    }
+  });
+
+  document.addEventListener('click', function (e) {
+    var pdfBtn = e.target.closest && e.target.closest('[data-qh-view-pdf]');
+    if (!pdfBtn || pdfBtn.disabled) return;
+    if (!validatePdfDocumentOptions(form, true)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      scrollPdfDocumentSection();
+    }
+  }, true);
+
   var HST = 0.13;
   var HPD = 8;
   var ELECTRICAL_DESC = form.getAttribute('data-electrical-desc') || 'Electrical work (Including material)';
