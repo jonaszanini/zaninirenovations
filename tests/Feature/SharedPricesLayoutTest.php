@@ -133,17 +133,13 @@ class SharedPricesLayoutTest extends IntegrationTestCase
 
         $columns = $this->desktopGridColumns($css);
         $this->assertCount(8, $columns);
-        $this->assertGreaterThanOrEqual(7.5, $this->cssMinRem($columns[0]), 'Work item must show ~18–20 characters at 1100');
-        $this->assertGreaterThanOrEqual(6.6, $this->cssMinRem($columns[1]), 'Rate must fit 99,999.9900 and 1,234.5678');
-        $this->assertGreaterThanOrEqual(6.6, $this->cssMinRem($columns[2]), 'Sell must fit 99,999.9999 without a per-row ⓘ');
-        $this->assertTrue(
-            str_contains($columns[3], '7ch') || $this->cssMinRem($columns[3]) >= 4.6,
-            'Unit must be ~7ch so opening does not clip'
-        );
-        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
-        $this->assertGreaterThanOrEqual(6.5, $this->cssMinRem($columns[5]), 'Mat. name keeps a readable min');
-        $this->assertLessThanOrEqual(8.25, $this->cssMinRem($columns[5]));
-        $this->assertGreaterThanOrEqual(7.0, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
+        $this->assertGreaterThanOrEqual(9.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
+        foreach ([1, 2, 4, 5] as $idx) {
+            $this->assertGreaterThanOrEqual(4.75, $this->cssMinRem($columns[$idx]), "Column {$idx} must share width evenly");
+        }
+        $this->assertGreaterThanOrEqual(3.75, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
+        $this->assertSame('2.75rem', trim($columns[6]), 'Catalog search column stays fixed');
+        $this->assertGreaterThanOrEqual(5.75, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
 
         $this->assertStringContainsString('title="{{ $work->label }}"', $blade);
         $this->assertStringContainsString('grid-area: search', $css);

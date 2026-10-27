@@ -1,5 +1,8 @@
 @php
+  use App\Support\QuotationSharedLabourRates;
+
   $workIndex = $workIndex ?? 0;
+  $defaultLabourHourly = QuotationSharedLabourRates::ownerHourlyFormattedForNewQuotation();
   $work = is_array($work ?? null) ? $work : [];
   $workCount = (int) ($workCount ?? 1);
   $isOpen = (bool) ($isOpen ?? true);
@@ -10,9 +13,9 @@
   }
   $labourMode = old('works.'.$workIndex.'.labour_mode', $work['labour_mode'] ?? 'hours');
   $labourQty = old('works.'.$workIndex.'.labour_quantity', isset($work['labour_quantity']) && $work['labour_quantity'] !== null && $work['labour_quantity'] !== '' ? (string) $work['labour_quantity'] : '');
-  $labourRateRaw = old('works.'.$workIndex.'.labour_hourly_rate', $work['labour_hourly_rate'] ?? '65.00');
+  $labourRateRaw = old('works.'.$workIndex.'.labour_hourly_rate', $work['labour_hourly_rate'] ?? $defaultLabourHourly);
   $labourRate = $labourRateRaw === '' || $labourRateRaw === null
-      ? '65.00'
+      ? $defaultLabourHourly
       : (is_numeric($labourRateRaw) ? number_format((float) $labourRateRaw, 2, '.', '') : (string) $labourRateRaw);
   $labourUseFixed = filter_var(old('works.'.$workIndex.'.labour_use_fixed', $work['labour_use_fixed'] ?? false), FILTER_VALIDATE_BOOLEAN);
   $labourFixedAmount = old('works.'.$workIndex.'.labour_fixed_amount');
@@ -171,7 +174,7 @@
           <div class="admin-form-group sq-labour-rate-group">
             <label for="{{ $idBase }}-labour-rate">Hourly rate (CAD) @unless($labourUseFixed)<span class="cp-required">*</span>@endunless</label>
             <input type="text" inputmode="decimal" autocomplete="off" id="{{ $idBase }}-labour-rate" name="works[{{ $workIndex }}][labour_hourly_rate]" class="admin-input cp-money-input sq-labour-rate"
-                   @unless($labourUseFixed) required @endunless placeholder="65.00" value="{{ $labourRate }}" data-cp-money-entry="direct">
+                   @unless($labourUseFixed) required @endunless placeholder="{{ $defaultLabourHourly }}" value="{{ $labourRate }}" data-cp-money-entry="direct">
             @error('works.'.$workIndex.'.labour_hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
 

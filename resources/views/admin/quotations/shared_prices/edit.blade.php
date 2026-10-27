@@ -93,14 +93,14 @@
   .sp-table tbody tr {
     display: grid;
     grid-template-columns:
-      minmax(7.5rem, 1.4fr)
-      6.6rem
-      minmax(6.6rem, 7.1rem)
-      minmax(4.6rem, 4.85rem)
-      minmax(5.5rem, 5.6rem)
-      minmax(6.5rem, 8rem)
+      minmax(9rem, 2.4fr)
+      minmax(4.75rem, 1fr)
+      minmax(4.75rem, 1fr)
+      minmax(3.75rem, 0.85fr)
+      minmax(4.75rem, 1fr)
+      minmax(4.75rem, 1fr)
       2.75rem
-      7.25rem;
+      minmax(5.75rem, 1.05fr);
     column-gap: 0.08rem;
     align-items: stretch;
     width: 100%;
@@ -260,6 +260,7 @@
   flex-direction: column;
   justify-content: center;
   gap: 0.1rem;
+  width: 100%;
   min-width: 0;
   border: 0;
   box-shadow: none;
@@ -354,7 +355,11 @@
 .sp-sell-phone-label {
   display: inline-flex;
   align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   gap: 0.15rem;
+  max-width: 100%;
+  min-width: 0;
 }
 .sp-sell-phone-label {
   display: none;

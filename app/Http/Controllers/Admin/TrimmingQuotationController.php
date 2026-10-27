@@ -17,6 +17,7 @@ use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
+use App\Services\SharedWorkCatalog;
 use App\Services\TrimmingQuotationCalculator;
 use App\Support\QuotationAfterSaveRedirect;
 use App\Support\QuotationDraftFlash;
@@ -266,7 +267,7 @@ class TrimmingQuotationController extends Controller
             ->get(['id', 'name', 'client_name', 'status']);
 
         $previewInputs = TrimmingQuotationCalculator::defaultInputs();
-        $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
+        $previewInputs['owner_hourly_rate'] = SharedWorkCatalog::ownerHourlyRate();
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         $roomAreaImport = app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'trimming');
         $linkProject = $this->mergeRoomAreaLinkProject(

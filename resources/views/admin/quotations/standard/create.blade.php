@@ -2,8 +2,10 @@
 
 @php
   use App\Models\ClientProjectQuotation;
+  use App\Support\QuotationSharedLabourRates;
 
   $isEdit = filled($quotation);
+  $defaultLabourHourly = QuotationSharedLabourRates::ownerHourlyFormattedForNewQuotation();
 
   // Project-context mode: this editor was opened from a project's
   // "Edit quotation" entry point (?return=project). Save stays on this
@@ -26,7 +28,7 @@
       'materials' => [$emptyMaterialRow],
       'labour_mode' => 'hours',
       'labour_quantity' => '',
-      'labour_hourly_rate' => '65.00',
+      'labour_hourly_rate' => $defaultLabourHourly,
       'labour_use_fixed' => false,
       'labour_fixed_amount' => '',
       'labour_fixed_hst_included' => false,
@@ -529,7 +531,7 @@
         ]],
         'labour_mode' => 'hours',
         'labour_quantity' => '',
-        'labour_hourly_rate' => '65.00',
+        'labour_hourly_rate' => $defaultLabourHourly,
         'labour_use_fixed' => false,
         'labour_fixed_amount' => '',
         'labour_fixed_hst_included' => false,

@@ -114,7 +114,7 @@ class ShedQuotationCalculator
             'include_plumbing' => false,
             'client_provides_all' => false,
             'client_provides_sections' => [],
-            'owner_hourly_rate' => 85,
+            'owner_hourly_rate' => SharedWorkCatalog::ownerHourlyRate(),
             'helper_hourly_rate' => 45,
             'include_helper' => false,
             'extra_materials' => [],

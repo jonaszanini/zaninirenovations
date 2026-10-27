@@ -21,6 +21,7 @@ use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Services\MillworkQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
+use App\Services\SharedWorkCatalog;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
@@ -401,7 +402,7 @@ class MillworkQuotationController extends Controller
         }
 
         $previewInputs = MillworkQuotationCalculator::defaultInputs();
-        $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
+        $previewInputs['owner_hourly_rate'] = SharedWorkCatalog::ownerHourlyRate();
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         if (! $quotation && $roomAreaImport) {
             $previewInputs = array_merge($previewInputs, $roomAreaImport['inputs']);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SharedWorkCatalog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -47,7 +48,7 @@ class PavingMaterialRate extends Model
 
         return [
             'helper_hourly_rate' => (float) ($rows['helper_hourly_rate'] ?? 21),
-            'owner_hourly_rate' => (float) ($rows['owner_hourly_rate'] ?? 65),
+            'owner_hourly_rate' => (float) ($rows['owner_hourly_rate'] ?? SharedWorkCatalog::ownerHourlyRate()),
         ];
     }
 

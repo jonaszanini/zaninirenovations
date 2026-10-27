@@ -17,6 +17,7 @@ use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
+use App\Services\SharedWorkCatalog;
 use App\Services\ShedQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
@@ -279,7 +280,7 @@ class ShedQuotationController extends Controller
         }
 
         $previewInputs = ShedQuotationCalculator::defaultInputs();
-        $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
+        $previewInputs['owner_hourly_rate'] = SharedWorkCatalog::ownerHourlyRate();
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         if ($quotation && is_array($quotation->inputs)) {
             foreach ($quotation->inputs as $key => $value) {

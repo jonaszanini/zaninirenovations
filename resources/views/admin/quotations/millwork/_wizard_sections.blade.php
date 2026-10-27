@@ -222,7 +222,7 @@
         <label for="mw-owner-rate">Owner rate</label>
         <input type="text" inputmode="decimal" autocomplete="off"
                class="admin-input cp-money-input mw-preview mw-input--money" id="mw-owner-rate" name="owner_hourly_rate"
-               value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate), 2, '.', '')) }}" data-cp-money-entry="direct">
+               value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? \App\Support\QuotationSharedLabourRates::ownerHourlyForNewQuotation()), 2, '.', '')) }}" data-cp-money-entry="direct">
       </div>
       <div class="admin-form-group">
         @include('admin.quotations._include_helper', [

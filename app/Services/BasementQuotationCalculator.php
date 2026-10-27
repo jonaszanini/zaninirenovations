@@ -671,7 +671,7 @@ class BasementQuotationCalculator
             'client_provides_bath_items' => [],
             'electrical_lines' => [],
             'plumbing_lines' => [],
-            'owner_hourly_rate' => 85,
+            'owner_hourly_rate' => SharedWorkCatalog::ownerHourlyRate(),
             'helper_hourly_rate' => 45,
             'include_helper' => false,
             'extra_materials' => [],
