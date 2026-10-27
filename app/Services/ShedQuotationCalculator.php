@@ -115,7 +115,7 @@ class ShedQuotationCalculator
             'include_plumbing' => false,
             'client_provides_all' => false,
             'client_provides_sections' => [],
-            'owner_hourly_rate' => (float) (ShedSettings::current()->owner_hourly_rate ?? QuotationSharedLabourRates::LEGACY_OWNER_HOURLY),
+            'owner_hourly_rate' => QuotationSharedLabourRates::LEGACY_OWNER_HOURLY,
             'helper_hourly_rate' => 45,
             'include_helper' => false,
             'extra_materials' => [],

@@ -89,7 +89,7 @@ class TrimmingQuotationCalculator
             'paint_coats' => 2,
             'client_provides_all' => false,
             'client_provides_sections' => [],
-            'owner_hourly_rate' => (float) (TrimmingSettings::current()->owner_hourly_rate ?? \App\Support\QuotationSharedLabourRates::LEGACY_OWNER_HOURLY),
+            'owner_hourly_rate' => \App\Support\QuotationSharedLabourRates::LEGACY_OWNER_HOURLY,
             'helper_hourly_rate' => 45,
             'include_helper' => false,
             'include_building' => false,

@@ -671,7 +671,7 @@ class BasementQuotationCalculator
             'client_provides_bath_items' => [],
             'electrical_lines' => [],
             'plumbing_lines' => [],
-            'owner_hourly_rate' => (float) (BasementSettings::current()->owner_hourly_rate ?? \App\Support\QuotationSharedLabourRates::LEGACY_OWNER_HOURLY),
+            'owner_hourly_rate' => \App\Support\QuotationSharedLabourRates::LEGACY_OWNER_HOURLY,
             'helper_hourly_rate' => 45,
             'include_helper' => false,
             'extra_materials' => [],
