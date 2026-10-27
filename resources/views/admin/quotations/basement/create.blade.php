@@ -19,6 +19,9 @@
           $inputs[$k] = $v;
       }
   }
+  if (! $isEdit) {
+      $inputs['owner_hourly_rate'] = \App\Support\QuotationSharedLabourRates::ownerHourlyForNewQuotation();
+  }
   $sectionList = $sections ?? BasementQuotationCalculator::SECTIONS;
   $scopePreset = BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
   if (! $isEdit) {

@@ -20,6 +20,9 @@
           $inputs[$k] = $v;
       }
   }
+  if (! $isEdit) {
+      $inputs['owner_hourly_rate'] = \App\Support\QuotationSharedLabourRates::ownerHourlyForNewQuotation();
+  }
   if (! $isEdit && ! empty($roomAreaImport['inputs']) && is_array($roomAreaImport['inputs'])) {
       $inputs = array_merge($inputs, $roomAreaImport['inputs']);
   }

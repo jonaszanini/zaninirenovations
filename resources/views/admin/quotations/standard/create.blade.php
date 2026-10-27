@@ -77,7 +77,7 @@
 
   $pdfDetailMode = old('pdf_detail_mode');
   if ($pdfDetailMode === null && $isEdit) {
-      $pdfDetailMode = $quotation->pdf_detail_mode ?? \App\Models\StandardQuotation::PDF_DETAIL_COMBINED;
+      $pdfDetailMode = $quotation->pdf_detail_mode ?? \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY;
   }
 
   $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);

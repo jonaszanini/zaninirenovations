@@ -11,6 +11,9 @@
           $inputs[$k] = $v;
       }
   }
+  if (! $isEdit) {
+      $inputs['owner_hourly_rate'] = \App\Support\QuotationSharedLabourRates::ownerHourlyForNewQuotation();
+  }
   $initialCalc = $isEdit ? ($quotation->calculation ?? null) : null;
 
   $linkProject = $linkProject ?? null;

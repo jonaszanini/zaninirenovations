@@ -140,6 +140,20 @@ class StandardQuotationPdfDocumentTest extends IntegrationTestCase
         $this->assertStringContainsString('name="includes_labour" value="1" checked', preg_replace('/\s+/', ' ', $html) ?: $html);
     }
 
+    public function test_edit_blade_falls_back_to_summary_not_combined_when_mode_unset_in_view(): void
+    {
+        $blade = file_get_contents(resource_path('views/admin/quotations/standard/create.blade.php'));
+        $this->assertIsString($blade);
+        $this->assertStringContainsString(
+            '$quotation->pdf_detail_mode ?? \\App\\Models\\StandardQuotation::PDF_DETAIL_SUMMARY',
+            $blade
+        );
+        $this->assertStringNotContainsString(
+            '$quotation->pdf_detail_mode ?? \\App\\Models\\StandardQuotation::PDF_DETAIL_COMBINED',
+            $blade
+        );
+    }
+
     public function test_client_js_declares_pdf_document_validation(): void
     {
         $js = (string) file_get_contents(public_path('js/admin-standard-quotation.js'));

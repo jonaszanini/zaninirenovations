@@ -7,6 +7,7 @@ use App\Models\ShedQuotation;
 use App\Models\ShedSettings;
 use App\Support\CatalogMaterialDelivery;
 use App\Support\QuotationHelperLabor;
+use App\Support\QuotationSharedLabourRates;
 
 class ShedQuotationCalculator
 {
@@ -114,7 +115,7 @@ class ShedQuotationCalculator
             'include_plumbing' => false,
             'client_provides_all' => false,
             'client_provides_sections' => [],
-            'owner_hourly_rate' => SharedWorkCatalog::ownerHourlyRate(),
+            'owner_hourly_rate' => (float) (ShedSettings::current()->owner_hourly_rate ?? QuotationSharedLabourRates::LEGACY_OWNER_HOURLY),
             'helper_hourly_rate' => 45,
             'include_helper' => false,
             'extra_materials' => [],

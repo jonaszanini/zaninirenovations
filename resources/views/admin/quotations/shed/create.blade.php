@@ -2,6 +2,7 @@
 
 @php
   use App\Services\ShedQuotationCalculator;
+  use App\Support\QuotationSharedLabourRates;
 
   $isEdit = filled($quotation);
   $returnToProject = request('return') === 'project' && $isEdit && $quotation->project;
@@ -18,6 +19,9 @@
       if (! array_key_exists($k, $inputs)) {
           $inputs[$k] = $v;
       }
+  }
+  if (! $isEdit) {
+      $inputs['owner_hourly_rate'] = QuotationSharedLabourRates::ownerHourlyForNewQuotation();
   }
   $inputs['roof_type'] = ShedQuotationCalculator::normalizeRoofType($inputs['roof_type'] ?? 'asphalt');
   $inputs['siding'] = ShedQuotationCalculator::normalizeSiding($inputs['siding'] ?? 'vinyl');
@@ -94,6 +98,8 @@
     @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="sh-save-intent" value="publish">
+    <input type="hidden" name="owner_hourly_rate" value="{{ old('owner_hourly_rate', number_format((float) ($inputs['owner_hourly_rate'] ?? QuotationSharedLabourRates::ownerHourlyForNewQuotation()), 2, '.', '')) }}">
+    <input type="hidden" name="helper_hourly_rate" value="{{ old('helper_hourly_rate', number_format((float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate), 2, '.', '')) }}">
 
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">

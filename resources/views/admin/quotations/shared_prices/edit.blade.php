@@ -221,17 +221,6 @@
   overflow: visible;
   z-index: 14;
 }
-@media (min-width: 68.75em) {
-  .sp-mat-name-input:focus {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: max(100%, 16rem);
-    max-width: min(20rem, 24rem);
-    z-index: 15;
-  }
-}
 .sp-col-rate .sp-input,
 .sp-col-sell .sp-input,
 .sp-col-price .sp-input {
@@ -278,20 +267,29 @@
   word-break: break-word;
   white-space: normal;
 }
-.sp-work-label-input {
+.sp-work-label-input,
+.sp-mat-name-input {
   display: block;
   width: 100%;
   min-width: 0;
   font-weight: 500;
   font-size: 0.8rem;
-  line-height: 1.25;
+  line-height: 1.3;
   color: var(--admin-heading);
   background: var(--admin-input-bg);
   border: 1px solid var(--admin-border);
   border-radius: 5px;
-  padding: 0.3rem 0.4rem;
-  height: 28px;
+  padding: 0.35rem 0.4rem;
+  min-height: 2.75rem;
+  max-height: 5.5rem;
+  height: auto;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+  resize: none;
   box-sizing: border-box;
+  field-sizing: content;
 }
 .sp-work-label-input:focus {
   outline: none;
@@ -1024,13 +1022,11 @@
                   <td class="sp-col-label" data-label="Work item">
                     <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
                     <span class="sp-work">
-                      <input type="text" class="sp-input sp-work-label-input{{ $errors->has('works.'.$work->id.'.label') ? ' is-invalid' : '' }}" id="sp-label-{{ $work->id }}"
+                      <textarea rows="1" class="sp-input sp-work-label-input sp-auto-grow-textarea{{ $errors->has('works.'.$work->id.'.label') ? ' is-invalid' : '' }}" id="sp-label-{{ $work->id }}"
                              name="works[{{ $work->id }}][label]"
-                             value="{{ old('works.'.$work->id.'.label', $work->label) }}"
-                             title="{{ $work->label }}"
                              maxlength="160"
                              required
-                             aria-label="Name for {{ $work->label }}">
+                             aria-label="Name for {{ $work->label }}">{{ old('works.'.$work->id.'.label', $work->label) }}</textarea>
                       <span class="sp-work-extra">
                         @if ($isCustom)
                           <span class="sp-ref-badge" title="Reference only — quote calculators do not use this item.">Reference</span>
@@ -1073,11 +1069,9 @@
                   </td>
                   <td class="sp-col-name" data-label="Mat. name">
                     @php $matNameVal = old('works.'.$work->id.'.material_name', $work->material_name); @endphp
-                    <input type="text" class="sp-input sp-mat-name-input" id="sp-mat-name-{{ $work->id }}"
+                    <textarea rows="1" class="sp-input sp-mat-name-input sp-auto-grow-textarea" id="sp-mat-name-{{ $work->id }}"
                            name="works[{{ $work->id }}][material_name]"
-                           value="{{ $matNameVal }}"
-                           title="{{ $matNameVal }}"
-                           placeholder="—">
+                           placeholder="—">{{ $matNameVal }}</textarea>
                   </td>
                   <td class="sp-col-catalog" data-label="Catalog">
                     <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
@@ -1232,8 +1226,16 @@
       });
     })();
 
-    document.querySelectorAll('.sp-mat-name-input, .sp-work-label-input').forEach(function(input) {
+    function growSpTextarea(el) {
+      if (!el || el.tagName !== 'TEXTAREA') return;
+      el.style.height = 'auto';
+      var max = 88;
+      el.style.height = Math.min(el.scrollHeight, max) + 'px';
+    }
+    document.querySelectorAll('.sp-auto-grow-textarea').forEach(function(input) {
+      growSpTextarea(input);
       input.addEventListener('input', function() {
+        growSpTextarea(this);
         this.title = this.value;
       });
       input.addEventListener('focus', function() {

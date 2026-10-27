@@ -436,6 +436,14 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
         })(),
         workW: work ? Math.round(work.getBoundingClientRect().width) : 0,
         nameW: name ? Math.round(name.getBoundingClientRect().width) : 0,
+        workLabelClip: [...document.querySelectorAll('.sp-work-label-input')].filter((el) => {
+          const long = (el.value || '').length > 24;
+          return long && (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2);
+        }).map((el) => ({ len: (el.value || '').length, sh: el.scrollHeight, ch: el.clientHeight })),
+        matNameClip: [...document.querySelectorAll('.sp-mat-name-input')].filter((el) => {
+          const long = (el.value || '').length > 20;
+          return long && (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2);
+        }).map((el) => ({ len: (el.value || '').length, sh: el.scrollHeight, ch: el.clientHeight })),
         longChipOk: !longChip || (longChip.title === longChip.text && longChip.scroll >= longChip.client),
         zLow: [...document.querySelectorAll('.sp-table tbody tr')].some((tr) => {
           const z = parseInt(getComputedStyle(tr).zIndex, 10);
@@ -713,6 +721,8 @@ JS
             $this->assertTrue($row['moreVisible'] ?? false, "+N must stay on-screen at {$w}");
             $this->assertSame([], $row['sellClipped'] ?? ['fail'], "Sell input clipped at {$w}");
             $this->assertSame([], $row['rateClipped'] ?? ['fail'], "Rate input clipped at {$w}: ".json_encode($row['rateClipped'] ?? []));
+            $this->assertSame([], $row['workLabelClip'] ?? ['fail'], "Work item name clipped at {$w}: ".json_encode($row['workLabelClip'] ?? []));
+            $this->assertSame([], $row['matNameClip'] ?? ['fail'], "Material name clipped at {$w}: ".json_encode($row['matNameClip'] ?? []));
             $this->assertSame([], $row['effectiveClipped'] ?? ['fail'], "Effective sell must show in full at {$w}: ".json_encode($row['effectiveClipped'] ?? []));
             $this->assertTrue($row['longChipOk'] ?? false, "Long consumer chip must ellipsize with a title at {$w}");
             $this->assertFalse($row['zLow'] ?? true, "Open +N row must not stay at z-index 1 at {$w}");
