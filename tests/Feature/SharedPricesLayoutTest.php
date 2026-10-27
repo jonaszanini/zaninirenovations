@@ -135,7 +135,7 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertCount(8, $columns);
         $this->assertGreaterThanOrEqual(11.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
         $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[1]), 'Cost must fit 99,999.9900');
-        $this->assertGreaterThanOrEqual(6.25, $this->cssMinRem($columns[2]), 'Sell must fit 99,999.9999');
+        $this->assertGreaterThanOrEqual(6.6, $this->cssMinRem($columns[2]), 'Sell must fit 99,999.9999');
         $this->assertGreaterThanOrEqual(3.5, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
         $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
         $this->assertGreaterThanOrEqual(5.25, $this->cssMinRem($columns[5]), 'Mat. name keeps a readable min');

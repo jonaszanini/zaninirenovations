@@ -95,7 +95,7 @@
     grid-template-columns:
       minmax(11rem, 2.8fr)
       minmax(5.5rem, 1fr)
-      minmax(6.25rem, 1.05fr)
+      minmax(6.6rem, 1.05fr)
       minmax(3.5rem, 0.75fr)
       minmax(5.5rem, 1fr)
       minmax(5.25rem, 0.95fr)
