@@ -13,11 +13,14 @@ class SupplierWebsitePageFetcher
 
     public const TIMEOUT_SECONDS = 12;
 
+    public const PREVIEW_BUDGET_SECONDS = 45;
+
     /**
      * @return list<array{url: string, html: string}>
      */
     public function fetchSitePages(string $startUrl): array
     {
+        $deadline = microtime(true) + self::PREVIEW_BUDGET_SECONDS;
         $normalized = $this->normalizeUrl($startUrl);
         if ($normalized === null) {
             throw new \InvalidArgumentException('Enter a valid http or https website URL.');
@@ -27,7 +30,7 @@ class SupplierWebsitePageFetcher
             throw new \RuntimeException('That URL is not allowed (use a public http or https address).');
         }
 
-        $homeResponse = $this->get($normalized);
+        $homeResponse = $this->get($normalized, $deadline);
         if ($homeResponse === null || ! $homeResponse->successful()) {
             throw new \RuntimeException('Could not fetch the website homepage.');
         }
@@ -45,7 +48,7 @@ class SupplierWebsitePageFetcher
             if ($url === $normalized) {
                 continue;
             }
-            $response = $this->get($url);
+            $response = $this->get($url, $deadline);
             if ($response === null || ! $response->successful()) {
                 continue;
             }
@@ -59,13 +62,13 @@ class SupplierWebsitePageFetcher
         return $pages;
     }
 
-    private function get(string $url): ?Response
+    private function get(string $url, float $deadline): ?Response
     {
         return SafeOutboundHttp::getWeb($url, [
             'User-Agent' => 'ZaniniAdminSupplierImport/1.0 (+https://zaninirenovations.ca)',
             'Accept' => 'text/html,application/xhtml+xml',
             'Accept-Language' => 'en-CA,en;q=0.9',
-        ], self::TIMEOUT_SECONDS, self::MAX_BYTES);
+        ], self::TIMEOUT_SECONDS, self::MAX_BYTES, $deadline);
     }
 
     /**
@@ -143,7 +146,11 @@ class SupplierWebsitePageFetcher
         }
 
         $host = strtolower((string) $parts['host']);
-        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+        $portNum = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'https' ? 443 : 80);
+        if (! in_array($portNum, [80, 443], true)) {
+            return null;
+        }
+        $port = '';
         $path = $parts['path'] ?? '/';
         if ($path === '') {
             $path = '/';

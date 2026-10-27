@@ -46,7 +46,9 @@ class SecurityHardeningTest extends TestCase
         $this->assertFalse(SafeOutboundHttp::isAllowedPublicHttpsUrl('http://example.com/x'));
         $this->assertFalse(SafeOutboundHttp::isAllowedPublicHttpsUrl('https://127.0.0.1/secret'));
         $this->assertFalse(SafeOutboundHttp::isAllowedPublicWebUrl('https://127.0.0.1/secret'));
+        $this->assertFalse(SafeOutboundHttp::isAllowedPublicWebUrl('http://[::1]/'));
         $this->assertFalse(SafeOutboundHttp::isAllowedPublicWebUrl('ftp://example.com/x'));
+        $this->assertFalse(SafeOutboundHttp::isAllowedPublicWebUrl('http://example.com:8080/'));
         $this->assertTrue(SafeOutboundHttp::isAllowedPublicWebUrl('http://example.com/x'));
     }
 

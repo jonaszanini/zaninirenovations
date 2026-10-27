@@ -4,6 +4,7 @@ namespace App\Services\SupplierWebsite;
 
 class SupplierWebsiteDataExtractor
 {
+    public const MAX_ADDRESSES = 5;
     /**
      * @param  list<array{url: string, html: string}>  $pages
      * @return array{
@@ -39,11 +40,13 @@ class SupplierWebsiteDataExtractor
             $this->collectAddressRegex($html, $addresses);
         }
 
+        $addresses = array_slice($this->uniqueList($addresses), 0, self::MAX_ADDRESSES);
+
         return [
             'name' => $name,
             'phones' => $this->uniqueList($phones),
             'emails' => $this->uniqueList($emails),
-            'addresses' => $this->uniqueList($addresses),
+            'addresses' => $addresses,
             'hours' => $hours,
             'social_links' => $this->uniqueList($social),
             'logo_url' => $logo,

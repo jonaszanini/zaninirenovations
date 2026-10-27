@@ -49,6 +49,16 @@
       white-space: nowrap;
     }
     .ss-th-sort a:hover { text-decoration: underline; }
+    .ss-th-sort__head {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+    }
+    .ss-distance-error {
+      color: var(--admin-muted);
+      font-size: 12px;
+    }
     .ss-url-actions {
       display: flex;
       flex-wrap: nowrap;
@@ -100,6 +110,16 @@
           </select>
         </label>
         <label class="admin-list-filters__per-page">
+          <span class="admin-list-filters__per-page-label">Sort</span>
+          <select name="sort" class="admin-input admin-list-filters__per-page-select" aria-label="Sort suppliers" onchange="this.form.submit()">
+            <option value="">Default</option>
+            <option value="distance" @selected(($sort ?? '') === 'distance')>Distance</option>
+          </select>
+        </label>
+        @if (($sort ?? '') === 'distance')
+          <input type="hidden" name="dir" value="{{ $sortDir }}">
+        @endif
+        <label class="admin-list-filters__per-page">
           <span class="admin-list-filters__per-page-label">Show</span>
           <select name="per_page" class="admin-input admin-list-filters__per-page-select" aria-label="Rows per page" onchange="this.form.submit()">
             @foreach (\App\Support\AdminPaginatedList::PER_PAGE_OPTIONS as $option)
@@ -129,12 +149,19 @@
             <th style="width:110px;">Phone</th>
             <th style="width:140px;">Address</th>
             <th class="ss-th-sort" style="width:120px;">
-              <a href="{{ $sortQuery('distance') }}">
-                Distance
-                @if (($sort ?? '') === 'distance')
-                  <i class="fa fa-sort-{{ $sortDir === 'desc' ? 'down' : 'up' }}" aria-hidden="true"></i>
-                @endif
-              </a>
+              <span class="ss-th-sort__head">
+                @include('admin.partials.tipped_label', [
+                  'label' => 'Distance',
+                  'tipText' => 'One-way driving distance from your home address (set on the Vehicles page). Refresh updates the value.',
+                ])
+                <a href="{{ $sortQuery('distance') }}" class="ss-th-sort-link" aria-label="Sort by distance">
+                  @if (($sort ?? '') === 'distance')
+                    <i class="fa fa-sort-{{ $sortDir === 'desc' ? 'down' : 'up' }}" aria-hidden="true"></i>
+                  @else
+                    <i class="fa fa-sort" aria-hidden="true"></i>
+                  @endif
+                </a>
+              </span>
             </th>
             <th style="width:140px;">Notes</th>
             <th style="width:130px;"></th>
@@ -195,7 +222,17 @@
                 @endif
               </td>
               <td data-label="Distance" class="ss-distance-cell">
-                <span data-ss-distance-label="{{ $site->id }}">{{ $site->distanceDisplayLabel() }}</span>
+                @php
+                  $distanceSortUrl = $sortQuery('distance');
+                @endphp
+                <span class="admin-sr-only"><a href="{{ $distanceSortUrl }}">Sort by distance</a></span>
+                <span data-ss-distance-label="{{ $site->id }}" @class(['ss-distance-error' => filled($site->distance_error) && $site->distance_km === null])>{{ $site->distanceDisplayLabel() }}</span>
+                @if ($site->distanceErrorForTip())
+                  @include('admin.partials.info_tip', [
+                    'tipText' => $site->distanceErrorForTip(),
+                    'tipLabel' => 'Distance error',
+                  ])
+                @endif
                 @if (filled($site->address))
                   <button type="button"
                           class="admin-btn admin-btn--ghost admin-btn--sm ss-distance-refresh"

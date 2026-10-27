@@ -81,14 +81,16 @@ class SupplierSiteController extends Controller
 
     public function refreshDistance(SupplierSite $supplier_site, SupplierSiteDistanceService $distances): JsonResponse
     {
-        $ok = $distances->refresh($supplier_site);
+        $result = $distances->refresh($supplier_site);
         $supplier_site->refresh();
 
         return response()->json([
-            'ok' => $ok,
+            'ok' => $result['ok'],
+            'message' => $result['message'],
             'distance_km' => $supplier_site->distance_km !== null ? (float) $supplier_site->distance_km : null,
             'drive_minutes' => $supplier_site->drive_minutes,
             'distance_label' => $supplier_site->distanceDisplayLabel(),
+            'distance_error' => $supplier_site->distance_error,
         ]);
     }
 
@@ -142,6 +144,7 @@ class SupplierSiteController extends Controller
                 'distance_km' => null,
                 'drive_minutes' => null,
                 'distance_checked_at' => null,
+                'distance_error' => null,
             ]);
             $supplier_site->save();
         } else {

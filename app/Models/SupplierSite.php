@@ -17,6 +17,7 @@ class SupplierSite extends Model
         'distance_km',
         'drive_minutes',
         'distance_checked_at',
+        'distance_error',
         'is_favorite',
         'sort_order',
     ];
@@ -42,15 +43,24 @@ class SupplierSite extends Model
 
     public function distanceDisplayLabel(): string
     {
-        if ($this->distance_km === null) {
-            return '—';
+        if ($this->distance_km !== null) {
+            $km = rtrim(rtrim(number_format((float) $this->distance_km, 1, '.', ''), '0'), '.');
+            if ($this->drive_minutes !== null && $this->drive_minutes > 0) {
+                return $km.' km · '.$this->drive_minutes.' min';
+            }
+
+            return $km.' km';
         }
 
-        $km = rtrim(rtrim(number_format((float) $this->distance_km, 1, '.', ''), '0'), '.');
-        if ($this->drive_minutes !== null && $this->drive_minutes > 0) {
-            return $km.' km · '.$this->drive_minutes.' min';
+        if (filled($this->distance_error)) {
+            return \Illuminate\Support\Str::limit((string) $this->distance_error, 48);
         }
 
-        return $km.' km';
+        return '—';
+    }
+
+    public function distanceErrorForTip(): ?string
+    {
+        return filled($this->distance_error) ? (string) $this->distance_error : null;
     }
 }

@@ -60,7 +60,10 @@ class SupplierSiteDistanceService
         ];
     }
 
-    public function refresh(SupplierSite $site): bool
+    /**
+     * @return array{ok: bool, message: ?string}
+     */
+    public function refresh(SupplierSite $site): array
     {
         $address = trim((string) $site->address);
         if ($address === '') {
@@ -68,29 +71,33 @@ class SupplierSiteDistanceService
                 'distance_km' => null,
                 'drive_minutes' => null,
                 'distance_checked_at' => null,
+                'distance_error' => null,
             ])->save();
 
-            return false;
+            return ['ok' => false, 'message' => 'Add an address to calculate distance.'];
         }
 
         $result = $this->drivingFromHome($address);
         if (! $result['ok']) {
+            $message = $result['message'] ?? 'Could not calculate driving distance.';
             $site->forceFill([
                 'distance_km' => null,
                 'drive_minutes' => null,
                 'distance_checked_at' => now(),
+                'distance_error' => mb_substr($message, 0, 500),
             ])->save();
 
-            return false;
+            return ['ok' => false, 'message' => $message];
         }
 
         $site->forceFill([
             'distance_km' => $result['distance_km'],
             'drive_minutes' => $result['drive_minutes'],
             'distance_checked_at' => now(),
+            'distance_error' => null,
         ])->save();
 
-        return true;
+        return ['ok' => true, 'message' => null];
     }
 
     public function clearDistanceIfAddressChanged(SupplierSite $site, ?string $previousAddress): void
@@ -106,6 +113,7 @@ class SupplierSiteDistanceService
             'distance_km' => null,
             'drive_minutes' => null,
             'distance_checked_at' => null,
+            'distance_error' => null,
         ])->save();
     }
 
@@ -115,6 +123,7 @@ class SupplierSiteDistanceService
      */
     public function pickClosestAddress(array $addresses): ?array
     {
+        $addresses = array_slice($addresses, 0, 5);
         $unique = [];
         foreach ($addresses as $address) {
             $trimmed = trim($address);
