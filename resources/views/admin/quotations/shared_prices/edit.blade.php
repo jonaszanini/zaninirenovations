@@ -281,9 +281,8 @@
   border-radius: 5px;
   padding: 0.35rem 0.4rem;
   min-height: 2.75rem;
-  max-height: 5.5rem;
   height: auto;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: pre-wrap;
@@ -1229,8 +1228,7 @@
     function growSpTextarea(el) {
       if (!el || el.tagName !== 'TEXTAREA') return;
       el.style.height = 'auto';
-      var max = 88;
-      el.style.height = Math.min(el.scrollHeight, max) + 'px';
+      el.style.height = el.scrollHeight + 'px';
     }
     document.querySelectorAll('.sp-auto-grow-textarea').forEach(function(input) {
       growSpTextarea(input);
