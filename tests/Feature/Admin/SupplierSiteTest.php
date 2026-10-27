@@ -11,6 +11,20 @@ class SupplierSiteTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
 
+    public function test_store_rejects_invalid_logo_url_scheme(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->from(route('admin.supplier-sites.create'))
+            ->post(route('admin.supplier-sites.store'), [
+                'name' => 'Debline',
+                'url' => 'https://debline.com',
+                'logo_url' => 'ftp://debline.com/logo.png',
+            ]);
+
+        $response->assertSessionHasErrors('logo_url');
+    }
+
     public function test_store_creates_supplier_with_tags(): void
     {
         $this->actingAsAdmin();
@@ -18,6 +32,7 @@ class SupplierSiteTest extends IntegrationTestCase
         $response = $this->post(route('admin.supplier-sites.store'), [
             'name' => 'Debline',
             'url' => 'debline.com',
+            'logo_url' => 'https://debline.com/logo.png',
             'tags_input' => 'Bin Rental, crushed stone, bedding sand',
             'notes' => 'Landscaping / aggregates',
             'phone' => '613-555-0100',
@@ -32,6 +47,7 @@ class SupplierSiteTest extends IntegrationTestCase
         $site = SupplierSite::query()->where('name', 'Debline')->first();
         $this->assertNotNull($site);
         $this->assertSame('https://debline.com', $site->url);
+        $this->assertSame('https://debline.com/logo.png', $site->logo_url);
         $this->assertSame('6135550100', $site->phone);
         $this->assertSame('orders@debline.com', $site->email);
         $this->assertSame('100 Industrial Rd, Carleton Place, ON', $site->address);

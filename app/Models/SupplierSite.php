@@ -10,6 +10,7 @@ class SupplierSite extends Model
     protected $fillable = [
         'name',
         'url',
+        'logo_url',
         'notes',
         'phone',
         'email',

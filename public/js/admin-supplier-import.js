@@ -55,6 +55,19 @@
         fillField('ss-phone', data.phone);
         fillField('ss-email', data.email);
         fillField('ss-address', data.address);
+        if (data.logo_url) {
+          var logoEl = document.getElementById('ss-logo-url');
+          if (logoEl && !logoEl.value.trim()) {
+            logoEl.value = data.logo_url;
+            logoEl.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+        if (data.tags) {
+          var tagsEl = document.getElementById('ss-tags');
+          if (tagsEl && !tagsEl.value.trim()) {
+            tagsEl.value = data.tags;
+          }
+        }
         if (data.notes) {
           var notes = document.getElementById('ss-notes');
           if (notes && !notes.value.trim()) {

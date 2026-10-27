@@ -53,4 +53,32 @@ class SupplierWebsiteImportServiceTest extends TestCase
         $this->assertNotEmpty($result['data']['other_addresses']);
         $this->assertStringContainsString('5.0', (string) $result['data']['distance_note']);
     }
+
+    public function test_preview_returns_logo_and_tags_without_logo_in_notes(): void
+    {
+        $fetcher = Mockery::mock(SupplierWebsitePageFetcher::class);
+        $fetcher->shouldReceive('fetchSitePages')
+            ->once()
+            ->andReturn([
+                [
+                    'url' => 'https://glass.test',
+                    'html' => '<html><head><meta name="keywords" content="glass, laminated glass"><meta property="og:image" content="https://glass.test/logo.png"></head><body><h2>Fire-rated glass</h2></body></html>',
+                ],
+            ]);
+
+        $distances = Mockery::mock(SupplierSiteDistanceService::class);
+
+        $service = new SupplierWebsiteImportService(
+            $fetcher,
+            new SupplierWebsiteDataExtractor,
+            $distances
+        );
+
+        $result = $service->preview('https://glass.test');
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('https://glass.test/logo.png', $result['data']['logo_url']);
+        $this->assertNotNull($result['data']['tags']);
+        $this->assertStringNotContainsString('Logo:', (string) ($result['data']['notes'] ?? ''));
+    }
 }

@@ -40,7 +40,10 @@ class SupplierWebsitePageFetcher
             ['url' => $normalized, 'html' => $homeHtml],
         ];
 
-        $candidates = $this->discoverCandidateUrls($normalized, $homeHtml);
+        $candidates = $this->mergeCandidateUrls(
+            $this->discoverCandidateUrls($normalized, $homeHtml),
+            $this->standardContactPaths($normalized)
+        );
         foreach ($candidates as $url) {
             if (count($pages) >= self::MAX_PAGES) {
                 break;
@@ -106,7 +109,7 @@ class SupplierWebsitePageFetcher
                 if (! is_array($linkParts)) {
                     continue;
                 }
-                if (strtolower((string) ($linkParts['host'] ?? '')) !== $host) {
+                if (! $this->hostsMatch((string) ($linkParts['host'] ?? ''), $host)) {
                     continue;
                 }
                 $path = strtolower((string) ($linkParts['path'] ?? '/'));
@@ -125,6 +128,74 @@ class SupplierWebsitePageFetcher
         arsort($scores);
 
         return array_keys($scores);
+    }
+
+    /**
+     * @param  list<string>  $discovered
+     * @param  list<string>  $standard
+     * @return list<string>
+     */
+    private function mergeCandidateUrls(array $discovered, array $standard): array
+    {
+        $seen = [];
+        $out = [];
+        foreach (array_merge($discovered, $standard) as $url) {
+            $key = strtolower(rtrim($url, '/'));
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $url;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function standardContactPaths(string $homeUrl): array
+    {
+        $parts = parse_url($homeUrl);
+        if (! is_array($parts) || empty($parts['host'])) {
+            return [];
+        }
+        $scheme = (string) ($parts['scheme'] ?? 'https');
+        $host = (string) $parts['host'];
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+        $base = $scheme.'://'.$host.$port;
+        $paths = [
+            '/contact/',
+            '/contact',
+            '/contact-us/',
+            '/contact-us',
+            '/locations/',
+            '/location/',
+        ];
+        $urls = [];
+        foreach ($paths as $path) {
+            $normalized = $this->normalizeUrl($base.$path);
+            if ($normalized !== null) {
+                $urls[] = $normalized;
+            }
+        }
+
+        return $urls;
+    }
+
+    private function hostsMatch(string $a, string $b): bool
+    {
+        return $this->normalizeHost($a) === $this->normalizeHost($b);
+    }
+
+    private function normalizeHost(string $host): string
+    {
+        $host = strtolower(trim($host));
+        if (str_starts_with($host, 'www.')) {
+            $host = substr($host, 4);
+        }
+
+        return $host;
     }
 
     private function normalizeUrl(string $raw): ?string

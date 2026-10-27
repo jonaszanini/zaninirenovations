@@ -183,6 +183,7 @@ class SupplierSiteController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
             'url' => ['required', 'string', 'max:500'],
+            'logo_url' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'phone' => ['nullable', 'digits:10'],
             'email' => ['nullable', 'email', 'max:255'],
@@ -199,9 +200,22 @@ class SupplierSiteController extends Controller
             ]);
         }
 
+        $logoUrl = filled($data['logo_url'] ?? null) ? trim((string) $data['logo_url']) : null;
+        if ($logoUrl !== null && ! preg_match('#^https?://#i', $logoUrl)) {
+            throw ValidationException::withMessages([
+                'logo_url' => 'Logo URL must start with http:// or https://.',
+            ]);
+        }
+        if ($logoUrl !== null && $this->normalizeUrl($logoUrl) === null) {
+            throw ValidationException::withMessages([
+                'logo_url' => 'Logo URL must be a valid http or https address.',
+            ]);
+        }
+
         return [
             'name' => trim($data['name']),
             'url' => $url,
+            'logo_url' => $logoUrl,
             'notes' => filled($data['notes'] ?? null) ? trim($data['notes']) : null,
             'phone' => filled($data['phone'] ?? null) ? (string) $data['phone'] : null,
             'email' => filled($data['email'] ?? null) ? strtolower(trim($data['email'])) : null,
