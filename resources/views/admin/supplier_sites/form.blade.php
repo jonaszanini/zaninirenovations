@@ -2,7 +2,53 @@
 
 @section('heading', $supplierSite->exists ? 'Edit supplier' : 'Add supplier')
 
+@push('head')
+  <style>
+    .ss-import-panel {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      background: var(--admin-surface);
+    }
+    .ss-import-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .ss-import-row .admin-form-group { flex: 1 1 200px; min-width: 0; margin: 0; }
+    .ss-import-row .admin-btn { flex-shrink: 0; }
+    .ss-import-note {
+      margin-top: 8px;
+      color: var(--admin-muted);
+      font-size: 13px;
+    }
+  </style>
+@endpush
+
 @section('content')
+  <div class="admin-card ss-import-panel" id="ss-import-panel"
+       data-import-url="{{ route('admin.supplier-sites.import-preview') }}">
+    <div class="ss-import-row">
+      <div class="admin-form-group">
+        @include('admin.partials.tipped_label', [
+          'for' => 'ss-import-url',
+          'label' => 'Import from website',
+          'tipText' => 'Fetches the homepage and up to four contact or location pages. Fills the form below for review — nothing is saved until you click Save.',
+        ])
+        <input class="admin-input" type="url" id="ss-import-url" maxlength="500"
+               placeholder="https://example.com" autocomplete="off"
+               value="{{ old('url', $supplierSite->url) }}">
+      </div>
+      <button type="button" class="admin-btn admin-btn--outline" id="ss-import-btn">
+        <i class="fa fa-download" aria-hidden="true"></i> Import
+      </button>
+    </div>
+    <p class="ss-import-note admin-form-help" id="ss-import-address-note" hidden></p>
+    <p class="admin-form-help" id="ss-import-status" hidden></p>
+  </div>
+
   <div class="admin-card">
     <form method="post" action="{{ $supplierSite->exists ? route('admin.supplier-sites.update', $supplierSite) : route('admin.supplier-sites.store') }}">
       @csrf
@@ -97,3 +143,7 @@
     </form>
   </div>
 @endsection
+
+@push('scripts')
+  <script src="{{ asset('js/admin-supplier-import.js') }}?v={{ @filemtime(public_path('js/admin-supplier-import.js')) ?: time() }}"></script>
+@endpush

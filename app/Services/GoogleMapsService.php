@@ -24,6 +24,58 @@ class GoogleMapsService
      *
      * @return array{ok: bool, distance_km: ?float, duration_text: ?string, duration_seconds: ?int, message: ?string}
      */
+    /**
+     * One-way driving distance from home coordinates to a street address.
+     *
+     * @return array{ok: bool, distance_km: ?float, duration_text: ?string, duration_seconds: ?int, message: ?string}
+     */
+    public function drivingDistanceToAddress(
+        float $originLat,
+        float $originLng,
+        string $destinationAddress
+    ): array {
+        $destinationAddress = trim($destinationAddress);
+        if ($destinationAddress === '') {
+            return [
+                'ok' => false,
+                'distance_km' => null,
+                'duration_text' => null,
+                'duration_seconds' => null,
+                'message' => 'Destination address is empty.',
+            ];
+        }
+
+        if (! $this->isDistanceMatrixConfigured()) {
+            return [
+                'ok' => false,
+                'distance_km' => null,
+                'duration_text' => null,
+                'duration_seconds' => null,
+                'message' => 'Google Maps server API key is not configured.',
+            ];
+        }
+
+        $cacheKey = 'google_dm_addr:'.md5(
+            round($originLat, 5).':'.round($originLng, 5).':'.mb_strtolower($destinationAddress)
+        );
+
+        $ttl = (int) config('google_maps.distance_cache_ttl', 86400);
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $result = $this->fetchDrivingDistanceMatrix(
+            $originLat.','.$originLng,
+            $destinationAddress
+        );
+        if ($result['ok']) {
+            Cache::put($cacheKey, $result, $ttl);
+        }
+
+        return $result;
+    }
+
     public function drivingDistance(
         float $originLat,
         float $originLng,
@@ -143,9 +195,15 @@ class GoogleMapsService
         float $destLat,
         float $destLng
     ): array {
-        $origin = $originLat.','.$originLng;
-        $destination = $destLat.','.$destLng;
+        return $this->fetchDrivingDistanceMatrix(
+            $originLat.','.$originLng,
+            $destLat.','.$destLng
+        );
+    }
 
+    /** @return array{ok: bool, distance_km: ?float, duration_text: ?string, duration_seconds: ?int, message: ?string} */
+    private function fetchDrivingDistanceMatrix(string $origin, string $destination): array
+    {
         try {
             $response = Http::timeout(12)->get('https://maps.googleapis.com/maps/api/distancematrix/json', [
                 'origins' => $origin,

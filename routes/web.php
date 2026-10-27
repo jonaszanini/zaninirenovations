@@ -901,6 +901,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::put('ai-instructions/{ai_instruction}', [\App\Http\Controllers\Admin\AiInstructionController::class, 'update'])
         ->name('ai-instructions.update');
 
+    Route::post('supplier-sites/import-preview', [\App\Http\Controllers\Admin\SupplierSiteController::class, 'importPreview'])
+        ->name('supplier-sites.import-preview');
+    Route::post('supplier-sites/{supplier_site}/refresh-distance', [\App\Http\Controllers\Admin\SupplierSiteController::class, 'refreshDistance'])
+        ->name('supplier-sites.refresh-distance');
     Route::resource('supplier-sites', \App\Http\Controllers\Admin\SupplierSiteController::class)
         ->except(['show'])
         ->names('supplier-sites');
