@@ -142,7 +142,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertSame('2.75rem', trim($columns[6]), 'Catalog search column stays fixed');
         $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
 
-        $this->assertStringContainsString('title="{{ $work->label }}"', $blade);
+        $this->assertStringContainsString('sp-work-label-input sp-auto-grow-textarea', $blade);
+        $this->assertStringContainsString('sp-mat-name-input sp-auto-grow-textarea', $blade);
         $this->assertStringContainsString('grid-area: search', $css);
         $this->assertStringContainsString('@media (min-width: 68.75em)', $css);
         $this->assertStringContainsString('@media not all and (min-width: 68.75em)', $css);
