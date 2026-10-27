@@ -93,14 +93,14 @@
   .sp-table tbody tr {
     display: grid;
     grid-template-columns:
-      minmax(11rem, 3fr)
-      minmax(4.25rem, 0.9fr)
-      minmax(4.25rem, 0.9fr)
-      minmax(3.25rem, 0.7fr)
-      minmax(4.25rem, 0.9fr)
-      minmax(4.25rem, 0.9fr)
+      minmax(11rem, 2.8fr)
+      minmax(5.5rem, 1fr)
+      minmax(6.25rem, 1.05fr)
+      minmax(3.5rem, 0.75fr)
+      minmax(5.5rem, 1fr)
+      minmax(5.25rem, 0.95fr)
       2.75rem
-      minmax(5.25rem, 0.95fr);
+      minmax(5.5rem, 1fr);
     column-gap: 0.08rem;
     align-items: stretch;
     width: 100%;
