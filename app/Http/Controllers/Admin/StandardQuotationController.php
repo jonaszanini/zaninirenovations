@@ -495,6 +495,7 @@ class StandardQuotationController extends Controller
             'display_title.required' => 'Enter a title — it appears at the top of the client PDF.',
             'display_title.max' => 'Title is too long. Keep it to 255 characters or fewer.',
             'document_type.required' => 'Pick whether this is a quotation or an estimate.',
+            'pdf_detail_mode.required' => 'Choose how material and labour appear on the client PDF.',
             'work_description.max' => 'Description of the work is too long. Shorten that box and save again.',
             'works.required' => 'Add at least one job.',
             'works.min' => 'Add at least one job.',

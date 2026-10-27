@@ -19,6 +19,7 @@ use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
+use App\Services\SharedWorkCatalog;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
 use App\Support\QuotationDraftFlash;
@@ -124,7 +125,7 @@ class BasementQuotationController extends Controller
 
     public function preview(Request $request, ?BasementQuotation $basement_quotation = null)
     {
-        $raw = $this->gatherInputsFromRequest($request, true);
+        $raw = $this->gatherInputsFromRequest($request, true, $basement_quotation);
         $calc = (new BasementQuotationCalculator)->calculate($raw);
 
         return response()->json($calc);
@@ -321,7 +322,9 @@ class BasementQuotationController extends Controller
         }
 
         $previewInputs = BasementQuotationCalculator::defaultInputs();
-        $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
+        if (! $quotation) {
+            $previewInputs['owner_hourly_rate'] = SharedWorkCatalog::ownerHourlyRate();
+        }
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         if ($quotation && is_array($quotation->inputs)) {
             foreach ($quotation->inputs as $key => $value) {
@@ -363,7 +366,7 @@ class BasementQuotationController extends Controller
             'client_name.required' => 'Client name is required to save a published quotation.',
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), AdditionalCostsService::validationMessagesFor('electrical_lines', 'electrical line'), AdditionalCostsService::validationMessagesFor('plumbing_lines', 'plumbing line')));
 
-        $rawInputs = $this->gatherInputsFromRequest($request, $draft);
+        $rawInputs = $this->gatherInputsFromRequest($request, $draft, $existing);
         if (! $draft) {
             $hints = (new BasementQuotationCalculator)->validationHints($rawInputs, false);
             if ($hints !== []) {
@@ -400,9 +403,10 @@ class BasementQuotationController extends Controller
     /**
      * @return array<string, mixed>
      */
-    protected function gatherInputsFromRequest(Request $request, bool $draft = false): array
+    protected function gatherInputsFromRequest(Request $request, bool $draft = false, ?BasementQuotation $existing = null): array
     {
         $defaults = BasementQuotationCalculator::defaultInputs();
+        $storedInputs = is_array($existing?->inputs) ? $existing->inputs : null;
         $floats = [
             'area_sqft', 'ceiling_height_ft',
             'partition_lf', 'bulkhead_lf',
@@ -445,6 +449,14 @@ class BasementQuotationController extends Controller
 
         $out = $defaults;
         foreach ($floats as $key) {
+            if ($key === 'owner_hourly_rate') {
+                $out[$key] = round(\App\Support\QuotationSharedLabourRates::resolveOwnerHourlyFromRequest(
+                    $request,
+                    $storedInputs,
+                    $existing === null
+                ), 4);
+                continue;
+            }
             $raw = $request->input($key, $defaults[$key]);
             if (is_string($raw)) {
                 $raw = str_replace([',', '$', ' '], '', $raw);

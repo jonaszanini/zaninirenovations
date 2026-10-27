@@ -19,6 +19,9 @@
           $inputs[$k] = $v;
       }
   }
+  if (! $isEdit) {
+      $inputs['owner_hourly_rate'] = \App\Support\QuotationSharedLabourRates::ownerHourlyForNewQuotation();
+  }
   if (! $isEdit && ! empty($roomAreaImport['inputs']) && is_array($roomAreaImport['inputs'])) {
       $inputs = array_merge($inputs, $roomAreaImport['inputs']);
   }
@@ -90,7 +93,7 @@
     @if ($linkProject)
       <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
     @endif
-    <input type="hidden" name="owner_hourly_rate" value="{{ old('owner_hourly_rate', $inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate) }}">
+    <input type="hidden" name="owner_hourly_rate" value="{{ old('owner_hourly_rate', $inputs['owner_hourly_rate'] ?? \App\Support\QuotationSharedLabourRates::ownerHourlyForNewQuotation()) }}">
     <input type="hidden" name="helper_hourly_rate" value="{{ old('helper_hourly_rate', $inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate) }}">
     <input type="hidden" name="include_helper" value="{{ old('include_helper', $inputs['include_helper'] ?? false) ? '1' : '0' }}">
 

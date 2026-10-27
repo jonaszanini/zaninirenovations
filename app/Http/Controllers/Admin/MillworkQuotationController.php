@@ -21,6 +21,7 @@ use App\Services\Millwork\MillworkDimensionParser;
 use App\Services\Millwork\MillworkPartBuilder;
 use App\Services\MillworkQuotationCalculator;
 use App\Services\QuotationPaymentSchedule;
+use App\Services\SharedWorkCatalog;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
@@ -401,7 +402,9 @@ class MillworkQuotationController extends Controller
         }
 
         $previewInputs = MillworkQuotationCalculator::defaultInputs();
-        $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
+        if (! $quotation) {
+            $previewInputs['owner_hourly_rate'] = SharedWorkCatalog::ownerHourlyRate();
+        }
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         if (! $quotation && $roomAreaImport) {
             $previewInputs = array_merge($previewInputs, $roomAreaImport['inputs']);
@@ -513,7 +516,12 @@ class MillworkQuotationController extends Controller
     {
         $defaults = MillworkQuotationCalculator::defaultInputs();
         $out = $defaults;
-        $out['owner_hourly_rate'] = round(max(0, (float) $request->input('owner_hourly_rate', $defaults['owner_hourly_rate'])), 4);
+        $storedInputs = is_array($existing?->inputs) ? $existing->inputs : null;
+        $out['owner_hourly_rate'] = round(\App\Support\QuotationSharedLabourRates::resolveOwnerHourlyFromRequest(
+            $request,
+            $storedInputs,
+            $existing === null
+        ), 4);
         $out['helper_hourly_rate'] = round(max(0, (float) $request->input('helper_hourly_rate', $defaults['helper_hourly_rate'])), 4);
         $out['include_install'] = $request->boolean('include_install');
         $out['include_helper'] = $request->boolean('include_helper');

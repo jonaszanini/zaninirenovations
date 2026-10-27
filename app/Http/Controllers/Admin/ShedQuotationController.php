@@ -17,6 +17,7 @@ use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
+use App\Services\SharedWorkCatalog;
 use App\Services\ShedQuotationCalculator;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
@@ -122,7 +123,7 @@ class ShedQuotationController extends Controller
 
     public function preview(Request $request, ?ShedQuotation $shed_quotation = null)
     {
-        $raw = $this->gatherInputsFromRequest($request);
+        $raw = $this->gatherInputsFromRequest($request, $shed_quotation);
         $calc = (new ShedQuotationCalculator)->calculate($raw);
 
         return response()->json($calc);
@@ -279,7 +280,9 @@ class ShedQuotationController extends Controller
         }
 
         $previewInputs = ShedQuotationCalculator::defaultInputs();
-        $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
+        if (! $quotation) {
+            $previewInputs['owner_hourly_rate'] = SharedWorkCatalog::ownerHourlyRate();
+        }
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         if ($quotation && is_array($quotation->inputs)) {
             foreach ($quotation->inputs as $key => $value) {
@@ -323,7 +326,7 @@ class ShedQuotationController extends Controller
             'client_name.required' => 'Client name is required to save a published quotation.',
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages()));
 
-        $rawInputs = $this->gatherInputsFromRequest($request);
+        $rawInputs = $this->gatherInputsFromRequest($request, $existing);
         if (! $draft) {
             $hints = (new ShedQuotationCalculator)->validationHints($rawInputs, false);
             if ($hints !== []) {
@@ -360,9 +363,10 @@ class ShedQuotationController extends Controller
     /**
      * @return array<string, mixed>
      */
-    protected function gatherInputsFromRequest(Request $request): array
+    protected function gatherInputsFromRequest(Request $request, ?ShedQuotation $existing = null): array
     {
         $defaults = ShedQuotationCalculator::defaultInputs();
+        $storedInputs = is_array($existing?->inputs) ? $existing->inputs : null;
         $floats = [
             'length_ft', 'width_ft', 'wall_height_ft', 'overhang_in',
             'pad_thickness_in', 'gravel_depth_in',
@@ -386,6 +390,14 @@ class ShedQuotationController extends Controller
 
         $out = $defaults;
         foreach ($floats as $key) {
+            if ($key === 'owner_hourly_rate') {
+                $out[$key] = round(\App\Support\QuotationSharedLabourRates::resolveOwnerHourlyFromRequest(
+                    $request,
+                    $storedInputs,
+                    $existing === null
+                ), 4);
+                continue;
+            }
             $out[$key] = round(max(0, (float) $request->input($key, $defaults[$key])), 4);
         }
         foreach ($optionalInt as $key) {

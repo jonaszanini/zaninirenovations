@@ -69,7 +69,7 @@ class MillworkQuotationCalculator
             'trim_id' => '',
             'include_install' => true,
             'client_provides_all' => false,
-            'owner_hourly_rate' => 85,
+            'owner_hourly_rate' => \App\Support\QuotationSharedLabourRates::LEGACY_OWNER_HOURLY,
             'helper_hourly_rate' => 45,
             'include_helper' => false,
             'include_building' => false,

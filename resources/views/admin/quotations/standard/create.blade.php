@@ -2,8 +2,10 @@
 
 @php
   use App\Models\ClientProjectQuotation;
+  use App\Support\QuotationSharedLabourRates;
 
   $isEdit = filled($quotation);
+  $defaultLabourHourly = QuotationSharedLabourRates::ownerHourlyFormattedForNewQuotation();
 
   // Project-context mode: this editor was opened from a project's
   // "Edit quotation" entry point (?return=project). Save stays on this
@@ -26,7 +28,7 @@
       'materials' => [$emptyMaterialRow],
       'labour_mode' => 'hours',
       'labour_quantity' => '',
-      'labour_hourly_rate' => '65.00',
+      'labour_hourly_rate' => $defaultLabourHourly,
       'labour_use_fixed' => false,
       'labour_fixed_amount' => '',
       'labour_fixed_hst_included' => false,
@@ -71,14 +73,12 @@
 
   $defaultDocType = $isEdit
       ? (($quotation->document_type ?? null) ?: ClientProjectQuotation::TYPE_QUOTATION)
-      : ClientProjectQuotation::TYPE_QUOTATION;
+      : null;
 
-  $pdfDetailMode = old(
-      'pdf_detail_mode',
-      $isEdit
-          ? ($quotation->pdf_detail_mode ?? \App\Models\StandardQuotation::PDF_DETAIL_COMBINED)
-          : \App\Models\StandardQuotation::PDF_DETAIL_COMBINED
-  );
+  $pdfDetailMode = old('pdf_detail_mode');
+  if ($pdfDetailMode === null && $isEdit) {
+      $pdfDetailMode = $quotation->pdf_detail_mode ?? \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY;
+  }
 
   $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);
 @endphp
@@ -243,8 +243,13 @@
           </div>
         </section>
 
-        <section class="sq-field-box">
+        <section class="sq-field-box" id="sq-pdf-document-section">
           <h4 class="sq-field-box-title">PDF &amp; document</h4>
+          @if (! $isEdit)
+            <div class="admin-flash admin-flash--warning sq-pdf-setup-banner" id="sq-pdf-setup-banner" role="status">
+              Choose <strong>document type</strong>, <strong>client PDF line items</strong>, and at least one <strong>includes</strong> option (material or labour) before you save or generate a client PDF.
+            </div>
+          @endif
           <div class="sq-intro-pdf-options">
             <div class="sq-intro-option-block">
               <h5 class="sq-intro-option-title">
@@ -265,7 +270,7 @@
                   <span>Estimate</span>
                 </label>
               </div>
-              @error('document_type') <p class="admin-form-error">{{ $message }}</p> @enderror
+              <p class="admin-form-error sq-pdf-field-error" id="sq-error-document_type" @if (! $errors->has('document_type')) hidden @endif>{{ $errors->first('document_type') }}</p>
             </div>
 
             <div class="sq-intro-option-block" id="sq-pdf-detail-block">
@@ -279,21 +284,21 @@
               <div class="sq-intro-choice-row sq-intro-choice-row--pdf-detail" id="sq-pdf-detail-choices">
                 <label class="cp-checkbox-row">
                   <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_COMBINED }}"
-                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_COMBINED)>
+                    @checked($pdfDetailMode !== null && $pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_COMBINED)>
                   <span>Combined</span>
                 </label>
                 <label class="cp-checkbox-row">
                   <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY }}"
-                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
+                    @checked($pdfDetailMode !== null && $pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_SUMMARY)>
                   <span>Summary</span>
                 </label>
                 <label class="cp-checkbox-row">
                   <input type="radio" name="pdf_detail_mode" value="{{ \App\Models\StandardQuotation::PDF_DETAIL_DETAILED }}"
-                    @checked($pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
+                    @checked($pdfDetailMode !== null && $pdfDetailMode === \App\Models\StandardQuotation::PDF_DETAIL_DETAILED)>
                   <span>Detailed</span>
                 </label>
               </div>
-              @error('pdf_detail_mode') <p class="admin-form-error">{{ $message }}</p> @enderror
+              <p class="admin-form-error sq-pdf-field-error" id="sq-error-pdf_detail_mode" @if (! $errors->has('pdf_detail_mode')) hidden @endif>{{ $errors->first('pdf_detail_mode') }}</p>
             </div>
 
             <div class="sq-intro-option-block">
@@ -305,8 +310,8 @@
                 ])
               </h5>
               @php
-                $matDef = $isEdit ? (($quotation->includes_material ?? true) ? '1' : '0') : '1';
-                $labDef = $isEdit ? (($quotation->includes_labour ?? true) ? '1' : '0') : '1';
+                $matDef = $isEdit ? (($quotation->includes_material ?? true) ? '1' : '0') : '0';
+                $labDef = $isEdit ? (($quotation->includes_labour ?? true) ? '1' : '0') : '0';
               @endphp
               <div class="sq-intro-choice-row">
                 <label class="admin-checkbox cp-checkbox-row">
@@ -322,7 +327,7 @@
                   <span class="admin-checkbox__text">Labour</span>
                 </label>
               </div>
-              @error('includes_material') <p class="admin-form-error">{{ $message }}</p> @enderror
+              <p class="admin-form-error sq-pdf-field-error" id="sq-error-includes_pdf" @if (! $errors->has('includes_material') && ! $errors->has('includes_labour')) hidden @endif>{{ $errors->first('includes_material') ?: $errors->first('includes_labour') }}</p>
             </div>
           </div>
         </section>
@@ -529,7 +534,7 @@
         ]],
         'labour_mode' => 'hours',
         'labour_quantity' => '',
-        'labour_hourly_rate' => '65.00',
+        'labour_hourly_rate' => $defaultLabourHourly,
         'labour_use_fixed' => false,
         'labour_fixed_amount' => '',
         'labour_fixed_hst_included' => false,

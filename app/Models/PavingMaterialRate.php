@@ -47,7 +47,7 @@ class PavingMaterialRate extends Model
 
         return [
             'helper_hourly_rate' => (float) ($rows['helper_hourly_rate'] ?? 21),
-            'owner_hourly_rate' => (float) ($rows['owner_hourly_rate'] ?? 65),
+            'owner_hourly_rate' => (float) ($rows['owner_hourly_rate'] ?? \App\Support\QuotationSharedLabourRates::LEGACY_OWNER_HOURLY),
         ];
     }
 

@@ -17,6 +17,7 @@ use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
 use App\Services\QuotationPaymentSchedule;
+use App\Services\SharedWorkCatalog;
 use App\Services\TrimmingQuotationCalculator;
 use App\Support\QuotationAfterSaveRedirect;
 use App\Support\QuotationDraftFlash;
@@ -122,7 +123,7 @@ class TrimmingQuotationController extends Controller
 
     public function preview(Request $request, ?TrimmingQuotation $trimming_quotation = null)
     {
-        $raw = $this->gatherInputsFromRequest($request);
+        $raw = $this->gatherInputsFromRequest($request, $trimming_quotation);
         $calc = (new TrimmingQuotationCalculator)->calculate($raw);
 
         return response()->json($calc);
@@ -266,7 +267,9 @@ class TrimmingQuotationController extends Controller
             ->get(['id', 'name', 'client_name', 'status']);
 
         $previewInputs = TrimmingQuotationCalculator::defaultInputs();
-        $previewInputs['owner_hourly_rate'] = (float) $settings->owner_hourly_rate;
+        if (! $quotation) {
+            $previewInputs['owner_hourly_rate'] = SharedWorkCatalog::ownerHourlyRate();
+        }
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         $roomAreaImport = app(\App\Services\RoomAreaQuotePrefill::class)->forRequest($request, 'trimming');
         $linkProject = $this->mergeRoomAreaLinkProject(
@@ -324,7 +327,7 @@ class TrimmingQuotationController extends Controller
             'client_name.required' => 'Client name is required to save a published quotation.',
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), QuotationBuildingLabor::validationMessages()));
 
-        $rawInputs = $this->gatherInputsFromRequest($request);
+        $rawInputs = $this->gatherInputsFromRequest($request, $existing);
         if (! $draft) {
             $hints = (new TrimmingQuotationCalculator)->validationHints($rawInputs, false);
             if ($hints !== []) {
@@ -361,9 +364,10 @@ class TrimmingQuotationController extends Controller
     /**
      * @return array<string, mixed>
      */
-    protected function gatherInputsFromRequest(Request $request): array
+    protected function gatherInputsFromRequest(Request $request, ?TrimmingQuotation $existing = null): array
     {
         $defaults = TrimmingQuotationCalculator::defaultInputs();
+        $storedInputs = is_array($existing?->inputs) ? $existing->inputs : null;
         $floats = [
             'floor_lf', 'crown_lf', 'cove_lf', 'built_up_crown_lf',
             'chair_rail_lf', 'picture_rail_lf', 'box_moulding_lf',
@@ -389,6 +393,14 @@ class TrimmingQuotationController extends Controller
 
         $out = $defaults;
         foreach ($floats as $key) {
+            if ($key === 'owner_hourly_rate') {
+                $out[$key] = round(\App\Support\QuotationSharedLabourRates::resolveOwnerHourlyFromRequest(
+                    $request,
+                    $storedInputs,
+                    $existing === null
+                ), 4);
+                continue;
+            }
             $out[$key] = round(max(0, (float) $request->input($key, $defaults[$key])), 4);
         }
         foreach ($optionalQty as $key) {
