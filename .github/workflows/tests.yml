@@ -275,6 +275,7 @@ jobs:
             tests/Feature/Admin/BlogPostsIndexLayoutTest.php
             tests/Feature/Admin/AdminHotkeySaveMarkerTest.php
             tests/Feature/Admin/AdminOnceSubmitReplayTest.php
+            tests/Feature/Admin/AdminCalendarPersonalEventTimeTest.php
             tests/Feature/Admin/AdminHotkeySaveMarkupTest.php
             tests/Unit/Services/RoomAreaFinishMathTest.php
             tests/Feature/Admin/RoomAreaBatch2PageTest.php

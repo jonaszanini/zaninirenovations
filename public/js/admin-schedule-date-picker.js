@@ -29,7 +29,8 @@
   }
 
   function parseIso(iso) {
-    var parts = String(iso || '').split('-');
+    var datePart = String(iso || '').slice(0, 10);
+    var parts = datePart.split('-');
     return new Date(+parts[0], +parts[1] - 1, +parts[2]);
   }
 

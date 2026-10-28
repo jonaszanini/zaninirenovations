@@ -38,7 +38,7 @@ class AdminCalendarEvent extends Model
     }
 
     /**
-     * Display label such as {@code 9:00 AM–11:00 AM}, or null when no start time.
+     * Display label such as "9:00 AM–11:00 AM", or null when no start time.
      */
     public function timeRangeDisplayLabel(): ?string
     {
@@ -54,16 +54,6 @@ class AdminCalendarEvent extends Model
         return $start;
     }
 
-    public function calendarTitle(): string
-    {
-        $label = $this->timeRangeDisplayLabel();
-        if ($label === null) {
-            return $this->title;
-        }
-
-        return $this->title.' ('.$label.')';
-    }
-
     /** Payload for FullCalendar (all-day or timed, inclusive end stored in DB for all-day). */
     public function toFullCalendarEvent(): array
     {
@@ -72,7 +62,7 @@ class AdminCalendarEvent extends Model
         if (! filled($this->start_time)) {
             return [
                 'id' => 'personal-'.$this->id,
-                'title' => $this->calendarTitle(),
+                'title' => $this->title,
                 'start' => $this->start_date->toDateString(),
                 'end' => Carbon::parse($this->end_date)->addDay()->toDateString(),
                 'allDay' => true,
@@ -92,17 +82,11 @@ class AdminCalendarEvent extends Model
         }
 
         $startDateTime = self::combineDateAndTime($this->start_date, $this->start_time);
-        if (filled($this->end_time)) {
-            $endDateTime = self::combineDateAndTime($this->end_date, $this->end_time);
-        } else {
-            $endDateTime = (clone $startDateTime)->addHour();
-        }
 
-        return [
+        $payload = [
             'id' => 'personal-'.$this->id,
-            'title' => $this->calendarTitle(),
+            'title' => $this->title,
             'start' => $startDateTime->format('Y-m-d\TH:i:s'),
-            'end' => $endDateTime->format('Y-m-d\TH:i:s'),
             'allDay' => false,
             'backgroundColor' => self::CALENDAR_COLOR,
             'borderColor' => self::CALENDAR_COLOR,
@@ -117,6 +101,13 @@ class AdminCalendarEvent extends Model
                 'timeLabel' => $timeLabel,
             ],
         ];
+
+        if (filled($this->end_time)) {
+            $payload['end'] = self::combineDateAndTime($this->end_date, $this->end_time)
+                ->format('Y-m-d\TH:i:s');
+        }
+
+        return $payload;
     }
 
     private static function timeColumnForInput(?string $time): ?string

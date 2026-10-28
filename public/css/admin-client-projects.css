@@ -2105,7 +2105,14 @@ a:hover .cp-expense-receipt-pdf {
   min-width: 0;
 }
 .cp-personal-event-time-clear {
-  flex-shrink: 0;
+  flex: 0 0 var(--admin-control-height, 44px);
+  width: var(--admin-control-height, 44px);
+  min-width: var(--admin-control-height, 44px);
+  padding: 0;
+}
+.cp-personal-event-time-notice {
+  margin-top: 0;
+  margin-bottom: 0;
 }
 @media (max-width: 480px) {
   .cp-personal-event-dates {
@@ -2113,10 +2120,6 @@ a:hover .cp-expense-receipt-pdf {
   }
   .cp-personal-event-times {
     gap: 8px;
-  }
-  .cp-personal-event-time-clear {
-    padding-left: 8px;
-    padding-right: 8px;
   }
 }
 

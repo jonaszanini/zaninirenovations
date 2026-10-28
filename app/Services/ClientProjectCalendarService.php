@@ -35,15 +35,16 @@ class ClientProjectCalendarService
 
         $events = $this->projectEvents($projects, includeUrl: false);
 
-        // Personal / holiday events block the schedule too, so surface them in
-        // the date picker (and its conflict warning) the same as project jobs.
         foreach (AdminCalendarEvent::query()->whereNotNull('start_date')->whereNotNull('end_date')->get() as $event) {
             $payload = $event->toFullCalendarEvent();
             $payload['extendedProps']['status'] = 'Personal event';
             $events[] = $payload;
         }
 
-        return $events;
+        return array_map(
+            fn (array $event) => $this->eventForSchedulePicker($event),
+            $events
+        );
     }
 
     /**
@@ -148,5 +149,49 @@ class ClientProjectCalendarService
         }
 
         return $events;
+    }
+
+    /**
+     * Schedule picker overlap logic expects YYYY-MM-DD start/end (all-day blocks).
+     *
+     * @param  array<string, mixed>  $event
+     * @return array<string, mixed>
+     */
+    private function eventForSchedulePicker(array $event): array
+    {
+        $start = $this->extractDatePart($event['start'] ?? null);
+        if ($start === null) {
+            return $event;
+        }
+
+        $inclusiveEnd = $start;
+        if (! empty($event['allDay']) && ! empty($event['end'])) {
+            $exclusiveEnd = $this->extractDatePart($event['end']);
+            if ($exclusiveEnd !== null) {
+                $inclusiveEnd = Carbon::parse($exclusiveEnd)->subDay()->toDateString();
+                if ($inclusiveEnd < $start) {
+                    $inclusiveEnd = $start;
+                }
+            }
+        }
+
+        return array_merge($event, [
+            'start' => $start,
+            'end' => Carbon::parse($inclusiveEnd)->addDay()->toDateString(),
+            'allDay' => true,
+        ]);
+    }
+
+    private function extractDatePart(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $value, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 }

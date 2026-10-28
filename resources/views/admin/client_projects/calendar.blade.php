@@ -73,7 +73,9 @@
               ])
               <div class="cp-personal-event-time-input-row">
                 <input type="time" id="cp-personal-event-start-time" name="start_time" class="admin-input" step="900">
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm cp-personal-event-time-clear" data-clear-personal-time="start" aria-label="Clear start time">Clear</button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm cp-personal-event-time-clear" data-clear-personal-time="start" aria-label="Clear start time">
+                  <i class="fa fa-times" aria-hidden="true"></i>
+                </button>
               </div>
             </div>
             <div class="cp-personal-event-time-field">
@@ -84,10 +86,13 @@
               ])
               <div class="cp-personal-event-time-input-row">
                 <input type="time" id="cp-personal-event-end-time" name="end_time" class="admin-input" step="900">
-                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm cp-personal-event-time-clear" data-clear-personal-time="end" aria-label="Clear end time">Clear</button>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm cp-personal-event-time-clear" data-clear-personal-time="end" aria-label="Clear end time">
+                  <i class="fa fa-times" aria-hidden="true"></i>
+                </button>
               </div>
             </div>
           </div>
+          <p id="cp-personal-event-time-notice" class="admin-form-help cp-personal-event-time-notice admin-flash--js-hidden" role="status"></p>
           <div class="admin-form-group">
             <label for="cp-personal-event-description">Description</label>
             <textarea id="cp-personal-event-description" name="description" rows="4" maxlength="5000" class="admin-input"></textarea>
@@ -129,6 +134,7 @@
       var endTimeInput = document.getElementById('cp-personal-event-end-time');
       var descInput = document.getElementById('cp-personal-event-description');
       var errorEl = document.getElementById('cp-personal-event-error');
+      var timeNoticeEl = document.getElementById('cp-personal-event-time-notice');
       var deleteBtn = document.getElementById('cp-personal-event-delete');
       var modalTitle = document.getElementById('cp-personal-event-heading');
       var editingId = null;
@@ -151,6 +157,11 @@
         errorEl.textContent = msg || 'Something went wrong.';
         errorEl.style.display = msg ? 'block' : 'none';
       }
+      function showTimeNotice(msg) {
+        if (!timeNoticeEl) return;
+        timeNoticeEl.textContent = msg || '';
+        timeNoticeEl.style.display = msg ? 'block' : 'none';
+      }
       function openModal() {
         modal.hidden = false;
         document.body.classList.add('cp-modal-open');
@@ -162,6 +173,7 @@
         editingId = null;
         editingFcEvent = null;
         showError('');
+        showTimeNotice('');
       }
       function clearPersonalTime(which) {
         if (which === 'start') {
@@ -181,6 +193,7 @@
         endInput.value = endYmd || startYmd || '';
         clearPersonalTime('start');
         showError('');
+        showTimeNotice('');
         openModal();
       }
       function openEdit(fcEvent) {
@@ -201,6 +214,7 @@
         endTimeInput.value = props.endTime || '';
         descInput.value = props.description || '';
         showError('');
+        showTimeNotice('');
         openModal();
       }
 
@@ -228,9 +242,18 @@
 
       startTimeInput.addEventListener('change', function () {
         if (!startTimeInput.value) {
-          endTimeInput.value = '';
-        } else if (endTimeInput.value && endTimeInput.value <= startTimeInput.value) {
-          endTimeInput.value = '';
+          if (endTimeInput.value) {
+            endTimeInput.value = '';
+            showTimeNotice('End time was cleared because start time was removed.');
+          } else {
+            showTimeNotice('');
+          }
+        } else {
+          showTimeNotice('');
+          if (endTimeInput.value && endTimeInput.value <= startTimeInput.value) {
+            endTimeInput.value = '';
+            showTimeNotice('End time was cleared because it was not after the new start time.');
+          }
         }
       });
 
