@@ -2083,9 +2083,58 @@ a:hover .cp-expense-receipt-pdf {
 .cp-personal-event-footer {
   justify-content: flex-end;
 }
+.cp-personal-event-times {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.cp-personal-event-times .cp-personal-event-time-field {
+  min-width: 0;
+}
+.cp-personal-event-times .admin-label-with-tip {
+  white-space: nowrap;
+}
+.cp-personal-event-time-input-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+.cp-personal-event-time-input-row .admin-input {
+  width: 100%;
+  min-width: 0;
+  flex: none;
+}
+.cp-personal-event-time-clear {
+  align-self: flex-end;
+  flex: 0 0 var(--admin-control-height, 44px);
+  width: var(--admin-control-height, 44px);
+  min-width: var(--admin-control-height, 44px);
+  padding: 0;
+}
+.cp-personal-event-time-notice {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+@media (min-width: 520px) {
+  .cp-personal-event-time-input-row {
+    flex-direction: row;
+    align-items: center;
+  }
+  .cp-personal-event-time-input-row .admin-input {
+    flex: 1 1 auto;
+  }
+  .cp-personal-event-time-clear {
+    align-self: center;
+  }
+}
 @media (max-width: 480px) {
   .cp-personal-event-dates {
     grid-template-columns: 1fr;
+  }
+  .cp-personal-event-times {
+    gap: 8px;
   }
 }
 
