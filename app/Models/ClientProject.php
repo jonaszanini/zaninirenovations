@@ -1218,7 +1218,13 @@ class ClientProject extends Model
 
         $time = trim($time);
         if (preg_match('/^(\d{1,2}):(\d{2})(?::\d{2})?$/', $time, $m)) {
-            return str_pad($m[1], 2, '0', STR_PAD_LEFT).':'.$m[2];
+            $hour = (int) $m[1];
+            $minute = (int) $m[2];
+            if ($hour < 0 || $hour > 23 || $minute < 0 || $minute > 59) {
+                return null;
+            }
+
+            return str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':'.$m[2];
         }
 
         return null;

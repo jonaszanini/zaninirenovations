@@ -100,6 +100,37 @@ class AdminCalendarPersonalEventTimeTest extends TestCase
         $this->assertSame($before, AdminCalendarEvent::query()->count());
     }
 
+    public function test_store_rejects_out_of_range_time_values_with_422(): void
+    {
+        $this->actingAsAdmin();
+
+        $before = AdminCalendarEvent::query()->count();
+        $payload = [
+            'title' => 'Bad range',
+            'start_date' => '2026-11-03',
+            'end_date' => '2026-11-03',
+        ];
+
+        foreach (['25:00', '24:00', '12:99'] as $badTime) {
+            $response = $this->postJson(route('admin.calendar.personal-events.store'), array_merge($payload, [
+                'start_time' => $badTime,
+            ]));
+            $response->assertUnprocessable();
+            $response->assertJsonValidationErrors(['start_time']);
+        }
+
+        $response = $this->postJson(route('admin.calendar.personal-events.store'), array_merge($payload, [
+            'start_time' => '09:00',
+            'end_time' => '12:99',
+        ]));
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['end_time']);
+
+        $this->assertSame($before, AdminCalendarEvent::query()->count());
+        $this->assertNull(\App\Models\ClientProject::normalizeTimeToHi('12:99'));
+        $this->assertNull(\App\Models\ClientProject::normalizeTimeToHi('25:00'));
+    }
+
     public function test_store_rejects_array_start_time_with_422(): void
     {
         $this->actingAsAdmin();

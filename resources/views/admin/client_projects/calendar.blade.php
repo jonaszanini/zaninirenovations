@@ -160,7 +160,11 @@
       function showTimeNotice(msg) {
         if (!timeNoticeEl) return;
         timeNoticeEl.textContent = msg || '';
-        timeNoticeEl.style.display = msg ? 'block' : 'none';
+        if (msg) {
+          timeNoticeEl.classList.remove('admin-flash--js-hidden');
+        } else {
+          timeNoticeEl.classList.add('admin-flash--js-hidden');
+        }
       }
       function openModal() {
         modal.hidden = false;
@@ -177,10 +181,17 @@
       }
       function clearPersonalTime(which) {
         if (which === 'start') {
+          var hadEnd = !!endTimeInput.value;
           startTimeInput.value = '';
           endTimeInput.value = '';
+          if (hadEnd) {
+            showTimeNotice('End time was cleared because start time was removed.');
+          } else {
+            showTimeNotice('');
+          }
         } else if (which === 'end') {
           endTimeInput.value = '';
+          showTimeNotice('');
         }
       }
       function openCreate(startYmd, endYmd) {
@@ -372,6 +383,7 @@
         headerToolbar: calendarToolbar,
         firstDay: 0,
         height: 'auto',
+        defaultTimedEventDuration: '00:01:00',
         events: projectEvents,
         eventDisplay: 'block',
         selectable: !touchLikeCalendar,
