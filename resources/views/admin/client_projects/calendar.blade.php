@@ -64,6 +64,30 @@
               <input type="date" id="cp-personal-event-end" name="end_date" required class="admin-input">
             </div>
           </div>
+          <div class="admin-form-group cp-personal-event-times">
+            <div class="cp-personal-event-time-field">
+              @include('admin.partials.tipped_label', [
+                'for' => 'cp-personal-event-start-time',
+                'label' => 'Start time',
+                'tipText' => 'Optional. Leave both times empty for an all-day event. End time requires a start time.',
+              ])
+              <div class="cp-personal-event-time-input-row">
+                <input type="time" id="cp-personal-event-start-time" name="start_time" class="admin-input" step="900">
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm cp-personal-event-time-clear" data-clear-personal-time="start" aria-label="Clear start time">Clear</button>
+              </div>
+            </div>
+            <div class="cp-personal-event-time-field">
+              @include('admin.partials.tipped_label', [
+                'for' => 'cp-personal-event-end-time',
+                'label' => 'End time',
+                'tipText' => 'Optional. Must be after the start time on the same day.',
+              ])
+              <div class="cp-personal-event-time-input-row">
+                <input type="time" id="cp-personal-event-end-time" name="end_time" class="admin-input" step="900">
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm cp-personal-event-time-clear" data-clear-personal-time="end" aria-label="Clear end time">Clear</button>
+              </div>
+            </div>
+          </div>
           <div class="admin-form-group">
             <label for="cp-personal-event-description">Description</label>
             <textarea id="cp-personal-event-description" name="description" rows="4" maxlength="5000" class="admin-input"></textarea>
@@ -101,6 +125,8 @@
       var titleInput = document.getElementById('cp-personal-event-title-input');
       var startInput = document.getElementById('cp-personal-event-start');
       var endInput = document.getElementById('cp-personal-event-end');
+      var startTimeInput = document.getElementById('cp-personal-event-start-time');
+      var endTimeInput = document.getElementById('cp-personal-event-end-time');
       var descInput = document.getElementById('cp-personal-event-description');
       var errorEl = document.getElementById('cp-personal-event-error');
       var deleteBtn = document.getElementById('cp-personal-event-delete');
@@ -137,6 +163,14 @@
         editingFcEvent = null;
         showError('');
       }
+      function clearPersonalTime(which) {
+        if (which === 'start') {
+          startTimeInput.value = '';
+          endTimeInput.value = '';
+        } else if (which === 'end') {
+          endTimeInput.value = '';
+        }
+      }
       function openCreate(startYmd, endYmd) {
         editingId = null;
         editingFcEvent = null;
@@ -145,6 +179,7 @@
         form.reset();
         startInput.value = startYmd || '';
         endInput.value = endYmd || startYmd || '';
+        clearPersonalTime('start');
         showError('');
         openModal();
       }
@@ -154,9 +189,16 @@
         editingFcEvent = fcEvent;
         modalTitle.textContent = 'Edit personal event';
         deleteBtn.style.display = editingId ? '' : 'none';
-        titleInput.value = fcEvent.title || '';
+        titleInput.value = props.baseTitle || fcEvent.title || '';
         startInput.value = fcEvent.startStr || (fcEvent.start ? formatYmd(fcEvent.start) : '');
-        endInput.value = fcEvent.end ? inclusiveEndFromFc(fcEvent.end) : startInput.value;
+        if (!fcEvent.allDay && fcEvent.start) {
+          startInput.value = formatYmd(fcEvent.start);
+          endInput.value = formatYmd(fcEvent.start);
+        } else {
+          endInput.value = fcEvent.end ? inclusiveEndFromFc(fcEvent.end) : startInput.value;
+        }
+        startTimeInput.value = props.startTime || '';
+        endTimeInput.value = props.endTime || '';
         descInput.value = props.description || '';
         showError('');
         openModal();
@@ -178,6 +220,20 @@
         }
       });
 
+      form.querySelectorAll('[data-clear-personal-time]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          clearPersonalTime(btn.getAttribute('data-clear-personal-time'));
+        });
+      });
+
+      startTimeInput.addEventListener('change', function () {
+        if (!startTimeInput.value) {
+          endTimeInput.value = '';
+        } else if (endTimeInput.value && endTimeInput.value <= startTimeInput.value) {
+          endTimeInput.value = '';
+        }
+      });
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         showError('');
@@ -187,6 +243,8 @@
           description: descInput.value.trim() || null,
           start_date: startInput.value,
           end_date: endInput.value,
+          start_time: startTimeInput.value || null,
+          end_time: endTimeInput.value || null,
           _submit_once: tokenInput ? tokenInput.value : '',
         };
         if (!payload.title || !payload.start_date || !payload.end_date) {
@@ -195,6 +253,18 @@
         }
         if (payload.end_date < payload.start_date) {
           showError('End date must be on or after the start date.');
+          return;
+        }
+        if (payload.end_time && !payload.start_time) {
+          showError('End time requires a start time.');
+          return;
+        }
+        if (payload.start_time && payload.start_date !== payload.end_date) {
+          showError('Timed events must use the same start and end date.');
+          return;
+        }
+        if (payload.start_time && payload.end_time && payload.end_time <= payload.start_time) {
+          showError('End time must be after the start time.');
           return;
         }
 
@@ -312,6 +382,9 @@
         eventDidMount: function (info) {
           var props = info.event.extendedProps || {};
           var hint = info.event.title;
+          if (props.kind === 'personal' && props.timeLabel) {
+            hint += '\n' + props.timeLabel;
+          }
           if (props.kind === 'personal' && props.description) {
             hint += '\n' + props.description;
           } else if (props.status) {

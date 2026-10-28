@@ -2083,9 +2083,40 @@ a:hover .cp-expense-receipt-pdf {
 .cp-personal-event-footer {
   justify-content: flex-end;
 }
+.cp-personal-event-times {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.cp-personal-event-times .cp-personal-event-time-field {
+  min-width: 0;
+}
+.cp-personal-event-times .admin-label-with-tip {
+  white-space: nowrap;
+}
+.cp-personal-event-time-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cp-personal-event-time-input-row .admin-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cp-personal-event-time-clear {
+  flex-shrink: 0;
+}
 @media (max-width: 480px) {
   .cp-personal-event-dates {
     grid-template-columns: 1fr;
+  }
+  .cp-personal-event-times {
+    gap: 8px;
+  }
+  .cp-personal-event-time-clear {
+    padding-left: 8px;
+    padding-right: 8px;
   }
 }
 
