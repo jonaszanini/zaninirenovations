@@ -1146,6 +1146,39 @@ class ClientProjectController extends Controller
             'personalEventStoreUrl' => route('admin.calendar.personal-events.store'),
             'personalEventUpdateUrlTemplate' => route('admin.calendar.personal-events.update', ['admin_calendar_event' => '__ID__']),
             'personalEventDestroyUrlTemplate' => route('admin.calendar.personal-events.destroy', ['admin_calendar_event' => '__ID__']),
+            'calendarMoveUrl' => route('admin.client-projects.calendar.move'),
+        ]);
+    }
+
+    /**
+     * Persist a drag or resize from the project calendar.
+     * Job date changes follow the same admin calendar-email gate as the schedule form.
+     */
+    public function moveCalendarEvent(Request $request, ClientProjectStatusService $statusService): JsonResponse
+    {
+        $data = $request->validate([
+            'kind' => ['required', 'in:job,visit,personal'],
+            'id' => ['required', 'integer', 'min:1'],
+            'start' => ['required', 'string', 'max:40'],
+            'end' => ['nullable', 'string', 'max:40'],
+            'all_day' => ['required', 'boolean'],
+        ]);
+
+        $moved = $this->calendarService->moveEvent(
+            $data['kind'],
+            (int) $data['id'],
+            $data['start'],
+            $data['end'] ?? null,
+            $request->boolean('all_day'),
+        );
+
+        if (($moved['schedule_changed'] ?? false) && $moved['project'] instanceof ClientProject) {
+            $statusService->maybeSendCalendarDatesEmail($moved['project']);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'event' => $moved['event'],
         ]);
     }
 

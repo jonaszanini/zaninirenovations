@@ -317,6 +317,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     // Client Projects management (quote → completion lifecycle).
     Route::get('client-projects/calendar', [\App\Http\Controllers\Admin\ClientProjectController::class, 'calendar'])
         ->name('client-projects.calendar');
+    Route::post('client-projects/calendar/move', [\App\Http\Controllers\Admin\ClientProjectController::class, 'moveCalendarEvent'])
+        ->name('client-projects.calendar.move');
     Route::get('client-projects/calendar/picker-events', [\App\Http\Controllers\Admin\ClientProjectController::class, 'schedulePickerEvents'])
         ->name('client-projects.calendar.picker-events');
     Route::get('client-projects/duplicate-check', [\App\Http\Controllers\Admin\ClientProjectController::class, 'duplicateCheck'])

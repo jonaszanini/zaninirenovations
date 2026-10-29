@@ -2513,10 +2513,13 @@ html.admin-dark .cp-calendar-card .fc .fc-button-group .fc-button.fc-button-acti
   color: #fff;
 }
 html.admin-dark .cp-calendar-card .fc-theme-standard td,
-html.admin-dark .cp-calendar-card .fc-theme-standard th {
+html.admin-dark .cp-calendar-card .fc-theme-standard th,
+html.admin-dark .cp-calendar-card .fc td,
+html.admin-dark .cp-calendar-card .fc th {
   border-color: var(--admin-border);
 }
-html.admin-dark .cp-calendar-card .fc-theme-standard .fc-scrollgrid {
+html.admin-dark .cp-calendar-card .fc-theme-standard .fc-scrollgrid,
+html.admin-dark .cp-calendar-card .fc .fc-scrollgrid {
   border-color: var(--admin-border);
 }
 html.admin-dark .cp-calendar-card .fc .fc-col-header-cell {

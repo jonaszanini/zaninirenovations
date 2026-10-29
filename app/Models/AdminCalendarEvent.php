@@ -69,8 +69,11 @@ class AdminCalendarEvent extends Model
                 'backgroundColor' => self::CALENDAR_COLOR,
                 'borderColor' => self::CALENDAR_COLOR,
                 'textColor' => '#ffffff',
+                'startEditable' => true,
+                'durationEditable' => true,
                 'extendedProps' => [
                     'kind' => 'personal',
+                    'recordId' => $this->id,
                     'description' => $this->description ?? '',
                     'eventId' => $this->id,
                     'baseTitle' => $this->title,
@@ -91,8 +94,11 @@ class AdminCalendarEvent extends Model
             'backgroundColor' => self::CALENDAR_COLOR,
             'borderColor' => self::CALENDAR_COLOR,
             'textColor' => '#ffffff',
+            'startEditable' => true,
+            'durationEditable' => true,
             'extendedProps' => [
                 'kind' => 'personal',
+                'recordId' => $this->id,
                 'description' => $this->description ?? '',
                 'eventId' => $this->id,
                 'baseTitle' => $this->title,

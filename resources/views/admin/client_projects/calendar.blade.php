@@ -6,7 +6,9 @@
 @endsection
 
 @push('head')
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/skeleton.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/themes/classic/theme.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/themes/classic/palette.css">
 @endpush
 
 @section('content')
@@ -22,6 +24,7 @@
   </div>
 
   <div class="cp-calendar-legend">
+    <span class="cp-legend-item">Drag an event to change its date. Drag the edge of a job or personal event to change its length.</span>
     <span class="cp-legend-item cp-calendar-swipe-hint">
       @include('admin.partials.tipped_label', [
         'label' => 'Swipe',
@@ -118,7 +121,8 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/all/global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/themes/classic/global.js"></script>
   <script src="{{ asset('js/admin-project-calendar-swipe.js') }}?v={{ @filemtime(public_path('js/admin-project-calendar-swipe.js')) ?: time() }}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -126,6 +130,7 @@
       if (!el || typeof FullCalendar === 'undefined') return;
 
       var projectEvents = @json($events);
+      var moveUrl = @json($calendarMoveUrl);
       var storeUrl = @json($personalEventStoreUrl);
       var updateUrlTemplate = @json($personalEventUpdateUrlTemplate);
       var destroyUrlTemplate = @json($personalEventDestroyUrlTemplate);
@@ -376,10 +381,49 @@
         });
       });
 
+      function persistMove(info) {
+        var props = info.event.extendedProps || {};
+        if (!props.kind || !props.recordId) {
+          info.revert();
+          return;
+        }
+        fetch(moveUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({
+            kind: props.kind,
+            id: props.recordId,
+            start: info.event.startStr,
+            end: info.event.endStr || null,
+            all_day: !!info.event.allDay,
+          }),
+        })
+          .then(function (res) {
+            return res.json().then(function (data) {
+              if (!res.ok) {
+                var msg = (data.errors && Object.values(data.errors).flat().join(' ')) || data.message || 'Could not save this change.';
+                throw new Error(msg);
+              }
+              return data;
+            });
+          })
+          .catch(function (err) {
+            info.revert();
+            if (window.AdminDialog && window.AdminDialog.alert) {
+              window.AdminDialog.alert(err.message || 'Could not save this change.');
+            }
+          });
+      }
+
       var calendarToolbar = {
         left: 'prev today next',
         center: 'title',
-        right: 'dayGridMonth,timeGridWeek,listMonth',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth',
       };
 
       // Drag-select fights vertical scrolling on phones; taps use dateClick instead.
@@ -389,11 +433,27 @@
       calendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
         headerToolbar: calendarToolbar,
+        timeZone: 'America/Toronto',
+        locale: 'en',
         firstDay: 0,
         height: 'auto',
+        editable: true,
+        eventStartEditable: true,
+        eventDurationEditable: true,
         defaultTimedEventDuration: '00:01:00',
         events: projectEvents,
         eventDisplay: 'block',
+        eventAllow: function (dropInfo, draggedEvent) {
+          var kind = draggedEvent.extendedProps && draggedEvent.extendedProps.kind;
+          if (kind === 'job' && !dropInfo.allDay) return false;
+          if (kind === 'personal' && draggedEvent.extendedProps.startTime) {
+            if (dropInfo.allDay) return false;
+            if (dropInfo.start && dropInfo.end && formatYmd(dropInfo.start) !== formatYmd(dropInfo.end)) return false;
+          }
+          return true;
+        },
+        eventDrop: persistMove,
+        eventResize: persistMove,
         selectable: !touchLikeCalendar,
         selectMirror: !touchLikeCalendar,
         unselectAuto: true,
@@ -430,13 +490,17 @@
         eventDidMount: function (info) {
           var props = info.event.extendedProps || {};
           var hint = info.event.title;
+          if (props.status) {
+            hint += ' — ' + props.status;
+          }
           if (props.kind === 'personal' && props.timeLabel) {
             hint += '\n' + props.timeLabel;
           }
           if (props.kind === 'personal' && props.description) {
             hint += '\n' + props.description;
-          } else if (props.status) {
-            hint += ' — ' + props.status;
+          }
+          if (props.kind === 'job' || props.kind === 'visit' || props.kind === 'personal') {
+            hint += '\nDrag to reschedule.';
           }
           info.el.setAttribute('title', hint);
           if (props.kind === 'personal') {
