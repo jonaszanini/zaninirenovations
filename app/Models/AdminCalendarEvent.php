@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CalendarEventColors;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -60,15 +61,12 @@ class AdminCalendarEvent extends Model
         $timeLabel = $this->timeRangeDisplayLabel();
 
         if (! filled($this->start_time)) {
-            return [
+            return CalendarEventColors::apply([
                 'id' => 'personal-'.$this->id,
                 'title' => $this->title,
                 'start' => $this->start_date->toDateString(),
                 'end' => Carbon::parse($this->end_date)->addDay()->toDateString(),
                 'allDay' => true,
-                'backgroundColor' => self::CALENDAR_COLOR,
-                'borderColor' => self::CALENDAR_COLOR,
-                'textColor' => '#ffffff',
                 'startEditable' => true,
                 'durationEditable' => true,
                 'extendedProps' => [
@@ -81,19 +79,16 @@ class AdminCalendarEvent extends Model
                     'endTime' => null,
                     'timeLabel' => null,
                 ],
-            ];
+            ], self::CALENDAR_COLOR);
         }
 
         $startDateTime = self::combineDateAndTime($this->start_date, $this->start_time);
 
-        $payload = [
+        $payload = CalendarEventColors::apply([
             'id' => 'personal-'.$this->id,
             'title' => $this->title,
             'start' => $startDateTime->format('Y-m-d\TH:i:s'),
             'allDay' => false,
-            'backgroundColor' => self::CALENDAR_COLOR,
-            'borderColor' => self::CALENDAR_COLOR,
-            'textColor' => '#ffffff',
             'startEditable' => true,
             'durationEditable' => true,
             'extendedProps' => [
@@ -106,7 +101,7 @@ class AdminCalendarEvent extends Model
                 'endTime' => $this->endTimeForInput(),
                 'timeLabel' => $timeLabel,
             ],
-        ];
+        ], self::CALENDAR_COLOR);
 
         if (filled($this->end_time)) {
             $payload['end'] = self::combineDateAndTime($this->end_date, $this->end_time)

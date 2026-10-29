@@ -25,9 +25,15 @@ class ClientProjectCalendarUpgradeTest extends TestCase
         $this->assertStringContainsString('fullcalendar@7.1.3/skeleton.css', $html);
         $this->assertStringContainsString('fullcalendar@7.1.3/themes/classic/theme.css', $html);
         $this->assertStringContainsString('fullcalendar@7.1.3/themes/classic/palette.css', $html);
+        $this->assertStringContainsString('admin-project-calendar-fc7.css', $html);
+        $this->assertStringContainsString('admin-project-calendar-popover.js', $html);
         $this->assertStringNotContainsString('fullcalendar@6.1.11', $html);
         $this->assertStringContainsString("timeZone: 'America/Toronto'", $html);
         $this->assertStringContainsString("locale: 'en'", $html);
+        $this->assertStringContainsString('colorScheme:', $html);
+        $this->assertStringContainsString('dayMinHeight: 68', $html);
+        $this->assertStringContainsString("moreLinkClick: 'popover'", $html);
+        $this->assertStringContainsString('cp-calendar-more-link', $html);
         $this->assertStringContainsString('dayGridMonth,timeGridWeek,timeGridDay,listMonth', $html);
         $this->assertStringContainsString('eventDrop: persistMove', $html);
         $this->assertStringContainsString('eventResize: persistMove', $html);
@@ -74,6 +80,9 @@ class ClientProjectCalendarUpgradeTest extends TestCase
         $this->assertSame('2026-11-02', $jobEvent['start']);
         $this->assertSame('2026-11-05', $jobEvent['end']);
         $this->assertSame($job->statusColor(), $jobEvent['backgroundColor']);
+        $this->assertSame($job->statusColor(), $jobEvent['color']);
+        $this->assertSame($jobEvent['contrastColor'], $jobEvent['textColor']);
+        $this->assertContains($jobEvent['contrastColor'], ['#ffffff', '#111827']);
         $this->assertSame(route('admin.client-projects.show', $job), $jobEvent['url']);
         $this->assertTrue($jobEvent['durationEditable']);
         $this->assertSame($job->id, $jobEvent['extendedProps']['recordId']);
@@ -98,6 +107,8 @@ class ClientProjectCalendarUpgradeTest extends TestCase
         $this->assertSame('2026-12-24', $personalEvent['start']);
         $this->assertSame('2026-12-27', $personalEvent['end']);
         $this->assertSame(AdminCalendarEvent::CALENDAR_COLOR, $personalEvent['backgroundColor']);
+        $this->assertSame(AdminCalendarEvent::CALENDAR_COLOR, $personalEvent['color']);
+        $this->assertSame('#ffffff', $personalEvent['contrastColor']);
     }
 
     public function test_rejected_projects_stay_off_the_calendar_and_picker(): void

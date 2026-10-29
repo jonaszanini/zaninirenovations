@@ -1,0 +1,120 @@
+/**
+ * Project calendar — FullCalendar 7 classic theme tokens (no .fc root in FC7).
+ * Variables are scoped to #cp-calendar; colorScheme is synced from admin light/dark.
+ */
+
+.cp-calendar-card #cp-calendar {
+  touch-action: pan-y;
+  font-family: var(--admin-font, inherit);
+
+  --fc-classic-background: var(--admin-surface, #ffffff);
+  --fc-classic-faint: color-mix(in srgb, var(--admin-text, #334155) 4%, transparent);
+  --fc-classic-muted: color-mix(in srgb, var(--admin-text, #334155) 8%, transparent);
+  --fc-classic-strong: color-mix(in srgb, var(--admin-text, #334155) 14%, transparent);
+  --fc-classic-foreground: var(--admin-text, #334155);
+  --fc-classic-muted-foreground: var(--admin-muted, #64748b);
+  /* AA on white (~4.6:1) — replaces default #9ca3af (~2.5:1). */
+  --fc-classic-faint-foreground: #576574;
+  --fc-classic-border: var(--admin-border, #e2e8f0);
+  --fc-classic-strong-border: var(--admin-border, #cbd5e1);
+
+  --fc-classic-today: rgba(2, 71, 104, 0.12);
+  --fc-classic-highlight: rgba(2, 71, 104, 0.12);
+  --fc-classic-now: var(--admin-primary, #024768);
+
+  --fc-classic-button: var(--admin-primary, #024768);
+  --fc-classic-button-border: var(--admin-primary, #024768);
+  --fc-classic-button-strong: var(--admin-primary-hover, #013552);
+  --fc-classic-button-strong-border: var(--admin-primary-hover, #013552);
+  --fc-classic-button-outline: color-mix(in srgb, var(--admin-primary, #024768) 50%, transparent);
+  --fc-classic-button-foreground: #ffffff;
+
+  --fc-classic-primary: var(--admin-primary, #024768);
+  --fc-classic-primary-foreground: #ffffff;
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] {
+  --fc-classic-background: var(--admin-surface, #1e293b);
+  --fc-classic-faint: rgba(255, 255, 255, 0.06);
+  --fc-classic-muted: rgba(255, 255, 255, 0.1);
+  --fc-classic-strong: rgba(255, 255, 255, 0.16);
+  --fc-classic-foreground: var(--admin-text, #e2e8f0);
+  --fc-classic-muted-foreground: var(--admin-muted, #94a3b8);
+  --fc-classic-faint-foreground: #94a3b8;
+  --fc-classic-border: var(--admin-border, #334155);
+  --fc-classic-strong-border: var(--admin-border, #475569);
+
+  --fc-classic-today: rgba(56, 189, 248, 0.14);
+  --fc-classic-highlight: rgba(56, 189, 248, 0.18);
+  --fc-classic-now: #38bdf8;
+
+  --fc-classic-button: var(--admin-primary, #024768);
+  --fc-classic-button-border: var(--admin-primary, #024768);
+  --fc-classic-button-strong: var(--admin-primary-hover, #013552);
+  --fc-classic-button-strong-border: var(--admin-primary-hover, #013552);
+  --fc-classic-button-foreground: #ffffff;
+}
+
+/* Today day number — brand pill (works across FC7 hashed day-top markup). */
+.cp-calendar-card #cp-calendar .cp-calendar-day-today-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75em;
+  min-height: 1.75em;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: var(--admin-primary, #024768);
+  color: #fff;
+  font-weight: 600;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.cp-calendar-card .cp-calendar-more-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  min-width: 24px;
+  padding: 2px 6px;
+  font-weight: 600;
+  color: var(--admin-primary, #024768);
+  border-radius: 6px;
+}
+
+.cp-calendar-card .cp-calendar-more-link:focus-visible {
+  outline: 2px solid var(--admin-primary, #024768);
+  outline-offset: 2px;
+}
+
+.cp-calendar-card .cp-calendar-more-popover {
+  z-index: 30;
+  max-width: min(340px, calc(100vw - 24px));
+  max-height: min(70vh, 420px);
+  overflow: auto;
+  border: 1px solid var(--admin-border, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  background: var(--admin-surface, #fff);
+  color: var(--admin-text, #334155);
+}
+
+html.admin-dark .cp-calendar-card .cp-calendar-more-popover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.cp-calendar-card .cp-calendar-more-popover-header {
+  background: var(--admin-surface-hover, #f8fafc);
+  color: var(--admin-heading, var(--admin-text, #334155));
+  border-bottom: 1px solid var(--admin-border, #e2e8f0);
+}
+
+@media (max-width: 480px) {
+  .cp-calendar-card .cp-calendar-more-link {
+    min-height: 28px;
+    min-width: 28px;
+    padding: 4px 8px;
+  }
+}

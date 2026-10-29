@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/skeleton.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/themes/classic/theme.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/themes/classic/palette.css">
+  <link rel="stylesheet" href="{{ asset('css/admin-project-calendar-fc7.css') }}?v={{ @filemtime(public_path('css/admin-project-calendar-fc7.css')) ?: time() }}">
 @endpush
 
 @section('content')
@@ -24,7 +25,12 @@
   </div>
 
   <div class="cp-calendar-legend">
-    <span class="cp-legend-item">Drag an event to change its date. Drag the edge of a job or personal event to change its length.</span>
+    <span class="cp-legend-item cp-calendar-edit-hint">
+      @include('admin.partials.tipped_label', [
+        'label' => 'Edit',
+        'tipText' => 'Drag an event to change its date. Drag the edge of a job or personal event to change its length.',
+      ])
+    </span>
     <span class="cp-legend-item cp-calendar-swipe-hint">
       @include('admin.partials.tipped_label', [
         'label' => 'Swipe',
@@ -124,6 +130,7 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/all/global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/themes/classic/global.js"></script>
   <script src="{{ asset('js/admin-project-calendar-swipe.js') }}?v={{ @filemtime(public_path('js/admin-project-calendar-swipe.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-project-calendar-popover.js') }}?v={{ @filemtime(public_path('js/admin-project-calendar-popover.js')) ?: time() }}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var el = document.getElementById('cp-calendar');
@@ -153,6 +160,30 @@
       var editingFcEvent = null;
       var calendar = null;
       var calendarSwipeNav = null;
+      var calendarPopover = null;
+      var calendarCard = document.querySelector('.cp-calendar-card');
+
+      function adminCalendarColorScheme() {
+        return document.documentElement.classList.contains('admin-dark') ? 'dark' : 'light';
+      }
+      function syncCalendarColorScheme() {
+        if (!calendar) return;
+        var scheme = adminCalendarColorScheme();
+        calendar.setOption('colorScheme', scheme);
+        el.setAttribute('data-color-scheme', scheme);
+      }
+      function markTodayDayNumber(cellEl, isToday) {
+        if (!cellEl) return;
+        var links = cellEl.querySelectorAll('a');
+        for (var i = 0; i < links.length; i++) {
+          var link = links[i];
+          if (isToday) {
+            link.classList.add('cp-calendar-day-today-pill');
+          } else {
+            link.classList.remove('cp-calendar-day-today-pill');
+          }
+        }
+      }
 
       function pad2(n) { return n < 10 ? '0' + n : '' + n; }
       function formatYmd(d) {
@@ -437,6 +468,13 @@
         locale: 'en',
         firstDay: 0,
         height: 'auto',
+        colorScheme: adminCalendarColorScheme(),
+        dayMinHeight: 68,
+        dayMaxEvents: true,
+        moreLinkClick: 'popover',
+        moreLinkClassNames: ['cp-calendar-more-link'],
+        popoverClass: 'cp-calendar-more-popover',
+        popoverHeaderClass: 'cp-calendar-more-popover-header',
         editable: true,
         eventStartEditable: true,
         eventDurationEditable: true,
@@ -508,8 +546,16 @@
             info.el.style.cursor = 'pointer';
           }
         },
+        dayCellDidMount: function (info) {
+          markTodayDayNumber(info.el, info.isToday);
+        },
       });
       calendar.render();
+      el.setAttribute('data-color-scheme', adminCalendarColorScheme());
+      document.addEventListener('admin-theme-change', syncCalendarColorScheme);
+      if (window.AdminProjectCalendarPopover && calendarCard) {
+        calendarPopover = window.AdminProjectCalendarPopover.attach(calendarCard, el);
+      }
       if (window.AdminProjectCalendarSwipe) {
         calendarSwipeNav = window.AdminProjectCalendarSwipe.attach(el, calendar, {
           touchLike: touchLikeCalendar,

@@ -7,6 +7,7 @@ tests/Feature/Admin/BasementQuotationPagesTest.php
 tests/Feature/Admin/BasementRoomAreaImportTest.php
 tests/Feature/Admin/BlogPostsIndexLayoutTest.php
 tests/Feature/Admin/ClientIndexAddressSearchTest.php
+tests/Feature/Admin/ClientProjectCalendarUpgradeTest.php
 tests/Feature/Admin/ClientProjectFiltersAccordionTest.php
 tests/Feature/Admin/ClientProjectRoomAreaPageTest.php
 tests/Feature/Admin/DashboardActionFirstLayoutTest.php
