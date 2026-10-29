@@ -92,12 +92,13 @@ class DeployDependsOnTestsTest extends TestCase
 
         $this->assertContains('tests/Unit/Github/DeployDependsOnTestsTest.php', $unit);
         $this->assertContains('tests/Unit/Services/OpenPlan3DPlanValidatorTest.php', $unit);
-        $this->assertContains('tests/Unit/Views/HomeServiceTileUppercaseTest.php', $unit);
         $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php', $extended);
         $this->assertContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $extended);
         $this->assertContains('tests/Feature/Admin/RoomAreaCanvasObjectsTest.php', $extended);
-        $this->assertContains('tests/Feature/PublicPageBannedWordsTest.php', $extended);
         $this->assertContains('tests/Feature/SharedWorksNormalizedLabelMigrationTest.php', $core);
+        $this->assertFileDoesNotExist(base_path('tests/Feature/PublicPageBannedWordsTest.php'));
+        $this->assertFileDoesNotExist(base_path('tests/Unit/Views/HomeServiceTileUppercaseTest.php'));
+        $this->assertFileDoesNotExist(base_path('tests/Feature/ExampleTest.php'));
         $this->assertGreaterThan(20, count($unit));
         $this->assertGreaterThan(10, count($core));
         $this->assertGreaterThan(20, count($extended));

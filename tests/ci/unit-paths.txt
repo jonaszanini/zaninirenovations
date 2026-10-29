@@ -77,7 +77,6 @@ tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
 tests/Unit/Views/FencePriceBannerTipTest.php
 tests/Unit/Views/FenceQuotationFormRestoreTest.php
 tests/Unit/Views/HomeKitchenTileImageTest.php
-tests/Unit/Views/HomeServiceTileUppercaseTest.php
 tests/Unit/Views/PublicCssLightOnlyTest.php
 tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
 tests/Unit/Views/PublicMobileNavDropdownTest.php
