@@ -36,6 +36,12 @@ class SafeOutboundHttpTest extends TestCase
         $this->assertTrue(SafeOutboundHttp::isBlockedIp('2001:0000:4136:e378:8000:63bf:3fff:f2ff'));
     }
 
+    public function test_ipv4_compatible_ipv6_literals_are_blocked(): void
+    {
+        $this->assertTrue(SafeOutboundHttp::isBlockedIp('::192.168.1.1'));
+        $this->assertTrue(SafeOutboundHttp::isBlockedIp('::a00:1'));
+    }
+
     public function test_non_standard_ports_are_rejected(): void
     {
         $this->assertFalse(SafeOutboundHttp::isAllowedPublicWebUrl('http://example.com:8080/'));

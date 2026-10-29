@@ -11,6 +11,7 @@ tests/Feature/SharedPricesAddRenameTest.php
 tests/Feature/SharedPricesParallelSaveTest.php
 tests/Feature/DuplicateQuotationTest.php
 tests/Feature/Admin/BasementQuotationMathRoundTripTest.php
+tests/Feature/Admin/SupplierWebsiteImportTest.php
 tests/Feature/Admin/StandardQuotationPurchaseListTest.php
 tests/Feature/Admin/MillworkQuotationRoundTripTest.php
 tests/Feature/Admin/CancelledProjectInvoiceExclusionTest.php

@@ -72,7 +72,7 @@
         @include('admin.partials.tipped_label', [
           'for' => 'ss-import-url',
           'label' => 'Import from website',
-          'tipText' => 'Fetches the homepage and up to four contact or location pages. Fills the form below for review — nothing is saved until you click Save.',
+          'tipText' => 'Fetches the homepage and up to four contact or location pages. Fills the form below for review — nothing is saved until you click Save. Some sites block automated requests; if import fails with a block message, open the URL in a browser and enter details manually.',
         ])
         <input class="admin-input" type="url" id="ss-import-url" maxlength="500"
                placeholder="https://example.com" autocomplete="off"

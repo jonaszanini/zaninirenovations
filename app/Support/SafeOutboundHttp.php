@@ -4,7 +4,6 @@ namespace App\Support;
 
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 
 /**
  * Server-side GET of public HTTP(S) URLs (no private/link-local hosts).
@@ -18,9 +17,19 @@ class SafeOutboundHttp
     /** @var null|callable(string): list<string> */
     private static $hostIpResolver = null;
 
+    /**
+     * @var null|callable(string, array<string, string>, string, int, int, int): PinnedCurlAttemptResult
+     */
+    private static $pinnedCurlTransport = null;
+
     public static function setHostIpResolverForTesting(?callable $resolver): void
     {
         self::$hostIpResolver = $resolver;
+    }
+
+    public static function setPinnedCurlTransportForTesting(?callable $transport): void
+    {
+        self::$pinnedCurlTransport = $transport;
     }
 
     /**
@@ -135,12 +144,17 @@ class SafeOutboundHttp
         $fragment = isset($parts['fragment']) ? '#'.$parts['fragment'] : '';
 
         return [
-            'url' => $scheme.'://'.self::hostForUrl($host).($port === 80 || $port === 443 ? '' : ':'.$port).$path.$query.$fragment,
+            'url' => $scheme.'://'.self::hostForUrl($host).':'.$port.$path.$query.$fragment,
             'host' => $host,
             'scheme' => $scheme,
             'port' => $port,
             'resolve' => $resolve,
         ];
+    }
+
+    private static function urlWithExplicitPort(string $scheme, string $host, int $port, string $pathQueryFragment = '/'): string
+    {
+        return $scheme.'://'.self::hostForUrl($host).':'.$port.$pathQueryFragment;
     }
 
     private static function hostForUrl(string $host): string
@@ -303,25 +317,31 @@ class SafeOutboundHttp
             $lastConnectDetail = null;
 
             foreach ($resolveEntries as $resolveEntry) {
-                try {
-                    $response = Http::withHeaders($headers)
-                        ->connectTimeout($connectTimeout)
-                        ->timeout($requestTimeout)
-                        ->withOptions([
-                            'curl' => [
-                                CURLOPT_RESOLVE => [$resolveEntry],
-                                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                            ],
-                            'allow_redirects' => false,
-                        ])
-                        ->get($validated['url']);
-                } catch (\Throwable $e) {
-                    $lastConnectDetail = self::describeThrowable($e, $resolveEntry);
+                $attempt = self::executePinnedCurlAttempt(
+                    $validated['url'],
+                    $headers,
+                    $resolveEntry,
+                    $requestTimeout,
+                    $connectTimeout,
+                    $maxBytes
+                );
+
+                if (! $attempt->ok) {
+                    if ($attempt->failureCode === 'body_too_large') {
+                        return self::fetchFailed(
+                            'body_too_large',
+                            'The website homepage is too large to import.',
+                            ['url' => $validated['url'], 'resolve' => $resolveEntry]
+                        );
+                    }
+                    $lastConnectDetail = self::describeCurlFailure($attempt, $resolveEntry);
 
                     continue;
                 }
 
-                $status = $response->status();
+                $status = (int) $attempt->status;
+                $response = self::responseFromPinnedAttempt($attempt);
+
                 if (in_array($status, [301, 302, 303, 307, 308], true)) {
                     $location = self::headerValue($response, 'Location');
                     if ($location === '') {
@@ -344,9 +364,9 @@ class SafeOutboundHttp
                     continue 2;
                 }
 
-                $body = (string) $response->body();
+                $body = $attempt->body;
 
-                if (! $response->successful()) {
+                if ($status < 200 || $status >= 300) {
                     $blocked = self::detectAutomatedAccessBlock($status, $response, $body);
                     if ($blocked !== null) {
                         return self::fetchFailed(
@@ -363,14 +383,6 @@ class SafeOutboundHttp
                     );
                 }
 
-                if (strlen($body) > $maxBytes) {
-                    return self::fetchFailed(
-                        'body_too_large',
-                        'The website homepage is too large to import.',
-                        ['url' => $validated['url'], 'bytes' => strlen($body)]
-                    );
-                }
-
                 if ($requireHtml && ! self::responseIsHtml($response) && ! self::bodyLooksLikeHtml($body)) {
                     $type = self::headerValue($response, 'Content-Type');
 
@@ -383,11 +395,7 @@ class SafeOutboundHttp
                     );
                 }
 
-                return new SafeOutboundWebFetchResult(new Response(new Psr7Response(
-                    $response->status(),
-                    $response->headers(),
-                    $body
-                )));
+                return new SafeOutboundWebFetchResult($response);
             }
 
             if ($lastConnectDetail !== null) {
@@ -410,6 +418,190 @@ class SafeOutboundHttp
             'The website redirected too many times.',
             ['url' => $currentUrl]
         );
+    }
+
+    /**
+     * @param  array<string, string>  $headers
+     */
+    private static function executePinnedCurlAttempt(
+        string $url,
+        array $headers,
+        string $resolveEntry,
+        int $timeout,
+        int $connectTimeout,
+        int $maxBytes
+    ): PinnedCurlAttemptResult {
+        if (self::$pinnedCurlTransport !== null) {
+            return (self::$pinnedCurlTransport)($url, $headers, $resolveEntry, $timeout, $connectTimeout, $maxBytes);
+        }
+
+        $statusCode = 0;
+        /** @var array<string, list<string>> $responseHeaders */
+        $responseHeaders = [];
+        $body = '';
+        $bodyTooLarge = false;
+
+        $curlHeaders = [];
+        foreach ($headers as $name => $value) {
+            $curlHeaders[] = $name.': '.$value;
+        }
+
+        $handle = curl_init();
+        if ($handle === false) {
+            return new PinnedCurlAttemptResult(false, failureCode: 'request_failed', curlError: 'curl_init failed');
+        }
+
+        curl_setopt_array($handle, [
+            CURLOPT_URL => $url,
+            CURLOPT_HTTPHEADER => $curlHeaders,
+            CURLOPT_RESOLVE => [$resolveEntry],
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CONNECTTIMEOUT => $connectTimeout,
+            CURLOPT_TIMEOUT => $timeout,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXFILESIZE => $maxBytes,
+            CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$statusCode, &$responseHeaders): int {
+                if (preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $matches)) {
+                    $statusCode = (int) $matches[1];
+                }
+                $trimmed = trim($line);
+                if ($trimmed !== '' && str_contains($trimmed, ':')) {
+                    [$name, $value] = explode(':', $trimmed, 2);
+                    $key = strtolower(trim($name));
+                    $responseHeaders[$key][] = trim($value);
+                    if ($key === 'content-length') {
+                        $declared = (int) trim($value);
+                        if ($declared > 0) {
+                            // Checked again in WRITEFUNCTION; stored for logging only.
+                        }
+                    }
+                }
+
+                return strlen($line);
+            },
+            CURLOPT_WRITEFUNCTION => static function ($ch, string $chunk) use (&$body, $maxBytes, &$bodyTooLarge): int {
+                $len = strlen($chunk);
+                if ($bodyTooLarge) {
+                    return 0;
+                }
+                if ($len === 0) {
+                    return 0;
+                }
+                $declared = (int) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
+                if ($declared > 0 && $declared > $maxBytes) {
+                    $bodyTooLarge = true;
+
+                    return 0;
+                }
+                if (strlen($body) + $len > $maxBytes) {
+                    $bodyTooLarge = true;
+
+                    return 0;
+                }
+                $body .= $chunk;
+
+                return $len;
+            },
+        ]);
+
+        curl_exec($handle);
+        $errno = curl_errno($handle);
+        $error = curl_error($handle);
+        if ($statusCode === 0) {
+            $statusCode = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+        }
+        curl_close($handle);
+
+        if ($bodyTooLarge || $errno === CURLE_WRITE_ERROR || $errno === 23) {
+            return new PinnedCurlAttemptResult(
+                false,
+                status: $statusCode > 0 ? $statusCode : null,
+                headers: $responseHeaders,
+                failureCode: 'body_too_large',
+                curlError: $error !== '' ? $error : 'response exceeded size limit',
+                curlErrno: $errno ?: 23,
+            );
+        }
+
+        if ($errno !== 0) {
+            return new PinnedCurlAttemptResult(
+                false,
+                status: $statusCode > 0 ? $statusCode : null,
+                headers: $responseHeaders,
+                failureCode: self::failureCodeFromCurlErrno($errno, $error),
+                curlError: $error,
+                curlErrno: $errno,
+            );
+        }
+
+        return new PinnedCurlAttemptResult(
+            true,
+            status: $statusCode,
+            headers: $responseHeaders,
+            body: $body,
+        );
+    }
+
+    private static function failureCodeFromCurlErrno(int $errno, string $error): string
+    {
+        $lower = strtolower($error);
+        if ($errno === CURLE_OPERATION_TIMEDOUT || $errno === 28 || str_contains($lower, 'timeout')) {
+            return 'timeout';
+        }
+        if (str_contains($lower, 'ssl') || str_contains($lower, 'certificate')) {
+            return 'ssl_error';
+        }
+        if ($errno === CURLE_COULDNT_CONNECT || $errno === 7 || $errno === CURLE_COULDNT_RESOLVE_HOST || $errno === 6) {
+            return 'connection_failed';
+        }
+
+        return 'request_failed';
+    }
+
+    /**
+     * @param  array<string, list<string>>  $headers
+     */
+    private static function responseFromPinnedAttempt(PinnedCurlAttemptResult $attempt): Response
+    {
+        $flat = [];
+        foreach ($attempt->headers as $name => $values) {
+            $flat[$name] = count($values) === 1 ? $values[0] : $values;
+        }
+
+        return new Response(new Psr7Response(
+            (int) $attempt->status,
+            $flat,
+            $attempt->body
+        ));
+    }
+
+    /**
+     * @return array{code: string, user_message: string, detail: string}
+     */
+    private static function describeCurlFailure(PinnedCurlAttemptResult $attempt, string $resolveEntry): array
+    {
+        $detail = 'resolve='.$resolveEntry;
+        if ($attempt->curlError !== null && $attempt->curlError !== '') {
+            $detail .= '; '.$attempt->curlError;
+        }
+        if ($attempt->curlErrno !== null) {
+            $detail .= '; curl_errno='.$attempt->curlErrno;
+        }
+
+        $code = $attempt->failureCode ?? 'request_failed';
+        $userMessage = match ($code) {
+            'ssl_error' => 'Could not verify the website\'s SSL certificate.',
+            'timeout' => 'The website took too long to respond.',
+            'connection_failed' => 'Could not connect to the website server.',
+            default => 'Could not fetch the website homepage.',
+        };
+
+        return [
+            'code' => $code,
+            'user_message' => $userMessage,
+            'detail' => $detail,
+        ];
     }
 
     /**
@@ -447,78 +639,36 @@ class SafeOutboundHttp
     }
 
     /**
-     * @return array{code: string, user_message: string, detail: string}
-     */
-    /**
      * @return array{code: string, user_message: string}|null
      */
     private static function detectAutomatedAccessBlock(int $status, Response $response, string $body): ?array
     {
-        if (! in_array($status, [403, 429, 503], true)) {
+        if (! in_array($status, [403, 503], true)) {
             return null;
         }
 
-        $lowerBody = strtolower(substr($body, 0, 4000));
-        $cfRay = self::headerValue($response, 'cf-ray');
-        $server = strtolower(self::headerValue($response, 'Server'));
-
-        if ($cfRay !== ''
-            || str_contains($server, 'cloudflare')
-            || str_contains($lowerBody, 'cloudflare')
-            || str_contains($lowerBody, 'just a moment')
-            || str_contains($lowerBody, 'attention required')) {
+        $cfMitigated = strtolower(self::headerValue($response, 'cf-mitigated'));
+        if ($cfMitigated !== '' && str_contains($cfMitigated, 'challenge')) {
             return [
                 'code' => 'bot_blocked',
-                'user_message' => sprintf(
-                    'The website blocked automated access (HTTP %d). Open the site in a browser and enter details manually.',
-                    $status
-                ),
+                'user_message' => sprintf('The website blocked automated access (HTTP %d).', $status),
+            ];
+        }
+
+        $lowerBody = strtolower(substr($body, 0, 12_000));
+        $hasChallengeMarkup = str_contains($lowerBody, 'challenge-platform')
+            || str_contains($lowerBody, 'cdn-cgi/challenge-platform')
+            || str_contains($lowerBody, '__cf_chl_');
+
+        $cfRay = self::headerValue($response, 'cf-ray');
+        if ($cfRay !== '' && $hasChallengeMarkup) {
+            return [
+                'code' => 'bot_blocked',
+                'user_message' => sprintf('The website blocked automated access (HTTP %d).', $status),
             ];
         }
 
         return null;
-    }
-
-    private static function describeThrowable(\Throwable $e, ?string $resolveEntry = null): array
-    {
-        $detail = $e->getMessage();
-        if ($resolveEntry !== null) {
-            $detail = 'resolve='.$resolveEntry.'; '.$detail;
-        }
-        $lower = strtolower($detail);
-
-        if (str_contains($lower, 'ssl') || str_contains($lower, 'certificate')) {
-            return [
-                'code' => 'ssl_error',
-                'user_message' => 'Could not verify the website\'s SSL certificate.',
-                'detail' => $detail,
-            ];
-        }
-
-        if (str_contains($lower, 'timed out') || str_contains($lower, 'timeout') || str_contains($lower, 'curl error 28')) {
-            return [
-                'code' => 'timeout',
-                'user_message' => 'The website took too long to respond.',
-                'detail' => $detail,
-            ];
-        }
-
-        if (str_contains($lower, 'could not resolve host')
-            || str_contains($lower, 'curl error 6')
-            || str_contains($lower, 'failed to connect')
-            || str_contains($lower, 'curl error 7')) {
-            return [
-                'code' => 'connection_failed',
-                'user_message' => 'Could not connect to the website server.',
-                'detail' => $detail,
-            ];
-        }
-
-        return [
-            'code' => 'request_failed',
-            'user_message' => 'Could not fetch the website homepage.',
-            'detail' => $detail,
-        ];
     }
 
     /**
@@ -557,7 +707,9 @@ class SafeOutboundHttp
             return null;
         }
         if (preg_match('#^https?://#i', $location)) {
-            return self::validateWebRequestUrl($location) !== null ? $location : null;
+            $validated = self::validateWebRequestUrl($location);
+
+            return $validated !== null ? $validated['url'] : null;
         }
         $base = parse_url($baseUrl);
         if (! is_array($base) || empty($base['host'])) {
@@ -565,23 +717,29 @@ class SafeOutboundHttp
         }
         $scheme = (string) ($base['scheme'] ?? 'https');
         $host = (string) $base['host'];
-        $port = isset($base['port']) ? ':'.$base['port'] : '';
+        if (str_starts_with($host, '[') && str_ends_with($host, ']')) {
+            $host = substr($host, 1, -1);
+        }
+        $port = self::effectivePort($base, $scheme);
         if (str_starts_with($location, '//')) {
             $absolute = $scheme.':'.$location;
+            $validated = self::validateWebRequestUrl($absolute);
 
-            return self::validateWebRequestUrl($absolute) !== null ? $absolute : null;
+            return $validated !== null ? $validated['url'] : null;
         }
         if (str_starts_with($location, '/')) {
-            $absolute = $scheme.'://'.self::hostForUrl($host).$port.$location;
+            $absolute = self::urlWithExplicitPort($scheme, $host, $port, $location);
+            $validated = self::validateWebRequestUrl($absolute);
 
-            return self::validateWebRequestUrl($absolute) !== null ? $absolute : null;
+            return $validated !== null ? $validated['url'] : null;
         }
 
         $path = (string) ($base['path'] ?? '/');
         $dir = rtrim(str_replace(basename($path), '', $path), '/');
-        $absolute = $scheme.'://'.self::hostForUrl($host).$port.$dir.'/'.$location;
+        $absolute = self::urlWithExplicitPort($scheme, $host, $port, $dir.'/'.$location);
+        $validated = self::validateWebRequestUrl($absolute);
 
-        return self::validateWebRequestUrl($absolute) !== null ? $absolute : null;
+        return $validated !== null ? $validated['url'] : null;
     }
 
     private static function responseIsHtml(Response $response): bool
@@ -592,24 +750,6 @@ class SafeOutboundHttp
         }
 
         return str_contains($type, 'text/html') || str_contains($type, 'application/xhtml');
-    }
-
-    private static function readStreamBody(Response $response, int $maxBytes): ?string
-    {
-        $stream = $response->toPsrResponse()->getBody();
-        $buffer = '';
-        while (! $stream->eof()) {
-            $chunk = $stream->read(8192);
-            if ($chunk === '') {
-                break;
-            }
-            $buffer .= $chunk;
-            if (strlen($buffer) > $maxBytes) {
-                return null;
-            }
-        }
-
-        return $buffer;
     }
 
     public static function isPrivateIp(string $ip): bool
@@ -679,6 +819,13 @@ class SafeOutboundHttp
             $v4 = inet_ntop(substr($packed, 12));
 
             return $v4 === false || self::isBlockedIpv4($v4);
+        }
+
+        if (substr($packed, 0, 12) === str_repeat("\0", 12)) {
+            $v4 = inet_ntop(substr($packed, 12, 4));
+            if ($v4 !== false && self::isBlockedIpv4($v4)) {
+                return true;
+            }
         }
 
         if (self::ipv6StartsWith($packed, 'fe80', 10)) {
