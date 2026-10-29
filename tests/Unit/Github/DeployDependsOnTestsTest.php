@@ -34,45 +34,39 @@ class DeployDependsOnTestsTest extends TestCase
             $yaml,
             'Shallow clone hides 86e68a3e from QuotationEditorControlInventoryTest'
         );
+        $this->assertStringContainsString('tests/ci/run-database-suite.sh', $yaml);
+        $runScript = file_get_contents(base_path('tests/ci/run-database-suite.sh'));
+        $this->assertNotFalse($runScript);
+        $this->assertStringContainsString('php artisan test --parallel', $runScript);
     }
 
-    public function test_tests_workflow_invokes_each_listed_phpunit_path_separately(): void
+    public function test_tests_workflow_lists_every_ci_database_and_unit_path_on_disk(): void
     {
         $yaml = $this->workflow('tests.yml');
+        $unit = $this->pathsFile('tests/ci/unit-paths.txt');
 
         $this->assertSame(
             1,
-            substr_count($yaml, 'tests/Unit/Github/DeployDependsOnTestsTest.php'),
-            'DeployDependsOnTestsTest must appear once (no duplicate artisan entry)'
+            substr_count(implode("\n", $unit), 'tests/Unit/Github/DeployDependsOnTestsTest.php'),
+            'DeployDependsOnTestsTest must appear once in unit-paths.txt'
         );
-        $this->assertStringContainsString('for f in "${files[@]}"', $yaml);
-        $this->assertStringContainsString('php artisan test "$f" || failed+=("$f")', $yaml);
-        $this->assertGreaterThanOrEqual(
-            2,
-            substr_count($yaml, 'failed+=("$f")'),
-            'Unit and Database loops must collect failures instead of stopping at the first'
-        );
-        $this->assertStringContainsString('${#failed[@]}', $yaml);
-        $this->assertDoesNotMatchRegularExpression(
-            '/php artisan test \\\\\s*\n\s+tests\//',
-            $yaml,
-            'PHPUnit 9 only runs the first path; do not pass multiple files to one artisan test'
-        );
-
-        $unit = $this->listedPaths($yaml, 'Unit tests (no database)', 'Database tests (MySQL)');
-        $db = $this->listedPaths($yaml, 'Database tests (MySQL)', 'Upload Shared prices geometry');
+        $core = $this->pathsFile('tests/ci/database-core.txt');
+        $extended = $this->pathsFile('tests/ci/database-extended.txt');
 
         $this->assertContains('tests/Unit/Github/DeployDependsOnTestsTest.php', $unit);
         $this->assertContains('tests/Unit/Services/OpenPlan3DPlanValidatorTest.php', $unit);
-        $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php', $db);
-        $this->assertContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $db);
-        $this->assertNotContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $unit);
+        $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php', $unit);
+        $this->assertContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $unit);
+        $this->assertContains('tests/Feature/Admin/RoomAreaCanvasObjectsTest.php', $extended);
+        $this->assertContains('tests/Feature/SharedWorksNormalizedLabelMigrationTest.php', $core);
         $this->assertGreaterThan(20, count($unit));
-        $this->assertGreaterThan(80, count($db));
+        $this->assertGreaterThan(10, count($core));
+        $this->assertGreaterThan(20, count($extended));
         $this->assertSame(count($unit), count(array_unique($unit)));
-        $this->assertSame(count($db), count(array_unique($db)));
+        $this->assertSame(count($core), count(array_unique($core)));
+        $this->assertSame(count($extended), count(array_unique($extended)));
 
-        foreach (array_merge($unit, $db) as $path) {
+        foreach (array_merge($unit, $core, $extended) as $path) {
             $full = base_path($path);
             $this->assertTrue(is_file($full) || is_dir($full), $path.' is listed but missing on disk');
         }
@@ -144,16 +138,20 @@ class DeployDependsOnTestsTest extends TestCase
     /**
      * @return list<string>
      */
-    private function listedPaths(string $yaml, string $startHeading, string $endHeading): array
+    private function pathsFile(string $relative): array
     {
-        $from = strpos($yaml, '- name: '.$startHeading);
-        $this->assertNotFalse($from, 'Missing '.$startHeading);
-        $to = strpos($yaml, '- name: '.$endHeading, $from + 10);
-        $this->assertNotFalse($to, 'Missing '.$endHeading);
-        $block = substr($yaml, $from, $to - $from);
-        preg_match_all('/^\s+(tests\/\S+)/m', $block, $m);
+        $path = base_path($relative);
+        $this->assertFileExists($path);
+        $lines = preg_split('/\r\n|\n|\r/', (string) file_get_contents($path)) ?: [];
+        $paths = [];
+        foreach ($lines as $line) {
+            $line = trim(preg_replace('/#.*$/', '', $line) ?? '');
+            if ($line !== '') {
+                $paths[] = $line;
+            }
+        }
 
-        return $m[1];
+        return $paths;
     }
 
     private function workflow(string $name): string

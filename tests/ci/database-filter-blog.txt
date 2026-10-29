@@ -1,0 +1,4 @@
+tests/Feature/Admin/BlogPostsIndexLayoutTest.php
+tests/Feature/BlogPhase1FixesTest.php
+tests/Feature/BlogPhase2AdminTest.php
+tests/Feature/BlogPhase3PublicTest.php

@@ -82,7 +82,12 @@ $add($mk(['type' => 'closet', 'unit' => 'ft', 'width' => 6, 'height' => '', 'dep
 $add($mk(['type' => 'cabinet', 'unit' => 'in', 'width' => 36, 'height' => 34.5, 'depth' => 24, 'qty' => 1, 'include_doors' => false, 'edge_banding' => false, 'shelf_count' => 0]));
 
 mt_srand(64);
-while ($i < 3000) {
+$limit = (int) (getenv('MILLWORK_FUZZ_CASES') ?: 3000);
+if ($limit < 1) {
+    $limit = 3000;
+}
+
+while ($i < $limit) {
     $type = $types[$i % count($types)];
     $unit = ($i % 3 === 0) ? 'ft' : 'in';
     $blank = ($i % 7 === 0);
