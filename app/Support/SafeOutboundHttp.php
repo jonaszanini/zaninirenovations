@@ -15,6 +15,14 @@ class SafeOutboundHttp
 
     public const DEFAULT_CONNECT_TIMEOUT = 5;
 
+    /** @var null|callable(string): list<string> */
+    private static $hostIpResolver = null;
+
+    public static function setHostIpResolverForTesting(?callable $resolver): void
+    {
+        self::$hostIpResolver = $resolver;
+    }
+
     /**
      * @param  array<string, string>  $headers
      */
@@ -25,14 +33,14 @@ class SafeOutboundHttp
         int $maxBytes = self::DEFAULT_MAX_BYTES,
         ?float $deadline = null,
         int $connectTimeout = self::DEFAULT_CONNECT_TIMEOUT
-    ): ?Response {
+    ): SafeOutboundWebFetchResult {
         if ($deadline !== null && microtime(true) >= $deadline) {
-            return null;
+            return self::fetchFailed('deadline_exceeded', 'Import timed out before the page could be fetched.');
         }
 
         $validated = self::validateWebRequestUrl($url);
         if ($validated === null) {
-            return null;
+            return self::fetchFailed('invalid_url', 'That URL is not allowed (use a public http or https address).');
         }
 
         return self::pinnedGet(
@@ -58,7 +66,7 @@ class SafeOutboundHttp
             return null;
         }
 
-        return self::pinnedGet(
+        $result = self::pinnedGet(
             $validated,
             $headers,
             $timeout,
@@ -67,6 +75,8 @@ class SafeOutboundHttp
             self::DEFAULT_CONNECT_TIMEOUT,
             requireHtml: false
         );
+
+        return $result->response;
     }
 
     public static function isAllowedPublicHttpsUrl(string $url): bool
@@ -125,12 +135,21 @@ class SafeOutboundHttp
         $fragment = isset($parts['fragment']) ? '#'.$parts['fragment'] : '';
 
         return [
-            'url' => $scheme.'://'.$host.($port === 80 || $port === 443 ? '' : ':'.$port).$path.$query.$fragment,
+            'url' => $scheme.'://'.self::hostForUrl($host).($port === 80 || $port === 443 ? '' : ':'.$port).$path.$query.$fragment,
             'host' => $host,
             'scheme' => $scheme,
             'port' => $port,
             'resolve' => $resolve,
         ];
+    }
+
+    private static function hostForUrl(string $host): string
+    {
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            return '['.$host.']';
+        }
+
+        return $host;
     }
 
     /**
@@ -184,6 +203,15 @@ class SafeOutboundHttp
             return self::isBlockedIp($host) ? [] : [$host];
         }
 
+        if (self::$hostIpResolver !== null) {
+            $ips = (self::$hostIpResolver)($host);
+            if (! is_array($ips)) {
+                return [];
+            }
+
+            return self::filterPublicIps($ips);
+        }
+
         $ips = [];
         $aRecords = @dns_get_record($host, DNS_A);
         if (is_array($aRecords)) {
@@ -202,9 +230,18 @@ class SafeOutboundHttp
             }
         }
 
+        return self::filterPublicIps($ips);
+    }
+
+    /**
+     * @param  list<string>  $ips
+     * @return list<string>
+     */
+    private static function filterPublicIps(array $ips): array
+    {
         $public = [];
         foreach (array_unique($ips) as $ip) {
-            if (! self::isBlockedIp($ip)) {
+            if (is_string($ip) && $ip !== '' && ! self::isBlockedIp($ip)) {
                 $public[] = $ip;
             }
         }
@@ -220,7 +257,11 @@ class SafeOutboundHttp
         $ips = self::resolveHostIps($host);
         $entries = [];
         foreach ($ips as $ip) {
-            $entries[] = $host.':'.$port.':'.$ip;
+            $ipForResolve = $ip;
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                $ipForResolve = '['.$ip.']';
+            }
+            $entries[] = $host.':'.$port.':'.$ipForResolve;
         }
 
         return $entries;
@@ -238,76 +279,275 @@ class SafeOutboundHttp
         ?float $deadline,
         int $connectTimeout,
         bool $requireHtml
-    ): ?Response {
-        $remaining = $deadline !== null ? max(1, (int) ceil($deadline - microtime(true))) : $timeout;
-        $requestTimeout = min($timeout, $remaining);
-
+    ): SafeOutboundWebFetchResult {
         $currentUrl = $validated['url'];
 
         for ($hop = 0; $hop <= 3; $hop++) {
             if ($deadline !== null && microtime(true) >= $deadline) {
-                return null;
+                return self::fetchFailed('deadline_exceeded', 'Import timed out before the page could be fetched.');
             }
 
             $validated = self::validateWebRequestUrl($currentUrl);
             if ($validated === null) {
-                return null;
+                return self::fetchFailed(
+                    'redirect_blocked',
+                    'The website redirected to an address that is not allowed.',
+                    ['url' => $currentUrl]
+                );
             }
 
             $remaining = $deadline !== null ? max(1, (int) ceil($deadline - microtime(true))) : $timeout;
             $requestTimeout = min($timeout, $remaining);
 
-            try {
-                $response = Http::withHeaders($headers)
-                    ->connectTimeout($connectTimeout)
-                    ->timeout($requestTimeout)
-                    ->withOptions([
-                        'curl' => [
-                            CURLOPT_RESOLVE => $validated['resolve'],
-                        ],
-                        'allow_redirects' => false,
-                        'stream' => true,
-                    ])
-                    ->get($validated['url']);
-            } catch (\Throwable) {
-                return null;
-            }
+            $resolveEntries = self::sortResolveEntriesIpv4First($validated['resolve']);
+            $lastConnectDetail = null;
 
-            $status = $response->status();
-            if (in_array($status, [301, 302, 303, 307, 308], true)) {
-                $location = (string) $response->header('Location');
-                if ($location === '') {
-                    return null;
-                }
-                $currentUrl = self::resolveRedirectUrl($validated['url'], $location);
-                if ($currentUrl === null) {
-                    return null;
+            foreach ($resolveEntries as $resolveEntry) {
+                try {
+                    $response = Http::withHeaders($headers)
+                        ->connectTimeout($connectTimeout)
+                        ->timeout($requestTimeout)
+                        ->withOptions([
+                            'curl' => [
+                                CURLOPT_RESOLVE => [$resolveEntry],
+                                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                            ],
+                            'allow_redirects' => false,
+                        ])
+                        ->get($validated['url']);
+                } catch (\Throwable $e) {
+                    $lastConnectDetail = self::describeThrowable($e, $resolveEntry);
+
+                    continue;
                 }
 
-                continue;
+                $status = $response->status();
+                if (in_array($status, [301, 302, 303, 307, 308], true)) {
+                    $location = self::headerValue($response, 'Location');
+                    if ($location === '') {
+                        return self::fetchFailed(
+                            'redirect_missing_location',
+                            'The website returned a redirect without a destination URL.',
+                            ['url' => $validated['url'], 'status' => $status]
+                        );
+                    }
+                    $nextUrl = self::resolveRedirectUrl($validated['url'], $location);
+                    if ($nextUrl === null) {
+                        return self::fetchFailed(
+                            'redirect_invalid',
+                            'The website redirect could not be followed.',
+                            ['url' => $validated['url'], 'location' => $location]
+                        );
+                    }
+                    $currentUrl = $nextUrl;
+
+                    continue 2;
+                }
+
+                $body = (string) $response->body();
+
+                if (! $response->successful()) {
+                    $blocked = self::detectAutomatedAccessBlock($status, $response, $body);
+                    if ($blocked !== null) {
+                        return self::fetchFailed(
+                            $blocked['code'],
+                            $blocked['user_message'],
+                            ['url' => $validated['url'], 'status' => $status, 'resolve' => $resolveEntry]
+                        );
+                    }
+
+                    return self::fetchFailed(
+                        'http_error',
+                        sprintf('The website homepage returned HTTP %d.', $status),
+                        ['url' => $validated['url'], 'status' => $status, 'resolve' => $resolveEntry]
+                    );
+                }
+
+                if (strlen($body) > $maxBytes) {
+                    return self::fetchFailed(
+                        'body_too_large',
+                        'The website homepage is too large to import.',
+                        ['url' => $validated['url'], 'bytes' => strlen($body)]
+                    );
+                }
+
+                if ($requireHtml && ! self::responseIsHtml($response) && ! self::bodyLooksLikeHtml($body)) {
+                    $type = self::headerValue($response, 'Content-Type');
+
+                    return self::fetchFailed(
+                        'not_html',
+                        $type !== ''
+                            ? sprintf('The website homepage is not HTML (Content-Type: %s).', $type)
+                            : 'The website homepage is not HTML.',
+                        ['url' => $validated['url'], 'content_type' => $type]
+                    );
+                }
+
+                return new SafeOutboundWebFetchResult(new Response(new Psr7Response(
+                    $response->status(),
+                    $response->headers(),
+                    $body
+                )));
             }
 
-            if (! $response->successful()) {
-                return null;
+            if ($lastConnectDetail !== null) {
+                return self::fetchFailed(
+                    $lastConnectDetail['code'],
+                    $lastConnectDetail['user_message'],
+                    ['url' => $validated['url'], 'detail' => $lastConnectDetail['detail']]
+                );
             }
 
-            if ($requireHtml && ! self::responseIsHtml($response)) {
-                return null;
+            return self::fetchFailed(
+                'connection_failed',
+                'Could not connect to the website server.',
+                ['url' => $validated['url']]
+            );
+        }
+
+        return self::fetchFailed(
+            'too_many_redirects',
+            'The website redirected too many times.',
+            ['url' => $currentUrl]
+        );
+    }
+
+    /**
+     * @param  list<string>  $entries
+     * @return list<string>
+     */
+    private static function sortResolveEntriesIpv4First(array $entries): array
+    {
+        usort($entries, function (string $a, string $b): int {
+            $ipA = self::ipFromResolveEntry($a);
+            $ipB = self::ipFromResolveEntry($b);
+            $v4A = filter_var($ipA, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false;
+            $v4B = filter_var($ipB, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false;
+            if ($v4A === $v4B) {
+                return 0;
             }
 
-            $body = self::readStreamBody($response, $maxBytes);
-            if ($body === null) {
-                return null;
-            }
+            return $v4A ? -1 : 1;
+        });
 
-            return new Response(new Psr7Response(
-                $response->status(),
-                $response->headers(),
-                $body
-            ));
+        return $entries;
+    }
+
+    private static function ipFromResolveEntry(string $entry): string
+    {
+        if (preg_match('/:\[([^\]]+)\]$/', $entry, $matches)) {
+            return $matches[1];
+        }
+        $pos = strrpos($entry, ':');
+        if ($pos === false) {
+            return '';
+        }
+
+        return substr($entry, $pos + 1);
+    }
+
+    /**
+     * @return array{code: string, user_message: string, detail: string}
+     */
+    /**
+     * @return array{code: string, user_message: string}|null
+     */
+    private static function detectAutomatedAccessBlock(int $status, Response $response, string $body): ?array
+    {
+        if (! in_array($status, [403, 429, 503], true)) {
+            return null;
+        }
+
+        $lowerBody = strtolower(substr($body, 0, 4000));
+        $cfRay = self::headerValue($response, 'cf-ray');
+        $server = strtolower(self::headerValue($response, 'Server'));
+
+        if ($cfRay !== ''
+            || str_contains($server, 'cloudflare')
+            || str_contains($lowerBody, 'cloudflare')
+            || str_contains($lowerBody, 'just a moment')
+            || str_contains($lowerBody, 'attention required')) {
+            return [
+                'code' => 'bot_blocked',
+                'user_message' => sprintf(
+                    'The website blocked automated access (HTTP %d). Open the site in a browser and enter details manually.',
+                    $status
+                ),
+            ];
         }
 
         return null;
+    }
+
+    private static function describeThrowable(\Throwable $e, ?string $resolveEntry = null): array
+    {
+        $detail = $e->getMessage();
+        if ($resolveEntry !== null) {
+            $detail = 'resolve='.$resolveEntry.'; '.$detail;
+        }
+        $lower = strtolower($detail);
+
+        if (str_contains($lower, 'ssl') || str_contains($lower, 'certificate')) {
+            return [
+                'code' => 'ssl_error',
+                'user_message' => 'Could not verify the website\'s SSL certificate.',
+                'detail' => $detail,
+            ];
+        }
+
+        if (str_contains($lower, 'timed out') || str_contains($lower, 'timeout') || str_contains($lower, 'curl error 28')) {
+            return [
+                'code' => 'timeout',
+                'user_message' => 'The website took too long to respond.',
+                'detail' => $detail,
+            ];
+        }
+
+        if (str_contains($lower, 'could not resolve host')
+            || str_contains($lower, 'curl error 6')
+            || str_contains($lower, 'failed to connect')
+            || str_contains($lower, 'curl error 7')) {
+            return [
+                'code' => 'connection_failed',
+                'user_message' => 'Could not connect to the website server.',
+                'detail' => $detail,
+            ];
+        }
+
+        return [
+            'code' => 'request_failed',
+            'user_message' => 'Could not fetch the website homepage.',
+            'detail' => $detail,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private static function fetchFailed(string $code, string $userMessage, array $context = []): SafeOutboundWebFetchResult
+    {
+        $logDetail = $context !== [] ? json_encode($context, JSON_UNESCAPED_SLASHES) : null;
+
+        return new SafeOutboundWebFetchResult(null, $code, $userMessage, $logDetail);
+    }
+
+    private static function headerValue(Response $response, string $name): string
+    {
+        $value = $response->header($name);
+        if (is_array($value)) {
+            $value = $value[0] ?? '';
+        }
+
+        return trim((string) $value);
+    }
+
+    private static function bodyLooksLikeHtml(string $body): bool
+    {
+        $start = strtolower(ltrim(substr($body, 0, 512)));
+
+        return str_starts_with($start, '<!doctype html')
+            || str_starts_with($start, '<html')
+            || str_starts_with($start, '<?xml');
     }
 
     private static function resolveRedirectUrl(string $baseUrl, string $location): ?string
@@ -317,7 +557,7 @@ class SafeOutboundHttp
             return null;
         }
         if (preg_match('#^https?://#i', $location)) {
-            return $location;
+            return self::validateWebRequestUrl($location) !== null ? $location : null;
         }
         $base = parse_url($baseUrl);
         if (! is_array($base) || empty($base['host'])) {
@@ -327,21 +567,26 @@ class SafeOutboundHttp
         $host = (string) $base['host'];
         $port = isset($base['port']) ? ':'.$base['port'] : '';
         if (str_starts_with($location, '//')) {
-            return $scheme.':'.$location;
+            $absolute = $scheme.':'.$location;
+
+            return self::validateWebRequestUrl($absolute) !== null ? $absolute : null;
         }
         if (str_starts_with($location, '/')) {
-            return $scheme.'://'.$host.$port.$location;
+            $absolute = $scheme.'://'.self::hostForUrl($host).$port.$location;
+
+            return self::validateWebRequestUrl($absolute) !== null ? $absolute : null;
         }
 
         $path = (string) ($base['path'] ?? '/');
         $dir = rtrim(str_replace(basename($path), '', $path), '/');
+        $absolute = $scheme.'://'.self::hostForUrl($host).$port.$dir.'/'.$location;
 
-        return $scheme.'://'.$host.$port.$dir.'/'.$location;
+        return self::validateWebRequestUrl($absolute) !== null ? $absolute : null;
     }
 
     private static function responseIsHtml(Response $response): bool
     {
-        $type = strtolower((string) $response->header('Content-Type'));
+        $type = strtolower(self::headerValue($response, 'Content-Type'));
         if ($type === '') {
             return false;
         }
@@ -442,7 +687,15 @@ class SafeOutboundHttp
         if (self::ipv6StartsWith($packed, 'fc', 7) || self::ipv6StartsWith($packed, 'fd', 7)) {
             return true;
         }
-        if ($packed === inet_pton('::1')) {
+        if ($packed === inet_pton('::1') || $packed === @inet_pton('::127.0.0.1')) {
+            return true;
+        }
+
+        if (self::ipv6InPrefix($packed, '2002::', 16)) {
+            return true;
+        }
+
+        if (self::ipv6InPrefix($packed, '2001:0000::', 32)) {
             return true;
         }
 

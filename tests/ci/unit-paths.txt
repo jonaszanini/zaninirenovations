@@ -61,6 +61,7 @@ tests/Unit/Support/PlainTextLimiterTest.php
 tests/Unit/Support/QuotationDraftFlashTest.php
 tests/Unit/Support/QuotationSaveIntentTest.php
 tests/Unit/Support/QuotationWorkDescriptionStyleTest.php
+tests/Unit/Support/SafeOutboundHttpGetWebTest.php
 tests/Unit/Support/SecurityHardeningTest.php
 tests/Unit/Support/SeoGeoTest.php
 tests/Unit/Views/AdminDarkThemeCoverageTest.php
