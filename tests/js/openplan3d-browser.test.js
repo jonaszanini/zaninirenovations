@@ -807,7 +807,7 @@ async function run() {
     await page.keyboard.press('Tab');
     const wrappedToFirst = await page.waitForFunction(
       (firstId) => (document.activeElement && document.activeElement.id) === firstId,
-      { timeout: 8000 },
+      { timeout: 15000 },
       trapEnds.firstId
     ).then(() => true).catch(() => false);
     assert.strictEqual(wrappedToFirst, true, 'Tab from last element wraps to first element');

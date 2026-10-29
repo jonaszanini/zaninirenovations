@@ -1,0 +1,6 @@
+tests/Feature/OnPageSeoBatch2Test.php
+tests/Feature/OnPageSeoBatch3Test.php
+tests/Feature/OnPageSeoBatch4Test.php
+tests/Feature/OnPageSeoBatch5Test.php
+tests/Feature/OnPageSeoBatch6Test.php
+tests/Feature/OnPageSeoOct16Test.php

@@ -1,0 +1,2 @@
+tests/Feature/Smoke/AdminGetRoutesSmokeTest.php
+tests/Feature/Smoke/PublicGetRoutesSmokeTest.php

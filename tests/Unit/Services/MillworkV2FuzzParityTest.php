@@ -10,8 +10,13 @@ use Tests\TestCase;
 
 class MillworkV2FuzzParityTest extends TestCase
 {
-    public function test_three_thousand_v2_quotes_match_frozen_copy_and_main_snapshot(): void
+    public function test_v2_quotes_match_frozen_copy_and_main_snapshot(): void
     {
+        $limit = (int) (getenv('MILLWORK_FUZZ_CASES') ?: 3000);
+        if ($limit < 1) {
+            $limit = 3000;
+        }
+
         $cases = json_decode(
             (string) shell_exec('php '.escapeshellarg(base_path('tests/bin/millwork-v2-fuzz-generate.php'))),
             true
@@ -22,8 +27,12 @@ class MillworkV2FuzzParityTest extends TestCase
         );
         $this->assertIsArray($cases);
         $this->assertIsArray($snapshot);
-        $this->assertCount(3000, $cases);
-        $this->assertCount(3000, $snapshot);
+        $this->assertCount($limit, $cases);
+
+        $ids = array_slice(array_keys($cases), 0, $limit);
+        $cases = array_intersect_key($cases, array_flip($ids));
+        $snapshot = array_intersect_key($snapshot, array_flip($ids));
+        $this->assertCount($limit, $snapshot);
 
         $settings = $this->settings();
         $frozenCalc = new V2MillworkQuotationCalculator;

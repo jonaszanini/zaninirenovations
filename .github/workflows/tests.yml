@@ -1,8 +1,11 @@
 name: Tests
 
-# GitHub bills runner minutes. A push to an open pull request used to start
-# this workflow twice, and a newer push did not cancel the run it replaced.
-# The millwork fuzz and live layout checks run only from a manual dispatch.
+permissions:
+  contents: read
+  pull-requests: read
+
+# GitHub bills runner minutes. Superseded PR runs cancel unless the ref is main.
+# Heavy geometry/fuzz checks run when related paths change (including on main).
 
 on:
   push:
@@ -19,30 +22,150 @@ on:
         default: false
 
 concurrency:
-  group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  phpunit:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_database: ${{ steps.flags.outputs.run_database }}
+      run_browser: ${{ steps.flags.outputs.run_browser }}
+      run_shared_prices_geometry: ${{ steps.flags.outputs.run_shared_prices_geometry }}
+      run_room_area_live: ${{ steps.flags.outputs.run_room_area_live }}
+      run_blog_live: ${{ steps.flags.outputs.run_blog_live }}
+      run_millwork_fuzz: ${{ steps.flags.outputs.run_millwork_fuzz }}
+      filter_shared_prices: ${{ steps.filter.outputs.shared_prices_geometry }}
+      filter_room_area: ${{ steps.filter.outputs.room_area_live }}
+      filter_blog: ${{ steps.filter.outputs.blog_live }}
+      filter_seo: ${{ steps.filter.outputs.seo }}
+      filter_millwork: ${{ steps.filter.outputs.millwork_fuzz }}
+      filter_routes_smoke: ${{ steps.filter.outputs.routes_smoke }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter_docs
+        with:
+          predicate-quantifier: every
+          filters: |
+            docs_only:
+              - '**/*.md'
+              - 'docs/**'
+              - 'lang/**'
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!lang/**'
+            shared_prices_geometry:
+              - 'app/Http/Controllers/Admin/SharedPriceLibraryController.php'
+              - 'app/Models/SharedWork.php'
+              - 'app/Services/SharedWorkCatalog.php'
+              - 'public/js/shared-prices-effective.js'
+              - 'resources/views/admin/quotations/shared_prices/**'
+              - 'tests/Feature/SharedPrices*.php'
+              - 'tests/js/shared-prices*.test.js'
+              - 'tests/Unit/Models/SharedWorkLabelTest.php'
+              - 'tests/Unit/Services/SharedWorkCatalogTest.php'
+            room_area_live:
+              - 'app/**/RoomArea*.php'
+              - 'database/seeders/RoomAreaGeometrySeeder.php'
+              - 'public/js/room-area/**'
+              - 'resources/views/**/room-area/**'
+              - 'resources/views/admin/client-projects/**/room-area/**'
+              - 'tests/Feature/Admin/RoomArea*.php'
+              - 'tests/Feature/Admin/*RoomArea*.php'
+              - 'tests/js/room-area-phone-geometry.test.js'
+              - 'tests/Unit/Services/RoomArea*.php'
+            blog_live:
+              - 'app/**/BlogPost*.php'
+              - 'database/seeders/BlogPostsGeometrySeeder.php'
+              - 'resources/views/**/blog/**'
+              - 'resources/views/admin/blog/**'
+              - 'tests/Feature/Admin/BlogPosts*.php'
+              - 'tests/Feature/Admin/blog-posts-geometry.js'
+              - 'tests/Feature/Blog*.php'
+            millwork_fuzz:
+              - 'app/Services/Millwork/**'
+              - 'tests/Unit/Services/MillworkV2FuzzParityTest.php'
+              - 'tests/Unit/Services/Millwork*.php'
+              - 'tests/Feature/Admin/Millwork*.php'
+            browser_js:
+              - 'tests/js/*browser*'
+              - 'tests/js/**/*browser*'
+              - 'tests/js/admin-info-tip-click.test.mjs'
+            routes_smoke:
+              - 'routes/**'
+              - 'app/Http/Controllers/**'
+              - 'app/Providers/RouteServiceProvider.php'
+            seo:
+              - 'resources/views/**'
+              - 'config/service_areas.php'
+              - 'config/public_services.php'
+              - 'app/Support/Seo*.php'
+              - 'app/Support/PublicSitemap.php'
+              - 'app/Support/LlmsTxtGenerator.php'
+              - 'app/Support/RobotsTxtGenerator.php'
+              - 'tests/Feature/OnPageSeo*.php'
+
+      - id: flags
+        env:
+          FILTER_DOCS_ONLY: ${{ steps.filter_docs.outputs.docs_only }}
+          FILTER_CODE: ${{ steps.filter.outputs.code }}
+          FILTER_SP: ${{ steps.filter.outputs.shared_prices_geometry }}
+          FILTER_RA: ${{ steps.filter.outputs.room_area_live }}
+          FILTER_BL: ${{ steps.filter.outputs.blog_live }}
+          FILTER_MF: ${{ steps.filter.outputs.millwork_fuzz }}
+          FILTER_BROWSER_JS: ${{ steps.filter.outputs.browser_js }}
+          FILTER_ROUTES: ${{ steps.filter.outputs.routes_smoke }}
+        run: |
+          set -euo pipefail
+          is_main=false
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then is_main=true; fi
+          slow_input=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.slow }}" = "true" ]; then slow_input=true; fi
+
+          run_database=false
+          if [ "$is_main" = true ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then run_database=true; fi
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "$FILTER_DOCS_ONLY" != "true" ] && [ "$FILTER_CODE" = "true" ]; then run_database=true; fi
+
+          run_shared=false
+          if [ "$slow_input" = true ] || [ "$FILTER_SP" = "true" ]; then run_shared=true; fi
+          run_ra=false
+          if [ "$slow_input" = true ] || [ "$FILTER_RA" = "true" ]; then run_ra=true; fi
+          run_bl=false
+          if [ "$slow_input" = true ] || [ "$FILTER_BL" = "true" ]; then run_bl=true; fi
+          run_mf=false
+          if [ "$slow_input" = true ] || [ "$FILTER_MF" = "true" ]; then run_mf=true; fi
+
+          run_browser=false
+          if [ "$is_main" = true ] || [ "$run_database" = true ] || [ "$slow_input" = true ]; then run_browser=true; fi
+          if [ "$FILTER_SP" = "true" ] || [ "$FILTER_RA" = "true" ] || [ "$FILTER_BL" = "true" ] || [ "$FILTER_MF" = "true" ] || [ "$FILTER_BROWSER_JS" = "true" ]; then run_browser=true; fi
+
+          {
+            echo "run_database=$run_database"
+            echo "run_browser=$run_browser"
+            echo "run_shared_prices_geometry=$run_shared"
+            echo "run_room_area_live=$run_ra"
+            echo "run_blog_live=$run_bl"
+            echo "run_millwork_fuzz=$run_mf"
+          } >> "$GITHUB_OUTPUT"
+
+  unit_js:
+    needs: changes
     if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     env:
       PUPPETEER_CACHE_DIR: /home/runner/.cache/puppeteer
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: zanini_renovations_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
 
     steps:
       - name: Checkout repository
@@ -73,86 +196,102 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Install Node dependencies
+        run: npm ci --no-fund --no-audit
+
       - name: Cache Puppeteer
+        if: needs.changes.outputs.run_browser == 'true'
         uses: actions/cache@v4
         with:
           path: /home/runner/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-24.43.1
 
-      - name: Install Node dependencies
-        run: npm ci --no-fund --no-audit
-
-      - name: JavaScript tests
+      - name: JavaScript tests (no browser)
         run: |
           node tests/js/room-area-lib.test.js
           node tests/js/openplan3d-parity.test.js
           node tests/js/openplan3d-editor-bridge.test.js
-          node tests/js/openplan3d-browser.test.js
-          node tests/js/openplan3d-editor-browser.test.js
           node tests/js/room-area-formula.test.js
           node tests/js/shared-prices-effective.test.js
           node tests/js/admin-hotkey-save.test.js
-          node tests/js/admin-hotkey-save-browser.test.js
-          node tests/js/admin-date-picker-browser.test.js
           node tests/js/admin-project-calendar-swipe.test.js
-          node tests/js/quotation-redraft-confirm-browser.test.js
-          node tests/js/quotation-redraft-hotkey-lock-browser.test.js
           node tests/js/admin-info-tip.test.mjs
-          node tests/js/admin-info-tip-click.test.mjs
 
       - name: Unit tests (no database)
+        run: tests/ci/run-unit-suite.sh
+
+      - name: JavaScript tests (browser)
+        if: needs.changes.outputs.run_browser == 'true'
         run: |
-          set -euo pipefail
-          files=(
-            tests/Unit/Services/OpenPlan3DParityTest.php
-            tests/Unit/Services/OpenPlan3DPlanValidatorTest.php
-            tests/Unit/Github/DeployDependsOnTestsTest.php
-            tests/Unit/Views/BladeSyntaxTest.php
-            tests/Unit/Views/AiActionGroupTest.php
-            tests/Unit/Views/QuotationPdfPageBreakTest.php
-            tests/Unit/BasementQuotationWizardViewTest.php
-            tests/Unit/Models/BasementQuotationScopePdfTest.php
-            tests/Unit/Support/AdminListFiltersTest.php
-            tests/Unit/Support/CadMoneyTest.php
-            tests/Unit/Support/AdminOnceSubmitTokenTest.php
-            tests/Unit/Support/QuotationSaveIntentTest.php
-            tests/Unit/Support/QuotationDraftFlashTest.php
-            tests/Unit/Services/HomeDepotCaUrlsTest.php
-            tests/Unit/Services/SupplierWebsiteDataExtractorTest.php
-            tests/Unit/Services/SupplierWebsiteDataExtractorAddressCapTest.php
-            tests/Unit/Services/SupplierWebsiteDataExtractorGoogleMapsAddressTest.php
-            tests/Unit/Services/SupplierWebsiteDataExtractorAddressFinalizeTest.php
-            tests/Unit/Services/SupplierWebsiteDataExtractorLogoUrlTest.php
-            tests/Unit/Services/SupplierWebsiteDataExtractorTagsTest.php
-            tests/Unit/Services/SupplierWebsiteImportServiceTest.php
-            tests/Unit/Views/AdminInfoTipTest.php
-            tests/Unit/Views/AdminInfoTipBehaviourTest.php
-            tests/Unit/Views/AdminInfoTipIdIsolationTest.php
-            tests/Unit/Views/AdminInfoTipCallerContractTest.php
-            tests/Unit/Views/FencePriceBannerTipTest.php
-            tests/Unit/Services/CutOptimizerEngineTest.php
-            tests/Unit/Services/MillworkCutPlanPlacementTest.php
-            tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
-            tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
-            tests/Unit/Services/MillworkCalcVersionGateTest.php
-            tests/Unit/Views/AdminDarkThemeCoverageTest.php
-            tests/Unit/Views/AdminDatePickerThemeTest.php
-            tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
-            tests/Unit/Views/QuotationEditorHeaderMarkupTest.php
-            tests/Unit/Views/PublicCssLightOnlyTest.php
-            tests/Unit/Views/PublicMobileNavDropdownTest.php
-            tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
-            tests/Unit/Views/HomeKitchenTileImageTest.php
-          )
-          failed=()
-          for f in "${files[@]}"; do
-            php artisan test "$f" || failed+=("$f")
-          done
-          if [ ${#failed[@]} -ne 0 ]; then
-            printf 'Failed PHPUnit paths:\n'
-            printf '  %s\n' "${failed[@]}"
-            exit 1
-          fi
+          node tests/js/openplan3d-browser.test.js
+          node tests/js/openplan3d-editor-browser.test.js
+          node tests/js/admin-hotkey-save-browser.test.js
+          node tests/js/admin-date-picker-browser.test.js
+          node tests/js/quotation-redraft-confirm-browser.test.js
+          node tests/js/quotation-redraft-hotkey-lock-browser.test.js
+          node tests/js/admin-info-tip-click.test.mjs
+
+  mysql:
+    needs: changes
+    if: github.event.pull_request.draft != true && needs.changes.outputs.run_database == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PUPPETEER_CACHE_DIR: /home/runner/.cache/puppeteer
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: zanini_renovations_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, mbstring, pdo_mysql, fileinfo, intl
+          coverage: none
+          cache: composer
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Setup Node
+        if: needs.changes.outputs.run_browser == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Node dependencies
+        if: needs.changes.outputs.run_browser == 'true'
+        run: npm ci --no-fund --no-audit
+
+      - name: Cache Puppeteer
+        if: needs.changes.outputs.run_browser == 'true'
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-24.43.1
 
       - name: Database tests (MySQL)
         env:
@@ -164,149 +303,17 @@ jobs:
           DB_PASSWORD: root
           QUOTE_ACCEPT_API_TOKEN: ci-quote-accept-token
           ETRANSFER_API_TOKEN: ci-etransfer-token
-        run: |
-          set -euo pipefail
-          files=(
-            tests/Feature/Smoke
-            tests/Feature/QuoteAcceptance
-            tests/Unit/Services/EtransferNoticeParserTest.php
-            tests/Unit/Services/EtransferInvoiceMatcherTest.php
-            tests/Feature/Etransfer
-            tests/Feature/Invoices/MarkPaidInvoiceTest.php
-            tests/Feature/Admin/GlobalFinancialsTest.php
-            tests/Feature/Admin/GlobalSearchApiTest.php
-            tests/Feature/Admin/QuickStatusChangeTest.php
-            tests/Feature/DuplicateQuotationTest.php
-            tests/Feature/ExpenseAmountParsingTest.php
-            tests/Feature/Invoices/HourlyInvoiceUpdateTest.php
-            tests/Feature/Admin/DashboardActionFirstLayoutTest.php
-            tests/Feature/Admin/CancelledProjectInvoiceExclusionTest.php
-            tests/Feature/Admin/ClientIndexAddressSearchTest.php
-            tests/Feature/Admin/ClientProjectFiltersAccordionTest.php
-            tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php
-            tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php
-            tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php
-            tests/Unit/Services/RoomAreaDrawingImporterTest.php
-            tests/Unit/Services/RoomAreaCanvasDataTest.php
-            tests/Feature/Admin/RoomAreaCanvasObjectsTest.php
-            tests/Feature/Admin/RoomAreaPdfExportTest.php
-            tests/Feature/Admin/BasementRoomAreaImportTest.php
-            tests/Feature/Admin/BasementQuotationMathRoundTripTest.php
-            tests/Feature/Admin/BasementQuotationPagesTest.php
-            tests/Feature/Admin/QuotationEditorHeaderTest.php
-            tests/Feature/Admin/QuotationHotkeySaveStateTest.php
-            tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php
-            tests/Feature/Admin/QuotationDraftClientFacingGuardTest.php
-            tests/Feature/Admin/QuotationEditorControlInventoryTest.php
-            tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php
-            tests/Feature/Admin/RoomAreaQuoteLinesTest.php
-            tests/Unit/Services/RoomAreaQuotePrefillTest.php
-            tests/Feature/Admin/RoomAreaQuotePrefillTest.php
-            tests/Unit/Services/RoomAreaSharedWallsTest.php
-            tests/Unit/Services/RoomAreaMeasurementParserTest.php
-            tests/Unit/Services/RoomAreaClosingErrorTest.php
-            tests/Feature/Admin/RoomAreaPhotosTest.php
-            tests/Feature/Admin/ClientProjectRoomAreaPageTest.php
-            tests/Feature/Admin/UtilitiesRoomAreaPageTest.php
-            tests/Feature/Admin/RoomAreaGuidePageTest.php
-            tests/Unit/Support/HtmlContentSanitizerTest.php
-            tests/Unit/Support/PlainTextLimiterTest.php
-            tests/Feature/BlogPhase1FixesTest.php
-            tests/Feature/BlogPhase2AdminTest.php
-            tests/Unit/Services/BlogPostQualityTest.php
-            tests/Feature/BlogPhase3PublicTest.php
-            tests/Unit/Support/SecurityHardeningTest.php
-            tests/Feature/OnPageSeoBatch2Test.php
-            tests/Unit/Support/SeoGeoTest.php
-            tests/Feature/OnPageSeoBatch3Test.php
-            tests/Feature/OnPageSeoBatch4Test.php
-            tests/Feature/OnPageSeoBatch5Test.php
-            tests/Feature/OnPageSeoBatch6Test.php
-            tests/Feature/OnPageSeoOct16Test.php
-            tests/Feature/PublicPageBannedWordsTest.php
-            tests/Feature/Admin/SupplierSiteTest.php
-            tests/Feature/Admin/SupplierWebsiteImportTest.php
-            tests/Feature/Admin/OffcutInventoryTest.php
-            tests/Feature/Admin/QuotationCutListImportTest.php
-            tests/Unit/Services/MillworkQuotationCalculatorTest.php
-            tests/Feature/Admin/MillworkQuotationPagesTest.php
-            tests/Feature/Admin/MillworkLeaveSaveBrowserTest.php
-            tests/Feature/Admin/MillworkCreateBrowserTest.php
-            tests/Feature/Admin/MillworkResaveBrowserTest.php
-            tests/Feature/Admin/MillworkQuotationRoundTripTest.php
-            tests/Feature/Admin/MillworkCutPlanPlacementTest.php
-            tests/Unit/Views/HomeServiceTileUppercaseTest.php
-            tests/Unit/Views/QuotationExpensePairLayoutTest.php
-            tests/Unit/Support/QuotationWorkDescriptionStyleTest.php
-            tests/Unit/Services/QuotationWorkDescriptionInstructionTest.php
-            tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php
-            tests/Unit/Services/QuotationWorkDescriptionLowDeckContextTest.php
-            tests/Unit/Services/QuotationWorkDescriptionStandardContextTest.php
-            tests/Unit/Services/QuotationWorkDescriptionAiServiceTest.php
-            tests/Unit/Models/ClientProjectQuotationPdfLineItemsTest.php
-            tests/Unit/Models/ClientProjectQuotationPdfFoldV2Test.php
-            tests/Unit/Models/ClientProjectQuotationPdfFoldV3Test.php
-            tests/Unit/Models/ClientProjectQuotationPdfFoldV2IdentityTest.php
-            tests/Unit/Models/ClientProjectQuotationPdfFoldV2SqLinkedIdentityTest.php
-            tests/Unit/Models/ClientProjectQuotationPdfFoldV1IdentityTest.php
-            tests/Feature/Quotations/PdfFoldVersionLinkTest.php
-            tests/Unit/Models/StandardQuotationPdfLineItemsTest.php
-            tests/Unit/Services/StandardQuotationCalculatorTest.php
-            tests/Unit/Services/StandardQuotationKitRewriteAuditorTest.php
-            tests/Unit/Models/StandardQuotationEditorTotalTest.php
-            tests/Feature/Admin/StandardQuotationPurchaseListTest.php
-            tests/Unit/Views/StandardQuotationEditorJsTest.php
-            tests/Unit/Services/FenceQuotationCalculatorTest.php
-            tests/Unit/Services/FenceQuotationScenarioTest.php
-            tests/Unit/Services/FenceQuotationOct8FixesTest.php
-            tests/Unit/Models/FenceMaterialTest.php
-            tests/Unit/Models/FenceQuotationTest.php
-            tests/Unit/Models/FenceQuotationLabourHstTest.php
-            tests/Unit/Support/FenceWorkDescriptionGeneratorTest.php
-            tests/Unit/Support/FenceSideFlagsTest.php
-            tests/Unit/Views/FenceQuotationFormRestoreTest.php
-            tests/Feature/Admin/FenceQuotationFormRestoreTest.php
-            tests/Feature/Admin/FenceQuotationInfoTipTest.php
-            tests/Feature/Admin/FenceExistingPostLabourCreditTest.php
-            tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php
-            tests/Unit/Services/MaterialPriceSyncServiceTest.php
-            tests/Unit/Models/MaterialStoreProductUrlTest.php
-            tests/Unit/Services/RoomAreaTemplatesTest.php
-            tests/Unit/Models/BlogPostListHelpersTest.php
-            tests/Feature/Admin/BlogPostsIndexLayoutTest.php
-            tests/Feature/Admin/AdminHotkeySaveMarkerTest.php
-            tests/Feature/Admin/AdminOnceSubmitReplayTest.php
-            tests/Feature/Admin/AdminCalendarPersonalEventTimeTest.php
-            tests/Feature/Admin/AdminProjectCalendarSwipeTest.php
-            tests/Feature/Admin/AdminHotkeySaveMarkupTest.php
-            tests/Unit/Services/RoomAreaFinishMathTest.php
-            tests/Feature/Admin/RoomAreaBatch2PageTest.php
-            tests/Feature/SharedPricesLayoutTest.php
-            tests/Feature/AdminMoneyDirectEntryTest.php
-            tests/Feature/SharedPricesTest.php
-            tests/Feature/SharedPricesAddRenameTest.php
-            tests/Feature/SharedWorksNormalizedLabelMigrationTest.php
-            tests/Feature/SharedPricesParallelSaveTest.php
-            tests/Unit/Models/SharedWorkLabelTest.php
-            tests/Unit/Services/SharedWorkCatalogTest.php
-            tests/Unit/Services/FlooringQuotationCalculatorTest.php
-            tests/Unit/Services/RoomAreaFormulaParserTest.php
-            tests/Feature/Admin/RoomAreaBatch3PageTest.php
-            tests/Feature/Admin/RoomAreaKitSeedRaceTest.php
-            tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
-          )
-          failed=()
-          for f in "${files[@]}"; do
-            php artisan test "$f" || failed+=("$f")
-          done
-          if [ ${#failed[@]} -ne 0 ]; then
-            printf 'Failed PHPUnit paths:\n'
-            printf '  %s\n' "${failed[@]}"
-            exit 1
-          fi
+          CI_MYSQL_SUITE: ${{ github.ref == 'refs/heads/main' && 'full' || 'pr' }}
+          CI_MYSQL_FILTER_SHARED_PRICES: ${{ needs.changes.outputs.filter_shared_prices }}
+          CI_MYSQL_FILTER_ROOM_AREA: ${{ needs.changes.outputs.filter_room_area }}
+          CI_MYSQL_FILTER_BLOG: ${{ needs.changes.outputs.filter_blog }}
+          CI_MYSQL_FILTER_SEO: ${{ needs.changes.outputs.filter_seo }}
+          CI_MYSQL_FILTER_MILLWORK: ${{ needs.changes.outputs.filter_millwork }}
+          CI_MYSQL_FILTER_ROUTES_SMOKE: ${{ needs.changes.outputs.filter_routes_smoke }}
+        run: tests/ci/run-database-suite.sh
 
       - name: Upload Shared prices geometry
-        if: always()
+        if: success() && needs.changes.outputs.run_shared_prices_geometry == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: shared-prices-geometry
@@ -315,12 +322,14 @@ jobs:
             storage/app/sp-layout-1100.png
           if-no-files-found: warn
 
-      - name: Millwork v2 3k fuzz invariants
-        if: ${{ success() && github.event.inputs.slow == 'true' }}
+      - name: Millwork v2 fuzz invariants
+        if: success() && needs.changes.outputs.run_millwork_fuzz == 'true'
+        env:
+          MILLWORK_FUZZ_CASES: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.slow == 'true' && '3000' || '200' }}
         run: php artisan test tests/Unit/Services/MillworkV2FuzzParityTest.php
 
       - name: Room Area live layout geometry
-        if: ${{ success() && github.event.inputs.slow == 'true' }}
+        if: success() && needs.changes.outputs.run_room_area_live == 'true'
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
@@ -347,7 +356,7 @@ jobs:
           node tests/js/room-area-phone-geometry.test.js
 
       - name: Blog posts live layout geometry
-        if: ${{ success() && github.event.inputs.slow == 'true' }}
+        if: success() && needs.changes.outputs.run_blog_live == 'true'
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
