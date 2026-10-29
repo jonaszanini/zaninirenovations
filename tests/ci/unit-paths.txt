@@ -1,8 +1,3 @@
-tests/Feature/Admin/AdminCalendarPersonalEventTimeTest.php
-tests/Feature/Admin/AdminProjectCalendarSwipeTest.php
-tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php
-tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php
-tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php
 tests/Unit/BasementQuotationWizardViewTest.php
 tests/Unit/Github/DeployDependsOnTestsTest.php
 tests/Unit/Models/BasementQuotationScopePdfTest.php
@@ -35,14 +30,12 @@ tests/Unit/Services/MillworkQuotationCalculatorTest.php
 tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
 tests/Unit/Services/OpenPlan3DParityTest.php
 tests/Unit/Services/OpenPlan3DPlanValidatorTest.php
-tests/Unit/Services/QuotationWorkDescriptionAiServiceTest.php
 tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php
 tests/Unit/Services/QuotationWorkDescriptionInstructionTest.php
 tests/Unit/Services/QuotationWorkDescriptionLowDeckContextTest.php
 tests/Unit/Services/QuotationWorkDescriptionStandardContextTest.php
 tests/Unit/Services/RoomAreaCanvasDataTest.php
 tests/Unit/Services/RoomAreaClosingErrorTest.php
-tests/Unit/Services/RoomAreaDrawingImporterTest.php
 tests/Unit/Services/RoomAreaFinishMathTest.php
 tests/Unit/Services/RoomAreaFormulaParserTest.php
 tests/Unit/Services/RoomAreaMeasurementParserTest.php

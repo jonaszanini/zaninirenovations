@@ -33,7 +33,7 @@ ci_xml="$ROOT/phpunit.ci-mysql.xml"
   echo '</phpunit>'
 } > "$ci_xml"
 
-php artisan test --parallel --processes=4 --recreate-databases \
+php artisan test \
   --configuration phpunit.ci-mysql.xml \
   --log-junit storage/logs/ci-mysql-junit.xml
 

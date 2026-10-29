@@ -1,6 +1,8 @@
+tests/Feature/Admin/AdminCalendarPersonalEventTimeTest.php
 tests/Feature/Admin/AdminHotkeySaveMarkerTest.php
 tests/Feature/Admin/AdminHotkeySaveMarkupTest.php
 tests/Feature/Admin/AdminOnceSubmitReplayTest.php
+tests/Feature/Admin/AdminProjectCalendarSwipeTest.php
 tests/Feature/Admin/BasementQuotationPagesTest.php
 tests/Feature/Admin/BasementRoomAreaImportTest.php
 tests/Feature/Admin/BlogPostsIndexLayoutTest.php
@@ -29,8 +31,11 @@ tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
 tests/Feature/Admin/RoomAreaBatch2PageTest.php
 tests/Feature/Admin/RoomAreaBatch3PageTest.php
 tests/Feature/Admin/RoomAreaCanvasObjectsTest.php
+tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php
 tests/Feature/Admin/RoomAreaGuidePageTest.php
 tests/Feature/Admin/RoomAreaKitSeedRaceTest.php
+tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php
+tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php
 tests/Feature/Admin/RoomAreaPdfExportTest.php
 tests/Feature/Admin/RoomAreaPhotosTest.php
 tests/Feature/Admin/RoomAreaQuoteLinesTest.php
@@ -50,3 +55,5 @@ tests/Feature/OnPageSeoOct16Test.php
 tests/Feature/SharedPricesLayoutTest.php
 tests/Feature/Smoke/AdminGetRoutesSmokeTest.php
 tests/Feature/Smoke/PublicGetRoutesSmokeTest.php
+tests/Unit/Services/QuotationWorkDescriptionAiServiceTest.php
+tests/Unit/Services/RoomAreaDrawingImporterTest.php
