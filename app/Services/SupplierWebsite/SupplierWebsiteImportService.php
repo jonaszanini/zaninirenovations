@@ -2,6 +2,7 @@
 
 namespace App\Services\SupplierWebsite;
 
+use App\Models\ClientProject;
 use App\Services\SupplierSiteDistanceService;
 
 class SupplierWebsiteImportService
@@ -65,7 +66,9 @@ class SupplierWebsiteImportService
             $notes[] = 'Social: '.implode(', ', $extracted['social_links']);
         }
 
-        $phone = $extracted['phones'][0] ?? null;
+        $phone = isset($extracted['phones'][0])
+            ? ClientProject::formatPhone($extracted['phones'][0])
+            : null;
         $email = $extracted['emails'][0] ?? null;
         $tags = $extracted['tags'] ?? [];
 

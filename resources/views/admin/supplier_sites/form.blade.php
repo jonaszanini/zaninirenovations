@@ -24,6 +24,43 @@
       color: var(--admin-muted);
       font-size: 13px;
     }
+    .ss-import-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      min-height: 20px;
+    }
+    .ss-import-status-row .fa-spinner {
+      color: var(--admin-primary);
+      flex-shrink: 0;
+    }
+    #ss-import-status-spinner[hidden] {
+      display: none !important;
+    }
+    #ss-supplier-form-body {
+      border: 0;
+      margin: 0;
+      padding: 0;
+      min-inline-size: 0;
+    }
+    .ss-import-panel.is-busy .ss-import-row .admin-input,
+    .ss-import-panel.is-busy #ss-import-btn {
+      opacity: 0.72;
+    }
+    #ss-import-btn .fa-spinner {
+      margin-right: 0;
+    }
+    #ss-supplier-form.is-import-locked {
+      opacity: 0.55;
+    }
+    #ss-supplier-form.is-import-locked input,
+    #ss-supplier-form.is-import-locked textarea,
+    #ss-supplier-form.is-import-locked select,
+    #ss-supplier-form.is-import-locked button,
+    #ss-supplier-form.is-import-locked .admin-checkbox {
+      pointer-events: none;
+    }
   </style>
 @endpush
 
@@ -35,26 +72,30 @@
         @include('admin.partials.tipped_label', [
           'for' => 'ss-import-url',
           'label' => 'Import from website',
-          'tipText' => 'Fetches the homepage and up to four contact or location pages. Fills the form below for review — nothing is saved until you click Save.',
+          'tipText' => 'Fetches the homepage and up to four contact or location pages. Fills the form below for review — nothing is saved until you click Save. Some sites block automated requests; if import fails with a block message, open the URL in a browser and enter details manually.',
         ])
         <input class="admin-input" type="url" id="ss-import-url" maxlength="500"
                placeholder="https://example.com" autocomplete="off"
                value="{{ old('url', $supplierSite->url) }}">
       </div>
       <button type="button" class="admin-btn admin-btn--outline" id="ss-import-btn">
-        <i class="fa fa-download" aria-hidden="true"></i> Import
+        <i class="fa fa-download" id="ss-import-btn-icon" aria-hidden="true"></i> Import
       </button>
     </div>
     <p class="ss-import-note admin-form-help" id="ss-import-address-note" hidden></p>
-    <p class="admin-form-help" id="ss-import-status" hidden></p>
+    <div class="ss-import-status-row">
+      <i class="fa fa-spinner fa-spin" id="ss-import-status-spinner" aria-hidden="true" hidden></i>
+      <p class="admin-form-help" id="ss-import-status" hidden></p>
+    </div>
   </div>
 
   <div class="admin-card">
-    <form method="post" action="{{ $supplierSite->exists ? route('admin.supplier-sites.update', $supplierSite) : route('admin.supplier-sites.store') }}">
+    <form method="post" id="ss-supplier-form" class="@if(!$supplierSite->exists) ss-supplier-create-form @endif" action="{{ $supplierSite->exists ? route('admin.supplier-sites.update', $supplierSite) : route('admin.supplier-sites.store') }}">
       @csrf
       @include('admin.partials.once_submit')
       @if ($supplierSite->exists) @method('PUT') @endif
 
+      <fieldset id="ss-supplier-form-body">
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
           <label for="ss-name">Store name <span class="cp-required">*</span></label>
@@ -151,6 +192,7 @@
         <button type="submit" class="admin-btn admin-btn--primary" data-hotkey-save>Save</button>
         <a href="{{ route('admin.supplier-sites.index') }}" class="admin-btn admin-btn--ghost">Cancel</a>
       </div>
+      </fieldset>
     </form>
   </div>
 @endsection

@@ -4,9 +4,16 @@
 
   var importUrl = document.getElementById('ss-import-url');
   var importBtn = document.getElementById('ss-import-btn');
+  var importBtnIcon = document.getElementById('ss-import-btn-icon');
   var statusEl = document.getElementById('ss-import-status');
+  var statusSpinner = document.getElementById('ss-import-status-spinner');
   var noteEl = document.getElementById('ss-import-address-note');
+  var supplierForm = document.getElementById('ss-supplier-form');
+  var supplierFieldset = document.getElementById('ss-supplier-form-body');
   var previewUrl = root.getAttribute('data-import-url');
+  var importAbort = null;
+  var importTimeoutId = null;
+  var IMPORT_TIMEOUT_MS = 30000;
 
   function setStatus(msg, isError) {
     if (!statusEl) return;
@@ -14,6 +21,41 @@
     statusEl.hidden = !msg;
     statusEl.classList.toggle('admin-form-error', !!isError);
     statusEl.classList.toggle('admin-form-help', !isError);
+  }
+
+  function setImportBusy(busy) {
+    root.classList.toggle('is-busy', busy);
+    if (supplierForm) supplierForm.classList.toggle('is-import-locked', busy);
+    if (supplierFieldset) supplierFieldset.disabled = busy;
+    if (importUrl) importUrl.disabled = busy;
+    if (importBtn) importBtn.disabled = busy;
+    if (statusSpinner) statusSpinner.hidden = !busy;
+    if (importBtnIcon) {
+      importBtnIcon.classList.toggle('fa-download', !busy);
+      importBtnIcon.classList.toggle('fa-spinner', busy);
+      importBtnIcon.classList.toggle('fa-spin', busy);
+    }
+  }
+
+  function clearImportRequest() {
+    if (importTimeoutId !== null) {
+      clearTimeout(importTimeoutId);
+      importTimeoutId = null;
+    }
+    importAbort = null;
+  }
+
+  function parseJsonResponse(res) {
+    return res.text().then(function (text) {
+      if (!text || !text.trim()) {
+        throw new Error('empty_body');
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error('invalid_json');
+      }
+    });
   }
 
   function fillField(id, value) {
@@ -29,7 +71,18 @@
       setStatus('Enter a website URL to import.', true);
       return;
     }
-    importBtn.disabled = true;
+
+    if (importAbort) {
+      importAbort.abort();
+    }
+    importAbort = new AbortController();
+    importTimeoutId = setTimeout(function () {
+      if (importAbort) {
+        importAbort.abort();
+      }
+    }, IMPORT_TIMEOUT_MS);
+
+    setImportBusy(true);
     setStatus('Fetching website…', false);
 
     fetch(previewUrl, {
@@ -40,9 +93,18 @@
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
       },
       body: JSON.stringify({ url: url }),
+      signal: importAbort.signal,
     })
       .then(function (res) {
-        return res.json();
+        return parseJsonResponse(res).then(function (payload) {
+          if (!res.ok && payload && typeof payload === 'object' && payload.message) {
+            return payload;
+          }
+          if (!res.ok) {
+            throw new Error('http_' + res.status);
+          }
+          return payload;
+        });
       })
       .then(function (payload) {
         if (!payload.ok) {
@@ -85,11 +147,23 @@
         }
         setStatus('Fields updated — review and save when ready.', false);
       })
-      .catch(function () {
-        setStatus('Could not reach the server. Try again.', true);
+      .catch(function (err) {
+        if (err && err.name === 'AbortError') {
+          setStatus('Import timed out. Try again.', true);
+        } else if (err && err.message === 'invalid_json') {
+          setStatus('Server returned an unexpected response. Try again.', true);
+        } else if (err && err.message === 'empty_body') {
+          setStatus('Server returned an empty response. Try again.', true);
+        } else {
+          setStatus('Could not reach the server. Try again.', true);
+        }
       })
       .finally(function () {
-        importBtn.disabled = false;
+        clearImportRequest();
+        setImportBusy(false);
+        if (importBtn) {
+          importBtn.focus();
+        }
       });
   });
 })();

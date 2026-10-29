@@ -3,7 +3,8 @@
 namespace App\Services\SupplierWebsite;
 
 use App\Support\SafeOutboundHttp;
-use Illuminate\Http\Client\Response;
+use App\Support\SafeOutboundWebFetchResult;
+use Illuminate\Support\Facades\Log;
 
 class SupplierWebsitePageFetcher
 {
@@ -30,11 +31,19 @@ class SupplierWebsitePageFetcher
             throw new \RuntimeException('That URL is not allowed (use a public http or https address).');
         }
 
-        $homeResponse = $this->get($normalized, $deadline);
-        if ($homeResponse === null || ! $homeResponse->successful()) {
-            throw new \RuntimeException('Could not fetch the website homepage.');
+        $homeResult = $this->get($normalized, $deadline);
+        if (! $homeResult->ok()) {
+            Log::warning('Supplier website import: homepage fetch failed', [
+                'url' => $normalized,
+                'code' => $homeResult->failureCode,
+                'detail' => $homeResult->logDetail,
+            ]);
+            throw new \RuntimeException(
+                $homeResult->userMessage ?? 'Could not fetch the website homepage.'
+            );
         }
 
+        $homeResponse = $homeResult->response;
         $homeHtml = (string) $homeResponse->body();
         $pages = [
             ['url' => $normalized, 'html' => $homeHtml],
@@ -51,7 +60,11 @@ class SupplierWebsitePageFetcher
             if ($url === $normalized) {
                 continue;
             }
-            $response = $this->get($url, $deadline);
+            $pageResult = $this->get($url, $deadline);
+            if (! $pageResult->ok()) {
+                continue;
+            }
+            $response = $pageResult->response;
             if ($response === null || ! $response->successful()) {
                 continue;
             }
@@ -65,11 +78,11 @@ class SupplierWebsitePageFetcher
         return $pages;
     }
 
-    private function get(string $url, float $deadline): ?Response
+    private function get(string $url, float $deadline): SafeOutboundWebFetchResult
     {
         return SafeOutboundHttp::getWeb($url, [
-            'User-Agent' => 'ZaniniAdminSupplierImport/1.0 (+https://zaninirenovations.ca)',
-            'Accept' => 'text/html,application/xhtml+xml',
+            'User-Agent' => 'Mozilla/5.0 (compatible; ZaniniAdminSupplierImport/1.0; +https://zaninirenovations.ca)',
+            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language' => 'en-CA,en;q=0.9',
         ], self::TIMEOUT_SECONDS, self::MAX_BYTES, $deadline);
     }
