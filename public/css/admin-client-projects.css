@@ -1913,6 +1913,15 @@ a:hover .cp-expense-receipt-pdf {
   height: 14px;
   border-radius: 3px;
 }
+.cp-calendar-swipe-hint {
+  display: none;
+}
+@media (hover: none), (pointer: coarse) {
+  .cp-calendar-swipe-hint {
+    display: inline-flex;
+    align-items: center;
+  }
+}
 .cp-calendar-card {
   padding: 16px;
 }
