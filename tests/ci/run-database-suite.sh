@@ -15,4 +15,26 @@ echo "Running ${#files[@]} MySQL integration test file(s) (suite=${CI_MYSQL_SUIT
 php artisan migrate --force --no-interaction
 php artisan schema:dump --database=mysql --no-interaction
 
-php artisan test --parallel --processes=4 --recreate-databases --log-junit storage/logs/ci-mysql-junit.xml -- "${files[@]}"
+ci_xml="$ROOT/phpunit.ci-mysql.xml"
+{
+  echo '<?xml version="1.0" encoding="UTF-8"?>'
+  echo '<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+  echo '         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"'
+  echo '         bootstrap="vendor/autoload.php"'
+  echo '         colors="true">'
+  echo '    <testsuites>'
+  echo '        <testsuite name="CI-MySQL">'
+  for f in "${files[@]}"; do
+    echo "            <file>${f}</file>"
+  done
+  echo '        </testsuite>'
+  echo '    </testsuites>'
+  awk '/<php>/,/<\/php>/' phpunit.xml
+  echo '</phpunit>'
+} > "$ci_xml"
+
+php artisan test --parallel --processes=4 --recreate-databases \
+  --configuration phpunit.ci-mysql.xml \
+  --log-junit storage/logs/ci-mysql-junit.xml
+
+rm -f "$ci_xml"

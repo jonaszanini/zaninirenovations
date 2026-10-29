@@ -43,3 +43,4 @@ users.txt
 /scripts/bq*-render-pdf.php
 /scripts/bq*-totals.php
 composer.phar
+phpunit.ci-mysql.xml

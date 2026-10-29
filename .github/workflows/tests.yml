@@ -206,6 +206,12 @@ jobs:
           node tests/js/admin-project-calendar-swipe.test.js
           node tests/js/admin-info-tip.test.mjs
 
+      - name: Unit tests (no database)
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(grep -v '^#' tests/ci/unit-paths.txt | sed '/^\s*$/d')
+          vendor/bin/phpunit --configuration phpunit.xml "${files[@]}"
+
       - name: JavaScript tests (browser)
         if: needs.changes.outputs.run_browser == 'true'
         run: |
@@ -216,12 +222,6 @@ jobs:
           node tests/js/quotation-redraft-confirm-browser.test.js
           node tests/js/quotation-redraft-hotkey-lock-browser.test.js
           node tests/js/admin-info-tip-click.test.mjs
-
-      - name: Unit tests (no database)
-        run: |
-          set -euo pipefail
-          mapfile -t files < <(grep -v '^#' tests/ci/unit-paths.txt | sed '/^\s*$/d')
-          vendor/bin/phpunit --configuration phpunit.xml "${files[@]}"
 
   mysql:
     needs: changes
