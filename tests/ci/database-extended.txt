@@ -52,6 +52,7 @@ tests/Feature/OnPageSeoBatch4Test.php
 tests/Feature/OnPageSeoBatch5Test.php
 tests/Feature/OnPageSeoBatch6Test.php
 tests/Feature/OnPageSeoOct16Test.php
+tests/Feature/PublicPageBannedWordsTest.php
 tests/Feature/SharedPricesLayoutTest.php
 tests/Feature/Smoke/AdminGetRoutesSmokeTest.php
 tests/Feature/Smoke/PublicGetRoutesSmokeTest.php

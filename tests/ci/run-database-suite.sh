@@ -27,34 +27,17 @@ done
 echo "MySQL suite=${CI_MYSQL_SUITE:-pr}: ${#core_files[@]} core file(s), ${#extras[@]} supplemental file(s)"
 
 failed=()
-run_batch() {
-  local -n batch=$1
-  local label=$2
-  if [[ ${#batch[@]} -eq 0 ]]; then
-    return 0
-  fi
-  local ci_xml="$ROOT/phpunit.ci-mysql.xml"
-  {
-    echo '<?xml version="1.0" encoding="UTF-8"?>'
-    echo '<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
-    echo '         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"'
-    echo '         bootstrap="vendor/autoload.php"'
-    echo '         colors="true">'
-    echo '    <testsuites><testsuite name="CI-MySQL">'
-    for f in "${batch[@]}"; do
-      echo "            <file>${f}</file>"
-    done
-    echo '    </testsuite></testsuites>'
-    awk '/<php>/,/<\/php>/' phpunit.xml
-    echo '</phpunit>'
-  } > "$ci_xml"
+if [[ ${#core_files[@]} -gt 0 ]]; then
+  ci_xml="$ROOT/phpunit.ci-mysql.xml"
+  tmp_list="$(mktemp)"
+  printf '%s\n' "${core_files[@]}" > "$tmp_list"
+  "$ROOT/tests/ci/build-phpunit-suite.sh" "$ci_xml" "$tmp_list"
+  rm -f "$tmp_list"
   if ! php artisan test --configuration phpunit.ci-mysql.xml --log-junit storage/logs/ci-mysql-junit.xml; then
-    failed+=("$label batch")
+    failed+=("core batch")
   fi
   rm -f "$ci_xml"
-}
-
-run_batch core_files "core"
+fi
 
 for f in "${extras[@]}"; do
   if ! php artisan test "$f"; then

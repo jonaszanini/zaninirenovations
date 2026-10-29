@@ -23,9 +23,9 @@ tests/Unit/Services/FenceQuotationScenarioTest.php
 tests/Unit/Services/FlooringQuotationCalculatorTest.php
 tests/Unit/Services/HomeDepotCaUrlsTest.php
 tests/Unit/Services/MaterialPriceSyncServiceTest.php
-tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
 tests/Unit/Services/MillworkCalcVersionGateTest.php
 tests/Unit/Services/MillworkCutPlanPlacementTest.php
+tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
 tests/Unit/Services/MillworkQuotationCalculatorTest.php
 tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
 tests/Unit/Services/OpenPlan3DParityTest.php
@@ -77,6 +77,7 @@ tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php
 tests/Unit/Views/FencePriceBannerTipTest.php
 tests/Unit/Views/FenceQuotationFormRestoreTest.php
 tests/Unit/Views/HomeKitchenTileImageTest.php
+tests/Unit/Views/HomeServiceTileUppercaseTest.php
 tests/Unit/Views/PublicCssLightOnlyTest.php
 tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
 tests/Unit/Views/PublicMobileNavDropdownTest.php

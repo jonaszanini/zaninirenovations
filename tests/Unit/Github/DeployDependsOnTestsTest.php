@@ -19,6 +19,8 @@ class DeployDependsOnTestsTest extends TestCase
             $yaml
         );
         $this->assertStringContainsString('dorny/paths-filter@v3', $yaml);
+        $this->assertStringContainsString('predicate-quantifier: every', $yaml);
+        $this->assertStringContainsString('docs_only:', $yaml);
         $this->assertStringContainsString('run_database', $yaml);
         $this->assertStringContainsString("push:\n    branches:\n      - main", $yaml);
         $this->assertStringContainsString('pull_request:', $yaml);
@@ -35,14 +37,49 @@ class DeployDependsOnTestsTest extends TestCase
             'Shallow clone hides 86e68a3e from QuotationEditorControlInventoryTest'
         );
         $this->assertStringContainsString('tests/ci/run-database-suite.sh', $yaml);
-        $runScript = file_get_contents(base_path('tests/ci/run-database-suite.sh'));
-        $this->assertNotFalse($runScript);
-        $this->assertStringContainsString('php artisan test --parallel', $runScript);
+        $this->assertStringContainsString('tests/ci/run-unit-suite.sh', $yaml);
+        $this->assertDoesNotMatchRegularExpression(
+            '/vendor\/bin\/phpunit[^\n]*"\$\{files\[@\]\}"/',
+            $yaml,
+            'PHPUnit 9 only runs the first CLI path; do not pass many files to one phpunit invocation'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/php artisan test \\\\\s*\n\s+tests\//',
+            $yaml,
+            'PHPUnit 9 only runs the first path; do not pass multiple files to one artisan test'
+        );
+    }
+
+    public function test_unit_ci_suite_includes_every_listed_path_as_phpunit_file(): void
+    {
+        $unit = $this->pathsFile('tests/ci/unit-paths.txt');
+        $this->assertGreaterThan(20, count($unit));
+
+        $ciXml = sys_get_temp_dir().'/phpunit.ci-unit.'.uniqid('', true).'.xml';
+        $script = base_path('tests/ci/build-phpunit-suite.sh');
+        $listFile = sys_get_temp_dir().'/unit-paths.'.uniqid('', true).'.txt';
+        file_put_contents($listFile, implode("\n", $unit)."\n");
+
+        $cmd = 'bash '.escapeshellarg($script).' '.escapeshellarg($ciXml).' '.escapeshellarg($listFile).' 2>&1';
+        $out = shell_exec($cmd);
+        $this->assertFileExists($ciXml, $out ?? 'build-phpunit-suite.sh failed');
+
+        $xml = file_get_contents($ciXml);
+        $this->assertNotFalse($xml);
+        preg_match_all('/<file>([^<]+)<\/file>/', $xml, $m);
+        $listed = $m[1] ?? [];
+        $this->assertSame(count($unit), count($listed), 'Each unit-paths.txt entry must become a <file> in the generated config');
+
+        foreach ($unit as $path) {
+            $this->assertContains($path, $listed, $path.' missing from generated PHPUnit suite');
+        }
+
+        @unlink($ciXml);
+        @unlink($listFile);
     }
 
     public function test_tests_workflow_lists_every_ci_database_and_unit_path_on_disk(): void
     {
-        $yaml = $this->workflow('tests.yml');
         $unit = $this->pathsFile('tests/ci/unit-paths.txt');
 
         $this->assertSame(
@@ -55,9 +92,11 @@ class DeployDependsOnTestsTest extends TestCase
 
         $this->assertContains('tests/Unit/Github/DeployDependsOnTestsTest.php', $unit);
         $this->assertContains('tests/Unit/Services/OpenPlan3DPlanValidatorTest.php', $unit);
-        $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php', $unit);
-        $this->assertContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $unit);
+        $this->assertContains('tests/Unit/Views/HomeServiceTileUppercaseTest.php', $unit);
+        $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php', $extended);
+        $this->assertContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $extended);
         $this->assertContains('tests/Feature/Admin/RoomAreaCanvasObjectsTest.php', $extended);
+        $this->assertContains('tests/Feature/PublicPageBannedWordsTest.php', $extended);
         $this->assertContains('tests/Feature/SharedWorksNormalizedLabelMigrationTest.php', $core);
         $this->assertGreaterThan(20, count($unit));
         $this->assertGreaterThan(10, count($core));

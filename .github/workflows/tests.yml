@@ -47,6 +47,16 @@ jobs:
           fetch-depth: 0
 
       - uses: dorny/paths-filter@v3
+        id: filter_docs
+        with:
+          predicate-quantifier: every
+          filters: |
+            docs_only:
+              - '**/*.md'
+              - 'docs/**'
+              - 'lang/**'
+
+      - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
@@ -108,6 +118,7 @@ jobs:
 
       - id: flags
         env:
+          FILTER_DOCS_ONLY: ${{ steps.filter_docs.outputs.docs_only }}
           FILTER_CODE: ${{ steps.filter.outputs.code }}
           FILTER_SP: ${{ steps.filter.outputs.shared_prices_geometry }}
           FILTER_RA: ${{ steps.filter.outputs.room_area_live }}
@@ -124,7 +135,7 @@ jobs:
 
           run_database=false
           if [ "$is_main" = true ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then run_database=true; fi
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "$FILTER_CODE" = "true" ]; then run_database=true; fi
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "$FILTER_DOCS_ONLY" != "true" ] && [ "$FILTER_CODE" = "true" ]; then run_database=true; fi
 
           run_shared=false
           if [ "$slow_input" = true ] || [ "$FILTER_SP" = "true" ]; then run_shared=true; fi
@@ -207,10 +218,7 @@ jobs:
           node tests/js/admin-info-tip.test.mjs
 
       - name: Unit tests (no database)
-        run: |
-          set -euo pipefail
-          mapfile -t files < <(grep -v '^#' tests/ci/unit-paths.txt | sed '/^\s*$/d')
-          vendor/bin/phpunit --configuration phpunit.xml "${files[@]}"
+        run: tests/ci/run-unit-suite.sh
 
       - name: JavaScript tests (browser)
         if: needs.changes.outputs.run_browser == 'true'

@@ -23,7 +23,6 @@
         "mockery/mockery": "^1.4.4",
         "nunomaduro/collision": "^6.0",
         "phpunit/phpunit": "^9.5",
-        "brianium/paratest": "^6.11",
         "spatie/laravel-ignition": "^1.0"
     },
     "autoload": {
