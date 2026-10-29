@@ -1,5 +1,9 @@
 name: Tests
 
+permissions:
+  contents: read
+  pull-requests: read
+
 # GitHub bills runner minutes. Superseded PR runs cancel unless the ref is main.
 # Heavy geometry/fuzz checks run when related paths change (including on main).
 
