@@ -10,7 +10,9 @@
   root.AdminProjectCalendarSwipe = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   var MIN_HORIZONTAL_PX = 50;
-  var HORIZONTAL_DOMINANCE = 1.25;
+  var LONG_SWIPE_PX = 80;
+  /** Horizontal distance must be at least 2× vertical (2:1 ratio). */
+  var HORIZONTAL_DOMINANCE = 2;
   var MIN_VELOCITY_PX_MS = 0.3;
   var SUPPRESS_CLICK_MS = 400;
   var VERTICAL_SCROLL_BREAK_PX = 12;
@@ -23,20 +25,17 @@
   function qualifiesHorizontalSwipe(dx, dy, durationMs) {
     var adx = Math.abs(dx);
     var ady = Math.abs(dy);
-    if (adx < MIN_HORIZONTAL_PX) {
+    if (!durationMs || durationMs <= 0) {
       return false;
     }
     if (adx < ady * HORIZONTAL_DOMINANCE) {
       return false;
     }
-    if (!durationMs || durationMs <= 0) {
-      return false;
-    }
-    if (adx / durationMs < MIN_VELOCITY_PX_MS) {
-      return false;
-    }
 
-    return true;
+    var longDistance = adx >= LONG_SWIPE_PX;
+    var fastEnough = adx >= MIN_HORIZONTAL_PX && adx / durationMs >= MIN_VELOCITY_PX_MS;
+
+    return longDistance || fastEnough;
   }
 
   /** @returns {'next'|'prev'|null} */
@@ -49,6 +48,24 @@
     }
 
     return null;
+  }
+
+  /**
+   * @param {{ tracking: boolean }|null} active
+   * @param {{ pointerId: number, isPrimary?: boolean }} e
+   */
+  function shouldCancelSwipeTrackingOnPointerDown(active, e) {
+    if (!active) {
+      return false;
+    }
+    if (e.pointerId !== active.id) {
+      return true;
+    }
+    if (e.isPrimary === false) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -80,9 +97,18 @@
       if (e.pointerType === 'mouse') {
         return;
       }
+
+      if (active) {
+        if (shouldCancelSwipeTrackingOnPointerDown(active, e)) {
+          active.tracking = false;
+        }
+        return;
+      }
+
       if (typeof e.isPrimary === 'boolean' && !e.isPrimary) {
         return;
       }
+
       active = {
         id: e.pointerId,
         x: e.clientX,
@@ -164,9 +190,12 @@
 
   return {
     MIN_HORIZONTAL_PX: MIN_HORIZONTAL_PX,
+    LONG_SWIPE_PX: LONG_SWIPE_PX,
+    HORIZONTAL_DOMINANCE: HORIZONTAL_DOMINANCE,
     MIN_VELOCITY_PX_MS: MIN_VELOCITY_PX_MS,
     qualifiesHorizontalSwipe: qualifiesHorizontalSwipe,
     swipeDirection: swipeDirection,
+    shouldCancelSwipeTrackingOnPointerDown: shouldCancelSwipeTrackingOnPointerDown,
     attach: attach,
   };
 });
