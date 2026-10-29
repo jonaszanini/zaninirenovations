@@ -22,6 +22,12 @@
   </div>
 
   <div class="cp-calendar-legend">
+    <span class="cp-legend-item cp-calendar-swipe-hint">
+      @include('admin.partials.tipped_label', [
+        'label' => 'Swipe',
+        'tipText' => 'On phone or tablet, swipe left or right on the calendar to move to the next or previous month, week, or list.',
+      ])
+    </span>
     <span class="cp-legend-item">
       <span class="cp-legend-swatch" style="background: {{ $personalEventColor }};"></span>
       Personal
@@ -113,6 +119,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script src="{{ asset('js/admin-project-calendar-swipe.js') }}?v={{ @filemtime(public_path('js/admin-project-calendar-swipe.js')) ?: time() }}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var el = document.getElementById('cp-calendar');
@@ -140,6 +147,7 @@
       var editingId = null;
       var editingFcEvent = null;
       var calendar = null;
+      var calendarSwipeNav = null;
 
       function pad2(n) { return n < 10 ? '0' + n : '' + n; }
       function formatYmd(d) {
@@ -392,6 +400,7 @@
         selectLongPressDelay: touchLikeCalendar ? 500 : 0,
         dateClick: function (info) {
           if (!touchLikeCalendar) return;
+          if (calendarSwipeNav && calendarSwipeNav.shouldSuppressEventClick()) return;
           var ymd = formatYmd(info.date);
           openCreate(ymd, ymd);
         },
@@ -403,6 +412,10 @@
           calendar.unselect();
         },
         eventClick: function (info) {
+          if (calendarSwipeNav && calendarSwipeNav.shouldSuppressEventClick()) {
+            info.jsEvent.preventDefault();
+            return;
+          }
           var kind = info.event.extendedProps && info.event.extendedProps.kind;
           if (kind === 'personal') {
             info.jsEvent.preventDefault();
@@ -433,6 +446,11 @@
         },
       });
       calendar.render();
+      if (window.AdminProjectCalendarSwipe) {
+        calendarSwipeNav = window.AdminProjectCalendarSwipe.attach(el, calendar, {
+          touchLike: touchLikeCalendar,
+        });
+      }
     });
   </script>
 @endsection

@@ -94,6 +94,7 @@ jobs:
           node tests/js/admin-hotkey-save.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js
+          node tests/js/admin-project-calendar-swipe.test.js
           node tests/js/quotation-redraft-confirm-browser.test.js
           node tests/js/quotation-redraft-hotkey-lock-browser.test.js
           node tests/js/admin-info-tip.test.mjs
@@ -276,6 +277,7 @@ jobs:
             tests/Feature/Admin/AdminHotkeySaveMarkerTest.php
             tests/Feature/Admin/AdminOnceSubmitReplayTest.php
             tests/Feature/Admin/AdminCalendarPersonalEventTimeTest.php
+            tests/Feature/Admin/AdminProjectCalendarSwipeTest.php
             tests/Feature/Admin/AdminHotkeySaveMarkupTest.php
             tests/Unit/Services/RoomAreaFinishMathTest.php
             tests/Feature/Admin/RoomAreaBatch2PageTest.php
