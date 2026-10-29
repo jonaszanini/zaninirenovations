@@ -5,9 +5,9 @@ namespace Tests\Unit\Services;
 use App\Models\SharedWork;
 use App\Services\SharedWorkCatalog;
 use Illuminate\Support\Facades\Schema;
-use Tests\TestCase;
+use Tests\IntegrationTestCase;
 
-class SharedWorkCatalogTest extends TestCase
+class SharedWorkCatalogTest extends IntegrationTestCase
 {
     public function test_definitions_include_shoe_and_baseboard(): void
     {

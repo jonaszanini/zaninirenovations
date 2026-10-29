@@ -19,8 +19,8 @@ class DeployDependsOnTestsTest extends TestCase
             $yaml
         );
         $this->assertStringContainsString('dorny/paths-filter@v3', $yaml);
-        $this->assertStringContainsString('predicate-quantifier: every', $yaml);
-        $this->assertStringContainsString('docs_only:', $yaml);
+        $this->assertStringContainsString('tests/ci/classify-ci-changes.sh', $yaml);
+        $this->assertStringContainsString('DOCS_ONLY', $yaml);
         $this->assertStringContainsString('run_database', $yaml);
         $this->assertStringContainsString("push:\n    branches:\n      - main", $yaml);
         $this->assertStringContainsString('pull_request:', $yaml);
@@ -78,6 +78,37 @@ class DeployDependsOnTestsTest extends TestCase
         @unlink($listFile);
     }
 
+    public function test_classify_ci_changes_script_treats_md_only_diff_as_docs_only(): void
+    {
+        $script = base_path('tests/ci/classify-ci-changes.sh');
+        $this->assertFileExists($script);
+
+        $dir = sys_get_temp_dir().'/ci-classify-'.uniqid('', true);
+        mkdir($dir);
+        mkdir("$dir/docs");
+        exec('git init -q '.escapeshellarg($dir));
+        exec('git -C '.escapeshellarg($dir).' -c user.email=ci@test -c user.name=ci commit -q --allow-empty -m base');
+        file_put_contents("$dir/docs/note.md", "# note\n");
+        exec('git -C '.escapeshellarg($dir).' add docs/note.md');
+        exec('git -C '.escapeshellarg($dir).' -c user.email=ci@test -c user.name=ci commit -q -m docs');
+
+        $outFile = sys_get_temp_dir().'/ci-classify-out-'.uniqid('', true);
+        chdir($dir);
+        $cmd = 'GITHUB_OUTPUT='.escapeshellarg($outFile)
+            .' GITHUB_EVENT_NAME=pull_request PR_BASE=HEAD~1 PR_HEAD=HEAD'
+            .' bash '.escapeshellarg($script);
+        exec($cmd.' 2>&1', $output, $code);
+        chdir(base_path());
+
+        $this->assertSame(0, $code, implode("\n", $output));
+        $this->assertFileExists($outFile);
+        $this->assertStringContainsString('docs_only=true', (string) file_get_contents($outFile));
+        $this->assertStringContainsString('has_code_changes=false', (string) file_get_contents($outFile));
+
+        @unlink($outFile);
+        exec('rm -rf '.escapeshellarg($dir));
+    }
+
     public function test_tests_workflow_lists_every_ci_database_and_unit_path_on_disk(): void
     {
         $unit = $this->pathsFile('tests/ci/unit-paths.txt');
@@ -92,6 +123,10 @@ class DeployDependsOnTestsTest extends TestCase
 
         $this->assertContains('tests/Unit/Github/DeployDependsOnTestsTest.php', $unit);
         $this->assertContains('tests/Unit/Services/OpenPlan3DPlanValidatorTest.php', $unit);
+        $this->assertContains('tests/Unit/Services/FlooringQuotationCalculatorTest.php', $core);
+        $this->assertContains('tests/Unit/Services/SharedWorkCatalogTest.php', $core);
+        $this->assertNotContains('tests/Unit/Services/FlooringQuotationCalculatorTest.php', $unit);
+        $this->assertNotContains('tests/Unit/Services/SharedWorkCatalogTest.php', $unit);
         $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php', $extended);
         $this->assertContains('tests/Unit/Services/RoomAreaDrawingImporterTest.php', $extended);
         $this->assertContains('tests/Feature/Admin/RoomAreaCanvasObjectsTest.php', $extended);

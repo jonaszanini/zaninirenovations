@@ -46,15 +46,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: dorny/paths-filter@v3
-        id: filter_docs
-        with:
-          predicate-quantifier: every
-          filters: |
-            docs_only:
-              - '**/*.md'
-              - 'docs/**'
-              - 'lang/**'
+      - id: classify
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: tests/ci/classify-ci-changes.sh
 
       - uses: dorny/paths-filter@v3
         id: filter
@@ -118,7 +117,8 @@ jobs:
 
       - id: flags
         env:
-          FILTER_DOCS_ONLY: ${{ steps.filter_docs.outputs.docs_only }}
+          DOCS_ONLY: ${{ steps.classify.outputs.docs_only }}
+          HAS_CODE_CHANGES: ${{ steps.classify.outputs.has_code_changes }}
           FILTER_CODE: ${{ steps.filter.outputs.code }}
           FILTER_SP: ${{ steps.filter.outputs.shared_prices_geometry }}
           FILTER_RA: ${{ steps.filter.outputs.room_area_live }}
@@ -135,7 +135,7 @@ jobs:
 
           run_database=false
           if [ "$is_main" = true ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then run_database=true; fi
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "$FILTER_DOCS_ONLY" != "true" ] && [ "$FILTER_CODE" = "true" ]; then run_database=true; fi
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "$DOCS_ONLY" != "true" ] && [ "$HAS_CODE_CHANGES" = "true" ]; then run_database=true; fi
 
           run_shared=false
           if [ "$slow_input" = true ] || [ "$FILTER_SP" = "true" ]; then run_shared=true; fi

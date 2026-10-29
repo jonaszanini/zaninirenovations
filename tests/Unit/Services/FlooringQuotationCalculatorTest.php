@@ -5,9 +5,9 @@ namespace Tests\Unit\Services;
 use App\Models\FlooringSettings;
 use App\Models\FlooringType;
 use App\Services\FlooringQuotationCalculator;
-use Tests\TestCase;
+use Tests\IntegrationTestCase;
 
-class FlooringQuotationCalculatorTest extends TestCase
+class FlooringQuotationCalculatorTest extends IntegrationTestCase
 {
     public function test_calculate_splits_labor_and_materials(): void
     {

@@ -20,7 +20,6 @@ tests/Unit/Services/EtransferNoticeParserTest.php
 tests/Unit/Services/FenceQuotationCalculatorTest.php
 tests/Unit/Services/FenceQuotationOct8FixesTest.php
 tests/Unit/Services/FenceQuotationScenarioTest.php
-tests/Unit/Services/FlooringQuotationCalculatorTest.php
 tests/Unit/Services/HomeDepotCaUrlsTest.php
 tests/Unit/Services/MaterialPriceSyncServiceTest.php
 tests/Unit/Services/MillworkCalcVersionGateTest.php
@@ -43,7 +42,6 @@ tests/Unit/Services/RoomAreaQuotePrefillTest.php
 tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php
 tests/Unit/Services/RoomAreaSharedWallsTest.php
 tests/Unit/Services/RoomAreaTemplatesTest.php
-tests/Unit/Services/SharedWorkCatalogTest.php
 tests/Unit/Services/StandardQuotationCalculatorTest.php
 tests/Unit/Services/StandardQuotationKitRewriteAuditorTest.php
 tests/Unit/Services/SupplierWebsiteDataExtractorAddressCapTest.php
