@@ -121,7 +121,7 @@ class ClientProjectCalendarService
                         'recordId' => $p->id,
                         'status' => $p->statusLabel(),
                     ],
-                ], $p->statusColor());
+                ], $p->statusColor(), preferWhiteText: true);
                 if ($includeUrl) {
                     $event['url'] = route('admin.client-projects.show', $p);
                 }
@@ -163,7 +163,7 @@ class ClientProjectCalendarService
                         'recordId' => $p->id,
                         'status' => $visitDone ? 'Visit (completed)' : 'Visit — '.$p->statusLabel(),
                     ],
-                ], $visitColor);
+                ], $visitColor, preferWhiteText: true);
                 if ($includeUrl) {
                     $event['url'] = route('admin.client-projects.show', $p);
                 }

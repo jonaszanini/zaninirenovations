@@ -18,8 +18,8 @@
   --fc-classic-border: var(--admin-border, #e2e8f0);
   --fc-classic-strong-border: var(--admin-border, #cbd5e1);
 
-  --fc-classic-today: rgba(2, 71, 104, 0.12);
-  --fc-classic-highlight: rgba(2, 71, 104, 0.12);
+  --fc-classic-today: color-mix(in srgb, var(--admin-primary, #024768) 24%, var(--admin-surface, #fff));
+  --fc-classic-highlight: color-mix(in srgb, var(--admin-primary, #024768) 18%, transparent);
   --fc-classic-now: var(--admin-primary, #024768);
 
   --fc-classic-button: var(--admin-primary, #024768);
@@ -45,18 +45,38 @@ html.admin-dark .cp-calendar-card #cp-calendar,
   --fc-classic-border: var(--admin-border, #334155);
   --fc-classic-strong-border: var(--admin-border, #475569);
 
-  --fc-classic-today: rgba(56, 189, 248, 0.14);
-  --fc-classic-highlight: rgba(56, 189, 248, 0.18);
-  --fc-classic-now: #38bdf8;
+  --fc-classic-today: color-mix(in srgb, #0ea5e9 32%, var(--admin-surface, #1e293b));
+  --fc-classic-highlight: color-mix(in srgb, var(--admin-primary, #024768) 22%, transparent);
+  --fc-classic-now: #0ea5e9;
 
-  --fc-classic-button: var(--admin-primary, #024768);
-  --fc-classic-button-border: var(--admin-primary, #024768);
-  --fc-classic-button-strong: var(--admin-primary-hover, #013552);
-  --fc-classic-button-strong-border: var(--admin-primary-hover, #013552);
+  --fc-classic-button: #024768;
+  --fc-classic-button-border: #024768;
+  --fc-classic-button-strong: #013552;
+  --fc-classic-button-strong-border: #012a40;
   --fc-classic-button-foreground: #ffffff;
+  --fc-classic-primary: #024768;
+  --fc-classic-primary-foreground: #ffffff;
 }
 
-/* Today day number — brand pill (works across FC7 hashed day-top markup). */
+/* FC7 toolbar — aria-pressed works across hashed button classes. */
+.cp-calendar-card #cp-calendar button[aria-pressed='true'] {
+  background-color: var(--admin-primary, #024768) !important;
+  border-color: var(--admin-primary, #024768) !important;
+  color: #ffffff !important;
+}
+
+.cp-calendar-card #cp-calendar button[aria-pressed='false'] {
+  background-color: transparent;
+  color: var(--admin-muted, #64748b);
+  border-color: var(--admin-border, #e2e8f0);
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar button[aria-pressed='false'] {
+  color: var(--admin-muted, #94a3b8);
+  border-color: var(--admin-border, #334155);
+}
+
+/* Today day number pill (class applied in dayCellDidMount). */
 .cp-calendar-card #cp-calendar .cp-calendar-day-today-pill {
   display: inline-flex;
   align-items: center;
@@ -72,27 +92,35 @@ html.admin-dark .cp-calendar-card #cp-calendar,
   box-sizing: border-box;
 }
 
-.cp-calendar-card .cp-calendar-more-link {
+/* FC7 "+N more" — styled via moreLinkDidMount; keep link color readable. */
+.cp-calendar-card #cp-calendar .cp-calendar-more-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   min-height: 24px;
   min-width: 24px;
-  padding: 2px 6px;
+  padding: 4px 8px;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--admin-primary, #024768);
   border-radius: 6px;
 }
 
-.cp-calendar-card .cp-calendar-more-link:focus-visible {
+.cp-calendar-card #cp-calendar .cp-calendar-more-link:focus-visible {
   outline: 2px solid var(--admin-primary, #024768);
   outline-offset: 2px;
 }
 
-.cp-calendar-card .cp-calendar-more-popover {
-  z-index: 30;
-  max-width: min(340px, calc(100vw - 24px));
-  max-height: min(70vh, 420px);
+/* FC7 more-popover uses native [popover] + .re-popover (popoverClass is additive). */
+.cp-calendar-card #cp-calendar [popover].re-popover,
+.cp-calendar-card #cp-calendar [popover]:popover-open {
+  position: fixed;
+  z-index: 40;
+  margin: 0;
+  box-sizing: border-box;
+  max-width: min(340px, calc(100vw - 16px));
+  max-height: min(70vh, calc(100dvh - 16px));
   overflow: auto;
   border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 10px;
@@ -101,20 +129,15 @@ html.admin-dark .cp-calendar-card #cp-calendar,
   color: var(--admin-text, #334155);
 }
 
-html.admin-dark .cp-calendar-card .cp-calendar-more-popover {
+html.admin-dark .cp-calendar-card #cp-calendar [popover].re-popover,
+html.admin-dark .cp-calendar-card #cp-calendar [popover]:popover-open {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
-.cp-calendar-card .cp-calendar-more-popover-header {
-  background: var(--admin-surface-hover, #f8fafc);
-  color: var(--admin-heading, var(--admin-text, #334155));
-  border-bottom: 1px solid var(--admin-border, #e2e8f0);
-}
-
 @media (max-width: 480px) {
-  .cp-calendar-card .cp-calendar-more-link {
+  .cp-calendar-card #cp-calendar .cp-calendar-more-link {
     min-height: 28px;
     min-width: 28px;
-    padding: 4px 8px;
+    padding: 6px 10px;
   }
 }

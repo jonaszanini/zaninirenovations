@@ -174,15 +174,36 @@
       }
       function markTodayDayNumber(cellEl, isToday) {
         if (!cellEl) return;
-        var links = cellEl.querySelectorAll('a');
-        for (var i = 0; i < links.length; i++) {
-          var link = links[i];
-          if (isToday) {
-            link.classList.add('cp-calendar-day-today-pill');
-          } else {
-            link.classList.remove('cp-calendar-day-today-pill');
+        var pillClass = 'cp-calendar-day-today-pill';
+        var nodes = cellEl.querySelectorAll('.' + pillClass);
+        for (var p = 0; p < nodes.length; p++) {
+          nodes[p].classList.remove(pillClass);
+        }
+        if (!isToday) return;
+        var candidates = cellEl.querySelectorAll('a, button, span, div, p');
+        for (var i = 0; i < candidates.length; i++) {
+          var node = candidates[i];
+          if (node.children.length > 0) continue;
+          var text = (node.textContent || '').trim();
+          if (/^\d{1,2}$/.test(text)) {
+            node.classList.add(pillClass);
+            return;
           }
         }
+      }
+
+      function styleMoreLink(arg) {
+        var link = arg.el;
+        if (!link) return;
+        link.classList.add('cp-calendar-more-link');
+        link.style.display = 'inline-flex';
+        link.style.alignItems = 'center';
+        link.style.justifyContent = 'center';
+        link.style.boxSizing = 'border-box';
+        link.style.minHeight = '24px';
+        link.style.minWidth = '24px';
+        link.style.padding = '4px 8px';
+        link.style.lineHeight = '1.2';
       }
 
       function pad2(n) { return n < 10 ? '0' + n : '' + n; }
@@ -275,6 +296,16 @@
 
       document.getElementById('cp-personal-event-add').addEventListener('click', function () {
         openCreate(formatYmd(new Date()), formatYmd(new Date()));
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' && e.key !== 'Esc') return;
+        if (modal.hidden) return;
+        var pop = window.AdminProjectCalendarPopover
+          && window.AdminProjectCalendarPopover.findOpenPopover
+          && window.AdminProjectCalendarPopover.findOpenPopover(document);
+        if (pop) return;
+        closeModal();
       });
 
       modal.addEventListener('click', function (e) {
@@ -472,9 +503,9 @@
         dayMinHeight: 68,
         dayMaxEvents: true,
         moreLinkClick: 'popover',
-        moreLinkClassNames: ['cp-calendar-more-link'],
-        popoverClass: 'cp-calendar-more-popover',
-        popoverHeaderClass: 'cp-calendar-more-popover-header',
+        moreLinkHeight: 28,
+        moreLinkClass: 'cp-calendar-more-link',
+        moreLinkDidMount: styleMoreLink,
         editable: true,
         eventStartEditable: true,
         eventDurationEditable: true,

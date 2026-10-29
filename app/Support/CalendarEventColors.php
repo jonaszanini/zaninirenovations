@@ -14,8 +14,12 @@ final class CalendarEventColors
      * @param  array<string, mixed>  $event
      * @return array<string, mixed>
      */
-    public static function apply(array $event, string $color): array
+    public static function apply(array $event, string $color, bool $preferWhiteText = false): array
     {
+        if ($preferWhiteText) {
+            $color = self::fillColorForWhiteText($color);
+        }
+
         $contrast = self::contrastColorFor($color);
 
         $event['color'] = $color;
@@ -46,6 +50,45 @@ final class CalendarEventColors
         }
 
         return $white >= $black ? '#ffffff' : '#111827';
+    }
+
+    /** Darken a hex fill until white text meets {@see MIN_CONTRAST}. */
+    public static function fillColorForWhiteText(string $color): string
+    {
+        $rgb = self::parseHex($color);
+        if ($rgb === null) {
+            return $color;
+        }
+
+        if (self::contrastRatio(self::relativeLuminance($rgb), 1.0) >= self::MIN_CONTRAST) {
+            return strtolower($color);
+        }
+
+        for ($step = 0; $step < 16; $step++) {
+            $rgb = [
+                'r' => max(0, $rgb['r'] * 0.92),
+                'g' => max(0, $rgb['g'] * 0.92),
+                'b' => max(0, $rgb['b'] * 0.92),
+            ];
+            if (self::contrastRatio(self::relativeLuminance($rgb), 1.0) >= self::MIN_CONTRAST) {
+                return self::rgbToHex($rgb);
+            }
+        }
+
+        return self::rgbToHex($rgb);
+    }
+
+    /**
+     * @param  array{r: float, g: float, b: float}  $rgb
+     */
+    private static function rgbToHex(array $rgb): string
+    {
+        $parts = [];
+        foreach (['r', 'g', 'b'] as $key) {
+            $parts[] = str_pad(dechex((int) round($rgb[$key] * 255)), 2, '0', STR_PAD_LEFT);
+        }
+
+        return '#'.implode('', $parts);
     }
 
     /**

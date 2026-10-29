@@ -62,6 +62,9 @@
     if (!active) {
       return false;
     }
+    if (active.awaitingTouch) {
+      return false;
+    }
     if (e.pointerId !== active.id) {
       return true;
     }
@@ -203,19 +206,41 @@
     }
 
     function onPointerCancel(e) {
-      if (active && e.pointerId === active.id) {
-        active = null;
+      if (!active || e.pointerId !== active.id) {
+        return;
       }
+      releaseCapture(e);
+      if (e.pointerType === 'touch') {
+        active.awaitingTouch = true;
+        active.tracking = true;
+        return;
+      }
+      active = null;
     }
 
     function onTouchStart(e) {
-      if (active || !e.changedTouches || e.changedTouches.length !== 1) {
-        if (e.touches && e.touches.length > 1 && active) {
+      if (e.touches && e.touches.length > 1) {
+        if (active) {
           active.tracking = false;
         }
         return;
       }
+      if (!e.changedTouches || e.changedTouches.length !== 1) {
+        return;
+      }
       var t = e.changedTouches[0];
+      if (active && active.awaitingTouch) {
+        active.x = t.clientX;
+        active.y = t.clientY;
+        active.t = performance.now();
+        active.tracking = true;
+        active.touch = true;
+        active.awaitingTouch = false;
+        return;
+      }
+      if (active) {
+        return;
+      }
       beginTracking(t.clientX, t.clientY, { touch: true });
     }
 
@@ -283,6 +308,17 @@
     qualifiesHorizontalSwipe: qualifiesHorizontalSwipe,
     swipeDirection: swipeDirection,
     shouldCancelSwipeTrackingOnPointerDown: shouldCancelSwipeTrackingOnPointerDown,
+    handlePointerCancel: function (active, e) {
+      if (!active || e.pointerId !== active.id) {
+        return active;
+      }
+      if (e.pointerType === 'touch') {
+        active.awaitingTouch = true;
+        active.tracking = true;
+        return active;
+      }
+      return null;
+    },
     attach: attach,
   };
 });

@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\AdminCalendarEvent;
 use App\Models\ClientProject;
 use App\Services\ClientProjectCalendarService;
+use App\Support\CalendarEventColors;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\ActsAsAdmin;
 use Tests\TestCase;
@@ -33,6 +34,8 @@ class ClientProjectCalendarUpgradeTest extends TestCase
         $this->assertStringContainsString('colorScheme:', $html);
         $this->assertStringContainsString('dayMinHeight: 68', $html);
         $this->assertStringContainsString("moreLinkClick: 'popover'", $html);
+        $this->assertStringContainsString('moreLinkClass:', $html);
+        $this->assertStringContainsString('moreLinkDidMount:', $html);
         $this->assertStringContainsString('cp-calendar-more-link', $html);
         $this->assertStringContainsString('dayGridMonth,timeGridWeek,timeGridDay,listMonth', $html);
         $this->assertStringContainsString('eventDrop: persistMove', $html);
@@ -79,10 +82,9 @@ class ClientProjectCalendarUpgradeTest extends TestCase
         $this->assertTrue($jobEvent['allDay']);
         $this->assertSame('2026-11-02', $jobEvent['start']);
         $this->assertSame('2026-11-05', $jobEvent['end']);
-        $this->assertSame($job->statusColor(), $jobEvent['backgroundColor']);
-        $this->assertSame($job->statusColor(), $jobEvent['color']);
+        $this->assertSame('#ffffff', $jobEvent['contrastColor']);
         $this->assertSame($jobEvent['contrastColor'], $jobEvent['textColor']);
-        $this->assertContains($jobEvent['contrastColor'], ['#ffffff', '#111827']);
+        $this->assertSame($jobEvent['color'], $jobEvent['backgroundColor']);
         $this->assertSame(route('admin.client-projects.show', $job), $jobEvent['url']);
         $this->assertTrue($jobEvent['durationEditable']);
         $this->assertSame($job->id, $jobEvent['extendedProps']['recordId']);
@@ -97,7 +99,8 @@ class ClientProjectCalendarUpgradeTest extends TestCase
 
         $doneEvent = $events->first(fn ($row) => ($row['id'] ?? '') === 'visit-'.$doneVisit->id);
         $this->assertNotNull($doneEvent);
-        $this->assertSame('#94a3b8', $doneEvent['backgroundColor']);
+        $this->assertSame(CalendarEventColors::fillColorForWhiteText('#94a3b8'), $doneEvent['backgroundColor']);
+        $this->assertSame('#ffffff', $doneEvent['contrastColor']);
         $this->assertStringStartsWith('Visit (done):', $doneEvent['title']);
 
         $personalEvent = $events->first(fn ($row) => ($row['id'] ?? '') === 'personal-'.$personal->id);
@@ -210,7 +213,7 @@ class ClientProjectCalendarUpgradeTest extends TestCase
             'all_day' => false,
         ])->assertOk()
             ->assertJsonPath('event.start', '2026-11-18T09:30:00')
-            ->assertJsonPath('event.backgroundColor', '#94a3b8');
+            ->assertJsonPath('event.backgroundColor', CalendarEventColors::fillColorForWhiteText('#94a3b8'));
 
         $project->refresh();
         $this->assertSame('2026-11-18', $project->visit_date->toDateString());
