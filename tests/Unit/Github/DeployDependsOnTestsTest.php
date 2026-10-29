@@ -15,9 +15,11 @@ class DeployDependsOnTestsTest extends TestCase
             $yaml
         );
         $this->assertMatchesRegularExpression(
-            '/concurrency:\s*\n\s+group:\s+tests-\$\{\{\s*github\.ref\s*\}\}\s*\n\s+cancel-in-progress:\s+true/m',
+            '/concurrency:\s*\n\s+group:\s+tests-\$\{\{\s*github\.workflow\s*\}\}-\$\{\{\s*github\.ref\s*\}\}\s*\n\s+cancel-in-progress:\s+\$\{\{\s*github\.ref\s*!=\s*[\'"]refs\/heads\/main[\'"]\s*\}\}/m',
             $yaml
         );
+        $this->assertStringContainsString('dorny/paths-filter@v3', $yaml);
+        $this->assertStringContainsString('run_database', $yaml);
         $this->assertStringContainsString("push:\n    branches:\n      - main", $yaml);
         $this->assertStringContainsString('pull_request:', $yaml);
         $this->assertMatchesRegularExpression(

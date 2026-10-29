@@ -1,8 +1,7 @@
 name: Tests
 
-# GitHub bills runner minutes. A push to an open pull request used to start
-# this workflow twice, and a newer push did not cancel the run it replaced.
-# The millwork fuzz and live layout checks run only from a manual dispatch.
+# GitHub bills runner minutes. Superseded PR runs cancel unless the ref is main.
+# Heavy geometry/fuzz checks run on every main push; on PRs only when related paths change.
 
 on:
   push:
@@ -19,30 +18,119 @@ on:
         default: false
 
 concurrency:
-  group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  phpunit:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_database: ${{ steps.flags.outputs.run_database }}
+      run_browser: ${{ steps.flags.outputs.run_browser }}
+      run_shared_prices_geometry: ${{ steps.flags.outputs.run_shared_prices_geometry }}
+      run_room_area_live: ${{ steps.flags.outputs.run_room_area_live }}
+      run_blog_live: ${{ steps.flags.outputs.run_blog_live }}
+      run_millwork_fuzz: ${{ steps.flags.outputs.run_millwork_fuzz }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!lang/**'
+            shared_prices_geometry:
+              - 'app/Http/Controllers/Admin/SharedPriceLibraryController.php'
+              - 'app/Models/SharedWork.php'
+              - 'app/Services/SharedWorkCatalog.php'
+              - 'public/js/shared-prices-effective.js'
+              - 'resources/views/admin/quotations/shared_prices/**'
+              - 'tests/Feature/SharedPrices*.php'
+              - 'tests/js/shared-prices*.test.js'
+              - 'tests/Unit/Models/SharedWorkLabelTest.php'
+              - 'tests/Unit/Services/SharedWorkCatalogTest.php'
+            room_area_live:
+              - 'app/**/RoomArea*.php'
+              - 'database/seeders/RoomAreaGeometrySeeder.php'
+              - 'public/js/room-area/**'
+              - 'resources/views/**/room-area/**'
+              - 'resources/views/admin/client-projects/**/room-area/**'
+              - 'tests/Feature/Admin/RoomArea*.php'
+              - 'tests/Feature/Admin/*RoomArea*.php'
+              - 'tests/js/room-area-phone-geometry.test.js'
+              - 'tests/Unit/Services/RoomArea*.php'
+            blog_live:
+              - 'app/**/BlogPost*.php'
+              - 'database/seeders/BlogPostsGeometrySeeder.php'
+              - 'resources/views/**/blog/**'
+              - 'resources/views/admin/blog/**'
+              - 'tests/Feature/Admin/BlogPosts*.php'
+              - 'tests/Feature/Admin/blog-posts-geometry.js'
+              - 'tests/Feature/Blog*.php'
+            millwork_fuzz:
+              - 'app/Services/Millwork/**'
+              - 'tests/Unit/Services/MillworkV2FuzzParityTest.php'
+              - 'tests/Unit/Services/Millwork*.php'
+              - 'tests/Feature/Admin/Millwork*.php'
+            browser_js:
+              - 'tests/js/*browser*'
+              - 'tests/js/**/*browser*'
+              - 'tests/js/admin-info-tip-click.test.mjs'
+
+      - id: flags
+        env:
+          FILTER_CODE: ${{ steps.filter.outputs.code }}
+          FILTER_SP: ${{ steps.filter.outputs.shared_prices_geometry }}
+          FILTER_RA: ${{ steps.filter.outputs.room_area_live }}
+          FILTER_BL: ${{ steps.filter.outputs.blog_live }}
+          FILTER_MF: ${{ steps.filter.outputs.millwork_fuzz }}
+          FILTER_BROWSER_JS: ${{ steps.filter.outputs.browser_js }}
+        run: |
+          set -euo pipefail
+          is_main=false
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then is_main=true; fi
+          slow_input=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.slow }}" = "true" ]; then slow_input=true; fi
+
+          run_database=false
+          if [ "$is_main" = true ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then run_database=true; fi
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "$FILTER_CODE" = "true" ]; then run_database=true; fi
+
+          run_shared=false
+          if [ "$is_main" = true ] || [ "$slow_input" = true ] || [ "$FILTER_SP" = "true" ]; then run_shared=true; fi
+          run_ra=false
+          if [ "$is_main" = true ] || [ "$slow_input" = true ] || [ "$FILTER_RA" = "true" ]; then run_ra=true; fi
+          run_bl=false
+          if [ "$is_main" = true ] || [ "$slow_input" = true ] || [ "$FILTER_BL" = "true" ]; then run_bl=true; fi
+          run_mf=false
+          if [ "$is_main" = true ] || [ "$slow_input" = true ] || [ "$FILTER_MF" = "true" ]; then run_mf=true; fi
+
+          run_browser=false
+          if [ "$is_main" = true ] || [ "$run_database" = true ] || [ "$slow_input" = true ]; then run_browser=true; fi
+          if [ "$FILTER_SP" = "true" ] || [ "$FILTER_RA" = "true" ] || [ "$FILTER_BL" = "true" ] || [ "$FILTER_MF" = "true" ] || [ "$FILTER_BROWSER_JS" = "true" ]; then run_browser=true; fi
+
+          {
+            echo "run_database=$run_database"
+            echo "run_browser=$run_browser"
+            echo "run_shared_prices_geometry=$run_shared"
+            echo "run_room_area_live=$run_ra"
+            echo "run_blog_live=$run_bl"
+            echo "run_millwork_fuzz=$run_mf"
+          } >> "$GITHUB_OUTPUT"
+
+  unit_js:
+    needs: changes
     if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     env:
       PUPPETEER_CACHE_DIR: /home/runner/.cache/puppeteer
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: zanini_renovations_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
 
     steps:
       - name: Checkout repository
@@ -73,31 +161,36 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Install Node dependencies
+        run: npm ci --no-fund --no-audit
+
       - name: Cache Puppeteer
+        if: needs.changes.outputs.run_browser == 'true'
         uses: actions/cache@v4
         with:
           path: /home/runner/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-24.43.1
 
-      - name: Install Node dependencies
-        run: npm ci --no-fund --no-audit
-
-      - name: JavaScript tests
+      - name: JavaScript tests (no browser)
         run: |
           node tests/js/room-area-lib.test.js
           node tests/js/openplan3d-parity.test.js
           node tests/js/openplan3d-editor-bridge.test.js
-          node tests/js/openplan3d-browser.test.js
-          node tests/js/openplan3d-editor-browser.test.js
           node tests/js/room-area-formula.test.js
           node tests/js/shared-prices-effective.test.js
           node tests/js/admin-hotkey-save.test.js
+          node tests/js/admin-project-calendar-swipe.test.js
+          node tests/js/admin-info-tip.test.mjs
+
+      - name: JavaScript tests (browser)
+        if: needs.changes.outputs.run_browser == 'true'
+        run: |
+          node tests/js/openplan3d-browser.test.js
+          node tests/js/openplan3d-editor-browser.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js
-          node tests/js/admin-project-calendar-swipe.test.js
           node tests/js/quotation-redraft-confirm-browser.test.js
           node tests/js/quotation-redraft-hotkey-lock-browser.test.js
-          node tests/js/admin-info-tip.test.mjs
           node tests/js/admin-info-tip-click.test.mjs
 
       - name: Unit tests (no database)
@@ -154,6 +247,68 @@ jobs:
             exit 1
           fi
 
+  mysql:
+    needs: changes
+    if: github.event.pull_request.draft != true && needs.changes.outputs.run_database == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PUPPETEER_CACHE_DIR: /home/runner/.cache/puppeteer
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: zanini_renovations_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, mbstring, pdo_mysql, fileinfo, intl
+          coverage: none
+          cache: composer
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Setup Node
+        if: needs.changes.outputs.run_browser == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Node dependencies
+        if: needs.changes.outputs.run_browser == 'true'
+        run: npm ci --no-fund --no-audit
+
+      - name: Cache Puppeteer
+        if: needs.changes.outputs.run_browser == 'true'
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-24.43.1
+
       - name: Database tests (MySQL)
         env:
           DB_CONNECTION: mysql
@@ -164,6 +319,7 @@ jobs:
           DB_PASSWORD: root
           QUOTE_ACCEPT_API_TOKEN: ci-quote-accept-token
           ETRANSFER_API_TOKEN: ci-etransfer-token
+          SKIP_SHARED_PRICES_LAYOUT: ${{ github.ref != 'refs/heads/main' && needs.changes.outputs.run_shared_prices_geometry != 'true' && '1' || '0' }}
         run: |
           set -euo pipefail
           files=(
@@ -297,6 +453,9 @@ jobs:
           )
           failed=()
           for f in "${files[@]}"; do
+            if [ "$f" = "tests/Feature/SharedPricesLayoutTest.php" ] && [ "${SKIP_SHARED_PRICES_LAYOUT:-0}" = "1" ]; then
+              continue
+            fi
             php artisan test "$f" || failed+=("$f")
           done
           if [ ${#failed[@]} -ne 0 ]; then
@@ -306,7 +465,7 @@ jobs:
           fi
 
       - name: Upload Shared prices geometry
-        if: always()
+        if: success() && needs.changes.outputs.run_shared_prices_geometry == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: shared-prices-geometry
@@ -316,11 +475,11 @@ jobs:
           if-no-files-found: warn
 
       - name: Millwork v2 3k fuzz invariants
-        if: ${{ success() && github.event.inputs.slow == 'true' }}
+        if: success() && needs.changes.outputs.run_millwork_fuzz == 'true'
         run: php artisan test tests/Unit/Services/MillworkV2FuzzParityTest.php
 
       - name: Room Area live layout geometry
-        if: ${{ success() && github.event.inputs.slow == 'true' }}
+        if: success() && needs.changes.outputs.run_room_area_live == 'true'
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
@@ -347,7 +506,7 @@ jobs:
           node tests/js/room-area-phone-geometry.test.js
 
       - name: Blog posts live layout geometry
-        if: ${{ success() && github.event.inputs.slow == 'true' }}
+        if: success() && needs.changes.outputs.run_blog_live == 'true'
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
