@@ -153,32 +153,99 @@
                     'project' => $project,
                     'label' => $project->clientNameForProjectList(),
                   ])</strong>
-                  @if ($project->client_email)
-                    <div class="cp-subtle">@include('admin.partials.client_directory_link', [
-                      'project' => $project,
-                      'label' => $project->client_email,
-                      'fallbackMailto' => true,
-                    ])</div>
-                  @endif
+
+                  {{-- Desktop: full details written out --}}
+                  <div class="cp-client-desktop-details">
+                    @if ($project->client_phone)
+                      <div class="cp-subtle">
+                        <a class="cp-table-phone"
+                           href="tel:{{ $project->client_phone }}"
+                           title="Call {{ \App\Models\ClientProject::formatPhone($project->client_phone) }}">
+                          <i class="fa fa-phone" aria-hidden="true"></i>
+                          <span>{{ \App\Models\ClientProject::formatPhone($project->client_phone) }}</span>
+                        </a>
+                      </div>
+                    @endif
+                    @if ($project->client_email)
+                      <div class="cp-subtle">@include('admin.partials.client_directory_link', [
+                        'project' => $project,
+                        'label' => $project->client_email,
+                        'fallbackMailto' => true,
+                      ])</div>
+                    @endif
+                    @php
+                      $streetLine = $project->streetLineForProjectList();
+                      $mapsUrl = $streetLine !== '' ? $project->googleMapsSearchUrl() : null;
+                    @endphp
+                    @if ($mapsUrl)
+                      <a class="cp-table-street"
+                         href="{{ $mapsUrl }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         title="Open {{ $project->client_address }} in Google Maps">
+                        <i class="fa fa-map-marker" aria-hidden="true"></i>
+                        <span>{{ $streetLine }}</span>
+                      </a>
+                    @endif
+                  </div>
+
+                  {{-- Mobile only: compact quick-action icon buttons (click to call/email/maps, hold to copy) --}}
                   @php
-                    $streetLine = $project->streetLineForProjectList();
-                    $mapsUrl = $streetLine !== '' ? $project->googleMapsSearchUrl() : null;
+                    $hasPhone = filled($project->client_phone);
+                    $hasEmail = filled($project->client_email);
+                    $hasAddress = filled($project->client_address);
+                    $effectiveMapsUrl = $mapsUrl ?: ($hasAddress ? 'https://www.google.com/maps/search/?api=1&query='.urlencode($project->client_address) : null);
                   @endphp
-                  @if ($mapsUrl)
-                    <a class="cp-table-street"
-                       href="{{ $mapsUrl }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       title="Open {{ $project->client_address }} in Google Maps">
-                      <i class="fa fa-map-marker" aria-hidden="true"></i>
-                      <span>{{ $streetLine }}</span>
-                    </a>
+                  @if ($hasPhone || $hasEmail || $hasAddress)
+                    <div class="cp-client-mobile-actions" role="group" aria-label="Client contact actions">
+                      @if ($hasPhone)
+                        <button type="button"
+                                class="cp-client-action-btn cp-client-action-btn--phone cp-hold-copy-btn"
+                                data-action="call"
+                                data-href="tel:{{ $project->client_phone }}"
+                                data-copy="{{ $project->client_phone }}"
+                                data-copy-label="Phone number"
+                                title="Tap to call, hold to copy phone"
+                                aria-label="Call {{ \App\Models\ClientProject::formatPhone($project->client_phone) }} or hold to copy">
+                          <i class="fa fa-phone" aria-hidden="true"></i>
+                        </button>
+                      @endif
+                      @if ($hasEmail)
+                        <button type="button"
+                                class="cp-client-action-btn cp-client-action-btn--email cp-hold-copy-btn"
+                                data-action="email"
+                                data-href="mailto:{{ $project->client_email }}"
+                                data-copy="{{ $project->client_email }}"
+                                data-copy-label="Email"
+                                title="Tap to email, hold to copy email"
+                                aria-label="Email {{ $project->client_email }} or hold to copy">
+                          <i class="fa fa-envelope" aria-hidden="true"></i>
+                        </button>
+                      @endif
+                      @if ($hasAddress && $effectiveMapsUrl)
+                        <button type="button"
+                                class="cp-client-action-btn cp-client-action-btn--address cp-hold-copy-btn"
+                                data-action="map"
+                                data-href="{{ $effectiveMapsUrl }}"
+                                data-copy="{{ $project->client_address }}"
+                                data-copy-label="Address"
+                                title="Tap for Google Maps, hold to copy address"
+                                aria-label="Open {{ $project->client_address }} in Google Maps or hold to copy">
+                          <i class="fa fa-map-marker" aria-hidden="true"></i>
+                        </button>
+                      @endif
+                    </div>
                   @endif
                 </td>
                 <td>
                   <div class="cp-table-project-cell">
                     <div class="cp-table-project-ref">{{ $project->referenceCode() }}</div>
                     <strong class="cp-table-project-name">{{ $project->name }}</strong>
+                    @if (filled($project->status_note))
+                      <div class="cp-table-status-note" title="{{ $project->status_note }}">
+                        {{ $project->status_note }}
+                      </div>
+                    @endif
                   </div>
                 </td>
                 <td>
@@ -223,6 +290,11 @@
     </div>
   @endif
 
+  <div id="cp-copy-toast" class="cp-copy-toast" role="status" aria-live="polite" aria-hidden="true">
+    <i class="fa fa-check-circle" aria-hidden="true"></i>
+    <span id="cp-copy-toast-msg">Copied to clipboard</span>
+  </div>
+
   {{-- Row-as-link behaviour. <tr> can't legally wrap an <a>, so we navigate
        in JS. Plain clicks open in the same tab; Ctrl/Cmd-click and middle-click
        open in a new tab to match standard link behaviour. --}}
@@ -233,9 +305,8 @@
 
       function shouldIgnore(target) {
         // Don't hijack clicks on real interactive elements inside the row
-        // (links, buttons, inputs, selects). Today there are none, but this
-        // keeps the row safe if any get added later.
-        return !!target.closest('a, button, input, select, textarea, label');
+        // (links, buttons, inputs, selects, action buttons).
+        return !!target.closest('a, button, input, select, textarea, label, .cp-client-action-btn');
       }
 
       rows.forEach(function (row) {
@@ -263,6 +334,150 @@
           if (shouldIgnore(ev.target)) return;
           ev.preventDefault();
           window.location.href = url;
+        });
+      });
+    })();
+
+    // Hold to copy / tap to action for mobile client buttons
+    (function () {
+      var toastEl = document.getElementById('cp-copy-toast');
+      var toastMsgEl = document.getElementById('cp-copy-toast-msg');
+      var toastTimer = null;
+
+      function showToast(msg) {
+        if (!toastEl || !toastMsgEl) return;
+        toastMsgEl.textContent = msg;
+        toastEl.classList.add('cp-copy-toast--visible');
+        toastEl.removeAttribute('aria-hidden');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+          toastEl.classList.remove('cp-copy-toast--visible');
+          toastEl.setAttribute('aria-hidden', 'true');
+        }, 2200);
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(text).catch(function () {
+            return fallbackCopy(text);
+          });
+        }
+        return fallbackCopy(text);
+      }
+
+      function fallbackCopy(text) {
+        return new Promise(function (resolve, reject) {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.top = '0';
+          ta.style.left = '0';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          try {
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) resolve(); else reject();
+          } catch (e) {
+            document.body.removeChild(ta);
+            reject(e);
+          }
+        });
+      }
+
+      var actionBtns = document.querySelectorAll('.cp-hold-copy-btn');
+      actionBtns.forEach(function (btn) {
+        var pressTimer = null;
+        var isLongPress = false;
+        var startX = 0;
+        var startY = 0;
+        var HOLD_DURATION = 450; // ms
+
+        function cancelHold() {
+          if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+          }
+          btn.classList.remove('is-pressing');
+        }
+
+        function triggerCopy() {
+          isLongPress = true;
+          btn.classList.remove('is-pressing');
+          var textToCopy = btn.getAttribute('data-copy') || '';
+          var label = btn.getAttribute('data-copy-label') || 'Copied';
+          if (!textToCopy) return;
+
+          copyText(textToCopy).then(function () {
+            showToast(label + ' copied to clipboard');
+            if (navigator.vibrate) {
+              try { navigator.vibrate(50); } catch (e) {}
+            }
+            btn.classList.add('cp-client-action-btn--copied');
+            setTimeout(function () {
+              btn.classList.remove('cp-client-action-btn--copied');
+            }, 700);
+          }).catch(function () {
+            showToast('Unable to copy');
+          });
+        }
+
+        btn.addEventListener('pointerdown', function (ev) {
+          if (ev.button !== undefined && ev.button !== 0) return;
+          ev.stopPropagation();
+          isLongPress = false;
+          startX = ev.clientX;
+          startY = ev.clientY;
+          btn.classList.add('is-pressing');
+
+          pressTimer = setTimeout(function () {
+            triggerCopy();
+          }, HOLD_DURATION);
+        });
+
+        btn.addEventListener('pointermove', function (ev) {
+          if (!pressTimer) return;
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 10) {
+            cancelHold();
+          }
+        });
+
+        btn.addEventListener('pointerup', function (ev) {
+          ev.stopPropagation();
+          cancelHold();
+        });
+
+        btn.addEventListener('pointercancel', function () {
+          cancelHold();
+        });
+
+        btn.addEventListener('contextmenu', function (ev) {
+          if (isLongPress) {
+            ev.preventDefault();
+            ev.stopPropagation();
+          }
+        });
+
+        btn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          if (isLongPress) {
+            setTimeout(function () { isLongPress = false; }, 60);
+            return;
+          }
+
+          var href = btn.getAttribute('data-href');
+          var action = btn.getAttribute('data-action');
+          if (!href) return;
+
+          if (action === 'call' || action === 'email') {
+            window.location.href = href;
+          } else {
+            window.open(href, '_blank', 'noopener,noreferrer');
+          }
         });
       });
     })();

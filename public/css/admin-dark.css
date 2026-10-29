@@ -3776,3 +3776,22 @@ html.admin-dark .qh-step-errors {
   color: var(--admin-text);
 }
 
+/* Client projects table additions: phone link, status note, and mobile action buttons */
+html.admin-dark a.cp-table-phone {
+  color: var(--admin-primary);
+}
+html.admin-dark .cp-table-status-note {
+  color: var(--admin-muted);
+}
+html.admin-dark .cp-client-action-btn {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-primary);
+}
+html.admin-dark .cp-client-action-btn:hover,
+html.admin-dark .cp-client-action-btn:active,
+html.admin-dark .cp-client-action-btn.is-pressing {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-primary);
+}
+
