@@ -10,6 +10,7 @@ use App\Models\Client;
 use App\Models\ClientCommunicationLog;
 use App\Models\AdminCalendarEvent;
 use App\Models\ClientProject;
+use App\Support\CalendarEventColors;
 use App\Models\ClientProjectDocumentLink;
 use App\Models\ClientProjectPhoto;
 use App\Services\ClientProjectCalendarService;
@@ -1141,8 +1142,10 @@ class ClientProjectController extends Controller
         return view('admin.client_projects.calendar', [
             'events' => $this->calendarService->fullCalendarEvents(),
             'statusLabels' => ClientProject::statusLabels(),
-            'statusColors' => ClientProject::statusColors(),
-            'personalEventColor' => AdminCalendarEvent::CALENDAR_COLOR,
+            'statusColors' => collect(ClientProject::statusColors())
+                ->map(fn (string $hex) => CalendarEventColors::fillColorForWhiteText($hex))
+                ->all(),
+            'personalEventColor' => CalendarEventColors::fillColorForWhiteText(AdminCalendarEvent::CALENDAR_COLOR),
             'personalEventStoreUrl' => route('admin.calendar.personal-events.store'),
             'personalEventUpdateUrlTemplate' => route('admin.calendar.personal-events.update', ['admin_calendar_event' => '__ID__']),
             'personalEventDestroyUrlTemplate' => route('admin.calendar.personal-events.destroy', ['admin_calendar_event' => '__ID__']),

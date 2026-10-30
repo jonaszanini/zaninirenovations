@@ -57,4 +57,13 @@ assert.strictEqual(
   'primary continuation keeps tracking'
 );
 
+assert.strictEqual(
+  swipe.shouldCancelSwipeTrackingOnPointerDown({ id: 1, tracking: true, awaitingTouch: true }, { pointerId: 2, isPrimary: true }),
+  false,
+  'awaiting touch after pointercancel ignores competing pointer'
+);
+
+var afterCancel = swipe.handlePointerCancel({ id: 7, tracking: true }, { pointerId: 7, pointerType: 'touch' });
+assert.ok(afterCancel && afterCancel.awaitingTouch, 'pointercancel on touch keeps swipe alive for touch fallback');
+
 console.log('admin-project-calendar-swipe.test.js: ok');

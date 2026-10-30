@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AdminCalendarEvent;
 use App\Models\ClientProject;
+use App\Support\CalendarEventColors;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -106,16 +107,13 @@ class ClientProjectCalendarService
 
         foreach ($projects as $p) {
             if ($p->start_date && $p->end_date) {
-                $event = [
+                $event = CalendarEventColors::apply([
                     'id' => 'job-'.$p->id,
                     'title' => $p->name.' — '.$p->client_name,
                     'start' => $p->start_date->toDateString(),
                     // FullCalendar treats `end` as exclusive for all-day events.
                     'end' => Carbon::parse($p->end_date)->addDay()->toDateString(),
                     'allDay' => true,
-                    'backgroundColor' => $p->statusColor(),
-                    'borderColor' => $p->statusColor(),
-                    'textColor' => '#ffffff',
                     'startEditable' => true,
                     'durationEditable' => true,
                     'extendedProps' => [
@@ -123,7 +121,7 @@ class ClientProjectCalendarService
                         'recordId' => $p->id,
                         'status' => $p->statusLabel(),
                     ],
-                ];
+                ], $p->statusColor(), preferWhiteText: true);
                 if ($includeUrl) {
                     $event['url'] = route('admin.client-projects.show', $p);
                 }
@@ -152,15 +150,12 @@ class ClientProjectCalendarService
                     $allDay = true;
                 }
 
-                $event = [
+                $event = CalendarEventColors::apply([
                     'id' => 'visit-'.$p->id,
                     'title' => ($visitDone ? 'Visit (done): ' : 'Visit: ').$p->name.' — '.$p->client_name,
                     'start' => $start,
                     'end' => $end,
                     'allDay' => $allDay,
-                    'backgroundColor' => $visitColor,
-                    'borderColor' => $visitColor,
-                    'textColor' => '#ffffff',
                     'startEditable' => true,
                     'durationEditable' => false,
                     'extendedProps' => [
@@ -168,7 +163,7 @@ class ClientProjectCalendarService
                         'recordId' => $p->id,
                         'status' => $visitDone ? 'Visit (completed)' : 'Visit — '.$p->statusLabel(),
                     ],
-                ];
+                ], $visitColor, preferWhiteText: true);
                 if ($includeUrl) {
                     $event['url'] = route('admin.client-projects.show', $p);
                 }

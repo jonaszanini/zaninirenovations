@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/skeleton.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/themes/classic/theme.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/themes/classic/palette.css">
+  <link rel="stylesheet" href="{{ asset('css/admin-project-calendar-fc7.css') }}?v={{ @filemtime(public_path('css/admin-project-calendar-fc7.css')) ?: time() }}">
 @endpush
 
 @section('content')
@@ -24,7 +25,12 @@
   </div>
 
   <div class="cp-calendar-legend">
-    <span class="cp-legend-item">Drag an event to change its date. Drag the edge of a job or personal event to change its length.</span>
+    <span class="cp-legend-item cp-calendar-edit-hint">
+      @include('admin.partials.tipped_label', [
+        'label' => 'Edit',
+        'tipText' => 'Drag an event to change its date. Drag the edge of a job or personal event to change its length.',
+      ])
+    </span>
     <span class="cp-legend-item cp-calendar-swipe-hint">
       @include('admin.partials.tipped_label', [
         'label' => 'Swipe',
@@ -124,6 +130,7 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/all/global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.3/themes/classic/global.js"></script>
   <script src="{{ asset('js/admin-project-calendar-swipe.js') }}?v={{ @filemtime(public_path('js/admin-project-calendar-swipe.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-project-calendar-popover.js') }}?v={{ @filemtime(public_path('js/admin-project-calendar-popover.js')) ?: time() }}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var el = document.getElementById('cp-calendar');
@@ -153,6 +160,149 @@
       var editingFcEvent = null;
       var calendar = null;
       var calendarSwipeNav = null;
+      var calendarPopover = null;
+      var calendarCard = document.querySelector('.cp-calendar-card');
+      var personalEventAddBtn = document.getElementById('cp-personal-event-add');
+      var modalReturnFocusEl = null;
+
+      function calendarTodayYmd() {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
+      }
+      function findDayNumberNode(cellEl) {
+        if (!cellEl) return null;
+        var best = null;
+        var bestDepth = -1;
+        function walk(node, depth) {
+          if (!node || node.nodeType !== 1) return;
+          var el = node;
+          var text = (el.textContent || '').trim();
+          if (/^\d{1,2}$/.test(text) && depth > bestDepth) {
+            best = el;
+            bestDepth = depth;
+          }
+          for (var i = 0; i < el.children.length; i++) {
+            walk(el.children[i], depth + 1);
+          }
+        }
+        walk(cellEl, 0);
+        return best;
+      }
+      function normalizeDateKey(value) {
+        if (!value) return '';
+        return String(value).slice(0, 10);
+      }
+      function refreshAllTodayPills() {
+        if (!el) return;
+        var todayYmd = calendarTodayYmd();
+        var cells = el.querySelectorAll('[data-date]');
+        for (var c = 0; c < cells.length; c++) {
+          var cell = cells[c];
+          markTodayDayNumber(cell, normalizeDateKey(cell.getAttribute('data-date')) === todayYmd);
+        }
+        if (cells.length === 0) {
+          var gridCells = el.querySelectorAll('[role="gridcell"]');
+          for (var g = 0; g < gridCells.length; g++) {
+            markTodayDayNumber(gridCells[g], false);
+          }
+        }
+      }
+      function scheduleRefreshTodayPills() {
+        refreshAllTodayPills();
+        requestAnimationFrame(function () {
+          refreshAllTodayPills();
+          requestAnimationFrame(refreshAllTodayPills);
+        });
+        setTimeout(refreshAllTodayPills, 0);
+        setTimeout(refreshAllTodayPills, 50);
+        setTimeout(refreshAllTodayPills, 150);
+      }
+
+      function adminCalendarColorScheme() {
+        return document.documentElement.classList.contains('admin-dark') ? 'dark' : 'light';
+      }
+      function syncCalendarColorScheme() {
+        if (!calendar) return;
+        var scheme = adminCalendarColorScheme();
+        calendar.setOption('colorScheme', scheme);
+        el.setAttribute('data-color-scheme', scheme);
+      }
+      function markTodayDayNumber(cellEl, isToday) {
+        if (!cellEl) return;
+        var pillClass = 'cp-calendar-day-today-pill';
+        var nodes = cellEl.querySelectorAll('.' + pillClass);
+        for (var p = 0; p < nodes.length; p++) {
+          nodes[p].classList.remove(pillClass);
+        }
+        if (!isToday) return;
+        var node = findDayNumberNode(cellEl);
+        if (node) {
+          node.classList.add(pillClass);
+        }
+      }
+
+      function styleMoreLink(arg) {
+        var link = arg.el;
+        if (!link) return;
+        link.classList.add('cp-calendar-more-link');
+        link.style.display = 'inline-flex';
+        link.style.alignItems = 'center';
+        link.style.justifyContent = 'center';
+        link.style.boxSizing = 'border-box';
+        link.style.minHeight = '24px';
+        link.style.minWidth = '24px';
+        link.style.padding = '4px 8px';
+        link.style.lineHeight = '1.2';
+        link.addEventListener('click', function () {
+          var pop = window.AdminProjectCalendarPopover;
+          if (pop && pop.positionMorePopoverOnce && calendarCard) {
+            pop.positionMorePopoverOnce(link, calendarCard);
+          }
+        });
+      }
+
+      function calendarDayMaxEvents() {
+        return window.matchMedia('(max-width: 480px)').matches ? 5 : true;
+      }
+
+      function calendarDayMaxEventRows() {
+        return window.matchMedia('(max-width: 480px)').matches ? 5 : 4;
+      }
+
+      function syncToolbarA11y() {
+        if (!el || !calendar) return;
+        var viewType = calendar.view && calendar.view.type ? calendar.view.type : '';
+        var activeKey = {
+          dayGridMonth: 'month',
+          timeGridWeek: 'week',
+          timeGridDay: 'day',
+          listMonth: 'list',
+        }[viewType] || '';
+        var buttons = el.querySelectorAll('button');
+        for (var i = 0; i < buttons.length; i++) {
+          var btn = buttons[i];
+          var aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+          var text = (btn.textContent || '').trim().toLowerCase();
+          if (aria.indexOf('previous') !== -1 || aria.indexOf('next') !== -1) {
+            btn.removeAttribute('aria-pressed');
+            btn.classList.add('cp-calendar-toolbar-nav');
+            btn.classList.remove('cp-calendar-toolbar-view');
+            continue;
+          }
+          if (text === 'today' || aria.indexOf('today') !== -1) {
+            btn.removeAttribute('aria-pressed');
+            btn.classList.add('cp-calendar-toolbar-today');
+            btn.classList.remove('cp-calendar-toolbar-nav');
+            btn.classList.remove('cp-calendar-toolbar-view');
+            continue;
+          }
+          btn.classList.remove('cp-calendar-toolbar-nav');
+          btn.classList.remove('cp-calendar-toolbar-today');
+          if (text === 'month' || text === 'week' || text === 'day' || text === 'list') {
+            btn.classList.add('cp-calendar-toolbar-view');
+            btn.setAttribute('aria-pressed', text === activeKey ? 'true' : 'false');
+          }
+        }
+      }
 
       function pad2(n) { return n < 10 ? '0' + n : '' + n; }
       function formatYmd(d) {
@@ -191,6 +341,15 @@
         editingFcEvent = null;
         showError('');
         showTimeNotice('');
+        if (modalReturnFocusEl && typeof modalReturnFocusEl.focus === 'function') {
+          modalReturnFocusEl.focus();
+        }
+        modalReturnFocusEl = null;
+      }
+      function rememberModalFocus() {
+        modalReturnFocusEl = document.activeElement && document.activeElement !== document.body
+          ? document.activeElement
+          : personalEventAddBtn;
       }
       function clearPersonalTime(which) {
         if (which === 'start') {
@@ -218,6 +377,7 @@
         clearPersonalTime('start');
         showError('');
         showTimeNotice('');
+        rememberModalFocus();
         openModal();
       }
       function openEdit(fcEvent) {
@@ -239,12 +399,39 @@
         descInput.value = props.description || '';
         showError('');
         showTimeNotice('');
+        rememberModalFocus();
         openModal();
       }
 
       document.getElementById('cp-personal-event-add').addEventListener('click', function () {
+        rememberModalFocus();
         openCreate(formatYmd(new Date()), formatYmd(new Date()));
       });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' && e.key !== 'Esc') return;
+
+        if (document.querySelector('.admin-info-tip-wrap.is-open')) {
+          return;
+        }
+
+        var popApi = window.AdminProjectCalendarPopover;
+        var moreDialog = popApi && popApi.findMorePopoverDialog
+          ? popApi.findMorePopoverDialog()
+          : null;
+        if (moreDialog) {
+          if (popApi.closePopover(moreDialog)) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          return;
+        }
+
+        if (!modal.hidden) {
+          closeModal();
+          e.preventDefault();
+        }
+      }, true);
 
       modal.addEventListener('click', function (e) {
         if (e.target === modal || (e.target.matches && e.target.matches('[data-cp-modal-close]'))) {
@@ -437,6 +624,25 @@
         locale: 'en',
         firstDay: 0,
         height: 'auto',
+        colorScheme: adminCalendarColorScheme(),
+        dayMinHeight: 68,
+        dayMaxEvents: calendarDayMaxEvents(),
+        dayMaxEventRows: calendarDayMaxEventRows(),
+        moreLinkClick: 'popover',
+        moreLinkClass: 'cp-calendar-more-link',
+        moreLinkDidMount: styleMoreLink,
+        datesSet: function () {
+          scheduleRefreshTodayPills();
+          syncToolbarA11y();
+        },
+        viewDidMount: function () {
+          scheduleRefreshTodayPills();
+          syncToolbarA11y();
+        },
+        windowResize: function () {
+          calendar.setOption('dayMaxEvents', calendarDayMaxEvents());
+          calendar.setOption('dayMaxEventRows', calendarDayMaxEventRows());
+        },
         editable: true,
         eventStartEditable: true,
         eventDurationEditable: true,
@@ -508,8 +714,25 @@
             info.el.style.cursor = 'pointer';
           }
         },
+        dayCellDidMount: function (info) {
+          markTodayDayNumber(info.el, info.isToday);
+        },
       });
       calendar.render();
+      el.setAttribute('data-color-scheme', adminCalendarColorScheme());
+      scheduleRefreshTodayPills();
+      syncToolbarA11y();
+      document.addEventListener('admin-theme-change', function () {
+        syncCalendarColorScheme();
+        scheduleRefreshTodayPills();
+        syncToolbarA11y();
+      });
+      window.addEventListener('resize', function () {
+        scheduleRefreshTodayPills();
+      });
+      if (window.AdminProjectCalendarPopover && calendarCard) {
+        calendarPopover = window.AdminProjectCalendarPopover.attach(calendarCard, el);
+      }
       if (window.AdminProjectCalendarSwipe) {
         calendarSwipeNav = window.AdminProjectCalendarSwipe.attach(el, calendar, {
           touchLike: touchLikeCalendar,

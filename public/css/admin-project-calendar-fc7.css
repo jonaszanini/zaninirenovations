@@ -1,0 +1,223 @@
+/**
+ * Project calendar — FullCalendar 7 classic theme tokens (no .fc root in FC7).
+ */
+
+.cp-calendar-legend {
+  color: var(--admin-muted, #64748b);
+}
+
+.cp-calendar-edit-hint .admin-label-with-tip {
+  white-space: nowrap;
+}
+
+.cp-calendar-card #cp-calendar {
+  touch-action: pan-y;
+  font-family: var(--admin-font, inherit);
+
+  --fc-classic-background: var(--admin-surface, #ffffff);
+  --fc-classic-faint: color-mix(in srgb, var(--admin-text, #334155) 4%, transparent);
+  --fc-classic-muted: color-mix(in srgb, var(--admin-text, #334155) 8%, transparent);
+  --fc-classic-strong: color-mix(in srgb, var(--admin-text, #334155) 14%, transparent);
+  --fc-classic-foreground: var(--admin-text, #334155);
+  --fc-classic-muted-foreground: var(--admin-muted, #64748b);
+  --fc-classic-faint-foreground: #576574;
+  --fc-classic-border: var(--admin-border, #e2e8f0);
+  --fc-classic-strong-border: var(--admin-border, #cbd5e1);
+
+  --fc-classic-today: color-mix(in srgb, var(--admin-primary, #024768) 24%, var(--admin-surface, #fff));
+  --fc-classic-highlight: color-mix(in srgb, var(--admin-primary, #024768) 18%, transparent);
+  --fc-classic-now: var(--admin-primary, #024768);
+
+  --fc-classic-button: var(--admin-primary, #024768);
+  --fc-classic-button-border: var(--admin-primary, #024768);
+  --fc-classic-button-strong: var(--admin-primary-hover, #013552);
+  --fc-classic-button-strong-border: var(--admin-primary-hover, #013552);
+  --fc-classic-button-outline: color-mix(in srgb, var(--admin-primary, #024768) 50%, transparent);
+  --fc-classic-button-foreground: #ffffff;
+
+  --fc-classic-primary: var(--admin-primary, #024768);
+  --fc-classic-primary-foreground: #ffffff;
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] {
+  --fc-classic-background: var(--admin-surface, #1e293b);
+  --fc-classic-faint: rgba(255, 255, 255, 0.06);
+  --fc-classic-muted: rgba(255, 255, 255, 0.1);
+  --fc-classic-strong: rgba(255, 255, 255, 0.16);
+  --fc-classic-foreground: var(--admin-text, #e2e8f0);
+  --fc-classic-muted-foreground: var(--admin-muted, #94a3b8);
+  --fc-classic-faint-foreground: #94a3b8;
+  --fc-classic-border: var(--admin-border, #334155);
+  --fc-classic-strong-border: var(--admin-border, #475569);
+
+  --fc-classic-today: color-mix(in srgb, #0ea5e9 32%, var(--admin-surface, #1e293b));
+  --fc-classic-highlight: color-mix(in srgb, var(--admin-primary, #024768) 22%, transparent);
+  --fc-classic-now: #0ea5e9;
+
+  --fc-classic-button: #024768;
+  --fc-classic-button-border: #024768;
+  --fc-classic-button-strong: #013552;
+  --fc-classic-button-strong-border: #012a40;
+  --fc-classic-button-foreground: #ffffff;
+  --fc-classic-primary: #024768;
+  --fc-classic-primary-foreground: #ffffff;
+}
+
+.cp-calendar-card #cp-calendar button {
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-nav {
+  background-color: #024768 !important;
+  border-color: #024768 !important;
+  color: #ffffff !important;
+}
+
+.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-nav:hover:not(:disabled),
+html.admin-dark .cp-calendar-card #cp-calendar button.cp-calendar-toolbar-nav:hover:not(:disabled) {
+  background-color: #013552 !important;
+  border-color: #013552 !important;
+  color: #ffffff !important;
+}
+
+.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-view[aria-pressed='true'] {
+  background-color: #024768 !important;
+  border-color: #024768 !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar button.cp-calendar-toolbar-view[aria-pressed='true'] {
+  background-color: #024768 !important;
+  border-color: #024768 !important;
+  color: #ffffff !important;
+}
+
+.cp-calendar-card #cp-calendar button:hover:not(:disabled):not(.cp-calendar-toolbar-nav):not(.cp-calendar-toolbar-today):not([aria-pressed='true']) {
+  border-color: #024768;
+  color: #024768;
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.08));
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar button:hover:not(:disabled):not(.cp-calendar-toolbar-nav):not(.cp-calendar-toolbar-today):not([aria-pressed='true']),
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] button:hover:not(:disabled):not(.cp-calendar-toolbar-nav):not(.cp-calendar-toolbar-today):not([aria-pressed='true']) {
+  border-color: var(--admin-border, #475569);
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cp-calendar-card #cp-calendar button:focus-visible {
+  outline: 2px solid #024768;
+  outline-offset: 2px;
+  z-index: 2;
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar button:focus-visible,
+html.admin-dark .cp-calendar-card #cp-calendar .cp-calendar-more-link:focus-visible,
+html.admin-dark .cp-calendar-card #cp-calendar a[class*='fc-classic']:focus-visible,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] button:focus-visible,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] .cp-calendar-more-link:focus-visible,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] a[class*='fc-classic']:focus-visible {
+  outline-color: #7dd3fc;
+}
+
+.cp-calendar-card #cp-calendar button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  color: var(--admin-muted, #94a3b8) !important;
+  border-color: var(--admin-border, #e2e8f0) !important;
+  background: transparent !important;
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar button:disabled {
+  border-color: var(--admin-border, #334155) !important;
+}
+
+.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-view[aria-pressed='false'] {
+  background-color: transparent;
+  color: var(--admin-muted, #64748b);
+  border-color: var(--admin-border, #e2e8f0);
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar button.cp-calendar-toolbar-view[aria-pressed='false'] {
+  color: var(--admin-muted, #94a3b8);
+  border-color: var(--admin-border, #334155);
+}
+
+.cp-calendar-card #cp-calendar .cp-calendar-day-today-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75em;
+  min-height: 1.75em;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: #024768 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.cp-calendar-card #cp-calendar .cp-calendar-more-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 24px;
+  min-width: 24px;
+  padding: 4px 8px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #024768;
+  border-radius: 6px;
+  pointer-events: auto;
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar .cp-calendar-more-link,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] .cp-calendar-more-link {
+  color: #7dd3fc;
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar .cp-calendar-more-link:hover,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] .cp-calendar-more-link:hover {
+  color: #bae6fd;
+}
+
+/* FC 7.1.3: 1px more-link harness (.fc-classic-toR) blocked last-row "+N more" taps at 390. */
+.cp-calendar-card #cp-calendar .fc-classic-toR {
+  min-height: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible;
+  pointer-events: none;
+}
+
+body > div[role='dialog'],
+div.cp-calendar-more-dialog[role='dialog'] {
+  box-sizing: border-box;
+  max-width: min(320px, calc(100vw - 24px));
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--admin-border, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  background: var(--admin-surface, #fff);
+  color: var(--admin-text, #334155);
+}
+
+html.admin-dark body > div[role='dialog'],
+html.admin-dark div.cp-calendar-more-dialog[role='dialog'] {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+@media (max-width: 480px) {
+  .cp-calendar-card #cp-calendar .cp-calendar-more-link {
+    min-height: 28px;
+    min-width: 28px;
+    padding: 6px 10px;
+  }
+}
