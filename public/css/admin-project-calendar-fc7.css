@@ -208,6 +208,14 @@ div.cp-calendar-more-dialog[role='dialog'] {
   ) !important;
 }
 
+@media (max-width: 480px) {
+  div.cp-calendar-more-dialog[role='dialog'] {
+    left: 12px !important;
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+}
+
 html.admin-dark body > div[role='dialog'],
 html.admin-dark div.cp-calendar-more-dialog[role='dialog'] {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
