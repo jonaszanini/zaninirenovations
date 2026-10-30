@@ -20,6 +20,7 @@ class AdminProjectCalendarSwipeTest extends TestCase
         $this->assertStringContainsString('admin-project-calendar-swipe.js', $html);
         $this->assertStringContainsString('AdminProjectCalendarSwipe', $html);
         $this->assertStringContainsString('admin-project-calendar-popover.js', $html);
+        $this->assertStringContainsString('findMorePopoverDialog', file_get_contents(public_path('js/admin-project-calendar-popover.js')));
         $this->assertStringContainsString('AdminProjectCalendarPopover', $html);
         $this->assertStringContainsString('touchstart', file_get_contents(public_path('js/admin-project-calendar-swipe.js')));
         $this->assertStringContainsString('cp-calendar-swipe-hint', $html);

@@ -58,7 +58,41 @@ html.admin-dark .cp-calendar-card #cp-calendar,
   --fc-classic-primary-foreground: #ffffff;
 }
 
-/* FC7 toolbar — aria-pressed works across hashed button classes. */
+/* Toolbar buttons — hover, focus, disabled (FC7 sets aria-pressed on view toggles). */
+.cp-calendar-card #cp-calendar button {
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.cp-calendar-card #cp-calendar button:hover:not(:disabled) {
+  border-color: var(--admin-primary, #024768);
+  color: var(--admin-primary, #024768);
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.08));
+}
+
+.cp-calendar-card #cp-calendar button[aria-pressed='true']:hover:not(:disabled) {
+  background-color: var(--admin-primary-hover, #013552) !important;
+  border-color: var(--admin-primary-hover, #013552) !important;
+  color: #ffffff !important;
+}
+
+.cp-calendar-card #cp-calendar button:focus-visible {
+  outline: 2px solid var(--admin-primary, #024768);
+  outline-offset: 2px;
+  z-index: 2;
+}
+
+.cp-calendar-card #cp-calendar button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  color: var(--admin-muted, #94a3b8) !important;
+  border-color: var(--admin-border, #e2e8f0) !important;
+  background: transparent !important;
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar button:disabled {
+  border-color: var(--admin-border, #334155) !important;
+}
+
 .cp-calendar-card #cp-calendar button[aria-pressed='true'] {
   background-color: var(--admin-primary, #024768) !important;
   border-color: var(--admin-primary, #024768) !important;
@@ -76,7 +110,7 @@ html.admin-dark .cp-calendar-card #cp-calendar button[aria-pressed='false'] {
   border-color: var(--admin-border, #334155);
 }
 
-/* Today day number pill (class applied in dayCellDidMount). */
+/* Today day number pill — brand primary (AA white on #024768 in dark mode). */
 .cp-calendar-card #cp-calendar .cp-calendar-day-today-pill {
   display: inline-flex;
   align-items: center;
@@ -85,14 +119,18 @@ html.admin-dark .cp-calendar-card #cp-calendar button[aria-pressed='false'] {
   min-height: 1.75em;
   padding: 0 0.35em;
   border-radius: 999px;
-  background: var(--admin-primary, #024768);
-  color: #fff;
+  background: var(--admin-primary, #024768) !important;
+  color: #ffffff !important;
   font-weight: 600;
   line-height: 1;
   box-sizing: border-box;
 }
 
-/* FC7 "+N more" — styled via moreLinkDidMount; keep link color readable. */
+html.admin-dark .cp-calendar-card #cp-calendar .cp-calendar-day-today-pill {
+  background: #024768 !important;
+  color: #ffffff !important;
+}
+
 .cp-calendar-card #cp-calendar .cp-calendar-more-link {
   display: inline-flex;
   align-items: center;
@@ -112,16 +150,12 @@ html.admin-dark .cp-calendar-card #cp-calendar button[aria-pressed='false'] {
   outline-offset: 2px;
 }
 
-/* FC7 more-popover uses native [popover] + .re-popover (popoverClass is additive). */
-.cp-calendar-card #cp-calendar [popover].re-popover,
-.cp-calendar-card #cp-calendar [popover]:popover-open {
+/* FC 7.1.3 more popover: div[role=dialog] inside #cp-calendar (class added when clamp runs). */
+.cp-calendar-card #cp-calendar div[role='dialog'].cp-calendar-more-dialog {
   position: fixed;
   z-index: 40;
   margin: 0;
   box-sizing: border-box;
-  max-width: min(340px, calc(100vw - 16px));
-  max-height: min(70vh, calc(100dvh - 16px));
-  overflow: auto;
   border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
@@ -129,8 +163,7 @@ html.admin-dark .cp-calendar-card #cp-calendar button[aria-pressed='false'] {
   color: var(--admin-text, #334155);
 }
 
-html.admin-dark .cp-calendar-card #cp-calendar [popover].re-popover,
-html.admin-dark .cp-calendar-card #cp-calendar [popover]:popover-open {
+html.admin-dark .cp-calendar-card #cp-calendar div[role='dialog'].cp-calendar-more-dialog {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 

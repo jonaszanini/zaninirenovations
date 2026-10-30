@@ -162,6 +162,21 @@
       var calendarSwipeNav = null;
       var calendarPopover = null;
       var calendarCard = document.querySelector('.cp-calendar-card');
+      var personalEventAddBtn = document.getElementById('cp-personal-event-add');
+      var modalReturnFocusEl = null;
+
+      function calendarTodayYmd() {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
+      }
+      function refreshAllTodayPills() {
+        if (!el) return;
+        var todayYmd = calendarTodayYmd();
+        var cells = el.querySelectorAll('[data-date]');
+        for (var c = 0; c < cells.length; c++) {
+          var cell = cells[c];
+          markTodayDayNumber(cell, cell.getAttribute('data-date') === todayYmd);
+        }
+      }
 
       function adminCalendarColorScheme() {
         return document.documentElement.classList.contains('admin-dark') ? 'dark' : 'light';
@@ -204,6 +219,16 @@
         link.style.minWidth = '24px';
         link.style.padding = '4px 8px';
         link.style.lineHeight = '1.2';
+        link.addEventListener('click', function () {
+          if (calendarPopover && calendarPopover.scheduleClamp) {
+            setTimeout(function () {
+              calendarPopover.scheduleClamp();
+            }, 0);
+            setTimeout(function () {
+              calendarPopover.scheduleClamp();
+            }, 50);
+          }
+        });
       }
 
       function pad2(n) { return n < 10 ? '0' + n : '' + n; }
@@ -243,6 +268,15 @@
         editingFcEvent = null;
         showError('');
         showTimeNotice('');
+        if (modalReturnFocusEl && typeof modalReturnFocusEl.focus === 'function') {
+          modalReturnFocusEl.focus();
+        }
+        modalReturnFocusEl = null;
+      }
+      function rememberModalFocus() {
+        modalReturnFocusEl = document.activeElement && document.activeElement !== document.body
+          ? document.activeElement
+          : personalEventAddBtn;
       }
       function clearPersonalTime(which) {
         if (which === 'start') {
@@ -270,6 +304,7 @@
         clearPersonalTime('start');
         showError('');
         showTimeNotice('');
+        rememberModalFocus();
         openModal();
       }
       function openEdit(fcEvent) {
@@ -291,22 +326,39 @@
         descInput.value = props.description || '';
         showError('');
         showTimeNotice('');
+        rememberModalFocus();
         openModal();
       }
 
       document.getElementById('cp-personal-event-add').addEventListener('click', function () {
+        rememberModalFocus();
         openCreate(formatYmd(new Date()), formatYmd(new Date()));
       });
 
       document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape' && e.key !== 'Esc') return;
-        if (modal.hidden) return;
-        var pop = window.AdminProjectCalendarPopover
-          && window.AdminProjectCalendarPopover.findOpenPopover
-          && window.AdminProjectCalendarPopover.findOpenPopover(document);
-        if (pop) return;
-        closeModal();
-      });
+
+        if (document.querySelector('.admin-info-tip-wrap.is-open')) {
+          return;
+        }
+
+        var popApi = window.AdminProjectCalendarPopover;
+        var moreDialog = popApi && el && popApi.findMorePopoverDialog
+          ? popApi.findMorePopoverDialog(el)
+          : null;
+        if (moreDialog) {
+          if (popApi.closePopover(moreDialog)) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          return;
+        }
+
+        if (!modal.hidden) {
+          closeModal();
+          e.preventDefault();
+        }
+      }, true);
 
       modal.addEventListener('click', function (e) {
         if (e.target === modal || (e.target.matches && e.target.matches('[data-cp-modal-close]'))) {
@@ -506,6 +558,16 @@
         moreLinkHeight: 28,
         moreLinkClass: 'cp-calendar-more-link',
         moreLinkDidMount: styleMoreLink,
+        datesSet: function () {
+          requestAnimationFrame(function () {
+            refreshAllTodayPills();
+          });
+        },
+        viewDidMount: function () {
+          requestAnimationFrame(function () {
+            refreshAllTodayPills();
+          });
+        },
         editable: true,
         eventStartEditable: true,
         eventDurationEditable: true,
@@ -583,7 +645,11 @@
       });
       calendar.render();
       el.setAttribute('data-color-scheme', adminCalendarColorScheme());
-      document.addEventListener('admin-theme-change', syncCalendarColorScheme);
+      refreshAllTodayPills();
+      document.addEventListener('admin-theme-change', function () {
+        syncCalendarColorScheme();
+        requestAnimationFrame(refreshAllTodayPills);
+      });
       if (window.AdminProjectCalendarPopover && calendarCard) {
         calendarPopover = window.AdminProjectCalendarPopover.attach(calendarCard, el);
       }

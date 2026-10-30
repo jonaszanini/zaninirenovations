@@ -40,7 +40,12 @@ class ClientProjectCalendarUpgradeTest extends TestCase
         $this->assertStringContainsString('dayGridMonth,timeGridWeek,timeGridDay,listMonth', $html);
         $this->assertStringContainsString('eventDrop: persistMove', $html);
         $this->assertStringContainsString('eventResize: persistMove', $html);
-        $this->assertStringContainsString('client-projects\\/calendar\\/move', $html);
+        $this->assertStringContainsString('datesSet:', $html);
+        $this->assertStringContainsString('refreshAllTodayPills', $html);
+        $this->assertStringContainsString(
+            CalendarEventColors::fillColorForWhiteText('#0284c7'),
+            $html
+        );
     }
 
     public function test_full_calendar_events_keep_job_visit_and_personal_shapes(): void
