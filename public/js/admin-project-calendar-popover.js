@@ -1,6 +1,6 @@
 /**
- * FullCalendar 7.1.3 "+N more" popover: plain div[role=dialog] inside #cp-calendar.
- * Clamp to calendar card + viewport; outside tap closes via close button.
+ * FullCalendar 7.1.3 "+N more" popover: div[role=dialog] portaled to document.body.
+ * Clamp to .cp-calendar-card + viewport; outside tap closes via close button.
  */
 (function (root, factory) {
   var api = factory(root);
@@ -20,33 +20,60 @@
     return rect.width > 1 && rect.height > 1;
   }
 
+  function isExcludedDialog(dialog) {
+    if (!dialog || !dialog.closest) {
+      return true;
+    }
+    if (dialog.closest('#cp-personal-event-modal')) {
+      return true;
+    }
+    if (dialog.closest('#admin-dialog')) {
+      return true;
+    }
+    if (dialog.closest('#admin-photo-edit-modal')) {
+      return true;
+    }
+    return false;
+  }
+
   /**
-   * FC 7.1.3 more-link popover (not the personal-event modal).
+   * FC 7.1.3 more-link popover (mounted on body, not #cp-calendar).
    *
-   * @param {ParentNode} scope
    * @returns {HTMLElement|null}
    */
-  function findMorePopoverDialog(scope) {
-    if (!scope || !scope.querySelectorAll) {
+  function findMorePopoverDialog() {
+    var calendarRoot = document.getElementById('cp-calendar');
+    if (!calendarRoot) {
       return null;
     }
-    var dialogs = scope.querySelectorAll('div[role="dialog"]');
+
+    var tagged = document.querySelector('div[role="dialog"].' + MORE_DIALOG_CLASS);
+    if (tagged && isVisible(tagged) && !isExcludedDialog(tagged)) {
+      return tagged;
+    }
+
+    var dialogs = document.querySelectorAll('div[role="dialog"]');
     for (var i = 0; i < dialogs.length; i++) {
       var dialog = dialogs[i];
-      if (!isVisible(dialog)) {
+      if (!isVisible(dialog) || isExcludedDialog(dialog)) {
         continue;
       }
-      if (dialog.closest && dialog.closest('#cp-personal-event-modal')) {
-        continue;
+      if (dialog.closest('#cp-calendar')) {
+        return dialog;
       }
-      return dialog;
+      if (dialog.parentElement === document.body) {
+        return dialog;
+      }
+      if (dialog.parentElement && dialog.parentElement.tagName === 'BODY') {
+        return dialog;
+      }
     }
     return null;
   }
 
-  /** @deprecated use findMorePopoverDialog */
-  function findOpenPopover(scope) {
-    return findMorePopoverDialog(scope);
+  /** @deprecated */
+  function findOpenPopover() {
+    return findMorePopoverDialog();
   }
 
   function closePopover(pop) {
@@ -91,13 +118,13 @@
     var maxBottom = Math.min(vh - margin, cardRect.bottom - margin);
 
     var width = popRect.width;
-    var height = popRect.height;
-
     if (width > maxRight - minLeft) {
       width = Math.max(120, maxRight - minLeft);
+      pop.style.width = width + 'px';
       pop.style.maxWidth = width + 'px';
     }
 
+    var height = popRect.height;
     var maxLeft = maxRight - width;
     var maxTop = maxBottom - height;
     if (maxLeft < minLeft) {
@@ -139,12 +166,8 @@
       return { destroy: function () {} };
     }
 
-    function openDialog() {
-      return findMorePopoverDialog(calendarRootEl);
-    }
-
     function scheduleClamp() {
-      var pop = openDialog();
+      var pop = findMorePopoverDialog();
       if (!pop) {
         return;
       }
@@ -157,7 +180,7 @@
     }
 
     function onDocumentPointerDown(e) {
-      var pop = openDialog();
+      var pop = findMorePopoverDialog();
       if (!pop) {
         return;
       }
@@ -171,7 +194,7 @@
     }
 
     var observer = new MutationObserver(scheduleClamp);
-    observer.observe(calendarRootEl, {
+    observer.observe(document.body, {
       childList: true,
       subtree: true,
       attributes: true,
@@ -187,8 +210,8 @@
         document.removeEventListener('pointerdown', onDocumentPointerDown, true);
       },
       scheduleClamp: scheduleClamp,
-      findOpenPopover: openDialog,
-      findMorePopoverDialog: openDialog,
+      findOpenPopover: findMorePopoverDialog,
+      findMorePopoverDialog: findMorePopoverDialog,
       clampPopover: function (pop) {
         clampPopover(pop, cardEl);
       },

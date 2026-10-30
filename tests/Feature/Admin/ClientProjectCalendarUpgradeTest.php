@@ -41,7 +41,9 @@ class ClientProjectCalendarUpgradeTest extends TestCase
         $this->assertStringContainsString('eventDrop: persistMove', $html);
         $this->assertStringContainsString('eventResize: persistMove', $html);
         $this->assertStringContainsString('datesSet:', $html);
-        $this->assertStringContainsString('refreshAllTodayPills', $html);
+        $this->assertStringContainsString('scheduleRefreshTodayPills', $html);
+        $this->assertStringContainsString('syncToolbarA11y', $html);
+        $this->assertStringContainsString('document.body', file_get_contents(public_path('js/admin-project-calendar-popover.js')));
         $this->assertStringContainsString(
             CalendarEventColors::fillColorForWhiteText('#0284c7'),
             $html

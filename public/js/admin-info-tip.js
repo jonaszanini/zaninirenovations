@@ -1004,15 +1004,21 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    var active = document.activeElement;
-    var fromRoot = rootOf(active);
+    var openTips = document.querySelectorAll('.admin-info-tip-wrap.' + OPEN);
+    if (openTips.length === 0) {
+      return;
+    }
+    var focusRoots = [];
+    openTips.forEach(function (root) {
+      focusRoots.push(root);
+    });
     closeTips(null);
-    if (fromRoot) {
-      var btn = buttonOf(fromRoot);
+    focusRoots.forEach(function (root) {
+      var btn = buttonOf(root);
       if (btn && typeof btn.focus === 'function') {
         btn.focus();
       }
-    }
+    });
   });
 
   window.addEventListener('resize', onViewportMove);

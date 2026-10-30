@@ -2025,15 +2025,12 @@ a:hover .cp-expense-receipt-pdf {
   gap: 16px;
   margin-bottom: 14px;
   font-size: 13px;
-  color: var(--admin-muted, #64748b);
+  color: #334155;
 }
 .cp-legend-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-.cp-calendar-edit-hint .admin-label-with-tip {
-  white-space: nowrap;
 }
 .cp-legend-swatch {
   display: inline-block;

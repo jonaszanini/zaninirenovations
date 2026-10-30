@@ -168,13 +168,82 @@
       function calendarTodayYmd() {
         return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
       }
+      function findDayNumberNode(cellEl) {
+        if (!cellEl) return null;
+        var best = null;
+        var bestDepth = -1;
+        function walk(node, depth) {
+          if (!node || node.nodeType !== 1) return;
+          var el = node;
+          var text = (el.textContent || '').trim();
+          if (/^\d{1,2}$/.test(text) && depth > bestDepth) {
+            best = el;
+            bestDepth = depth;
+          }
+          for (var i = 0; i < el.children.length; i++) {
+            walk(el.children[i], depth + 1);
+          }
+        }
+        walk(cellEl, 0);
+        return best;
+      }
+      function normalizeDateKey(value) {
+        if (!value) return '';
+        return String(value).slice(0, 10);
+      }
       function refreshAllTodayPills() {
         if (!el) return;
         var todayYmd = calendarTodayYmd();
         var cells = el.querySelectorAll('[data-date]');
         for (var c = 0; c < cells.length; c++) {
           var cell = cells[c];
-          markTodayDayNumber(cell, cell.getAttribute('data-date') === todayYmd);
+          markTodayDayNumber(cell, normalizeDateKey(cell.getAttribute('data-date')) === todayYmd);
+        }
+        if (cells.length === 0) {
+          var gridCells = el.querySelectorAll('[role="gridcell"]');
+          for (var g = 0; g < gridCells.length; g++) {
+            markTodayDayNumber(gridCells[g], false);
+          }
+        }
+      }
+      function scheduleRefreshTodayPills() {
+        refreshAllTodayPills();
+        requestAnimationFrame(function () {
+          refreshAllTodayPills();
+          requestAnimationFrame(refreshAllTodayPills);
+        });
+        setTimeout(refreshAllTodayPills, 0);
+        setTimeout(refreshAllTodayPills, 50);
+        setTimeout(refreshAllTodayPills, 150);
+      }
+      function syncToolbarA11y() {
+        if (!el) return;
+        var buttons = el.querySelectorAll('button');
+        for (var i = 0; i < buttons.length; i++) {
+          var btn = buttons[i];
+          var aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+          var text = (btn.textContent || '').trim().toLowerCase();
+          if (aria.indexOf('previous') !== -1 || aria.indexOf('next') !== -1) {
+            btn.removeAttribute('aria-pressed');
+            btn.classList.add('cp-calendar-toolbar-nav');
+            btn.classList.remove('cp-calendar-toolbar-view');
+            continue;
+          }
+          if (text === 'today' || aria.indexOf('today') !== -1) {
+            btn.removeAttribute('aria-pressed');
+            btn.classList.add('cp-calendar-toolbar-today');
+            btn.classList.remove('cp-calendar-toolbar-nav');
+            btn.classList.remove('cp-calendar-toolbar-view');
+            continue;
+          }
+          btn.classList.remove('cp-calendar-toolbar-nav');
+          btn.classList.remove('cp-calendar-toolbar-today');
+          if (text === 'month' || text === 'week' || text === 'day' || text === 'list') {
+            btn.classList.add('cp-calendar-toolbar-view');
+            if (!btn.hasAttribute('aria-pressed')) {
+              btn.setAttribute('aria-pressed', 'false');
+            }
+          }
         }
       }
 
@@ -195,15 +264,9 @@
           nodes[p].classList.remove(pillClass);
         }
         if (!isToday) return;
-        var candidates = cellEl.querySelectorAll('a, button, span, div, p');
-        for (var i = 0; i < candidates.length; i++) {
-          var node = candidates[i];
-          if (node.children.length > 0) continue;
-          var text = (node.textContent || '').trim();
-          if (/^\d{1,2}$/.test(text)) {
-            node.classList.add(pillClass);
-            return;
-          }
+        var node = findDayNumberNode(cellEl);
+        if (node) {
+          node.classList.add(pillClass);
         }
       }
 
@@ -343,8 +406,8 @@
         }
 
         var popApi = window.AdminProjectCalendarPopover;
-        var moreDialog = popApi && el && popApi.findMorePopoverDialog
-          ? popApi.findMorePopoverDialog(el)
+        var moreDialog = popApi && popApi.findMorePopoverDialog
+          ? popApi.findMorePopoverDialog()
           : null;
         if (moreDialog) {
           if (popApi.closePopover(moreDialog)) {
@@ -559,14 +622,12 @@
         moreLinkClass: 'cp-calendar-more-link',
         moreLinkDidMount: styleMoreLink,
         datesSet: function () {
-          requestAnimationFrame(function () {
-            refreshAllTodayPills();
-          });
+          scheduleRefreshTodayPills();
+          syncToolbarA11y();
         },
         viewDidMount: function () {
-          requestAnimationFrame(function () {
-            refreshAllTodayPills();
-          });
+          scheduleRefreshTodayPills();
+          syncToolbarA11y();
         },
         editable: true,
         eventStartEditable: true,
@@ -645,10 +706,15 @@
       });
       calendar.render();
       el.setAttribute('data-color-scheme', adminCalendarColorScheme());
-      refreshAllTodayPills();
+      scheduleRefreshTodayPills();
+      syncToolbarA11y();
       document.addEventListener('admin-theme-change', function () {
         syncCalendarColorScheme();
-        requestAnimationFrame(refreshAllTodayPills);
+        scheduleRefreshTodayPills();
+        syncToolbarA11y();
+      });
+      window.addEventListener('resize', function () {
+        scheduleRefreshTodayPills();
       });
       if (window.AdminProjectCalendarPopover && calendarCard) {
         calendarPopover = window.AdminProjectCalendarPopover.attach(calendarCard, el);
