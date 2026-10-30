@@ -253,8 +253,9 @@
         link.style.padding = '4px 8px';
         link.style.lineHeight = '1.2';
         link.addEventListener('click', function () {
-          if (window.AdminProjectCalendarPopover && window.AdminProjectCalendarPopover.tagMoreDialogOnce) {
-            window.AdminProjectCalendarPopover.tagMoreDialogOnce();
+          var pop = window.AdminProjectCalendarPopover;
+          if (pop && pop.positionMorePopoverOnce && calendarCard) {
+            pop.positionMorePopoverOnce(link, calendarCard);
           }
         });
       }

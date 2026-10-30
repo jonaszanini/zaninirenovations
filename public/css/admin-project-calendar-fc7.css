@@ -113,6 +113,15 @@ html.admin-dark .cp-calendar-card #cp-calendar button:hover:not(:disabled):not(.
   z-index: 2;
 }
 
+html.admin-dark .cp-calendar-card #cp-calendar button:focus-visible,
+html.admin-dark .cp-calendar-card #cp-calendar .cp-calendar-more-link:focus-visible,
+html.admin-dark .cp-calendar-card #cp-calendar a[class*='fc-classic']:focus-visible,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] button:focus-visible,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] .cp-calendar-more-link:focus-visible,
+.cp-calendar-card #cp-calendar[data-color-scheme='dark'] a[class*='fc-classic']:focus-visible {
+  outline-color: #7dd3fc;
+}
+
 .cp-calendar-card #cp-calendar button:disabled {
   opacity: 0.42;
   cursor: not-allowed;
@@ -198,22 +207,6 @@ div.cp-calendar-more-dialog[role='dialog'] {
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
   background: var(--admin-surface, #fff);
   color: var(--admin-text, #334155);
-}
-
-/* FC sets inline left; cap so the popover stays inside the viewport (CSS-only). */
-div.cp-calendar-more-dialog[role='dialog'] {
-  left: min(
-    left,
-    calc(100vw - 24px - min(320px, calc(100vw - 24px)))
-  ) !important;
-}
-
-@media (max-width: 480px) {
-  div.cp-calendar-more-dialog[role='dialog'] {
-    left: 12px !important;
-    width: calc(100vw - 24px) !important;
-    max-width: calc(100vw - 24px) !important;
-  }
 }
 
 html.admin-dark body > div[role='dialog'],
