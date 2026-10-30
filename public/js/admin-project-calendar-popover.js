@@ -17,6 +17,8 @@
 
   /** Scroll at more-link pointer down (before FC open/focus). */
   var scrollBeforeMoreOpen = null;
+  /** Last +N more link (pointer or keyboard). */
+  var lastMoreLinkEl = null;
 
   function isVisible(el) {
     if (!el || !el.getBoundingClientRect) {
@@ -269,16 +271,49 @@
     }
 
     function rememberScrollBeforeMoreOpen(e) {
-      if (!e.target.closest || !e.target.closest('.' + MORE_LINK_CLASS)) {
+      var link =
+        e.target.closest && e.target.closest('.' + MORE_LINK_CLASS);
+      if (!link) {
         return;
       }
       if (!document.getElementById('cp-calendar')) {
         return;
       }
+      lastMoreLinkEl = link;
       scrollBeforeMoreOpen = {
         x: window.scrollX || window.pageXOffset || 0,
         y: window.scrollY || window.pageYOffset || 0,
       };
+    }
+
+    function schedulePositionForMoreLink(link) {
+      if (!link) {
+        link = lastMoreLinkEl;
+      }
+      if (!link) {
+        return;
+      }
+      positionMorePopoverOnce(link, cardEl);
+    }
+
+    /** FC opens +N more on Enter/Space via keydown, not click. */
+    function onMoreLinkKeydown(e) {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.code !== 'Space') {
+        return;
+      }
+      var link =
+        e.target.closest && e.target.closest('.' + MORE_LINK_CLASS);
+      if (!link) {
+        return;
+      }
+      lastMoreLinkEl = link;
+      if (!scrollBeforeMoreOpen) {
+        scrollBeforeMoreOpen = {
+          x: window.scrollX || window.pageXOffset || 0,
+          y: window.scrollY || window.pageYOffset || 0,
+        };
+      }
+      schedulePositionForMoreLink(link);
     }
 
     function onDocumentPointerDown(e) {
@@ -295,7 +330,22 @@
       closePopover(pop);
     }
 
-    function onViewportChange() {
+    var trackedViewportWidth = window.innerWidth;
+
+    function onViewportWidthChange() {
+      var w = window.innerWidth;
+      if (w === trackedViewportWidth) {
+        return;
+      }
+      trackedViewportWidth = w;
+      var pop = findMorePopoverDialog();
+      if (pop) {
+        closePopover(pop);
+      }
+    }
+
+    function onOrientationChange() {
+      trackedViewportWidth = window.innerWidth;
       var pop = findMorePopoverDialog();
       if (pop) {
         closePopover(pop);
@@ -304,15 +354,17 @@
 
     document.addEventListener('pointerdown', rememberScrollBeforeMoreOpen, true);
     document.addEventListener('pointerdown', onDocumentPointerDown, true);
-    window.addEventListener('resize', onViewportChange);
-    window.addEventListener('orientationchange', onViewportChange);
+    document.addEventListener('keydown', onMoreLinkKeydown, false);
+    window.addEventListener('resize', onViewportWidthChange);
+    window.addEventListener('orientationchange', onOrientationChange);
 
     return {
       destroy: function () {
         document.removeEventListener('pointerdown', rememberScrollBeforeMoreOpen, true);
         document.removeEventListener('pointerdown', onDocumentPointerDown, true);
-        window.removeEventListener('resize', onViewportChange);
-        window.removeEventListener('orientationchange', onViewportChange);
+        document.removeEventListener('keydown', onMoreLinkKeydown, false);
+        window.removeEventListener('resize', onViewportWidthChange);
+        window.removeEventListener('orientationchange', onOrientationChange);
       },
       findOpenPopover: findMorePopoverDialog,
       findMorePopoverDialog: findMorePopoverDialog,
