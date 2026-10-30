@@ -43,7 +43,10 @@ class ClientProjectCalendarUpgradeTest extends TestCase
         $this->assertStringContainsString('datesSet:', $html);
         $this->assertStringContainsString('scheduleRefreshTodayPills', $html);
         $this->assertStringContainsString('syncToolbarA11y', $html);
-        $this->assertStringContainsString('document.body', file_get_contents(public_path('js/admin-project-calendar-popover.js')));
+        $this->assertStringContainsString('dayMaxEventRows:', $html);
+        $this->assertStringNotContainsString('moreLinkHeight:', $html);
+        $this->assertStringNotContainsString('new MutationObserver', file_get_contents(public_path('js/admin-project-calendar-popover.js')));
+        $this->assertStringContainsString('tagMoreDialogOnce', file_get_contents(public_path('js/admin-project-calendar-popover.js')));
         $this->assertStringContainsString(
             CalendarEventColors::fillColorForWhiteText('#0284c7'),
             $html

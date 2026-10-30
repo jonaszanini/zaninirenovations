@@ -1,6 +1,5 @@
 /**
  * Project calendar — FullCalendar 7 classic theme tokens (no .fc root in FC7).
- * Variables are scoped to #cp-calendar; colorScheme is synced from admin light/dark.
  */
 
 .cp-calendar-legend {
@@ -21,7 +20,6 @@
   --fc-classic-strong: color-mix(in srgb, var(--admin-text, #334155) 14%, transparent);
   --fc-classic-foreground: var(--admin-text, #334155);
   --fc-classic-muted-foreground: var(--admin-muted, #64748b);
-  /* AA on white (~4.6:1) — replaces default #9ca3af (~2.5:1). */
   --fc-classic-faint-foreground: #576574;
   --fc-classic-border: var(--admin-border, #e2e8f0);
   --fc-classic-strong-border: var(--admin-border, #cbd5e1);
@@ -66,43 +64,44 @@ html.admin-dark .cp-calendar-card #cp-calendar,
   --fc-classic-primary-foreground: #ffffff;
 }
 
-/* Toolbar buttons — hover, focus, disabled (FC7 sets aria-pressed on view toggles). */
 .cp-calendar-card #cp-calendar button {
   transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
-.cp-calendar-card #cp-calendar button:hover:not(:disabled):not(.cp-calendar-toolbar-nav):not(.cp-calendar-toolbar-today) {
-  border-color: var(--admin-primary, #024768);
-  color: var(--admin-primary, #024768);
+.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-nav {
+  background-color: #024768 !important;
+  border-color: #024768 !important;
+  color: #ffffff !important;
+}
+
+.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-nav:hover:not(:disabled),
+html.admin-dark .cp-calendar-card #cp-calendar button.cp-calendar-toolbar-nav:hover:not(:disabled) {
+  background-color: #013552 !important;
+  border-color: #013552 !important;
+  color: #ffffff !important;
+}
+
+.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-view[aria-pressed='true'] {
+  background-color: #024768 !important;
+  border-color: #024768 !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+html.admin-dark .cp-calendar-card #cp-calendar button.cp-calendar-toolbar-view[aria-pressed='true'] {
+  background-color: #024768 !important;
+  border-color: #024768 !important;
+  color: #ffffff !important;
+}
+
+.cp-calendar-card #cp-calendar button:hover:not(:disabled):not(.cp-calendar-toolbar-nav):not(.cp-calendar-toolbar-today):not([aria-pressed='true']) {
+  border-color: #024768;
+  color: #024768;
   background: var(--admin-primary-soft, rgba(2, 71, 104, 0.08));
 }
 
-.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-nav {
-  background-color: var(--admin-primary, #024768) !important;
-  border-color: var(--admin-primary, #024768) !important;
-  color: #ffffff !important;
-}
-
-.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-nav:hover:not(:disabled) {
-  background-color: var(--admin-primary-hover, #013552) !important;
-  border-color: var(--admin-primary-hover, #013552) !important;
-  color: #ffffff !important;
-}
-
-html.admin-dark .cp-calendar-card #cp-calendar button.cp-calendar-toolbar-nav:hover:not(:disabled) {
-  background-color: var(--admin-primary-hover, #013552) !important;
-  border-color: var(--admin-primary-hover, #013552) !important;
-  color: #ffffff !important;
-}
-
-.cp-calendar-card #cp-calendar button[aria-pressed='true']:hover:not(:disabled) {
-  background-color: var(--admin-primary-hover, #013552) !important;
-  border-color: var(--admin-primary-hover, #013552) !important;
-  color: #ffffff !important;
-}
-
 .cp-calendar-card #cp-calendar button:focus-visible {
-  outline: 2px solid var(--admin-primary, #024768);
+  outline: 2px solid #024768;
   outline-offset: 2px;
   z-index: 2;
 }
@@ -119,28 +118,17 @@ html.admin-dark .cp-calendar-card #cp-calendar button:disabled {
   border-color: var(--admin-border, #334155) !important;
 }
 
-.cp-calendar-card #cp-calendar button[aria-pressed='true'] {
-  background-color: var(--admin-primary, #024768) !important;
-  border-color: var(--admin-primary, #024768) !important;
-  color: #ffffff !important;
-}
-
-.cp-calendar-card #cp-calendar button[aria-pressed='false'] {
+.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-view[aria-pressed='false'] {
   background-color: transparent;
   color: var(--admin-muted, #64748b);
   border-color: var(--admin-border, #e2e8f0);
 }
 
-.cp-calendar-card #cp-calendar button.cp-calendar-toolbar-view[aria-pressed='false'] {
-  background-color: transparent;
-}
-
-html.admin-dark .cp-calendar-card #cp-calendar button[aria-pressed='false'] {
+html.admin-dark .cp-calendar-card #cp-calendar button.cp-calendar-toolbar-view[aria-pressed='false'] {
   color: var(--admin-muted, #94a3b8);
   border-color: var(--admin-border, #334155);
 }
 
-/* Today day number pill — brand primary (AA white on #024768 in dark mode). */
 .cp-calendar-card #cp-calendar .cp-calendar-day-today-pill {
   display: inline-flex;
   align-items: center;
@@ -149,16 +137,11 @@ html.admin-dark .cp-calendar-card #cp-calendar button[aria-pressed='false'] {
   min-height: 1.75em;
   padding: 0 0.35em;
   border-radius: 999px;
-  background: var(--admin-primary, #024768) !important;
+  background: #024768 !important;
   color: #ffffff !important;
   font-weight: 600;
   line-height: 1;
   box-sizing: border-box;
-}
-
-html.admin-dark .cp-calendar-card #cp-calendar .cp-calendar-day-today-pill {
-  background: #024768 !important;
-  color: #ffffff !important;
 }
 
 .cp-calendar-card #cp-calendar .cp-calendar-more-link {
@@ -171,21 +154,27 @@ html.admin-dark .cp-calendar-card #cp-calendar .cp-calendar-day-today-pill {
   padding: 4px 8px;
   font-weight: 600;
   line-height: 1.2;
-  color: var(--admin-primary, #024768);
+  color: #024768;
   border-radius: 6px;
+  pointer-events: auto;
 }
 
-.cp-calendar-card #cp-calendar .cp-calendar-more-link:focus-visible {
-  outline: 2px solid var(--admin-primary, #024768);
-  outline-offset: 2px;
+/* FC 7.1.3: 1px more-link harness (.fc-classic-toR) blocked last-row "+N more" taps at 390. */
+.cp-calendar-card #cp-calendar .fc-classic-toR {
+  min-height: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible;
+  pointer-events: none;
 }
 
-/* FC 7.1.3 more popover (portaled to document.body). */
+body > div[role='dialog'],
 div.cp-calendar-more-dialog[role='dialog'] {
-  position: fixed;
-  z-index: 40;
-  margin: 0;
   box-sizing: border-box;
+  max-width: min(320px, calc(100vw - 16px));
+  max-height: 60vh;
+  overflow: auto;
   border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
@@ -193,13 +182,9 @@ div.cp-calendar-more-dialog[role='dialog'] {
   color: var(--admin-text, #334155);
 }
 
+html.admin-dark body > div[role='dialog'],
 html.admin-dark div.cp-calendar-more-dialog[role='dialog'] {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-}
-
-.cp-calendar-card #cp-calendar div[role='dialog'].cp-calendar-more-dialog {
-  position: fixed;
-  z-index: 40;
 }
 
 @media (max-width: 480px) {

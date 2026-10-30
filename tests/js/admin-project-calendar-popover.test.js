@@ -11,7 +11,7 @@ global.document = {
     return null;
   },
   querySelectorAll: function (sel) {
-    if (sel === 'div[role="dialog"]') {
+    if (sel === 'body > div[role="dialog"]') {
       return [
         {
           role: 'dialog',
@@ -22,13 +22,12 @@ global.document = {
           getBoundingClientRect: function () {
             return { width: 220, height: 120 };
           },
-          classList: { add: function () {}, contains: function () { return false; } },
-          style: {},
+          classList: { add: function () {} },
           contains: function () {
             return false;
           },
           querySelector: function () {
-            return null;
+            return { click: function () {} };
           },
         },
       ];
@@ -39,8 +38,11 @@ global.document = {
 };
 
 const pop = require('../../public/js/admin-project-calendar-popover.js');
+const src = require('fs').readFileSync(require('path').join(__dirname, '../../public/js/admin-project-calendar-popover.js'), 'utf8');
 
 assert.strictEqual(typeof pop.findMorePopoverDialog, 'function');
-assert.ok(pop.findMorePopoverDialog(), 'finds body-portaled role=dialog when calendar page is present');
+assert.ok(pop.findMorePopoverDialog());
+assert.doesNotMatch(src, /MutationObserver/);
+assert.doesNotMatch(src, /clampPopover/);
 
 console.log('admin-project-calendar-popover.test.js: ok');

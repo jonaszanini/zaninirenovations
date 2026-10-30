@@ -1,6 +1,6 @@
 /**
- * FullCalendar 7.1.3 "+N more" popover: div[role=dialog] portaled to document.body.
- * Clamp to .cp-calendar-card + viewport; outside tap closes via close button.
+ * FullCalendar 7.1.3 "+N more" popover helpers (body-portaled role=dialog).
+ * Positioning is CSS-only; no observer loop or clamp writes.
  */
 (function (root, factory) {
   var api = factory(root);
@@ -36,42 +36,26 @@
     return false;
   }
 
-  /**
-   * FC 7.1.3 more-link popover (mounted on body, not #cp-calendar).
-   *
-   * @returns {HTMLElement|null}
-   */
   function findMorePopoverDialog() {
-    var calendarRoot = document.getElementById('cp-calendar');
-    if (!calendarRoot) {
+    if (!document.getElementById('cp-calendar')) {
       return null;
     }
 
-    var tagged = document.querySelector('div[role="dialog"].' + MORE_DIALOG_CLASS);
+    var tagged = document.querySelector('body > div[role="dialog"].' + MORE_DIALOG_CLASS);
     if (tagged && isVisible(tagged) && !isExcludedDialog(tagged)) {
       return tagged;
     }
 
-    var dialogs = document.querySelectorAll('div[role="dialog"]');
+    var dialogs = document.querySelectorAll('body > div[role="dialog"]');
     for (var i = 0; i < dialogs.length; i++) {
       var dialog = dialogs[i];
-      if (!isVisible(dialog) || isExcludedDialog(dialog)) {
-        continue;
-      }
-      if (dialog.closest('#cp-calendar')) {
-        return dialog;
-      }
-      if (dialog.parentElement === document.body) {
-        return dialog;
-      }
-      if (dialog.parentElement && dialog.parentElement.tagName === 'BODY') {
+      if (isVisible(dialog) && !isExcludedDialog(dialog)) {
         return dialog;
       }
     }
     return null;
   }
 
-  /** @deprecated */
   function findOpenPopover() {
     return findMorePopoverDialog();
   }
@@ -80,12 +64,7 @@
     if (!pop) {
       return false;
     }
-    if (typeof pop.hidePopover === 'function') {
-      pop.hidePopover();
-      return true;
-    }
     var btn =
-      pop.querySelector('[data-fc-popover-close]') ||
       pop.querySelector('button[aria-label*="Close" i]') ||
       pop.querySelector('button[type="button"]') ||
       pop.querySelector('button');
@@ -96,87 +75,18 @@
     return false;
   }
 
-  /**
-   * @param {HTMLElement} pop
-   * @param {HTMLElement} cardEl
-   */
-  function clampPopover(pop, cardEl) {
-    if (!pop || !cardEl) {
-      return;
-    }
-    pop.classList.add(MORE_DIALOG_CLASS);
-
-    var margin = 8;
-    var cardRect = cardEl.getBoundingClientRect();
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
-    var popRect = pop.getBoundingClientRect();
-
-    var minLeft = Math.max(margin, cardRect.left + margin);
-    var maxRight = Math.min(vw - margin, cardRect.right - margin);
-    var minTop = Math.max(margin, cardRect.top + margin);
-    var maxBottom = Math.min(vh - margin, cardRect.bottom - margin);
-
-    var width = popRect.width;
-    if (width > maxRight - minLeft) {
-      width = Math.max(120, maxRight - minLeft);
-      pop.style.width = width + 'px';
-      pop.style.maxWidth = width + 'px';
-    }
-
-    var height = popRect.height;
-    var maxLeft = maxRight - width;
-    var maxTop = maxBottom - height;
-    if (maxLeft < minLeft) {
-      maxLeft = minLeft;
-    }
-    if (maxTop < minTop) {
-      maxTop = minTop;
-    }
-
-    var left = popRect.left;
-    var top = popRect.top;
-    if (left < minLeft) {
-      left = minLeft;
-    } else if (left > maxLeft) {
-      left = maxLeft;
-    }
-    if (top < minTop) {
-      top = minTop;
-    } else if (top > maxTop) {
-      top = maxTop;
-    }
-
-    pop.style.position = 'fixed';
-    pop.style.left = Math.round(left) + 'px';
-    pop.style.top = Math.round(top) + 'px';
-    pop.style.margin = '0';
-    pop.style.boxSizing = 'border-box';
-    pop.style.maxWidth = Math.min(340, vw - margin * 2) + 'px';
-    pop.style.maxHeight = Math.max(100, maxBottom - top) + 'px';
-    pop.style.overflow = 'auto';
+  function tagMoreDialogOnce() {
+    requestAnimationFrame(function () {
+      var dialog = findMorePopoverDialog();
+      if (dialog) {
+        dialog.classList.add(MORE_DIALOG_CLASS);
+      }
+    });
   }
 
-  /**
-   * @param {HTMLElement} cardEl .cp-calendar-card
-   * @param {HTMLElement} calendarRootEl #cp-calendar
-   */
   function attach(cardEl, calendarRootEl) {
     if (!cardEl || !calendarRootEl) {
       return { destroy: function () {} };
-    }
-
-    function scheduleClamp() {
-      var pop = findMorePopoverDialog();
-      if (!pop) {
-        return;
-      }
-      requestAnimationFrame(function () {
-        clampPopover(pop, cardEl);
-        requestAnimationFrame(function () {
-          clampPopover(pop, cardEl);
-        });
-      });
     }
 
     function onDocumentPointerDown(e) {
@@ -193,29 +103,16 @@
       closePopover(pop);
     }
 
-    var observer = new MutationObserver(scheduleClamp);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style', 'class', 'hidden', 'aria-hidden', 'open'],
-    });
-
     document.addEventListener('pointerdown', onDocumentPointerDown, true);
-    window.addEventListener('resize', scheduleClamp);
 
     return {
       destroy: function () {
-        observer.disconnect();
         document.removeEventListener('pointerdown', onDocumentPointerDown, true);
       },
-      scheduleClamp: scheduleClamp,
       findOpenPopover: findMorePopoverDialog,
       findMorePopoverDialog: findMorePopoverDialog,
-      clampPopover: function (pop) {
-        clampPopover(pop, cardEl);
-      },
       closePopover: closePopover,
+      tagMoreDialogOnce: tagMoreDialogOnce,
       MORE_LINK_CLASS: MORE_LINK_CLASS,
       MORE_DIALOG_CLASS: MORE_DIALOG_CLASS,
     };
@@ -225,8 +122,8 @@
     attach: attach,
     findMorePopoverDialog: findMorePopoverDialog,
     findOpenPopover: findOpenPopover,
-    clampPopover: clampPopover,
     closePopover: closePopover,
+    tagMoreDialogOnce: tagMoreDialogOnce,
     isVisible: isVisible,
   };
 });
