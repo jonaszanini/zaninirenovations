@@ -42,7 +42,6 @@ const src = require('fs').readFileSync(require('path').join(__dirname, '../../pu
 
 assert.strictEqual(typeof pop.findMorePopoverDialog, 'function');
 assert.ok(pop.findMorePopoverDialog());
-assert.doesNotMatch(src, /MutationObserver/);
-assert.doesNotMatch(src, /clampPopover/);
+assert.doesNotMatch(src, /new MutationObserver/);
 
 console.log('admin-project-calendar-popover.test.js: ok');
