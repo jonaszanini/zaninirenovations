@@ -273,6 +273,25 @@ assert.strictEqual(
   'empty origin messages are rejected'
 );
 
+const relIframe = {
+  contentWindow: { id: 'editor2' },
+  getAttribute: function (name) {
+    return name === 'src' ? '/vendor/openplan3d/editor/index.html?v=1' : '';
+  },
+  src: 'http://127.0.0.1:8000/vendor/openplan3d/editor/index.html?v=1',
+};
+const relWin = { location: { origin: 'http://127.0.0.1:8000', href: 'http://127.0.0.1:8000/admin/utilities/room-area' } };
+assert.strictEqual(
+  host.editorExpectedOrigin(relIframe, relWin),
+  'http://127.0.0.1:8000',
+  'root-relative iframe src must resolve against the admin page origin'
+);
+assert.strictEqual(
+  host.isTrustedEditorMessage({ source: relIframe.contentWindow, origin: 'http://127.0.0.1:8000' }, relIframe, relWin),
+  true,
+  'root-relative iframe postMessage uses the page origin'
+);
+
 function geometryPlan() {
   return {
     unit: 'cm',

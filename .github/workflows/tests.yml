@@ -225,6 +225,7 @@ jobs:
         if: needs.changes.outputs.run_browser == 'true'
         run: |
           node tests/js/openplan3d-browser.test.js
+          node tests/js/openplan3d-room-area-blade-browser.test.js
           node tests/js/openplan3d-editor-browser.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js
