@@ -82,6 +82,7 @@ jobs:
               - 'resources/views/admin/client-projects/**/room-area/**'
               - 'tests/Feature/Admin/RoomArea*.php'
               - 'tests/Feature/Admin/*RoomArea*.php'
+              - 'tests/js/openplan3d-room-area-blade-browser.test.js'
               - 'tests/js/room-area-phone-geometry.test.js'
               - 'tests/Unit/Services/RoomArea*.php'
             blog_live:
