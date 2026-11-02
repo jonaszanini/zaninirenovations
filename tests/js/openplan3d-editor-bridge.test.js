@@ -70,6 +70,12 @@ assert.match(hostSrc, /OPENPLAN3D_LOAD_ACK/, 'host must wait for LOAD_ACK');
 assert.match(hostSrc, /e\.data\.ok === false/, 'host must treat ACK ok:false as a failed load');
 assert.match(hostSrc, /confirm_zero_area/, 'host must send confirm_zero_area');
 assert.match(hostSrc, /isTrustedEditorMessage/, 'host must check postMessage source and origin');
+assert.match(hostSrc, /pendingEditorMessagesMax = 50/, 'host must cap buffered pre-boot postMessages');
+assert.match(
+  fs.readFileSync(path.resolve(__dirname, '../../public/js/openplan3d-editor-bridge.js'), 'utf8'),
+  /contains\('zanini-hosted-openplan3d'\)/,
+  'editor bridge must guard hosted class MutationObserver'
+);
 assert.doesNotMatch(
   hostSrc,
   /contentWindow\.postMessage\(payload,\s*'\*'\)/,

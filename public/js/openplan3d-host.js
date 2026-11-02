@@ -20,6 +20,7 @@
   'use strict';
 
   var pendingEditorMessages = [];
+  var pendingEditorMessagesMax = 50;
   var deliverEditorMessage = null;
 
   if (typeof window !== 'undefined') {
@@ -28,6 +29,9 @@
         deliverEditorMessage(e);
       } else {
         pendingEditorMessages.push(e);
+        while (pendingEditorMessages.length > pendingEditorMessagesMax) {
+          pendingEditorMessages.shift();
+        }
       }
     });
   }
@@ -271,11 +275,7 @@
     if (!event.origin || event.origin === 'null') return false;
     var expected = editorExpectedOrigin(iframe, win);
     if (!expected || expected === 'null') return false;
-    if (event.origin === expected) return true;
-    if (win && win.location && win.location.origin && win.location.origin !== 'null') {
-      return event.origin === win.location.origin;
-    }
-    return false;
+    return event.origin === expected;
   }
 
   function planFingerprint(plan) {

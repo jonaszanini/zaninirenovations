@@ -35,7 +35,7 @@ $partial = preg_replace(
   $partial
 );
 $v = time();
-echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">';
+echo '<!DOCTYPE html><html lang="en" class="admin-dark"><head><meta charset="utf-8">';
 echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
 echo '<link rel="stylesheet" href="/css/admin.css?v='.$v.'">';
 echo '<link rel="stylesheet" href="/css/admin-utilities.css?v='.$v.'">';
@@ -115,6 +115,22 @@ async function auditViewport(page, port, label) {
     area: document.getElementById('metric-area')?.textContent?.trim(),
     iframeH: document.getElementById('openplan3d-iframe')?.getBoundingClientRect().height || 0,
   }));
+
+  const themeToggle = await page.$('#openplan3d-theme-toggle');
+  assert.ok(themeToggle, `${label} must expose theme toggle in dark admin`);
+  const toggleT0 = Date.now();
+  for (let i = 0; i < 10; i++) {
+    await themeToggle.click();
+    await page.waitForFunction(
+      () => {
+        const h = window.OpenPlan3DHost;
+        return h && h.getState && h.getState().iframeReady;
+      },
+      { timeout: 3000 }
+    );
+  }
+  const toggleMs = Date.now() - toggleT0;
+  assert.ok(toggleMs < 8000, `${label} theme toggles must not hang (${toggleMs}ms)`);
 
   const elapsed = Date.now() - t0;
   const outDir = process.env.QA_OUT || path.join(ROOT, 'storage', 'app/qa-screenshots');
