@@ -31,6 +31,7 @@ LoadModule dir_module modules/mod_dir.so
 LoadModule mime_module modules/mod_mime.so
 LoadModule expires_module modules/mod_expires.so
 LoadModule deflate_module modules/mod_deflate.so
+LoadModule filter_module modules/mod_filter.so
 LoadModule unixd_module modules/mod_unixd.so
 LoadModule log_config_module modules/mod_log_config.so
 
