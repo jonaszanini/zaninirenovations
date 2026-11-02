@@ -232,6 +232,7 @@ jobs:
           node tests/js/openplan3d-browser.test.js
           node tests/js/openplan3d-room-area-blade-browser.test.js
           node tests/js/room-area-main-thread-responsive.test.js
+          node tests/js/client-projects-table-screenshots.test.js
           node tests/js/openplan3d-editor-browser.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js
