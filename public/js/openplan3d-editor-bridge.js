@@ -369,10 +369,13 @@
       if (!window.parent.document || !window.parent.document.documentElement) return;
       var parentDark = window.parent.document.documentElement.classList.contains('admin-dark');
       var theme = parentDark ? 'dark' : 'light';
-      try {
-        localStorage.setItem('o3d_theme', theme);
-      } catch (e) {}
       setEditorDarkClass(parentDark);
+      try {
+        var existing = localStorage.getItem('o3d_theme');
+        if (existing !== 'dark' && existing !== 'light') {
+          localStorage.setItem('o3d_theme', theme);
+        }
+      } catch (e) {}
     } catch (e) {}
   }
 

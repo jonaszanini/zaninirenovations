@@ -350,14 +350,18 @@ a.cp-table-phone .fa {
   flex-direction: column;
   gap: 5px;
   min-width: 0;
-  max-width: 100%;
 }
 .cp-client-name {
   font-size: 14px;
   line-height: 1.35;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   word-break: normal;
-  hyphens: auto;
+}
+@media (max-width: 900px) {
+  .admin-table.cp-table td:first-child {
+    min-width: 132px;
+    width: 34%;
+  }
 }
 .cp-client-actions,
 .cp-client-mobile-actions {

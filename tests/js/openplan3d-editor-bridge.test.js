@@ -105,7 +105,34 @@ global.document = themeDoc;
 bridge.applyEditorTheme('dark');
 bridge.applyEditorTheme('dark');
 assert.ok(themeDoc.documentElement._classes.has('dark'), 'applyEditorTheme sets dark once');
+
+const storage = { o3d_theme: 'light' };
+global.localStorage = {
+  getItem: function (k) { return Object.prototype.hasOwnProperty.call(storage, k) ? storage[k] : null; },
+  setItem: function (k, v) { storage[k] = v; },
+};
+global.window = {
+  parent: {
+    document: {
+      documentElement: {
+        classList: {
+          contains: function (c) { return c === 'admin-dark'; },
+        },
+      },
+    },
+  },
+};
+themeDoc.documentElement._classes = new Set();
+bridge.syncHostedThemeFromParent();
+assert.strictEqual(storage.o3d_theme, 'light', 'syncHostedThemeFromParent must not overwrite valid o3d_theme');
+assert.ok(themeDoc.documentElement._classes.has('dark'), 'syncHostedThemeFromParent still syncs dark class from parent');
+delete storage.o3d_theme;
+bridge.syncHostedThemeFromParent();
+assert.strictEqual(storage.o3d_theme, 'dark', 'syncHostedThemeFromParent seeds o3d_theme when missing');
+
 delete global.document;
+delete global.localStorage;
+delete global.window;
 assert.doesNotMatch(
   hostSrc,
   /contentWindow\.postMessage\(payload,\s*'\*'\)/,

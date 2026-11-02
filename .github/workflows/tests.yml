@@ -87,6 +87,7 @@ jobs:
               - 'tests/js/room-area-phone-geometry.test.js'
               - 'public/js/openplan3d-editor-bridge.js'
               - 'public/.htaccess'
+              - 'tests/ci/apache-htaccess-cache.sh'
               - 'tests/js/openplan3d-editor-asset-version.test.js'
               - 'public/js/openplan3d-host.js'
               - 'public/vendor/openplan3d/editor/index.html'
@@ -212,6 +213,9 @@ jobs:
         with:
           path: /home/runner/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-24.43.1
+
+      - name: Apache .htaccess cache headers
+        run: tests/ci/apache-htaccess-cache.sh
 
       - name: JavaScript tests (no browser)
         run: |

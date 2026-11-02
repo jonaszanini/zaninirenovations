@@ -29,10 +29,12 @@ function assertVersionedBridgeSrc(html, label) {
 }
 
 const htaccess = fs.readFileSync(HTACCESS, 'utf8');
-assert.match(htaccess, /SetEnvIf Query_String.*v=/, '.htaccess must treat ?v= as versioned assets');
+assert.doesNotMatch(htaccess, /LocationMatch/i, '.htaccess must not use LocationMatch (500 in .htaccess on Apache 2.4)');
+assert.match(htaccess, /SetEnvIf Request_URI "\^\/vendor\/openplan3d\/_app\/immutable\//, '.htaccess must mark immutable chunks via Request_URI');
+assert.match(htaccess, /RewriteCond %{QUERY_STRING} .*?\(v\|ver\)=/, '.htaccess must detect ?v= / ?ver= via RewriteCond');
+assert.match(htaccess, /REDIRECT_asset_versioned/, '.htaccess must preserve asset_versioned across internal redirects');
 assert.match(htaccess, /max-age=31536000, immutable.*asset_versioned/s, '.htaccess must long-cache versioned JS/CSS');
 assert.match(htaccess, /must-revalidate.*!asset_versioned/s, '.htaccess must not immutable-cache unversioned JS/CSS');
-assert.match(htaccess, /_app\/immutable/, '.htaccess must long-cache SvelteKit hashed chunks');
 
 const bridgeSrc = fs.readFileSync(BRIDGE, 'utf8');
 assert.match(
@@ -46,6 +48,13 @@ assert.doesNotMatch(
   applyEditorThemeBlock[1],
   /localStorage/,
   'applyEditorTheme must not overwrite o3d_theme localStorage'
+);
+const syncBlock = bridgeSrc.match(/function syncHostedThemeFromParent\(\) \{([\s\S]*?)\n  \}/);
+assert.ok(syncBlock, 'syncHostedThemeFromParent must exist');
+assert.match(
+  syncBlock[1],
+  /existing !== 'dark' && existing !== 'light'/,
+  'syncHostedThemeFromParent must only seed o3d_theme when unset'
 );
 
 assertVersionedBridgeSrc(fs.readFileSync(INDEX, 'utf8'), 'editor index.html');
