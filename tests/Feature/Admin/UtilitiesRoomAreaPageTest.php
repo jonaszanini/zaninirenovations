@@ -33,6 +33,7 @@ class UtilitiesRoomAreaPageTest extends IntegrationTestCase
             ->assertViewIs('admin.utilities.room_area')
             ->assertSee('data-room-area-openplan3d', false)
             ->assertSee('vendor/openplan3d/editor/index.html', false)
+            ->assertSee('src="/vendor/openplan3d/editor/index.html', false)
             ->assertSee('All utilities')
             ->assertSee('id="openplan3d-save-btn"', false)
             ->assertSee('id="openplan3d-project-select"', false)

@@ -19,6 +19,23 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
+  var pendingEditorMessages = [];
+  var pendingEditorMessagesMax = 50;
+  var deliverEditorMessage = null;
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('message', function (e) {
+      if (deliverEditorMessage) {
+        deliverEditorMessage(e);
+      } else {
+        pendingEditorMessages.push(e);
+        while (pendingEditorMessages.length > pendingEditorMessagesMax) {
+          pendingEditorMessages.shift();
+        }
+      }
+    });
+  }
+
   function collectPlanRooms(plan) {
     if (!plan || typeof plan !== 'object') return [];
     var rooms = [];
@@ -1385,7 +1402,7 @@
         }
       });
 
-      win.addEventListener('message', function (e) {
+      function onEditorMessage(e) {
         if (!isTrustedEditorMessage(e, iframe, win)) return;
         if (!e.data || typeof e.data !== 'object') return;
 
@@ -1437,7 +1454,13 @@
             savePlan();
           }
         }
-      });
+      }
+
+      deliverEditorMessage = onEditorMessage;
+      for (var pi = 0; pi < pendingEditorMessages.length; pi++) {
+        onEditorMessage(pendingEditorMessages[pi]);
+      }
+      pendingEditorMessages.length = 0;
     }
 
     var themeToggleBtn = doc.getElementById('openplan3d-theme-toggle');

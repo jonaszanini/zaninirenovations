@@ -70,6 +70,12 @@ assert.match(hostSrc, /OPENPLAN3D_LOAD_ACK/, 'host must wait for LOAD_ACK');
 assert.match(hostSrc, /e\.data\.ok === false/, 'host must treat ACK ok:false as a failed load');
 assert.match(hostSrc, /confirm_zero_area/, 'host must send confirm_zero_area');
 assert.match(hostSrc, /isTrustedEditorMessage/, 'host must check postMessage source and origin');
+assert.match(hostSrc, /pendingEditorMessagesMax = 50/, 'host must cap buffered pre-boot postMessages');
+assert.match(
+  fs.readFileSync(path.resolve(__dirname, '../../public/js/openplan3d-editor-bridge.js'), 'utf8'),
+  /contains\('zanini-hosted-openplan3d'\)/,
+  'editor bridge must guard hosted class MutationObserver'
+);
 assert.doesNotMatch(
   hostSrc,
   /contentWindow\.postMessage\(payload,\s*'\*'\)/,
@@ -271,6 +277,25 @@ assert.strictEqual(
   host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: '' }, fakeIframe, fakeWin),
   false,
   'empty origin messages are rejected'
+);
+
+const relIframe = {
+  contentWindow: { id: 'editor2' },
+  getAttribute: function (name) {
+    return name === 'src' ? '/vendor/openplan3d/editor/index.html?v=1' : '';
+  },
+  src: 'http://127.0.0.1:8000/vendor/openplan3d/editor/index.html?v=1',
+};
+const relWin = { location: { origin: 'http://127.0.0.1:8000', href: 'http://127.0.0.1:8000/admin/utilities/room-area' } };
+assert.strictEqual(
+  host.editorExpectedOrigin(relIframe, relWin),
+  'http://127.0.0.1:8000',
+  'root-relative iframe src must resolve against the admin page origin'
+);
+assert.strictEqual(
+  host.isTrustedEditorMessage({ source: relIframe.contentWindow, origin: 'http://127.0.0.1:8000' }, relIframe, relWin),
+  true,
+  'root-relative iframe postMessage uses the page origin'
 );
 
 function geometryPlan() {

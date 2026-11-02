@@ -218,11 +218,10 @@
   <main class="util-ra-openplan3d-frame-container" id="openplan3d-container">
     <iframe
       id="openplan3d-iframe"
-      src="{{ asset('vendor/openplan3d/editor/index.html') }}?v={{ @filemtime(public_path('vendor/openplan3d/editor/index.html')) ?: time() }}"
+      src="/vendor/openplan3d/editor/index.html?v={{ @filemtime(public_path('vendor/openplan3d/editor/index.html')) ?: time() }}"
       title="openPlan3D Floor Plan Editor"
       class="util-ra-openplan3d-iframe"
       allow="fullscreen"
-      loading="lazy"
     ></iframe>
   </main>
 </div>

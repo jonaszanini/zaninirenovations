@@ -356,6 +356,7 @@
     doc = doc || (typeof document !== 'undefined' ? document : null);
     if (!doc || !doc.documentElement) return null;
     var apply = function () {
+      if (doc.documentElement.classList.contains('zanini-hosted-openplan3d')) return;
       doc.documentElement.classList.add('zanini-hosted-openplan3d');
     };
     apply();
