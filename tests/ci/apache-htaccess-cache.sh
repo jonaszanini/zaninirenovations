@@ -32,9 +32,8 @@ for f in "$PUBLIC/$ENV_REL" "$PUBLIC/$IMMUTABLE_REL"; do
 done
 
 write_httpd_conf() {
-  local docroot="$1"
-  local conf="$2"
-  cat >"$conf" <<EOF
+  local conf="$1"
+  cat >"$conf" <<'EOF'
 ServerRoot "/usr/local/apache2"
 Listen 80
 ServerName localhost
@@ -54,8 +53,8 @@ LoadModule log_config_module modules/mod_log_config.so
 User daemon
 Group daemon
 
-DocumentRoot "${docroot}"
-<Directory "${docroot}">
+DocumentRoot "/usr/local/apache2/htdocs"
+<Directory "/usr/local/apache2/htdocs">
     AllowOverride All
     Require all granted
     Options -Indexes +FollowSymLinks
@@ -108,7 +107,7 @@ run_suite() {
   local tmp
   tmp="$(mktemp -d)"
 
-  write_httpd_conf "$docroot" "$tmp/httpd.conf"
+  write_httpd_conf "$tmp/httpd.conf"
 
   docker pull "$IMAGE" >/dev/null
   docker rm -f "$container" >/dev/null 2>&1 || true
