@@ -380,6 +380,7 @@
     var loadAcked = false;
     var loadedPlanBaseline = null;
     var selectedOpenPlan3DRoomId = null;
+    var lastEditorThemeSent = null;
 
     function setDirty(val) {
       isDirty = !!val;
@@ -707,6 +708,16 @@
         }
         iframe.contentWindow.postMessage(payload, targetOrigin);
       }
+    }
+
+    function syncEditorThemeToIframe(force) {
+      var theme = doc.documentElement.classList.contains('admin-dark') ? 'dark' : 'light';
+      if (!force && lastEditorThemeSent === theme) return;
+      lastEditorThemeSent = theme;
+      postToEditor({
+        type: 'OPENPLAN3D_SET_THEME',
+        theme: theme
+      });
     }
 
     function requestEditorLoad(plan) {
@@ -1408,11 +1419,7 @@
 
         if (e.data.type === 'OPENPLAN3D_READY') {
           iframeReady = true;
-          var isDark = doc.documentElement.classList.contains('admin-dark');
-          postToEditor({
-            type: 'OPENPLAN3D_SET_THEME',
-            theme: isDark ? 'dark' : 'light'
-          });
+          syncEditorThemeToIframe(false);
           if (currentPlan) {
             requestEditorLoad(currentPlan);
           } else {
@@ -1487,10 +1494,7 @@
         try {
           localStorage.setItem('zanini-admin-theme', nowDark ? 'dark' : 'light');
         } catch (e) {}
-        postToEditor({
-          type: 'OPENPLAN3D_SET_THEME',
-          theme: nowDark ? 'dark' : 'light'
-        });
+        syncEditorThemeToIframe(true);
         syncThemeButton();
         doc.dispatchEvent(new CustomEvent('admin-theme-change', { detail: { dark: nowDark } }));
       });

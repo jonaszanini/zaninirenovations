@@ -76,6 +76,35 @@ assert.match(
   /contains\('zanini-hosted-openplan3d'\)/,
   'editor bridge must guard hosted class MutationObserver'
 );
+assert.match(
+  fs.readFileSync(path.resolve(__dirname, '../../public/js/openplan3d-editor-bridge.js'), 'utf8'),
+  /scheduleHideNativeSaveUi/,
+  'native save UI must not use a document-wide MutationObserver loop'
+);
+assert.doesNotMatch(
+  fs.readFileSync(path.resolve(__dirname, '../../public/js/openplan3d-editor-bridge.js'), 'utf8'),
+  /observe\(doc\.documentElement, \{ childList: true, subtree: true, characterData: true \}\)/,
+  'hide-native-save must not observe the entire editor document tree'
+);
+
+assert.strictEqual(typeof bridge.applyEditorTheme, 'function');
+const themeDoc = {
+  documentElement: {
+    _classes: new Set(),
+    classList: {
+      contains: function (c) { return themeDoc.documentElement._classes.has(c); },
+      toggle: function (c, force) {
+        if (force) themeDoc.documentElement._classes.add(c);
+        else themeDoc.documentElement._classes.delete(c);
+      },
+    },
+  },
+};
+global.document = themeDoc;
+bridge.applyEditorTheme('dark');
+bridge.applyEditorTheme('dark');
+assert.ok(themeDoc.documentElement._classes.has('dark'), 'applyEditorTheme sets dark once');
+delete global.document;
 assert.doesNotMatch(
   hostSrc,
   /contentWindow\.postMessage\(payload,\s*'\*'\)/,

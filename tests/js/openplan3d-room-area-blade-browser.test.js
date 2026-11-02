@@ -37,6 +37,7 @@ $partial = preg_replace(
 $v = time();
 echo '<!DOCTYPE html><html lang="en" class="admin-dark"><head><meta charset="utf-8">';
 echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
+echo '<script>try{localStorage.setItem("zanini-admin-theme","dark");localStorage.setItem("o3d_theme","system");}catch(e){}</script>';
 echo '<link rel="stylesheet" href="/css/admin.css?v='.$v.'">';
 echo '<link rel="stylesheet" href="/css/admin-utilities.css?v='.$v.'">';
 echo '<link rel="stylesheet" href="/css/admin-dark.css?v='.$v.'">';
@@ -45,9 +46,8 @@ echo '<div class="admin-app admin-app--fullscreen" id="admin-app">';
 echo '<main class="admin-main"><div class="admin-content">';
 echo $partial;
 echo '</div></main></div>';
-if (getenv('WITH_INFO_TIP') === '1') {
-  echo '<script src="/js/admin-info-tip.js?v='.$v.'"></script>';
-}
+echo '<script src="/js/admin-theme.js?v='.$v.'"></script>';
+echo '<script src="/js/admin-info-tip.js?v='.$v.'"></script>';
 echo '<script src="/js/openplan3d-measurement-bridge.js?v='.$v.'"></script>';
 echo '<script src="/js/openplan3d-host.js?v='.$v.'"></script>';
 echo '</body></html>';
@@ -160,6 +160,7 @@ async function main() {
   const results = [];
   for (const c of cases) {
     const page = await browser.newPage();
+    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
     await page.setViewport({ width: c.width, height: c.height });
     await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded', timeout: 60000 });
     const r = await auditViewport(page, port, c.label);

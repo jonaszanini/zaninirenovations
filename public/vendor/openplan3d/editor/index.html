@@ -6,6 +6,11 @@
 		<link rel="icon" type="image/svg+xml" href="/vendor/openplan3d/favicon.svg" />
 		<title>open3dFloorplan</title>
 		<script src="/js/openplan3d-editor-bridge.js"></script>
+		<script>
+			if (window.OpenPlan3DEditorBridge && typeof window.OpenPlan3DEditorBridge.syncHostedThemeFromParent === 'function') {
+				window.OpenPlan3DEditorBridge.syncHostedThemeFromParent();
+			}
+		</script>
 		<link href="/vendor/openplan3d/_app/immutable/entry/start.ChH6DPSY.js" rel="modulepreload">
 		<link href="/vendor/openplan3d/_app/immutable/chunks/IK8I3O5V.js" rel="modulepreload">
 		<link href="/vendor/openplan3d/_app/immutable/chunks/BZH7Uaq2.js" rel="modulepreload">
@@ -326,14 +331,6 @@
 					if (!inspected || !inspected.ok) {
 						return;
 					}
-
-					try {
-						if (window.parent && window.parent !== window && window.parent.document) {
-							if (window.parent.document.documentElement.classList.contains('admin-dark')) {
-								document.documentElement.classList.add('dark');
-							}
-						}
-					} catch (e) {}
 
 					let initial = true;
 					let updateTimeout = null;

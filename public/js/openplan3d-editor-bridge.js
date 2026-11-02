@@ -352,12 +352,42 @@
     return hidden;
   }
 
+  function applyEditorTheme(theme) {
+    if (typeof document === 'undefined' || !document.documentElement) return;
+    var wantDark = theme === 'dark';
+    var hasDark = document.documentElement.classList.contains('dark');
+    if (hasDark !== wantDark) {
+      document.documentElement.classList.toggle('dark', wantDark);
+    }
+    if (theme === 'dark' || theme === 'light') {
+      try {
+        localStorage.setItem('o3d_theme', theme);
+      } catch (e) {}
+    }
+  }
+
+  function syncHostedThemeFromParent() {
+    if (typeof window === 'undefined' || !window.parent || window.parent === window) return;
+    try {
+      if (!window.parent.document || !window.parent.document.documentElement) return;
+      var parentDark = window.parent.document.documentElement.classList.contains('admin-dark');
+      applyEditorTheme(parentDark ? 'dark' : 'light');
+    } catch (e) {}
+  }
+
   function keepHostedClass(doc) {
     doc = doc || (typeof document !== 'undefined' ? document : null);
     if (!doc || !doc.documentElement) return null;
+    var applying = false;
     var apply = function () {
+      if (applying) return;
       if (doc.documentElement.classList.contains('zanini-hosted-openplan3d')) return;
-      doc.documentElement.classList.add('zanini-hosted-openplan3d');
+      applying = true;
+      try {
+        doc.documentElement.classList.add('zanini-hosted-openplan3d');
+      } finally {
+        applying = false;
+      }
     };
     apply();
     if (typeof MutationObserver !== 'function') return null;
@@ -366,10 +396,32 @@
     return obs;
   }
 
-  function startHidingNativeSaveUi(doc) {
+  function scheduleHideNativeSaveUi(doc) {
     doc = doc || (typeof document !== 'undefined' ? document : null);
     if (!doc) return null;
     hideNativeSaveUi(doc);
+    var win = doc.defaultView || (typeof window !== 'undefined' ? window : null);
+    var schedule = win && typeof win.setTimeout === 'function' ? win.setTimeout.bind(win) : setTimeout;
+    var delays = [250, 750, 2000];
+    var handles = [];
+    for (var i = 0; i < delays.length; i++) {
+      handles.push(schedule(function () { hideNativeSaveUi(doc); }, delays[i]));
+    }
+    return {
+      disconnect: function () {
+        for (var h = 0; h < handles.length; h++) {
+          try {
+            if (win && typeof win.clearTimeout === 'function') win.clearTimeout(handles[h]);
+            else clearTimeout(handles[h]);
+          } catch (e) {}
+        }
+      }
+    };
+  }
+
+  function startHidingNativeSaveUi(doc) {
+    doc = doc || (typeof document !== 'undefined' ? document : null);
+    if (!doc) return null;
     if (doc.addEventListener && !doc.__zaniniNativeSaveClickLocked) {
       doc.addEventListener('click', function (e) {
         var el = e.target && e.target.closest ? e.target.closest('[data-zanini-hide-native-save]') : null;
@@ -379,21 +431,7 @@
       }, true);
       doc.__zaniniNativeSaveClickLocked = true;
     }
-    if (typeof MutationObserver !== 'function' || !doc.documentElement) {
-      return null;
-    }
-    var hiding = false;
-    var obs = new MutationObserver(function () {
-      if (hiding) return;
-      hiding = true;
-      try {
-        hideNativeSaveUi(doc);
-      } finally {
-        hiding = false;
-      }
-    });
-    obs.observe(doc.documentElement, { childList: true, subtree: true, characterData: true });
-    return obs;
+    return scheduleHideNativeSaveUi(doc);
   }
 
   function createSession(options) {
@@ -566,9 +604,7 @@
         return true;
       }
       if (data.type === 'OPENPLAN3D_SET_THEME') {
-        if (typeof document !== 'undefined') {
-          document.documentElement.classList.toggle('dark', data.theme === 'dark');
-        }
+        applyEditorTheme(data.theme === 'dark' ? 'dark' : 'light');
         return true;
       }
       if (data.type === 'OPENPLAN3D_REQUEST_PLAN') {
@@ -625,6 +661,8 @@
     isEditorPanel: isEditorPanel,
     hideNativeSaveUi: hideNativeSaveUi,
     shouldHideNativeControl: shouldHideNativeControl,
+    applyEditorTheme: applyEditorTheme,
+    syncHostedThemeFromParent: syncHostedThemeFromParent,
     keepHostedClass: keepHostedClass,
     startHidingNativeSaveUi: startHidingNativeSaveUi,
     createSession: createSession,
