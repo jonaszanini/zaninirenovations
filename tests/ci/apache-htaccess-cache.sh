@@ -36,8 +36,8 @@ LoadModule log_config_module modules/mod_log_config.so
 User daemon
 Group daemon
 
-DocumentRoot "${PUBLIC}"
-<Directory "${PUBLIC}">
+DocumentRoot "/usr/local/apache2/htdocs"
+<Directory "/usr/local/apache2/htdocs">
     AllowOverride All
     Require all granted
     Options -Indexes +FollowSymLinks
