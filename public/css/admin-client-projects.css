@@ -354,7 +354,7 @@ a.cp-table-phone .fa {
 .cp-client-name {
   font-size: 14px;
   line-height: 1.35;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
   word-break: normal;
 }
 @media (max-width: 900px) {

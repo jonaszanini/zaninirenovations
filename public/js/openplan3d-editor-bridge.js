@@ -361,6 +361,11 @@
 
   function applyEditorTheme(theme) {
     setEditorDarkClass(theme === 'dark');
+    if (theme === 'dark' || theme === 'light') {
+      try {
+        localStorage.setItem('o3d_theme', theme);
+      } catch (e) {}
+    }
   }
 
   function syncHostedThemeFromParent() {

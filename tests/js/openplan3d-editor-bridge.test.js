@@ -111,6 +111,10 @@ global.localStorage = {
   getItem: function (k) { return Object.prototype.hasOwnProperty.call(storage, k) ? storage[k] : null; },
   setItem: function (k, v) { storage[k] = v; },
 };
+global.document = themeDoc;
+bridge.applyEditorTheme('dark');
+assert.strictEqual(storage.o3d_theme, 'dark', 'applyEditorTheme must write o3d_theme when admin toggles theme');
+
 global.window = {
   parent: {
     document: {
@@ -123,6 +127,7 @@ global.window = {
   },
 };
 themeDoc.documentElement._classes = new Set();
+storage.o3d_theme = 'light';
 bridge.syncHostedThemeFromParent();
 assert.strictEqual(storage.o3d_theme, 'light', 'syncHostedThemeFromParent must not overwrite valid o3d_theme');
 assert.ok(themeDoc.documentElement._classes.has('dark'), 'syncHostedThemeFromParent still syncs dark class from parent');

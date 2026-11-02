@@ -72,6 +72,11 @@ async function capture(label, width, height, port, minClientColWidth) {
   }
   if (label.includes('1280')) {
     assert.ok(layout.rowHeight >= 44 && layout.rowHeight < 120, `${label} long-name row height ${layout.rowHeight}px out of range`);
+    const noHorizontalScroll = await page.evaluate(() => {
+      const el = document.querySelector('.admin-table-scroll');
+      return el ? el.scrollWidth <= el.clientWidth + 2 : true;
+    });
+    assert.ok(noHorizontalScroll, `${label} table must not horizontal-scroll from long client name`);
   }
   fs.mkdirSync(outDir, { recursive: true });
   await page.screenshot({ path: path.join(outDir, `${label}.png`), fullPage: false });

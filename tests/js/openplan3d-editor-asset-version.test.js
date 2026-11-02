@@ -30,8 +30,9 @@ function assertVersionedBridgeSrc(html, label) {
 
 const htaccess = fs.readFileSync(HTACCESS, 'utf8');
 assert.doesNotMatch(htaccess, /LocationMatch/i, '.htaccess must not use LocationMatch (500 in .htaccess on Apache 2.4)');
-assert.match(htaccess, /SetEnvIf Request_URI "\^\/vendor\/openplan3d\/_app\/immutable\//, '.htaccess must mark immutable chunks via Request_URI');
-assert.match(htaccess, /RewriteCond %{QUERY_STRING} .*?\(?:v\|ver\)=/, '.htaccess must detect ?v= / ?ver= via RewriteCond');
+assert.match(htaccess, /SetEnvIf Request_URI "\^\(\?:\/public\)\?\/vendor\/openplan3d\/_app\/immutable\//, '.htaccess must mark immutable chunks with optional /public/ prefix');
+assert.match(htaccess, /\(\?:v\|ver\)=/, '.htaccess must detect ?v= / ?ver= via RewriteCond');
+assert.match(htaccess, /RewriteRule \^ - \[E=asset_versioned:1\]/, '.htaccess must set asset_versioned env from rewrite');
 assert.match(htaccess, /REDIRECT_asset_versioned/, '.htaccess must preserve asset_versioned across internal redirects');
 assert.match(htaccess, /max-age=31536000, immutable.*asset_versioned/s, '.htaccess must long-cache versioned JS/CSS');
 assert.match(htaccess, /must-revalidate.*!asset_versioned/s, '.htaccess must not immutable-cache unversioned JS/CSS');
@@ -44,10 +45,10 @@ assert.match(
 );
 const applyEditorThemeBlock = bridgeSrc.match(/function applyEditorTheme\(theme\) \{([\s\S]*?)\n  \}/);
 assert.ok(applyEditorThemeBlock, 'applyEditorTheme must exist');
-assert.doesNotMatch(
+assert.match(
   applyEditorThemeBlock[1],
-  /localStorage/,
-  'applyEditorTheme must not overwrite o3d_theme localStorage'
+  /localStorage\.setItem\('o3d_theme'/,
+  'applyEditorTheme (SET_THEME) must persist o3d_theme for admin theme toggles'
 );
 const syncBlock = bridgeSrc.match(/function syncHostedThemeFromParent\(\) \{([\s\S]*?)\n  \}/);
 assert.ok(syncBlock, 'syncHostedThemeFromParent must exist');
