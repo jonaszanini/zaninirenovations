@@ -20,7 +20,8 @@ trap 'rm -rf "$TMPDIR"; docker rm -f "$CONTAINER" >/dev/null 2>&1 || true' EXIT
 
 cat >"$TMPDIR/httpd.conf" <<EOF
 ServerRoot "/usr/local/apache2"
-Listen ${PORT}
+Listen 80
+ServerName localhost
 LoadModule mpm_event_module modules/mod_mpm_event.so
 LoadModule rewrite_module modules/mod_rewrite.so
 LoadModule headers_module modules/mod_headers.so
