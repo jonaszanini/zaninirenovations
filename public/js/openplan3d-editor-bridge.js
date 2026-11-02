@@ -352,18 +352,15 @@
     return hidden;
   }
 
-  function applyEditorTheme(theme) {
+  function setEditorDarkClass(wantDark) {
     if (typeof document === 'undefined' || !document.documentElement) return;
-    var wantDark = theme === 'dark';
     var hasDark = document.documentElement.classList.contains('dark');
-    if (hasDark !== wantDark) {
-      document.documentElement.classList.toggle('dark', wantDark);
-    }
-    if (theme === 'dark' || theme === 'light') {
-      try {
-        localStorage.setItem('o3d_theme', theme);
-      } catch (e) {}
-    }
+    if (hasDark === wantDark) return;
+    document.documentElement.classList.toggle('dark', wantDark);
+  }
+
+  function applyEditorTheme(theme) {
+    setEditorDarkClass(theme === 'dark');
   }
 
   function syncHostedThemeFromParent() {
@@ -371,23 +368,20 @@
     try {
       if (!window.parent.document || !window.parent.document.documentElement) return;
       var parentDark = window.parent.document.documentElement.classList.contains('admin-dark');
-      applyEditorTheme(parentDark ? 'dark' : 'light');
+      var theme = parentDark ? 'dark' : 'light';
+      try {
+        localStorage.setItem('o3d_theme', theme);
+      } catch (e) {}
+      setEditorDarkClass(parentDark);
     } catch (e) {}
   }
 
   function keepHostedClass(doc) {
     doc = doc || (typeof document !== 'undefined' ? document : null);
     if (!doc || !doc.documentElement) return null;
-    var applying = false;
     var apply = function () {
-      if (applying) return;
       if (doc.documentElement.classList.contains('zanini-hosted-openplan3d')) return;
-      applying = true;
-      try {
-        doc.documentElement.classList.add('zanini-hosted-openplan3d');
-      } finally {
-        applying = false;
-      }
+      doc.documentElement.classList.add('zanini-hosted-openplan3d');
     };
     apply();
     if (typeof MutationObserver !== 'function') return null;

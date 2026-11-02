@@ -342,16 +342,22 @@ a.cp-table-phone .fa {
 }
 
 /* Client column contact actions (icons across all viewports) */
+.admin-table.cp-table td:first-child {
+  min-width: 0;
+}
 .cp-client-cell {
   display: flex;
   flex-direction: column;
   gap: 5px;
   min-width: 0;
+  max-width: 100%;
 }
 .cp-client-name {
   font-size: 14px;
   line-height: 1.35;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
 }
 .cp-client-actions,
 .cp-client-mobile-actions {

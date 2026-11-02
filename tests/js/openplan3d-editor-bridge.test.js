@@ -47,7 +47,8 @@ function untitledPlan() {
 console.log('Running openPlan3D editor-bridge unit tests...');
 
 const html = fs.readFileSync(INDEX, 'utf8');
-assert.match(html, /openplan3d-editor-bridge\.js/, 'editor index must load the host bridge');
+assert.match(html, /openplan3d-editor-bridge\.js\?v=[a-f0-9]{16}/, 'editor index must load a versioned host bridge');
+assert.doesNotMatch(html, /openplan3d-editor-bridge\.js["'>]/, 'editor index must not load an unversioned bridge URL');
 assert.match(html, /OPENPLAN3D_LOAD_ACK|onEditorMounted/, 'editor must queue load until mounted');
 assert.match(html, /installStorageLock/, 'editor must lock vendor storage');
 assert.match(html, /zanini-hosted-openplan3d/, 'editor must mark hosted mode');
