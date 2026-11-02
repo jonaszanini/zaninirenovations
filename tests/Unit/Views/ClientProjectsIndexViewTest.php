@@ -20,13 +20,14 @@ class ClientProjectsIndexViewTest extends TestCase
         $blade = file_get_contents(resource_path('views/admin/client_projects/index.blade.php'));
         $this->assertNotFalse($blade);
 
-        $this->assertStringContainsString('cp-client-desktop-details', $blade);
-        $this->assertStringContainsString('cp-client-mobile-actions', $blade);
+        $this->assertStringContainsString('cp-client-actions', $blade);
         $this->assertStringContainsString('cp-client-action-btn--phone', $blade);
         $this->assertStringContainsString('cp-client-action-btn--email', $blade);
         $this->assertStringContainsString('cp-client-action-btn--address', $blade);
-        $this->assertStringContainsString('cp-hold-copy-btn', $blade);
+        $this->assertStringContainsString('cp-client-action-btn--disabled', $blade);
+        $this->assertStringContainsString('cp-copy-btn', $blade);
         $this->assertStringContainsString('cp-copy-toast', $blade);
+        $this->assertStringNotContainsString('cp-client-desktop-details', $blade);
     }
 
     public function test_css_contains_mobile_actions_and_status_note_styles(): void
@@ -35,9 +36,9 @@ class ClientProjectsIndexViewTest extends TestCase
         $this->assertNotFalse($css);
 
         $this->assertStringContainsString('.cp-table-status-note', $css);
-        $this->assertStringContainsString('.cp-client-mobile-actions', $css);
-        $this->assertStringContainsString('.cp-client-desktop-details', $css);
+        $this->assertStringContainsString('.cp-client-actions', $css);
         $this->assertStringContainsString('.cp-client-action-btn', $css);
+        $this->assertStringContainsString('.cp-client-action-btn--disabled', $css);
         $this->assertStringContainsString('.cp-copy-toast', $css);
     }
 
@@ -59,6 +60,7 @@ class ClientProjectsIndexViewTest extends TestCase
 
         $this->assertStringContainsString('html.admin-dark .cp-table-status-note', $darkCss);
         $this->assertStringContainsString('html.admin-dark .cp-client-action-btn', $darkCss);
+        $this->assertStringContainsString('html.admin-dark .cp-client-action-btn--disabled', $darkCss);
         $this->assertStringContainsString('html.admin-dark a.cp-table-phone', $darkCss);
     }
 }

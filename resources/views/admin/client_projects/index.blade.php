@@ -149,93 +149,88 @@
               @php $url = route('admin.client-projects.show', $project); @endphp
               <tr class="cp-row-link" data-href="{{ $url }}" tabindex="0" role="link" aria-label="Open project {{ $project->name }}">
                 <td>
-                  <strong>@include('admin.partials.client_directory_link', [
-                    'project' => $project,
-                    'label' => $project->clientNameForProjectList(),
-                  ])</strong>
+                  <div class="cp-client-cell">
+                    <strong class="cp-client-name">@include('admin.partials.client_directory_link', [
+                      'project' => $project,
+                      'label' => $project->clientNameForProjectList(),
+                    ])</strong>
 
-                  {{-- Desktop: full details written out --}}
-                  <div class="cp-client-desktop-details">
-                    @if ($project->client_phone)
-                      <div class="cp-subtle">
-                        <a class="cp-table-phone"
-                           href="tel:{{ $project->client_phone }}"
-                           title="Call {{ \App\Models\ClientProject::formatPhone($project->client_phone) }}">
-                          <i class="fa fa-phone" aria-hidden="true"></i>
-                          <span>{{ \App\Models\ClientProject::formatPhone($project->client_phone) }}</span>
-                        </a>
-                      </div>
-                    @endif
-                    @if ($project->client_email)
-                      <div class="cp-subtle">@include('admin.partials.client_directory_link', [
-                        'project' => $project,
-                        'label' => $project->client_email,
-                        'fallbackMailto' => true,
-                      ])</div>
-                    @endif
                     @php
-                      $streetLine = $project->streetLineForProjectList();
-                      $mapsUrl = $streetLine !== '' ? $project->googleMapsSearchUrl() : null;
+                      $hasPhone = filled($project->client_phone);
+                      $formattedPhone = $hasPhone ? \App\Models\ClientProject::formatPhone($project->client_phone) : null;
+                      $hasEmail = filled($project->client_email);
+                      $mapsUrl = $project->googleMapsSearchUrl();
+                      $hasAddress = filled($project->client_address) && filled($mapsUrl);
                     @endphp
-                    @if ($mapsUrl)
-                      <a class="cp-table-street"
-                         href="{{ $mapsUrl }}"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         title="Open {{ $project->client_address }} in Google Maps">
-                        <i class="fa fa-map-marker" aria-hidden="true"></i>
-                        <span>{{ $streetLine }}</span>
-                      </a>
-                    @endif
-                  </div>
 
-                  {{-- Mobile only: compact quick-action icon buttons (click to call/email/maps, hold to copy) --}}
-                  @php
-                    $hasPhone = filled($project->client_phone);
-                    $hasEmail = filled($project->client_email);
-                    $hasAddress = filled($project->client_address);
-                    $effectiveMapsUrl = $mapsUrl ?: ($hasAddress ? 'https://www.google.com/maps/search/?api=1&query='.urlencode($project->client_address) : null);
-                  @endphp
-                  @if ($hasPhone || $hasEmail || $hasAddress)
-                    <div class="cp-client-mobile-actions" role="group" aria-label="Client contact actions">
+                    <div class="cp-client-actions cp-client-mobile-actions" role="group" aria-label="Client contact actions">
+                      {{-- Phone: click copies to clipboard --}}
                       @if ($hasPhone)
                         <button type="button"
-                                class="cp-client-action-btn cp-client-action-btn--phone cp-hold-copy-btn"
-                                data-action="call"
-                                data-href="tel:{{ $project->client_phone }}"
+                                class="cp-client-action-btn cp-client-action-btn--phone cp-copy-btn cp-hold-copy-btn"
                                 data-copy="{{ $project->client_phone }}"
                                 data-copy-label="Phone number"
-                                title="Tap to call, hold to copy phone"
-                                aria-label="Call {{ \App\Models\ClientProject::formatPhone($project->client_phone) }} or hold to copy">
+                                title="Copy phone: {{ $formattedPhone }}"
+                                aria-label="Copy phone {{ $formattedPhone }}">
+                          <i class="fa fa-phone" aria-hidden="true"></i>
+                        </button>
+                      @else
+                        <button type="button"
+                                class="cp-client-action-btn cp-client-action-btn--phone cp-client-action-btn--disabled"
+                                disabled
+                                aria-disabled="true"
+                                tabindex="-1"
+                                title="No phone number"
+                                aria-label="No phone number">
                           <i class="fa fa-phone" aria-hidden="true"></i>
                         </button>
                       @endif
+
+                      {{-- Email: click copies to clipboard --}}
                       @if ($hasEmail)
                         <button type="button"
-                                class="cp-client-action-btn cp-client-action-btn--email cp-hold-copy-btn"
-                                data-action="email"
-                                data-href="mailto:{{ $project->client_email }}"
+                                class="cp-client-action-btn cp-client-action-btn--email cp-copy-btn cp-hold-copy-btn"
                                 data-copy="{{ $project->client_email }}"
                                 data-copy-label="Email"
-                                title="Tap to email, hold to copy email"
-                                aria-label="Email {{ $project->client_email }} or hold to copy">
+                                title="Copy email: {{ $project->client_email }}"
+                                aria-label="Copy email {{ $project->client_email }}">
+                          <i class="fa fa-envelope" aria-hidden="true"></i>
+                        </button>
+                      @else
+                        <button type="button"
+                                class="cp-client-action-btn cp-client-action-btn--email cp-client-action-btn--disabled"
+                                disabled
+                                aria-disabled="true"
+                                tabindex="-1"
+                                title="No email address"
+                                aria-label="No email address">
                           <i class="fa fa-envelope" aria-hidden="true"></i>
                         </button>
                       @endif
-                      @if ($hasAddress && $effectiveMapsUrl)
+
+                      {{-- Address: click opens Google Maps in a new tab --}}
+                      @if ($hasAddress)
+                        <a href="{{ $mapsUrl }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="cp-client-action-btn cp-client-action-btn--address"
+                           title="Open in Google Maps: {{ $project->client_address }}"
+                           aria-label="Open {{ $project->client_address }} in Google Maps">
+                          <i class="fa fa-map-marker" aria-hidden="true"></i>
+                        </a>
+                      @else
                         <button type="button"
-                                class="cp-client-action-btn cp-client-action-btn--address cp-hold-copy-btn"
-                                data-action="map"
-                                data-href="{{ $effectiveMapsUrl }}"
-                                data-copy="{{ $project->client_address }}"
-                                data-copy-label="Address"
-                                title="Tap for Google Maps, hold to copy address"
-                                aria-label="Open {{ $project->client_address }} in Google Maps or hold to copy">
+                                class="cp-client-action-btn cp-client-action-btn--address cp-client-action-btn--disabled"
+                                disabled
+                                aria-disabled="true"
+                                tabindex="-1"
+                                title="No address provided"
+                                aria-label="No address provided">
                           <i class="fa fa-map-marker" aria-hidden="true"></i>
                         </button>
                       @endif
                     </div>
-                  @endif
+                  </div>
                 </td>
                 <td>
                   <div class="cp-table-project-cell">
@@ -306,7 +301,7 @@
       function shouldIgnore(target) {
         // Don't hijack clicks on real interactive elements inside the row
         // (links, buttons, inputs, selects, action buttons).
-        return !!target.closest('a, button, input, select, textarea, label, .cp-client-action-btn');
+        return !!target.closest('a, button, input, select, textarea, label, .cp-client-action-btn, .cp-client-actions');
       }
 
       rows.forEach(function (row) {
@@ -338,7 +333,7 @@
       });
     })();
 
-    // Hold to copy / tap to action for mobile client buttons
+    // Client contact action buttons: Click to copy for phone & email; open maps for address
     (function () {
       var toastEl = document.getElementById('cp-copy-toast');
       var toastMsgEl = document.getElementById('cp-copy-toast-msg');
@@ -387,97 +382,46 @@
         });
       }
 
-      var actionBtns = document.querySelectorAll('.cp-hold-copy-btn');
-      actionBtns.forEach(function (btn) {
-        var pressTimer = null;
-        var isLongPress = false;
-        var startX = 0;
-        var startY = 0;
-        var HOLD_DURATION = 450; // ms
+      // Handle copy buttons (phone & email)
+      var copyBtns = document.querySelectorAll('.cp-copy-btn');
+      copyBtns.forEach(function (btn) {
+        btn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
 
-        function cancelHold() {
-          if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-          }
-          btn.classList.remove('is-pressing');
-        }
-
-        function triggerCopy() {
-          isLongPress = true;
-          btn.classList.remove('is-pressing');
           var textToCopy = btn.getAttribute('data-copy') || '';
           var label = btn.getAttribute('data-copy-label') || 'Copied';
           if (!textToCopy) return;
 
           copyText(textToCopy).then(function () {
-            showToast(label + ' copied to clipboard');
+            showToast(label + ' copied to clipboard: ' + textToCopy);
             if (navigator.vibrate) {
               try { navigator.vibrate(50); } catch (e) {}
             }
             btn.classList.add('cp-client-action-btn--copied');
             setTimeout(function () {
               btn.classList.remove('cp-client-action-btn--copied');
-            }, 700);
+            }, 750);
           }).catch(function () {
             showToast('Unable to copy');
           });
-        }
+        });
+      });
 
-        btn.addEventListener('pointerdown', function (ev) {
-          if (ev.button !== undefined && ev.button !== 0) return;
+      // Prevent row navigation when clicking address link
+      var addressLinks = document.querySelectorAll('.cp-client-action-btn--address');
+      addressLinks.forEach(function (el) {
+        el.addEventListener('click', function (ev) {
           ev.stopPropagation();
-          isLongPress = false;
-          startX = ev.clientX;
-          startY = ev.clientY;
-          btn.classList.add('is-pressing');
-
-          pressTimer = setTimeout(function () {
-            triggerCopy();
-          }, HOLD_DURATION);
         });
+      });
 
-        btn.addEventListener('pointermove', function (ev) {
-          if (!pressTimer) return;
-          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 10) {
-            cancelHold();
-          }
-        });
-
-        btn.addEventListener('pointerup', function (ev) {
-          ev.stopPropagation();
-          cancelHold();
-        });
-
-        btn.addEventListener('pointercancel', function () {
-          cancelHold();
-        });
-
-        btn.addEventListener('contextmenu', function (ev) {
-          if (isLongPress) {
-            ev.preventDefault();
-            ev.stopPropagation();
-          }
-        });
-
+      // Prevent row navigation or action when clicking disabled buttons
+      var disabledBtns = document.querySelectorAll('.cp-client-action-btn--disabled');
+      disabledBtns.forEach(function (btn) {
         btn.addEventListener('click', function (ev) {
           ev.preventDefault();
           ev.stopPropagation();
-
-          if (isLongPress) {
-            setTimeout(function () { isLongPress = false; }, 60);
-            return;
-          }
-
-          var href = btn.getAttribute('data-href');
-          var action = btn.getAttribute('data-action');
-          if (!href) return;
-
-          if (action === 'call' || action === 'email') {
-            window.location.href = href;
-          } else {
-            window.open(href, '_blank', 'noopener,noreferrer');
-          }
         });
       });
     })();
