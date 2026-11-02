@@ -83,7 +83,14 @@ jobs:
               - 'tests/Feature/Admin/RoomArea*.php'
               - 'tests/Feature/Admin/*RoomArea*.php'
               - 'tests/js/openplan3d-room-area-blade-browser.test.js'
+              - 'tests/js/room-area-main-thread-responsive.test.js'
               - 'tests/js/room-area-phone-geometry.test.js'
+              - 'public/js/openplan3d-editor-bridge.js'
+              - 'public/.htaccess'
+              - 'tests/ci/apache-htaccess-cache.sh'
+              - 'tests/js/openplan3d-editor-asset-version.test.js'
+              - 'public/js/openplan3d-host.js'
+              - 'public/vendor/openplan3d/editor/index.html'
               - 'tests/Unit/Services/RoomArea*.php'
             blog_live:
               - 'app/**/BlogPost*.php'
@@ -207,11 +214,15 @@ jobs:
           path: /home/runner/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-24.43.1
 
+      - name: Apache .htaccess cache headers
+        run: tests/ci/apache-htaccess-cache.sh
+
       - name: JavaScript tests (no browser)
         run: |
           node tests/js/room-area-lib.test.js
           node tests/js/openplan3d-parity.test.js
           node tests/js/openplan3d-editor-bridge.test.js
+          node tests/js/openplan3d-editor-asset-version.test.js
           node tests/js/room-area-formula.test.js
           node tests/js/shared-prices-effective.test.js
           node tests/js/admin-hotkey-save.test.js
@@ -227,6 +238,9 @@ jobs:
         run: |
           node tests/js/openplan3d-browser.test.js
           node tests/js/openplan3d-room-area-blade-browser.test.js
+          node tests/js/room-area-main-thread-responsive.test.js
+          node tests/js/openplan3d-editor-asset-version.test.js
+          node tests/js/client-projects-table-screenshots.test.js
           node tests/js/openplan3d-editor-browser.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js

@@ -3784,14 +3784,34 @@ html.admin-dark .cp-table-status-note {
   color: var(--admin-muted);
 }
 html.admin-dark .cp-client-action-btn {
-  background: var(--admin-surface);
-  border-color: var(--admin-border);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
   color: var(--admin-primary);
 }
-html.admin-dark .cp-client-action-btn:hover,
-html.admin-dark .cp-client-action-btn:active,
+html.admin-dark .cp-client-action-btn:hover:not(:disabled):not(.cp-client-action-btn--disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--admin-primary);
+  color: #ffffff;
+}
+html.admin-dark .cp-client-action-btn:active:not(:disabled):not(.cp-client-action-btn--disabled),
 html.admin-dark .cp-client-action-btn.is-pressing {
-  background: var(--admin-surface-hover);
+  background: rgba(255, 255, 255, 0.15);
   border-color: var(--admin-primary);
 }
+html.admin-dark .cp-client-action-btn--disabled,
+html.admin-dark .cp-client-action-btn:disabled {
+  opacity: 0.28;
+  color: #64748b !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: transparent !important;
+  cursor: not-allowed !important;
+}
+html.admin-dark .cp-client-action-btn--disabled:hover,
+html.admin-dark .cp-client-action-btn:disabled:hover {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+}
+
 

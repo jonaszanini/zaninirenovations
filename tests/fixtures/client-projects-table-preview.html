@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-client-projects.css">
+  <link rel="stylesheet" href="/css/admin-dark.css">
+</head>
+<body class="admin-body admin-dark">
+  <div class="admin-app" id="admin-app">
+    <main class="admin-main">
+      <div class="admin-content">
+        <div class="cp-projects-scope-bar">
+          <div class="cp-projects-scope-head">
+            <div class="cp-projects-scope-start">
+              <span class="cp-projects-scope-label">Show</span>
+              <div class="cp-projects-scope-toggles">
+                <span class="cp-projects-scope-chip cp-projects-scope-chip--active">Ongoing pipeline</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-table-scroll">
+            <table class="admin-table cp-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Project</th>
+                  <th>Status</th>
+                  <th>Dates</th>
+                  <th class="cp-col-amount">Total</th>
+                  <th class="cp-col-amount">Paid</th>
+                  <th>Last updated</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="cp-row-link" tabindex="0">
+                  <td>
+                    <div class="cp-client-cell">
+                      <strong class="cp-client-name">ChristopherMontgomeryWhitfieldNoBreaks</strong>
+                      <div class="cp-client-actions cp-client-mobile-actions" role="group" aria-label="Client contact actions">
+                        <button type="button" class="cp-client-action-btn cp-client-action-btn--phone cp-copy-btn" title="Copy phone"><i class="fa fa-phone"></i></button>
+                        <button type="button" class="cp-client-action-btn cp-client-action-btn--email cp-copy-btn" title="Copy email"><i class="fa fa-envelope"></i></button>
+                        <a href="#" class="cp-client-action-btn cp-client-action-btn--address" title="Open in Google Maps"><i class="fa fa-map-marker"></i></a>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="cp-table-project-cell">
+                      <div class="cp-table-project-ref">P-0099</div>
+                      <strong class="cp-table-project-name">Whole-home refresh — long client name row</strong>
+                    </div>
+                  </td>
+                  <td><span class="cp-badge">Quoted</span></td>
+                  <td><div>2026-12-01</div></td>
+                  <td class="cp-col-amount">$42,000.00</td>
+                  <td class="cp-col-amount">0%</td>
+                  <td>2026-11-01</td>
+                </tr>
+                <tr class="cp-row-link" tabindex="0">
+                  <td>
+                    <div class="cp-client-cell">
+                      <strong class="cp-client-name">Maria Costa</strong>
+                      <div class="cp-client-actions cp-client-mobile-actions" role="group" aria-label="Client contact actions">
+                        <button type="button" class="cp-client-action-btn cp-client-action-btn--phone cp-copy-btn" title="Copy phone"><i class="fa fa-phone"></i></button>
+                        <button type="button" class="cp-client-action-btn cp-client-action-btn--email cp-copy-btn" title="Copy email"><i class="fa fa-envelope"></i></button>
+                        <a href="#" class="cp-client-action-btn cp-client-action-btn--address" title="Open in Google Maps"><i class="fa fa-map-marker"></i></a>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="cp-table-project-cell">
+                      <div class="cp-table-project-ref">P-0042</div>
+                      <strong class="cp-table-project-name">Kitchen renovation — QA screenshot</strong>
+                      <div class="cp-table-status-note">Cabinets arriving Tuesday</div>
+                    </div>
+                  </td>
+                  <td><span class="cp-badge">In progress</span></td>
+                  <td><div>2026-11-09</div><div class="cp-subtle">→ 2026-11-23</div></td>
+                  <td class="cp-col-amount">$18,500.00</td>
+                  <td class="cp-col-amount">27%</td>
+                  <td>2026-11-02</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -47,7 +47,8 @@ function untitledPlan() {
 console.log('Running openPlan3D editor-bridge unit tests...');
 
 const html = fs.readFileSync(INDEX, 'utf8');
-assert.match(html, /openplan3d-editor-bridge\.js/, 'editor index must load the host bridge');
+assert.match(html, /openplan3d-editor-bridge\.js\?v=[a-f0-9]{16}/, 'editor index must load a versioned host bridge');
+assert.doesNotMatch(html, /openplan3d-editor-bridge\.js["'>]/, 'editor index must not load an unversioned bridge URL');
 assert.match(html, /OPENPLAN3D_LOAD_ACK|onEditorMounted/, 'editor must queue load until mounted');
 assert.match(html, /installStorageLock/, 'editor must lock vendor storage');
 assert.match(html, /zanini-hosted-openplan3d/, 'editor must mark hosted mode');
@@ -76,6 +77,67 @@ assert.match(
   /contains\('zanini-hosted-openplan3d'\)/,
   'editor bridge must guard hosted class MutationObserver'
 );
+assert.match(
+  fs.readFileSync(path.resolve(__dirname, '../../public/js/openplan3d-editor-bridge.js'), 'utf8'),
+  /scheduleHideNativeSaveUi/,
+  'native save UI must not use a document-wide MutationObserver loop'
+);
+assert.doesNotMatch(
+  fs.readFileSync(path.resolve(__dirname, '../../public/js/openplan3d-editor-bridge.js'), 'utf8'),
+  /observe\(doc\.documentElement, \{ childList: true, subtree: true, characterData: true \}\)/,
+  'hide-native-save must not observe the entire editor document tree'
+);
+
+assert.strictEqual(typeof bridge.applyEditorTheme, 'function');
+const themeDoc = {
+  documentElement: {
+    _classes: new Set(),
+    classList: {
+      contains: function (c) { return themeDoc.documentElement._classes.has(c); },
+      toggle: function (c, force) {
+        if (force) themeDoc.documentElement._classes.add(c);
+        else themeDoc.documentElement._classes.delete(c);
+      },
+    },
+  },
+};
+global.document = themeDoc;
+bridge.applyEditorTheme('dark');
+bridge.applyEditorTheme('dark');
+assert.ok(themeDoc.documentElement._classes.has('dark'), 'applyEditorTheme sets dark once');
+
+const storage = { o3d_theme: 'light' };
+global.localStorage = {
+  getItem: function (k) { return Object.prototype.hasOwnProperty.call(storage, k) ? storage[k] : null; },
+  setItem: function (k, v) { storage[k] = v; },
+};
+global.document = themeDoc;
+bridge.applyEditorTheme('dark');
+assert.strictEqual(storage.o3d_theme, 'dark', 'applyEditorTheme must write o3d_theme when admin toggles theme');
+
+global.window = {
+  parent: {
+    document: {
+      documentElement: {
+        classList: {
+          contains: function (c) { return c === 'admin-dark'; },
+        },
+      },
+    },
+  },
+};
+themeDoc.documentElement._classes = new Set();
+storage.o3d_theme = 'light';
+bridge.syncHostedThemeFromParent();
+assert.strictEqual(storage.o3d_theme, 'light', 'syncHostedThemeFromParent must not overwrite valid o3d_theme');
+assert.ok(themeDoc.documentElement._classes.has('dark'), 'syncHostedThemeFromParent still syncs dark class from parent');
+delete storage.o3d_theme;
+bridge.syncHostedThemeFromParent();
+assert.strictEqual(storage.o3d_theme, 'dark', 'syncHostedThemeFromParent seeds o3d_theme when missing');
+
+delete global.document;
+delete global.localStorage;
+delete global.window;
 assert.doesNotMatch(
   hostSrc,
   /contentWindow\.postMessage\(payload,\s*'\*'\)/,
