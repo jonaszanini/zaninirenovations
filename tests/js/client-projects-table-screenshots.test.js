@@ -86,7 +86,7 @@ async function main() {
   assert.ok(html.includes('cp-client-action-btn'), 'fixture must include contact icons');
   const { server, port } = await startServer(html);
   const results = [];
-  results.push(await capture('client-projects-table-desktop', 1280, 900, port, 180));
+  results.push(await capture('client-projects-table-desktop', 1280, 900, port, 165));
   results.push(await capture('client-projects-table-390', 390, 844, port, 120));
   server.close();
   console.log(JSON.stringify(results, null, 2));
