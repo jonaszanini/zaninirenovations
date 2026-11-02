@@ -376,19 +376,42 @@
       </div>
     </aside>
 
-    <div class="br-sticky-spacer" aria-hidden="true"></div>
-
-    <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
-      <div class="br-step-nav" id="br-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>← Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">→ Next</button>
-      </div>
-      <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
-        <span class="br-toolbar-grand__label">Grand total</span>
-        <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
-      </div>
-    </div>
+    @php
+      $summary = $initialPreview['summary'] ?? [];
+      $initialMat = (float) ($summary['materials_pre_hst'] ?? 0);
+      $initialLab = (float) ($summary['labor_pre_hst'] ?? 0);
+      $initialPermit = (float) ($summary['permit_pre_hst'] ?? 0);
+      $initialSub = $initialMat + $initialLab + $initialPermit;
+      $initialHst = (float) ($summary['hst'] ?? ($initialSub * 0.13));
+      $initialGrand = (float) ($summary['grand_total'] ?? $toolbarGrand);
+    @endphp
+    @include('admin.partials.quotation_totals_bar', [
+      'barId' => 'br-sticky-total',
+      'hasSteps' => true,
+      'stepNavId' => 'br-step-nav',
+      'stepPrevId' => 'br-prev',
+      'stepNextId' => 'br-next',
+      'stepNextLabel' => '→ Next',
+      'stepStatusId' => 'br-step-status',
+      'stepCount' => $enabledCount,
+      'formId' => 'br-main-form',
+      'saveId' => 'br-btn-save-bottom',
+      'saveLabel' => 'Save quotation',
+      'initialMaterials' => $initialMat,
+      'initialLabour' => $initialLab,
+      'initialExtras' => $initialPermit,
+      'hasExtras' => $initialPermit > 0,
+      'initialHst' => $initialHst,
+      'initialGrand' => $initialGrand,
+      'grandTotalId' => 'br-toolbar-grand',
+      'grandAmountId' => 'br-toolbar-grand-amount',
+      'isEdit' => $isEdit,
+      'quotation' => $quotation ?? null,
+      'linkedCpq' => $linkedCpq ?? null,
+      'project' => $sendProject,
+      'clientEmail' => optional($sendProject)->client_email,
+      'quoteNumber' => $isEdit ? $quotation->quote_number : 'Basement Quote',
+    ])
   </form>
 
   @if ($isEdit && $canSendEmail)

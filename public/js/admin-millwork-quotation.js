@@ -797,6 +797,18 @@ window.MillworkDimensionParser = (function () {
       if (barHst) barHst.textContent = fmt(hst);
       if (barTotal) barTotal.textContent = fmt(Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount);
       syncTotalsBarSpace();
+      if (window.QuotationTotalsBar) {
+        var mwExtras = delivery + markup + (lastCommuteAmount > 0 ? (lastCommuteAmount / 1.13) : 0) + (lastDebrisAmount > 0 ? (lastDebrisAmount / 1.13) : 0);
+        window.QuotationTotalsBar.update({
+          materials: goodsPre,
+          labour: laborPre,
+          extras: mwExtras,
+          hasExtras: mwExtras > 0,
+          hst: hst,
+          hstRate: 13,
+          grand: liveGrand
+        });
+      }
       var html = '';
       html += '<div class="pq-row"><span>Material</span><span>' + fmt(goodsPre) + '</span></div>';
       html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';

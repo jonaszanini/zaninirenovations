@@ -341,17 +341,54 @@
       </div>
     </aside>
 
-    <div class="mw-totals-bar" id="mw-totals-bar" aria-live="polite">
-      <button type="button" class="mw-totals-bar__expand" id="mw-bar-expand" aria-expanded="false" aria-controls="mw-totals-bar" aria-label="Show totals details">
-        <i class="fa fa-chevron-down" aria-hidden="true"></i>
-      </button>
-      <span class="mw-totals-bar__detail"><em>Mat</em> <strong id="mw-bar-mat">CA$0.00</strong></span>
-      <span class="mw-totals-bar__detail"><em>Labour</em> <strong id="mw-bar-labor">CA$0.00</strong></span>
-      <span class="mw-totals-bar__detail" id="mw-bar-delivery-wrap" hidden><em>Deliv.</em> <strong id="mw-bar-delivery">CA$0.00</strong></span>
-      <span class="mw-totals-bar__detail" id="mw-bar-markup-wrap" hidden><em>Markup</em> <strong id="mw-bar-markup">CA$0.00</strong></span>
-      <span class="mw-totals-bar__core"><em>Subtotal</em> <strong id="mw-bar-sub">CA$0.00</strong></span>
-      <span class="mw-totals-bar__detail"><em>HST 13%</em> <strong id="mw-bar-hst">CA$0.00</strong></span>
-      <span class="mw-totals-bar__core mw-totals-bar__total"><em>Total</em> <strong id="mw-bar-total">CA$0.00</strong></span>
+    @php
+      $mwSummary = $initialPreview['summary'] ?? [];
+      $mwGoods = (float) ($mwSummary['materials_goods_pre_hst'] ?? ($mwSummary['materials_pre_hst'] ?? 0));
+      $mwLabor = (float) ($mwSummary['labor_pre_hst'] ?? 0);
+      $mwDelivery = (float) ($mwSummary['delivery_amount'] ?? 0);
+      $mwMarkup = (float) ($mwSummary['markup_amount'] ?? 0);
+      $mwExtras = $mwDelivery + $mwMarkup;
+      $mwSub = (float) ($mwSummary['subtotal_pre_hst'] ?? 0);
+      $mwHst = (float) ($mwSummary['hst'] ?? ($mwSub * 0.13));
+      $mwGrand = (float) ($mwSummary['grand_total'] ?? 0);
+    @endphp
+    @include('admin.partials.quotation_totals_bar', [
+      'barId' => 'mw-totals-bar',
+      'extraClass' => 'mw-totals-bar',
+      'hasSteps' => true,
+      'stepNavId' => 'mw-step-nav',
+      'stepPrevId' => 'mw-prev',
+      'stepNextId' => 'mw-next',
+      'stepStatusId' => 'mw-step-status',
+      'stepCount' => 3,
+      'formId' => 'mw-main-form',
+      'saveId' => 'mw-btn-save-bottom',
+      'saveLabel' => 'Save quotation',
+      'initialMaterials' => $mwGoods,
+      'initialLabour' => $mwLabor,
+      'initialExtras' => $mwExtras,
+      'hasExtras' => $mwExtras > 0,
+      'initialHst' => $mwHst,
+      'initialGrand' => $mwGrand,
+      'grandTotalId' => 'mw-toolbar-grand',
+      'grandAmountId' => 'mw-bar-total',
+      'isEdit' => $isEdit,
+      'quotation' => $quotation ?? null,
+      'linkedCpq' => $linkedCpq ?? null,
+      'project' => $linkProject ?? ($isEdit ? ($quotation->project ?? null) : null),
+      'quoteNumber' => $isEdit ? $quotation->quote_number : 'Millwork Quote',
+    ])
+    {{-- Legacy elements for backward compatibility with millwork JS and tests --}}
+    <div style="display:none;" aria-hidden="true">
+      <button type="button" id="mw-bar-expand"></button>
+      <span id="mw-bar-mat"></span>
+      <span id="mw-bar-labor"></span>
+      <span id="mw-bar-sub"></span>
+      <span id="mw-bar-hst"></span>
+      <span id="mw-bar-delivery"></span>
+      <span id="mw-bar-markup"></span>
+      <span id="mw-bar-delivery-wrap"></span>
+      <span id="mw-bar-markup-wrap"></span>
     </div>
   </form>
 

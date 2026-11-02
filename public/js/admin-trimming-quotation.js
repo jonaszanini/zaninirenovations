@@ -77,6 +77,9 @@
     syncOverrides();
 
     function schedulePreview() {
+      if (window.QuotationTotalsBar) {
+        window.QuotationTotalsBar.setUpdating(true);
+      }
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(runPreview, 280);
     }
@@ -108,6 +111,15 @@
       if (grandBase <= 0 && lastCommuteAmount <= 0 && lastDebrisAmount <= 0 && lastAdditionalTaxIn <= 0) {
         if (empty) empty.hidden = false;
         if (body) body.hidden = true;
+        if (window.QuotationTotalsBar) {
+          window.QuotationTotalsBar.update({
+            materials: 0,
+            labour: 0,
+            extras: 0,
+            hst: 0,
+            grand: 0
+          });
+        }
         return;
       }
       if (empty) empty.hidden = true;
@@ -132,6 +144,18 @@
         html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
       }
       var grand = grandBase + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
+      var extras = lastCommuteAmount + lastDebrisAmount;
+
+      if (window.QuotationTotalsBar) {
+        window.QuotationTotalsBar.update({
+          materials: matPre,
+          labour: laborPre,
+          extras: extras,
+          hst: laborHst + matHst,
+          grand: grand
+        });
+      }
+
       html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
       var hours = Number(summary.total_hours || 0);
       if (hours > 0) {

@@ -25,6 +25,8 @@ class ClientProjectQuotationClient extends Mailable
     public string $pdfBytes;
     public string $pdfFilename;
     public string $acceptUrl;
+    public ?string $customSubject = null;
+    public ?string $customMessage = null;
 
     public int $photoAttachmentCount = 0;
 
@@ -34,12 +36,16 @@ class ClientProjectQuotationClient extends Mailable
         string $pdfBytes,
         string $pdfFilename = 'quotation.pdf',
         ?string $acceptUrl = null,
+        ?string $customSubject = null,
+        ?string $customMessage = null,
     ) {
         $this->project = $project;
         $this->quotation = $quotation;
         $this->pdfBytes = $pdfBytes;
         $this->pdfFilename = $pdfFilename;
         $this->acceptUrl = $acceptUrl ?? $quotation->signedAcceptUrl();
+        $this->customSubject = $customSubject;
+        $this->customMessage = $customMessage;
     }
 
     public static function subjectFor(ClientProject $project, ClientProjectQuotation $quotation): string
@@ -57,11 +63,16 @@ class ClientProjectQuotationClient extends Mailable
         $photos = $this->attachablePdfPhotos();
         $this->photoAttachmentCount = count($photos);
 
-        $message = $this->subject(self::subjectFor($this->project, $this->quotation))
+        $mailSubject = filled($this->customSubject)
+            ? $this->customSubject
+            : self::subjectFor($this->project, $this->quotation);
+
+        $message = $this->subject($mailSubject)
             ->view('emails.client_projects.client_quotation', [
                 'project' => $this->project,
                 'quotation' => $this->quotation,
                 'acceptUrl' => $this->acceptUrl,
+                'customMessage' => $this->customMessage,
                 'photoAttachmentCount' => $this->photoAttachmentCount,
                 'siteName' => (string) config('mail.from.name', 'Zanini Renovations'),
             ])

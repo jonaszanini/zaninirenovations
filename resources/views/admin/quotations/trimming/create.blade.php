@@ -581,6 +581,36 @@
         <p class="pq-hint cp-form-group-spaced">HST 13% on labour and materials (Ontario).</p>
       </div>
     </aside>
+
+    @php
+      $tmSummary = $initialPreview['summary'] ?? [];
+      $tmMat = (float) ($tmSummary['materials_pre_hst'] ?? 0);
+      $tmLab = (float) ($tmSummary['labor_pre_hst'] ?? 0);
+      $tmSub = (float) ($tmSummary['subtotal_pre_hst'] ?? 0);
+      $tmHst = (float) ($tmSummary['hst'] ?? ($tmSub * 0.13));
+      $tmGrand = (float) ($tmSummary['grand_total'] ?? 0);
+    @endphp
+    @include('admin.partials.quotation_totals_bar', [
+      'barId' => 'tm-sticky-total',
+      'formId' => 'tm-main-form',
+      'saveId' => 'tm-btn-save-bottom',
+      'saveLabel' => 'Save quotation',
+      'backUrl' => route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []),
+      'initialMaterials' => $tmMat,
+      'initialLabour' => $tmLab,
+      'initialExtras' => 0,
+      'hasExtras' => false,
+      'initialHst' => $tmHst,
+      'initialGrand' => $tmGrand,
+      'grandTotalId' => 'tm-toolbar-grand',
+      'grandAmountId' => 'tm-toolbar-grand-amount',
+      'isEdit' => $isEdit,
+      'quotation' => $quotation ?? null,
+      'linkedCpq' => $linkedCpq ?? null,
+      'project' => $projectForReturn,
+      'clientEmail' => optional($projectForReturn)->client_email,
+      'quoteNumber' => $isEdit ? $quotation->quote_number : 'Trimming Quote',
+    ])
   </form>
 
   @if ($isEdit && ! $quotation->isLinked())

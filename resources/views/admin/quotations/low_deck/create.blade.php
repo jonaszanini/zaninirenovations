@@ -503,9 +503,35 @@
       <div class="ld-diagram-panel">
         <h5>3. Surface decking</h5>
         <div id="ld-diagram-decking"></div>
-      </div>
-    </div>
   </div>
+
+  @php
+    $ldTotals = $initialCalc['totals'] ?? [];
+    $ldMat = (float) ($ldTotals['materials_subtotal'] ?? 0);
+    $ldLab = (float) ($ldTotals['labour_subtotal'] ?? 0);
+    $ldHst = (float) (($ldTotals['materials_hst'] ?? 0) + ($ldTotals['labour_hst'] ?? 0));
+    $ldGrand = (float) ($ldTotals['grand_total'] ?? 0);
+  @endphp
+  @include('admin.partials.quotation_totals_bar', [
+    'barId' => 'ld-sticky-total',
+    'formId' => 'ld-form',
+    'saveId' => 'ld-btn-save-bottom',
+    'saveLabel' => 'Save quotation',
+    'backUrl' => route('admin.quotations.low-deck.index', $preservePid ? ['project' => $preservePid] : []),
+    'initialMaterials' => $ldMat,
+    'initialLabour' => $ldLab,
+    'initialExtras' => 0,
+    'hasExtras' => false,
+    'initialHst' => $ldHst,
+    'initialGrand' => $ldGrand,
+    'grandTotalId' => 'ld-toolbar-grand',
+    'grandAmountId' => 'ld-toolbar-grand-amount',
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'project' => $linkProject ?? ($isEdit ? ($quotation->project ?? null) : null),
+    'quoteNumber' => $isEdit ? $quotation->quote_number : 'Deck Quote',
+  ])
 @endsection
 
 @push('scripts')
@@ -607,6 +633,9 @@
   var previewTimer = null;
   function schedulePreview() {
     if (previewTimer) clearTimeout(previewTimer);
+    if (window.QuotationTotalsBar) {
+      window.QuotationTotalsBar.setUpdating(true);
+    }
     previewTimer = setTimeout(runPreview, 220);
   }
 
@@ -693,6 +722,16 @@
     tGrand.textContent = 'CA$0.00';
     window.__quoteGrandTotal = 0;
     document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: 0 } }));
+    if (window.QuotationTotalsBar) {
+      window.QuotationTotalsBar.update({
+        materials: 0,
+        labour: 0,
+        extras: 0,
+        hasExtras: false,
+        hst: 0,
+        grand: 0
+      });
+    }
     tLabourRate.textContent = '';
     clearDiagrams();
     if (generateWorkDescriptionBtn) generateWorkDescriptionBtn.disabled = true;
@@ -795,6 +834,18 @@
     tGrand.textContent = money(Number(t.grand_total || 0) + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn);
     window.__quoteGrandTotal = Number(t.grand_total || 0) + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
     document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: window.__quoteGrandTotal } }));
+    if (window.QuotationTotalsBar) {
+      var deckExtras = (lastCommuteAmount > 0 ? (lastCommuteAmount / 1.13) : 0) + (lastDebrisAmount > 0 ? (lastDebrisAmount / 1.13) : 0);
+      window.QuotationTotalsBar.update({
+        materials: Number(t.materials_subtotal || 0) + lastAdditionalMaterialsPreTax,
+        labour: Number(t.labour_subtotal || 0) + lastAdditionalLaborPreTax,
+        extras: deckExtras,
+        hasExtras: deckExtras > 0,
+        hst: Number(t.hst || 0) + lastAdditionalMaterialsHst + Number(t.labour_hst || 0) + lastAdditionalLaborHst,
+        hstRate: 13,
+        grand: window.__quoteGrandTotal
+      });
+    }
     if (t.labour_rate_per_sqft) {
       tLabourRate.textContent = '(' + money(t.labour_rate_per_sqft) + '/sq ft)';
     }

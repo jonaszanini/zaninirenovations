@@ -435,6 +435,7 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::get('client-projects/{client_project}/quotations/{quotation}/pdf', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'downloadPdf'])
         ->name('client-projects.quotation.pdf');
     Route::post('client-projects/{client_project}/quotations/{quotation}/send', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'send'])
+        ->middleware('throttle:15,1')
         ->name('client-projects.quotation.send');
     Route::post('client-projects/{client_project}/quotations/{quotation}/sms', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'sendQuotationSms'])
         ->middleware('throttle:12,1')

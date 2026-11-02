@@ -896,6 +896,9 @@
 
   function schedulePreview() {
     clearTimeout(debounceTimer);
+    if (window.QuotationTotalsBar) {
+      window.QuotationTotalsBar.setUpdating(true);
+    }
     debounceTimer = setTimeout(runPreview, 280);
   }
 
@@ -944,6 +947,16 @@
     if (!summary.grand_total || summary.grand_total <= 0) {
       if (empty) empty.hidden = false;
       if (body) body.hidden = true;
+      if (window.QuotationTotalsBar) {
+        window.QuotationTotalsBar.update({
+          materials: 0,
+          labour: 0,
+          extras: 0,
+          hasExtras: false,
+          hst: 0,
+          grand: 0
+        });
+      }
       return;
     }
     if (empty) empty.hidden = true;
@@ -954,6 +967,19 @@
     var extraHst = lastAdditionalLaborHst + lastAdditionalMaterialsHst;
     var subtotal = laborPre + matPre + permitPre;
     var hst = Number(summary.hst != null ? summary.hst : subtotal * 0.13) + extraHst;
+    var extrasTotal = permitPre + (lastCommuteAmount > 0 ? (lastCommuteAmount / 1.13) : 0) + (lastDebrisAmount > 0 ? (lastDebrisAmount / 1.13) : 0);
+
+    if (window.QuotationTotalsBar) {
+      window.QuotationTotalsBar.update({
+        materials: matPre,
+        labour: laborPre,
+        extras: extrasTotal,
+        hasExtras: extrasTotal > 0,
+        hst: hst,
+        hstRate: 13,
+        grand: grand
+      });
+    }
     var html = '';
     html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';
     html += '<div class="pq-row"><span>Materials</span><span>' + fmt(matPre) + '</span></div>';

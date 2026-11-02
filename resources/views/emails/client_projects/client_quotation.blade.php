@@ -7,7 +7,10 @@
 @component('emails.client_projects.layout', ['title' => $quotation->typeLabel().' – '.$project->name])
   <p>Hi {{ $project->client_name }},</p>
 
-  @if ($clientEmailMessage)
+  @if (filled($customMessage ?? null))
+    <div style="margin:0 0 16px 0;">{!! nl2br(e($customMessage)) !!}</div>
+    <p>Please find the detailed {{ $typeLower }} attached as a PDF for your review.</p>
+  @elseif ($clientEmailMessage)
     <div style="margin:0 0 16px 0;">{!! $clientEmailMessage !!}</div>
     <p>Please find the detailed {{ $typeLower }} attached as a PDF for your review.</p>
   @else
@@ -22,9 +25,9 @@
   @endif
 
   <p>
-    This proposal outlines the scope of the work. All planned work is designed to
+    We are fully insured. This proposal outlines the scope of the work. All planned work is designed to
     meet or exceed the standards set by the Ontario Building Code (O.Reg. 332/12)
-    to ensure the safety and longevity of your home.
+    to ensure the safety and longevity of your home. Please note that building permits, if required, are an optional extra.
   </p>
 
   <p>

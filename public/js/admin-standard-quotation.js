@@ -534,6 +534,18 @@
     setText(toolbarGrandAmount, money(withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount));
     window.__quoteGrandTotal = withSumWithCont + labWithHst + lastCommuteAmount + lastDebrisAmount;
     document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: window.__quoteGrandTotal } }));
+    if (window.QuotationTotalsBar) {
+      var stdExtras = (lastCommuteAmount > 0 ? (lastCommuteAmount / 1.13) : 0) + (lastDebrisAmount > 0 ? (lastDebrisAmount / 1.13) : 0) + (contAmt || 0);
+      window.QuotationTotalsBar.update({
+        materials: subSum,
+        labour: lab,
+        extras: stdExtras,
+        hasExtras: stdExtras > 0,
+        hst: hstWithCont + labHst,
+        hstRate: 13,
+        grand: window.__quoteGrandTotal
+      });
+    }
 
     if (gJobsWrap && gJobs) {
       var multi = jobs.length >= 2;

@@ -243,6 +243,7 @@ class ClientProjectQuotationController extends Controller
      * it to the client, and bump the version + sent_at.
      */
     public function send(
+        Request $request,
         ClientProject $client_project,
         ClientProjectQuotation $quotation,
         ClientProjectStatusService $statusService,
@@ -250,26 +251,101 @@ class ClientProjectQuotationController extends Controller
     {
         $this->authorizeQuotation($client_project, $quotation);
 
-        if ($response = $this->rejectDraftSource($quotation)) {
-            return $response;
+        if ($quotation->isSourceDraft()) {
+            if ($request->boolean('confirm_draft')) {
+                $source = $quotation->sourceModel();
+                if ($source && isset($source->is_draft)) {
+                    $source->is_draft = false;
+                    $source->save();
+                }
+            } else {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'ok' => false,
+                        'is_draft' => true,
+                        'error_code' => 'draft_blocked',
+                        'error' => ClientProjectQuotation::SOURCE_DRAFT_SHARE_MESSAGE,
+                    ], 422);
+                }
+                return back()->with('error', ClientProjectQuotation::SOURCE_DRAFT_SHARE_MESSAGE);
+            }
         }
 
         if (!$quotation->hasContent()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'Please add at least one line item before sending the quotation.',
+                ], 422);
+            }
             return back()->with('error', 'Please add at least one line item before sending the quotation.');
         }
 
         if ($this->millworkHasUnplacedParts($quotation)) {
-            return back()->with('error', MillworkQuotation::unplacedAdminMessage());
+            $unplacedMsg = MillworkQuotation::unplacedAdminMessage();
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'error' => $unplacedMsg], 422);
+            }
+            return back()->with('error', $unplacedMsg);
         }
 
-        $emailTo = trim((string) $client_project->client_email);
-        if ($emailTo === '') {
-            return back()->with('error', "Cannot email the {$quotation->typeLabel()} — add the client's email address first.");
+        $emailTo = $request->has('to')
+            ? trim((string) $request->input('to'))
+            : trim((string) $client_project->client_email);
+
+        if ($emailTo === '' || ! filter_var($emailTo, FILTER_VALIDATE_EMAIL)) {
+            $msg = $emailTo === ''
+                ? "Cannot email the {$quotation->typeLabel()} — add the client's email address first."
+                : "A valid recipient email address is required.";
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'error' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
+
+        $cc = $request->filled('cc')
+            ? trim((string) $request->input('cc'))
+            : $client_project->secondaryClientEmail();
+
+        if (filled($cc) && ! filter_var($cc, FILTER_VALIDATE_EMAIL)) {
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'error' => 'Invalid CC email address.'], 422);
+            }
+            return back()->with('error', 'Invalid CC email address.');
         }
 
         $publishOnly = $quotation->missingPublishOnlyChoices();
         if ($publishOnly !== []) {
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'error' => $publishOnly[0]], 422);
+            }
             return back()->with('error', $publishOnly[0]);
+        }
+
+        $idempotencyKey = $request->filled('idempotency_key')
+            ? trim((string) $request->input('idempotency_key'))
+            : null;
+
+        if ($idempotencyKey) {
+            $existing = \App\Models\QuotationSendAudit::where('idempotency_key', $idempotencyKey)
+                ->where('status', \App\Models\QuotationSendAudit::STATUS_SENT)
+                ->first();
+            if ($existing) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'ok' => true,
+                        'success' => true,
+                        'duplicate' => true,
+                        'message' => 'Quotation already sent.',
+                        'version' => $existing->quote_version,
+                        'sent_at' => $existing->server_time ? $existing->server_time->format('M j, Y g:i A') : now()->format('M j, Y g:i A'),
+                    ]);
+                }
+                return redirect()
+                    ->route('admin.client-projects.show', $client_project)
+                    ->withFragment('quotation')
+                    ->with('success', "{$quotation->typeLabel()} {$quotation->quotation_number} already sent.");
+            }
         }
 
         // If the quotation has already been sent at least once, the next save
@@ -280,6 +356,8 @@ class ClientProjectQuotationController extends Controller
 
         $pdf = $this->renderPdf($client_project, $quotation);
         $bytes = $pdf->output();
+        $pdfHash = hash('sha256', $bytes);
+        $pdfFilename = $this->pdfFilename($client_project, $quotation);
 
         $relativePath = sprintf(
             'quotations/project-%d-q%d-v%d.pdf',
@@ -291,55 +369,49 @@ class ClientProjectQuotationController extends Controller
         Storage::disk('local')->put($relativePath, $bytes);
 
         $quotation->pdf_path = $relativePath;
-        $quotation->sent_at = now();
-        if ($quotation->status !== ClientProjectQuotation::STATUS_ACCEPTED) {
-            $quotation->status = ClientProjectQuotation::STATUS_SENT;
-        }
         $quotation->save();
 
-        $quoteSubject = ClientProjectQuotationClient::subjectFor($client_project, $quotation);
-        $quoteDescription = "{$quotation->typeLabel()} {$quotation->quotation_number} v{$quotation->version} — total "
-            .ClientProject::formatMoney((float) $quotation->grandTotal());
-        $cc = $client_project->secondaryClientEmail();
+        $subject = $request->filled('subject')
+            ? trim((string) $request->input('subject'))
+            : ClientProjectQuotationClient::subjectFor($client_project, $quotation);
+        $messageBody = $request->filled('message')
+            ? trim((string) $request->input('message'))
+            : null;
+
+        $admin = auth()->user();
+        $adminId = $admin?->id;
+        $adminName = $admin?->name ?? 'Admin';
 
         try {
-            $mailer = Mail::to($emailTo);
-            if ($cc) {
-                $mailer->cc($cc);
-            }
-            $mailer->send(new ClientProjectQuotationClient(
+            \App\Jobs\SendQuotationToClientJob::dispatch(
                 $client_project,
                 $quotation,
-                $bytes,
-                $this->pdfFilename($client_project, $quotation)
-            ));
-
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_QUOTATION_SENT,
                 $emailTo,
                 $cc,
-                $quoteSubject,
-                $quoteDescription,
+                $subject,
+                $messageBody,
+                $relativePath,
+                $pdfFilename,
+                $pdfHash,
+                $adminId,
+                $adminName,
+                $idempotencyKey,
+                $quotation->source_type,
+                $quotation->source_id
             );
         } catch (\Throwable $e) {
             Log::error('Failed to email quotation', [
                 'project_id' => $client_project->id,
                 'quotation_id' => $quotation->id,
-                'exception' => $e->getMessage(),
+                'exception' => $e,
             ]);
 
-            app(ClientCommunicationLogger::class)->logEmail(
-                $client_project,
-                ClientCommunicationLog::REASON_QUOTATION_SENT,
-                $emailTo,
-                $cc,
-                $quoteSubject,
-                $quoteDescription,
-                ClientCommunicationLog::DIRECTION_TO_CLIENT,
-                false,
-                $e->getMessage(),
-            );
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'The PDF was generated but the email could not be sent: '.$e->getMessage(),
+                ], 500);
+            }
 
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
@@ -347,47 +419,19 @@ class ClientProjectQuotationController extends Controller
                 ->with('error', 'The PDF was generated but the email could not be sent: '.$e->getMessage());
         }
 
-        $deliverySummary = "emailed to {$client_project->clientEmailRecipientsLabel()}";
-        $deliverySuccessFlash = "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to {$client_project->clientEmailRecipientsLabel()} (v{$quotation->version}).";
+        $quotation->refresh();
+        $deliverySuccessFlash = "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to {$emailTo} (v{$quotation->version}).";
 
-        // Auto-transition the project to "Quote Sent" once the email leaves
-        // successfully. Only promote from Visit scheduled or Quote Pending —
-        // never regress a project that's already moved past this point (e.g.
-        // proposal accepted, in progress, completed) just because the user
-        // re-sent an updated quotation version.
-        $sendNote = "{$quotation->typeLabel()} {$quotation->quotation_number} {$deliverySummary} (v{$quotation->version}).";
-
-        if ($client_project->isAwaitingQuotePreparation()) {
-            try {
-                $statusService->transition(
-                    $client_project,
-                    ClientProject::STATUS_QUOTE_SENT,
-                    $sendNote
-                );
-            } catch (\Throwable $e) {
-                // Don't fail the whole send flow if the status side-effects
-                // blow up — the email already went out, the status is just
-                // bookkeeping.
-                Log::warning('Failed to auto-transition project to Quote Sent', [
-                    'project_id' => $client_project->id,
-                    'quotation_id' => $quotation->id,
-                    'exception' => $e->getMessage(),
-                ]);
-            }
-        } else {
-            // Status already past pre-quote stages (e.g. re-sending an updated
-            // quote to a client whose project is In Progress). Log an
-            // event-only history row so the audit trail still shows the
-            // send.
-            try {
-                $statusService->recordEvent($client_project, $sendNote);
-            } catch (\Throwable $e) {
-                Log::warning('Failed to record quotation-send history entry', [
-                    'project_id' => $client_project->id,
-                    'quotation_id' => $quotation->id,
-                    'exception' => $e->getMessage(),
-                ]);
-            }
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'success' => true,
+                'status' => $quotation->status,
+                'message' => $deliverySuccessFlash,
+                'version' => 'v'.$quotation->version,
+                'sent_at' => $quotation->sent_at ? $quotation->sent_at->format('M j, Y g:i A') : now()->format('M j, Y g:i A'),
+                'badge_html' => 'Sent to client on '.($quotation->sent_at ? $quotation->sent_at->format('M j, Y') : now()->format('M j, Y')).' (v'.$quotation->version.')',
+            ]);
         }
 
         return redirect()

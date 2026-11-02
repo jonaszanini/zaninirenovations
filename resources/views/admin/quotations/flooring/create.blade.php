@@ -467,7 +467,35 @@
           <div id="fl-live-body" hidden></div>
         </div>
       </div>
-    </aside>
+    @php
+      $flSummary = $initialPreview['summary'] ?? [];
+      $flMat = (float) ($flSummary['materials_pre_hst'] ?? 0);
+      $flLab = (float) ($flSummary['labor_pre_hst'] ?? 0);
+      $flSub = (float) ($flSummary['subtotal_pre_hst'] ?? 0);
+      $flHst = (float) ($flSummary['hst'] ?? ($flSub * 0.13));
+      $flGrand = (float) ($flSummary['grand_total'] ?? 0);
+    @endphp
+    @include('admin.partials.quotation_totals_bar', [
+      'barId' => 'fl-sticky-total',
+      'formId' => 'fl-main-form',
+      'saveId' => 'fl-btn-save-bottom',
+      'saveLabel' => 'Save quotation',
+      'backUrl' => route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []),
+      'initialMaterials' => $flMat,
+      'initialLabour' => $flLab,
+      'initialExtras' => 0,
+      'hasExtras' => false,
+      'initialHst' => $flHst,
+      'initialGrand' => $flGrand,
+      'grandTotalId' => 'fl-toolbar-grand',
+      'grandAmountId' => 'fl-toolbar-grand-amount',
+      'isEdit' => $isEdit,
+      'quotation' => $quotation ?? null,
+      'linkedCpq' => $linkedCpq ?? null,
+      'project' => $projectForReturn,
+      'clientEmail' => optional($projectForReturn)->client_email,
+      'quoteNumber' => $isEdit ? $quotation->quote_number : 'Flooring Quote',
+    ])
   </form>
 
   @if ($isEdit && ! $quotation->isLinked())
@@ -574,6 +602,9 @@
       syncBaseboardWarning();
 
       function schedulePreview() {
+        if (window.QuotationTotalsBar) {
+          window.QuotationTotalsBar.setUpdating(true);
+        }
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(runPreview, 280);
       }
@@ -617,6 +648,15 @@
         if (!summary.grand_total || summary.grand_total <= 0) {
           empty.hidden = false;
           body.hidden = true;
+          if (window.QuotationTotalsBar) {
+            window.QuotationTotalsBar.update({
+              materials: 0,
+              labour: 0,
+              extras: 0,
+              hst: 0,
+              grand: 0
+            });
+          }
           return;
         }
         empty.hidden = true;
@@ -674,6 +714,19 @@
           html += '<div class="fl-bd-total-row"><span>Debris removal (incl. HST)</span><span class="fl-bd-amount">' + fmt(lastDebrisAmount) + '</span></div>';
         }
         var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn;
+        var hstTotal = Number(summary.hst || 0) + lastAdditionalLaborHst + lastAdditionalMaterialsHst;
+        var extrasTotal = lastDebrisAmount;
+
+        if (window.QuotationTotalsBar) {
+          window.QuotationTotalsBar.update({
+            materials: materialSub,
+            labour: laborSub,
+            extras: extrasTotal,
+            hst: hstTotal,
+            grand: grand
+          });
+        }
+
         html += '<div class="fl-bd-grand"><span>Grand total</span><span class="fl-bd-amount">' + fmt(grand) + '</span></div>';
         html += '</div>';
         body.innerHTML = html;

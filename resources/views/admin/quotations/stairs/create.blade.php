@@ -348,6 +348,39 @@
           @include('admin.quotations._commute_debris_row')
           @include('admin.quotations._additional_costs', ['quotation' => $quotation])
           @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
+
+          @php
+            $stSummary = $initialCalc['summary'] ?? [];
+            $stMat = (float) ($stSummary['material_price'] ?? 0);
+            $stLab = (float) ($stSummary['labour_subtotal_pre_hst'] ?? 0);
+            $stSub = (float) ($stSummary['subtotal_pre_hst'] ?? 0);
+            $stHst = (float) ($stSummary['hst'] ?? ($stSub * 0.13));
+            $stCommute = (float) ($quotation?->commute_amount ?? 0);
+            $stDebris = (float) ($quotation?->debris_removal_amount ?? 0);
+            $stExtras = $stCommute + $stDebris;
+            $stGrand = (float) ($stSummary['grand_total'] ?? 0) + $stExtras;
+          @endphp
+          @include('admin.partials.quotation_totals_bar', [
+            'barId' => 'st-sticky-total',
+            'formId' => 'sq-main-form',
+            'saveId' => 'st-btn-save-bottom',
+            'saveLabel' => 'Save quotation',
+            'backUrl' => route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []),
+            'initialMaterials' => $stMat,
+            'initialLabour' => $stLab,
+            'initialExtras' => $stExtras,
+            'hasExtras' => true,
+            'initialHst' => $stHst,
+            'initialGrand' => $stGrand,
+            'grandTotalId' => 'st-toolbar-grand',
+            'grandAmountId' => 'sq-toolbar-grand-amount',
+            'isEdit' => $isEdit,
+            'quotation' => $quotation ?? null,
+            'linkedCpq' => $linkedCpq ?? null,
+            'project' => $projectForReturn,
+            'clientEmail' => optional($projectForReturn)->client_email,
+            'quoteNumber' => $isEdit ? $quotation->quote_number : 'Stairs Quote',
+          ])
         </form>
 
         @if ($isEdit && ! $quotation->isLinked())
@@ -646,6 +679,21 @@
         }
         html += '<div class="pq-row pq-row--hl"><span>Grand total</span><strong>' + fmt(grandTotal) + '</strong></div>';
         root.innerHTML = html;
+
+        var labSub = Number(s.labour_subtotal_pre_hst || 0) + lastAdditionalLaborPreTax;
+        var matSub = Number(s.material_price || 0) + lastAdditionalMaterialsPreTax;
+        var hstTotal = Number(s.hst || 0) + lastAdditionalLaborHst + lastAdditionalMaterialsHst;
+        var extrasTotal = lastCommuteAmount + lastDebrisAmount;
+
+        if (window.QuotationTotalsBar) {
+          window.QuotationTotalsBar.update({
+            materials: matSub,
+            labour: labSub,
+            extras: extrasTotal,
+            hst: hstTotal,
+            grand: grandTotal
+          });
+        }
       }
       function runPreview() {
         var fd = new FormData(form);
@@ -660,6 +708,9 @@
           .catch(function () { root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>'; });
       }
       function schedule() {
+        if (window.QuotationTotalsBar) {
+          window.QuotationTotalsBar.setUpdating(true);
+        }
         clearTimeout(t);
         t = setTimeout(runPreview, 220);
       }

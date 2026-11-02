@@ -122,6 +122,11 @@ class ClientProjectQuotation extends Model
         return $this->belongsTo(ClientProject::class, 'client_project_id');
     }
 
+    public function sendAudits(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(QuotationSendAudit::class, 'client_project_quotation_id');
+    }
+
     /**
      * Defensive cleanup: when a quotation row is deleted directly (i.e. not
      * through the parent project's cascade, which doesn't fire model events),
@@ -502,6 +507,11 @@ class ClientProjectQuotation extends Model
         }
 
         return $class::query()->find($this->source_id);
+    }
+
+    public function sourceModel(): ?Model
+    {
+        return $this->sourceQuotationModel();
     }
 
     public const SOURCE_DRAFT_SHARE_MESSAGE = 'This quotation is still a draft. Publish it (Save quotation) before sharing it with the client.';

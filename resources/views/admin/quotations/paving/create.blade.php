@@ -491,6 +491,38 @@
           @include('admin.quotations._commute_debris_row')
           @include('admin.quotations._additional_costs', ['quotation' => $quotation])
           @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
+
+          @php
+            $pvCalc = is_array($quotation?->calculation) ? $quotation->calculation : [];
+            $pvMat = (float) ($pvCalc['materials']['subtotal_before_tax'] ?? 0) + (float) ($pvCalc['fixed_costs']['subtotal_before_tax'] ?? 0);
+            $pvLab = (float) ($pvCalc['labour']['total'] ?? 0);
+            $pvHst = (float) ($pvCalc['summary']['hst_on_materials_and_fixed'] ?? 0) + round($pvLab * 0.13, 2);
+            $pvCommute = (float) ($quotation?->commute_amount ?? 0);
+            $pvDebris = (float) ($quotation?->debris_removal_amount ?? 0);
+            $pvExtras = $pvCommute + $pvDebris;
+            $pvGrand = (float) ($quotation?->final_quote_total ?? 0) + $pvExtras;
+          @endphp
+          @include('admin.partials.quotation_totals_bar', [
+            'barId' => 'pv-sticky-total',
+            'formId' => 'pq-main-form',
+            'saveId' => 'pv-btn-save-bottom',
+            'saveLabel' => 'Save quotation',
+            'backUrl' => route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []),
+            'initialMaterials' => $pvMat,
+            'initialLabour' => $pvLab,
+            'initialExtras' => $pvExtras,
+            'hasExtras' => true,
+            'initialHst' => $pvHst,
+            'initialGrand' => $pvGrand,
+            'grandTotalId' => 'pv-toolbar-grand',
+            'grandAmountId' => 'pv-toolbar-grand-amount',
+            'isEdit' => $isEdit,
+            'quotation' => $quotation ?? null,
+            'linkedCpq' => $linkedCpq ?? null,
+            'project' => $projectForReturn,
+            'clientEmail' => optional($projectForReturn)->client_email,
+            'quoteNumber' => $isEdit ? $quotation->quote_number : 'Paving Quote',
+          ])
         </form>
 
         @if ($isEdit && !$quotation->isLinked())
@@ -928,6 +960,9 @@
       var lastAdditionalLaborPreTax = 0;
       var lastPreviewCalc = null;
       function schedule() {
+        if (window.QuotationTotalsBar) {
+          window.QuotationTotalsBar.setUpdating(true);
+        }
         clearTimeout(t);
         t = setTimeout(runPreview, 220);
       }
@@ -970,6 +1005,21 @@
         var profitAmt = Number(s.profit_margin_amount || 0);
         var profitRate = fmtPct(s.profit_margin_rate);
         var html = '';
+
+        var matBeforeTax = Number(m.subtotal_before_tax || 0) + Number(f.subtotal_before_tax || 0);
+        var labTotal = Number(l.total || 0) + lastAdditionalLaborPreTax;
+        var hstTotal = Number(s.hst_on_materials_and_fixed || 0) + Math.round(labTotal * 0.13 * 100) / 100;
+        var extrasTotal = lastCommuteAmount + lastDebrisAmount;
+
+        if (window.QuotationTotalsBar) {
+          window.QuotationTotalsBar.update({
+            materials: matBeforeTax,
+            labour: labTotal,
+            extras: extrasTotal,
+            hst: hstTotal,
+            grand: clientTotal
+          });
+        }
 
         html += section('Costs', [
           row('Materials <span class="admin-form-help">(incl. HST)</span>', fmt(Number(m.with_tax || 0) + lastAdditionalMaterialsTaxIn)),

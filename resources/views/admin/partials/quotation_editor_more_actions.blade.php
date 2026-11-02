@@ -75,40 +75,49 @@
     @endif
     @include('admin.partials.quotation_view_pdf')
     @if ($email)
-      @if (! empty($email['can']) && ! empty($email['formId']))
-        <button type="submit"
-                form="{{ $email['formId'] }}"
+      @if (! empty($email['formId']))
+        <button type="button"
                 class="admin-btn admin-btn--ghost admin-btn--sm"
                 title="Email quotation to client"
                 aria-label="Email quotation to client"
                 data-qh-email
-                onclick='return confirm(@json($email['confirm'] ?? ''));'>
+                data-quote-send-btn
+                @if (empty($email['can'])) disabled @endif>
           <i class="fa fa-paper-plane" aria-hidden="true"></i> Email quotation to client
         </button>
-      @elseif (! empty($email['can']) && ! empty($email['action']))
-        <form action="{{ $email['action'] }}" method="post" class="cp-inline-form" data-qh-email-form
-              onsubmit='return confirm(@json($email['confirm'] ?? ''));'>
+      @elseif (! empty($email['action']))
+        <form action="{{ $email['action'] }}" method="post" class="cp-inline-form" data-qh-email-form>
           @csrf
-          <button type="submit"
+          <button type="button"
                   class="admin-btn admin-btn--ghost admin-btn--sm"
                   title="Email quotation to client"
                   aria-label="Email quotation to client"
-                  data-qh-email>
+                  data-qh-email
+                  data-quote-send-btn
+                  @if (empty($email['can'])) disabled @endif>
             <i class="fa fa-paper-plane" aria-hidden="true"></i> Email quotation to client
           </button>
         </form>
       @else
-        <span class="br-toolbar-disabled-tip" title="{{ $email['disabledTitle'] ?? '' }}">
-          <button type="button"
-                  class="admin-btn admin-btn--ghost admin-btn--sm"
-                  disabled
-                  title="{{ $email['disabledTitle'] ?? '' }}"
-                  aria-label="Email quotation to client. {{ $email['disabledTitle'] ?? '' }}"
-                  data-qh-email>
-            <i class="fa fa-paper-plane" aria-hidden="true"></i> Email quotation to client
-          </button>
-        </span>
+        <button type="button"
+                class="admin-btn admin-btn--ghost admin-btn--sm"
+                @if (empty($email['can'])) disabled @endif
+                title="{{ $email['disabledTitle'] ?? 'Email quotation to client' }}"
+                aria-label="Email quotation to client"
+                data-qh-email
+                data-quote-send-btn>
+          <i class="fa fa-paper-plane" aria-hidden="true"></i> Email quotation to client
+        </button>
       @endif
+    @elseif ($isEdit ?? false)
+      <button type="button"
+              class="admin-btn admin-btn--ghost admin-btn--sm"
+              title="Email quotation to client"
+              aria-label="Email quotation to client"
+              data-qh-email
+              data-quote-send-btn>
+        <i class="fa fa-paper-plane" aria-hidden="true"></i> Email quotation to client
+      </button>
     @endif
     @if ($sms)
       @if (! empty($sms['can']) && ! empty($sms['action']))

@@ -543,6 +543,31 @@
       'isOpen' => true,
     ])
   </template>
+
+  @php
+    $sqGrand = (float) ($toolbarGrand ?? 0);
+  @endphp
+  @include('admin.partials.quotation_totals_bar', [
+    'barId' => 'sq-sticky-total',
+    'formId' => 'sq-standard-form',
+    'saveId' => 'sq-btn-save-bottom',
+    'saveLabel' => 'Save quotation',
+    'backUrl' => route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
+    'initialMaterials' => 0,
+    'initialLabour' => 0,
+    'initialExtras' => 0,
+    'hasExtras' => false,
+    'initialHst' => 0,
+    'initialGrand' => $sqGrand,
+    'grandTotalId' => 'sq-toolbar-grand',
+    'grandAmountId' => 'sq-toolbar-grand-amount',
+    'isEdit' => $isEdit,
+    'quotation' => $quotation ?? null,
+    'linkedCpq' => $linkedCpq ?? null,
+    'project' => $projectForReturn,
+    'clientEmail' => optional($projectForReturn)->client_email,
+    'quoteNumber' => $isEdit ? $quotation->quote_number : 'Standard Quote',
+  ])
 @endsection
 
 @include('admin.partials.quotation_work_description_tinymce', [

@@ -1,6 +1,7 @@
 @extends('admin.layouts.app')
 
 @php
+  $quotation = $quotation ?? null;
   $isEdit = isset($quotation) && filled($quotation);
   $returnToProject = request('return') === 'project' && $isEdit && $quotation->project;
   $projectForReturn = ($isEdit && $quotation->project)
@@ -431,6 +432,38 @@
       </div>
     </aside>
     </div>
+
+    @php
+      $tlCalc = is_array($quotation?->calculation) ? $quotation->calculation : [];
+      $tlMat = (float) ($tlCalc['materials_subtotal'] ?? 0);
+      $tlLab = (float) ($tlCalc['labor_total'] ?? 0) + (float) ($tlCalc['demolition_total'] ?? 0);
+      $tlHst = (float) ($tlCalc['hst'] ?? 0);
+      $tlCommute = (float) ($quotation?->commute_amount ?? 0);
+      $tlDebris = (float) ($quotation?->debris_removal_amount ?? 0);
+      $tlExtras = $tlCommute + $tlDebris;
+      $tlGrand = (float) ($quotation?->final_quote_total ?? 0);
+    @endphp
+    @include('admin.partials.quotation_totals_bar', [
+      'barId' => 'tl-sticky-total',
+      'formId' => 'tl-form',
+      'saveId' => 'tl-btn-save-bottom',
+      'saveLabel' => 'Save quotation',
+      'backUrl' => route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []),
+      'initialMaterials' => $tlMat,
+      'initialLabour' => $tlLab,
+      'initialExtras' => $tlExtras,
+      'hasExtras' => true,
+      'initialHst' => $tlHst,
+      'initialGrand' => $tlGrand,
+      'grandTotalId' => 'tl-toolbar-grand',
+      'grandAmountId' => 'tl-toolbar-grand-amount',
+      'isEdit' => $isEdit,
+      'quotation' => $quotation ?? null,
+      'linkedCpq' => $linkedCpq ?? null,
+      'project' => $projectForReturn,
+      'clientEmail' => optional($projectForReturn)->client_email,
+      'quoteNumber' => $isEdit ? $quotation->quote_number : 'Tile Quote',
+    ])
   </form>
 
   @if ($isEdit && ! $quotation->isLinked())
@@ -660,12 +693,36 @@ document.addEventListener('DOMContentLoaded', function () {
                 applyAdditionalCostsToLivePreview();
                 applyDebrisToLivePreview();
                 applyCommuteToLivePreview();
+                var c = data.calculation || {};
+                var matSub = Number(c.materials_subtotal || 0) + lastAdditionalMaterialsPreTax;
+                var labSub = Number(c.labor_total || 0) + Number(c.demolition_total || 0) + lastAdditionalLaborPreTax;
+                var hstVal = Number(c.hst || 0) + (lastAdditionalMaterialsTaxIn - lastAdditionalMaterialsPreTax) + (lastAdditionalLaborTaxIn - lastAdditionalLaborPreTax);
+                var extras = lastCommuteAmount + lastDebrisAmount;
+                var totalGrand = lastGrandTotal > 0 ? lastGrandTotal + liveExtrasTotal() : 0;
+                if (window.QuotationTotalsBar) {
+                    window.QuotationTotalsBar.update({
+                        materials: matSub,
+                        labour: labSub,
+                        extras: extras,
+                        hst: hstVal,
+                        grand: totalGrand
+                    });
+                }
             } else {
                 if (window.QuotationBuildingLaborUi) window.QuotationBuildingLaborUi.setLabourBase(0);
                 liveEmpty.hidden = false;
                 liveBody.hidden = true;
                 lastGrandTotal = 0;
                 emitGrandTotal();
+                if (window.QuotationTotalsBar) {
+                    window.QuotationTotalsBar.update({
+                        materials: 0,
+                        labour: 0,
+                        extras: 0,
+                        hst: 0,
+                        grand: 0
+                    });
+                }
             }
         })
         .catch(err => console.error('Live calc error:', err));
@@ -674,10 +731,16 @@ document.addEventListener('DOMContentLoaded', function () {
     var triggers = form.querySelectorAll('.tl-live-trigger');
     for (var i=0; i<triggers.length; i++) {
         triggers[i].addEventListener('input', function () {
+            if (window.QuotationTotalsBar) {
+                window.QuotationTotalsBar.setUpdating(true);
+            }
             clearTimeout(liveTimer);
             liveTimer = setTimeout(doLiveUpdate, 400);
         });
         triggers[i].addEventListener('change', function () {
+            if (window.QuotationTotalsBar) {
+                window.QuotationTotalsBar.setUpdating(true);
+            }
             clearTimeout(liveTimer);
             doLiveUpdate();
         });

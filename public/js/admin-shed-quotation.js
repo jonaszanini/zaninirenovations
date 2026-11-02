@@ -322,6 +322,9 @@
     });
 
     function schedulePreview() {
+      if (window.QuotationTotalsBar) {
+        window.QuotationTotalsBar.setUpdating(true);
+      }
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(runPreview, 280);
     }
@@ -359,6 +362,15 @@
       if (!summary.grand_total || summary.grand_total <= 0) {
         if (empty) empty.hidden = false;
         if (body) body.hidden = true;
+        if (window.QuotationTotalsBar) {
+          window.QuotationTotalsBar.update({
+            materials: 0,
+            labour: 0,
+            extras: 0,
+            hst: 0,
+            grand: 0
+          });
+        }
         return;
       }
       if (empty) empty.hidden = true;
@@ -381,6 +393,18 @@
         html += '<div class="pq-row pq-row--group"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
       }
       var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
+      var extras = lastCommuteAmount + lastDebrisAmount;
+
+      if (window.QuotationTotalsBar) {
+        window.QuotationTotalsBar.update({
+          materials: matPre,
+          labour: laborPre,
+          extras: extras,
+          hst: laborHst + matHst,
+          grand: grand
+        });
+      }
+
       html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
       var warnings = (data.scope && data.scope.permit_warnings) || [];
       if (warnings.length) {

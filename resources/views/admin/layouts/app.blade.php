@@ -36,6 +36,7 @@
   @if ($loadsClientProjectsCss)
   <link rel="stylesheet" href="{{ asset('css/admin-client-projects.css') }}?v={{ @filemtime(public_path('css/admin-client-projects.css')) ?: time() }}">
   <link rel="stylesheet" href="{{ asset('css/admin-millwork.css') }}?v={{ @filemtime(public_path('css/admin-millwork.css')) ?: time() }}">
+  <link rel="stylesheet" href="{{ asset('css/quotation-totals-bar.css') }}?v={{ @filemtime(public_path('css/quotation-totals-bar.css')) ?: time() }}">
   @endif
   @if ($loadsBlogCss)
   <link rel="stylesheet" href="{{ asset('css/admin-blog.css') }}?v={{ @filemtime(public_path('css/admin-blog.css')) ?: time() }}">
@@ -675,6 +676,9 @@
     });
   })();
   </script>
+  @if ($loadsClientProjectsCss)
+  <script src="{{ asset('js/quotation-totals-bar.js') }}?v={{ @filemtime(public_path('js/quotation-totals-bar.js')) ?: time() }}"></script>
+  @endif
   @stack('scripts')
 </body>
 </html>
