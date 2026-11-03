@@ -297,7 +297,7 @@
   }
 
   /**
-   * Tooltip on Wall Properties Length (ⓘ) — keep in sync with NzBhsCJS wallProperties.entryHelp.
+   * Tooltip on Wall Properties Length (ⓘ), applied via openplan3d-hosted-locale.js import map.
    */
   function hostedWallLengthEntryHelpText(unitLabel) {
     var unit = unitLabel != null && String(unitLabel).trim() !== '' ? String(unitLabel).trim() : 'in';

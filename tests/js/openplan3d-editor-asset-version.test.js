@@ -7,12 +7,18 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../..');
 const BRIDGE = path.join(ROOT, 'public/js/openplan3d-editor-bridge.js');
+const LOCALE_SHIM = path.join(ROOT, 'public/js/openplan3d-hosted-locale.js');
 const INDEX = path.join(ROOT, 'public/vendor/openplan3d/editor/index.html');
 const HTACCESS = path.join(ROOT, 'public/.htaccess');
 const EMBED = path.join(ROOT, 'tests/js/fixtures/openplan3d-editor-embed.html');
 
 function bridgeContentVersion() {
   const data = fs.readFileSync(BRIDGE);
+  return crypto.createHash('sha256').update(data).digest('hex').slice(0, 16);
+}
+
+function localeShimContentVersion() {
+  const data = fs.readFileSync(LOCALE_SHIM);
   return crypto.createHash('sha256').update(data).digest('hex').slice(0, 16);
 }
 
@@ -61,4 +67,13 @@ assert.match(
 assertVersionedBridgeSrc(fs.readFileSync(INDEX, 'utf8'), 'editor index.html');
 assertVersionedBridgeSrc(fs.readFileSync(EMBED, 'utf8'), 'editor embed fixture');
 
-console.log('openplan3d-editor-asset-version: ok (v=' + bridgeContentVersion() + ')');
+const indexHtml = fs.readFileSync(INDEX, 'utf8');
+const localeShimV = localeShimContentVersion();
+assert.match(
+  indexHtml,
+  new RegExp(`openplan3d-hosted-locale\\.js\\?v=${localeShimV}`),
+  `editor index locale shim ?v= must match (${localeShimV})`
+);
+assert.match(indexHtml, /NzBhsCJS\.js": "\/js\/openplan3d-hosted-locale\.js/, 'import map must redirect immutable locale chunk');
+
+console.log('openplan3d-editor-asset-version: ok (bridge v=' + bridgeContentVersion() + ', locale shim v=' + localeShimV + ')');

@@ -570,7 +570,9 @@ assert.match(helpIn, /12\.05/);
 assert.match(helpIn, /00–11|00-11/);
 
 const localeJs = fs.readFileSync(path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/NzBhsCJS.js'), 'utf8');
-assert.match(localeJs, /DeWalt laser: 12\.05'/);
+assert.doesNotMatch(localeJs, /DeWalt laser/, 'immutable locale chunk must not be edited; help comes from hosted locale shim');
+assert.match(indexHtml, /type="importmap"/, 'editor index must redirect locale chunk through import map');
+assert.match(indexHtml, /openplan3d-hosted-locale\.js\?v=[a-f0-9]{16}/, 'locale shim must be cache-busted');
 
 const mockVendor = {
   bM: function (wall) { return bridge.wallCenterlineLengthCm(wall); },
