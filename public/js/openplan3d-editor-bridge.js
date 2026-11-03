@@ -215,6 +215,272 @@
     return null;
   }
 
+  var WALL_JOIN_TOLERANCE_CM = 5;
+  var HOSTED_WALL_MEASURE_MODE = 'edge';
+
+  function wallCenterlineLengthCm(wall) {
+    if (!wall) return 0;
+    if (!wall.curvePoint) {
+      return Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
+    }
+    var total = 0;
+    var prevX = wall.start.x;
+    var prevY = wall.start.y;
+    for (var step = 1; step <= 20; step++) {
+      var t = step / 20;
+      var u = 1 - t;
+      var x = u * u * wall.start.x + 2 * u * t * wall.curvePoint.x + t * t * wall.end.x;
+      var y = u * u * wall.start.y + 2 * u * t * wall.curvePoint.y + t * t * wall.end.y;
+      total += Math.hypot(x - prevX, y - prevY);
+      prevX = x;
+      prevY = y;
+    }
+    return total;
+  }
+
+  /** Same corner trim as vendor No() — half wall thickness at perpendicular joins. */
+  function wallEndpointTrimCm(wall, allWalls) {
+    var dx = wall.end.x - wall.start.x;
+    var dy = wall.end.y - wall.start.y;
+    var len = Math.hypot(dx, dy) || 1;
+    function trimAt(point) {
+      var trim = 0;
+      for (var i = 0; i < allWalls.length; i++) {
+        var other = allWalls[i];
+        if (!other || other.id === wall.id) continue;
+        var atStart = Math.abs(other.start.x - point.x) < WALL_JOIN_TOLERANCE_CM
+          && Math.abs(other.start.y - point.y) < WALL_JOIN_TOLERANCE_CM;
+        var atEnd = Math.abs(other.end.x - point.x) < WALL_JOIN_TOLERANCE_CM
+          && Math.abs(other.end.y - point.y) < WALL_JOIN_TOLERANCE_CM;
+        if (!atStart && !atEnd) continue;
+        var ox = other.end.x - other.start.x;
+        var oy = other.end.y - other.start.y;
+        var olen = Math.hypot(ox, oy) || 1;
+        if (Math.abs(dx / len * (oy / olen) - dy / len * (ox / olen)) < 0.1) continue;
+        trim = Math.max(trim, (Number(other.thickness) || 0) / 2);
+      }
+      return trim;
+    }
+    return { start: trimAt(wall.start), end: trimAt(wall.end) };
+  }
+
+  /**
+   * Length shown on plan dimension labels (edge/clear when wallMeasureMode is edge).
+   * Hosted mode keeps the Wall Properties field aligned with this value.
+   */
+  function wallPlanDimensionLengthCm(wall, allWalls, settings) {
+    var center = wallCenterlineLengthCm(wall);
+    if (!wall || wall.curvePoint) return center;
+    var mode = settings && settings.wallMeasureMode ? settings.wallMeasureMode : HOSTED_WALL_MEASURE_MODE;
+    if (mode === 'edge' && allWalls && allWalls.length) {
+      var trim = wallEndpointTrimCm(wall, allWalls);
+      return Math.max(0, center - trim.start - trim.end);
+    }
+    return center;
+  }
+
+  function centerlineLengthFromPlanDimensionCm(planLenCm, wall, allWalls, settings) {
+    if (!wall || wall.curvePoint || !Number.isFinite(planLenCm)) return planLenCm;
+    var mode = settings && settings.wallMeasureMode ? settings.wallMeasureMode : HOSTED_WALL_MEASURE_MODE;
+    if (mode === 'edge' && allWalls && allWalls.length) {
+      var trim = wallEndpointTrimCm(wall, allWalls);
+      return planLenCm + trim.start + trim.end;
+    }
+    return planLenCm;
+  }
+
+  function normalizeHostedLengthText(raw) {
+    return String(raw == null ? '' : raw).trim()
+      .replace(/[′’]/g, "'")
+      .replace(/[″“”]/g, '"')
+      .replace(/\s+/g, ' ');
+  }
+
+  /**
+   * Parse wall Length field text into centimeters of plan dimension (what dimension labels show).
+   */
+  function parseHostedLengthToCm(raw, units) {
+    var s = normalizeHostedLengthText(raw);
+    if (!s) return null;
+    var imperial = normalizeEditorUnits(units) === 'imperial';
+    var num = '[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:e[+-]?\\d+)?';
+
+    var feetIn = s.match(new RegExp('^(' + num + ')\\s*(?:\'|ft|feet|foot)(?:\\s*(' + num + ')\\s*(?:"|in|inches|inch)?)?$', 'i'));
+    if (feetIn) {
+      var ft = Math.abs(Number(feetIn[1]));
+      var inchesPart = feetIn[2] != null && feetIn[2] !== '' ? Number(feetIn[2]) : 0;
+      var totalIn = ft * 12 + inchesPart;
+      return totalIn * CM_PER_INCH;
+    }
+
+    var metric = s.match(new RegExp('^(' + num + ')\\s*(mm|cm|m|meter|meters|metre|metres)$', 'i'));
+    if (metric) {
+      var unit = metric[2].toLowerCase();
+      var mult = unit === 'm' || unit === 'meter' || unit === 'meters' || unit === 'metre' || unit === 'metres'
+        ? 100
+        : unit === 'mm' ? 0.1 : 1;
+      return Number(metric[1]) * mult;
+    }
+
+    var inchesOnly = s.match(new RegExp('^(' + num + ')\\s*(?:"|in|inches|inch)$', 'i'));
+    if (inchesOnly) {
+      return Number(inchesOnly[1]) * CM_PER_INCH;
+    }
+
+    if (/^[\d.,]+$/.test(s)) {
+      var n = Number(String(s).replace(',', '.'));
+      if (!Number.isFinite(n)) return null;
+      return imperial ? n * CM_PER_INCH : n;
+    }
+
+    return null;
+  }
+
+  function getActiveFloorWalls(project) {
+    if (!project || typeof project !== 'object') return [];
+    var floors = Array.isArray(project.floors) ? project.floors : [];
+    var floor = null;
+    for (var i = 0; i < floors.length; i++) {
+      if (floors[i] && floors[i].id === project.activeFloorId) {
+        floor = floors[i];
+        break;
+      }
+    }
+    if (!floor && floors.length) floor = floors[0];
+    return floor && Array.isArray(floor.walls) ? floor.walls : [];
+  }
+
+  function readStoreValue(store) {
+    if (!store || typeof store.subscribe !== 'function') return null;
+    var cur = null;
+    var unsub = store.subscribe(function (v) { cur = v; });
+    if (typeof unsub === 'function') unsub();
+    return cur;
+  }
+
+  function resolveProjectStore(storeModule) {
+    if (!storeModule || typeof storeModule !== 'object') return null;
+    if (storeModule.V && typeof storeModule.V.subscribe === 'function') {
+      return storeModule.V;
+    }
+    return null;
+  }
+
+  function installHostedWallMeasureSettings(settingsStore) {
+    if (!settingsStore || typeof settingsStore.update !== 'function') {
+      return { ok: false, reason: 'missing-settings-store' };
+    }
+    settingsStore.update(function (current) {
+      if (!current || typeof current !== 'object') return current;
+      if (current.wallMeasureMode === HOSTED_WALL_MEASURE_MODE) return current;
+      return Object.assign({}, current, { wallMeasureMode: HOSTED_WALL_MEASURE_MODE });
+    });
+    return { ok: true, mode: HOSTED_WALL_MEASURE_MODE };
+  }
+
+  function installHostedIndexedDbGuards(options) {
+    options = options || {};
+    var g = options.global || (typeof globalThis !== 'undefined' ? globalThis : root);
+    if (!g || typeof g.IDBObjectStore === 'undefined') {
+      return { ok: false, reason: 'missing-idb' };
+    }
+    var proto = g.IDBObjectStore.prototype;
+    if (!proto || proto.__zaniniOpenPlan3DIdbGuard) {
+      return { ok: true, already: true };
+    }
+    var schedule = options.schedule || function (fn) {
+      if (typeof setTimeout === 'function') setTimeout(fn, 0);
+      else fn();
+    };
+    function emptyResultRequest() {
+      var req = { result: undefined, readyState: 'done', error: null };
+      schedule(function () {
+        if (typeof req.onsuccess === 'function') {
+          try { req.onsuccess({ target: req }); } catch (e) {}
+        }
+      });
+      return req;
+    }
+    var origGet = proto.get;
+    var origPut = proto.put;
+    var origDelete = proto.delete;
+    proto.get = function (key) {
+      if (key === undefined || key === null) return emptyResultRequest();
+      return origGet.apply(this, arguments);
+    };
+    proto.put = function (value, key) {
+      if (key === undefined || key === null) return emptyResultRequest();
+      return origPut.apply(this, arguments);
+    };
+    proto.delete = function (key) {
+      if (key === undefined || key === null) return emptyResultRequest();
+      return origDelete.apply(this, arguments);
+    };
+    proto.__zaniniOpenPlan3DIdbGuard = true;
+    return { ok: true };
+  }
+
+  function installHostedVendorPatches(storeModule) {
+    if (!storeModule || typeof storeModule !== 'object') {
+      return { ok: false, reason: 'missing-module' };
+    }
+    if (storeModule.__zaniniHostedVendorPatched) {
+      return { ok: true, already: true };
+    }
+    var origVo = typeof storeModule.bM === 'function' ? storeModule.bM : null;
+    var origPa = typeof storeModule.bN === 'function' ? storeModule.bN : null;
+    var origBr = typeof storeModule.bP === 'function' ? storeModule.bP : null;
+    if (!origVo || !origPa || !origBr) {
+      return { ok: false, reason: 'missing-vendor-exports' };
+    }
+    var projectStore = resolveProjectStore(storeModule);
+    var settingsStore = resolveSettingsStore(storeModule);
+
+    function hostedContext() {
+      return {
+        project: readStoreValue(projectStore),
+        settings: readStoreValue(settingsStore) || { wallMeasureMode: HOSTED_WALL_MEASURE_MODE },
+        walls: getActiveFloorWalls(readStoreValue(projectStore))
+      };
+    }
+
+    storeModule.bN = function patchedParseLength(raw, units) {
+      var hosted = parseHostedLengthToCm(raw, units);
+      if (hosted != null) return hosted;
+      return origPa(raw, units);
+    };
+
+    storeModule.bM = function patchedWallLengthForUi(wall) {
+      if (!wall) return origVo(wall);
+      var ctx = hostedContext();
+      return wallPlanDimensionLengthCm(wall, ctx.walls, ctx.settings);
+    };
+
+    storeModule.bP = function patchedResizeWall(wallId, lengthCm, anchor) {
+      var ctx = hostedContext();
+      var wall = null;
+      for (var i = 0; i < ctx.walls.length; i++) {
+        if (ctx.walls[i] && ctx.walls[i].id === wallId) {
+          wall = ctx.walls[i];
+          break;
+        }
+      }
+      var centerline = centerlineLengthFromPlanDimensionCm(lengthCm, wall, ctx.walls, ctx.settings);
+      return origBr(wallId, centerline, anchor);
+    };
+
+    try {
+      Object.defineProperty(storeModule, '__zaniniHostedVendorPatched', {
+        value: true,
+        enumerable: false,
+        configurable: true
+      });
+    } catch (e) {
+      storeModule.__zaniniHostedVendorPatched = true;
+    }
+    return { ok: true };
+  }
+
   function installHostedSnapGrid(settingsStore) {
     if (!settingsStore || typeof settingsStore.subscribe !== 'function') {
       return { ok: false, reason: 'missing-settings-store' };
@@ -326,6 +592,8 @@
       };
       idb.__zaniniOpenPlan3DLocked = true;
     }
+
+    installHostedIndexedDbGuards({ global: g });
 
     return {
       idbName: IDB_NAME,
@@ -735,6 +1003,18 @@
     snapPlanCoordCm: snapPlanCoordCm,
     syncHostedGridSize: syncHostedGridSize,
     resolveSettingsStore: resolveSettingsStore,
+    resolveProjectStore: resolveProjectStore,
+    WALL_JOIN_TOLERANCE_CM: WALL_JOIN_TOLERANCE_CM,
+    HOSTED_WALL_MEASURE_MODE: HOSTED_WALL_MEASURE_MODE,
+    wallCenterlineLengthCm: wallCenterlineLengthCm,
+    wallEndpointTrimCm: wallEndpointTrimCm,
+    wallPlanDimensionLengthCm: wallPlanDimensionLengthCm,
+    centerlineLengthFromPlanDimensionCm: centerlineLengthFromPlanDimensionCm,
+    parseHostedLengthToCm: parseHostedLengthToCm,
+    getActiveFloorWalls: getActiveFloorWalls,
+    installHostedWallMeasureSettings: installHostedWallMeasureSettings,
+    installHostedIndexedDbGuards: installHostedIndexedDbGuards,
+    installHostedVendorPatches: installHostedVendorPatches,
     installHostedSnapGrid: installHostedSnapGrid,
     clearLocalStorageKeys: clearLocalStorageKeys,
     snapshotBlockedStorage: snapshotBlockedStorage,

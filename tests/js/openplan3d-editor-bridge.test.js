@@ -531,5 +531,56 @@ assert.strictEqual(snapInstall.ok, true);
 assert.strictEqual(mockSettingsStore.value.gridSize, 2.54, 'installHostedSnapGrid fixes imperial grid on subscribe');
 
 assert.match(indexHtml, /installHostedSnapGrid/, 'editor index must wire hosted imperial snap grid');
+assert.match(indexHtml, /installHostedVendorPatches/, 'editor index must patch vendor wall length before app boot');
+assert.match(indexHtml, /installHostedWallMeasureSettings/, 'editor index must align wall measure mode with plan dimensions');
+
+const INCH = bridge.CM_PER_INCH;
+const thicknessCm = 6 * INCH; // 6" wall → 3" face trim at a perpendicular corner
+const wallsCorner = [
+  { id: 'w1', start: { x: 0, y: 0 }, end: { x: 87 * INCH, y: 0 }, thickness: thicknessCm },
+  { id: 'w2', start: { x: 87 * INCH, y: 0 }, end: { x: 87 * INCH, y: 100 }, thickness: thicknessCm },
+];
+const edgeSettings = { wallMeasureMode: 'edge', units: 'imperial' };
+const centerline87in = 87 * INCH;
+const plan84in = 84 * INCH;
+const planDim = bridge.wallPlanDimensionLengthCm(wallsCorner[0], wallsCorner, edgeSettings);
+assert.ok(Math.abs(planDim - plan84in) < 0.05, '87 in centerline at corner shows 84 in plan dimension, got ' + planDim);
+const restoredCenter = bridge.centerlineLengthFromPlanDimensionCm(plan84in, wallsCorner[0], wallsCorner, edgeSettings);
+assert.ok(Math.abs(restoredCenter - centerline87in) < 0.05, 'typing 84 in plan length restores 87 in centerline');
+
+assert.strictEqual(bridge.parseHostedLengthToCm("7'", 'imperial'), 84 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('7\'0"', 'imperial'), 84 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('5\'6"', 'imperial'), 66 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('84', 'imperial'), 84 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('2.5 m', 'metric'), 250);
+assert.strictEqual(bridge.parseHostedLengthToCm('4\'0"', 'imperial'), 48 * INCH, '4\'0\" must not parse as 40 inches');
+
+const mockVendor = {
+  bM: function (wall) { return bridge.wallCenterlineLengthCm(wall); },
+  bN: function (raw, units) { return bridge.parseHostedLengthToCm(raw, units); },
+  bP: function (id, lenCm, anchor) {
+    mockVendor._lastResize = { id: id, lenCm: lenCm, anchor: anchor };
+    return null;
+  },
+  V: {
+    subscribe: function (cb) {
+      cb({
+        activeFloorId: 'f1',
+        floors: [{ id: 'f1', walls: wallsCorner.map(function (w) { return Object.assign({}, w); }) }]
+      });
+      return function () {};
+    }
+  },
+  W: {
+    subscribe: function (cb) {
+      cb(edgeSettings);
+      return function () {};
+    }
+  }
+};
+const patch = bridge.installHostedVendorPatches(mockVendor);
+assert.strictEqual(patch.ok, true);
+mockVendor.bP('w1', plan84in, 'start');
+assert.ok(Math.abs(mockVendor._lastResize.lenCm - centerline87in) < 0.05, 'patched resize uses centerline length');
 
 console.log('All openPlan3D editor-bridge unit tests PASSED!');

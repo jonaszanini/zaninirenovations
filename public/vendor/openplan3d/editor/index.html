@@ -5,7 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" type="image/svg+xml" href="/vendor/openplan3d/favicon.svg" />
 		<title>open3dFloorplan</title>
-		<script src="/js/openplan3d-editor-bridge.js?v=e078a975c82d37d7"></script>
+		<script src="/js/openplan3d-editor-bridge.js?v=48dc88db3fc4ab15"></script>
 		<script>
 			if (window.OpenPlan3DEditorBridge && typeof window.OpenPlan3DEditorBridge.syncHostedThemeFromParent === 'function') {
 				window.OpenPlan3DEditorBridge.syncHostedThemeFromParent();
@@ -298,94 +298,98 @@
 					import("/vendor/openplan3d/_app/env.js").then(({ env }) => {
 						__sveltekit_1tyrndq.env = env;
 
-						Promise.all([
-							import("/vendor/openplan3d/_app/immutable/entry/start.ChH6DPSY.js"),
-							import("/vendor/openplan3d/_app/immutable/entry/app.Badnr33M.js")
-						]).then(([kit, app]) => {
-							return Promise.resolve(kit.start(app, element));
-						}).then(() => {
+						return import("/vendor/openplan3d/_app/immutable/chunks/1VjVcrjm.js").then((storeModule) => {
+							const session = window.__openPlan3DSession;
+							const bridge = window.OpenPlan3DEditorBridge;
+							if (!session || !bridge) {
+								throw new Error('openPlan3D editor bridge is missing');
+							}
+
+							if (typeof bridge.installHostedVendorPatches === 'function') {
+								const patchResult = bridge.installHostedVendorPatches(storeModule);
+								if (!patchResult || !patchResult.ok) {
+									console.warn('[openPlan3D Bridge] Vendor patch skipped:', patchResult && patchResult.reason);
+								}
+							}
+
+							const inspected = session.attachStore(storeModule);
+							if (!inspected || !inspected.ok) {
+								return null;
+							}
+
+							var settingsStore = typeof bridge.resolveSettingsStore === 'function'
+								? bridge.resolveSettingsStore(storeModule)
+								: storeModule.W;
+							if (settingsStore) {
+								if (typeof bridge.installHostedWallMeasureSettings === 'function') {
+									bridge.installHostedWallMeasureSettings(settingsStore);
+								}
+								if (typeof bridge.installHostedSnapGrid === 'function') {
+									bridge.installHostedSnapGrid(settingsStore);
+								}
+							}
+
+							let initial = true;
+							let updateTimeout = null;
+							window.__openPlan3D.subscribe((project) => {
+								if (initial) {
+									initial = false;
+									return;
+								}
+								session.onStoreChange(project, (cur) => {
+									if (updateTimeout) clearTimeout(updateTimeout);
+									updateTimeout = setTimeout(() => {
+										updateTimeout = null;
+										if (session && typeof session.postToParent === 'function') {
+											try {
+												const live = (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function')
+													? window.__openPlan3D.getProject()
+													: cur;
+												const cleanPlan = session.serializePlan(live);
+												if (cleanPlan) {
+													session.postToParent({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: cleanPlan });
+												}
+											} catch (postErr) {
+												console.warn('[openPlan3D Bridge] Error posting plan change:', postErr);
+											}
+										}
+									}, 30);
+								});
+							});
+
+							return Promise.all([
+								import("/vendor/openplan3d/_app/immutable/entry/start.ChH6DPSY.js"),
+								import("/vendor/openplan3d/_app/immutable/entry/app.Badnr33M.js")
+							]).then(([kit, app) => kit.start(app, element));
+						});
+					}).then(() => {
 							if (window.__openPlan3DSession) {
 								window.__openPlan3DSession.onEditorMounted();
 							}
 						}).catch((err) => {
 							console.error('[openPlan3D Bridge] Editor failed to mount:', err);
+							const msg = String(err && err.message ? err.message : err);
 							if (window.OpenPlan3DEditorBridge) {
-								window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor failed to mount. Room geometry cannot be loaded. Refresh the page.');
+								if (/missing H\/c|missing-store-exports|store exports/i.test(msg)) {
+									window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor API is unavailable (missing H/c store exports). Room geometry cannot be loaded. Refresh the page.');
+								} else {
+									window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor failed to mount. Room geometry cannot be loaded. Refresh the page.');
+								}
 							}
 							if (window.__openPlan3DSession && typeof window.__openPlan3DSession.postToParent === 'function') {
 								window.__openPlan3DSession.postToParent({ type: 'OPENPLAN3D_BRIDGE_ERROR', message: 'editor-mount-failed' });
 							}
 						});
+
+					window.addEventListener('keydown', (e) => {
+						if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+							e.preventDefault();
+							if (window.__openPlan3DSession && typeof window.__openPlan3DSession.postToParent === 'function') {
+								window.__openPlan3DSession.postToParent({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
+							}
+						}
 					});
 				}
-			</script>
-			<script type="module">
-				import("/vendor/openplan3d/_app/immutable/chunks/1VjVcrjm.js").then((storeModule) => {
-					const session = window.__openPlan3DSession;
-					const bridge = window.OpenPlan3DEditorBridge;
-					if (!session || !bridge) {
-						throw new Error('openPlan3D editor bridge is missing');
-					}
-
-					const inspected = session.attachStore(storeModule);
-					if (!inspected || !inspected.ok) {
-						return;
-					}
-
-					if (typeof bridge.installHostedSnapGrid === 'function') {
-						var settingsStore = typeof bridge.resolveSettingsStore === 'function'
-							? bridge.resolveSettingsStore(storeModule)
-							: storeModule.W;
-						if (settingsStore) {
-							bridge.installHostedSnapGrid(settingsStore);
-						}
-					}
-
-					let initial = true;
-					let updateTimeout = null;
-					window.__openPlan3D.subscribe((project) => {
-						if (initial) {
-							initial = false;
-							return;
-						}
-						session.onStoreChange(project, (cur) => {
-							if (updateTimeout) clearTimeout(updateTimeout);
-							updateTimeout = setTimeout(() => {
-								updateTimeout = null;
-								if (session && typeof session.postToParent === 'function') {
-									try {
-										const live = (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function')
-											? window.__openPlan3D.getProject()
-											: cur;
-										const cleanPlan = session.serializePlan(live);
-										if (cleanPlan) {
-											session.postToParent({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: cleanPlan });
-										}
-									} catch (postErr) {
-										console.warn('[openPlan3D Bridge] Error posting plan change:', postErr);
-									}
-								}
-							}, 30);
-						});
-					});
-				}).catch(err => {
-					console.error('[openPlan3D Bridge] Error loading store module:', err);
-					if (window.OpenPlan3DEditorBridge) {
-						window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor API is unavailable (missing H/c store exports). Room geometry cannot be loaded. Refresh the page.');
-					}
-					if (window.__openPlan3DSession && typeof window.__openPlan3DSession.postToParent === 'function') {
-						window.__openPlan3DSession.postToParent({ type: 'OPENPLAN3D_BRIDGE_ERROR', message: 'missing-store-exports' });
-					}
-				});
-
-				window.addEventListener('keydown', (e) => {
-					if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
-						e.preventDefault();
-						if (window.__openPlan3DSession && typeof window.__openPlan3DSession.postToParent === 'function') {
-							window.__openPlan3DSession.postToParent({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
-						}
-					}
-				});
 			</script>
 		</div>
 	</body>
