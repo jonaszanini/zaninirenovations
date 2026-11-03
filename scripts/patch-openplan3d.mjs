@@ -189,11 +189,27 @@ function patchEditorCanvasChunk(source) {
     process.exit(1);
   }
 
-  const krOld =
-    'for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:w.x+K*Math.cos(Zt),y:w.y+K*Math.sin(Zt)};return st}function tn()';
-  const krNew =
-    'for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:w.x+K*Math.cos(Zt),y:w.y+K*Math.sin(Zt)};return t(nn)?{x:cr(st.x),y:cr(st.y)}:st}function tn()';
-  s = replaceExpected(s, krOld, krNew, 'editor chunk: Kr imperial grid-fallback inch snap', 1);
+  const krVendor =
+    'function Kr(w,st){if(!t(ln))return st;const Y=st.x-w.x,mt=st.y-w.y,K=Math.hypot(Y,mt);if(K<5)return st;const ot=Math.atan2(mt,Y),xt=[0,Math.PI/4,Math.PI/2,3*Math.PI/4,Math.PI,-Math.PI,-3*Math.PI/4,-Math.PI/2,-Math.PI/4],Ut=Math.PI/18;for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:w.x+K*Math.cos(Zt),y:w.y+K*Math.sin(Zt)};return st}function tn()';
+  const krPatched =
+    'function Kr(w,st){if(!t(ln))return st;if(st.snappedToEndpoint||st.snappedToWall)return st;const Y=st.x-w.x,mt=st.y-w.y,K=Math.hypot(Y,mt);if(K<5)return st;const ot=Math.atan2(mt,Y),xt=[0,Math.PI/4,Math.PI/2,3*Math.PI/4,Math.PI,-Math.PI,-3*Math.PI/4,-Math.PI/2,-Math.PI/4],Ut=Math.PI/18;for(const Zt of xt)if(Math.abs(ot-Zt)<Ut){let H=K;t(nn)&&(H=cr(K));return{x:w.x+H*Math.cos(Zt),y:w.y+H*Math.sin(Zt)}}return t(nn)?{x:cr(st.x),y:cr(st.y)}:st}function tn()';
+  if (s.includes(krVendor)) {
+    s = replaceExpected(s, krVendor, krPatched, 'editor chunk: Kr imperial ortho + grid snap', 1);
+  } else if (!s.includes('st.snappedToEndpoint||st.snappedToWall') || !s.includes('let H=K;t(nn)&&(H=cr(K))')) {
+    console.error('patch-openplan3d: editor chunk: Kr() pattern not found');
+    process.exit(1);
+  }
+
+  const joOrthoOld =
+    'st={x:t(O).x+K*Math.cos(Ut),y:t(O).y+K*Math.sin(Ut)}}}else st=Kr(t(O),st);return st}function bi()';
+  const joOrthoNew =
+    'let H=K;t(ln)&&t(nn)&&(H=cr(K));st={x:t(O).x+H*Math.cos(Ut),y:t(O).y+H*Math.sin(Ut)}}}else st=Kr(t(O),st);return st}function bi()';
+  if (s.includes(joOrthoOld)) {
+    s = replaceExpected(s, joOrthoOld, joOrthoNew, 'editor chunk: jo draw ortho inch length', 1);
+  } else if (!s.includes('let H=K;t(ln)&&t(nn)&&(H=cr(K));st={x:t(O).x+H*Math.cos(Ut)')) {
+    console.error('patch-openplan3d: editor chunk: jo() ortho pattern not found');
+    process.exit(1);
+  }
 
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(

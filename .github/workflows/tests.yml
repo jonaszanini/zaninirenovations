@@ -250,6 +250,7 @@ jobs:
           node tests/js/client-projects-table-screenshots.test.js
           node tests/js/openplan3d-editor-browser.test.js
           node tests/js/openplan3d-editor-index-mount.test.js
+          node tests/js/openplan3d-kr-ortho-drag.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js
           node tests/js/quotation-redraft-confirm-browser.test.js

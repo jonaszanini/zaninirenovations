@@ -185,8 +185,13 @@ async function run() {
     );
     assert.match(
       editorJs,
-      /return t\(nn\)\?\{x:cr\(st\.x\),y:cr\(st\.y\)\}:st\}function tn\(\)/,
-      'editor canvas chunk must inch-round Kr grid fallback when imperial'
+      /if\(st\.snappedToEndpoint\|\|st\.snappedToWall\)return st;/,
+      'editor canvas Kr must passthrough Br snaps'
+    );
+    assert.match(
+      editorJs,
+      /let H=K;t\(nn\)&&\(H=cr\(K\)\);return\{x:w\.x\+H\*Math\.cos\(Zt\)/,
+      'editor canvas Kr must inch-round ortho length K when imperial'
     );
 
     const lengthCommit = await page.evaluate(

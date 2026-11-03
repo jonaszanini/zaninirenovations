@@ -1,65 +1,99 @@
 'use strict';
 
 /**
- * Kr grid-fallback inch snap: patched h1 editor chunk must round free drag to whole inches
- * when snap is on (grid fallback only — not endpoint/segment snaps).
- * Proves mount inch-grid assertions fail without the Kr patch line.
+ * Kr / jo inch snap: behavioral tests on extracted canvas Kr() plus negative vendor control.
  */
 
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { extractKrSource, makeKrRunner, onWholeInch, orthoLengthCm, INCH } = require('./openplan3d-kr-snap-logic');
 
 const ROOT = path.resolve(__dirname, '../..');
 const patched = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/openplan3d-h1.json'), 'utf8'));
-const EDITOR_CHUNK = patched.editorChunk;
-const INCH = 2.54;
-
-const editorPath = path.join(
-  ROOT,
-  'public/vendor',
-  patched.vendorSlug,
-  '_app/immutable/chunks',
-  EDITOR_CHUNK
+const vendorEditor = fs.readFileSync(
+  path.join(ROOT, 'public/vendor/openplan3d/_app/immutable/chunks', patched.editorChunk),
+  'utf8'
 );
-const editorJs = fs.readFileSync(editorPath, 'utf8');
-
-const PATCHED_KR =
-  /for\(const Zt of xt\)if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:w\.x\+K\*Math\.cos\(Zt\),y:w\.y\+K\*Math\.sin\(Zt\)\};return t\(nn\)\?\{x:cr\(st\.x\),y:cr\(st\.y\)\}:st\}function tn\(\)/;
-const VENDOR_KR =
-  /for\(const Zt of xt\)if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:w\.x\+K\*Math\.cos\(Zt\),y:w\.y\+K\*Math\.sin\(Zt\)\};return st\}function tn\(\)/;
-
-assert.match(editorJs, PATCHED_KR, 'h1 editor chunk must contain Kr imperial grid-fallback inch patch');
-assert.doesNotMatch(
-  editorJs,
-  /if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:cr\(w\.x/,
-  'Kr ortho angle snaps must not use cr()'
+const h1Editor = fs.readFileSync(
+  path.join(ROOT, 'public/vendor', patched.vendorSlug, '_app/immutable/chunks', patched.editorChunk),
+  'utf8'
 );
 
-const reverted = editorJs.replace(
-  'return t(nn)?{x:cr(st.x),y:cr(st.y)}:st}function tn()',
-  'return st}function tn()'
+const PATCH_MARKERS = [
+  'st.snappedToEndpoint||st.snappedToWall',
+  'let H=K;t(nn)&&(H=cr(K))',
+  'return t(nn)?{x:cr(st.x),y:cr(st.y)}:st',
+];
+for (const m of PATCH_MARKERS) {
+  assert.match(h1Editor, new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'h1 must contain Kr patch: ' + m);
+}
+assert.match(
+  h1Editor,
+  /let H=K;t\(ln\)&&t\(nn\)&&\(H=cr\(K\)\);st=\{x:t\(O\)\.x\+H\*Math\.cos\(Ut\)/,
+  'h1 jo draw ortho must round K in imperial with snap on'
 );
-assert.match(reverted, VENDOR_KR, 'reverted chunk should match vendor Kr return st');
-assert.doesNotMatch(reverted, PATCHED_KR, 'reverted chunk must drop Kr inch rounding');
 
-function inchCr(v) {
-  return Math.round(v / INCH) * INCH;
+const patchedKr = extractKrSource(h1Editor);
+const vendorKrOnly = extractKrSource(vendorEditor);
+const patchedRun = makeKrRunner(patchedKr);
+const vendorRun = makeKrRunner(vendorKrOnly);
+
+const anchor = { x: 0, y: 0 };
+const offGridLen = 125.1958 * INCH;
+const orthoCases = [
+  { name: '0°', st: { x: offGridLen, y: 0.8 } },
+  {
+    name: '45°',
+    st: {
+      x: anchor.x + offGridLen * Math.cos(Math.PI / 4),
+      y: anchor.y + offGridLen * Math.sin(Math.PI / 4),
+    },
+  },
+  { name: '90°', st: { x: -0.6, y: offGridLen } },
+];
+
+for (const c of orthoCases) {
+  patchedRun.setSnap(true);
+  patchedRun.setImperial(true);
+  const out = patchedRun.Kr(anchor, c.st);
+  const len = orthoLengthCm(anchor, out);
+  assert.ok(onWholeInch(len), `patched Kr ortho ${c.name} length must be whole inches, got ${len / INCH} in`);
+
+  vendorRun.setSnap(true);
+  vendorRun.setImperial(true);
+  const vOut = vendorRun.Kr(anchor, c.st);
+  const vLen = orthoLengthCm(anchor, vOut);
+  assert.ok(
+    !onWholeInch(vLen),
+    `negative control: vendor Kr ortho ${c.name} must stay off inch grid (got ${vLen / INCH} in)`
+  );
 }
 
-function krGridFallback(st, usePatch) {
-  if (usePatch) {
-    return { x: inchCr(st.x), y: inchCr(st.y) };
-  }
-  return { x: st.x, y: st.y };
-}
+const join = { x: 60.33, y: 40.12 };
+patchedRun.setSnap(true);
+patchedRun.setImperial(true);
+const epSnap = patchedRun.Kr(anchor, { x: join.x, y: join.y, snappedToEndpoint: true });
+assert.strictEqual(epSnap.x, join.x, 'Kr must not move Br endpoint snap X');
+assert.strictEqual(epSnap.y, join.y, 'Kr must not move Br endpoint snap Y');
+const wallSnap = patchedRun.Kr(anchor, { x: join.x, y: join.y, snappedToWall: true, snappedWallId: 'w1' });
+assert.strictEqual(wallSnap.x, join.x, 'Kr must not move Br wall segment snap X');
 
-const offGrid = { x: 100.3, y: 200.7 };
-const patchedOut = krGridFallback(offGrid, true);
-const vendorOut = krGridFallback(offGrid, false);
+patchedRun.setSnap(true);
+patchedRun.setImperial(false);
+const metricOut = patchedRun.Kr(anchor, { x: offGridLen, y: 0.5 });
+assert.ok(Math.abs(metricOut.x - offGridLen) < 0.05, 'metric Kr must not round ortho length');
 
-assert.ok(Math.abs(patchedOut.x / INCH - Math.round(patchedOut.x / INCH)) < 0.02);
-assert.ok(Math.abs(patchedOut.y / INCH - Math.round(patchedOut.y / INCH)) < 0.02);
-assert.ok(Math.abs(vendorOut.x - offGrid.x) < 0.001 && Math.abs(vendorOut.y - offGrid.y) < 0.001);
+patchedRun.setSnap(false);
+patchedRun.setImperial(true);
+const snapOff = patchedRun.Kr(anchor, { x: 100.3, y: 200.7 });
+assert.strictEqual(snapOff.x, 100.3);
+assert.strictEqual(snapOff.y, 200.7);
 
-console.log('openplan3d-kr-inch-snap: ok (editor=' + EDITOR_CHUNK + ')');
+patchedRun.setSnap(true);
+patchedRun.setImperial(true);
+const oblique = { x: 100.3, y: 200.7 };
+const fb = patchedRun.Kr(anchor, oblique);
+assert.ok(onWholeInch(fb.x) && onWholeInch(fb.y), 'grid fallback must inch-round free point');
+
+console.log('openplan3d-kr-inch-snap: ok (editor=' + patched.editorChunk + ')');

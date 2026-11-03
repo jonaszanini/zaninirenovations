@@ -557,13 +557,23 @@ const editorJs = fs.readFileSync(
 assert.match(editorJs, /Y\.snappedToEndpoint\|\|Y\.snappedToWall\?Y:/, 'canvas Br must not grid-round exact endpoint/wall snaps');
 assert.match(
   editorJs,
+  /if\(st\.snappedToEndpoint\|\|st\.snappedToWall\)return st;/,
+  'canvas Kr must passthrough Br endpoint/wall snaps'
+);
+assert.match(
+  editorJs,
+  /let H=K;t\(nn\)&&\(H=cr\(K\)\);return\{x:w\.x\+H\*Math\.cos\(Zt\),y:w\.y\+H\*Math\.sin\(Zt\)\}/,
+  'canvas Kr must inch-round ortho length K when imperial'
+);
+assert.match(
+  editorJs,
   /return t\(nn\)\?\{x:cr\(st\.x\),y:cr\(st\.y\)\}:st\}function tn\(\)/,
   'canvas Kr must inch-round grid fallback only when imperial (metric keeps st)'
 );
 assert.doesNotMatch(
   editorJs,
   /if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:cr\(w\.x/,
-  'canvas Kr must not cr() ortho angle snaps (metric parity)'
+  'canvas Kr must not cr() ortho endpoint coords (uses H=cr(K) instead)'
 );
 
 const INCH = bridge.CM_PER_INCH;
