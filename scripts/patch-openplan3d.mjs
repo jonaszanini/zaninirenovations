@@ -29,6 +29,38 @@ const bridge = require(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'))
 const VENDOR_PREFIX = '/vendor/openplan3d';
 const OUT_PREFIX = `/vendor/${OUT_SLUG}`;
 
+function countMatches(haystack, needle) {
+  if (!needle) return 0;
+  let count = 0;
+  let idx = 0;
+  while ((idx = haystack.indexOf(needle, idx)) !== -1) {
+    count += 1;
+    idx += needle.length;
+  }
+  return count;
+}
+
+/** @returns {string} */
+function replaceExpected(source, oldStr, newStr, label, expectedCount = 1) {
+  const count = countMatches(source, oldStr);
+  if (count !== expectedCount) {
+    console.error(`patch-openplan3d: ${label}: expected ${expectedCount} match(es), found ${count}`);
+    process.exit(1);
+  }
+  if (expectedCount === 0) return source;
+  return source.replace(oldStr, newStr);
+}
+
+function replaceAllExpected(source, oldStr, newStr, label, expectedCount) {
+  const count = countMatches(source, oldStr);
+  if (count !== expectedCount) {
+    console.error(`patch-openplan3d: ${label}: expected ${expectedCount} match(es), found ${count}`);
+    process.exit(1);
+  }
+  if (expectedCount === 0) return source;
+  return source.split(oldStr).join(newStr);
+}
+
 function listAllFiles(dir) {
   const out = [];
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -72,16 +104,29 @@ function discoverEditorChunkBasename() {
 
 function patchStoreChunk(source) {
   let s = source;
-  s = s.replace(/wallMeasureMode:"centerline"/g, 'wallMeasureMode:"edge"');
+  const centerlineCount = countMatches(s, 'wallMeasureMode:"centerline"');
+  if (centerlineCount > 0) {
+    s = replaceAllExpected(
+      s,
+      'wallMeasureMode:"centerline"',
+      'wallMeasureMode:"edge"',
+      'store chunk: default wallMeasureMode centerline→edge',
+      centerlineCount
+    );
+  } else if (!s.includes('wallMeasureMode:"edge"')) {
+    console.error('patch-openplan3d: store chunk: expected centerline default or existing edge default');
+    process.exit(1);
+  }
 
   const voOld =
     'function vo(e){if(!e.curvePoint)return Math.hypot(e.end.x-e.start.x,e.end.y-e.start.y);let t=0,n=e.start;for(let o=1;o<=20;o++){const i=o/20,a=1-i,s={x:a*a*e.start.x+2*a*i*e.curvePoint.x+i*i*e.end.x,y:a*a*e.start.y+2*a*i*e.curvePoint.y+i*i*e.end.y};t+=Math.hypot(s.x-n.x,s.y-n.y),n=s}return t}';
   const voNew =
     'function vo(e){let t;if(!e.curvePoint)t=Math.hypot(e.end.x-e.start.x,e.end.y-e.start.y);else{t=0;let n=e.start;for(let o=1;o<=20;o++){const i=o/20,a=1-i,s={x:a*a*e.start.x+2*a*i*e.curvePoint.x+i*i*e.end.x,y:a*a*e.start.y+2*a*i*e.curvePoint.y+i*i*e.end.y};t+=Math.hypot(s.x-n.x,s.y-n.y),n=s}}const i=L(ma),a=L(ee),r=a?.walls;if(i?.wallMeasureMode==="edge"&&r&&!e.curvePoint){const l=No(e,r);return Math.max(0,t-l.start-l.end)}return t}';
   if (s.includes(voOld)) {
-    s = s.replace(voOld, voNew);
+    s = replaceExpected(s, voOld, voNew, 'store chunk: vo() edge length', 1);
   } else if (!s.includes('i?.wallMeasureMode==="edge"&&r&&!e.curvePoint')) {
-    throw new Error('store chunk: vo() pattern not found');
+    console.error('patch-openplan3d: store chunk: vo() pattern not found');
+    process.exit(1);
   }
 
   const ysVoNeedle =
@@ -89,9 +134,10 @@ function patchStoreChunk(source) {
   const ysCenterNeedle =
     'const i=e.find(u=>u.id===t);if(!i)throw new Error("Select a wall to resize.");let a;if(!i.curvePoint)a=Math.hypot(i.end.x-i.start.x,i.end.y-i.start.y);else{a=0;let n=i.start;for(let o=1;o<=20;o++){const i2=o/20,s2=1-i2,r2={x:s2*s2*i.start.x+2*s2*i2*i.curvePoint.x+i2*i2*i.end.x,y:s2*s2*i.start.y+2*s2*i2*i.curvePoint.y+i2*i2*i.end.y};a+=Math.hypot(r2.x-n.x,r2.y-n.y),n=r2}}';
   if (s.includes(ysVoNeedle)) {
-    s = s.replace(ysVoNeedle, ysCenterNeedle);
+    s = replaceExpected(s, ysVoNeedle, ysCenterNeedle, 'store chunk: ys() centerline length', 1);
   } else if (!s.includes(ysCenterNeedle)) {
-    throw new Error('store chunk: ys() centerline length pattern not found');
+    console.error('patch-openplan3d: store chunk: ys() centerline length pattern not found');
+    process.exit(1);
   }
 
   const brOld =
@@ -99,9 +145,10 @@ function patchStoreChunk(source) {
   const brNew =
     'function Br(e,t,n="start"){const o=L(ee);if(!o)return"Select a floor first.";let i,p=t;const h=L(ma),u=o.walls.find(w=>w.id===e);if(h?.wallMeasureMode==="edge"&&u&&!u.curvePoint){const W=No(u,o.walls);p=t+W.start+W.end}try{i=ys(o.walls,e,p,n)}';
   if (s.includes(brOld)) {
-    s = s.replace(brOld, brNew);
+    s = replaceExpected(s, brOld, brNew, 'store chunk: Br() typed length', 1);
   } else if (!s.includes('p=t+W.start+W.end}try{i=ys(o.walls,e,p,n)')) {
-    throw new Error('store chunk: Br() resize pattern not found');
+    console.error('patch-openplan3d: store chunk: Br() resize pattern not found');
+    process.exit(1);
   }
 
   const paInject = bridge.buildVendorLengthParseSource();
@@ -109,14 +156,20 @@ function patchStoreChunk(source) {
   if (!s.includes(hostedPaNeedle)) {
     const vendorPaStart = s.indexOf('function pa(');
     const ktAnchor = s.indexOf('const Kt=', vendorPaStart >= 0 ? vendorPaStart : 0);
-    if (vendorPaStart < 0 || ktAnchor < 0) throw new Error('store chunk: vendor pa()/Kt anchor not found');
+    if (vendorPaStart < 0 || ktAnchor < 0) {
+      console.error('patch-openplan3d: store chunk: vendor pa()/Kt anchor not found');
+      process.exit(1);
+    }
     s = s.slice(0, vendorPaStart) + paInject + '\n' + s.slice(ktAnchor);
   }
 
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
-    s = s.replace(
+    s = replaceExpected(
+      s,
       'import{b as In}from"./A3oClE6y.js";',
-      'import{b as In}from"./A3oClE6y.js";/*__ZANINI_OPENPLAN3D_PATCH__*/'
+      'import{b as In}from"./A3oClE6y.js";/*__ZANINI_OPENPLAN3D_PATCH__*/',
+      'store chunk: patch marker',
+      1
     );
   }
   return s;
@@ -130,23 +183,25 @@ function patchEditorCanvasChunk(source) {
   const brReturnNew =
     'snappedToWall:!0,snappedWallId:xt.id})}}return Y.snappedToEndpoint||Y.snappedToWall?Y:{x:cr(Y.x),y:cr(Y.y),snappedToEndpoint:Y.snappedToEndpoint,snappedToWall:Y.snappedToWall,snappedWallId:Y.snappedWallId}}function Kr(w,st)';
   if (s.includes(brReturnOld)) {
-    s = s.replace(brReturnOld, brReturnNew);
+    s = replaceExpected(s, brReturnOld, brReturnNew, 'editor chunk: Br snap return', 1);
   } else if (!s.includes('Y.snappedToEndpoint||Y.snappedToWall?Y:{x:cr(Y.x)')) {
-    throw new Error('editor chunk: Br snap return pattern not found');
+    console.error('patch-openplan3d: editor chunk: Br snap return pattern not found');
+    process.exit(1);
   }
 
-  const krPatched =
-    'for(const Zt of xt)if(Math.abs(ot-Zt)<Ut){const sx=w.x+K*Math.cos(Zt),sy=w.y+K*Math.sin(Zt);return{x:cr(sx),y:cr(sy)}}return{x:cr(st.x),y:cr(st.y)}}function tn()';
-  const krMain =
+  const krOld =
     'for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:w.x+K*Math.cos(Zt),y:w.y+K*Math.sin(Zt)};return st}function tn()';
-  if (s.includes(krPatched)) {
-    s = s.replace(krPatched, krMain);
-  }
+  const krNew =
+    'for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:cr(w.x+K*Math.cos(Zt)),y:cr(w.y+K*Math.sin(Zt))};return{x:cr(st.x),y:cr(st.y)}}function tn()';
+  s = replaceExpected(s, krOld, krNew, 'editor chunk: Kr grid-fallback inch snap', 1);
 
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
-    s = s.replace(
+    s = replaceExpected(
+      s,
       'const __vite__mapDeps=',
-      '/*__ZANINI_OPENPLAN3D_PATCH__*/const __vite__mapDeps='
+      '/*__ZANINI_OPENPLAN3D_PATCH__*/const __vite__mapDeps=',
+      'editor chunk: patch marker',
+      1
     );
   }
   return s;

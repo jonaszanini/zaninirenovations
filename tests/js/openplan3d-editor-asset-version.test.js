@@ -37,6 +37,11 @@ function assertVersionedBridgeSrc(html, label) {
 const htaccess = fs.readFileSync(HTACCESS, 'utf8');
 assert.doesNotMatch(htaccess, /LocationMatch/i, '.htaccess must not use LocationMatch (500 in .htaccess on Apache 2.4)');
 assert.match(htaccess, /SetEnvIf Request_URI "\^\(\?:\/public\)\?\/vendor\/openplan3d\/_app\/immutable\//, '.htaccess must mark immutable chunks with optional /public/ prefix');
+assert.match(
+  htaccess,
+  /SetEnvIf Request_URI "\^\(\?:\/public\)\?\/vendor\/openplan3d-h1\/_app\/immutable\//,
+  '.htaccess must mark openplan3d-h1 immutable chunks with optional /public/ prefix'
+);
 assert.match(htaccess, /\(\?:v\|ver\)=/, '.htaccess must detect ?v= / ?ver= via RewriteCond');
 assert.match(htaccess, /RewriteRule \^ - \[E=asset_versioned:1\]/, '.htaccess must set asset_versioned env from rewrite');
 assert.match(htaccess, /REDIRECT_asset_versioned/, '.htaccess must preserve asset_versioned across internal redirects');

@@ -6,6 +6,7 @@
  */
 
 const assert = require('assert');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -18,6 +19,7 @@ const patched = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/openplan3d-h
 const STORE_CHUNK = patched.storeChunk;
 const EDITOR_CHUNK = patched.editorChunk;
 const INCH = 2.54;
+const INCH_DRAG_HELPER = path.join(__dirname, 'openplan3d-inch-drag-helper.js');
 
 const types = {
   '.js': 'text/javascript',
@@ -80,24 +82,30 @@ function startServer() {
   });
 }
 
-async function mouseDragEndpoint(page) {
-  const canvas = await page.$('canvas');
-  const box = await canvas.boundingBox();
-  assert.ok(box && box.width > 50, 'canvas must have geometry');
-  const cx = box.x + box.width * 0.55;
-  const cy = box.y + box.height * 0.42;
-  await page.mouse.move(cx, cy);
-  await page.mouse.down();
-  await page.mouse.move(cx + 37, cy - 29, { steps: 10 });
-  await page.mouse.up();
-  await new Promise((r) => setTimeout(r, 500));
+function runInchDragHelper(mode) {
+  const out = execFileSync(process.execPath, [INCH_DRAG_HELPER, mode], {
+    encoding: 'utf8',
+    timeout: 180000,
+  }).trim();
+  const line = out.split('\n').filter(Boolean).pop();
+  return JSON.parse(line);
 }
 
 async function run() {
   const puppeteer = require('puppeteer');
+
+  const dragReports = [];
+  for (const mode of ['edge', 'centerline']) {
+    const result = runInchDragHelper(mode);
+    assert.strictEqual(result.ok, true, `inch drag (${mode}): ${result.error || 'unknown failure'}`);
+    dragReports.push(result);
+  }
+  console.log('openplan3d-editor-index-mount: inch-drag', JSON.stringify(dragReports));
+
   const { server, port } = await startServer();
+
   const browser = await puppeteer.launch({
-    headless: true,
+    headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
@@ -106,6 +114,7 @@ async function run() {
 
   try {
     const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900 });
     page.on('pageerror', (e) => pageErrors.push(e.message));
     page.on('console', (msg) => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -174,6 +183,11 @@ async function run() {
       /Y\.snappedToEndpoint\|\|Y\.snappedToWall\?Y:/,
       'editor canvas chunk must preserve exact corner/segment snaps (Br patch)'
     );
+    assert.match(
+      editorJs,
+      /return\{x:cr\(w\.x\+K\*Math\.cos\(Zt\)\),y:cr\(w\.y\+K\*Math\.sin\(Zt\)\)\};return\{x:cr\(st\.x\),y:cr\(st\.y\)\}\}function tn\(\)/,
+      'editor canvas chunk must inch-round Kr snap paths when snap is on'
+    );
 
     const lengthCommit = await page.evaluate(
       async ({ storeChunk, vendorPrefix }) => {
@@ -194,33 +208,6 @@ async function run() {
       Math.abs(lengthCommit.endX - lengthCommit.startX - 87 * INCH) < 2,
       '7\' edge at corner must restore ~87 in centerline span'
     );
-
-    for (const mode of ['edge', 'centerline']) {
-      await page.evaluate(
-        async ({ storeChunk, vendorPrefix, mode }) => {
-          const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
-          if (!mod.W || typeof mod.W.update !== 'function') return;
-          mod.W.update((s) => Object.assign({}, s, { wallMeasureMode: mode, snapToGrid: true, units: 'imperial' }));
-        },
-        { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX, mode }
-      );
-      await page.evaluate((plan) => {
-        window.postMessage({ type: 'OPENPLAN3D_LOAD_PLAN', plan: plan }, window.location.origin);
-      }, cornerPlan());
-      await new Promise((r) => setTimeout(r, 800));
-      await mouseDragEndpoint(page);
-      const dragOk = await page.evaluate(() => {
-        const p = window.__openPlan3D.getProject();
-        const floor = p.floors.find((f) => f.id === p.activeFloorId);
-        const onGrid = (v) => Math.abs(v / 2.54 - Math.round(v / 2.54)) < 0.02;
-        const coords = [];
-        for (const w of floor.walls) {
-          coords.push(w.start.x, w.start.y, w.end.x, w.end.y);
-        }
-        return { ok: coords.every(onGrid), coords, mode: null };
-      });
-      assert.ok(dragOk.ok, `mouse drag must land all 8 coordinates on whole inches (${mode} mode)`);
-    }
 
     const filteredConsole = consoleErrors.filter((m) => !/favicon|404.*\.map/i.test(m));
     assert.deepStrictEqual(pageErrors, [], 'editor must not throw: ' + pageErrors.join('; '));
