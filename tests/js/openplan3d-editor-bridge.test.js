@@ -555,7 +555,16 @@ const editorJs = fs.readFileSync(
   'utf8'
 );
 assert.match(editorJs, /Y\.snappedToEndpoint\|\|Y\.snappedToWall\?Y:/, 'canvas Br must not grid-round exact endpoint/wall snaps');
-assert.match(editorJs, /return st\}function tn\(\)/, 'canvas Kr must not grid-round when ortho snap is off (metric parity)');
+assert.match(
+  editorJs,
+  /return t\(nn\)\?\{x:cr\(st\.x\),y:cr\(st\.y\)\}:st\}function tn\(\)/,
+  'canvas Kr must inch-round grid fallback only when imperial (metric keeps st)'
+);
+assert.doesNotMatch(
+  editorJs,
+  /if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:cr\(w\.x/,
+  'canvas Kr must not cr() ortho angle snaps (metric parity)'
+);
 
 const INCH = bridge.CM_PER_INCH;
 const thicknessCm = 6 * INCH; // 6" wall → 3" face trim at a perpendicular corner

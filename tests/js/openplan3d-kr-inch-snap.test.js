@@ -25,15 +25,20 @@ const editorPath = path.join(
 const editorJs = fs.readFileSync(editorPath, 'utf8');
 
 const PATCHED_KR =
-  /for\(const Zt of xt\)if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:cr\(w\.x\+K\*Math\.cos\(Zt\)\),y:cr\(w\.y\+K\*Math\.sin\(Zt\)\)\};return\{x:cr\(st\.x\),y:cr\(st\.y\)\}\}function tn\(\)/;
+  /for\(const Zt of xt\)if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:w\.x\+K\*Math\.cos\(Zt\),y:w\.y\+K\*Math\.sin\(Zt\)\};return t\(nn\)\?\{x:cr\(st\.x\),y:cr\(st\.y\)\}:st\}function tn\(\)/;
 const VENDOR_KR =
   /for\(const Zt of xt\)if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:w\.x\+K\*Math\.cos\(Zt\),y:w\.y\+K\*Math\.sin\(Zt\)\};return st\}function tn\(\)/;
 
-assert.match(editorJs, PATCHED_KR, 'h1 editor chunk must contain Kr inch snap patch');
+assert.match(editorJs, PATCHED_KR, 'h1 editor chunk must contain Kr imperial grid-fallback inch patch');
+assert.doesNotMatch(
+  editorJs,
+  /if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:cr\(w\.x/,
+  'Kr ortho angle snaps must not use cr()'
+);
 
 const reverted = editorJs.replace(
-  'return{x:cr(w.x+K*Math.cos(Zt)),y:cr(w.y+K*Math.sin(Zt))};return{x:cr(st.x),y:cr(st.y)}}function tn()',
-  'return{x:w.x+K*Math.cos(Zt),y:w.y+K*Math.sin(Zt)};return st}function tn()'
+  'return t(nn)?{x:cr(st.x),y:cr(st.y)}:st}function tn()',
+  'return st}function tn()'
 );
 assert.match(reverted, VENDOR_KR, 'reverted chunk should match vendor Kr return st');
 assert.doesNotMatch(reverted, PATCHED_KR, 'reverted chunk must drop Kr inch rounding');

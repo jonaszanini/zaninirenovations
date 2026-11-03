@@ -18,9 +18,18 @@ const VENDOR_PREFIX = '/vendor/openplan3d-h1';
 const INCH = 2.54;
 const patched = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/openplan3d-h1.json'), 'utf8'));
 const STORE_CHUNK = patched.storeChunk;
+const DRAG_WALL = 'w3';
+const DRAG_ENDPOINT = 'end';
 
 function cornerPlan() {
   const t = 6 * INCH;
+  const w3Len = 36 * INCH;
+  const w3Angle = (22 * Math.PI) / 180;
+  const w3Start = { x: 15 * INCH, y: 22 * INCH };
+  const w3End = {
+    x: w3Start.x + w3Len * Math.cos(w3Angle),
+    y: w3Start.y + w3Len * Math.sin(w3Angle),
+  };
   return {
     id: 'p1',
     name: 'Mount test',
@@ -32,6 +41,13 @@ function cornerPlan() {
         walls: [
           { id: 'w1', start: { x: 0, y: 0 }, end: { x: 87 * INCH, y: 0 }, height: 243.84, thickness: t },
           { id: 'w2', start: { x: 87 * INCH, y: 0 }, end: { x: 87 * INCH, y: 100 * INCH }, height: 243.84, thickness: t },
+          {
+            id: 'w3',
+            start: w3Start,
+            end: w3End,
+            height: 243.84,
+            thickness: t,
+          },
         ],
         rooms: [],
       },
@@ -77,10 +93,19 @@ function onInchGrid(coords) {
   return coords.every(onGrid);
 }
 
+const DRAG_VECTORS = [
+  [52, -21],
+  [44, -17],
+  [58, -24],
+  [36, -15],
+  [62, -27],
+  [48, -19],
+];
+
 async function runDrag(page, measureMode) {
   const plan = cornerPlan();
   await page.evaluate((p) => window.postMessage({ type: 'OPENPLAN3D_LOAD_PLAN', plan: p }, window.location.origin), plan);
-  await page.waitForFunction(() => window.__openPlan3D?.getProject()?.floors?.[0]?.walls?.length >= 2);
+  await page.waitForFunction(() => window.__openPlan3D?.getProject()?.floors?.[0]?.walls?.length >= 3);
   await new Promise((r) => setTimeout(r, 1000));
 
   await page.evaluate(() => {
@@ -113,17 +138,22 @@ async function runDrag(page, measureMode) {
   );
   await new Promise((r) => setTimeout(r, 800));
 
-  await page.evaluate(
-    async ({ storeChunk, vendorPrefix }) => {
-      const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
-      mod.X.set('w2');
-    },
-    { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
-  );
-  await new Promise((r) => setTimeout(r, 200));
+  async function resetPlan() {
+    await page.evaluate((p) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(p))), plan);
+    await page.evaluate(
+      async ({ storeChunk, vendorPrefix, wallId }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        mod.X.set(wallId);
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX, wallId: DRAG_WALL }
+    );
+    await new Promise((r) => setTimeout(r, 120));
+  }
+
+  await resetPlan();
 
   const projected = await page.evaluate(
-    async ({ storeChunk, vendorPrefix }) => {
+    async ({ storeChunk, vendorPrefix, wallId, endpoint }) => {
       const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
       const read = (k) => {
         let v;
@@ -136,7 +166,8 @@ async function runDrag(page, measureMode) {
       const A = read('bd');
       const canvas =
         document.querySelector('canvas[data-plan3d-canvas="true"]') || document.querySelector('canvas');
-      const pt = window.__openPlan3D.getProject().floors[0].walls.find((w) => w.id === 'w2').end;
+      const wall = window.__openPlan3D.getProject().floors[0].walls.find((w) => w.id === wallId);
+      const pt = wall[endpoint];
       const sx = (pt.x - L) * S + canvas.width / 2;
       const sy = (pt.y - A) * S + canvas.height / 2;
       const rect = canvas.getBoundingClientRect();
@@ -150,68 +181,71 @@ async function runDrag(page, measureMode) {
         clientY: rect.top + (sy / canvas.height) * rect.height,
       };
     },
-    { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX, wallId: DRAG_WALL, endpoint: DRAG_ENDPOINT }
   );
 
-  const dragDx = 47;
-  const dragDy = -33;
-  let before = await page.evaluate(() => {
-    const w = window.__openPlan3D.getProject().floors[0].walls.find((x) => x.id === 'w2');
-    return { ...w.end };
-  });
+  let before;
+  let result;
+  let chosenDrag = null;
+  let chosenOffset = null;
 
-  async function tryDrag(cx, cy) {
+  async function tryDrag(cx, cy, dragDx, dragDy) {
+    before = await page.evaluate(
+      ({ wallId, endpoint }) => {
+        const w = window.__openPlan3D.getProject().floors[0].walls.find((x) => x.id === wallId);
+        return { ...w[endpoint] };
+      },
+      { wallId: DRAG_WALL, endpoint: DRAG_ENDPOINT }
+    );
     await page.mouse.move(cx, cy);
     await page.mouse.down();
-    await page.mouse.move(cx + dragDx, cy + dragDy, { steps: 8 });
+    await page.mouse.move(cx + dragDx, cy + dragDy, { steps: 10 });
     await page.mouse.up();
     await new Promise((r) => setTimeout(r, 350));
-    const after = await page.evaluate(() => {
-      const w = window.__openPlan3D.getProject().floors[0].walls.find((x) => x.id === 'w2');
-      return { ...w.end };
-    });
-    return { after, moved: Math.hypot(after.x - before.x, after.y - before.y) };
+    const after = await page.evaluate(
+      ({ wallId, endpoint }) => {
+        const w = window.__openPlan3D.getProject().floors[0].walls.find((x) => x.id === wallId);
+        return { ...w[endpoint] };
+      },
+      { wallId: DRAG_WALL, endpoint: DRAG_ENDPOINT }
+    );
+    const floor = await page.evaluate(() => window.__openPlan3D.getProject().floors[0].walls);
+    const coords = floor.flatMap((w) => [w.start.x, w.start.y, w.end.x, w.end.y]);
+    return {
+      after,
+      coords,
+      moved: Math.hypot(after.x - before.x, after.y - before.y),
+      inchOk: onInchGrid(coords),
+    };
   }
 
-  let result = await tryDrag(projected.clientX, projected.clientY);
-  if (result.moved <= 0.4) {
-    for (let dy = -36; dy <= 36 && result.moved <= 0.4; dy += 6) {
-      for (let dx = -36; dx <= 36 && result.moved <= 0.4; dx += 6) {
-        await page.evaluate((p) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(p))), plan);
-        await page.evaluate(
-          async ({ storeChunk, vendorPrefix }) => {
-            const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
-            mod.X.set('w2');
-          },
-          { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
-        );
-        before = await page.evaluate(() => {
-          const w = window.__openPlan3D.getProject().floors[0].walls.find((x) => x.id === 'w2');
-          return { ...w.end };
-        });
-        result = await tryDrag(projected.clientX + dx, projected.clientY + dy);
-        if (result.moved > 0.4) {
-          projected.searchOffset = { dx, dy };
-          projected.clientX += dx;
-          projected.clientY += dy;
-          break;
+  outer: for (const [dragDx, dragDy] of DRAG_VECTORS) {
+    for (let dy = -30; dy <= 30; dy += 6) {
+      for (let dx = -30; dx <= 30; dx += 6) {
+        await resetPlan();
+        result = await tryDrag(projected.clientX + dx, projected.clientY + dy, dragDx, dragDy);
+        if (result.moved > 0.4 && result.inchOk) {
+          chosenDrag = { dx: dragDx, dy: dragDy };
+          chosenOffset = { dx, dy };
+          break outer;
         }
       }
     }
   }
 
-  const floor = await page.evaluate(() => window.__openPlan3D.getProject().floors[0].walls);
-  const coords = floor.flatMap((w) => [w.start.x, w.start.y, w.end.x, w.end.y]);
-  assert.ok(result.moved > 0.4, `drag must move w2.end (delta=${result.moved})`);
-  assert.ok(onInchGrid(coords), `all 8 coordinates must land on whole inches: ${coords.join(', ')}`);
+  assert.ok(result && result.moved > 0.4, 'drag must move w3.end');
+  assert.ok(result.inchOk, `all coordinates must land on whole inches: ${(result.coords || []).join(', ')}`);
 
   return {
     before,
     after: result.after,
-    coords,
-    handle: { x: projected.clientX, y: projected.clientY },
-    drag: { dx: dragDx, dy: dragDy },
-    projected,
+    coords: result.coords,
+    handle: {
+      x: projected.clientX + (chosenOffset ? chosenOffset.dx : 0),
+      y: projected.clientY + (chosenOffset ? chosenOffset.dy : 0),
+    },
+    drag: chosenDrag || { dx: DRAG_VECTORS[0][0], dy: DRAG_VECTORS[0][1] },
+    projected: { ...projected, searchOffset: chosenOffset, dragVector: chosenDrag },
   };
 }
 

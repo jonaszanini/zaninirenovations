@@ -192,8 +192,8 @@ function patchEditorCanvasChunk(source) {
   const krOld =
     'for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:w.x+K*Math.cos(Zt),y:w.y+K*Math.sin(Zt)};return st}function tn()';
   const krNew =
-    'for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:cr(w.x+K*Math.cos(Zt)),y:cr(w.y+K*Math.sin(Zt))};return{x:cr(st.x),y:cr(st.y)}}function tn()';
-  s = replaceExpected(s, krOld, krNew, 'editor chunk: Kr grid-fallback inch snap', 1);
+    'for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:w.x+K*Math.cos(Zt),y:w.y+K*Math.sin(Zt)};return t(nn)?{x:cr(st.x),y:cr(st.y)}:st}function tn()';
+  s = replaceExpected(s, krOld, krNew, 'editor chunk: Kr imperial grid-fallback inch snap', 1);
 
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(

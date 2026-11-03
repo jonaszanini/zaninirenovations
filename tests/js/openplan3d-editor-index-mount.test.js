@@ -185,8 +185,8 @@ async function run() {
     );
     assert.match(
       editorJs,
-      /return\{x:cr\(w\.x\+K\*Math\.cos\(Zt\)\),y:cr\(w\.y\+K\*Math\.sin\(Zt\)\)\};return\{x:cr\(st\.x\),y:cr\(st\.y\)\}\}function tn\(\)/,
-      'editor canvas chunk must inch-round Kr snap paths when snap is on'
+      /return t\(nn\)\?\{x:cr\(st\.x\),y:cr\(st\.y\)\}:st\}function tn\(\)/,
+      'editor canvas chunk must inch-round Kr grid fallback when imperial'
     );
 
     const lengthCommit = await page.evaluate(
