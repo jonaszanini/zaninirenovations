@@ -14,10 +14,16 @@
 
 <IfModule mod_headers.c>
     SetEnvIf Request_URI "^(?:/public)?/vendor/openplan3d/_app/immutable/" asset_versioned=1
+    SetEnvIf Request_URI "^(?:/public)?/vendor/openplan3d-h1/_app/immutable/" asset_versioned=1
+    SetEnvIf Request_URI "^(?:/public)?/vendor/openplan3d-h1/editor/index\.html$" openplan3d_editor_html=1
+    SetEnvIf Request_URI "^(?:/public)?/vendor/openplan3d/editor/index\.html$" openplan3d_editor_html=1
     SetEnvIf REDIRECT_asset_versioned ^1$ asset_versioned=1
     <FilesMatch "\.(css|js)$">
         Header set Cache-Control "public, max-age=31536000, immutable" env=asset_versioned
         Header set Cache-Control "public, max-age=3600, must-revalidate" env=!asset_versioned
+    </FilesMatch>
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache, must-revalidate" env=openplan3d_editor_html
     </FilesMatch>
     <FilesMatch "\.(webp|jpe?g|png|gif|svg|ico|woff2?)$">
         Header set Cache-Control "public, max-age=31536000, immutable"

@@ -8,7 +8,7 @@ const bridge = require('../../public/js/openplan3d-editor-bridge.js');
 const host = require('../../public/js/openplan3d-host.js');
 const measurement = require('../../public/js/openplan3d-measurement-bridge.js');
 
-const INDEX = path.resolve(__dirname, '../../public/vendor/openplan3d/editor/index.html');
+const INDEX = path.resolve(__dirname, '../../public/vendor/openplan3d-h1/editor/index.html');
 const HOST_JS = path.resolve(__dirname, '../../public/js/openplan3d-host.js');
 
 function rectPlan(id, name, widthCm, lengthCm) {
@@ -313,7 +313,7 @@ assert.strictEqual(
 assert.strictEqual(host.plansMatch(loaded, loaded), true);
 assert.strictEqual(host.plansMatch(loaded, blank), false);
 
-const fakeIframe = { contentWindow: { id: 'editor' }, src: 'https://zanini.test/vendor/openplan3d/editor/index.html' };
+const fakeIframe = { contentWindow: { id: 'editor' }, src: 'https://zanini.test/vendor/openplan3d-h1/editor/index.html' };
 const fakeWin = { location: { origin: 'https://zanini.test', href: 'https://zanini.test/admin' } };
 assert.strictEqual(
   host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: 'https://zanini.test' }, fakeIframe, fakeWin),
@@ -344,9 +344,9 @@ assert.strictEqual(
 const relIframe = {
   contentWindow: { id: 'editor2' },
   getAttribute: function (name) {
-    return name === 'src' ? '/vendor/openplan3d/editor/index.html?v=1' : '';
+    return name === 'src' ? '/vendor/openplan3d-h1/editor/index.html?v=1' : '';
   },
-  src: 'http://127.0.0.1:8000/vendor/openplan3d/editor/index.html?v=1',
+  src: 'http://127.0.0.1:8000/vendor/openplan3d-h1/editor/index.html?v=1',
 };
 const relWin = { location: { origin: 'http://127.0.0.1:8000', href: 'http://127.0.0.1:8000/admin/utilities/room-area' } };
 assert.strictEqual(
@@ -531,5 +531,109 @@ assert.strictEqual(snapInstall.ok, true);
 assert.strictEqual(mockSettingsStore.value.gridSize, 2.54, 'installHostedSnapGrid fixes imperial grid on subscribe');
 
 assert.match(indexHtml, /installHostedSnapGrid/, 'editor index must wire hosted imperial snap grid');
+assert.match(indexHtml, /installHostedWallMeasureSettings/, 'editor index must align wall measure mode with plan dimensions');
+assert.doesNotMatch(indexHtml, /installHostedVendorPatches/, 'runtime ESM namespace patching must not run at boot');
+
+const patchedManifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../scripts/openplan3d-h1.json'), 'utf8'));
+const storeChunk = patchedManifest.storeChunk;
+const storeJs = fs.readFileSync(
+  path.resolve(__dirname, '../../public/vendor/openplan3d-h1/_app/immutable/chunks/' + storeChunk),
+  'utf8'
+);
+assert.match(storeJs, /__ZANINI_OPENPLAN3D_PATCH__/, 'store chunk must be patched via scripts/patch-openplan3d.mjs');
+assert.match(storeJs, /wallMeasureMode:"edge"/, 'patched store defaults to edge measure mode');
+assert.match(
+  storeJs,
+  /Select a wall to resize\."\);let a;if\(!i\.curvePoint\)a=Math\.hypot/,
+  'ys() must scale from raw centerline length, not vo() edge length'
+);
+assert.match(indexHtml, new RegExp(storeChunk.replace('.', '\\.')), 'editor index must reference patched store chunk');
+
+const editorChunk = patchedManifest.editorChunk;
+const editorJs = fs.readFileSync(
+  path.resolve(__dirname, '../../public/vendor/openplan3d-h1/_app/immutable/chunks/' + editorChunk),
+  'utf8'
+);
+assert.match(editorJs, /Y\.snappedToEndpoint\|\|Y\.snappedToWall\?Y:/, 'canvas Br must not grid-round exact endpoint/wall snaps');
+assert.match(
+  editorJs,
+  /if\(st\.snappedToEndpoint\|\|st\.snappedToWall\)return st;/,
+  'canvas Kr must passthrough Br endpoint/wall snaps'
+);
+assert.match(
+  editorJs,
+  /let H=K;t\(Ce\)\.units==="imperial"&&\(H=cr\(K\)\);return\{x:w\.x\+H\*Math\.cos\(Zt\),y:w\.y\+H\*Math\.sin\(Zt\)\}/,
+  'canvas Kr must inch-round ortho length K only when Ce.units is imperial'
+);
+assert.match(
+  editorJs,
+  /return t\(Ce\)\.units==="imperial"\?\{x:cr\(st\.x\),y:cr\(st\.y\)\}:st\}function tn\(\)/,
+  'canvas Kr grid fallback inch-round only when Ce.units is imperial'
+);
+assert.doesNotMatch(
+  editorJs,
+  /if\(Math\.abs\(ot-Zt\)<Ut\)return\{x:cr\(w\.x/,
+  'canvas Kr must not cr() ortho endpoint coords (uses H=cr(K) instead)'
+);
+
+const INCH = bridge.CM_PER_INCH;
+const thicknessCm = 6 * INCH; // 6" wall → 3" face trim at a perpendicular corner
+const wallsCorner = [
+  { id: 'w1', start: { x: 0, y: 0 }, end: { x: 87 * INCH, y: 0 }, thickness: thicknessCm },
+  { id: 'w2', start: { x: 87 * INCH, y: 0 }, end: { x: 87 * INCH, y: 100 }, thickness: thicknessCm },
+];
+const edgeSettings = { wallMeasureMode: 'edge', units: 'imperial' };
+const centerline87in = 87 * INCH;
+const plan84in = 84 * INCH;
+const planDim = bridge.wallPlanDimensionLengthCm(wallsCorner[0], wallsCorner, edgeSettings);
+assert.ok(Math.abs(planDim - plan84in) < 0.05, '87 in centerline at corner shows 84 in plan dimension, got ' + planDim);
+const restoredCenter = bridge.centerlineLengthFromPlanDimensionCm(plan84in, wallsCorner[0], wallsCorner, edgeSettings);
+assert.ok(Math.abs(restoredCenter - centerline87in) < 0.05, 'typing 84 in plan length restores 87 in centerline');
+
+assert.strictEqual(bridge.parseHostedLengthToCm("7'", 'imperial'), 84 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('7\'0"', 'imperial'), 84 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('5\'6"', 'imperial'), 66 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('84', 'imperial'), 84 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('2.5 m', 'metric'), 250);
+assert.strictEqual(bridge.parseHostedLengthToCm('4\'0"', 'imperial'), 48 * INCH, '4\'0\" must not parse as 40 inches');
+
+assert.strictEqual(bridge.parseHostedLengthToCm("12.05'", 'imperial'), (12 * 12 + 5) * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("10.07'", 'imperial'), (10 * 12 + 7) * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.11'", 'imperial'), (12 * 12 + 11) * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.5'", 'imperial'), 12.5 * 12 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.75'", 'imperial'), 12.75 * 12 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.25'", 'imperial'), 12.25 * 12 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.3'", 'imperial'), 12.3 * 12 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('12.12', 'imperial'), 12.12 * INCH, 'plain 12.12 without unit is inches');
+
+const inchFrac916 = 9 / 16;
+const ft6in2frac = (6 * 12 + 2 + inchFrac916) * INCH;
+assert.strictEqual(bridge.parseHostedLengthToCm('6\'02"9/16', 'imperial'), ft6in2frac, 'DeWalt fractional ft-in with compact inches');
+assert.strictEqual(bridge.parseHostedLengthToCm('6\' 2 9/16"', 'imperial'), ft6in2frac, 'DeWalt fractional ft-in spaced');
+const in74frac = (74 + inchFrac916) * INCH;
+assert.strictEqual(bridge.parseHostedLengthToCm('74 9/16', 'imperial'), in74frac);
+assert.strictEqual(bridge.parseHostedLengthToCm('74 9/16 in', 'imperial'), in74frac);
+assert.strictEqual(bridge.parseHostedLengthToCm('74-9/16"', 'imperial'), in74frac);
+const dec621Ft = 6.21 * 12 * INCH;
+assert.strictEqual(bridge.parseHostedLengthToCm('6.21 ft', 'imperial'), dec621Ft);
+assert.strictEqual(bridge.parseHostedLengthToCm("6.21'", 'imperial'), dec621Ft, '6.21\' is decimal feet (21 > 11 laser inches)');
+assert.strictEqual(bridge.parseHostedLengthToCm("6.02'", 'imperial'), (6 * 12 + 2) * INCH, '6.02\' is DeWalt laser ft-in not decimal');
+assert.strictEqual(bridge.parseHostedLengthToCm("6.10'", 'imperial'), (6 * 12 + 10) * INCH, '6.10\' is laser 6\'10"');
+assert.strictEqual(bridge.parseHostedLengthToCm("6.1'", 'imperial'), 6.1 * 12 * INCH, '6.1\' stays decimal feet');
+assert.strictEqual(bridge.parseHostedLengthToCm("-7'", 'imperial'), null, 'negative lengths are rejected');
+assert.ok(Math.abs(bridge.parseHostedLengthToCm('1.894 m', 'metric') - 189.4) < 1e-9, '1.894 m → cm');
+
+const helpIn = bridge.hostedWallLengthEntryHelpText('in');
+assert.match(helpIn, /DeWalt laser/i);
+assert.match(helpIn, /12\.05/);
+assert.match(helpIn, /00–11|00-11/);
+
+const localeJs = fs.readFileSync(
+  path.resolve(__dirname, '../../public/vendor/openplan3d-h1/_app/immutable/chunks/NzBhsCJS.js'),
+  'utf8'
+);
+assert.doesNotMatch(localeJs, /DeWalt laser/, 'immutable locale chunk must not be edited; help comes from hosted locale shim');
+assert.match(indexHtml, /type="importmap"/, 'editor index must redirect locale chunk through import map');
+assert.match(indexHtml, /openplan3d-hosted-locale\.js\?v=[a-f0-9]{16}/, 'locale shim must be cache-busted');
 
 console.log('All openPlan3D editor-bridge unit tests PASSED!');

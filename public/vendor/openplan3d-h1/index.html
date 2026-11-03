@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" type="image/svg+xml" href="/vendor/openplan3d-h1/favicon.svg" />
+		<title>open3dFloorplan</title>
+		<link href="/vendor/openplan3d-h1/_app/immutable/entry/start.ChH6DPSY.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/IK8I3O5V.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/BZH7Uaq2.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/A3oClE6y.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/entry/app.Badnr33M.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/Sd-LEV8l.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/B8ydxUi_.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/DS9kkvy5.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/nodes/0.C8YK60P1.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/NzBhsCJS.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/Dx4kNdAA.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/1VjVcrjm.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/immutable/chunks/DHXjNKtR.js" rel="modulepreload">
+		<link href="/vendor/openplan3d-h1/_app/env.js" rel="modulepreload">
+		
+		<link href="/vendor/openplan3d-h1/_app/immutable/assets/0.DdceI81C.css" rel="stylesheet">
+			<style>
+			/* OpenPlan3D Dark Mode Context Menu & Floating UI Enhancements */
+			html.dark [role="menu"] {
+				background-color: #1e293b !important;
+				border: 1px solid #334155 !important;
+				box-shadow: 0 14px 35px -4px rgba(0, 0, 0, 0.65), 0 8px 12px -6px rgba(0, 0, 0, 0.45) !important;
+				border-radius: 10px !important;
+				padding: 5px !important;
+			}
+
+			html.dark .ctx-item,
+			html.dark [role="menuitem"].ctx-item,
+			html.dark button[role="menuitem"] {
+				color: #f1f5f9 !important;
+				font-weight: 500 !important;
+				font-size: 13px !important;
+				border-radius: 6px !important;
+				padding: 7px 12px !important;
+				margin: 1px 0 !important;
+				transition: background-color 0.15s ease, color 0.15s ease !important;
+			}
+
+			html.dark .ctx-item:hover,
+			html.dark .ctx-item:focus,
+			html.dark .ctx-item:focus-visible,
+			html.dark [role="menuitem"].ctx-item:hover,
+			html.dark [role="menuitem"].ctx-item:focus-visible,
+			html.dark button[role="menuitem"]:hover,
+			html.dark button[role="menuitem"]:focus-visible {
+				background-color: #334155 !important;
+				color: #ffffff !important;
+				outline: none !important;
+			}
+
+			html.dark .ctx-sep {
+				height: 1px !important;
+				background-color: #334155 !important;
+				margin: 4px 6px !important;
+			}
+
+			html.dark .ctx-danger,
+			html.dark [role="menuitem"].ctx-danger {
+				color: #f87171 !important;
+			}
+
+			html.dark .ctx-danger:hover,
+			html.dark .ctx-danger:focus,
+			html.dark .ctx-danger:focus-visible,
+			html.dark [role="menuitem"].ctx-danger:hover,
+			html.dark [role="menuitem"].ctx-danger:focus-visible {
+				background-color: rgba(239, 68, 68, 0.2) !important;
+				color: #fca5a5 !important;
+			}
+
+			html.dark .ctx-icon {
+				width: 18px !important;
+				text-align: center !important;
+				font-size: 14px !important;
+				opacity: 0.95 !important;
+			}
+
+			[role="menu"] {
+				border-radius: 10px !important;
+				padding: 5px !important;
+			}
+			.ctx-item,
+			[role="menuitem"].ctx-item {
+				border-radius: 6px !important;
+				padding: 7px 12px !important;
+				margin: 1px 0 !important;
+				font-size: 13px !important;
+				transition: background-color 0.15s ease, color 0.15s ease !important;
+			}
+			.ctx-item:hover,
+			.ctx-item:focus-visible {
+				background-color: #f1f5f9 !important;
+				color: #0f172a !important;
+			}
+
+			/* Catalog Category Tags / Pills Layout & Dark Mode Enhancements */
+			div[class*="max-h-24"],
+			.flex.flex-wrap.max-h-24 {
+				max-height: 125px !important;
+				display: flex !important;
+				flex-wrap: wrap !important;
+				gap: 5px 6px !important;
+				padding: 4px 4px 6px 1px !important;
+				margin-top: 4px !important;
+				margin-bottom: 6px !important;
+				align-items: center !important;
+				scrollbar-width: thin !important;
+				scrollbar-color: rgba(148, 163, 184, 0.3) transparent !important;
+			}
+
+			div[class*="max-h-24"]::-webkit-scrollbar,
+			.flex.flex-wrap.max-h-24::-webkit-scrollbar {
+				width: 4px !important;
+				height: 4px !important;
+			}
+
+			div[class*="max-h-24"]::-webkit-scrollbar-track,
+			.flex.flex-wrap.max-h-24::-webkit-scrollbar-track {
+				background: transparent !important;
+			}
+
+			div[class*="max-h-24"]::-webkit-scrollbar-thumb,
+			.flex.flex-wrap.max-h-24::-webkit-scrollbar-thumb {
+				background: rgba(148, 163, 184, 0.25) !important;
+				border-radius: 9999px !important;
+			}
+
+			div[class*="max-h-24"]::-webkit-scrollbar-thumb:hover,
+			.flex.flex-wrap.max-h-24::-webkit-scrollbar-thumb:hover {
+				background: rgba(148, 163, 184, 0.5) !important;
+			}
+
+			/* Base Tag Button Styling */
+			div[class*="max-h-24"] > button,
+			.flex.flex-wrap.max-h-24 > button {
+				font-size: 11px !important;
+				line-height: 1.25 !important;
+				font-weight: 500 !important;
+				padding: 3.5px 9px !important;
+				border-radius: 9999px !important;
+				letter-spacing: 0.01em !important;
+				display: inline-flex !important;
+				align-items: center !important;
+				justify-content: center !important;
+				white-space: nowrap !important;
+				cursor: pointer !important;
+				user-select: none !important;
+				transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease !important;
+			}
+
+			/* Light Mode Inactive Tags */
+			html:not(.dark) div[class*="max-h-24"] > button.text-gray-600,
+			html:not(.dark) .flex.flex-wrap.max-h-24 > button.text-gray-600 {
+				border: 1px solid #e2e8f0 !important;
+				color: #475569 !important;
+			}
+
+			html:not(.dark) div[class*="max-h-24"] > button.text-gray-600:hover,
+			html:not(.dark) .flex.flex-wrap.max-h-24 > button.text-gray-600:hover {
+				background-color: #e2e8f0 !important;
+				color: #0f172a !important;
+				border-color: #cbd5e1 !important;
+			}
+
+			/* Dark Mode Inactive Tags (Readable contrast, dark slate surface) */
+			html.dark div[class*="max-h-24"] > button.text-gray-600,
+			html.dark div[class*="max-h-24"] > button:not(.text-white):not([class*="bg-blue-"]):not([class*="bg-pink-"]),
+			html.dark .flex.flex-wrap.max-h-24 > button.text-gray-600,
+			html.dark .flex.flex-wrap.max-h-24 > button:not(.text-white):not([class*="bg-blue-"]):not([class*="bg-pink-"]) {
+				background-color: #1e293b !important;
+				color: #f1f5f9 !important;
+				border: 1px solid #334155 !important;
+				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+			}
+
+			/* Dark Mode Inactive Tags: Hover */
+			html.dark div[class*="max-h-24"] > button.text-gray-600:hover,
+			html.dark div[class*="max-h-24"] > button:not(.text-white):not([class*="bg-blue-"]):not([class*="bg-pink-"]):hover,
+			html.dark .flex.flex-wrap.max-h-24 > button.text-gray-600:hover,
+			html.dark .flex.flex-wrap.max-h-24 > button:not(.text-white):not([class*="bg-blue-"]):not([class*="bg-pink-"]):hover {
+				background-color: #334155 !important;
+				color: #ffffff !important;
+				border-color: #475569 !important;
+				transform: translateY(-1px) !important;
+				box-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.4) !important;
+			}
+
+			/* Dark Mode Active "All" Tag */
+			html.dark div[class*="max-h-24"] > button[class*="bg-blue-"],
+			html.dark .flex.flex-wrap.max-h-24 > button[class*="bg-blue-"] {
+				background-color: #2563eb !important;
+				color: #ffffff !important;
+				font-weight: 600 !important;
+				border: 1px solid #60a5fa !important;
+				box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45) !important;
+			}
+
+			/* Dark Mode Active "Favorites" Tag */
+			html.dark div[class*="max-h-24"] > button[class*="bg-pink-"],
+			html.dark .flex.flex-wrap.max-h-24 > button[class*="bg-pink-"] {
+				background-color: #db2777 !important;
+				color: #ffffff !important;
+				font-weight: 600 !important;
+				border: 1px solid #f472b6 !important;
+				box-shadow: 0 2px 8px rgba(219, 39, 119, 0.45) !important;
+			}
+
+			/* Dark Mode Active Category Tags (.text-white with inline category color) */
+			html.dark div[class*="max-h-24"] > button.text-white,
+			html.dark .flex.flex-wrap.max-h-24 > button.text-white {
+				color: #ffffff !important;
+				font-weight: 600 !important;
+				border: 1px solid rgba(255, 255, 255, 0.35) !important;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+				text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+			}
+
+			/* Dark Mode Active Tags: Hover */
+			html.dark div[class*="max-h-24"] > button.text-white:hover,
+			html.dark div[class*="max-h-24"] > button[class*="bg-blue-"]:hover,
+			html.dark div[class*="max-h-24"] > button[class*="bg-pink-"]:hover,
+			html.dark .flex.flex-wrap.max-h-24 > button.text-white:hover,
+			html.dark .flex.flex-wrap.max-h-24 > button[class*="bg-blue-"]:hover,
+			html.dark .flex.flex-wrap.max-h-24 > button[class*="bg-pink-"]:hover {
+				filter: brightness(1.12) !important;
+				transform: translateY(-1px) !important;
+			}
+		</style>
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">
+			<script>
+				{
+					if (window.location.pathname.endsWith('/index.html')) {
+						const cleanPath = window.location.pathname.replace(/\/index\.html$/, '') || '/';
+						window.history.replaceState(window.history.state, '', cleanPath + window.location.search + window.location.hash);
+					}
+
+					__sveltekit_1tyrndq = {
+						base: "/vendor/openplan3d-h1",
+						assets: "/vendor/openplan3d-h1",
+						env: null
+					};
+
+					const element = document.currentScript.parentElement;
+
+					import("/vendor/openplan3d-h1/_app/env.js").then(({ env }) => {
+						__sveltekit_1tyrndq.env = env;
+
+						Promise.all([
+							import("/vendor/openplan3d-h1/_app/immutable/entry/start.ChH6DPSY.js"),
+							import("/vendor/openplan3d-h1/_app/immutable/entry/app.Badnr33M.js")
+						]).then(([kit, app]) => {
+							kit.start(app, element);
+						});
+					});
+				}
+			</script>
+			<script type="module">
+				import("/vendor/openplan3d-h1/_app/immutable/chunks/1VjVcrjm.js").then((storeModule) => {
+					window.__openPlan3D = {
+						getProject: () => {
+							let cur = null;
+							if (storeModule.c && typeof storeModule.c.subscribe === 'function') {
+								const unsub = storeModule.c.subscribe(v => cur = v);
+								if (typeof unsub === 'function') unsub();
+							}
+							return cur;
+						},
+						setProject: (project) => {
+							if (typeof storeModule.H === 'function') {
+								storeModule.H(project);
+							} else if (storeModule.c && typeof storeModule.c.set === 'function') {
+								storeModule.c.set(project);
+							}
+						},
+						subscribe: (callback) => {
+							if (storeModule.c && typeof storeModule.c.subscribe === 'function') {
+								return storeModule.c.subscribe(callback);
+							}
+							return () => {};
+						}
+					};
+
+					function serializePlan(raw) {
+						if (!raw || typeof raw !== 'object') return null;
+						try {
+							return JSON.parse(JSON.stringify(raw));
+						} catch (e) {
+							try {
+								const ancestors = [];
+								const json = JSON.stringify(raw, function(key, value) {
+									if (typeof value === 'function' || typeof value === 'symbol') return undefined;
+									if (typeof value === 'object' && value !== null) {
+										while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
+											ancestors.pop();
+										}
+										if (ancestors.includes(value)) return undefined;
+										ancestors.push(value);
+									}
+									return value;
+								});
+								return JSON.parse(json);
+							} catch (e2) {
+								console.warn('[openPlan3D Bridge] Failed to serialize plan:', e2);
+								return null;
+							}
+						}
+					}
+
+					
+					// Auto-sync initial dark theme with parent window
+					try {
+						if (window.parent && window.parent !== window && window.parent.document) {
+							if (window.parent.document.documentElement.classList.contains('admin-dark')) {
+								document.documentElement.classList.add('dark');
+							}
+						}
+					} catch (e) {}
+
+					// Notify parent window that openPlan3D API is ready
+					if (window.parent && window.parent !== window) {
+						window.parent.postMessage({ type: 'OPENPLAN3D_READY' }, '*');
+					}
+
+					// Forward project changes to parent (debounced and isolated from Svelte store execution)
+					let initial = true;
+					let updateTimeout = null;
+					window.__openPlan3D.subscribe((project) => {
+						if (initial) {
+							initial = false;
+							return;
+						}
+						if (updateTimeout) clearTimeout(updateTimeout);
+						updateTimeout = setTimeout(() => {
+							updateTimeout = null;
+							if (window.parent && window.parent !== window) {
+								try {
+									const cur = (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function')
+										? window.__openPlan3D.getProject()
+										: project;
+									const cleanPlan = serializePlan(cur);
+									if (cleanPlan) {
+										window.parent.postMessage({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: cleanPlan }, '*');
+									}
+								} catch (postErr) {
+									console.warn('[openPlan3D Bridge] Error posting plan change:', postErr);
+								}
+							}
+						}, 30);
+					});
+				}).catch(err => {
+					console.error('[openPlan3D Bridge] Error loading store module:', err);
+				});
+
+				// Hotkey forwarder: forward Ctrl+S / Cmd+S to parent
+				window.addEventListener('keydown', (e) => {
+					if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+						e.preventDefault();
+						if (window.parent && window.parent !== window) {
+							window.parent.postMessage({ type: 'OPENPLAN3D_TRIGGER_SAVE' }, '*');
+						}
+					}
+				});
+
+				// Message receiver from parent window
+				window.addEventListener('message', (event) => {
+					const data = event.data;
+					if (!data || typeof data !== 'object') return;
+
+					
+					if (data.type === 'OPENPLAN3D_SET_THEME') {
+						document.documentElement.classList.toggle('dark', data.theme === 'dark');
+						try { localStorage.setItem('o3d_theme', data.theme); } catch (e) {}
+					}
+
+					if (data.type === 'OPENPLAN3D_LOAD_PLAN') {
+						const load = () => {
+							if (window.__openPlan3D && typeof window.__openPlan3D.setProject === 'function') {
+								window.__openPlan3D.setProject(data.plan);
+							} else {
+								setTimeout(load, 50);
+							}
+						};
+						load();
+					}
+
+					if (data.type === 'OPENPLAN3D_REQUEST_PLAN') {
+						if (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function') {
+							const plan = window.__openPlan3D.getProject();
+							if (window.parent && window.parent !== window) {
+								try {
+									const cleanPlan = serializePlan(plan);
+									window.parent.postMessage({
+										type: 'OPENPLAN3D_PLAN_RESPONSE',
+										requestId: data.requestId,
+										plan: cleanPlan
+									}, '*');
+								} catch (postErr) {
+									console.warn('[openPlan3D Bridge] Error posting plan response:', postErr);
+								}
+							}
+						}
+					}
+				});
+			</script>
+		</div>
+	</body>
+</html>

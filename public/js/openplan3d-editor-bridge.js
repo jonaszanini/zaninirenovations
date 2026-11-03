@@ -215,6 +215,320 @@
     return null;
   }
 
+  var WALL_JOIN_TOLERANCE_CM = 5;
+  var HOSTED_WALL_MEASURE_MODE = 'edge';
+
+  function wallCenterlineLengthCm(wall) {
+    if (!wall) return 0;
+    if (!wall.curvePoint) {
+      return Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
+    }
+    var total = 0;
+    var prevX = wall.start.x;
+    var prevY = wall.start.y;
+    for (var step = 1; step <= 20; step++) {
+      var t = step / 20;
+      var u = 1 - t;
+      var x = u * u * wall.start.x + 2 * u * t * wall.curvePoint.x + t * t * wall.end.x;
+      var y = u * u * wall.start.y + 2 * u * t * wall.curvePoint.y + t * t * wall.end.y;
+      total += Math.hypot(x - prevX, y - prevY);
+      prevX = x;
+      prevY = y;
+    }
+    return total;
+  }
+
+  /** Same corner trim as vendor No() — half wall thickness at perpendicular joins. */
+  function wallEndpointTrimCm(wall, allWalls) {
+    var dx = wall.end.x - wall.start.x;
+    var dy = wall.end.y - wall.start.y;
+    var len = Math.hypot(dx, dy) || 1;
+    function trimAt(point) {
+      var trim = 0;
+      for (var i = 0; i < allWalls.length; i++) {
+        var other = allWalls[i];
+        if (!other || other.id === wall.id) continue;
+        var atStart = Math.abs(other.start.x - point.x) < WALL_JOIN_TOLERANCE_CM
+          && Math.abs(other.start.y - point.y) < WALL_JOIN_TOLERANCE_CM;
+        var atEnd = Math.abs(other.end.x - point.x) < WALL_JOIN_TOLERANCE_CM
+          && Math.abs(other.end.y - point.y) < WALL_JOIN_TOLERANCE_CM;
+        if (!atStart && !atEnd) continue;
+        var ox = other.end.x - other.start.x;
+        var oy = other.end.y - other.start.y;
+        var olen = Math.hypot(ox, oy) || 1;
+        if (Math.abs(dx / len * (oy / olen) - dy / len * (ox / olen)) < 0.1) continue;
+        trim = Math.max(trim, (Number(other.thickness) || 0) / 2);
+      }
+      return trim;
+    }
+    return { start: trimAt(wall.start), end: trimAt(wall.end) };
+  }
+
+  /**
+   * Length shown on plan dimension labels (edge/clear when wallMeasureMode is edge).
+   * Hosted mode keeps the Wall Properties field aligned with this value.
+   */
+  function wallPlanDimensionLengthCm(wall, allWalls, settings) {
+    var center = wallCenterlineLengthCm(wall);
+    if (!wall || wall.curvePoint) return center;
+    var mode = settings && settings.wallMeasureMode ? settings.wallMeasureMode : HOSTED_WALL_MEASURE_MODE;
+    if (mode === 'edge' && allWalls && allWalls.length) {
+      var trim = wallEndpointTrimCm(wall, allWalls);
+      return Math.max(0, center - trim.start - trim.end);
+    }
+    return center;
+  }
+
+  function centerlineLengthFromPlanDimensionCm(planLenCm, wall, allWalls, settings) {
+    if (!wall || wall.curvePoint || !Number.isFinite(planLenCm)) return planLenCm;
+    var mode = settings && settings.wallMeasureMode ? settings.wallMeasureMode : HOSTED_WALL_MEASURE_MODE;
+    if (mode === 'edge' && allWalls && allWalls.length) {
+      var trim = wallEndpointTrimCm(wall, allWalls);
+      return planLenCm + trim.start + trim.end;
+    }
+    return planLenCm;
+  }
+
+  function normalizeHostedLengthText(raw) {
+    return String(raw == null ? '' : raw).trim()
+      .replace(/[′’]/g, "'")
+      .replace(/[″“”]/g, '"')
+      .replace(/\s+/g, ' ');
+  }
+
+  function parseInchesFractionPart(wholeInches, fracNum, fracDen) {
+    var whole = Number(wholeInches);
+    if (!Number.isFinite(whole)) return null;
+    var total = whole;
+    if (fracNum != null && fracDen != null && String(fracDen) !== '0') {
+      var n = Number(fracNum);
+      var d = Number(fracDen);
+      if (!Number.isFinite(n) || !Number.isFinite(d) || d === 0) return null;
+      total += n / d;
+    }
+    return total;
+  }
+
+  function inchesToPlanCm(inches) {
+    if (!Number.isFinite(inches)) return null;
+    return inches * CM_PER_INCH;
+  }
+
+  function decimalFeetToPlanCm(feet) {
+    if (!Number.isFinite(feet)) return null;
+    return feet * 12 * CM_PER_INCH;
+  }
+
+  /**
+   * Tooltip on Wall Properties Length (ⓘ), applied via openplan3d-hosted-locale.js import map.
+   */
+  function hostedWallLengthEntryHelpText(unitLabel) {
+    var unit = unitLabel != null && String(unitLabel).trim() !== '' ? String(unitLabel).trim() : 'in';
+    return 'Matches the plan dimension label. Enter ' + unit
+      + ', or use 7\', 5\'6", 12", 2.5 m (plain numbers without units are inches). '
+      + 'DeWalt laser: 12.05\' is 12\'5" (two digits after the dot are inches 00–11); '
+      + '12.5\' and 12.25\' stay decimal feet. Also accepts 6\'02"9/16, 74 9/16 in, and 6.21 ft.';
+  }
+
+  /**
+   * Parse wall Length field text into centimeters of plan dimension (what dimension labels show).
+   */
+  function parseHostedLengthToCm(raw, units) {
+    var rawStr = String(raw == null ? '' : raw).trim();
+    if (/^\s*-/.test(rawStr)) return null;
+    var s = normalizeHostedLengthText(raw);
+    if (!s) return null;
+    var imperial = normalizeEditorUnits(units) === 'imperial';
+    var num = '[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:e[+-]?\\d+)?';
+    var frac = '(\\d+)\\s*/\\s*(\\d+)';
+
+    var metric = s.match(new RegExp('^(' + num + ')\\s*(mm|cm|m|meter|meters|metre|metres)$', 'i'));
+    if (metric) {
+      var unit = metric[2].toLowerCase();
+      var mult = unit === 'm' || unit === 'meter' || unit === 'meters' || unit === 'metre' || unit === 'metres'
+        ? 100
+        : unit === 'mm' ? 0.1 : 1;
+      return Number(metric[1]) * mult;
+    }
+
+    var decFeetUnit = s.match(new RegExp('^(' + num + ')\\s*(?:ft|feet|foot)\\s*$', 'i'));
+    if (decFeetUnit) {
+      return decimalFeetToPlanCm(Math.abs(Number(decFeetUnit[1])));
+    }
+
+    var dewaltFt = s.match(new RegExp('^(' + num + ')\\.(\\d{2})\\s*(?:\'|ft|feet|foot)\\s*$', 'i'));
+    if (dewaltFt) {
+      var laserIn = parseInt(dewaltFt[2], 10);
+      var laserFeet = Math.abs(Number(dewaltFt[1]));
+      if (laserIn >= 0 && laserIn <= 11) {
+        return inchesToPlanCm(laserFeet * 12 + laserIn);
+      }
+      return decimalFeetToPlanCm(Math.abs(Number(dewaltFt[1] + '.' + dewaltFt[2])));
+    }
+
+    var ftInFracQuote = s.match(new RegExp(
+      '^(' + num + ')\\s*\'\\s*(' + num + ')\\s*"\\s*' + frac + '\\s*$',
+      'i'
+    ));
+    if (ftInFracQuote) {
+      var ftPart = Math.abs(Number(ftInFracQuote[1]));
+      var inWhole = parseInchesFractionPart(ftInFracQuote[2], ftInFracQuote[3], ftInFracQuote[4]);
+      if (inWhole == null) return null;
+      return inchesToPlanCm(ftPart * 12 + inWhole);
+    }
+
+    var ftInFracSpaced = s.match(new RegExp(
+      '^(' + num + ')\\s*\'\\s*(' + num + ')\\s+' + frac + '\\s*"\\s*$',
+      'i'
+    ));
+    if (ftInFracSpaced) {
+      var ftPart2 = Math.abs(Number(ftInFracSpaced[1]));
+      var inWhole2 = parseInchesFractionPart(ftInFracSpaced[2], ftInFracSpaced[3], ftInFracSpaced[4]);
+      if (inWhole2 == null) return null;
+      return inchesToPlanCm(ftPart2 * 12 + inWhole2);
+    }
+
+    var inFracUnit = s.match(new RegExp(
+      '^(' + num + ')(?:\\s+|-\\s*)' + frac + '\\s*(?:"|in|inches|inch)?\\s*$',
+      'i'
+    ));
+    if (inFracUnit) {
+      var inchesTotal = parseInchesFractionPart(inFracUnit[1], inFracUnit[2], inFracUnit[3]);
+      return inchesToPlanCm(inchesTotal);
+    }
+
+    var decFeetMark = s.match(new RegExp('^(' + num + ')\\s*\'\\s*$', 'i'));
+    if (decFeetMark) {
+      var markStr = decFeetMark[1];
+      var dotLaser = markStr.match(/^(\d+)\.(\d{2})$/);
+      if (dotLaser) {
+        var laserIn2 = parseInt(dotLaser[2], 10);
+        if (laserIn2 >= 0 && laserIn2 <= 11) {
+          return inchesToPlanCm(Math.abs(Number(dotLaser[1])) * 12 + laserIn2);
+        }
+      }
+      return decimalFeetToPlanCm(Math.abs(Number(markStr)));
+    }
+
+    var feetIn = s.match(new RegExp('^(' + num + ')\\s*(?:\'|ft|feet|foot)(?:\\s*(' + num + ')\\s*(?:"|in|inches|inch)?)?$', 'i'));
+    if (feetIn) {
+      var ft = Math.abs(Number(feetIn[1]));
+      var inchesPart = feetIn[2] != null && feetIn[2] !== '' ? Number(feetIn[2]) : 0;
+      return inchesToPlanCm(ft * 12 + inchesPart);
+    }
+
+    var inchesOnly = s.match(new RegExp('^(' + num + ')\\s*(?:"|in|inches|inch)$', 'i'));
+    if (inchesOnly) {
+      return inchesToPlanCm(Number(inchesOnly[1]));
+    }
+
+    if (/^[\d.,]+$/.test(s)) {
+      var n = Number(String(s).replace(',', '.'));
+      if (!Number.isFinite(n)) return null;
+      return imperial ? n * CM_PER_INCH : n;
+    }
+
+    return null;
+  }
+
+  function getActiveFloorWalls(project) {
+    if (!project || typeof project !== 'object') return [];
+    var floors = Array.isArray(project.floors) ? project.floors : [];
+    var floor = null;
+    for (var i = 0; i < floors.length; i++) {
+      if (floors[i] && floors[i].id === project.activeFloorId) {
+        floor = floors[i];
+        break;
+      }
+    }
+    if (!floor && floors.length) floor = floors[0];
+    return floor && Array.isArray(floor.walls) ? floor.walls : [];
+  }
+
+  function readStoreValue(store) {
+    if (!store || typeof store.subscribe !== 'function') return null;
+    var cur = null;
+    var unsub = store.subscribe(function (v) { cur = v; });
+    if (typeof unsub === 'function') unsub();
+    return cur;
+  }
+
+  function resolveProjectStore(storeModule) {
+    if (!storeModule || typeof storeModule !== 'object') return null;
+    if (storeModule.V && typeof storeModule.V.subscribe === 'function') {
+      return storeModule.V;
+    }
+    return null;
+  }
+
+  function installHostedWallMeasureSettings(settingsStore) {
+    if (!settingsStore || typeof settingsStore.update !== 'function') {
+      return { ok: false, reason: 'missing-settings-store' };
+    }
+    settingsStore.update(function (current) {
+      if (!current || typeof current !== 'object') return current;
+      if (current.wallMeasureMode === HOSTED_WALL_MEASURE_MODE) return current;
+      return Object.assign({}, current, { wallMeasureMode: HOSTED_WALL_MEASURE_MODE });
+    });
+    return { ok: true, mode: HOSTED_WALL_MEASURE_MODE };
+  }
+
+  function installHostedIndexedDbGuards(options) {
+    options = options || {};
+    var g = options.global || (typeof globalThis !== 'undefined' ? globalThis : root);
+    if (!g || typeof g.IDBObjectStore === 'undefined') {
+      return { ok: false, reason: 'missing-idb' };
+    }
+    var proto = g.IDBObjectStore.prototype;
+    if (!proto || proto.__zaniniOpenPlan3DIdbGuard) {
+      return { ok: true, already: true };
+    }
+    var schedule = options.schedule || function (fn) {
+      if (typeof setTimeout === 'function') setTimeout(fn, 0);
+      else fn();
+    };
+    function emptyResultRequest() {
+      var req = { result: undefined, readyState: 'done', error: null };
+      schedule(function () {
+        if (typeof req.onsuccess === 'function') {
+          try { req.onsuccess({ target: req }); } catch (e) {}
+        }
+      });
+      return req;
+    }
+    var origGet = proto.get;
+    var origPut = proto.put;
+    var origDelete = proto.delete;
+    proto.get = function (key) {
+      if (key === undefined || key === null) return emptyResultRequest();
+      return origGet.apply(this, arguments);
+    };
+    proto.put = function (value, key) {
+      if (key === undefined || key === null) return emptyResultRequest();
+      return origPut.apply(this, arguments);
+    };
+    proto.delete = function (key) {
+      if (key === undefined || key === null) return emptyResultRequest();
+      return origDelete.apply(this, arguments);
+    };
+    proto.__zaniniOpenPlan3DIdbGuard = true;
+    return { ok: true };
+  }
+
+  /** Injected into vendored 1VjVcrjm chunk by scripts/patch-openplan3d.mjs (re-runnable). */
+  function buildVendorLengthParseSource() {
+    return [
+      'var CM_PER_INCH=' + CM_PER_INCH + ';',
+      normalizeEditorUnits.toString(),
+      normalizeHostedLengthText.toString(),
+      parseInchesFractionPart.toString(),
+      inchesToPlanCm.toString(),
+      decimalFeetToPlanCm.toString(),
+      parseHostedLengthToCm.toString(),
+      'function pa(e,t){return parseHostedLengthToCm(e,t);}'
+    ].join('\n');
+  }
+
   function installHostedSnapGrid(settingsStore) {
     if (!settingsStore || typeof settingsStore.subscribe !== 'function') {
       return { ok: false, reason: 'missing-settings-store' };
@@ -326,6 +640,8 @@
       };
       idb.__zaniniOpenPlan3DLocked = true;
     }
+
+    installHostedIndexedDbGuards({ global: g });
 
     return {
       idbName: IDB_NAME,
@@ -735,6 +1051,19 @@
     snapPlanCoordCm: snapPlanCoordCm,
     syncHostedGridSize: syncHostedGridSize,
     resolveSettingsStore: resolveSettingsStore,
+    resolveProjectStore: resolveProjectStore,
+    WALL_JOIN_TOLERANCE_CM: WALL_JOIN_TOLERANCE_CM,
+    HOSTED_WALL_MEASURE_MODE: HOSTED_WALL_MEASURE_MODE,
+    wallCenterlineLengthCm: wallCenterlineLengthCm,
+    wallEndpointTrimCm: wallEndpointTrimCm,
+    wallPlanDimensionLengthCm: wallPlanDimensionLengthCm,
+    centerlineLengthFromPlanDimensionCm: centerlineLengthFromPlanDimensionCm,
+    parseHostedLengthToCm: parseHostedLengthToCm,
+    buildVendorLengthParseSource: buildVendorLengthParseSource,
+    hostedWallLengthEntryHelpText: hostedWallLengthEntryHelpText,
+    getActiveFloorWalls: getActiveFloorWalls,
+    installHostedWallMeasureSettings: installHostedWallMeasureSettings,
+    installHostedIndexedDbGuards: installHostedIndexedDbGuards,
     installHostedSnapGrid: installHostedSnapGrid,
     clearLocalStorageKeys: clearLocalStorageKeys,
     snapshotBlockedStorage: snapshotBlockedStorage,

@@ -14,17 +14,18 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-IMMUTABLE_REL="$(find "$PUBLIC/vendor/openplan3d/_app/immutable" -type f -name '*.js' -print -quit | sed "s|^$PUBLIC/||")"
+IMMUTABLE_REL="$(find "$PUBLIC/vendor/openplan3d-h1/_app/immutable" -type f -name '*.js' -print -quit | sed "s|^$PUBLIC/||")"
 if [[ -z "$IMMUTABLE_REL" ]]; then
-  echo "apache-htaccess-cache: no immutable JS chunk found under vendor/openplan3d" >&2
+  echo "apache-htaccess-cache: no immutable JS chunk found under vendor/openplan3d-h1" >&2
   exit 1
 fi
 
 FONT_REL="$(find "$PUBLIC" -type f \( -name '*.woff2' -o -name '*.woff' \) -print -quit | sed "s|^$PUBLIC/||")"
 IMAGE_REL="$(find "$PUBLIC" -type f \( -name '*.png' -o -name '*.svg' -o -name '*.webp' \) -print -quit | sed "s|^$PUBLIC/||")"
-ENV_REL="vendor/openplan3d/_app/env.js"
+ENV_REL="vendor/openplan3d-h1/_app/env.js"
+EDITOR_INDEX_REL="vendor/openplan3d-h1/editor/index.html"
 
-for f in "$PUBLIC/$ENV_REL" "$PUBLIC/$IMMUTABLE_REL"; do
+for f in "$PUBLIC/$ENV_REL" "$PUBLIC/$IMMUTABLE_REL" "$PUBLIC/$EDITOR_INDEX_REL"; do
   if [[ ! -f "$f" ]]; then
     echo "apache-htaccess-cache: missing fixture file $f" >&2
     exit 1
@@ -148,7 +149,9 @@ run_suite() {
   assert_header "${base}/${IMMUTABLE_REL}" "cache-control:.*immutable" "${label} immutable chunk"
   assert_header "${base}/js/openplan3d-editor-bridge.js" "cache-control:.*must-revalidate" "${label} unversioned JS"
   assert_no_header "${base}/js/openplan3d-editor-bridge.js" "cache-control:.*immutable" "${label} unversioned JS not immutable"
-  assert_header "${base}/${ENV_REL}" "cache-control:.*must-revalidate" "${label} env.js unversioned"
+  assert_status "${base}/${EDITOR_INDEX_REL}" "200"
+  assert_header "${base}/${EDITOR_INDEX_REL}" "cache-control:.*must-revalidate" "${label} hosted editor index.html"
+  assert_no_header "${base}/${EDITOR_INDEX_REL}" "cache-control:.*immutable" "${label} editor index not immutable-cached"
 
   if [[ -n "$FONT_REL" ]]; then
     assert_status "${base}/${FONT_REL}" "200"

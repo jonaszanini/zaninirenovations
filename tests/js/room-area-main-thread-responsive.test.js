@@ -34,7 +34,7 @@ $partial = view('admin.utilities._room_area_openplan3d', [
   'initialRoomId' => null,
 ])->render();
 $partial = preg_replace(
-  '#src=\"https?://[^\"/]+(/vendor/openplan3d/editor/index\\.html\\?v=[^\"]+)\"#',
+  '#src=\"https?://[^\"/]+(/vendor/openplan3d-h1/editor/index\\.html\\?v=[^\"]+)\"#',
   'src=\"$1\"',
   $partial
 );

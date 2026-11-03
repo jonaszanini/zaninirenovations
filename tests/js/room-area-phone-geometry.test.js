@@ -44,7 +44,7 @@ async function run() {
     };
   });
 
-  assert.ok(iframeMeta.src.startsWith('/vendor/openplan3d/editor/index.html'), 'iframe must use root-relative vendor URL');
+  assert.ok(iframeMeta.src.startsWith('/vendor/openplan3d-h1/editor/index.html'), 'iframe must use root-relative vendor URL');
 
   const iframeEl = await page.$('#openplan3d-iframe');
   const frame = iframeEl && (await iframeEl.contentFrame());
