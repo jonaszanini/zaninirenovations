@@ -297,6 +297,17 @@
   }
 
   /**
+   * Tooltip on Wall Properties Length (ⓘ) — keep in sync with NzBhsCJS wallProperties.entryHelp.
+   */
+  function hostedWallLengthEntryHelpText(unitLabel) {
+    var unit = unitLabel != null && String(unitLabel).trim() !== '' ? String(unitLabel).trim() : 'in';
+    return 'Matches the plan dimension label. Enter ' + unit
+      + ', or use 7\', 5\'6", 12", 2.5 m (plain numbers without units are inches). '
+      + 'DeWalt laser: 12.05\' is 12\'5" (two digits after the dot are inches 00–11); '
+      + '12.5\' and 12.25\' stay decimal feet.';
+  }
+
+  /**
    * Parse wall Length field text into centimeters of plan dimension (what dimension labels show).
    */
   function parseHostedLengthToCm(raw, units) {
@@ -304,6 +315,16 @@
     if (!s) return null;
     var imperial = normalizeEditorUnits(units) === 'imperial';
     var num = '[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:e[+-]?\\d+)?';
+
+    var dewaltFt = s.match(new RegExp('^(' + num + ')\\.(\\d{2})\\s*(?:\'|ft|feet|foot)\\s*$', 'i'));
+    if (dewaltFt) {
+      var laserIn = parseInt(dewaltFt[2], 10);
+      var laserFeet = Math.abs(Number(dewaltFt[1]));
+      if (laserIn >= 0 && laserIn <= 11) {
+        return (laserFeet * 12 + laserIn) * CM_PER_INCH;
+      }
+      return Math.abs(Number(dewaltFt[1] + '.' + dewaltFt[2])) * 12 * CM_PER_INCH;
+    }
 
     var feetIn = s.match(new RegExp('^(' + num + ')\\s*(?:\'|ft|feet|foot)(?:\\s*(' + num + ')\\s*(?:"|in|inches|inch)?)?$', 'i'));
     if (feetIn) {
@@ -1011,6 +1032,7 @@
     wallPlanDimensionLengthCm: wallPlanDimensionLengthCm,
     centerlineLengthFromPlanDimensionCm: centerlineLengthFromPlanDimensionCm,
     parseHostedLengthToCm: parseHostedLengthToCm,
+    hostedWallLengthEntryHelpText: hostedWallLengthEntryHelpText,
     getActiveFloorWalls: getActiveFloorWalls,
     installHostedWallMeasureSettings: installHostedWallMeasureSettings,
     installHostedIndexedDbGuards: installHostedIndexedDbGuards,

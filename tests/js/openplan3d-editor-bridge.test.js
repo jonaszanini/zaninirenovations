@@ -555,6 +555,23 @@ assert.strictEqual(bridge.parseHostedLengthToCm('84', 'imperial'), 84 * INCH);
 assert.strictEqual(bridge.parseHostedLengthToCm('2.5 m', 'metric'), 250);
 assert.strictEqual(bridge.parseHostedLengthToCm('4\'0"', 'imperial'), 48 * INCH, '4\'0\" must not parse as 40 inches');
 
+assert.strictEqual(bridge.parseHostedLengthToCm("12.05'", 'imperial'), (12 * 12 + 5) * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("10.07'", 'imperial'), (10 * 12 + 7) * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.11'", 'imperial'), (12 * 12 + 11) * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.5'", 'imperial'), 12.5 * 12 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.75'", 'imperial'), 12.75 * 12 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.25'", 'imperial'), 12.25 * 12 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm("12.3'", 'imperial'), 12.3 * 12 * INCH);
+assert.strictEqual(bridge.parseHostedLengthToCm('12.12', 'imperial'), 12.12 * INCH, 'plain 12.12 without unit is inches');
+
+const helpIn = bridge.hostedWallLengthEntryHelpText('in');
+assert.match(helpIn, /DeWalt laser/i);
+assert.match(helpIn, /12\.05/);
+assert.match(helpIn, /00–11|00-11/);
+
+const localeJs = fs.readFileSync(path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/NzBhsCJS.js'), 'utf8');
+assert.match(localeJs, /DeWalt laser: 12\.05'/);
+
 const mockVendor = {
   bM: function (wall) { return bridge.wallCenterlineLengthCm(wall); },
   bN: function (raw, units) { return bridge.parseHostedLengthToCm(raw, units); },
