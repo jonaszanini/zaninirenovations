@@ -5,7 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" type="image/svg+xml" href="/vendor/openplan3d/favicon.svg" />
 		<title>open3dFloorplan</title>
-		<script src="/js/openplan3d-editor-bridge.js?v=97ab20aabaa87cf4"></script>
+		<script src="/js/openplan3d-editor-bridge.js?v=e078a975c82d37d7"></script>
 		<script>
 			if (window.OpenPlan3DEditorBridge && typeof window.OpenPlan3DEditorBridge.syncHostedThemeFromParent === 'function') {
 				window.OpenPlan3DEditorBridge.syncHostedThemeFromParent();
@@ -330,6 +330,15 @@
 					const inspected = session.attachStore(storeModule);
 					if (!inspected || !inspected.ok) {
 						return;
+					}
+
+					if (typeof bridge.installHostedSnapGrid === 'function') {
+						var settingsStore = typeof bridge.resolveSettingsStore === 'function'
+							? bridge.resolveSettingsStore(storeModule)
+							: storeModule.W;
+						if (settingsStore) {
+							bridge.installHostedSnapGrid(settingsStore);
+						}
 					}
 
 					let initial = true;

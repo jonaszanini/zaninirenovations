@@ -174,6 +174,79 @@
     return inspectStoreModule(mod).ok;
   }
 
+  var CM_PER_INCH = 2.54;
+  var HOSTED_GRID_SIZE_METRIC_CM = 25;
+  var HOSTED_GRID_SIZE_IMPERIAL_CM = CM_PER_INCH;
+
+  function normalizeEditorUnits(units) {
+    var u = String(units == null ? 'metric' : units).toLowerCase();
+    if (u === 'imperial' || u === 'ft' || u === 'in' || u === 'inch' || u === 'feet') {
+      return 'imperial';
+    }
+    return 'metric';
+  }
+
+  /** Plan coordinates are centimeters; gridSize is the snap step in cm (vendor default 25 ≈ 10 in). */
+  function gridSizeCmForUnits(units) {
+    return normalizeEditorUnits(units) === 'imperial'
+      ? HOSTED_GRID_SIZE_IMPERIAL_CM
+      : HOSTED_GRID_SIZE_METRIC_CM;
+  }
+
+  /** Same grid snap as openPlan3D when snapToGrid is enabled (see vendor cr() in the editor bundle). */
+  function snapPlanCoordCm(valueCm, snapToGrid, gridSizeCm) {
+    if (!snapToGrid) return valueCm;
+    var step = gridSizeCm > 0 ? gridSizeCm : HOSTED_GRID_SIZE_METRIC_CM;
+    return Math.round(valueCm / step) * step;
+  }
+
+  function syncHostedGridSize(settings) {
+    if (!settings || typeof settings !== 'object') return settings;
+    var desired = gridSizeCmForUnits(settings.units);
+    if (settings.gridSize === desired) return settings;
+    return Object.assign({}, settings, { gridSize: desired });
+  }
+
+  function resolveSettingsStore(storeModule) {
+    if (!storeModule || typeof storeModule !== 'object') return null;
+    if (storeModule.W && typeof storeModule.W.subscribe === 'function') {
+      return storeModule.W;
+    }
+    return null;
+  }
+
+  function installHostedSnapGrid(settingsStore) {
+    if (!settingsStore || typeof settingsStore.subscribe !== 'function') {
+      return { ok: false, reason: 'missing-settings-store' };
+    }
+    var patching = false;
+    function apply(settings) {
+      if (!settings || patching) return;
+      if (settings.gridSize === gridSizeCmForUnits(settings.units)) return;
+      patching = true;
+      try {
+        if (typeof settingsStore.update === 'function') {
+          settingsStore.update(function (current) {
+            return syncHostedGridSize(current);
+          });
+        } else if (typeof settingsStore.set === 'function') {
+          settingsStore.set(syncHostedGridSize(settings));
+        }
+      } finally {
+        patching = false;
+      }
+    }
+    var unsub = settingsStore.subscribe(function (settings) {
+      apply(settings);
+    });
+    return {
+      ok: true,
+      disconnect: function () {
+        if (typeof unsub === 'function') unsub();
+      }
+    };
+  }
+
   function defaultShowError(message) {
     if (typeof document === 'undefined') return;
     var el = document.getElementById('zanini-openplan3d-bridge-error');
@@ -657,6 +730,12 @@
     toEditorProject: toEditorProject,
     inspectStoreModule: inspectStoreModule,
     storeExportsOk: storeExportsOk,
+    CM_PER_INCH: CM_PER_INCH,
+    gridSizeCmForUnits: gridSizeCmForUnits,
+    snapPlanCoordCm: snapPlanCoordCm,
+    syncHostedGridSize: syncHostedGridSize,
+    resolveSettingsStore: resolveSettingsStore,
+    installHostedSnapGrid: installHostedSnapGrid,
     clearLocalStorageKeys: clearLocalStorageKeys,
     snapshotBlockedStorage: snapshotBlockedStorage,
     installStorageLock: installStorageLock,

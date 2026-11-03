@@ -498,4 +498,38 @@ const hostJs = fs.readFileSync(HOST_JS, 'utf8');
 const jsonPostSrc = hostJs.slice(hostJs.indexOf('function jsonPost('), hostJs.indexOf('function getFinishSettings('));
 assert.ok(!jsonPostSrc.includes('isSaving'), 'jsonPost must not release isSaving');
 
+assert.strictEqual(bridge.gridSizeCmForUnits('imperial'), 2.54, 'imperial snap step is 1 inch in cm');
+assert.strictEqual(bridge.gridSizeCmForUnits('metric'), 25, 'metric snap step stays 25 cm');
+assert.strictEqual(bridge.gridSizeCmForUnits('ft'), 2.54, 'ft alias maps to imperial inch grid');
+
+const fourFeetCm = 48 * 2.54;
+const snappedImperial = bridge.snapPlanCoordCm(fourFeetCm, true, bridge.gridSizeCmForUnits('imperial'));
+assert.strictEqual(snappedImperial, fourFeetCm, '4\' wall length snaps to exact 121.92 cm with 1-inch grid');
+const snappedLegacy = bridge.snapPlanCoordCm(fourFeetCm, true, 25);
+assert.notStrictEqual(snappedLegacy, fourFeetCm, 'legacy 25 cm grid misses 4\' endpoints');
+
+const toggledSnap = { units: 'imperial', snapToGrid: false, gridSize: 25 };
+assert.strictEqual(toggledSnap.snapToGrid, false, 'snap toggle state is independent of grid sync helper');
+const synced = bridge.syncHostedGridSize({ units: 'imperial', snapToGrid: true, gridSize: 25 });
+assert.strictEqual(synced.gridSize, 2.54);
+assert.strictEqual(synced.snapToGrid, true, 'grid sync must not disable snap');
+
+const settingsLog = [];
+const mockSettingsStore = {
+  value: { units: 'imperial', snapToGrid: true, gridSize: 25 },
+  subscribe: function (cb) {
+    cb(mockSettingsStore.value);
+    return function () {};
+  },
+  update: function (fn) {
+    mockSettingsStore.value = fn(mockSettingsStore.value);
+    settingsLog.push(mockSettingsStore.value.gridSize);
+  }
+};
+const snapInstall = bridge.installHostedSnapGrid(mockSettingsStore);
+assert.strictEqual(snapInstall.ok, true);
+assert.strictEqual(mockSettingsStore.value.gridSize, 2.54, 'installHostedSnapGrid fixes imperial grid on subscribe');
+
+assert.match(indexHtml, /installHostedSnapGrid/, 'editor index must wire hosted imperial snap grid');
+
 console.log('All openPlan3D editor-bridge unit tests PASSED!');
