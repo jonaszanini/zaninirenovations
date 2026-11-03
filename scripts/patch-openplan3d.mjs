@@ -22,6 +22,8 @@ const OUT_SLUG = 'openplan3d-h1';
 const OUT = path.join(ROOT, 'public/vendor', OUT_SLUG);
 const MANIFEST = path.join(__dirname, 'openplan3d-h1.json');
 const EDITOR_INDEX = path.join(OUT, 'editor/index.html');
+/** Cache-bust: browsers may immutable-cache the upstream editor chunk filename. */
+const PATCHED_EDITOR_CHUNK_BASENAME = 'CgAQI-i0-h1.js';
 
 const require = createRequire(import.meta.url);
 const bridge = require(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
@@ -69,6 +71,28 @@ function listAllFiles(dir) {
     else out.push(p);
   }
   return out;
+}
+
+function rewriteEditorChunkBasename(rootDir, fromBasename, toBasename) {
+  if (fromBasename === toBasename) return;
+  for (const file of listAllFiles(rootDir)) {
+    if (!/\.(html|js|css|json|svg)$/.test(file)) continue;
+    let text = fs.readFileSync(file, 'utf8');
+    if (!text.includes(fromBasename)) continue;
+    text = text.split(fromBasename).join(toBasename);
+    fs.writeFileSync(file, text);
+  }
+}
+
+function publishPatchedEditorChunk(vendorBasename, patchedSource) {
+  const outPath = path.join(OUT, '_app/immutable/chunks', PATCHED_EDITOR_CHUNK_BASENAME);
+  fs.writeFileSync(outPath, patchedSource);
+  if (vendorBasename !== PATCHED_EDITOR_CHUNK_BASENAME) {
+    const vendorPath = path.join(OUT, '_app/immutable/chunks', vendorBasename);
+    if (fs.existsSync(vendorPath)) fs.rmSync(vendorPath);
+    rewriteEditorChunkBasename(OUT, vendorBasename, PATCHED_EDITOR_CHUNK_BASENAME);
+  }
+  return PATCHED_EDITOR_CHUNK_BASENAME;
 }
 
 function rewriteVendorUrls(rootDir) {
@@ -192,10 +216,14 @@ function patchEditorCanvasChunk(source) {
   const krVendor =
     'function Kr(w,st){if(!t(ln))return st;const Y=st.x-w.x,mt=st.y-w.y,K=Math.hypot(Y,mt);if(K<5)return st;const ot=Math.atan2(mt,Y),xt=[0,Math.PI/4,Math.PI/2,3*Math.PI/4,Math.PI,-Math.PI,-3*Math.PI/4,-Math.PI/2,-Math.PI/4],Ut=Math.PI/18;for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:w.x+K*Math.cos(Zt),y:w.y+K*Math.sin(Zt)};return st}function tn()';
   const krPatched =
-    'function Kr(w,st){if(!t(ln))return st;if(st.snappedToEndpoint||st.snappedToWall)return st;const Y=st.x-w.x,mt=st.y-w.y,K=Math.hypot(Y,mt);if(K<5)return st;const ot=Math.atan2(mt,Y),xt=[0,Math.PI/4,Math.PI/2,3*Math.PI/4,Math.PI,-Math.PI,-3*Math.PI/4,-Math.PI/2,-Math.PI/4],Ut=Math.PI/18;for(const Zt of xt)if(Math.abs(ot-Zt)<Ut){let H=K;t(nn)&&(H=cr(K));return{x:w.x+H*Math.cos(Zt),y:w.y+H*Math.sin(Zt)}}return t(nn)?{x:cr(st.x),y:cr(st.y)}:st}function tn()';
+    'function Kr(w,st){if(!t(ln))return st;if(st.snappedToEndpoint||st.snappedToWall)return st;const Y=st.x-w.x,mt=st.y-w.y,K=Math.hypot(Y,mt);if(K<5)return st;const ot=Math.atan2(mt,Y),xt=[0,Math.PI/4,Math.PI/2,3*Math.PI/4,Math.PI,-Math.PI,-3*Math.PI/4,-Math.PI/2,-Math.PI/4],Ut=Math.PI/18;for(const Zt of xt)if(Math.abs(ot-Zt)<Ut){let H=K;t(Ce).units==="imperial"&&(H=cr(K));return{x:w.x+H*Math.cos(Zt),y:w.y+H*Math.sin(Zt)}}return t(Ce).units==="imperial"?{x:cr(st.x),y:cr(st.y)}:st}function tn()';
+  const krLegacyNn =
+    'function Kr(w,st){if(!t(ln))return st;if(st.snappedToEndpoint||st.snappedToWall)return st;const Y=st.x-w.x,mt=st.y-w.y,K=Math.hypot(Y,mt);if(K<5)return st;const ot=Math.atan2(mt,Y),xt=[0,Math.PI/4,Math.PI/2,3*Math.PI/4,Math.PI,-Math.PI,-3*Math.PI/4,-Math.PI/2,-Math.PI/4],Ut=Math.PI/18;for(const Zt of xt)if(Math.abs(ot-Zt)<Ut){let H=K;t(nn)&&(H=cr(K));return{x:w.x+H*Math.cos(Zt),y:w.y+K*Math.sin(Zt)}}return t(nn)?{x:cr(st.x),y:cr(st.y)}:st}function tn()';
   if (s.includes(krVendor)) {
     s = replaceExpected(s, krVendor, krPatched, 'editor chunk: Kr imperial ortho + grid snap', 1);
-  } else if (!s.includes('st.snappedToEndpoint||st.snappedToWall') || !s.includes('let H=K;t(nn)&&(H=cr(K))')) {
+  } else if (s.includes(krLegacyNn)) {
+    s = replaceExpected(s, krLegacyNn, krPatched, 'editor chunk: Kr nn→Ce.units imperial gate', 1);
+  } else if (!s.includes('t(Ce).units==="imperial"&&(H=cr(K))')) {
     console.error('patch-openplan3d: editor chunk: Kr() pattern not found');
     process.exit(1);
   }
@@ -203,10 +231,14 @@ function patchEditorCanvasChunk(source) {
   const joOrthoOld =
     'st={x:t(O).x+K*Math.cos(Ut),y:t(O).y+K*Math.sin(Ut)}}}else st=Kr(t(O),st);return st}function bi()';
   const joOrthoNew =
+    'let H=K;t(ln)&&t(Ce).units==="imperial"&&(H=cr(K));st={x:t(O).x+H*Math.cos(Ut),y:t(O).y+H*Math.sin(Ut)}}}else st=Kr(t(O),st);return st}function bi()';
+  const joLegacyNn =
     'let H=K;t(ln)&&t(nn)&&(H=cr(K));st={x:t(O).x+H*Math.cos(Ut),y:t(O).y+H*Math.sin(Ut)}}}else st=Kr(t(O),st);return st}function bi()';
   if (s.includes(joOrthoOld)) {
     s = replaceExpected(s, joOrthoOld, joOrthoNew, 'editor chunk: jo draw ortho inch length', 1);
-  } else if (!s.includes('let H=K;t(ln)&&t(nn)&&(H=cr(K));st={x:t(O).x+H*Math.cos(Ut)')) {
+  } else if (s.includes(joLegacyNn)) {
+    s = replaceExpected(s, joLegacyNn, joOrthoNew, 'editor chunk: jo nn→Ce.units imperial gate', 1);
+  } else if (!s.includes('t(ln)&&t(Ce).units==="imperial"&&(H=cr(K));st={x:t(O).x+H*Math.cos(Ut)')) {
     console.error('patch-openplan3d: editor chunk: jo() ortho pattern not found');
     process.exit(1);
   }
@@ -275,12 +307,15 @@ function main() {
   rewriteVendorUrls(OUT);
 
   const storeChunk = discoverStoreChunkBasename();
-  const editorChunk = discoverEditorChunkBasename();
+  const vendorEditorChunk = discoverEditorChunkBasename();
 
   const storePath = path.join(OUT, '_app/immutable/chunks', storeChunk);
-  const editorPath = path.join(OUT, '_app/immutable/chunks', editorChunk);
+  const editorVendorPath = path.join(OUT, '_app/immutable/chunks', vendorEditorChunk);
   fs.writeFileSync(storePath, patchStoreChunk(fs.readFileSync(storePath, 'utf8')));
-  fs.writeFileSync(editorPath, patchEditorCanvasChunk(fs.readFileSync(editorPath, 'utf8')));
+  const editorChunk = publishPatchedEditorChunk(
+    vendorEditorChunk,
+    patchEditorCanvasChunk(fs.readFileSync(editorVendorPath, 'utf8'))
+  );
 
   patchHostedEditorIndexBoot();
   const localeChunk = trimRedundantLocaleModulepreload();
@@ -289,6 +324,7 @@ function main() {
     vendorSlug: OUT_SLUG,
     storeChunk,
     editorChunk,
+    vendorEditorChunk,
     localeChunk,
   };
   fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');

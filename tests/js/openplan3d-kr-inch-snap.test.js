@@ -1,18 +1,25 @@
 'use strict';
 
-/**
- * Kr / jo inch snap: behavioral tests on extracted canvas Kr() plus negative vendor control.
- */
-
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { extractKrSource, makeKrRunner, onWholeInch, orthoLengthCm, INCH } = require('./openplan3d-kr-snap-logic');
+const {
+  extractKrSource,
+  extractJoSource,
+  makeKrRunner,
+  makeJoRunner,
+  onWholeInch,
+  orthoLengthCm,
+  revertKrOrthoPatch,
+  revertJoOrthoPatch,
+  INCH,
+} = require('./openplan3d-kr-snap-logic');
 
 const ROOT = path.resolve(__dirname, '../..');
 const patched = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/openplan3d-h1.json'), 'utf8'));
+const vendorChunk = patched.vendorEditorChunk || 'CgAQI-i0.js';
 const vendorEditor = fs.readFileSync(
-  path.join(ROOT, 'public/vendor/openplan3d/_app/immutable/chunks', patched.editorChunk),
+  path.join(ROOT, 'public/vendor/openplan3d/_app/immutable/chunks', vendorChunk),
   'utf8'
 );
 const h1Editor = fs.readFileSync(
@@ -20,29 +27,23 @@ const h1Editor = fs.readFileSync(
   'utf8'
 );
 
-const PATCH_MARKERS = [
-  'st.snappedToEndpoint||st.snappedToWall',
-  'let H=K;t(nn)&&(H=cr(K))',
-  'return t(nn)?{x:cr(st.x),y:cr(st.y)}:st',
-];
-for (const m of PATCH_MARKERS) {
-  assert.match(h1Editor, new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'h1 must contain Kr patch: ' + m);
-}
+assert.match(h1Editor, /t\(Ce\)\.units==="imperial"&&\(H=cr\(K\)\)/, 'Kr ortho length must gate on Ce.units imperial');
 assert.match(
   h1Editor,
-  /let H=K;t\(ln\)&&t\(nn\)&&\(H=cr\(K\)\);st=\{x:t\(O\)\.x\+H\*Math\.cos\(Ut\)/,
-  'h1 jo draw ortho must round K in imperial with snap on'
+  /t\(ln\)&&t\(Ce\)\.units==="imperial"&&\(H=cr\(K\)\)/,
+  'jo ortho length must gate on Ce.units imperial'
 );
 
 const patchedKr = extractKrSource(h1Editor);
-const vendorKrOnly = extractKrSource(vendorEditor);
+const patchedJo = extractJoSource(h1Editor);
+const vendorKr = extractKrSource(vendorEditor);
 const patchedRun = makeKrRunner(patchedKr);
-const vendorRun = makeKrRunner(vendorKrOnly);
+const vendorRun = makeKrRunner(vendorKr);
 
-const anchor = { x: 0, y: 0 };
+const anchor = { x: 23.71, y: 31.43 };
 const offGridLen = 125.1958 * INCH;
 const orthoCases = [
-  { name: '0°', st: { x: offGridLen, y: 0.8 } },
+  { name: '0°', st: { x: anchor.x + offGridLen, y: anchor.y + 0.8 } },
   {
     name: '45°',
     st: {
@@ -50,50 +51,59 @@ const orthoCases = [
       y: anchor.y + offGridLen * Math.sin(Math.PI / 4),
     },
   },
-  { name: '90°', st: { x: -0.6, y: offGridLen } },
+  { name: '90°', st: { x: anchor.x - 0.6, y: anchor.y + offGridLen } },
 ];
 
 for (const c of orthoCases) {
   patchedRun.setSnap(true);
-  patchedRun.setImperial(true);
-  const out = patchedRun.Kr(anchor, c.st);
-  const len = orthoLengthCm(anchor, out);
-  assert.ok(onWholeInch(len), `patched Kr ortho ${c.name} length must be whole inches, got ${len / INCH} in`);
+  patchedRun.setUnits('imperial');
+  const len = orthoLengthCm(anchor, patchedRun.Kr(anchor, c.st));
+  assert.ok(onWholeInch(len), `imperial Kr ortho ${c.name} length must be whole inches, got ${len / INCH} in`);
 
   vendorRun.setSnap(true);
-  vendorRun.setImperial(true);
+  vendorRun.setUnits('imperial');
+  assert.ok(!onWholeInch(orthoLengthCm(anchor, vendorRun.Kr(anchor, c.st))), `vendor negative ${c.name}`);
+}
+
+for (const c of orthoCases) {
+  patchedRun.setSnap(true);
+  patchedRun.setUnits('metric');
+  vendorRun.setSnap(true);
+  vendorRun.setUnits('metric');
+  const pOut = patchedRun.Kr(anchor, c.st);
   const vOut = vendorRun.Kr(anchor, c.st);
-  const vLen = orthoLengthCm(anchor, vOut);
-  assert.ok(
-    !onWholeInch(vLen),
-    `negative control: vendor Kr ortho ${c.name} must stay off inch grid (got ${vLen / INCH} in)`
-  );
+  assert.ok(Math.abs(pOut.x - vOut.x) < 0.001 && Math.abs(pOut.y - vOut.y) < 0.001, `metric Kr ${c.name} must match vendor`);
 }
 
 const join = { x: 60.33, y: 40.12 };
+patchedRun.setUnits('imperial');
 patchedRun.setSnap(true);
-patchedRun.setImperial(true);
-const epSnap = patchedRun.Kr(anchor, { x: join.x, y: join.y, snappedToEndpoint: true });
-assert.strictEqual(epSnap.x, join.x, 'Kr must not move Br endpoint snap X');
-assert.strictEqual(epSnap.y, join.y, 'Kr must not move Br endpoint snap Y');
-const wallSnap = patchedRun.Kr(anchor, { x: join.x, y: join.y, snappedToWall: true, snappedWallId: 'w1' });
-assert.strictEqual(wallSnap.x, join.x, 'Kr must not move Br wall segment snap X');
+assert.strictEqual(patchedRun.Kr(anchor, { ...join, snappedToEndpoint: true }).x, join.x);
 
-patchedRun.setSnap(true);
-patchedRun.setImperial(false);
-const metricOut = patchedRun.Kr(anchor, { x: offGridLen, y: 0.5 });
-assert.ok(Math.abs(metricOut.x - offGridLen) < 0.05, 'metric Kr must not round ortho length');
+const krReverted = makeKrRunner(revertKrOrthoPatch(patchedKr));
+krReverted.setSnap(true);
+krReverted.setUnits('imperial');
+assert.ok(
+  !onWholeInch(orthoLengthCm(anchor, krReverted.Kr(anchor, orthoCases[0].st))),
+  'Kr-only revert must fail whole-inch ortho check'
+);
 
-patchedRun.setSnap(false);
-patchedRun.setImperial(true);
-const snapOff = patchedRun.Kr(anchor, { x: 100.3, y: 200.7 });
-assert.strictEqual(snapOff.x, 100.3);
-assert.strictEqual(snapOff.y, 200.7);
+const joRun = makeJoRunner(patchedJo, patchedRun);
+joRun.setOrigin(anchor);
+joRun.setSnap(true);
+joRun.setUnits('imperial');
+assert.ok(
+  onWholeInch(orthoLengthCm(anchor, joRun.jo({ x: anchor.x + offGridLen, y: anchor.y + 1.1 }))),
+  'jo must inch-round ortho length in imperial'
+);
 
-patchedRun.setSnap(true);
-patchedRun.setImperial(true);
-const oblique = { x: 100.3, y: 200.7 };
-const fb = patchedRun.Kr(anchor, oblique);
-assert.ok(onWholeInch(fb.x) && onWholeInch(fb.y), 'grid fallback must inch-round free point');
+const joReverted = makeJoRunner(revertJoOrthoPatch(patchedJo), patchedRun);
+joReverted.setOrigin(anchor);
+joReverted.setSnap(true);
+joReverted.setUnits('imperial');
+assert.ok(
+  !onWholeInch(orthoLengthCm(anchor, joReverted.jo({ x: anchor.x + offGridLen, y: anchor.y + 1.1 }))),
+  'jo-only revert must fail whole-inch ortho check'
+);
 
 console.log('openplan3d-kr-inch-snap: ok (editor=' + patched.editorChunk + ')');

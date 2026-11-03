@@ -562,13 +562,13 @@ assert.match(
 );
 assert.match(
   editorJs,
-  /let H=K;t\(nn\)&&\(H=cr\(K\)\);return\{x:w\.x\+H\*Math\.cos\(Zt\),y:w\.y\+H\*Math\.sin\(Zt\)\}/,
-  'canvas Kr must inch-round ortho length K when imperial'
+  /let H=K;t\(Ce\)\.units==="imperial"&&\(H=cr\(K\)\);return\{x:w\.x\+H\*Math\.cos\(Zt\),y:w\.y\+H\*Math\.sin\(Zt\)\}/,
+  'canvas Kr must inch-round ortho length K only when Ce.units is imperial'
 );
 assert.match(
   editorJs,
-  /return t\(nn\)\?\{x:cr\(st\.x\),y:cr\(st\.y\)\}:st\}function tn\(\)/,
-  'canvas Kr must inch-round grid fallback only when imperial (metric keeps st)'
+  /return t\(Ce\)\.units==="imperial"\?\{x:cr\(st\.x\),y:cr\(st\.y\)\}:st\}function tn\(\)/,
+  'canvas Kr grid fallback inch-round only when Ce.units is imperial'
 );
 assert.doesNotMatch(
   editorJs,

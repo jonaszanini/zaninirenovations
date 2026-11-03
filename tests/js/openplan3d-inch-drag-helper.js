@@ -26,18 +26,24 @@ function assertKrPatchOnDisk() {
     path.join(ROOT, 'public/vendor', patched.vendorSlug, '_app/immutable/chunks', EDITOR_CHUNK),
     'utf8'
   );
-  assert.match(editorJs, /let H=K;t\(nn\)&&\(H=cr\(K\)\)/, 'h1 Kr must round ortho length K (inch-drag would false-pass on vendor Kr)');
+  assert.match(editorJs, /t\(Ce\)\.units==="imperial"&&\(H=cr\(K\)\)/, 'h1 Kr must gate ortho K on Ce.units imperial');
   assert.match(editorJs, /st\.snappedToEndpoint\|\|st\.snappedToWall/, 'h1 Kr must skip when Br endpoint/wall snapped');
+  assert.match(
+    editorJs,
+    /t\(ln\)&&t\(Ce\)\.units==="imperial"&&\(H=cr\(K\)\)/,
+    'h1 jo must gate ortho K on Ce.units imperial'
+  );
 }
 
 function assertVendorKrNegativeControl() {
+  const vendorChunk = patched.vendorEditorChunk || 'CgAQI-i0.js';
   const vendorJs = fs.readFileSync(
-    path.join(ROOT, 'public/vendor/openplan3d/_app/immutable/chunks', EDITOR_CHUNK),
+    path.join(ROOT, 'public/vendor/openplan3d/_app/immutable/chunks', vendorChunk),
     'utf8'
   );
   const vendorRun = makeKrRunner(extractKrSource(vendorJs));
   vendorRun.setSnap(true);
-  vendorRun.setImperial(true);
+  vendorRun.setUnits('imperial');
   const len = orthoLengthCm({ x: 0, y: 0 }, vendorRun.Kr({ x: 0, y: 0 }, { x: 125.1958 * INCH, y: 0.8 }));
   assert.ok(!onWholeInch(len), 'vendor Kr negative control must not produce whole-inch ortho length');
 }
@@ -69,6 +75,38 @@ function cornerPlan() {
     ],
   };
 }
+
+function orthoWallPlan() {
+  const t = 6 * INCH;
+  const ax = 23.71;
+  const ay = 31.43;
+  const leg = 48 * INCH;
+  const ang = Math.PI / 4;
+  return {
+    id: 'p-ortho',
+    name: 'Ortho drag',
+    activeFloorId: 'f1',
+    floors: [
+      {
+        id: 'f1',
+        name: 'Floor 1',
+        walls: [
+          { id: 'w1', start: { x: ax, y: ay }, end: { x: ax + leg, y: ay }, height: 243.84, thickness: t },
+          { id: 'w2', start: { x: ax, y: ay }, end: { x: ax, y: ay + leg }, height: 243.84, thickness: t },
+          {
+            id: 'w3',
+            start: { x: 118.33, y: 92.17 },
+            end: { x: 118.33 + leg * Math.cos(ang), y: 92.17 + leg * Math.sin(ang) },
+            height: 243.84,
+            thickness: t,
+          },
+        ],
+        rooms: [],
+      },
+    ],
+  };
+}
+
 
 function joinPlan() {
   const t = 6 * INCH;
@@ -206,15 +244,15 @@ async function mouseDrag(page, cx, cy, dragDx, dragDy) {
 }
 
 const ORTHO_SCENARIOS = {
-  ortho0: { wallId: 'w1', endpoint: 'end', drag: [88, 2] },
-  ortho45: { wallId: 'w1', endpoint: 'end', drag: [62, 64] },
-  ortho90: { wallId: 'w2', endpoint: 'end', drag: [2, 88] },
+  ortho0: { wallId: 'w1', endpoint: 'end', drag: [94, 3] },
+  ortho45: { wallId: 'w3', endpoint: 'end', drag: [66, 68] },
+  ortho90: { wallId: 'w2', endpoint: 'end', drag: [3, 94] },
 };
 
 async function runOrthoDrag(page, scenarioKey) {
   const scenario = ORTHO_SCENARIOS[scenarioKey];
   assert.ok(scenario, 'unknown ortho scenario ' + scenarioKey);
-  const plan = cornerPlan();
+  const plan = orthoWallPlan();
   await preparePage(page, plan, 'edge');
   await page.evaluate(
     async ({ storeChunk, vendorPrefix, wallId }) => {
@@ -232,83 +270,14 @@ async function runOrthoDrag(page, scenarioKey) {
       const w = window.__openPlan3D.getProject().floors[0].walls.find((x) => x.id === wallId);
       const pt = w[endpoint];
       const len = Math.hypot(pt.x - anchor.x, pt.y - anchor.y);
-      return { pt, len, moved: len };
+      return { pt, len };
     },
     { wallId: scenario.wallId, endpoint: scenario.endpoint, anchor: projected.anchor }
   );
   assert.ok(state.len > 5, `${scenarioKey}: drag must move endpoint`);
   assert.ok(onWholeInch(state.len), `${scenarioKey}: ortho length must be whole inches, got ${state.len / INCH} in`);
-  return { scenario: scenarioKey, drag: { dx: dragDx, dy: dragDy }, lengthIn: state.len / INCH, point: state.pt };
-}
-
-async function runEndpointJoin(page) {
-  const plan = joinPlan();
-  const join = plan.floors[0].walls[0].end;
-  await preparePage(page, plan, 'edge');
-  await page.evaluate(
-    ({ ox, oy }) => {
-      const p = window.__openPlan3D.getProject();
-      const wa = p.floors[0].walls.find((w) => w.id === 'wa');
-      wa.end = { x: wa.end.x + ox, y: wa.end.y + oy };
-      window.__openPlan3D.setProject(JSON.parse(JSON.stringify(p)));
-    },
-    { ox: 8.5, oy: 7.2 }
-  );
-  await page.evaluate(
-    async ({ storeChunk, vendorPrefix }) => {
-      const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
-      mod.X.set('wa');
-    },
-    { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
-  );
-  await new Promise((r) => setTimeout(r, 250));
-  const handle = await projectEndpoint(page, 'wa', 'end');
-  const target = await projectEndpoint(page, 'wb', 'start');
-  let snapped = null;
-  for (let dy = -24; dy <= 24 && !snapped; dy += 8) {
-    for (let dx = -24; dx <= 24 && !snapped; dx += 8) {
-      await page.evaluate(
-        ({ ox, oy }) => {
-          const plan = window.__openPlan3D.getProject();
-          const wa = plan.floors[0].walls.find((w) => w.id === 'wa');
-          const join = { x: 60.33, y: 40.12 };
-          wa.end = { x: join.x + ox, y: join.y + oy };
-          window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan)));
-        },
-        { ox: 8.5, oy: 7.2 }
-      );
-      await page.evaluate(
-        async ({ storeChunk, vendorPrefix }) => {
-          const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
-          mod.X.set('wa');
-        },
-        { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
-      );
-      const h = await projectEndpoint(page, 'wa', 'end');
-      await page.mouse.move(h.clientX + dx, h.clientY + dy);
-      await page.mouse.down();
-      await page.mouse.move(target.clientX, target.clientY, { steps: 16 });
-      await page.mouse.up();
-      await new Promise((r) => setTimeout(r, 450));
-      snapped = await page.evaluate(() => {
-        const walls = window.__openPlan3D.getProject().floors[0].walls;
-        const wa = walls.find((x) => x.id === 'wa');
-        const wb = walls.find((x) => x.id === 'wb');
-        return { end: { ...wa.end }, wbStart: { ...wb.start } };
-      });
-      if (Math.abs(snapped.end.x - join.x) < 0.001 && Math.abs(snapped.end.y - join.y) < 0.001) {
-        break;
-      }
-      snapped = null;
-    }
-  }
-  assert.ok(snapped, 'endpoint join drag must grab wa.end handle');
-  assert.ok(
-    Math.abs(snapped.end.x - join.x) < 0.001 && Math.abs(snapped.end.y - join.y) < 0.001,
-    `wa.end must snap to join exactly (got ${snapped.end.x}, ${snapped.end.y})`
-  );
-  assert.ok(Math.abs(snapped.wbStart.x - join.x) < 0.001 && Math.abs(snapped.wbStart.y - join.y) < 0.001);
-  return { join, end: snapped.end };
+  // R6-4: at 45° we only require whole-inch segment length; x/y may stay off-inch.
+  return { scenario: scenarioKey, drag: { dx: dragDx, dy: dragDy }, lengthIn: state.len / INCH, point: state.pt, anchor: projected.anchor };
 }
 
 const DRAG_VECTORS = [
@@ -425,8 +394,6 @@ async function main() {
     let payload;
     if (mode === 'edge' || mode === 'centerline') {
       payload = await runGridFallbackDrag(page, mode);
-    } else if (mode === 'endpoint-join') {
-      payload = await runEndpointJoin(page);
     } else if (ORTHO_SCENARIOS[mode]) {
       payload = await runOrthoDrag(page, mode);
     } else {

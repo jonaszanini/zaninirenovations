@@ -1,6 +1,7 @@
 {
   "vendorSlug": "openplan3d-h1",
   "storeChunk": "1VjVcrjm.js",
-  "editorChunk": "CgAQI-i0.js",
+  "editorChunk": "CgAQI-i0-h1.js",
+  "vendorEditorChunk": "CgAQI-i0.js",
   "localeChunk": "NzBhsCJS.js"
 }

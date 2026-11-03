@@ -190,8 +190,8 @@ async function run() {
     );
     assert.match(
       editorJs,
-      /let H=K;t\(nn\)&&\(H=cr\(K\)\);return\{x:w\.x\+H\*Math\.cos\(Zt\)/,
-      'editor canvas Kr must inch-round ortho length K when imperial'
+      /t\(Ce\)\.units==="imperial"&&\(H=cr\(K\)\)/,
+      'editor canvas Kr must gate ortho K on Ce.units imperial'
     );
 
     const lengthCommit = await page.evaluate(
