@@ -97,20 +97,41 @@ class RoomAreaRoom extends Model
      *   polygon_count: int
      * }
      */
-    public function layoutMetrics(): array
+    public function layoutMetrics(bool $tolerant = false): array
     {
         $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
-        if ($bridge->isPlan($this->vertices)) {
-            return $bridge->layoutMetrics($this->vertices, null, $this->finishSettings());
-        }
+        try {
+            if ($bridge->isPlan($this->vertices)) {
+                if ($tolerant) {
+                    return $bridge->safeLayoutMetrics($this->vertices, null, $this->finishSettings());
+                }
 
-        $scale = $this->resolvedScalePixelsPerFoot();
-        $height = $this->resolvedWallHeightFt();
-        if ($scale <= 0) {
-            return app(RoomAreaCanvasData::class)->emptyLayoutMetrics($height);
-        }
+                return $bridge->layoutMetrics($this->vertices, null, $this->finishSettings());
+            }
 
-        return app(RoomAreaCanvasData::class)->layoutMetrics($this->canvasData(), $scale, $height, $this->finishSettings());
+            $scale = $this->resolvedScalePixelsPerFoot();
+            $height = $this->resolvedWallHeightFt();
+            if ($scale <= 0) {
+                return app(RoomAreaCanvasData::class)->emptyLayoutMetrics($height);
+            }
+
+            $canvasData = app(RoomAreaCanvasData::class);
+            if ($tolerant) {
+                return $canvasData->safeLayoutMetrics($this->canvasData(), $scale, $height, $this->finishSettings());
+            }
+
+            return $canvasData->layoutMetrics($this->canvasData(), $scale, $height, $this->finishSettings());
+        } catch (\InvalidArgumentException $e) {
+            if (! $tolerant) {
+                throw $e;
+            }
+            $empty = $bridge->emptyLayoutMetrics($this->resolvedWallHeightFt());
+            $empty['geometry_unmeasurable'] = true;
+            $message = trim($e->getMessage());
+            $empty['geometry_message'] = $message !== '' ? $message : 'Room geometry could not be measured.';
+
+            return $empty;
+        }
     }
 
     public function project(): BelongsTo

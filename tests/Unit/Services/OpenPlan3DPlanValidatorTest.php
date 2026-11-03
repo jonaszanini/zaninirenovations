@@ -170,7 +170,7 @@ class OpenPlan3DPlanValidatorTest extends TestCase
         $this->assertStringContainsString('coordinate is impossibly large', (string) $result['message']);
     }
 
-    public function test_allows_existing_saved_plan_with_self_crossing_polygon(): void
+    public function test_rejects_resave_of_existing_self_crossing_polygon(): void
     {
         $plan = $this->rectangle();
         $crossingPoly = [
@@ -181,30 +181,12 @@ class OpenPlan3DPlanValidatorTest extends TestCase
         ];
         $plan['floor']['rooms'][0]['polygon'] = $crossingPoly;
 
-        // Without existing plan, it must be rejected
-        $newResult = $this->validator->validate($plan);
-        $this->assertFalse($newResult['valid']);
-        $this->assertStringContainsString('crosses itself', (string) $newResult['message']);
-
-        // With existing plan containing the exact same polygon, it must be allowed (downgraded to warning)
         $existingPlan = $this->rectangle();
         $existingPlan['floor']['rooms'][0]['polygon'] = $crossingPoly;
 
         $resaveResult = $this->validator->validate($plan, $existingPlan);
-        $this->assertTrue($resaveResult['valid']);
-        $this->assertNotNull($resaveResult['warning'] ?? null);
-
-        // If the polygon is modified, it must still be rejected
-        $modifiedPlan = $plan;
-        $modifiedPlan['floor']['rooms'][0]['polygon'] = [
-            ['x' => 0, 'y' => 0],
-            ['x' => 120, 'y' => 120],
-            ['x' => 120, 'y' => 0],
-            ['x' => 0, 'y' => 120],
-        ];
-        $modifiedResult = $this->validator->validate($modifiedPlan, $existingPlan);
-        $this->assertFalse($modifiedResult['valid']);
-        $this->assertStringContainsString('crosses itself', (string) $modifiedResult['message']);
+        $this->assertFalse($resaveResult['valid']);
+        $this->assertStringContainsString('crosses itself', (string) $resaveResult['message']);
     }
 
     public function test_converts_item_sizes_to_cm_using_plan_unit_before_comparing(): void
@@ -275,14 +257,14 @@ class OpenPlan3DPlanValidatorTest extends TestCase
         $this->assertFalse($noIdResult['valid']);
         $this->assertStringContainsString('crosses itself', (string) $noIdResult['message']);
 
-        // Same polygon and same room id -> allowed with warning
+        // Same polygon and same room id -> still rejected (no resave exemption)
         $planSameId = $this->rectangle();
         $planSameId['floor']['rooms'][0]['id'] = 'room-saved-1';
         $planSameId['floor']['rooms'][0]['polygon'] = $crossingPoly;
 
         $sameResult = $this->validator->validate($planSameId, $existingPlan);
-        $this->assertTrue($sameResult['valid']);
-        $this->assertNotNull($sameResult['warning']);
+        $this->assertFalse($sameResult['valid']);
+        $this->assertStringContainsString('crosses itself', (string) $sameResult['message']);
     }
 
     public function test_rejects_plan_with_invalid_wall_or_room_array_structures(): void

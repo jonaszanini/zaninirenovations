@@ -173,6 +173,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertSee('data-room-area-openplan3d', false);
         $response->assertSee('id="openplan3d-save-btn"', false);
         $response->assertSee('id="openplan3d-noscale-warning"', false);
+        $response->assertSee('id="openplan3d-geometry-warning"', false);
         $response->assertSee('data-hotkey-save', false);
         $response->assertSee('data-ra-save-room', false);
         $response->assertSee('id="openplan3d-metrics-ribbon"', false);
@@ -389,6 +390,68 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Bowtie']);
     }
 
+    public function test_update_unchanged_self_intersecting_plan_returns_422_not_500(): void
+    {
+        $bowtiePoly = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 304.8, 'y' => 304.8],
+            ['x' => 304.8, 'y' => 0],
+            ['x' => 0, 'y' => 304.8],
+        ];
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+        $plan['floor']['rooms'][0]['polygon'] = $bowtiePoly;
+
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Basement',
+            'vertices' => $plan,
+            'area_sqft' => 0.0,
+            'wall_height_ft' => 8.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Basement',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('ok', false);
+        $this->assertStringContainsString('crosses itself', $response->getContent());
+    }
+
+    public function test_update_accepts_collinear_midpoint_on_rectangle_edge(): void
+    {
+        $wCm = 10.0 * 30.48;
+        $lCm = 12.0 * 30.48;
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+        $plan['floor']['rooms'][0]['polygon'] = [
+            ['x' => 0, 'y' => 0],
+            ['x' => $wCm / 2, 'y' => 0],
+            ['x' => $wCm, 'y' => 0],
+            ['x' => $wCm, 'y' => $lCm],
+            ['x' => 0, 'y' => $lCm],
+        ];
+
+        $room = $this->storeSampleRoom(120.0, $this->sampleOpenPlan(10.0, 12.0));
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'OpenPlan Room',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $this->assertEquals(120.0, $response->json('room.area_sqft'));
+    }
+
     public function test_rejects_nan_and_impossible_sizes_with_422(): void
     {
         $nan = $this->sampleOpenPlan();
@@ -475,9 +538,234 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertDatabaseHas('room_area_rooms', ['name' => 'MM Room']);
     }
 
-    private function storeSampleRoom(float $areaSqft): RoomAreaRoom
+    public function test_collinear_three_point_room_names_room_in_error(): void
     {
-        $plan = $this->sampleOpenPlan(10.0, 15.0);
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+        $wCm = 10.0 * 30.48;
+        $plan['floor']['rooms'][0]['name'] = 'Hallway strip';
+        $plan['floor']['rooms'][0]['polygon'] = [
+            ['x' => 0, 'y' => 0],
+            ['x' => $wCm / 2, 'y' => 0],
+            ['x' => $wCm, 'y' => 0],
+        ];
+
+        $response = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            ['name' => 'Strip', 'plan' => $plan]
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('ok', false);
+        $this->assertStringContainsString('Hallway strip', $response->getContent());
+        $this->assertStringContainsString('non-collinear', $response->getContent());
+    }
+
+    public function test_get_room_area_payload_survives_stored_bowtie_room(): void
+    {
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+        $plan['floor']['rooms'][0]['polygon'] = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 10.0 * 30.48, 'y' => 12.0 * 30.48],
+            ['x' => 10.0 * 30.48, 'y' => 0],
+            ['x' => 0, 'y' => 12.0 * 30.48],
+        ];
+        $this->storeSampleRoom(120.0, $this->sampleOpenPlan(10.0, 12.0));
+        RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Broken Bowtie',
+            'vertices' => $plan,
+            'area_sqft' => 0.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('admin.utilities.room-area'));
+        $response->assertOk();
+        $response->assertSee('Broken Bowtie', false);
+        $response->assertSee('geometry_unmeasurable', false);
+        $response->assertSee('id="openplan3d-geometry-warning"', false);
+    }
+
+    public function test_get_room_area_payload_survives_stored_canvas_v2_bowtie(): void
+    {
+        RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Canvas Bowtie',
+            'vertices' => $this->bowtieCanvasV2(),
+            'scale_pixels_per_foot' => 20.0,
+            'area_sqft' => 99.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('admin.utilities.room-area'));
+        $response->assertOk();
+        $response->assertSee('Canvas Bowtie', false);
+        $response->assertSee('geometry_unmeasurable', false);
+        $response->assertSee('id="openplan3d-geometry-warning"', false);
+    }
+
+    public function test_client_project_room_area_survives_stored_canvas_v2_bowtie(): void
+    {
+        $clientProject = \App\Models\ClientProject::factory()->create(['name' => 'CP Canvas Bowtie']);
+        $this->project->update(['client_project_id' => $clientProject->id]);
+        RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Canvas Bowtie CP',
+            'vertices' => $this->bowtieCanvasV2(),
+            'scale_pixels_per_foot' => 20.0,
+            'area_sqft' => 0.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('admin.client-projects.utilities.room-area', [
+            'client_project' => $clientProject,
+            'engine' => 'openplan3d',
+        ]));
+        $response->assertOk();
+        $response->assertSee('Canvas Bowtie CP', false);
+        $response->assertSee('geometry_unmeasurable', false);
+    }
+
+    public function test_canvas_v2_bowtie_sibling_does_not_block_valid_room_save(): void
+    {
+        $good = $this->storeSampleRoom(120.0, $this->sampleOpenPlan(10.0, 12.0));
+        RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Canvas bowtie sibling',
+            'vertices' => $this->bowtieCanvasV2(),
+            'scale_pixels_per_foot' => 20.0,
+            'area_sqft' => 0.0,
+        ]);
+
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $good),
+            [
+                'name' => 'Stored Room',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk()->assertJsonPath('ok', true);
+    }
+
+    public function test_layouts_search_survives_invalid_sibling_room(): void
+    {
+        $good = $this->storeSampleRoom(120.0, $this->sampleOpenPlan(10.0, 12.0));
+        $bowtie = $this->sampleOpenPlan(10.0, 12.0);
+        $bowtie['floor']['rooms'][0]['polygon'] = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 100, 'y' => 100],
+            ['x' => 100, 'y' => 0],
+            ['x' => 0, 'y' => 100],
+        ];
+        RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Bad sibling',
+            'vertices' => $bowtie,
+            'area_sqft' => 99.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson(route('admin.utilities.room-area.layouts', [
+            'q' => 'Save Test',
+        ]));
+
+        $response->assertOk();
+        $this->assertTrue(collect($response->json())->contains(
+            fn ($opt) => str_contains((string) ($opt['label'] ?? ''), $good->name)
+        ));
+        $this->assertTrue(collect($response->json())->contains(
+            fn ($opt) => ($opt['geometry_unmeasurable'] ?? false) === true
+                && str_contains((string) ($opt['meta'] ?? ''), 'ⓘ')
+        ));
+    }
+
+    public function test_sibling_with_bowtie_does_not_block_valid_room_save(): void
+    {
+        $this->storeSampleRoom(120.0, $this->sampleOpenPlan(10.0, 12.0));
+        $bowtie = $this->sampleOpenPlan(10.0, 12.0);
+        $bowtie['floor']['rooms'][0]['polygon'] = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 100, 'y' => 100],
+            ['x' => 100, 'y' => 0],
+            ['x' => 0, 'y' => 100],
+        ];
+        $broken = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Broken sibling',
+            'vertices' => $bowtie,
+            'area_sqft' => 0.0,
+        ]);
+
+        $good = RoomAreaRoom::where('name', 'Stored Room')->firstOrFail();
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $good),
+            [
+                'name' => 'Stored Room',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk();
+        $broken->refresh();
+        $this->assertTrue($this->bridge->isPlan($broken->vertices));
+    }
+
+    public function test_rejects_huge_and_non_finite_coordinates_on_plan_canvas_and_validate(): void
+    {
+        $hugePlan = $this->sampleOpenPlan(10.0, 12.0);
+        $hugePlan['floor']['walls'][0]['start']['x'] = 1e12;
+        $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            ['name' => 'Huge plan', 'plan' => $hugePlan]
+        )->assertStatus(422)->assertJsonPath('ok', false);
+
+        $nonFinitePlan = $this->sampleOpenPlan(10.0, 12.0);
+        $nonFinitePlan['floor']['walls'][0]['start']['x'] = '1e300';
+        $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            ['name' => 'Non finite plan', 'plan' => $nonFinitePlan]
+        )->assertStatus(422)->assertJsonPath('ok', false);
+
+        $scale = 12.0;
+        $hugeCanvas = [
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 1e12, 'y' => 0],
+                        ['x' => 1e12, 'y' => 120],
+                        ['x' => 0, 'y' => 120],
+                    ],
+                ]],
+            ]],
+        ];
+
+        $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            [
+                'name' => 'Huge canvas',
+                'scale_pixels_per_foot' => $scale,
+                'canvas' => $hugeCanvas,
+            ]
+        )->assertStatus(422)->assertJsonPath('ok', false);
+
+        $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.validate'),
+            [
+                'scale_pixels_per_foot' => $scale,
+                'canvas' => $hugeCanvas,
+            ]
+        )->assertStatus(422)->assertJsonPath('ok', false);
+    }
+
+    private function storeSampleRoom(float $areaSqft, ?array $plan = null): RoomAreaRoom
+    {
+        $plan ??= $this->sampleOpenPlan(10.0, 15.0);
         $metrics = $this->bridge->layoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
         $this->assertEquals($areaSqft, $metrics['area_sqft']);
 
@@ -488,6 +776,29 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             'area_sqft' => $metrics['area_sqft'],
             'vertices' => $plan,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function bowtieCanvasV2(): array
+    {
+        return [
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 120, 'y' => 144],
+                        ['x' => 120, 'y' => 0],
+                        ['x' => 0, 'y' => 144],
+                    ],
+                ]],
+            ]],
+        ];
     }
 
     /**

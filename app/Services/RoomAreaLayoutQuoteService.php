@@ -159,8 +159,9 @@ class RoomAreaLayoutQuoteService
      */
     private function optionForRoom(RoomAreaRoom $room): ?array
     {
-        $metrics = $room->layoutMetrics();
-        if ($metrics['perimeter_lf'] <= 0 && $metrics['area_sqft'] <= 0) {
+        $metrics = $room->layoutMetrics(tolerant: true);
+        $unmeasurable = ! empty($metrics['geometry_unmeasurable']);
+        if (! $unmeasurable && $metrics['perimeter_lf'] <= 0 && $metrics['area_sqft'] <= 0) {
             return null;
         }
 
@@ -175,7 +176,8 @@ class RoomAreaLayoutQuoteService
             'room',
             $metrics,
             (bool) $linked,
-            $room->name
+            $room->name,
+            $unmeasurable
         );
     }
 
@@ -192,7 +194,10 @@ class RoomAreaLayoutQuoteService
 
         $metrics = $this->canvasData->emptyLayoutMetrics();
         foreach ($rooms as $room) {
-            $row = $room->layoutMetrics();
+            $row = $room->layoutMetrics(tolerant: true);
+            if (! empty($row['geometry_unmeasurable'])) {
+                continue;
+            }
             $metrics['area_sqft'] += $row['area_sqft'];
             $metrics['perimeter_lf'] += $row['perimeter_lf'];
             $metrics['baseboard_lf'] += $row['baseboard_lf'];
@@ -267,7 +272,8 @@ class RoomAreaLayoutQuoteService
             'project',
             $metrics,
             (bool) $project->client_project_id,
-            $project->name
+            $project->name,
+            false
         );
     }
 
@@ -282,6 +288,7 @@ class RoomAreaLayoutQuoteService
         array $metrics,
         bool $linked,
         string $shortName,
+        bool $geometryUnmeasurable = false,
     ): array {
         $area = $this->formatQty((float) $metrics['area_sqft']);
         $peri = $this->formatQty((float) $metrics['perimeter_lf']);
@@ -305,6 +312,13 @@ class RoomAreaLayoutQuoteService
         if ($stairsTreads > 0) {
             $meta .= ' · '.$stairsTreads.' stair treads';
         }
+        $geometryMessage = trim((string) ($metrics['geometry_message'] ?? ''));
+        if ($geometryUnmeasurable || ! empty($metrics['geometry_unmeasurable'])) {
+            if ($geometryMessage === '') {
+                $geometryMessage = 'Fix the room outline in Room Area before trusting measurements or quotes.';
+            }
+            $meta = 'ⓘ '.$geometryMessage.' · '.$meta;
+        }
 
         return [
             'id' => $id,
@@ -313,6 +327,8 @@ class RoomAreaLayoutQuoteService
             'kind' => $kind,
             'linked' => $linked,
             'short_name' => $shortName,
+            'geometry_unmeasurable' => $geometryUnmeasurable || ! empty($metrics['geometry_unmeasurable']),
+            'geometry_message' => $geometryMessage !== '' ? $geometryMessage : null,
             'area_sqft' => $metrics['area_sqft'],
             'perimeter_lf' => $metrics['perimeter_lf'],
             'baseboard_lf' => $metrics['baseboard_lf'] ?? $metrics['perimeter_lf'],

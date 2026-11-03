@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use InvalidArgumentException;
+
 /**
  * Measurements bridge for openPlan3D floor plans.
  *
@@ -256,8 +258,11 @@ class OpenPlan3DMeasurementBridge
         }
 
         // Floor area via Shoelace in feet
-        $insideAreaSqFt = $this->polygonArea->verticesToSquareFeet($verticesFt, 1.0);
-        $insideAreaSqFt = $this->roundTo($insideAreaSqFt, 2);
+        $areaValidation = $this->polygonArea->validateRoom($verticesFt, 1.0);
+        if (! $areaValidation['valid']) {
+            throw new InvalidArgumentException($areaValidation['message'] ?? 'Room geometry could not be measured.');
+        }
+        $insideAreaSqFt = $this->roundTo((float) $areaValidation['area_sqft'], 2);
 
         // Ceiling area
         $ceilingAreaSqFt = $this->finishMath->ceilingAreaSqFt($insideAreaSqFt);
@@ -473,6 +478,30 @@ class OpenPlan3DMeasurementBridge
     }
 
     /**
+     * Like layoutMetrics but never throws — for read-only payloads when stored geometry is invalid.
+     *
+     * @param  array<string, mixed>  $plan
+     * @param  array<string, mixed>  $finish
+     * @return array<string, mixed>
+     */
+    public function safeLayoutMetrics(array $plan, ?string $roomId = null, array $finish = []): array
+    {
+        try {
+            return $this->layoutMetrics($plan, $roomId, $finish);
+        } catch (\InvalidArgumentException $e) {
+            $wallHeight = (float) ($finish['wall_height_ft'] ?? self::DEFAULT_WALL_HEIGHT_FT);
+            $metrics = $this->emptyLayoutMetrics($wallHeight);
+            $metrics['geometry_unmeasurable'] = true;
+            $message = trim($e->getMessage());
+            $metrics['geometry_message'] = $message !== ''
+                ? $message
+                : 'Room geometry could not be measured.';
+
+            return $metrics;
+        }
+    }
+
+    /**
      * Convert classic canvas data to openPlan3D project structure.
      *
      * @param  array<string, mixed>  $canvas
@@ -546,7 +575,13 @@ class OpenPlan3DMeasurementBridge
                     ];
                 }
 
-                $roomAreaM2 = $this->polygonArea->verticesToSquareFeet($verts, $pixelsPerFoot) * 0.09290304;
+                $roomAreaSqFt = 0.0;
+                try {
+                    $roomAreaSqFt = $this->polygonArea->verticesToSquareFeet($verts, $pixelsPerFoot);
+                } catch (\InvalidArgumentException $e) {
+                    $roomAreaSqFt = 0.0;
+                }
+                $roomAreaM2 = $roomAreaSqFt * 0.09290304;
 
                 $rooms[] = [
                     'id' => $polyId,
