@@ -16,6 +16,7 @@ const patched = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'scripts/openplan3d-patched-chunks.json'), 'utf8')
 );
 const STORE_CHUNK = patched.storeChunk;
+const EDITOR_CHUNK = patched.editorChunk;
 const INCH = 2.54;
 
 const types = {
@@ -145,6 +146,33 @@ async function run() {
     assert.ok(Math.abs(vendorChecks.seven - 84 * INCH) < 0.05, 'vendor bN(7\') must be 84 in');
     assert.ok(Math.abs(vendorChecks.shown - 84 * INCH) < 1.5, 'vendor bM must show ~7\'0" plan length at corner');
     assert.ok(vendorChecks.gridOk, 'wall endpoints must sit on 1 inch grid');
+
+    const editorJs = fs.readFileSync(
+      path.join(ROOT, 'public/vendor/openplan3d/_app/immutable/chunks', EDITOR_CHUNK),
+      'utf8'
+    );
+    assert.match(
+      editorJs,
+      /Y\.snappedToEndpoint\|\|Y\.snappedToWall\?Y:/,
+      'editor canvas chunk must preserve exact corner/segment snaps (Br patch)'
+    );
+
+    const lengthCommit = await page.evaluate(async (storeChunk) => {
+      const mod = await import(`/vendor/openplan3d/_app/immutable/chunks/${storeChunk}`);
+      const planLen = mod.bN("7'", 'imperial');
+      const err = mod.bP('w1', planLen, 'start');
+      const project = window.__openPlan3D.getProject();
+      const floor = project.floors.find((f) => f.id === project.activeFloorId);
+      const w1 = floor.walls.find((w) => w.id === 'w1');
+      const shown = mod.bM(w1);
+      return { err, planLen, shown, endX: w1.end.x, startX: w1.start.x };
+    }, STORE_CHUNK);
+    assert.strictEqual(lengthCommit.err, null, 'bP(7\' edge) must apply without error');
+    assert.ok(Math.abs(lengthCommit.shown - 84 * INCH) < 1.5, 'after Length commit, plan label length must be 7\'0" (~84 in)');
+    assert.ok(
+      Math.abs(lengthCommit.endX - lengthCommit.startX - 87 * INCH) < 2,
+      '7\' edge at corner must restore ~87 in centerline span'
+    );
 
     const canvas = await page.$('canvas');
     const box = await canvas.boundingBox();

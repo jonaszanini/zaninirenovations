@@ -74,6 +74,14 @@ assert.match(
   new RegExp(`openplan3d-hosted-locale\\.js\\?v=${localeShimV}`),
   `editor index locale shim ?v= must match (${localeShimV})`
 );
-assert.match(indexHtml, /NzBhsCJS\.js": "\/js\/openplan3d-hosted-locale\.js/, 'import map must redirect immutable locale chunk');
+const localeImportKey = indexHtml.match(
+  /"(\/vendor\/openplan3d\/_app\/immutable\/chunks\/[A-Za-z0-9_-]+\.js)": "\/js\/openplan3d-hosted-locale\.js/
+)?.[1];
+assert.ok(localeImportKey, 'import map must redirect an immutable locale chunk to hosted locale shim');
+assert.doesNotMatch(
+  indexHtml,
+  new RegExp(`<link href="${localeImportKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" rel="modulepreload">`),
+  'redundant locale chunk modulepreload must be omitted (import map handles locale)'
+);
 
 console.log('openplan3d-editor-asset-version: ok (bridge v=' + bridgeContentVersion() + ', locale shim v=' + localeShimV + ')');

@@ -539,7 +539,20 @@ const storeChunk = patchedManifest.storeChunk;
 const storeJs = fs.readFileSync(path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/' + storeChunk), 'utf8');
 assert.match(storeJs, /__ZANINI_OPENPLAN3D_PATCH__/, 'store chunk must be patched via scripts/patch-openplan3d.mjs');
 assert.match(storeJs, /wallMeasureMode:"edge"/, 'patched store defaults to edge measure mode');
+assert.match(
+  storeJs,
+  /Select a wall to resize\."\);let a;if\(!i\.curvePoint\)a=Math\.hypot/,
+  'ys() must scale from raw centerline length, not vo() edge length'
+);
 assert.match(indexHtml, new RegExp(storeChunk.replace('.', '\\.')), 'editor index must reference patched store chunk');
+
+const editorChunk = patchedManifest.editorChunk;
+const editorJs = fs.readFileSync(
+  path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/' + editorChunk),
+  'utf8'
+);
+assert.match(editorJs, /Y\.snappedToEndpoint\|\|Y\.snappedToWall\?Y:/, 'canvas Br must not grid-round exact endpoint/wall snaps');
+assert.match(editorJs, /return st\}function tn\(\)/, 'canvas Kr must not grid-round when ortho snap is off (metric parity)');
 
 const INCH = bridge.CM_PER_INCH;
 const thicknessCm = 6 * INCH; // 6" wall → 3" face trim at a perpendicular corner
@@ -593,7 +606,7 @@ assert.match(helpIn, /DeWalt laser/i);
 assert.match(helpIn, /12\.05/);
 assert.match(helpIn, /00–11|00-11/);
 
-const localeJs = fs.readFileSync(path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/NzBhsCJS.js'), 'utf8');
+const localeJs = fs.readFileSync(path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/mXJTDcdm.js'), 'utf8');
 assert.doesNotMatch(localeJs, /DeWalt laser/, 'immutable locale chunk must not be edited; help comes from hosted locale shim');
 assert.match(indexHtml, /type="importmap"/, 'editor index must redirect locale chunk through import map');
 assert.match(indexHtml, /openplan3d-hosted-locale\.js\?v=[a-f0-9]{16}/, 'locale shim must be cache-busted');
