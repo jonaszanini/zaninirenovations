@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use InvalidArgumentException;
+
 /**
  * Measurements bridge for openPlan3D floor plans.
  *
@@ -256,8 +258,11 @@ class OpenPlan3DMeasurementBridge
         }
 
         // Floor area via Shoelace in feet
-        $insideAreaSqFt = $this->polygonArea->verticesToSquareFeet($verticesFt, 1.0);
-        $insideAreaSqFt = $this->roundTo($insideAreaSqFt, 2);
+        $areaValidation = $this->polygonArea->validateRoom($verticesFt, 1.0);
+        if (! $areaValidation['valid']) {
+            throw new InvalidArgumentException($areaValidation['message'] ?? 'Room geometry could not be measured.');
+        }
+        $insideAreaSqFt = $this->roundTo((float) $areaValidation['area_sqft'], 2);
 
         // Ceiling area
         $ceilingAreaSqFt = $this->finishMath->ceilingAreaSqFt($insideAreaSqFt);

@@ -280,11 +280,13 @@ class OpenPlan3DPlanValidator
             return ['valid' => true, 'message' => null];
         }
 
-        if (! $this->polygonArea->isSimplePolygon($points)) {
-            if ($this->isExistingUnchangedPolygon($points, $existingPlan, $room['id'] ?? null)) {
-                return ['valid' => true, 'message' => null, 'warning' => 'Existing room polygon crosses itself.'];
-            }
+        $points = $this->polygonArea->normalizeRing($points);
 
+        if (count($points) < 3) {
+            return ['valid' => false, 'message' => 'At least three distinct corners are required.'];
+        }
+
+        if (! $this->polygonArea->isSimplePolygon($points)) {
             return ['valid' => false, 'message' => 'Room shape crosses itself — adjust corners.'];
         }
 

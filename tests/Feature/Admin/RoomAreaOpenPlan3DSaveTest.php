@@ -389,6 +389,68 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Bowtie']);
     }
 
+    public function test_update_unchanged_self_intersecting_plan_returns_422_not_500(): void
+    {
+        $bowtiePoly = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 304.8, 'y' => 304.8],
+            ['x' => 304.8, 'y' => 0],
+            ['x' => 0, 'y' => 304.8],
+        ];
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+        $plan['floor']['rooms'][0]['polygon'] = $bowtiePoly;
+
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Basement',
+            'vertices' => $plan,
+            'area_sqft' => 0.0,
+            'wall_height_ft' => 8.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Basement',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('ok', false);
+        $this->assertStringContainsString('crosses itself', $response->getContent());
+    }
+
+    public function test_update_accepts_collinear_midpoint_on_rectangle_edge(): void
+    {
+        $wCm = 10.0 * 30.48;
+        $lCm = 12.0 * 30.48;
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+        $plan['floor']['rooms'][0]['polygon'] = [
+            ['x' => 0, 'y' => 0],
+            ['x' => $wCm / 2, 'y' => 0],
+            ['x' => $wCm, 'y' => 0],
+            ['x' => $wCm, 'y' => $lCm],
+            ['x' => 0, 'y' => $lCm],
+        ];
+
+        $room = $this->storeSampleRoom(120.0);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'OpenPlan Room',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $this->assertEquals(120.0, $response->json('room.area_sqft'));
+    }
+
     public function test_rejects_nan_and_impossible_sizes_with_422(): void
     {
         $nan = $this->sampleOpenPlan();

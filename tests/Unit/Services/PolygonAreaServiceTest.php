@@ -133,4 +133,67 @@ class PolygonAreaServiceTest extends TestCase
             ['x' => 1, 'y' => 1],
         ], 0);
     }
+
+    public function test_vertices_to_square_feet_throws_clear_message_on_self_intersecting_polygon(): void
+    {
+        $bowtie = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 4, 'y' => 4],
+            ['x' => 4, 'y' => 0],
+            ['x' => 0, 'y' => 4],
+        ];
+
+        try {
+            $this->service->verticesToSquareFeet($bowtie, 1.0);
+            $this->fail('Expected InvalidArgumentException');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('crosses itself', $e->getMessage());
+        }
+    }
+
+    public function test_normalize_ring_treats_collinear_midpoint_as_non_intersecting_rectangle(): void
+    {
+        $withMidpoint = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 5, 'y' => 0],
+            ['x' => 10, 'y' => 0],
+            ['x' => 10, 'y' => 5],
+            ['x' => 0, 'y' => 5],
+        ];
+
+        $normalized = $this->service->normalizeRing($withMidpoint);
+        $this->assertTrue($this->service->isSimplePolygon($normalized));
+        $this->assertSame(50.0, $this->service->verticesToSquareFeet($withMidpoint, 1.0));
+    }
+
+    public function test_layout_metrics_rejects_self_intersecting_plan(): void
+    {
+        $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
+        $plan = [
+            'unit' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 100, 'y' => 0], 'height' => 243.84, 'thickness' => 10],
+                    ['id' => 'w2', 'start' => ['x' => 100, 'y' => 0], 'end' => ['x' => 100, 'y' => 100], 'height' => 243.84, 'thickness' => 10],
+                    ['id' => 'w3', 'start' => ['x' => 100, 'y' => 100], 'end' => ['x' => 0, 'y' => 100], 'height' => 243.84, 'thickness' => 10],
+                    ['id' => 'w4', 'start' => ['x' => 0, 'y' => 100], 'end' => ['x' => 0, 'y' => 0], 'height' => 243.84, 'thickness' => 10],
+                ],
+                'rooms' => [[
+                    'id' => 'r1',
+                    'name' => 'Bowtie',
+                    'walls' => ['w1', 'w2', 'w3', 'w4'],
+                    'polygon' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 100, 'y' => 100],
+                        ['x' => 100, 'y' => 0],
+                        ['x' => 0, 'y' => 100],
+                    ],
+                ]],
+            ],
+        ];
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('crosses itself');
+        $bridge->layoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+    }
 }

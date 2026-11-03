@@ -239,9 +239,67 @@ class PolygonAreaService
 
     /**
      * @param  list<array{x: float|int, y: float|int}>  $vertices
+     * @return list<array{x: float, y: float}>
+     */
+    public function normalizeRing(array $vertices, float $epsilon = 1e-6): array
+    {
+        if ($vertices === []) {
+            return [];
+        }
+
+        $ring = [];
+        foreach ($vertices as $vertex) {
+            $point = ['x' => (float) $vertex['x'], 'y' => (float) $vertex['y']];
+            if ($ring === []) {
+                $ring[] = $point;
+
+                continue;
+            }
+            $prev = $ring[count($ring) - 1];
+            if (hypot($point['x'] - $prev['x'], $point['y'] - $prev['y']) < $epsilon) {
+                continue;
+            }
+            $ring[] = $point;
+        }
+
+        if (count($ring) > 1) {
+            $first = $ring[0];
+            $last = $ring[count($ring) - 1];
+            if (hypot($first['x'] - $last['x'], $first['y'] - $last['y']) < $epsilon) {
+                array_pop($ring);
+            }
+        }
+
+        if (count($ring) < 3) {
+            return $ring;
+        }
+
+        $simplified = [];
+        $count = count($ring);
+        for ($i = 0; $i < $count; $i++) {
+            $prev = $ring[($i - 1 + $count) % $count];
+            $curr = $ring[$i];
+            $next = $ring[($i + 1) % $count];
+            $inX = $curr['x'] - $prev['x'];
+            $inY = $curr['y'] - $prev['y'];
+            $outX = $next['x'] - $curr['x'];
+            $outY = $next['y'] - $curr['y'];
+            $cross = ($inX * $outY) - ($inY * $outX);
+            if (abs($cross) < $epsilon && ($inX * $outX + $inY * $outY) > 0) {
+                continue;
+            }
+            $simplified[] = $curr;
+        }
+
+        return $simplified;
+    }
+
+    /**
+     * @param  list<array{x: float|int, y: float|int}>  $vertices
      */
     public function isSimplePolygon(array $vertices): bool
     {
+        $vertices = $this->normalizeRing($vertices);
         $count = count($vertices);
         if ($count < 3) {
             return false;
@@ -280,8 +338,13 @@ class PolygonAreaService
             throw new InvalidArgumentException('Scale must be greater than zero.');
         }
 
+        $pixelVertices = $this->normalizeRing($pixelVertices);
+        if (count($pixelVertices) < 3) {
+            throw new InvalidArgumentException('At least three distinct corners are required.');
+        }
+
         if (! $this->isSimplePolygon($pixelVertices)) {
-            throw new InvalidArgumentException('Polygon is self-intersecting.');
+            throw new InvalidArgumentException('Room shape crosses itself — adjust corners.');
         }
 
         $footVertices = array_map(fn (array $vertex) => [
@@ -303,8 +366,9 @@ class PolygonAreaService
      */
     public function validateRoom(array $vertices, float $pixelsPerFoot): array
     {
+        $vertices = $this->normalizeRing($vertices);
         if (count($vertices) < 3) {
-            return ['area_sqft' => 0.0, 'valid' => false, 'message' => 'At least three corners are required.'];
+            return ['area_sqft' => 0.0, 'valid' => false, 'message' => 'At least three distinct corners are required.'];
         }
 
         if ($pixelsPerFoot <= 0) {
@@ -312,11 +376,17 @@ class PolygonAreaService
         }
 
         if (! $this->isSimplePolygon($vertices)) {
-            return ['area_sqft' => 0.0, 'valid' => false, 'message' => 'Shape crosses itself — adjust corners.'];
+            return ['area_sqft' => 0.0, 'valid' => false, 'message' => 'Room shape crosses itself — adjust corners.'];
+        }
+
+        try {
+            $area = $this->verticesToSquareFeet($vertices, $pixelsPerFoot);
+        } catch (InvalidArgumentException $e) {
+            return ['area_sqft' => 0.0, 'valid' => false, 'message' => $e->getMessage()];
         }
 
         return [
-            'area_sqft' => $this->verticesToSquareFeet($vertices, $pixelsPerFoot),
+            'area_sqft' => $area,
             'valid' => true,
             'message' => null,
         ];

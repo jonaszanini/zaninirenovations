@@ -14,9 +14,11 @@ use App\Services\RoomAreaLayoutQuoteService;
 use App\Services\RoomAreaPhotoStorage;
 use App\Support\MaterialCatalogPickerOptions;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 
 class RoomAreaController extends Controller
@@ -292,7 +294,10 @@ class RoomAreaController extends Controller
                 'flooring_direction' => $data['flooring_direction'] ?? null,
                 'flooring_box_sqft' => $data['flooring_box_sqft'] ?? null,
             ];
-            $metrics = $bridge->layoutMetrics($plan, null, $finish);
+            $metrics = $this->openPlanLayoutMetricsOr422($bridge, $plan, null, $finish);
+            if ($metrics instanceof JsonResponse) {
+                return $metrics;
+            }
             if (! $this->openPlanHasRoomOrWall($plan, $metrics)) {
                 return response()->json(['ok' => false, 'message' => 'The drawing must contain at least one closed room or wall.'], 422);
             }
@@ -421,7 +426,10 @@ class RoomAreaController extends Controller
                 'flooring_direction' => $data['flooring_direction'] ?? $room_area_room->flooring_direction,
                 'flooring_box_sqft' => $data['flooring_box_sqft'] ?? $room_area_room->flooring_box_sqft,
             ];
-            $metrics = $bridge->layoutMetrics($plan, null, $finish);
+            $metrics = $this->openPlanLayoutMetricsOr422($bridge, $plan, null, $finish);
+            if ($metrics instanceof JsonResponse) {
+                return $metrics;
+            }
             $existingArea = (float) $room_area_room->area_sqft;
             $incomingArea = (float) $metrics['area_sqft'];
             $confirmedZero = $request->boolean('confirm_zero_area');
@@ -1165,5 +1173,24 @@ class RoomAreaController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     * @param  array<string, mixed>|null  $finish
+     * @return array<string, mixed>|JsonResponse
+     */
+    private function openPlanLayoutMetricsOr422(\App\Services\OpenPlan3DMeasurementBridge $bridge, array $plan, ?string $selectedRoomId, ?array $finish)
+    {
+        try {
+            return $bridge->layoutMetrics($plan, $selectedRoomId, $finish ?? []);
+        } catch (InvalidArgumentException $e) {
+            $message = trim($e->getMessage());
+            if ($message === '') {
+                $message = 'Room geometry could not be measured — adjust corners and try again.';
+            }
+
+            return response()->json(['ok' => false, 'message' => $message], 422);
+        }
     }
 }
