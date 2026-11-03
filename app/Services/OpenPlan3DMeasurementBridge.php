@@ -478,6 +478,30 @@ class OpenPlan3DMeasurementBridge
     }
 
     /**
+     * Like layoutMetrics but never throws — for read-only payloads when stored geometry is invalid.
+     *
+     * @param  array<string, mixed>  $plan
+     * @param  array<string, mixed>  $finish
+     * @return array<string, mixed>
+     */
+    public function safeLayoutMetrics(array $plan, ?string $roomId = null, array $finish = []): array
+    {
+        try {
+            return $this->layoutMetrics($plan, $roomId, $finish);
+        } catch (\InvalidArgumentException $e) {
+            $wallHeight = (float) ($finish['wall_height_ft'] ?? self::DEFAULT_WALL_HEIGHT_FT);
+            $metrics = $this->emptyLayoutMetrics($wallHeight);
+            $metrics['geometry_unmeasurable'] = true;
+            $message = trim($e->getMessage());
+            $metrics['geometry_message'] = $message !== ''
+                ? $message
+                : 'Room geometry could not be measured.';
+
+            return $metrics;
+        }
+    }
+
+    /**
      * Convert classic canvas data to openPlan3D project structure.
      *
      * @param  array<string, mixed>  $canvas

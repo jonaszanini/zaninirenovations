@@ -683,12 +683,22 @@ class RoomAreaCanvasData
     public function validate(array $canvas, float $pixelsPerFoot): array
     {
         $normalized = $this->normalize($canvas);
+        $planValidator = app(\App\Services\OpenPlan3DPlanValidator::class);
         $closedCount = 0;
 
         foreach ($normalized['groups'] as $group) {
             foreach ($group['polygons'] as $polygon) {
                 if (count($polygon['vertices']) < 3) {
                     continue;
+                }
+                $coordError = $planValidator->validateCanvasVertices($polygon['vertices'], 'Floor plan');
+                if ($coordError !== null) {
+                    return [
+                        'valid' => false,
+                        'message' => $coordError,
+                        'area_sqft' => 0.0,
+                        'group_summaries' => [],
+                    ];
                 }
                 $closedCount++;
                 $result = $this->polygonArea->validateRoom($polygon['vertices'], $pixelsPerFoot);

@@ -159,7 +159,7 @@ class RoomAreaLayoutQuoteService
      */
     private function optionForRoom(RoomAreaRoom $room): ?array
     {
-        $metrics = $room->layoutMetrics();
+        $metrics = $room->layoutMetrics(tolerant: true);
         if ($metrics['perimeter_lf'] <= 0 && $metrics['area_sqft'] <= 0) {
             return null;
         }
@@ -192,7 +192,10 @@ class RoomAreaLayoutQuoteService
 
         $metrics = $this->canvasData->emptyLayoutMetrics();
         foreach ($rooms as $room) {
-            $row = $room->layoutMetrics();
+            $row = $room->layoutMetrics(tolerant: true);
+            if (! empty($row['geometry_unmeasurable'])) {
+                continue;
+            }
             $metrics['area_sqft'] += $row['area_sqft'];
             $metrics['perimeter_lf'] += $row['perimeter_lf'];
             $metrics['baseboard_lf'] += $row['baseboard_lf'];

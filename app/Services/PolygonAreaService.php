@@ -340,7 +340,7 @@ class PolygonAreaService
 
         $pixelVertices = $this->normalizeRing($pixelVertices);
         if (count($pixelVertices) < 3) {
-            throw new InvalidArgumentException('At least three distinct corners are required.');
+            return 0.0;
         }
 
         if (! $this->isSimplePolygon($pixelVertices)) {
@@ -368,7 +368,7 @@ class PolygonAreaService
     {
         $vertices = $this->normalizeRing($vertices);
         if (count($vertices) < 3) {
-            return ['area_sqft' => 0.0, 'valid' => false, 'message' => 'At least three distinct corners are required.'];
+            return ['area_sqft' => 0.0, 'valid' => true, 'message' => null];
         }
 
         if ($pixelsPerFoot <= 0) {

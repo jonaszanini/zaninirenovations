@@ -883,14 +883,14 @@ class RoomAreaController extends Controller
             $plan = $room->vertices;
             $canvas = is_array($room->legacy_canvas_data) ? $canvasData->normalize($room->legacy_canvas_data) : null;
             $groupSummaries = [];
-            $metrics = $room->layoutMetrics();
+            $metrics = $room->layoutMetrics(tolerant: true);
         } else {
             $canvas = $canvasData->normalize($room->vertices);
             $groupSummaries = $scale > 0
                 ? $canvasData->groupSummaries($canvas, $scale)
                 : [];
             $metrics = $scale > 0
-                ? $canvasData->layoutMetrics($canvas, $scale, $room->resolvedWallHeightFt(), $room->finishSettings())
+                ? $room->layoutMetrics(tolerant: true)
                 : $canvasData->emptyLayoutMetrics($room->resolvedWallHeightFt());
             $plan = $scale > 0
                 ? $bridge->fromCanvasData($canvas, $scale, $room->resolvedWallHeightFt(), $room->finishSettings())

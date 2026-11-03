@@ -259,6 +259,7 @@ class OpenPlan3DPlanValidator
      */
     private function validateRoom(array $room, float $cmPerUnit, ?array $existingPlan = null): array
     {
+        $roomLabel = $this->roomLabel($room);
         $poly = $room['polygon'] ?? $room['points'] ?? null;
         if (! is_array($poly) || $poly === []) {
             return ['valid' => true, 'message' => null];
@@ -280,14 +281,25 @@ class OpenPlan3DPlanValidator
             return ['valid' => true, 'message' => null];
         }
 
+        $rawCount = count($points);
         $points = $this->polygonArea->normalizeRing($points);
 
         if (count($points) < 3) {
-            return ['valid' => false, 'message' => 'At least three distinct corners are required.'];
+            if ($this->isDegenerateZeroFootprint($points, $rawCount)) {
+                return ['valid' => true, 'message' => null];
+            }
+
+            return [
+                'valid' => false,
+                'message' => sprintf('Room “%s” needs at least three non-collinear corners.', $roomLabel),
+            ];
         }
 
         if (! $this->polygonArea->isSimplePolygon($points)) {
-            return ['valid' => false, 'message' => 'Room shape crosses itself — adjust corners.'];
+            return [
+                'valid' => false,
+                'message' => sprintf('Room “%s” shape crosses itself — adjust corners.', $roomLabel),
+            ];
         }
 
         $areaSqCm = $this->polygonArea->shoelaceArea($points) * ($cmPerUnit * $cmPerUnit);
@@ -515,7 +527,62 @@ class OpenPlan3DPlanValidator
         return true;
     }
 
-    private function isBadNumber(mixed $value): bool
+    /**
+     * @param  list<array{x: float, y: float}>  $normalized
+     */
+    private function isDegenerateZeroFootprint(array $normalized, int $rawVertexCount): bool
+    {
+        if ($rawVertexCount < 1) {
+            return true;
+        }
+        if (count($normalized) <= 1) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $room
+     */
+    private function roomLabel(array $room): string
+    {
+        $name = trim((string) ($room['name'] ?? ''));
+        if ($name !== '') {
+            return $name;
+        }
+        $id = trim((string) ($room['id'] ?? ''));
+
+        return $id !== '' ? $id : 'Room';
+    }
+
+    /**
+     * @param  list<array{x: mixed, y: mixed}>  $vertices
+     */
+    public function validateCanvasVertices(array $vertices, string $contextLabel = 'Canvas'): ?string
+    {
+        foreach ($vertices as $index => $vertex) {
+            if (! is_array($vertex)) {
+                return $contextLabel.' polygon points must be coordinates.';
+            }
+            foreach (['x', 'y'] as $axis) {
+                if (! array_key_exists($axis, $vertex)) {
+                    return $contextLabel.' point '.($index + 1).' is missing '.$axis.'.';
+                }
+                $label = $contextLabel.' point '.($index + 1).' '.$axis;
+                if ($this->isBadNumber($vertex[$axis])) {
+                    return $label.' must be a finite number.';
+                }
+                if (abs((float) $vertex[$axis]) > self::MAX_COORDINATE) {
+                    return $label.' coordinate is impossibly large.';
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public function isBadNumber(mixed $value): bool
     {
         if (is_bool($value) || is_array($value)) {
             return true;
