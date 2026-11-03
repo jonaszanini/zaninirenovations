@@ -531,8 +531,15 @@ assert.strictEqual(snapInstall.ok, true);
 assert.strictEqual(mockSettingsStore.value.gridSize, 2.54, 'installHostedSnapGrid fixes imperial grid on subscribe');
 
 assert.match(indexHtml, /installHostedSnapGrid/, 'editor index must wire hosted imperial snap grid');
-assert.match(indexHtml, /installHostedVendorPatches/, 'editor index must patch vendor wall length before app boot');
 assert.match(indexHtml, /installHostedWallMeasureSettings/, 'editor index must align wall measure mode with plan dimensions');
+assert.doesNotMatch(indexHtml, /installHostedVendorPatches/, 'runtime ESM namespace patching must not run at boot');
+
+const patchedManifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../scripts/openplan3d-patched-chunks.json'), 'utf8'));
+const storeChunk = patchedManifest.storeChunk;
+const storeJs = fs.readFileSync(path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/' + storeChunk), 'utf8');
+assert.match(storeJs, /__ZANINI_OPENPLAN3D_PATCH__/, 'store chunk must be patched via scripts/patch-openplan3d.mjs');
+assert.match(storeJs, /wallMeasureMode:"edge"/, 'patched store defaults to edge measure mode');
+assert.match(indexHtml, new RegExp(storeChunk.replace('.', '\\.')), 'editor index must reference patched store chunk');
 
 const INCH = bridge.CM_PER_INCH;
 const thicknessCm = 6 * INCH; // 6" wall → 3" face trim at a perpendicular corner
@@ -576,6 +583,9 @@ const dec621Ft = 6.21 * 12 * INCH;
 assert.strictEqual(bridge.parseHostedLengthToCm('6.21 ft', 'imperial'), dec621Ft);
 assert.strictEqual(bridge.parseHostedLengthToCm("6.21'", 'imperial'), dec621Ft, '6.21\' is decimal feet (21 > 11 laser inches)');
 assert.strictEqual(bridge.parseHostedLengthToCm("6.02'", 'imperial'), (6 * 12 + 2) * INCH, '6.02\' is DeWalt laser ft-in not decimal');
+assert.strictEqual(bridge.parseHostedLengthToCm("6.10'", 'imperial'), (6 * 12 + 10) * INCH, '6.10\' is laser 6\'10"');
+assert.strictEqual(bridge.parseHostedLengthToCm("6.1'", 'imperial'), 6.1 * 12 * INCH, '6.1\' stays decimal feet');
+assert.strictEqual(bridge.parseHostedLengthToCm("-7'", 'imperial'), null, 'negative lengths are rejected');
 assert.ok(Math.abs(bridge.parseHostedLengthToCm('1.894 m', 'metric') - 189.4) < 1e-9, '1.894 m → cm');
 
 const helpIn = bridge.hostedWallLengthEntryHelpText('in');
@@ -587,33 +597,5 @@ const localeJs = fs.readFileSync(path.resolve(__dirname, '../../public/vendor/op
 assert.doesNotMatch(localeJs, /DeWalt laser/, 'immutable locale chunk must not be edited; help comes from hosted locale shim');
 assert.match(indexHtml, /type="importmap"/, 'editor index must redirect locale chunk through import map');
 assert.match(indexHtml, /openplan3d-hosted-locale\.js\?v=[a-f0-9]{16}/, 'locale shim must be cache-busted');
-
-const mockVendor = {
-  bM: function (wall) { return bridge.wallCenterlineLengthCm(wall); },
-  bN: function (raw, units) { return bridge.parseHostedLengthToCm(raw, units); },
-  bP: function (id, lenCm, anchor) {
-    mockVendor._lastResize = { id: id, lenCm: lenCm, anchor: anchor };
-    return null;
-  },
-  V: {
-    subscribe: function (cb) {
-      cb({
-        activeFloorId: 'f1',
-        floors: [{ id: 'f1', walls: wallsCorner.map(function (w) { return Object.assign({}, w); }) }]
-      });
-      return function () {};
-    }
-  },
-  W: {
-    subscribe: function (cb) {
-      cb(edgeSettings);
-      return function () {};
-    }
-  }
-};
-const patch = bridge.installHostedVendorPatches(mockVendor);
-assert.strictEqual(patch.ok, true);
-mockVendor.bP('w1', plan84in, 'start');
-assert.ok(Math.abs(mockVendor._lastResize.lenCm - centerline87in) < 0.05, 'patched resize uses centerline length');
 
 console.log('All openPlan3D editor-bridge unit tests PASSED!');

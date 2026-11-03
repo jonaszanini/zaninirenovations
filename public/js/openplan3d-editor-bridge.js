@@ -334,6 +334,8 @@
    * Parse wall Length field text into centimeters of plan dimension (what dimension labels show).
    */
   function parseHostedLengthToCm(raw, units) {
+    var rawStr = String(raw == null ? '' : raw).trim();
+    if (/^\s*-/.test(rawStr)) return null;
     var s = normalizeHostedLengthText(raw);
     if (!s) return null;
     var imperial = normalizeEditorUnits(units) === 'imperial';
@@ -513,65 +515,18 @@
     return { ok: true };
   }
 
-  function installHostedVendorPatches(storeModule) {
-    if (!storeModule || typeof storeModule !== 'object') {
-      return { ok: false, reason: 'missing-module' };
-    }
-    if (storeModule.__zaniniHostedVendorPatched) {
-      return { ok: true, already: true };
-    }
-    var origVo = typeof storeModule.bM === 'function' ? storeModule.bM : null;
-    var origPa = typeof storeModule.bN === 'function' ? storeModule.bN : null;
-    var origBr = typeof storeModule.bP === 'function' ? storeModule.bP : null;
-    if (!origVo || !origPa || !origBr) {
-      return { ok: false, reason: 'missing-vendor-exports' };
-    }
-    var projectStore = resolveProjectStore(storeModule);
-    var settingsStore = resolveSettingsStore(storeModule);
-
-    function hostedContext() {
-      return {
-        project: readStoreValue(projectStore),
-        settings: readStoreValue(settingsStore) || { wallMeasureMode: HOSTED_WALL_MEASURE_MODE },
-        walls: getActiveFloorWalls(readStoreValue(projectStore))
-      };
-    }
-
-    storeModule.bN = function patchedParseLength(raw, units) {
-      var hosted = parseHostedLengthToCm(raw, units);
-      if (hosted != null) return hosted;
-      return origPa(raw, units);
-    };
-
-    storeModule.bM = function patchedWallLengthForUi(wall) {
-      if (!wall) return origVo(wall);
-      var ctx = hostedContext();
-      return wallPlanDimensionLengthCm(wall, ctx.walls, ctx.settings);
-    };
-
-    storeModule.bP = function patchedResizeWall(wallId, lengthCm, anchor) {
-      var ctx = hostedContext();
-      var wall = null;
-      for (var i = 0; i < ctx.walls.length; i++) {
-        if (ctx.walls[i] && ctx.walls[i].id === wallId) {
-          wall = ctx.walls[i];
-          break;
-        }
-      }
-      var centerline = centerlineLengthFromPlanDimensionCm(lengthCm, wall, ctx.walls, ctx.settings);
-      return origBr(wallId, centerline, anchor);
-    };
-
-    try {
-      Object.defineProperty(storeModule, '__zaniniHostedVendorPatched', {
-        value: true,
-        enumerable: false,
-        configurable: true
-      });
-    } catch (e) {
-      storeModule.__zaniniHostedVendorPatched = true;
-    }
-    return { ok: true };
+  /** Injected into vendored 1VjVcrjm chunk by scripts/patch-openplan3d.mjs (re-runnable). */
+  function buildVendorLengthParseSource() {
+    return [
+      'var CM_PER_INCH=' + CM_PER_INCH + ';',
+      normalizeEditorUnits.toString(),
+      normalizeHostedLengthText.toString(),
+      parseInchesFractionPart.toString(),
+      inchesToPlanCm.toString(),
+      decimalFeetToPlanCm.toString(),
+      parseHostedLengthToCm.toString(),
+      'function pa(e,t){return parseHostedLengthToCm(e,t);}'
+    ].join('\n');
   }
 
   function installHostedSnapGrid(settingsStore) {
@@ -1104,11 +1059,11 @@
     wallPlanDimensionLengthCm: wallPlanDimensionLengthCm,
     centerlineLengthFromPlanDimensionCm: centerlineLengthFromPlanDimensionCm,
     parseHostedLengthToCm: parseHostedLengthToCm,
+    buildVendorLengthParseSource: buildVendorLengthParseSource,
     hostedWallLengthEntryHelpText: hostedWallLengthEntryHelpText,
     getActiveFloorWalls: getActiveFloorWalls,
     installHostedWallMeasureSettings: installHostedWallMeasureSettings,
     installHostedIndexedDbGuards: installHostedIndexedDbGuards,
-    installHostedVendorPatches: installHostedVendorPatches,
     installHostedSnapGrid: installHostedSnapGrid,
     clearLocalStorageKeys: clearLocalStorageKeys,
     snapshotBlockedStorage: snapshotBlockedStorage,

@@ -12,7 +12,7 @@
 			}
 		}
 		</script>
-		<script src="/js/openplan3d-editor-bridge.js?v=f12bbe720f3f1718"></script>
+		<script src="/js/openplan3d-editor-bridge.js?v=d2c03bfc9b9bd6e1"></script>
 		<script>
 			if (window.OpenPlan3DEditorBridge && typeof window.OpenPlan3DEditorBridge.syncHostedThemeFromParent === 'function') {
 				window.OpenPlan3DEditorBridge.syncHostedThemeFromParent();
@@ -29,7 +29,7 @@
 		<link href="/vendor/openplan3d/_app/immutable/nodes/0.C8YK60P1.js" rel="modulepreload">
 		<link href="/vendor/openplan3d/_app/immutable/chunks/NzBhsCJS.js" rel="modulepreload">
 		<link href="/vendor/openplan3d/_app/immutable/chunks/Dx4kNdAA.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/1VjVcrjm.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/AJmn3qrX.js" rel="modulepreload">
 		<link href="/vendor/openplan3d/_app/immutable/chunks/DHXjNKtR.js" rel="modulepreload">
 		<link href="/vendor/openplan3d/_app/env.js" rel="modulepreload">
 		
@@ -305,18 +305,11 @@
 					import("/vendor/openplan3d/_app/env.js").then(({ env }) => {
 						__sveltekit_1tyrndq.env = env;
 
-						return import("/vendor/openplan3d/_app/immutable/chunks/1VjVcrjm.js").then((storeModule) => {
+						return import("/vendor/openplan3d/_app/immutable/chunks/AJmn3qrX.js").then((storeModule) => {
 							const session = window.__openPlan3DSession;
 							const bridge = window.OpenPlan3DEditorBridge;
 							if (!session || !bridge) {
 								throw new Error('openPlan3D editor bridge is missing');
-							}
-
-							if (typeof bridge.installHostedVendorPatches === 'function') {
-								const patchResult = bridge.installHostedVendorPatches(storeModule);
-								if (!patchResult || !patchResult.ok) {
-									console.warn('[openPlan3D Bridge] Vendor patch skipped:', patchResult && patchResult.reason);
-								}
 							}
 
 							const inspected = session.attachStore(storeModule);
@@ -367,7 +360,7 @@
 							return Promise.all([
 								import("/vendor/openplan3d/_app/immutable/entry/start.ChH6DPSY.js"),
 								import("/vendor/openplan3d/_app/immutable/entry/app.Badnr33M.js")
-							]).then(([kit, app) => kit.start(app, element));
+							]).then(([kit, app]) => kit.start(app, element));
 						});
 					}).then(() => {
 							if (window.__openPlan3DSession) {
