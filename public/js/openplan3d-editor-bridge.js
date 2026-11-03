@@ -296,6 +296,29 @@
       .replace(/\s+/g, ' ');
   }
 
+  function parseInchesFractionPart(wholeInches, fracNum, fracDen) {
+    var whole = Number(wholeInches);
+    if (!Number.isFinite(whole)) return null;
+    var total = whole;
+    if (fracNum != null && fracDen != null && String(fracDen) !== '0') {
+      var n = Number(fracNum);
+      var d = Number(fracDen);
+      if (!Number.isFinite(n) || !Number.isFinite(d) || d === 0) return null;
+      total += n / d;
+    }
+    return total;
+  }
+
+  function inchesToPlanCm(inches) {
+    if (!Number.isFinite(inches)) return null;
+    return inches * CM_PER_INCH;
+  }
+
+  function decimalFeetToPlanCm(feet) {
+    if (!Number.isFinite(feet)) return null;
+    return feet * 12 * CM_PER_INCH;
+  }
+
   /**
    * Tooltip on Wall Properties Length (ⓘ), applied via openplan3d-hosted-locale.js import map.
    */
@@ -304,7 +327,7 @@
     return 'Matches the plan dimension label. Enter ' + unit
       + ', or use 7\', 5\'6", 12", 2.5 m (plain numbers without units are inches). '
       + 'DeWalt laser: 12.05\' is 12\'5" (two digits after the dot are inches 00–11); '
-      + '12.5\' and 12.25\' stay decimal feet.';
+      + '12.5\' and 12.25\' stay decimal feet. Also accepts 6\'02"9/16, 74 9/16 in, and 6.21 ft.';
   }
 
   /**
@@ -315,24 +338,7 @@
     if (!s) return null;
     var imperial = normalizeEditorUnits(units) === 'imperial';
     var num = '[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:e[+-]?\\d+)?';
-
-    var dewaltFt = s.match(new RegExp('^(' + num + ')\\.(\\d{2})\\s*(?:\'|ft|feet|foot)\\s*$', 'i'));
-    if (dewaltFt) {
-      var laserIn = parseInt(dewaltFt[2], 10);
-      var laserFeet = Math.abs(Number(dewaltFt[1]));
-      if (laserIn >= 0 && laserIn <= 11) {
-        return (laserFeet * 12 + laserIn) * CM_PER_INCH;
-      }
-      return Math.abs(Number(dewaltFt[1] + '.' + dewaltFt[2])) * 12 * CM_PER_INCH;
-    }
-
-    var feetIn = s.match(new RegExp('^(' + num + ')\\s*(?:\'|ft|feet|foot)(?:\\s*(' + num + ')\\s*(?:"|in|inches|inch)?)?$', 'i'));
-    if (feetIn) {
-      var ft = Math.abs(Number(feetIn[1]));
-      var inchesPart = feetIn[2] != null && feetIn[2] !== '' ? Number(feetIn[2]) : 0;
-      var totalIn = ft * 12 + inchesPart;
-      return totalIn * CM_PER_INCH;
-    }
+    var frac = '(\\d+)\\s*/\\s*(\\d+)';
 
     var metric = s.match(new RegExp('^(' + num + ')\\s*(mm|cm|m|meter|meters|metre|metres)$', 'i'));
     if (metric) {
@@ -343,9 +349,75 @@
       return Number(metric[1]) * mult;
     }
 
+    var decFeetUnit = s.match(new RegExp('^(' + num + ')\\s*(?:ft|feet|foot)\\s*$', 'i'));
+    if (decFeetUnit) {
+      return decimalFeetToPlanCm(Math.abs(Number(decFeetUnit[1])));
+    }
+
+    var dewaltFt = s.match(new RegExp('^(' + num + ')\\.(\\d{2})\\s*(?:\'|ft|feet|foot)\\s*$', 'i'));
+    if (dewaltFt) {
+      var laserIn = parseInt(dewaltFt[2], 10);
+      var laserFeet = Math.abs(Number(dewaltFt[1]));
+      if (laserIn >= 0 && laserIn <= 11) {
+        return inchesToPlanCm(laserFeet * 12 + laserIn);
+      }
+      return decimalFeetToPlanCm(Math.abs(Number(dewaltFt[1] + '.' + dewaltFt[2])));
+    }
+
+    var ftInFracQuote = s.match(new RegExp(
+      '^(' + num + ')\\s*\'\\s*(' + num + ')\\s*"\\s*' + frac + '\\s*$',
+      'i'
+    ));
+    if (ftInFracQuote) {
+      var ftPart = Math.abs(Number(ftInFracQuote[1]));
+      var inWhole = parseInchesFractionPart(ftInFracQuote[2], ftInFracQuote[3], ftInFracQuote[4]);
+      if (inWhole == null) return null;
+      return inchesToPlanCm(ftPart * 12 + inWhole);
+    }
+
+    var ftInFracSpaced = s.match(new RegExp(
+      '^(' + num + ')\\s*\'\\s*(' + num + ')\\s+' + frac + '\\s*"\\s*$',
+      'i'
+    ));
+    if (ftInFracSpaced) {
+      var ftPart2 = Math.abs(Number(ftInFracSpaced[1]));
+      var inWhole2 = parseInchesFractionPart(ftInFracSpaced[2], ftInFracSpaced[3], ftInFracSpaced[4]);
+      if (inWhole2 == null) return null;
+      return inchesToPlanCm(ftPart2 * 12 + inWhole2);
+    }
+
+    var inFracUnit = s.match(new RegExp(
+      '^(' + num + ')(?:\\s+|-\\s*)' + frac + '\\s*(?:"|in|inches|inch)?\\s*$',
+      'i'
+    ));
+    if (inFracUnit) {
+      var inchesTotal = parseInchesFractionPart(inFracUnit[1], inFracUnit[2], inFracUnit[3]);
+      return inchesToPlanCm(inchesTotal);
+    }
+
+    var decFeetMark = s.match(new RegExp('^(' + num + ')\\s*\'\\s*$', 'i'));
+    if (decFeetMark) {
+      var markStr = decFeetMark[1];
+      var dotLaser = markStr.match(/^(\d+)\.(\d{2})$/);
+      if (dotLaser) {
+        var laserIn2 = parseInt(dotLaser[2], 10);
+        if (laserIn2 >= 0 && laserIn2 <= 11) {
+          return inchesToPlanCm(Math.abs(Number(dotLaser[1])) * 12 + laserIn2);
+        }
+      }
+      return decimalFeetToPlanCm(Math.abs(Number(markStr)));
+    }
+
+    var feetIn = s.match(new RegExp('^(' + num + ')\\s*(?:\'|ft|feet|foot)(?:\\s*(' + num + ')\\s*(?:"|in|inches|inch)?)?$', 'i'));
+    if (feetIn) {
+      var ft = Math.abs(Number(feetIn[1]));
+      var inchesPart = feetIn[2] != null && feetIn[2] !== '' ? Number(feetIn[2]) : 0;
+      return inchesToPlanCm(ft * 12 + inchesPart);
+    }
+
     var inchesOnly = s.match(new RegExp('^(' + num + ')\\s*(?:"|in|inches|inch)$', 'i'));
     if (inchesOnly) {
-      return Number(inchesOnly[1]) * CM_PER_INCH;
+      return inchesToPlanCm(Number(inchesOnly[1]));
     }
 
     if (/^[\d.,]+$/.test(s)) {

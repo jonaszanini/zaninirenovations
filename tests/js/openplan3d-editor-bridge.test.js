@@ -564,6 +564,20 @@ assert.strictEqual(bridge.parseHostedLengthToCm("12.25'", 'imperial'), 12.25 * 1
 assert.strictEqual(bridge.parseHostedLengthToCm("12.3'", 'imperial'), 12.3 * 12 * INCH);
 assert.strictEqual(bridge.parseHostedLengthToCm('12.12', 'imperial'), 12.12 * INCH, 'plain 12.12 without unit is inches');
 
+const inchFrac916 = 9 / 16;
+const ft6in2frac = (6 * 12 + 2 + inchFrac916) * INCH;
+assert.strictEqual(bridge.parseHostedLengthToCm('6\'02"9/16', 'imperial'), ft6in2frac, 'DeWalt fractional ft-in with compact inches');
+assert.strictEqual(bridge.parseHostedLengthToCm('6\' 2 9/16"', 'imperial'), ft6in2frac, 'DeWalt fractional ft-in spaced');
+const in74frac = (74 + inchFrac916) * INCH;
+assert.strictEqual(bridge.parseHostedLengthToCm('74 9/16', 'imperial'), in74frac);
+assert.strictEqual(bridge.parseHostedLengthToCm('74 9/16 in', 'imperial'), in74frac);
+assert.strictEqual(bridge.parseHostedLengthToCm('74-9/16"', 'imperial'), in74frac);
+const dec621Ft = 6.21 * 12 * INCH;
+assert.strictEqual(bridge.parseHostedLengthToCm('6.21 ft', 'imperial'), dec621Ft);
+assert.strictEqual(bridge.parseHostedLengthToCm("6.21'", 'imperial'), dec621Ft, '6.21\' is decimal feet (21 > 11 laser inches)');
+assert.strictEqual(bridge.parseHostedLengthToCm("6.02'", 'imperial'), (6 * 12 + 2) * INCH, '6.02\' is DeWalt laser ft-in not decimal');
+assert.ok(Math.abs(bridge.parseHostedLengthToCm('1.894 m', 'metric') - 189.4) < 1e-9, '1.894 m → cm');
+
 const helpIn = bridge.hostedWallLengthEntryHelpText('in');
 assert.match(helpIn, /DeWalt laser/i);
 assert.match(helpIn, /12\.05/);
