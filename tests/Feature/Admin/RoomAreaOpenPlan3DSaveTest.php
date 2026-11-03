@@ -173,6 +173,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertSee('data-room-area-openplan3d', false);
         $response->assertSee('id="openplan3d-save-btn"', false);
         $response->assertSee('id="openplan3d-noscale-warning"', false);
+        $response->assertSee('id="openplan3d-geometry-warning"', false);
         $response->assertSee('data-hotkey-save', false);
         $response->assertSee('data-ra-save-room', false);
         $response->assertSee('id="openplan3d-metrics-ribbon"', false);
@@ -580,6 +581,69 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertOk();
         $response->assertSee('Broken Bowtie', false);
         $response->assertSee('geometry_unmeasurable', false);
+        $response->assertSee('id="openplan3d-geometry-warning"', false);
+    }
+
+    public function test_get_room_area_payload_survives_stored_canvas_v2_bowtie(): void
+    {
+        RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Canvas Bowtie',
+            'vertices' => $this->bowtieCanvasV2(),
+            'scale_pixels_per_foot' => 20.0,
+            'area_sqft' => 99.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('admin.utilities.room-area'));
+        $response->assertOk();
+        $response->assertSee('Canvas Bowtie', false);
+        $response->assertSee('geometry_unmeasurable', false);
+        $response->assertSee('id="openplan3d-geometry-warning"', false);
+    }
+
+    public function test_client_project_room_area_survives_stored_canvas_v2_bowtie(): void
+    {
+        $clientProject = \App\Models\ClientProject::factory()->create(['name' => 'CP Canvas Bowtie']);
+        $this->project->update(['client_project_id' => $clientProject->id]);
+        RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Canvas Bowtie CP',
+            'vertices' => $this->bowtieCanvasV2(),
+            'scale_pixels_per_foot' => 20.0,
+            'area_sqft' => 0.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('admin.client-projects.utilities.room-area', [
+            'client_project' => $clientProject,
+            'engine' => 'openplan3d',
+        ]));
+        $response->assertOk();
+        $response->assertSee('Canvas Bowtie CP', false);
+        $response->assertSee('geometry_unmeasurable', false);
+    }
+
+    public function test_canvas_v2_bowtie_sibling_does_not_block_valid_room_save(): void
+    {
+        $good = $this->storeSampleRoom(120.0, $this->sampleOpenPlan(10.0, 12.0));
+        RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Canvas bowtie sibling',
+            'vertices' => $this->bowtieCanvasV2(),
+            'scale_pixels_per_foot' => 20.0,
+            'area_sqft' => 0.0,
+        ]);
+
+        $plan = $this->sampleOpenPlan(10.0, 12.0);
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $good),
+            [
+                'name' => 'Stored Room',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk()->assertJsonPath('ok', true);
     }
 
     public function test_layouts_search_survives_invalid_sibling_room(): void
@@ -606,6 +670,10 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertOk();
         $this->assertTrue(collect($response->json())->contains(
             fn ($opt) => str_contains((string) ($opt['label'] ?? ''), $good->name)
+        ));
+        $this->assertTrue(collect($response->json())->contains(
+            fn ($opt) => ($opt['geometry_unmeasurable'] ?? false) === true
+                && str_contains((string) ($opt['meta'] ?? ''), 'ⓘ')
         ));
     }
 
@@ -682,7 +750,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             [
                 'name' => 'Huge canvas',
                 'scale_pixels_per_foot' => $scale,
-                'vertices' => $hugeCanvas,
+                'canvas' => $hugeCanvas,
             ]
         )->assertStatus(422)->assertJsonPath('ok', false);
 
@@ -708,6 +776,29 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             'area_sqft' => $metrics['area_sqft'],
             'vertices' => $plan,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function bowtieCanvasV2(): array
+    {
+        return [
+            'v' => 2,
+            'groups' => [[
+                'id' => 'g1',
+                'color' => '#024768',
+                'polygons' => [[
+                    'id' => 'p1',
+                    'vertices' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 120, 'y' => 144],
+                        ['x' => 120, 'y' => 0],
+                        ['x' => 0, 'y' => 144],
+                    ],
+                ]],
+            ]],
+        ];
     }
 
     /**

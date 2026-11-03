@@ -302,8 +302,23 @@
       if (status) {
         status.hidden = true;
         status.textContent = '';
-        status.classList.remove('is-set');
+        status.classList.remove('is-set', 'is-warning');
       }
+      return;
+    }
+    if (opt.geometry_unmeasurable) {
+      applyingLayout = true;
+      if (labelEl) labelEl.value = opt.short_name || opt.name || '';
+      if (status) {
+        var warnMsg = opt.geometry_message
+          || 'Fix the room outline in Room Area before trusting measurements or quotes.';
+        var roomLabel = opt.short_name || opt.name || 'layout';
+        status.hidden = false;
+        status.classList.add('is-set', 'is-warning');
+        status.textContent = 'ⓘ ' + warnMsg + ' "' + roomLabel + '" was not imported into quantities.';
+      }
+      applyingLayout = false;
+      schedulePreview();
       return;
     }
     applyingLayout = true;
@@ -346,6 +361,7 @@
       if (isFinite(base) && base >= 0) baseEl.value = formatLayoutQty(base);
     }
     if (status) {
+      status.classList.remove('is-warning');
       var floor = formatLayoutQty(area);
       var periLabel = formatLayoutQty(peri);
       var height = formatLayoutQty(ceilingHeightFt());

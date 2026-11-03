@@ -559,8 +559,13 @@ class OpenPlan3DPlanValidator
     /**
      * @param  list<array{x: mixed, y: mixed}>  $vertices
      */
-    public function validateCanvasVertices(array $vertices, string $contextLabel = 'Canvas'): ?string
+    public function validateCanvasVertices(array $vertices, string $contextLabel = 'Canvas', ?string $roomName = null): ?string
     {
+        $named = trim((string) ($roomName ?? ''));
+        if ($named !== '') {
+            $contextLabel = 'Room “'.$named.'” floor plan';
+        }
+
         foreach ($vertices as $index => $vertex) {
             if (! is_array($vertex)) {
                 return $contextLabel.' polygon points must be coordinates.';

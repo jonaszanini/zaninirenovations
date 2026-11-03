@@ -691,7 +691,8 @@ class RoomAreaCanvasData
                 if (count($polygon['vertices']) < 3) {
                     continue;
                 }
-                $coordError = $planValidator->validateCanvasVertices($polygon['vertices'], 'Floor plan');
+                $polyName = isset($polygon['name']) ? (string) $polygon['name'] : null;
+                $coordError = $planValidator->validateCanvasVertices($polygon['vertices'], 'Floor plan', $polyName);
                 if ($coordError !== null) {
                     return [
                         'valid' => false,
@@ -764,7 +765,11 @@ class RoomAreaCanvasData
                 if (! $this->polygonArea->isSimplePolygon($polygon['vertices'])) {
                     continue;
                 }
-                $groupArea += $this->polygonArea->verticesToSquareFeet($polygon['vertices'], $pixelsPerFoot);
+                try {
+                    $groupArea += $this->polygonArea->verticesToSquareFeet($polygon['vertices'], $pixelsPerFoot);
+                } catch (\InvalidArgumentException $e) {
+                    continue;
+                }
                 $polygonCount++;
             }
 
@@ -847,6 +852,7 @@ class RoomAreaCanvasData
         $inside = 0;
         $outside = 0;
         $polygonCount = 0;
+        $invalidOutline = false;
         $wallHeightFt = $this->normalizeWallHeight($wallHeightFt);
         $thicknessIn = $this->normalizeWallThickness($normalized['wall_thickness_in'] ?? 0);
 
@@ -860,6 +866,8 @@ class RoomAreaCanvasData
                     continue;
                 }
                 if (! $this->polygonArea->isSimplePolygon($polygon['vertices'])) {
+                    $invalidOutline = true;
+
                     continue;
                 }
                 $area += $this->polygonArea->verticesToSquareFeet($polygon['vertices'], $pixelsPerFoot);
@@ -872,7 +880,13 @@ class RoomAreaCanvasData
         }
 
         if ($polygonCount === 0) {
-            return $this->emptyLayoutMetrics($wallHeightFt);
+            $empty = $this->emptyLayoutMetrics($wallHeightFt);
+            if ($invalidOutline) {
+                $empty['geometry_unmeasurable'] = true;
+                $empty['geometry_message'] = 'Room shape crosses itself — adjust corners.';
+            }
+
+            return $empty;
         }
 
         $objectMetrics = $this->objectDeductionMetrics($normalized['objects'] ?? [], $wallHeightFt);
@@ -967,6 +981,24 @@ class RoomAreaCanvasData
             $this->normalizeWallHeight($wallHeightFt),
             0.0
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $finish
+     * @return array<string, mixed>
+     */
+    public function safeLayoutMetrics(array $canvas, float $pixelsPerFoot, float $wallHeightFt = self::DEFAULT_WALL_HEIGHT_FT, array $finish = []): array
+    {
+        try {
+            return $this->layoutMetrics($canvas, $pixelsPerFoot, $wallHeightFt, $finish);
+        } catch (\InvalidArgumentException $e) {
+            $empty = $this->emptyLayoutMetrics($wallHeightFt);
+            $empty['geometry_unmeasurable'] = true;
+            $message = trim($e->getMessage());
+            $empty['geometry_message'] = $message !== '' ? $message : 'Room geometry could not be measured.';
+
+            return $empty;
+        }
     }
 
     public function outsideAreaSqFt(float $insideArea, float $perimeterLf, float $sharedLf, float $thicknessIn): float

@@ -331,6 +331,10 @@
     var settingsClose = doc.getElementById('openplan3d-settings-close');
     var dirtyBadge = doc.getElementById('openplan3d-dirty-badge');
     var noScaleWarning = doc.getElementById('openplan3d-noscale-warning');
+    var geometryWarning = doc.getElementById('openplan3d-geometry-warning');
+    var geometryWarningText = geometryWarning
+      ? geometryWarning.querySelector('[data-openplan3d-geometry-text]')
+      : null;
     var feedbackEl = doc.getElementById('openplan3d-feedback');
 
     var wallHeightInput = doc.getElementById('ra-wall-height');
@@ -408,6 +412,23 @@
       if (!noScaleWarning) return;
       var show = !!(currentRoom || currentPlan) && !hasUsableScale();
       noScaleWarning.hidden = !show;
+    }
+
+    function roomStoredGeometryUnmeasurable(room) {
+      return !!(room && room.metrics && room.metrics.geometry_unmeasurable);
+    }
+
+    function updateGeometryWarning() {
+      if (!geometryWarning) return;
+      var show = roomStoredGeometryUnmeasurable(currentRoom);
+      var message = show && currentRoom && currentRoom.metrics
+        ? (currentRoom.metrics.geometry_message || '')
+        : '';
+      if (geometryWarningText) {
+        geometryWarningText.textContent = message
+          || 'Room geometry could not be measured. Fix the outline in the editor before saving or quoting.';
+      }
+      geometryWarning.hidden = !show;
     }
 
     var feedbackTimer = null;
@@ -662,6 +683,30 @@
 
     function updateMetrics(plan) {
       if (!metricArea) return;
+      if (currentRoom && currentRoom.metrics && currentRoom.metrics.geometry_unmeasurable) {
+        var stored = currentRoom.metrics;
+        metricArea.textContent = (stored.area_sqft || 0).toFixed(2);
+        if (metricPerimeter) {
+          metricPerimeter.textContent = (stored.perimeter_lf != null ? stored.perimeter_lf : 0).toFixed(2);
+        }
+        if (metricBaseboard) {
+          metricBaseboard.textContent = (stored.baseboard_lf != null ? stored.baseboard_lf : 0).toFixed(2);
+        }
+        if (metricWallArea) {
+          metricWallArea.textContent = (stored.net_wall_area_sqft || stored.wall_area_sqft || 0).toFixed(2);
+        }
+        if (metricOpenings) {
+          metricOpenings.textContent = (stored.door_count || 0) + ' doors · ' + (stored.window_count || 0) + ' windows';
+        }
+        if (metricCasing) {
+          metricCasing.textContent = (stored.casing_lf != null ? stored.casing_lf : 0).toFixed(2);
+        }
+        if (metricBoxes) {
+          metricBoxes.textContent = String(stored.flooring_boxes != null ? stored.flooring_boxes : 0);
+        }
+        updateGeometryWarning();
+        return;
+      }
       if (!plan || !win || !win.OpenPlan3DMeasurementBridge) {
         metricArea.textContent = '0.00';
         if (metricPerimeter) metricPerimeter.textContent = '0.00';
@@ -670,6 +715,7 @@
         if (metricOpenings) metricOpenings.textContent = '0 doors · 0 windows';
         if (metricCasing) metricCasing.textContent = '0.00';
         if (metricBoxes) metricBoxes.textContent = '0';
+        updateGeometryWarning();
         return;
       }
 
@@ -697,6 +743,7 @@
       } catch (err) {
         console.warn('[openPlan3D] Metrics computation failed:', err);
       }
+      updateGeometryWarning();
     }
 
     function postToEditor(payload) {
@@ -764,7 +811,14 @@
       currentProject.rooms.forEach(function (room) {
         var opt = doc.createElement('option');
         opt.value = room.id;
-        opt.textContent = room.name + (room.area_sqft ? ' (' + parseFloat(room.area_sqft).toFixed(1) + ' sf)' : '');
+        var unmeasurable = room.metrics && room.metrics.geometry_unmeasurable;
+        var label = room.name;
+        if (unmeasurable) {
+          label = 'ⓘ ' + label + ' — outline needs fix';
+        } else if (room.area_sqft) {
+          label += ' (' + parseFloat(room.area_sqft).toFixed(1) + ' sf)';
+        }
+        opt.textContent = label;
         roomSelect.appendChild(opt);
       });
 
@@ -801,6 +855,7 @@
         currentPlan = currentRoom.plan || null;
         updateMetrics(currentPlan);
         updateScaleWarning();
+        updateGeometryWarning();
 
         if (iframeReady) {
           requestEditorLoad(currentPlan);
@@ -821,6 +876,7 @@
         currentPlan = null;
         updateMetrics(null);
         updateScaleWarning();
+        updateGeometryWarning();
         if (quoteBtn) quoteBtn.hidden = true;
         setDirty(false);
         if (saveBtn) saveBtn.disabled = true;
@@ -1440,6 +1496,7 @@
           loadedPlanBaseline = currentPlan;
           updateMetrics(currentPlan);
           updateScaleWarning();
+          updateGeometryWarning();
           setDirty(false);
           if (saveBtn) saveBtn.disabled = !currentPlan || isSaving;
         } else if (e.data.type === 'OPENPLAN3D_BRIDGE_ERROR') {
@@ -1452,6 +1509,7 @@
           if (saveBtn) saveBtn.disabled = !currentPlan || isSaving;
           updateMetrics(currentPlan);
           updateScaleWarning();
+          updateGeometryWarning();
         } else if (e.data.type === 'OPENPLAN3D_SELECT_ROOM') {
           var nextId = resolveOpenPlan3DRoomId(currentPlan, e.data.roomId);
           selectedOpenPlan3DRoomId = nextId;

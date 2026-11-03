@@ -115,7 +115,12 @@ class RoomAreaRoom extends Model
                 return app(RoomAreaCanvasData::class)->emptyLayoutMetrics($height);
             }
 
-            return app(RoomAreaCanvasData::class)->layoutMetrics($this->canvasData(), $scale, $height, $this->finishSettings());
+            $canvasData = app(RoomAreaCanvasData::class);
+            if ($tolerant) {
+                return $canvasData->safeLayoutMetrics($this->canvasData(), $scale, $height, $this->finishSettings());
+            }
+
+            return $canvasData->layoutMetrics($this->canvasData(), $scale, $height, $this->finishSettings());
         } catch (\InvalidArgumentException $e) {
             if (! $tolerant) {
                 throw $e;

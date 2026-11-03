@@ -575,7 +575,13 @@ class OpenPlan3DMeasurementBridge
                     ];
                 }
 
-                $roomAreaM2 = $this->polygonArea->verticesToSquareFeet($verts, $pixelsPerFoot) * 0.09290304;
+                $roomAreaSqFt = 0.0;
+                try {
+                    $roomAreaSqFt = $this->polygonArea->verticesToSquareFeet($verts, $pixelsPerFoot);
+                } catch (\InvalidArgumentException $e) {
+                    $roomAreaSqFt = 0.0;
+                }
+                $roomAreaM2 = $roomAreaSqFt * 0.09290304;
 
                 $rooms[] = [
                     'id' => $polyId,

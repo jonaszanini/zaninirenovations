@@ -8207,6 +8207,13 @@ body.cp-modal-open {
 .br-layout-import__status.is-set {
   color: var(--admin-text);
 }
+.br-layout-import__status.is-warning {
+  color: #92400e;
+  font-weight: 600;
+}
+html.admin-dark .br-layout-import__status.is-warning {
+  color: #fbbf24;
+}
 .br-layout-import__open-label {
   margin-left: 6px;
 }

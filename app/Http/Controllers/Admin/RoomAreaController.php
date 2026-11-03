@@ -892,9 +892,17 @@ class RoomAreaController extends Controller
             $metrics = $scale > 0
                 ? $room->layoutMetrics(tolerant: true)
                 : $canvasData->emptyLayoutMetrics($room->resolvedWallHeightFt());
-            $plan = $scale > 0
-                ? $bridge->fromCanvasData($canvas, $scale, $room->resolvedWallHeightFt(), $room->finishSettings())
-                : null;
+            try {
+                $plan = $scale > 0
+                    ? $bridge->fromCanvasData($canvas, $scale, $room->resolvedWallHeightFt(), $room->finishSettings())
+                    : null;
+            } catch (\InvalidArgumentException $e) {
+                $plan = null;
+                if ($scale > 0 && empty($metrics['geometry_unmeasurable'])) {
+                    $metrics['geometry_unmeasurable'] = true;
+                    $metrics['geometry_message'] = trim($e->getMessage()) ?: 'Room geometry could not be measured.';
+                }
+            }
         }
 
         return [

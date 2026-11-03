@@ -180,6 +180,15 @@
     ])
   </div>
 
+  <div id="openplan3d-geometry-warning" class="openplan3d-geometry-warning" hidden role="status">
+    <i class="fa fa-info-circle" aria-hidden="true"></i>
+    <span data-openplan3d-geometry-text>Room geometry could not be measured. Fix the outline in the editor before saving or quoting.</span>
+    @include('admin.partials.info_tip', [
+      'tipLabel' => 'Room outline',
+      'tipText' => 'Self-crossing or invalid corners prevent area and wall takeoffs. Adjust walls until the shape is a simple closed outline, then save the plan again.',
+    ])
+  </div>
+
   <div id="openplan3d-modal" class="openplan3d-modal" hidden>
     <div class="openplan3d-modal-backdrop" data-openplan3d-modal-dismiss tabindex="-1" aria-hidden="true"></div>
     <div class="openplan3d-modal-panel" role="dialog" aria-modal="true" aria-labelledby="openplan3d-modal-title">
@@ -509,6 +518,22 @@
   display: none !important;
 }
 
+.openplan3d-geometry-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e40af;
+  background: #eff6ff;
+  border-bottom: 1px solid #93c5fd;
+}
+
+.openplan3d-geometry-warning[hidden] {
+  display: none !important;
+}
+
 .openplan3d-modal {
   position: fixed;
   inset: 0;
@@ -676,6 +701,12 @@
   }
 
   .openplan3d-noscale-warning {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .openplan3d-geometry-warning {
     padding: 0.4rem 0.75rem;
     font-size: 0.8rem;
     flex-wrap: wrap;
@@ -899,6 +930,20 @@ body.admin-dark .openplan3d-noscale-warning,
 html.admin-dark .openplan3d-noscale-warning[hidden],
 body.admin-dark .openplan3d-noscale-warning[hidden],
 .admin-dark .openplan3d-noscale-warning[hidden] {
+  display: none !important;
+}
+
+html.admin-dark .openplan3d-geometry-warning,
+body.admin-dark .openplan3d-geometry-warning,
+.admin-dark .openplan3d-geometry-warning {
+  background: rgba(96, 165, 250, 0.14);
+  color: #93c5fd;
+  border-bottom-color: rgba(96, 165, 250, 0.35);
+}
+
+html.admin-dark .openplan3d-geometry-warning[hidden],
+body.admin-dark .openplan3d-geometry-warning[hidden],
+.admin-dark .openplan3d-geometry-warning[hidden] {
   display: none !important;
 }
 html.admin-dark .openplan3d-modal-backdrop,
