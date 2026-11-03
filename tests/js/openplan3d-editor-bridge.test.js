@@ -8,7 +8,7 @@ const bridge = require('../../public/js/openplan3d-editor-bridge.js');
 const host = require('../../public/js/openplan3d-host.js');
 const measurement = require('../../public/js/openplan3d-measurement-bridge.js');
 
-const INDEX = path.resolve(__dirname, '../../public/vendor/openplan3d/editor/index.html');
+const INDEX = path.resolve(__dirname, '../../public/vendor/openplan3d-h1/editor/index.html');
 const HOST_JS = path.resolve(__dirname, '../../public/js/openplan3d-host.js');
 
 function rectPlan(id, name, widthCm, lengthCm) {
@@ -313,7 +313,7 @@ assert.strictEqual(
 assert.strictEqual(host.plansMatch(loaded, loaded), true);
 assert.strictEqual(host.plansMatch(loaded, blank), false);
 
-const fakeIframe = { contentWindow: { id: 'editor' }, src: 'https://zanini.test/vendor/openplan3d/editor/index.html' };
+const fakeIframe = { contentWindow: { id: 'editor' }, src: 'https://zanini.test/vendor/openplan3d-h1/editor/index.html' };
 const fakeWin = { location: { origin: 'https://zanini.test', href: 'https://zanini.test/admin' } };
 assert.strictEqual(
   host.isTrustedEditorMessage({ source: fakeIframe.contentWindow, origin: 'https://zanini.test' }, fakeIframe, fakeWin),
@@ -344,9 +344,9 @@ assert.strictEqual(
 const relIframe = {
   contentWindow: { id: 'editor2' },
   getAttribute: function (name) {
-    return name === 'src' ? '/vendor/openplan3d/editor/index.html?v=1' : '';
+    return name === 'src' ? '/vendor/openplan3d-h1/editor/index.html?v=1' : '';
   },
-  src: 'http://127.0.0.1:8000/vendor/openplan3d/editor/index.html?v=1',
+  src: 'http://127.0.0.1:8000/vendor/openplan3d-h1/editor/index.html?v=1',
 };
 const relWin = { location: { origin: 'http://127.0.0.1:8000', href: 'http://127.0.0.1:8000/admin/utilities/room-area' } };
 assert.strictEqual(
@@ -534,9 +534,12 @@ assert.match(indexHtml, /installHostedSnapGrid/, 'editor index must wire hosted 
 assert.match(indexHtml, /installHostedWallMeasureSettings/, 'editor index must align wall measure mode with plan dimensions');
 assert.doesNotMatch(indexHtml, /installHostedVendorPatches/, 'runtime ESM namespace patching must not run at boot');
 
-const patchedManifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../scripts/openplan3d-patched-chunks.json'), 'utf8'));
+const patchedManifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../scripts/openplan3d-h1.json'), 'utf8'));
 const storeChunk = patchedManifest.storeChunk;
-const storeJs = fs.readFileSync(path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/' + storeChunk), 'utf8');
+const storeJs = fs.readFileSync(
+  path.resolve(__dirname, '../../public/vendor/openplan3d-h1/_app/immutable/chunks/' + storeChunk),
+  'utf8'
+);
 assert.match(storeJs, /__ZANINI_OPENPLAN3D_PATCH__/, 'store chunk must be patched via scripts/patch-openplan3d.mjs');
 assert.match(storeJs, /wallMeasureMode:"edge"/, 'patched store defaults to edge measure mode');
 assert.match(
@@ -548,7 +551,7 @@ assert.match(indexHtml, new RegExp(storeChunk.replace('.', '\\.')), 'editor inde
 
 const editorChunk = patchedManifest.editorChunk;
 const editorJs = fs.readFileSync(
-  path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/' + editorChunk),
+  path.resolve(__dirname, '../../public/vendor/openplan3d-h1/_app/immutable/chunks/' + editorChunk),
   'utf8'
 );
 assert.match(editorJs, /Y\.snappedToEndpoint\|\|Y\.snappedToWall\?Y:/, 'canvas Br must not grid-round exact endpoint/wall snaps');
@@ -606,7 +609,10 @@ assert.match(helpIn, /DeWalt laser/i);
 assert.match(helpIn, /12\.05/);
 assert.match(helpIn, /00–11|00-11/);
 
-const localeJs = fs.readFileSync(path.resolve(__dirname, '../../public/vendor/openplan3d/_app/immutable/chunks/mXJTDcdm.js'), 'utf8');
+const localeJs = fs.readFileSync(
+  path.resolve(__dirname, '../../public/vendor/openplan3d-h1/_app/immutable/chunks/NzBhsCJS.js'),
+  'utf8'
+);
 assert.doesNotMatch(localeJs, /DeWalt laser/, 'immutable locale chunk must not be edited; help comes from hosted locale shim');
 assert.match(indexHtml, /type="importmap"/, 'editor index must redirect locale chunk through import map');
 assert.match(indexHtml, /openplan3d-hosted-locale\.js\?v=[a-f0-9]{16}/, 'locale shim must be cache-busted');

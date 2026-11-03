@@ -8,7 +8,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '../..');
 const BRIDGE = path.join(ROOT, 'public/js/openplan3d-editor-bridge.js');
 const LOCALE_SHIM = path.join(ROOT, 'public/js/openplan3d-hosted-locale.js');
-const INDEX = path.join(ROOT, 'public/vendor/openplan3d/editor/index.html');
+const INDEX = path.join(ROOT, 'public/vendor/openplan3d-h1/editor/index.html');
 const HTACCESS = path.join(ROOT, 'public/.htaccess');
 const EMBED = path.join(ROOT, 'tests/js/fixtures/openplan3d-editor-embed.html');
 
@@ -75,13 +75,24 @@ assert.match(
   `editor index locale shim ?v= must match (${localeShimV})`
 );
 const localeImportKey = indexHtml.match(
-  /"(\/vendor\/openplan3d\/_app\/immutable\/chunks\/[A-Za-z0-9_-]+\.js)": "\/js\/openplan3d-hosted-locale\.js/
+  /"(\/vendor\/openplan3d-h1\/_app\/immutable\/chunks\/[A-Za-z0-9_-]+\.js)": "\/js\/openplan3d-hosted-locale\.js\?v=/
 )?.[1];
 assert.ok(localeImportKey, 'import map must redirect an immutable locale chunk to hosted locale shim');
 assert.doesNotMatch(
   indexHtml,
   new RegExp(`<link href="${localeImportKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" rel="modulepreload">`),
   'redundant locale chunk modulepreload must be omitted (import map handles locale)'
+);
+
+assert.match(
+  htaccess,
+  /openplan3d-h1\/editor\/index\\.html/,
+  '.htaccess must tag hosted editor index.html for no-cache'
+);
+assert.match(
+  htaccess,
+  /no-cache, must-revalidate.*openplan3d_editor_html/s,
+  '.htaccess must send no-cache for editor index.html'
 );
 
 console.log('openplan3d-editor-asset-version: ok (bridge v=' + bridgeContentVersion() + ', locale shim v=' + localeShimV + ')');

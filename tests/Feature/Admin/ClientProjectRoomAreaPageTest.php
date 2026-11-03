@@ -32,7 +32,7 @@ class ClientProjectRoomAreaPageTest extends IntegrationTestCase
             ->assertOk()
             ->assertViewIs('admin.client_projects.room_area')
             ->assertSee('data-room-area-openplan3d', false)
-            ->assertSee('vendor/openplan3d/editor/index.html', false)
+            ->assertSee('vendor/openplan3d-h1/editor/index.html', false)
             ->assertSee('Back to project')
             ->assertSee('id="openplan3d-save-btn"', false)
             ->assertSee('Kitchen remodel')

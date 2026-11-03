@@ -28,7 +28,7 @@ class RoomAreaEngineFeatureFlagTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('data-room-area-openplan3d', false);
-        $response->assertSee('vendor/openplan3d/editor/index.html', false);
+        $response->assertSee('vendor/openplan3d-h1/editor/index.html', false);
         $response->assertSee('openPlan3D', false);
         $response->assertDontSee('konva.min.js', false);
         $response->assertDontSee('admin-utilities-room-area.js', false);
@@ -49,10 +49,21 @@ class RoomAreaEngineFeatureFlagTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('data-room-area-openplan3d', false);
-        $response->assertSee('vendor/openplan3d/editor/index.html', false);
+        $response->assertSee('vendor/openplan3d-h1/editor/index.html', false);
         $response->assertSee('Basement Reno', false);
         $response->assertSee('Back to project', false);
         $response->assertDontSee('konva.min.js', false);
+    }
+
+    public function test_hosted_openplan3d_h1_assets_exist_on_disk(): void
+    {
+        $vendorDir = public_path('vendor/openplan3d-h1');
+
+        $this->assertDirectoryExists($vendorDir);
+        $this->assertFileExists($vendorDir . '/editor/index.html');
+        $this->assertFileExists($vendorDir . '/_app/immutable/chunks/1VjVcrjm.js');
+        $manifest = json_decode(file_get_contents(base_path('scripts/openplan3d-h1.json')), true);
+        $this->assertSame('1VjVcrjm.js', $manifest['storeChunk'] ?? null);
     }
 
     public function test_vendored_openplan3d_assets_exist_on_disk(): void

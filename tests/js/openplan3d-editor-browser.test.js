@@ -164,7 +164,7 @@ async function run() {
 
     const editorPage = await browser.newPage();
     editorPage.setDefaultNavigationTimeout(15000);
-    await editorPage.goto(`http://127.0.0.1:${port}/vendor/openplan3d/editor/index.html`, { waitUntil: 'domcontentloaded' });
+    await editorPage.goto(`http://127.0.0.1:${port}/vendor/openplan3d-h1/editor/index.html`, { waitUntil: 'domcontentloaded' });
     const hostedAtLoad = await editorPage.evaluate(() => document.documentElement.classList.contains('zanini-hosted-openplan3d'));
     assert.strictEqual(hostedAtLoad, true, 'editor page must install the hosted bridge');
     await editorPage.evaluate(() => {

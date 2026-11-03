@@ -7,7 +7,7 @@ import {
   i as initLocale,
   l as localeStore,
   t as useTranslate
-} from '/vendor/openplan3d/_app/immutable/chunks/NzBhsCJS.js?zanini=vendor';
+} from '/vendor/openplan3d-h1/_app/immutable/chunks/NzBhsCJS.js?zanini=vendor';
 
 export function a(locale, key, vars) {
   if (key === 'wallProperties.entryHelp') {

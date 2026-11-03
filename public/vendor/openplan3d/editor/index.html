@@ -5,31 +5,25 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" type="image/svg+xml" href="/vendor/openplan3d/favicon.svg" />
 		<title>open3dFloorplan</title>
-		<script type="importmap">
-		{
-			"imports": {
-				"/vendor/openplan3d/_app/immutable/chunks/mXJTDcdm.js": "/js/openplan3d-hosted-locale.js?v=c693c448fcaec0a7"
-			}
-		}
-		</script>
-		<script src="/js/openplan3d-editor-bridge.js?v=d2c03bfc9b9bd6e1"></script>
+		<script src="/js/openplan3d-editor-bridge.js?v=e078a975c82d37d7"></script>
 		<script>
 			if (window.OpenPlan3DEditorBridge && typeof window.OpenPlan3DEditorBridge.syncHostedThemeFromParent === 'function') {
 				window.OpenPlan3DEditorBridge.syncHostedThemeFromParent();
 			}
 		</script>
-		<link href="/vendor/openplan3d/_app/immutable/entry/start.Ly56nGnc.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/b6GBnSox.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/C5XpOFx3.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/5ksIRFcW.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/entry/app.v7MYmby0.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/ZFl5myG3.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/4Jzhvaqa.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/Y0qwuIId.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/nodes/0.k5Pzxw8N.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/Kc9rYc4a.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/GYxalQfz.js" rel="modulepreload">
-		<link href="/vendor/openplan3d/_app/immutable/chunks/W7IJquH8.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/entry/start.ChH6DPSY.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/IK8I3O5V.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/BZH7Uaq2.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/A3oClE6y.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/entry/app.Badnr33M.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/Sd-LEV8l.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/B8ydxUi_.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/DS9kkvy5.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/nodes/0.C8YK60P1.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/NzBhsCJS.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/Dx4kNdAA.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/1VjVcrjm.js" rel="modulepreload">
+		<link href="/vendor/openplan3d/_app/immutable/chunks/DHXjNKtR.js" rel="modulepreload">
 		<link href="/vendor/openplan3d/_app/env.js" rel="modulepreload">
 		
 		<link href="/vendor/openplan3d/_app/immutable/assets/0.DdceI81C.css" rel="stylesheet">
@@ -304,91 +298,94 @@
 					import("/vendor/openplan3d/_app/env.js").then(({ env }) => {
 						__sveltekit_1tyrndq.env = env;
 
-						return import("/vendor/openplan3d/_app/immutable/chunks/GYxalQfz.js").then((storeModule) => {
-							const session = window.__openPlan3DSession;
-							const bridge = window.OpenPlan3DEditorBridge;
-							if (!session || !bridge) {
-								throw new Error('openPlan3D editor bridge is missing');
-							}
-
-							const inspected = session.attachStore(storeModule);
-							if (!inspected || !inspected.ok) {
-								return null;
-							}
-
-							var settingsStore = typeof bridge.resolveSettingsStore === 'function'
-								? bridge.resolveSettingsStore(storeModule)
-								: storeModule.W;
-							if (settingsStore) {
-								if (typeof bridge.installHostedWallMeasureSettings === 'function') {
-									bridge.installHostedWallMeasureSettings(settingsStore);
-								}
-								if (typeof bridge.installHostedSnapGrid === 'function') {
-									bridge.installHostedSnapGrid(settingsStore);
-								}
-							}
-
-							let initial = true;
-							let updateTimeout = null;
-							window.__openPlan3D.subscribe((project) => {
-								if (initial) {
-									initial = false;
-									return;
-								}
-								session.onStoreChange(project, (cur) => {
-									if (updateTimeout) clearTimeout(updateTimeout);
-									updateTimeout = setTimeout(() => {
-										updateTimeout = null;
-										if (session && typeof session.postToParent === 'function') {
-											try {
-												const live = (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function')
-													? window.__openPlan3D.getProject()
-													: cur;
-												const cleanPlan = session.serializePlan(live);
-												if (cleanPlan) {
-													session.postToParent({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: cleanPlan });
-												}
-											} catch (postErr) {
-												console.warn('[openPlan3D Bridge] Error posting plan change:', postErr);
-											}
-										}
-									}, 30);
-								});
-							});
-
-							return Promise.all([
-								import("/vendor/openplan3d/_app/immutable/entry/start.Ly56nGnc.js"),
-								import("/vendor/openplan3d/_app/immutable/entry/app.v7MYmby0.js")
-							]).then(([kit, app]) => kit.start(app, element));
-						});
-					}).then(() => {
+						Promise.all([
+							import("/vendor/openplan3d/_app/immutable/entry/start.ChH6DPSY.js"),
+							import("/vendor/openplan3d/_app/immutable/entry/app.Badnr33M.js")
+						]).then(([kit, app]) => {
+							return Promise.resolve(kit.start(app, element));
+						}).then(() => {
 							if (window.__openPlan3DSession) {
 								window.__openPlan3DSession.onEditorMounted();
 							}
 						}).catch((err) => {
 							console.error('[openPlan3D Bridge] Editor failed to mount:', err);
-							const msg = String(err && err.message ? err.message : err);
 							if (window.OpenPlan3DEditorBridge) {
-								if (/missing H\/c|missing-store-exports|store exports/i.test(msg)) {
-									window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor API is unavailable (missing H/c store exports). Room geometry cannot be loaded. Refresh the page.');
-								} else {
-									window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor failed to mount. Room geometry cannot be loaded. Refresh the page.');
-								}
+								window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor failed to mount. Room geometry cannot be loaded. Refresh the page.');
 							}
 							if (window.__openPlan3DSession && typeof window.__openPlan3DSession.postToParent === 'function') {
 								window.__openPlan3DSession.postToParent({ type: 'OPENPLAN3D_BRIDGE_ERROR', message: 'editor-mount-failed' });
 							}
 						});
-
-					window.addEventListener('keydown', (e) => {
-						if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
-							e.preventDefault();
-							if (window.__openPlan3DSession && typeof window.__openPlan3DSession.postToParent === 'function') {
-								window.__openPlan3DSession.postToParent({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
-							}
-						}
 					});
 				}
+			</script>
+			<script type="module">
+				import("/vendor/openplan3d/_app/immutable/chunks/1VjVcrjm.js").then((storeModule) => {
+					const session = window.__openPlan3DSession;
+					const bridge = window.OpenPlan3DEditorBridge;
+					if (!session || !bridge) {
+						throw new Error('openPlan3D editor bridge is missing');
+					}
+
+					const inspected = session.attachStore(storeModule);
+					if (!inspected || !inspected.ok) {
+						return;
+					}
+
+					if (typeof bridge.installHostedSnapGrid === 'function') {
+						var settingsStore = typeof bridge.resolveSettingsStore === 'function'
+							? bridge.resolveSettingsStore(storeModule)
+							: storeModule.W;
+						if (settingsStore) {
+							bridge.installHostedSnapGrid(settingsStore);
+						}
+					}
+
+					let initial = true;
+					let updateTimeout = null;
+					window.__openPlan3D.subscribe((project) => {
+						if (initial) {
+							initial = false;
+							return;
+						}
+						session.onStoreChange(project, (cur) => {
+							if (updateTimeout) clearTimeout(updateTimeout);
+							updateTimeout = setTimeout(() => {
+								updateTimeout = null;
+								if (session && typeof session.postToParent === 'function') {
+									try {
+										const live = (window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function')
+											? window.__openPlan3D.getProject()
+											: cur;
+										const cleanPlan = session.serializePlan(live);
+										if (cleanPlan) {
+											session.postToParent({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: cleanPlan });
+										}
+									} catch (postErr) {
+										console.warn('[openPlan3D Bridge] Error posting plan change:', postErr);
+									}
+								}
+							}, 30);
+						});
+					});
+				}).catch(err => {
+					console.error('[openPlan3D Bridge] Error loading store module:', err);
+					if (window.OpenPlan3DEditorBridge) {
+						window.OpenPlan3DEditorBridge.showVisibleError('openPlan3D editor API is unavailable (missing H/c store exports). Room geometry cannot be loaded. Refresh the page.');
+					}
+					if (window.__openPlan3DSession && typeof window.__openPlan3DSession.postToParent === 'function') {
+						window.__openPlan3DSession.postToParent({ type: 'OPENPLAN3D_BRIDGE_ERROR', message: 'missing-store-exports' });
+					}
+				});
+
+				window.addEventListener('keydown', (e) => {
+					if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+						e.preventDefault();
+						if (window.__openPlan3DSession && typeof window.__openPlan3DSession.postToParent === 'function') {
+							window.__openPlan3DSession.postToParent({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
+						}
+					}
+				});
 			</script>
 		</div>
 	</body>

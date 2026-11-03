@@ -20,7 +20,7 @@ function buildPage(iframeAttrs) {
   let html = fs.readFileSync(FIXTURE, 'utf8');
   html = html.replace(
     '<iframe\n      id="openplan3d-iframe"\n      src="about:blank"',
-    `<iframe\n      id="openplan3d-iframe"\n      src="/vendor/openplan3d/editor/index.html"${iframeAttrs ? ' ' + iframeAttrs : ''}`
+    `<iframe\n      id="openplan3d-iframe"\n      src="/vendor/openplan3d-h1/editor/index.html"${iframeAttrs ? ' ' + iframeAttrs : ''}`
   );
   html = html.replace(
     '<body style="margin: 0; padding: 10px; font-family: sans-serif;">',

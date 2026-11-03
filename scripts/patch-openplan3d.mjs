@@ -1,17 +1,13 @@
 #!/usr/bin/env node
 /**
- * Apply Zanini hosted patches to vendored openPlan3D immutable bundles.
+ * Build the hosted openPlan3D bundle under public/vendor/openplan3d-h1/.
  *
- * Re-run steps (from repo root):
- *   1. Ensure `public/vendor/openplan3d/_app/immutable/` matches upstream (or prior patch manifest).
- *   2. `node scripts/patch-openplan3d.mjs`
- *   3. Commit changed files under `public/vendor/openplan3d/` and `scripts/openplan3d-patched-chunks.json`.
- *   4. Run: `node tests/js/openplan3d-editor-bridge.test.js`
- *          `node tests/js/openplan3d-editor-index-mount.test.js`
+ * Re-run (idempotent — must produce zero git diff after the first commit):
+ *   1. Keep public/vendor/openplan3d/ byte-identical to upstream main (never patch it).
+ *   2. node scripts/patch-openplan3d.mjs
+ *   3. git diff  # should be empty on second run
  *
- * Patches store (edge length vo/Br/ys/pa) and editor canvas snap (Br/Kr), then assigns every
- * changed immutable JS file a fresh content-hash filename (entry/nodes/chunks). Old filenames
- * are kept on disk so long-lived caches never 404.
+ * Writes scripts/openplan3d-h1.json (store/editor chunk names for tests).
  */
 import crypto from 'crypto';
 import fs from 'fs';
@@ -21,20 +17,57 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const VENDOR = path.join(ROOT, 'public/vendor/openplan3d');
-const IMMUTABLE = path.join(VENDOR, '_app/immutable');
-const MANIFEST = path.join(__dirname, 'openplan3d-patched-chunks.json');
-const EDITOR_INDEX = path.join(VENDOR, 'editor/index.html');
+const PRISTINE = path.join(ROOT, 'public/vendor/openplan3d');
+const OUT_SLUG = 'openplan3d-h1';
+const OUT = path.join(ROOT, 'public/vendor', OUT_SLUG);
+const MANIFEST = path.join(__dirname, 'openplan3d-h1.json');
+const EDITOR_INDEX = path.join(OUT, 'editor/index.html');
 
 const require = createRequire(import.meta.url);
 const bridge = require(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
 
-function contentHash(content) {
-  return crypto.createHash('sha256').update(content).digest('base64url').replace(/[-_]/g, 'x').slice(0, 8);
+const VENDOR_PREFIX = '/vendor/openplan3d';
+const OUT_PREFIX = `/vendor/${OUT_SLUG}`;
+
+function listAllFiles(dir) {
+  const out = [];
+  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, ent.name);
+    if (ent.isDirectory()) out.push(...listAllFiles(p));
+    else out.push(p);
+  }
+  return out;
 }
 
-function read(rel) {
-  return fs.readFileSync(path.join(IMMUTABLE, rel), 'utf8');
+function rewriteVendorUrls(rootDir) {
+  for (const file of listAllFiles(rootDir)) {
+    if (!/\.(html|js|css|json|svg)$/.test(file)) continue;
+    let text = fs.readFileSync(file, 'utf8');
+    if (!text.includes(VENDOR_PREFIX)) continue;
+    text = text.split(VENDOR_PREFIX).join(OUT_PREFIX);
+    fs.writeFileSync(file, text);
+  }
+}
+
+function discoverStoreChunkBasename() {
+  const html = fs.readFileSync(EDITOR_INDEX, 'utf8');
+  const esc = OUT_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = html.match(new RegExp(`${esc}/_app/immutable/chunks/([A-Za-z0-9_-]+\\.js)"\\)\\.then\\(\\(storeModule\\)`));
+  if (!m) throw new Error('patch-openplan3d: store chunk import not found in editor/index.html');
+  return m[1];
+}
+
+function discoverEditorChunkBasename() {
+  const entryDir = path.join(OUT, '_app/immutable/entry');
+  const appFile = fs.readdirSync(entryDir).find((f) => /^app\.[A-Za-z0-9_-]+\.js$/.test(f));
+  if (!appFile) throw new Error('patch-openplan3d: entry app.*.js not found');
+  const appJs = fs.readFileSync(path.join(entryDir, appFile), 'utf8');
+  const node3 = appJs.match(/"\.\.\/nodes\/(3\.[A-Za-z0-9_-]+\.js)"/)?.[1];
+  if (!node3) throw new Error('patch-openplan3d: nodes/3.* reference not found in ' + appFile);
+  const nodeJs = fs.readFileSync(path.join(OUT, '_app/immutable/nodes', node3), 'utf8');
+  const m = nodeJs.match(/from"\.\.\/chunks\/([A-Za-z0-9_-]+\.js)"/);
+  if (!m) throw new Error('patch-openplan3d: editor canvas chunk import not found in ' + node3);
+  return m[1];
 }
 
 function patchStoreChunk(source) {
@@ -47,16 +80,7 @@ function patchStoreChunk(source) {
     'function vo(e){let t;if(!e.curvePoint)t=Math.hypot(e.end.x-e.start.x,e.end.y-e.start.y);else{t=0;let n=e.start;for(let o=1;o<=20;o++){const i=o/20,a=1-i,s={x:a*a*e.start.x+2*a*i*e.curvePoint.x+i*i*e.end.x,y:a*a*e.start.y+2*a*i*e.curvePoint.y+i*i*e.end.y};t+=Math.hypot(s.x-n.x,s.y-n.y),n=s}}const i=L(ma),a=L(ee),r=a?.walls;if(i?.wallMeasureMode==="edge"&&r&&!e.curvePoint){const l=No(e,r);return Math.max(0,t-l.start-l.end)}return t}';
   if (s.includes(voOld)) {
     s = s.replace(voOld, voNew);
-  } else if (s.includes('i?.wallMeasureMode==="edge"&&r&&!e.curvePoint')) {
-    s = s.replace(
-      /a\?\.floors\?\.find\(l=>l\.id===a\.activeFloorId\)\?\.walls/g,
-      'a?.walls'
-    );
-    s = s.replace(
-      /a\?\.floors\.find\(l=>l\.id===a\.activeFloorId\)\?\.walls/g,
-      'a?.walls'
-    );
-  } else {
+  } else if (!s.includes('i?.wallMeasureMode==="edge"&&r&&!e.curvePoint')) {
     throw new Error('store chunk: vo() pattern not found');
   }
 
@@ -82,18 +106,7 @@ function patchStoreChunk(source) {
 
   const paInject = bridge.buildVendorLengthParseSource();
   const hostedPaNeedle = 'function pa(e,t){return parseHostedLengthToCm(e,t);}';
-  const hasHostedPa = s.includes(hostedPaNeedle);
-
-  if (!hasHostedPa) {
-    const injectMarker = 'var CM_PER_INCH=';
-    let injectStart = s.indexOf(injectMarker);
-    while (injectStart >= 0) {
-      const injectEnd = s.indexOf(hostedPaNeedle, injectStart);
-      if (injectEnd < 0) break;
-      s = s.slice(0, injectStart) + s.slice(injectEnd + hostedPaNeedle.length);
-      injectStart = s.indexOf(injectMarker);
-    }
-
+  if (!s.includes(hostedPaNeedle)) {
     const vendorPaStart = s.indexOf('function pa(');
     const ktAnchor = s.indexOf('const Kt=', vendorPaStart >= 0 ? vendorPaStart : 0);
     if (vendorPaStart < 0 || ktAnchor < 0) throw new Error('store chunk: vendor pa()/Kt anchor not found');
@@ -112,17 +125,12 @@ function patchStoreChunk(source) {
 function patchEditorCanvasChunk(source) {
   let s = source;
 
-  const brPatchedReturn =
-    'snappedToWall:!0,snappedWallId:xt.id})}}return{x:cr(Y.x),y:cr(Y.y),snappedToEndpoint:Y.snappedToEndpoint,snappedToWall:Y.snappedToWall,snappedWallId:Y.snappedWallId}}function Kr(w,st)';
-  const brFixedReturn =
-    'snappedToWall:!0,snappedWallId:xt.id})}}return Y.snappedToEndpoint||Y.snappedToWall?Y:{x:cr(Y.x),y:cr(Y.y),snappedToEndpoint:Y.snappedToEndpoint,snappedToWall:Y.snappedToWall,snappedWallId:Y.snappedWallId}}function Kr(w,st)';
   const brReturnOld =
     'snappedToWall:!0,snappedWallId:xt.id})}}return Y}function Kr(w,st)';
-
-  if (s.includes(brPatchedReturn)) {
-    s = s.replace(brPatchedReturn, brFixedReturn);
-  } else if (s.includes(brReturnOld)) {
-    s = s.replace(brReturnOld, brFixedReturn);
+  const brReturnNew =
+    'snappedToWall:!0,snappedWallId:xt.id})}}return Y.snappedToEndpoint||Y.snappedToWall?Y:{x:cr(Y.x),y:cr(Y.y),snappedToEndpoint:Y.snappedToEndpoint,snappedToWall:Y.snappedToWall,snappedWallId:Y.snappedWallId}}function Kr(w,st)';
+  if (s.includes(brReturnOld)) {
+    s = s.replace(brReturnOld, brReturnNew);
   } else if (!s.includes('Y.snappedToEndpoint||Y.snappedToWall?Y:{x:cr(Y.x)')) {
     throw new Error('editor chunk: Br snap return pattern not found');
   }
@@ -133,8 +141,6 @@ function patchEditorCanvasChunk(source) {
     'for(const Zt of xt)if(Math.abs(ot-Zt)<Ut)return{x:w.x+K*Math.cos(Zt),y:w.y+K*Math.sin(Zt)};return st}function tn()';
   if (s.includes(krPatched)) {
     s = s.replace(krPatched, krMain);
-  } else if (!s.includes('return st}function tn()') && !s.includes(krMain.slice(0, 40))) {
-    throw new Error('editor chunk: Kr ortho pattern not found');
   }
 
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
@@ -146,235 +152,75 @@ function patchEditorCanvasChunk(source) {
   return s;
 }
 
-function listAllFiles(dir) {
-  const out = [];
-  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, ent.name);
-    if (ent.isDirectory()) out.push(...listAllFiles(p));
-    else out.push(p);
-  }
-  return out;
+function fileContentVersion16(absPath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(absPath)).digest('hex').slice(0, 16);
 }
 
-function cascadeRename(renames) {
-  const roots = [
-    IMMUTABLE,
-    path.join(VENDOR, 'editor'),
-    VENDOR,
-    path.join(ROOT, 'tests'),
-  ];
-  const files = roots.flatMap((r) => (fs.existsSync(r) ? listAllFiles(r) : []));
-  for (const file of files) {
-    if (!/\.(js|html|css|json)$/.test(file)) continue;
-    let text = fs.readFileSync(file, 'utf8');
-    let changed = false;
-    for (const [oldBase, newBase] of Object.entries(renames)) {
-      if (text.includes(oldBase)) {
-        text = text.split(oldBase).join(newBase);
-        changed = true;
-      }
-    }
-    if (changed) fs.writeFileSync(file, text);
-  }
-}
-
-function expectedBasename(absPath, content) {
-  const rel = path.relative(IMMUTABLE, absPath).replace(/\\/g, '/');
-  const hash = contentHash(content);
-  if (rel.startsWith('entry/')) {
-    const prefix = path.basename(rel).split('.')[0];
-    return `${prefix}.${hash}.js`;
-  }
-  if (rel.startsWith('nodes/')) {
-    const prefix = path.basename(rel).split('.')[0];
-    return `${prefix}.${hash}.js`;
-  }
-  if (rel.startsWith('chunks/')) {
-    return `${hash}.js`;
-  }
-  return path.basename(rel);
-}
-
-function publishContentNamedFile(absPath, content) {
-  const oldBase = path.basename(absPath);
-  const newBase = expectedBasename(absPath, content);
-  if (oldBase === newBase) {
-    fs.writeFileSync(absPath, content);
-    return { oldBase, newBase, renamed: false, absPath };
-  }
-  const absNew = path.join(path.dirname(absPath), newBase);
-  fs.writeFileSync(absNew, content);
-  return { oldBase, newBase, renamed: true, absPath: absNew };
-}
-
-function findCanonicalPatchedChunk(kind) {
-  const chunksDir = path.join(IMMUTABLE, 'chunks');
-  const candidates = fs.readdirSync(chunksDir).filter((f) => f.endsWith('.js'));
-  for (const f of candidates) {
-    if (f.replace(/\.js$/, '') !== contentHash(fs.readFileSync(path.join(chunksDir, f), 'utf8'))) {
-      continue;
-    }
-    const c = fs.readFileSync(path.join(chunksDir, f), 'utf8');
-    if (!c.includes('__ZANINI_OPENPLAN3D_PATCH__')) continue;
-    if (kind === 'store' && c.includes('function pa(e,t){return parseHostedLengthToCm')) return f;
-    if (kind === 'editor' && c.includes('function Br(w,st){') && c.includes('Y.snappedToEndpoint||Y.snappedToWall')) {
-      return f;
-    }
-  }
-  return null;
-}
-
-function rehashImmutableGraph() {
-  const allRenames = {};
-  let iterations = 0;
-  let changed = true;
-  while (changed && iterations < 40) {
-    changed = false;
-    iterations += 1;
-    const jsFiles = listAllFiles(IMMUTABLE).filter((f) => f.endsWith('.js'));
-    for (const absPath of jsFiles) {
-      const content = fs.readFileSync(absPath, 'utf8');
-      const newBase = expectedBasename(absPath, content);
-      const oldBase = path.basename(absPath);
-      if (oldBase === newBase) continue;
-      const absNew = path.join(path.dirname(absPath), newBase);
-      if (fs.existsSync(absNew) && fs.readFileSync(absNew, 'utf8') === content) {
-        continue;
-      }
-      fs.writeFileSync(absNew, content);
-      allRenames[oldBase] = newBase;
-      cascadeRename({ [oldBase]: newBase });
-      changed = true;
-    }
-  }
-  if (iterations >= 40) throw new Error('rehashImmutableGraph: too many iterations');
-  return allRenames;
-}
-
-function trimEditorIndexPreloads() {
-  if (!fs.existsSync(EDITOR_INDEX)) return;
+function patchHostedEditorIndexBoot() {
   let html = fs.readFileSync(EDITOR_INDEX, 'utf8');
-  const mapMatch = html.match(
-    /"\/vendor\/openplan3d\/_app\/immutable\/chunks\/([A-Za-z0-9_-]+\.js)": "\/js\/openplan3d-hosted-locale\.js/
+  const localeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-hosted-locale.js'));
+  const bridgeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
+
+  html = html.replace(
+    /openplan3d-editor-bridge\.js\?v=[A-Za-z0-9]+/,
+    `openplan3d-editor-bridge.js?v=${bridgeV}`
   );
-  const localeChunk = mapMatch ? mapMatch[1] : 'NzBhsCJS.js';
+
+  if (!html.includes('type="importmap"')) {
+    const importMap =
+      `\n\t\t<script type="importmap">\n\t\t{\n\t\t\t"imports": {\n\t\t\t\t"${OUT_PREFIX}/_app/immutable/chunks/NzBhsCJS.js": "/js/openplan3d-hosted-locale.js?v=${localeV}"\n\t\t\t}\n\t\t}\n\t\t</script>`;
+    html = html.replace('<title>open3dFloorplan</title>', `<title>open3dFloorplan</title>${importMap}`);
+  }
+
+  if (!html.includes('installHostedWallMeasureSettings')) {
+    html = html.replace(
+      'if (settingsStore) {\n\t\t\t\t\t\t\tbridge.installHostedSnapGrid(settingsStore);\n\t\t\t\t\t\t}',
+      'if (settingsStore) {\n\t\t\t\t\t\t\tbridge.installHostedSnapGrid(settingsStore);\n\t\t\t\t\t\t\tif (typeof bridge.installHostedWallMeasureSettings === \'function\') {\n\t\t\t\t\t\t\t\tbridge.installHostedWallMeasureSettings(settingsStore);\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}'
+    );
+  }
+  fs.writeFileSync(EDITOR_INDEX, html);
+}
+
+function trimRedundantLocaleModulepreload() {
+  const localeChunk = 'NzBhsCJS.js';
+  let html = fs.readFileSync(EDITOR_INDEX, 'utf8');
   const redundant = new RegExp(
-    `\\s*<link href="/vendor/openplan3d/_app/immutable/chunks/${localeChunk.replace('.', '\\.')}" rel="modulepreload">\\n?`
+    `\\s*<link href="${OUT_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/_app/immutable/chunks/${localeChunk.replace('.', '\\.')}" rel="modulepreload">\\n?`
   );
   if (redundant.test(html)) {
     html = html.replace(redundant, '\n');
     fs.writeFileSync(EDITOR_INDEX, html);
   }
-}
-
-function loadManifestPaths() {
-  let storeRel = 'chunks/1VjVcrjm.js';
-  let editorRel = 'chunks/CgAQI-i0.js';
-  if (fs.existsSync(MANIFEST)) {
-    try {
-      const m = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
-      if (m.storeChunk) storeRel = `chunks/${m.storeChunk}`;
-      if (m.editorChunk) editorRel = `chunks/${m.editorChunk}`;
-    } catch (e) {
-      /* defaults */
-    }
-  }
-  return { storeRel, editorRel };
-}
-
-function findEntryBasename() {
-  if (fs.existsSync(EDITOR_INDEX)) {
-    const html = fs.readFileSync(EDITOR_INDEX, 'utf8');
-    const app = html.match(/entry\/(app\.[A-Za-z0-9_-]+\.js)/)?.[1] || null;
-    const start = html.match(/entry\/(start\.[A-Za-z0-9_-]+\.js)/)?.[1] || null;
-    if (app || start) return { app, start };
-  }
-  const entryDir = path.join(IMMUTABLE, 'entry');
-  const app = fs.readdirSync(entryDir).find((f) => /^app\.[A-Za-z0-9_-]+\.js$/.test(f));
-  const start = fs.readdirSync(entryDir).find((f) => /^start\.[A-Za-z0-9_-]+\.js$/.test(f));
-  return { app, start };
-}
-
-function storeChunkFromEditorIndex() {
-  if (!fs.existsSync(EDITOR_INDEX)) return null;
-  const html = fs.readFileSync(EDITOR_INDEX, 'utf8');
-  return (
-    html.match(
-      /import\("\/vendor\/openplan3d\/_app\/immutable\/chunks\/([A-Za-z0-9_-]+\.js)"\)\.then\(\(storeModule\)/
-    )?.[1] || null
-  );
-}
-
-function editorChunkFromEntry() {
-  const { app } = findEntryBasename();
-  if (!app) return null;
-  const appPath = path.join(IMMUTABLE, 'entry', app);
-  if (!fs.existsSync(appPath)) return null;
-  const appJs = fs.readFileSync(appPath, 'utf8');
-  const nodeMatch = appJs.match(/"\.\.\/nodes\/(3\.[A-Za-z0-9_-]+\.js)"/);
-  if (!nodeMatch) return null;
-  const nodePath = path.join(IMMUTABLE, 'nodes', nodeMatch[1]);
-  if (!fs.existsSync(nodePath)) return null;
-  const nodeJs = fs.readFileSync(nodePath, 'utf8');
-  const chunkMatch = nodeJs.match(/from"\.\.\/chunks\/([A-Za-z0-9_-]+\.js)"/);
-  return chunkMatch ? chunkMatch[1] : null;
-}
-
-function writeManifest(storeChunk, editorChunk, renames) {
-  const { app, start } = findEntryBasename();
-  const indexStore = storeChunkFromEditorIndex();
-  const entryEditor = editorChunkFromEntry();
-  const sortedRenames = Object.fromEntries(Object.entries(renames).sort(([a], [b]) => a.localeCompare(b)));
-  const manifest = {
-    storeChunk: indexStore || storeChunk,
-    editorChunk: entryEditor || editorChunk,
-    entryApp: app || null,
-    entryStart: start || null,
-    renames: sortedRenames,
-  };
-  fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
-  return manifest;
+  return localeChunk;
 }
 
 function main() {
-  const { storeRel, editorRel } = loadManifestPaths();
-  const allRenames = {};
-
-  let storeAbs = path.join(IMMUTABLE, storeRel);
-  if (!fs.existsSync(storeAbs)) {
-    const canonical = findCanonicalPatchedChunk('store');
-    if (canonical) storeAbs = path.join(IMMUTABLE, 'chunks', canonical);
-  }
-  const storePatched = patchStoreChunk(fs.readFileSync(storeAbs, 'utf8'));
-  const storePub = publishContentNamedFile(storeAbs, storePatched);
-  if (storePub.renamed) {
-    allRenames[storePub.oldBase] = storePub.newBase;
-    cascadeRename({ [storePub.oldBase]: storePub.newBase });
+  if (!fs.existsSync(PRISTINE)) {
+    throw new Error('patch-openplan3d: missing pristine tree at public/vendor/openplan3d');
   }
 
-  let editorAbs = path.join(IMMUTABLE, editorRel);
-  if (!fs.existsSync(editorAbs)) {
-    const canonical = findCanonicalPatchedChunk('editor');
-    if (canonical) editorAbs = path.join(IMMUTABLE, 'chunks', canonical);
-  }
-  const editorPatched = patchEditorCanvasChunk(fs.readFileSync(editorAbs, 'utf8'));
-  const editorPub = publishContentNamedFile(editorAbs, editorPatched);
-  if (editorPub.renamed) {
-    allRenames[editorPub.oldBase] = editorPub.newBase;
-    cascadeRename({ [editorPub.oldBase]: editorPub.newBase });
-  }
+  fs.rmSync(OUT, { recursive: true, force: true });
+  fs.cpSync(PRISTINE, OUT, { recursive: true });
+  rewriteVendorUrls(OUT);
 
-  if (storePub.renamed || editorPub.renamed || Object.keys(allRenames).length > 0) {
-    Object.assign(allRenames, rehashImmutableGraph());
-  }
-  trimEditorIndexPreloads();
+  const storeChunk = discoverStoreChunkBasename();
+  const editorChunk = discoverEditorChunkBasename();
 
-  const storeChunk =
-    findCanonicalPatchedChunk('store') || path.basename(storePub.absPath);
-  const editorChunk =
-    findCanonicalPatchedChunk('editor') || path.basename(editorPub.absPath);
+  const storePath = path.join(OUT, '_app/immutable/chunks', storeChunk);
+  const editorPath = path.join(OUT, '_app/immutable/chunks', editorChunk);
+  fs.writeFileSync(storePath, patchStoreChunk(fs.readFileSync(storePath, 'utf8')));
+  fs.writeFileSync(editorPath, patchEditorCanvasChunk(fs.readFileSync(editorPath, 'utf8')));
 
-  const manifest = writeManifest(storeChunk, editorChunk, allRenames);
+  patchHostedEditorIndexBoot();
+  const localeChunk = trimRedundantLocaleModulepreload();
+
+  const manifest = {
+    vendorSlug: OUT_SLUG,
+    storeChunk,
+    editorChunk,
+    localeChunk,
+  };
+  fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
   console.log('patch-openplan3d: ok', manifest);
 }
 

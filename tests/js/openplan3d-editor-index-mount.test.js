@@ -2,7 +2,7 @@
 
 /**
  * Production mount gate: serves public/ like Laravel docroot, loads hosted editor index.html,
- * verifies vendor patches (Chromium via Puppeteer — same checks as Playwright smoke).
+ * verifies vendor patches (Puppeteer — same checks as Playwright smoke).
  */
 
 const assert = require('assert');
@@ -12,9 +12,9 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../..');
 const publicDir = path.join(ROOT, 'public');
-const patched = JSON.parse(
-  fs.readFileSync(path.join(ROOT, 'scripts/openplan3d-patched-chunks.json'), 'utf8')
-);
+const VENDOR_SLUG = 'openplan3d-h1';
+const VENDOR_PREFIX = `/vendor/${VENDOR_SLUG}`;
+const patched = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/openplan3d-h1.json'), 'utf8'));
 const STORE_CHUNK = patched.storeChunk;
 const EDITOR_CHUNK = patched.editorChunk;
 const INCH = 2.54;
@@ -80,6 +80,19 @@ function startServer() {
   });
 }
 
+async function mouseDragEndpoint(page) {
+  const canvas = await page.$('canvas');
+  const box = await canvas.boundingBox();
+  assert.ok(box && box.width > 50, 'canvas must have geometry');
+  const cx = box.x + box.width * 0.55;
+  const cy = box.y + box.height * 0.42;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + 37, cy - 29, { steps: 10 });
+  await page.mouse.up();
+  await new Promise((r) => setTimeout(r, 500));
+}
+
 async function run() {
   const puppeteer = require('puppeteer');
   const { server, port } = await startServer();
@@ -98,7 +111,7 @@ async function run() {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
     });
 
-    await page.goto(`http://127.0.0.1:${port}/vendor/openplan3d/editor/index.html`, {
+    await page.goto(`http://127.0.0.1:${port}${VENDOR_PREFIX}/editor/index.html`, {
       waitUntil: 'domcontentloaded',
       timeout: 120000,
     });
@@ -129,18 +142,23 @@ async function run() {
     });
     assert.deepStrictEqual(idb, [], 'openplan3d-local IDB must not be created in hosted mode');
 
-    const vendorChecks = await page.evaluate(async (storeChunk) => {
-      const mod = await import(`/vendor/openplan3d/_app/immutable/chunks/${storeChunk}`);
-      const neg = mod.bN("-7'", 'imperial');
-      const seven = mod.bN("7'", 'imperial');
-      const project = window.__openPlan3D.getProject();
-      const floor = project.floors.find((f) => f.id === project.activeFloorId);
-      const w1 = floor.walls.find((w) => w.id === 'w1');
-      const shown = mod.bM(w1);
-      const onGrid = (v) => Math.abs(v / 2.54 - Math.round(v / 2.54)) < 0.02;
-      const gridOk = floor.walls.every((w) => onGrid(w.start.x) && onGrid(w.start.y) && onGrid(w.end.x) && onGrid(w.end.y));
-      return { neg, seven, shown, gridOk };
-    }, STORE_CHUNK);
+    const vendorChecks = await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        const neg = mod.bN("-7'", 'imperial');
+        const seven = mod.bN("7'", 'imperial');
+        const project = window.__openPlan3D.getProject();
+        const floor = project.floors.find((f) => f.id === project.activeFloorId);
+        const w1 = floor.walls.find((w) => w.id === 'w1');
+        const shown = mod.bM(w1);
+        const onGrid = (v) => Math.abs(v / 2.54 - Math.round(v / 2.54)) < 0.02;
+        const gridOk = floor.walls.every(
+          (w) => onGrid(w.start.x) && onGrid(w.start.y) && onGrid(w.end.x) && onGrid(w.end.y)
+        );
+        return { neg, seven, shown, gridOk };
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
 
     assert.strictEqual(vendorChecks.neg, null, 'vendor bN must reject -7\'');
     assert.ok(Math.abs(vendorChecks.seven - 84 * INCH) < 0.05, 'vendor bN(7\') must be 84 in');
@@ -148,7 +166,7 @@ async function run() {
     assert.ok(vendorChecks.gridOk, 'wall endpoints must sit on 1 inch grid');
 
     const editorJs = fs.readFileSync(
-      path.join(ROOT, 'public/vendor/openplan3d/_app/immutable/chunks', EDITOR_CHUNK),
+      path.join(ROOT, 'public/vendor', VENDOR_SLUG, '_app/immutable/chunks', EDITOR_CHUNK),
       'utf8'
     );
     assert.match(
@@ -157,16 +175,19 @@ async function run() {
       'editor canvas chunk must preserve exact corner/segment snaps (Br patch)'
     );
 
-    const lengthCommit = await page.evaluate(async (storeChunk) => {
-      const mod = await import(`/vendor/openplan3d/_app/immutable/chunks/${storeChunk}`);
-      const planLen = mod.bN("7'", 'imperial');
-      const err = mod.bP('w1', planLen, 'start');
-      const project = window.__openPlan3D.getProject();
-      const floor = project.floors.find((f) => f.id === project.activeFloorId);
-      const w1 = floor.walls.find((w) => w.id === 'w1');
-      const shown = mod.bM(w1);
-      return { err, planLen, shown, endX: w1.end.x, startX: w1.start.x };
-    }, STORE_CHUNK);
+    const lengthCommit = await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        const planLen = mod.bN("7'", 'imperial');
+        const err = mod.bP('w1', planLen, 'start');
+        const project = window.__openPlan3D.getProject();
+        const floor = project.floors.find((f) => f.id === project.activeFloorId);
+        const w1 = floor.walls.find((w) => w.id === 'w1');
+        const shown = mod.bM(w1);
+        return { err, planLen, shown, endX: w1.end.x, startX: w1.start.x };
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
     assert.strictEqual(lengthCommit.err, null, 'bP(7\' edge) must apply without error');
     assert.ok(Math.abs(lengthCommit.shown - 84 * INCH) < 1.5, 'after Length commit, plan label length must be 7\'0" (~84 in)');
     assert.ok(
@@ -174,30 +195,46 @@ async function run() {
       '7\' edge at corner must restore ~87 in centerline span'
     );
 
-    const canvas = await page.$('canvas');
-    const box = await canvas.boundingBox();
-    assert.ok(box && box.width > 50, 'canvas must have geometry');
-    const cx = box.x + box.width * 0.55;
-    const cy = box.y + box.height * 0.42;
-    await page.mouse.move(cx, cy);
-    await page.mouse.down();
-    await page.mouse.move(cx + 40, cy - 30, { steps: 8 });
-    await page.mouse.up();
-    await new Promise((r) => setTimeout(r, 400));
-
-    const afterDrag = await page.evaluate(() => {
-      const p = window.__openPlan3D.getProject();
-      const floor = p.floors.find((f) => f.id === p.activeFloorId);
-      const onGrid = (v) => Math.abs(v / 2.54 - Math.round(v / 2.54)) < 0.02;
-      return floor.walls.every((w) => onGrid(w.start.x) && onGrid(w.start.y) && onGrid(w.end.x) && onGrid(w.end.y));
-    });
-    assert.ok(afterDrag, 'after endpoint drag, wall coordinates stay on 1 inch grid');
+    for (const mode of ['edge', 'centerline']) {
+      await page.evaluate(
+        async ({ storeChunk, vendorPrefix, mode }) => {
+          const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+          if (!mod.W || typeof mod.W.update !== 'function') return;
+          mod.W.update((s) => Object.assign({}, s, { wallMeasureMode: mode, snapToGrid: true, units: 'imperial' }));
+        },
+        { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX, mode }
+      );
+      await page.evaluate((plan) => {
+        window.postMessage({ type: 'OPENPLAN3D_LOAD_PLAN', plan: plan }, window.location.origin);
+      }, cornerPlan());
+      await new Promise((r) => setTimeout(r, 800));
+      await mouseDragEndpoint(page);
+      const dragOk = await page.evaluate(() => {
+        const p = window.__openPlan3D.getProject();
+        const floor = p.floors.find((f) => f.id === p.activeFloorId);
+        const onGrid = (v) => Math.abs(v / 2.54 - Math.round(v / 2.54)) < 0.02;
+        const coords = [];
+        for (const w of floor.walls) {
+          coords.push(w.start.x, w.start.y, w.end.x, w.end.y);
+        }
+        return { ok: coords.every(onGrid), coords, mode: null };
+      });
+      assert.ok(dragOk.ok, `mouse drag must land all 8 coordinates on whole inches (${mode} mode)`);
+    }
 
     const filteredConsole = consoleErrors.filter((m) => !/favicon|404.*\.map/i.test(m));
     assert.deepStrictEqual(pageErrors, [], 'editor must not throw: ' + pageErrors.join('; '));
     assert.deepStrictEqual(filteredConsole, [], 'editor console errors: ' + filteredConsole.join('; '));
 
-    console.log('openplan3d-editor-index-mount: ok (store=' + STORE_CHUNK + ', editor=' + patched.editorChunk + ')');
+    console.log(
+      'openplan3d-editor-index-mount: ok (vendor=' +
+        VENDOR_SLUG +
+        ', store=' +
+        STORE_CHUNK +
+        ', editor=' +
+        EDITOR_CHUNK +
+        ')'
+    );
   } finally {
     await browser.close();
     server.close();
