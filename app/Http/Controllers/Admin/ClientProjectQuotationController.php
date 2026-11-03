@@ -347,6 +347,10 @@ class ClientProjectQuotationController extends Controller
             ? trim((string) $request->input('idempotency_key'))
             : null;
 
+        if ($idempotencyKey === null && $request->filled(\App\Support\AdminOnceSubmitToken::FIELD)) {
+            $idempotencyKey = 'once_' . substr(hash('sha256', trim((string) $request->input(\App\Support\AdminOnceSubmitToken::FIELD))), 0, 48);
+        }
+
         if ($request->expectsJson() && ($idempotencyKey === null || $idempotencyKey === '' || mb_strlen($idempotencyKey) > 128)) {
             return response()->json([
                 'ok' => false,
@@ -354,158 +358,213 @@ class ClientProjectQuotationController extends Controller
             ], 422);
         }
 
-        if ($idempotencyKey !== null) {
-            $existing = \App\Models\QuotationSendAudit::query()
-                ->where('client_project_quotation_id', $quotation->id)
-                ->where('idempotency_key', $idempotencyKey)
-                ->where('status', \App\Models\QuotationSendAudit::STATUS_SENT)
-                ->first();
-
-            $cacheKey = \App\Jobs\SendQuotationToClientJob::cacheKeyFor((int) $quotation->id, $idempotencyKey);
-            $inflight = $existing ? null : \Illuminate\Support\Facades\Cache::get($cacheKey);
-
-            if ($existing || is_array($inflight)) {
-                $dupVersion = $existing ? $existing->quote_version : ($inflight['version'] ?? ('v'.$quotation->version));
-                $dupSentAt = $existing && $existing->server_time
-                    ? $existing->server_time->format('M j, Y g:i A')
-                    : ($inflight['sent_at'] ?? now()->format('M j, Y g:i A'));
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'ok' => true,
-                        'success' => true,
-                        'duplicate' => true,
-                        'message' => 'Quotation already sent.',
-                        'version' => $dupVersion,
-                        'sent_at' => $dupSentAt,
-                    ]);
-                }
-                return redirect()
-                    ->route('admin.client-projects.show', $client_project)
-                    ->withFragment('quotation')
-                    ->with('success', "{$quotation->typeLabel()} {$quotation->quotation_number} already sent.");
-            }
-        }
-
-        // All validation passed — now publish the draft source quotation if confirmed
-        $wasSourceDraft = false;
-        $source = $quotation->sourceModel();
-        if ($isSourceDraft && $source && isset($source->is_draft)) {
-            $wasSourceDraft = true;
-            $source->is_draft = false;
-            $source->save();
-        }
-
-        // If the quotation has already been sent at least once, the next save
-        // is conceptually a new version (so we keep an audit trail of PDFs).
-        $previousVersion = (int) $quotation->version;
-        $previousPdfPath = $quotation->pdf_path;
-        if ($quotation->isSent()) {
-            $quotation->version = (int) $quotation->version + 1;
-        }
-
-        $pdf = $this->renderPdf($client_project, $quotation);
-        $bytes = $pdf->output();
-        $pdfHash = hash('sha256', $bytes);
-        $pdfFilename = $this->pdfFilename($client_project, $quotation);
-
-        $relativePath = sprintf(
-            'quotations/project-%d-q%d-v%d.pdf',
-            $client_project->id,
-            $quotation->id,
-            $quotation->version
-        );
-
-        Storage::disk('local')->put($relativePath, $bytes);
-
-        $quotation->pdf_path = $relativePath;
-        $quotation->save();
-
-        $admin = auth()->user();
-        $adminId = $admin?->id;
-        $adminName = $admin?->name ?? 'Admin';
-
-        if ($idempotencyKey !== null) {
-            \Illuminate\Support\Facades\Cache::put(
-                \App\Jobs\SendQuotationToClientJob::cacheKeyFor((int) $quotation->id, $idempotencyKey),
-                [
-                    'version' => 'v'.$quotation->version,
-                    'sent_at' => now()->format('M j, Y g:i A'),
-                ],
-                now()->addMinutes(15)
-            );
+        $lock = \Illuminate\Support\Facades\Cache::lock("quotation_send_lock:{$quotation->id}", 30);
+        $lockAcquired = false;
+        try {
+            $lockAcquired = $lock->block(10);
+        } catch (\Throwable $lockErr) {
+            $lockAcquired = false;
         }
 
         try {
-            \App\Jobs\SendQuotationToClientJob::dispatch(
-                $client_project,
-                $quotation,
-                $emailTo,
-                $cc,
-                $subject,
-                $messageBody,
-                $relativePath,
-                $pdfFilename,
-                $pdfHash,
-                $adminId,
-                $adminName,
-                $idempotencyKey,
-                $quotation->source_type,
-                $quotation->source_id
-            );
-        } catch (\Throwable $e) {
+            if (! $lockAcquired && $idempotencyKey !== null) {
+                return $this->duplicateQuotationSendResponse($request, $client_project, $quotation, null, null);
+            }
+
             if ($idempotencyKey !== null) {
-                \Illuminate\Support\Facades\Cache::forget(
-                    \App\Jobs\SendQuotationToClientJob::cacheKeyFor((int) $quotation->id, $idempotencyKey)
+                $existing = \App\Models\QuotationSendAudit::query()
+                    ->where('client_project_quotation_id', $quotation->id)
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->whereIn('status', [\App\Models\QuotationSendAudit::STATUS_SENT, \App\Models\QuotationSendAudit::STATUS_SENDING])
+                    ->first();
+
+                $cacheKey = \App\Jobs\SendQuotationToClientJob::cacheKeyFor((int) $quotation->id, $idempotencyKey);
+                $inflight = $existing ? null : \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+                if ($existing || is_array($inflight)) {
+                    return $this->duplicateQuotationSendResponse($request, $client_project, $quotation, $existing, $inflight);
+                }
+
+                // Atomically claim the in-flight key inside the lock before doing any work
+                \Illuminate\Support\Facades\Cache::put(
+                    $cacheKey,
+                    [
+                        'version' => 'v'.($quotation->isSent() ? ((int) $quotation->version + 1) : (int) $quotation->version),
+                        'sent_at' => now()->format('M j, Y g:i A'),
+                    ],
+                    now()->addMinutes(15)
                 );
             }
-            if ($wasSourceDraft && $source) {
-                $source->is_draft = true;
+
+            // Refresh quotation inside lock so concurrent state is current
+            $quotation->refresh();
+
+            // All validation passed — now publish the draft source quotation if confirmed
+            $wasSourceDraft = false;
+            $source = $quotation->sourceModel();
+            if ($isSourceDraft && $source && isset($source->is_draft) && $source->is_draft) {
+                $wasSourceDraft = true;
+                $source->is_draft = false;
                 $source->save();
             }
-            $quotation->version = $previousVersion;
-            $quotation->pdf_path = $previousPdfPath;
+
+            // If the quotation has already been sent at least once, the next save
+            // is conceptually a new version (so we keep an audit trail of PDFs).
+            $previousVersion = (int) $quotation->version;
+            $previousPdfPath = $quotation->pdf_path;
+            if ($quotation->isSent()) {
+                $quotation->version = (int) $quotation->version + 1;
+            }
+
+            $pdf = $this->renderPdf($client_project, $quotation);
+            $bytes = $pdf->output();
+            $pdfHash = hash('sha256', $bytes);
+            $pdfFilename = $this->pdfFilename($client_project, $quotation);
+
+            $relativePath = sprintf(
+                'quotations/project-%d-q%d-v%d.pdf',
+                $client_project->id,
+                $quotation->id,
+                $quotation->version
+            );
+
+            Storage::disk('local')->put($relativePath, $bytes);
+
+            $quotation->pdf_path = $relativePath;
             $quotation->save();
 
-            Log::error('Failed to email quotation', [
-                'project_id' => $client_project->id,
-                'quotation_id' => $quotation->id,
-                'exception' => $e,
-            ]);
+            $admin = auth()->user();
+            $adminId = $admin?->id;
+            $adminName = $admin?->name ?? 'Admin';
+
+            try {
+                \App\Jobs\SendQuotationToClientJob::dispatch(
+                    $client_project,
+                    $quotation,
+                    $emailTo,
+                    $cc,
+                    $subject,
+                    $messageBody,
+                    $relativePath,
+                    $pdfFilename,
+                    $pdfHash,
+                    $adminId,
+                    $adminName,
+                    $idempotencyKey,
+                    $quotation->source_type,
+                    $quotation->source_id,
+                    $wasSourceDraft,
+                    $previousVersion,
+                    $previousPdfPath
+                );
+            } catch (\Throwable $e) {
+                if (\App\Jobs\SendQuotationToClientJob::isDuplicateKeyException($e)) {
+                    $existing = $idempotencyKey !== null
+                        ? \App\Models\QuotationSendAudit::query()
+                            ->where('client_project_quotation_id', $quotation->id)
+                            ->where('idempotency_key', $idempotencyKey)
+                            ->first()
+                        : null;
+                    return $this->duplicateQuotationSendResponse($request, $client_project, $quotation, $existing, null);
+                }
+
+                if ($idempotencyKey !== null) {
+                    \Illuminate\Support\Facades\Cache::forget(
+                        \App\Jobs\SendQuotationToClientJob::cacheKeyFor((int) $quotation->id, $idempotencyKey)
+                    );
+                }
+
+                $freshQuote = $quotation->fresh();
+                if ($freshQuote && $freshQuote->status !== ClientProjectQuotation::STATUS_SENT) {
+                    if ($wasSourceDraft && $source) {
+                        $source->is_draft = true;
+                        $source->save();
+                    }
+                    $freshQuote->version = $previousVersion;
+                    $freshQuote->pdf_path = $previousPdfPath;
+                    $freshQuote->save();
+                }
+
+                Log::error('Failed to email quotation', [
+                    'project_id' => $client_project->id,
+                    'quotation_id' => $quotation->id,
+                    'exception' => $e,
+                ]);
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'ok' => false,
+                        'error' => 'The PDF was generated but the email could not be sent: '.$e->getMessage(),
+                    ], 500);
+                }
+
+                return redirect()
+                    ->route('admin.client-projects.show', $client_project)
+                    ->withFragment('quotation')
+                    ->with('error', 'The PDF was generated but the email could not be sent: '.$e->getMessage());
+            }
+
+            $quotation->refresh();
+            $wasQueuedAsync = ! $quotation->isSent();
+            $deliverySuccessFlash = $wasQueuedAsync
+                ? "{$quotation->typeLabel()} {$quotation->quotation_number} queued to be emailed to {$emailTo} (v{$quotation->version})."
+                : "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to {$emailTo} (v{$quotation->version}).";
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'ok' => false,
-                    'error' => 'The PDF was generated but the email could not be sent: '.$e->getMessage(),
-                ], 500);
+                    'ok' => true,
+                    'success' => true,
+                    'queued' => $wasQueuedAsync,
+                    'status' => $quotation->status,
+                    'message' => $deliverySuccessFlash,
+                    'version' => 'v'.$quotation->version,
+                    'sent_at' => $quotation->sent_at ? $quotation->sent_at->format('M j, Y g:i A') : null,
+                    'badge_html' => $wasQueuedAsync
+                        ? null
+                        : 'Sent to client on '.($quotation->sent_at ? $quotation->sent_at->format('M j, Y') : now()->format('M j, Y')).' (v'.$quotation->version.')',
+                ]);
             }
 
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
                 ->withFragment('quotation')
-                ->with('error', 'The PDF was generated but the email could not be sent: '.$e->getMessage());
+                ->with('success', $deliverySuccessFlash);
+        } finally {
+            if ($lockAcquired) {
+                try {
+                    $lock->release();
+                } catch (\Throwable $releaseErr) {
+                }
+            }
         }
+    }
 
-        $quotation->refresh();
-        $wasQueuedAsync = ! $quotation->isSent();
-        $deliverySuccessFlash = "{$quotation->typeLabel()} {$quotation->quotation_number} emailed to {$emailTo} (v{$quotation->version}).";
-
+    protected function duplicateQuotationSendResponse(
+        Request $request,
+        ClientProject $client_project,
+        ClientProjectQuotation $quotation,
+        ?\App\Models\QuotationSendAudit $existing,
+        ?array $inflight
+    ) {
+        $dupVersion = $existing ? $existing->quote_version : ($inflight['version'] ?? ('v'.$quotation->version));
+        $dupSentAt = $existing && $existing->server_time
+            ? $existing->server_time->format('M j, Y g:i A')
+            : ($inflight['sent_at'] ?? now()->format('M j, Y g:i A'));
         if ($request->expectsJson()) {
             return response()->json([
                 'ok' => true,
                 'success' => true,
-                'queued' => $wasQueuedAsync,
-                'status' => $wasQueuedAsync ? ClientProjectQuotation::STATUS_SENT : $quotation->status,
-                'message' => $deliverySuccessFlash,
-                'version' => 'v'.$quotation->version,
-                'sent_at' => $quotation->sent_at ? $quotation->sent_at->format('M j, Y g:i A') : now()->format('M j, Y g:i A'),
-                'badge_html' => 'Sent to client on '.($quotation->sent_at ? $quotation->sent_at->format('M j, Y') : now()->format('M j, Y')).' (v'.$quotation->version.')',
+                'duplicate' => true,
+                'message' => 'Quotation already sent.',
+                'version' => $dupVersion,
+                'sent_at' => $dupSentAt,
             ]);
         }
 
         return redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('quotation')
-            ->with('success', $deliverySuccessFlash);
+            ->with('success', "{$quotation->typeLabel()} {$quotation->quotation_number} already sent.");
     }
     /**
      * SMS the client a link to open/view the quotation PDF (no attachment).

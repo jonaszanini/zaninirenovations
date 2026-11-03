@@ -301,6 +301,7 @@
 
   function boot() {
     document.querySelectorAll('[data-ac-card]').forEach(init);
+    setTimeout(function () { document.querySelectorAll('[data-ac-card]').forEach(notify); }, 0);
   }
 
   window.AdditionalCosts = window.AdditionalCosts || {

@@ -221,5 +221,35 @@ class QuotationStickyTotalsBarTest extends IntegrationTestCase
         $res->assertSee('data-quote-grand', false);
         $res->assertSee('data-quote-materials', false);
         $res->assertSee('data-quote-labour', false);
+
+        // 5. Standard Quotation has no duplicate grand-total IDs
+        $stdCreateHtml = $this->get(route('admin.quotations.standard.create'))->getContent();
+        $this->assertSame(1, substr_count((string) $stdCreateHtml, 'id="sq-toolbar-grand"'));
+        $this->assertSame(1, substr_count((string) $stdCreateHtml, 'id="sq-toolbar-grand-amount"'));
+
+        // 6. Tile Quotation with additional costs ($1,419.28 base + $226.00 additional = $1,645.28)
+        $tile = TileQuotation::create([
+            'quote_number' => 'TL-2026-9906',
+            'client_name' => 'Jane Homeowner',
+            'client_project_id' => $project->id,
+            'inputs' => ['total_area' => 100],
+            'grand_total' => 1419.28,
+            'additional_costs' => [
+                ['description' => 'Membrane upgrade', 'amount' => 200.00, 'hst_included' => false, 'category' => 'materials'],
+            ],
+            'calculation' => [
+                'materials_subtotal' => 556.00,
+                'labor_total' => 700.00,
+                'demolition_total' => 0.00,
+                'hst' => 163.28,
+                'grand_total' => 1419.28,
+            ],
+        ]);
+        $tileBreakdown = \App\Support\QuotationTotalsBarBreakdown::forTile($tile, $tile->calculation);
+        $this->assertSame(1645.28, $tileBreakdown['grand']);
+        $tileRes = $this->get(route('admin.quotations.tile.edit', $tile));
+        $tileRes->assertOk();
+        $tileRes->assertSee('CA$1,645.28');
+        $tileRes->assertSee('readAdditionalCosts()', false);
     }
 }

@@ -12,11 +12,14 @@ use App\Services\ClientProjectStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -41,11 +44,28 @@ class SendQuotationToClientJob implements ShouldQueue
         public ?string $idempotencyKey = null,
         public ?string $sourceType = null,
         public ?int $sourceId = null,
+        public bool $wasSourceDraft = false,
+        public ?int $previousVersion = null,
+        public ?string $previousPdfPath = null,
     ) {}
 
     public static function cacheKeyFor(int $quotationId, string $idempotencyKey): string
     {
         return "quotation_send_idem:{$quotationId}:{$idempotencyKey}";
+    }
+
+    public static function isDuplicateKeyException(\Throwable $e): bool
+    {
+        if (! $e instanceof QueryException) {
+            return false;
+        }
+        $code = (string) $e->getCode();
+        $msg = $e->getMessage();
+
+        return $code === '23000'
+            || str_contains($msg, 'Duplicate entry')
+            || str_contains($msg, 'UNIQUE constraint')
+            || str_contains($msg, 'qsa_quote_idem_unique');
     }
 
     public function handle(
@@ -56,12 +76,15 @@ class SendQuotationToClientJob implements ShouldQueue
             $existing = QuotationSendAudit::query()
                 ->where('client_project_quotation_id', $this->quotation->id)
                 ->where('idempotency_key', $this->idempotencyKey)
-                ->where('status', QuotationSendAudit::STATUS_SENT)
+                ->whereIn('status', [QuotationSendAudit::STATUS_SENT, QuotationSendAudit::STATUS_SENDING])
                 ->first();
             if ($existing) {
                 return;
             }
         }
+
+        $audit = null;
+        $emailTransmitted = false;
 
         try {
             if (mb_strlen($this->subject) > 255) {
@@ -91,11 +114,13 @@ class SendQuotationToClientJob implements ShouldQueue
                 $this->messageBody
             );
 
-            DB::transaction(function () use ($statusService, $communicationLogger, $mailable): void {
-                $now = now();
+            $now = now();
 
-                // 1. Save audit record BEFORE sending the email so an email never goes out without being recorded
-                QuotationSendAudit::create([
+            // 1. Claim and persist the audit record BEFORE sending the email (committed immediately).
+            //    This validates all DB column constraints and claims the unique (quotation_id, idempotency_key)
+            //    slot before any email leaves the server.
+            try {
+                $audit = QuotationSendAudit::create([
                     'client_project_id' => $this->project->id,
                     'client_project_quotation_id' => $this->quotation->id,
                     'quotation_type' => $this->sourceType ?: $this->quotation->source_type,
@@ -109,25 +134,63 @@ class SendQuotationToClientJob implements ShouldQueue
                     'message' => $this->messageBody,
                     'quote_version' => 'v' . $this->quotation->version,
                     'pdf_hash' => $this->pdfHash ?: hash('sha256', (string) $this->pdfFilename),
-                    'status' => QuotationSendAudit::STATUS_SENT,
+                    'status' => QuotationSendAudit::STATUS_SENDING,
                     'idempotency_key' => $this->idempotencyKey,
                 ]);
-
-                // 2. Mark quotation Sent and update sent_at BEFORE sending the email
-                if ($this->quotation->status !== ClientProjectQuotation::STATUS_ACCEPTED) {
-                    $this->quotation->status = ClientProjectQuotation::STATUS_SENT;
+            } catch (\Throwable $insertErr) {
+                if (self::isDuplicateKeyException($insertErr)) {
+                    return;
                 }
-                $this->quotation->sent_at = $now;
-                $this->quotation->save();
+                throw $insertErr;
+            }
 
-                // 3. Publish source quote if it was a draft
-                $sourceModel = $this->quotation->sourceModel();
-                if ($sourceModel && isset($sourceModel->is_draft) && $sourceModel->is_draft) {
-                    $sourceModel->is_draft = false;
-                    $sourceModel->save();
+            // 2. Transmit the email outside of any database transaction.
+            //    Track transmission via MessageSent so if a post-transmission listener throws,
+            //    we still know the email went out and never roll back the sent status.
+            Event::listen(MessageSent::class, function () use (&$emailTransmitted): void {
+                $emailTransmitted = true;
+            });
+
+            try {
+                $mailer = Mail::to($this->recipientEmail);
+                if (filled($this->ccEmail)) {
+                    $mailer->cc($this->ccEmail);
                 }
+                $mailer->send($mailable);
+                $emailTransmitted = true;
+            } catch (\Throwable $mailErr) {
+                if (! $emailTransmitted) {
+                    throw $mailErr;
+                }
+                Log::warning('Exception after quotation email was already transmitted', [
+                    'quotation_id' => $this->quotation->id,
+                    'error' => $mailErr->getMessage(),
+                ]);
+            }
 
-                // 4. Communication log
+            // 3. Finalize audit record to STATUS_SENT and mark quotation Sent / published.
+            DB::table('quotation_send_audits')
+                ->where('id', $audit->id)
+                ->where('status', QuotationSendAudit::STATUS_SENDING)
+                ->update([
+                    'status' => QuotationSendAudit::STATUS_SENT,
+                    'updated_at' => $now,
+                ]);
+
+            if ($this->quotation->status !== ClientProjectQuotation::STATUS_ACCEPTED) {
+                $this->quotation->status = ClientProjectQuotation::STATUS_SENT;
+            }
+            $this->quotation->sent_at = $now;
+            $this->quotation->save();
+
+            $sourceModel = $this->quotation->sourceModel();
+            if ($sourceModel && isset($sourceModel->is_draft) && $sourceModel->is_draft) {
+                $sourceModel->is_draft = false;
+                $sourceModel->save();
+            }
+
+            // 4. Secondary logs (isolated in try/catch so a post-send failure cannot undo the sent quote)
+            try {
                 $quoteDescription = "{$this->quotation->typeLabel()} {$this->quotation->quotation_number} v{$this->quotation->version} — total "
                     . ClientProject::formatMoney((float) $this->quotation->grandTotal());
 
@@ -139,45 +202,79 @@ class SendQuotationToClientJob implements ShouldQueue
                     $this->subject,
                     $quoteDescription,
                 );
-
-                // 5. Project status / history
-                $sendNote = "{$this->quotation->typeLabel()} {$this->quotation->quotation_number} emailed to {$this->recipientEmail} (v{$this->quotation->version}).";
-                if ($this->project->isAwaitingQuotePreparation()) {
-                    try {
-                        $statusService->transition(
-                            $this->project,
-                            ClientProject::STATUS_QUOTE_SENT,
-                            $sendNote
-                        );
-                    } catch (\Throwable $e) {
-                        Log::warning('Failed auto-transitioning project to Quote Sent', ['error' => $e->getMessage()]);
-                    }
-                } else {
-                    try {
-                        $statusService->recordEvent($this->project, $sendNote);
-                    } catch (\Throwable $e) {
-                        Log::warning('Failed recording quotation send history entry', ['error' => $e->getMessage()]);
-                    }
-                }
-
-                // 6. Send email last inside transaction — if sending fails, transaction rolls back
-                $mailer = Mail::to($this->recipientEmail);
-                if (filled($this->ccEmail)) {
-                    $mailer->cc($this->ccEmail);
-                }
-                $mailer->send($mailable);
-            });
-        } catch (\Throwable $e) {
-            if (filled($this->idempotencyKey)) {
-                Cache::forget(self::cacheKeyFor((int) $this->quotation->id, (string) $this->idempotencyKey));
+            } catch (\Throwable $logErr) {
+                Log::warning('Failed logging quotation communication entry after email sent', [
+                    'quotation_id' => $this->quotation->id,
+                    'error' => $logErr->getMessage(),
+                ]);
             }
 
-            Log::error('SendQuotationToClientJob failed', [
-                'project_id' => $this->project->id,
-                'quotation_id' => $this->quotation->id,
-                'exception' => $e,
-            ]);
+            $sendNote = "{$this->quotation->typeLabel()} {$this->quotation->quotation_number} emailed to {$this->recipientEmail} (v{$this->quotation->version}).";
+            if ($this->project->isAwaitingQuotePreparation()) {
+                try {
+                    $statusService->transition(
+                        $this->project,
+                        ClientProject::STATUS_QUOTE_SENT,
+                        $sendNote
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('Failed auto-transitioning project to Quote Sent', ['error' => $e->getMessage()]);
+                }
+            } else {
+                try {
+                    $statusService->recordEvent($this->project, $sendNote);
+                } catch (\Throwable $e) {
+                    Log::warning('Failed recording quotation send history entry', ['error' => $e->getMessage()]);
+                }
+            }
+        } catch (\Throwable $e) {
+            if (! $emailTransmitted) {
+                $this->revertFailedSendState($audit, $e);
+            }
 
+            throw $e;
+        }
+    }
+
+    protected function revertFailedSendState(?QuotationSendAudit $audit, \Throwable $e): void
+    {
+        if (filled($this->idempotencyKey)) {
+            Cache::forget(self::cacheKeyFor((int) $this->quotation->id, (string) $this->idempotencyKey));
+        }
+
+        // Undo draft publication and version bump if the quote was not already sent
+        $freshQuotation = $this->quotation->fresh();
+        if ($freshQuotation && $freshQuotation->status !== ClientProjectQuotation::STATUS_SENT) {
+            if ($this->wasSourceDraft) {
+                $sourceModel = $freshQuotation->sourceModel();
+                if ($sourceModel && isset($sourceModel->is_draft)) {
+                    $sourceModel->is_draft = true;
+                    $sourceModel->save();
+                }
+            }
+            if ($this->previousVersion !== null) {
+                $freshQuotation->version = $this->previousVersion;
+                $freshQuotation->pdf_path = $this->previousPdfPath;
+                $freshQuotation->save();
+            }
+        }
+
+        Log::error('SendQuotationToClientJob failed', [
+            'project_id' => $this->project->id,
+            'quotation_id' => $this->quotation->id,
+            'exception' => $e,
+        ]);
+
+        if ($audit && $audit->exists) {
+            DB::table('quotation_send_audits')
+                ->where('id', $audit->id)
+                ->where('status', QuotationSendAudit::STATUS_SENDING)
+                ->update([
+                    'status' => QuotationSendAudit::STATUS_FAILED,
+                    'error' => $e->getMessage(),
+                    'updated_at' => now(),
+                ]);
+        } else {
             QuotationSendAudit::create([
                 'client_project_id' => $this->project->id,
                 'client_project_quotation_id' => $this->quotation->id,
@@ -196,8 +293,6 @@ class SendQuotationToClientJob implements ShouldQueue
                 'error' => $e->getMessage(),
                 'idempotency_key' => $this->idempotencyKey,
             ]);
-
-            throw $e;
         }
     }
 }

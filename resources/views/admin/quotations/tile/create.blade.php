@@ -533,6 +533,17 @@ document.addEventListener('DOMContentLoaded', function () {
         return isFinite(n) && n > 0 ? n : 0;
     }
 
+    function readAdditionalCosts() {
+        if (window.AdditionalCosts && typeof window.AdditionalCosts.getTotals === 'function') {
+            var d = window.AdditionalCosts.getTotals() || {};
+            lastAdditionalMaterialsPreTax = Number(d.materialsPreTax || 0);
+            lastAdditionalMaterialsTaxIn = Number(d.materialsTaxInclusive || 0);
+            lastAdditionalLaborPreTax = Number(d.laborPreTax || 0);
+            lastAdditionalLaborTaxIn = Number(d.laborTaxInclusive || 0);
+            lastAdditionalTaxIn = Number(d.taxInclusiveTotal || 0);
+        }
+    }
+
     function readDebrisAmount() {
         var yes = form.querySelector('[data-cp-debris-include-yes]');
         if (!yes || !yes.checked) {
@@ -713,6 +724,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 lastCalculation = data.calculation || {};
                 lastGrandTotal = Number((data.calculation && data.calculation.grand_total) || 0);
                 lastDebrisAmount = readDebrisAmount();
+                readAdditionalCosts();
                 markLiveGrandTotalRow();
                 // Insert before grand in reverse so final order is commute → debris → additional → grand.
                 applyAdditionalCostsToLivePreview();
@@ -827,6 +839,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Debris boot event can fire before this listener exists. Read the saved choice now.
     lastDebrisAmount = readDebrisAmount();
+    readAdditionalCosts();
     if (window.CommuteExpense && typeof window.CommuteExpense.getAmount === 'function') {
         lastCommuteAmount = Number(window.CommuteExpense.getAmount() || 0);
     }

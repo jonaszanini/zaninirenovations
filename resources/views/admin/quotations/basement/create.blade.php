@@ -409,6 +409,7 @@
 
   @if ($isEdit && $canSendEmail)
     <form id="br-email-quote-form"
+          onsubmit="if(this.dataset.submitted==='1')return false;this.dataset.submitted='1';return true;"
           action="{{ route('admin.client-projects.quotation.send', [$sendProject, $linkedCpq]) }}"
           method="post"
           class="cp-inline-form"

@@ -48,8 +48,7 @@
   $backUrl = $backUrl ?? null;
   $barId = $barId ?? 'quote-sticky-total';
 
-  $clientGreeting = filled($clientName) ? 'Hi ' . trim($clientName) : 'Hello';
-  $defaultMessage = "{$clientGreeting},\n\nPlease find attached your quotation {$quoteNumber} from Zanini Renovations for your review.\n\nWe are fully insured. Please note that building permits, if required, are an optional extra.\n\nFeel free to reach out if you have any questions or adjustments.";
+  $defaultMessage = "Please find attached your quotation {$quoteNumber} from Zanini Renovations for your review.";
 @endphp
 
 <div class="quote-totals-bar-spacer br-sticky-spacer" aria-hidden="true"></div>

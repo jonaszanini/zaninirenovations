@@ -86,7 +86,9 @@
           <i class="fa fa-paper-plane" aria-hidden="true"></i> Email quotation to client
         </button>
       @elseif (! empty($email['action']))
-        <form action="{{ $email['action'] }}" method="post" class="cp-inline-form" data-qh-email-form>
+        <form action="{{ $email['action'] }}" method="post" class="cp-inline-form" data-qh-email-form onsubmit="if(this.dataset.submitted==='1')return false;this.dataset.submitted='1';return true;">
+          @include('admin.partials.once_submit')
+          <input type="hidden" name="idempotency_key" value="idem_more_{{ \Illuminate\Support\Str::uuid() }}">
           @csrf
           <button type="button"
                   class="admin-btn admin-btn--ghost admin-btn--sm"

@@ -151,7 +151,7 @@
     'purchaseListTitle' => 'Print material list',
     'showHubLink' => ! $projectForReturn,
     'hubUrl' => route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []),
-    'grandTotalId' => 'sq-toolbar-grand',
+    'grandTotalId' => null,
     'grandTotalValue' => $toolbarGrand,
     'email' => $isEdit ? [
       'can' => $canSendEmail,
@@ -557,6 +557,7 @@
     'saveLabel' => 'Save quotation',
     'backUrl' => route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
     'breakdown' => $sqBreakdown,
+    'grandTotalId' => null,
     'grandTotalId' => 'sq-toolbar-grand',
     'grandAmountId' => 'sq-toolbar-grand-amount',
     'isEdit' => $isEdit,

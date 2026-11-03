@@ -218,7 +218,7 @@ class QuotationSendToClientTest extends IntegrationTestCase
             'idempotency_key' => 'idem_retry_1',
         ]);
 
-        // Audit record must be immutable (cannot be edited or deleted)
+        // Audit record must be immutable via Eloquent AND via direct database updates/deletes
         try {
             $failedAudit->update(['subject' => 'Tampered']);
             $this->fail('Expected LogicException when updating QuotationSendAudit');
@@ -230,6 +230,24 @@ class QuotationSendToClientTest extends IntegrationTestCase
             $failedAudit->delete();
             $this->fail('Expected LogicException when deleting QuotationSendAudit');
         } catch (\LogicException $e) {
+            $this->assertStringContainsString('immutable', $e->getMessage());
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::table('quotation_send_audits')
+                ->where('id', $failedAudit->id)
+                ->update(['subject' => 'Tampered via DB']);
+            $this->fail('Expected QueryException when updating quotation_send_audits directly');
+        } catch (\Illuminate\Database\QueryException $e) {
+            $this->assertStringContainsString('immutable', $e->getMessage());
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::table('quotation_send_audits')
+                ->where('id', $failedAudit->id)
+                ->delete();
+            $this->fail('Expected QueryException when deleting from quotation_send_audits directly');
+        } catch (\Illuminate\Database\QueryException $e) {
             $this->assertStringContainsString('immutable', $e->getMessage());
         }
 
@@ -276,6 +294,8 @@ class QuotationSendToClientTest extends IntegrationTestCase
             $res->assertOk()->assertJson([
                 'success' => true,
                 'queued' => true,
+                'status' => ClientProjectQuotation::STATUS_DRAFT,
+                'badge_html' => null,
             ]);
 
             // Duplicate click while job is still queued is blocked via cache lock
@@ -373,5 +393,58 @@ class QuotationSendToClientTest extends IntegrationTestCase
         ]);
 
         $res->assertStatus(401);
+    }
+
+    public function test_post_send_log_failure_does_not_roll_back_sent_quote_or_allow_duplicate_email(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        [$project, $quotation, $standard] = $this->makeLinkedQuotation([
+            'status' => ClientProjectQuotation::STATUS_DRAFT,
+        ]);
+        $standard->update(['is_draft' => true]);
+
+        // Force ClientCommunicationLogger::logEmail (which runs after the email is sent) to throw
+        $this->mock(\App\Services\ClientCommunicationLogger::class, function ($mock) {
+            $mock->shouldReceive('logEmail')->andThrow(new \RuntimeException('Simulated post-send DB log failure'));
+        });
+
+        $res = $this->postJson(route('admin.client-projects.quotation.send', [$project, $quotation]), [
+            'to' => 'client@example.test',
+            'subject' => 'Post-send failure test',
+            'message' => 'Do you have any questions about the building permit?',
+            'confirm_draft' => 1,
+            'idempotency_key' => 'idem_post_send_fail',
+        ]);
+
+        $res->assertOk()->assertJson([
+            'ok' => true,
+            'status' => ClientProjectQuotation::STATUS_SENT,
+        ]);
+
+        // Quote stays Sent and published; retry with same key does NOT send a second email
+        $this->assertFalse((bool) $standard->fresh()->is_draft);
+        $this->assertEquals(ClientProjectQuotation::STATUS_SENT, $quotation->fresh()->status);
+        Mail::assertSent(ClientProjectQuotationClient::class, 1);
+
+        // Verify custom message mentioning "permit" and "questions" did NOT drop default closing lines
+        Mail::assertSent(ClientProjectQuotationClient::class, function (ClientProjectQuotationClient $mail) {
+            $mail->build();
+            $html = view($mail->view, $mail->viewData)->render();
+            $this->assertStringContainsString('building permits, if required, are an optional extra', strtolower($html));
+            $this->assertStringContainsString('if you have any questions regarding it or would like to adjust any of the', strtolower($html));
+            return true;
+        });
+
+        $retry = $this->postJson(route('admin.client-projects.quotation.send', [$project, $quotation]), [
+            'to' => 'client@example.test',
+            'subject' => 'Post-send failure test',
+            'message' => 'Do you have any questions about the building permit?',
+            'confirm_draft' => 1,
+            'idempotency_key' => 'idem_post_send_fail',
+        ]);
+        $retry->assertOk()->assertJson(['duplicate' => true]);
+        Mail::assertSent(ClientProjectQuotationClient::class, 1);
     }
 }

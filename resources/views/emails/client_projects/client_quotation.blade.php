@@ -3,18 +3,20 @@
   $clientEmailMessage = $quotation->clientEmailMessageHtml();
   $acceptUrl = $acceptUrl ?? $quotation->signedAcceptUrl();
   $trimmedCustom = trim((string) ($customMessage ?? ''));
+  if ($trimmedCustom !== '') {
+      // Remove duplicate leading greeting if the custom message starts with "Hi <name>," / "Hello,"
+      $trimmedCustom = trim((string) preg_replace('/^(hi|hello|dear)(\s+[^\r\n,]+)?,\s*/i', '', $trimmedCustom));
+      // Remove duplicate boilerplate sentences that are always rendered in the closing paragraphs below
+      $trimmedCustom = trim((string) preg_replace('/\bWe are fully insured\.?\s*/i', '', $trimmedCustom));
+      $trimmedCustom = trim((string) preg_replace('/\bPlease note that building permits,\s*if required,\s*are an optional extra\.?\s*/i', '', $trimmedCustom));
+      $trimmedCustom = trim((string) preg_replace('/\bFeel free to reach out if you have any questions or adjustments\.?\s*/i', '', $trimmedCustom));
+  }
   $hasCustomMessage = $trimmedCustom !== '';
-  $customHasGreeting = $hasCustomMessage && (bool) preg_match('/^(hi|hello|dear|good\s+(morning|afternoon|evening))\b/i', $trimmedCustom);
   $customHasAttachmentLine = $hasCustomMessage && stripos($trimmedCustom, 'attached') !== false;
-  $customHasInsured = $hasCustomMessage && stripos($trimmedCustom, 'fully insured') !== false;
-  $customHasPermits = $hasCustomMessage && stripos($trimmedCustom, 'permit') !== false;
-  $customHasQuestions = $hasCustomMessage && (stripos($trimmedCustom, 'questions') !== false || stripos($trimmedCustom, 'reach out') !== false);
 @endphp
 
 @component('emails.client_projects.layout', ['title' => $quotation->typeLabel().' – '.$project->name])
-  @if (! $customHasGreeting)
-    <p>Hi {{ $project->client_name }},</p>
-  @endif
+  <p>Hi {{ $project->client_name }},</p>
 
   @if ($hasCustomMessage)
     <div style="margin:0 0 16px 0;">{!! nl2br(e($trimmedCustom)) !!}</div>
@@ -36,24 +38,17 @@
   @endif
 
   <p>
-    @if (! $customHasInsured)
-      We are fully insured.
-    @endif
-    This proposal outlines the scope of the work. All planned work is designed to
+    We are fully insured. This proposal outlines the scope of the work. All planned work is designed to
     meet or exceed the standards set by the Ontario Building Code (O.Reg. 332/12)
     to ensure the safety and longevity of your home.
-    @if (! $customHasPermits)
-      Please note that building permits, if required, are an optional extra.
-    @endif
+    Please note that building permits, if required, are an optional extra.
   </p>
 
-  @if (! $customHasQuestions)
-    <p>
-      If you have any questions regarding it or would like to adjust any of the
-      details, please feel free to reach out. I am happy to hop on a quick call or
-      respond via email.
-    </p>
-  @endif
+  <p>
+    If you have any questions regarding it or would like to adjust any of the
+    details, please feel free to reach out. I am happy to hop on a quick call or
+    respond via email.
+  </p>
 
   @if ($quotation->asksClientToReplyIAccept())
     <p>Please reply to this email with the words “I accept” to confirm this {{ $typeLower }}.</p>

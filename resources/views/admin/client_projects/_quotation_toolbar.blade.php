@@ -8,6 +8,7 @@
 --}}
 @php
   // Mobile dropdown: all actions
+  $toolbarSendIdemKey = 'idem_q'.$quotation->id.'_'.\Illuminate\Support\Str::uuid();
   $quotDropdownItems = [];
   if ($hasContent) {
       $quotDropdownItems[] = [
@@ -41,6 +42,7 @@
           'icon' => 'fa-paper-plane',
           'label' => $quotation->isSent() ? 'Resend' : 'Send',
           'confirm' => $sendConfirmMessage,
+          'idempotency_key' => $toolbarSendIdemKey,
       ];
   }
   if (! $legacy && $canSms) {
@@ -153,7 +155,9 @@
     @if ($canSend && ! $legacy)
       <form action="{{ route('admin.client-projects.quotation.send', [$project, $quotation]) }}"
             method="post" class="cp-inline-form cp-quotation-toolbar__send-form"
-            onsubmit='return confirm(@json($sendConfirmMessage));'>
+            onsubmit='if(this.dataset.submitted==="1")return false;if(!confirm(@json($sendConfirmMessage)))return false;this.dataset.submitted="1";var b=this.querySelector("button[type=submit]");if(b)b.disabled=true;return true;'>
+        @include('admin.partials.once_submit')
+        <input type="hidden" name="idempotency_key" value="{{ $toolbarSendIdemKey }}">
         @csrf
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm" title="Generate a fresh PDF and email it to the client.">
           <i class="fa fa-paper-plane"></i> {{ $quotation->isSent() ? 'Resend' : 'Send' }}
@@ -185,7 +189,11 @@
               <form action="{{ $item['action'] }}"
                     method="post"
                     class="admin-actions-dropdown__form"
-                    @if (! empty($item['confirm'])) onsubmit="return confirm({{ json_encode($item['confirm']) }});" @endif>
+                    onsubmit="if(this.dataset.submitted==='1')return false;@if (! empty($item['confirm']))if(!confirm({{ json_encode($item['confirm']) }}))return false;@endif this.dataset.submitted='1';var b=this.querySelector('button[type=submit]');if(b)b.disabled=true;return true;">
+              @if (! empty($item['idempotency_key']))
+                @include('admin.partials.once_submit')
+                <input type="hidden" name="idempotency_key" value="{{ $item['idempotency_key'] }}">
+              @endif
                 @csrf
                 @if (! empty($item['method']) && $item['method'] === 'DELETE')
                   @method('DELETE')
@@ -236,7 +244,11 @@
             <form action="{{ $item['action'] }}"
                   method="post"
                   class="admin-actions-dropdown__form"
-                  @if (! empty($item['confirm'])) onsubmit="return confirm({{ json_encode($item['confirm']) }});" @endif>
+                  onsubmit="if(this.dataset.submitted==='1')return false;@if (! empty($item['confirm']))if(!confirm({{ json_encode($item['confirm']) }}))return false;@endif this.dataset.submitted='1';var b=this.querySelector('button[type=submit]');if(b)b.disabled=true;return true;">
+              @if (! empty($item['idempotency_key']))
+                @include('admin.partials.once_submit')
+                <input type="hidden" name="idempotency_key" value="{{ $item['idempotency_key'] }}">
+              @endif
               @csrf
               @if (! empty($item['method']) && $item['method'] === 'DELETE')
                 @method('DELETE')

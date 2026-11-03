@@ -799,22 +799,27 @@
         // Success
         self.closeSendModal();
 
-        // Update badge
-        var badge = document.querySelector('[data-quote-sent-badge]');
-        var dateEl = document.querySelector('[data-quote-sent-date]');
-        var verEl = document.querySelector('[data-quote-sent-version]');
-        if (badge) badge.hidden = false;
-        if (dateEl && result.data.sent_at) dateEl.textContent = result.data.sent_at;
-        if (verEl && result.data.version) verEl.textContent = result.data.version;
+        // Only update the "Sent to client" badge when actually sent (not merely queued on a background worker)
+        if (!result.data.queued) {
+          var badge = document.querySelector('[data-quote-sent-badge]');
+          var dateEl = document.querySelector('[data-quote-sent-date]');
+          var verEl = document.querySelector('[data-quote-sent-version]');
+          if (badge) badge.hidden = false;
+          if (dateEl && result.data.sent_at) dateEl.textContent = result.data.sent_at;
+          if (verEl && result.data.version) verEl.textContent = result.data.version;
 
-        // No longer draft
-        if (barEl) barEl.dataset.isDraft = '0';
+          // No longer draft
+          if (barEl) barEl.dataset.isDraft = '0';
+        }
 
         // Toast
+        var toastMsg = result.data.message || (result.data.queued
+          ? 'Quotation queued to be emailed to client.'
+          : 'Quotation sent successfully to client.');
         if (window.AdminToast && window.AdminToast.show) {
-          window.AdminToast.show(result.data.message || 'Quotation sent successfully to client.', 'success');
+          window.AdminToast.show(toastMsg, 'success');
         } else {
-          alert(result.data.message || 'Quotation emailed to client successfully.');
+          alert(toastMsg);
         }
       })
       .catch(function (err) {

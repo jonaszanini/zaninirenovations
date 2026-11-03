@@ -11,6 +11,7 @@ class QuotationSendAudit extends Model
 {
     use HasFactory;
 
+    public const STATUS_SENDING = 'sending';
     public const STATUS_SENT = 'sent';
     public const STATUS_FAILED = 'failed';
 

@@ -29,19 +29,22 @@
   border-top: 1px solid var(--admin-border, #d8dee4);
   box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  gap: 16px;
+  gap: 12px;
   box-sizing: border-box;
 }
 
 /* 1. Left: Navigation & Save */
 .quote-totals-bar__left {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .quote-totals-bar .quote-step-nav,
@@ -81,10 +84,12 @@
 /* 2. Center: Live Figures */
 .quote-totals-bar__center {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 14px;
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 .quote-totals-figure {
@@ -168,30 +173,40 @@
 /* 3. Right: Actions */
 .quote-totals-bar__right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
 }
 
 .quote-totals-sent-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  font-size: 0.8rem;
+  gap: 5px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--admin-success, #2e7d4a);
   background: var(--admin-success-soft, rgba(46, 125, 74, 0.1));
   border-radius: 9999px;
   border: 1px solid rgba(46, 125, 74, 0.25);
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.2;
+  max-width: 175px;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .quote-send-btn {
   min-height: 44px;
-  padding: 8px 16px;
+  padding: 8px 14px;
   gap: 6px;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 /* Mobile Detailed Subtotals Flyout Panel */
@@ -405,12 +420,64 @@
 /* Responsive adjustments */
 @media (max-width: 1280px) {
   .quote-totals-bar {
-    gap: 10px;
-    padding: 8px 12px;
+    gap: 8px;
+    padding: 6px 12px;
+    flex-wrap: wrap;
+  }
+
+  .quote-totals-bar__left {
+    gap: 6px;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .quote-totals-bar__left .quote-totals-back-btn,
+  .quote-totals-bar .quote-bar-save-btn,
+  .quote-totals-bar .admin-btn {
+    padding: 6px 10px;
+    font-size: 0.82rem;
   }
 
   .quote-totals-bar__center {
-    gap: 12px;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .quote-totals-figure__label {
+    font-size: 0.66rem;
+  }
+
+  .quote-totals-figure__val {
+    font-size: 0.85rem;
+  }
+
+  .quote-totals-grand-container {
+    padding-left: 6px;
+    gap: 4px;
+  }
+
+  .quote-totals-bar .quote-totals-grand,
+  .quote-totals-bar .br-toolbar-grand {
+    padding: 2px 6px;
+  }
+
+  .quote-totals-grand .br-toolbar-grand__amount {
+    font-size: 1.12rem;
+  }
+
+  .quote-totals-bar__right {
+    gap: 6px;
+    flex: 0 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .quote-totals-sent-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    max-width: 135px;
+    white-space: normal;
   }
 }
 
