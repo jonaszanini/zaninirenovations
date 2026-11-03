@@ -79,8 +79,8 @@
     materialsTaxInclusive = Math.round(materialsTaxInclusive * 100) / 100;
     laborTaxInclusive = Math.round(laborTaxInclusive * 100) / 100;
     taxInclusiveTotal = Math.round(taxInclusiveTotal * 100) / 100;
-    var materialsHst = Math.round(materialsPreTax * HST_RATE * 100) / 100;
-    var laborHst = Math.round(laborPreTax * HST_RATE * 100) / 100;
+    var materialsHst = Math.round((materialsTaxInclusive - materialsPreTax) * 100) / 100;
+    var laborHst = Math.round((laborTaxInclusive - laborPreTax) * 100) / 100;
     return {
       materialsPreTax: materialsPreTax,
       materialsHst: materialsHst,

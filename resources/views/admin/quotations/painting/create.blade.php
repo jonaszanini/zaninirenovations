@@ -318,14 +318,10 @@
         @include('admin.quotations._commute_debris_row')
         @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
         @php
-          $ptMat = (float) ($quotation?->materials_amount ?? 0);
-          $ptLab = (float) ($quotation?->labor_amount ?? 0);
-          $ptSub = (float) ($quotation?->subtotal_pre_hst ?? 0);
-          $ptHst = (float) ($quotation?->hst ?? ($ptSub * 0.13));
-          $ptCommute = (float) ($quotation?->commute_expense_amount ?? 0);
-          $ptDebris = (float) ($quotation?->debris_removal_amount ?? 0);
-          $ptExtras = $ptCommute + $ptDebris;
-          $ptGrand = (float) ($quotation?->grand_total ?? 0);
+          $ptBreakdown = \App\Support\QuotationTotalsBarBreakdown::forPainting(
+            $quotation ?? null,
+            is_array($initialPreview['summary'] ?? null) ? $initialPreview['summary'] : []
+          );
         @endphp
         @include('admin.partials.quotation_totals_bar', [
           'barId' => 'pt-sticky-total',
@@ -333,12 +329,7 @@
           'saveId' => 'pt-btn-save-bottom',
           'saveLabel' => 'Save quotation',
           'backUrl' => route('admin.quotations.painting.index', $preservePid ? ['project' => $preservePid] : []),
-          'initialMaterials' => $ptMat,
-          'initialLabour' => $ptLab,
-          'initialExtras' => $ptExtras,
-          'hasExtras' => true,
-          'initialHst' => $ptHst,
-          'initialGrand' => $ptGrand,
+          'breakdown' => $ptBreakdown,
           'grandTotalId' => 'pt-toolbar-grand',
           'grandAmountId' => 'pt-toolbar-grand-amount',
           'isEdit' => $isEdit,
@@ -635,12 +626,16 @@
         root.classList.remove('is-empty');
 
         if (window.QuotationTotalsBar) {
-          window.QuotationTotalsBar.update({
-            materials: Number(data.summary.materials_pre_hst || 0),
-            labour: Number(data.summary.labor_pre_hst || 0),
-            extras: lastCommuteAmount + lastDebrisAmount,
-            hst: Number(data.summary.hst || 0),
-            grand: grand
+          window.QuotationTotalsBar.updateFromBreakdown({
+            materialsPreTax: Number(data.summary.materials_pre_hst || 0),
+            labourPreTax: Number(data.summary.labor_pre_hst || 0),
+            extrasPreTax: 0,
+            hasExtras: true,
+            baseHst: Number(data.summary.hst || 0),
+            commuteTaxIn: lastCommuteAmount,
+            debrisTaxIn: lastDebrisAmount,
+            hstRate: 13,
+            grandTotal: grand
           });
         }
       }

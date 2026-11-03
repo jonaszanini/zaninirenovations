@@ -2,14 +2,25 @@
   $typeLower = strtolower($quotation->typeLabel());
   $clientEmailMessage = $quotation->clientEmailMessageHtml();
   $acceptUrl = $acceptUrl ?? $quotation->signedAcceptUrl();
+  $trimmedCustom = trim((string) ($customMessage ?? ''));
+  $hasCustomMessage = $trimmedCustom !== '';
+  $customHasGreeting = $hasCustomMessage && (bool) preg_match('/^(hi|hello|dear|good\s+(morning|afternoon|evening))\b/i', $trimmedCustom);
+  $customHasAttachmentLine = $hasCustomMessage && stripos($trimmedCustom, 'attached') !== false;
+  $customHasInsured = $hasCustomMessage && stripos($trimmedCustom, 'fully insured') !== false;
+  $customHasPermits = $hasCustomMessage && stripos($trimmedCustom, 'permit') !== false;
+  $customHasQuestions = $hasCustomMessage && (stripos($trimmedCustom, 'questions') !== false || stripos($trimmedCustom, 'reach out') !== false);
 @endphp
 
 @component('emails.client_projects.layout', ['title' => $quotation->typeLabel().' – '.$project->name])
-  <p>Hi {{ $project->client_name }},</p>
+  @if (! $customHasGreeting)
+    <p>Hi {{ $project->client_name }},</p>
+  @endif
 
-  @if (filled($customMessage ?? null))
-    <div style="margin:0 0 16px 0;">{!! nl2br(e($customMessage)) !!}</div>
-    <p>Please find the detailed {{ $typeLower }} attached as a PDF for your review.</p>
+  @if ($hasCustomMessage)
+    <div style="margin:0 0 16px 0;">{!! nl2br(e($trimmedCustom)) !!}</div>
+    @if (! $customHasAttachmentLine)
+      <p>Please find the detailed {{ $typeLower }} attached as a PDF for your review.</p>
+    @endif
   @elseif ($clientEmailMessage)
     <div style="margin:0 0 16px 0;">{!! $clientEmailMessage !!}</div>
     <p>Please find the detailed {{ $typeLower }} attached as a PDF for your review.</p>
@@ -25,16 +36,24 @@
   @endif
 
   <p>
-    We are fully insured. This proposal outlines the scope of the work. All planned work is designed to
+    @if (! $customHasInsured)
+      We are fully insured.
+    @endif
+    This proposal outlines the scope of the work. All planned work is designed to
     meet or exceed the standards set by the Ontario Building Code (O.Reg. 332/12)
-    to ensure the safety and longevity of your home. Please note that building permits, if required, are an optional extra.
+    to ensure the safety and longevity of your home.
+    @if (! $customHasPermits)
+      Please note that building permits, if required, are an optional extra.
+    @endif
   </p>
 
-  <p>
-    If you have any questions regarding it or would like to adjust any of the
-    details, please feel free to reach out. I am happy to hop on a quick call or
-    respond via email.
-  </p>
+  @if (! $customHasQuestions)
+    <p>
+      If you have any questions regarding it or would like to adjust any of the
+      details, please feel free to reach out. I am happy to hop on a quick call or
+      respond via email.
+    </p>
+  @endif
 
   @if ($quotation->asksClientToReplyIAccept())
     <p>Please reply to this email with the words “I accept” to confirm this {{ $typeLower }}.</p>

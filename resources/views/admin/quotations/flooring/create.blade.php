@@ -468,12 +468,10 @@
         </div>
       </div>
     @php
-      $flSummary = $initialPreview['summary'] ?? [];
-      $flMat = (float) ($flSummary['materials_pre_hst'] ?? 0);
-      $flLab = (float) ($flSummary['labor_pre_hst'] ?? 0);
-      $flSub = (float) ($flSummary['subtotal_pre_hst'] ?? 0);
-      $flHst = (float) ($flSummary['hst'] ?? ($flSub * 0.13));
-      $flGrand = (float) ($flSummary['grand_total'] ?? 0);
+      $flBreakdown = \App\Support\QuotationTotalsBarBreakdown::forFlooring(
+          $initialPreview['summary'] ?? [],
+          $quotation ?? null
+      );
     @endphp
     @include('admin.partials.quotation_totals_bar', [
       'barId' => 'fl-sticky-total',
@@ -481,12 +479,7 @@
       'saveId' => 'fl-btn-save-bottom',
       'saveLabel' => 'Save quotation',
       'backUrl' => route('admin.quotations.flooring.index', $preservePid ? ['project' => $preservePid] : []),
-      'initialMaterials' => $flMat,
-      'initialLabour' => $flLab,
-      'initialExtras' => 0,
-      'hasExtras' => false,
-      'initialHst' => $flHst,
-      'initialGrand' => $flGrand,
+      'breakdown' => $flBreakdown,
       'grandTotalId' => 'fl-toolbar-grand',
       'grandAmountId' => 'fl-toolbar-grand-amount',
       'isEdit' => $isEdit,
@@ -714,16 +707,20 @@
           html += '<div class="fl-bd-total-row"><span>Debris removal (incl. HST)</span><span class="fl-bd-amount">' + fmt(lastDebrisAmount) + '</span></div>';
         }
         var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn;
-        var hstTotal = Number(summary.hst || 0) + lastAdditionalLaborHst + lastAdditionalMaterialsHst;
-        var extrasTotal = lastDebrisAmount;
 
         if (window.QuotationTotalsBar) {
-          window.QuotationTotalsBar.update({
-            materials: materialSub,
-            labour: laborSub,
-            extras: extrasTotal,
-            hst: hstTotal,
-            grand: grand
+          window.QuotationTotalsBar.updateFromBreakdown({
+            materialsPreTax: Number(summary.materials_pre_hst || 0),
+            labourPreTax: Number(summary.labor_pre_hst || 0),
+            extrasPreTax: 0,
+            baseHst: Number(summary.hst || 0),
+            additionalMaterialsPreTax: lastAdditionalMaterialsPreTax,
+            additionalMaterialsHst: lastAdditionalMaterialsHst,
+            additionalLaborPreTax: lastAdditionalLaborPreTax,
+            additionalLaborHst: lastAdditionalLaborHst,
+            debrisTaxIn: lastDebrisAmount,
+            hstRate: 13,
+            grandTotal: grand
           });
         }
 

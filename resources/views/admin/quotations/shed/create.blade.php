@@ -274,12 +274,10 @@
     </aside>
 
     @php
-      $shSummary = $initialPreview['summary'] ?? [];
-      $shMat = (float) ($shSummary['materials_pre_hst'] ?? 0);
-      $shLab = (float) ($shSummary['labor_pre_hst'] ?? 0);
-      $shSub = (float) ($shSummary['subtotal_pre_hst'] ?? 0);
-      $shHst = (float) ($shSummary['hst'] ?? ($shSub * 0.13));
-      $shGrand = (float) ($shSummary['grand_total'] ?? 0);
+      $shBreakdown = \App\Support\QuotationTotalsBarBreakdown::forShed(
+          $initialPreview['summary'] ?? [],
+          $quotation ?? null
+      );
     @endphp
     @include('admin.partials.quotation_totals_bar', [
       'barId' => 'sh-sticky-total',
@@ -287,18 +285,10 @@
       'saveId' => 'sh-btn-save-bottom',
       'saveLabel' => 'Save quotation',
       'backUrl' => route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
-      'initialMaterials' => $shMat,
-      'initialLabour' => $shLab,
-      'initialExtras' => 0,
-      'hasExtras' => false,
-      'initialHst' => $shHst,
-      'initialGrand' => $shGrand,
+      'breakdown' => $shBreakdown,
       'grandTotalId' => 'sh-toolbar-grand',
       'grandAmountId' => 'sh-toolbar-grand-amount',
-      'hasSteps' => true,
-      'prevId' => 'sh-prev',
-      'nextId' => 'sh-next',
-      'stepStatusId' => 'sh-step-status',
+      'hasSteps' => false,
       'isEdit' => $isEdit,
       'quotation' => $quotation ?? null,
       'linkedCpq' => $linkedCpq ?? null,

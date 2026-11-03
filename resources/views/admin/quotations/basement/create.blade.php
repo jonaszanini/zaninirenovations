@@ -377,13 +377,11 @@
     </aside>
 
     @php
-      $summary = $initialPreview['summary'] ?? [];
-      $initialMat = (float) ($summary['materials_pre_hst'] ?? 0);
-      $initialLab = (float) ($summary['labor_pre_hst'] ?? 0);
-      $initialPermit = (float) ($summary['permit_pre_hst'] ?? 0);
-      $initialSub = $initialMat + $initialLab + $initialPermit;
-      $initialHst = (float) ($summary['hst'] ?? ($initialSub * 0.13));
-      $initialGrand = (float) ($summary['grand_total'] ?? $toolbarGrand);
+      $brBreakdown = \App\Support\QuotationTotalsBarBreakdown::forBasement(
+          $initialPreview['summary'] ?? [],
+          $quotation ?? null,
+          (float) ($toolbarGrand ?? 0)
+      );
     @endphp
     @include('admin.partials.quotation_totals_bar', [
       'barId' => 'br-sticky-total',
@@ -397,12 +395,7 @@
       'formId' => 'br-main-form',
       'saveId' => 'br-btn-save-bottom',
       'saveLabel' => 'Save quotation',
-      'initialMaterials' => $initialMat,
-      'initialLabour' => $initialLab,
-      'initialExtras' => $initialPermit,
-      'hasExtras' => $initialPermit > 0,
-      'initialHst' => $initialHst,
-      'initialGrand' => $initialGrand,
+      'breakdown' => $brBreakdown,
       'grandTotalId' => 'br-toolbar-grand',
       'grandAmountId' => 'br-toolbar-grand-amount',
       'isEdit' => $isEdit,

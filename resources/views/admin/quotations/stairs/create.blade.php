@@ -350,15 +350,10 @@
           @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
           @php
-            $stSummary = $initialCalc['summary'] ?? [];
-            $stMat = (float) ($stSummary['material_price'] ?? 0);
-            $stLab = (float) ($stSummary['labour_subtotal_pre_hst'] ?? 0);
-            $stSub = (float) ($stSummary['subtotal_pre_hst'] ?? 0);
-            $stHst = (float) ($stSummary['hst'] ?? ($stSub * 0.13));
-            $stCommute = (float) ($quotation?->commute_amount ?? 0);
-            $stDebris = (float) ($quotation?->debris_removal_amount ?? 0);
-            $stExtras = $stCommute + $stDebris;
-            $stGrand = (float) ($stSummary['grand_total'] ?? 0) + $stExtras;
+            $stBreakdown = \App\Support\QuotationTotalsBarBreakdown::forStairs(
+              is_array($initialCalc['summary'] ?? null) ? $initialCalc['summary'] : [],
+              $quotation ?? null
+            );
           @endphp
           @include('admin.partials.quotation_totals_bar', [
             'barId' => 'st-sticky-total',
@@ -366,12 +361,7 @@
             'saveId' => 'st-btn-save-bottom',
             'saveLabel' => 'Save quotation',
             'backUrl' => route('admin.quotations.stairs.index', $preservePid ? ['project' => $preservePid] : []),
-            'initialMaterials' => $stMat,
-            'initialLabour' => $stLab,
-            'initialExtras' => $stExtras,
-            'hasExtras' => true,
-            'initialHst' => $stHst,
-            'initialGrand' => $stGrand,
+            'breakdown' => $stBreakdown,
             'grandTotalId' => 'st-toolbar-grand',
             'grandAmountId' => 'sq-toolbar-grand-amount',
             'isEdit' => $isEdit,
@@ -680,18 +670,21 @@
         html += '<div class="pq-row pq-row--hl"><span>Grand total</span><strong>' + fmt(grandTotal) + '</strong></div>';
         root.innerHTML = html;
 
-        var labSub = Number(s.labour_subtotal_pre_hst || 0) + lastAdditionalLaborPreTax;
-        var matSub = Number(s.material_price || 0) + lastAdditionalMaterialsPreTax;
-        var hstTotal = Number(s.hst || 0) + lastAdditionalLaborHst + lastAdditionalMaterialsHst;
-        var extrasTotal = lastCommuteAmount + lastDebrisAmount;
-
         if (window.QuotationTotalsBar) {
-          window.QuotationTotalsBar.update({
-            materials: matSub,
-            labour: labSub,
-            extras: extrasTotal,
-            hst: hstTotal,
-            grand: grandTotal
+          window.QuotationTotalsBar.updateFromBreakdown({
+            materialsPreTax: Number(s.material_price || 0),
+            labourPreTax: Number(s.labour_subtotal_pre_hst || 0),
+            extrasPreTax: 0,
+            hasExtras: true,
+            baseHst: Number(s.hst || 0),
+            additionalMaterialsPreTax: lastAdditionalMaterialsPreTax,
+            additionalMaterialsHst: lastAdditionalMaterialsHst,
+            additionalLaborPreTax: lastAdditionalLaborPreTax,
+            additionalLaborHst: lastAdditionalLaborHst,
+            commuteTaxIn: lastCommuteAmount,
+            debrisTaxIn: lastDebrisAmount,
+            hstRate: (s.hst_rate || 0.13) * 100,
+            grandTotal: grandTotal
           });
         }
       }

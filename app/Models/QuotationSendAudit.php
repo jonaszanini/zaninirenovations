@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class QuotationSendAudit extends Model
 {
@@ -35,6 +36,27 @@ class QuotationSendAudit extends Model
     protected $casts = [
         'server_time' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function (): void {
+            throw new LogicException('Quotation send audit records are immutable and cannot be updated.');
+        });
+
+        static::deleting(function (): void {
+            throw new LogicException('Quotation send audit records are immutable and cannot be deleted.');
+        });
+    }
+
+    public function update(array $attributes = [], array $options = []): bool
+    {
+        throw new LogicException('Quotation send audit records are immutable and cannot be updated.');
+    }
+
+    public function delete(): ?bool
+    {
+        throw new LogicException('Quotation send audit records are immutable and cannot be deleted.');
+    }
 
     public function getRecipientsAttribute(): array
     {

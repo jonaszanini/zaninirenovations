@@ -434,14 +434,10 @@
     </div>
 
     @php
-      $tlCalc = is_array($quotation?->calculation) ? $quotation->calculation : [];
-      $tlMat = (float) ($tlCalc['materials_subtotal'] ?? 0);
-      $tlLab = (float) ($tlCalc['labor_total'] ?? 0) + (float) ($tlCalc['demolition_total'] ?? 0);
-      $tlHst = (float) ($tlCalc['hst'] ?? 0);
-      $tlCommute = (float) ($quotation?->commute_amount ?? 0);
-      $tlDebris = (float) ($quotation?->debris_removal_amount ?? 0);
-      $tlExtras = $tlCommute + $tlDebris;
-      $tlGrand = (float) ($quotation?->final_quote_total ?? 0);
+      $tlBreakdown = \App\Support\QuotationTotalsBarBreakdown::forTile(
+        $quotation ?? null,
+        is_array($quotation?->calculation) ? $quotation->calculation : []
+      );
     @endphp
     @include('admin.partials.quotation_totals_bar', [
       'barId' => 'tl-sticky-total',
@@ -449,12 +445,7 @@
       'saveId' => 'tl-btn-save-bottom',
       'saveLabel' => 'Save quotation',
       'backUrl' => route('admin.quotations.tile.index', $preservePid ? ['project' => $preservePid] : []),
-      'initialMaterials' => $tlMat,
-      'initialLabour' => $tlLab,
-      'initialExtras' => $tlExtras,
-      'hasExtras' => true,
-      'initialHst' => $tlHst,
-      'initialGrand' => $tlGrand,
+      'breakdown' => $tlBreakdown,
       'grandTotalId' => 'tl-toolbar-grand',
       'grandAmountId' => 'tl-toolbar-grand-amount',
       'isEdit' => $isEdit,
@@ -504,6 +495,38 @@ document.addEventListener('DOMContentLoaded', function () {
     var lastAdditionalLaborTaxIn = 0;
     var lastAdditionalTaxIn = 0;
     var lastGrandTotal = 0;
+    var lastCalculation = null;
+
+    function syncTileTotalsBar() {
+        if (!window.QuotationTotalsBar) return;
+        if (!lastCalculation || lastGrandTotal <= 0) {
+            window.QuotationTotalsBar.update({
+                materials: 0,
+                labour: 0,
+                extras: 0,
+                hst: 0,
+                grand: 0
+            });
+            return;
+        }
+        var c = lastCalculation;
+        var totalGrand = lastGrandTotal + liveExtrasTotal();
+        window.QuotationTotalsBar.updateFromBreakdown({
+            materialsPreTax: Number(c.materials_subtotal || 0),
+            labourPreTax: Number(c.labor_total || 0) + Number(c.demolition_total || 0),
+            extrasPreTax: 0,
+            hasExtras: true,
+            baseHst: Number(c.hst || 0),
+            additionalMaterialsPreTax: lastAdditionalMaterialsPreTax,
+            additionalMaterialsTaxIn: lastAdditionalMaterialsTaxIn,
+            additionalLaborPreTax: lastAdditionalLaborPreTax,
+            additionalLaborTaxIn: lastAdditionalLaborTaxIn,
+            commuteTaxIn: lastCommuteAmount,
+            debrisTaxIn: lastDebrisAmount,
+            hstRate: 13,
+            grandTotal: totalGrand
+        });
+    }
 
     function parseMoney(raw) {
         var n = parseFloat(String(raw == null ? '' : raw).replace(/,/g, ''));
@@ -526,6 +549,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function emitGrandTotal() {
         window.__quoteGrandTotal = lastGrandTotal > 0 ? lastGrandTotal + liveExtrasTotal() : 0;
         document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: window.__quoteGrandTotal } }));
+        syncTileTotalsBar();
     }
 
     function applyCommuteToLivePreview() {
@@ -686,6 +710,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 liveEmpty.hidden = true;
                 liveBody.innerHTML = data.html;
                 liveBody.hidden = false;
+                lastCalculation = data.calculation || {};
                 lastGrandTotal = Number((data.calculation && data.calculation.grand_total) || 0);
                 lastDebrisAmount = readDebrisAmount();
                 markLiveGrandTotalRow();
@@ -693,36 +718,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 applyAdditionalCostsToLivePreview();
                 applyDebrisToLivePreview();
                 applyCommuteToLivePreview();
-                var c = data.calculation || {};
-                var matSub = Number(c.materials_subtotal || 0) + lastAdditionalMaterialsPreTax;
-                var labSub = Number(c.labor_total || 0) + Number(c.demolition_total || 0) + lastAdditionalLaborPreTax;
-                var hstVal = Number(c.hst || 0) + (lastAdditionalMaterialsTaxIn - lastAdditionalMaterialsPreTax) + (lastAdditionalLaborTaxIn - lastAdditionalLaborPreTax);
-                var extras = lastCommuteAmount + lastDebrisAmount;
-                var totalGrand = lastGrandTotal > 0 ? lastGrandTotal + liveExtrasTotal() : 0;
-                if (window.QuotationTotalsBar) {
-                    window.QuotationTotalsBar.update({
-                        materials: matSub,
-                        labour: labSub,
-                        extras: extras,
-                        hst: hstVal,
-                        grand: totalGrand
-                    });
-                }
+                syncTileTotalsBar();
             } else {
                 if (window.QuotationBuildingLaborUi) window.QuotationBuildingLaborUi.setLabourBase(0);
                 liveEmpty.hidden = false;
                 liveBody.hidden = true;
+                lastCalculation = null;
                 lastGrandTotal = 0;
                 emitGrandTotal();
-                if (window.QuotationTotalsBar) {
-                    window.QuotationTotalsBar.update({
-                        materials: 0,
-                        labour: 0,
-                        extras: 0,
-                        hst: 0,
-                        grand: 0
-                    });
-                }
             }
         })
         .catch(err => console.error('Live calc error:', err));

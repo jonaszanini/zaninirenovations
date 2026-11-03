@@ -147,12 +147,19 @@
       var extras = lastCommuteAmount + lastDebrisAmount;
 
       if (window.QuotationTotalsBar) {
-        window.QuotationTotalsBar.update({
-          materials: matPre,
-          labour: laborPre,
-          extras: extras,
-          hst: laborHst + matHst,
-          grand: grand
+        window.QuotationTotalsBar.updateFromBreakdown({
+          materialsPreTax: Number(summary.materials_pre_hst || 0),
+          labourPreTax: Number(summary.labor_pre_hst || 0),
+          extrasPreTax: 0,
+          baseHst: Number(summary.hst || 0),
+          additionalMaterialsPreTax: lastAdditionalMaterialsPreTax,
+          additionalMaterialsHst: lastAdditionalMaterialsHst,
+          additionalLaborPreTax: lastAdditionalLaborPreTax,
+          additionalLaborHst: lastAdditionalLaborHst,
+          commuteTaxIn: lastCommuteAmount,
+          debrisTaxIn: lastDebrisAmount,
+          hstRate: 13,
+          grandTotal: grand
         });
       }
 

@@ -342,34 +342,19 @@
     </aside>
 
     @php
-      $mwSummary = $initialPreview['summary'] ?? [];
-      $mwGoods = (float) ($mwSummary['materials_goods_pre_hst'] ?? ($mwSummary['materials_pre_hst'] ?? 0));
-      $mwLabor = (float) ($mwSummary['labor_pre_hst'] ?? 0);
-      $mwDelivery = (float) ($mwSummary['delivery_amount'] ?? 0);
-      $mwMarkup = (float) ($mwSummary['markup_amount'] ?? 0);
-      $mwExtras = $mwDelivery + $mwMarkup;
-      $mwSub = (float) ($mwSummary['subtotal_pre_hst'] ?? 0);
-      $mwHst = (float) ($mwSummary['hst'] ?? ($mwSub * 0.13));
-      $mwGrand = (float) ($mwSummary['grand_total'] ?? 0);
+      $mwBreakdown = \App\Support\QuotationTotalsBarBreakdown::forMillwork(
+          $initialPreview['summary'] ?? [],
+          $quotation ?? null
+      );
     @endphp
     @include('admin.partials.quotation_totals_bar', [
       'barId' => 'mw-totals-bar',
-      'extraClass' => 'mw-totals-bar',
-      'hasSteps' => true,
-      'stepNavId' => 'mw-step-nav',
-      'stepPrevId' => 'mw-prev',
-      'stepNextId' => 'mw-next',
-      'stepStatusId' => 'mw-step-status',
-      'stepCount' => 3,
+      'hasSteps' => false,
+      'backUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
       'formId' => 'mw-main-form',
       'saveId' => 'mw-btn-save-bottom',
       'saveLabel' => 'Save quotation',
-      'initialMaterials' => $mwGoods,
-      'initialLabour' => $mwLabor,
-      'initialExtras' => $mwExtras,
-      'hasExtras' => $mwExtras > 0,
-      'initialHst' => $mwHst,
-      'initialGrand' => $mwGrand,
+      'breakdown' => $mwBreakdown,
       'grandTotalId' => 'mw-toolbar-grand',
       'grandAmountId' => 'mw-bar-total',
       'isEdit' => $isEdit,

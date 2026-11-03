@@ -493,14 +493,10 @@
           @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
 
           @php
-            $pvCalc = is_array($quotation?->calculation) ? $quotation->calculation : [];
-            $pvMat = (float) ($pvCalc['materials']['subtotal_before_tax'] ?? 0) + (float) ($pvCalc['fixed_costs']['subtotal_before_tax'] ?? 0);
-            $pvLab = (float) ($pvCalc['labour']['total'] ?? 0);
-            $pvHst = (float) ($pvCalc['summary']['hst_on_materials_and_fixed'] ?? 0) + round($pvLab * 0.13, 2);
-            $pvCommute = (float) ($quotation?->commute_amount ?? 0);
-            $pvDebris = (float) ($quotation?->debris_removal_amount ?? 0);
-            $pvExtras = $pvCommute + $pvDebris;
-            $pvGrand = (float) ($quotation?->final_quote_total ?? 0) + $pvExtras;
+            $pvBreakdown = \App\Support\QuotationTotalsBarBreakdown::forPaving(
+              $quotation ?? null,
+              is_array($quotation?->calculation) ? $quotation->calculation : []
+            );
           @endphp
           @include('admin.partials.quotation_totals_bar', [
             'barId' => 'pv-sticky-total',
@@ -508,12 +504,7 @@
             'saveId' => 'pv-btn-save-bottom',
             'saveLabel' => 'Save quotation',
             'backUrl' => route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []),
-            'initialMaterials' => $pvMat,
-            'initialLabour' => $pvLab,
-            'initialExtras' => $pvExtras,
-            'hasExtras' => true,
-            'initialHst' => $pvHst,
-            'initialGrand' => $pvGrand,
+            'breakdown' => $pvBreakdown,
             'grandTotalId' => 'pv-toolbar-grand',
             'grandAmountId' => 'pv-toolbar-grand-amount',
             'isEdit' => $isEdit,
@@ -1006,18 +997,19 @@
         var profitRate = fmtPct(s.profit_margin_rate);
         var html = '';
 
-        var matBeforeTax = Number(m.subtotal_before_tax || 0) + Number(f.subtotal_before_tax || 0);
-        var labTotal = Number(l.total || 0) + lastAdditionalLaborPreTax;
-        var hstTotal = Number(s.hst_on_materials_and_fixed || 0) + Math.round(labTotal * 0.13 * 100) / 100;
-        var extrasTotal = lastCommuteAmount + lastDebrisAmount;
-
         if (window.QuotationTotalsBar) {
-          window.QuotationTotalsBar.update({
-            materials: matBeforeTax,
-            labour: labTotal,
-            extras: extrasTotal,
-            hst: hstTotal,
-            grand: clientTotal
+          window.QuotationTotalsBar.updateFromBreakdown({
+            mode: 'paving',
+            baseQuoteTotal: quoteBeforeCommute,
+            labourPreTax: Number(l.total || 0),
+            commuteTaxIn: lastCommuteAmount,
+            debrisTaxIn: lastDebrisAmount,
+            additionalMaterialsTaxIn: lastAdditionalMaterialsTaxIn,
+            additionalLaborPreTax: lastAdditionalLaborPreTax,
+            additionalLaborTaxIn: Math.max(0, lastAdditionalTaxIn - lastAdditionalMaterialsTaxIn),
+            hasExtras: true,
+            hstRate: (c.inputs && c.inputs.hst_rate) ? c.inputs.hst_rate : 13,
+            grandTotal: clientTotal
           });
         }
 

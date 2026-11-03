@@ -583,12 +583,10 @@
     </aside>
 
     @php
-      $tmSummary = $initialPreview['summary'] ?? [];
-      $tmMat = (float) ($tmSummary['materials_pre_hst'] ?? 0);
-      $tmLab = (float) ($tmSummary['labor_pre_hst'] ?? 0);
-      $tmSub = (float) ($tmSummary['subtotal_pre_hst'] ?? 0);
-      $tmHst = (float) ($tmSummary['hst'] ?? ($tmSub * 0.13));
-      $tmGrand = (float) ($tmSummary['grand_total'] ?? 0);
+      $tmBreakdown = \App\Support\QuotationTotalsBarBreakdown::forTrimming(
+          $initialPreview['summary'] ?? [],
+          $quotation ?? null
+      );
     @endphp
     @include('admin.partials.quotation_totals_bar', [
       'barId' => 'tm-sticky-total',
@@ -596,12 +594,7 @@
       'saveId' => 'tm-btn-save-bottom',
       'saveLabel' => 'Save quotation',
       'backUrl' => route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []),
-      'initialMaterials' => $tmMat,
-      'initialLabour' => $tmLab,
-      'initialExtras' => 0,
-      'hasExtras' => false,
-      'initialHst' => $tmHst,
-      'initialGrand' => $tmGrand,
+      'breakdown' => $tmBreakdown,
       'grandTotalId' => 'tm-toolbar-grand',
       'grandAmountId' => 'tm-toolbar-grand-amount',
       'isEdit' => $isEdit,

@@ -970,14 +970,20 @@
     var extrasTotal = permitPre + (lastCommuteAmount > 0 ? (lastCommuteAmount / 1.13) : 0) + (lastDebrisAmount > 0 ? (lastDebrisAmount / 1.13) : 0);
 
     if (window.QuotationTotalsBar) {
-      window.QuotationTotalsBar.update({
-        materials: matPre,
-        labour: laborPre,
-        extras: extrasTotal,
-        hasExtras: extrasTotal > 0,
-        hst: hst,
+      window.QuotationTotalsBar.updateFromBreakdown({
+        materialsPreTax: Number(summary.materials_pre_hst || 0),
+        labourPreTax: Number(summary.labor_pre_hst || 0),
+        extrasPreTax: permitPre,
+        hasExtras: permitPre > 0 || lastCommuteAmount > 0 || lastDebrisAmount > 0,
+        baseHst: summary.hst != null ? Number(summary.hst) : null,
+        additionalMaterialsPreTax: lastAdditionalMaterialsPreTax,
+        additionalMaterialsHst: lastAdditionalMaterialsHst,
+        additionalLaborPreTax: lastAdditionalLaborPreTax,
+        additionalLaborHst: lastAdditionalLaborHst,
+        commuteTaxIn: lastCommuteAmount,
+        debrisTaxIn: lastDebrisAmount,
         hstRate: 13,
-        grand: grand
+        grandTotal: grand
       });
     }
     var html = '';

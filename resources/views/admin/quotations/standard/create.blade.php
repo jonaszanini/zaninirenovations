@@ -545,7 +545,10 @@
   </template>
 
   @php
-    $sqGrand = (float) ($toolbarGrand ?? 0);
+    $sqBreakdown = \App\Support\QuotationTotalsBarBreakdown::forStandard(
+        $quotation ?? null,
+        (float) ($toolbarGrand ?? 0)
+    );
   @endphp
   @include('admin.partials.quotation_totals_bar', [
     'barId' => 'sq-sticky-total',
@@ -553,12 +556,7 @@
     'saveId' => 'sq-btn-save-bottom',
     'saveLabel' => 'Save quotation',
     'backUrl' => route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
-    'initialMaterials' => 0,
-    'initialLabour' => 0,
-    'initialExtras' => 0,
-    'hasExtras' => false,
-    'initialHst' => 0,
-    'initialGrand' => $sqGrand,
+    'breakdown' => $sqBreakdown,
     'grandTotalId' => 'sq-toolbar-grand',
     'grandAmountId' => 'sq-toolbar-grand-amount',
     'isEdit' => $isEdit,

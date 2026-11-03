@@ -176,30 +176,6 @@
     max-height: calc(100vh - 96px);
     overflow: auto;
   }
-  #mw-main-form > .mw-totals-bar {
-    grid-column: 1 / -1;
-  }
-}
-.mw-totals-bar {
-  position: sticky;
-  bottom: 0;
-  z-index: 40;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 4px 10px;
-  align-items: center;
-  justify-content: flex-start;
-  margin-top: 8px;
-  padding: 6px 10px;
-  min-height: 44px;
-  background: var(--admin-surface);
-  color: var(--admin-text);
-  border: 1px solid var(--admin-border);
-  border-radius: 10px;
-  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
-}
-.mw-totals-bar [hidden] {
-  display: none !important;
 }
 #mw-upgrade-cut-plan-btn[hidden],
 #mw-undo-cut-plan-btn[hidden],
@@ -208,48 +184,6 @@
 }
 .mw-recalc-banner .admin-btn {
   margin-top: 8px;
-}
-.mw-totals-bar span {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 4px;
-  align-items: baseline;
-  white-space: nowrap;
-  font-size: 12px;
-}
-.mw-totals-bar em {
-  font-style: normal;
-  color: var(--admin-muted);
-  font-weight: 600;
-}
-.mw-totals-bar__expand {
-  display: none;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
-  margin: -6px 0 -6px -6px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--admin-muted);
-  cursor: pointer;
-}
-.mw-totals-bar__expand i {
-  display: block;
-  transition: transform 0.15s ease;
-}
-.mw-totals-bar.is-open .mw-totals-bar__expand i {
-  transform: rotate(180deg);
-}
-.mw-totals-bar__total {
-  font-size: 13px;
-  color: var(--admin-heading);
-  margin-left: auto;
-}
-.mw-totals-bar__total strong {
-  color: var(--admin-primary);
 }
 .mw-set-row {
   padding: 10px 0;
@@ -859,26 +793,5 @@
   }
   .mw-money-row {
     grid-template-columns: 1fr 1fr;
-  }
-  .mw-totals-bar {
-    flex-wrap: nowrap;
-    gap: 4px 8px;
-    padding: 4px 8px;
-    cursor: pointer;
-  }
-  .mw-totals-bar__expand {
-    display: inline-flex;
-  }
-  .mw-totals-bar:not(.is-open) .mw-totals-bar__detail {
-    display: none;
-  }
-  .mw-totals-bar.is-open {
-    flex-wrap: wrap;
-  }
-  .mw-totals-bar.is-open .mw-totals-bar__total {
-    margin-left: 0;
-  }
-  .mw-totals-bar span {
-    font-size: 12px;
   }
 }

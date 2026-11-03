@@ -798,15 +798,23 @@ window.MillworkDimensionParser = (function () {
       if (barTotal) barTotal.textContent = fmt(Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount);
       syncTotalsBarSpace();
       if (window.QuotationTotalsBar) {
-        var mwExtras = delivery + markup + (lastCommuteAmount > 0 ? (lastCommuteAmount / 1.13) : 0) + (lastDebrisAmount > 0 ? (lastDebrisAmount / 1.13) : 0);
-        window.QuotationTotalsBar.update({
-          materials: goodsPre,
-          labour: laborPre,
-          extras: mwExtras,
-          hasExtras: mwExtras > 0,
-          hst: hst,
+        var mwDeliveryPre = clientProvidesAll() ? 0 : delivery;
+        window.QuotationTotalsBar.updateFromBreakdown({
+          materialsPreTax: summary.materials_goods_pre_hst != null
+            ? Number(summary.materials_goods_pre_hst)
+            : Math.max(0, Number(summary.materials_pre_hst || 0) - delivery),
+          labourPreTax: Number(summary.labor_pre_hst || 0),
+          extrasPreTax: mwDeliveryPre + markup,
+          hasExtras: (mwDeliveryPre + markup) > 0 || lastCommuteAmount > 0 || lastDebrisAmount > 0,
+          baseHst: Number(summary.hst || 0),
+          additionalMaterialsPreTax: lastAdditionalMaterialsPreTax,
+          additionalMaterialsHst: lastAdditionalMaterialsHst,
+          additionalLaborPreTax: lastAdditionalLaborPreTax,
+          additionalLaborHst: lastAdditionalLaborHst,
+          commuteTaxIn: lastCommuteAmount,
+          debrisTaxIn: lastDebrisAmount,
           hstRate: 13,
-          grand: liveGrand
+          grandTotal: liveGrand
         });
       }
       var html = '';

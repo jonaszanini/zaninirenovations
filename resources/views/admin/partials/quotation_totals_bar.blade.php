@@ -24,13 +24,14 @@
   $sendUrl = $sendUrl ?? ($project && $linkedCpq ? route('admin.client-projects.quotation.send', [$project, $linkedCpq]) : null);
   $pdfPreviewUrl = $pdfPreviewUrl ?? ($project && $linkedCpq ? route('admin.client-projects.quotation.pdf', [$project, $linkedCpq]) : null);
 
-  $initialMaterials = (float) ($initialMaterials ?? 0);
-  $initialLabour = (float) ($initialLabour ?? 0);
-  $initialExtras = (float) ($initialExtras ?? 0);
-  $hasExtras = !empty($hasExtras) || $initialExtras > 0;
-  $initialHst = (float) ($initialHst ?? 0);
-  $hstRateLabel = $hstRateLabel ?? 'HST (13%)';
-  $initialGrand = (float) ($initialGrand ?? 0);
+  $breakdown = isset($breakdown) && is_array($breakdown) ? $breakdown : null;
+  $initialMaterials = round((float) ($breakdown['materials'] ?? $initialMaterials ?? 0), 2);
+  $initialLabour = round((float) ($breakdown['labour'] ?? $initialLabour ?? 0), 2);
+  $initialExtras = round((float) ($breakdown['extras'] ?? $initialExtras ?? 0), 2);
+  $hasExtras = !empty($breakdown['hasExtras']) || !empty($hasExtras) || $initialExtras > 0;
+  $initialHst = round((float) ($breakdown['hst'] ?? $initialHst ?? 0), 2);
+  $hstRateLabel = $hstRateLabel ?? ('HST (' . ($breakdown['hstRate'] ?? 13) . '%)');
+  $initialGrand = round((float) ($breakdown['grand'] ?? $initialGrand ?? 0), 2);
 
   $hasSteps = !empty($hasSteps);
   $stepNavId = $stepNavId ?? 'quote-step-nav';
@@ -53,7 +54,7 @@
 
 <div class="quote-totals-bar-spacer br-sticky-spacer" aria-hidden="true"></div>
 
-<div class="quote-totals-bar br-sticky-total mw-totals-bar {{ $extraClass ?? '' }}"
+<div class="quote-totals-bar br-sticky-total {{ $extraClass ?? '' }}"
      id="{{ $barId }}"
      data-quote-totals-bar
      data-send-url="{{ $sendUrl }}"
@@ -189,23 +190,26 @@
 
     <div class="quote-modal__body">
       {{-- Warning: unsaved changes --}}
-      <div class="admin-flash admin-flash--warning quote-modal-flash" data-modal-unsaved-alert hidden>
+      <div class="quote-modal-flash quote-modal-flash--warning" data-modal-unsaved-alert hidden>
         <i class="fa fa-exclamation-triangle"></i>
-        <div>
-          <strong>Unsaved changes:</strong> You have edited fields that are not saved yet. Please save your changes first before sending this quotation to the client.
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%;">
+          <span><strong>Save first?</strong> You have edited fields that are not saved yet. Save your changes before sending this quotation to the client.</span>
+          <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" data-modal-save-btn>
+            <i class="fa fa-save" aria-hidden="true"></i> Save quotation
+          </button>
         </div>
       </div>
 
       {{-- Warning: draft / revision --}}
-      <div class="admin-flash admin-flash--info quote-modal-flash" data-modal-draft-alert @if(!$isDraft) hidden @endif>
+      <div class="quote-modal-flash quote-modal-flash--info" data-modal-draft-alert @if(!$isDraft) hidden @endif>
         <label class="admin-checkbox-label" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;">
-          <input type="checkbox" name="confirm_draft" data-modal-confirm-draft value="1" style="margin-top:3px;">
+          <input type="checkbox" data-modal-confirm-draft value="1" style="margin-top:3px;">
           <span><strong>This quotation is currently marked as a draft.</strong> Check this box to confirm publishing and sending this version to the client.</span>
         </label>
       </div>
 
       {{-- Warning: missing client email --}}
-      <div class="admin-flash admin-flash--danger quote-modal-flash" data-modal-no-email-alert @if(filled($clientEmail)) hidden @endif>
+      <div class="quote-modal-flash quote-modal-flash--danger" data-modal-no-email-alert @if(filled($clientEmail)) hidden @endif>
         <i class="fa fa-envelope-o"></i>
         <div>
           The client has no email address.
@@ -218,27 +222,27 @@
       </div>
 
       {{-- Server error display --}}
-      <div class="admin-flash admin-flash--danger quote-modal-flash" data-modal-error-alert hidden></div>
+      <div class="quote-modal-flash quote-modal-flash--danger" data-modal-error-alert hidden></div>
 
-      <form id="quote-send-modal-form" data-modal-form onsubmit="return false;">
+      <div id="quote-send-modal-form" data-modal-form>
         <div class="admin-form-group" style="margin-bottom:12px;">
           <label class="admin-form-label" for="modal-send-to">To <span class="text-danger">*</span></label>
-          <input type="email" id="modal-send-to" name="to" class="admin-form-input" data-modal-to value="{{ $clientEmail }}" required placeholder="client@example.com">
+          <input type="email" id="modal-send-to" class="admin-form-input" data-modal-to value="{{ $clientEmail }}" aria-required="true" placeholder="client@example.com">
         </div>
 
         <div class="admin-form-group" style="margin-bottom:12px;">
           <label class="admin-form-label" for="modal-send-cc">CC (optional)</label>
-          <input type="email" id="modal-send-cc" name="cc" class="admin-form-input" data-modal-cc value="{{ $clientSecondaryEmail }}" placeholder="secondary@example.com">
+          <input type="email" id="modal-send-cc" class="admin-form-input" data-modal-cc value="{{ $clientSecondaryEmail }}" placeholder="secondary@example.com">
         </div>
 
         <div class="admin-form-group" style="margin-bottom:12px;">
           <label class="admin-form-label" for="modal-send-subject">Subject <span class="text-danger">*</span></label>
-          <input type="text" id="modal-send-subject" name="subject" class="admin-form-input" data-modal-subject value="Your quotation {{ $quoteNumber }} from Zanini Renovations" required>
+          <input type="text" id="modal-send-subject" class="admin-form-input" data-modal-subject value="Your quotation {{ $quoteNumber }} from Zanini Renovations" maxlength="255" aria-required="true">
         </div>
 
         <div class="admin-form-group" style="margin-bottom:12px;">
           <label class="admin-form-label" for="modal-send-message">Message <span class="text-danger">*</span></label>
-          <textarea id="modal-send-message" name="message" class="admin-form-input" data-modal-message rows="4" required>{{ $defaultMessage }}</textarea>
+          <textarea id="modal-send-message" class="admin-form-input" data-modal-message rows="4" aria-required="true">{{ $defaultMessage }}</textarea>
         </div>
 
         <div class="admin-form-group" style="margin-bottom:12px;">
@@ -253,7 +257,7 @@
             @endif
           </div>
         </div>
-      </form>
+      </div>
     </div>
 
     <div class="quote-modal__footer">

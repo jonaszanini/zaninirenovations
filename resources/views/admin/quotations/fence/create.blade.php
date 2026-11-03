@@ -846,10 +846,7 @@
   @php
     $fCalc = $isEdit ? ($quotation->calculation ?? []) : [];
     $fTotals = is_array($fCalc) ? ($fCalc['totals'] ?? []) : [];
-    $fMat = (float) ($fTotals['materials_subtotal'] ?? ($quotation->materials_subtotal ?? 0));
-    $fLab = (float) ($fTotals['labour_subtotal'] ?? ($quotation->labour_total ?? 0));
-    $fHst = (float) (($fTotals['materials_hst'] ?? 0) + ($fTotals['labour_hst'] ?? ($quotation->labour_hst ?? 0)));
-    $fGrand = (float) ($fTotals['grand_total'] ?? ($quotation->grand_total ?? 0));
+    $fBreakdown = \App\Support\QuotationTotalsBarBreakdown::forFence($fTotals, $quotation ?? null);
   @endphp
   @include('admin.partials.quotation_totals_bar', [
     'barId' => 'fq-sticky-total',
@@ -857,12 +854,7 @@
     'saveId' => 'fq-btn-save-bottom',
     'saveLabel' => 'Save quotation',
     'backUrl' => route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
-    'initialMaterials' => $fMat,
-    'initialLabour' => $fLab,
-    'initialExtras' => 0,
-    'hasExtras' => false,
-    'initialHst' => $fHst,
-    'initialGrand' => $fGrand,
+    'breakdown' => $fBreakdown,
     'grandTotalId' => 'fq-toolbar-grand',
     'grandAmountId' => 'fq-toolbar-grand-amount',
     'isEdit' => $isEdit,
@@ -1623,15 +1615,19 @@
     window.__quoteGrandTotal = Number(t.grand_total || 0) + lastCommuteAmount + lastDebrisAmount + lastAdditionalTaxIn;
     document.dispatchEvent(new CustomEvent('quote:grand-total', { detail: { total: window.__quoteGrandTotal } }));
     if (window.QuotationTotalsBar) {
-      var fenceExtras = (lastCommuteAmount > 0 ? (lastCommuteAmount / 1.13) : 0) + (lastDebrisAmount > 0 ? (lastDebrisAmount / 1.13) : 0);
-      window.QuotationTotalsBar.update({
-        materials: Number(t.materials_subtotal || 0) + lastAdditionalMaterialsPreTax,
-        labour: (showCredit ? grossLabour : netLabour) + lastAdditionalLaborPreTax,
-        extras: fenceExtras,
-        hasExtras: fenceExtras > 0,
-        hst: Number(t.hst || 0) + lastAdditionalMaterialsHst + Number(t.labour_hst || 0) + lastAdditionalLaborHst,
+      window.QuotationTotalsBar.updateFromBreakdown({
+        materialsPreTax: Number(t.materials_subtotal || 0),
+        labourPreTax: netLabour,
+        extrasPreTax: 0,
+        baseHst: Number(t.hst || 0) + Number(t.labour_hst || 0),
+        additionalMaterialsPreTax: lastAdditionalMaterialsPreTax,
+        additionalMaterialsHst: lastAdditionalMaterialsHst,
+        additionalLaborPreTax: lastAdditionalLaborPreTax,
+        additionalLaborHst: lastAdditionalLaborHst,
+        commuteTaxIn: lastCommuteAmount,
+        debrisTaxIn: lastDebrisAmount,
         hstRate: 13,
-        grand: window.__quoteGrandTotal
+        grandTotal: window.__quoteGrandTotal
       });
     }
     if (t.labour_rate_per_ft) {
