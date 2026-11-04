@@ -582,13 +582,43 @@ class StandardQuotationPdfLineItemsTest extends TestCase
             'include_debris_removal' => false,
         ]);
 
-        $this->assertSame('Material', $quote->pdfSummaryLineDescription());
+        $this->assertSame('Labour and material', $quote->pdfSummaryLineDescription());
         $this->assertEqualsWithDelta(200.0, $quote->labourPreTaxAmountForProjectQuotation(), 0.01);
 
         $lines = $quote->summaryPdfLineItems();
         $byDesc = collect($lines)->keyBy('description');
         $this->assertEqualsWithDelta(100.0, $byDesc['Material']['amount'], 0.01);
         $this->assertEqualsWithDelta(200.0, $byDesc['Labour']['amount'], 0.01);
+    }
+
+    public function test_combined_pdf_line_uses_priced_scope_label_when_checkboxes_are_narrower(): void
+    {
+        $quote = new StandardQuotation([
+            'includes_material' => true,
+            'includes_labour' => false,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_COMBINED,
+            'materials' => [[
+                'short_name' => 'Hardware kit',
+                'unit_price' => 75,
+                'quantity' => 1,
+                'apply_hst' => true,
+            ]],
+            'labour_use_fixed' => true,
+            'labour_fixed_amount' => 250,
+            'labour_hourly_rate' => 0,
+            'labour_mode' => 'hours',
+            'labour_quantity' => 0,
+            'contingency_enabled' => false,
+            'include_commute' => false,
+            'include_debris_removal' => false,
+        ]);
+
+        $this->assertSame('Labour and material', $quote->pdfSummaryLineDescription());
+
+        $lines = $quote->combinedPdfLineItems();
+        $this->assertCount(1, $lines);
+        $this->assertSame('Labour and material', $lines[0]['description']);
+        $this->assertEqualsWithDelta(325.0, (float) $lines[0]['amount'], 0.01);
     }
 
     /**

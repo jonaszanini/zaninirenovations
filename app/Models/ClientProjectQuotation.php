@@ -2597,7 +2597,14 @@ class ClientProjectQuotation extends Model
 
         $sq = StandardQuotation::query()->find($this->source_id);
         if ($sq) {
-            return (bool) $sq->includes_labour;
+            $includesMaterial = (bool) $sq->includes_material;
+            $includesLabour = (bool) $sq->includes_labour;
+
+            if (! $includesMaterial && ! $includesLabour) {
+                return $sq->chargedLabourPreTax() > 0;
+            }
+
+            return $includesLabour;
         }
 
         $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];
@@ -2619,7 +2626,14 @@ class ClientProjectQuotation extends Model
 
         $sq = StandardQuotation::query()->find($this->source_id);
         if ($sq) {
-            return (bool) $sq->includes_material;
+            $includesMaterial = (bool) $sq->includes_material;
+            $includesLabour = (bool) $sq->includes_labour;
+
+            if (! $includesMaterial && ! $includesLabour) {
+                return $sq->chargedMaterialsPreTax() > 0;
+            }
+
+            return $includesMaterial;
         }
 
         $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];

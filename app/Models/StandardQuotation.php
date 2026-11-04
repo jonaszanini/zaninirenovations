@@ -183,12 +183,21 @@ class StandardQuotation extends Model
     }
 
     /**
-     * Summary-mode PDF line label from Includes (PDF wording) checkboxes.
+     * Summary / combined PDF line label: starts from Includes checkboxes, then
+     * expands to cover any priced labour or material so the line never
+     * mislabels the amount (headline wording stays checkbox-driven).
      */
     public function pdfSummaryLineDescription(): string
     {
         $material = (bool) $this->includes_material;
         $labour = (bool) $this->includes_labour;
+
+        if (! $labour && $this->chargedLabourPreTax() > 0) {
+            $labour = true;
+        }
+        if (! $material && $this->chargedMaterialsPreTax() > 0) {
+            $material = true;
+        }
 
         if ($material && $labour) {
             return 'Labour and material';

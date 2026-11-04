@@ -39,8 +39,8 @@ class StandardQuotationPdfIncludesWordingTest extends IntegrationTestCase
             'neither' => [
                 false,
                 false,
-                'For the following scope of work:',
-                ['MATERIALS</strong> and <strong>LABOUR', 'This quotation includes <strong>LABOUR</strong>', 'This quotation includes <strong>MATERIALS</strong> for the following'],
+                'This quotation includes <strong>MATERIALS</strong> and <strong>LABOUR</strong> for the following.',
+                ['For the following scope of work:'],
             ],
         ];
     }
@@ -134,6 +134,71 @@ class StandardQuotationPdfIncludesWordingTest extends IntegrationTestCase
         );
     }
 
+    public function test_sync_updates_linked_line_title_when_includes_change(): void
+    {
+        $this->actingAsAdmin();
+
+        [$project, $cpq, $standard] = $this->linkedStandardWithPricedMaterialAndLabour(true, true);
+        $cpq->update(['title' => 'Labour and material']);
+        $standard->update([
+            'client_project_id' => $project->id,
+            'linked_at' => now(),
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_COMBINED,
+        ]);
+
+        $payload = [
+            'save_intent' => 'publish',
+            'client_name' => $standard->client_name,
+            'display_title' => $standard->display_title,
+            'document_type' => ClientProjectQuotation::TYPE_QUOTATION,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_COMBINED,
+            'includes_material' => '0',
+            'includes_labour' => '1',
+            'payment_installments' => 1,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
+            'works' => [[
+                'title' => 'Install',
+                'labour_use_fixed' => '1',
+                'labour_fixed_amount' => '250',
+                'materials' => [[
+                    'short_name' => 'Hardware kit',
+                    'unit_price' => '75',
+                    'quantity' => '1',
+                    'apply_hst' => '1',
+                ]],
+            ]],
+        ];
+
+        $this->from(route('admin.quotations.standard.edit', $standard))
+            ->put(route('admin.quotations.standard.update', $standard), $payload)
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $cpq->refresh();
+        $this->assertSame('Labour and material', $cpq->title);
+
+        $combined = collect($cpq->items)->first();
+        $this->assertIsArray($combined);
+        $this->assertSame('Labour and material', $combined['description'] ?? null);
+        $this->assertEqualsWithDelta(325.0, (float) ($combined['amount'] ?? 0), 0.01);
+    }
+
+    public function test_legacy_neither_checked_uses_priced_lines_for_headline_and_summary_label(): void
+    {
+        [$project, $cpq, $standard] = $this->linkedStandardWithPricedMaterialAndLabour(false, false);
+
+        $this->assertSame('Labour and material', $standard->pdfSummaryLineDescription());
+
+        $html = $this->renderClientPdfHtml($project, $cpq);
+        $this->assertStringContainsString(
+            'This quotation includes <strong>MATERIALS</strong> and <strong>LABOUR</strong> for the following.',
+            $html
+        );
+        $this->assertStringNotContainsString('For the following scope of work:', $html);
+    }
+
     /**
      * @return array{0: ClientProject, 1: ClientProjectQuotation, 2: StandardQuotation}
      */
@@ -163,6 +228,12 @@ class StandardQuotationPdfIncludesWordingTest extends IntegrationTestCase
             ]],
             'works' => [[
                 'title' => 'Install',
+                'materials' => [[
+                    'short_name' => 'Hardware kit',
+                    'unit_price' => 75,
+                    'quantity' => 1,
+                    'apply_hst' => true,
+                ]],
                 'labour_use_fixed' => true,
                 'labour_fixed_amount' => 250,
             ]],

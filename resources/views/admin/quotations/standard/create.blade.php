@@ -305,7 +305,7 @@
               <h5 class="sq-intro-option-title">
                 Includes (PDF wording)
                 @include('admin.partials.info_tip', [
-                  'tipText' => 'Controls the summary line on the client PDF (e.g. Labour and material or Labour).',
+                  'tipText' => 'Controls the bold PDF headline (Material / Labour / both). The priced summary line always names what is on the quote (e.g. Labour and material when both are priced), even if a checkbox is off.',
                   'tipLabel' => 'Includes (PDF wording)',
                 ])
               </h5>

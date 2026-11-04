@@ -801,8 +801,7 @@ class StandardQuotationController extends Controller
 
         $lineDescription = $this->resolveStandardLinkLineDescription(
             $standardQuotation,
-            $lineDescription,
-            $row->exists ? $row : null
+            $lineDescription
         );
 
         $sqLines = $standardQuotation->projectQuotationLineItems($lineDescription);
@@ -829,6 +828,7 @@ class StandardQuotationController extends Controller
         } else {
             $row->labour = $includeLabour;
             $row->material = $includeMaterial;
+            $row->title = $lineDescription;
 
             if ($row->type !== $docType) {
                 $row->quotation_number = ClientProjectQuotation::swapNumberPrefixForType(
@@ -851,17 +851,11 @@ class StandardQuotationController extends Controller
 
     protected function resolveStandardLinkLineDescription(
         StandardQuotation $standardQuotation,
-        ?string $lineDescription,
-        ?ClientProjectQuotation $existing = null
+        ?string $lineDescription = null
     ): string {
         $lineDescription = trim((string) ($lineDescription ?? ''));
         if ($lineDescription !== '') {
             return $lineDescription;
-        }
-
-        $existingTitle = $existing ? trim((string) ($existing->title ?? '')) : '';
-        if ($existingTitle !== '') {
-            return $existingTitle;
         }
 
         return $standardQuotation->pdfSummaryLineDescription();
