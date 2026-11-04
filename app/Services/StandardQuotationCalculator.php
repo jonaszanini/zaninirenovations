@@ -129,7 +129,8 @@ class StandardQuotationCalculator
         bool $labourUseFixed = false,
         float $labourFixedAmount = 0.0,
         bool $labourFixedHstIncluded = false,
-        bool $includeLabourHst = true
+        bool $includeLabourHst = true,
+        float $hoursPerDay = self::LABOUR_HOURS_PER_DAY
     ): array {
         $cleanMaterials = [];
         $subBefore = 0.0;
@@ -246,6 +247,7 @@ class StandardQuotationCalculator
 
         $labourMode = $labourMode === 'days' ? 'days' : 'hours';
         $qty = max(0.0, $labourQuantity);
+        $hoursPerDay = max(0.5, $hoursPerDay);
 
         if ($labourUseFixed) {
             $labourHours = 0.0;
@@ -266,7 +268,7 @@ class StandardQuotationCalculator
             }
         } else {
             $labourHours = $labourMode === 'days'
-                ? round($qty * self::LABOUR_HOURS_PER_DAY, 2)
+                ? round($qty * $hoursPerDay, 2)
                 : round($qty, 2);
 
             $labourTotal = round(max(0.0, $hourlyRate) * $labourHours, 2);
@@ -325,7 +327,8 @@ class StandardQuotationCalculator
         bool $includeLabourHst = true,
         bool $includeBuilding = false,
         float $buildingLaborPercent = QuotationBuildingLabor::DEFAULT_PERCENT,
-        bool $assignSurchargeRemainderToLabourJobs = false
+        bool $assignSurchargeRemainderToLabourJobs = false,
+        float $hoursPerDay = self::LABOUR_HOURS_PER_DAY
     ): array {
         if ($works === []) {
             $works = [[
@@ -361,7 +364,8 @@ class StandardQuotationCalculator
                 filter_var($work['labour_use_fixed'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 (float) ($work['labour_fixed_amount'] ?? 0),
                 filter_var($work['labour_fixed_hst_included'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                $includeLabourHst
+                $includeLabourHst,
+                $hoursPerDay
             );
 
             $jobResults[] = array_merge($job, [

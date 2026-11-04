@@ -799,6 +799,15 @@ class SharedWorkCatalog
         }
     }
 
+    public static function hoursPerDay(): float
+    {
+        try {
+            return max(0.5, (float) SharedCrewRate::current()->hours_per_day);
+        } catch (\Throwable $e) {
+            return 8.0;
+        }
+    }
+
     public static function unitDisplayRate(SharedWork $work): float
     {
         if ($work->flat_rate !== null && (float) $work->flat_rate > 0) {

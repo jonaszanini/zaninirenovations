@@ -457,4 +457,13 @@ class StandardQuotationCalculatorTest extends TestCase
             StandardQuotationCalculator::grandTotalWithCommuteAndDebris($computed, 100.00, 110.00)
         );
     }
+
+    public function test_days_mode_uses_passed_hours_per_day_not_legacy_eight(): void
+    {
+        $calc = new StandardQuotationCalculator();
+        $result = $calc->compute([], 50, 'days', 3, false, 0, false, 0, false, true, 6);
+
+        $this->assertEqualsWithDelta(18.0, $result['labour_hours'], 0.01);
+        $this->assertEqualsWithDelta(900.0, $result['labour_total'], 0.01);
+    }
 }

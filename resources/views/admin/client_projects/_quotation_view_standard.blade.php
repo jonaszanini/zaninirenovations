@@ -61,7 +61,7 @@
             ? (float) ($job['labour_fixed_amount'] ?? 0)
             : ((float) ($job['labour_hourly_rate'] ?? 0) * (
                 (($job['labour_mode'] ?? 'hours') === 'days')
-                    ? ((float) ($job['labour_quantity'] ?? 0) * 8)
+                    ? ((float) ($job['labour_quantity'] ?? 0) * (float) ($sourceModel->labour_hours_per_day ?? 8))
                     : (float) ($job['labour_quantity'] ?? 0)
             ));
       @endphp

@@ -20,6 +20,7 @@ use App\Support\MaterialCatalogPickerOptions;
 use App\Support\PurchaseListPrintMode;
 use App\Support\QuotationAfterSaveRedirect;
 use App\Support\QuotationDraftFlash;
+use App\Support\QuotationSharedLabourRates;
 use App\Support\QuotationSaveIntent;
 use App\Support\QuotationBuildingLabor;
 use App\Support\StandardQuotationValidationMessages;
@@ -580,6 +581,7 @@ class StandardQuotationController extends Controller
             ? $request->boolean('include_labour_hst')
             : true;
         $building = QuotationBuildingLabor::fromRequest($request);
+        $labourHoursPerDay = QuotationSharedLabourRates::resolveHoursPerDay($existing);
 
         $computed = $calculator->computeWorks(
             $worksForCompute,
@@ -589,7 +591,8 @@ class StandardQuotationController extends Controller
             $building['include_building'],
             $building['building_labor_percent'],
             // Remainder-to-labour-jobs is v3-only; saved v2 keeps last-job leftover.
-            $existing ? $existing->usesCurrentPdfFold() : true
+            $existing ? $existing->usesCurrentPdfFold() : true,
+            $labourHoursPerDay
         );
 
         $materialMapper = static function (array $m): array {
@@ -709,6 +712,7 @@ class StandardQuotationController extends Controller
                 'labour_hourly_rate' => $singleJob
                     ? (float) ($firstWork['labour_hourly_rate'] ?? 0)
                     : 0,
+                'labour_hours_per_day' => round($labourHoursPerDay, 2),
                 'labour_use_fixed' => $singleJob
                     ? (bool) ($firstWork['labour_use_fixed'] ?? false)
                     : true,
@@ -813,10 +817,8 @@ class StandardQuotationController extends Controller
             $docType = ClientProjectQuotation::TYPE_QUOTATION;
         }
 
-        $includeLabour = (bool) $standardQuotation->includes_labour
-            || $standardQuotation->chargedLabourPreTax() > 0;
-        $includeMaterial = (bool) $standardQuotation->includes_material
-            || $standardQuotation->chargedMaterialsPreTax() > 0;
+        $includeLabour = (bool) $standardQuotation->includes_labour;
+        $includeMaterial = (bool) $standardQuotation->includes_material;
 
         if (! $row->exists) {
             $row->fill([
@@ -831,6 +833,7 @@ class StandardQuotationController extends Controller
         } else {
             $row->labour = $includeLabour;
             $row->material = $includeMaterial;
+            $row->title = $lineDescription;
 
             if ($row->type !== $docType) {
                 $row->quotation_number = ClientProjectQuotation::swapNumberPrefixForType(
@@ -853,7 +856,7 @@ class StandardQuotationController extends Controller
 
     protected function resolveStandardLinkLineDescription(
         StandardQuotation $standardQuotation,
-        ?string $lineDescription,
+        ?string $lineDescription = null,
         ?ClientProjectQuotation $existing = null
     ): string {
         $lineDescription = trim((string) ($lineDescription ?? ''));
@@ -861,12 +864,25 @@ class StandardQuotationController extends Controller
             return $lineDescription;
         }
 
+        $autoLabel = $standardQuotation->pdfSummaryLineDescription();
         $existingTitle = $existing ? trim((string) ($existing->title ?? '')) : '';
-        if ($existingTitle !== '') {
+        if ($existingTitle !== '' && ! $this->isStandardAutoLinkLineDescription($existingTitle)) {
             return $existingTitle;
         }
 
-        return $standardQuotation->pdfSummaryLineDescription();
+        return $autoLabel;
+    }
+
+    protected function isStandardAutoLinkLineDescription(string $value): bool
+    {
+        $normalized = preg_replace('/[\s\x{00A0}\x{202F}]+/u', ' ', trim($value)) ?? trim($value);
+        $normalized = strtolower($normalized);
+
+        return in_array($normalized, [
+            'labour and material',
+            'labour',
+            'material',
+        ], true);
     }
 
     /**

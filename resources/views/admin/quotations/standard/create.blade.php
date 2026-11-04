@@ -6,6 +6,10 @@
 
   $isEdit = filled($quotation);
   $defaultLabourHourly = QuotationSharedLabourRates::ownerHourlyFormattedForNewQuotation();
+  $labourHoursPerDay = $isEdit
+      ? QuotationSharedLabourRates::resolveHoursPerDay($quotation)
+      : QuotationSharedLabourRates::hoursPerDayForNewQuotation();
+  $labourHoursPerDayLabel = QuotationSharedLabourRates::formatHoursPerDayLabel($labourHoursPerDay);
 
   // Project-context mode: this editor was opened from a project's
   // "Edit quotation" entry point (?return=project). Save stays on this
@@ -204,6 +208,7 @@
         data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
         data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}"
         data-quote-id="{{ $isEdit ? $quotation->id : 'new' }}"
+        data-labour-hours-per-day="{{ number_format($labourHoursPerDay, 2, '.', '') }}"
         data-electrical-desc="{{ \App\Models\StandardQuotation::ELECTRICAL_LINE_DESCRIPTION }}">
     @csrf
     @include('admin.partials.once_submit')
@@ -305,7 +310,7 @@
               <h5 class="sq-intro-option-title">
                 Includes (PDF wording)
                 @include('admin.partials.info_tip', [
-                  'tipText' => 'Controls the summary line on the client PDF (e.g. Labour and material or Labour).',
+                  'tipText' => 'Controls the bold PDF headline (Material / Labour / both). The priced summary line always names what is on the quote (e.g. Labour and material when both are priced), even if a checkbox is off.',
                   'tipLabel' => 'Includes (PDF wording)',
                 ])
               </h5>
@@ -364,6 +369,8 @@
           'workCount' => $workCount,
           'isOpen' => $w === $workCount - 1 || $errors->has('works.'.$w.'.*'),
           'includeContingency' => $w === $workCount - 1,
+          'labourHoursPerDay' => $labourHoursPerDay,
+          'labourHoursPerDayLabel' => $labourHoursPerDayLabel,
         ])
       @endforeach
     </div>
@@ -541,6 +548,8 @@
       ],
       'workCount' => 2,
       'isOpen' => true,
+      'labourHoursPerDay' => $labourHoursPerDay,
+      'labourHoursPerDayLabel' => $labourHoursPerDayLabel,
     ])
   </template>
 @endsection

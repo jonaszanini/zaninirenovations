@@ -154,7 +154,17 @@
   }, true);
 
   var HST = 0.13;
-  var HPD = 8;
+  var hpdRaw = parseFloat(form.getAttribute('data-labour-hours-per-day') || '8', 10);
+  var HPD = isFinite(hpdRaw) && hpdRaw >= 0.5 ? hpdRaw : 8;
+
+  function formatHpdLabel(hpd) {
+    var n = Math.round(hpd * 100) / 100;
+    var s = String(n);
+    if (s.indexOf('.') !== -1) {
+      s = s.replace(/0+$/, '').replace(/\.$/, '');
+    }
+    return s;
+  }
   var ELECTRICAL_DESC = form.getAttribute('data-electrical-desc') || 'Electrical work (Including material)';
   var worksRoot = document.getElementById('sq-works');
   var materialTemplate = document.getElementById('sq-material-template');
@@ -414,7 +424,7 @@
       } else {
         if (qtyLabel) qtyLabel.textContent = 'Estimated hours';
         var daysFromHrs = lq / HPD;
-        if (equivEl) equivEl.textContent = lq > 0 ? ('≈ ' + (Math.round(daysFromHrs * 1000) / 1000) + ' days (8 h/day)') : '';
+        if (equivEl) equivEl.textContent = lq > 0 ? ('≈ ' + (Math.round(daysFromHrs * 1000) / 1000) + ' days (' + formatHpdLabel(HPD) + ' h/day)') : '';
       }
     }
 
