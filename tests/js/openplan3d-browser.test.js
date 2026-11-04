@@ -93,9 +93,11 @@ function startServer() {
               sendJson(res, 500, { ok: false, message: 'save failed' });
               return;
             }
+            const metrics = lastSavedBody.plan ? host.computeMetrics(lastSavedBody.plan) : null;
+            const planArea = metrics && metrics.area_sqft != null ? Number(metrics.area_sqft) : 180.0;
             sendJson(res, 200, {
               ok: true,
-              room: { id: lastSavedBody.id || 10, name: lastSavedBody.name, area_sqft: 180.0 },
+              room: { id: lastSavedBody.id || 10, name: lastSavedBody.name, area_sqft: planArea },
             });
           }, delay);
         });
@@ -596,6 +598,12 @@ async function run() {
     const noScale = await page.$eval('#openplan3d-noscale-warning', (el) => !el.hidden && getComputedStyle(el).display !== 'none');
     assert.strictEqual(noScale, true, 'a room without scale or units must show the no-scale warning');
 
+    await page.evaluate(() => {
+      const host = window.OpenPlan3DHost;
+      const metrics = host.computeMetrics(host.getState().currentPlan);
+      host.getState().currentRoom.area_sqft = metrics.area_sqft;
+    });
+
     saveDelayMs = 400;
     saveCount = 0;
     lastSavedBody = null;
@@ -612,6 +620,12 @@ async function run() {
     modifiedPlan.floor.rooms[0].polygon[0].x = 10;
     await postPlan(modifiedPlan);
     assert.strictEqual(await unsavedVisible(), true, 'modified plan is marked unsaved before save');
+
+    await page.evaluate(() => {
+      const host = window.OpenPlan3DHost;
+      const metrics = host.computeMetrics(host.getState().currentPlan);
+      host.getState().currentRoom.area_sqft = metrics.area_sqft;
+    });
 
     failNextSave = true;
     await page.click('#openplan3d-save-btn');
@@ -764,6 +778,7 @@ async function run() {
     // Reopen to test focus trap
     await page.evaluate(() => window.OpenPlan3DHost.savePlan());
     await page.waitForSelector('#openplan3d-modal:not([hidden])');
+    await new Promise((r) => setTimeout(r, 50));
 
     function modalFocusableInPage() {
       return page.evaluate(() => {
@@ -856,6 +871,13 @@ async function run() {
 
     // (b) In-flight-save + cancel-discard case:
     // When a save request is in-flight, opening and dismissing a non-save modal must NOT clear isSaving or unlock Save.
+    await page.evaluate(() => {
+      const host = window.OpenPlan3DHost;
+      host.getState().currentProject = { id: 1, name: 'Test Suite Project' };
+      host.getState().currentRoom = { id: 10, name: 'Living Room', area_sqft: 150.0 };
+      const metrics = host.computeMetrics(host.getState().currentPlan);
+      if (metrics) host.getState().currentRoom.area_sqft = metrics.area_sqft;
+    });
     saveDelayMs = 1200;
     lastSavedBody = null;
     await page.click('#openplan3d-save-btn');
@@ -895,6 +917,11 @@ async function run() {
     const isSavingAfterComplete = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
     assert.strictEqual(isSavingAfterComplete, false, 'isSaving is unlocked once the save completes');
     // (c) Failed jsonPost during in-flight save keeps Save locked:
+    await page.evaluate(() => {
+      const host = window.OpenPlan3DHost;
+      const metrics = host.computeMetrics(host.getState().currentPlan);
+      if (metrics) host.getState().currentRoom.area_sqft = metrics.area_sqft;
+    });
     saveDelayMs = 1500;
     lastSavedBody = null;
     await page.click('#openplan3d-save-btn');
@@ -919,6 +946,130 @@ async function run() {
 
     await page.waitForFunction(() => !window.OpenPlan3DHost.getState().isSaving, { timeout: 4000 });
     assert.strictEqual(await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving), false, 'isSaving unlocked after save completed');
+
+    // 14. Replace-area dialog does NOT appear when real area is unchanged
+    await postPlan(workPlan);
+    await page.evaluate(() => {
+      const host = window.OpenPlan3DHost;
+      const metrics = host.computeMetrics(host.getState().currentPlan);
+      host.getState().currentRoom.area_sqft = metrics.area_sqft;
+    });
+    lastSavedBody = null;
+    await page.click('#openplan3d-save-btn');
+    await page.waitForFunction(() => !window.OpenPlan3DHost.getState().isSaving, { timeout: 4000 });
+    const modalVisible = await page.$eval('#openplan3d-modal', (el) => !el.hidden && el.style.display !== 'none');
+    assert.strictEqual(modalVisible, false, 'Replace-area dialog does NOT appear when real area is unchanged');
+    assert.ok(lastSavedBody, 'Save proceeds directly when real area is unchanged');
+
+    // 15. D6: Replace stored area modal triggers when incoming area drops < 50% of stored area
+    await postPlan(workPlan);
+    await page.evaluate(() => {
+      const host = window.OpenPlan3DHost;
+      host.getState().currentRoom.area_sqft = 100.0;
+    });
+    // Incoming area 40 sq ft (< 50% of 100) -> must show modal
+    const dropPlan40 = {
+      format: 'openplan3d',
+      unit: 'cm',
+      floor: {
+        walls: [
+          { id: 'w1', start: { x: 0, y: 0 }, end: { x: 192.8, y: 0 } },
+          { id: 'w2', start: { x: 192.8, y: 0 }, end: { x: 192.8, y: 192.8 } },
+          { id: 'w3', start: { x: 192.8, y: 192.8 }, end: { x: 0, y: 192.8 } },
+          { id: 'w4', start: { x: 0, y: 192.8 }, end: { x: 0, y: 0 } },
+        ],
+        rooms: [{ id: 'r1', polygon: [{ x: 0, y: 0 }, { x: 192.8, y: 0 }, { x: 192.8, y: 192.8 }, { x: 0, y: 192.8 }] }],
+      },
+    };
+    await postPlan(dropPlan40);
+    lastSavedBody = null;
+    await page.click('#openplan3d-save-btn');
+    await page.waitForSelector('#openplan3d-modal:not([hidden])');
+    const modalTitle = await page.$eval('#openplan3d-modal-title', (el) => el.textContent.trim());
+    assert.match(modalTitle, /Replace stored area/i, '40% incoming area (< 50% threshold) must trigger replace dialog');
+    await page.click('#openplan3d-modal-cancel');
+    await page.waitForSelector('#openplan3d-modal[hidden]');
+
+    // Incoming area ~68 sq ft (>= 50% of 100) -> must NOT show modal
+    const dropPlan60 = {
+      format: 'openplan3d',
+      unit: 'cm',
+      floor: {
+        walls: [
+          { id: 'w1', start: { x: 0, y: 0 }, end: { x: 274.32, y: 0 } },
+          { id: 'w2', start: { x: 274.32, y: 0 }, end: { x: 274.32, y: 274.32 } },
+          { id: 'w3', start: { x: 274.32, y: 274.32 }, end: { x: 0, y: 274.32 } },
+          { id: 'w4', start: { x: 0, y: 274.32 }, end: { x: 0, y: 0 } },
+        ],
+        rooms: [{ id: 'r1', polygon: [{ x: 0, y: 0 }, { x: 274.32, y: 0 }, { x: 274.32, y: 274.32 }, { x: 0, y: 274.32 }] }],
+      },
+    };
+    await postPlan(dropPlan60);
+    const pre60State = await page.evaluate(() => {
+      const btn = document.getElementById('openplan3d-save-btn');
+      const s = window.OpenPlan3DHost.getState();
+      const m = window.OpenPlan3DHost.computeMetrics(s.currentPlan);
+      return {
+        btnDisabled: btn ? btn.disabled : null,
+        isSaving: s.isSaving,
+        hasRoom: !!s.currentRoom,
+        roomArea: s.currentRoom ? s.currentRoom.area_sqft : null,
+        hasProject: !!s.currentProject,
+        loadAcked: s.loadAcked,
+        metricsArea: m ? m.area_sqft : null,
+        feedback: document.getElementById('openplan3d-feedback') ? document.getElementById('openplan3d-feedback').textContent : null,
+      };
+    });
+    lastSavedBody = null;
+    await page.evaluate(() => window.OpenPlan3DHost.savePlan());
+    await new Promise((r) => setTimeout(r, 200));
+    const afterState = await page.evaluate(() => ({
+      isSaving: window.OpenPlan3DHost.getState().isSaving,
+      feedback: document.getElementById('openplan3d-feedback') ? document.getElementById('openplan3d-feedback').textContent : null,
+      roomName: document.getElementById('openplan3d-room-name') ? document.getElementById('openplan3d-room-name').value : null,
+      modalHidden: document.getElementById('openplan3d-modal') ? document.getElementById('openplan3d-modal').hidden : null,
+      modalTitle: document.getElementById('openplan3d-modal-title') ? document.getElementById('openplan3d-modal-title').textContent : null,
+    }));
+    await page.waitForFunction(() => !window.OpenPlan3DHost.getState().isSaving, { timeout: 4000 });
+    const modalHidden60 = await page.$eval('#openplan3d-modal', (el) => el.hidden || el.style.display === 'none');
+    assert.strictEqual(modalHidden60, true, '60% incoming area (>= 50% threshold) must save directly without modal');
+    assert.ok(lastSavedBody, 'Save completes directly without modal when incoming >= 50% of stored');
+
+    // 16. D1 & D2: Single-tab load and save shows NO conflict banner, and canvas remains non-zero size & interactive
+    await postPlan(workPlan);
+    lastSavedBody = null;
+    await page.click('#openplan3d-save-btn');
+    await page.waitForFunction(() => !window.OpenPlan3DHost.getState().isSaving, { timeout: 4000 });
+    assert.ok(lastSavedBody, 'Save succeeds');
+
+    const iframeHandle = await page.$('#openplan3d-iframe');
+    const iframe = iframeHandle && await iframeHandle.contentFrame();
+    assert.ok(iframe, 'Editor iframe accessible');
+
+    // Assert canvas has non-zero size (D1 regression check: clearSaveConflict must never hide canvas or root containers)
+    const canvasDimensions = await iframe.evaluate(() => {
+      const c = document.querySelector('canvas');
+      if (!c) return null;
+      const rect = c.getBoundingClientRect();
+      const style = window.getComputedStyle(c);
+      return { width: rect.width, height: rect.height, display: style.display, visibility: style.visibility };
+    });
+    if (canvasDimensions) {
+      assert.ok(canvasDimensions.width > 0, 'Canvas client width must be > 0 after save');
+      assert.ok(canvasDimensions.height > 0, 'Canvas client height must be > 0 after save');
+      assert.notStrictEqual(canvasDimensions.display, 'none', 'Canvas must not be display: none');
+    }
+
+    // Assert no conflict banner in single tab (D2 regression check: hosted mode avoids false IndexedDB conflict)
+    const conflictVisible = await iframe.evaluate(() => {
+      const alerts = Array.from(document.querySelectorAll('div[role="alert"], div.bg-red-50, [data-save-conflict-banner]'));
+      return alerts.some((el) => {
+        const text = el.textContent || '';
+        const visible = window.getComputedStyle(el).display !== 'none';
+        return visible && text.includes('Changes are not saved') && text.includes('another tab');
+      });
+    });
+    assert.strictEqual(conflictVisible, false, 'Single tab load and save must not show false conflict banner');
 
     console.log('All openPlan3D Puppeteer browser tests PASSED successfully!');
   } finally {

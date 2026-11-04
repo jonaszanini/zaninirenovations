@@ -404,8 +404,12 @@ async function main() {
     console.log(JSON.stringify({ ok: false, mode, error: String(err && err.message ? err.message : err) }));
     process.exitCode = 1;
   } finally {
-    await browser.close();
-    if (server) server.close();
+    if (browser) await browser.close();
+    if (server) {
+      if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+      server.close();
+    }
+    process.exit(process.exitCode || 0);
   }
 }
 

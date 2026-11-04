@@ -13,12 +13,12 @@ const HTACCESS = path.join(ROOT, 'public/.htaccess');
 const EMBED = path.join(ROOT, 'tests/js/fixtures/openplan3d-editor-embed.html');
 
 function bridgeContentVersion() {
-  const data = fs.readFileSync(BRIDGE);
+  const data = fs.readFileSync(BRIDGE, 'utf8').replace(/\r\n/g, '\n');
   return crypto.createHash('sha256').update(data).digest('hex').slice(0, 16);
 }
 
 function localeShimContentVersion() {
-  const data = fs.readFileSync(LOCALE_SHIM);
+  const data = fs.readFileSync(LOCALE_SHIM, 'utf8').replace(/\r\n/g, '\n');
   return crypto.createHash('sha256').update(data).digest('hex').slice(0, 16);
 }
 

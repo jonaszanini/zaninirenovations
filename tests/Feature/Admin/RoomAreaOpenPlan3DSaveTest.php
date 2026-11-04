@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\Admin\RoomAreaController;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Models\User;
@@ -128,6 +129,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             [
                 'name' => 'Updated to OpenPlan',
                 'plan' => $newPlan,
+                'expected_revision' => (int) ($room->revision ?? 0),
             ]
         );
 
@@ -242,6 +244,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             [
                 'name' => $room->name,
                 'plan' => $this->zeroAreaPlan(),
+                'expected_revision' => (int) ($room->revision ?? 0),
             ]
         );
 
@@ -264,6 +267,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
                 'name' => $room->name,
                 'plan' => $this->zeroAreaPlan(),
                 'confirm_zero_area' => true,
+                'expected_revision' => (int) ($room->revision ?? 0),
             ]
         );
 
@@ -290,6 +294,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
                     ],
                 ],
                 'confirm_zero_area' => true,
+                'expected_revision' => (int) ($room->revision ?? 0),
             ]
         );
 
@@ -319,6 +324,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
                     ],
                 ],
                 'confirm_zero_area' => true,
+                'expected_revision' => (int) ($room->revision ?? 0),
             ]
         );
 
@@ -415,6 +421,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
                 'name' => 'Basement',
                 'plan' => $plan,
                 'wall_height_ft' => 8.0,
+                'expected_revision' => (int) ($room->revision ?? 0),
             ]
         );
 
@@ -444,6 +451,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
                 'name' => 'OpenPlan Room',
                 'plan' => $plan,
                 'wall_height_ft' => 8.0,
+                'expected_revision' => (int) ($room->revision ?? 0),
             ]
         );
 
@@ -489,7 +497,11 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $existingRoom = $this->storeSampleRoom(150.0);
         $updateResponse = $this->actingAs($this->user)->putJson(
             route('admin.utilities.room-area.rooms.update', $existingRoom),
-            ['name' => 'Updated Room', 'plan' => $nonPlan]
+            [
+                'name' => 'Updated Room',
+                'plan' => $nonPlan,
+                'expected_revision' => (int) ($existingRoom->revision ?? 0),
+            ]
         );
         $updateResponse->assertStatus(422)
             ->assertJsonPath('ok', false)
@@ -640,6 +652,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
                 'name' => 'Stored Room',
                 'plan' => $plan,
                 'wall_height_ft' => 8.0,
+                'expected_revision' => (int) ($good->revision ?? 0),
             ]
         );
 
@@ -703,6 +716,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
                 'name' => 'Stored Room',
                 'plan' => $plan,
                 'wall_height_ft' => 8.0,
+                'expected_revision' => (int) ($good->revision ?? 0),
             ]
         );
 
@@ -876,5 +890,251 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             ],
         ];
     }
-}
 
+    public function test_l_shaped_room_with_two_partitions_saves_successfully_with_correct_metrics(): void
+    {
+        $cmPerFt = 30.48;
+        $plan = [
+            'unit' => 'cm',
+            'version' => '1.0',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 20 * $cmPerFt, 'y' => 0], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w2', 'start' => ['x' => 20 * $cmPerFt, 'y' => 0], 'end' => ['x' => 20 * $cmPerFt, 'y' => 10 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w3', 'start' => ['x' => 20 * $cmPerFt, 'y' => 10 * $cmPerFt], 'end' => ['x' => 10 * $cmPerFt, 'y' => 10 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w4', 'start' => ['x' => 10 * $cmPerFt, 'y' => 10 * $cmPerFt], 'end' => ['x' => 10 * $cmPerFt, 'y' => 20 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w5', 'start' => ['x' => 10 * $cmPerFt, 'y' => 20 * $cmPerFt], 'end' => ['x' => 0, 'y' => 20 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w6', 'start' => ['x' => 0, 'y' => 20 * $cmPerFt], 'end' => ['x' => 0, 'y' => 0], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    // Partition 1: T-joined to w1 at (5, 0), extends to (5, 6) (6 ft)
+                    ['id' => 'p1', 'start' => ['x' => 5 * $cmPerFt, 'y' => 0], 'end' => ['x' => 5 * $cmPerFt, 'y' => 6 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    // Partition 2: T-joined to p1 at (5, 3), extends to (11, 3) (6 ft, free-ended)
+                    ['id' => 'p2', 'start' => ['x' => 5 * $cmPerFt, 'y' => 3 * $cmPerFt], 'end' => ['x' => 11 * $cmPerFt, 'y' => 3 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                ],
+                'rooms' => [],
+            ],
+        ];
+
+        // 1. Verify bridge layoutMetrics directly
+        $metrics = $this->bridge->layoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $this->assertFalse(!empty($metrics['geometry_unmeasurable']), 'Should not be marked geometry_unmeasurable');
+        $this->assertEquals(300.0, $metrics['area_sqft'], 'Floor area matches L-shape without partitions (300 sq ft)');
+        $this->assertEquals(80.0, $metrics['perimeter_lf'], 'Perimeter matches outer loop (80 lf)');
+        $this->assertEquals(832.0, $metrics['net_wall_area_sqft'], 'Net wall area includes both faces of partitions (832 sq ft)');
+
+        // 2. Post to store room endpoint and verify save succeeds
+        $response = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            [
+                'name' => 'L Room with Partitions',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $this->assertEquals(300.0, $response->json('room.area_sqft'));
+        $this->assertEquals(832.0, $response->json('room.metrics.net_wall_area_sqft'));
+    }
+
+    public function test_update_room_detects_conflict_when_server_has_newer_revision(): void
+    {
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Initial Room',
+            'vertices' => $this->sampleOpenPlan(10.0, 10.0),
+            'area_sqft' => 100.0,
+            'wall_height_ft' => 8.0,
+        ]);
+
+        $staleRevision = (string) (99999);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Attempted Stale Update',
+                'plan' => $this->sampleOpenPlan(10.0, 10.0),
+                'expected_revision' => $staleRevision,
+            ]
+        );
+
+        $response->assertStatus(409);
+        $response->assertJsonPath('ok', false);
+        $response->assertJsonPath('code', 'conflict');
+    }
+
+    public function test_update_room_succeeds_when_expected_revision_matches(): void
+    {
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Initial Room',
+            'vertices' => $this->sampleOpenPlan(10.0, 10.0),
+            'area_sqft' => 100.0,
+            'wall_height_ft' => 8.0,
+        ]);
+
+        $currentRevision = (int) ($room->revision ?? 0);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Valid Updated Room',
+                'plan' => $this->sampleOpenPlan(10.0, 10.0),
+                'expected_revision' => $currentRevision,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $response->assertJsonPath('room.name', 'Valid Updated Room');
+    }
+    public function test_update_room_detects_conflict_when_expected_revision_is_missing(): void
+    {
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Initial Room',
+            'vertices' => $this->sampleOpenPlan(10.0, 10.0),
+            'area_sqft' => 100.0,
+            'wall_height_ft' => 8.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Missing Revision Update',
+                'plan' => $this->sampleOpenPlan(12.0, 12.0),
+            ]
+        );
+
+        $response->assertStatus(409);
+        $response->assertJsonPath('ok', false);
+        $response->assertJsonPath('code', 'conflict');
+    }
+
+    public function test_update_room_detects_conflict_on_same_second_other_tab_save(): void
+    {
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Initial Room',
+            'vertices' => $this->sampleOpenPlan(10.0, 10.0),
+            'area_sqft' => 100.0,
+            'wall_height_ft' => 8.0,
+        ]);
+
+        $initialRevision = (int) ($room->revision ?? 0);
+        $room->refresh();
+        $initialHash = RoomAreaController::computeBaselineHash($room->vertices);
+
+        // Tab 1 updates room vertices in the same whole second
+        $room->vertices = $this->sampleOpenPlan(12.0, 12.0);
+        $room->save(['timestamps' => false]);
+        $room->refresh();
+
+        // Tab 2 attempts to save with Tab 2's initial revision and baseline hash
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Tab 2 Update',
+                'plan' => $this->sampleOpenPlan(14.0, 14.0),
+                'expected_revision' => $initialRevision,
+                'expected_baseline_hash' => $initialHash,
+            ]
+        );
+
+        $response->assertStatus(409);
+        $response->assertJsonPath('ok', false);
+        $response->assertJsonPath('code', 'conflict');
+    }
+
+    public function test_update_room_detects_conflict_when_baseline_hash_mismatches(): void
+    {
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Initial Room',
+            'vertices' => $this->sampleOpenPlan(10.0, 10.0),
+            'area_sqft' => 100.0,
+            'wall_height_ft' => 8.0,
+        ]);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Mismatch Hash Update',
+                'plan' => $this->sampleOpenPlan(12.0, 12.0),
+                'expected_revision' => (int) ($room->revision ?? 0),
+                'expected_baseline_hash' => 'stale_mismatched_baseline_hash',
+            ]
+        );
+
+        $response->assertStatus(409);
+        $response->assertJsonPath('ok', false);
+        $response->assertJsonPath('code', 'conflict');
+    }
+
+    public function test_update_room_succeeds_when_falling_back_to_valid_baseline_hash_with_missing_revision(): void
+    {
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Initial Room',
+            'vertices' => $this->sampleOpenPlan(10.0, 10.0),
+            'area_sqft' => 100.0,
+            'wall_height_ft' => 8.0,
+        ]);
+        $room->refresh();
+
+        $validHash = RoomAreaController::computeBaselineHash($room->vertices);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Fallback Hash Update',
+                'plan' => $this->sampleOpenPlan(12.0, 12.0),
+                'expected_baseline_hash' => $validHash,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $response->assertJsonPath('room.name', 'Fallback Hash Update');
+    }
+
+    public function test_two_saves_in_same_second_using_same_expected_revision_fails_second_with_409(): void
+    {
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Initial Room',
+            'vertices' => $this->sampleOpenPlan(10.0, 10.0),
+            'area_sqft' => 100.0,
+            'wall_height_ft' => 8.0,
+            'revision' => 0,
+        ]);
+
+        $expectedRevision = (int) ($room->revision ?? 0);
+
+        // Tab 1 saves in this second using expected_revision = 0 -> succeeds
+        $res1 = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Tab 1 Updated Room',
+                'plan' => $this->sampleOpenPlan(12.0, 12.0),
+                'expected_revision' => $expectedRevision,
+            ]
+        );
+        $res1->assertOk();
+        $res1->assertJsonPath('ok', true);
+        $res1->assertJsonPath('room.revision', 1);
+
+        // Tab 2 attempts to save in the same second using the same expected revision = 0 -> gets 409
+        $res2 = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Tab 2 Attempted Room',
+                'plan' => $this->sampleOpenPlan(14.0, 14.0),
+                'expected_revision' => $expectedRevision,
+            ]
+        );
+        $res2->assertStatus(409);
+        $res2->assertJsonPath('ok', false);
+        $res2->assertJsonPath('code', 'conflict');
+    }
+}

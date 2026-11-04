@@ -406,7 +406,60 @@ class RoomAreaController extends Controller
             'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
             'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
             'confirm_zero_area' => ['sometimes', 'boolean'],
+            'expected_revision' => ['nullable'],
+            'expected_baseline_hash' => ['nullable', 'string'],
         ]);
+
+        $plan = $data['plan'] ?? null;
+        $isOpenPlanUpdate = is_array($plan) || $request->has('expected_revision') || $request->has('expected_baseline_hash');
+
+        if ($isOpenPlanUpdate) {
+            $serverRevision = (int) ($room_area_room->revision ?? 0);
+            $serverBaselineHash = self::computeBaselineHash($room_area_room->vertices);
+            $rawServerBaselineHash = sha1(json_encode($room_area_room->vertices ?? []));
+
+            $expRaw = $request->input('expected_revision');
+            $expHash = $request->input('expected_baseline_hash');
+
+            $hasExpRev = $expRaw !== null && $expRaw !== '';
+            $hasExpHash = $expHash !== null && $expHash !== '';
+
+            if (! $hasExpRev && ! $hasExpHash) {
+                return response()->json([
+                    'ok' => false,
+                    'code' => 'conflict',
+                    'message' => 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.',
+                ], 409);
+            }
+
+            if ($hasExpRev) {
+                if (! is_numeric($expRaw)) {
+                    return response()->json([
+                        'ok' => false,
+                        'code' => 'conflict',
+                        'message' => 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.',
+                    ], 409);
+                }
+                $expInt = (int) $expRaw;
+                if ($serverRevision !== $expInt) {
+                    return response()->json([
+                        'ok' => false,
+                        'code' => 'conflict',
+                        'message' => 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.',
+                    ], 409);
+                }
+            }
+
+            if ($hasExpHash) {
+                if ($expHash !== $serverBaselineHash && $expHash !== $rawServerBaselineHash) {
+                    return response()->json([
+                        'ok' => false,
+                        'code' => 'conflict',
+                        'message' => 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.',
+                    ], 409);
+                }
+            }
+        }
 
         $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
         $plan = $data['plan'] ?? null;
@@ -453,6 +506,7 @@ class RoomAreaController extends Controller
                 'name' => $data['name'],
                 'vertices' => $plan,
                 'legacy_canvas_data' => $legacyBackup,
+                'revision' => ((int) ($room_area_room->revision ?? 0)) + 1,
                 'canvas_width' => $data['canvas_width'] ?? null,
                 'canvas_height' => $data['canvas_height'] ?? null,
                 'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
@@ -510,6 +564,7 @@ class RoomAreaController extends Controller
         $room_area_room->update([
             'name' => $data['name'],
             'vertices' => $normalized,
+            'revision' => ((int) ($room_area_room->revision ?? 0)) + 1,
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
             'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
@@ -868,6 +923,33 @@ class RoomAreaController extends Controller
         ];
     }
 
+    public static function computeBaselineHash(mixed $vertices): string
+    {
+        if (! is_array($vertices)) {
+            return sha1(json_encode([]));
+        }
+
+        return sha1(json_encode(self::canonicalizeJsonData($vertices)));
+    }
+
+    private static function canonicalizeJsonData(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        $isAssoc = array_keys($value) !== range(0, count($value) - 1);
+        if ($isAssoc) {
+            ksort($value);
+        }
+
+        foreach ($value as $k => $v) {
+            $value[$k] = self::canonicalizeJsonData($v);
+        }
+
+        return $value;
+    }
+
     private function roomPayload(RoomAreaRoom $room, ?RoomAreaCanvasData $canvasData = null): array
     {
         $canvasData ??= app(RoomAreaCanvasData::class);
@@ -930,6 +1012,10 @@ class RoomAreaController extends Controller
                 ? route('admin.utilities.room-area.rooms.pdf', $room)
                 : null,
             'area_sqft' => (float) $room->area_sqft,
+            'updated_at' => $room->updated_at?->toISOString() ?? (string) $room->updated_at,
+            'revision' => (int) ($room->revision ?? 0),
+            'version' => (int) ($room->updated_at?->timestamp ?? 0),
+            'baseline_hash' => self::computeBaselineHash($room->vertices),
             'photo_count' => $room->relationLoaded('photos')
                 ? $room->photos->count()
                 : (int) ($room->photos_count ?? $room->photos()->count()),

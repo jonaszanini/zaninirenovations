@@ -168,4 +168,31 @@ assert.strictEqual(multiMetrics.cabinet_upper_lf, 2.5, 'Upper cabinet LF is 30 /
 assert.strictEqual(multiMetrics.stairs_count, 1, 'Stairs count is 1');
 assert.strictEqual(multiMetrics.stairs_treads, 12, 'Stairs treads is 12');
 
+// Test 8: L-shaped room plus 2 interior walls (one T-joined, one free-ended)
+const cmPerFt = 30.48;
+const lShapeWithPartitionsPlan = {
+  unit: 'cm',
+  floor: {
+    walls: [
+      { id: 'w1', start: { x: 0, y: 0 }, end: { x: 20 * cmPerFt, y: 0 }, thickness: 10, height: 8 * cmPerFt },
+      { id: 'w2', start: { x: 20 * cmPerFt, y: 0 }, end: { x: 20 * cmPerFt, y: 10 * cmPerFt }, thickness: 10, height: 8 * cmPerFt },
+      { id: 'w3', start: { x: 20 * cmPerFt, y: 10 * cmPerFt }, end: { x: 10 * cmPerFt, y: 10 * cmPerFt }, thickness: 10, height: 8 * cmPerFt },
+      { id: 'w4', start: { x: 10 * cmPerFt, y: 10 * cmPerFt }, end: { x: 10 * cmPerFt, y: 20 * cmPerFt }, thickness: 10, height: 8 * cmPerFt },
+      { id: 'w5', start: { x: 10 * cmPerFt, y: 20 * cmPerFt }, end: { x: 0, y: 20 * cmPerFt }, thickness: 10, height: 8 * cmPerFt },
+      { id: 'w6', start: { x: 0, y: 20 * cmPerFt }, end: { x: 0, y: 0 }, thickness: 10, height: 8 * cmPerFt },
+      // Partition 1: T-joined to w1 at (5, 0), extends up to (5, 6) (6 ft)
+      { id: 'p1', start: { x: 5 * cmPerFt, y: 0 }, end: { x: 5 * cmPerFt, y: 6 * cmPerFt }, thickness: 10, height: 8 * cmPerFt },
+      // Partition 2: T-joined to p1 at (5, 3), extends right to (11, 3) (6 ft, free-ended)
+      { id: 'p2', start: { x: 5 * cmPerFt, y: 3 * cmPerFt }, end: { x: 11 * cmPerFt, y: 3 * cmPerFt }, thickness: 10, height: 8 * cmPerFt },
+    ],
+    rooms: []
+  }
+};
+
+const lPartMetrics = bridge.layoutMetrics(lShapeWithPartitionsPlan, null, { wall_height_ft: 8.0 });
+assert.ok(!lPartMetrics.geometry_unmeasurable, 'L-shape with partitions is not marked geometry_unmeasurable');
+assert.strictEqual(lPartMetrics.area_sqft, 300.0, 'Floor area matches L-shape without partitions (300 sq ft)');
+assert.strictEqual(lPartMetrics.perimeter_lf, 80.0, 'Perimeter matches outer loop (80 lf)');
+assert.strictEqual(lPartMetrics.net_wall_area_sqft, 832.0, 'Net wall area includes both faces of partitions (832 sq ft)');
+assert.strictEqual(lPartMetrics.walls.length, 8, '8 walls total returned');
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

@@ -855,6 +855,7 @@
     var now = options.now || function () { return Date.now(); };
     var schedule = options.schedule || function (fn, ms) { return setTimeout(fn, ms); };
 
+    var storeModuleRef = null;
     var queuedPlan = null;
     var editorMounted = false;
     var storeReady = false;
@@ -950,6 +951,7 @@
     }
 
     function attachStore(storeModule) {
+      storeModuleRef = storeModule;
       var inspected = inspectStoreModule(storeModule);
       if (!inspected.ok) {
         storeReady = false;
@@ -977,6 +979,51 @@
       return inspected;
     }
 
+    function clearSaveConflict() {
+      if (storeModuleRef) {
+        if (typeof storeModuleRef.cS === 'function') {
+          try { storeModuleRef.cS(); } catch (e) {}
+        }
+        if (storeModuleRef.G && typeof storeModuleRef.G.set === 'function') {
+          try { storeModuleRef.G.set(null); } catch (e) {}
+        }
+        if (storeModuleRef.b1 && typeof storeModuleRef.b1.set === 'function') {
+          try { storeModuleRef.b1.set(false); } catch (e) {}
+        }
+        if (storeModuleRef.B && typeof storeModuleRef.B.set === 'function') {
+          try { storeModuleRef.B.set('saved'); } catch (e) {}
+        }
+      }
+      if (typeof document !== 'undefined') {
+        try {
+          var banners = document.querySelectorAll('div[role="alert"], [data-save-conflict-banner]');
+          for (var b = 0; b < banners.length; b++) {
+            var el = banners[b];
+            if (el.querySelector('canvas') || el.id === 'app' || el === document.body || el === document.documentElement) continue;
+            var text = el.textContent || '';
+            if (text.includes('Changes are not saved') && text.includes('another tab')) {
+              el.style.display = 'none';
+            }
+          }
+        } catch (e2) {}
+      }
+    }
+
+    function setSaveConflict(message) {
+      var msg = message || 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.';
+      if (storeModuleRef) {
+        if (storeModuleRef.G && typeof storeModuleRef.G.set === 'function') {
+          try { storeModuleRef.G.set(msg); } catch (e) {}
+        }
+        if (storeModuleRef.b1 && typeof storeModuleRef.b1.set === 'function') {
+          try { storeModuleRef.b1.set(true); } catch (e) {}
+        }
+        if (storeModuleRef.B && typeof storeModuleRef.B.set === 'function') {
+          try { storeModuleRef.B.set('unsaved'); } catch (e) {}
+        }
+      }
+    }
+
     function isTrustedParentMessage(event) {
       if (typeof window === 'undefined' || !window.parent) return true;
       if (!event) return false;
@@ -996,6 +1043,14 @@
       }
       if (data.type === 'OPENPLAN3D_SET_THEME') {
         applyEditorTheme(data.theme === 'dark' ? 'dark' : 'light');
+        return true;
+      }
+      if (data.type === 'OPENPLAN3D_SAVE_ACK') {
+        clearSaveConflict();
+        return true;
+      }
+      if (data.type === 'OPENPLAN3D_SAVE_CONFLICT') {
+        setSaveConflict(data.message);
         return true;
       }
       if (data.type === 'OPENPLAN3D_REQUEST_PLAN') {
@@ -1025,6 +1080,8 @@
     return {
       queueLoad: queueLoad,
       attachStore: attachStore,
+      clearSaveConflict: clearSaveConflict,
+      setSaveConflict: setSaveConflict,
       handleParentMessage: handleParentMessage,
       onStoreChange: onStoreChange,
       onEditorMounted: onEditorMounted,
@@ -1075,6 +1132,11 @@
     syncHostedThemeFromParent: syncHostedThemeFromParent,
     keepHostedClass: keepHostedClass,
     startHidingNativeSaveUi: startHidingNativeSaveUi,
+    clearSaveConflict: function () {
+      if (typeof window !== 'undefined' && window.__openPlan3DSession && typeof window.__openPlan3DSession.clearSaveConflict === 'function') {
+        window.__openPlan3DSession.clearSaveConflict();
+      }
+    },
     createSession: createSession,
     showVisibleError: defaultShowError
   };
