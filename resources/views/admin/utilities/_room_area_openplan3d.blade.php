@@ -77,7 +77,7 @@
       </button>
 
       <button type="button" class="admin-btn admin-btn--ghost admin-btn--danger openplan3d-tool-btn" id="openplan3d-delete-room-btn" title="Delete selected room">
-        <i class="fa fa-trash-o" aria-hidden="true"></i>
+        <i class="fa fa-minus-circle" aria-hidden="true"></i>
         <span class="openplan3d-btn-label">Delete Room</span>
       </button>
 
@@ -221,6 +221,16 @@
       <span class="openplan3d-metric-val" id="metric-bulkhead-drywall">0.00</span>
       <span class="openplan3d-metric-unit">sq ft</span>
     </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label">Bulkhead framing</span>
+      <span class="openplan3d-metric-val" id="metric-bulkhead-framing">0.00</span>
+      <span class="openplan3d-metric-unit">lf</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label">Bulkhead bead</span>
+      <span class="openplan3d-metric-val" id="metric-bulkhead-bead">0.00</span>
+      <span class="openplan3d-metric-unit">lf</span>
+    </div>
   </div>
 
   <aside class="openplan3d-zones-panel" id="openplan3d-zones-panel" aria-label="Area zones">
@@ -229,7 +239,7 @@
         Area zones
         @include('admin.partials.info_tip', [
           'tipLabel' => 'Area zones',
-          'tipText' => 'Rectangles that add or subtract floor area (closets, coves, open niches). Draw zones in the editor; excluded zones reduce floor and ceiling takeoffs.',
+          'tipText' => 'Rectangles drawn on the plan. Measure-only zones are labeled only; turn on Exclude to subtract floor and ceiling area (clipped to the room).',
         ])
       </span>
     </div>
@@ -599,6 +609,19 @@
   color: #b91c1c;
 }
 
+.openplan3d-zones-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.openplan3d-zones-action {
+  min-height: 44px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.72rem;
+}
+
 .openplan3d-zones-empty {
   font-size: 0.8rem;
   color: var(--admin-muted, #64748b);
@@ -852,6 +875,27 @@
 }
 
 @media (max-width: 390px) {
+  .util-ra-openplan3d-header__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 100%;
+    max-width: 100%;
+    gap: 0.35rem;
+  }
+
+  .openplan3d-save-btn {
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  #openplan3d-delete-room-btn .fa-minus-circle {
+    color: #dc2626;
+  }
+
+  #openplan3d-delete-project-btn .fa-trash {
+    color: #991b1b;
+  }
+
   .openplan3d-control-label {
     display: none;
   }

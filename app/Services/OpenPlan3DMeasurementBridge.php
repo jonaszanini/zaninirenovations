@@ -486,6 +486,10 @@ class OpenPlan3DMeasurementBridge
             'flooring_with_waste_sqft' => $flooringWithWasteSqFt,
             'casing_lf' => $casingLf,
             'boundary_wall_ids' => $boundaryWallIds,
+            'room_polygon_cm' => array_map(
+                fn ($pt) => ['x' => (float) ($pt['x'] ?? 0), 'y' => (float) ($pt['y'] ?? 0)],
+                $polygonVertices
+            ),
         ];
 
         return $this->extensions->applyToMetrics($metrics, $plan, $finish, $cmPerUnit);
@@ -1237,19 +1241,7 @@ class OpenPlan3DMeasurementBridge
                     $r['boundary_wall_ids'] = $loop['boundary_wall_ids'];
                     $r['partition_walls'] = $loop['partition_walls'];
                     $r['partition_wall_ids'] = $loop['partition_wall_ids'];
-                    $shouldReplacePolygon = $isSingleRoom || count($loop['partition_walls']) > 0;
-                    if (! $shouldReplacePolygon) {
-                        $storedFt = [];
-                        foreach ($r['polygon'] as $pt) {
-                            $storedFt[] = [
-                                'x' => ((float) ($pt['x'] ?? 0) * $cmPerUnit) / self::CM_PER_FOOT,
-                                'y' => ((float) ($pt['y'] ?? 0) * $cmPerUnit) / self::CM_PER_FOOT,
-                            ];
-                        }
-                        $storedValidation = $this->polygonArea->validateRoom($storedFt, 1.0);
-                        $shouldReplacePolygon = ! $storedValidation['valid'];
-                    }
-                    if ($shouldReplacePolygon && count($loop['outer_polygon']) >= 3) {
+                    if (count($loop['partition_walls']) > 0 && count($loop['outer_polygon']) >= 3) {
                         $r['polygon'] = $loop['outer_polygon'];
                     }
                     $rooms[] = $r;

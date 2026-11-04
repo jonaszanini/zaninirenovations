@@ -215,6 +215,25 @@
     return null;
   }
 
+  /** Vendor viewport stores: b2 = zoom, bc = camX, bd = camY (see tests/js/openplan3d-inch-drag-helper.js). */
+  function readStoreValue(store) {
+    if (!store || typeof store.subscribe !== 'function') return null;
+    var value = null;
+    var unsub = store.subscribe(function (v) { value = v; });
+    if (typeof unsub === 'function') unsub();
+    return value;
+  }
+
+  function readOpenPlan3DViewState(storeModule) {
+    if (!storeModule || typeof storeModule !== 'object') return null;
+    var zoom = readStoreValue(storeModule.b2);
+    var camX = readStoreValue(storeModule.bc);
+    var camY = readStoreValue(storeModule.bd);
+    if (zoom == null || camX == null || camY == null) return null;
+    if (!isFinite(Number(zoom)) || !isFinite(Number(camX)) || !isFinite(Number(camY))) return null;
+    return { zoom: Number(zoom), camX: Number(camX), camY: Number(camY) };
+  }
+
   var WALL_JOIN_TOLERANCE_CM = 5;
   var HOSTED_WALL_MEASURE_MODE = 'edge';
 
@@ -971,8 +990,17 @@
         },
         subscribe: function (callback) {
           return inspected.store.subscribe(callback);
+        },
+        readViewState: function () {
+          return readOpenPlan3DViewState(storeModule);
         }
       });
+      if (typeof window !== 'undefined') {
+        window.__openPlan3DStoreModule = storeModule;
+        try {
+          window.dispatchEvent(new CustomEvent('openplan3d-store-ready'));
+        } catch (e) {}
+      }
       storeReady = true;
       postToParent({ type: 'OPENPLAN3D_READY' });
       tryApply();

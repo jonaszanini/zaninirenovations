@@ -353,6 +353,8 @@
     var metricInsulation = doc.getElementById('metric-finish-insulation');
     var metricStuds = doc.getElementById('metric-finish-studs');
     var metricBulkheadDrywall = doc.getElementById('metric-bulkhead-drywall');
+    var metricBulkheadFraming = doc.getElementById('metric-bulkhead-framing');
+    var metricBulkheadBead = doc.getElementById('metric-bulkhead-bead');
     var deleteRoomBtn = doc.getElementById('openplan3d-delete-room-btn');
     var deleteProjectBtn = doc.getElementById('openplan3d-delete-project-btn');
     var zonesPanel = doc.getElementById('openplan3d-zones-panel');
@@ -609,12 +611,12 @@
       });
     }
 
-    function askConfirm(message, title) {
+    function askConfirm(message, title, confirmLabel) {
       return showModal({
         mode: 'confirm',
         title: title || 'Unsaved changes',
         body: message,
-        confirmLabel: 'Discard'
+        confirmLabel: confirmLabel || 'Discard'
       }).then(function (result) { return result === true; });
     }
 
@@ -678,15 +680,17 @@
     function mergePlanZanini(previousPlan, incomingPlan) {
       if (!incomingPlan || typeof incomingPlan !== 'object') return incomingPlan;
       var merged = clonePlan(incomingPlan);
-      if (!previousPlan || !previousPlan.zanini) return merged;
-      var incomingZ = merged.zanini;
-      if (incomingZ && (
-        (Array.isArray(incomingZ.zones) && incomingZ.zones.length) ||
-        (Array.isArray(incomingZ.bulkheads) && incomingZ.bulkheads.length) ||
-        (incomingZ.wallFinishes && typeof incomingZ.wallFinishes === 'object' && Object.keys(incomingZ.wallFinishes).length)
-      )) {
+      if (Object.prototype.hasOwnProperty.call(incomingPlan, 'zanini')
+        && incomingPlan.zanini
+        && typeof incomingPlan.zanini === 'object') {
+        try {
+          merged.zanini = JSON.parse(JSON.stringify(incomingPlan.zanini));
+        } catch (e) {
+          merged.zanini = incomingPlan.zanini;
+        }
         return merged;
       }
+      if (!previousPlan || !previousPlan.zanini) return merged;
       merged.zanini = merged.zanini || {};
       try {
         merged.zanini = JSON.parse(JSON.stringify(previousPlan.zanini));
@@ -703,16 +707,36 @@
       el.textContent = n.toFixed(digits != null ? digits : 2);
     }
 
+    function pushPlanToEditor(plan) {
+      if (!plan) return;
+      requestEditorLoad(plan);
+    }
+
+    function mutateZanini(mutator) {
+      if (!currentPlan) return;
+      currentPlan = clonePlan(currentPlan);
+      if (!currentPlan.zanini || typeof currentPlan.zanini !== 'object') {
+        currentPlan.zanini = { version: 1, zones: [], bulkheads: [], wallFinishes: {} };
+      }
+      mutator(currentPlan.zanini);
+      setDirty(!plansMatch(currentPlan, loadedPlanBaseline));
+      updateMetrics(currentPlan);
+      renderZonesPanel(currentPlan);
+      pushPlanToEditor(currentPlan);
+    }
+
     function renderZonesPanel(plan) {
       if (!zonesListEl) return;
       zonesListEl.innerHTML = '';
       var zanini = plan && plan.zanini;
-      var zones = zanini && Array.isArray(zanini.zones) ? zanini.zones : [];
+      var zones = zanini && Array.isArray(zanini.zones) ? zanini.zones.filter(function (z) {
+        return z && !z.mergedInto;
+      }) : [];
       if (zonesPanel) zonesPanel.hidden = false;
       if (zones.length === 0) {
         var empty = doc.createElement('li');
         empty.className = 'openplan3d-zones-empty';
-        empty.textContent = 'No area zones yet. Use Area Zone in the editor toolbar.';
+        empty.textContent = 'No area zones yet. Use Zone in the editor toolbar.';
         zonesListEl.appendChild(empty);
         return;
       }
@@ -725,9 +749,56 @@
         name.textContent = zone.name || zone.id || 'Zone';
         var tag = doc.createElement('span');
         tag.className = 'openplan3d-zones-tag' + (zone.exclude ? ' openplan3d-zones-tag--exclude' : '');
-        tag.textContent = zone.exclude ? 'Exclude' : 'Include';
+        tag.textContent = zone.exclude ? 'Exclude' : 'Measure only';
+        var actions = doc.createElement('div');
+        actions.className = 'openplan3d-zones-actions';
+        function mkBtn(label, title, handler) {
+          var btn = doc.createElement('button');
+          btn.type = 'button';
+          btn.className = 'admin-btn admin-btn--ghost admin-btn--sm openplan3d-zones-action';
+          btn.textContent = label;
+          btn.title = title;
+          btn.addEventListener('click', handler);
+          return btn;
+        }
+        actions.appendChild(mkBtn('Rename', 'Rename zone', function () {
+          askPrompt('Rename zone', zone.name || '').then(function (next) {
+            if (!next) return;
+            mutateZanini(function (z) {
+              for (var i = 0; i < (z.zones || []).length; i++) {
+                if (z.zones[i].id === zone.id) z.zones[i].name = next;
+              }
+            });
+          });
+        }));
+        actions.appendChild(mkBtn(zone.exclude ? 'Measure' : 'Exclude', 'Toggle exclude from floor area', function () {
+          mutateZanini(function (z) {
+            for (var i = 0; i < (z.zones || []).length; i++) {
+              if (z.zones[i].id === zone.id) z.zones[i].exclude = !z.zones[i].exclude;
+            }
+          });
+        }));
+        actions.appendChild(mkBtn('Merge', 'Merge into another zone', function () {
+          askPrompt('Merge into zone id', '').then(function (targetId) {
+            if (!targetId || targetId === zone.id) return;
+            mutateZanini(function (z) {
+              for (var i = 0; i < (z.zones || []).length; i++) {
+                if (z.zones[i].id === zone.id) z.zones[i].mergedInto = targetId;
+              }
+            });
+          });
+        }));
+        actions.appendChild(mkBtn('Delete', 'Remove zone', function () {
+          askConfirm('Delete this area zone?', 'Delete zone', 'Delete').then(function (ok) {
+            if (!ok) return;
+            mutateZanini(function (z) {
+              z.zones = (z.zones || []).filter(function (row) { return row.id !== zone.id; });
+            });
+          });
+        }));
         li.appendChild(name);
         li.appendChild(tag);
+        li.appendChild(actions);
         zonesListEl.appendChild(li);
       });
     }
@@ -773,7 +844,7 @@
         showFeedback('Delete room is not configured.', true);
         return;
       }
-      askConfirm('Delete this room permanently? This cannot be undone.', 'Delete room').then(function (ok) {
+      askConfirm('Delete this room permanently? This cannot be undone.', 'Delete room', 'Delete').then(function (ok) {
         if (!ok) return;
         var url = roomDestroyTemplate.replace('__ID__', currentRoom.id);
         return jsonPost(url, 'DELETE', { _token: csrfToken }).then(function (result) {
@@ -803,7 +874,7 @@
         showFeedback('Delete project is not configured.', true);
         return;
       }
-      askConfirm('Delete this entire project and all of its rooms? This cannot be undone.', 'Delete project').then(function (ok) {
+      askConfirm('Delete this entire project and all of its rooms? This cannot be undone.', 'Delete project', 'Delete').then(function (ok) {
         if (!ok) return;
         var url = projectDestroyTemplate.replace('__ID__', currentProject.id);
         return jsonPost(url, 'DELETE', { _token: csrfToken }).then(function (result) {
@@ -849,7 +920,8 @@
           metricPerimeter.textContent = (stored.perimeter_lf != null ? stored.perimeter_lf : 0).toFixed(2);
         }
         if (metricBaseboard) {
-          metricBaseboard.textContent = (stored.baseboard_lf != null ? stored.baseboard_lf : 0).toFixed(2);
+          var bb = stored.finish_baseboard_lf != null ? stored.finish_baseboard_lf : stored.baseboard_lf;
+          metricBaseboard.textContent = (bb != null ? bb : 0).toFixed(2);
         }
         if (metricWallArea) {
           metricWallArea.textContent = (stored.net_wall_area_sqft || stored.wall_area_sqft || 0).toFixed(2);
@@ -867,6 +939,8 @@
         setMetricEl(metricInsulation, stored.finish_insulation_sqft, 2);
         setMetricEl(metricStuds, stored.finish_stud_lf, 2);
         setMetricEl(metricBulkheadDrywall, stored.bulkhead_drywall_sqft, 2);
+        setMetricEl(metricBulkheadFraming, stored.bulkhead_framing_lf, 2);
+        setMetricEl(metricBulkheadBead, stored.bulkhead_corner_bead_lf, 2);
         renderZonesPanel(currentPlan);
         updateGeometryWarning();
         return;
@@ -883,6 +957,8 @@
         setMetricEl(metricInsulation, 0, 2);
         setMetricEl(metricStuds, 0, 2);
         setMetricEl(metricBulkheadDrywall, 0, 2);
+        setMetricEl(metricBulkheadFraming, 0, 2);
+        setMetricEl(metricBulkheadBead, 0, 2);
         renderZonesPanel(null);
         updateGeometryWarning();
         return;
@@ -895,7 +971,8 @@
           metricPerimeter.textContent = (metrics.perimeter_lf != null ? metrics.perimeter_lf : (metrics.perimeter_ft || 0)).toFixed(2);
         }
         if (metricBaseboard) {
-          metricBaseboard.textContent = (metrics.baseboard_lf != null ? metrics.baseboard_lf : (metrics.baseboard_ft || 0)).toFixed(2);
+          var liveBb = metrics.finish_baseboard_lf != null ? metrics.finish_baseboard_lf : metrics.baseboard_lf;
+          metricBaseboard.textContent = (liveBb != null ? liveBb : (metrics.baseboard_ft || 0)).toFixed(2);
         }
         if (metricWallArea) {
           metricWallArea.textContent = (metrics.net_wall_area_sqft || metrics.net_wall_sqft || metrics.wall_area_sqft || 0).toFixed(2);
@@ -913,6 +990,8 @@
         setMetricEl(metricInsulation, metrics.finish_insulation_sqft, 2);
         setMetricEl(metricStuds, metrics.finish_stud_lf, 2);
         setMetricEl(metricBulkheadDrywall, metrics.bulkhead_drywall_sqft, 2);
+        setMetricEl(metricBulkheadFraming, metrics.bulkhead_framing_lf, 2);
+        setMetricEl(metricBulkheadBead, metrics.bulkhead_corner_bead_lf, 2);
       } catch (err) {
         console.warn('[openPlan3D] Metrics computation failed:', err);
       }
@@ -1635,7 +1714,7 @@
     if (deleteRoomBtn) {
       deleteRoomBtn.addEventListener('click', function () {
         if (isDirty) {
-          askConfirm('You have unsaved changes. Delete this room anyway?').then(function (ok) {
+          askConfirm('You have unsaved changes. Delete this room anyway?', 'Delete room', 'Delete').then(function (ok) {
             if (ok) deleteCurrentRoom();
           });
           return;
@@ -1647,7 +1726,7 @@
     if (deleteProjectBtn) {
       deleteProjectBtn.addEventListener('click', function () {
         if (isDirty) {
-          askConfirm('You have unsaved changes. Delete this project anyway?').then(function (ok) {
+          askConfirm('You have unsaved changes. Delete this project anyway?', 'Delete project', 'Delete').then(function (ok) {
             if (ok) deleteCurrentProject();
           });
           return;

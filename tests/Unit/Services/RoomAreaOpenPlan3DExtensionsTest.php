@@ -97,9 +97,80 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
 
         $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
 
-        $this->assertSame(22.0, $out['bulkhead_framing_lf']);
-        $this->assertSame(54.0, $out['bulkhead_drywall_sqft']);
-        $this->assertSame(8.0, $out['bulkhead_corner_bead_lf']);
+        $this->assertSame(27.0, $out['bulkhead_framing_lf']);
+        $this->assertSame(30.0, $out['bulkhead_drywall_sqft']);
+        $this->assertSame(10.0, $out['bulkhead_corner_bead_lf']);
+    }
+
+    public function test_bulkhead_corner_bead_and_drywall_for_10_by_2_drop_1_against_wall(): void
+    {
+        $takeoff = (new \ReflectionClass($this->extensions))
+            ->getMethod('bulkheadTakeoff');
+        $takeoff->setAccessible(true);
+        /** @var array{framing_lf: float, drywall_sqft: float, corner_bead_lf: float} $out */
+        $out = $takeoff->invoke($this->extensions, 10.0, 2.0, 1.0, true);
+        $this->assertSame(30.0, $out['drywall_sqft']);
+        $this->assertSame(10.0, $out['corner_bead_lf']);
+    }
+
+    public function test_measure_only_zone_does_not_change_floor_area(): void
+    {
+        $metrics = [
+            'area_sqft' => 100.0,
+            'inside_area_sqft' => 100.0,
+            'ceiling_area_sqft' => 100.0,
+            'room_polygon_cm' => [
+                ['x' => 0, 'y' => 0],
+                ['x' => 300, 'y' => 0],
+                ['x' => 300, 'y' => 300],
+                ['x' => 0, 'y' => 300],
+            ],
+            'walls' => [],
+            'casing_lf' => 0.0,
+            'boundary_wall_ids' => [],
+        ];
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'zones' => [
+                    ['id' => 'z1', 'exclude' => false, 'x1' => 0, 'y1' => 0, 'x2' => 100, 'y2' => 100],
+                ],
+            ],
+        ];
+
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
+
+        $this->assertSame(100.0, $out['area_sqft']);
+        $this->assertSame(0.0, $out['excluded_area_sqft']);
+    }
+
+    public function test_explicit_partition_baseboard_counts_two_sides(): void
+    {
+        $metrics = [
+            'area_sqft' => 200.0,
+            'inside_area_sqft' => 200.0,
+            'ceiling_area_sqft' => 200.0,
+            'casing_lf' => 0.0,
+            'boundary_wall_ids' => ['w1'],
+            'walls' => [
+                ['id' => 'w1', 'length_lf' => 10.0, 'net_area_sqft' => 80.0],
+                ['id' => 'w3', 'length_lf' => 8.0, 'net_area_sqft' => 64.0],
+            ],
+        ];
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'wallFinishes' => [
+                    'w3' => ['baseboard' => true],
+                ],
+            ],
+        ];
+
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
+
+        $this->assertSame(26.0, $out['finish_baseboard_lf']);
     }
 
     public function test_wall_finish_totals_use_boundary_and_partition_defaults(): void

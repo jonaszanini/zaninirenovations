@@ -139,6 +139,7 @@
     for (var i = 0; i < zones.length; i++) {
       var zone = zones[i];
       if (!zone || typeof zone !== 'object') continue;
+      if (zone.mergedInto) continue;
       var isExclude = !!zone.exclude;
       if (isExclude !== exclude) continue;
       var rect = normalizeLegacyRect(zone);
@@ -189,18 +190,82 @@
     return roundTo(area * (1.0 + normalizeWastePercent(waste) / 100.0), 2);
   }
 
-  function flagEnabled(flags, key, defaultVal) {
-    if (!flags || !Object.prototype.hasOwnProperty.call(flags, key)) return defaultVal;
-    return !!flags[key];
+  function pointInPolygon(point, polygon) {
+    var inside = false;
+    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      var xi = polygon[i].x;
+      var yi = polygon[i].y;
+      var xj = polygon[j].x;
+      var yj = polygon[j].y;
+      var intersect = ((yi > point.y) !== (yj > point.y))
+        && (point.x < ((xj - xi) * (point.y - yi)) / ((yj - yi) || 1e-9) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function rectInsidePolygonAreaSqFt(rect, polygonCm, cmPerUnit) {
+    cmPerUnit = cmPerUnit > 0 ? cmPerUnit : 1.0;
+    var cmPerFoot = CM_PER_FOOT * cmPerUnit;
+    if (!polygonCm || polygonCm.length < 3) {
+      return rectangleUnionAreaSqFt([rect], cmPerUnit);
+    }
+    var x0 = rect.x0;
+    var y0 = rect.y0;
+    var x1 = rect.x1;
+    var y1 = rect.y1;
+    if (x1 <= x0 || y1 <= y0) return 0;
+    var step = 1.0;
+    var inside = 0;
+    for (var x = x0 + step / 2; x < x1; x += step) {
+      for (var y = y0 + step / 2; y < y1; y += step) {
+        if (pointInPolygon({ x: x, y: y }, polygonCm)) inside++;
+      }
+    }
+    var cellSqFt = (step / cmPerFoot) * (step / cmPerFoot);
+    return roundTo(Math.max(0, inside * cellSqFt), 2);
+  }
+
+  function bulkheadTakeoff(longFt, shortFt, dropFt, againstWall) {
+    longFt = Math.max(0, longFt);
+    shortFt = Math.max(0, shortFt);
+    dropFt = Math.max(0, dropFt);
+    var drywallSqFt = (longFt * shortFt) + (longFt * dropFt);
+    if (!againstWall) {
+      drywallSqFt += (longFt * dropFt) + (2 * shortFt * dropFt);
+    }
+    var cornerBeadLf = againstWall ? longFt : (2 * longFt + 2 * shortFt);
+    var spacingFt = 16 / 12;
+    var crossCount = longFt > 0 ? Math.max(0, Math.ceil(longFt / spacingFt) - 1) : 0;
+    var framingLf = (2 * longFt) + (crossCount * shortFt);
+    return {
+      framing_lf: roundTo(framingLf, 2),
+      drywall_sqft: roundTo(Math.max(0, drywallSqFt), 2),
+      corner_bead_lf: roundTo(Math.max(0, cornerBeadLf), 2)
+    };
   }
 
   function applyExcludedZones(metrics, zanini, cmPerUnit, finish) {
     finish = finish || {};
+    var roomPolyCm = metrics.room_polygon_cm || [];
     var excludeRects = (zanini.excluded_area_zones || []).concat(zonesToLegacyRects(zanini.zones || [], true));
-    var includeRects = zonesToLegacyRects(zanini.zones || [], false);
-    var excludedSqFt = rectsUnionAreaSqFt(excludeRects, cmPerUnit);
-    var includedSqFt = rectsUnionAreaSqFt(includeRects, cmPerUnit);
-    var area = roundTo(Math.max(0, Number(metrics.area_sqft || 0) - excludedSqFt + includedSqFt), 2);
+    var normalized = [];
+    for (var i = 0; i < excludeRects.length; i++) {
+      var n = normalizeLegacyRect(excludeRects[i]);
+      if (n) normalized.push(n);
+    }
+    var excludedSqFt = 0;
+    if (normalized.length) {
+      if (roomPolyCm.length >= 3) {
+        for (var r = 0; r < normalized.length; r++) {
+          excludedSqFt += rectInsidePolygonAreaSqFt(normalized[r], roomPolyCm, cmPerUnit);
+        }
+      } else {
+        excludedSqFt = rectangleUnionAreaSqFt(normalized, cmPerUnit);
+      }
+    }
+    excludedSqFt = roundTo(Math.max(0, excludedSqFt), 2);
+    var area = roundTo(Math.max(0, Number(metrics.area_sqft || 0) - excludedSqFt), 2);
     metrics.excluded_area_sqft = excludedSqFt;
     metrics.area_sqft = area;
     metrics.inside_area_sqft = area;
@@ -226,10 +291,11 @@
       var dropFt = Math.max(0, Number(bulkhead.drop_height_ft != null ? bulkhead.drop_height_ft : 1.0));
       var longFt = Math.max(lengthFt, widthFt);
       var shortFt = Math.min(lengthFt, widthFt);
-      var perimeterLf = roundTo(2.0 * (lengthFt + widthFt), 2);
-      framingLf += perimeterLf;
-      drywallSqFt += roundTo(2.0 * (longFt * dropFt + shortFt * dropFt) + (longFt * shortFt), 2);
-      cornerBeadLf += roundTo(4.0 * dropFt, 2);
+      var againstWall = !Object.prototype.hasOwnProperty.call(bulkhead, 'against_wall') || !!bulkhead.against_wall;
+      var takeoff = bulkheadTakeoff(longFt, shortFt, dropFt, againstWall);
+      framingLf += takeoff.framing_lf;
+      drywallSqFt += takeoff.drywall_sqft;
+      cornerBeadLf += takeoff.corner_bead_lf;
     }
     metrics.bulkhead_framing_lf = roundTo(framingLf, 2);
     metrics.bulkhead_drywall_sqft = roundTo(drywallSqFt, 2);
@@ -276,8 +342,11 @@
         if (flagEnabled(flags, 'drywall', true)) drywall += net;
         if (flagEnabled(flags, 'insulation', isB)) insulation += net;
         if (flagEnabled(flags, 'studs', !isB)) studs += len;
-        if (flagEnabled(flags, 'baseboard', isB)) baseboard += len;
-        else if (flagEnabled(flags, 'baseboard', !isB)) baseboard += len * 2.0;
+        if (flagEnabled(flags, 'baseboard', true)) {
+          var sides = flags.baseboardSides != null ? Number(flags.baseboardSides) : (isB ? 1 : 2);
+          sides = Math.max(1, Math.min(2, sides));
+          baseboard += len * sides;
+        }
       }
     }
 
@@ -287,6 +356,11 @@
     metrics.finish_baseboard_lf = roundTo(Math.max(0, baseboard), 2);
     metrics.finish_casing_lf = roundTo(Number(metrics.casing_lf || 0), 2);
     return metrics;
+  }
+
+  function flagEnabled(flags, key, defaultVal) {
+    if (!flags || !Object.prototype.hasOwnProperty.call(flags, key)) return defaultVal;
+    return !!flags[key];
   }
 
   function applyToMetrics(metrics, plan, finish, options) {
@@ -308,6 +382,8 @@
     extractZanini: extractZanini,
     mergeZaniniIntoPlan: mergeZaniniIntoPlan,
     normalizeZanini: normalizeZanini,
-    applyToMetrics: applyToMetrics
+    applyToMetrics: applyToMetrics,
+    bulkheadTakeoff: bulkheadTakeoff,
+    rectInsidePolygonAreaSqFt: rectInsidePolygonAreaSqFt
   };
 }));

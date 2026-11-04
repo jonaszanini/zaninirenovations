@@ -139,17 +139,34 @@ class RoomAreaOpenPlan3DExtensions
      */
     private function applyExcludedZones(array $metrics, array $zanini, float $cmPerUnit, array $finish): array
     {
+        $roomPolyCm = is_array($metrics['room_polygon_cm'] ?? null) ? $metrics['room_polygon_cm'] : [];
         $excludeRects = array_merge(
             $zanini['excluded_area_zones'] ?? [],
             $this->zonesToLegacyRects($zanini['zones'] ?? [], true)
         );
-        $includeRects = $this->zonesToLegacyRects($zanini['zones'] ?? [], false);
 
-        $excludedSqFt = $this->rectsUnionAreaSqFt($excludeRects, $cmPerUnit);
-        $includedSqFt = $this->rectsUnionAreaSqFt($includeRects, $cmPerUnit);
+        $normalizedExclude = [];
+        foreach ($excludeRects as $rect) {
+            $n = $this->normalizeLegacyRect(is_array($rect) ? $rect : []);
+            if ($n !== null) {
+                $normalizedExclude[] = $n;
+            }
+        }
+
+        $excludedSqFt = 0.0;
+        if ($normalizedExclude !== []) {
+            if ($roomPolyCm !== []) {
+                foreach ($normalizedExclude as $rect) {
+                    $excludedSqFt += $this->rectInsidePolygonAreaSqFt($rect, $roomPolyCm, $cmPerUnit);
+                }
+            } else {
+                $excludedSqFt = $this->rectangleUnionAreaSqFt($normalizedExclude, $cmPerUnit);
+            }
+        }
+        $excludedSqFt = round(max(0.0, $excludedSqFt), 2);
 
         $area = (float) ($metrics['area_sqft'] ?? 0.0);
-        $area = round(max(0.0, $area - $excludedSqFt + $includedSqFt), 2);
+        $area = round(max(0.0, $area - $excludedSqFt), 2);
 
         $metrics['excluded_area_sqft'] = $excludedSqFt;
         $metrics['area_sqft'] = $area;
@@ -190,20 +207,47 @@ class RoomAreaOpenPlan3DExtensions
             $dropFt = max(0.0, (float) ($bulkhead['drop_height_ft'] ?? 1.0));
             $longFt = max($lengthFt, $widthFt);
             $shortFt = min($lengthFt, $widthFt);
+            $againstWall = ! array_key_exists('against_wall', $bulkhead) || (bool) $bulkhead['against_wall'];
 
-            $perimeterLf = round(2.0 * ($lengthFt + $widthFt), 2);
-            $framingLf += $perimeterLf;
-            $drywallSqFt += round(2.0 * ($longFt * $dropFt + $shortFt * $dropFt) + ($longFt * $shortFt), 2);
-            $cornerBeadLf += round(4.0 * $dropFt, 2);
+            $takeoff = $this->bulkheadTakeoff($longFt, $shortFt, $dropFt, $againstWall);
+            $framingLf += $takeoff['framing_lf'];
+            $drywallSqFt += $takeoff['drywall_sqft'];
+            $cornerBeadLf += $takeoff['corner_bead_lf'];
         }
 
         $metrics['bulkhead_framing_lf'] = round($framingLf, 2);
         $metrics['bulkhead_drywall_sqft'] = round($drywallSqFt, 2);
         $metrics['bulkhead_corner_bead_lf'] = round($cornerBeadLf, 2);
         $metrics['bulkhead_lf'] = $metrics['bulkhead_framing_lf'];
-        $metrics['bulkhead_drywall_sqft'] = $metrics['bulkhead_drywall_sqft'];
 
         return $metrics;
+    }
+
+    /**
+     * @return array{framing_lf: float, drywall_sqft: float, corner_bead_lf: float}
+     */
+    private function bulkheadTakeoff(float $longFt, float $shortFt, float $dropFt, bool $againstWall): array
+    {
+        $longFt = max(0.0, $longFt);
+        $shortFt = max(0.0, $shortFt);
+        $dropFt = max(0.0, $dropFt);
+
+        $drywallSqFt = ($longFt * $shortFt) + ($longFt * $dropFt);
+        if (! $againstWall) {
+            $drywallSqFt += ($longFt * $dropFt) + (2.0 * $shortFt * $dropFt);
+        }
+
+        $cornerBeadLf = $againstWall ? $longFt : (2.0 * $longFt + 2.0 * $shortFt);
+
+        $spacingFt = 16.0 / 12.0;
+        $crossCount = $longFt > 0 ? max(0, (int) ceil($longFt / $spacingFt) - 1) : 0;
+        $framingLf = (2.0 * $longFt) + ($crossCount * $shortFt);
+
+        return [
+            'framing_lf' => round($framingLf, 2),
+            'drywall_sqft' => round(max(0.0, $drywallSqFt), 2),
+            'corner_bead_lf' => round(max(0.0, $cornerBeadLf), 2),
+        ];
     }
 
     /**
@@ -260,10 +304,10 @@ class RoomAreaOpenPlan3DExtensions
                 if ($this->flagEnabled($flags, 'studs', ! $isBoundary)) {
                     $studs += $lengthLf;
                 }
-                if ($this->flagEnabled($flags, 'baseboard', $isBoundary)) {
-                    $baseboard += $lengthLf;
-                } elseif ($this->flagEnabled($flags, 'baseboard', ! $isBoundary)) {
-                    $baseboard += $lengthLf * 2.0;
+                if ($this->flagEnabled($flags, 'baseboard', true)) {
+                    $sides = (int) ($flags['baseboardSides'] ?? ($isBoundary ? 1 : 2));
+                    $sides = max(1, min(2, $sides));
+                    $baseboard += $lengthLf * (float) $sides;
                 }
             }
         }
@@ -300,6 +344,9 @@ class RoomAreaOpenPlan3DExtensions
         $out = [];
         foreach ($zones as $zone) {
             if (! is_array($zone)) {
+                continue;
+            }
+            if (! empty($zone['mergedInto'])) {
                 continue;
             }
             $isExclude = ! empty($zone['exclude']);
@@ -391,5 +438,47 @@ class RoomAreaOpenPlan3DExtensions
         }
 
         return (bool) $flags[$key];
+    }
+
+    /**
+     * @param  array{x0: float, y0: float, x1: float, y1: float}  $rect
+     * @param  list<array{x: float, y: float}>  $polygonCm
+     */
+    private function rectInsidePolygonAreaSqFt(array $rect, array $polygonCm, float $cmPerUnit): float
+    {
+        $cmPerFoot = self::CM_PER_FOOT * ($cmPerUnit > 0 ? $cmPerUnit : 1.0);
+        $poly = [];
+        foreach ($polygonCm as $pt) {
+            if (! is_array($pt)) {
+                continue;
+            }
+            $poly[] = ['x' => (float) ($pt['x'] ?? 0), 'y' => (float) ($pt['y'] ?? 0)];
+        }
+        if (count($poly) < 3) {
+            return $this->rectangleUnionAreaSqFt([$rect], $cmPerUnit);
+        }
+
+        $x0 = (float) $rect['x0'];
+        $y0 = (float) $rect['y0'];
+        $x1 = (float) $rect['x1'];
+        $y1 = (float) $rect['y1'];
+        if ($x1 <= $x0 || $y1 <= $y0) {
+            return 0.0;
+        }
+
+        $step = 1.0;
+        $inside = 0;
+        $polygonArea = $this->polygonArea ?? app(PolygonAreaService::class);
+        for ($x = $x0 + ($step / 2.0); $x < $x1; $x += $step) {
+            for ($y = $y0 + ($step / 2.0); $y < $y1; $y += $step) {
+                if ($polygonArea->pointInPolygon(['x' => $x, 'y' => $y], $poly)) {
+                    $inside++;
+                }
+            }
+        }
+
+        $cellSqFt = ($step / $cmPerFoot) * ($step / $cmPerFoot);
+
+        return round(max(0.0, $inside * $cellSqFt), 2);
     }
 }

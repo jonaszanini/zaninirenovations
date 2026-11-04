@@ -52,13 +52,45 @@ const bulkheadOut = ext.applyToMetrics(Object.assign({}, metrics), {
       rect: { x1: 0, y1: 0, x2: 304.8, y2: 30.48 },
       drop_height_ft: 2,
       width_ft: 1,
+      against_wall: true,
     }],
   },
 }, {}, { unit: 'cm' });
 
-assert.strictEqual(bulkheadOut.bulkhead_framing_lf, 22);
-assert.strictEqual(bulkheadOut.bulkhead_drywall_sqft, 54);
-assert.strictEqual(bulkheadOut.bulkhead_corner_bead_lf, 8);
+assert.strictEqual(bulkheadOut.bulkhead_framing_lf, 27);
+assert.strictEqual(bulkheadOut.bulkhead_drywall_sqft, 30);
+assert.strictEqual(bulkheadOut.bulkhead_corner_bead_lf, 10);
+
+const corner = ext.bulkheadTakeoff(10, 2, 1, true);
+assert.strictEqual(corner.drywall_sqft, 30);
+assert.strictEqual(corner.corner_bead_lf, 10);
+
+const measureOnly = ext.applyToMetrics(Object.assign({}, metrics), {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    zones: [{ id: 'z1', exclude: false, x1: 0, y1: 0, x2: 50, y2: 50 }],
+  },
+}, {}, { unit: 'cm' });
+assert.strictEqual(measureOnly.area_sqft, metrics.area_sqft);
+assert.strictEqual(measureOnly.excluded_area_sqft, 0);
+
+const partitionBb = ext.applyToMetrics(Object.assign({}, {
+  area_sqft: 96.88,
+  casing_lf: 12.5,
+  boundary_wall_ids: ['w1'],
+  walls: [
+    { id: 'w1', length_lf: 10, net_area_sqft: 80 },
+    { id: 'w3', length_lf: 8, net_area_sqft: 128 },
+  ],
+}), {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    wallFinishes: { w3: { baseboard: true } },
+  },
+}, {}, 1.0);
+assert.strictEqual(partitionBb.finish_baseboard_lf, 26);
 
 const finishOut = ext.applyToMetrics(Object.assign({}, metrics), { format: 'openplan3d', units: 'cm' }, {}, 1.0);
 assert.strictEqual(finishOut.finish_drywall_sqft, 288);
@@ -75,18 +107,19 @@ const rectPlan = {
   floors: [{
     id: 'f1',
     walls: [
-      { id: 'w1', start: { x: 0, y: 0 }, end: { x: 300, y: 0 }, thickness: 11.43, height: 243.84 },
-      { id: 'w2', start: { x: 300, y: 0 }, end: { x: 300, y: 300 }, thickness: 11.43, height: 243.84 },
-      { id: 'w3', start: { x: 300, y: 300 }, end: { x: 0, y: 300 }, thickness: 11.43, height: 243.84 },
-      { id: 'w4', start: { x: 0, y: 300 }, end: { x: 0, y: 0 }, thickness: 11.43, height: 243.84 },
+      { id: 'wN', start: { x: 0, y: 0 }, end: { x: 400, y: 0 }, thickness: 11.43, height: 243.84 },
+      { id: 'wE', start: { x: 400, y: 0 }, end: { x: 400, y: 300 }, thickness: 11.43, height: 243.84 },
+      { id: 'wS', start: { x: 400, y: 300 }, end: { x: 0, y: 300 }, thickness: 11.43, height: 243.84 },
+      { id: 'wW', start: { x: 0, y: 300 }, end: { x: 0, y: 0 }, thickness: 11.43, height: 243.84 },
+      { id: 'wP', start: { x: 200, y: 0 }, end: { x: 200, y: 300 }, thickness: 11.43, height: 243.84 },
     ],
     rooms: [{
       id: 'r1',
-      walls: ['w1', 'w2', 'w3', 'w4'],
+      walls: ['wN', 'wE', 'wS', 'wW', 'wP'],
       polygon: [
         { x: 0, y: 0 },
-        { x: 150, y: 0 },
-        { x: 150, y: 300 },
+        { x: 200, y: 0 },
+        { x: 200, y: 300 },
         { x: 0, y: 300 },
       ],
     }],

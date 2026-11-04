@@ -791,7 +791,7 @@
       }
     } else if (!isSingleRoom && roomWIds.length === 0) {
       polyVertices = storedPoly;
-    } else if (isSingleRoom || partitionWalls.length > 0) {
+    } else if (partitionWalls.length > 0) {
       if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
         polyVertices = loopData.outer_polygon;
       }
@@ -1100,6 +1100,9 @@
       ceiling_area_sqft: ceilingAreaSqFt,
       net_wall_area_sqft: totalNetWallArea,
       walls: perWallNetAreas,
+      room_polygon_cm: polyVertices.map(function (pt) {
+        return { x: Number(pt.x || 0), y: Number(pt.y || 0) };
+      }),
       boundary_wall_ids: boundaryWallIds,
       flooring_waste_percent: waste,
       flooring_direction: direction,
