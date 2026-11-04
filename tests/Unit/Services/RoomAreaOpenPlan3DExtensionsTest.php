@@ -304,12 +304,48 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         ];
 
         $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
-        $unionRect = ['x0' => 0, 'y0' => 0, 'x1' => 200, 'y1' => 200];
+        $lShapeUnion = $this->extensions->rectangleUnionAreaSqFt([
+            ['x0' => 0, 'y0' => 0, 'x1' => 100, 'y1' => 200],
+            ['x0' => 100, 'y0' => 0, 'x1' => 200, 'y1' => 100],
+        ], 1.0);
 
-        $this->assertSame(
-            $this->extensions->rectInsidePolygonAreaSqFt($unionRect, $roomPoly, 1.0),
-            $out['excluded_area_sqft']
-        );
+        $this->assertSame($lShapeUnion, $out['excluded_area_sqft']);
+    }
+
+    public function test_merged_overlapping_zones_union_area_175_sqft(): void
+    {
+        $ft = RoomAreaOpenPlan3DExtensions::CM_PER_FOOT;
+        $roomPoly = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 50 * $ft, 'y' => 0],
+            ['x' => 50 * $ft, 'y' => 50 * $ft],
+            ['x' => 0, 'y' => 50 * $ft],
+        ];
+        $zoneA = ['x1' => 20 * $ft, 'y1' => 20 * $ft, 'x2' => 30 * $ft, 'y2' => 30 * $ft];
+        $zoneB = ['x1' => 25 * $ft, 'y1' => 25 * $ft, 'x2' => 35 * $ft, 'y2' => 35 * $ft];
+        $metrics = [
+            'area_sqft' => 2500.0,
+            'inside_area_sqft' => 2500.0,
+            'ceiling_area_sqft' => 2500.0,
+            'room_polygon_cm' => $roomPoly,
+            'walls' => [],
+            'casing_lf' => 0.0,
+            'boundary_wall_ids' => [],
+        ];
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'zones' => [
+                    array_merge(['id' => 't', 'exclude' => true, 'rects' => [$zoneA, $zoneB]], $zoneA),
+                    array_merge(['id' => 's', 'exclude' => true, 'mergedInto' => 't'], $zoneB),
+                ],
+            ],
+        ];
+
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
+
+        $this->assertSame(175.0, $out['excluded_area_sqft']);
     }
 
     public function test_legacy_baseboard_lf_preserved_when_no_wall_finishes(): void

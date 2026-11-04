@@ -89,8 +89,8 @@
     var mod = window.__openPlan3DStoreModule;
     if (!mod) return null;
     var zoom = readStoreValue(mod.b2);
-    var camX = readStoreValue(mod.bc);
-    var camY = readStoreValue(mod.bd);
+    var camX = readStoreValue(mod.bd);
+    var camY = readStoreValue(mod.bc);
     if (zoom == null || camX == null || camY == null) return null;
     return { zoom: Number(zoom), camX: Number(camX), camY: Number(camY) };
   }
@@ -199,7 +199,18 @@
 
     (plan.zanini.zones || []).forEach(function (z) {
       if (z && z.mergedInto) return;
-      drawRect(z, 'zanini-zone-rect');
+      var shapes = [];
+      if (z.rects && z.rects.length) {
+        shapes = z.rects.slice();
+      } else {
+        shapes.push(z);
+      }
+      (plan.zanini.zones || []).forEach(function (m) {
+        if (m && m.mergedInto === z.id) shapes.push(m);
+      });
+      shapes.forEach(function (shape) {
+        drawRect(shape, 'zanini-zone-rect');
+      });
     });
     (plan.zanini.bulkheads || []).forEach(function (b) {
       drawRect(b, 'zanini-bulkhead-rect');
@@ -383,6 +394,19 @@
     var plan = readPlan();
     var flags = (plan && plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes[wallId]) || {};
     var isBoundary = wallIsBoundary(wallId);
+    var floor = activeFloor(plan);
+    var wallLenLf = 0;
+    if (floor && Array.isArray(floor.walls)) {
+      for (var wi = 0; wi < floor.walls.length; wi++) {
+        if (String(floor.walls[wi].id) === String(wallId)) {
+          wallLenLf = Math.hypot(
+            floor.walls[wi].end.x - floor.walls[wi].start.x,
+            floor.walls[wi].end.y - floor.walls[wi].start.y
+          ) / CM_PER_FOOT;
+          break;
+        }
+      }
+    }
     var defaults = {
       drywall: true,
       insulation: isBoundary,
@@ -413,6 +437,7 @@
           plan.zanini.wallFinishes[wallId] = plan.zanini.wallFinishes[wallId] || {};
           plan.zanini.wallFinishes[wallId][input.getAttribute('data-finish-key')] = input.checked;
         });
+        showFinishPanelForWall(wallId);
       });
     });
     var sidesSelect = state.finishPanel.querySelector('[data-finish-sides]');
@@ -423,7 +448,18 @@
           plan.zanini.wallFinishes[wallId] = plan.zanini.wallFinishes[wallId] || {};
           plan.zanini.wallFinishes[wallId].baseboardSides = Number(sidesSelect.value) === 1 ? 1 : 2;
         });
+        showFinishPanelForWall(wallId);
       });
+    }
+    var bbChecked = Object.prototype.hasOwnProperty.call(flags, 'baseboard') ? !!flags.baseboard : defaults.baseboard;
+    if (bbChecked && wallLenLf > 0) {
+      var sidesCount = !isBoundary && flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
+      if (!isBoundary && sidesCount !== 1) sidesCount = 2;
+      var wallBbLf = wallLenLf * (isBoundary ? 1 : sidesCount);
+      var info = document.createElement('p');
+      info.style.cssText = 'margin:8px 0 0;opacity:.85;font-size:11px;';
+      info.textContent = 'Baseboard on this wall: ' + wallBbLf.toFixed(2) + ' lf (room total stays in ribbon)';
+      state.finishPanel.appendChild(info);
     }
   }
 
@@ -486,7 +522,7 @@
         if (zones[i].id === targetId) target = zones[i];
       }
       if (!source || !target || sourceId === targetId) return;
-      function bbox(zone) {
+      function zoneAxisRect(zone) {
         var x1 = Number(zone.x1 != null ? zone.x1 : zone.x0);
         var y1 = Number(zone.y1 != null ? zone.y1 : zone.y0);
         var x2 = Number(zone.x2 != null ? zone.x2 : zone.x1);
@@ -498,8 +534,17 @@
           y2: Math.max(y1, y2)
         };
       }
-      var a = bbox(source);
-      var b = bbox(target);
+      function legacyRectFromZone(zone) {
+        var a = zoneAxisRect(zone);
+        return { x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2 };
+      }
+      target.rects = Array.isArray(target.rects) ? target.rects.slice() : [];
+      if (!target.rects.length) {
+        target.rects.push(legacyRectFromZone(target));
+      }
+      target.rects.push(legacyRectFromZone(source));
+      var a = zoneAxisRect(source);
+      var b = zoneAxisRect(target);
       target.x1 = Math.min(a.x1, b.x1);
       target.y1 = Math.min(a.y1, b.y1);
       target.x2 = Math.max(a.x2, b.x2);

@@ -478,6 +478,10 @@
     var modalStandaloneBtn = doc.getElementById('openplan3d-modal-standalone-btn');
     var modalLinkCancel = doc.getElementById('openplan3d-modal-link-cancel');
     var modalClientSelect = doc.getElementById('openplan3d-modal-client-project');
+    var modalLinkHead = modalLink ? modalLink.querySelector('.openplan3d-modal-link-head') : null;
+    var modalClientFieldLabel = modalLink
+      ? modalLink.querySelector('label.openplan3d-modal-field .openplan3d-modal-field-label')
+      : null;
     var modalResolve = null;
     var modalIsSaveFlow = false;
     var modalOpenerEl = null;
@@ -597,6 +601,16 @@
         if (modalCancel) modalCancel.hidden = !!opts.hideCancel;
         if (modalConfirm) modalConfirm.textContent = opts.confirmLabel || (mode === 'prompt' ? 'Continue' : 'OK');
         if (mode === 'save-destination') fillClientProjectSelect();
+        if (modalLinkHead) modalLinkHead.hidden = mode !== 'save-destination';
+        if (modalClientFieldLabel) {
+          modalClientFieldLabel.textContent = mode === 'zone-picker' ? 'Target zone' : 'Client project';
+        }
+        if (modalClientSelect) {
+          modalClientSelect.setAttribute(
+            'aria-label',
+            mode === 'zone-picker' ? 'Target zone' : 'Client project'
+          );
+        }
         if (mode === 'zone-picker' && modalClientSelect) {
           modalClientSelect.innerHTML = '';
           (opts.zoneChoices || []).forEach(function (z) {

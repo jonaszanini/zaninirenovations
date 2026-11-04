@@ -142,11 +142,44 @@ const mergedOut = ext.applyToMetrics(mergedZoneMetrics, {
     ],
   },
 }, {}, 1.0);
-assert.strictEqual(mergedOut.excluded_area_sqft, ext.rectInsidePolygonAreaSqFt(
-  { x0: 0, y0: 0, x1: 200, y1: 200 },
-  mergedZoneMetrics.room_polygon_cm,
-  1.0
-));
+const lShapeUnion = ext.rectangleUnionAreaSqFt([
+  { x0: 0, y0: 0, x1: 100, y1: 200 },
+  { x0: 100, y0: 0, x1: 200, y1: 100 },
+], 1.0);
+assert.strictEqual(mergedOut.excluded_area_sqft, lShapeUnion);
+
+const ft = ext.CM_PER_FOOT;
+const zoneA = { x1: 20 * ft, y1: 20 * ft, x2: 30 * ft, y2: 30 * ft };
+const zoneB = { x1: 25 * ft, y1: 25 * ft, x2: 35 * ft, y2: 35 * ft };
+const bigRoomPoly = [
+  { x: 0, y: 0 },
+  { x: 50 * ft, y: 0 },
+  { x: 50 * ft, y: 50 * ft },
+  { x: 0, y: 50 * ft },
+];
+const merge175Metrics = Object.assign({}, metrics, {
+  area_sqft: 2500,
+  room_polygon_cm: bigRoomPoly,
+});
+const merge175Out = ext.applyToMetrics(merge175Metrics, {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    zones: [
+      {
+        id: 't',
+        exclude: true,
+        x1: zoneA.x1,
+        y1: zoneA.y1,
+        x2: zoneA.x2,
+        y2: zoneA.y2,
+        rects: [zoneA, zoneB],
+      },
+      { id: 's', exclude: true, mergedInto: 't', x1: zoneB.x1, y1: zoneB.y1, x2: zoneB.x2, y2: zoneB.y2 },
+    ],
+  },
+}, {}, 1.0);
+assert.strictEqual(merge175Out.excluded_area_sqft, 175.0);
 
 const merged = ext.mergeZaniniIntoPlan({ floors: [{ id: 'f1' }] }, { zones: [] });
 assert.deepStrictEqual(merged.zanini, { zones: [] });

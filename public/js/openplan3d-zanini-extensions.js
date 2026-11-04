@@ -134,6 +134,47 @@
     };
   }
 
+  function zoneAxisRect(zone) {
+    if (!zone || typeof zone !== 'object') return null;
+    var x1 = zone.x1 != null ? zone.x1 : zone.x0;
+    var y1 = zone.y1 != null ? zone.y1 : zone.y0;
+    var x2 = zone.x2 != null ? zone.x2 : zone.x1;
+    var y2 = zone.y2 != null ? zone.y2 : zone.y1;
+    if (x1 == null || y1 == null || x2 == null || y2 == null) return null;
+    return {
+      x1: Math.min(Number(x1), Number(x2)),
+      y1: Math.min(Number(y1), Number(y2)),
+      x2: Math.max(Number(x1), Number(x2)),
+      y2: Math.max(Number(y1), Number(y2))
+    };
+  }
+
+  function collectZoneMemberLegacyRects(zone, zones) {
+    var out = [];
+    var seen = {};
+    function pushShape(shape) {
+      var n = normalizeLegacyRect(shape);
+      if (!n) return;
+      var key = [n.x0, n.y0, n.x1, n.y1].join('|');
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push({ x1: n.x0, y1: n.y0, x2: n.x1, y2: n.y1 });
+    }
+    if (Array.isArray(zone.rects) && zone.rects.length) {
+      for (var r = 0; r < zone.rects.length; r++) {
+        pushShape(zone.rects[r]);
+      }
+    } else {
+      pushShape(zone);
+    }
+    for (var j = 0; j < zones.length; j++) {
+      var merged = zones[j];
+      if (!merged || merged.mergedInto !== zone.id) continue;
+      pushShape(merged);
+    }
+    return out;
+  }
+
   function zonesToLegacyRects(zones, exclude) {
     var out = [];
     for (var i = 0; i < zones.length; i++) {
@@ -142,21 +183,10 @@
       if (zone.mergedInto) continue;
       var isExclude = !!zone.exclude;
       if (isExclude !== exclude) continue;
-      var rect = normalizeLegacyRect(zone);
-      if (!rect) continue;
-      for (var j = 0; j < zones.length; j++) {
-        var merged = zones[j];
-        if (!merged || !merged.mergedInto || merged.mergedInto !== zone.id) continue;
-        var mergedRect = normalizeLegacyRect(merged);
-        if (!mergedRect) continue;
-        rect = {
-          x0: Math.min(rect.x0, mergedRect.x0),
-          y0: Math.min(rect.y0, mergedRect.y0),
-          x1: Math.max(rect.x1, mergedRect.x1),
-          y1: Math.max(rect.y1, mergedRect.y1)
-        };
+      var members = collectZoneMemberLegacyRects(zone, zones);
+      for (var m = 0; m < members.length; m++) {
+        out.push(members[m]);
       }
-      out.push({ x1: rect.x0, y1: rect.y0, x2: rect.x1, y2: rect.y1 });
     }
     return out;
   }

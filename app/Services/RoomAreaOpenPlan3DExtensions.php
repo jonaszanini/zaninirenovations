@@ -334,13 +334,6 @@ class RoomAreaOpenPlan3DExtensions
      */
     private function zonesToLegacyRects(array $zones, bool $exclude): array
     {
-        $byId = [];
-        foreach ($zones as $zone) {
-            if (is_array($zone) && ! empty($zone['id'])) {
-                $byId[(string) $zone['id']] = $zone;
-            }
-        }
-
         $out = [];
         foreach ($zones as $zone) {
             if (! is_array($zone)) {
@@ -353,34 +346,59 @@ class RoomAreaOpenPlan3DExtensions
             if ($isExclude !== $exclude) {
                 continue;
             }
-            $rect = $this->normalizeLegacyRect($zone);
+            foreach ($this->collectZoneMemberLegacyRects($zone, $zones) as $rect) {
+                $out[] = $rect;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $zone
+     * @param  list<array<string, mixed>>  $zones
+     * @return list<array<string, mixed>>
+     */
+    private function collectZoneMemberLegacyRects(array $zone, array $zones): array
+    {
+        $out = [];
+        $seen = [];
+        $push = function (array $shape) use (&$out, &$seen): void {
+            $rect = $this->normalizeLegacyRect($shape);
             if ($rect === null) {
-                continue;
+                return;
             }
-            foreach ($zones as $merged) {
-                if (! is_array($merged) || empty($merged['mergedInto'])) {
-                    continue;
-                }
-                if ((string) $merged['mergedInto'] !== (string) ($zone['id'] ?? '')) {
-                    continue;
-                }
-                $mergedRect = $this->normalizeLegacyRect($merged);
-                if ($mergedRect === null) {
-                    continue;
-                }
-                $rect = [
-                    'x0' => min($rect['x0'], $mergedRect['x0']),
-                    'y0' => min($rect['y0'], $mergedRect['y0']),
-                    'x1' => max($rect['x1'], $mergedRect['x1']),
-                    'y1' => max($rect['y1'], $mergedRect['y1']),
-                ];
+            $key = implode('|', [$rect['x0'], $rect['y0'], $rect['x1'], $rect['y1']]);
+            if (isset($seen[$key])) {
+                return;
             }
+            $seen[$key] = true;
             $out[] = [
                 'x1' => $rect['x0'],
                 'y1' => $rect['y0'],
                 'x2' => $rect['x1'],
                 'y2' => $rect['y1'],
             ];
+        };
+
+        if (! empty($zone['rects']) && is_array($zone['rects'])) {
+            foreach ($zone['rects'] as $member) {
+                if (is_array($member)) {
+                    $push($member);
+                }
+            }
+        } else {
+            $push($zone);
+        }
+
+        foreach ($zones as $merged) {
+            if (! is_array($merged) || empty($merged['mergedInto'])) {
+                continue;
+            }
+            if ((string) $merged['mergedInto'] !== (string) ($zone['id'] ?? '')) {
+                continue;
+            }
+            $push($merged);
         }
 
         return $out;

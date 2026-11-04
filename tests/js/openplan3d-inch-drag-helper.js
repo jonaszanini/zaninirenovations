@@ -215,20 +215,22 @@ async function projectEndpoint(page, wallId, endpoint) {
         return v;
       };
       const S = read('b2');
-      const L = read('bc');
-      const A = read('bd');
+      const camX = read('bd');
+      const camY = read('bc');
       const canvas =
         document.querySelector('canvas[data-plan3d-canvas="true"]') || document.querySelector('canvas');
       const wall = window.__openPlan3D.getProject().floors[0].walls.find((w) => w.id === wallId);
       const pt = wall[endpoint];
-      const sx = (pt.x - L) * S + canvas.width / 2;
-      const sy = (pt.y - A) * S + canvas.height / 2;
       const rect = canvas.getBoundingClientRect();
+      const cssW = rect.width || canvas.clientWidth || canvas.width;
+      const cssH = rect.height || canvas.clientHeight || canvas.height;
+      const sx = (pt.x - camX) * S + cssW / 2;
+      const sy = (pt.y - camY) * S + cssH / 2;
       return {
         anchor: endpoint === 'end' ? { ...wall.start } : { ...wall.end },
         store: { x: pt.x, y: pt.y },
-        clientX: rect.left + (sx / canvas.width) * rect.width,
-        clientY: rect.top + (sy / canvas.height) * rect.height,
+        clientX: rect.left + sx,
+        clientY: rect.top + sy,
       };
     },
     { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX, wallId, endpoint }
@@ -369,6 +371,134 @@ async function runGridFallbackDrag(page, measureMode) {
   };
 }
 
+function zoneCornerPlan() {
+  const t = 6 * INCH;
+  const w = 30 * INCH;
+  const h = 4 * INCH;
+  return {
+    id: 'p-zone',
+    name: 'Zone coords',
+    activeFloorId: 'f1',
+    floors: [
+      {
+        id: 'f1',
+        name: 'Floor 1',
+        walls: [
+          { id: 'w0', start: { x: 0, y: 0 }, end: { x: w, y: 0 }, height: 243.84, thickness: t },
+          { id: 'w1', start: { x: w, y: 0 }, end: { x: w, y: h }, height: 243.84, thickness: t },
+        ],
+        rooms: [],
+      },
+    ],
+    zanini: { version: 1, zones: [], bulkheads: [], wallFinishes: {} },
+  };
+}
+
+const ZONE_VIEW_CASES = [
+  { name: 'default', zoomMul: 1, pan: { x: 0, y: 0 } },
+  { name: 'zoomed', zoomMul: 1.45, pan: { x: 0, y: 0 } },
+  { name: 'panned', zoomMul: 1, pan: { x: 120, y: -80 } },
+];
+
+async function applyZoneViewCase(page, viewCase) {
+  if (viewCase.name === 'default') return;
+  await page.evaluate(
+    async ({ storeChunk, vendorPrefix, zoomMul, pan }) => {
+      const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+      const read = (k) => {
+        let v;
+        const u = mod[k].subscribe((x) => (v = x));
+        if (typeof u === 'function') u();
+        return v;
+      };
+      const baseZoom = read('b2');
+      if (mod.b2 && typeof mod.b2.set === 'function') mod.b2.set(baseZoom * zoomMul);
+      if (mod.bd && typeof mod.bd.set === 'function') mod.bd.set(read('bd') + pan.x);
+      if (mod.bc && typeof mod.bc.set === 'function') mod.bc.set(read('bc') + pan.y);
+    },
+    {
+      storeChunk: STORE_CHUNK,
+      vendorPrefix: VENDOR_PREFIX,
+      zoomMul: viewCase.zoomMul,
+      pan: viewCase.pan,
+    }
+  );
+  await new Promise((r) => setTimeout(r, 450));
+}
+
+async function runZoneCorners(page) {
+  const plan = zoneCornerPlan();
+  const tolCm = 2;
+  const expect = { x1: 0, y1: 0, x2: 30 * INCH, y2: 4 * INCH };
+  const cases = [];
+
+  for (const viewCase of ZONE_VIEW_CASES) {
+    const freshPlan = zoneCornerPlan();
+    await page.evaluate((p) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(p))), freshPlan);
+    await preparePage(page, freshPlan, 'edge');
+    await applyZoneViewCase(page, viewCase);
+
+    await page.evaluate(() => {
+      const btn = document.querySelector('#openplan3d-zanini-toolbar [data-zanini-mode="zone"]');
+      if (btn && !btn.classList.contains('zanini-tool-active')) btn.click();
+    });
+    await new Promise((r) => setTimeout(r, 200));
+
+    const handles = await page.evaluate(
+      ({ storeChunk, vendorPrefix }) => {
+        const mod = window.__openPlan3DStoreModule;
+        const read = (k) => {
+          let v;
+          const u = mod[k].subscribe((x) => (v = x));
+          if (typeof u === 'function') u();
+          return v;
+        };
+        const canvas =
+          document.querySelector('canvas[data-plan3d-canvas="true"]') || document.querySelector('canvas');
+        const walls = window.__openPlan3D.getProject().floors[0].walls;
+        const w0 = walls.find((w) => w.id === 'w0');
+        const w1 = walls.find((w) => w.id === 'w1');
+        const view = {
+          zoom: read('b2'),
+          camX: read('bd'),
+          camY: read('bc'),
+        };
+        const bridge = window.OpenPlan3DEditorBridge;
+        const start = bridge.planCmToClient(canvas, w0.start.x, w0.start.y, view, mod);
+        const end = bridge.planCmToClient(canvas, w1.end.x, w1.end.y, view, mod);
+        return { start, end, storeChunk, vendorPrefix };
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
+
+    await mouseDrag(
+      page,
+      handles.start.clientX,
+      handles.start.clientY,
+      handles.end.clientX - handles.start.clientX,
+      handles.end.clientY - handles.start.clientY
+    );
+
+    const zone = await page.evaluate(() => {
+      const p = window.__openPlan3D.getProject();
+      const zones = (p.zanini && p.zanini.zones) || [];
+      return zones[zones.length - 1] || null;
+    });
+    assert.ok(zone, `${viewCase.name}: zone must be saved`);
+    const zx1 = Math.min(Number(zone.x1), Number(zone.x2));
+    const zy1 = Math.min(Number(zone.y1), Number(zone.y2));
+    const zx2 = Math.max(Number(zone.x1), Number(zone.x2));
+    const zy2 = Math.max(Number(zone.y1), Number(zone.y2));
+    assert.ok(Math.abs(zx1 - expect.x1) <= tolCm, `${viewCase.name}: x1 ${zx1} vs ${expect.x1}`);
+    assert.ok(Math.abs(zy1 - expect.y1) <= tolCm, `${viewCase.name}: y1 ${zy1} vs ${expect.y1}`);
+    assert.ok(Math.abs(zx2 - expect.x2) <= tolCm, `${viewCase.name}: x2 ${zx2} vs ${expect.x2}`);
+    assert.ok(Math.abs(zy2 - expect.y2) <= tolCm, `${viewCase.name}: y2 ${zy2} vs ${expect.y2}`);
+    cases.push({ view: viewCase.name, zone: { x1: zx1, y1: zy1, x2: zx2, y2: zy2 } });
+  }
+
+  return { cases, toleranceCm: tolCm, expect };
+}
+
 async function main() {
   assertKrPatchOnDisk();
   assertVendorKrNegativeControl();
@@ -396,6 +526,8 @@ async function main() {
       payload = await runGridFallbackDrag(page, mode);
     } else if (ORTHO_SCENARIOS[mode]) {
       payload = await runOrthoDrag(page, mode);
+    } else if (mode === 'zone-corners') {
+      payload = await runZoneCorners(page);
     } else {
       throw new Error('unknown mode: ' + mode);
     }

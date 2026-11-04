@@ -215,7 +215,7 @@
     return null;
   }
 
-  /** Vendor viewport stores: b2 = zoom, bc = camX, bd = camY (see tests/js/openplan3d-inch-drag-helper.js). */
+  /** Vendor viewport stores: b2 = zoom; bd = camX (Vf); bc = camY (Wf) — see CgAQ vn()/Ge(). */
   function readStoreValue(store) {
     if (!store || typeof store.subscribe !== 'function') return null;
     var value = null;
@@ -227,8 +227,8 @@
   function readOpenPlan3DViewState(storeModule) {
     if (!storeModule || typeof storeModule !== 'object') return null;
     var zoom = readStoreValue(storeModule.b2);
-    var camX = readStoreValue(storeModule.bc);
-    var camY = readStoreValue(storeModule.bd);
+    var camX = readStoreValue(storeModule.bd);
+    var camY = readStoreValue(storeModule.bc);
     if (zoom == null || camX == null || camY == null) return null;
     if (!isFinite(Number(zoom)) || !isFinite(Number(camX)) || !isFinite(Number(camY))) return null;
     return { zoom: Number(zoom), camX: Number(camX), camY: Number(camY) };
@@ -243,18 +243,22 @@
     return { width: w || 1, height: h || 1 };
   }
 
-  function clientToPlanCm(canvas, clientX, clientY, view, storeModule) {
+  /** Same as vendor vn(w, st): offsets from canvas top-left in CSS px. */
+  function canvasOffsetToPlanCm(canvas, offsetX, offsetY, view, storeModule) {
     if (!canvas) return null;
     view = view || readOpenPlan3DViewState(storeModule || (typeof window !== 'undefined' ? window.__openPlan3DStoreModule : null));
     if (!view || !view.zoom) return null;
-    var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: canvas.width, height: canvas.height };
     var css = readCanvasCssSize(canvas);
-    var px = clientX - rect.left;
-    var py = clientY - rect.top;
     return {
-      x: (px - css.width / 2) / view.zoom + view.camX,
-      y: (py - css.height / 2) / view.zoom + view.camY
+      x: (offsetX - css.width / 2) / view.zoom + view.camX,
+      y: (offsetY - css.height / 2) / view.zoom + view.camY
     };
+  }
+
+  function clientToPlanCm(canvas, clientX, clientY, view, storeModule) {
+    if (!canvas) return null;
+    var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: canvas.width, height: canvas.height };
+    return canvasOffsetToPlanCm(canvas, clientX - rect.left, clientY - rect.top, view, storeModule);
   }
 
   function planCmToClient(canvas, x, y, view, storeModule) {
@@ -1199,6 +1203,7 @@
     startHidingNativeSaveUi: startHidingNativeSaveUi,
     readOpenPlan3DViewState: readOpenPlan3DViewState,
     readCanvasCssSize: readCanvasCssSize,
+    canvasOffsetToPlanCm: canvasOffsetToPlanCm,
     clientToPlanCm: clientToPlanCm,
     planCmToClient: planCmToClient,
     clearSaveConflict: function () {
