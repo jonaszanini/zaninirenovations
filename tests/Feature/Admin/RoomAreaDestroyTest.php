@@ -26,7 +26,7 @@ class RoomAreaDestroyTest extends TestCase
         $canvas->shouldReceive('isLayersLocked')->once()->with($vertices)->andReturn(false);
         $this->app->instance(RoomAreaCanvasData::class, $canvas);
 
-        $room = new class(['vertices' => $vertices, 'id' => 1]) extends RoomAreaRoom
+        $room = new class extends RoomAreaRoom
         {
             public function photos(): \Illuminate\Database\Eloquent\Relations\HasMany
             {
@@ -36,6 +36,8 @@ class RoomAreaDestroyTest extends TestCase
                 return $relation;
             }
         };
+        $room->forceFill(['vertices' => $vertices]);
+        $room->id = 1;
         $room = Mockery::mock($room)->makePartial();
         $room->shouldReceive('delete')->once()->andReturnTrue();
 
@@ -75,7 +77,7 @@ class RoomAreaDestroyTest extends TestCase
         $canvas->shouldReceive('isLayersLocked')->once()->andReturn(false);
         $this->app->instance(RoomAreaCanvasData::class, $canvas);
 
-        $innerRoom = new class(['vertices' => ['editor' => ['layers_locked' => false]], 'id' => 2]) extends RoomAreaRoom
+        $innerRoom = new class extends RoomAreaRoom
         {
             public function photos(): \Illuminate\Database\Eloquent\Relations\HasMany
             {
@@ -85,10 +87,16 @@ class RoomAreaDestroyTest extends TestCase
                 return $relation;
             }
         };
+        $innerRoom->forceFill(['vertices' => ['editor' => ['layers_locked' => false]]]);
+        $innerRoom->id = 2;
 
-        $project = Mockery::mock(RoomAreaProject::class)->makePartial();
-        $project->shouldReceive('getAttribute')->with('rooms')->andReturn(new Collection([$innerRoom]));
-        $project->background_path = null;
+        $photos = Mockery::mock(RoomAreaPhotoStorage::class);
+        $photos->shouldReceive('deleteDirectory')->once()->with(2);
+        $this->app->instance(RoomAreaPhotoStorage::class, $photos);
+
+        $project = new RoomAreaProject(['background_path' => null]);
+        $project->setRelation('rooms', new Collection([$innerRoom]));
+        $project = Mockery::mock($project)->makePartial();
         $project->shouldReceive('delete')->once()->andReturnTrue();
 
         $response = app(RoomAreaController::class)->destroyProject($project);
