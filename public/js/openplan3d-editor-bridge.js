@@ -996,7 +996,7 @@
       }
       if (typeof document !== 'undefined') {
         try {
-          var banners = document.querySelectorAll('div[role="alert"].bg-red-50, div[role="alert"].border-red-200, div[role="alert"].text-red-900, [data-save-conflict-banner]');
+          var banners = document.querySelectorAll('div[role="alert"], [data-save-conflict-banner], #conflict-banner-test, .bg-red-50, .bg-red-800, [class*="bg-red-"]');
           for (var b = 0; b < banners.length; b++) {
             var el = banners[b];
             if (el.querySelector('canvas') || el.id === 'app' || el === document.body || el === document.documentElement) continue;

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\Admin\RoomAreaController;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Models\User;
@@ -1021,7 +1022,8 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         ]);
 
         $initialRevision = (string) $room->updated_at->valueOf();
-        $initialHash = sha1(json_encode($room->vertices ?? []));
+        $room->refresh();
+        $initialHash = RoomAreaController::computeBaselineHash($room->vertices);
 
         // Tab 1 updates room vertices in the same whole second
         $room->vertices = $this->sampleOpenPlan(12.0, 12.0);
@@ -1078,8 +1080,9 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             'area_sqft' => 100.0,
             'wall_height_ft' => 8.0,
         ]);
+        $room->refresh();
 
-        $validHash = sha1(json_encode($room->vertices ?? []));
+        $validHash = RoomAreaController::computeBaselineHash($room->vertices);
 
         $response = $this->actingAs($this->user)->putJson(
             route('admin.utilities.room-area.rooms.update', $room),

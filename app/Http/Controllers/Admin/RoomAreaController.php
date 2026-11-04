@@ -415,7 +415,8 @@ class RoomAreaController extends Controller
 
         if ($isOpenPlanUpdate) {
             $serverRevision = (int) ($room_area_room->updated_at?->valueOf() ?? ($room_area_room->updated_at ? $room_area_room->updated_at->timestamp * 1000 : 0));
-            $serverBaselineHash = sha1(json_encode($room_area_room->vertices ?? []));
+            $serverBaselineHash = self::computeBaselineHash($room_area_room->vertices);
+            $rawServerBaselineHash = sha1(json_encode($room_area_room->vertices ?? []));
 
             $expRaw = $request->input('expected_revision');
             $expHash = $request->input('expected_baseline_hash');
@@ -450,7 +451,7 @@ class RoomAreaController extends Controller
             }
 
             if ($hasExpHash) {
-                if ($expHash !== $serverBaselineHash) {
+                if ($expHash !== $serverBaselineHash && $expHash !== $rawServerBaselineHash) {
                     return response()->json([
                         'ok' => false,
                         'code' => 'conflict',
@@ -920,6 +921,33 @@ class RoomAreaController extends Controller
         ];
     }
 
+    public static function computeBaselineHash(mixed $vertices): string
+    {
+        if (! is_array($vertices)) {
+            return sha1(json_encode([]));
+        }
+
+        return sha1(json_encode(self::canonicalizeJsonData($vertices)));
+    }
+
+    private static function canonicalizeJsonData(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        $isAssoc = array_keys($value) !== range(0, count($value) - 1);
+        if ($isAssoc) {
+            ksort($value);
+        }
+
+        foreach ($value as $k => $v) {
+            $value[$k] = self::canonicalizeJsonData($v);
+        }
+
+        return $value;
+    }
+
     private function roomPayload(RoomAreaRoom $room, ?RoomAreaCanvasData $canvasData = null): array
     {
         $canvasData ??= app(RoomAreaCanvasData::class);
@@ -985,7 +1013,7 @@ class RoomAreaController extends Controller
             'updated_at' => $room->updated_at?->toISOString() ?? (string) $room->updated_at,
             'revision' => (string) ($room->updated_at?->valueOf() ?? ($room->updated_at ? $room->updated_at->timestamp * 1000 : 0)),
             'version' => (int) ($room->updated_at?->timestamp ?? 0),
-            'baseline_hash' => sha1(json_encode($room->vertices ?? [])),
+            'baseline_hash' => self::computeBaselineHash($room->vertices),
             'photo_count' => $room->relationLoaded('photos')
                 ? $room->photos->count()
                 : (int) ($room->photos_count ?? $room->photos()->count()),

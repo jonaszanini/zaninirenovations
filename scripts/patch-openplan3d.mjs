@@ -349,7 +349,8 @@ function patchEditorCanvasChunk(source) {
 }
 
 function fileContentVersion16(absPath) {
-  return crypto.createHash('sha256').update(fs.readFileSync(absPath)).digest('hex').slice(0, 16);
+  const data = fs.readFileSync(absPath, 'utf8').replace(/\r\n/g, '\n');
+  return crypto.createHash('sha256').update(data).digest('hex').slice(0, 16);
 }
 
 function patchHostedEditorIndexBoot() {
