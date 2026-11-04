@@ -28,12 +28,14 @@ class RoomAreaRoom extends Model
         'pdf_path',
         'legacy_canvas_data',
         'openplan3d_import_meta',
+        'revision',
     ];
 
     protected $casts = [
         'vertices' => 'array',
         'legacy_canvas_data' => 'array',
         'openplan3d_import_meta' => 'array',
+        'revision' => 'integer',
         'area_sqft' => 'float',
         'scale_pixels_per_foot' => 'float',
         'wall_height_ft' => 'float',

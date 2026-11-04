@@ -414,7 +414,7 @@ class RoomAreaController extends Controller
         $isOpenPlanUpdate = is_array($plan) || $request->has('expected_revision') || $request->has('expected_baseline_hash');
 
         if ($isOpenPlanUpdate) {
-            $serverRevision = (int) ($room_area_room->updated_at?->valueOf() ?? ($room_area_room->updated_at ? $room_area_room->updated_at->timestamp * 1000 : 0));
+            $serverRevision = (int) ($room_area_room->revision ?? 0);
             $serverBaselineHash = self::computeBaselineHash($room_area_room->vertices);
             $rawServerBaselineHash = sha1(json_encode($room_area_room->vertices ?? []));
 
@@ -440,8 +440,8 @@ class RoomAreaController extends Controller
                         'message' => 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.',
                     ], 409);
                 }
-                $expMs = (int) $expRaw;
-                if ($serverRevision > $expMs) {
+                $expInt = (int) $expRaw;
+                if ($serverRevision !== $expInt) {
                     return response()->json([
                         'ok' => false,
                         'code' => 'conflict',
@@ -506,6 +506,7 @@ class RoomAreaController extends Controller
                 'name' => $data['name'],
                 'vertices' => $plan,
                 'legacy_canvas_data' => $legacyBackup,
+                'revision' => ((int) ($room_area_room->revision ?? 0)) + 1,
                 'canvas_width' => $data['canvas_width'] ?? null,
                 'canvas_height' => $data['canvas_height'] ?? null,
                 'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
@@ -563,6 +564,7 @@ class RoomAreaController extends Controller
         $room_area_room->update([
             'name' => $data['name'],
             'vertices' => $normalized,
+            'revision' => ((int) ($room_area_room->revision ?? 0)) + 1,
             'canvas_width' => $data['canvas_width'] ?? null,
             'canvas_height' => $data['canvas_height'] ?? null,
             'scale_pixels_per_foot' => isset($data['scale_pixels_per_foot'])
@@ -1011,7 +1013,7 @@ class RoomAreaController extends Controller
                 : null,
             'area_sqft' => (float) $room->area_sqft,
             'updated_at' => $room->updated_at?->toISOString() ?? (string) $room->updated_at,
-            'revision' => (string) ($room->updated_at?->valueOf() ?? ($room->updated_at ? $room->updated_at->timestamp * 1000 : 0)),
+            'revision' => (int) ($room->revision ?? 0),
             'version' => (int) ($room->updated_at?->timestamp ?? 0),
             'baseline_hash' => self::computeBaselineHash($room->vertices),
             'photo_count' => $room->relationLoaded('photos')

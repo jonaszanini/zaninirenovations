@@ -845,7 +845,7 @@
 
     function selectRoom(room) {
       currentRoom = room;
-      loadedRoomRevision = room ? (room.revision || (room.updated_at ? String(new Date(room.updated_at).getTime()) : null)) : null;
+      loadedRoomRevision = room ? (room.revision != null ? room.revision : (room.updated_at ? String(new Date(room.updated_at).getTime()) : null)) : null;
       loadedRoomBaselineHash = room ? (room.baseline_hash || null) : null;
       selectedOpenPlan3DRoomId = null;
       if (currentRoom) {
@@ -1161,7 +1161,7 @@
           var updatedProject = result.data.project;
 
           currentRoom = updatedRoom;
-          loadedRoomRevision = updatedRoom.revision || (updatedRoom.updated_at ? String(new Date(updatedRoom.updated_at).getTime()) : null);
+          loadedRoomRevision = updatedRoom ? (updatedRoom.revision != null ? updatedRoom.revision : (updatedRoom.updated_at ? String(new Date(updatedRoom.updated_at).getTime()) : null)) : null;
           loadedRoomBaselineHash = updatedRoom.baseline_hash || null;
           if (updatedProject) {
             for (var i = 0; i < projects.length; i++) {

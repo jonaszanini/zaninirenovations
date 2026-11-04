@@ -187,6 +187,7 @@ async function run() {
     await editorPage.evaluate(() => {
       const banner = document.createElement('div');
       banner.id = 'conflict-banner-test';
+      banner.setAttribute('role', 'alert');
       banner.className = 'bg-red-800 text-white p-2';
       banner.textContent = 'Changes are not saved. This project changed or was deleted in another tab.';
       document.body.appendChild(banner);
