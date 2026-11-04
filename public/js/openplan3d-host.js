@@ -822,14 +822,6 @@
       });
     }
 
-      return {
-        wall_height_ft: parseFloat(wallHeightInput ? wallHeightInput.value : 8) || 8,
-        ceiling_height_ft: parseFloat(ceilingHeightInput ? ceilingHeightInput.value : 8) || 8,
-        flooring_waste_percent: parseFloat(wasteInput ? wasteInput.value : 10) || 10,
-        flooring_box_sqft: parseFloat(boxInput ? boxInput.value : 20) || 20
-      };
-    }
-
     function getFinishSettings() {
       return {
         wall_height_ft: parseFloat(wallHeightInput ? wallHeightInput.value : 8) || 8,

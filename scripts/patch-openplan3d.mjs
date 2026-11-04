@@ -389,6 +389,21 @@ function trimRedundantLocaleModulepreload() {
   return localeChunk;
 }
 
+function rewriteHtmlEntryChunkSlugs(rootDir, fromSuffix, toSuffix) {
+  const htmlFiles = [
+    path.join(rootDir, 'editor/index.html'),
+    path.join(rootDir, 'index.html'),
+    path.join(rootDir, 'editor.html'),
+  ];
+  for (const htmlFile of htmlFiles) {
+    if (!fs.existsSync(htmlFile)) continue;
+    let text = fs.readFileSync(htmlFile, 'utf8');
+    if (!text.includes(fromSuffix)) continue;
+    text = text.split(fromSuffix).join(toSuffix);
+    fs.writeFileSync(htmlFile, text);
+  }
+}
+
 function main() {
   if (!fs.existsSync(PRISTINE)) {
     throw new Error('patch-openplan3d: missing pristine tree at public/vendor/openplan3d');
@@ -423,6 +438,8 @@ function main() {
     [vendorLiveEditorChunk, editorChunk],
     [vendorPristineEditorChunk, editorChunk],
   ]);
+
+  rewriteHtmlEntryChunkSlugs(OUT, '-h2.js', '-h3.js');
 
   patchHostedEditorIndexBoot();
   const localeChunk = trimRedundantLocaleModulepreload();

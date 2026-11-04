@@ -1237,7 +1237,19 @@ class OpenPlan3DMeasurementBridge
                     $r['boundary_wall_ids'] = $loop['boundary_wall_ids'];
                     $r['partition_walls'] = $loop['partition_walls'];
                     $r['partition_wall_ids'] = $loop['partition_wall_ids'];
-                    if (count($loop['outer_polygon']) >= 3) {
+                    $shouldReplacePolygon = $isSingleRoom || count($loop['partition_walls']) > 0;
+                    if (! $shouldReplacePolygon) {
+                        $storedFt = [];
+                        foreach ($r['polygon'] as $pt) {
+                            $storedFt[] = [
+                                'x' => ((float) ($pt['x'] ?? 0) * $cmPerUnit) / self::CM_PER_FOOT,
+                                'y' => ((float) ($pt['y'] ?? 0) * $cmPerUnit) / self::CM_PER_FOOT,
+                            ];
+                        }
+                        $storedValidation = $this->polygonArea->validateRoom($storedFt, 1.0);
+                        $shouldReplacePolygon = ! $storedValidation['valid'];
+                    }
+                    if ($shouldReplacePolygon && count($loop['outer_polygon']) >= 3) {
                         $r['polygon'] = $loop['outer_polygon'];
                     }
                     $rooms[] = $r;

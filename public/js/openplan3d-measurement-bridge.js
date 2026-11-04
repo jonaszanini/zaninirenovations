@@ -781,14 +781,21 @@
     }
 
     var loopData = extractOuterLoopAndPartitions(candidateWalls, cmPerUnit);
-    var polyVertices = [];
-    if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
-      polyVertices = loopData.outer_polygon;
-    } else {
-      polyVertices = (selectedRoom && (selectedRoom.polygon || selectedRoom.vertices)) || [];
-    }
     var partitionWalls = loopData.partition_walls || [];
     var boundaryWallIds = loopData.boundary_wall_ids || [];
+    var storedPoly = (selectedRoom && (selectedRoom.polygon || selectedRoom.vertices)) || [];
+    var polyVertices = storedPoly;
+    if (storedPoly.length < 3) {
+      if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
+        polyVertices = loopData.outer_polygon;
+      }
+    } else if (!isSingleRoom && roomWIds.length === 0) {
+      polyVertices = storedPoly;
+    } else if (isSingleRoom || partitionWalls.length > 0) {
+      if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
+        polyVertices = loopData.outer_polygon;
+      }
+    }
     if (polyVertices.length < 3) return emptyLayoutMetrics(finish.wall_height_ft);
 
     // Convert polygon vertices to feet
