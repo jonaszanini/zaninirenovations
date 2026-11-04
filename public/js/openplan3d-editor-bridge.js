@@ -996,11 +996,13 @@
       }
       if (typeof document !== 'undefined') {
         try {
-          var banners = document.querySelectorAll('div, section');
+          var banners = document.querySelectorAll('div[role="alert"].bg-red-50, div[role="alert"].border-red-200, div[role="alert"].text-red-900, [data-save-conflict-banner]');
           for (var b = 0; b < banners.length; b++) {
-            var text = banners[b].textContent || '';
+            var el = banners[b];
+            if (el.querySelector('canvas') || el.id === 'app' || el === document.body || el === document.documentElement) continue;
+            var text = el.textContent || '';
             if (text.includes('Changes are not saved') && text.includes('another tab')) {
-              banners[b].style.display = 'none';
+              el.style.display = 'none';
             }
           }
         } catch (e2) {}

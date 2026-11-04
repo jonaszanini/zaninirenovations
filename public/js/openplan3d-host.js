@@ -1258,9 +1258,9 @@
       var incomingArea = metrics && metrics.area_sqft != null ? Number(metrics.area_sqft) : 0;
       var confirmZero = false;
 
-      // Ask the replace question if real value is 0 or drops sharply (e.g. >= 50% drop)
+      // Ask the replace question if real value is 0 or drops sharply (incoming < 50% of stored, or <= 0)
       var zeroAreaCheck = Promise.resolve(true);
-      if (storedArea > 0 && (!isFinite(incomingArea) || incomingArea <= 0 || incomingArea < storedArea * 0.05)) {
+      if (storedArea > 0 && (!isFinite(incomingArea) || incomingArea <= 0 || incomingArea < storedArea * 0.5)) {
         var newAreaText = (isFinite(incomingArea) && incomingArea > 0)
           ? incomingArea.toFixed(2) + ' sq ft'
           : '0';

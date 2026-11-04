@@ -410,12 +410,47 @@ class RoomAreaController extends Controller
             'expected_baseline_hash' => ['nullable', 'string'],
         ]);
 
-        if ($request->filled('expected_revision')) {
+        $plan = $data['plan'] ?? null;
+        $isOpenPlanUpdate = is_array($plan) || $request->has('expected_revision') || $request->has('expected_baseline_hash');
+
+        if ($isOpenPlanUpdate) {
+            $serverRevision = (int) ($room_area_room->updated_at?->valueOf() ?? ($room_area_room->updated_at ? $room_area_room->updated_at->timestamp * 1000 : 0));
+            $serverBaselineHash = sha1(json_encode($room_area_room->vertices ?? []));
+
             $expRaw = $request->input('expected_revision');
-            if (is_numeric($expRaw)) {
+            $expHash = $request->input('expected_baseline_hash');
+
+            $hasExpRev = $expRaw !== null && $expRaw !== '';
+            $hasExpHash = $expHash !== null && $expHash !== '';
+
+            if (! $hasExpRev && ! $hasExpHash) {
+                return response()->json([
+                    'ok' => false,
+                    'code' => 'conflict',
+                    'message' => 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.',
+                ], 409);
+            }
+
+            if ($hasExpRev) {
+                if (! is_numeric($expRaw)) {
+                    return response()->json([
+                        'ok' => false,
+                        'code' => 'conflict',
+                        'message' => 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.',
+                    ], 409);
+                }
                 $expMs = (int) $expRaw;
-                $serverMs = (int) ($room_area_room->updated_at?->valueOf() ?? ($room_area_room->updated_at ? $room_area_room->updated_at->timestamp * 1000 : 0));
-                if ($serverMs > $expMs + 1000) {
+                if ($serverRevision > $expMs) {
+                    return response()->json([
+                        'ok' => false,
+                        'code' => 'conflict',
+                        'message' => 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.',
+                    ], 409);
+                }
+            }
+
+            if ($hasExpHash) {
+                if ($expHash !== $serverBaselineHash) {
                     return response()->json([
                         'ok' => false,
                         'code' => 'conflict',

@@ -61,9 +61,9 @@ class RoomAreaEngineFeatureFlagTest extends TestCase
 
         $this->assertDirectoryExists($vendorDir);
         $this->assertFileExists($vendorDir . '/editor/index.html');
-        $this->assertFileExists($vendorDir . '/_app/immutable/chunks/1VjVcrjm.js');
         $manifest = json_decode(file_get_contents(base_path('scripts/openplan3d-h1.json')), true);
-        $this->assertSame('1VjVcrjm.js', $manifest['storeChunk'] ?? null);
+        $this->assertSame('1VjVcrjm-h1.js', $manifest['storeChunk'] ?? null);
+        $this->assertFileExists($vendorDir . '/_app/immutable/chunks/' . $manifest['storeChunk']);
     }
 
     public function test_vendored_openplan3d_assets_exist_on_disk(): void
