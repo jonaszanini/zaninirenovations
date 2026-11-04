@@ -377,8 +377,6 @@
     var quoteBtn = doc.getElementById('openplan3d-quote-btn');
     var currentProject = null;
     var currentRoom = null;
-    var loadedRoomRevision = null;
-    var loadedRoomBaselineHash = null;
     var currentPlan = null;
     var isDirty = false;
     var isSaving = false;
@@ -845,8 +843,6 @@
 
     function selectRoom(room) {
       currentRoom = room;
-      loadedRoomRevision = room ? (room.revision || (room.updated_at ? String(new Date(room.updated_at).getTime()) : null)) : null;
-      loadedRoomBaselineHash = room ? (room.baseline_hash || null) : null;
       selectedOpenPlan3DRoomId = null;
       if (currentRoom) {
         if (roomSelect) roomSelect.value = currentRoom.id ? String(currentRoom.id) : '__new__';
@@ -1121,8 +1117,6 @@
         flooring_waste_percent: finish.flooring_waste_percent,
         flooring_box_sqft: finish.flooring_box_sqft,
         confirm_zero_area: !!confirmZero,
-        expected_revision: loadedRoomRevision,
-        expected_baseline_hash: loadedRoomBaselineHash,
         _submit_once: submitOnce,
         _token: csrfToken
       };
@@ -1161,8 +1155,6 @@
           var updatedProject = result.data.project;
 
           currentRoom = updatedRoom;
-          loadedRoomRevision = updatedRoom.revision || (updatedRoom.updated_at ? String(new Date(updatedRoom.updated_at).getTime()) : null);
-          loadedRoomBaselineHash = updatedRoom.baseline_hash || null;
           if (updatedProject) {
             for (var i = 0; i < projects.length; i++) {
               if (projects[i].id === updatedProject.id) {
@@ -1183,24 +1175,10 @@
 
           loadedPlanBaseline = sentPlan;
           setDirty(!plansMatch(currentPlan, sentPlan));
-          postToEditor({
-            type: 'OPENPLAN3D_SAVE_ACK',
-            ok: true,
-            revision: loadedRoomRevision,
-            baselineHash: loadedRoomBaselineHash,
-            room: updatedRoom
-          });
           showFeedback('Plan saved successfully!');
         } else {
-          var isConflict = result.status === 409 || (result.data && result.data.code === 'conflict');
           var errMsg = (result.data && (result.data.message || (result.data.errors ? Object.values(result.data.errors).flat().join(' ') : null))) || 'Save failed.';
           showFeedback(errMsg, true);
-          if (isConflict) {
-            postToEditor({
-              type: 'OPENPLAN3D_SAVE_CONFLICT',
-              message: errMsg
-            });
-          }
         }
       })
       .catch(function (err) {
@@ -1258,16 +1236,13 @@
       var incomingArea = metrics && metrics.area_sqft != null ? Number(metrics.area_sqft) : 0;
       var confirmZero = false;
 
-      // Ask the replace question if real value is 0 or drops sharply (e.g. >= 50% drop)
+      // Ask the zero-area replace question BEFORE linking or creating a project
       var zeroAreaCheck = Promise.resolve(true);
-      if (storedArea > 0 && (!isFinite(incomingArea) || incomingArea <= 0 || incomingArea < storedArea * 0.05)) {
-        var newAreaText = (isFinite(incomingArea) && incomingArea > 0)
-          ? incomingArea.toFixed(2) + ' sq ft'
-          : '0';
+      if (storedArea > 0 && (!isFinite(incomingArea) || incomingArea <= 0)) {
         zeroAreaCheck = showModal({
           mode: 'confirm',
           title: 'Replace stored area?',
-          body: 'This save would replace the stored room area (' + storedArea.toFixed(2) + ' sq ft) with ' + newAreaText + '. Continue?',
+          body: 'This save would replace the stored room area (' + storedArea.toFixed(2) + ' sq ft) with 0. Continue?',
           confirmLabel: 'Replace',
           isSaveFlow: true,
           opener: saveBtn

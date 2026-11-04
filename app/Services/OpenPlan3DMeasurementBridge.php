@@ -275,7 +275,6 @@ class OpenPlan3DMeasurementBridge
         // Room walls and perimeter
         $roomWallIds = $selectedRoom['walls'] ?? [];
         $boundaryWalls = $this->resolveBoundaryWalls($selectedRoom, $walls, $cmPerUnit);
-        $partitionWalls = $selectedRoom['partition_walls'] ?? [];
 
         $perimeter = 0.0;
         foreach ($boundaryWalls as $bw) {
@@ -283,14 +282,9 @@ class OpenPlan3DMeasurementBridge
         }
         $perimeter = $this->roundTo($perimeter, 2);
 
-        // Openings associated with this room's walls
+        // Openings associated with this room's boundary walls
         $allOpenings = $this->resolveFloorOpenings($floor, $cmPerUnit);
-        $allRoomWallIds = array_merge(
-            array_column($boundaryWalls, 'id'),
-            array_column($partitionWalls, 'id')
-        );
-        $wallIdSet = array_flip($allRoomWallIds);
-        $boundaryWallIdMap = array_flip(array_column($boundaryWalls, 'id'));
+        $wallIdSet = array_flip(array_column($boundaryWalls, 'id'));
         $openingsByWall = [];
         $doorCount = 0;
         $windowCount = 0;
@@ -305,19 +299,14 @@ class OpenPlan3DMeasurementBridge
             $openingsByWall[$wId][] = $op;
 
             $type = $op['type'];
-            $isBoundaryWall = isset($boundaryWallIdMap[$wId]);
             if ($type === 'door') {
                 $doorCount++;
-                if ($isBoundaryWall) {
-                    $baseboardDeductionInches += $op['width_in'];
-                }
+                $baseboardDeductionInches += $op['width_in'];
             } elseif ($type === 'window') {
                 $windowCount++;
             } else {
                 $openingCount++;
-                if ($isBoundaryWall) {
-                    $baseboardDeductionInches += $op['width_in'];
-                }
+                $baseboardDeductionInches += $op['width_in'];
             }
         }
 
@@ -363,43 +352,6 @@ class OpenPlan3DMeasurementBridge
             $deductRaw = $this->finishMath->unionOpeningAreaRawSqFt($canvasObjects, $ceilingHeightFt, $wallLengthIn);
             $deductSqFt = $this->roundTo($deductRaw, 2);
             $netWallArea = $this->finishMath->netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deductRaw);
-            $totalNetWallArea += $netWallArea;
-
-            $perWallNetAreas[] = [
-                'id' => $wId,
-                'index' => $wallIdx,
-                'label' => 'W'.$wallIdx,
-                'length_lf' => $this->roundTo($lengthFt, 2),
-                'opening_area_sqft' => $deductSqFt,
-                'net_area_sqft' => $netWallArea,
-            ];
-            $wallIdx++;
-        }
-
-        // Partition walls (interior): count both faces (2x)
-        foreach ($partitionWalls as $pw) {
-            $wId = (string) $pw['id'];
-            $dx = ((float) $pw['end']['x'] - (float) $pw['start']['x']) * $cmPerUnit;
-            $dy = ((float) $pw['end']['y'] - (float) $pw['start']['y']) * $cmPerUnit;
-            $lengthFt = hypot($dx, $dy) / self::CM_PER_FOOT;
-            $wallLengthIn = $lengthFt * 12.0;
-            $wallOpenings = $openingsByWall[$wId] ?? [];
-
-            $canvasObjects = [];
-            foreach ($wallOpenings as $wo) {
-                $canvasObjects[] = [
-                    'type' => $wo['type'],
-                    'width' => $wo['width_in'],
-                    'height' => $wo['height_in'],
-                    'offset' => $wo['offset_in'],
-                    'sill_height' => $wo['sill_height_in'],
-                ];
-            }
-
-            $deductRaw = $this->finishMath->unionOpeningAreaRawSqFt($canvasObjects, $ceilingHeightFt, $wallLengthIn);
-            $deductSqFt = $this->roundTo($deductRaw * 2.0, 2);
-            $netWallAreaSingle = $this->finishMath->netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deductRaw);
-            $netWallArea = $this->roundTo($netWallAreaSingle * 2.0, 2);
             $totalNetWallArea += $netWallArea;
 
             $perWallNetAreas[] = [
@@ -769,368 +721,6 @@ class OpenPlan3DMeasurementBridge
      * @param  array<string, mixed>  $plan
      * @return array<string, mixed>|null
      */
-    /**
-     * Compute distance and projection from point p to segment [s, e].
-     *
-     * @param  array{x: float, y: float}  $p
-     * @param  array{x: float, y: float}  $s
-     * @param  array{x: float, y: float}  $e
-     * @return array{dist: float, t: float, proj: array{x: float, y: float}}
-     */
-    private function distToSegment(array $p, array $s, array $e): array
-    {
-        $dx = $e['x'] - $s['x'];
-        $dy = $e['y'] - $s['y'];
-        $l2 = $dx * $dx + $dy * $dy;
-        if ($l2 < 1e-6) {
-            return [
-                'dist' => hypot($p['x'] - $s['x'], $p['y'] - $s['y']),
-                't' => 0.0,
-                'proj' => $s,
-            ];
-        }
-        $t = max(0.0, min(1.0, (($p['x'] - $s['x']) * $dx + ($p['y'] - $s['y']) * $dy) / $l2));
-        $proj = [
-            'x' => $s['x'] + $t * $dx,
-            'y' => $s['y'] + $t * $dy,
-        ];
-        $dist = hypot($p['x'] - $proj['x'], $p['y'] - $proj['y']);
-
-        return ['dist' => $dist, 't' => $t, 'proj' => $proj];
-    }
-
-    /**
-     * Simplify ring by removing collinear vertices.
-     *
-     * @param  list<array{x: float, y: float}>  $pts
-     * @return list<array{x: float, y: float}>
-     */
-    private function simplifyRing(array $pts): array
-    {
-        $n = count($pts);
-        if ($n < 3) {
-            return $pts;
-        }
-        $out = [];
-        for ($i = 0; $i < $n; $i++) {
-            $prev = $pts[($i - 1 + $n) % $n];
-            $curr = $pts[$i];
-            $next = $pts[($i + 1) % $n];
-            $dx1 = $curr['x'] - $prev['x'];
-            $dy1 = $curr['y'] - $prev['y'];
-            $dx2 = $next['x'] - $curr['x'];
-            $dy2 = $next['y'] - $curr['y'];
-            $len1 = hypot($dx1, $dy1);
-            $len2 = hypot($dx2, $dy2);
-            if ($len1 > 1e-6 && $len2 > 1e-6) {
-                $cross = abs($dx1 * $dy2 - $dy1 * $dx2);
-                $dot = $dx1 * $dx2 + $dy1 * $dy2;
-                if (($cross / ($len1 * $len2)) < 0.02 && $dot > 0) {
-                    continue;
-                }
-            }
-            $out[] = $curr;
-        }
-
-        return count($out) >= 3 ? $out : $pts;
-    }
-
-    /**
-     * Extract outer boundary polygon and identify interior partition walls.
-     *
-     * Handles:
-     * - T-junctions by splitting host walls logically at intersection points.
-     * - Free-ended / dead-end interior partition walls via iterative degree-1 pruning.
-     * - Traversing the outer perimeter from the extreme vertex.
-     *
-     * @param  list<array<string, mixed>>  $walls
-     * @return array{
-     *     outer_polygon: list<array{x: float, y: float}>,
-     *     boundary_wall_ids: list<string>,
-     *     partition_wall_ids: list<string>,
-     *     partition_walls: list<array<string, mixed>>
-     * }
-     */
-    public function extractOuterLoopAndPartitions(array $walls, float $cmPerUnit = 1.0, float $eps = 5.0): array
-    {
-        if (count($walls) < 3) {
-            return [
-                'outer_polygon' => [],
-                'boundary_wall_ids' => [],
-                'partition_wall_ids' => array_column($walls, 'id'),
-                'partition_walls' => array_values($walls),
-            ];
-        }
-
-        $epsUnit = $eps / ($cmPerUnit > 0 ? $cmPerUnit : 1.0);
-
-        // 1. Collect all segments
-        $rawSegments = [];
-        foreach ($walls as $w) {
-            if (! is_array($w) || ! isset($w['start'], $w['end'])) {
-                continue;
-            }
-            $rawSegments[] = [
-                'wallId' => (string) ($w['id'] ?? uniqid('w_')),
-                'start' => ['x' => (float) ($w['start']['x'] ?? 0), 'y' => (float) ($w['start']['y'] ?? 0)],
-                'end' => ['x' => (float) ($w['end']['x'] ?? 0), 'y' => (float) ($w['end']['y'] ?? 0)],
-                'wall' => $w,
-                'splitPoints' => [],
-            ];
-        }
-
-        if (count($rawSegments) < 3) {
-            return [
-                'outer_polygon' => [],
-                'boundary_wall_ids' => [],
-                'partition_wall_ids' => array_column($walls, 'id'),
-                'partition_walls' => array_values($walls),
-            ];
-        }
-
-        $allEndpoints = [];
-        foreach ($rawSegments as $s) {
-            $allEndpoints[] = $s['start'];
-            $allEndpoints[] = $s['end'];
-        }
-
-        // 2. Detect T-junctions: endpoints lying on other segment interiors
-        for ($i = 0; $i < count($rawSegments); $i++) {
-            $s = &$rawSegments[$i];
-            $dx = $s['end']['x'] - $s['start']['x'];
-            $dy = $s['end']['y'] - $s['start']['y'];
-            $len = hypot($dx, $dy);
-            if ($len < $epsUnit) {
-                continue;
-            }
-
-            foreach ($allEndpoints as $pt) {
-                if (hypot($pt['x'] - $s['start']['x'], $pt['y'] - $s['start']['y']) < $epsUnit) {
-                    continue;
-                }
-                if (hypot($pt['x'] - $s['end']['x'], $pt['y'] - $s['end']['y']) < $epsUnit) {
-                    continue;
-                }
-
-                $res = $this->distToSegment($pt, $s['start'], $s['end']);
-                if ($res['dist'] < $epsUnit && $res['t'] * $len > $epsUnit && (1.0 - $res['t']) * $len > $epsUnit) {
-                    $already = false;
-                    foreach ($s['splitPoints'] as $sp) {
-                        if (hypot($sp['point']['x'] - $res['proj']['x'], $sp['point']['y'] - $res['proj']['y']) < $epsUnit) {
-                            $already = true;
-                            break;
-                        }
-                    }
-                    if (! $already) {
-                        $s['splitPoints'][] = ['point' => $res['proj'], 't' => $res['t']];
-                    }
-                }
-            }
-        }
-        unset($s);
-
-        // 3. Subdivide segments at split points
-        $subSegments = [];
-        foreach ($rawSegments as $s) {
-            if ($s['splitPoints'] === []) {
-                $subSegments[] = [
-                    'wallId' => $s['wallId'],
-                    'start' => $s['start'],
-                    'end' => $s['end'],
-                    'wall' => $s['wall'],
-                ];
-            } else {
-                usort($s['splitPoints'], fn ($a, $b) => $a['t'] <=> $b['t']);
-                $cur = $s['start'];
-                foreach ($s['splitPoints'] as $sp) {
-                    if (hypot($sp['point']['x'] - $cur['x'], $sp['point']['y'] - $cur['y']) >= $epsUnit) {
-                        $subSegments[] = [
-                            'wallId' => $s['wallId'],
-                            'start' => $cur,
-                            'end' => $sp['point'],
-                            'wall' => $s['wall'],
-                        ];
-                        $cur = $sp['point'];
-                    }
-                }
-                if (hypot($s['end']['x'] - $cur['x'], $s['end']['y'] - $cur['y']) >= $epsUnit) {
-                    $subSegments[] = [
-                        'wallId' => $s['wallId'],
-                        'start' => $cur,
-                        'end' => $s['end'],
-                        'wall' => $s['wall'],
-                    ];
-                }
-            }
-        }
-
-        // 4. Cluster vertices into unique node IDs
-        $nodes = [];
-        $findNode = function ($pt) use (&$nodes, $epsUnit) {
-            foreach ($nodes as $id => $nPt) {
-                if (hypot($nPt['x'] - $pt['x'], $nPt['y'] - $pt['y']) < $epsUnit) {
-                    return $id;
-                }
-            }
-            $newId = count($nodes);
-            $nodes[$newId] = $pt;
-
-            return $newId;
-        };
-
-        $edges = [];
-        foreach ($subSegments as $seg) {
-            $u = $findNode($seg['start']);
-            $v = $findNode($seg['end']);
-            if ($u !== $v) {
-                $edges[] = [
-                    'u' => $u,
-                    'v' => $v,
-                    'wallId' => $seg['wallId'],
-                    'wall' => $seg['wall'],
-                    'start' => $nodes[$u],
-                    'end' => $nodes[$v],
-                ];
-            }
-        }
-
-        // 5. Degree-1 iterative pruning (trim partition dead ends)
-        $activeEdges = $edges;
-        $partitionWallIds = [];
-
-        $pruning = true;
-        while ($pruning && count($activeEdges) >= 3) {
-            $pruning = false;
-            $degrees = array_fill(0, count($nodes), 0);
-            foreach ($activeEdges as $e) {
-                $degrees[$e['u']]++;
-                $degrees[$e['v']]++;
-            }
-
-            $nextEdges = [];
-            foreach ($activeEdges as $e) {
-                if ($degrees[$e['u']] < 2 || $degrees[$e['v']] < 2) {
-                    $partitionWallIds[$e['wallId']] = true;
-                    $pruning = true;
-                } else {
-                    $nextEdges[] = $e;
-                }
-            }
-            $activeEdges = $nextEdges;
-        }
-
-        if (count($activeEdges) < 3) {
-            return [
-                'outer_polygon' => [],
-                'boundary_wall_ids' => [],
-                'partition_wall_ids' => array_column($walls, 'id'),
-                'partition_walls' => array_values($walls),
-            ];
-        }
-
-        // 6. Trace outer boundary cycle
-        $adj = [];
-        foreach ($activeEdges as $idx => $e) {
-            $adj[$e['u']][] = ['to' => $e['v'], 'edgeIdx' => $idx];
-            $adj[$e['v']][] = ['to' => $e['u'], 'edgeIdx' => $idx];
-        }
-
-        // Start at extreme vertex (min X, then min Y)
-        $startNode = null;
-        $minX = INF;
-        $minY = INF;
-        foreach ($activeEdges as $e) {
-            foreach ([$e['u'], $e['v']] as $nId) {
-                $pt = $nodes[$nId];
-                if ($pt['x'] < $minX || (abs($pt['x'] - $minX) < 1e-4 && $pt['y'] < $minY)) {
-                    $minX = $pt['x'];
-                    $minY = $pt['y'];
-                    $startNode = $nId;
-                }
-            }
-        }
-
-        $cycle = [];
-        $cycleWallIds = [];
-        $currNode = $startNode;
-        $prevAngle = -M_PI / 2.0;
-        $visitedEdges = [];
-
-        $maxSteps = count($activeEdges) * 2;
-        for ($step = 0; $step < $maxSteps; $step++) {
-            $cycle[] = $nodes[$currNode];
-            $neighbors = $adj[$currNode] ?? [];
-            if ($neighbors === []) {
-                break;
-            }
-
-            $bestNext = null;
-            $bestDiff = INF;
-            $bestEdgeIdx = null;
-
-            foreach ($neighbors as $nbr) {
-                $toNode = $nbr['to'];
-                $eIdx = $nbr['edgeIdx'];
-                if (($visitedEdges[$eIdx] ?? 0) >= 2) {
-                    continue;
-                }
-
-                $toPt = $nodes[$toNode];
-                $edgeAngle = atan2($toPt['y'] - $nodes[$currNode]['y'], $toPt['x'] - $nodes[$currNode]['x']);
-
-                $incoming = $prevAngle + M_PI;
-                $diff = $edgeAngle - $incoming;
-                while ($diff <= 0) {
-                    $diff += 2 * M_PI;
-                }
-                while ($diff > 2 * M_PI) {
-                    $diff -= 2 * M_PI;
-                }
-
-                if ($diff < $bestDiff) {
-                    $bestDiff = $diff;
-                    $bestNext = $toNode;
-                    $bestEdgeIdx = $eIdx;
-                }
-            }
-
-            if ($bestNext === null) {
-                break;
-            }
-
-            $visitedEdges[$bestEdgeIdx] = ($visitedEdges[$bestEdgeIdx] ?? 0) + 1;
-            $cycleWallIds[] = $activeEdges[$bestEdgeIdx]['wallId'];
-
-            if ($bestNext === $startNode && count($cycle) >= 3) {
-                break;
-            }
-
-            $prevAngle = atan2($nodes[$bestNext]['y'] - $nodes[$currNode]['y'], $nodes[$bestNext]['x'] - $nodes[$currNode]['x']);
-            $currNode = $bestNext;
-        }
-
-        $cycle = $this->simplifyRing($cycle);
-
-        $boundaryWallIds = array_values(array_unique($cycleWallIds));
-        $boundaryWallIdMap = array_flip($boundaryWallIds);
-
-        $partitionWalls = [];
-        foreach ($walls as $w) {
-            $wId = (string) $w['id'];
-            if (! isset($boundaryWallIdMap[$wId])) {
-                $partitionWalls[] = $w;
-                $partitionWallIds[$wId] = true;
-            }
-        }
-
-        return [
-            'outer_polygon' => $cycle,
-            'boundary_wall_ids' => $boundaryWallIds,
-            'partition_wall_ids' => array_keys($partitionWallIds),
-            'partition_walls' => $partitionWalls,
-        ];
-    }
-
     private function resolveFloor(array $plan): ?array
     {
         if (isset($plan['project']['floors']) && is_array($plan['project']['floors']) && count($plan['project']['floors']) > 0) {
@@ -1199,81 +789,28 @@ class OpenPlan3DMeasurementBridge
         $rawRooms = $floor['rooms'] ?? [];
 
         if (is_array($rawRooms) && count($rawRooms) > 0) {
-            $isSingleRoom = count($rawRooms) === 1;
             foreach ($rawRooms as $r) {
                 if (! is_array($r)) {
                     continue;
                 }
-                // Determine candidate walls for this room
-                $candidateWalls = [];
-                if ($isSingleRoom) {
-                    $candidateWalls = array_values($walls);
-                } else {
-                    $rWallIds = $r['walls'] ?? [];
-                    if (is_array($rWallIds) && count($rWallIds) > 0) {
-                        $idMap = array_flip($rWallIds);
-                        foreach ($walls as $wid => $w) {
-                            if (isset($idMap[$wid])) {
-                                $candidateWalls[] = $w;
-                            }
-                        }
-                    } else {
-                        $candidateWalls = array_values($walls);
-                    }
-                }
-
-                if (isset($r['polygon']) && is_array($r['polygon']) && count($r['polygon']) >= 3) {
-                    $loop = $this->extractOuterLoopAndPartitions($candidateWalls, $cmPerUnit);
-                    $r['boundary_wall_ids'] = $loop['boundary_wall_ids'];
-                    $r['partition_walls'] = $loop['partition_walls'];
-                    $r['partition_wall_ids'] = $loop['partition_wall_ids'];
+                $rPolygon = $this->resolveRoomPolygon($r, $walls);
+                if (count($rPolygon) >= 3) {
+                    $r['polygon'] = $rPolygon;
                     $rooms[] = $r;
-                    continue;
-                }
-
-                $loop = $this->extractOuterLoopAndPartitions($candidateWalls, $cmPerUnit);
-                if (count($loop['outer_polygon']) >= 3) {
-                    $r['polygon'] = $loop['outer_polygon'];
-                    $r['boundary_wall_ids'] = $loop['boundary_wall_ids'];
-                    $r['partition_walls'] = $loop['partition_walls'];
-                    $r['partition_wall_ids'] = $loop['partition_wall_ids'];
-                    if (empty($r['walls'])) {
-                        $r['walls'] = $loop['boundary_wall_ids'];
-                    }
-                    $rooms[] = $r;
-                } else {
-                    $rPolygon = $this->resolveRoomPolygon($r, $walls);
-                    if (count($rPolygon) >= 3) {
-                        $r['polygon'] = $rPolygon;
-                        $rooms[] = $r;
-                    }
                 }
             }
         }
 
-        // Fallback: If no rooms are explicitly defined, construct from outer loop of walls
+        // Fallback: If no rooms are explicitly defined, construct from closed wall loop
         if ($rooms === []) {
-            $loop = $this->extractOuterLoopAndPartitions(array_values($walls), $cmPerUnit);
-            if (count($loop['outer_polygon']) >= 3) {
+            $poly = $this->traceWallsToPolygon(array_values($walls));
+            if (count($poly) >= 3) {
                 $rooms[] = [
                     'id' => 'r1',
                     'name' => 'Room 1',
-                    'walls' => $loop['boundary_wall_ids'],
-                    'polygon' => $loop['outer_polygon'],
-                    'boundary_wall_ids' => $loop['boundary_wall_ids'],
-                    'partition_walls' => $loop['partition_walls'],
-                    'partition_wall_ids' => $loop['partition_wall_ids'],
+                    'walls' => array_keys($walls),
+                    'polygon' => $poly,
                 ];
-            } else {
-                $poly = $this->traceWallsToPolygon(array_values($walls));
-                if (count($poly) >= 3) {
-                    $rooms[] = [
-                        'id' => 'r1',
-                        'name' => 'Room 1',
-                        'walls' => array_keys($walls),
-                        'polygon' => $poly,
-                    ];
-                }
             }
         }
 
@@ -1381,7 +918,7 @@ class OpenPlan3DMeasurementBridge
     private function resolveBoundaryWalls(array $room, array $walls, float $cmPerUnit): array
     {
         $out = [];
-        $wallIds = $room['boundary_wall_ids'] ?? $room['walls'] ?? [];
+        $wallIds = $room['walls'] ?? [];
 
         if (is_array($wallIds) && count($wallIds) > 0) {
             foreach ($wallIds as $wid) {
