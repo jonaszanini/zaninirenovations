@@ -180,6 +180,7 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
             'inside_area_sqft' => 200.0,
             'ceiling_area_sqft' => 200.0,
             'casing_lf' => 12.5,
+            'baseboard_lf' => 20.0,
             'boundary_wall_ids' => ['w1', 'w2'],
             'walls' => [
                 [
@@ -206,7 +207,7 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $this->assertSame(160.0 + 128.0, $out['finish_drywall_sqft']);
         $this->assertSame(160.0, $out['finish_insulation_sqft']);
         $this->assertSame(8.0, $out['finish_stud_lf']);
-        $this->assertSame(20.0 + 16.0, $out['finish_baseboard_lf']);
+        $this->assertSame(20.0, $out['finish_baseboard_lf']);
         $this->assertSame(12.5, $out['finish_casing_lf']);
     }
 
@@ -226,6 +227,111 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
 
         $merged = $this->extensions->mergeZaniniIntoPlan($plan, ['excluded_area_zones' => []]);
         $this->assertSame(['excluded_area_zones' => []], $merged['zanini']);
+    }
+
+    public function test_rect_inside_room_polygon_is_exact_for_ten_by_ten_feet(): void
+    {
+        $roomPoly = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 304.8, 'y' => 0],
+            ['x' => 304.8, 'y' => 304.8],
+            ['x' => 0, 'y' => 304.8],
+        ];
+        $rect = ['x0' => 0, 'y0' => 0, 'x1' => 304.8, 'y1' => 304.8];
+
+        $this->assertSame(100.0, $this->extensions->rectInsidePolygonAreaSqFt($rect, $roomPoly, 1.0));
+    }
+
+    public function test_overlapping_exclude_zones_union_before_subtracting(): void
+    {
+        $roomPoly = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 304.8, 'y' => 0],
+            ['x' => 304.8, 'y' => 304.8],
+            ['x' => 0, 'y' => 304.8],
+        ];
+        $metrics = [
+            'area_sqft' => 200.0,
+            'inside_area_sqft' => 200.0,
+            'ceiling_area_sqft' => 200.0,
+            'room_polygon_cm' => $roomPoly,
+            'walls' => [],
+            'casing_lf' => 0.0,
+            'boundary_wall_ids' => [],
+        ];
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'zones' => [
+                    ['id' => 'a', 'exclude' => true, 'x1' => 0, 'y1' => 0, 'x2' => 152.4, 'y2' => 304.8],
+                    ['id' => 'b', 'exclude' => true, 'x1' => 76.2, 'y1' => 0, 'x2' => 228.6, 'y2' => 304.8],
+                ],
+            ],
+        ];
+
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
+
+        $this->assertSame(75.0, $out['excluded_area_sqft']);
+    }
+
+    public function test_merged_exclude_zones_union_into_target(): void
+    {
+        $roomPoly = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 400, 'y' => 0],
+            ['x' => 400, 'y' => 400],
+            ['x' => 0, 'y' => 400],
+        ];
+        $metrics = [
+            'area_sqft' => 400.0,
+            'inside_area_sqft' => 400.0,
+            'ceiling_area_sqft' => 400.0,
+            'room_polygon_cm' => $roomPoly,
+            'walls' => [],
+            'casing_lf' => 0.0,
+            'boundary_wall_ids' => [],
+        ];
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'zones' => [
+                    ['id' => 't', 'exclude' => true, 'x1' => 0, 'y1' => 0, 'x2' => 100, 'y2' => 200],
+                    ['id' => 's', 'exclude' => true, 'x1' => 100, 'y1' => 0, 'x2' => 200, 'y2' => 100, 'mergedInto' => 't'],
+                ],
+            ],
+        ];
+
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
+        $unionRect = ['x0' => 0, 'y0' => 0, 'x1' => 200, 'y1' => 200];
+
+        $this->assertSame(
+            $this->extensions->rectInsidePolygonAreaSqFt($unionRect, $roomPoly, 1.0),
+            $out['excluded_area_sqft']
+        );
+    }
+
+    public function test_legacy_baseboard_lf_preserved_when_no_wall_finishes(): void
+    {
+        $metrics = [
+            'area_sqft' => 200.0,
+            'inside_area_sqft' => 200.0,
+            'ceiling_area_sqft' => 200.0,
+            'baseboard_lf' => 171.99,
+            'casing_lf' => 0.0,
+            'boundary_wall_ids' => ['w1', 'w2'],
+            'walls' => [
+                ['id' => 'w1', 'length_lf' => 55.08, 'net_area_sqft' => 80.0],
+                ['id' => 'w2', 'length_lf' => 55.08, 'net_area_sqft' => 80.0],
+                ['id' => 'w3', 'length_lf' => 55.08, 'net_area_sqft' => 128.0],
+            ],
+        ];
+        $plan = ['format' => 'openplan3d', 'units' => 'cm'];
+
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
+
+        $this->assertSame(171.99, $out['finish_baseboard_lf']);
     }
 
     /**

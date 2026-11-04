@@ -677,6 +677,13 @@ assert.strictEqual(mockSaveConflict, true, 'setSaveConflict sets mockSaveConflic
 assert.strictEqual(mockSaveError, 'Conflict from server', 'setSaveConflict sets error message');
 assert.strictEqual(mockSaveStatus, 'unsaved', 'setSaveConflict sets status to unsaved');
 
+bridgeSession.setSaveConflict('Changes are not saved. This project changed or was deleted in another tab.');
+assert.strictEqual(
+  mockSaveError,
+  'This project changed or was deleted in another tab.',
+  'setSaveConflict strips duplicate vendor prefix'
+);
+
 bridgeSession.clearSaveConflict();
 assert.strictEqual(mockSaveConflict, false, 'clearSaveConflict resets saveConflict to false');
 assert.strictEqual(mockSaveError, null, 'clearSaveConflict resets saveError to null');

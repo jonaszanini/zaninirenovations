@@ -92,11 +92,61 @@ const partitionBb = ext.applyToMetrics(Object.assign({}, {
 }, {}, 1.0);
 assert.strictEqual(partitionBb.finish_baseboard_lf, 26);
 
-const finishOut = ext.applyToMetrics(Object.assign({}, metrics), { format: 'openplan3d', units: 'cm' }, {}, 1.0);
+const finishOut = ext.applyToMetrics(Object.assign({}, metrics, { baseboard_lf: 171.99 }), { format: 'openplan3d', units: 'cm' }, {}, 1.0);
 assert.strictEqual(finishOut.finish_drywall_sqft, 288);
 assert.strictEqual(finishOut.finish_insulation_sqft, 160);
 assert.strictEqual(finishOut.finish_stud_lf, 8);
-assert.strictEqual(finishOut.finish_baseboard_lf, 36);
+assert.strictEqual(finishOut.finish_baseboard_lf, 171.99);
+
+const roomPoly = [
+  { x: 0, y: 0 },
+  { x: 304.8, y: 0 },
+  { x: 304.8, y: 304.8 },
+  { x: 0, y: 304.8 },
+];
+const tenFtRect = { x0: 0, y0: 0, x1: 304.8, y1: 304.8 };
+assert.strictEqual(ext.rectInsidePolygonAreaSqFt(tenFtRect, roomPoly, 1.0), 100.0);
+
+const overlapMetrics = Object.assign({}, metrics, {
+  area_sqft: 200,
+  room_polygon_cm: roomPoly,
+});
+const overlapOut = ext.applyToMetrics(overlapMetrics, {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    zones: [
+      { id: 'a', exclude: true, x1: 0, y1: 0, x2: 152.4, y2: 304.8 },
+      { id: 'b', exclude: true, x1: 76.2, y1: 0, x2: 228.6, y2: 304.8 },
+    ],
+  },
+}, {}, 1.0);
+assert.strictEqual(overlapOut.excluded_area_sqft, 75.0);
+
+const mergedZoneMetrics = Object.assign({}, metrics, {
+  area_sqft: 400,
+  room_polygon_cm: [
+    { x: 0, y: 0 },
+    { x: 400, y: 0 },
+    { x: 400, y: 400 },
+    { x: 0, y: 400 },
+  ],
+});
+const mergedOut = ext.applyToMetrics(mergedZoneMetrics, {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    zones: [
+      { id: 't', exclude: true, x1: 0, y1: 0, x2: 100, y2: 200 },
+      { id: 's', exclude: true, x1: 100, y1: 0, x2: 200, y2: 100, mergedInto: 't' },
+    ],
+  },
+}, {}, 1.0);
+assert.strictEqual(mergedOut.excluded_area_sqft, ext.rectInsidePolygonAreaSqFt(
+  { x0: 0, y0: 0, x1: 200, y1: 200 },
+  mergedZoneMetrics.room_polygon_cm,
+  1.0
+));
 
 const merged = ext.mergeZaniniIntoPlan({ floors: [{ id: 'f1' }] }, { zones: [] });
 assert.deepStrictEqual(merged.zanini, { zones: [] });

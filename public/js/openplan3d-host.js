@@ -589,11 +589,25 @@
         }
         var mode = opts.mode || 'confirm';
         if (modalInputWrap) modalInputWrap.hidden = mode !== 'prompt';
-        if (modalLink) modalLink.hidden = mode !== 'save-destination';
+        if (modalLink) modalLink.hidden = mode !== 'save-destination' && mode !== 'zone-picker';
         if (modalActions) modalActions.hidden = mode === 'save-destination';
+        if (modalLinkBtn) modalLinkBtn.hidden = mode !== 'save-destination';
+        if (modalStandaloneBtn) modalStandaloneBtn.hidden = mode !== 'save-destination';
+        if (modalLinkCancel) modalLinkCancel.hidden = mode !== 'save-destination';
         if (modalCancel) modalCancel.hidden = !!opts.hideCancel;
         if (modalConfirm) modalConfirm.textContent = opts.confirmLabel || (mode === 'prompt' ? 'Continue' : 'OK');
         if (mode === 'save-destination') fillClientProjectSelect();
+        if (mode === 'zone-picker' && modalClientSelect) {
+          modalClientSelect.innerHTML = '';
+          (opts.zoneChoices || []).forEach(function (z) {
+            var opt = doc.createElement('option');
+            opt.value = z.id;
+            var label = z.name || z.id;
+            label += z.exclude ? ' (Exclude)' : ' (Measure only)';
+            opt.textContent = label;
+            modalClientSelect.appendChild(opt);
+          });
+        }
         modalEl.hidden = false;
         setTimeout(function () {
           if (mode === 'prompt' && modalInput) {
@@ -604,6 +618,10 @@
           }
           if (mode === 'save-destination' && modalLinkBtn) {
             modalLinkBtn.focus();
+            return;
+          }
+          if (mode === 'zone-picker' && modalClientSelect) {
+            modalClientSelect.focus();
             return;
           }
           if (modalConfirm) modalConfirm.focus();
@@ -631,6 +649,22 @@
         if (result == null) return null;
         var value = String(result).trim();
         return value || null;
+      });
+    }
+
+    function askPickZone(title, zones, excludeId) {
+      var choices = (zones || []).filter(function (z) {
+        return z && z.id && z.id !== excludeId && !z.mergedInto;
+      });
+      if (!choices.length) return Promise.resolve(null);
+      return showModal({
+        mode: 'zone-picker',
+        title: title || 'Merge zone',
+        body: 'Choose the zone to merge into.',
+        zoneChoices: choices,
+        confirmLabel: 'Merge'
+      }).then(function (result) {
+        return result && typeof result === 'string' ? result : null;
       });
     }
 
@@ -779,8 +813,12 @@
           });
         }));
         actions.appendChild(mkBtn('Merge', 'Merge into another zone', function () {
-          askPrompt('Merge into zone id', '').then(function (targetId) {
+          askPickZone('Merge zone', (currentPlan && currentPlan.zanini && currentPlan.zanini.zones) || [], zone.id).then(function (targetId) {
             if (!targetId || targetId === zone.id) return;
+            if (win && win.OpenPlan3DZaniniTools && typeof win.OpenPlan3DZaniniTools.mergeZones === 'function') {
+              win.OpenPlan3DZaniniTools.mergeZones(zone.id, targetId);
+              return;
+            }
             mutateZanini(function (z) {
               for (var i = 0; i < (z.zones || []).length; i++) {
                 if (z.zones[i].id === zone.id) z.zones[i].mergedInto = targetId;
@@ -920,7 +958,7 @@
           metricPerimeter.textContent = (stored.perimeter_lf != null ? stored.perimeter_lf : 0).toFixed(2);
         }
         if (metricBaseboard) {
-          var bb = stored.finish_baseboard_lf != null ? stored.finish_baseboard_lf : stored.baseboard_lf;
+          var bb = stored.baseboard_lf;
           metricBaseboard.textContent = (bb != null ? bb : 0).toFixed(2);
         }
         if (metricWallArea) {
@@ -971,7 +1009,7 @@
           metricPerimeter.textContent = (metrics.perimeter_lf != null ? metrics.perimeter_lf : (metrics.perimeter_ft || 0)).toFixed(2);
         }
         if (metricBaseboard) {
-          var liveBb = metrics.finish_baseboard_lf != null ? metrics.finish_baseboard_lf : metrics.baseboard_lf;
+          var liveBb = metrics.baseboard_lf;
           metricBaseboard.textContent = (liveBb != null ? liveBb : (metrics.baseboard_ft || 0)).toFixed(2);
         }
         if (metricWallArea) {
@@ -1576,10 +1614,14 @@
     if (modalCancel) {
       modalCancel.addEventListener('click', function () { finishModal(null); });
     }
-    if (modalConfirm) {
+        if (modalConfirm) {
       modalConfirm.addEventListener('click', function () {
         if (modalInputWrap && !modalInputWrap.hidden) {
           finishModal(modalInput ? modalInput.value : '');
+          return;
+        }
+        if (modalLink && !modalLink.hidden && modalClientSelect) {
+          finishModal(modalClientSelect.value || null);
           return;
         }
         finishModal(true);

@@ -113,16 +113,21 @@
   }
 
   function screenToPlan(canvas, clientX, clientY) {
+    var bridge = typeof window !== 'undefined' && window.OpenPlan3DEditorBridge;
+    if (bridge && typeof bridge.clientToPlanCm === 'function') {
+      var fromBridge = bridge.clientToPlanCm(canvas, clientX, clientY, readViewState(), window.__openPlan3DStoreModule);
+      if (fromBridge) return fromBridge;
+    }
     var rect = canvas.getBoundingClientRect();
-    var scaleX = canvas.width / (rect.width || 1);
-    var scaleY = canvas.height / (rect.height || 1);
-    var px = (clientX - rect.left) * scaleX;
-    var py = (clientY - rect.top) * scaleY;
+    var cssW = rect.width || canvas.clientWidth || canvas.width || 1;
+    var cssH = rect.height || canvas.clientHeight || canvas.height || 1;
+    var px = clientX - rect.left;
+    var py = clientY - rect.top;
     var view = readViewState();
     if (view && view.zoom) {
       return {
-        x: (px - canvas.width / 2) / view.zoom + view.camX,
-        y: (py - canvas.height / 2) / view.zoom + view.camY
+        x: (px - cssW / 2) / view.zoom + view.camX,
+        y: (py - cssH / 2) / view.zoom + view.camY
       };
     }
     return { x: px, y: py };
@@ -131,19 +136,21 @@
   function planToScreen(canvas, pt) {
     var rect = canvas.getBoundingClientRect();
     var view = readViewState();
+    var cssW = rect.width || canvas.clientWidth || canvas.width || 1;
+    var cssH = rect.height || canvas.clientHeight || canvas.height || 1;
     var x1 = pt.x1 != null ? pt.x1 : pt.x0;
     var y1 = pt.y1 != null ? pt.y1 : pt.y0;
     var x2 = pt.x2 != null ? pt.x2 : pt.x1;
     var y2 = pt.y2 != null ? pt.y2 : pt.y1;
     if (view && view.zoom) {
-      var sx1 = (x1 - view.camX) * view.zoom + canvas.width / 2;
-      var sy1 = (y1 - view.camY) * view.zoom + canvas.height / 2;
-      var sx2 = (x2 - view.camX) * view.zoom + canvas.width / 2;
-      var sy2 = (y2 - view.camY) * view.zoom + canvas.height / 2;
-      var left = rect.left + (Math.min(sx1, sx2) / canvas.width) * rect.width;
-      var top = rect.top + (Math.min(sy1, sy2) / canvas.height) * rect.height;
-      var width = (Math.abs(sx2 - sx1) / canvas.width) * rect.width;
-      var height = (Math.abs(sy2 - sy1) / canvas.height) * rect.height;
+      var sx1 = (x1 - view.camX) * view.zoom + cssW / 2;
+      var sy1 = (y1 - view.camY) * view.zoom + cssH / 2;
+      var sx2 = (x2 - view.camX) * view.zoom + cssW / 2;
+      var sy2 = (y2 - view.camY) * view.zoom + cssH / 2;
+      var left = rect.left + Math.min(sx1, sx2);
+      var top = rect.top + Math.min(sy1, sy2);
+      var width = Math.abs(sx2 - sx1);
+      var height = Math.abs(sy2 - sy1);
       return { left: left, top: top, width: width, height: height };
     }
     return {
@@ -472,11 +479,32 @@
   function mergeZones(sourceId, targetId) {
     writePlan(function (plan) {
       var zones = plan.zanini.zones || [];
+      var source = null;
+      var target = null;
       for (var i = 0; i < zones.length; i++) {
-        if (zones[i].id === sourceId) {
-          zones[i].mergedInto = targetId;
-        }
+        if (zones[i].id === sourceId) source = zones[i];
+        if (zones[i].id === targetId) target = zones[i];
       }
+      if (!source || !target || sourceId === targetId) return;
+      function bbox(zone) {
+        var x1 = Number(zone.x1 != null ? zone.x1 : zone.x0);
+        var y1 = Number(zone.y1 != null ? zone.y1 : zone.y0);
+        var x2 = Number(zone.x2 != null ? zone.x2 : zone.x1);
+        var y2 = Number(zone.y2 != null ? zone.y2 : zone.y1);
+        return {
+          x1: Math.min(x1, x2),
+          y1: Math.min(y1, y2),
+          x2: Math.max(x1, x2),
+          y2: Math.max(y1, y2)
+        };
+      }
+      var a = bbox(source);
+      var b = bbox(target);
+      target.x1 = Math.min(a.x1, b.x1);
+      target.y1 = Math.min(a.y1, b.y1);
+      target.x2 = Math.max(a.x2, b.x2);
+      target.y2 = Math.max(a.y2, b.y2);
+      source.mergedInto = targetId;
     });
   }
 

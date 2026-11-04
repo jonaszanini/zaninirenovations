@@ -9,31 +9,43 @@ console.log('openplan3d-zanini-tools tests');
 const toolsSrc = fs.readFileSync(path.join(__dirname, '../../public/js/openplan3d-zanini-tools.js'), 'utf8');
 assert.match(toolsSrc, /MutationObserver|openplan3d-store-ready/, 'canvas hook must retry until editor canvas exists');
 assert.match(toolsSrc, /data-plan3d-canvas="true"/, 'must target main plan canvas not minimap');
-assert.match(toolsSrc, /readViewState|camX/, 'screenToPlan must use editor zoom and pan');
+assert.match(toolsSrc, /clientWidth|cssW/, 'screenToPlan must use CSS canvas dimensions like vendor F()');
 
-function screenToPlanWithView(canvas, clientX, clientY, view) {
-  var rect = canvas.getBoundingClientRect();
-  var scaleX = canvas.width / (rect.width || 1);
-  var scaleY = canvas.height / (rect.height || 1);
-  var px = (clientX - rect.left) * scaleX;
-  var py = (clientY - rect.top) * scaleY;
-  return {
-    x: (px - canvas.width / 2) / view.zoom + view.camX,
-    y: (py - canvas.height / 2) / view.zoom + view.camY
-  };
+const bridge = require('../../public/js/openplan3d-editor-bridge.js');
+
+function screenToPlanCss(canvas, clientX, clientY, view) {
+  return bridge.clientToPlanCm(canvas, clientX, clientY, view, null);
+}
+
+function planToClientCss(canvas, x, y, view) {
+  return bridge.planCmToClient(canvas, x, y, view, null);
 }
 
 const fakeCanvas = {
-  width: 800,
-  height: 600,
+  width: 1600,
+  height: 1200,
+  clientWidth: 800,
+  clientHeight: 600,
   getBoundingClientRect: function () {
-    return { left: 0, top: 0, width: 400, height: 300 };
+    return { left: 10, top: 20, width: 800, height: 600 };
   }
 };
 
-const view = { zoom: 0.5, camX: 100, camY: 200 };
-const pt = screenToPlanWithView(fakeCanvas, 200, 150, view);
-assert.ok(Math.abs(pt.x - 100) < 0.01, 'zoom transform x expected ~100 got ' + pt.x);
-assert.ok(Math.abs(pt.y - 200) < 0.01, 'zoom transform y expected ~200 got ' + pt.y);
+const view = { zoom: 0.28, camX: 412.5, camY: 318.2 };
+const center = screenToPlanCss(fakeCanvas, 10 + 400, 20 + 300, view);
+assert.ok(Math.abs(center.x - view.camX) < 0.02, 'canvas center maps to cam, got x=' + center.x);
+assert.ok(Math.abs(center.y - view.camY) < 0.02, 'canvas center maps to cam, got y=' + center.y);
+
+const planPt = { x: 512.75, y: 640.125 };
+const client = planToClientCss(fakeCanvas, planPt.x, planPt.y, view);
+const back = screenToPlanCss(fakeCanvas, client.clientX, client.clientY, view);
+assert.ok(Math.abs(back.x - planPt.x) < 0.05, 'round-trip x');
+assert.ok(Math.abs(back.y - planPt.y) < 0.05, 'round-trip y');
+
+const viewPan = { zoom: 0.37, camX: -50, camY: 120 };
+const probe = { x: 10, y: -25 };
+const c2 = planToClientCss(fakeCanvas, probe.x, probe.y, viewPan);
+const back2 = screenToPlanCss(fakeCanvas, c2.clientX, c2.clientY, viewPan);
+assert.ok(Math.abs(back2.x - probe.x) < 0.05 && Math.abs(back2.y - probe.y) < 0.05, 'round-trip under pan/zoom');
 
 console.log('openplan3d-zanini-tools: ok');

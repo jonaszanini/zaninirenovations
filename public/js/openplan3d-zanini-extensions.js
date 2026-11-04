@@ -144,6 +144,18 @@
       if (isExclude !== exclude) continue;
       var rect = normalizeLegacyRect(zone);
       if (!rect) continue;
+      for (var j = 0; j < zones.length; j++) {
+        var merged = zones[j];
+        if (!merged || !merged.mergedInto || merged.mergedInto !== zone.id) continue;
+        var mergedRect = normalizeLegacyRect(merged);
+        if (!mergedRect) continue;
+        rect = {
+          x0: Math.min(rect.x0, mergedRect.x0),
+          y0: Math.min(rect.y0, mergedRect.y0),
+          x1: Math.max(rect.x1, mergedRect.x1),
+          y1: Math.max(rect.y1, mergedRect.y1)
+        };
+      }
       out.push({ x1: rect.x0, y1: rect.y0, x2: rect.x1, y2: rect.y1 });
     }
     return out;
@@ -190,40 +202,95 @@
     return roundTo(area * (1.0 + normalizeWastePercent(waste) / 100.0), 2);
   }
 
-  function pointInPolygon(point, polygon) {
-    var inside = false;
-    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      var xi = polygon[i].x;
-      var yi = polygon[i].y;
-      var xj = polygon[j].x;
-      var yj = polygon[j].y;
-      var intersect = ((yi > point.y) !== (yj > point.y))
-        && (point.x < ((xj - xi) * (point.y - yi)) / ((yj - yi) || 1e-9) + xi);
-      if (intersect) inside = !inside;
+  function mergeYSpans(spans) {
+    if (!spans.length) return [];
+    spans.sort(function (a, b) { return a[0] - b[0]; });
+    var cur0 = spans[0][0], cur1 = spans[0][1], merged = [];
+    for (var i = 1; i < spans.length; i++) {
+      if (spans[i][0] <= cur1) cur1 = Math.max(cur1, spans[i][1]);
+      else {
+        merged.push([cur0, cur1]);
+        cur0 = spans[i][0];
+        cur1 = spans[i][1];
+      }
     }
-    return inside;
+    merged.push([cur0, cur1]);
+    return merged;
+  }
+
+  function spanListsIntersectionLength(a, b) {
+    var len = 0;
+    for (var i = 0; i < a.length; i++) {
+      for (var j = 0; j < b.length; j++) {
+        var y0 = Math.max(a[i][0], b[j][0]);
+        var y1 = Math.min(a[i][1], b[j][1]);
+        if (y1 > y0) len += y1 - y0;
+      }
+    }
+    return len;
+  }
+
+  function rectUnionYSpansAtX(rects, x) {
+    var spans = [];
+    for (var i = 0; i < rects.length; i++) {
+      if (rects[i].x0 < x && rects[i].x1 > x) {
+        spans.push([rects[i].y0, rects[i].y1]);
+      }
+    }
+    return mergeYSpans(spans);
+  }
+
+  function polygonYSpansAtX(poly, x) {
+    var ys = [];
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      var x1 = poly[i].x, y1 = poly[i].y, x2 = poly[j].x, y2 = poly[j].y;
+      if (x1 === x2) continue;
+      var minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+      if (x < minX || x >= maxX) continue;
+      var t = (x - x1) / (x2 - x1);
+      ys.push(y1 + t * (y2 - y1));
+    }
+    ys.sort(function (a, b) { return a - b; });
+    var spans = [];
+    for (var k = 0; k + 1 < ys.length; k += 2) spans.push([ys[k], ys[k + 1]]);
+    return spans;
+  }
+
+  function rectUnionPolygonIntersectionAreaSqFt(rects, polygonCm, cmPerUnit) {
+    cmPerUnit = cmPerUnit > 0 ? cmPerUnit : 1.0;
+    var poly = [];
+    for (var p = 0; p < (polygonCm || []).length; p++) {
+      poly.push({ x: Number(polygonCm[p].x || 0), y: Number(polygonCm[p].y || 0) });
+    }
+    if (poly.length < 3) return rectangleUnionAreaSqFt(rects, cmPerUnit);
+    var cmPerFoot = CM_PER_FOOT * cmPerUnit;
+    var xs = [];
+    for (var r = 0; r < rects.length; r++) {
+      xs.push(rects[r].x0, rects[r].x1);
+    }
+    for (var q = 0; q < poly.length; q++) xs.push(poly[q].x);
+    xs = Array.from(new Set(xs)).sort(function (a, b) { return a - b; });
+    var totalCm2 = 0;
+    for (var xi = 0; xi < xs.length - 1; xi++) {
+      var x0 = xs[xi], x1 = xs[xi + 1], dx = x1 - x0;
+      if (dx <= 0) continue;
+      var xMid = (x0 + x1) / 2;
+      totalCm2 += dx * spanListsIntersectionLength(
+        rectUnionYSpansAtX(rects, xMid),
+        polygonYSpansAtX(poly, xMid)
+      );
+    }
+    return roundTo(Math.max(0, totalCm2 / (cmPerFoot * cmPerFoot)), 2);
+  }
+
+  function excludedZonesAreaSqFt(rects, polygonCm, cmPerUnit) {
+    if (!rects || !rects.length) return 0;
+    if (!polygonCm || polygonCm.length < 3) return rectangleUnionAreaSqFt(rects, cmPerUnit);
+    return rectUnionPolygonIntersectionAreaSqFt(rects, polygonCm, cmPerUnit);
   }
 
   function rectInsidePolygonAreaSqFt(rect, polygonCm, cmPerUnit) {
-    cmPerUnit = cmPerUnit > 0 ? cmPerUnit : 1.0;
-    var cmPerFoot = CM_PER_FOOT * cmPerUnit;
-    if (!polygonCm || polygonCm.length < 3) {
-      return rectangleUnionAreaSqFt([rect], cmPerUnit);
-    }
-    var x0 = rect.x0;
-    var y0 = rect.y0;
-    var x1 = rect.x1;
-    var y1 = rect.y1;
-    if (x1 <= x0 || y1 <= y0) return 0;
-    var step = 1.0;
-    var inside = 0;
-    for (var x = x0 + step / 2; x < x1; x += step) {
-      for (var y = y0 + step / 2; y < y1; y += step) {
-        if (pointInPolygon({ x: x, y: y }, polygonCm)) inside++;
-      }
-    }
-    var cellSqFt = (step / cmPerFoot) * (step / cmPerFoot);
-    return roundTo(Math.max(0, inside * cellSqFt), 2);
+    return rectUnionPolygonIntersectionAreaSqFt([rect], polygonCm, cmPerUnit);
   }
 
   function bulkheadTakeoff(longFt, shortFt, dropFt, againstWall) {
@@ -256,13 +323,7 @@
     }
     var excludedSqFt = 0;
     if (normalized.length) {
-      if (roomPolyCm.length >= 3) {
-        for (var r = 0; r < normalized.length; r++) {
-          excludedSqFt += rectInsidePolygonAreaSqFt(normalized[r], roomPolyCm, cmPerUnit);
-        }
-      } else {
-        excludedSqFt = rectangleUnionAreaSqFt(normalized, cmPerUnit);
-      }
+      excludedSqFt = excludedZonesAreaSqFt(normalized, roomPolyCm, cmPerUnit);
     }
     excludedSqFt = roundTo(Math.max(0, excludedSqFt), 2);
     var area = roundTo(Math.max(0, Number(metrics.area_sqft || 0) - excludedSqFt), 2);
@@ -324,12 +385,11 @@
         drywall += netSqFt;
         if (isBoundary) {
           insulation += netSqFt;
-          baseboard += lengthLf;
         } else {
           studs += lengthLf;
-          baseboard += lengthLf * 2.0;
         }
       }
+      baseboard = Number(metrics.baseboard_lf || 0);
     } else {
       for (var j = 0; j < walls.length; j++) {
         var w = walls[j];
@@ -384,6 +444,8 @@
     normalizeZanini: normalizeZanini,
     applyToMetrics: applyToMetrics,
     bulkheadTakeoff: bulkheadTakeoff,
-    rectInsidePolygonAreaSqFt: rectInsidePolygonAreaSqFt
+    rectInsidePolygonAreaSqFt: rectInsidePolygonAreaSqFt,
+    excludedZonesAreaSqFt: excludedZonesAreaSqFt,
+    rectUnionPolygonIntersectionAreaSqFt: rectUnionPolygonIntersectionAreaSqFt
   };
 }));
