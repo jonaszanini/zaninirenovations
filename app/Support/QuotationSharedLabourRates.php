@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Services\SharedWorkCatalog;
+use App\Models\StandardQuotation;
 use Illuminate\Http\Request;
 
 /**
@@ -13,9 +14,35 @@ final class QuotationSharedLabourRates
     /** Legacy owner hourly when stored inputs omit owner_hourly_rate (pre–shared-prices behaviour). */
     public const LEGACY_OWNER_HOURLY = 85.0;
 
+    public const LEGACY_HOURS_PER_DAY = 8.0;
+
     public static function ownerHourlyForNewQuotation(): float
     {
         return SharedWorkCatalog::ownerHourlyRate();
+    }
+
+    public static function hoursPerDayForNewQuotation(): float
+    {
+        return SharedWorkCatalog::hoursPerDay();
+    }
+
+    public static function formatHoursPerDayLabel(float $hoursPerDay): string
+    {
+        $formatted = number_format(max(0.0, $hoursPerDay), 2, '.', '');
+
+        return rtrim(rtrim($formatted, '0'), '.') ?: '0';
+    }
+
+    /**
+     * Frozen days→hours factor for an existing quote, or shared crew default for new.
+     */
+    public static function resolveHoursPerDay(?StandardQuotation $existing): float
+    {
+        if ($existing !== null && $existing->getAttribute('labour_hours_per_day') !== null) {
+            return max(0.5, (float) $existing->labour_hours_per_day);
+        }
+
+        return self::hoursPerDayForNewQuotation();
     }
 
     public static function ownerHourlyFormattedForNewQuotation(): string

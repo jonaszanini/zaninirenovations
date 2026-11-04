@@ -62,6 +62,7 @@ class StandardQuotation extends Model
         'labour_quantity',
         'labour_hours',
         'labour_hourly_rate',
+        'labour_hours_per_day',
         'labour_use_fixed',
         'labour_fixed_amount',
         'labour_fixed_hst_included',
@@ -98,6 +99,7 @@ class StandardQuotation extends Model
         'labour_quantity' => 'decimal:2',
         'labour_hours' => 'decimal:2',
         'labour_hourly_rate' => 'decimal:2',
+        'labour_hours_per_day' => 'decimal:2',
         'labour_use_fixed' => 'boolean',
         'labour_fixed_amount' => 'decimal:2',
         'labour_fixed_hst_included' => 'boolean',
@@ -298,6 +300,7 @@ class StandardQuotation extends Model
             (float) ($this->building_labor_percent ?? \App\Support\QuotationBuildingLabor::DEFAULT_PERCENT),
             // v3-only: leftover surcharge on a job that has labour.
             $this->usesCurrentPdfFold(),
+            \App\Support\QuotationSharedLabourRates::resolveHoursPerDay($this),
         );
     }
 

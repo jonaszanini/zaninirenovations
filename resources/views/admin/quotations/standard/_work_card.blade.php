@@ -5,6 +5,8 @@
   $defaultLabourHourly = QuotationSharedLabourRates::ownerHourlyFormattedForNewQuotation();
   $work = is_array($work ?? null) ? $work : [];
   $workCount = (int) ($workCount ?? 1);
+  $labourHoursPerDay = max(0.5, (float) ($labourHoursPerDay ?? QuotationSharedLabourRates::hoursPerDayForNewQuotation()));
+  $labourHoursPerDayLabel = (string) ($labourHoursPerDayLabel ?? QuotationSharedLabourRates::formatHoursPerDayLabel($labourHoursPerDay));
   $isOpen = (bool) ($isOpen ?? true);
   $title = old('works.'.$workIndex.'.title', $work['title'] ?? '');
   $matRows = old('works.'.$workIndex.'.materials', $work['materials'] ?? null);
@@ -30,11 +32,11 @@
   $labourEquiv = '';
   if (! $labourUseFixed && $labourQty !== '' && is_numeric($labourQty) && (float) $labourQty > 0) {
       if ($labourMode === 'days') {
-          $hours = round((float) $labourQty * 8, 2);
+          $hours = round((float) $labourQty * $labourHoursPerDay, 2);
           $labourEquiv = '≈ '.rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.').' hours';
       } else {
-          $days = round((float) $labourQty / 8, 3);
-          $labourEquiv = '≈ '.rtrim(rtrim(number_format($days, 3, '.', ''), '0'), '.').' days (8 h/day)';
+          $days = round((float) $labourQty / $labourHoursPerDay, 3);
+          $labourEquiv = '≈ '.rtrim(rtrim(number_format($days, 3, '.', ''), '0'), '.').' days ('.$labourHoursPerDayLabel.' h/day)';
       }
   }
   $jobNumber = is_numeric($workIndex) ? ((int) $workIndex + 1) : 1;
@@ -138,7 +140,7 @@
           <h3 class="sq-labour-title">
             Labour
             @include('admin.partials.info_tip', [
-              'tipText' => 'Labour includes HST (13%) unless you turn it off in Totals. A flat fee is one dollar amount. Otherwise use hourly rate × hours or days (8 h = 1 day).',
+              'tipText' => 'Labour includes HST (13%) unless you turn it off in Totals. A flat fee is one dollar amount. Otherwise use hourly rate × hours or days ('.$labourHoursPerDayLabel.' h = 1 day).',
               'tipLabel' => 'Labour — '.$jobTipLabel,
             ])
           </h3>
@@ -186,7 +188,7 @@
             </label>
             <label class="cp-checkbox-row">
               <input type="radio" name="works[{{ $workIndex }}][labour_mode]" value="days" class="sq-labour-mode" @checked($labourMode === 'days')>
-              <span>Days <span class="admin-form-help">× 8 h</span></span>
+              <span>Days <span class="admin-form-help sq-labour-days-hpd">× {{ $labourHoursPerDayLabel }} h</span></span>
             </label>
           </fieldset>
 

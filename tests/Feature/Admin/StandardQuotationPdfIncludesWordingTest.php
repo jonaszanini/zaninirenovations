@@ -235,6 +235,53 @@ class StandardQuotationPdfIncludesWordingTest extends IntegrationTestCase
         $this->assertSame($customTitle, $firstLine['description'] ?? null);
     }
 
+    public function test_sync_preserves_custom_title_when_includes_checkboxes_change(): void
+    {
+        $this->actingAsAdmin();
+
+        $customTitle = 'Custom kitchen cabinet install';
+        [$project, $cpq, $standard] = $this->linkedStandardWithPricedMaterialAndLabour(true, true);
+        $cpq->update(['title' => $customTitle]);
+        $standard->update([
+            'client_project_id' => $project->id,
+            'linked_at' => now(),
+        ]);
+
+        $this->from(route('admin.quotations.standard.edit', $standard))
+            ->put(route('admin.quotations.standard.update', $standard), $this->minimalPublishPayload($standard, [
+                'includes_material' => '0',
+                'includes_labour' => '1',
+            ]))
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertSame($customTitle, $cpq->fresh()->title);
+    }
+
+    public function test_sync_updates_auto_title_case_variants_when_includes_change(): void
+    {
+        $this->actingAsAdmin();
+
+        [$project, $cpq, $standard] = $this->linkedStandardWithPricedMaterialAndLabour(true, true);
+        $cpq->update(['title' => "  LABOUR\u{00A0}and\u{00A0}material  "]);
+        $standard->update([
+            'client_project_id' => $project->id,
+            'linked_at' => now(),
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_COMBINED,
+        ]);
+
+        $this->from(route('admin.quotations.standard.edit', $standard))
+            ->put(route('admin.quotations.standard.update', $standard), $this->minimalPublishPayload($standard, [
+                'includes_material' => '0',
+                'includes_labour' => '1',
+                'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_COMBINED,
+            ]))
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertSame('Labour and material', $cpq->fresh()->title);
+    }
+
     public function test_legacy_neither_checked_uses_priced_lines_for_headline_and_summary_label(): void
     {
         [$project, $cpq, $standard] = $this->linkedStandardWithPricedMaterialAndLabour(false, false);
@@ -308,6 +355,38 @@ class StandardQuotationPdfIncludesWordingTest extends IntegrationTestCase
         ]);
 
         return [$project, $cpq, $standard];
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function minimalPublishPayload(StandardQuotation $standard, array $overrides = []): array
+    {
+        return array_merge([
+            'save_intent' => 'publish',
+            'client_name' => $standard->client_name,
+            'display_title' => $standard->display_title,
+            'document_type' => ClientProjectQuotation::TYPE_QUOTATION,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+            'includes_material' => '1',
+            'includes_labour' => '1',
+            'payment_installments' => 1,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
+            'works' => [[
+                'title' => 'Install',
+                'labour_use_fixed' => '1',
+                'labour_fixed_amount' => '250',
+                'materials' => [[
+                    'short_name' => 'Hardware kit',
+                    'unit_price' => '75',
+                    'quantity' => '1',
+                    'apply_hst' => '1',
+                ]],
+            ]],
+        ], $overrides);
     }
 
     private function renderClientPdfHtml(ClientProject $project, ClientProjectQuotation $quotation): string
