@@ -876,5 +876,102 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             ],
         ];
     }
-}
 
+    public function test_l_shaped_room_with_two_partitions_saves_successfully_with_correct_metrics(): void
+    {
+        $cmPerFt = 30.48;
+        $plan = [
+            'unit' => 'cm',
+            'version' => '1.0',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 20 * $cmPerFt, 'y' => 0], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w2', 'start' => ['x' => 20 * $cmPerFt, 'y' => 0], 'end' => ['x' => 20 * $cmPerFt, 'y' => 10 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w3', 'start' => ['x' => 20 * $cmPerFt, 'y' => 10 * $cmPerFt], 'end' => ['x' => 10 * $cmPerFt, 'y' => 10 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w4', 'start' => ['x' => 10 * $cmPerFt, 'y' => 10 * $cmPerFt], 'end' => ['x' => 10 * $cmPerFt, 'y' => 20 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w5', 'start' => ['x' => 10 * $cmPerFt, 'y' => 20 * $cmPerFt], 'end' => ['x' => 0, 'y' => 20 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    ['id' => 'w6', 'start' => ['x' => 0, 'y' => 20 * $cmPerFt], 'end' => ['x' => 0, 'y' => 0], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    // Partition 1: T-joined to w1 at (5, 0), extends to (5, 6) (6 ft)
+                    ['id' => 'p1', 'start' => ['x' => 5 * $cmPerFt, 'y' => 0], 'end' => ['x' => 5 * $cmPerFt, 'y' => 6 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                    // Partition 2: T-joined to p1 at (5, 3), extends to (11, 3) (6 ft, free-ended)
+                    ['id' => 'p2', 'start' => ['x' => 5 * $cmPerFt, 'y' => 3 * $cmPerFt], 'end' => ['x' => 11 * $cmPerFt, 'y' => 3 * $cmPerFt], 'height' => 8 * $cmPerFt, 'thickness' => 10],
+                ],
+                'rooms' => [],
+            ],
+        ];
+
+        // 1. Verify bridge layoutMetrics directly
+        $metrics = $this->bridge->layoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $this->assertFalse(!empty($metrics['geometry_unmeasurable']), 'Should not be marked geometry_unmeasurable');
+        $this->assertEquals(300.0, $metrics['area_sqft'], 'Floor area matches L-shape without partitions (300 sq ft)');
+        $this->assertEquals(80.0, $metrics['perimeter_lf'], 'Perimeter matches outer loop (80 lf)');
+        $this->assertEquals(832.0, $metrics['net_wall_area_sqft'], 'Net wall area includes both faces of partitions (832 sq ft)');
+
+        // 2. Post to store room endpoint and verify save succeeds
+        $response = $this->actingAs($this->user)->postJson(
+            route('admin.utilities.room-area.rooms.store', $this->project),
+            [
+                'name' => 'L Room with Partitions',
+                'plan' => $plan,
+                'wall_height_ft' => 8.0,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $this->assertEquals(300.0, $response->json('room.area_sqft'));
+        $this->assertEquals(832.0, $response->json('room.metrics.net_wall_area_sqft'));
+    }
+
+    public function test_update_room_detects_conflict_when_server_has_newer_revision(): void
+    {
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Initial Room',
+            'vertices' => $this->sampleOpenPlan(10.0, 10.0),
+            'area_sqft' => 100.0,
+            'wall_height_ft' => 8.0,
+        ]);
+
+        $staleRevision = (string) ($room->updated_at->valueOf() - 5000);
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Attempted Stale Update',
+                'plan' => $this->sampleOpenPlan(10.0, 10.0),
+                'expected_revision' => $staleRevision,
+            ]
+        );
+
+        $response->assertStatus(409);
+        $response->assertJsonPath('ok', false);
+        $response->assertJsonPath('code', 'conflict');
+    }
+
+    public function test_update_room_succeeds_when_expected_revision_matches(): void
+    {
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $this->project->id,
+            'name' => 'Initial Room',
+            'vertices' => $this->sampleOpenPlan(10.0, 10.0),
+            'area_sqft' => 100.0,
+            'wall_height_ft' => 8.0,
+        ]);
+
+        $currentRevision = (string) $room->updated_at->valueOf();
+
+        $response = $this->actingAs($this->user)->putJson(
+            route('admin.utilities.room-area.rooms.update', $room),
+            [
+                'name' => 'Valid Updated Room',
+                'plan' => $this->sampleOpenPlan(10.0, 10.0),
+                'expected_revision' => $currentRevision,
+            ]
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $response->assertJsonPath('room.name', 'Valid Updated Room');
+    }
+}

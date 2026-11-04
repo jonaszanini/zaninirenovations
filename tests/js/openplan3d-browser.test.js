@@ -920,6 +920,20 @@ async function run() {
     await page.waitForFunction(() => !window.OpenPlan3DHost.getState().isSaving, { timeout: 4000 });
     assert.strictEqual(await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving), false, 'isSaving unlocked after save completed');
 
+    // 14. Replace-area dialog does NOT appear when real area is unchanged
+    await postPlan(workPlan);
+    await page.evaluate(() => {
+      const host = window.OpenPlan3DHost;
+      const metrics = host.computeMetrics(host.getState().currentPlan);
+      host.getState().currentRoom.area_sqft = metrics.area_sqft;
+    });
+    lastSavedBody = null;
+    await page.click('#openplan3d-save-btn');
+    await page.waitForFunction(() => !window.OpenPlan3DHost.getState().isSaving, { timeout: 4000 });
+    const modalVisible = await page.$eval('#openplan3d-modal', (el) => !el.hidden && el.style.display !== 'none');
+    assert.strictEqual(modalVisible, false, 'Replace-area dialog does NOT appear when real area is unchanged');
+    assert.ok(lastSavedBody, 'Save proceeds directly when real area is unchanged');
+
     console.log('All openPlan3D Puppeteer browser tests PASSED successfully!');
   } finally {
     await browser.close();
