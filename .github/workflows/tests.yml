@@ -227,6 +227,8 @@ jobs:
           node tests/js/room-area-lib.test.js
           node tests/js/openplan3d-parity.test.js
           node tests/js/openplan3d-editor-bridge.test.js
+          node tests/js/openplan3d-zanini-extensions.test.js
+          node tests/js/openplan3d-zanini-tools.test.js
           node tests/js/openplan3d-editor-asset-version.test.js
           node tests/js/openplan3d-kr-inch-snap.test.js
           node tests/js/room-area-formula.test.js
@@ -251,6 +253,7 @@ jobs:
           node tests/js/openplan3d-editor-browser.test.js
           node tests/js/openplan3d-editor-index-mount.test.js
           node tests/js/openplan3d-kr-ortho-drag.test.js
+          node tests/js/openplan3d-zone-coords.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js
           node tests/js/quotation-redraft-confirm-browser.test.js

@@ -19,6 +19,7 @@
   data-room-destroy-template="{{ route('admin.utilities.room-area.rooms.destroy', ['room_area_room' => '__ID__']) }}"
   data-project-store-url="{{ route('admin.utilities.room-area.projects.store') }}"
   data-project-update-template="{{ route('admin.utilities.room-area.projects.update', ['room_area_project' => '__ID__']) }}"
+  data-project-destroy-template="{{ route('admin.utilities.room-area.projects.destroy', ['room_area_project' => '__ID__']) }}"
   data-quote-room-template="{{ route('admin.utilities.room-area.quote') }}?layout=room:__ID__"
   data-quote-project-template="{{ route('admin.utilities.room-area.quote') }}?layout=project:__ID__"
 >
@@ -73,6 +74,16 @@
       <button type="button" class="admin-btn admin-btn--ghost openplan3d-tool-btn" id="openplan3d-new-room-btn" title="Create new room in current project">
         <i class="fa fa-plus" aria-hidden="true"></i>
         <span class="openplan3d-btn-label">New Room</span>
+      </button>
+
+      <button type="button" class="admin-btn admin-btn--ghost admin-btn--danger openplan3d-tool-btn" id="openplan3d-delete-room-btn" title="Delete selected room">
+        <i class="fa fa-minus-circle" aria-hidden="true"></i>
+        <span class="openplan3d-btn-label">Delete Room</span>
+      </button>
+
+      <button type="button" class="admin-btn admin-btn--ghost admin-btn--danger openplan3d-tool-btn" id="openplan3d-delete-project-btn" title="Delete entire project">
+        <i class="fa fa-trash" aria-hidden="true"></i>
+        <span class="openplan3d-btn-label">Delete Project</span>
       </button>
 
       <button type="button" class="admin-btn admin-btn--ghost openplan3d-tool-btn" id="openplan3d-settings-btn" aria-expanded="false" title="Room finish and height settings">
@@ -166,7 +177,74 @@
       <span class="openplan3d-metric-val" id="metric-boxes">0</span>
       <span class="openplan3d-metric-unit">boxes</span>
     </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label openplan3d-metric-label--tip">
+        Drywall
+        @include('admin.partials.info_tip', [
+          'tipLabel' => 'Drywall takeoff',
+          'tipText' => 'Net wall drywall area on boundary and partition walls, after openings. Toggle per wall in Wall Finishes.',
+        ])
+      </span>
+      <span class="openplan3d-metric-val" id="metric-finish-drywall">0.00</span>
+      <span class="openplan3d-metric-unit">sq ft</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label openplan3d-metric-label--tip">
+        Insulation
+        @include('admin.partials.info_tip', [
+          'tipLabel' => 'Insulation takeoff',
+          'tipText' => 'Exterior boundary wall area only by default. Partition walls are excluded unless enabled on the wall.',
+        ])
+      </span>
+      <span class="openplan3d-metric-val" id="metric-finish-insulation">0.00</span>
+      <span class="openplan3d-metric-unit">sq ft</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label openplan3d-metric-label--tip">
+        Studs
+        @include('admin.partials.info_tip', [
+          'tipLabel' => 'Stud framing',
+          'tipText' => 'Linear feet of partition (non-boundary) walls counted for stud framing takeoffs.',
+        ])
+      </span>
+      <span class="openplan3d-metric-val" id="metric-finish-studs">0.00</span>
+      <span class="openplan3d-metric-unit">lf</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label openplan3d-metric-label--tip">
+        Bulkhead drywall
+        @include('admin.partials.info_tip', [
+          'tipLabel' => 'Bulkhead / soffit drywall',
+          'tipText' => 'Drywall on boxed bulkheads drawn in the editor (vertical faces plus soffit underside).',
+        ])
+      </span>
+      <span class="openplan3d-metric-val" id="metric-bulkhead-drywall">0.00</span>
+      <span class="openplan3d-metric-unit">sq ft</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label">Bulkhead framing</span>
+      <span class="openplan3d-metric-val" id="metric-bulkhead-framing">0.00</span>
+      <span class="openplan3d-metric-unit">lf</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label">Bulkhead bead</span>
+      <span class="openplan3d-metric-val" id="metric-bulkhead-bead">0.00</span>
+      <span class="openplan3d-metric-unit">lf</span>
+    </div>
   </div>
+
+  <aside class="openplan3d-zones-panel" id="openplan3d-zones-panel" aria-label="Area zones">
+    <div class="openplan3d-zones-panel__head">
+      <span class="openplan3d-zones-panel__title openplan3d-metric-label--tip">
+        Area zones
+        @include('admin.partials.info_tip', [
+          'tipLabel' => 'Area zones',
+          'tipText' => 'Rectangles drawn on the plan. Measure-only zones are labeled only; turn on Exclude to subtract floor and ceiling area (clipped to the room).',
+        ])
+      </span>
+    </div>
+    <ul class="openplan3d-zones-list" id="openplan3d-zones-list"></ul>
+  </aside>
 
   {{-- Feedback / Toast Message Box --}}
   <div id="openplan3d-feedback" class="openplan3d-feedback" hidden role="alert" aria-live="polite"></div>
@@ -449,10 +527,111 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.4rem 1rem;
-  background: #f1f5f9;
+  background: var(--admin-surface-hover, #f1f5f9);
   border-bottom: 1px solid var(--admin-border, #e2e8f0);
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
   scrollbar-width: thin;
+}
+
+.openplan3d-metric-label--tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.openplan3d-zones-panel {
+  padding: 0.45rem 1rem 0.55rem;
+  background: var(--admin-surface, #f8fafc);
+  border-bottom: 1px solid var(--admin-border, #e2e8f0);
+}
+
+.openplan3d-zones-panel[hidden] {
+  display: none !important;
+}
+
+.openplan3d-zones-panel__head {
+  margin-bottom: 0.35rem;
+}
+
+.openplan3d-zones-panel__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--admin-muted, #64748b);
+}
+
+.openplan3d-zones-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.openplan3d-zones-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--admin-border, #cbd5e1);
+  background: var(--admin-surface, #ffffff);
+  font-size: 0.82rem;
+}
+
+.openplan3d-zones-name {
+  color: var(--admin-text, #1e293b);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.openplan3d-zones-tag {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(2, 71, 104, 0.1);
+  color: var(--admin-primary, #024768);
+}
+
+.openplan3d-zones-tag--exclude {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+.openplan3d-zones-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.openplan3d-zones-action {
+  min-height: 44px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.72rem;
+}
+
+.openplan3d-zones-empty {
+  font-size: 0.8rem;
+  color: var(--admin-muted, #64748b);
+  padding: 0.25rem 0;
+}
+
+@media (max-width: 640px) {
+  .openplan3d-zones-item {
+    flex-wrap: wrap;
+  }
 }
 
 .openplan3d-metric-card {
@@ -696,6 +875,27 @@
 }
 
 @media (max-width: 390px) {
+  .util-ra-openplan3d-header__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 100%;
+    max-width: 100%;
+    gap: 0.35rem;
+  }
+
+  .openplan3d-save-btn {
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  #openplan3d-delete-room-btn .fa-minus-circle {
+    color: #dc2626;
+  }
+
+  #openplan3d-delete-project-btn .fa-trash {
+    color: #991b1b;
+  }
+
   .openplan3d-control-label {
     display: none;
   }
@@ -869,6 +1069,26 @@ body.admin-dark .openplan3d-setting-item input,
   background: #090e17;
   border: 1px solid #334155;
   color: #f8fafc;
+}
+
+html.admin-dark .openplan3d-zones-panel,
+body.admin-dark .openplan3d-zones-panel,
+.admin-dark .openplan3d-zones-panel {
+  background: var(--admin-surface, #111a2c);
+  border-bottom-color: var(--admin-border, #1e293b);
+}
+
+html.admin-dark .openplan3d-zones-item,
+body.admin-dark .openplan3d-zones-item,
+.admin-dark .openplan3d-zones-item {
+  background: var(--admin-elevated, #131c2e);
+  border-color: var(--admin-border, #334155);
+}
+
+html.admin-dark .openplan3d-zones-name,
+body.admin-dark .openplan3d-zones-name,
+.admin-dark .openplan3d-zones-name {
+  color: var(--admin-text, #e2e8f0);
 }
 
 html.admin-dark .openplan3d-metrics-ribbon,

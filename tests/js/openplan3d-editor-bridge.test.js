@@ -677,8 +677,28 @@ assert.strictEqual(mockSaveConflict, true, 'setSaveConflict sets mockSaveConflic
 assert.strictEqual(mockSaveError, 'Conflict from server', 'setSaveConflict sets error message');
 assert.strictEqual(mockSaveStatus, 'unsaved', 'setSaveConflict sets status to unsaved');
 
+bridgeSession.setSaveConflict('Changes are not saved. This project changed or was deleted in another tab.');
+assert.strictEqual(
+  mockSaveError,
+  'This project changed or was deleted in another tab.',
+  'setSaveConflict strips duplicate vendor prefix'
+);
+
 bridgeSession.clearSaveConflict();
 assert.strictEqual(mockSaveConflict, false, 'clearSaveConflict resets saveConflict to false');
 assert.strictEqual(mockSaveError, null, 'clearSaveConflict resets saveError to null');
 assert.strictEqual(mockSaveStatus, 'saved', 'clearSaveConflict resets status to saved');
+
+function mockStore(zoom, camX, camY) {
+  return {
+    b2: { subscribe: function (fn) { fn(zoom); return function () {}; } },
+    bd: { subscribe: function (fn) { fn(camX); return function () {}; } },
+    bc: { subscribe: function (fn) { fn(camY); return function () {}; } },
+  };
+}
+const viewState = bridge.readOpenPlan3DViewState(mockStore(0.42, 100.5, -33.25));
+assert.strictEqual(viewState.camX, 100.5);
+assert.strictEqual(viewState.camY, -33.25);
+assert.strictEqual(viewState.zoom, 0.42);
+
 console.log('All openPlan3D editor-bridge unit tests PASSED!');

@@ -215,6 +215,63 @@
     return null;
   }
 
+  /** Vendor viewport stores: b2 = zoom; bd = camX (Vf); bc = camY (Wf) — see CgAQ vn()/Ge(). */
+  function readStoreValue(store) {
+    if (!store || typeof store.subscribe !== 'function') return null;
+    var value = null;
+    var unsub = store.subscribe(function (v) { value = v; });
+    if (typeof unsub === 'function') unsub();
+    return value;
+  }
+
+  function readOpenPlan3DViewState(storeModule) {
+    if (!storeModule || typeof storeModule !== 'object') return null;
+    var zoom = readStoreValue(storeModule.b2);
+    var camX = readStoreValue(storeModule.bd);
+    var camY = readStoreValue(storeModule.bc);
+    if (zoom == null || camX == null || camY == null) return null;
+    if (!isFinite(Number(zoom)) || !isFinite(Number(camX)) || !isFinite(Number(camY))) return null;
+    return { zoom: Number(zoom), camX: Number(camX), camY: Number(camY) };
+  }
+
+  /** Match vendor F(): screen px use CSS canvas size (width/height stores), not backing-store pixels. */
+  function readCanvasCssSize(canvas) {
+    if (!canvas) return { width: 1, height: 1 };
+    var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
+    var w = rect && rect.width ? rect.width : (canvas.clientWidth || canvas.width || 1);
+    var h = rect && rect.height ? rect.height : (canvas.clientHeight || canvas.height || 1);
+    return { width: w || 1, height: h || 1 };
+  }
+
+  /** Same as vendor vn(w, st): offsets from canvas top-left in CSS px. */
+  function canvasOffsetToPlanCm(canvas, offsetX, offsetY, view, storeModule) {
+    if (!canvas) return null;
+    view = view || readOpenPlan3DViewState(storeModule || (typeof window !== 'undefined' ? window.__openPlan3DStoreModule : null));
+    if (!view || !view.zoom) return null;
+    var css = readCanvasCssSize(canvas);
+    return {
+      x: (offsetX - css.width / 2) / view.zoom + view.camX,
+      y: (offsetY - css.height / 2) / view.zoom + view.camY
+    };
+  }
+
+  function clientToPlanCm(canvas, clientX, clientY, view, storeModule) {
+    if (!canvas) return null;
+    var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: canvas.width, height: canvas.height };
+    return canvasOffsetToPlanCm(canvas, clientX - rect.left, clientY - rect.top, view, storeModule);
+  }
+
+  function planCmToClient(canvas, x, y, view, storeModule) {
+    if (!canvas) return null;
+    view = view || readOpenPlan3DViewState(storeModule || (typeof window !== 'undefined' ? window.__openPlan3DStoreModule : null));
+    if (!view || !view.zoom) return null;
+    var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: canvas.width, height: canvas.height };
+    var css = readCanvasCssSize(canvas);
+    var sx = (x - view.camX) * view.zoom + css.width / 2;
+    var sy = (y - view.camY) * view.zoom + css.height / 2;
+    return { clientX: rect.left + sx, clientY: rect.top + sy };
+  }
+
   var WALL_JOIN_TOLERANCE_CM = 5;
   var HOSTED_WALL_MEASURE_MODE = 'edge';
 
@@ -971,8 +1028,17 @@
         },
         subscribe: function (callback) {
           return inspected.store.subscribe(callback);
+        },
+        readViewState: function () {
+          return readOpenPlan3DViewState(storeModule);
         }
       });
+      if (typeof window !== 'undefined') {
+        window.__openPlan3DStoreModule = storeModule;
+        try {
+          window.dispatchEvent(new CustomEvent('openplan3d-store-ready'));
+        } catch (e) {}
+      }
       storeReady = true;
       postToParent({ type: 'OPENPLAN3D_READY' });
       tryApply();
@@ -1010,7 +1076,10 @@
     }
 
     function setSaveConflict(message) {
-      var msg = message || 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.';
+      var msg = message || 'This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.';
+      if (typeof msg === 'string' && msg.indexOf('Changes are not saved.') === 0) {
+        msg = msg.replace(/^Changes are not saved\.\s*/i, '');
+      }
       if (storeModuleRef) {
         if (storeModuleRef.G && typeof storeModuleRef.G.set === 'function') {
           try { storeModuleRef.G.set(msg); } catch (e) {}
@@ -1132,6 +1201,11 @@
     syncHostedThemeFromParent: syncHostedThemeFromParent,
     keepHostedClass: keepHostedClass,
     startHidingNativeSaveUi: startHidingNativeSaveUi,
+    readOpenPlan3DViewState: readOpenPlan3DViewState,
+    readCanvasCssSize: readCanvasCssSize,
+    canvasOffsetToPlanCm: canvasOffsetToPlanCm,
+    clientToPlanCm: clientToPlanCm,
+    planCmToClient: planCmToClient,
     clearSaveConflict: function () {
       if (typeof window !== 'undefined' && window.__openPlan3DSession && typeof window.__openPlan3DSession.clearSaveConflict === 'function') {
         window.__openPlan3DSession.clearSaveConflict();
