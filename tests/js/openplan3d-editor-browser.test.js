@@ -183,23 +183,7 @@ async function run() {
     const hosted = await editorPage.evaluate(() => document.documentElement.classList.contains('zanini-hosted-openplan3d'));
     assert.strictEqual(hosted, true);
 
-        // Verify that OPENPLAN3D_SAVE_ACK clears conflict banner
-    await editorPage.evaluate(() => {
-      const banner = document.createElement('div');
-      banner.id = 'conflict-banner-test';
-      banner.className = 'bg-red-800 text-white p-2';
-      banner.textContent = 'Changes are not saved. This project changed or was deleted in another tab.';
-      document.body.appendChild(banner);
-
-      window.postMessage({ type: 'OPENPLAN3D_SAVE_ACK', ok: true }, '*');
-    });
-    await new Promise((r) => setTimeout(r, 100));
-    const bannerHidden = await editorPage.evaluate(() => {
-      const b = document.getElementById('conflict-banner-test');
-      return !b || b.style.display === 'none';
-    });
-    assert.strictEqual(bannerHidden, true, 'OPENPLAN3D_SAVE_ACK clears conflict banner in editor');
-console.log('All openPlan3D editor embed browser tests PASSED successfully!');
+    console.log('All openPlan3D editor embed browser tests PASSED successfully!');
   } finally {
     await browser.close();
     server.close();

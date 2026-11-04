@@ -636,49 +636,4 @@ assert.doesNotMatch(localeJs, /DeWalt laser/, 'immutable locale chunk must not b
 assert.match(indexHtml, /type="importmap"/, 'editor index must redirect locale chunk through import map');
 assert.match(indexHtml, /openplan3d-hosted-locale\.js\?v=[a-f0-9]{16}/, 'locale shim must be cache-busted');
 
-// Test: Store chunk assertCurrent bypass inside hosted iframe
-assert.ok(
-  storeJs.includes('async assertCurrent(i){if(typeof window!=="undefined"&&window.parent&&window.parent!==window)return;o(i,await Re("projects",i))}'),
-  'patched store chunk must bypass assertCurrent in hosted iframe to avoid false conflict banners'
-);
-
-// Test: Hosted session handles OPENPLAN3D_SAVE_ACK and clears conflict state
-let mockSaveConflict = true;
-let mockSaveError = 'Stale error';
-let mockSaveStatus = 'unsaved';
-const mockStoreModule = {
-  c: {
-    subscribe: function (cb) {
-      cb({ id: 'p1', floors: [] });
-      return function () {};
-    }
-  },
-  H: function () {},
-  G: {
-    set: function (v) { mockSaveError = v; }
-  },
-  b1: {
-    set: function (v) { mockSaveConflict = v; }
-  },
-  B: {
-    set: function (v) { mockSaveStatus = v; }
-  },
-  cS: function () {
-    mockSaveStatus = 'saved';
-    mockSaveError = null;
-    mockSaveConflict = false;
-  }
-};
-
-const bridgeSession = bridge.createSession();
-bridgeSession.attachStore(mockStoreModule);
-bridgeSession.setSaveConflict('Conflict from server');
-assert.strictEqual(mockSaveConflict, true, 'setSaveConflict sets mockSaveConflict to true');
-assert.strictEqual(mockSaveError, 'Conflict from server', 'setSaveConflict sets error message');
-assert.strictEqual(mockSaveStatus, 'unsaved', 'setSaveConflict sets status to unsaved');
-
-bridgeSession.clearSaveConflict();
-assert.strictEqual(mockSaveConflict, false, 'clearSaveConflict resets saveConflict to false');
-assert.strictEqual(mockSaveError, null, 'clearSaveConflict resets saveError to null');
-assert.strictEqual(mockSaveStatus, 'saved', 'clearSaveConflict resets status to saved');
 console.log('All openPlan3D editor-bridge unit tests PASSED!');

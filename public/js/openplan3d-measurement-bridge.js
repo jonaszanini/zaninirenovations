@@ -310,326 +310,6 @@
     };
   }
 
-
-  function distToSegment(p, s, e) {
-    var dx = e.x - s.x;
-    var dy = e.y - s.y;
-    var l2 = dx * dx + dy * dy;
-    if (l2 < 1e-6) {
-      return { dist: hypot(p.x - s.x, p.y - s.y), t: 0.0, proj: s };
-    }
-    var t = Math.max(0.0, Math.min(1.0, ((p.x - s.x) * dx + (p.y - s.y) * dy) / l2));
-    var proj = { x: s.x + t * dx, y: s.y + t * dy };
-    var dist = hypot(p.x - proj.x, p.y - proj.y);
-    return { dist: dist, t: t, proj: proj };
-  }
-
-  function simplifyRing(pts) {
-    var n = pts.length;
-    if (n < 3) return pts;
-    var out = [];
-    for (var i = 0; i < n; i++) {
-      var prev = pts[(i - 1 + n) % n];
-      var curr = pts[i];
-      var next = pts[(i + 1) % n];
-      var dx1 = curr.x - prev.x;
-      var dy1 = curr.y - prev.y;
-      var dx2 = next.x - curr.x;
-      var dy2 = next.y - curr.y;
-      var len1 = hypot(dx1, dy1);
-      var len2 = hypot(dx2, dy2);
-      if (len1 > 1e-6 && len2 > 1e-6) {
-        var cross = Math.abs(dx1 * dy2 - dy1 * dx2);
-        var dot = dx1 * dx2 + dy1 * dy2;
-        if ((cross / (len1 * len2)) < 0.02 && dot > 0) {
-          continue;
-        }
-      }
-      out.push(curr);
-    }
-    return out.length >= 3 ? out : pts;
-  }
-
-  function extractOuterLoopAndPartitions(wallsList, cmPerUnit, eps) {
-    cmPerUnit = cmPerUnit || 1.0;
-    eps = eps || 5.0;
-    var epsUnit = eps / (cmPerUnit > 0 ? cmPerUnit : 1.0);
-
-    if (!wallsList || wallsList.length < 3) {
-      var partIds = [];
-      for (var i = 0; i < (wallsList ? wallsList.length : 0); i++) partIds.push(String(wallsList[i].id));
-      return {
-        outer_polygon: [],
-        boundary_wall_ids: [],
-        partition_wall_ids: partIds,
-        partition_walls: wallsList ? wallsList.slice() : []
-      };
-    }
-
-    // 1. Collect segments
-    var rawSegments = [];
-    for (var i = 0; i < wallsList.length; i++) {
-      var w = wallsList[i];
-      if (!w || !w.start || !w.end) continue;
-      rawSegments.push({
-        wallId: String(w.id != null ? w.id : 'w_' + i),
-        start: { x: Number(w.start.x || 0), y: Number(w.start.y || 0) },
-        end: { x: Number(w.end.x || 0), y: Number(w.end.y || 0) },
-        wall: w,
-        splitPoints: []
-      });
-    }
-
-    if (rawSegments.length < 3) {
-      return {
-        outer_polygon: [],
-        boundary_wall_ids: [],
-        partition_wall_ids: rawSegments.map(function(s) { return s.wallId; }),
-        partition_walls: rawSegments.map(function(s) { return s.wall; })
-      };
-    }
-
-    var allEndpoints = [];
-    for (var i = 0; i < rawSegments.length; i++) {
-      allEndpoints.push(rawSegments[i].start);
-      allEndpoints.push(rawSegments[i].end);
-    }
-
-    // 2. Detect T-junctions
-    for (var i = 0; i < rawSegments.length; i++) {
-      var s = rawSegments[i];
-      var dx = s.end.x - s.start.x;
-      var dy = s.end.y - s.start.y;
-      var len = hypot(dx, dy);
-      if (len < epsUnit) continue;
-
-      for (var j = 0; j < allEndpoints.length; j++) {
-        var pt = allEndpoints[j];
-        if (hypot(pt.x - s.start.x, pt.y - s.start.y) < epsUnit) continue;
-        if (hypot(pt.x - s.end.x, pt.y - s.end.y) < epsUnit) continue;
-
-        var res = distToSegment(pt, s.start, s.end);
-        if (res.dist < epsUnit && res.t * len > epsUnit && (1.0 - res.t) * len > epsUnit) {
-          var already = false;
-          for (var k = 0; k < s.splitPoints.length; k++) {
-            if (hypot(s.splitPoints[k].point.x - res.proj.x, s.splitPoints[k].point.y - res.proj.y) < epsUnit) {
-              already = true;
-              break;
-            }
-          }
-          if (!already) {
-            s.splitPoints.push({ point: res.proj, t: res.t });
-          }
-        }
-      }
-    }
-
-    // 3. Subdivide segments at split points
-    var subSegments = [];
-    for (var i = 0; i < rawSegments.length; i++) {
-      var s = rawSegments[i];
-      if (s.splitPoints.length === 0) {
-        subSegments.push({
-          wallId: s.wallId,
-          start: s.start,
-          end: s.end,
-          wall: s.wall
-        });
-      } else {
-        s.splitPoints.sort(function(a, b) { return a.t - b.t; });
-        var cur = s.start;
-        for (var k = 0; k < s.splitPoints.length; k++) {
-          var sp = s.splitPoints[k];
-          if (hypot(sp.point.x - cur.x, sp.point.y - cur.y) >= epsUnit) {
-            subSegments.push({
-              wallId: s.wallId,
-              start: cur,
-              end: sp.point,
-              wall: s.wall
-            });
-            cur = sp.point;
-          }
-        }
-        if (hypot(s.end.x - cur.x, s.end.y - cur.y) >= epsUnit) {
-          subSegments.push({
-            wallId: s.wallId,
-            start: cur,
-            end: s.end,
-            wall: s.wall
-          });
-        }
-      }
-    }
-
-    // 4. Cluster vertices into unique node IDs
-    var nodes = [];
-    function findNode(pt) {
-      for (var idx = 0; idx < nodes.length; idx++) {
-        if (hypot(nodes[idx].x - pt.x, nodes[idx].y - pt.y) < epsUnit) {
-          return idx;
-        }
-      }
-      var newId = nodes.length;
-      nodes.push(pt);
-      return newId;
-    }
-
-    var edges = [];
-    for (var i = 0; i < subSegments.length; i++) {
-      var seg = subSegments[i];
-      var u = findNode(seg.start);
-      var v = findNode(seg.end);
-      if (u !== v) {
-        edges.push({
-          u: u,
-          v: v,
-          wallId: seg.wallId,
-          wall: seg.wall,
-          start: nodes[u],
-          end: nodes[v]
-        });
-      }
-    }
-
-    // 5. Degree-1 iterative pruning
-    var activeEdges = edges.slice();
-    var partitionWallIds = {};
-
-    var pruning = true;
-    while (pruning && activeEdges.length >= 3) {
-      pruning = false;
-      var degrees = new Array(nodes.length).fill(0);
-      for (var i = 0; i < activeEdges.length; i++) {
-        degrees[activeEdges[i].u]++;
-        degrees[activeEdges[i].v]++;
-      }
-
-      var nextEdges = [];
-      for (var i = 0; i < activeEdges.length; i++) {
-        var e = activeEdges[i];
-        if (degrees[e.u] < 2 || degrees[e.v] < 2) {
-          partitionWallIds[e.wallId] = true;
-          pruning = true;
-        } else {
-          nextEdges.push(e);
-        }
-      }
-      activeEdges = nextEdges;
-    }
-
-    if (activeEdges.length < 3) {
-      return {
-        outer_polygon: [],
-        boundary_wall_ids: [],
-        partition_wall_ids: wallsList.map(function(w) { return String(w.id); }),
-        partition_walls: wallsList.slice()
-      };
-    }
-
-    // 6. Trace outer boundary cycle
-    var adj = {};
-    for (var i = 0; i < activeEdges.length; i++) {
-      var e = activeEdges[i];
-      if (!adj[e.u]) adj[e.u] = [];
-      if (!adj[e.v]) adj[e.v] = [];
-      adj[e.u].push({ to: e.v, edgeIdx: i });
-      adj[e.v].push({ to: e.u, edgeIdx: i });
-    }
-
-    // Extreme vertex (min X, then min Y)
-    var startNode = 0;
-    var minX = Infinity;
-    var minY = Infinity;
-    for (var i = 0; i < activeEdges.length; i++) {
-      var e = activeEdges[i];
-      var uPt = nodes[e.u];
-      var vPt = nodes[e.v];
-      if (uPt.x < minX || (Math.abs(uPt.x - minX) < 1e-4 && uPt.y < minY)) {
-        minX = uPt.x; minY = uPt.y; startNode = e.u;
-      }
-      if (vPt.x < minX || (Math.abs(vPt.x - minX) < 1e-4 && vPt.y < minY)) {
-        minX = vPt.x; minY = vPt.y; startNode = e.v;
-      }
-    }
-
-    var cycle = [];
-    var cycleWallIds = [];
-    var currNode = startNode;
-    var prevAngle = -Math.PI / 2.0;
-    var visitedEdges = {};
-
-    var maxSteps = activeEdges.length * 2;
-    for (var step = 0; step < maxSteps; step++) {
-      cycle.push(nodes[currNode]);
-      var neighbors = adj[currNode] || [];
-      if (neighbors.length === 0) break;
-
-      var bestNext = null;
-      var bestDiff = Infinity;
-      var bestEdgeIdx = null;
-
-      for (var j = 0; j < neighbors.length; j++) {
-        var nbr = neighbors[j];
-        var toNode = nbr.to;
-        var eIdx = nbr.edgeIdx;
-        if ((visitedEdges[eIdx] || 0) >= 2) continue;
-
-        var toPt = nodes[toNode];
-        var edgeAngle = Math.atan2(toPt.y - nodes[currNode].y, toPt.x - nodes[currNode].x);
-
-        var incoming = prevAngle + Math.PI;
-        var diff = edgeAngle - incoming;
-        while (diff <= 0) diff += 2 * Math.PI;
-        while (diff > 2 * Math.PI) diff -= 2 * Math.PI;
-
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          bestNext = toNode;
-          bestEdgeIdx = eIdx;
-        }
-      }
-
-      if (bestNext === null) break;
-
-      visitedEdges[bestEdgeIdx] = (visitedEdges[bestEdgeIdx] || 0) + 1;
-      cycleWallIds.push(activeEdges[bestEdgeIdx].wallId);
-
-      if (bestNext === startNode && cycle.length >= 3) break;
-
-      prevAngle = Math.atan2(nodes[bestNext].y - nodes[currNode].y, nodes[bestNext].x - nodes[currNode].x);
-      currNode = bestNext;
-    }
-
-    cycle = simplifyRing(cycle);
-
-    var boundaryWallIds = [];
-    var boundaryMap = {};
-    for (var i = 0; i < cycleWallIds.length; i++) {
-      var wid = cycleWallIds[i];
-      if (!boundaryMap[wid]) {
-        boundaryMap[wid] = true;
-        boundaryWallIds.push(wid);
-      }
-    }
-
-    var partitionWalls = [];
-    for (var i = 0; i < wallsList.length; i++) {
-      var w = wallsList[i];
-      var wid = String(w.id);
-      if (!boundaryMap[wid]) {
-        partitionWalls.push(w);
-        partitionWallIds[wid] = true;
-      }
-    }
-
-    return {
-      outer_polygon: cycle,
-      boundary_wall_ids: boundaryWallIds,
-      partition_wall_ids: Object.keys(partitionWallIds),
-      partition_walls: partitionWalls
-    };
-  }
-
   function layoutMetrics(plan, roomId, finish, options) {
     finish = finish || {};
     options = options || {};
@@ -737,29 +417,40 @@
     }
     if (!selectedRoom && rooms.length > 0) selectedRoom = rooms[0];
 
-    // Extract outer loop and partitions
-    var candidateWalls = [];
-    var roomWIds = (selectedRoom && selectedRoom.walls) || [];
-    var isSingleRoom = rooms.length <= 1;
-    if (isSingleRoom || roomWIds.length === 0) {
-      candidateWalls = Object.values(walls);
-    } else {
-      var idMap = {};
-      for (var i = 0; i < roomWIds.length; i++) idMap[String(roomWIds[i])] = true;
-      for (var wid in walls) {
-        if (idMap[wid]) candidateWalls.push(walls[wid]);
-      }
-      if (candidateWalls.length === 0) candidateWalls = Object.values(walls);
-    }
-
-    var loopData = extractOuterLoopAndPartitions(candidateWalls, cmPerUnit);
+    // Polygon vertices
     var polyVertices = (selectedRoom && (selectedRoom.polygon || selectedRoom.vertices)) || [];
-    var partitionWalls = loopData.partition_walls || [];
-    var boundaryWallIds = loopData.boundary_wall_ids || [];
-
     if (!polyVertices || polyVertices.length < 3) {
-      if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
-        polyVertices = loopData.outer_polygon;
+      // Chain walls by room.walls or all walls
+      var chainWalls = [];
+      var roomWIds = (selectedRoom && selectedRoom.walls) || Object.keys(walls);
+      for (var i = 0; i < roomWIds.length; i++) {
+        if (walls[String(roomWIds[i])]) chainWalls.push(walls[String(roomWIds[i])]);
+      }
+      if (chainWalls.length >= 3) {
+        var first = chainWalls[0];
+        polyVertices = [{ x: first.start.x, y: first.start.y }];
+        var cur = { x: first.end.x, y: first.end.y };
+        var rem = chainWalls.slice(1);
+        while (rem.length > 0) {
+          var found = -1, rev = false;
+          for (var j = 0; j < rem.length; j++) {
+            if (hypot(rem[j].start.x - cur.x, rem[j].start.y - cur.y) < 1.0) {
+              found = j; rev = false; break;
+            }
+            if (hypot(rem[j].end.x - cur.x, rem[j].end.y - cur.y) < 1.0) {
+              found = j; rev = true; break;
+            }
+          }
+          if (found === -1) {
+            polyVertices.push(cur);
+            var next = rem.shift();
+            cur = { x: next.end.x, y: next.end.y };
+          } else {
+            polyVertices.push(cur);
+            var wFound = rem.splice(found, 1)[0];
+            cur = rev ? { x: wFound.start.x, y: wFound.start.y } : { x: wFound.end.x, y: wFound.end.y };
+          }
+        }
       }
     }
     if (polyVertices.length < 3) return emptyLayoutMetrics(finish.wall_height_ft);
@@ -796,13 +487,10 @@
 
     // Boundary walls
     var boundaryWalls = [];
-    var bWallIds = (boundaryWallIds && boundaryWallIds.length > 0)
-      ? boundaryWallIds
-      : ((selectedRoom && selectedRoom.boundary_wall_ids) || (selectedRoom && selectedRoom.walls) || []);
-
-    if (bWallIds.length > 0) {
-      for (var i = 0; i < bWallIds.length; i++) {
-        var w = walls[String(bWallIds[i])];
+    var roomWallIds = (selectedRoom && selectedRoom.walls) || [];
+    if (roomWallIds.length > 0) {
+      for (var i = 0; i < roomWallIds.length; i++) {
+        var w = walls[String(roomWallIds[i])];
         if (!w) continue;
         var dx = (w.end.x - w.start.x) * cmPerUnit;
         var dy = (w.end.y - w.start.y) * cmPerUnit;
@@ -831,16 +519,9 @@
     for (var i = 0; i < boundaryWalls.length; i++) perimeter += boundaryWalls[i].length_ft;
     perimeter = roundTo(perimeter, 2);
 
-    // Openings on boundary walls and partition walls
+    // Openings on boundary walls
     var wallIdMap = {};
-    var boundaryIdMap = {};
-    for (var i = 0; i < boundaryWalls.length; i++) {
-      wallIdMap[boundaryWalls[i].id] = true;
-      boundaryIdMap[boundaryWalls[i].id] = true;
-    }
-    for (var i = 0; i < partitionWalls.length; i++) {
-      wallIdMap[String(partitionWalls[i].id)] = true;
-    }
+    for (var i = 0; i < boundaryWalls.length; i++) wallIdMap[boundaryWalls[i].id] = true;
 
     var openings = [];
     var rawDoors = floor.doors || [];
@@ -901,10 +582,9 @@
       if (!openingsByWall[op.wallId]) openingsByWall[op.wallId] = [];
       openingsByWall[op.wallId].push(op);
 
-      var isBoundary = !!boundaryIdMap[op.wallId];
       if (op.type === 'door') {
         doorCount++;
-        if (isBoundary) baseboardDedIn += op.width_in;
+        baseboardDedIn += op.width_in;
         var sides = op.details.casing_sides != null ? Number(op.details.casing_sides) :
           (String(op.details.door_face).toLowerCase() === 'exterior' ? 1 : 2);
         casingTotalLf += casingLf(op.width_in, op.height_in, sides, 'door');
@@ -914,7 +594,7 @@
         casingTotalLf += casingLf(op.width_in, op.height_in, sides, 'window');
       } else {
         openingCount++;
-        if (isBoundary) baseboardDedIn += op.width_in;
+        baseboardDedIn += op.width_in;
         var sides = op.details.casing_sides != null ? Number(op.details.casing_sides) : 2;
         casingTotalLf += casingLf(op.width_in, op.height_in, sides, 'opening');
       }
@@ -927,8 +607,6 @@
     // Per wall net areas
     var perWallNetAreas = [];
     var totalNetWallArea = 0.0;
-    var wallIdx = 1;
-
     for (var i = 0; i < boundaryWalls.length; i++) {
       var bw = boundaryWalls[i];
       var wLenFt = bw.length_ft;
@@ -952,50 +630,12 @@
 
       perWallNetAreas.push({
         id: bw.id,
-        index: wallIdx,
-        label: 'W' + wallIdx,
+        index: i + 1,
+        label: 'W' + (i + 1),
         length_lf: roundTo(wLenFt, 2),
         opening_area_sqft: roundTo(dedRaw, 2),
         net_area_sqft: netArea
       });
-      wallIdx++;
-    }
-
-    // Partition walls (interior): count both faces (2x)
-    for (var i = 0; i < partitionWalls.length; i++) {
-      var pw = partitionWalls[i];
-      var pwId = String(pw.id);
-      var dx = (pw.end.x - pw.start.x) * cmPerUnit;
-      var dy = (pw.end.y - pw.start.y) * cmPerUnit;
-      var wLenFt = hypot(dx, dy) / CM_PER_FOOT;
-      var wLenIn = wLenFt * 12.0;
-      var wOpenings = openingsByWall[pwId] || [];
-
-      var rects = [];
-      for (var j = 0; j < wOpenings.length; j++) {
-        var op = wOpenings[j];
-        var off = Math.max(0, Math.min(Math.max(0, wLenIn - op.width_in), op.offset_in));
-        var y0 = op.sill_height_in;
-        var y1 = Math.min(ceilingHeight * 12.0, y0 + op.height_in);
-        if (y1 > y0 && op.width_in > 0) {
-          rects.push({ x0: off, x1: off + op.width_in, y0: y0, y1: y1 });
-        }
-      }
-
-      var dedRaw = unionOpeningAreaRawSqFt(rects);
-      var netAreaSingle = netWallAreaSqFt(wLenFt, ceilingHeight, dedRaw);
-      var netArea = roundTo(netAreaSingle * 2.0, 2);
-      totalNetWallArea += netArea;
-
-      perWallNetAreas.push({
-        id: pwId,
-        index: wallIdx,
-        label: 'W' + wallIdx,
-        length_lf: roundTo(wLenFt, 2),
-        opening_area_sqft: roundTo(dedRaw * 2.0, 2),
-        net_area_sqft: netArea
-      });
-      wallIdx++;
     }
     totalNetWallArea = roundTo(totalNetWallArea, 2);
 

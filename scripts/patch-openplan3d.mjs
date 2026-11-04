@@ -187,17 +187,6 @@ function patchStoreChunk(source) {
     s = s.slice(0, vendorPaStart) + paInject + '\n' + s.slice(ktAnchor);
   }
 
-  const assertCurrentOld =
-    'async assertCurrent(i){o(i,await Re("projects",i))}';
-  const assertCurrentNew =
-    'async assertCurrent(i){if(typeof window!=="undefined"&&window.parent&&window.parent!==window)return;o(i,await Re("projects",i))}';
-  if (s.includes(assertCurrentOld)) {
-    s = replaceExpected(s, assertCurrentOld, assertCurrentNew, 'store chunk: bypass assertCurrent in hosted iframe', 1);
-  } else if (!s.includes('if(typeof window!=="undefined"&&window.parent&&window.parent!==window)return;')) {
-    console.error('patch-openplan3d: store chunk: assertCurrent pattern not found');
-    process.exit(1);
-  }
-
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,
@@ -287,10 +276,9 @@ function patchHostedEditorIndexBoot() {
   }
 
   if (!html.includes('installHostedWallMeasureSettings')) {
-    const snapNeedle = /if\s*\(settingsStore\)\s*\{[\r\n\t\s]*bridge\.installHostedSnapGrid\(settingsStore\);[\r\n\t\s]*\}/;
     html = html.replace(
-      snapNeedle,
-      'if (settingsStore) {\r\n\t\t\t\t\t\t\tbridge.installHostedSnapGrid(settingsStore);\r\n\t\t\t\t\t\t\tif (typeof bridge.installHostedWallMeasureSettings === \'function\') {\r\n\t\t\t\t\t\t\t\tbridge.installHostedWallMeasureSettings(settingsStore);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}'
+      'if (settingsStore) {\n\t\t\t\t\t\t\tbridge.installHostedSnapGrid(settingsStore);\n\t\t\t\t\t\t}',
+      'if (settingsStore) {\n\t\t\t\t\t\t\tbridge.installHostedSnapGrid(settingsStore);\n\t\t\t\t\t\t\tif (typeof bridge.installHostedWallMeasureSettings === \'function\') {\n\t\t\t\t\t\t\t\tbridge.installHostedWallMeasureSettings(settingsStore);\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}'
     );
   }
   fs.writeFileSync(EDITOR_INDEX, html);

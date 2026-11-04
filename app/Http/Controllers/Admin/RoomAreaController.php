@@ -406,24 +406,7 @@ class RoomAreaController extends Controller
             'flooring_direction' => ['nullable', 'integer', 'in:0,90'],
             'flooring_box_sqft' => ['nullable', 'numeric', 'min:0', 'max:500'],
             'confirm_zero_area' => ['sometimes', 'boolean'],
-            'expected_revision' => ['nullable'],
-            'expected_baseline_hash' => ['nullable', 'string'],
         ]);
-
-        if ($request->filled('expected_revision')) {
-            $expRaw = $request->input('expected_revision');
-            if (is_numeric($expRaw)) {
-                $expMs = (int) $expRaw;
-                $serverMs = (int) ($room_area_room->updated_at?->valueOf() ?? ($room_area_room->updated_at ? $room_area_room->updated_at->timestamp * 1000 : 0));
-                if ($serverMs > $expMs + 1000) {
-                    return response()->json([
-                        'ok' => false,
-                        'code' => 'conflict',
-                        'message' => 'Changes are not saved. This project changed or was deleted in another tab. Save your version as a copy or download a JSON backup to keep both versions.',
-                    ], 409);
-                }
-            }
-        }
 
         $bridge = app(\App\Services\OpenPlan3DMeasurementBridge::class);
         $plan = $data['plan'] ?? null;
@@ -947,10 +930,6 @@ class RoomAreaController extends Controller
                 ? route('admin.utilities.room-area.rooms.pdf', $room)
                 : null,
             'area_sqft' => (float) $room->area_sqft,
-            'updated_at' => $room->updated_at?->toISOString() ?? (string) $room->updated_at,
-            'revision' => (string) ($room->updated_at?->valueOf() ?? ($room->updated_at ? $room->updated_at->timestamp * 1000 : 0)),
-            'version' => (int) ($room->updated_at?->timestamp ?? 0),
-            'baseline_hash' => sha1(json_encode($room->vertices ?? [])),
             'photo_count' => $room->relationLoaded('photos')
                 ? $room->photos->count()
                 : (int) ($room->photos_count ?? $room->photos()->count()),
