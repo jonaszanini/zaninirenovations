@@ -12,6 +12,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 
@@ -23,8 +24,8 @@ const OUT = path.join(ROOT, 'public/vendor', OUT_SLUG);
 const MANIFEST = path.join(__dirname, 'openplan3d-h1.json');
 const EDITOR_INDEX = path.join(OUT, 'editor/index.html');
 /** Cache-bust: browsers may immutable-cache the upstream editor chunk filename. */
-const PATCHED_STORE_CHUNK_BASENAME = '1VjVcrjm-h1.js';
-const PATCHED_EDITOR_CHUNK_BASENAME = 'CgAQI-i0-h1.js';
+const PATCHED_STORE_CHUNK_BASENAME = '1VjVcrjm-h2.js';
+const PATCHED_EDITOR_CHUNK_BASENAME = 'CgAQI-i0-h2.js';
 
 const require = createRequire(import.meta.url);
 const bridge = require(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
@@ -66,6 +67,7 @@ function replaceAllExpected(source, oldStr, newStr, label, expectedCount) {
 
 function listAllFiles(dir) {
   const out = [];
+  if (!fs.existsSync(dir)) return out;
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, ent.name);
     if (ent.isDirectory()) out.push(...listAllFiles(p));
@@ -74,34 +76,15 @@ function listAllFiles(dir) {
   return out;
 }
 
-function rewriteEditorChunkBasename(rootDir, fromBasename, toBasename) {
-  if (fromBasename === toBasename) return;
-  for (const file of listAllFiles(rootDir)) {
-    if (!/\.(html|js|css|json|svg)$/.test(file)) continue;
-    let text = fs.readFileSync(file, 'utf8');
-    if (!text.includes(fromBasename)) continue;
-    text = text.split(fromBasename).join(toBasename);
-    fs.writeFileSync(file, text);
-  }
-}
-
 function publishPatchedStoreChunk(vendorBasename, patchedSource) {
   const outPath = path.join(OUT, '_app/immutable/chunks', PATCHED_STORE_CHUNK_BASENAME);
   fs.writeFileSync(outPath, patchedSource);
-  if (vendorBasename !== PATCHED_STORE_CHUNK_BASENAME) {
-    const vendorPath = path.join(OUT, '_app/immutable/chunks', vendorBasename);
-    if (fs.existsSync(vendorPath)) fs.rmSync(vendorPath);
-  }
   return PATCHED_STORE_CHUNK_BASENAME;
 }
 
 function publishPatchedEditorChunk(vendorBasename, patchedSource) {
   const outPath = path.join(OUT, '_app/immutable/chunks', PATCHED_EDITOR_CHUNK_BASENAME);
   fs.writeFileSync(outPath, patchedSource);
-  if (vendorBasename !== PATCHED_EDITOR_CHUNK_BASENAME) {
-    const vendorPath = path.join(OUT, '_app/immutable/chunks', vendorBasename);
-    if (fs.existsSync(vendorPath)) fs.rmSync(vendorPath);
-  }
   return PATCHED_EDITOR_CHUNK_BASENAME;
 }
 
@@ -119,11 +102,11 @@ function propagateImmutableRenames(rootDir, initialRenames) {
         if (fileText.includes(fromBase)) {
           const norm = f.replace(/\\/g, '/');
           if (norm.includes('_app/immutable') && !renames.has(base)) {
-            if (base.endsWith('-h1.js')) {
+            if (base.endsWith('-h2.js')) {
               renames.set(base, base);
               continue;
             }
-            const newBase = base.replace(/\.js$/, '-h1.js');
+            const newBase = base.replace(/(-h1)?\.js$/, '-h2.js');
             renames.set(base, newBase);
             changed = true;
           }
@@ -132,18 +115,27 @@ function propagateImmutableRenames(rootDir, initialRenames) {
     }
   }
 
+  // Copy each file that needs a new name to -h2.js (preserving original live file!)
+  // Do not overwrite store or editor chunks which are published directly!
   for (const [fromBase, toBase] of renames) {
     if (fromBase === toBase) continue;
+    if (toBase === PATCHED_STORE_CHUNK_BASENAME || toBase === PATCHED_EDITOR_CHUNK_BASENAME) continue;
     for (const f of listAllFiles(rootDir)) {
       if (path.basename(f) === fromBase) {
         const newPath = path.join(path.dirname(f), toBase);
-        fs.renameSync(f, newPath);
+        fs.copyFileSync(f, newPath);
       }
     }
   }
 
+  // Rewrite references inside the new -h2.js files and HTML entry pages only.
+  // Files that keep their name must be byte-identical to what's live now.
   for (const f of listAllFiles(rootDir)) {
     if (!/\.(html|js|css|json)$/.test(f)) continue;
+    const base = path.basename(f);
+    const isNewOrHtml = base.endsWith('-h2.js') || f.endsWith('.html');
+    if (!isNewOrHtml) continue;
+
     let text = fs.readFileSync(f, 'utf8');
     let fileChanged = false;
     for (const [fromBase, toBase] of renames) {
@@ -167,27 +159,6 @@ function rewriteVendorUrls(rootDir) {
     text = text.split(VENDOR_PREFIX).join(OUT_PREFIX);
     fs.writeFileSync(file, text);
   }
-}
-
-function discoverStoreChunkBasename() {
-  const html = fs.readFileSync(EDITOR_INDEX, 'utf8');
-  const esc = OUT_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const m = html.match(new RegExp(`${esc}/_app/immutable/chunks/([A-Za-z0-9_-]+\\.js)"\\)\\.then\\(\\(storeModule\\)`));
-  if (!m) throw new Error('patch-openplan3d: store chunk import not found in editor/index.html');
-  return m[1];
-}
-
-function discoverEditorChunkBasename() {
-  const entryDir = path.join(OUT, '_app/immutable/entry');
-  const appFile = fs.readdirSync(entryDir).find((f) => /^app\.[A-Za-z0-9_-]+\.js$/.test(f));
-  if (!appFile) throw new Error('patch-openplan3d: entry app.*.js not found');
-  const appJs = fs.readFileSync(path.join(entryDir, appFile), 'utf8');
-  const node3 = appJs.match(/"\.\.\/nodes\/(3\.[A-Za-z0-9_-]+\.js)"/)?.[1];
-  if (!node3) throw new Error('patch-openplan3d: nodes/3.* reference not found in ' + appFile);
-  const nodeJs = fs.readFileSync(path.join(OUT, '_app/immutable/nodes', node3), 'utf8');
-  const m = nodeJs.match(/from"\.\.\/chunks\/([A-Za-z0-9_-]+\.js)"/);
-  if (!m) throw new Error('patch-openplan3d: editor canvas chunk import not found in ' + node3);
-  return m[1];
 }
 
 function patchStoreChunk(source) {
@@ -223,7 +194,7 @@ function patchStoreChunk(source) {
     'const i=e.find(u=>u.id===t);if(!i)throw new Error("Select a wall to resize.");let a;if(!i.curvePoint)a=Math.hypot(i.end.x-i.start.x,i.end.y-i.start.y);else{a=0;let n=i.start;for(let o=1;o<=20;o++){const i2=o/20,s2=1-i2,r2={x:s2*s2*i.start.x+2*s2*i2*i.curvePoint.x+i2*i2*i.end.x,y:s2*s2*i.start.y+2*s2*i2*i.curvePoint.y+i2*i2*i.end.y};a+=Math.hypot(r2.x-n.x,r2.y-n.y),n=r2}}';
   if (s.includes(ysVoNeedle)) {
     s = replaceExpected(s, ysVoNeedle, ysCenterNeedle, 'store chunk: ys() centerline length', 1);
-  } else if (!s.includes(ysCenterNeedle)) {
+  } else if (!s.includes('ysCenterNeedle') && !s.includes('let a;if(!i.curvePoint)a=Math.hypot(i.end.x-i.start.x')) {
     console.error('patch-openplan3d: store chunk: ys() centerline length pattern not found');
     process.exit(1);
   }
@@ -239,7 +210,7 @@ function patchStoreChunk(source) {
     process.exit(1);
   }
 
-  const paInject = bridge.buildVendorLengthParseSource();
+  const paInject = bridge.buildVendorLengthParseSource().replace(/\r\n/g, '\n');
   const hostedPaNeedle = 'function pa(e,t){return parseHostedLengthToCm(e,t);}';
   if (!s.includes(hostedPaNeedle)) {
     const vendorPaStart = s.indexOf('function pa(');
@@ -412,28 +383,34 @@ function main() {
     throw new Error('patch-openplan3d: missing pristine tree at public/vendor/openplan3d');
   }
 
-  fs.rmSync(OUT, { recursive: true, force: true });
-  fs.cpSync(PRISTINE, OUT, { recursive: true });
-  rewriteVendorUrls(OUT);
 
-  const vendorStoreChunk = discoverStoreChunkBasename();
-  const vendorEditorChunk = discoverEditorChunkBasename();
+  if (!fs.existsSync(OUT)) {
+    fs.cpSync(PRISTINE, OUT, { recursive: true });
+    rewriteVendorUrls(OUT);
+  }
+
+  const vendorStoreChunk = '1VjVcrjm.js';
+  const vendorLiveEditorChunk = 'CgAQI-i0-h1.js';
+  const vendorPristineEditorChunk = 'CgAQI-i0.js';
 
   const storeVendorPath = path.join(OUT, '_app/immutable/chunks', vendorStoreChunk);
-  const editorVendorPath = path.join(OUT, '_app/immutable/chunks', vendorEditorChunk);
+  const editorVendorPath = fs.existsSync(path.join(OUT, '_app/immutable/chunks', vendorLiveEditorChunk))
+    ? path.join(OUT, '_app/immutable/chunks', vendorLiveEditorChunk)
+    : path.join(PRISTINE, '_app/immutable/chunks', vendorPristineEditorChunk);
 
   const storeChunk = publishPatchedStoreChunk(
     vendorStoreChunk,
     patchStoreChunk(fs.readFileSync(storeVendorPath, 'utf8'))
   );
   const editorChunk = publishPatchedEditorChunk(
-    vendorEditorChunk,
+    vendorLiveEditorChunk,
     patchEditorCanvasChunk(fs.readFileSync(editorVendorPath, 'utf8'))
   );
 
   propagateImmutableRenames(OUT, [
     [vendorStoreChunk, storeChunk],
-    [vendorEditorChunk, editorChunk],
+    [vendorLiveEditorChunk, editorChunk],
+    [vendorPristineEditorChunk, editorChunk],
   ]);
 
   patchHostedEditorIndexBoot();
@@ -443,7 +420,7 @@ function main() {
     vendorSlug: OUT_SLUG,
     storeChunk,
     editorChunk,
-    vendorEditorChunk,
+    vendorEditorChunk: vendorPristineEditorChunk,
     localeChunk,
   };
   fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
