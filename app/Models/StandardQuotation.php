@@ -190,14 +190,6 @@ class StandardQuotation extends Model
         $material = (bool) $this->includes_material;
         $labour = (bool) $this->includes_labour;
 
-        // Includes is PDF wording, but never contradict priced lines.
-        if (! $labour && $this->chargedLabourPreTax() > 0) {
-            $labour = true;
-        }
-        if (! $material && $this->chargedMaterialsPreTax() > 0) {
-            $material = true;
-        }
-
         if ($material && $labour) {
             return 'Labour and material';
         }

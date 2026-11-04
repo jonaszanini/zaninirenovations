@@ -813,10 +813,8 @@ class StandardQuotationController extends Controller
             $docType = ClientProjectQuotation::TYPE_QUOTATION;
         }
 
-        $includeLabour = (bool) $standardQuotation->includes_labour
-            || $standardQuotation->chargedLabourPreTax() > 0;
-        $includeMaterial = (bool) $standardQuotation->includes_material
-            || $standardQuotation->chargedMaterialsPreTax() > 0;
+        $includeLabour = (bool) $standardQuotation->includes_labour;
+        $includeMaterial = (bool) $standardQuotation->includes_material;
 
         if (! $row->exists) {
             $row->fill([

@@ -558,7 +558,7 @@ class StandardQuotationPdfLineItemsTest extends TestCase
         }
     }
 
-    public function test_includes_labour_off_still_shows_priced_labour_and_honest_wording(): void
+    public function test_includes_labour_off_uses_material_wording_but_still_prices_labour_lines(): void
     {
         $quote = new StandardQuotation([
             'includes_material' => true,
@@ -582,7 +582,7 @@ class StandardQuotationPdfLineItemsTest extends TestCase
             'include_debris_removal' => false,
         ]);
 
-        $this->assertSame('Labour and material', $quote->pdfSummaryLineDescription());
+        $this->assertSame('Material', $quote->pdfSummaryLineDescription());
         $this->assertEqualsWithDelta(200.0, $quote->labourPreTaxAmountForProjectQuotation(), 0.01);
 
         $lines = $quote->summaryPdfLineItems();

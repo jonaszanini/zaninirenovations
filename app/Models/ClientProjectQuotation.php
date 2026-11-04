@@ -2422,9 +2422,9 @@ class ClientProjectQuotation extends Model
     public function includesLabourInSupplyScope(): bool
     {
         if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
-            $sq = StandardQuotation::query()->find($this->source_id);
-            if ($sq && (float) ($sq->labour_total ?? 0) > 0) {
-                return true;
+            $fromStandard = $this->standardQuotationIncludesLabour();
+            if ($fromStandard !== null) {
+                return $fromStandard;
             }
         }
 
@@ -2469,9 +2469,9 @@ class ClientProjectQuotation extends Model
     public function includesMaterialInSupplyScope(): bool
     {
         if ($this->source_type === self::SOURCE_STANDARD && $this->source_id) {
-            $sq = StandardQuotation::query()->find($this->source_id);
-            if ($sq && (float) ($sq->materials_subtotal_before_hst ?? 0) > 0) {
-                return true;
+            $fromStandard = $this->standardQuotationIncludesMaterial();
+            if ($fromStandard !== null) {
+                return $fromStandard;
             }
         }
 
@@ -2584,6 +2584,50 @@ class ClientProjectQuotation extends Model
         }
 
         return 'For the following scope of work:';
+    }
+
+    /**
+     * Standard quotation "Includes (PDF wording)" — labour checkbox, not priced lines.
+     */
+    protected function standardQuotationIncludesLabour(): ?bool
+    {
+        if ($this->source_type !== self::SOURCE_STANDARD || ! $this->source_id) {
+            return null;
+        }
+
+        $sq = StandardQuotation::query()->find($this->source_id);
+        if ($sq) {
+            return (bool) $sq->includes_labour;
+        }
+
+        $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];
+        if (array_key_exists('includes_labour', $snap)) {
+            return filter_var($snap['includes_labour'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return null;
+    }
+
+    /**
+     * Standard quotation "Includes (PDF wording)" — material checkbox, not priced lines.
+     */
+    protected function standardQuotationIncludesMaterial(): ?bool
+    {
+        if ($this->source_type !== self::SOURCE_STANDARD || ! $this->source_id) {
+            return null;
+        }
+
+        $sq = StandardQuotation::query()->find($this->source_id);
+        if ($sq) {
+            return (bool) $sq->includes_material;
+        }
+
+        $snap = is_array($this->source_snapshot) ? $this->source_snapshot : [];
+        if (array_key_exists('includes_material', $snap)) {
+            return filter_var($snap['includes_material'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return null;
     }
 
     /**
