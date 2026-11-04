@@ -801,7 +801,8 @@ class StandardQuotationController extends Controller
 
         $lineDescription = $this->resolveStandardLinkLineDescription(
             $standardQuotation,
-            $lineDescription
+            $lineDescription,
+            $row->exists ? $row : null
         );
 
         $sqLines = $standardQuotation->projectQuotationLineItems($lineDescription);
@@ -851,14 +852,30 @@ class StandardQuotationController extends Controller
 
     protected function resolveStandardLinkLineDescription(
         StandardQuotation $standardQuotation,
-        ?string $lineDescription = null
+        ?string $lineDescription = null,
+        ?ClientProjectQuotation $existing = null
     ): string {
         $lineDescription = trim((string) ($lineDescription ?? ''));
         if ($lineDescription !== '') {
             return $lineDescription;
         }
 
-        return $standardQuotation->pdfSummaryLineDescription();
+        $autoLabel = $standardQuotation->pdfSummaryLineDescription();
+        $existingTitle = $existing ? trim((string) ($existing->title ?? '')) : '';
+        if ($existingTitle !== '' && ! $this->isStandardAutoLinkLineDescription($existingTitle)) {
+            return $existingTitle;
+        }
+
+        return $autoLabel;
+    }
+
+    protected function isStandardAutoLinkLineDescription(string $value): bool
+    {
+        return in_array(strtolower(trim($value)), [
+            'labour and material',
+            'labour',
+            'material',
+        ], true);
     }
 
     /**

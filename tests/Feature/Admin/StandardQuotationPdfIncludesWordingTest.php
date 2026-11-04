@@ -185,6 +185,56 @@ class StandardQuotationPdfIncludesWordingTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(325.0, (float) ($combined['amount'] ?? 0), 0.01);
     }
 
+    public function test_sync_preserves_custom_linked_line_title_on_save_without_changes(): void
+    {
+        $this->actingAsAdmin();
+
+        $customTitle = 'Custom kitchen cabinet install';
+        [$project, $cpq, $standard] = $this->linkedStandardWithPricedMaterialAndLabour(true, true);
+        $cpq->update(['title' => $customTitle]);
+        $standard->update([
+            'client_project_id' => $project->id,
+            'linked_at' => now(),
+        ]);
+
+        $payload = [
+            'save_intent' => 'publish',
+            'client_name' => $standard->client_name,
+            'display_title' => $standard->display_title,
+            'document_type' => ClientProjectQuotation::TYPE_QUOTATION,
+            'pdf_detail_mode' => StandardQuotation::PDF_DETAIL_SUMMARY,
+            'includes_material' => '1',
+            'includes_labour' => '1',
+            'payment_installments' => 1,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
+            'works' => [[
+                'title' => 'Install',
+                'labour_use_fixed' => '1',
+                'labour_fixed_amount' => '250',
+                'materials' => [[
+                    'short_name' => 'Hardware kit',
+                    'unit_price' => '75',
+                    'quantity' => '1',
+                    'apply_hst' => '1',
+                ]],
+            ]],
+        ];
+
+        $this->from(route('admin.quotations.standard.edit', $standard))
+            ->put(route('admin.quotations.standard.update', $standard), $payload)
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $cpq->refresh();
+        $this->assertSame($customTitle, $cpq->title);
+
+        $firstLine = collect($cpq->items)->first();
+        $this->assertIsArray($firstLine);
+        $this->assertSame($customTitle, $firstLine['description'] ?? null);
+    }
+
     public function test_legacy_neither_checked_uses_priced_lines_for_headline_and_summary_label(): void
     {
         [$project, $cpq, $standard] = $this->linkedStandardWithPricedMaterialAndLabour(false, false);
