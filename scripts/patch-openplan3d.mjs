@@ -24,8 +24,8 @@ const OUT = path.join(ROOT, 'public/vendor', OUT_SLUG);
 const MANIFEST = path.join(__dirname, 'openplan3d-h1.json');
 const EDITOR_INDEX = path.join(OUT, 'editor/index.html');
 /** Cache-bust: browsers may immutable-cache the upstream editor chunk filename. */
-const PATCHED_STORE_CHUNK_BASENAME = '1VjVcrjm-h2.js';
-const PATCHED_EDITOR_CHUNK_BASENAME = 'CgAQI-i0-h2.js';
+const PATCHED_STORE_CHUNK_BASENAME = '1VjVcrjm-h3.js';
+const PATCHED_EDITOR_CHUNK_BASENAME = 'CgAQI-i0-h3.js';
 
 const require = createRequire(import.meta.url);
 const bridge = require(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
@@ -102,11 +102,11 @@ function propagateImmutableRenames(rootDir, initialRenames) {
         if (fileText.includes(fromBase)) {
           const norm = f.replace(/\\/g, '/');
           if (norm.includes('_app/immutable') && !renames.has(base)) {
-            if (base.endsWith('-h2.js')) {
+            if (base.endsWith('-h3.js')) {
               renames.set(base, base);
               continue;
             }
-            const newBase = base.replace(/(-h1)?\.js$/, '-h2.js');
+            const newBase = base.replace(/(-h[12])?\.js$/, '-h3.js');
             renames.set(base, newBase);
             changed = true;
           }
@@ -115,7 +115,7 @@ function propagateImmutableRenames(rootDir, initialRenames) {
     }
   }
 
-  // Copy each file that needs a new name to -h2.js (preserving original live file!)
+  // Copy each file that needs a new name to -h3.js (preserving original live file!)
   // Do not overwrite store or editor chunks which are published directly!
   for (const [fromBase, toBase] of renames) {
     if (fromBase === toBase) continue;
@@ -128,12 +128,12 @@ function propagateImmutableRenames(rootDir, initialRenames) {
     }
   }
 
-  // Rewrite references inside the new -h2.js files and HTML entry pages only.
+  // Rewrite references inside the new -h3.js files and HTML entry pages only.
   // Files that keep their name must be byte-identical to what's live now.
   for (const f of listAllFiles(rootDir)) {
     if (!/\.(html|js|css|json)$/.test(f)) continue;
     const base = path.basename(f);
-    const isNewOrHtml = base.endsWith('-h2.js') || f.endsWith('.html');
+    const isNewOrHtml = base.endsWith('-h3.js') || f.endsWith('.html');
     if (!isNewOrHtml) continue;
 
     let text = fs.readFileSync(f, 'utf8');
@@ -328,11 +328,22 @@ function patchHostedEditorIndexBoot() {
   let html = fs.readFileSync(EDITOR_INDEX, 'utf8');
   const localeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-hosted-locale.js'));
   const bridgeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
+  const toolsV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-zanini-tools.js'));
 
   html = html.replace(
     /openplan3d-editor-bridge\.js\?v=[A-Za-z0-9]+/,
     `openplan3d-editor-bridge.js?v=${bridgeV}`
   );
+
+  const toolsTag = `<script src="/js/openplan3d-zanini-tools.js?v=${toolsV}"></script>`;
+  if (!html.includes('openplan3d-zanini-tools.js')) {
+    html = html.replace(
+      `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`,
+      `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>\n\t\t${toolsTag}`
+    );
+  } else {
+    html = html.replace(/openplan3d-zanini-tools\.js\?v=[A-Za-z0-9]+/, `openplan3d-zanini-tools.js?v=${toolsV}`);
+  }
 
   if (!html.includes('type="importmap"')) {
     const importMap =

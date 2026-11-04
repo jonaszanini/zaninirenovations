@@ -33,10 +33,12 @@ class OpenPlan3DMeasurementBridge
         private ?RoomAreaFinishMath $finishMath = null,
         private ?PolygonAreaService $polygonArea = null,
         private ?RoomAreaCanvasData $canvasData = null,
+        private ?RoomAreaOpenPlan3DExtensions $extensions = null,
     ) {
         $this->finishMath = $finishMath ?? app(RoomAreaFinishMath::class);
         $this->polygonArea = $polygonArea ?? app(PolygonAreaService::class);
         $this->canvasData = $canvasData ?? app(RoomAreaCanvasData::class);
+        $this->extensions = $extensions ?? app(RoomAreaOpenPlan3DExtensions::class);
     }
 
     /**
@@ -444,7 +446,12 @@ class OpenPlan3DMeasurementBridge
         // Library items (cabinets, stairs)
         $library = $this->resolveLibraryMetrics($floor, $cmPerUnit);
 
-        return [
+        $boundaryWallIds = array_values(array_map(
+            'strval',
+            $selectedRoom['boundary_wall_ids'] ?? array_column($boundaryWalls, 'id')
+        ));
+
+        $metrics = [
             'area_sqft' => $insideAreaSqFt,
             'perimeter_lf' => $perimeter,
             'baseboard_lf' => $baseboardLf,
@@ -478,7 +485,10 @@ class OpenPlan3DMeasurementBridge
             'flooring_boxes' => $flooringBoxes,
             'flooring_with_waste_sqft' => $flooringWithWasteSqFt,
             'casing_lf' => $casingLf,
+            'boundary_wall_ids' => $boundaryWallIds,
         ];
+
+        return $this->extensions->applyToMetrics($metrics, $plan, $finish, $cmPerUnit);
     }
 
     /**
@@ -1227,6 +1237,9 @@ class OpenPlan3DMeasurementBridge
                     $r['boundary_wall_ids'] = $loop['boundary_wall_ids'];
                     $r['partition_walls'] = $loop['partition_walls'];
                     $r['partition_wall_ids'] = $loop['partition_wall_ids'];
+                    if (count($loop['outer_polygon']) >= 3) {
+                        $r['polygon'] = $loop['outer_polygon'];
+                    }
                     $rooms[] = $r;
                     continue;
                 }

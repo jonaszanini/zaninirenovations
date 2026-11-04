@@ -349,6 +349,14 @@
     var metricOpenings = doc.getElementById('metric-openings');
     var metricCasing = doc.getElementById('metric-casing');
     var metricBoxes = doc.getElementById('metric-boxes');
+    var metricDrywall = doc.getElementById('metric-finish-drywall');
+    var metricInsulation = doc.getElementById('metric-finish-insulation');
+    var metricStuds = doc.getElementById('metric-finish-studs');
+    var metricBulkheadDrywall = doc.getElementById('metric-bulkhead-drywall');
+    var deleteRoomBtn = doc.getElementById('openplan3d-delete-room-btn');
+    var deleteProjectBtn = doc.getElementById('openplan3d-delete-project-btn');
+    var zonesPanel = doc.getElementById('openplan3d-zones-panel');
+    var zonesListEl = doc.getElementById('openplan3d-zones-list');
 
     var csrfToken = (doc.getElementById('openplan3d-csrf') || {}).value || '';
     var projects = [];
@@ -363,8 +371,10 @@
 
     var roomStoreTemplate = rootEl.dataset.roomStoreTemplate || '';
     var roomUpdateTemplate = rootEl.dataset.roomUpdateTemplate || '';
+    var roomDestroyTemplate = rootEl.dataset.roomDestroyTemplate || '';
     var projectStoreUrl = rootEl.dataset.projectStoreUrl || '';
     var projectUpdateTemplate = rootEl.dataset.projectUpdateTemplate || '';
+    var projectDestroyTemplate = rootEl.dataset.projectDestroyTemplate || '';
     var quoteRoomTemplate = rootEl.dataset.quoteRoomTemplate || '';
     var boundClientProjectId = parseInt(rootEl.dataset.boundClientProject, 10) || null;
     var clientProjects = [];
@@ -665,6 +675,161 @@
       });
     }
 
+    function mergePlanZanini(previousPlan, incomingPlan) {
+      if (!incomingPlan || typeof incomingPlan !== 'object') return incomingPlan;
+      var merged = clonePlan(incomingPlan);
+      if (!previousPlan || !previousPlan.zanini) return merged;
+      var incomingZ = merged.zanini;
+      if (incomingZ && (
+        (Array.isArray(incomingZ.zones) && incomingZ.zones.length) ||
+        (Array.isArray(incomingZ.bulkheads) && incomingZ.bulkheads.length) ||
+        (incomingZ.wallFinishes && typeof incomingZ.wallFinishes === 'object' && Object.keys(incomingZ.wallFinishes).length)
+      )) {
+        return merged;
+      }
+      merged.zanini = merged.zanini || {};
+      try {
+        merged.zanini = JSON.parse(JSON.stringify(previousPlan.zanini));
+      } catch (e) {
+        merged.zanini = previousPlan.zanini;
+      }
+      return merged;
+    }
+
+    function setMetricEl(el, value, digits) {
+      if (!el) return;
+      var n = Number(value);
+      if (!isFinite(n)) n = 0;
+      el.textContent = n.toFixed(digits != null ? digits : 2);
+    }
+
+    function renderZonesPanel(plan) {
+      if (!zonesListEl) return;
+      zonesListEl.innerHTML = '';
+      var zanini = plan && plan.zanini;
+      var zones = zanini && Array.isArray(zanini.zones) ? zanini.zones : [];
+      if (zonesPanel) zonesPanel.hidden = false;
+      if (zones.length === 0) {
+        var empty = doc.createElement('li');
+        empty.className = 'openplan3d-zones-empty';
+        empty.textContent = 'No area zones yet. Use Area Zone in the editor toolbar.';
+        zonesListEl.appendChild(empty);
+        return;
+      }
+      zones.forEach(function (zone) {
+        if (!zone) return;
+        var li = doc.createElement('li');
+        li.className = 'openplan3d-zones-item';
+        var name = doc.createElement('span');
+        name.className = 'openplan3d-zones-name';
+        name.textContent = zone.name || zone.id || 'Zone';
+        var tag = doc.createElement('span');
+        tag.className = 'openplan3d-zones-tag' + (zone.exclude ? ' openplan3d-zones-tag--exclude' : '');
+        tag.textContent = zone.exclude ? 'Exclude' : 'Include';
+        li.appendChild(name);
+        li.appendChild(tag);
+        zonesListEl.appendChild(li);
+      });
+    }
+
+    function removeProjectFromList(projectId) {
+      projects = projects.filter(function (p) { return p.id !== projectId; });
+      populateProjects();
+    }
+
+    function navigateAfterRoomDelete(deletedRoomId) {
+      if (!currentProject || !currentProject.rooms) {
+        startBlankSession();
+        return;
+      }
+      currentProject.rooms = currentProject.rooms.filter(function (r) { return r.id !== deletedRoomId; });
+      populateRooms();
+      if (currentProject.rooms.length > 0) {
+        selectRoom(currentProject.rooms[0]);
+        return;
+      }
+      applyNewRoom('Room 1');
+    }
+
+    function navigateAfterProjectDelete() {
+      if (projects.length > 0) {
+        selectProject(projects[0].id);
+        if (projects[0].rooms && projects[0].rooms.length > 0) {
+          selectRoom(projects[0].rooms[0]);
+        } else {
+          applyNewRoom('Room 1');
+        }
+        return;
+      }
+      startBlankSession();
+    }
+
+    function deleteCurrentRoom() {
+      if (!currentRoom || !currentRoom.id) {
+        showFeedback('Save the room before deleting it.', true);
+        return;
+      }
+      if (!roomDestroyTemplate) {
+        showFeedback('Delete room is not configured.', true);
+        return;
+      }
+      askConfirm('Delete this room permanently? This cannot be undone.', 'Delete room').then(function (ok) {
+        if (!ok) return;
+        var url = roomDestroyTemplate.replace('__ID__', currentRoom.id);
+        return jsonPost(url, 'DELETE', { _token: csrfToken }).then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            var deletedId = currentRoom.id;
+            if (currentProject) {
+              currentProject.rooms = (currentProject.rooms || []).filter(function (r) { return r.id !== deletedId; });
+              rememberProject(currentProject);
+            }
+            showFeedback('Room deleted.');
+            navigateAfterRoomDelete(deletedId);
+          } else {
+            showFeedback((result.data && result.data.message) || 'Could not delete room.', true);
+          }
+        });
+      }).catch(function () {
+        showFeedback('Server error deleting room.', true);
+      });
+    }
+
+    function deleteCurrentProject() {
+      if (!currentProject || !currentProject.id) {
+        showFeedback('Save the project before deleting it.', true);
+        return;
+      }
+      if (!projectDestroyTemplate) {
+        showFeedback('Delete project is not configured.', true);
+        return;
+      }
+      askConfirm('Delete this entire project and all of its rooms? This cannot be undone.', 'Delete project').then(function (ok) {
+        if (!ok) return;
+        var url = projectDestroyTemplate.replace('__ID__', currentProject.id);
+        return jsonPost(url, 'DELETE', { _token: csrfToken }).then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            var deletedId = currentProject.id;
+            removeProjectFromList(deletedId);
+            currentProject = null;
+            showFeedback('Project deleted.');
+            navigateAfterProjectDelete();
+          } else {
+            showFeedback((result.data && result.data.message) || 'Could not delete project.', true);
+          }
+        });
+      }).catch(function () {
+        showFeedback('Server error deleting project.', true);
+      });
+    }
+
+      return {
+        wall_height_ft: parseFloat(wallHeightInput ? wallHeightInput.value : 8) || 8,
+        ceiling_height_ft: parseFloat(ceilingHeightInput ? ceilingHeightInput.value : 8) || 8,
+        flooring_waste_percent: parseFloat(wasteInput ? wasteInput.value : 10) || 10,
+        flooring_box_sqft: parseFloat(boxInput ? boxInput.value : 20) || 20
+      };
+    }
+
     function getFinishSettings() {
       return {
         wall_height_ft: parseFloat(wallHeightInput ? wallHeightInput.value : 8) || 8,
@@ -706,6 +871,11 @@
         if (metricBoxes) {
           metricBoxes.textContent = String(stored.flooring_boxes != null ? stored.flooring_boxes : 0);
         }
+        setMetricEl(metricDrywall, stored.finish_drywall_sqft != null ? stored.finish_drywall_sqft : stored.net_wall_area_sqft, 2);
+        setMetricEl(metricInsulation, stored.finish_insulation_sqft, 2);
+        setMetricEl(metricStuds, stored.finish_stud_lf, 2);
+        setMetricEl(metricBulkheadDrywall, stored.bulkhead_drywall_sqft, 2);
+        renderZonesPanel(currentPlan);
         updateGeometryWarning();
         return;
       }
@@ -717,6 +887,11 @@
         if (metricOpenings) metricOpenings.textContent = '0 doors · 0 windows';
         if (metricCasing) metricCasing.textContent = '0.00';
         if (metricBoxes) metricBoxes.textContent = '0';
+        setMetricEl(metricDrywall, 0, 2);
+        setMetricEl(metricInsulation, 0, 2);
+        setMetricEl(metricStuds, 0, 2);
+        setMetricEl(metricBulkheadDrywall, 0, 2);
+        renderZonesPanel(null);
         updateGeometryWarning();
         return;
       }
@@ -742,9 +917,14 @@
         if (metricBoxes) {
           metricBoxes.textContent = String(metrics.flooring_boxes != null ? metrics.flooring_boxes : (metrics.boxes || 0));
         }
+        setMetricEl(metricDrywall, metrics.finish_drywall_sqft != null ? metrics.finish_drywall_sqft : metrics.net_wall_area_sqft, 2);
+        setMetricEl(metricInsulation, metrics.finish_insulation_sqft, 2);
+        setMetricEl(metricStuds, metrics.finish_stud_lf, 2);
+        setMetricEl(metricBulkheadDrywall, metrics.bulkhead_drywall_sqft, 2);
       } catch (err) {
         console.warn('[openPlan3D] Metrics computation failed:', err);
       }
+      renderZonesPanel(plan);
       updateGeometryWarning();
     }
 
@@ -1460,6 +1640,30 @@
       saveBtn.addEventListener('click', savePlan);
     }
 
+    if (deleteRoomBtn) {
+      deleteRoomBtn.addEventListener('click', function () {
+        if (isDirty) {
+          askConfirm('You have unsaved changes. Delete this room anyway?').then(function (ok) {
+            if (ok) deleteCurrentRoom();
+          });
+          return;
+        }
+        deleteCurrentRoom();
+      });
+    }
+
+    if (deleteProjectBtn) {
+      deleteProjectBtn.addEventListener('click', function () {
+        if (isDirty) {
+          askConfirm('You have unsaved changes. Delete this project anyway?').then(function (ok) {
+            if (ok) deleteCurrentProject();
+          });
+          return;
+        }
+        deleteCurrentProject();
+      });
+    }
+
     if (settingsBtn && settingsDrawer) {
       settingsBtn.addEventListener('click', function () {
         var isExpanded = settingsBtn.getAttribute('aria-expanded') === 'true';
@@ -1528,7 +1732,7 @@
           showFeedback('openPlan3D editor API is unavailable. Room geometry cannot be loaded. Refresh the page.', true);
         } else if (e.data.type === 'OPENPLAN3D_PLAN_CHANGED') {
           if (!loadAcked) return;
-          currentPlan = e.data.plan;
+          currentPlan = mergePlanZanini(currentPlan, e.data.plan);
           var planChanged = !plansMatch(currentPlan, loadedPlanBaseline);
           setDirty(planChanged);
           if (saveBtn) saveBtn.disabled = !currentPlan || isSaving;

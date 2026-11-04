@@ -1,0 +1,101 @@
+'use strict';
+
+const assert = require('assert');
+require('../../public/js/openplan3d-zanini-extensions.js');
+const ext = require('../../public/js/openplan3d-zanini-extensions.js');
+require('../../public/js/openplan3d-measurement-bridge.js');
+const bridge = require('../../public/js/openplan3d-measurement-bridge.js');
+
+console.log('openplan3d-zanini-extensions tests');
+
+assert.strictEqual(typeof ext.rectsUnionAreaSqFt, 'function');
+assert.strictEqual(typeof ext.applyToMetrics, 'function');
+
+const union = ext.rectsUnionAreaSqFt([
+  { x1: 0, y1: 0, x2: 100, y2: 100 },
+  { x1: 50, y1: 50, x2: 150, y2: 150 },
+], 1.0);
+assert.ok(union > 0, 'union area should be positive');
+
+const metrics = {
+  area_sqft: 96.88,
+  inside_area_sqft: 96.88,
+  ceiling_area_sqft: 96.88,
+  flooring_waste_percent: 0,
+  flooring_box_sqft: 20,
+  casing_lf: 12.5,
+  boundary_wall_ids: ['w1', 'w2'],
+  walls: [
+    { id: 'w1', length_lf: 10, net_area_sqft: 80 },
+    { id: 'w2', length_lf: 10, net_area_sqft: 80 },
+    { id: 'w3', length_lf: 8, net_area_sqft: 128 },
+  ],
+};
+
+const excludedPlan = {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    excluded_area_zones: [{ x1: 0, y1: 0, x2: 100, y2: 100 }],
+  },
+};
+
+const excludedOut = ext.applyToMetrics(Object.assign({}, metrics), excludedPlan, {}, { unit: 'cm' });
+assert.ok(excludedOut.excluded_area_sqft > 0);
+assert.ok(excludedOut.area_sqft < metrics.area_sqft);
+
+const bulkheadOut = ext.applyToMetrics(Object.assign({}, metrics), {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    bulkheads: [{
+      rect: { x1: 0, y1: 0, x2: 304.8, y2: 30.48 },
+      drop_height_ft: 2,
+      width_ft: 1,
+    }],
+  },
+}, {}, { unit: 'cm' });
+
+assert.strictEqual(bulkheadOut.bulkhead_framing_lf, 22);
+assert.strictEqual(bulkheadOut.bulkhead_drywall_sqft, 54);
+assert.strictEqual(bulkheadOut.bulkhead_corner_bead_lf, 8);
+
+const finishOut = ext.applyToMetrics(Object.assign({}, metrics), { format: 'openplan3d', units: 'cm' }, {}, 1.0);
+assert.strictEqual(finishOut.finish_drywall_sqft, 288);
+assert.strictEqual(finishOut.finish_insulation_sqft, 160);
+assert.strictEqual(finishOut.finish_stud_lf, 8);
+assert.strictEqual(finishOut.finish_baseboard_lf, 36);
+
+const merged = ext.mergeZaniniIntoPlan({ floors: [{ id: 'f1' }] }, { zones: [] });
+assert.deepStrictEqual(merged.zanini, { zones: [] });
+
+const rectPlan = {
+  format: 'openplan3d',
+  units: 'cm',
+  floors: [{
+    id: 'f1',
+    walls: [
+      { id: 'w1', start: { x: 0, y: 0 }, end: { x: 300, y: 0 }, thickness: 11.43, height: 243.84 },
+      { id: 'w2', start: { x: 300, y: 0 }, end: { x: 300, y: 300 }, thickness: 11.43, height: 243.84 },
+      { id: 'w3', start: { x: 300, y: 300 }, end: { x: 0, y: 300 }, thickness: 11.43, height: 243.84 },
+      { id: 'w4', start: { x: 0, y: 300 }, end: { x: 0, y: 0 }, thickness: 11.43, height: 243.84 },
+    ],
+    rooms: [{
+      id: 'r1',
+      walls: ['w1', 'w2', 'w3', 'w4'],
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 150, y: 0 },
+        { x: 150, y: 300 },
+        { x: 0, y: 300 },
+      ],
+    }],
+  }],
+  activeFloorId: 'f1',
+};
+
+const outerMetrics = bridge.layoutMetrics(rectPlan, 'r1', { wall_height_ft: 8 });
+assert.ok(outerMetrics.area_sqft > 80, 'outer polygon should exceed partial stored polygon area');
+assert.ok(Array.isArray(outerMetrics.boundary_wall_ids));
+
+console.log('openplan3d-zanini-extensions: ok');

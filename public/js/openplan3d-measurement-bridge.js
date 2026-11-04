@@ -630,6 +630,34 @@
     };
   }
 
+  function getZaniniExtensions() {
+    if (typeof OpenPlan3DZaniniExtensions !== 'undefined') {
+      return OpenPlan3DZaniniExtensions;
+    }
+    if (typeof globalThis !== 'undefined' && globalThis.OpenPlan3DZaniniExtensions) {
+      return globalThis.OpenPlan3DZaniniExtensions;
+    }
+    if (typeof require === 'function') {
+      try {
+        return require('./openplan3d-zanini-extensions.js');
+      } catch (err) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function applyZaniniExtensions(metrics, plan, finish, options) {
+    var ext = getZaniniExtensions();
+    if (ext && typeof ext.applyToMetrics === 'function') {
+      return ext.applyToMetrics(metrics, plan, finish || {}, options || {});
+    }
+    if (ext && typeof ext.withDefaultFinishFields === 'function') {
+      return ext.withDefaultFinishFields(metrics);
+    }
+    return metrics;
+  }
+
   function layoutMetrics(plan, roomId, finish, options) {
     finish = finish || {};
     options = options || {};
@@ -689,7 +717,7 @@
       var flWithWaste = flooringWithWasteSqFt(totalArea, wastePct);
       var lib = resolveLibraryMetrics(floor, cmPerUnit);
 
-      return {
+      return applyZaniniExtensions({
         area_sqft: roundTo(totalArea, 2),
         perimeter_lf: roundTo(totalPerimeter, 2),
         baseboard_lf: roundTo(totalBaseboard, 2),
@@ -723,7 +751,7 @@
         flooring_boxes: flBoxes,
         flooring_with_waste_sqft: flWithWaste,
         casing_lf: roundTo(totalCasing, 2)
-      };
+      }, plan, finish, options);
     }
 
     var selectedRoom = null;
@@ -753,15 +781,14 @@
     }
 
     var loopData = extractOuterLoopAndPartitions(candidateWalls, cmPerUnit);
-    var polyVertices = (selectedRoom && (selectedRoom.polygon || selectedRoom.vertices)) || [];
+    var polyVertices = [];
+    if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
+      polyVertices = loopData.outer_polygon;
+    } else {
+      polyVertices = (selectedRoom && (selectedRoom.polygon || selectedRoom.vertices)) || [];
+    }
     var partitionWalls = loopData.partition_walls || [];
     var boundaryWallIds = loopData.boundary_wall_ids || [];
-
-    if (!polyVertices || polyVertices.length < 3) {
-      if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
-        polyVertices = loopData.outer_polygon;
-      }
-    }
     if (polyVertices.length < 3) return emptyLayoutMetrics(finish.wall_height_ft);
 
     // Convert polygon vertices to feet
@@ -1038,7 +1065,7 @@
     // Furniture / Cabinets / Stairs
     var lib = resolveLibraryMetrics(floor, cmPerUnit);
 
-    return {
+    return applyZaniniExtensions({
       area_sqft: insideAreaSqFt,
       perimeter_lf: perimeter,
       baseboard_lf: baseboardLf,
@@ -1066,13 +1093,14 @@
       ceiling_area_sqft: ceilingAreaSqFt,
       net_wall_area_sqft: totalNetWallArea,
       walls: perWallNetAreas,
+      boundary_wall_ids: boundaryWallIds,
       flooring_waste_percent: waste,
       flooring_direction: direction,
       flooring_box_sqft: box,
       flooring_boxes: boxes,
       flooring_with_waste_sqft: flooringWasteSqFt,
       casing_lf: casingTotalLfRounded
-    };
+    }, plan, finish, options);
   }
 
   return {
