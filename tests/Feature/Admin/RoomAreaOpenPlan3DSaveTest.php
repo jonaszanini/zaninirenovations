@@ -661,21 +661,11 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
     public function test_layouts_search_survives_invalid_sibling_room(): void
     {
         $good = $this->storeSampleRoom(120.0, $this->sampleOpenPlan(10.0, 12.0));
-        $bowtie = $this->sampleOpenPlan(10.0, 12.0);
-        $bowtie['floor']['rooms'][0]['polygon'] = [
-            ['x' => 0, 'y' => 0],
-            ['x' => 100, 'y' => 100],
-            ['x' => 100, 'y' => 0],
-            ['x' => 0, 'y' => 100],
-        ];
-        $bowtie['floor']['walls'] = [];
-        if (isset($bowtie['floors'][0]['walls'])) {
-            $bowtie['floors'][0]['walls'] = [];
-        }
         RoomAreaRoom::create([
             'room_area_project_id' => $this->project->id,
             'name' => 'Bad sibling',
-            'vertices' => $bowtie,
+            'vertices' => $this->bowtieCanvasV2(),
+            'scale_pixels_per_foot' => 20.0,
             'area_sqft' => 99.0,
         ]);
 
