@@ -155,6 +155,15 @@ assert.match(hostSrc, /resolveOpenPlan3DRoomId\(plan,\s*selectedOpenPlan3DRoomId
 assert.match(hostSrc, /function askConfirm/, 'native confirm must be replaced with an in-app modal');
 assert.match(hostSrc, /save-destination/, 'Save must offer link vs standalone');
 assert.match(hostSrc, /startBlankSession/, 'Room Area must boot a blank session by default');
+assert.match(
+  hostSrc,
+  /function navigateAfterProjectDelete\(\) \{\s*startBlankSession\(\);\s*\}/,
+  'delete project must blank the session instead of selecting another project'
+);
+assert.match(hostSrc, /openplan3d-zones-sqft/, 'zones list must show zone square footage');
+assert.match(hostSrc, /openplan3d-takeoffs-summary/, 'takeoffs strip must expose a collapsed summary');
+assert.match(hostSrc, /data-openplan3d-tip/, 'header controls must use instant custom tooltips');
+assert.doesNotMatch(hostSrc, /themeToggleBtn\.setAttribute\('title'/, 'theme toggle must not rely on native title delay');
 assert.doesNotMatch(hostSrc, /\bwin\.confirm\b|\bwindow\.confirm\s*\(/);
 assert.doesNotMatch(hostSrc, /\bwin\.alert\b|\bwindow\.alert\s*\(/);
 assert.doesNotMatch(hostSrc, /\bwin\.prompt\b|\bwindow\.prompt\s*\(/);
