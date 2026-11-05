@@ -16,6 +16,13 @@ assert.match(toolsSrc, /isEditor3DViewActive/, 'must skip zone/bulkhead overlay 
 assert.match(toolsSrc, /findWallSidebarHost|openplan3d-zanini-finish-host/, 'finishes must mount in editor sidebar');
 assert.doesNotMatch(toolsSrc, /querySelectorAll\('aside'\)/, 'wall sidebar host must not rely on aside only');
 assert.match(toolsSrc, /mod\.bg/, 'multi-wall selection must read store export bg (selected wall Set)');
+assert.match(toolsSrc, /sidebarObserverPaused/, 'finish panel render must pause sidebar MutationObserver');
+assert.doesNotMatch(
+  toolsSrc,
+  /sidebarObserver\.observe\(document\.body,\s*\{[^}]*attributes:\s*true/s,
+  'sidebar observer must not watch attributes (re-render loop)'
+);
+assert.match(toolsSrc, /wallFinishes\s*=\s*zanini\.wallFinishes/, 'multi-wall mixed state must guard missing zanini');
 assert.match(toolsSrc, /deleteSelectedBulkhead/, 'bulkheads must be deletable');
 
 global.window = global;

@@ -257,6 +257,7 @@ jobs:
           node tests/js/client-projects-table-screenshots.test.js
           node tests/js/openplan3d-editor-browser.test.js
           node tests/js/openplan3d-editor-index-mount.test.js
+          node tests/js/openplan3d-wall-finish-browser.test.js
           node tests/js/openplan3d-zone-coords.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js

@@ -29,6 +29,7 @@
     finishHost: null,
     finishPanel: null,
     sidebarObserver: null,
+    sidebarObserverPaused: false,
     raf: null,
     canvasObserver: null,
     wallHooked: false
@@ -237,6 +238,7 @@
         });
       }
     }
+    // Multi-wall selection is driven by store export bg (Set). Shift/Ctrl additive clicks are vendor UI behaviour.
     if (!ids.length) {
       var one = readSelectedWallIdFromStore();
       if (one) ids.push(one);
@@ -718,6 +720,19 @@
   }
 
   function renderFinishPanel() {
+    state.sidebarObserverPaused = true;
+    if (state.sidebarObserver) state.sidebarObserver.disconnect();
+    try {
+      renderFinishPanelNow();
+    } finally {
+      state.sidebarObserverPaused = false;
+      if (state.sidebarObserver) {
+        state.sidebarObserver.observe(document.body, { childList: true, subtree: true });
+      }
+    }
+  }
+
+  function renderFinishPanelNow() {
     var wallIds = readSelectedWallIds();
     var host = ensureFinishHost();
     if (!host) return;
@@ -729,8 +744,10 @@
     host.hidden = false;
     state.selectedWallIds = wallIds.slice();
     var plan = readPlan();
+    var zanini = (plan && plan.zanini) || {};
+    var wallFinishes = zanini.wallFinishes || {};
     var primary = wallIds[0];
-    var flags = (plan && plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes[primary]) || {};
+    var flags = wallFinishes[primary] || {};
     var isBoundary = wallIsBoundary(primary);
     var floor = activeFloor(plan);
     var wallLenLf = 0;
@@ -761,7 +778,7 @@
         var mixed = false;
         var first = checked;
         for (var wi2 = 1; wi2 < wallIds.length; wi2++) {
-          var f2 = (plan.zanini.wallFinishes && plan.zanini.wallFinishes[wallIds[wi2]]) || {};
+          var f2 = wallFinishes[wallIds[wi2]] || {};
           var c2 = Object.prototype.hasOwnProperty.call(f2, key) ? !!f2[key] : defaults[key];
           if (c2 !== first) mixed = true;
         }
@@ -816,12 +833,29 @@
     }
   }
 
+  function sidebarMutationIsOwnFinishHost(mutations) {
+    if (!state.finishHost) return false;
+    for (var i = 0; i < mutations.length; i++) {
+      var m = mutations[i];
+      var target = m.target;
+      if (target === state.finishHost) return true;
+      if (target && target.nodeType === 1 && state.finishHost.contains(target)) return true;
+    }
+    return false;
+  }
+
   function watchWallSidebar() {
     if (state.sidebarObserver) return;
-    state.sidebarObserver = new MutationObserver(function () {
+    state.sidebarObserver = new MutationObserver(function (mutations) {
+      if (state.sidebarObserverPaused) return;
+      if (sidebarMutationIsOwnFinishHost(mutations)) return;
+      var sidebar = findWallSidebarHost();
+      if (!sidebar) return;
+      if (state.finishHost && sidebar.contains(state.finishHost)) return;
+      state.finishHost = null;
       renderFinishPanel();
     });
-    state.sidebarObserver.observe(document.body, { childList: true, subtree: true, attributes: true });
+    state.sidebarObserver.observe(document.body, { childList: true, subtree: true });
   }
 
   function ensureWallSelectionHook() {
