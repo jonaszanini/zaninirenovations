@@ -113,6 +113,19 @@ assert.doesNotMatch(
   'store chunk must not mutate rooms inside un() on load'
 );
 assert.match(storeChunk, /canvasFillRoomEntries/, 'store chunk va() must use ephemeral canvas fill');
+assert.match(storeChunk, /__zaniniRoomUse=\{/, 'store chunk va() must backfill persisted room.area');
 assert.match(storeChunk, /return e\.polygon&&e\.polygon\.length>=3\?e\.polygon\.slice\(\):\[\]/, 'store chunk Bo() must fall back to room.polygon');
+
+const legacyStorePath = path.join(
+  ROOT,
+  'public/vendor/openplan3d-h1/_app/immutable/chunks/1VjVcrjm-h3.js'
+);
+assert.ok(fs.existsSync(legacyStorePath), 'legacy 1VjVcrjm-h3.js must exist for stale immutable importers');
+const legacyStore = fs.readFileSync(legacyStorePath, 'utf8');
+assert.strictEqual(
+  legacyStore,
+  storeChunk,
+  'legacy h3 store chunk must mirror current patched store bytes'
+);
 
 console.log('openplan3d-editor-asset-version: ok (bridge v=' + bridgeContentVersion() + ', locale shim v=' + localeShimV + ')');

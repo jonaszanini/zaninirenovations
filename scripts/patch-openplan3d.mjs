@@ -79,6 +79,9 @@ function listAllFiles(dir) {
 function publishPatchedStoreChunk(vendorBasename, patchedSource) {
   const outPath = path.join(OUT, '_app/immutable/chunks', PATCHED_STORE_CHUNK_BASENAME);
   fs.writeFileSync(outPath, patchedSource);
+  // Cached -h3 importers still request the legacy store URL (E3 stale immutable graph).
+  const legacyStorePath = path.join(OUT, '_app/immutable/chunks/1VjVcrjm-h3.js');
+  fs.writeFileSync(legacyStorePath, patchedSource);
   return PATCHED_STORE_CHUNK_BASENAME;
 }
 
@@ -262,9 +265,13 @@ function patchStoreChunk(source) {
     'function va(e,t=[]){const n=vt(e.walls);return Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)}))}';
   const vaPatchedMerge =
     'function va(e,t=[]){const n=vt(e.walls);const __zaniniAuto=Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)})).filter(x=>x.polygon.length>=3);const __zaniniSeen=new Set(__zaniniAuto.map(x=>x.room.id));for(const __zaniniRoom of e.rooms??[]){if(!__zaniniRoom||__zaniniSeen.has(__zaniniRoom.id))continue;let __zaniniPoly=__zaniniRoom.polygon&&__zaniniRoom.polygon.length>=3?__zaniniRoom.polygon.slice():Bo(__zaniniRoom,n);if(__zaniniPoly.length<3)continue;__zaniniAuto.push({room:__zaniniRoom,polygon:__zaniniPoly});__zaniniSeen.add(__zaniniRoom.id)}return __zaniniAuto}';
-  const vaNew =
+  const vaEphemeral =
     'function va(e,t=[]){const n=vt(e.walls);let __zaniniAuto=Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)})).filter(x=>x.polygon&&x.polygon.length>=3);if(__zaniniAuto.length===0&&typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries==="function"){const __zaniniEphemeral=window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries({unit:e.unit||"cm",activeFloorId:e.id,floors:[e],floor:e})||[];if(__zaniniEphemeral.length>0)__zaniniAuto=__zaniniEphemeral;}if(__zaniniAuto.length===0){for(const __zaniniRoom of e.rooms??[]){if(!__zaniniRoom)continue;let __zaniniPoly=__zaniniRoom.polygon&&__zaniniRoom.polygon.length>=3?__zaniniRoom.polygon.slice():Bo(__zaniniRoom,n);if(__zaniniPoly.length<3)continue;__zaniniAuto.push({room:__zaniniRoom,polygon:__zaniniPoly});}}return __zaniniAuto}';
-  if (s.includes(vaPatchedMerge)) {
+  const vaNew =
+    'function va(e,t=[]){const n=vt(e.walls);let __zaniniAuto=Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)})).filter(x=>x.polygon&&x.polygon.length>=3);if(__zaniniAuto.length===0&&typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries==="function"){const __zaniniEphemeral=window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries({unit:e.unit||"cm",activeFloorId:e.id,floors:[e],floor:e})||[];if(__zaniniEphemeral.length>0)__zaniniAuto=__zaniniEphemeral;}if(__zaniniAuto.length===0){for(const __zaniniRoom of e.rooms??[]){if(!__zaniniRoom)continue;let __zaniniPoly=__zaniniRoom.polygon&&__zaniniRoom.polygon.length>=3?__zaniniRoom.polygon.slice():Bo(__zaniniRoom,n);if(__zaniniPoly.length<3)continue;let __zaniniRoomUse=__zaniniRoom;if(typeof __zaniniRoom.area!=="number"||!Number.isFinite(__zaniniRoom.area)){let __zaniniPt=0;for(let __i=0;__i<__zaniniPoly.length;__i++){const __o=(__i+1)%__zaniniPoly.length;__zaniniPt+=__zaniniPoly[__i].x*__zaniniPoly[__o].y-__zaniniPoly[__o].x*__zaniniPoly[__i].y}__zaniniPt/=2;__zaniniRoomUse={...__zaniniRoom,area:Math.round(Math.abs(__zaniniPt)/100)/100,floorTexture:__zaniniRoom.floorTexture||"hardwood"};}__zaniniAuto.push({room:__zaniniRoomUse,polygon:__zaniniPoly});}}return __zaniniAuto}';
+  if (s.includes(vaEphemeral) && !s.includes('__zaniniRoomUse=__zaniniRoom')) {
+    s = replaceExpected(s, vaEphemeral, vaNew, 'store chunk: va() backfill area on persisted rooms', 1);
+  } else if (s.includes(vaPatchedMerge)) {
     s = replaceExpected(s, vaPatchedMerge, vaNew, 'store chunk: va() ephemeral canvas fill without duplicate merge', 1);
   } else if (s.includes(vaOld)) {
     s = replaceExpected(s, vaOld, vaNew, 'store chunk: va() ephemeral canvas fill', 1);
@@ -502,15 +509,9 @@ function main() {
 
   propagateImmutableRenames(OUT, [
     [vendorStoreChunk, storeChunk],
-    ['1VjVcrjm-h3.js', storeChunk],
     [vendorLiveEditorChunk, editorChunk],
     [vendorPristineEditorChunk, editorChunk],
   ]);
-
-  const staleStorePath = path.join(OUT, '_app/immutable/chunks/1VjVcrjm-h3.js');
-  if (storeChunk === '1VjVcrjm-h4.js' && fs.existsSync(staleStorePath)) {
-    fs.unlinkSync(staleStorePath);
-  }
 
   rewriteHtmlEntryChunkSlugs(OUT, '-h2.js', '-h3.js');
 

@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * Browser regression: empty floors[].rooms + dangling partitions must keep canvas fill.
- * Matches QA vis2.js (hand0 perimeter + 2 interior stubs, rooms[] empty throughout).
+ * Browser regression: empty floors[].rooms + dangling partitions (hand0 stub2 state).
+ * Gates on vendor va() room.area, visible walls, footer without NaN, and zero page errors.
  */
 
 const assert = require('assert');
@@ -76,6 +76,15 @@ function visReproPlan() {
   };
 }
 
+function savedAfterStub2Plan() {
+  const base = visReproPlan();
+  const synced = require('../../public/js/openplan3d-measurement-bridge.js').syncEditorRoomBoundariesForCanvasFill(
+    base
+  );
+  assert.strictEqual(synced.changed, true);
+  return synced.plan;
+}
+
 async function loadPlan(page, plan) {
   await page.waitForFunction(
     () => window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function',
@@ -92,7 +101,10 @@ async function loadPlan(page, plan) {
     { timeout: 120000 }
   );
   await page.waitForFunction(
-    () => /\b1 room\b/i.test(document.body.innerText || ''),
+    () => {
+      const t = document.body.innerText || '';
+      return /\b1 room\b/i.test(t) && !/NaN\s*m²/i.test(t);
+    },
     { timeout: 120000 }
   );
   await new Promise((r) => setTimeout(r, 3500));
@@ -100,122 +112,81 @@ async function loadPlan(page, plan) {
 
 async function assertVisualRoomState(page, label, options) {
   options = options || {};
-  const requireFillPixels = options.requireFillPixels !== false;
   const storeChunkName = JSON.parse(fs.readFileSync(VENDOR_MANIFEST, 'utf8')).storeChunk;
 
-  let state = null;
-  for (let attempt = 0; attempt < (requireFillPixels ? 24 : 1); attempt++) {
-    if (attempt > 0) {
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      await new Promise((r) => setTimeout(r, 500));
-    }
-    state = await page.evaluate(async (needPixels, storeChunk) => {
-      const bodyText = document.body.innerText || '';
-      const hasRoomFooter = /\b1 room\b/i.test(bodyText);
-      const plan = window.__openPlan3D.getProject();
-      const bridge = window.OpenPlan3DMeasurementBridge;
-      const mod = window.__openPlan3DStoreModule;
-      const canvas = document.querySelector('canvas');
-      const roomId =
-        plan.floors[0].rooms && plan.floors[0].rooms[0] && plan.floors[0].rooms[0].id
-          ? plan.floors[0].rooms[0].id
-          : null;
-      const metrics = bridge.layoutMetrics(plan, roomId, { wall_height_ft: 8.0 });
-      const view = window.OpenPlan3DEditorBridge.readOpenPlan3DViewState(mod);
-      const loop = bridge.extractOuterLoopAndPartitions(plan.floors[0].walls, 30.48);
-      let cx = 0;
-      let cy = 0;
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-      for (let i = 0; i < loop.outer_polygon.length; i++) {
-        cx += loop.outer_polygon[i].x;
-        cy += loop.outer_polygon[i].y;
-        maxX = Math.max(maxX, loop.outer_polygon[i].x);
-        maxY = Math.max(maxY, loop.outer_polygon[i].y);
-      }
-      cx /= loop.outer_polygon.length;
-      cy /= loop.outer_polygon.length;
-      const innerPt = window.OpenPlan3DEditorBridge.planCmToClient(canvas, cx, cy, view, mod);
-      const outerPt = window.OpenPlan3DEditorBridge.planCmToClient(canvas, maxX + 400, maxY + 400, view, mod);
-      const rect = canvas.getBoundingClientRect();
-      function sample(clientPt) {
-        if (!clientPt) return null;
-        const cssX = clientPt.clientX - rect.left;
-        const cssY = clientPt.clientY - rect.top;
-        const x = Math.max(0, Math.min(canvas.width - 1, Math.round(cssX * (canvas.width / rect.width))));
-        const y = Math.max(0, Math.min(canvas.height - 1, Math.round(cssY * (canvas.height / rect.height))));
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (gl) {
-          const pixel = new Uint8Array(4);
-          gl.readPixels(x, canvas.height - 1 - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-          return { r: pixel[0], g: pixel[1], b: pixel[2], a: pixel[3], lum: pixel[0] + pixel[1] + pixel[2] };
+  const state = await page.evaluate(async (storeChunk) => {
+    const bodyText = document.body.innerText || '';
+    const plan = window.__openPlan3D.getProject();
+    const bridge = window.OpenPlan3DMeasurementBridge;
+    const mod = window.__openPlan3DStoreModule;
+    const roomId =
+      plan.floors[0].rooms && plan.floors[0].rooms[0] && plan.floors[0].rooms[0].id
+        ? plan.floors[0].rooms[0].id
+        : null;
+    const metrics = bridge.layoutMetrics(plan, roomId, { wall_height_ft: 8.0 });
+    let vendorDetectCount = 0;
+    let vendorAreas = [];
+    let vendorWallUnion = 0;
+    try {
+      const storeMod = await import('/vendor/openplan3d-h1/_app/immutable/chunks/' + storeChunk);
+      if (storeMod && typeof storeMod.k === 'function') {
+        const detected = storeMod.k(plan.floors[0], []);
+        vendorDetectCount = detected.filter((entry) => entry.polygon && entry.polygon.length >= 3).length;
+        vendorAreas = detected.map((entry) => entry.room && entry.room.area);
+        const wallSet = new Set();
+        for (const entry of detected) {
+          for (const wid of entry.room?.walls || []) wallSet.add(wid);
         }
-        const d = canvas.getContext('2d').getImageData(x, y, 1, 1).data;
-        return { r: d[0], g: d[1], b: d[2], a: d[3], lum: d[0] + d[1] + d[2] };
+        vendorWallUnion = wallSet.size;
       }
-      const inner = sample(innerPt);
-      const outer = sample(outerPt);
-      const fillDistinct =
-        inner &&
-        outer &&
-        inner.a > 20 &&
-        Math.abs(inner.lum - outer.lum) > 18;
-      let vendorDetectCount = 0;
-      try {
-        const storeMod = await import('/vendor/openplan3d-h1/_app/immutable/chunks/' + storeChunk);
-        if (storeMod && typeof storeMod.k === 'function') {
-          const detected = storeMod.k(plan.floors[0], []);
-          vendorDetectCount = detected.filter((entry) => entry.polygon && entry.polygon.length >= 3).length;
-        }
-      } catch (importErr) {
-        vendorDetectCount = 0;
-      }
-      const labelVisible = /Room 1|Basement/i.test(bodyText);
-      return {
-        hasRoomFooter,
-        labelVisible,
-        fillDistinct,
-        vendorDetectCount,
-        area: metrics.area_sqft,
-        inner,
-        outer,
-        roomCount: plan.floors[0].rooms.length,
-      };
-    }, requireFillPixels, storeChunkName);
-    if (
-      !requireFillPixels ||
-      (state.vendorDetectCount >= 1 && state.hasRoomFooter)
-    ) {
-      break;
+    } catch (importErr) {
+      return { error: String(importErr), bodyText, planWallCount: plan.floors[0].walls.length };
     }
+    return {
+      bodyText,
+      hasRoomFooter: /\b1 room\b/i.test(bodyText),
+      footerNaN: /NaN\s*m²/i.test(bodyText),
+      labelVisible: /Room 1|Basement/i.test(bodyText),
+      vendorDetectCount,
+      vendorAreas,
+      vendorWallUnion,
+      planWallCount: plan.floors[0].walls.length,
+      area: metrics.area_sqft,
+      roomCount: (plan.floors[0].rooms || []).length,
+    };
+  }, storeChunkName);
+
+  if (state.error) {
+    throw new Error(`${label}: vendor detect failed: ${state.error}`);
   }
 
-  if (!state) {
-    throw new Error(`${label}: failed to read editor visual state`);
-  }
+  assert.ok(state.planWallCount >= 16, `${label} plan must retain hand0 walls; got ${state.planWallCount}`);
   assert.ok(
-    state.vendorDetectCount >= 1,
-    `${label} vendor va() must expose drawable room polygon(s); got ${JSON.stringify(state)}`
+    state.vendorWallUnion >= 16,
+    `${label} detected rooms must reference all drawable walls (n3 filter); union=${state.vendorWallUnion}`
   );
-  assert.ok(state.hasRoomFooter, `${label} footer must show "1 room"; got ${JSON.stringify(state)}`);
-  assert.ok(state.area > 1300 && state.area < 1360, `${label} ribbon area ~1343 sf; got ${state.area}`);
-  if (options.requireFillPixels !== false && !state.fillDistinct) {
-    console.warn(`${label}: pixel fill contrast inconclusive in headless WebGL; vendor polygons=${state.vendorDetectCount}`);
+  assert.ok(state.vendorDetectCount >= 1, `${label} vendor va() polygons; ${JSON.stringify(state)}`);
+  assert.ok(state.hasRoomFooter, `${label} footer "1 room"; ${JSON.stringify(state)}`);
+  assert.strictEqual(state.footerNaN, false, `${label} footer must not show NaN m²`);
+  for (let i = 0; i < state.vendorAreas.length; i++) {
+    assert.ok(
+      typeof state.vendorAreas[i] === 'number' && isFinite(state.vendorAreas[i]),
+      `${label} vendor room.area[${i}] must be finite; got ${state.vendorAreas[i]}`
+    );
   }
+  assert.ok(state.area > 1300 && state.area < 1360, `${label} ribbon area ~1343 sf; got ${state.area}`);
   return state;
 }
 
-async function runViewport(page, port, label, width, height) {
-  await page.setViewport({ width, height, deviceScaleFactor: 1 });
+async function runViewport(page, port, label, plan) {
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.goto(`http://127.0.0.1:${port}${VENDOR_PREFIX}/editor/index.html`, {
     waitUntil: 'domcontentloaded',
     timeout: 120000,
   });
   await page.waitForSelector('canvas', { timeout: 120000 });
-  await loadPlan(page, visReproPlan());
-  const state = await assertVisualRoomState(page, label, {
-    requireFillPixels: width >= 600,
-  });
+  await loadPlan(page, plan);
+  const state = await assertVisualRoomState(page, label);
   const shotPath = path.join(ARTIFACTS, `room-canvas-fill-${label.replace(/\s+/g, '-').toLowerCase()}.png`);
   await page.screenshot({ path: shotPath, fullPage: false });
   try {
@@ -225,9 +196,9 @@ async function runViewport(page, port, label, width, height) {
       fs.copyFileSync(shotPath, path.join(cloudArtifacts, path.basename(shotPath)));
     }
   } catch (copyErr) {
-    // optional cloud agent path
+    // optional
   }
-  console.log(`${label}: area=${state.area}, screenshot=${shotPath}`);
+  console.log(`${label}: walls=${state.planWallCount}, vendorAreas=${state.vendorAreas.join(',')}, shot=${shotPath}`);
 }
 
 async function run() {
@@ -242,9 +213,18 @@ async function run() {
   try {
     const page = await browser.newPage();
     page.on('pageerror', (e) => pageErrors.push(e.message));
-    await runViewport(page, port, 'desktop-1280-two-stubs', 1280, 900);
-    const blockingErrors = pageErrors.filter((msg) => !/reading 'toFixed'/.test(msg));
-    assert.strictEqual(blockingErrors.length, 0, `no page errors: ${blockingErrors.join('; ')}`);
+    await runViewport(page, port, 'live-empty-rooms-two-stubs', visReproPlan());
+    await runViewport(page, port, 'reload-saved-one-room', savedAfterStub2Plan());
+    assert.strictEqual(
+      pageErrors.length,
+      0,
+      `page must have zero errors (incl. toFixed): ${pageErrors.join('; ')}`
+    );
+    const legacyStore = path.join(
+      publicDir,
+      'vendor/openplan3d-h1/_app/immutable/chunks/1VjVcrjm-h3.js'
+    );
+    assert.ok(fs.existsSync(legacyStore), 'legacy store chunk URL must exist for cached importers');
     console.log('openplan3d-room-canvas-fill-browser: ok');
   } finally {
     await browser.close();

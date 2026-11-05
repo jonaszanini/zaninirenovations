@@ -1615,14 +1615,60 @@
       var poly = sorted[i];
       var wallIds = wallsForRoomPolygon(poly, wallsList, cmPerUnit, epsUnit);
       if (wallIds.length < 3) continue;
-      rooms.push({
-        id: 'room_' + (i + 1),
-        name: 'Room ' + (i + 1),
-        walls: wallIds,
-        polygon: poly.slice()
-      });
+      rooms.push(
+        enrichVendorRendererRoom(
+          {
+            id: 'room_' + (i + 1),
+            name: 'Room ' + (i + 1),
+            walls: wallIds
+          },
+          poly,
+          wallIds
+        )
+      );
     }
     return rooms;
+  }
+
+  function polygonSignedAreaPlanUnits(polygon) {
+    if (!polygon || polygon.length < 3) return 0;
+    var t = 0;
+    for (var n = 0; n < polygon.length; n++) {
+      var o = (n + 1) % polygon.length;
+      t += polygon[n].x * polygon[o].y - polygon[o].x * polygon[n].y;
+    }
+    return t / 2;
+  }
+
+  /** Vendor Oo() stores room.area as m² from plan coordinates (cm). */
+  function vendorAreaM2FromPolygon(polygon) {
+    return Math.round(Math.abs(polygonSignedAreaPlanUnits(polygon)) / 100) / 100;
+  }
+
+  /**
+   * Room objects consumed by vendor detectedRooms / n3() must include finite area,
+   * floorTexture, and walls[] covering every wall id that should stay visible.
+   */
+  function enrichVendorRendererRoom(room, polygon, drawableWallIds) {
+    var poly = polygon && polygon.length >= 3 ? polygon : room.polygon || [];
+    var walls =
+      Array.isArray(drawableWallIds) && drawableWallIds.length
+        ? drawableWallIds.slice()
+        : room.walls && room.walls.length
+          ? room.walls.slice()
+          : [];
+    var area =
+      typeof room.area === 'number' && isFinite(room.area)
+        ? room.area
+        : vendorAreaM2FromPolygon(poly);
+    return {
+      id: room.id,
+      name: room.name || 'Room 1',
+      walls: walls,
+      floorTexture: room.floorTexture || 'hardwood',
+      area: area,
+      polygon: poly.slice()
+    };
   }
 
   function purgeStaleRooms(floor, wallIdSet, cmPerUnit, loopValid) {
@@ -1777,12 +1823,11 @@
     var target = resolveFloor(out);
     if (!target) return { plan: plan, changed: false };
     target.rooms = [
-      {
-        id: 'room_1',
-        name: 'Room 1',
-        walls: boundary.slice(),
-        polygon: nextPoly.slice()
-      }
+      enrichVendorRendererRoom(
+        { id: 'room_1', name: 'Room 1', walls: drawable.map(function (w) { return w.id; }) },
+        nextPoly,
+        drawable.map(function (w) { return w.id; })
+      )
     ];
 
     applyFloorSnapshotToPlan(out, JSON.parse(JSON.stringify(target)), activeId);
@@ -1833,13 +1878,13 @@
     if (nextPoly.length < 3) nextPoly = outer.slice();
     if (nextPoly.length < 3) return [];
 
-    var ephemeral = {
-      id: '__canvas_fill_1',
-      name: 'Room 1',
-      walls: boundary.slice(),
-      polygon: nextPoly.slice()
-    };
-    return [{ room: ephemeral, polygon: nextPoly.slice() }];
+    var allWallIds = drawable.map(function (w) { return w.id; });
+    var roomObj = enrichVendorRendererRoom(
+      { id: 'room-1-canvas', name: 'Room 1', walls: allWallIds },
+      nextPoly,
+      allWallIds
+    );
+    return [{ room: roomObj, polygon: nextPoly.slice() }];
   }
 
   function editorFloorNeedsPersistedRoom(plan) {

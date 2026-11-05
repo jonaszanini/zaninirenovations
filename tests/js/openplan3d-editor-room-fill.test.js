@@ -41,12 +41,16 @@ assert.strictEqual(emptyTwoStubs.floors[0].rooms.length, 0, 'repro: vendor leave
 const created = bridge.syncEditorRoomBoundariesForCanvasFill(emptyTwoStubs);
 assert.strictEqual(created.changed, true, 'must persist explicit room when rooms[] is empty');
 assert.strictEqual(created.plan.floors[0].rooms.length, 1, 'must create one persisted room');
-assert.deepStrictEqual(
-  created.plan.floors[0].rooms[0].walls.slice().sort(),
-  loop.boundary_wall_ids.slice().sort(),
-  'persisted room.walls must be outer boundary only'
+assert.ok(
+  created.plan.floors[0].rooms[0].walls.length >= loop.boundary_wall_ids.length,
+  'persisted room.walls must include partition ids for vendor wall filter'
 );
 assert.ok(created.plan.floors[0].rooms[0].polygon.length >= 3, 'persisted room needs polygon for fill');
+assert.ok(
+  typeof created.plan.floors[0].rooms[0].area === 'number' && isFinite(created.plan.floors[0].rooms[0].area),
+  'persisted room needs vendor area (m²)'
+);
+assert.strictEqual(created.plan.floors[0].rooms[0].floorTexture, 'hardwood');
 
 const vendorStyle = planWithAllWallsOnRoom(hand0);
 const beforeMetrics = bridge.layoutMetrics(vendorStyle, 'r1', { wall_height_ft: 8.0 });
@@ -65,6 +69,9 @@ assert.strictEqual(
 const ephemeral = bridge.canvasFillRoomEntries(emptyTwoStubs);
 assert.ok(ephemeral.length >= 1, 'live-edit canvas fill must expose polygons without persisting');
 assert.ok(ephemeral[0].polygon.length >= 3);
+assert.ok(typeof ephemeral[0].room.area === 'number' && isFinite(ephemeral[0].room.area));
+assert.ok(ephemeral[0].room.walls.length >= emptyTwoStubs.floors[0].walls.length - 1);
+assert.strictEqual(ephemeral[0].room.floorTexture, 'hardwood');
 assert.strictEqual(bridge.canvasFillRoomEntries(vendorStyle).length, 0, 'skip ephemeral when rooms[] populated');
 
 const again = bridge.syncEditorRoomBoundariesForCanvasFill(vendorStyle);
