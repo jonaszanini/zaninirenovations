@@ -14,6 +14,8 @@ assert.match(toolsSrc, /PREVIEW_FILL/, 'zone drag preview must use gray preview 
 assert.match(toolsSrc, /BULKHEAD_FILL/, 'bulkheads must use a distinct fill from zone palette');
 assert.match(toolsSrc, /isEditor3DViewActive/, 'must skip zone/bulkhead overlay in 3D view');
 assert.match(toolsSrc, /findWallSidebarHost|openplan3d-zanini-finish-host/, 'finishes must mount in editor sidebar');
+assert.doesNotMatch(toolsSrc, /querySelectorAll\('aside'\)/, 'wall sidebar host must not rely on aside only');
+assert.match(toolsSrc, /mod\.bg/, 'multi-wall selection must read store export bg (selected wall Set)');
 assert.match(toolsSrc, /deleteSelectedBulkhead/, 'bulkheads must be deletable');
 
 global.window = global;

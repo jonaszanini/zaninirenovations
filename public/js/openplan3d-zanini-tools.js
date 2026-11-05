@@ -109,25 +109,23 @@
   function zoneAreaSqFt(zone, zones, cmPerUnit) {
     cmPerUnit = cmPerUnit || CM_PER_FOOT;
     var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
-    if (!ext || typeof ext.rectangleUnionAreaSqFt !== 'function') {
-      var b = zoneUnionBounds(zone, zones);
-      if (!b) return 0;
-      var w = Math.abs(b.x2 - b.x1) / cmPerUnit;
-      var h = Math.abs(b.y2 - b.y1) / cmPerUnit;
-      return w * h;
+    if (ext && typeof ext.zoneAreaSqFt === 'function') {
+      return ext.zoneAreaSqFt(zone, zones, cmPerUnit);
     }
-    var rects = [];
-    function push(shape) {
-      var a = axisRect(shape);
-      if (!a) return;
-      rects.push({ x0: a.x1, y0: a.y1, x1: a.x2, y1: a.y2 });
+    if (ext && typeof ext.collectZoneMemberLegacyRects === 'function' && typeof ext.rectsUnionAreaSqFt === 'function') {
+      var members = ext.collectZoneMemberLegacyRects(zone, zones);
+      var rects = [];
+      for (var mi = 0; mi < members.length; mi++) {
+        var m = members[mi];
+        rects.push({ x0: m.x1, y0: m.y1, x1: m.x2, y1: m.y2 });
+      }
+      return ext.rectsUnionAreaSqFt(rects, cmPerUnit);
     }
-    push(zone);
-    if (Array.isArray(zone.rects)) zone.rects.forEach(push);
-    (zones || []).forEach(function (z) {
-      if (z && z.mergedInto === zone.id) push(z);
-    });
-    return ext.rectangleUnionAreaSqFt(rects, cmPerUnit);
+    var b = zoneUnionBounds(zone, zones);
+    if (!b) return 0;
+    var w = Math.abs(b.x2 - b.x1) / cmPerUnit;
+    var h = Math.abs(b.y2 - b.y1) / cmPerUnit;
+    return w * h;
   }
 
   function legacyRectFromZone(zone) {
@@ -231,8 +229,8 @@
   function readSelectedWallIds() {
     var mod = window.__openPlan3DStoreModule;
     var ids = [];
-    if (mod && mod.k) {
-      var setVal = readStoreValue(mod.k);
+    if (mod && mod.bg) {
+      var setVal = readStoreValue(mod.bg);
       if (setVal && typeof setVal.forEach === 'function') {
         setVal.forEach(function (id) {
           if (id != null && id !== '') ids.push(String(id));
@@ -260,8 +258,8 @@
     if (!mod || !ids || !ids.length) return;
     var primary = ids[0];
     try {
-      if (mod.k && typeof mod.k.set === 'function') {
-        mod.k.set(ids.length > 1 ? new Set(ids) : new Set([primary]));
+      if (mod.bg && typeof mod.bg.set === 'function') {
+        mod.bg.set(new Set(ids));
       }
       if (mod.X && typeof mod.X.set === 'function') mod.X.set(primary);
       if (mod.aB && typeof mod.aB.set === 'function') mod.aB.set(primary);
@@ -648,16 +646,45 @@
   }
 
   function findWallSidebarHost() {
-    var asides = document.querySelectorAll('aside');
-    for (var i = asides.length - 1; i >= 0; i--) {
-      var aside = asides[i];
-      if (aside.offsetParent === null) continue;
-      var r = aside.getBoundingClientRect();
-      if (r.width < 120 || r.height < 80) continue;
-      var txt = (aside.textContent || '').toLowerCase();
-      if (txt.indexOf('thickness') !== -1 || txt.indexOf('wall') !== -1) return aside;
+    var finishMount = document.getElementById('openplan3d-zanini-finish-host');
+    if (finishMount && finishMount.parentElement) {
+      return finishMount.parentElement;
     }
-    return null;
+    var elevBtn = document.querySelector('button.bg-blue-50.text-blue-700');
+    if (elevBtn) {
+      var panel = elevBtn.parentElement;
+      while (panel && panel !== document.body) {
+        var rect = panel.getBoundingClientRect();
+        var txt = (panel.textContent || '').toLowerCase();
+        if (rect.width >= 120 && rect.height >= 80 && rect.left > window.innerWidth * 0.45
+          && (txt.indexOf('thickness') !== -1 || txt.indexOf('height') !== -1 || txt.indexOf('elevation') !== -1)) {
+          return panel;
+        }
+        panel = panel.parentElement;
+      }
+    }
+    var divs = document.querySelectorAll('div');
+    var best = null;
+    var bestScore = 0;
+    for (var i = 0; i < divs.length; i++) {
+      var el = divs[i];
+      if (el.id === 'openplan3d-zanini-finish-host') continue;
+      if (el.offsetParent === null) continue;
+      var r = el.getBoundingClientRect();
+      if (r.width < 120 || r.height < 80) continue;
+      if (r.left < window.innerWidth * 0.5) continue;
+      var text = (el.textContent || '').toLowerCase();
+      var score = 0;
+      if (text.indexOf('thickness') !== -1) score += 3;
+      if (text.indexOf('height') !== -1) score += 1;
+      if (el.querySelector('button.bg-blue-50.text-blue-700')) score += 4;
+      if (el.querySelector('button.rounded-full')) score += 1;
+      if (score > bestScore) {
+        bestScore = score;
+        best = el;
+      }
+    }
+    return best;
   }
 
   function ensureFinishHost() {
@@ -805,7 +832,7 @@
     function onSelectionChange() {
       renderFinishPanel();
     }
-    if (mod.k && typeof mod.k.subscribe === 'function') mod.k.subscribe(onSelectionChange);
+    if (mod.bg && typeof mod.bg.subscribe === 'function') mod.bg.subscribe(onSelectionChange);
     if (mod.X && typeof mod.X.subscribe === 'function') mod.X.subscribe(onSelectionChange);
     if (mod.aB && typeof mod.aB.subscribe === 'function') mod.aB.subscribe(onSelectionChange);
   }

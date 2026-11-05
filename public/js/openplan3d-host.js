@@ -824,7 +824,7 @@
         updateTakeoffsSummary();
         return;
       }
-      var tools = win && win.OpenPlan3DZaniniTools;
+      var tools = win && win.OpenPlan3DZaniniExtensions;
       var allZones = (zanini && zanini.zones) || [];
       zones.forEach(function (zone) {
         if (!zone) return;

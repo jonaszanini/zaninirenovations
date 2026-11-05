@@ -78,7 +78,7 @@
         </button>
 
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--danger openplan3d-tool-btn openplan3d-tool-btn--icon openplan3d-instant-tip" id="openplan3d-delete-room-btn" aria-label="Delete selected room" data-openplan3d-tip="Delete selected room">
-          <i class="fa fa-trash" aria-hidden="true"></i>
+          <i class="fa fa-minus-circle" aria-hidden="true"></i>
           <span class="openplan3d-btn-label">Delete Room</span>
         </button>
       </div>
@@ -150,7 +150,7 @@
   {{-- Compact takeoffs strip (metrics + area zones) --}}
   <div class="openplan3d-takeoffs-strip" id="openplan3d-takeoffs-strip">
     <div class="openplan3d-takeoffs-strip__bar">
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm openplan3d-takeoffs-toggle openplan3d-instant-tip" id="openplan3d-takeoffs-toggle" aria-expanded="true" aria-controls="openplan3d-takeoffs-body" data-openplan3d-tip="Show or hide takeoff metrics and area zones">
+      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm openplan3d-takeoffs-toggle openplan3d-instant-tip" id="openplan3d-takeoffs-toggle" aria-expanded="true" aria-controls="openplan3d-takeoffs-body" aria-label="Show or hide takeoff metrics and area zones" data-openplan3d-tip="Show or hide takeoff metrics and area zones">
         <i class="fa fa-bar-chart" aria-hidden="true"></i>
         <span>Takeoffs</span>
         <i class="fa fa-chevron-up openplan3d-takeoffs-chevron" aria-hidden="true"></i>
@@ -352,12 +352,15 @@
 
 .util-ra-openplan3d-header {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.35rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.4rem 0.75rem;
   background: var(--admin-surface, #f8fafc);
   border-bottom: 1px solid var(--admin-border, #e2e8f0);
+  flex: 0 0 auto;
   min-height: 0;
 }
 
@@ -368,20 +371,15 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.45rem;
-}
-
-.util-ra-openplan3d-header__primary {
-  flex: 1 1 220px;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
 .util-ra-openplan3d-header__selectors {
-  flex: 2 1 360px;
   max-width: 100%;
 }
 
 .openplan3d-header-actions {
-  flex: 1 1 280px;
   justify-content: flex-end;
   margin-left: auto;
 }
@@ -467,6 +465,7 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 
 .openplan3d-takeoffs-strip {
+  flex: 0 0 auto;
   border-bottom: 1px solid var(--admin-border, #e2e8f0);
   background: var(--admin-surface-hover, #f1f5f9);
 }
@@ -1021,7 +1020,8 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 /* Frame container */
 .util-ra-openplan3d-frame-container {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
   height: 100%;
   position: relative;
@@ -1090,7 +1090,7 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
     margin-left: auto;
   }
 
-  #openplan3d-delete-room-btn .fa-trash {
+  #openplan3d-delete-room-btn .fa-minus-circle {
     color: #dc2626;
   }
 

@@ -162,8 +162,16 @@ assert.match(
 );
 assert.match(hostSrc, /openplan3d-zones-sqft/, 'zones list must show zone square footage');
 assert.match(hostSrc, /openplan3d-takeoffs-summary/, 'takeoffs strip must expose a collapsed summary');
+assert.match(hostSrc, /OpenPlan3DZaniniExtensions/, 'zones list sq ft must use host-loaded extensions, not iframe tools');
+assert.doesNotMatch(hostSrc, /OpenPlan3DZaniniTools\.zoneAreaSqFt/, 'host must not call iframe-only OpenPlan3DZaniniTools for zone area');
 assert.match(hostSrc, /data-openplan3d-tip/, 'header controls must use instant custom tooltips');
 assert.doesNotMatch(hostSrc, /themeToggleBtn\.setAttribute\('title'/, 'theme toggle must not rely on native title delay');
+
+const bladePartial = fs.readFileSync(path.resolve(__dirname, '../../resources/views/admin/utilities/_room_area_openplan3d.blade.php'), 'utf8');
+assert.doesNotMatch(bladePartial, /flex:\s*1\s+1\s+220px/, 'header must not use column flex-basis that inflates header height');
+assert.doesNotMatch(bladePartial, /flex-direction:\s*column[\s\S]{0,120}flex:\s*1\s+1/, 'column header rows must not grow with flex-basis heights');
+assert.match(bladePartial, /util-ra-openplan3d-frame-container[\s\S]{0,200}min-height:\s*0/, 'editor frame must shrink inside flex column layout');
+assert.match(bladePartial, /aria-label="Show or hide takeoff metrics and area zones"/, 'takeoffs toggle needs aria-label');
 assert.doesNotMatch(hostSrc, /\bwin\.confirm\b|\bwindow\.confirm\s*\(/);
 assert.doesNotMatch(hostSrc, /\bwin\.alert\b|\bwindow\.alert\s*\(/);
 assert.doesNotMatch(hostSrc, /\bwin\.prompt\b|\bwindow\.prompt\s*\(/);
@@ -504,6 +512,15 @@ assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r
 assert.ok(
   indexHtml.includes('html.dark.zanini-hosted-openplan3d div.absolute.left-0.top-full.w-64 button.text-red-700'),
   'Add Top Floor menu remove-floor item uses hosted dark error red override'
+);
+assert.ok(
+  indexHtml.includes('html.dark.zanini-hosted-openplan3d button.bg-blue-50.text-blue-700'),
+  'dark Elevation CTA contrast must not be scoped only to aside'
+);
+assert.doesNotMatch(
+  indexHtml,
+  /html\.dark\.zanini-hosted-openplan3d aside button\.bg-blue-50\.text-blue-700/,
+  'hosted dark wall-property overrides must not require aside'
 );
 
 // Verify openplan3d-host.js does not unlock isSaving in jsonPost
