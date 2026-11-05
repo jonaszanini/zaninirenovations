@@ -32,22 +32,50 @@ if truthy "${HAS_CODE_CHANGES:-false}"; then
   has_code_changes=true
 fi
 
+MATCHER_JS="${MATCH_WORKFLOW_FILTERS_JS:-$ROOT/tests/ci/match-workflow-filters.js}"
+
 broad_run=false
+browser_fail_open=false
+matcher_failed=false
+
+apply_analyze_line() {
+  local line=$1
+  case "$line" in
+    broad_run=true) broad_run=true ;;
+    broad_run=false) broad_run=false ;;
+    browser_fail_open=true) browser_fail_open=true ;;
+    browser_fail_open=false) browser_fail_open=false ;;
+    FILTER_*=true)
+      local key="${line%%=*}"
+      export "$key=true"
+      ;;
+  esac
+}
+
 if [[ -n "${CHANGED_FILES_FILE:-}" && -f "$CHANGED_FILES_FILE" ]]; then
-  if node "$ROOT/tests/ci/match-workflow-filters.js" --broad-file "$CHANGED_FILES_FILE"; then
-    broad_run=true
+  set +e
+  analyze_out=$(node "$MATCHER_JS" --analyze-changed "$CHANGED_FILES_FILE" 2>&1)
+  analyze_rc=$?
+  set -e
+  if [[ "$analyze_rc" -ne 0 ]]; then
+    matcher_failed=true
+    echo "match-workflow-filters failed (fail-closed): $analyze_out" >&2
+  else
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ -z "$line" ]] && continue
+      apply_analyze_line "$line"
+    done <<< "$analyze_out"
+    echo "match-workflow-filters: ok (picomatch analyze-changed)" >&2
   fi
 fi
 
-browser_fail_open=false
-if [[ -n "${CHANGED_FILES_FILE:-}" && -f "$CHANGED_FILES_FILE" ]]; then
-  if node "$ROOT/tests/ci/match-workflow-filters.js" --browser-fail-open-file "$CHANGED_FILES_FILE"; then
-    browser_fail_open=true
-  fi
+if [[ "$matcher_failed" == true ]]; then
+  broad_run=true
+  browser_fail_open=true
 fi
 
 global_deps=false
-if truthy "${FILTER_GLOBAL:-false}" || [[ "$broad_run" == true ]]; then
+if truthy "${FILTER_GLOBAL:-false}" || [[ "$broad_run" == true ]] || [[ "$matcher_failed" == true ]]; then
   global_deps=true
 fi
 
@@ -183,6 +211,7 @@ emit filter_millwork "$filter_mf_out"
 emit filter_routes_smoke "$filter_routes_out"
 emit broad_run "$broad_run"
 emit browser_fail_open "$browser_fail_open"
+emit matcher_failed "$matcher_failed"
 emit global_test_deps "$global_deps"
 
 echo "CI flags: database=$run_database browser=$run_browser (admin=$run_browser_admin openplan3d=$run_browser_openplan3d quotation=$run_browser_quotation client=$run_browser_client) mysql_node=$run_mysql_node broad=$broad_run global=$global_deps"

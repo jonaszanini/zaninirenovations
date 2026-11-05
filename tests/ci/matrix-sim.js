@@ -34,27 +34,46 @@ function runCompute(changedPaths, extraEnv) {
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ci-matrix-'));
   const changedFile = path.join(tmp, 'changed.txt');
   fs.writeFileSync(changedFile, changedPaths.join('\n') + (changedPaths.length ? '\n' : ''));
-  const filters = loadFilters();
-  const agg = aggregateFilterHits(changedPaths, filters);
   const env = {
-    ...envFromAggregate(agg),
     GITHUB_REF: 'refs/pull/1/merge',
     GITHUB_EVENT_NAME: 'pull_request',
     DOCS_ONLY: 'false',
     HAS_CODE_CHANGES: 'true',
     CHANGED_FILES_FILE: changedFile,
     SLOW_INPUT: 'false',
+    FILTER_GLOBAL: 'false',
+    FILTER_BROWSER_ADMIN: 'false',
+    FILTER_BROWSER_OPENPLAN3D: 'false',
+    FILTER_BROWSER_QUOTATION: 'false',
+    FILTER_BROWSER_CLIENT: 'false',
     ...extraEnv,
   };
-  const broad = computeBroadRun(changedPaths, filters);
-  void broad;
+  let analyzeOut;
+  try {
+    analyzeOut = execFileSync('node', [path.join(__dirname, 'match-workflow-filters.js'), '--analyze-changed', changedFile], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    });
+  } catch (err) {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    throw err;
+  }
+  for (const line of analyzeOut.split('\n')) {
+    const t = line.trim();
+    if (!t) {
+      continue;
+    }
+    if (t.startsWith('FILTER_') && t.endsWith('=true')) {
+      env[t.slice(0, t.indexOf('='))] = 'true';
+    }
+  }
   const stdout = execFileSync('bash', [COMPUTE], {
     cwd: ROOT,
     env: { ...process.env, ...env },
     encoding: 'utf8',
   });
   fs.rmSync(tmp, { recursive: true, force: true });
-  return { flags: parseComputeOutput(stdout), aggregate: agg, broad };
+  return { flags: parseComputeOutput(stdout) };
 }
 
 function listBrowserSuites(flags) {
@@ -251,6 +270,20 @@ const cases = [
     },
   },
   {
+    name: 'rename admin-dialog to admin-modal keeps quotation browser',
+    paths: ['public/js/admin-modal.js', 'public/js/admin-dialog.js'],
+    extraEnv: {
+      FILTER_BROWSER_ADMIN: 'true',
+      FILTER_BROWSER_QUOTATION: 'false',
+    },
+    expect: {
+      run_browser_quotation: 'true',
+      run_browser_admin: 'true',
+      global_test_deps: 'false',
+      browserIncludes: ['tests/js/quotation-redraft-hotkey-lock-browser.test.js'],
+    },
+  },
+  {
     name: 'negative unknown Dockerfile',
     paths: ['Dockerfile.ci'],
     expect: {
@@ -270,7 +303,7 @@ const cases = [
 let failed = 0;
 for (const tc of cases) {
   try {
-    const { flags } = runCompute(tc.paths);
+    const { flags } = runCompute(tc.paths, tc.extraEnv || {});
     for (const [key, val] of Object.entries(tc.expect)) {
       if (key === 'browserIncludes' || key === 'browserExcludes') {
         continue;

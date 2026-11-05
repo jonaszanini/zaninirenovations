@@ -21,12 +21,23 @@ class DeployDependsOnTestsTest extends TestCase
         $this->assertStringContainsString('dorny/paths-filter@v3', $yaml);
         $this->assertStringContainsString('tests/ci/classify-ci-changes.sh', $yaml);
         $this->assertStringContainsString('tests/ci/compute-ci-flags.sh', $yaml);
+        $this->assertMatchesRegularExpression(
+            '/^\s+changes:\s*$/m',
+            $yaml
+        );
+        $changesBlock = $this->extractYamlJobBlock($yaml, 'changes');
+        $this->assertStringContainsString('actions/setup-node@v4', $changesBlock, 'changes job must install Node before compute-ci-flags (picomatch)');
+        $this->assertStringContainsString('npm ci', $changesBlock, 'changes job must run npm ci before match-workflow-filters');
+        $this->assertMatchesRegularExpression(
+            '/Setup Node[\s\S]*npm ci[\s\S]*id: flags/m',
+            $changesBlock,
+            'Node install must precede compute flags step'
+        );
         $this->assertStringContainsString('tests/ci/run-js-browser-suite.sh', $yaml);
         $this->assertStringContainsString('tests/ci/run-js-unit-suite.sh', $yaml);
         $this->assertStringContainsString('global_test_deps:', $yaml);
         $this->assertStringContainsString('run_mysql_node', $yaml);
         $this->assertStringContainsString('RoomAreaEngineFeatureFlagTest.php', $yaml);
-        $this->assertMatchesRegularExpression('/^\s+changes:\s*$/m', $yaml);
         $this->assertMatchesRegularExpression('/^\s+unit_js:\s*$/m', $yaml);
         $this->assertMatchesRegularExpression('/^\s+mysql:\s*$/m', $yaml);
         $this->assertStringContainsString('DOCS_ONLY', $yaml);
@@ -185,6 +196,12 @@ class DeployDependsOnTestsTest extends TestCase
         );
     }
 
+    public function test_matcher_fail_closed_script_passes(): void
+    {
+        exec('bash '.escapeshellarg(base_path('tests/ci/matcher-fail-closed.test.sh')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
     public function test_ci_filter_matrix_script_passes(): void
     {
         exec('bash '.escapeshellarg(base_path('tests/ci/ci-filter-matrix.test.sh')).' 2>&1', $output, $code);
@@ -310,6 +327,20 @@ class DeployDependsOnTestsTest extends TestCase
         }
 
         return $paths;
+    }
+
+    private function extractYamlJobBlock(string $yaml, string $job): string
+    {
+        $pattern = '/^\s{2}'.preg_quote($job, '/').':\s*\n/m';
+        if (! preg_match($pattern, $yaml, $startMatch, PREG_OFFSET_CAPTURE)) {
+            $this->fail("Missing job {$job}");
+        }
+        $start = $startMatch[0][1];
+        if (preg_match('/^\s{2}[a-z0-9_]+:\s*\n/m', $yaml, $nextMatch, PREG_OFFSET_CAPTURE, $start + strlen($startMatch[0][0]))) {
+            return substr($yaml, $start, $nextMatch[0][1] - $start);
+        }
+
+        return substr($yaml, $start);
     }
 
     private function workflow(string $name): string

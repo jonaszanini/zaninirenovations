@@ -22,6 +22,23 @@ const BROWSER_FILTER_KEYS = [
   'browser_client',
 ];
 
+/** Map aggregate filter keys → compute-ci-flags env vars (OR with dorny outputs). */
+const FILTER_ENV_BY_AGG = [
+  ['FILTER_GLOBAL', 'global_test_deps'],
+  ['FILTER_ADMIN_SHELL', 'admin_shell'],
+  ['FILTER_SP', 'shared_prices_geometry'],
+  ['FILTER_RA', 'room_area_live'],
+  ['FILTER_BL', 'blog_live'],
+  ['FILTER_MF', 'millwork_fuzz'],
+  ['FILTER_BROWSER_JS', 'browser_js'],
+  ['FILTER_BROWSER_ADMIN', 'browser_admin'],
+  ['FILTER_BROWSER_OPENPLAN3D', 'browser_openplan3d'],
+  ['FILTER_BROWSER_QUOTATION', 'browser_quotation'],
+  ['FILTER_BROWSER_CLIENT', 'browser_client'],
+  ['FILTER_ROUTES', 'routes_smoke'],
+  ['FILTER_SEO', 'seo'],
+];
+
 function loadFilters() {
   return JSON.parse(fs.readFileSync(FILTERS_PATH, 'utf8'));
 }
@@ -148,9 +165,36 @@ function computeBrowserFailOpen(changedPaths, filters) {
   return false;
 }
 
+function readChangedPathsFile(filePath) {
+  return fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
+}
+
+function analyzeChangedFiles(changedPaths, filters) {
+  const aggregate = aggregateFilterHits(changedPaths, filters);
+  return {
+    broadRun: computeBroadRun(changedPaths, filters),
+    browserFailOpen: computeBrowserFailOpen(changedPaths, filters),
+    aggregate,
+  };
+}
+
+function emitAnalyzeChangedStdout(analysis) {
+  console.log(`broad_run=${analysis.broadRun}`);
+  console.log(`browser_fail_open=${analysis.browserFailOpen}`);
+  for (const [envKey, aggKey] of FILTER_ENV_BY_AGG) {
+    if (analysis.aggregate[aggKey]) {
+      console.log(`${envKey}=true`);
+    }
+  }
+}
 if (require.main === module) {
   const args = process.argv.slice(2);
   const filters = loadFilters();
+  if (args[0] === '--analyze-changed' && args[1]) {
+    const paths = readChangedPathsFile(args[1]);
+    emitAnalyzeChangedStdout(analyzeChangedFiles(paths, filters));
+    process.exit(0);
+  }
   if (args[0] === '--path' && args[1]) {
     const p = args[1];
     if (args[2] === '--expect-any') {
@@ -174,7 +218,7 @@ if (require.main === module) {
   }
   console.error('Usage: match-workflow-filters.js --path <file> [--expect-any]');
   console.error('       match-workflow-filters.js --broad-file <changed-files.txt>');
-  console.error('       match-workflow-filters.js --browser-fail-open-file <changed-files.txt>');
+  console.error('       match-workflow-filters.js --analyze-changed <changed-files.txt>');
   process.exit(2);
 }
 
@@ -188,8 +232,11 @@ module.exports = {
   pathIsClassifiedForBroadRun,
   computeBroadRun,
   computeBrowserFailOpen,
+  analyzeChangedFiles,
+  emitAnalyzeChangedStdout,
   matchAnyWorkflowFilter,
   isDocPath,
   CLASSIFICATION_IGNORE,
   BROWSER_FILTER_KEYS,
+  FILTER_ENV_BY_AGG,
 };

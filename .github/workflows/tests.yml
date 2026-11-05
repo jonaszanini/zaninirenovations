@@ -62,6 +62,15 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: tests/ci/classify-ci-changes.sh
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
       - uses: dorny/paths-filter@v3
         id: filter
         with:
