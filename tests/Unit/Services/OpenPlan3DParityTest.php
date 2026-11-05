@@ -631,7 +631,7 @@ class OpenPlan3DParityTest extends TestCase
         $this->assertEquals(0.0, $metrics['area_sqft']);
     }
 
-    public function test_true_bowtie_polygon_stays_geometry_unmeasurable(): void
+    public function test_true_bowtie_stored_polygon_replaced_by_valid_wall_outer_loop(): void
     {
         $cmPerFt = 30.48;
         $plan = [
@@ -655,8 +655,42 @@ class OpenPlan3DParityTest extends TestCase
             ],
         ];
         $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
-        $this->assertTrue($metrics['geometry_unmeasurable'] ?? false);
-        $this->assertEquals(0.0, $metrics['area_sqft']);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(120.0, $metrics['area_sqft']);
+    }
+
+    public function test_stale_empty_plan_floor_uses_floors_array_for_live_area(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $plan['floor']['walls'] = [];
+        $plan['floor']['rooms'] = [['id' => 'r1', 'name' => 'B', 'polygon' => []]];
+
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
+    }
+
+    public function test_remove_partition_keeps_positive_area_with_invalid_stored_polygon(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $plan['floor']['walls'] = array_values(array_filter(
+            $plan['floor']['walls'],
+            fn (array $w): bool => ($w['id'] ?? '') !== 'mclt5ix7'
+        ));
+        $plan['floors'][0]['walls'] = $plan['floor']['walls'];
+        $plan['floor']['rooms'][0]['polygon'] = [
+            ['x' => 0, 'y' => 0],
+            ['x' => 100, 'y' => 100],
+            ['x' => 100, 'y' => 0],
+            ['x' => 0, 'y' => 100],
+        ];
+        $plan['floors'][0]['rooms'][0]['polygon'] = $plan['floor']['rooms'][0]['polygon'];
+
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
     }
 
     /**
