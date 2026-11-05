@@ -100,4 +100,12 @@ assert.match(
   '.htaccess must send no-cache for editor index.html'
 );
 
+const storeChunk = fs.readFileSync(
+  path.join(ROOT, 'public/vendor/openplan3d-h1/_app/immutable/chunks/1VjVcrjm-h3.js'),
+  'utf8'
+);
+assert.match(storeChunk, /__zaniniRf=window\.OpenPlan3DMeasurementBridge\.syncEditorRoomBoundariesForCanvasFill/, 'store chunk must sync rooms inside un()');
+assert.match(storeChunk, /__zaniniAuto=Ro\(e,t,n\)\.map/, 'store chunk must merge persisted floor.rooms in va()');
+assert.match(storeChunk, /return e\.polygon&&e\.polygon\.length>=3\?e\.polygon\.slice\(\):\[\]/, 'store chunk Bo() must fall back to room.polygon');
+
 console.log('openplan3d-editor-asset-version: ok (bridge v=' + bridgeContentVersion() + ', locale shim v=' + localeShimV + ')');

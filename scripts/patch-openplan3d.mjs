@@ -251,6 +251,38 @@ function patchStoreChunk(source) {
     process.exit(1);
   }
 
+  const unOld = 'function un(e){ce.length=0,Ce.length=0,xe=0,_t=null,qe="",nt(),it(),I.set(e),Ye()}';
+  const unNew =
+    'function un(e){if(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill==="function"){const __zaniniRf=window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill(e);__zaniniRf&&__zaniniRf.changed&&__zaniniRf.plan&&(e=__zaniniRf.plan)}ce.length=0,Ce.length=0,xe=0,_t=null,qe="",nt(),it(),I.set(e),Ye()}';
+  if (s.includes(unOld)) {
+    s = replaceExpected(s, unOld, unNew, 'store chunk: sync room boundaries inside setProject (un)', 1);
+  } else if (!s.includes('__zaniniRf=window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill')) {
+    console.error('patch-openplan3d: store chunk: un() room-fill hook pattern not found');
+    process.exit(1);
+  }
+
+  const vaOld =
+    'function va(e,t=[]){const n=vt(e.walls);return Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)}))}';
+  const vaNew =
+    'function va(e,t=[]){const n=vt(e.walls);const __zaniniAuto=Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)})).filter(x=>x.polygon.length>=3);const __zaniniSeen=new Set(__zaniniAuto.map(x=>x.room.id));for(const __zaniniRoom of e.rooms??[]){if(!__zaniniRoom||__zaniniSeen.has(__zaniniRoom.id))continue;let __zaniniPoly=__zaniniRoom.polygon&&__zaniniRoom.polygon.length>=3?__zaniniRoom.polygon.slice():Bo(__zaniniRoom,n);if(__zaniniPoly.length<3)continue;__zaniniAuto.push({room:__zaniniRoom,polygon:__zaniniPoly});__zaniniSeen.add(__zaniniRoom.id)}return __zaniniAuto}';
+  if (s.includes(vaOld)) {
+    s = replaceExpected(s, vaOld, vaNew, 'store chunk: va() include persisted floor.rooms for canvas', 1);
+  } else if (!s.includes('__zaniniAuto=Ro(e,t,n).map')) {
+    console.error('patch-openplan3d: store chunk: va() persisted-room pattern not found');
+    process.exit(1);
+  }
+
+  const boOld =
+    'function Bo(e,t){const n=new Set(e.walls);let o=t.filter(c=>(c.wallIds??[c.wallId]).some(d=>n.has(d))),i=!0;for(;i&&o.length>=3;)i=!1,o=o.filter(c=>{const d=o.filter(u=>H(u.start,c.start)||H(u.end,c.start)).length,h=o.filter(u=>H(u.start,c.end)||H(u.end,c.end)).length;return d<2||h<2?(i=!0,!1):!0});if(o.length<3)return[];const a=new Set;let s=[],r=0,l=[];for(const c of o){if(a.has(c))continue;const d=[c.start];a.add(c);let h=c.end;for(;!H(h,d[0]);){d.push(h);const u=o.find(f=>!a.has(f)&&(H(f.start,h)||H(f.end,h)));if(!u)break;a.add(u),h=H(u.start,h)?u.end:u.start}if(H(h,d[0])){const u=Math.abs(pt(d));u>r&&(r=u,s=d)}else d.length>l.length&&(l=d)}return s.length>=3?s:l}';
+  const boNew =
+    'function Bo(e,t){const n=new Set(e.walls);let o=t.filter(c=>(c.wallIds??[c.wallId]).some(d=>n.has(d))),i=!0;for(;i&&o.length>=3;)i=!1,o=o.filter(c=>{const d=o.filter(u=>H(u.start,c.start)||H(u.end,c.start)).length,h=o.filter(u=>H(u.start,c.end)||H(u.end,c.end)).length;return d<2||h<2?(i=!0,!1):!0});if(o.length<3)return e.polygon&&e.polygon.length>=3?e.polygon.slice():[];const a=new Set;let s=[],r=0,l=[];for(const c of o){if(a.has(c))continue;const d=[c.start];a.add(c);let h=c.end;for(;!H(h,d[0]);){d.push(h);const u=o.find(f=>!a.has(f)&&(H(f.start,h)||H(f.end,h)));if(!u)break;a.add(u),h=H(u.start,h)?u.end:u.start}if(H(h,d[0])){const u=Math.abs(pt(d));u>r&&(r=u,s=d)}else d.length>l.length&&(l=d)}return s.length>=3?s:e.polygon&&e.polygon.length>=3?e.polygon.slice():l.length>=3?l:[]}';
+  if (s.includes(boOld)) {
+    s = replaceExpected(s, boOld, boNew, 'store chunk: Bo() use persisted room.polygon fallback', 1);
+  } else if (!s.includes('return e.polygon&&e.polygon.length>=3?e.polygon.slice():[]')) {
+    console.error('patch-openplan3d: store chunk: Bo() polygon fallback pattern not found');
+    process.exit(1);
+  }
+
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,
