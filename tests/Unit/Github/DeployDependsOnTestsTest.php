@@ -20,6 +20,15 @@ class DeployDependsOnTestsTest extends TestCase
         );
         $this->assertStringContainsString('dorny/paths-filter@v3', $yaml);
         $this->assertStringContainsString('tests/ci/classify-ci-changes.sh', $yaml);
+        $this->assertStringContainsString('tests/ci/compute-ci-flags.sh', $yaml);
+        $this->assertStringContainsString('tests/ci/run-js-browser-suite.sh', $yaml);
+        $this->assertStringContainsString('tests/ci/run-js-unit-suite.sh', $yaml);
+        $this->assertStringContainsString('global_test_deps:', $yaml);
+        $this->assertStringContainsString('run_mysql_node', $yaml);
+        $this->assertStringContainsString('RoomAreaEngineFeatureFlagTest.php', $yaml);
+        $this->assertMatchesRegularExpression('/^\s+changes:\s*$/m', $yaml);
+        $this->assertMatchesRegularExpression('/^\s+unit_js:\s*$/m', $yaml);
+        $this->assertMatchesRegularExpression('/^\s+mysql:\s*$/m', $yaml);
         $this->assertStringContainsString('DOCS_ONLY', $yaml);
         $this->assertStringContainsString('run_database', $yaml);
         $this->assertStringContainsString("push:\n    branches:\n      - main", $yaml);
@@ -144,6 +153,45 @@ class DeployDependsOnTestsTest extends TestCase
         foreach (array_merge($unit, $core, $extended) as $path) {
             $full = base_path($path);
             $this->assertTrue(is_file($full) || is_dir($full), $path.' is listed but missing on disk');
+        }
+    }
+
+    public function test_room_area_engine_feature_flag_runs_on_pr_when_room_area_filter_matches(): void
+    {
+        $roomAreaFilter = $this->pathsFile('tests/ci/database-filter-room-area.txt');
+        $this->assertContains(
+            'tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php',
+            $roomAreaFilter,
+            'OpenPlan3D manifest/vendor PRs must run RoomAreaEngineFeatureFlagTest via CI_MYSQL_FILTER_ROOM_AREA, not main-only extended.txt alone'
+        );
+    }
+
+    public function test_ci_filter_matrix_script_passes(): void
+    {
+        $script = base_path('tests/ci/ci-filter-matrix.test.sh');
+        $this->assertFileExists($script);
+        exec('bash '.escapeshellarg($script).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
+    public function test_ci_js_browser_path_lists_cover_workflow_browser_tests(): void
+    {
+        $lists = [
+            'tests/ci/js-browser-admin.txt',
+            'tests/ci/js-browser-openplan3d.txt',
+            'tests/ci/js-browser-quotation.txt',
+            'tests/ci/js-browser-client-projects.txt',
+        ];
+        $paths = [];
+        foreach ($lists as $list) {
+            foreach ($this->pathsFile($list) as $path) {
+                $paths[] = $path;
+            }
+        }
+        $paths = array_values(array_unique($paths));
+        $this->assertGreaterThan(10, count($paths));
+        foreach ($paths as $path) {
+            $this->assertFileExists(base_path($path), $path);
         }
     }
 

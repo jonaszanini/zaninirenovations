@@ -1,0 +1,16 @@
+tests/js/room-area-lib.test.js
+tests/js/openplan3d-parity.test.js
+tests/js/openplan3d-host-save-area.test.js
+tests/js/openplan3d-editor-room-fill.test.js
+tests/js/openplan3d-editor-bridge.test.js
+tests/js/openplan3d-zanini-extensions.test.js
+tests/js/openplan3d-zanini-tools.test.js
+tests/js/openplan3d-editor-asset-version.test.js
+tests/js/openplan3d-immutable-graph-cache.test.js
+tests/js/openplan3d-kr-inch-snap.test.js
+tests/js/room-area-formula.test.js
+tests/js/shared-prices-effective.test.js
+tests/js/admin-hotkey-save.test.js
+tests/js/admin-project-calendar-swipe.test.js
+tests/js/admin-project-calendar-popover.test.js
+tests/js/admin-info-tip.test.mjs

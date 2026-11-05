@@ -1,0 +1,3 @@
+tests/js/admin-hotkey-save-browser.test.js
+tests/js/admin-date-picker-browser.test.js
+tests/js/admin-info-tip-click.test.mjs

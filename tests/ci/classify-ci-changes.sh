@@ -46,10 +46,17 @@ if [[ ${#files[@]} -gt 0 ]]; then
   fi
 fi
 
+changed_files_path=""
+if [[ ${#files[@]} -gt 0 ]]; then
+  changed_files_path="$(mktemp)"
+  printf '%s\n' "${files[@]}" > "$changed_files_path"
+fi
+
 {
   echo "docs_only=$docs_only"
   echo "has_code_changes=$has_code_changes"
   echo "changed_file_count=${#files[@]}"
+  echo "changed_files_path=$changed_files_path"
 } >> "${GITHUB_OUTPUT:?}"
 
 echo "Changed files: ${#files[@]} (docs_only=$docs_only, has_code_changes=$has_code_changes)"
